@@ -98,7 +98,7 @@ def correct_flow_directions(net):
 
     return net
 
-def optimize_diameter(initial_net, v_max=1, v_min=0.8, dx=0.001):
+def optimize_diameter_parameters(initial_net, v_max=1, v_min=0.8, dx=0.001):
     pp.pipeflow(initial_net, mode="all")
     velocities = list(initial_net.res_pipe.v_mean_m_per_s)
 
@@ -114,8 +114,6 @@ def optimize_diameter(initial_net, v_max=1, v_min=0.8, dx=0.001):
         pp.pipeflow(initial_net, mode="all")
         velocities = list(initial_net.res_pipe.v_mean_m_per_s)
 
-        print(velocities)
-
     return initial_net
 
 # GeoJSON-Datei einlesen
@@ -124,15 +122,12 @@ gdf_rücklauf = gpd.read_file('Rücklauf.geojson')
 gdf_HAST = gpd.read_file('HAST.geojson')
 gdf_WEA = gpd.read_file('Erzeugeranlagen.geojson')
 
-print("im here")
-net = create_network(gdf_vorlauf,gdf_rücklauf,gdf_HAST,gdf_WEA)
-print("im here")
-net = correct_flow_directions(net)
-print("im here")
-print(net.res_pipe)
 
-net = optimize_diameter(net)
-print("im here")
+net = create_network(gdf_vorlauf,gdf_rücklauf,gdf_HAST,gdf_WEA)
+
+net = correct_flow_directions(net)
+
+net = optimize_diameter_parameters(net)
 
 #print(net.junction)
 #print(net.junction_geodata)
