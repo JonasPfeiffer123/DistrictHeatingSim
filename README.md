@@ -10,14 +10,14 @@ cd heating_network_generation
 
 Scripts
 
-    Netzgenerierung_ETRS89_MST.py:
-        Utilizes QGIS libraries to manipulate GIS data.
-        Includes functionality for creating and editing spatial layers, points, and geometries.
-        Aimed at modeling or analyzing a network in a geospatial context.
+Netzgenerierung_ETRS89_MST.py:
+- Utilizes QGIS libraries to manipulate GIS data.
+- Includes functionality for creating and editing spatial layers, points, and geometries.
+- Aimed at modeling or analyzing a network in a geospatial context.
 
-    Netzgenerierung_Pandapipes.py:
-        Employs pandapipes for pipe network data handling and geopandas for geospatial data manipulation.
-        Contains functions for extracting coordinates and calculating lengths of pipe networks.
+- Netzgenerierung_Pandapipes.py:
+- Employs pandapipes for pipe network data handling and geopandas for geospatial data manipulation.
+- Contains functions for extracting coordinates and calculating lengths of pipe networks.
 
 Contributing
 
