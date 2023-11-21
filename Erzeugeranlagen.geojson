@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "Erzeugeranlagen",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::25833" } },
+"features": [
+{ "type": "Feature", "properties": { "id": null }, "geometry": { "type": "LineString", "coordinates": [ [ 486267.306987969262991, 5637295.141816268675029 ], [ 486268.306987969262991, 5637295.141816268675029 ] ] } }
+]
+}
