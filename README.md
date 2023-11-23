@@ -84,7 +84,7 @@ For the developement and testing of the algorithms and functions, geodata is req
 - Adding further functionality like time series calculation in pandapipes
 - Enhancing the diameter optimization capabilities using the given standard pipe types
 
-- The geoJSON format is choosed as it can be used in advanced simulation software like SIM-VICUS (https://www.sim-vicus.de)
+- The geoJSON format is used as it can be used in advanced simulation software like SIM-VICUS (https://www.sim-vicus.de)
 
 - Currently the combination with further python-based simulation tools like flixOpt (https://github.com/flixOpt/flixOpt) or EnSySim (https://github.com/HSZittauGoerlitz/EnSySim) is being evaluated.
   
