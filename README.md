@@ -1,5 +1,7 @@
 # heating_network_generation
 
+This project is being developed by Dipl.-Ing. (FH) Jonas Pfeiffer as part of the work being done for the SMWK-NEUES TG-70 project "Entwicklung und Erprobung von Methoden und Werkzeugen zur Konzeptionierung nachhaltiger Wärmenetze" (Development and testing of methods and tools for designing sustainable heating networks).
+
 This project focuses on generating and analyzing heating networks using geospatial data. It integrates geographic information system (GIS) functionality with network analysis to model and simulate heating networks.
 
 # Usage
