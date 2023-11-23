@@ -68,6 +68,15 @@ To run the python file "net_simulation.py" the pandapipes and geopanda libraries
         - Visualizes the network using pandapipes plotting utilities.
         - Exports the simulated network data to GeoJSON format using a function from net_simulation_pandapipes.
 
+# To Do
+
+- Some parts of the code are still in german, will be fixed soon
+- Optimization and generalization
+  
+- In "net_generation_functions.py" a function named "import_street_layer(area, values)" is defined, but not used in "net_generation_qgis_ETRS89_MST.py" yet. This function is supposed to do the import of the street layer from the QuickOSM plugin. A working code for importing the necessary data still has to be figured out.
+- A function needs to be defined to set the right crs (coordinate reference system) in QGIS when executing "net_generation_qgis_ETRS89_MST.py"
+
+
 # Contributing
 
 Contributions to the project are welcome. Please adhere to standard coding practices and submit pull requests for review.
