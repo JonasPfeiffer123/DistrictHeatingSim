@@ -10,9 +10,8 @@ bash
 git clone https://github.com/JonasPfeiffer123/heating_network_generation.git
 cd heating_network_generation
 
-Scripts
-
-net_generation_functions.py
+# Scripts
+# net_generation_functions.py
 
     - Purpose: Provides utility functions for network generation within the GIS framework.
     - Key Functions:
@@ -32,7 +31,7 @@ net_generation_functions.py
         - generate_network_fl(layer_points_fl, layer_wea, provider, layer_lines): Generates a network for forward lines.
         - generate_network_rl(layer_points_rl, layer_wea, fixed_distance_rl, fixed_angle_rl, provider, layer_lines): Generates a network for return lines.
 
-net_generation_qgis_ETRS89_MST.py
+# net_generation_qgis_ETRS89_MST.py
 
     - Purpose: Automates the process of generating heating network components and exporting them as GeoJSON files using QGIS functionalities.
     - Key Processes:
@@ -44,7 +43,7 @@ net_generation_qgis_ETRS89_MST.py
         - Commits changes to all layers and updates their extents.
         - Writes layers as GeoJSON files and applies color coding for visual differentiation.
 
-net_simulation_pandapipes.py
+# net_simulation_pandapipes.py
 
     - Purpose: Simulates the heating network using the pandapipes framework, focusing on pipe flow and network optimization.
     - Key Functions:
@@ -55,7 +54,7 @@ net_simulation_pandapipes.py
         - optimize_diameter_types(initial_net, v_max, v_min): Alters pipe types to optimize for velocity constraints.
         - export_net_geojson(net): Placeholder for a function to export the network data to a GeoJSON format.
 
-net_simulation.py
+# net_simulation.py
 
     - Purpose: Coordinates the simulation of the heating network using the pandapipes framework, integrating network creation, flow correction, and optimization.
     - Key Processes:
@@ -65,12 +64,14 @@ net_simulation.py
         - Visualizes the network using pandapipes plotting utilities.
         - Exports the simulated network data to GeoJSON format using a function from net_simulation_pandapipes.
 
-Contributing
+# Contributing
 
 Contributions to the project are welcome. Please adhere to standard coding practices and submit pull requests for review.
-License
+
+# License
 
 This project is licensed under the GPL-3.0 license.
-Contact
+
+# Contact
 
 For collaboration or queries, contact JonasPfeiffer123's GitHub profile.
