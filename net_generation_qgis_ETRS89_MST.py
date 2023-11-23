@@ -12,9 +12,7 @@ import_osm_layer()
 # import_street_layer(area, values)
 
 # Pfad zur Textdatei
-# text_file_path = "C:/Users/username/Filr/Meine Dateien/1 SMWK-NEUES Bearbeitung/QGis/Netzgenerierung/Beispieldaten_ETRS89.csv"
-text_file_path = "H:/1 SMWK-NEUES Bearbeitung/QGis/Netzgenerierung/Beispieldaten_ETRS89.csv"
-# text_file_path = "Beispieldaten_ETRS89.csv"
+text_file_path = "YOUR-FILE-DIRECTORY/Beispieldaten_ETRS89.csv"
 create_data_layer(text_file_path)
     
 # Koordinaten für den Punkt
