@@ -21,35 +21,35 @@ For the developement and testing of the algorithms and functions, geodata is req
 # Scripts
 # net_generation_functions.py
 
-    - Purpose: Provides utility functions for network generation within the GIS framework.
-    - Key Functions:
-        - import_osm_layer(): Imports OpenStreetMap layer into the project.
-        - import_street_layer(area, values): Imports street layer data based on specified area and criteria.
-        - create_data_layer(text_file_path): Creates a data layer from a text file containing coordinates.
-        - create_point_layer(x_coord, y_coord): Generates a point layer from given coordinates.
-        - create_layer(layer_name, layer_type, crs_i): Generic function to create a new layer with specified parameters.
-        - create_offset_points(point, distance, angle_degrees): Creates offset points based on a given point, distance, and angle.
-        - generate_lines(layer, distance, angle_degrees, provider): Generates lines based on given parameters.
-        - find_nearest_point(current_point, other_points): Finds the nearest point to a given point from a set of points.
-        - find_nearest_line(point_geom, line_layer): Identifies the nearest line to a given point geometry.
-        - create_perpendicular_line(point_geom, line_geom, provider): Creates a perpendicular line from a point to a line geometry.
-        - process_layer_points(layer, provider, layer_lines): Processes points in a layer and finds corresponding street end points.
-        - generate_return_lines(layer, distance, angle_degrees, provider, layer_lines): Generates return lines for a layer.
-        - generate_mst(all_end_points, provider): Generates a Minimum Spanning Tree (MST) from a set of end points.
-        - generate_network_fl(layer_points_fl, layer_wea, provider, layer_lines): Generates a network for forward lines.
-        - generate_network_rl(layer_points_rl, layer_wea, fixed_distance_rl, fixed_angle_rl, provider, layer_lines): Generates a network for return lines.
+- Purpose: Provides utility functions for network generation within the GIS framework.
+- Key Functions:
+  - import_osm_layer(): Imports OpenStreetMap layer into the project.
+  - import_street_layer(area, values): Imports street layer data based on specified area and criteria.
+  - create_data_layer(text_file_path): Creates a data layer from a text file containing coordinates.
+  - create_point_layer(x_coord, y_coord): Generates a point layer from given coordinates.
+  - create_layer(layer_name, layer_type, crs_i): Generic function to create a new layer with specified parameters.
+  - create_offset_points(point, distance, angle_degrees): Creates offset points based on a given point, distance, and angle.
+  - generate_lines(layer, distance, angle_degrees, provider): Generates lines based on given parameters.
+  - find_nearest_point(current_point, other_points): Finds the nearest point to a given point from a set of points.
+  - find_nearest_line(point_geom, line_layer): Identifies the nearest line to a given point geometry.
+  - create_perpendicular_line(point_geom, line_geom, provider): Creates a perpendicular line from a point to a line geometry.
+  - process_layer_points(layer, provider, layer_lines): Processes points in a layer and finds corresponding street end points.
+  - generate_return_lines(layer, distance, angle_degrees, provider, layer_lines): Generates return lines for a layer.
+  - generate_mst(all_end_points, provider): Generates a Minimum Spanning Tree (MST) from a set of end points.
+  - generate_network_fl(layer_points_fl, layer_wea, provider, layer_lines): Generates a network for forward lines.
+  - generate_network_rl(layer_points_rl, layer_wea, fixed_distance_rl, fixed_angle_rl, provider, layer_lines): Generates a network for return lines.
 
 # net_generation_qgis_ETRS89_MST.py
 
-    - Purpose: Automates the process of generating heating network components and exporting them as GeoJSON files using QGIS functionalities.
-    - Key Processes:
-        - Imports and uses functions from net_generation_functions.py.
-        - Creates data layers from provided CSV file paths and specified coordinates.
-        - Prepares the environment by setting up necessary layers like 'Beispieldaten_ETRS89', 'Straßen', and 'Erzeugerstandorte'.
-        - Generates heat exchanger and heat generator coordinates.
-        - Creates forward and return line networks.
-        - Commits changes to all layers and updates their extents.
-        - Writes layers as GeoJSON files and applies color coding for visual differentiation.
+- Purpose: Automates the process of generating heating network components and exporting them as GeoJSON files using QGIS functionalities.
+- Key Processes:
+  - Imports and uses functions from net_generation_functions.py.
+  - Creates data layers from provided CSV file paths and specified coordinates.
+  - Prepares the environment by setting up necessary layers like 'Beispieldaten_ETRS89', 'Straßen', and 'Erzeugerstandorte'.
+  - Generates heat exchanger and heat generator coordinates.
+  - Creates forward and return line networks.
+  - Commits changes to all layers and updates their extents.
+  - Writes layers as GeoJSON files and applies color coding for visual differentiation.
 
 # net_simulation_pandapipes.py
 
