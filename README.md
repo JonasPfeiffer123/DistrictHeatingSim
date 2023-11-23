@@ -70,7 +70,6 @@ For the developement and testing of the algorithms and functions, geodata is req
   - Calls create_network from net_simulation_pandapipes to build the network.
   - Utilizes correct_flow_directions and optimize_diameter_parameters from net_simulation_pandapipes for network adjustment and optimization.
   - Visualizes the network using pandapipes plotting utilities.
-  - Exports the simulated network data to GeoJSON format using a function from net_simulation_pandapipes.
 
 # To Do
 
