@@ -99,4 +99,4 @@ Contributions to the project are welcome. Please adhere to standard coding pract
 
 # Contact
 
-For collaboration or queries, contact JonasPfeiffer123's GitHub profile.
+For collaboration or queries, contact JonasPfeiffer123's GitHub profile or feel free to contact me over LinkedIn.
