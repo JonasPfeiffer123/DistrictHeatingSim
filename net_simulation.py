@@ -4,10 +4,10 @@ import geopandas as gpd
 import net_simulation_pandapipes as nsp
 
 # GeoJSON-Dateien einlesen
-gdf_vl = gpd.read_file('Vorlauf.geojson')
-gdf_rl = gpd.read_file('Rücklauf.geojson')
-gdf_HAST = gpd.read_file('HAST.geojson')
-gdf_WEA = gpd.read_file('Erzeugeranlagen.geojson')
+gdf_vl = gpd.read_file('geoJSON_Vorlauf.geojson')
+gdf_rl = gpd.read_file('geoJSON_Rücklauf.geojson')
+gdf_HAST = gpd.read_file('geoJSON_HAST.geojson')
+gdf_WEA = gpd.read_file('geoJSON_Erzeugeranlagen.geojson')
 
 
 net = nsp.create_network(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA)
@@ -33,3 +33,5 @@ pipe_std_types = pp.std_types.available_std_types(net, "pipe")
 
 plot.simple_plot(net, junction_size=0.2, heat_exchanger_size=0.2, pump_size=0.2, pump_color='green',
                  pipe_color='black', heat_exchanger_color='blue')
+
+nsp.export_net_geojson(net)

@@ -134,3 +134,6 @@ def optimize_diameter_types(initial_net, v_max=1, v_min=0.8):
         velocities = list(initial_net.res_pipe.v_mean_m_per_s)
 
     return initial_net
+
+def export_net_geojson(net):
+    print("Hier könnte deine geoJSON-Datei exportiert werden.")
