@@ -83,7 +83,7 @@ Contributions to the project are welcome. Please adhere to standard coding pract
 
 # License
 
-This project is licensed under the GPL-3.0 license.
+
 
 # Contact
 
