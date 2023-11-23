@@ -79,6 +79,9 @@ For the developement and testing of the algorithms and functions, geodata is req
   
 - In "net_generation_functions.py" a function named "import_street_layer(area, values)" is defined, but not used in "net_generation_qgis_ETRS89_MST.py" yet. This function is supposed to do the import of the street layer from the QuickOSM plugin. A working code for importing the necessary data still has to be figured out.
 - A function needs to be defined to set the right crs (coordinate reference system) in QGIS when executing "net_generation_qgis_ETRS89_MST.py"
+- A logic has to be programmed, which overwrites existing layers when executing the python file multiple times.
+
+- 
 
 
 # Contributing
