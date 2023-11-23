@@ -1,7 +1,5 @@
 # heating_network_generation
 
-work in progress, currently not all files uploaded
-
 This project focuses on generating and analyzing heating networks using geospatial data. It integrates geographic information system (GIS) functionality with network analysis to model and simulate heating networks.
 
 # Usage
