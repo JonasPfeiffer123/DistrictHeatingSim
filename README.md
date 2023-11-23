@@ -81,9 +81,14 @@ For the developement and testing of the algorithms and functions, geodata is req
 - A function needs to be defined to set the right crs (coordinate reference system) in QGIS when executing "net_generation_qgis_ETRS89_MST.py"
 - A logic has to be programmed, which overwrites existing layers when executing the python file multiple times.
 
-- 
+- Export of the diameter-optimized heating_network as geoJSON
+- Adding further functionality like time series calculation in pandapipes
+- Enhancing the diameter optimization capabilities using the given standard pipe types
 
+- The geoJSON format is choosed as it can be used in advanced simulation software like SIM-VICUS (https://www.sim-vicus.de
 
+- Currently the combination with further python-based simulation tools like flixOpt (https://github.com/flixOpt/flixOpt) or EnSySim (https://github.com/HSZittauGoerlitz/EnSySim) is being evaluated.
+  
 # Contributing
 
 Contributions to the project are welcome. Please adhere to standard coding practices and submit pull requests for review.
