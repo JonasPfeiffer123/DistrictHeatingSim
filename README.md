@@ -53,24 +53,24 @@ For the developement and testing of the algorithms and functions, geodata is req
 
 # net_simulation_pandapipes.py
 
-    - Purpose: Simulates the heating network using the pandapipes framework, focusing on pipe flow and network optimization.
-    - Key Functions:
-        - get_line_coords_and_lengths(gdf): Extracts coordinates and calculates lengths of lines from a GeoDataFrame.
-        - create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea): Creates the entire network with junctions, pipes, heat exchangers, and circulation pumps.
-        - correct_flow_directions(net): Adjusts the flow directions in the network to ensure correctness.
-        - optimize_diameter_parameters(initial_net, v_max, v_min, dx): Optimizes pipe diameters based on velocity constraints.
-        - optimize_diameter_types(initial_net, v_max, v_min): Alters pipe types to optimize for velocity constraints.
-        - export_net_geojson(net): Placeholder for a function to export the network data to a GeoJSON format.
+- Purpose: Simulates the heating network using the pandapipes framework, focusing on pipe flow and network optimization.
+- Key Functions:
+  - get_line_coords_and_lengths(gdf): Extracts coordinates and calculates lengths of lines from a GeoDataFrame.
+  - create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea): Creates the entire network with junctions, pipes, heat exchangers, and circulation pumps.
+  - correct_flow_directions(net): Adjusts the flow directions in the network to ensure correctness.
+  - optimize_diameter_parameters(initial_net, v_max, v_min, dx): Optimizes pipe diameters based on velocity constraints.
+  - optimize_diameter_types(initial_net, v_max, v_min): Alters pipe types to optimize for velocity constraints.
+  - export_net_geojson(net): Placeholder for a function to export the network data to a GeoJSON format.
 
 # net_simulation.py
 
-    - Purpose: Coordinates the simulation of the heating network using the pandapipes framework, integrating network creation, flow correction, and optimization.
-    - Key Processes:
-        - Reads GeoJSON files to create GeoDataFrames for different network components.
-        - Calls create_network from net_simulation_pandapipes to build the network.
-        - Utilizes correct_flow_directions and optimize_diameter_parameters from net_simulation_pandapipes for network adjustment and optimization.
-        - Visualizes the network using pandapipes plotting utilities.
-        - Exports the simulated network data to GeoJSON format using a function from net_simulation_pandapipes.
+- Purpose: Coordinates the simulation of the heating network using the pandapipes framework, integrating network creation, flow correction, and optimization.
+- Key Processes:
+  - Reads GeoJSON files to create GeoDataFrames for different network components.
+  - Calls create_network from net_simulation_pandapipes to build the network.
+  - Utilizes correct_flow_directions and optimize_diameter_parameters from net_simulation_pandapipes for network adjustment and optimization.
+  - Visualizes the network using pandapipes plotting utilities.
+  - Exports the simulated network data to GeoJSON format using a function from net_simulation_pandapipes.
 
 # To Do
 
