@@ -11,9 +11,9 @@ Net generation in QGIS
 To run this project, a QGIS installation is needed. This project was created in QGIS 3.34.0. When opening the QGIS-file with all files in one folder, the output of "net_generation_functions.py" and "net_generation_qgis_ETRS89_MST.py" will be already there.
 Alternatively you can open a new QGIS file. In this case, some things still have to be done manually. First of, change the crs (coordinate reference system) to EPSG:25833. Install the QuickOSM plugin. Import a street-layer with QuickOSM. For this project, I downloaded the key "highway" with the values "primary", "secondary", "tertiary" and "residential" in "Zittau". After that, the python file "net_generation_qgis_ETRS89_MST.py" can be run in QGIS. "net_generation_qgis_ETRS89_MST.py" calls functions from "net_generation_functions.py". Note, that due to system specific file paths, some of them might have to be changed.
 
-Net calculation and optimization
+Net calculation and optimization with pandapipes
 
-To run the python file "net_simulation.py" the pandapipes and geopanda libraries are needed. "net_simulation.py" calls functions from "net_simulation_pandapipes.py"
+To run the python file "net_simulation.py" the "pandapipes" and "geopanda" libraries are needed. "net_simulation.py" calls functions from "net_simulation_pandapipes.py"
 
 # Data
 For the developement and testing of the algorithms and functions, geodata is required. In this case a few local adresses in Zittau were choosed and geocoded. Also some synthetic datapoints were added. This dataset is saved as the csv-file "Beispieldaten_ETRS89.csv". The district heating network will be generated for these datapoints.
