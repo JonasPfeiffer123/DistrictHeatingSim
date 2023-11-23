@@ -16,7 +16,7 @@ Net calculation and optimization
 To run the python file "net_simulation.py" the pandapipes and geopanda libraries are needed. "net_simulation.py" calls functions from "net_simulation_pandapipes.py"
 
 # Data
-For the developement and testing of the algorithms and functions, geodata is required. In this case a few local adresses in Zittau were choosed and geocoded. Also some synthetic datapoints were added. This dataset is saved as the csv-file "Beispieldaten_ETRS89.csv". The district heating network will be generated for these datpoints.
+For the developement and testing of the algorithms and functions, geodata is required. In this case a few local adresses in Zittau were choosed and geocoded. Also some synthetic datapoints were added. This dataset is saved as the csv-file "Beispieldaten_ETRS89.csv". The district heating network will be generated for these datapoints.
 
 # Scripts
 # net_generation_functions.py
