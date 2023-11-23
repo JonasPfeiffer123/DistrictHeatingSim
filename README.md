@@ -7,7 +7,7 @@ This project focuses on generating and analyzing heating networks using geospati
 Net generation in QGIS
 
 To run this project, a QGIS installation is needed. This project was created in QGIS 3.34.0. When opening the QGIS-file with all files in one folder, the output of "net_generation_functions.py" and "net_generation_qgis_ETRS89_MST.py" will be already there.
-Alternatively you can open a new QGIS file. In this case, some things still have to be done manually. First of, change the crs (coordinate reference system) to EPSG:25833. Install the QuickOSM plugin. Import a street-layer with QuickOSM. For this project, I downloaded the key "highway" with the values "primary", "secondary", "tertiary" and "residential in Zittau. After that, the python file "net_generation_qgis_ETRS89_MST.py" can be run. "net_generation_qgis_ETRS89_MST.py" calls functions from "net_generation_functions.py". Note, that due to system specific file paths, some of them might have to be changed.
+Alternatively you can open a new QGIS file. In this case, some things still have to be done manually. First of, change the crs (coordinate reference system) to EPSG:25833. Install the QuickOSM plugin. Import a street-layer with QuickOSM. For this project, I downloaded the key "highway" with the values "primary", "secondary", "tertiary" and "residential" in "Zittau". After that, the python file "net_generation_qgis_ETRS89_MST.py" can be run. "net_generation_qgis_ETRS89_MST.py" calls functions from "net_generation_functions.py". Note, that due to system specific file paths, some of them might have to be changed.
 
 Net calculation and optimization
 
