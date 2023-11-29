@@ -30,11 +30,13 @@ def get_all_point_coords_from_line_cords(all_line_coords):
     return unique_point_coords
 
 
-def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, pipe_creation_mode="diameter"):
+def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w=50000, pipe_creation_mode="diameter", supply_temperature=90,
+                   flow_pressure_pump=4, lift_pressure_pump=1.5, diameter_mm=100, pipetype = "110_PE_100_SDR_17", k=0.1, alpha=10):
+
     def create_junctions_from_coords(net_i, all_coords):
         junction_dict = {}
         for i, coords in enumerate(all_coords, start=0):
-            junction_id = pp.create_junction(net_i, pn_bar=1.05, tfluid_k=293.15, name=f"Junction {i}", geodata=coords)
+            junction_id = pp.create_junction(net_i, pn_bar=1.05, tfluid_k=293.15, name=f"Junction {i}", geodata=coords) # pn_bar and tfluid_k just for initialization
             junction_dict[coords] = junction_id
         return junction_dict
 
@@ -42,13 +44,13 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, pipe_creation_mode="d
         for coords, length_m, i in zip(all_line_coords, all_line_lengths, range(0, len(all_line_coords))):
             pp.create_pipe_from_parameters(net_i, from_junction=junction_dict[coords[0]],
                                            to_junction=junction_dict[coords[1]], length_km=length_m/1000,
-                                           diameter_m=diameter_mm/1000, k_mm=.1, alpha_w_per_m2k=10, name=f"{pipe_type} Pipe {i}",
+                                           diameter_m=diameter_mm/1000, k_mm=k, alpha_w_per_m2k=alpha, name=f"{pipe_type} Pipe {i}",
                                            geodata=coords, sections=5, text_k=283)
 
     def create_pipes_type(net_i, all_line_coords, all_line_lengths, junction_dict, line_type, pipetype):
         for coords, length_m, i in zip(all_line_coords, all_line_lengths, range(0, len(all_line_coords))):
             pp.create_pipe(net_i, from_junction=junction_dict[coords[0]], to_junction=junction_dict[coords[1]],
-                           std_type=pipetype, length_km=length_m/1000, k_mm=.1, alpha_w_per_m2k=10,
+                           std_type=pipetype, length_km=length_m/1000, k_mm=k, alpha_w_per_m2k=alpha,
                            name=f"{line_type} Pipe {i}", geodata=coords, sections=5, text_k=283)
 
     def create_heat_exchangers(net_i, all_coords, q_heat_exchanger, junction_dict, name_prefix):
@@ -60,7 +62,8 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, pipe_creation_mode="d
     def create_circulation_pump_pressure(net_i, all_coords, junction_dict, name_prefix):
         for i, coords in enumerate(all_coords, start=0):
             pp.create_circ_pump_const_pressure(net_i, junction_dict[coords[1]], junction_dict[coords[0]],
-                                               p_flow_bar=4, plift_bar=1.5, t_flow_k=273.15 + 90, type="auto",
+                                               p_flow_bar=flow_pressure_pump, plift_bar=lift_pressure_pump,
+                                               t_flow_k=273.15 + supply_temperature, type="auto",
                                                name=f"{name_prefix} {i}")
 
     net = pp.create_empty_network(fluid="water")
@@ -73,22 +76,20 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, pipe_creation_mode="d
 
     # Erstellen der Pipes
     if pipe_creation_mode == "diameter":
-        diameter_mm = 100
-        create_pipes_diameter(net, *get_line_coords_and_lengths(gdf_vorlauf), junction_dict_vl, "Vorlauf", diameter_mm)
-        create_pipes_diameter(net, *get_line_coords_and_lengths(gdf_rl), junction_dict_rl, "Rücklauf", diameter_mm)
+        create_pipes_diameter(net, *get_line_coords_and_lengths(gdf_vorlauf), junction_dict_vl, "forward line", diameter_mm)
+        create_pipes_diameter(net, *get_line_coords_and_lengths(gdf_rl), junction_dict_rl, "return line", diameter_mm)
 
     if pipe_creation_mode == "type":
-        pipetype = "110_PE_100_SDR_17"
-        create_pipes_type(net, *get_line_coords_and_lengths(gdf_vorlauf), junction_dict_vl, "Vorlauf", pipetype)
-        create_pipes_type(net, *get_line_coords_and_lengths(gdf_rl), junction_dict_rl, "Rücklauf", pipetype)
+        create_pipes_type(net, *get_line_coords_and_lengths(gdf_vorlauf), junction_dict_vl, "forward line", pipetype)
+        create_pipes_type(net, *get_line_coords_and_lengths(gdf_rl), junction_dict_rl, "retunr line", pipetype)
 
     # Erstellen der Heat Exchangers
-    create_heat_exchangers(net, get_line_coords_and_lengths(gdf_hast)[0], 60000,
-                           {**junction_dict_vl, **junction_dict_rl}, "HAST")
+    create_heat_exchangers(net, get_line_coords_and_lengths(gdf_hast)[0], qext_w,
+                           {**junction_dict_vl, **junction_dict_rl}, "heat exchanger")
 
     # Erstellen der circulation pump pressure
     create_circulation_pump_pressure(net, get_line_coords_and_lengths(gdf_wea)[0], {**junction_dict_vl,
-                                                                                    **junction_dict_rl}, "WEA")
+                                                                                    **junction_dict_rl}, "heat source")
     return net
 
 
@@ -169,20 +170,20 @@ def optimize_diameter_types(net, v_max=1.1, v_min=0.7):
     return net
 
 def export_net_geojson(net):
-    # Prüfen, ob geographische Daten vorhanden sind
+    # check ig geographical data is available
     if 'pipe_geodata' in net and not net.pipe_geodata.empty:
-        # Konvertieren der Rohrdaten in ein GeoDataFrame
+        # convert the data to a GeoDataFrame
         gdf = gpd.GeoDataFrame(net.pipe_geodata)
         gdf['geometry'] = gdf['coords'].apply(lambda x: LineString(x))
-        del gdf['coords']  # Entfernen Sie die ursprüngliche Koordinatenspalte
+        del gdf['coords']
 
-        # Hinzufügen zusätzlicher Eigenschaften wie 'diameter_m'
+        # adding attribute 'diameter_m'
         gdf['diameter_mm'] = net.pipe['diameter_m'] / 1000
     
-        # Setzen Sie das Koordinatensystem, falls bekannt (hier beispielhaft EPSG:4326)
+        # set crs (here EPSG:4326)
         gdf.set_crs(epsg=25833, inplace=True)
 
-        # Exportieren als GeoJSON
+        # export as GeoJSON
         gdf.to_file("pipes_network.geojson", driver='GeoJSON')
     else:
-        print("Keine geographischen Daten im Netzwerk vorhanden.")
+        print("No geographical data available in the network.")
