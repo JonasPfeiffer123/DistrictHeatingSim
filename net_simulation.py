@@ -89,6 +89,7 @@ def time_series_net(net):
 
 
 net = initialize_net()
-# net = initialize_test_net()
+# test_net = initialize_test_net()
+
 print(net.res_junction)
 time_series_net(net)
