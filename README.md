@@ -70,7 +70,7 @@ For the developement and testing of the algorithms and functions, geodata is req
   - optimize_diameter_types(initial_net, v_max, v_min): Alters pipe types to optimize for velocity constraints.
   - export_net_geojson(net): Export the network data to a GeoJSON format.
 
-  # net_simulation_test.py
+# net_simulation_test.py
 
 - simple heating network to test algorithms
 
