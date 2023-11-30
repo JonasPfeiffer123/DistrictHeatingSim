@@ -71,8 +71,8 @@ def time_series_net(net):
 
     run_time_series.run_timeseries(net, time_steps, mode="all")
 
-    print("temperature:")
-    print(ow.np_results["res_junction.t_k"])
+    # print("temperature:")
+    # print(ow.np_results["res_junction.t_k"])
 
     x = time_steps
     y1 = ow.np_results["res_heat_exchanger.t_from_k"]
@@ -93,3 +93,6 @@ net = initialize_net()
 
 print(net.res_junction)
 time_series_net(net)
+
+net = initialize_net()
+nsp.calculate_worst_point(net)

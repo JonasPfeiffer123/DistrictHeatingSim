@@ -187,3 +187,20 @@ def export_net_geojson(net):
         gdf.to_file("pipes_network.geojson", driver='GeoJSON')
     else:
         print("No geographical data available in the network.")
+
+def calculate_worst_point(net):
+    # with this function, the worst point in the heating network is being calculated
+    # specificially the worst point is defined as the heat exchanger with the lowest pressure difference between the forward and the return line, resulting in a lower mass flow
+    # after finding the worst point a differential pressure control for the circulation pump could be implemented
+
+    dp = []
+
+    for p_from, p_to in zip(net.res_heat_exchanger["p_from_bar"], net.res_heat_exchanger["p_to_bar"]):
+        # print(f"Vorlaufdruck: {p_from}")
+        # print(f"Rücklaufdruck: {p_to}")
+        # print(f"Differenzdruck: {p_from-p_to}")
+        dp.append(p_from-p_to)
+
+    p_min = min(dp)
+
+    print(f"Die minimale Druckdifferenz beträgt: {p_min}")
