@@ -2,25 +2,26 @@ from geopy.geocoders import Nominatim
 from pyproj import Transformer
 import csv
 
-# Initialisieren Sie den Geolocator
-geolocator = Nominatim(user_agent="sdistrict_heating")
+# Initialize the Geolocator
+geolocator = Nominatim(user_agent="district_heating")
 
-# Initialisieren Sie die Transformer-Funktion mit PyProj
+# Initialize the Transformer function with PyProj
+# This transforms coordinates from WGS84 (GPS) to ETRS89 / UTM Zone 33N
 transformer = Transformer.from_crs("epsg:4326", "epsg:25833", always_xy=True)
 
 def get_coordinates(address):
     try:
-        # Versuchen Sie, die Adresse zu geokodieren
+        # Attempt to geocode the address
         location = geolocator.geocode(address)
         if location:
-            # Transformieren Sie die Koordinaten von WGS84 zu ETRS89 / UTM Zone 33N
+            # Transform the coordinates from WGS84 to ETRS89 / UTM Zone 33N
             utm_x, utm_y = transformer.transform(location.longitude, location.latitude)
             return (utm_x, utm_y)
         else:
-            print(f"Die Adresse {address} konnte nicht geokodiert werden.")
+            print(f"Could not geocode the address {address}.")
             return (None, None)
     except Exception as e:
-        print(f"Es ist ein Fehler aufgetreten: {e}")
+        print(f"An error occurred: {e}")
         return (None, None)
 
 def process_data(input_csv, output_csv):
@@ -29,20 +30,24 @@ def process_data(input_csv, output_csv):
         reader = csv.reader(infile, delimiter=';')
         writer = csv.writer(outfile, delimiter=';')
 
-        # Header schreiben
+        # Write the header
         headers = next(reader)
+        # Adding UTM_X and UTM_Y columns to the header
         writer.writerow(headers + ["UTM_X", "UTM_Y"])
 
         for row in reader:
-            land, bundesland, stadt, adresse, _, _, _ = row
-            full_address = f"{adresse}, {stadt}, {bundesland}, {land}"
+            # Extracting relevant data from the row
+            country, state, city, address, _, _, _ = row
+            full_address = f"{address}, {city}, {state}, {country}"
             utm_x, utm_y = get_coordinates(full_address)
 
+            # Writing the original data along with the transformed coordinates
             writer.writerow(row + [utm_x, utm_y])
-    print("Verarbeitung abgeschlossen.")
+    print("Processing completed.")
 
 
 input_csv = "data_input.csv"
 output_csv = "data_output_ETRS89.csv"
 
+# Calling the process_data function to read from input_csv and write to output_csv
 process_data(input_csv, output_csv)
