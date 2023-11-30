@@ -24,7 +24,7 @@ Net simulation with pandapipes
 - "net_simulation.py" creates a pandapipes net from gis-data. Alternatively, "net_generation_test.py" can be used to create a test net with the same functionality to test future algorithms.
 
 heat requirement
-- implementation of the VDI 4655 for load profile calculation
+- implementation of the VDI 4655 for load profile calculation (based on the available Excel-file from https://www.umwelt-campus.de/energietools)
 
 # Data
 For the developement and testing of the algorithms and functions, geodata is required. In this case a few local adresses in Zittau were choosed and geocoded. Also some synthetic datapoints were added. This dataset is saved as the csv-file "Beispieldaten_ETRS89.csv". The district heating network will be generated for these datapoints.
