@@ -23,23 +23,26 @@ def get_coordinates(address):
         print(f"Es ist ein Fehler aufgetreten: {e}")
         return (None, None)
 
-input_csv = "Beispieldaten.csv"
-output_csv = "Beispieldaten_ETRS89.csv"
+def process_data(input_csv, output_csv):
+    with open(input_csv, mode='r', encoding='utf-8') as infile, \
+        open(output_csv, mode='w', newline='', encoding='utf-8') as outfile:
+        reader = csv.reader(infile, delimiter=';')
+        writer = csv.writer(outfile, delimiter=';')
 
-with open(input_csv, mode='r', encoding='utf-8') as infile, \
-     open(output_csv, mode='w', newline='', encoding='utf-8') as outfile:
-    reader = csv.reader(infile, delimiter=';')
-    writer = csv.writer(outfile, delimiter=';')
+        # Header schreiben
+        headers = next(reader)
+        writer.writerow(headers + ["UTM_X", "UTM_Y"])
 
-    # Header schreiben
-    headers = next(reader)
-    writer.writerow(headers + ["UTM_X", "UTM_Y"])
+        for row in reader:
+            land, bundesland, stadt, adresse, _, _, _ = row
+            full_address = f"{adresse}, {stadt}, {bundesland}, {land}"
+            utm_x, utm_y = get_coordinates(full_address)
 
-    for row in reader:
-        land, bundesland, stadt, adresse, _, _, _ = row
-        full_address = f"{adresse}, {stadt}, {bundesland}, {land}"
-        utm_x, utm_y = get_coordinates(full_address)
+            writer.writerow(row + [utm_x, utm_y])
+    print("Verarbeitung abgeschlossen.")
 
-        writer.writerow(row + [utm_x, utm_y])
 
-print("Verarbeitung abgeschlossen.")
+input_csv = "data_input.csv"
+output_csv = "data_output_ETRS89.csv"
+
+process_data(input_csv, output_csv)

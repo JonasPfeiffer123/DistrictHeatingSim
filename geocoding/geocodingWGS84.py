@@ -18,25 +18,27 @@ def get_coordinates(address):
         return None, None
 
 
-# Pfad zur Eingabe- und Ausgabe-CSV
-input_csv = "Beispieldaten.csv"
-output_csv = "Beispieldaten_mit_Koordinaten.csv"
-
 # Lesen der Eingabe-CSV und Schreiben in die Ausgabe-CSV
-with open(input_csv, mode='r', encoding='utf-8') as infile, open(output_csv, mode='w', newline='',
-                                                                 encoding='utf-8') as outfile:
-    reader = csv.reader(infile, delimiter=';')
-    writer = csv.writer(outfile, delimiter=';')
+def process_data(input_csv, output_csv):
+    with open(input_csv, mode='r', encoding='utf-8') as infile, open(output_csv, mode='w', newline='',
+                                                                    encoding='utf-8') as outfile:
+        reader = csv.reader(infile, delimiter=';')
+        writer = csv.writer(outfile, delimiter=';')
 
-    # Header schreiben
-    headers = next(reader)
-    writer.writerow(headers + ["Latitude", "Longitude"])
+        # Header schreiben
+        headers = next(reader)
+        writer.writerow(headers + ["Latitude", "Longitude"])
 
-    for row in reader:
-        land, bundesland, stadt, adresse, _, _, _ = row
-        full_address = f"{adresse}, {stadt}, {bundesland}, {land}"
-        lat, lon = get_coordinates(full_address)
+        for row in reader:
+            land, bundesland, stadt, adresse, _, _, _ = row
+            full_address = f"{adresse}, {stadt}, {bundesland}, {land}"
+            lat, lon = get_coordinates(full_address)
 
-        writer.writerow(row + [lat, lon])
+            writer.writerow(row + [lat, lon])
 
-print("Verarbeitung abgeschlossen.")
+    print("Verarbeitung abgeschlossen.")
+
+# Pfad zur Eingabe- und Ausgabe-CSV
+input_csv = "data_input.csv"
+output_csv = "data_output_WGS84.csv"
+process_data(input_csv, output_csv)
