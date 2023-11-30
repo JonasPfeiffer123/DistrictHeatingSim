@@ -12,7 +12,7 @@ import_osm_layer()
 # import_street_layer(area, values)
 
 # Pfad zur Textdatei
-text_file_path = "data_output_ETRS89.csv"
+text_file_path = "geocoding/data_output_ETRS89.csv"
 create_data_layer(text_file_path)
     
 # Koordinaten für den Punkt

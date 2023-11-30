@@ -13,10 +13,10 @@ from net_generation_test import initialize_test_net
 
 def initialize_net():
     # GeoJSON-Dateien einlesen
-    gdf_vl = gpd.read_file('geoJSON_Vorlauf.geojson')
-    gdf_rl = gpd.read_file('geoJSON_Rücklauf.geojson')
-    gdf_HAST = gpd.read_file('geoJSON_HAST.geojson')
-    gdf_WEA = gpd.read_file('geoJSON_Erzeugeranlagen.geojson')
+    gdf_vl = gpd.read_file('net generation QGIS/geoJSON_Vorlauf.geojson')
+    gdf_rl = gpd.read_file('net generation QGIS/geoJSON_Rücklauf.geojson')
+    gdf_HAST = gpd.read_file('net generation QGIS/geoJSON_HAST.geojson')
+    gdf_WEA = gpd.read_file('net generation QGIS/geoJSON_Erzeugeranlagen.geojson')
 
     pipe_creation_mode = "type"
     # pipe_creation_mode = "diameter"
