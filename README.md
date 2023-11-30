@@ -6,20 +6,28 @@ This project focuses on generating and analyzing heating networks using geospati
 
 # Usage
 
+geocoding
+- for the geocoding python files the libraries "Nominatim" and "Transformer are needed
+
 Net generation in QGIS
+- To run this project, a QGIS installation is needed. This project was created in QGIS 3.34.0. 
+- When opening the QGIS-file, the output of "net_generation_functions.py" and "net_generation_qgis_ETRS89_MST.py" will be already there as the output-files were already created and imported
+- Alternatively you can open a new QGIS file. In this case, some things still have to be done manually. First of, change the crs (coordinate reference system) to EPSG:25833 (for the given data). 
+- Install the QuickOSM plugin. 
+- Import a street-layer with QuickOSM. For this project, I imported the key "highway" with the values "primary", "secondary", "tertiary" and "residential" in "Zittau". 
+- Run the python file "net_generation_qgis_ETRS89_MST.py" in QGIS. 
+Note: "net_generation_qgis_ETRS89_MST.py" calls functions from "net_generation_qgis_functions.py".
 
-To run this project, a QGIS installation is needed. This project was created in QGIS 3.34.0. When opening the QGIS-file with all files in one folder, the output of "net_generation_functions.py" and "net_generation_qgis_ETRS89_MST.py" will be already there.
-Alternatively you can open a new QGIS file. In this case, some things still have to be done manually. First of, change the crs (coordinate reference system) to EPSG:25833. Install the QuickOSM plugin. Import a street-layer with QuickOSM. For this project, I downloaded the key "highway" with the values "primary", "secondary", "tertiary" and "residential" in "Zittau". After that, the python file "net_generation_qgis_ETRS89_MST.py" can be run in QGIS. "net_generation_qgis_ETRS89_MST.py" calls functions from "net_generation_functions.py". Note, that due to system specific file paths, some of them might have to be changed.
-
-Net calculation and optimization with pandapipes
-
-To run the python file "net_simulation.py" the "pandapipes" and "geopanda" libraries are needed. "net_simulation.py" calls functions from "net_simulation_pandapipes.py"
+Net simulation with pandapipes
+- To run the python file "net_simulation.py" the "pandapipes" and "geopanda" libraries are needed.
+- "net_simulation.py" calls functions from "net_simulation_pandapipes.py" and "net_generation_test.py".
+- "net_simulation.py" creates a pandapipes net from gis-data. Alternatively, "net_generation_test.py" can be used to create a test net with the same functionality to test future algorithms.
 
 # Data
 For the developement and testing of the algorithms and functions, geodata is required. In this case a few local adresses in Zittau were choosed and geocoded. Also some synthetic datapoints were added. This dataset is saved as the csv-file "Beispieldaten_ETRS89.csv". The district heating network will be generated for these datapoints.
 
 # Scripts
-# net_generation_functions.py
+# net_generation_qgis_functions.py
 
 - Purpose: Provides utility functions for network generation within the GIS framework.
 - Key Functions:
@@ -60,7 +68,11 @@ For the developement and testing of the algorithms and functions, geodata is req
   - correct_flow_directions(net): Adjusts the flow directions in the network to ensure correctness.
   - optimize_diameter_parameters(initial_net, v_max, v_min, dx): Optimizes pipe diameters based on velocity constraints.
   - optimize_diameter_types(initial_net, v_max, v_min): Alters pipe types to optimize for velocity constraints.
-  - export_net_geojson(net): Placeholder for a function to export the network data to a GeoJSON format.
+  - export_net_geojson(net): Export the network data to a GeoJSON format.
+
+  # net_simulation_test.py
+
+- simple heating network to test algorithms
 
 # net_simulation.py
 
@@ -76,7 +88,7 @@ For the developement and testing of the algorithms and functions, geodata is req
 - Some parts of the code are still in german, will be fixed soon
 - Optimization and generalization
   
-- In "net_generation_functions.py" a function named "import_street_layer(area, values)" is defined, but not used in "net_generation_qgis_ETRS89_MST.py" yet. This function is supposed to do the import of the street layer from the QuickOSM plugin. A working code for importing the necessary data still has to be figured out.
+- In "net_generation_qgis_functions.py" a function named "import_street_layer(area, values)" is defined, but not used in "net_generation_qgis_ETRS89_MST.py" yet. This function is supposed to do the import of the street layer from the QuickOSM plugin. A working code for importing the necessary data still has to be figured out.
 - A function needs to be defined to set the right crs (coordinate reference system) in QGIS when executing "net_generation_qgis_ETRS89_MST.py"
 - A logic has to be programmed, which overwrites existing layers when executing the python file multiple times.
 
