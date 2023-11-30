@@ -12,9 +12,7 @@ import_osm_layer()
 # import_street_layer(area, values)
 
 # Pfad zur Textdatei
-# text_file_path = "C:/Users/username/Filr/Meine Dateien/1 SMWK-NEUES Bearbeitung/QGis/Netzgenerierung/Beispieldaten_ETRS89.csv"
-text_file_path = "H:/1 SMWK-NEUES Bearbeitung/QGis/Netzgenerierung/Beispieldaten_ETRS89.csv"
-# text_file_path = "Beispieldaten_ETRS89.csv"
+text_file_path = "data_output_ETRS89.csv"
 create_data_layer(text_file_path)
     
 # Koordinaten für den Punkt
@@ -24,7 +22,7 @@ y_coord = 5637294.910  # Latitude
 create_point_layer(x_coord, y_coord)
 
 # prepare the environment
-layer_points = QgsProject.instance().mapLayersByName('Beispieldaten_ETRS89')[0]
+layer_points = QgsProject.instance().mapLayersByName('data_output_ETRS89')[0]
 layer_lines = QgsProject.instance().mapLayersByName('Straßen')[0]
 layer_WEA = QgsProject.instance().mapLayersByName('Erzeugerstandorte')[0]
 
