@@ -1,7 +1,7 @@
 from qgis.core import (QgsFeature, QgsField, QgsGeometry, QgsPointXY, QgsProject, QgsRasterLayer, QgsVectorLayer,
                        QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform,QgsVectorFileWriter)
 
-from net_generation_functions import *
+from net_generation_qgis_functions import *
 
 import_osm_layer()
 
