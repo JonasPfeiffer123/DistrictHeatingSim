@@ -7,7 +7,7 @@ This project focuses on generating and analyzing heating networks using geospati
 # Usage
 
 geocoding
-- for the geocoding python files the libraries "Nominatim" and "Transformer are needed
+- for the geocoding python files the libraries "Nominatim" and "Transformer" are needed
 
 Net generation in QGIS
 - To run this project, a QGIS installation is needed. This project was created in QGIS 3.34.0. 
