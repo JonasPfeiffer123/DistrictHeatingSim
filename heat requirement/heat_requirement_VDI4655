@@ -153,7 +153,7 @@ def standardized_values(year, building_type, days_of_year, typtage):
 
     return quarter_hourly_intervals, strombedarf_normiert, heizwaerme_normiert, warmwasser_normiert
     
-def berechnung_lastgang(gebäudetyp, anzahl_personen_haushalt, JEB_Strom_kWh, 
+def berechnung_lastgang(weather_data, factors, gebäudetyp, anzahl_personen_haushalt, JEB_Strom_kWh, 
                        JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, klimazone="9"):
     # Betrachtetes Jahr: 
     year = 2019
@@ -175,14 +175,11 @@ def berechnung_lastgang(gebäudetyp, anzahl_personen_haushalt, JEB_Strom_kWh,
                 Christi_Himmelfahrt, Fronleichnam, Tag_der_deutschen_Einheit, 
                 Allerheiligen, Weihnachtsfeiertag1, Weihnachtsfeiertag2]).astype('datetime64[D]')
 
-    TRY = "heat requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat"
-    factors = "heat requirement/VDI 4655 data/Faktoren.csv"
-
     # Erzeuge eine Liste mit allen Tagen für das Jahr 2019
     days_of_year, months, days, weekdays = generate_year_months_days_weekdays(2019)
 
     # Importiere die Wetterdaten
-    temperature, bedeckungsgrad = import_TRY(TRY)
+    temperature, bedeckungsgrad = import_TRY(weather_data)
     daily_avg_temperature, daily_avg_bedeckungsgrad = calculate_daily_averages(temperature, bedeckungsgrad)
     
     jahreszeit = np.where(daily_avg_temperature < 5, "W", np.where((daily_avg_temperature >= 5) & (daily_avg_temperature <= 15), "Ü", "S"))
@@ -232,10 +229,10 @@ def berechnung_lastgang(gebäudetyp, anzahl_personen_haushalt, JEB_Strom_kWh,
     return quarter_hourly_intervals, strom_korrekt, heizwaerme_korrekt, warmwasser_korrekt
 
 
-def Jahresdauerlinie(gebäudetyp, anzahl_personen_haushalt, JEB_Strom_kWh, 
+def Jahresdauerlinie(weather_data, factors, gebäudetyp, anzahl_personen_haushalt, JEB_Strom_kWh, 
                        JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, klimazone="9"):
     
-    time, strom, heizwaerme, warmwasser = berechnung_lastgang(gebäudetyp, anzahl_personen_haushalt, JEB_Strom_kWh, 
+    time, strom, heizwaerme, warmwasser = berechnung_lastgang(weather_data, factors, gebäudetyp, anzahl_personen_haushalt, JEB_Strom_kWh, 
                                                         JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, klimazone)
     
     waerme_ges = heizwaerme + warmwasser
@@ -251,5 +248,12 @@ def Jahresdauerlinie(gebäudetyp, anzahl_personen_haushalt, JEB_Strom_kWh,
 
     plt.show()
 
-# print(berechnung_lastgang(gebäudetyp, anzahl_personen_haushalt, JEB_Strom_kWh, JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh))
-Jahresdauerlinie("MFH", 3, 2000, 12000, 1500)
+TRY = "heat requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat"
+# test_weather_data = "heat requirement/weather_data.csv"
+
+weather_data = TRY
+
+factors = "heat requirement/VDI 4655 data/Faktoren.csv"
+
+# print(berechnung_lastgang(weather_data, factors "MFH", 3, 2000, 12000, 1500))
+Jahresdauerlinie(weather_data, factors, "MFH", 3, 2000, 12000, 1500)
