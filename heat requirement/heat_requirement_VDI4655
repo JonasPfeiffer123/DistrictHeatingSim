@@ -39,9 +39,8 @@ def import_TRY(filename):
 
 def import_csv(filename):
     # Einlesen der CSV-Datei
-    daten = pd.read_csv(filename, sep=';')  # oder sep=',' je nachdem, welches Trennzeichen Ihre CSV-Datei verwendet
-
-    return daten
+    data = pd.read_csv(filename, sep=';')
+    return data
 
 
 def generate_year_months_days_weekdays(year):
@@ -83,10 +82,10 @@ def calculate_quarter_hourly_intervals(year):
     # Number of days in the year (consider leap year)
     num_days = 366 if np.datetime64(f'{year}-12-31') - np.datetime64(f'{year}-01-01') == np.timedelta64(365, 'D') else 365
 
-    # Anzahl der Viertelstunden im Jahr
+    # Number of quarter-hour intervals in the year
     num_quarter_hours = num_days * 24 * 4
 
-    # Erstelle ein Array mit allen viertelstündigen Daten des Jahres
+    # Create an array with all quarter-hourly intervals for the year
     quarter_hourly_intervals = np.arange(start_date, 
                                         start_date + np.timedelta64(num_quarter_hours, '15m'), 
                                         dtype='datetime64[15m]')
@@ -94,64 +93,66 @@ def calculate_quarter_hourly_intervals(year):
     return quarter_hourly_intervals
 
 def quarter_hourly_data(data):
-    # Anzahl der Viertelstunden im Jahr
+    # Number of quarter-hours in the year
     num_quarter_hours_per_day = 24 * 4
 
-    # Erstelle ein Array mit allen viertelstündigen Daten des Jahres
+    # Create an array with quarter-hourly data for the year
     quarter_hourly_intervals = np.repeat(data, num_quarter_hours_per_day)
 
     return quarter_hourly_intervals
 
-def standardized_values(year, building_type, days_of_year, typtage):
+def standardized_quarter_hourly_profile(year, building_type, days_of_year, type_days):
     quarter_hourly_intervals = calculate_quarter_hourly_intervals(year)
 
-    quarterly_typtage = []
+    quarterly_type_days = []
 
     for datetime_interval in quarter_hourly_intervals:
-        # Konvertiere das viertelstündliche Intervall in ein Tagesdatum
+        # Convert the quarter-hourly interval to a daily date
         date_value = np.datetime64(datetime_interval, 'D')
         
-        # Prüfe, ob das Datum in days_of_year enthalten ist
+        # Check if the date is included in days_of_year
         if date_value in days_of_year:
             typtag_index = np.where(days_of_year == date_value)[0][0]
-            typtag = typtage[typtag_index]
-            quarterly_typtage.append(typtag)
+            typtag = type_days[typtag_index]
+            quarterly_type_days.append(typtag)
         else:
-            print(f'Datum {date_value} nicht in days_of_year gefunden.')
+            print(f'Date {date_value} not found in days_of_year.')
 
-    quarterly_typtage = np.array(quarterly_typtage)
-    all_type_days = np.unique(quarterly_typtage)
+    quarterly_type_days = np.array(quarterly_type_days)
+    all_type_days = np.unique(quarterly_type_days)
 
     dataframes_type_days = {}
 
     for type_day in all_type_days:
-        # Bestimme den Namen des Blatts, das verwendet werden soll
+        # Determine the name of the sheet to be used
         sheet_name = f"{building_type}{type_day}"
         filename = f"heat requirement/VDI 4655 load profiles/{sheet_name}.csv"
         dataframes_type_days[sheet_name] = import_csv(filename)
 
-    profile_days = np.char.add(building_type, quarterly_typtage)
+    profile_days = np.char.add(building_type, quarterly_type_days)
 
-    # Konvertieren in einen String und extrahieren der Uhrzeit
+    # Convert to a string and extract the time
     times_str = np.datetime_as_string(quarter_hourly_intervals, unit='m')
     times = np.array([t.split('T')[1] for t in times_str])
+
+    # Create a DataFrame from repeated_times and profile_days
+    times_profile_df = pd.DataFrame({
+        'Datum': np.repeat(days_of_year, 24*4),  # Create a date for each hour of the day
+        'Zeit': times,
+        'ProfileDay': profile_days})
     
-    strombedarf_normiert, heizwaerme_normiert, warmwasser_normiert = [], [], []
+    # Combine all DataFrames in dataframes_type_days into one DataFrame
+    combined_df = pd.concat([df.assign(ProfileDay=profile_day) for profile_day, df in dataframes_type_days.items()])
 
-    for t, p in zip(times, profile_days):
-        df = dataframes_type_days[p]
+    # Perform a left merge to maintain the structure of times_profile_df
+    merged_df = pd.merge(times_profile_df, combined_df, on=['Zeit', 'ProfileDay'], how='left')
 
-        # Finde die Zeile, die dem gewünschten Zeitpunkt entspricht
-        zeilen_index = df[df['Zeit'] == t].index
-        zeile = df.loc[zeilen_index[0]]
+    # Extract the required columns
+    electricity_demand = merged_df['Strombedarf normiert'].values
+    heating_demand = merged_df['Heizwärme normiert'].values
+    hot_water_demand = merged_df['Warmwasser normiert'].values
 
-        strombedarf_normiert.append(zeile['Strombedarf normiert'])
-        heizwaerme_normiert.append(zeile['Heizwärme normiert'])
-        warmwasser_normiert.append(zeile['Warmwasser normiert'])
-
-    strombedarf_normiert, heizwaerme_normiert, warmwasser_normiert = np.array(strombedarf_normiert), np.array(heizwaerme_normiert), np.array(warmwasser_normiert)
-
-    return quarter_hourly_intervals, strombedarf_normiert, heizwaerme_normiert, warmwasser_normiert
+    return quarter_hourly_intervals, electricity_demand, heating_demand, hot_water_demand
     
 def berechnung_lastgang(weather_data, factors, gebäudetyp, anzahl_personen_haushalt, JEB_Strom_kWh, 
                        JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, klimazone="9"):
@@ -180,6 +181,8 @@ def berechnung_lastgang(weather_data, factors, gebäudetyp, anzahl_personen_haus
 
     # Importiere die Wetterdaten
     temperature, bedeckungsgrad = import_TRY(weather_data)
+    # temperature, bedeckungsgrad = import_csv(weather_data)["Temperatur in °C"].values, import_csv(weather_data)["Bedeckungsgrad (0-8)"].values
+
     daily_avg_temperature, daily_avg_bedeckungsgrad = calculate_daily_averages(temperature, bedeckungsgrad)
     
     jahreszeit = np.where(daily_avg_temperature < 5, "W", np.where((daily_avg_temperature >= 5) & (daily_avg_temperature <= 15), "Ü", "S"))
@@ -212,7 +215,7 @@ def berechnung_lastgang(weather_data, factors, gebäudetyp, anzahl_personen_haus
     Tagesheizwärme = JEB_Heizwärme_kWh * f_heiz_tt
     Tages_WW = JEB_Trinkwarmwasser_kWh * ((1/365) + (anzahl_personen_haushalt*f_tww_tt))
 
-    quarter_hourly_intervals, strom_kWh, heizwaerme_kWh, warmwasser_kWh = standardized_values(year, gebäudetyp, days_of_year, typtag)
+    quarter_hourly_intervals, strom_kWh, heizwaerme_kWh, warmwasser_kWh = standardized_quarter_hourly_profile(year, gebäudetyp, days_of_year, typtag)
 
     quarter_hourly_Tagesstrom = quarter_hourly_data(Tagesstrom)
     quarter_hourly_Tagesheizwärme = quarter_hourly_data(Tagesheizwärme)
@@ -232,28 +235,42 @@ def berechnung_lastgang(weather_data, factors, gebäudetyp, anzahl_personen_haus
 def Jahresdauerlinie(weather_data, factors, gebäudetyp, anzahl_personen_haushalt, JEB_Strom_kWh, 
                        JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, klimazone="9"):
     
-    time, strom, heizwaerme, warmwasser = berechnung_lastgang(weather_data, factors, gebäudetyp, anzahl_personen_haushalt, JEB_Strom_kWh, 
-                                                        JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, klimazone)
+    time_15min, strom_kWh_15min, heizwaerme_kWh_15min, warmwasser_kWh_15min = berechnung_lastgang(weather_data,
+                                                                                        factors, gebäudetyp, 
+                                                                                        anzahl_personen_haushalt, 
+                                                                                        JEB_Strom_kWh, JEB_Heizwärme_kWh, 
+                                                                                        JEB_Trinkwarmwasser_kWh, klimazone)
     
-    waerme_ges = heizwaerme + warmwasser
+    waerme_ges_kWh_15min = heizwaerme_kWh_15min + warmwasser_kWh_15min
 
-    plt.plot(time[:1000], heizwaerme[:1000], label="Heizwärme")
-    plt.plot(time[:1000], warmwasser[:1000], label="Warmwasser")
-    plt.plot(time[:1000], waerme_ges[:1000], label="Wärme gesamt")
+    #plt.plot(time_15min[:1000], heizwaerme_kWh_15min[:1000], label="Heizwärme")
+    #plt.plot(time_15min[:1000], warmwasser_kWh_15min[:1000], label="Warmwasser")
+    #plt.plot(time_15min[:1000], waerme_ges_kWh_15mins[:1000], label="Wärme gesamt")
+
+    #plt.plot(time_15min, heizwaerme_kWh_15min, label="Heizwärme")
+    #plt.plot(time_15min, warmwasser_kWh_15min, label="Warmwasser")
+    #plt.plot(time_15min, waerme_ges_kWh_15min, label="Wärme gesamt")
+
+    strom_kW, heizwaerme_kW, warmwasser_kW, waerme_ges_kW = strom_kWh_15min * 4, heizwaerme_kWh_15min * 4, warmwasser_kWh_15min * 4, waerme_ges_kWh_15min * 4
+
+    plt.plot(time_15min[2000:3000], waerme_ges_kW[2000:3000], label="Wärmeleistung gesamt")
+    #plt.plot(time_15min, waerme_ges_kW, label="Wärmeleistung gesamt")
 
     plt.title("Jahresdauerlinie")
     plt.legend()
     plt.xlabel("Zeit in 15 min Schritten")
-    plt.ylabel("Wärmebedarf in kWh / 15 min")
+    #plt.ylabel("Wärmebedarf in kWh / 15 min")
+    plt.ylabel("Wärmebedarf in kW / 15 min")
 
     plt.show()
 
 TRY = "heat requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat"
-# test_weather_data = "heat requirement/weather_data.csv"
+test_weather_data = "heat requirement/weather_data.csv"
 
 weather_data = TRY
+# weather_data = test_weather_data
 
 factors = "heat requirement/VDI 4655 data/Faktoren.csv"
 
-# print(berechnung_lastgang(weather_data, factors "MFH", 3, 2000, 12000, 1500))
-Jahresdauerlinie(weather_data, factors, "MFH", 3, 2000, 12000, 1500)
+# print(berechnung_lastgang(weather_data, factors "MFH", 3, 2000, 12000, 1500, "9"))
+Jahresdauerlinie(weather_data, factors, "MFH", 3, 2000, 12000, 1500, "9")
