@@ -104,30 +104,16 @@ def quarter_hourly_data(data):
 def standardized_quarter_hourly_profile(year, building_type, days_of_year, type_days):
     quarter_hourly_intervals = calculate_quarter_hourly_intervals(year)
 
-    quarterly_type_days = []
-
-    for datetime_interval in quarter_hourly_intervals:
-        # Convert the quarter-hourly interval to a daily date
-        date_value = np.datetime64(datetime_interval, 'D')
-        
-        # Check if the date is included in days_of_year
-        if date_value in days_of_year:
-            typtag_index = np.where(days_of_year == date_value)[0][0]
-            typtag = type_days[typtag_index]
-            quarterly_type_days.append(typtag)
-        else:
-            print(f'Date {date_value} not found in days_of_year.')
-
-    quarterly_type_days = np.array(quarterly_type_days)
+    # Vectorized conversion to daily dates and matching with days_of_year
+    daily_dates = np.array([np.datetime64(dt, 'D') for dt in quarter_hourly_intervals])
+    indices = np.searchsorted(days_of_year, daily_dates)
+    quarterly_type_days = type_days[indices % len(type_days)]  # Modulo for safety
+    
     all_type_days = np.unique(quarterly_type_days)
 
-    dataframes_type_days = {}
-
-    for type_day in all_type_days:
-        # Determine the name of the sheet to be used
-        sheet_name = f"{building_type}{type_day}"
-        filename = f"heat requirement/VDI 4655 load profiles/{sheet_name}.csv"
-        dataframes_type_days[sheet_name] = import_csv(filename)
+    # Read all CSV files once and filter as needed
+    all_data = {f"{building_type}{type_day}": import_csv(f"heat requirement/VDI 4655 load profiles/{building_type}{type_day}.csv") 
+                for type_day in all_type_days}
 
     profile_days = np.char.add(building_type, quarterly_type_days)
 
@@ -142,7 +128,7 @@ def standardized_quarter_hourly_profile(year, building_type, days_of_year, type_
         'ProfileDay': profile_days})
     
     # Combine all DataFrames in dataframes_type_days into one DataFrame
-    combined_df = pd.concat([df.assign(ProfileDay=profile_day) for profile_day, df in dataframes_type_days.items()])
+    combined_df = pd.concat([df.assign(ProfileDay=profile_day) for profile_day, df in all_data.items()])
 
     # Perform a left merge to maintain the structure of times_profile_df
     merged_df = pd.merge(times_profile_df, combined_df, on=['Zeit', 'ProfileDay'], how='left')
@@ -155,29 +141,9 @@ def standardized_quarter_hourly_profile(year, building_type, days_of_year, type_
     return quarter_hourly_intervals, electricity_demand, heating_demand, hot_water_demand
     
 def berechnung_lastgang(weather_data, factors, gebäudetyp, anzahl_personen_haushalt, JEB_Strom_kWh, 
-                       JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, klimazone="9"):
-    # Betrachtetes Jahr: 
-    year = 2019
-
-    # Feiertage
-    Neujahr = "2019-01-01"
-    Karfreitag = "2019-04-19"
-    Ostermontag = "2019-04-22"
-    Maifeiertag = "2019-05-01"
-    Pfingstmontag = "2019-05-30"
-    Christi_Himmelfahrt = "2019-06-10"
-    Fronleichnam = "2019-06-20"
-    Tag_der_deutschen_Einheit = "2019-10-03"
-    Allerheiligen = "2019-11-01"
-    Weihnachtsfeiertag1 = "2019-12-25"
-    Weihnachtsfeiertag2 = "2019-12-26"
-
-    Feiertage = np.array([Neujahr, Karfreitag, Ostermontag, Maifeiertag, Pfingstmontag, 
-                Christi_Himmelfahrt, Fronleichnam, Tag_der_deutschen_Einheit, 
-                Allerheiligen, Weihnachtsfeiertag1, Weihnachtsfeiertag2]).astype('datetime64[D]')
-
-    # Erzeuge eine Liste mit allen Tagen für das Jahr 2019
-    days_of_year, months, days, weekdays = generate_year_months_days_weekdays(2019)
+                       JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, Feiertage, klimazone="9", year=2019):
+    # Erzeuge eine Liste mit allen Tagen für das zu betrachtende Jahr
+    days_of_year, months, days, weekdays = generate_year_months_days_weekdays(year)
 
     # Importiere die Wetterdaten
     temperature, bedeckungsgrad = import_TRY(weather_data)
@@ -194,23 +160,17 @@ def berechnung_lastgang(weather_data, factors, gebäudetyp, anzahl_personen_haus
 
     factor_data = import_csv(factors)
     
-    # Initialisiere leere Listen für die Ergebnisse
-    f_heiz_tt_list = []
-    f_el_tt_list = []
-    f_tww_tt_list = []
-    for tag in Profiltag:
-        # Finde den Index des Profiltags im DataFrame
-        index = np.where(factor_data['Profiltag'] == tag)[0]
-
-        f_heiz_tt_list.append(factor_data.iloc[index]['Fheiz,TT'].values[0])
-        f_el_tt_list.append(factor_data.iloc[index]['Fel,TT'].values[0])
-        f_tww_tt_list.append(factor_data.iloc[index]['FTWW,TT'].values[0])
-
-    # Konvertiere die Listen in Numpy-Arrays
-    f_heiz_tt = np.array(f_heiz_tt_list)
-    f_el_tt = np.array(f_el_tt_list)
-    f_tww_tt = np.array(f_tww_tt_list)
+    # Vektorisierte Berechnung der Faktoren
+    f_heiz_tt = np.zeros(len(Profiltag))
+    f_el_tt = np.zeros(len(Profiltag))
+    f_tww_tt = np.zeros(len(Profiltag))
     
+    for i, tag in enumerate(Profiltag):
+        index = factor_data[factor_data['Profiltag'] == tag].index[0]
+        f_heiz_tt[i] = factor_data.loc[index, 'Fheiz,TT']
+        f_el_tt[i] = factor_data.loc[index, 'Fel,TT']
+        f_tww_tt[i] = factor_data.loc[index, 'FTWW,TT']
+
     Tagesstrom = JEB_Strom_kWh * ((1/365) + (anzahl_personen_haushalt*f_el_tt))
     Tagesheizwärme = JEB_Heizwärme_kWh * f_heiz_tt
     Tages_WW = JEB_Trinkwarmwasser_kWh * ((1/365) + (anzahl_personen_haushalt*f_tww_tt))
@@ -233,13 +193,13 @@ def berechnung_lastgang(weather_data, factors, gebäudetyp, anzahl_personen_haus
 
 
 def Jahresdauerlinie(weather_data, factors, gebäudetyp, anzahl_personen_haushalt, JEB_Strom_kWh, 
-                       JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, klimazone="9"):
+                       JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, Feiertage, klimazone="9", year=2019):
     
     time_15min, strom_kWh_15min, heizwaerme_kWh_15min, warmwasser_kWh_15min = berechnung_lastgang(weather_data,
                                                                                         factors, gebäudetyp, 
                                                                                         anzahl_personen_haushalt, 
                                                                                         JEB_Strom_kWh, JEB_Heizwärme_kWh, 
-                                                                                        JEB_Trinkwarmwasser_kWh, klimazone)
+                                                                                        JEB_Trinkwarmwasser_kWh, Feiertage, klimazone, year)
     
     waerme_ges_kWh_15min = heizwaerme_kWh_15min + warmwasser_kWh_15min
 
@@ -264,6 +224,29 @@ def Jahresdauerlinie(weather_data, factors, gebäudetyp, anzahl_personen_haushal
 
     plt.show()
 
+#############################
+
+# Betrachtetes Jahr: 
+year = 2019
+
+# Feiertage
+Neujahr = "2019-01-01"
+Karfreitag = "2019-04-19"
+Ostermontag = "2019-04-22"
+Maifeiertag = "2019-05-01"
+Pfingstmontag = "2019-05-30"
+Christi_Himmelfahrt = "2019-06-10"
+Fronleichnam = "2019-06-20"
+Tag_der_deutschen_Einheit = "2019-10-03"
+Allerheiligen = "2019-11-01"
+Weihnachtsfeiertag1 = "2019-12-25"
+Weihnachtsfeiertag2 = "2019-12-26"
+
+Feiertage = np.array([Neujahr, Karfreitag, Ostermontag, Maifeiertag, Pfingstmontag, 
+            Christi_Himmelfahrt, Fronleichnam, Tag_der_deutschen_Einheit, 
+            Allerheiligen, Weihnachtsfeiertag1, Weihnachtsfeiertag2]).astype('datetime64[D]')
+    
+
 TRY = "heat requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat"
 test_weather_data = "heat requirement/weather_data.csv"
 
@@ -272,5 +255,5 @@ weather_data = TRY
 
 factors = "heat requirement/VDI 4655 data/Faktoren.csv"
 
-# print(berechnung_lastgang(weather_data, factors "MFH", 3, 2000, 12000, 1500, "9"))
-Jahresdauerlinie(weather_data, factors, "MFH", 3, 2000, 12000, 1500, "9")
+# print(berechnung_lastgang(weather_data, factors "MFH", 3, 2000, 12000, 1500, Feiertage, "9", 2019))
+Jahresdauerlinie(weather_data, factors, "MFH", 3, 2000, 12000, 1500, Feiertage, "9", 2019)
