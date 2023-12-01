@@ -93,6 +93,15 @@ def calculate_quarter_hourly_intervals(year):
 
     return quarter_hourly_intervals
 
+def quarter_hourly_data(data):
+    # Anzahl der Viertelstunden im Jahr
+    num_quarter_hours_per_day = 24 * 4
+
+    # Erstelle ein Array mit allen viertelstündigen Daten des Jahres
+    quarter_hourly_intervals = np.repeat(data, num_quarter_hours_per_day)
+
+    return quarter_hourly_intervals
+
 def standardized_values(year, building_type, days_of_year, typtage):
     quarter_hourly_intervals = calculate_quarter_hourly_intervals(year)
 
@@ -126,59 +135,28 @@ def standardized_values(year, building_type, days_of_year, typtage):
     # Konvertieren in einen String und extrahieren der Uhrzeit
     times_str = np.datetime_as_string(quarter_hourly_intervals, unit='m')
     times = np.array([t.split('T')[1] for t in times_str])
-
+    
     strombedarf_normiert, heizwaerme_normiert, warmwasser_normiert = [], [], []
 
     for t, p in zip(times, profile_days):
-        # Zugriff auf den DataFrame für 'MFHSSX'
-        mfhssx_df = dataframes_type_days[p]
+        df = dataframes_type_days[p]
 
         # Finde die Zeile, die dem gewünschten Zeitpunkt entspricht
-        zeilen_index = mfhssx_df[mfhssx_df['Zeit'] == t].index
-        zeile = mfhssx_df.loc[zeilen_index[0]]
+        zeilen_index = df[df['Zeit'] == t].index
+        zeile = df.loc[zeilen_index[0]]
 
         strombedarf_normiert.append(zeile['Strombedarf normiert'])
         heizwaerme_normiert.append(zeile['Heizwärme normiert'])
         warmwasser_normiert.append(zeile['Warmwasser normiert'])
-    
-    '''# Schritt 1: Kombinieren aller DataFrames
-    combined_df_list = []
-    for profile_day, df in dataframes_type_days.items():
-        df['ProfileDay'] = profile_day  # Füge Profiltag als Spalte hinzu
-        combined_df_list.append(df)
-
-    # Erstelle einen einzigen DataFrame
-    combined_df = pd.concat(combined_df_list)
-
-    # Schritt 2: Erstellen eines DataFrame aus times und profile_days
-    times_profile_df = pd.DataFrame({'Zeit': times, 'ProfileDay': profile_days})
-
-    # Schritt 3: Verwende merge, um die DataFrames abzugleichen
-    result_df = pd.merge(times_profile_df, combined_df, on=['Zeit', 'ProfileDay'])
-
-    # Die resultierenden Werte extrahieren
-    strombedarf_normiert = result_df['Strombedarf normiert'].to_numpy()
-    heizwaerme_normiert = result_df['Heizwärme normiert'].to_numpy()
-    warmwasser_normiert = result_df['Warmwasser normiert'].to_numpy()'''
 
     strombedarf_normiert, heizwaerme_normiert, warmwasser_normiert = np.array(strombedarf_normiert), np.array(heizwaerme_normiert), np.array(warmwasser_normiert)
 
     return quarter_hourly_intervals, strombedarf_normiert, heizwaerme_normiert, warmwasser_normiert
-
-def quarter_hourly_data(data):
-    # Anzahl der Viertelstunden im Jahr
-    num_quarter_hours_per_day = 24 * 4
-
-    # Erstelle ein Array mit allen viertelstündigen Daten des Jahres
-    quarter_hourly_intervals = np.repeat(data, num_quarter_hours_per_day)
-
-    return quarter_hourly_intervals
     
 def berechnung_lastgang(gebäudetyp, anzahl_personen_haushalt, JEB_Strom_kWh, 
-                       JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh):
+                       JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, klimazone="9"):
     # Betrachtetes Jahr: 
     year = 2019
-    klimazone = "9"
 
     # Feiertage
     Neujahr = "2019-01-01"
@@ -255,10 +233,10 @@ def berechnung_lastgang(gebäudetyp, anzahl_personen_haushalt, JEB_Strom_kWh,
 
 
 def Jahresdauerlinie(gebäudetyp, anzahl_personen_haushalt, JEB_Strom_kWh, 
-                       JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh):
+                       JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, klimazone="9"):
     
     time, strom, heizwaerme, warmwasser = berechnung_lastgang(gebäudetyp, anzahl_personen_haushalt, JEB_Strom_kWh, 
-                                                        JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh)
+                                                        JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, klimazone)
     
     waerme_ges = heizwaerme + warmwasser
 
