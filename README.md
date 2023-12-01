@@ -23,6 +23,9 @@ Net simulation with pandapipes
 - "net_simulation.py" calls functions from "net_simulation_pandapipes.py" and "net_generation_test.py".
 - "net_simulation.py" creates a pandapipes net from gis-data. Alternatively, "net_generation_test.py" can be used to create a test net with the same functionality to test future algorithms.
 
+heat requirement
+- implementation of the VDI 4655 for load profile calculation (based on the available Excel-file from https://www.umwelt-campus.de/energietools)
+
 # Data
 For the developement and testing of the algorithms and functions, geodata is required. In this case a few local adresses in Zittau were choosed and geocoded. Also some synthetic datapoints were added. This dataset is saved as the csv-file "Beispieldaten_ETRS89.csv". The district heating network will be generated for these datapoints.
 
@@ -95,6 +98,8 @@ For the developement and testing of the algorithms and functions, geodata is req
 - The geoJSON format is used as it can be used in advanced simulation software like SIM-VICUS (https://www.sim-vicus.de)
 
 - Currently the combination with further python-based simulation tools like flixOpt (https://github.com/flixOpt/flixOpt) or EnSySim (https://github.com/HSZittauGoerlitz/EnSySim) is being evaluated.
+
+- Currently load profile calculation for residential housing with VDI 4655 is being implemented
   
 # Contributing
 
