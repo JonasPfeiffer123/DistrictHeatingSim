@@ -273,4 +273,5 @@ def Jahresdauerlinie(gebäudetyp, anzahl_personen_haushalt, JEB_Strom_kWh,
 
     plt.show()
 
+# print(berechnung_lastgang(gebäudetyp, anzahl_personen_haushalt, JEB_Strom_kWh, JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh))
 Jahresdauerlinie("MFH", 3, 2000, 12000, 1500)
