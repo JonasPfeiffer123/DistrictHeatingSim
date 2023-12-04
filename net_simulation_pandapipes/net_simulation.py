@@ -8,9 +8,8 @@ import geopandas as gpd
 import pandas as pd
 import matplotlib.pyplot as plt
 
-import net_simulation_calculation as nsp
-
-#from net_generation_test import initialize_test_net
+import net_simulation_pandapipes.net_simulation_calculation as nsp
+from net_simulation_pandapipes.net_generation_test import initialize_test_net
 
 def initialize_net():
     # GeoJSON-Dateien einlesen
