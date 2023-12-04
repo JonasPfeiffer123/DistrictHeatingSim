@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 
 import net_simulation_pandapipes as nsp
 from net_generation_test import initialize_test_net
+from heat_requirement_VDI4655 import calculate
 
 def initialize_net():
     # GeoJSON-Dateien einlesen
@@ -49,12 +50,10 @@ def initialize_net():
 
     return(net)
 
-def time_series_net(net):
-    time_steps = range(0, 24)  # hourly time steps
+def time_series_net(net, qext_w_profile=[50000] * 3 + [60000] * 6 + [70000] * 9 + [80000] * 6):
+    time_steps = range(0, len(qext_w_profile))  # hourly time steps
     df = pd.DataFrame(index=time_steps)
 
-    qext_w_profile = [50000] * 3 + [60000] * 6 + [70000] * 9 + [80000] * 6
-    
     for i in range(1):
 
         df = pd.DataFrame(index=time_steps, data={'qext_w_'+str(i): qext_w_profile})
@@ -96,3 +95,14 @@ time_series_net(net)
 
 net = initialize_net()
 nsp.calculate_worst_point(net)
+
+JEB_Wärme_ges_kWh = 50000
+JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh = JEB_Wärme_ges_kWh*0.2, JEB_Wärme_ges_kWh*0.8
+time_15min, _, _, _, waerme_ges_kW = calculate(JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh)
+
+plt.plot(time_15min[2000:3000], waerme_ges_kW[2000:3000], label="Wärmeleistung gesamt")
+plt.title("Jahresdauerlinie")
+plt.legend()
+plt.xlabel("Zeit in 15 min Schritten")
+plt.ylabel("Wärmebedarf in kW / 15 min")
+plt.show()

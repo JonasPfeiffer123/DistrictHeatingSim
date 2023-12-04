@@ -159,7 +159,7 @@ def berechnung_lastgang(weather_data, factors, gebäudetyp, anzahl_personen_haus
     Profiltag = np.char.add((gebäudetyp + klimazone), typtag)
 
     factor_data = import_csv(factors)
-    
+
     # Vektorisierte Berechnung der Faktoren
     f_heiz_tt = np.zeros(len(Profiltag))
     f_el_tt = np.zeros(len(Profiltag))
@@ -226,34 +226,41 @@ def Jahresdauerlinie(weather_data, factors, gebäudetyp, anzahl_personen_haushal
 
 #############################
 
-# Betrachtetes Jahr: 
-year = 2019
+def calculate(JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh):
+    # Betrachtetes Jahr: 
+    year = 2019
 
-# Feiertage
-Neujahr = "2019-01-01"
-Karfreitag = "2019-04-19"
-Ostermontag = "2019-04-22"
-Maifeiertag = "2019-05-01"
-Pfingstmontag = "2019-05-30"
-Christi_Himmelfahrt = "2019-06-10"
-Fronleichnam = "2019-06-20"
-Tag_der_deutschen_Einheit = "2019-10-03"
-Allerheiligen = "2019-11-01"
-Weihnachtsfeiertag1 = "2019-12-25"
-Weihnachtsfeiertag2 = "2019-12-26"
+    # Feiertage
+    Neujahr = "2019-01-01"
+    Karfreitag = "2019-04-19"
+    Ostermontag = "2019-04-22"
+    Maifeiertag = "2019-05-01"
+    Pfingstmontag = "2019-05-30"
+    Christi_Himmelfahrt = "2019-06-10"
+    Fronleichnam = "2019-06-20"
+    Tag_der_deutschen_Einheit = "2019-10-03"
+    Allerheiligen = "2019-11-01"
+    Weihnachtsfeiertag1 = "2019-12-25"
+    Weihnachtsfeiertag2 = "2019-12-26"
 
-Feiertage = np.array([Neujahr, Karfreitag, Ostermontag, Maifeiertag, Pfingstmontag, 
-            Christi_Himmelfahrt, Fronleichnam, Tag_der_deutschen_Einheit, 
-            Allerheiligen, Weihnachtsfeiertag1, Weihnachtsfeiertag2]).astype('datetime64[D]')
-    
+    Feiertage = np.array([Neujahr, Karfreitag, Ostermontag, Maifeiertag, Pfingstmontag, 
+                Christi_Himmelfahrt, Fronleichnam, Tag_der_deutschen_Einheit, 
+                Allerheiligen, Weihnachtsfeiertag1, Weihnachtsfeiertag2]).astype('datetime64[D]')
+        
 
-TRY = "heat requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat"
-test_weather_data = "heat requirement/weather_data.csv"
+    TRY = "heat requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat"
+    test_weather_data = "heat requirement/weather_data.csv"
 
-weather_data = TRY
-# weather_data = test_weather_data
+    weather_data = TRY
+    # weather_data = test_weather_data
 
-factors = "heat requirement/VDI 4655 data/Faktoren.csv"
+    factors = "heat requirement/VDI 4655 data/Faktoren.csv"
 
-# print(berechnung_lastgang(weather_data, factors "MFH", 3, 2000, 12000, 1500, Feiertage, "9", 2019))
-Jahresdauerlinie(weather_data, factors, "MFH", 3, 2000, 12000, 1500, Feiertage, "9", 2019)
+    time_15min, strom_kWh_15min, heizwaerme_kWh_15min, warmwasser_kWh_15min = berechnung_lastgang(weather_data, factors, "MFH", 3, 2000, JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, Feiertage, "9", 2019)
+    waerme_ges_kWh_15min = heizwaerme_kWh_15min + warmwasser_kWh_15min
+    strom_W, heizwaerme_kW, warmwasser_kW, waerme_ges_kW = strom_kWh_15min * 4, heizwaerme_kWh_15min * 4, warmwasser_kWh_15min * 4, waerme_ges_kWh_15min * 4
+    # Jahresdauerlinie(weather_data, factors, "MFH", 3, 2000, JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, Feiertage, "9", 2019)
+
+    return time_15min, strom_W, heizwaerme_kW, warmwasser_kW, waerme_ges_kW
+
+# calculate(12000, 1500)
