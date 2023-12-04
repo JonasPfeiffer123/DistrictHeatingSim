@@ -31,7 +31,7 @@ def get_all_point_coords_from_line_cords(all_line_coords):
 
 
 def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w=50000, pipe_creation_mode="diameter", supply_temperature=90,
-                   flow_pressure_pump=4, lift_pressure_pump=1.5, diameter_mm=100, pipetype = "110_PE_100_SDR_17", k=0.1, alpha=10):
+                   flow_pressure_pump=4, lift_pressure_pump=1.5, massflow_mass_pump=6, diameter_mm=100, pipetype = "110_PE_100_SDR_17", k=0.1, alpha=10):
 
     def create_junctions_from_coords(net_i, all_coords):
         junction_dict = {}
@@ -65,6 +65,12 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w=50000, pipe_cr
                                                p_flow_bar=flow_pressure_pump, plift_bar=lift_pressure_pump,
                                                t_flow_k=273.15 + supply_temperature, type="auto",
                                                name=f"{name_prefix} {i}")
+    
+    def create_circulation_pump_massflow(net_i, all_coords, junction_dict, name_prefix):
+        for i, coords in enumerate(all_coords, start=0):
+            pp.create_circ_pump_const_mass_flow(net, junction_dict[coords[1]], junction_dict[coords[0]], 
+                                                p_flow_bar=flow_pressure_pump, mdot_flow_kg_per_s=massflow_mass_pump, 
+                                                t_flow_k=273.15 + supply_temperature, type='auto', name=f"{name_prefix} {i}")
 
     net = pp.create_empty_network(fluid="water")
 
@@ -88,7 +94,10 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w=50000, pipe_cr
                            {**junction_dict_vl, **junction_dict_rl}, "heat exchanger")
 
     # Erstellen der circulation pump pressure
-    create_circulation_pump_pressure(net, get_line_coords_and_lengths(gdf_wea)[0], {**junction_dict_vl,
+    """create_circulation_pump_pressure(net, get_line_coords_and_lengths(gdf_wea)[0], {**junction_dict_vl,
+                                                                                    **junction_dict_rl}, "heat source")"""
+    # Erstellen der circulation pump pressure
+    create_circulation_pump_massflow(net, get_line_coords_and_lengths(gdf_wea)[0], {**junction_dict_vl,
                                                                                     **junction_dict_rl}, "heat source")
     return net
 
@@ -195,12 +204,12 @@ def calculate_worst_point(net):
 
     dp = []
 
-    for p_from, p_to in zip(net.res_heat_exchanger["p_from_bar"], net.res_heat_exchanger["p_to_bar"]):
-        # print(f"Vorlaufdruck: {p_from}")
-        # print(f"Rücklaufdruck: {p_to}")
-        # print(f"Differenzdruck: {p_from-p_to}")
-        dp.append(p_from-p_to)
+    for idx, p_from, p_to in zip(net.heat_exchanger.index, net.res_heat_exchanger["p_from_bar"], net.res_heat_exchanger["p_to_bar"]):
+        dp_diff = p_from - p_to
+        dp_diff = p_from - p_to
+        dp.append((dp_diff, idx))
 
-    p_min = min(dp)
+    # Finden der minimalen Druckdifferenz und des zugehörigen Index
+    dp_min, idx_min = min(dp, key=lambda x: x[0])
 
-    print(f"Die minimale Druckdifferenz beträgt: {p_min}")
+    return dp_min, idx_min
