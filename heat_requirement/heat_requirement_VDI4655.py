@@ -112,7 +112,7 @@ def standardized_quarter_hourly_profile(year, building_type, days_of_year, type_
     all_type_days = np.unique(quarterly_type_days)
 
     # Read all CSV files once and filter as needed
-    all_data = {f"{building_type}{type_day}": import_csv(f"heat requirement/VDI 4655 load profiles/{building_type}{type_day}.csv") 
+    all_data = {f"{building_type}{type_day}": import_csv(f"heat_requirement/VDI 4655 load profiles/{building_type}{type_day}.csv") 
                 for type_day in all_type_days}
 
     profile_days = np.char.add(building_type, quarterly_type_days)
@@ -248,13 +248,13 @@ def calculate(JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh):
                 Allerheiligen, Weihnachtsfeiertag1, Weihnachtsfeiertag2]).astype('datetime64[D]')
         
 
-    TRY = "heat requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat"
-    test_weather_data = "heat requirement/weather_data.csv"
+    TRY = "heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat"
+    test_weather_data = "heat_requirement/weather_data.csv"
 
     weather_data = TRY
     # weather_data = test_weather_data
 
-    factors = "heat requirement/VDI 4655 data/Faktoren.csv"
+    factors = "heat_requirement/VDI 4655 data/Faktoren.csv"
 
     time_15min, strom_kWh_15min, heizwaerme_kWh_15min, warmwasser_kWh_15min = berechnung_lastgang(weather_data, factors, "MFH", 3, 2000, JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, Feiertage, "9", 2019)
     waerme_ges_kWh_15min = heizwaerme_kWh_15min + warmwasser_kWh_15min
