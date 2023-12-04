@@ -1,6 +1,6 @@
 import sys
 # Fügen Sie das Verzeichnis, in dem sich heat_requirement_VDI4655.py befindet, zum Python-Importpfad hinzu.
-sys.path.append('C:/Users/heating_network_generation/heat_requirement')
+sys.path.append('C:/Users/username/heating_network_generation/heat_requirement')
 
 import pandapipes as pp
 from pandapipes.timeseries import run_time_series
@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 import net_simulation_pandapipes as nsp
 from net_generation_test import initialize_test_net
-import heat_requirement
+from heat_requirement import heat_requirement_VDI4655
 #from ..heat_requirement import heat_requirement_VDI4655
 
 def initialize_net():
