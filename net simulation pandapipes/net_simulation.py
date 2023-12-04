@@ -14,7 +14,8 @@ import matplotlib.pyplot as plt
 
 import net_simulation_pandapipes as nsp
 from net_generation_test import initialize_test_net
-from ..heat_requirement import heat_requirement_VDI4655
+import heat_requirement
+#from ..heat_requirement import heat_requirement_VDI4655
 
 def initialize_net():
     # GeoJSON-Dateien einlesen
