@@ -1,7 +1,3 @@
-import sys
-# Fügen Sie das Verzeichnis, in dem sich heat_requirement_VDI4655.py befindet, zum Python-Importpfad hinzu.
-sys.path.append('C:/Users/username/heating_network_generation/heat_requirement')
-
 import pandapipes as pp
 from pandapipes.timeseries import run_time_series
 from pandapower.control.controller.const_control import ConstControl
@@ -14,8 +10,6 @@ import matplotlib.pyplot as plt
 
 import net_simulation_pandapipes as nsp
 from net_generation_test import initialize_test_net
-from heat_requirement import heat_requirement_VDI4655
-#from ..heat_requirement import heat_requirement_VDI4655
 
 def initialize_net():
     # GeoJSON-Dateien einlesen
@@ -90,24 +84,3 @@ def time_series_net(net, qext_w_profile=[50000] * 3 + [60000] * 6 + [70000] * 9 
     plt.legend(["heat exchanger 1 from", "heat exchanger 1 to"], loc='lower left')
     plt.grid()
     plt.show()
-
-
-net = initialize_net()
-# test_net = initialize_test_net()
-
-print(net.res_junction)
-time_series_net(net)
-
-net = initialize_net()
-nsp.calculate_worst_point(net)
-
-JEB_Wärme_ges_kWh = 50000
-JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh = JEB_Wärme_ges_kWh*0.2, JEB_Wärme_ges_kWh*0.8
-time_15min, _, _, _, waerme_ges_kW = calculate(JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh)
-
-plt.plot(time_15min[2000:3000], waerme_ges_kW[2000:3000], label="Wärmeleistung gesamt")
-plt.title("Jahresdauerlinie")
-plt.legend()
-plt.xlabel("Zeit in 15 min Schritten")
-plt.ylabel("Wärmebedarf in kW / 15 min")
-plt.show()
