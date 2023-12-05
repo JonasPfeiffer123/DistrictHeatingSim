@@ -53,10 +53,10 @@ def time_series_net(net, worst_point_idx, pressure_target=1.0, temperature_targe
     # Hinzufügen des Controller-Objekts zum DataFrame 'controller'
     net.controller.loc[len(net.controller)] = [MF_controller, True, 0, 0, False, False]
 
-     # MassFlowController-Objekt erstellen
-    T_controller = ReturnTemperatureController(net, heat_exchanger_idx=worst_point_idx, target_temperature=temperature_target)
+    # MassFlowController-Objekt erstellen
+    # T_controller = ReturnTemperatureController(net, heat_exchanger_idx=worst_point_idx, target_temperature=temperature_target)
     # Hinzufügen des Controller-Objekts zum DataFrame 'controller'
-    net.controller.loc[len(net.controller)] = [T_controller, True, 0, 0, False, False]
+    # net.controller.loc[len(net.controller)] = [T_controller, True, 0, 0, False, False]
 
     log_variables = [('res_junction', 'p_bar'), ('res_pipe', 'v_mean_m_per_s'),
                      ('res_pipe', 'reynolds'), ('res_pipe', 'lambda'), ('heat_exchanger', 'qext_w'),

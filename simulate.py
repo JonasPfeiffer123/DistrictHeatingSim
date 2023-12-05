@@ -3,6 +3,19 @@ from net_simulation_pandapipes import net_simulation_calculation
 from heat_requirement import heat_requirement_VDI4655
 import matplotlib.pyplot as plt
 import pandapipes.plotting as pp_plot
+from net_simulation_pandapipes.net_generation_test import initialize_test_net
+
+test_net = initialize_test_net()
+print(test_net)
+print(test_net.res_heat_exchanger)
+#print(net.res_flow_control)
+print(test_net.res_circ_pump_mass)
+
+# Ausgabe der Netzstruktur
+pp_plot.simple_plot(test_net, junction_size=0.2, heat_exchanger_size=0.2, pump_size=0.2, pump_color='green',
+                     pipe_color='black', heat_exchanger_color='blue')
+
+net_simulation.time_series_net(test_net)
 
 # net = net_simulation.initialize_net()
 # test_net = initialize_test_net()
@@ -20,8 +33,15 @@ waerme_ges_W = waerme_ges_kW * 1000
 
 net = net_simulation.initialize_net()
 
+print(net)
+print(net.res_heat_exchanger)
+print(net.res_flow_control)
+print(net.res_circ_pump_mass)
+
+
 dp_min, idx_dp_min = net_simulation_calculation.calculate_worst_point(net)
 print(f"Der niedrigste Differnezdruck beträgt: {dp_min} am Wärmeübertrager {idx_dp_min}")
+
 dp_min_soll = 1
 
 t_rl_soll = 60 + 273.15

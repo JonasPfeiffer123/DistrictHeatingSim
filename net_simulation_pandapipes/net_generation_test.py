@@ -19,9 +19,12 @@ def initialize_test_net():
     j7 = pp.create_junction(net, pn_bar=1.05, tfluid_k=293.15, name="Junction 7")
     j8 = pp.create_junction(net, pn_bar=1.05, tfluid_k=293.15, name="Junction 8")
 
-    pump1 = pp.create_circ_pump_const_pressure(net, j1, j2, p_flow_bar=4,
+    """pump1 = pp.create_circ_pump_const_pressure(net, j1, j2, p_flow_bar=4,
                                                plift_bar=1.5, t_flow_k=273.15 + 90,
-                                               type="auto", name="pump1")
+                                               type="auto", name="pump1")"""
+    
+    pump2 = pp.create_circ_pump_const_mass_flow(net, j1, j2, p_flow_bar=4, mdot_flow_kg_per_s=0.5, 
+                                                t_flow_k=273.15 + 90, type='auto', name="pump2")
 
     pipe1 = pp.create_pipe(net, j2, j3, std_type="110_PE_100_SDR_17", length_km=0.01,
                            k_mm=.1, alpha_w_per_m2k=10, name="pipe1", sections=5,

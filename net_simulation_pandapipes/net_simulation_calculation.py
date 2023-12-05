@@ -31,7 +31,7 @@ def get_all_point_coords_from_line_cords(all_line_coords):
 
 
 def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w=50000, pipe_creation_mode="diameter", supply_temperature=90,
-                   flow_pressure_pump=4, lift_pressure_pump=1.5, massflow_mass_pump=6, diameter_mm=100, pipetype = "110_PE_100_SDR_17", k=0.1, alpha=10):
+                   flow_pressure_pump=4, lift_pressure_pump=1.5, massflow_mass_pump=4, diameter_mm=100, pipetype = "110_PE_100_SDR_17", k=0.1, alpha=10):
 
     def create_junctions_from_coords(net_i, all_coords):
         junction_dict = {}
@@ -55,8 +55,15 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w=50000, pipe_cr
 
     def create_heat_exchangers(net_i, all_coords, q_heat_exchanger, junction_dict, name_prefix):
         for i, coords in enumerate(all_coords, start=0):
-            pp.create_heat_exchanger(net_i, from_junction=junction_dict[coords[0]],
-                                     to_junction=junction_dict[coords[1]], diameter_m=0.02, loss_coefficient=100,
+            # Berechnung der mittleren Koordinate
+            mid_coord = ((coords[0][0] + coords[1][0]) / 2, (coords[0][1] + coords[1][1]) / 2)
+
+            # Sie müssen hier eine Funktion haben, um eine neue Junction an mid_coord zu erstellen
+            mid_junction_idx = pp.create_junction(net_i, pn_bar=1.05, tfluid_k=293.15, name=f"Junction {name_prefix}", geodata=mid_coord)
+
+            pp.create_flow_control(net_i, from_junction=junction_dict[coords[0]], to_junction=mid_junction_idx, controlled_mdot_kg_per_s=0.5, diameter_m=0.02)
+
+            pp.create_heat_exchanger(net_i, from_junction=mid_junction_idx, to_junction=junction_dict[coords[1]], diameter_m=0.02, loss_coefficient=100,
                                      qext_w=q_heat_exchanger, name=f"{name_prefix} {i}")
 
     def create_circulation_pump_pressure(net_i, all_coords, junction_dict, name_prefix):
@@ -68,10 +75,10 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w=50000, pipe_cr
     
     def create_circulation_pump_massflow(net_i, all_coords, junction_dict, name_prefix):
         for i, coords in enumerate(all_coords, start=0):
-            pp.create_circ_pump_const_mass_flow(net, junction_dict[coords[1]], junction_dict[coords[0]], 
+            pp.create_circ_pump_const_mass_flow(net_i, junction_dict[coords[1]], junction_dict[coords[0]], 
                                                 p_flow_bar=flow_pressure_pump, mdot_flow_kg_per_s=massflow_mass_pump, 
                                                 t_flow_k=273.15 + supply_temperature, type='auto', name=f"{name_prefix} {i}")
-
+    
     net = pp.create_empty_network(fluid="water")
 
     # Verarbeiten von Vorlauf und Rücklauf
@@ -92,13 +99,11 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w=50000, pipe_cr
     # Erstellen der Heat Exchangers
     create_heat_exchangers(net, get_line_coords_and_lengths(gdf_hast)[0], qext_w,
                            {**junction_dict_vl, **junction_dict_rl}, "heat exchanger")
-
+    
     # Erstellen der circulation pump pressure
-    """create_circulation_pump_pressure(net, get_line_coords_and_lengths(gdf_wea)[0], {**junction_dict_vl,
-                                                                                    **junction_dict_rl}, "heat source")"""
+    """create_circulation_pump_pressure(net, get_line_coords_and_lengths(gdf_wea)[0], {**junction_dict_vl, **junction_dict_rl}, "heat source")"""
     # Erstellen der circulation pump pressure
-    create_circulation_pump_massflow(net, get_line_coords_and_lengths(gdf_wea)[0], {**junction_dict_vl,
-                                                                                    **junction_dict_rl}, "heat source")
+    create_circulation_pump_massflow(net, get_line_coords_and_lengths(gdf_wea)[0], {**junction_dict_vl, **junction_dict_rl}, "heat source")
     return net
 
 
