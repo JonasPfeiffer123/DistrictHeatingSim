@@ -48,21 +48,22 @@ def time_series_net(net, worst_point_idx, pressure_target=1.0, temperature_targe
         data_source = DFData(df)
         cc = ConstControl(net, element='heat_exchanger', variable='qext_w', element_index=[i], data_source=data_source, profile_name='qext_w_'+str(i))
         
-    # TemperatureController-Objekt erstellen
-    T_controller = ReturnTemperatureController(net, heat_exchanger_idx=worst_point_idx, target_temperature=temperature_target)
-    # Hinzufügen des Controller-Objekts zum DataFrame 'controller'
-    net.controller.loc[len(net.controller)] = [T_controller, True, 0, 0, True, False]
-    
-    # MassFlowController-Objekt erstellen
+        # TemperatureController-Objekt erstellen
+        T_controller = ReturnTemperatureController(net, heat_exchanger_idx=i, target_temperature=temperature_target)
+        # Hinzufügen des Controller-Objekts zum DataFrame 'controller'
+        net.controller.loc[len(net.controller)] = [T_controller, True, 0, 0, False, False]
+
+    """# MassFlowController-Objekt erstellen
     MF_controller = MassFlowController(net, heat_exchanger_idx=worst_point_idx, circ_pump_pressure_idx=circ_pump_mass_idx, target_pressure=pressure_target)
     # Hinzufügen des Controller-Objekts zum DataFrame 'controller'
-    net.controller.loc[len(net.controller)] = [MF_controller, True, 0, 0, False, False]
+    net.controller.loc[len(net.controller)] = [MF_controller, True, 0, 0, False, False]"""
 
     log_variables = [('res_junction', 'p_bar'), ('res_pipe', 'v_mean_m_per_s'),
                      ('res_pipe', 'reynolds'), ('res_pipe', 'lambda'), ('heat_exchanger', 'qext_w'),
                      ('res_heat_exchanger', 'v_mean_m_per_s'), ('res_heat_exchanger', 't_from_k'),
                      ('res_heat_exchanger', 't_to_k'), ('circ_pump_pressure', 't_flow_k'), ('res_junction', 't_k'), 
-                     ('res_circ_pump_pressure', 'mdot_flow_kg_per_s'), ('res_circ_pump_pressure', 'deltap_bar')]
+                     ('res_circ_pump_pressure', 'mdot_flow_kg_per_s'), ('res_circ_pump_pressure', 'deltap_bar'), 
+                     ('res_heat_exchanger', 'mdot_from_kg_per_s')]
     
     ow = OutputWriter(net, time_steps, output_path=None, log_variables=log_variables)
 
