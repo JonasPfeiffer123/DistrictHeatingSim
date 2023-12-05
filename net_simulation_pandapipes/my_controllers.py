@@ -38,7 +38,7 @@ class MassFlowController(BasicCtrl):
         return super(MassFlowController, self).control_step(net)
     
 class ReturnTemperatureController(BasicCtrl):
-    def __init__(self, net, heat_exchanger_idx, target_temperature, tolerance=2, proportional_gain=0.0028, min_mass_flow=0.025, max_mass_flow=1,**kwargs):
+    def __init__(self, net, heat_exchanger_idx, target_temperature, tolerance=2, proportional_gain=0.0015, min_mass_flow=0.01, max_mass_flow=1,**kwargs):
         super(ReturnTemperatureController, self).__init__(net, **kwargs)
         self.heat_exchanger_idx = heat_exchanger_idx
         self.flow_control_idx = heat_exchanger_idx
@@ -73,7 +73,6 @@ class ReturnTemperatureController(BasicCtrl):
 
     def control_step(self, net):
         print(self.heat_exchanger_idx)
-        print(self.flow_control_idx)
         current_temperature = net.res_heat_exchanger["t_to_k"].at[self.heat_exchanger_idx] - 273.15
         print(current_temperature)
         temperature_error = self.target_temperature - current_temperature
@@ -84,7 +83,7 @@ class ReturnTemperatureController(BasicCtrl):
         
         # Ermittlung des aktuellen Massenstroms
         current_mass_flow = net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx]
-
+        print(current_mass_flow)
         # Ermittlung des neuen Massenstroms unter Beachtung der Grenzwerte
         new_mass_flow = current_mass_flow + mass_flow_adjustment
         new_mass_flow = max(self.min_mass_flow, min(new_mass_flow, self.max_mass_flow))  # Beschränkung auf min/max Werte
