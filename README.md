@@ -113,6 +113,8 @@ Key Functionalities:
 - the results of the timeseries calculation have to be storaged fur later use 
 - next up is the creation of different heat generators for simulating a whole system
 - the network creation has to be modified to allow multiple pumps / entry points for heat
+  
+- the controller for the heat exchangers is not working perfectly at this point, maybe an alternative system has to be implemented
 
 - The geoJSON format is used as it can be used in advanced simulation software like SIM-VICUS (https://www.sim-vicus.de)
 
