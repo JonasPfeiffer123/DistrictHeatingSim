@@ -38,7 +38,6 @@ def import_TRY(filename):
     return temperature, cloud_cover
 
 def import_csv(filename):
-    # Einlesen der CSV-Datei
     data = pd.read_csv(filename, sep=';')
     return data
 
@@ -142,10 +141,10 @@ def standardized_quarter_hourly_profile(year, building_type, days_of_year, type_
     
 def berechnung_lastgang(weather_data, factors, gebäudetyp, anzahl_personen_haushalt, JEB_Strom_kWh, 
                        JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, Feiertage, klimazone="9", year=2019):
-    # Erzeuge eine Liste mit allen Tagen für das zu betrachtende Jahr
+
     days_of_year, months, days, weekdays = generate_year_months_days_weekdays(year)
 
-    # Importiere die Wetterdaten
+    # import weather data
     temperature, bedeckungsgrad = import_TRY(weather_data)
     # temperature, bedeckungsgrad = import_csv(weather_data)["Temperatur in °C"].values, import_csv(weather_data)["Bedeckungsgrad (0-8)"].values
 
@@ -160,7 +159,7 @@ def berechnung_lastgang(weather_data, factors, gebäudetyp, anzahl_personen_haus
 
     factor_data = import_csv(factors)
 
-    # Vektorisierte Berechnung der Faktoren
+    # vetorized calculation of the neccessary factors
     f_heiz_tt = np.zeros(len(Profiltag))
     f_el_tt = np.zeros(len(Profiltag))
     f_tww_tt = np.zeros(len(Profiltag))
@@ -203,23 +202,14 @@ def Jahresdauerlinie(weather_data, factors, gebäudetyp, anzahl_personen_haushal
     
     waerme_ges_kWh_15min = heizwaerme_kWh_15min + warmwasser_kWh_15min
 
-    #plt.plot(time_15min[:1000], heizwaerme_kWh_15min[:1000], label="Heizwärme")
-    #plt.plot(time_15min[:1000], warmwasser_kWh_15min[:1000], label="Warmwasser")
-    #plt.plot(time_15min[:1000], waerme_ges_kWh_15mins[:1000], label="Wärme gesamt")
-
-    #plt.plot(time_15min, heizwaerme_kWh_15min, label="Heizwärme")
-    #plt.plot(time_15min, warmwasser_kWh_15min, label="Warmwasser")
-    #plt.plot(time_15min, waerme_ges_kWh_15min, label="Wärme gesamt")
-
     strom_kW, heizwaerme_kW, warmwasser_kW, waerme_ges_kW = strom_kWh_15min * 4, heizwaerme_kWh_15min * 4, warmwasser_kWh_15min * 4, waerme_ges_kWh_15min * 4
 
-    plt.plot(time_15min[2000:3000], waerme_ges_kW[2000:3000], label="Wärmeleistung gesamt")
-    #plt.plot(time_15min, waerme_ges_kW, label="Wärmeleistung gesamt")
+    # plt.plot(time_15min[2000:3000], waerme_ges_kW[2000:3000], label="Wärmeleistung gesamt")
+    plt.plot(time_15min, waerme_ges_kW, label="Wärmeleistung gesamt")
 
     plt.title("Jahresdauerlinie")
     plt.legend()
     plt.xlabel("Zeit in 15 min Schritten")
-    #plt.ylabel("Wärmebedarf in kWh / 15 min")
     plt.ylabel("Wärmebedarf in kW / 15 min")
 
     plt.show()
@@ -262,5 +252,3 @@ def calculate(JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh):
     # Jahresdauerlinie(weather_data, factors, "MFH", 3, 2000, JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, Feiertage, "9", 2019)
 
     return time_15min, strom_W, heizwaerme_kW, warmwasser_kW, waerme_ges_kW
-
-# calculate(12000, 1500)

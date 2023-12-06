@@ -6,7 +6,7 @@ import pandapipes.plotting as pp_plot
 from net_simulation_pandapipes.net_generation_test import initialize_test_net
 
 
-### Definition der Wärmebedarfe ###
+### define the heat requirement ###
 JEB_Wärme_ges_kWh = 50000
 JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh = JEB_Wärme_ges_kWh*0.2, JEB_Wärme_ges_kWh*0.8
 time_15min, _, _, _, waerme_ges_kW = heat_requirement_VDI4655.calculate(JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh)
@@ -16,7 +16,7 @@ waerme_ges_W = waerme_ges_kW * 1000
 calc1 = 0
 calc2 = 96
 
-### Netzgenerierung und initiale Berechnung ###
+### generates the pandapipes net and initializes it ###
 net = net_simulation.initialize_net()
 
 dp_min, idx_dp_min = net_simulation_calculation.calculate_worst_point(net)
