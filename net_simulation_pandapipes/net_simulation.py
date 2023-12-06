@@ -34,15 +34,13 @@ def initialize_net():
 
     return(net)
 
-def time_series_net(net, temperature_target=60,  qext_w_profile=[50000] * 3 + [60000] * 6 + [70000] * 9 + [80000] * 6):
-    time_steps = range(0, len(qext_w_profile))  # hourly time steps
-    df = pd.DataFrame(index=time_steps)
+def time_series_net(net, temperature_target,  qext_w_profiles, calc1, calc2):
+    time_steps = range(0, len(qext_w_profiles[0][calc1:calc2]))  # hourly time steps
 
     # creates controllers for the net
-    for i in range(len(net.heat_exchanger)):
-
-        df = pd.DataFrame(index=time_steps, data={'qext_w_'+str(i): qext_w_profile})
-
+    for i, qext_w_profile in enumerate(qext_w_profiles):
+        qext_w_profile = qext_w_profile[calc1:calc2]
+        df = pd.DataFrame(index=time_steps, data={'qext_w_' + str(i): qext_w_profile})
         data_source = DFData(df)
 
         # creates the controllers for the heat exchangers which controll qext_w in the timeseies

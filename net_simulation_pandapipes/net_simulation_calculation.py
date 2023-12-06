@@ -57,7 +57,7 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w=50000, pipe_cr
 
             pp.create_flow_control(net_i, from_junction=junction_dict[coords[0]], to_junction=mid_junction_idx, controlled_mdot_kg_per_s=0.25, diameter_m=0.04)
 
-            pp.create_heat_exchanger(net_i, from_junction=mid_junction_idx, to_junction=junction_dict[coords[1]], diameter_m=0.02, loss_coefficient=100,
+            pp.create_heat_exchanger(net_i, from_junction=mid_junction_idx, to_junction=junction_dict[coords[1]], diameter_m=0.04, loss_coefficient=100,
                                      qext_w=q_heat_exchanger, name=f"{name_prefix} {i}")
 
     def create_circulation_pump_pressure(net_i, all_coords, junction_dict, name_prefix):
@@ -194,7 +194,7 @@ def calculate_worst_point(net):
 
     dp = []
 
-    for idx, p_from, p_to in zip(net.heat_exchanger.index, net.res_heat_exchanger["p_from_bar"], net.res_heat_exchanger["p_to_bar"]):
+    for idx, p_from, p_to in zip(net.heat_exchanger.index, net.res_flow_control["p_from_bar"], net.res_heat_exchanger["p_to_bar"]):
         dp_diff = p_from - p_to
         dp_diff = p_from - p_to
         dp.append((dp_diff, idx))

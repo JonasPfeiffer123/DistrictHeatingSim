@@ -4,33 +4,39 @@ from heat_requirement import heat_requirement_VDI4655
 import matplotlib.pyplot as plt
 import pandapipes.plotting as pp_plot
 from net_simulation_pandapipes.net_generation_test import initialize_test_net
-
-
-### define the heat requirement ###
-JEB_Wärme_ges_kWh = 50000
-JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh = JEB_Wärme_ges_kWh*0.2, JEB_Wärme_ges_kWh*0.8
-time_15min, _, _, _, waerme_ges_kW = heat_requirement_VDI4655.calculate(JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh)
-
-waerme_ges_W = waerme_ges_kW * 1000
-
-calc1 = 0
-calc2 = 96
+import random
+import numpy as np
 
 ### generates the pandapipes net and initializes it ###
 net = net_simulation.initialize_net()
 
 dp_min, idx_dp_min = net_simulation_calculation.calculate_worst_point(net)
-print(f"Der niedrigste Differnezdruck beträgt: {dp_min} am Wärmeübertrager {idx_dp_min}")
+print(f"Der Schlechtpunkt des Netzes liegt am Wärmeübertrager {idx_dp_min}. Der Differenzdruck beträgt {dp_min:.3f} bar.")
 
-dp_min_soll = 1
+### define the heat requirement ###
+n = len(net.heat_exchanger)
+min_value = 20000  # kWhre
+max_value = 80000  # kWh
+JEB_Wärme_ges_kWh = np.array([random.randint(min_value, max_value) for _ in range(n)])
+JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh = JEB_Wärme_ges_kWh*0.2, JEB_Wärme_ges_kWh*0.8
 
+waerme_ges_W = []
+
+for hw, tww in zip(JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh):
+    time_15min, _, _, _, waerme_ges_kW = heat_requirement_VDI4655.calculate(hw, tww)
+    waerme_ges_W.append(waerme_ges_kW * 1000)
+
+waerme_ges_W = np.array(waerme_ges_W)
+
+### time series calculation ###
 t_rl_soll = 60
 
-circ_pump_pressure_idx = 0
-net, net_results = net_simulation.time_series_net(net, t_rl_soll, waerme_ges_W[calc1:calc2])
+calc1 = 0
+calc2 = 96
+net, net_results = net_simulation.time_series_net(net, t_rl_soll, waerme_ges_W, calc1, calc2)
 
 dp_min, idx_dp_min = net_simulation_calculation.calculate_worst_point(net)
-print(f"Der niedrigste Differnezdruck beträgt: {dp_min} am Wärmeübertrager {idx_dp_min}")
+print(f"Der Schlechtpunkt des Netzes liegt am Wärmeübertrager {idx_dp_min}. Der Differenzdruck beträgt {dp_min:.3f} bar.")
 
 ### Ausgabe der Netzstruktur ###
 pp_plot.simple_plot(net, junction_size=0.2, heat_exchanger_size=0.2, pump_size=0.2, pump_color='green',
@@ -49,8 +55,8 @@ ax1.legend(loc='upper left')
 
 # Zweite Y-Achse für die Temperatur
 ax2 = ax1.twinx()
-ax2.plot(time_15min[calc1:calc2], net_results["res_heat_exchanger.t_from_k"][calc1:calc2, ] - 273.15, 'm-o', label="heat exchangers t_from")
-ax2.plot(time_15min[calc1:calc2], net_results["res_heat_exchanger.t_to_k"][calc1:calc2, ] - 273.15, 'c-o', label="heat exchangers t_to")
+ax2.plot(time_15min[calc1:calc2], net_results["res_heat_exchanger.t_from_k"][calc1:calc2] - 273.15, 'm-o', label="heat exchangers t_from")
+ax2.plot(time_15min[calc1:calc2], net_results["res_heat_exchanger.t_to_k"][calc1:calc2] - 273.15, 'c-o', label="heat exchangers t_to")
 ax2.set_ylabel("temperature [°C]", color='g')
 ax2.tick_params('y', colors='g')
 ax2.legend(loc='upper right')
@@ -58,7 +64,7 @@ ax2.set_ylim(0,100)
 
 # Dritte Y-Achse für den Massenstrom
 ax3 = ax1.twinx()
-ax3.plot(time_15min[calc1:calc2], net_results["res_heat_exchanger.mdot_from_kg_per_s"][calc1:calc2, ], 'y-o', label="heat exchangers mass flow")
+ax3.plot(time_15min[calc1:calc2], net_results["res_heat_exchanger.mdot_from_kg_per_s"][calc1:calc2], 'y-o', label="heat exchangers mass flow")
 ax3.set_ylabel("mass flow kg/s", color='r')
 ax3.spines['right'].set_position(('outward', 60))  # Verschiebung der dritten Y-Achse nach rechts
 ax3.tick_params('y', colors='r')
