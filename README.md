@@ -77,7 +77,6 @@ For the developement and testing of the algorithms and functions, geodata is req
 
 # my_controllers.py
 - This module defines custom controller classes that extend the functionality of the basic controllers provided by Pandapipes. These controllers are responsible for dynamic regulation of network parameters during simulations.
-
   - ReturnTemperatureController: Regulates the temperature of the returning fluid in the network to achieve a specified target temperature.
   - MassFlowController: Adjusts the mass flow rate within the network to maintain system stability and meet demand profiles.
 
@@ -96,7 +95,6 @@ Both controllers utilize a proportional control approach to minimize the error b
 This Python script is designed to bring together various modules and functions to simulate a piping network system, likely using the Pandapipes framework.
 
 Key Functionalities:
-
   - Network Initialization: It initializes the network with predefined parameters, which may include setting up pipes, junctions, pumps, valves, and other components.
   - Controller Assignment: The script assigns custom controllers to regulate different aspects of the network, such as temperature control and mass flow control, to achieve the desired operational criteria.
   - Simulation Execution: It runs the simulation over a defined range of time steps or until a steady-state is reached, using the controllers to dynamically adjust the network conditions.
