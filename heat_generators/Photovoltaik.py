@@ -5,6 +5,26 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
+def import_TRY(filename):
+    # Import TRY
+    # Define column widths
+    col_widths = [8, 8, 3, 3, 3, 6, 5, 4, 5, 2, 5, 4, 5, 5, 4, 5, 3]
+    # Define column names
+    col_names = ["RW", "HW", "MM", "DD", "HH", "t", "p", "WR", "WG", "N", "x", "RF", "B", "D", "A", "E", "IL"]
+
+    # Read the file
+    data = pd.read_fwf(filename, widths=col_widths, names=col_names,
+                       skiprows=34)
+
+    # Store the columns as numpy arrays
+    temperature = data['t'].values
+    windspeed = data['WG'].values
+    direct_radiation = data['B'].values
+    diffuse_radiation = data['D'].values
+    global_radiation = direct_radiation + diffuse_radiation
+
+    return temperature, windspeed, direct_radiation, global_radiation
+
 # Constant for degree-radian conversion
 DEG_TO_RAD = np.pi / 180
 
@@ -78,26 +98,6 @@ def Calculate_Solar_Radiation(Irradiance_hori_L, D_L, Longitude, STD_Longitude, 
 
     # Returns the total radiation intensity on the collector
     return GT_H_Gk
-
-def import_TRY(filename):
-    # Import TRY
-    # Define column widths
-    col_widths = [8, 8, 3, 3, 3, 6, 5, 4, 5, 2, 5, 4, 5, 5, 4, 5, 3]
-    # Define column names
-    col_names = ["RW", "HW", "MM", "DD", "HH", "t", "p", "WR", "WG", "N", "x", "RF", "B", "D", "A", "E", "IL"]
-
-    # Read the file
-    data = pd.read_fwf(filename, widths=col_widths, names=col_names,
-                       skiprows=34)
-
-    # Store the columns as numpy arrays
-    temperature = data['t'].values
-    windspeed = data['WG'].values
-    direct_radiation = data['B'].values
-    diffuse_radiation = data['D'].values
-    global_radiation = direct_radiation + diffuse_radiation
-
-    return temperature, windspeed, direct_radiation, global_radiation
 
 def Calculate_PV(TRY_data, Gross_area, Longitude, STD_Longitude, Latitude, Albedo,
                  East_West_collector_azimuth_angle, Collector_tilt_angle):
