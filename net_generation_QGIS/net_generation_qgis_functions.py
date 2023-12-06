@@ -84,12 +84,12 @@ def import_street_layer(area, values):
 def create_data_layer(text_file_path):
     # Erstellen Sie einen Layer aus der Textdatei
     # Hier wird angenommen, dass Ihre Datei Koordinaten in Spalten mit den Namen 'Longitude' und 'Latitude' enthält
-    csv_layer = QgsVectorLayer(f"file:///{text_file_path}?delimiter=;&crs=epsg:25833&type=csv&xField=UTM_X&yField=UTM_Y", "Beispieldaten_ETRS89", "delimitedtext")
+    csv_layer = QgsVectorLayer(f"file:///{text_file_path}?delimiter=;&crs=epsg:25833&type=csv&xField=UTM_X&yField=UTM_Y", "data_output_ETRS89", "delimitedtext")
     if not csv_layer.isValid():
-        print("Layer konnte nicht geladen werden.")
+        print("Data-Layer konnte nicht geladen werden.")
     else:
         QgsProject.instance().addMapLayer(csv_layer)
-        print("Layer wurde erfolgreich geladen.")
+        print("Data-Layer wurde erfolgreich geladen.")
 
 def create_point_layer(x_coord, y_coord):
     # Erstellen eines neuen Punktlayers
@@ -110,19 +110,19 @@ def create_point_layer(x_coord, y_coord):
     error = QgsVectorFileWriter.writeAsVectorFormat(point_layer, output_file, "utf-8", point_layer.crs(), "GeoJSON")
 
     if error[0] == QgsVectorFileWriter.NoError:
-        print("Layer erfolgreich als GeoJSON exportiert.")
+        print("Point-Layer erfolgreich als GeoJSON exportiert.")
     else:
-        print("Fehler beim Exportieren des Layers:", error[1])
+        print("Fehler beim Exportieren des Point-Layers:", error[1])
 
     # Laden des gespeicherten GeoJSON-Layers
     geojson_layer = QgsVectorLayer(output_file, "Erzeugerstandorte", "ogr")
 
     # Hinzufügen des geladenen Layers zum Projekt
     if not geojson_layer.isValid():
-        print("Layer konnte nicht geladen werden.")
+        print("Point-Layer konnte nicht geladen werden.")
     else:
         QgsProject.instance().addMapLayer(geojson_layer)
-        print("Layer wurde erfolgreich geladen.")
+        print("Point-Layer wurde erfolgreich geladen.")
 
 
 def create_layer(layer_name, layer_type, crs_i):
