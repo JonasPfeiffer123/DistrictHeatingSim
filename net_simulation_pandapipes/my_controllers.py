@@ -72,9 +72,7 @@ class ReturnTemperatureController(BasicCtrl):
 
 
     def control_step(self, net):
-        print(self.heat_exchanger_idx)
         current_temperature = net.res_heat_exchanger["t_to_k"].at[self.heat_exchanger_idx] - 273.15
-        print(current_temperature)
         temperature_error = self.target_temperature - current_temperature
     
         # Berechnung der notwendigen Anpassung des Massenstroms
@@ -83,11 +81,10 @@ class ReturnTemperatureController(BasicCtrl):
         
         # Ermittlung des aktuellen Massenstroms
         current_mass_flow = net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx]
-        print(current_mass_flow)
         # Ermittlung des neuen Massenstroms unter Beachtung der Grenzwerte
         new_mass_flow = current_mass_flow + mass_flow_adjustment
         new_mass_flow = max(self.min_mass_flow, min(new_mass_flow, self.max_mass_flow))  # Beschränkung auf min/max Werte
-        print(new_mass_flow)
+        
         # Aktualisierung des Massenstroms im Netzmodell
         net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx] = new_mass_flow
         
