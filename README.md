@@ -123,7 +123,7 @@ Key Functionalities:
 Contributions or ideas for the project are welcome. Please adhere to standard coding practices and submit pull requests for review.
 
 # License
-MIT-LICENCE
+MIT license
 
 
 # Contact
