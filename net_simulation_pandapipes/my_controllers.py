@@ -33,7 +33,7 @@ class MassFlowController(BasicCtrl):
         return super(MassFlowController, self).control_step(net)
     
 class ReturnTemperatureController(BasicCtrl):
-    def __init__(self, net, heat_exchanger_idx, target_temperature, tolerance=2, lower_proportional_gain=0.0012, higher_proportional_gain=0.0025, min_mass_flow=0.01, max_mass_flow=1,**kwargs):
+    def __init__(self, net, heat_exchanger_idx, target_temperature, tolerance=2, lower_proportional_gain=0.0005, higher_proportional_gain=0.0025, min_mass_flow=0.005, max_mass_flow=1,**kwargs):
         super(ReturnTemperatureController, self).__init__(net, **kwargs)
         self.heat_exchanger_idx = heat_exchanger_idx
         self.flow_control_idx = heat_exchanger_idx
@@ -53,17 +53,18 @@ class ReturnTemperatureController(BasicCtrl):
         current_mass_flow = net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx]
 
         # check, if min or max massflow are reached
-        at_min_mass_flow = current_mass_flow <= self.min_mass_flow
-        at_max_mass_flow = current_mass_flow >= self.max_mass_flow
+        at_min_mass_flow = current_mass_flow < self.min_mass_flow
+        at_max_mass_flow = current_mass_flow > self.max_mass_flow
 
         # check, if the temperature converged
         temperature_within_tolerance = abs(current_temperature - self.target_temperature) < self.tolerance
 
         if temperature_within_tolerance == False and at_max_mass_flow == True:
-            self.target_temperature = current_temperature - 0.3
+            self.target_temperature = current_temperature - 0.5
         
         if temperature_within_tolerance == False and at_min_mass_flow == True:
-            self.target_temperature += 1
+            print(True)
+            self.target_temperature = current_temperature + 0.5
 
         if temperature_within_tolerance == True:
             self.target_temperature = self.initial_target_temperature
@@ -76,9 +77,9 @@ class ReturnTemperatureController(BasicCtrl):
 
         current_mass_flow = net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx]
 
-        if current_mass_flow <= 0.2:
+        if current_mass_flow <= 0.05:
             mass_flow_adjustment = temperature_error * self.lower_proportional_gain        
-        if current_mass_flow > 0.2:
+        if current_mass_flow > 0.05:
             mass_flow_adjustment = temperature_error * self.higher_proportional_gain
 
         new_mass_flow = current_mass_flow + mass_flow_adjustment
@@ -86,11 +87,11 @@ class ReturnTemperatureController(BasicCtrl):
         
         net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx] = new_mass_flow
         
-        """print(self.heat_exchanger_idx)
+        print(self.heat_exchanger_idx)
         print(self.target_temperature)
         print(current_temperature)
         print(current_mass_flow)
         print(mass_flow_adjustment)
-        print(new_mass_flow)"""
+        print(new_mass_flow)
         
         return super(ReturnTemperatureController, self).control_step(net)

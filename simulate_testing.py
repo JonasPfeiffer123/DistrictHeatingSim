@@ -33,8 +33,8 @@ waerme_ges_W = np.array(waerme_ges_W)
 ### time series calculation ###
 t_rl_soll = 60
 
-calc1 = 0
-calc2 = 96
+calc1 = 20000
+calc2 = 20192
 net, net_results = net_simulation.time_series_net(net, t_rl_soll, waerme_ges_W, calc1, calc2)
 
 dp_min, idx_dp_min = net_simulation_calculation.calculate_worst_point(net)
@@ -82,18 +82,18 @@ plt.show()"""
 
 
 ### Plotten Ergebnisse Pumpe / Einspeisung ###
-mass_flow_circ_pump = net_results["res_circ_pump_pressure.mdot_flow_kg_per_s"][calc1:calc2, 0]
-deltap_circ_pump =  net_results["res_circ_pump_pressure.deltap_bar"][calc1:calc2, 0]
+mass_flow_circ_pump = net_results["res_circ_pump_pressure.mdot_flow_kg_per_s"][:, 0]
+deltap_circ_pump =  net_results["res_circ_pump_pressure.deltap_bar"][:, 0]
 
 
 rj_circ_pump = net.circ_pump_pressure["return_junction"][0]
 fj_circ_pump = net.circ_pump_pressure["flow_junction"][0]
 
-return_temp_circ_pump = net_results["res_junction.t_k"][calc1:calc2, rj_circ_pump] - 273.15
-flow_temp_circ_pump = net_results["res_junction.t_k"][calc1:calc2, fj_circ_pump] - 273.15
+return_temp_circ_pump = net_results["res_junction.t_k"][:, rj_circ_pump] - 273.15
+flow_temp_circ_pump = net_results["res_junction.t_k"][:, fj_circ_pump] - 273.15
 
-return_pressure_circ_pump = net_results["res_junction.p_bar"][calc1:calc2, rj_circ_pump]
-flows_pressure_circ_pump = net_results["res_junction.p_bar"][calc1:calc2, fj_circ_pump]
+return_pressure_circ_pump = net_results["res_junction.p_bar"][:, rj_circ_pump]
+flows_pressure_circ_pump = net_results["res_junction.p_bar"][:, fj_circ_pump]
 
 cp_kJ_kgK = 4.2 # kJ/kgK
 
