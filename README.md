@@ -19,15 +19,16 @@ Net generation in QGIS
 Note: "net_generation_qgis_ETRS89_MST.py" calls functions from "net_generation_qgis_functions.py".
 
 Net simulation with pandapipes
+- the main file is "simulate.py" in the main folder
 - To run the python file "net_simulation.py" the "pandapipes" and "geopanda" libraries are needed.
-- "net_simulation.py" calls functions from "net_simulation_pandapipes.py" and "net_generation_test.py".
+- "net_simulation.py" calls functions from "net_simulation_calculation.py", "net_generation_test.py" and "my_controllers.py".
 - "net_simulation.py" creates a pandapipes net from gis-data. Alternatively, "net_generation_test.py" can be used to create a test net with the same functionality to test future algorithms.
 
 heat requirement
 - implementation of the VDI 4655 for load profile calculation (based on the available Excel-file from https://www.umwelt-campus.de/energietools)
 
 # Data
-For the developement and testing of the algorithms and functions, geodata is required. In this case a few local adresses in Zittau were choosed and geocoded. Also some synthetic datapoints were added. This dataset is saved as the csv-file "Beispieldaten_ETRS89.csv". The district heating network will be generated for these datapoints.
+For the developement and testing of the algorithms and functions, geodata is required. In this case a few local adresses in Zittau were choosed and geocoded. Also some synthetic datapoints were added. This dataset is saved as the csv-file "data_output_ETRS89.csv". The district heating network will be generated for these datapoints.
 
 # Scripts
 # net_generation_qgis_functions.py
@@ -62,7 +63,7 @@ For the developement and testing of the algorithms and functions, geodata is req
   - Commits changes to all layers and updates their extents.
   - Writes layers as GeoJSON files and applies color coding for visual differentiation.
 
-# net_simulation_pandapipes.py
+# net_simulation_calculation.py
 
 - Purpose: Simulates the heating network using the pandapipes framework, focusing on pipe flow and network optimization.
 - Key Functions:
@@ -72,19 +73,33 @@ For the developement and testing of the algorithms and functions, geodata is req
   - optimize_diameter_parameters(initial_net, v_max, v_min, dx): Optimizes pipe diameters based on velocity constraints.
   - optimize_diameter_types(initial_net, v_max, v_min): Alters pipe types to optimize for velocity constraints.
   - export_net_geojson(net): Export the network data to a GeoJSON format.
+  - calculate_worst_point(net): finds the heat exchanger with the smallest delta p
+
+# my_controllers.py
+- This module defines custom controller classes that extend the functionality of the basic controllers provided by Pandapipes. These controllers are responsible for dynamic regulation of network parameters during simulations.
+  - ReturnTemperatureController: Regulates the temperature of the returning fluid in the network to achieve a specified target temperature.
+  - MassFlowController: Adjusts the mass flow rate within the network to maintain system stability and meet demand profiles.
+
+Both controllers utilize a proportional control approach to minimize the error between the current state and the desired state of the network.
 
 # net_simulation_test.py
 
 - simple heating network to test algorithms
 
 # net_simulation.py
+  - initialize_net: Prepares and configures the network for simulation, setting up the necessary parameters and default conditions.
+  - run_simulation: Conducts the actual simulation process, calculating the flow and pressure in each segment of the network.
 
-- Purpose: Coordinates the simulation of the heating network using the pandapipes framework, integrating network creation, flow correction, and optimization.
-- Key Processes:
-  - Reads GeoJSON files to create GeoDataFrames for different network components.
-  - Calls create_network from net_simulation_pandapipes to build the network.
-  - Utilizes correct_flow_directions and optimize_diameter_parameters from net_simulation_pandapipes for network adjustment and optimization.
-  - Visualizes the network using pandapipes plotting utilities.
+# simulate.py
+
+This Python script is designed to bring together various modules and functions to simulate a piping network system, likely using the Pandapipes framework.
+
+Key Functionalities:
+  - Network Initialization: It initializes the network with predefined parameters, which may include setting up pipes, junctions, pumps, valves, and other components.
+  - Controller Assignment: The script assigns custom controllers to regulate different aspects of the network, such as temperature control and mass flow control, to achieve the desired operational criteria.
+  - Simulation Execution: It runs the simulation over a defined range of time steps or until a steady-state is reached, using the controllers to dynamically adjust the network conditions.
+  - Result Processing: After the simulation is complete, the script processes the results, which might include updating network states, calculating efficiencies, or preparing data for output.
+  - Output Generation: The final step involves generating outputs, which could be in the form of plots showing various aspects like temperature profiles, mass flow rates, or pressure drops over time.
 
 # To Do
 
@@ -95,18 +110,20 @@ For the developement and testing of the algorithms and functions, geodata is req
 - A function needs to be defined to set the right crs (coordinate reference system) in QGIS when executing "net_generation_qgis_ETRS89_MST.py"
 - A logic has to be programmed, which overwrites existing layers when executing the python file multiple times.
 
+- the results of the timeseries calculation have to be storaged fur later use 
+- next up is the creation of different heat generators for simulating a whole system
+- the network creation has to be modified to allow multiple pumps / entry points for heat
+
 - The geoJSON format is used as it can be used in advanced simulation software like SIM-VICUS (https://www.sim-vicus.de)
 
 - Currently the combination with further python-based simulation tools like flixOpt (https://github.com/flixOpt/flixOpt) or EnSySim (https://github.com/HSZittauGoerlitz/EnSySim) is being evaluated.
-
-- Currently load profile calculation for residential housing with VDI 4655 is being implemented
   
 # Contributing
 
-Contributions to the project are welcome. Please adhere to standard coding practices and submit pull requests for review.
+Contributions or ideas for the project are welcome. Please adhere to standard coding practices and submit pull requests for review.
 
 # License
-
+MIT license
 
 
 # Contact
