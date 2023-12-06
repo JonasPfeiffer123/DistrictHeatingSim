@@ -1,11 +1,13 @@
+import matplotlib.pyplot as plt
+import pandapipes.plotting as pp_plot
+import random
+import numpy as np
+
 from net_simulation_pandapipes import net_simulation
 from net_simulation_pandapipes import net_simulation_calculation
 from heat_requirement import heat_requirement_VDI4655
-import matplotlib.pyplot as plt
-import pandapipes.plotting as pp_plot
 from net_simulation_pandapipes.net_generation_test import initialize_test_net
-import random
-import numpy as np
+from heat_generators.heating_system import Berechnung_Erzeugermix
 
 ### generates the pandapipes net and initializes it ###
 net = net_simulation.initialize_net()
@@ -42,7 +44,8 @@ print(f"Der Schlechtpunkt des Netzes liegt am Wärmeübertrager {idx_dp_min}. De
 pp_plot.simple_plot(net, junction_size=0.2, heat_exchanger_size=0.2, pump_size=0.2, pump_color='green',
                      pipe_color='black', heat_exchanger_color='blue')
 
-"""### Plotten der Wärmeübertrager ###
+"""
+### Plotten der Wärmeübertrager ###
 # Erstellen Sie eine Figur und ein erstes Achsenobjekt
 fig, ax1 = plt.subplots()
 
@@ -130,3 +133,81 @@ plt.grid(True)
 
 # Zeigen Sie das kombinierte Diagramm an
 plt.show()
+
+
+### Berechnung Erzeugermix ###
+
+# bruttufläche_STA: m²
+# vs: Solarspeichervolumen m³
+# Typ: Kollektortyp
+# ...
+
+bruttofläche_STA = 100
+vs = 10
+Typ = "Vakuumröhrenkollektor"
+Fläche = 0
+Bohrtiefe = 0
+Temperatur_Geothermie = 0
+P_BMK = 30
+Gaspreis = 60
+Strompreis = 100
+Holzpreis = 80
+initial_data = qext_kW, flow_temp_circ_pump, return_temp_circ_pump
+TRY_filename = 'heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat'
+tech_order = ["Solarthermie", "Holzgas-BHKW", "Biomassekessel", "Gaskessel"]
+BEW = "Nein"
+el_Leistung_BHKW = 20
+Kühlleistung_Abwärme = 0
+Temperatur_Abwärme = 0
+Kühlleistung_AWW = 0
+Temperatur_AWW = 0
+COP_data = "Kennlinien WP.csv"
+
+
+WGK_Gesamt, Jahreswärmebedarf, Deckungsanteil, Last_L, data_L, data_labels_L, colors_L, Wärmemengen, WGK, \
+            Anteile = Berechnung_Erzeugermix(bruttofläche_STA, vs, Typ, Fläche, Bohrtiefe, Temperatur_Geothermie, 
+                                             P_BMK, Gaspreis, Strompreis, Holzpreis, initial_data, TRY_filename, 
+                                             tech_order, BEW, el_Leistung_BHKW, Kühlleistung_Abwärme, 
+                                             Temperatur_Abwärme, Kühlleistung_AWW, Temperatur_AWW, COP_data, 
+                                             Kapitalzins=5, Preissteigerungsrate=3, Betrachtungszeitraum=20)
+
+print(f"Jahreswärmebedarf:", f"{Jahreswärmebedarf:.2f} MWh")
+
+for t, wärmemenge, anteil, wgk in zip(tech_order, Wärmemengen, Anteile, WGK):
+    print(f"Wärmemenge {t}:", f"{wärmemenge:.2f} MWh")
+    print(f"Wärmegestehungskosten {t}:", f"{wgk:.2f} €/MWh")
+    print(f"Anteil an Wärmeversorgung {t}:", f"{anteil:.2f}")
+
+print(f"Wärmegestehungskosten Gesamt:", f"{WGK_Gesamt:.2f} €/MWh")
+
+def Jahresdauerlinie(t, Last_L, data_L, data_labels_L, colors_L):
+    fig, ax = plt.subplots()
+
+    ax.plot(t, Last_L, color="black", linewidth=0.5, label="Last in kW")
+    ax.stackplot(t, data_L, labels=data_labels_L, colors=colors_L)
+    ax.set_title("Jahresdauerlinie")
+    ax.set_xlabel("Jahresstunden")
+    ax.set_ylabel("thermische Leistung in kW")
+    ax.legend(loc='upper center')
+
+    plt.title("Jahresdauerlinie Wärmenetz")
+    plt.grid(True)
+    
+    plt.show()
+
+def Kreisdiagramm(data_labels_L, colors_L, Anteile):
+    pie, ax1 = plt.subplots()
+    ax1.pie(Anteile, labels=data_labels_L, colors=colors_L, autopct='%1.1f%%', startangle=90)
+    ax1.set_title("Anteile Wärmeerzeugung")
+    ax1.legend(loc='center right')
+    ax1.axis("equal")
+    ax1.plot
+
+    plt.title("Zusammensetzung Wärmeerzeugung")
+    plt.grid(True)
+    
+    plt.show()
+
+Jahresdauerlinie(time_15min[calc1:calc2], Last_L, data_L, data_labels_L, colors_L)
+
+Kreisdiagramm(data_labels_L, colors_L, Anteile)
