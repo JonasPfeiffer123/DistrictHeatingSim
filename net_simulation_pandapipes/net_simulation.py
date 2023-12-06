@@ -38,17 +38,18 @@ def time_series_net(net, temperature_target=60,  qext_w_profile=[50000] * 3 + [6
     time_steps = range(0, len(qext_w_profile))  # hourly time steps
     df = pd.DataFrame(index=time_steps)
 
-    # Erstellen und Hinzufügen des Controllers zum Netz
+    # creates controllers for the net
     for i in range(len(net.heat_exchanger)):
 
         df = pd.DataFrame(index=time_steps, data={'qext_w_'+str(i): qext_w_profile})
 
         data_source = DFData(df)
+
+        # creates the controllers for the heat exchangers which controll qext_w in the timeseies
         ConstControl(net, element='heat_exchanger', variable='qext_w', element_index=[i], data_source=data_source, profile_name='qext_w_'+str(i))
         
-        # TemperatureController-Objekt erstellen
+        # creates the controllers for the heat exchangers / flow controls which controll the heat exchanger output temperature with the mass flows of the flow controls
         T_controller = ReturnTemperatureController(net, heat_exchanger_idx=i, target_temperature=temperature_target)
-        # Hinzufügen des Controller-Objekts zum DataFrame 'controller'
         net.controller.loc[len(net.controller)] = [T_controller, True, 0, 0, False, False]
 
     log_variables = [('res_junction', 'p_bar'), ('res_junction', 't_k'),
