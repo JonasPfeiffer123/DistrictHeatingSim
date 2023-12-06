@@ -78,8 +78,8 @@ For the developement and testing of the algorithms and functions, geodata is req
 # my_controllers.py
 - This module defines custom controller classes that extend the functionality of the basic controllers provided by Pandapipes. These controllers are responsible for dynamic regulation of network parameters during simulations.
 
-    - ReturnTemperatureController: Regulates the temperature of the returning fluid in the network to achieve a specified target temperature.
-    - MassFlowController: Adjusts the mass flow rate within the network to maintain system stability and meet demand profiles.
+  - ReturnTemperatureController: Regulates the temperature of the returning fluid in the network to achieve a specified target temperature.
+  - MassFlowController: Adjusts the mass flow rate within the network to maintain system stability and meet demand profiles.
 
 Both controllers utilize a proportional control approach to minimize the error between the current state and the desired state of the network.
 
@@ -88,8 +88,8 @@ Both controllers utilize a proportional control approach to minimize the error b
 - simple heating network to test algorithms
 
 # net_simulation.py
-    - initialize_net: Prepares and configures the network for simulation, setting up the necessary parameters and default conditions.
-    - run_simulation: Conducts the actual simulation process, calculating the flow and pressure in each segment of the network.
+  - initialize_net: Prepares and configures the network for simulation, setting up the necessary parameters and default conditions.
+  - run_simulation: Conducts the actual simulation process, calculating the flow and pressure in each segment of the network.
 
 # simulate.py
 
@@ -97,11 +97,11 @@ This Python script is designed to bring together various modules and functions t
 
 Key Functionalities:
 
-    - Network Initialization: It initializes the network with predefined parameters, which may include setting up pipes, junctions, pumps, valves, and other components.
-    - Controller Assignment: The script assigns custom controllers to regulate different aspects of the network, such as temperature control and mass flow control, to achieve the desired operational criteria.
-    - Simulation Execution: It runs the simulation over a defined range of time steps or until a steady-state is reached, using the controllers to dynamically adjust the network conditions.
-    - Result Processing: After the simulation is complete, the script processes the results, which might include updating network states, calculating efficiencies, or preparing data for output.
-    - Output Generation: The final step involves generating outputs, which could be in the form of plots showing various aspects like temperature profiles, mass flow rates, or pressure drops over time.
+  - Network Initialization: It initializes the network with predefined parameters, which may include setting up pipes, junctions, pumps, valves, and other components.
+  - Controller Assignment: The script assigns custom controllers to regulate different aspects of the network, such as temperature control and mass flow control, to achieve the desired operational criteria.
+  - Simulation Execution: It runs the simulation over a defined range of time steps or until a steady-state is reached, using the controllers to dynamically adjust the network conditions.
+  - Result Processing: After the simulation is complete, the script processes the results, which might include updating network states, calculating efficiencies, or preparing data for output.
+  - Output Generation: The final step involves generating outputs, which could be in the form of plots showing various aspects like temperature profiles, mass flow rates, or pressure drops over time.
 
 # To Do
 
