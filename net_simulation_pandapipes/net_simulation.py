@@ -7,20 +7,15 @@ import geopandas as gpd
 import pandas as pd
 
 import net_simulation_pandapipes.net_simulation_calculation as nsp
-
 from net_simulation_pandapipes.my_controllers import ReturnTemperatureController
 
-def initialize_net():
-    # GeoJSON-Dateien einlesen
-    gdf_vl = gpd.read_file('net_generation_QGIS/geoJSON_Vorlauf.geojson')
-    gdf_rl = gpd.read_file('net_generation_QGIS/geoJSON_Rücklauf.geojson')
-    gdf_HAST = gpd.read_file('net_generation_QGIS/geoJSON_HAST.geojson')
-    gdf_WEA = gpd.read_file('net_generation_QGIS/geoJSON_Erzeugeranlagen.geojson')
-
+def initialize_net(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA):
     pipe_creation_mode = "type"
     # pipe_creation_mode = "diameter"
 
     qext_w = 60000
+
+    # net generation from gis data
     net = nsp.create_network(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, pipe_creation_mode)
     net = nsp.correct_flow_directions(net)
 
