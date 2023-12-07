@@ -10,11 +10,9 @@ DEG_TO_RAD = np.pi / 180
 def deg_to_rad(deg):
     return deg * DEG_TO_RAD
 
-def Berechnung_Solarstrahlung(Globalstrahlung_L, D_L, Longitude, STD_Longitude, Latitude, Albedo, IAM_W, IAM_N,
+def Berechnung_Solarstrahlung(Globalstrahlung_L, D_L, Tag_des_Jahres_L, time_steps, Longitude, STD_Longitude, Latitude, Albedo, IAM_W, IAM_N,
                               EWCaa, CTA):
-    # Erzeugt Zeitserien für Stunden und Tage eines Jahres
-    Stunde_L = np.tile(np.arange(1, 25), 365)  # Stunden von 1 bis 24 für jeden der 365 Tage
-    Tag_des_Jahres_L = np.repeat(np.arange(1, 366), 24)  # Tage des Jahres für jede Stunde
+    Stunde_L = (time_steps - time_steps.astype('datetime64[D]')).astype('timedelta64[m]').astype(float) / 60
 
     # Berechnet den Tag des Jahres als Winkel
     B = (Tag_des_Jahres_L - 1) * 360 / 365  # °

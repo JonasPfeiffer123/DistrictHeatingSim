@@ -11,7 +11,7 @@ def calculate_factors(Kapitalzins, Preissteigerungsrate, Betrachtungszeitraum):
     T = Betrachtungszeitraum
     return q, r, T
 
-def Berechnung_Erzeugermix(bruttofläche_STA, vs, Typ, Fläche, Bohrtiefe, Temperatur_Geothermie, P_BMK, Gaspreis,
+def Berechnung_Erzeugermix(time_steps, calc1, calc2, bruttofläche_STA, vs, Typ, Fläche, Bohrtiefe, Temperatur_Geothermie, P_BMK, Gaspreis,
                            Strompreis, Holzpreis, initial_data, TRY_filename, tech_order, BEW, el_Leistung_BHKW, Kühlleistung_Abwärme,
                            Temperatur_Abwärme, Kühlleistung_AWW, Temperatur_AWW, COP_data, Kapitalzins=5, Preissteigerungsrate=3,
                            Betrachtungszeitraum=20):
@@ -30,7 +30,7 @@ def Berechnung_Erzeugermix(bruttofläche_STA, vs, Typ, Fläche, Bohrtiefe, Tempe
     # zunächst Berechnung der Erzeugung
     for tech in tech_order:
         if tech == "Solarthermie":
-            Wärmemenge_Solarthermie, Wärmeleistung_Solarthermie_L = Berechnung_STA(bruttofläche_STA, vs, Typ, Last_L, VLT_L, RLT_L, TRY_filename)
+            Wärmemenge_Solarthermie, Wärmeleistung_Solarthermie_L = Berechnung_STA(bruttofläche_STA, vs, Typ, Last_L, VLT_L, RLT_L, TRY_filename, time_steps, calc1, calc2)
 
             Restlast_L -= Wärmeleistung_Solarthermie_L
 

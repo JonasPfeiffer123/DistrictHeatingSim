@@ -87,11 +87,11 @@ class ReturnTemperatureController(BasicCtrl):
         
         net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx] = new_mass_flow
         
-        print(self.heat_exchanger_idx)
+        """print(self.heat_exchanger_idx)
         print(self.target_temperature)
         print(current_temperature)
         print(current_mass_flow)
         print(mass_flow_adjustment)
-        print(new_mass_flow)
+        print(new_mass_flow)"""
         
         return super(ReturnTemperatureController, self).control_step(net)

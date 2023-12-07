@@ -99,12 +99,13 @@ cp_kJ_kgK = 4.2 # kJ/kgK
 
 qext_kW = mass_flow_circ_pump * cp_kJ_kgK * (flow_temp_circ_pump -return_temp_circ_pump)
 
+time_steps = time_15min[calc1:calc2]
 
 # Erstellen Sie eine Figur und ein erstes Achsenobjekt
 fig, ax1 = plt.subplots()
 
 # Plot für Wärmeleistung auf der ersten Y-Achse
-ax1.plot(time_15min[calc1:calc2], qext_kW, 'b-', label="Gesamtlast")
+ax1.plot(time_steps, qext_kW, 'b-', label="Gesamtlast")
 ax1.set_xlabel("Zeit in 15 min Schritten")
 ax1.set_ylabel("Wärmebedarf in kW / 15 min", color='b')
 ax1.tick_params('y', colors='b')
@@ -112,8 +113,8 @@ ax1.legend(loc='upper left')
 
 # Zweite Y-Achse für die Temperatur
 ax2 = ax1.twinx()
-ax2.plot(time_15min[calc1:calc2], return_temp_circ_pump, 'm-o', label="circ pump return temperature")
-ax2.plot(time_15min[calc1:calc2], flow_temp_circ_pump, 'c-o', label="circ pump flow temperature")
+ax2.plot(time_steps, return_temp_circ_pump, 'm-o', label="circ pump return temperature")
+ax2.plot(time_steps, flow_temp_circ_pump, 'c-o', label="circ pump flow temperature")
 ax2.set_ylabel("temperature [°C]", color='m')
 ax2.tick_params('y', colors='m')
 ax2.legend(loc='upper right')
@@ -121,7 +122,7 @@ ax2.set_ylim(0,100)
 
 # Dritte Y-Achse für den Massenstrom
 ax3 = ax1.twinx()
-ax3.plot(time_15min[calc1:calc2], mass_flow_circ_pump, 'y-o', label="circ pump mass flow")
+ax3.plot(time_steps, mass_flow_circ_pump, 'y-o', label="circ pump mass flow")
 ax3.set_ylabel("mass flow kg/s", color='y')
 ax3.spines['right'].set_position(('outward', 60))  # Verschiebung der dritten Y-Achse nach rechts
 ax3.tick_params('y', colors='y')
@@ -163,12 +164,11 @@ Kühlleistung_AWW = 0
 Temperatur_AWW = 0
 COP_data = "Kennlinien WP.csv"
 
-
 WGK_Gesamt, Jahreswärmebedarf, Deckungsanteil, Last_L, data_L, data_labels_L, colors_L, Wärmemengen, WGK, \
-            Anteile = Berechnung_Erzeugermix(bruttofläche_STA, vs, Typ, Fläche, Bohrtiefe, Temperatur_Geothermie, 
+            Anteile = Berechnung_Erzeugermix(time_steps, calc1, calc2, bruttofläche_STA, vs, Typ, Fläche, Bohrtiefe, Temperatur_Geothermie, 
                                              P_BMK, Gaspreis, Strompreis, Holzpreis, initial_data, TRY_filename, 
                                              tech_order, BEW, el_Leistung_BHKW, Kühlleistung_Abwärme, 
-                                             Temperatur_Abwärme, Kühlleistung_AWW, Temperatur_AWW, COP_data, 
+                                             Temperatur_Abwärme, Kühlleistung_AWW, Temperatur_AWW, COP_data,
                                              Kapitalzins=5, Preissteigerungsrate=3, Betrachtungszeitraum=20)
 
 print(f"Jahreswärmebedarf:", f"{Jahreswärmebedarf:.2f} MWh")

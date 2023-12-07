@@ -6,6 +6,8 @@ from math import pi, exp, log, sqrt
 import csv
 import numpy as np
 import pandas as pd
+from datetime import datetime
+
 from heat_generators.Wirtschaftlichkeitsbetrachtung import WGK_STA
 from heat_generators.Solarstrahlung import Berechnung_Solarstrahlung
 
@@ -40,13 +42,24 @@ def Daten(filename):
 
     return Last_L, VLT_L, RLT_L
 
-def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY_filename, Tsmax=90, Longitude=-14.4222, STD_Longitude=-15, Latitude=51.1676):
+def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY_filename, time_steps, calc1, calc2, Tsmax=90, Longitude=-14.4222, STD_Longitude=-15, Latitude=51.1676):
     Temperatur_L, Windgeschwindigkeit_L, Direktstrahlung_L, Globalstrahlung_L = import_TRY(TRY_filename)
 
-    Jahresstunden_L = np.arange(1, 8761)
+    # Bestimmen Sie das kleinste Zeitintervall in time_steps
+    min_interval = np.min(np.diff(time_steps)).astype('timedelta64[m]').astype(int)
+    
+    # Anpassen der stündlichen Werte an die time_steps
+    # Wiederholen der stündlichen Werte entsprechend des kleinsten Zeitintervalls
+    repeat_factor = 60 // min_interval  # Annahme: min_interval teilt 60 ohne Rest
+    Temperatur_L = np.repeat(Temperatur_L, repeat_factor)[calc1:calc2]
+    Windgeschwindigkeit_L = np.repeat(Windgeschwindigkeit_L, repeat_factor)[calc1:calc2]
+    Direktstrahlung_L = np.repeat(Direktstrahlung_L, repeat_factor)[calc1:calc2]
+    Globalstrahlung_L = np.repeat(Globalstrahlung_L, repeat_factor)[calc1:calc2]
 
     if Bruttofläche_STA == 0 or VS == 0:
-        return 0, np.zeros_like(Jahresstunden_L)
+        return 0, np.zeros_like(time_steps)
+
+    Tag_des_Jahres_L = np.array([datetime.utcfromtimestamp(t.astype(int) * 60 * 15).timetuple().tm_yday for t in time_steps])
 
     Albedo = 0.2
     wcorr = 0.5
@@ -133,18 +146,17 @@ def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY_filenam
     East_West_collector_azimuth_angle = 0
     Collector_tilt_angle = 36
 
-    GT_H_Gk, K_beam_L, GbT_L, GdT_H_Dk_L = Berechnung_Solarstrahlung(Globalstrahlung_L, Direktstrahlung_L, Longitude,
+    GT_H_Gk, K_beam_L, GbT_L, GdT_H_Dk_L = Berechnung_Solarstrahlung(Globalstrahlung_L, Direktstrahlung_L, 
+                                                                     Tag_des_Jahres_L, time_steps, Longitude,
                                                                      STD_Longitude, Latitude, Albedo, IAM_W, IAM_N,
                                                                      East_West_collector_azimuth_angle,
                                                                      Collector_tilt_angle)
 
     Speicher_Wärmeoutput_L = []
     Speicherladung_L = []
-    Jahreswärmemenge = 0
+    Gesamtwärmemenge = 0
 
     Zähler = 0
-
-    Tag_des_Jahres_L = np.repeat(np.arange(1, 366), 24)  # Tage des Jahres für jede Stunde
 
     for Tag_des_Jahres, K_beam, GbT, GdT_H_Dk, Temperatur, Windgeschwindigkeit, Last, VLT, RLT in zip(Tag_des_Jahres_L, K_beam_L, GbT_L, GdT_H_Dk_L, Temperatur_L, Windgeschwindigkeit_L, Last_L, VLT_L, RLT_L):
         Eta0b_neu_K_beam_GbT = Eta0b_neu * K_beam * GbT
@@ -358,14 +370,12 @@ def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY_filenam
 
         Speicherladung_L.append(QS)
         Speicher_Wärmeoutput_L.append(PSout)
-        Jahreswärmemenge += PSout / 1000
+        Gesamtwärmemenge += PSout / 1000
 
         Zähler += 1
 
-    return Jahreswärmemenge, np.array(Speicher_Wärmeoutput_L)
+    return Gesamtwärmemenge, np.array(Speicher_Wärmeoutput_L)
 
-# print(Berechnung_STA(600, 20, "Flachkollektor", "Daten.csv")[0])
-# print(Berechnung_STA(600, 30, "Röhrenkollektor")[0], "Daten.csv")
 
 def Optimierung_WGK_STA(typ, solar_data, BEW="Nein", speicher=range(5, 60, 5), fläche=range(100, 1000, 100)):
     results = [(WGK_STA(f, v, typ, Berechnung_STA(f, v, typ, solar_data)[0], 1.05, 1.03, 20, BEW), f, v) for v in speicher for f in fläche]
@@ -374,5 +384,3 @@ def Optimierung_WGK_STA(typ, solar_data, BEW="Nein", speicher=range(5, 60, 5), f
     print("Die minimalen Wärmegestehungskosten der Solarthermieanlage betragen: " + str(round(min_WGK, 2)) + " €/MWh")
     print("Die Speichergröße beträgt: " + str(optimum_VS) + " m^3")
     print("Die Bruttokollektorfläche beträgt: " + str(optimum_Bruttofläche) + " m^2")
-
-# Optimierung_WGK_STA("Vakuumröhrenkollektor", "Daten Bautzen.csv", "Nein")
