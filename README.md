@@ -27,6 +27,9 @@ Net simulation with pandapipes
 heat requirement
 - implementation of the VDI 4655 for load profile calculation (based on the available Excel-file from https://www.umwelt-campus.de/energietools)
 
+heat generators
+- I recently added a bunch of heat generator functions from a previous private project of mine, which are now being implemented in the whole calculation model
+
 # Data
 For the developement and testing of the algorithms and functions, geodata is required. In this case a few local adresses in Zittau were choosed and geocoded. Also some synthetic datapoints were added. This dataset is saved as the csv-file "data_output_ETRS89.csv". The district heating network will be generated for these datapoints.
 
