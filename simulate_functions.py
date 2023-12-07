@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import pandapipes.plotting as pp_plot
 import random
 import numpy as np
+import pandas as pd
 import geopandas as gpd
 
 from net_simulation_pandapipes import net_simulation
@@ -11,7 +12,7 @@ from net_simulation_pandapipes.net_generation_test import initialize_test_net
 from heat_generators.heating_system import Berechnung_Erzeugermix
 
 
-def thermohydraulic_time_series_net_calculation():
+def thermohydraulic_time_series_net_calculation(calc1, calc2):
     gdf_vl = gpd.read_file('net_generation_QGIS/geoJSON_Vorlauf.geojson')
     gdf_rl = gpd.read_file('net_generation_QGIS/geoJSON_Rücklauf.geojson')
     gdf_HAST = gpd.read_file('net_generation_QGIS/geoJSON_HAST.geojson')
@@ -42,17 +43,16 @@ def thermohydraulic_time_series_net_calculation():
     ### time series calculation ###
     t_rl_soll = 60
 
-    calc1 = 18000
-    calc2 = 18500
+    print(len(time_15min))
     time_steps = time_15min[calc1:calc2]
     net, net_results = net_simulation.time_series_net(net, t_rl_soll, waerme_ges_W, calc1, calc2)
 
     # dp_min, idx_dp_min = net_simulation_calculation.calculate_worst_point(net)
     # print(f"Der Schlechtpunkt des Netzes liegt am Wärmeübertrager {idx_dp_min}. Der Differenzdruck beträgt {dp_min:.3f} bar.")
 
-    return time_15min, calc1, calc2, time_steps, net, net_results
+    return time_15min, time_steps, net, net_results
 
-def calculate_results(net_results):
+def calculate_results(net, net_results):
     ### Plotten Ergebnisse Pumpe / Einspeisung ###
     mass_flow_circ_pump = net_results["res_circ_pump_pressure.mdot_flow_kg_per_s"][:, 0]
     deltap_circ_pump =  net_results["res_circ_pump_pressure.deltap_bar"][:, 0]
@@ -73,7 +73,7 @@ def calculate_results(net_results):
 
     return mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW
 
-def plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump, mass_flow_circ_pump):
+def plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump):
     # Erstellen Sie eine Figur und ein erstes Achsenobjekt
     fig, ax1 = plt.subplots()
 
@@ -93,20 +93,33 @@ def plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump
     ax2.legend(loc='upper right')
     ax2.set_ylim(0,100)
 
-    # Dritte Y-Achse für den Massenstrom
-    ax3 = ax1.twinx()
-    ax3.plot(time_steps, mass_flow_circ_pump, 'y-o', label="circ pump mass flow")
-    ax3.set_ylabel("mass flow kg/s", color='y')
-    ax3.spines['right'].set_position(('outward', 60))  # Verschiebung der dritten Y-Achse nach rechts
-    ax3.tick_params('y', colors='y')
-    ax3.legend(loc='lower right')
-
     # Titel und Raster hinzufügen
     plt.title("Lastgang Wärmenetz")
     plt.grid(True)
 
     # Zeigen Sie das kombinierte Diagramm an
     plt.show()
+
+def save_results_csv(time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump, filename):
+    # Umwandeln von time_steps in ein allgemeineres datetime64[ns]-Format
+    time_steps_ns = time_steps.astype('datetime64[ns]')
+    
+    # Konvertieren der Arrays in ein Pandas DataFrame
+    df = pd.DataFrame({'Zeitpunkt': time_steps_ns, 
+                       'Heizlast_Netz_kW': qext_kW, 
+                       'Vorlauftemperatur_Netz_°C': flow_temp_circ_pump, 
+                       'Rücklauftemperatur_Netz_°C': return_temp_circ_pump})
+
+    # Speichern des DataFrames als CSV
+    df.to_csv(filename, sep=';', index=False)
+
+def import_results_csv(filename):
+    data = pd.read_csv(filename, sep=';', parse_dates=['Zeitpunkt'])
+    time_steps = data["Zeitpunkt"].values.astype('datetime64[15m]')
+    qext_kW = data["Heizlast_Netz_kW"]
+    flow_temp_circ_pump = data['Vorlauftemperatur_Netz_°C']
+    return_temp_circ_pump = data['Rücklauftemperatur_Netz_°C']
+    return time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump
 
 def auslegung_erzeuger(time_steps, calc1, calc2, qext_kW, return_temp_circ_pump, flow_temp_circ_pump):
     ### Berechnung Erzeugermix ###
@@ -180,18 +193,24 @@ def auslegung_erzeuger(time_steps, calc1, calc2, qext_kW, return_temp_circ_pump,
         
         plt.show()
 
-    Jahresdauerlinie(time_15min[calc1:calc2], Last_L, data_L, data_labels_L, colors_L)
+    Jahresdauerlinie(time_steps, Last_L, data_L, data_labels_L, colors_L)
 
     Kreisdiagramm(data_labels_L, colors_L, Anteile)
 
 
 
 ############## CALCULATION #################
-time_15min, calc1, calc2, time_steps, net, net_results = thermohydraulic_time_series_net_calculation()
+calc1, calc2 = 0, 35040 # min: 0; max: 35040
+filename = 'results_time_series_net.csv'
+
+time_15min, time_steps, net, net_results = thermohydraulic_time_series_net_calculation(calc1, calc2)
 
 mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, \
-    return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW = calculate_results(net_results)
+    return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW = calculate_results(net, net_results)
 
-plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump, mass_flow_circ_pump)
+save_results_csv(time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump, filename)
 
-auslegung_erzeuger(time_steps, calc1, calc2, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
+#time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump = import_results_csv(filename)
+
+#plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
+#auslegung_erzeuger(time_steps, calc1, calc2, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
