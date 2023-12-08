@@ -49,8 +49,8 @@ def process_data(input_csv, output_csv):
 #input_csv = "data_input.csv"
 #output_csv = "data_output_ETRS89.csv"
 
-input_csv = "data_input_gr.csv"
-output_csv = "data_output_gr_ETRS89.csv"
+input_csv = "geocoding/data_input_gr.csv"
+output_csv = "geocoding/data_output_gr_ETRS89.csv"
 
 # Calling the process_data function to read from input_csv and write to output_csv
 process_data(input_csv, output_csv)

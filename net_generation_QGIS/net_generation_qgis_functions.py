@@ -60,7 +60,7 @@ def import_street_layer(area, values):
     lines_layer = QgsVectorLayer(downloaded_file + "|layername=lines", "OSM Lines", "ogr")
 
     # Exportieren des Layers als GeoJSON
-    output_file = "geoJSON_Straßen.geojson"
+    output_file = "Straßen.geojson"
     # Setzen Sie das gewünschte CRS
     crs = QgsCoordinateReferenceSystem("EPSG:25833")
     error = QgsVectorFileWriter.writeAsVectorFormat(lines_layer, output_file, "utf-8", crs, "GeoJSON")
@@ -106,7 +106,7 @@ def create_point_layer(x_coord, y_coord):
     point_layer.updateExtents()
 
     # Exportieren des Layers als GeoJSON
-    output_file = "geoJSON_Erzeugerstandorte.geojson"
+    output_file = "Erzeugerstandorte.geojson"
     error = QgsVectorFileWriter.writeAsVectorFormat(point_layer, output_file, "utf-8", point_layer.crs(), "GeoJSON")
 
     if error[0] == QgsVectorFileWriter.NoError:

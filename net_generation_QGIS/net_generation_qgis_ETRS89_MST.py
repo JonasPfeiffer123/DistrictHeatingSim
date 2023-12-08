@@ -12,12 +12,13 @@ import_osm_layer()
 # import_street_layer(area, values)
 
 # Pfad zur Textdatei
-text_file_path = "C:/Users/username/heating_network_generation/geocoding/data_output_ETRS89.csv"
+text_file_path = "C:/Users/username/heating_network_generation/geocoding/data_output_gr_ETRS89.csv"
 create_data_layer(text_file_path)
     
 # Koordinaten für den Punkt
-x_coord = 486267.307  # Longitude
-y_coord = 5637294.910  # Latitude
+
+x_coord = 499827.91  # Longitude
+y_coord = 5666288.22  # Latitude
 
 create_point_layer(x_coord, y_coord)
 
@@ -38,9 +39,11 @@ fixed_angle = 0
 fixed_distance = 1
 
 # generate heat exchanger coordinates
+print("HI")
 generate_lines(layer_points, fixed_distance, fixed_angle, provider_hast)
 
 # generate heat generator coordinates
+print("HI")
 generate_lines(layer_WEA, fixed_distance, fixed_angle, provider_erzeugeranlagen)
 
 # generate network - fl stands for forward lines, rl for return lines
@@ -55,7 +58,7 @@ for vl in [vl_hast, vl_rl, vl_vl, vl_erzeugeranlagen]:
     vl.triggerRepaint()
 
 # write layers as GeoJSON
-output_files = ["geoJSON_HAST.geojson", "geoJSON_Rücklauf.geojson", "geoJSON_Vorlauf.geojson", "geoJSON_Erzeugeranlagen.geojson"]
+output_files = ["HAST.geojson", "Rücklauf.geojson", "Vorlauf.geojson", "Erzeugeranlagen.geojson"]
 colors = ["green", "blue", "red", "black"]
 
 for vl, color, output_file in zip([vl_hast, vl_rl, vl_vl, vl_erzeugeranlagen], colors, output_files):

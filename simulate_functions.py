@@ -12,12 +12,7 @@ from net_simulation_pandapipes.net_generation_test import initialize_test_net
 from heat_generators.heating_system import Berechnung_Erzeugermix
 
 
-def thermohydraulic_time_series_net_calculation(calc1, calc2):
-    gdf_vl = gpd.read_file('net_generation_QGIS/geoJSON_Vorlauf.geojson')
-    gdf_rl = gpd.read_file('net_generation_QGIS/geoJSON_Rücklauf.geojson')
-    gdf_HAST = gpd.read_file('net_generation_QGIS/geoJSON_HAST.geojson')
-    gdf_WEA = gpd.read_file('net_generation_QGIS/geoJSON_Erzeugeranlagen.geojson')
-
+def thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gdf_HAST, gdf_WEA):
     ### generates the pandapipes net and initializes it ###
     net = net_simulation.initialize_net(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA)
 
@@ -67,11 +62,13 @@ def calculate_results(net, net_results):
     return_pressure_circ_pump = net_results["res_junction.p_bar"][:, rj_circ_pump]
     flows_pressure_circ_pump = net_results["res_junction.p_bar"][:, fj_circ_pump]
 
+    pressure_junctions = net_results["res_junction.p_bar"]
+
     cp_kJ_kgK = 4.2 # kJ/kgK
 
     qext_kW = mass_flow_circ_pump * cp_kJ_kgK * (flow_temp_circ_pump -return_temp_circ_pump)
 
-    return mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW
+    return mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW, pressure_junctions
 
 def plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump):
     # Erstellen Sie eine Figur und ein erstes Achsenobjekt
@@ -200,13 +197,24 @@ def auslegung_erzeuger(time_steps, calc1, calc2, qext_kW, return_temp_circ_pump,
 
 
 ############## CALCULATION #################
-calc1, calc2 = 0, 200 # min: 0; max: 35040
+calc1, calc2 = 0, 96 # min: 0; max: 35040
 filename = 'results_time_series_net.csv'
 
-time_15min, time_steps, net, net_results = thermohydraulic_time_series_net_calculation(calc1, calc2)
+gdf_vl = gpd.read_file('net_generation_QGIS/geoJSON_Vorlauf.geojson')
+gdf_rl = gpd.read_file('net_generation_QGIS/geoJSON_Rücklauf.geojson')
+gdf_HAST = gpd.read_file('net_generation_QGIS/geoJSON_HAST.geojson')
+gdf_WEA = gpd.read_file('net_generation_QGIS/geoJSON_Erzeugeranlagen.geojson')
+
+#gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Projekt/Vorlauf.geojson')
+#gdf_rl = gpd.read_file('net_generation_QGIS/Beispiel Projekt/Rücklauf.geojson')
+#gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Projekt/HAST.geojson')
+#gdf_WEA = gpd.read_file('net_generation_QGIS/Beispiel Projekt/Erzeugeranlagen.geojson')
+
+time_15min, time_steps, net, net_results = thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gdf_HAST, gdf_WEA)
 
 mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, \
-    return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW = calculate_results(net, net_results)
+    return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW, pressure_junctions = calculate_results(net, net_results)
+
 
 #save_results_csv(time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump, filename)
 
