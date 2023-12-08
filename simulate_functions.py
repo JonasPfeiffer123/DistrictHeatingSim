@@ -200,17 +200,17 @@ def auslegung_erzeuger(time_steps, calc1, calc2, qext_kW, return_temp_circ_pump,
 
 
 ############## CALCULATION #################
-calc1, calc2 = 0, 35040 # min: 0; max: 35040
+calc1, calc2 = 0, 200 # min: 0; max: 35040
 filename = 'results_time_series_net.csv'
 
-#time_15min, time_steps, net, net_results = thermohydraulic_time_series_net_calculation(calc1, calc2)
+time_15min, time_steps, net, net_results = thermohydraulic_time_series_net_calculation(calc1, calc2)
 
-#mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, \
-#    return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW = calculate_results(net, net_results)
+mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, \
+    return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW = calculate_results(net, net_results)
 
 #save_results_csv(time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump, filename)
 
-time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump = import_results_csv(filename)
+#time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump = import_results_csv(filename)
 
 plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
 
