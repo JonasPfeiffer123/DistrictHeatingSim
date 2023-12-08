@@ -5,33 +5,39 @@ from qgis.core import (QgsFeature, QgsField, QgsGeometry, QgsPointXY, QgsProject
 import networkx as nx
 import math
 
-import requests
-
-
+def import_osm_street_layer(osm_street_layer_geojson_file):
+    layer = QgsVectorLayer(osm_street_layer_geojson_file, "Straßen", "ogr")
+    if not layer.isValid():
+        print("Layer failed to load!")
+    else:
+        QgsProject.instance().addMapLayer(layer)
+            
 def import_osm_layer():
-    # URL für den OpenStreetMap XYZ-Tile-Service
-    osm_url = "type=xyz&url=https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-
-    # Erstellen eines Rasterlayers für OSM
-    osm_layer = QgsRasterLayer(osm_url, "OpenStreetMap", "wms")
-
-    # Hinzufügen des Layers zum Projekt
-    if osm_layer.isValid():
+    """
+    Importiert den OpenStreetMap-Layer und fügt ihn dem QGIS-Projekt hinzu.
+    """
+    try:
+        osm_url = "type=xyz&url=https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+        osm_layer = QgsRasterLayer(osm_url, "OpenStreetMap", "wms")
+        if not osm_layer.isValid():
+            raise ValueError("OSM Layer ist ungültig.")
         QgsProject.instance().addMapLayer(osm_layer)
         print("OSM Layer wurde erfolgreich geladen.")
-    else:
-        print("OSM Layer konnte nicht geladen werden.")
+    except Exception as e:
+        print(f"Fehler beim Laden des OSM Layers: {e}")
 
-
-def create_data_layer(text_file_path):
-    # Erstellen Sie einen Layer aus der Textdatei
-    # Hier wird angenommen, dass Ihre Datei Koordinaten in Spalten mit den Namen 'Longitude' und 'Latitude' enthält
-    csv_layer = QgsVectorLayer(f"file:///{text_file_path}?delimiter=;&crs=epsg:25833&type=csv&xField=UTM_X&yField=UTM_Y", "data_output_ETRS89", "delimitedtext")
-    if not csv_layer.isValid():
-        print("Data-Layer konnte nicht geladen werden.")
-    else:
+def create_data_layer(text_file_path, data_csv_file_name):
+    """
+    Erstellt einen Daten-Layer aus einer CSV-Datei.
+    """
+    try:
+        csv_layer = QgsVectorLayer(f"file:///{text_file_path}?delimiter=;&crs=epsg:25833&type=csv&xField=UTM_X&yField=UTM_Y", data_csv_file_name, "delimitedtext")
+        if not csv_layer.isValid():
+            raise ValueError("CSV Layer ist ungültig.")
         QgsProject.instance().addMapLayer(csv_layer)
         print("Data-Layer wurde erfolgreich geladen.")
+    except Exception as e:
+        print(f"Fehler beim Laden des Data-Layers: {e}")
 
 def create_point_layer(x_coord, y_coord):
     # Erstellen eines neuen Punktlayers
@@ -77,6 +83,9 @@ def create_layer(layer_name, layer_type, crs_i):
 
 
 def create_offset_points(point, distance, angle_degrees):
+    """
+    Erzeugt einen versetzten Punkt basierend auf Distanz und Winkel.
+    """
     angle_radians = math.radians(angle_degrees)
     dx = distance * math.cos(angle_radians)
     dy = distance * math.sin(angle_radians)
