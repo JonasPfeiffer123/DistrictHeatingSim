@@ -1,6 +1,6 @@
 {
 "type": "FeatureCollection",
-"name": "geoJSON_Rücklauf",
+"name": "Rücklauf",
 "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::25833" } },
 "features": [
 { "type": "Feature", "properties": { "id": null }, "geometry": { "type": "LineString", "coordinates": [ [ 486264.228, 5637343.071000000461936 ], [ 486278.208937190065626, 5637332.615862875245512 ] ] } },

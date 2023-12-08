@@ -1,6 +1,6 @@
 {
 "type": "FeatureCollection",
-"name": "geoJSON_Vorlauf",
+"name": "Vorlauf",
 "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::25833" } },
 "features": [
 { "type": "Feature", "properties": { "id": null }, "geometry": { "type": "LineString", "coordinates": [ [ 486263.228, 5637343.071000000461936 ], [ 486277.850281278660987, 5637332.136256944388151 ] ] } },
