@@ -1,7 +1,6 @@
 from qgis.core import (QgsFeature, QgsField, QgsGeometry, QgsPointXY, QgsProject, QgsRasterLayer, QgsVectorLayer,
                        QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsVectorFileWriter)
 from net_generation_qgis_functions import *
-#from import_osm_street_layer_qgis import download_osm_street_data
 import os
 
 def load_layers(osm_street_layer_geojson_file, data_csv_file_name, x_coord, y_coord):
