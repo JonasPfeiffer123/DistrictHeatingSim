@@ -225,59 +225,63 @@ def find_nearest_node(point, graph):
 
     return nearest_node
 
-def generate_street_based_mst(building_layer, street_layer, provider):
+def generate_street_based_mst(point_set, street_layer, provider):
     # Erstelle einen NetworkX Graphen basierend auf dem Straßenlayer
     street_graph = create_graph_from_layer(street_layer)
 
-    # Zuweisen von Gebäuden zu den nächsten Straßenknoten
-    building_to_node = {}
-    for building_feat in building_layer.getFeatures():
-        nearest_node = find_nearest_node(building_feat.geometry().asPoint(), street_graph)
-        building_to_node[building_feat.id()] = nearest_node
+    # Zuweisen von Punkten zu den nächsten Straßenknoten
+    point_to_node = {}
+    for point in point_set:
+        nearest_node = find_nearest_node(point, street_graph)
+        point_to_node[point] = nearest_node
 
     # Erstellen des MST unter Verwendung der nächsten Straßenknoten
     mst_graph = nx.minimum_spanning_tree(street_graph)
 
     # Hinzufügen der Features zum Provider
     for edge in mst_graph.edges(data=True):
-        start_point = QgsPointXY(*edge[0])
-        end_point = QgsPointXY(*edge[1])
+        start_coord = edge[0]
+        end_coord = edge[1]
+        start_point = QgsPointXY(*street_graph.nodes[start_coord]['pos'])
+        end_point = QgsPointXY(*street_graph.nodes[end_coord]['pos'])
         distance = edge[2]['weight']
         
-        # Erstellen Sie ein Feature für die Kante
+        # Erstelle ein Feature für die Kante
         line_feature = QgsFeature()
         line_feature.setGeometry(QgsGeometry.fromPolylineXY([start_point, end_point]))
         line_feature.setAttributes([distance])
         provider.addFeatures([line_feature])
 
-def merge_layers(layer1, layer2, crs="EPSG:25833"):
-    # Erstellen eines neuen Vektorlayers, der die Features beider Layer enthält
-    merged_layer = QgsVectorLayer("Point?crs=" + crs, "Merged Layer", "memory")
-    dp = merged_layer.dataProvider()
+def layer_to_point_set(layer):
+    point_set = set()
+    for feat in layer.getFeatures():
+        geom = feat.geometry()
+        if geom.type() == QgsWkbTypes.PointGeometry:
+            if geom.isMultipart():
+                points = geom.asMultiPoint()
+            else:
+                points = [geom.asPoint()]
+            for point in points:
+                point_set.add(QgsPointXY(point))
+    return point_set
 
-    # Attribute der Layer übernehmen (vorausgesetzt, sie sind identisch)
-    # Wenn die Layer unterschiedliche Attribute haben, müssen Sie diese entsprechend anpassen
-    dp.addAttributes(layer1.fields())
-    merged_layer.updateFields()
-
-    # Features aus beiden Layern zum neuen Layer hinzufügen
-    for layer in [layer1, layer2]:
-        for feature in layer.getFeatures():
-            dp.addFeatures([feature])
-
-    # Aktualisiere den neuen Layer
-    merged_layer.updateExtents()
-    return merged_layer
+def merge_point_sets(set1, set2):
+    return set1.union(set2)
 
 def generate_network_fl(layer_points_fl, layer_wea_fl, provider , layer_lines):
-    building_layer_fl = merge_layers(layer_points_fl, layer_wea_fl)
-    generate_street_based_mst(building_layer_fl, layer_lines, provider)
+    point_set_fl = layer_to_point_set(layer_points_fl)
+    point_set_wea_fl = layer_to_point_set(layer_wea_fl)
+    merged_set_fl = merge_point_sets(point_set_fl, point_set_wea_fl)
+    generate_street_based_mst(merged_set_fl, layer_lines, provider)
 
 
 # generate network for return lines
 def generate_network_rl(layer_points_fl, layer_wea_fl, fixed_distance_rl, fixed_angle_rl, provider, layer_lines):
     layer_points_rl = generate_rl_layer_points(layer_points_fl, fixed_distance_rl, fixed_angle_rl)
     layer_wea_rl = generate_rl_layer_points(layer_wea_fl, fixed_distance_rl, fixed_angle_rl)
-    building_layer_rl = merge_layers(layer_points_rl, layer_wea_rl)
     
-    generate_street_based_mst(building_layer_rl, layer_lines, provider)
+    point_set_rl = layer_to_point_set(layer_points_rl)
+    point_set_wea_rl = layer_to_point_set(layer_wea_rl)
+    merged_set_rl = merge_point_sets(point_set_rl, point_set_wea_rl)
+    
+    generate_street_based_mst(merged_set_rl, layer_lines, provider)
