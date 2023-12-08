@@ -179,6 +179,7 @@ def generate_rl_layer_points(layer, distance, angle_degrees, crs="EPSG:25833"):
     return point_layer
 
 def create_graph_from_layer(street_layer):
+    print(street_layer)
     G = nx.Graph()
     
     for feat in street_layer.getFeatures():
@@ -201,20 +202,27 @@ def create_graph_from_layer(street_layer):
                     G.add_node(start, pos=(start.x(), start.y()))
                     G.add_node(end, pos=(end.x(), end.y()))
                     G.add_edge(start, end)
-                
+    
     return G
 
 def find_nearest_node(point, graph):
+    print(graph)
+    min_distance = float('inf')
     nearest_node = None
-    min_dist = float('inf')
-    
-    for node in graph.nodes():
-        node_point = QgsPointXY(graph.nodes[node]['x'], graph.nodes[node]['y'])
-        dist = point.distance(node_point)
-        if dist < min_dist:
-            nearest_node = node
-            min_dist = dist
-    
+
+    # Durchlaufe alle Knoten im Graphen und suche den nächsten Knoten
+    for node, data in graph.nodes(data=True):
+        # Stelle sicher, dass die 'x' und 'y' Koordinaten vorhanden sind
+        if 'x' in data and 'y' in data:
+            node_point = QgsPointXY(data['x'], data['y'])
+            distance = point.distance(node_point)
+            if distance < min_distance:
+                min_distance = distance
+                nearest_node = node
+        else:
+            # Hier könnten Sie eine Fehlermeldung ausgeben oder eine andere Maßnahme ergreifen
+            print(f"Fehler: Knoten {node} hat keine 'x' oder 'y' Koordinaten.")
+
     return nearest_node
 
 def generate_street_based_mst(building_layer, street_layer, provider):
