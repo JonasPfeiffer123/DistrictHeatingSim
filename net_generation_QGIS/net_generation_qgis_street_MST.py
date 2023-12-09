@@ -173,7 +173,7 @@ def generate_return_lines(layer, distance, angle_degrees, provider, layer_lines)
             street_end_points.add(street_end_point)
     return street_end_points
 
-def create_graph_from_layer(street_layer, point_set, threshold=20):
+def create_graph_from_layer(street_layer, point_set, threshold):
     G = nx.Graph()
     street_index = QgsSpatialIndex()  # räumlicher Index für Straßen
     point_index = QgsSpatialIndex()  # räumlicher Index für Punkte
@@ -218,44 +218,40 @@ def create_graph_from_layer(street_layer, point_set, threshold=20):
 
     return G
 
-def find_nearest_node(point, graph):
+def find_nearest_node_within_threshold(point, graph, threshold):
     min_distance = float('inf')
     nearest_node = None
+    for node in graph.nodes:
+        node_point = QgsPointXY(graph.nodes[node]['pos'])
+        distance = point.distance(node_point)
+        if distance < min_distance and distance <= threshold:
+            min_distance = distance
+            nearest_node = node
+    return nearest_node, min_distance if nearest_node else None
 
-    # Durchlaufe alle Knoten im Graphen und suche den nächsten Knoten
-    for node, data in graph.nodes(data=True):
-        if 'pos' in data:
-            node_point = data['pos']
-            distance = point.distance(node_point)
-            if distance < min_distance:
-                min_distance = distance
-                nearest_node = node
-        else:
-            print(f"Fehler: Knoten {node} hat kein 'pos'-Attribut.")
+def generate_street_based_mst(point_set, street_layer, provider, distance_threshold=20):
+    street_graph = create_graph_from_layer(street_layer, point_set, distance_threshold)
 
-    return nearest_node
-
-def generate_street_based_mst(point_set, street_layer, provider):
-    
-    # Erstelle einen NetworkX Graphen basierend auf dem Straßenlayer
-    street_graph = create_graph_from_layer(street_layer, point_set)
-
-    # create the MST-graph
     g = nx.Graph()
 
-    # Zuweisen von Punkten zu den nächsten Straßenknoten
     nearest_nodes = set()
     for point in point_set:
-        point_geom = QgsGeometry.fromPointXY(point)
-        nearest_node = find_nearest_node(point, street_graph)
-        nearest_nodes.add(QgsPointXY(nearest_node[0], nearest_node[1]))
-        nearest_node_geom = QgsGeometry.fromPointXY(QgsPointXY(nearest_node[0], nearest_node[1]))
+        nearest_node, node_distance = find_nearest_node_within_threshold(point, street_graph, distance_threshold)
+        if nearest_node:
+            nearest_node_as_point = QgsPointXY(nearest_node[0], nearest_node[1])
+            nearest_nodes.add(nearest_node_as_point)
+            g.add_edge(tuple(point), tuple(nearest_node_as_point), weight=node_distance)
 
-        perpendicular_line = point_geom.shortestLine(nearest_node_geom)
-        
-        new_line = QgsFeature()
-        new_line.setGeometry(perpendicular_line)
-        provider.addFeatures([new_line])
+    # Erstelle den MST nur mit den nächstgelegenen Knotenpunkten
+    mst_graph = nx.minimum_spanning_tree(g)
+
+    for edge in mst_graph.edges(data=True):
+        start_point, end_point = edge[0], edge[1]
+        # Überprüfen Sie, ob die Kante bereits existiert, um Doppelverbindungen zu vermeiden
+        if not g.has_edge(start_point, end_point):
+            line_feature = QgsFeature()
+            line_feature.setGeometry(QgsGeometry.fromPolylineXY([QgsPointXY(*start_point), QgsPointXY(*end_point)]))
+            provider.addFeatures([line_feature])
 
     all_mst_points = sorted(point_set.union(nearest_nodes), key=lambda p: (p.x(), p.y()))
 
