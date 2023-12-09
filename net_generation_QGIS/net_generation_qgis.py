@@ -1,12 +1,11 @@
-from qgis.core import (QgsFeature, QgsField, QgsGeometry, QgsPointXY, QgsProject, QgsRasterLayer, QgsVectorLayer,
-                       QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsVectorFileWriter)
-
+from qgis.core import (QgsProject, QgsVectorLayer, QgsVectorFileWriter)
 import os
 
 from import_and_create_layers_qgis import *
 
 #from net_generation_qgis_MST import *
 from net_generation_qgis_street_MST import *
+
 
 def load_layers(osm_street_layer_geojson_file, data_csv_file_name, x_coord, y_coord):
     """

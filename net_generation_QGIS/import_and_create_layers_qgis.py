@@ -1,6 +1,6 @@
 from qgis.PyQt.QtCore import QVariant
-from qgis.core import (QgsFeature, QgsField, QgsGeometry, QgsPointXY, QgsProject, QgsRasterLayer, QgsVectorLayer,
-                       QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform,QgsVectorFileWriter)
+from qgis.core import (QgsFeature, QgsField, QgsGeometry, QgsPointXY, 
+                       QgsProject, QgsRasterLayer, QgsVectorLayer, QgsVectorFileWriter)
 
 import math
 

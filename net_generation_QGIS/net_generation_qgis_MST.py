@@ -1,6 +1,4 @@
-from qgis.PyQt.QtCore import QVariant
-from qgis.core import (QgsFeature, QgsField, QgsGeometry, QgsPointXY, QgsProject, QgsRasterLayer, QgsVectorLayer,
-                       QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform,QgsVectorFileWriter)
+from qgis.core import (QgsFeature, QgsGeometry, QgsPointXY)
 
 import networkx as nx
 from import_and_create_layers_qgis import create_offset_points
