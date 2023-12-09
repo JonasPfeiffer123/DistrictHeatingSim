@@ -200,15 +200,15 @@ def auslegung_erzeuger(time_steps, calc1, calc2, qext_kW, return_temp_circ_pump,
 calc1, calc2 = 0, 96 # min: 0; max: 35040
 filename = 'results_time_series_net.csv'
 
-gdf_vl = gpd.read_file('net_generation_QGIS/geoJSON_Vorlauf.geojson')
-gdf_rl = gpd.read_file('net_generation_QGIS/geoJSON_Rücklauf.geojson')
-gdf_HAST = gpd.read_file('net_generation_QGIS/geoJSON_HAST.geojson')
-gdf_WEA = gpd.read_file('net_generation_QGIS/geoJSON_Erzeugeranlagen.geojson')
+#gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Görlitz 2/Vorlauf.geojson')
+#gdf_rl = gpd.read_file('net_generation_QGIS/Beispiel Görlitz 2/Rücklauf.geojson')
+#gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Görlitz 2/HAST.geojson')
+#gdf_WEA = gpd.read_file('net_generation_QGIS/Beispiel Görlitz 2/Erzeugeranlagen.geojson')
 
-#gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Projekt/Vorlauf.geojson')
-#gdf_rl = gpd.read_file('net_generation_QGIS/Beispiel Projekt/Rücklauf.geojson')
-#gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Projekt/HAST.geojson')
-#gdf_WEA = gpd.read_file('net_generation_QGIS/Beispiel Projekt/Erzeugeranlagen.geojson')
+gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Vorlauf.geojson')
+gdf_rl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Rücklauf.geojson')
+gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/HAST.geojson')
+gdf_WEA = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Erzeugeranlagen.geojson')
 
 time_15min, time_steps, net, net_results = thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gdf_HAST, gdf_WEA)
 
