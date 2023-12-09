@@ -200,15 +200,15 @@ def auslegung_erzeuger(time_steps, calc1, calc2, qext_kW, return_temp_circ_pump,
 calc1, calc2 = 0, 96 # min: 0; max: 35040
 filename = 'results_time_series_net.csv'
 
-#gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Görlitz 2/Vorlauf.geojson')
-#gdf_rl = gpd.read_file('net_generation_QGIS/Beispiel Görlitz 2/Rücklauf.geojson')
-#gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Görlitz 2/HAST.geojson')
-#gdf_WEA = gpd.read_file('net_generation_QGIS/Beispiel Görlitz 2/Erzeugeranlagen.geojson')
+gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Görlitz/Vorlauf.geojson')
+gdf_rl = gpd.read_file('net_generation_QGIS/Beispiel Görlitz/Rücklauf.geojson')
+gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Görlitz/HAST.geojson')
+gdf_WEA = gpd.read_file('net_generation_QGIS/Beispiel Görlitz/Erzeugeranlagen.geojson')
 
-gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Vorlauf.geojson')
-gdf_rl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Rücklauf.geojson')
-gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/HAST.geojson')
-gdf_WEA = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Erzeugeranlagen.geojson')
+#gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Vorlauf.geojson')
+#gdf_rl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Rücklauf.geojson')
+#gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/HAST.geojson')
+#gdf_WEA = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Erzeugeranlagen.geojson')
 
 time_15min, time_steps, net, net_results = thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gdf_HAST, gdf_WEA)
 
@@ -223,3 +223,6 @@ mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow
 plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
 
 auslegung_erzeuger(time_steps, calc1, calc2, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
+
+plt.plot(time_steps, deltap_circ_pump)
+plt.show()

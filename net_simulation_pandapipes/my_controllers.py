@@ -1,5 +1,48 @@
 from pandapower.control.basic_controller import BasicCtrl
+
+class WorstPointPressureController(BasicCtrl):
+    def __init__(self, net, worst_point_idx, circ_pump_pressure_idx=0, target_dp_min_bar=1, tolerance=0.1, proportional_gain=0.2,**kwargs):
+        super(WorstPointPressureController, self).__init__(net, **kwargs)
+        self.heat_exchanger_idx = worst_point_idx
+        self.flow_control_idx = worst_point_idx
+        self.circ_pump_pressure_idx = circ_pump_pressure_idx
+        self.target_dp_min_bar = target_dp_min_bar
+        self.tolerance = tolerance
+        self.proportional_gain = proportional_gain
+
+    def time_step(self, net, time_step):
+        return time_step
+
+    def is_converged(self, net):
+        current_dp_bar = net.res_flow_control["p_from_bar"].at[self.flow_control_idx] - net.res_heat_exchanger["p_to_bar"].at[self.heat_exchanger_idx]
+
+        # check, if the temperature converged
+        dp_within_tolerance = abs(current_dp_bar - self.target_dp_min_bar) < self.tolerance
+
+        if dp_within_tolerance == True:
+            return dp_within_tolerance
     
+
+    def control_step(self, net):
+        current_dp_bar = net.res_flow_control["p_from_bar"].at[self.flow_control_idx] - net.res_heat_exchanger["p_to_bar"].at[self.heat_exchanger_idx]
+        dp_error = self.target_dp_min_bar - current_dp_bar
+
+        current_plift_bar = net.circ_pump_pressure["plift_bar"].at[self.circ_pump_pressure_idx]
+        
+        plift_adjustment = dp_error * self.proportional_gain        
+
+        new_plift = current_plift_bar + plift_adjustment
+        
+        print(current_dp_bar)
+        print(dp_error)
+        print(current_plift_bar)
+        print(plift_adjustment)
+        print(new_plift)
+        net.circ_pump_pressure["plift_bar"].at[self.circ_pump_pressure_idx] = new_plift
+        
+        return super(WorstPointPressureController, self).control_step(net)
+    
+
 class ReturnTemperatureController(BasicCtrl):
     def __init__(self, net, heat_exchanger_idx, target_temperature, tolerance=2, lower_proportional_gain=0.0005, higher_proportional_gain=0.0025, min_mass_flow=0.005, max_mass_flow=1,**kwargs):
         super(ReturnTemperatureController, self).__init__(net, **kwargs)

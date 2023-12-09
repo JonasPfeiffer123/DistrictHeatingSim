@@ -7,13 +7,14 @@ import geopandas as gpd
 import pandas as pd
 
 import net_simulation_pandapipes.net_simulation_calculation as nsp
-from net_simulation_pandapipes.my_controllers import ReturnTemperatureController
+from net_simulation_pandapipes.net_simulation_calculation import calculate_worst_point
+from net_simulation_pandapipes.my_controllers import ReturnTemperatureController, WorstPointPressureController
 
 def initialize_net(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA):
     pipe_creation_mode = "type"
     # pipe_creation_mode = "diameter"
 
-    qext_w = 60000
+    qext_w = 200000
 
     # net generation from gis data
     net = nsp.create_network(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, pipe_creation_mode)
@@ -45,6 +46,10 @@ def time_series_net(net, temperature_target,  qext_w_profiles, calc1, calc2):
         T_controller = ReturnTemperatureController(net, heat_exchanger_idx=i, target_temperature=temperature_target)
         net.controller.loc[len(net.controller)] = [T_controller, True, 0, 0, False, False]
 
+    dp_min, idx_dp_min = calculate_worst_point(net)
+    dp_controller = WorstPointPressureController(net, idx_dp_min)
+    net.controller.loc[len(net.controller)] = [dp_controller, True, 0, 0, False, False]
+    
     log_variables = [('res_junction', 'p_bar'), ('res_junction', 't_k'),
                      ('heat_exchanger', 'qext_w'), ('res_heat_exchanger', 'v_mean_m_per_s'), 
                      ('res_heat_exchanger', 't_from_k'), ('res_heat_exchanger', 't_to_k'), 
