@@ -42,15 +42,10 @@ def generate_and_export_layers(layer_points, layer_lines, layer_WEA, fixed_angle
     vl_erzeugeranlagen, provider_erzeugeranlagen = create_layer("Erzeugeranlagen", "Linestring", crs)
 
     # Generieren von Netzwerken
-    print("HI")
     generate_lines(layer_points, fixed_distance, fixed_angle, provider_hast)
-    print("HI")
     generate_lines(layer_WEA, fixed_distance, fixed_angle, provider_erzeugeranlagen)
-    print("HI")
     generate_network_fl(layer_points, layer_WEA, provider_vl, layer_lines)
-    print("HI")
     generate_network_rl(layer_points, layer_WEA, fixed_distance, fixed_angle, provider_rl, layer_lines)
-    print("HI")
 
     # Commit und Export der Änderungen
     commit_and_export_layers([vl_hast, vl_rl, vl_vl, vl_erzeugeranlagen])

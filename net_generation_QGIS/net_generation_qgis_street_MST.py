@@ -179,15 +179,12 @@ def generate_rl_layer_points(layer, distance, angle_degrees, crs="EPSG:25833"):
     return point_layer
 
 def create_graph_from_layer(street_layer):
-    print(street_layer)
     G = nx.Graph()
     
     for feat in street_layer.getFeatures():
         geom = feat.geometry()
         
-        # Überprüfe den Geometrietyp und verarbeite nur Liniengeometrien
         if geom.type() == QgsWkbTypes.LineGeometry:
-            # Extrahiere die Knotenpunkte aus der Liniengeometrie
             if geom.isMultipart():
                 lines = geom.asMultiPolyline()
             else:
@@ -199,57 +196,61 @@ def create_graph_from_layer(street_layer):
                     end = line[i + 1]
                     
                     # Füge die Knoten und Kanten zum Graphen hinzu
-                    G.add_node(start, pos=(start.x(), start.y()))
-                    G.add_node(end, pos=(end.x(), end.y()))
-                    G.add_edge(start, end)
+                    G.add_node(tuple(start), pos=start)  # Verwenden von Tupeln als Knoten
+                    G.add_node(tuple(end), pos=end)
+                    G.add_edge(tuple(start), tuple(end))
     
     return G
 
 def find_nearest_node(point, graph):
-    print(graph)
     min_distance = float('inf')
     nearest_node = None
 
     # Durchlaufe alle Knoten im Graphen und suche den nächsten Knoten
     for node, data in graph.nodes(data=True):
-        # Stelle sicher, dass die 'x' und 'y' Koordinaten vorhanden sind
-        if 'x' in data and 'y' in data:
-            node_point = QgsPointXY(data['x'], data['y'])
+        if 'pos' in data:
+            node_point = data['pos']
             distance = point.distance(node_point)
             if distance < min_distance:
                 min_distance = distance
                 nearest_node = node
         else:
-            # Hier könnten Sie eine Fehlermeldung ausgeben oder eine andere Maßnahme ergreifen
-            print(f"Fehler: Knoten {node} hat keine 'x' oder 'y' Koordinaten.")
+            print(f"Fehler: Knoten {node} hat kein 'pos'-Attribut.")
 
     return nearest_node
 
 def generate_street_based_mst(point_set, street_layer, provider):
     # Erstelle einen NetworkX Graphen basierend auf dem Straßenlayer
     street_graph = create_graph_from_layer(street_layer)
-
+        
     # Zuweisen von Punkten zu den nächsten Straßenknoten
     point_to_node = {}
     for point in point_set:
+        point_geom = QgsGeometry.fromPointXY(point)
         nearest_node = find_nearest_node(point, street_graph)
+        nearest_node_geom = QgsGeometry.fromPointXY(QgsPointXY(nearest_node[0], nearest_node[1]))
+
+        perpendicular_line = point_geom.shortestLine(nearest_node_geom)
+        
+        new_line = QgsFeature()
+        new_line.setGeometry(perpendicular_line)
+        provider.addFeatures([new_line])
+        
         point_to_node[point] = nearest_node
 
     # Erstellen des MST unter Verwendung der nächsten Straßenknoten
     mst_graph = nx.minimum_spanning_tree(street_graph)
-
-    # Hinzufügen der Features zum Provider
+    
     for edge in mst_graph.edges(data=True):
-        start_coord = edge[0]
-        end_coord = edge[1]
-        start_point = QgsPointXY(*street_graph.nodes[start_coord]['pos'])
-        end_point = QgsPointXY(*street_graph.nodes[end_coord]['pos'])
-        distance = edge[2]['weight']
+        start_coord, end_coord = edge[0], edge[1]
+        
+        if start_coord in street_graph.nodes and end_coord in street_graph.nodes:
+            start_point = QgsPointXY(*street_graph.nodes[start_coord]['pos'])
+            end_point = QgsPointXY(*street_graph.nodes[end_coord]['pos'])
         
         # Erstelle ein Feature für die Kante
         line_feature = QgsFeature()
         line_feature.setGeometry(QgsGeometry.fromPolylineXY([start_point, end_point]))
-        line_feature.setAttributes([distance])
         provider.addFeatures([line_feature])
 
 def layer_to_point_set(layer):
