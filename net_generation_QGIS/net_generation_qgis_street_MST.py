@@ -1,6 +1,6 @@
 from qgis.PyQt.QtCore import QVariant
 from qgis.core import (QgsFeature, QgsField, QgsGeometry, QgsPointXY, QgsProject, QgsRasterLayer, QgsVectorLayer,
-                       QgsWkbTypes, QgsVectorFileWriter)
+                       QgsWkbTypes, QgsVectorFileWriter, QgsSpatialIndex)
 
 import networkx as nx
 import math
@@ -156,50 +156,74 @@ def process_layer_points(layer, provider, layer_lines):
     return street_end_points
 
 
-def generate_rl_layer_points(layer, distance, angle_degrees, crs="EPSG:25833"):
-    # Erstelle einen neuen Vektorlayer für die Offset-Punkte
-    point_layer = QgsVectorLayer("Point?crs=" + crs, "Offset Points", "memory")
-    pr = point_layer.dataProvider()
-    pr.addAttributes([QgsField("id", QVariant.Int)])
-    point_layer.updateFields()
-
-    # Füge die Offset-Punkte als Features hinzu
-    id_counter = 0
+# generate the offset points and perpendicular lines for return lines
+def generate_return_lines(layer, distance, angle_degrees, provider, layer_lines):
+    street_end_points = set()
     for point_feat in layer.getFeatures():
         original_point = point_feat.geometry().asPoint()
+        
         offset_point = create_offset_points(original_point, distance, angle_degrees)
-        offset_feature = QgsFeature()
-        offset_feature.setGeometry(QgsGeometry.fromPointXY(offset_point))
-        offset_feature.setAttributes([id_counter])
-        pr.addFeatures([offset_feature])
-        id_counter += 1
+        offset_point_geom = QgsGeometry.fromPointXY(offset_point)
+        
+        nearest_line_feat = find_nearest_line(offset_point_geom, layer_lines)
+        
+        if nearest_line_feat:
+            nearest_line_geom = nearest_line_feat.geometry()
+            street_end_point = create_perpendicular_line(offset_point_geom, nearest_line_geom, provider)
+            street_end_points.add(street_end_point)
+    return street_end_points
 
-    # Aktualisiere den Layer
-    point_layer.updateExtents()
-    return point_layer
-
-def create_graph_from_layer(street_layer):
-    G = nx.Graph()
-    
+def calculate_distance_to_nearest_line(point, street_layer):
+    min_distance = float('inf')
     for feat in street_layer.getFeatures():
         geom = feat.geometry()
-        
+        distance = geom.distance(QgsGeometry.fromPointXY(point))
+        min_distance = min(min_distance, distance)
+    return min_distance
+
+def create_graph_from_layer(street_layer, point_set, threshold=50):
+    G = nx.Graph()
+    street_index = QgsSpatialIndex()  # räumlicher Index für Straßen
+    point_index = QgsSpatialIndex()  # räumlicher Index für Punkte
+    point_features = []
+
+    # Erstelle Features für jeden Punkt im point_set und füge sie zum Punkt-Index hinzu
+    for idx, point in enumerate(point_set):
+        feat = QgsFeature(idx)
+        feat.setGeometry(QgsGeometry.fromPointXY(point))
+        point_features.append(feat)
+        point_index.insertFeature(feat)
+
+    # Füge alle Liniengeometrien zum Straßen-Index hinzu
+    for feat in street_layer.getFeatures():
+        street_index.insertFeature(feat)
+
+    for feat in street_layer.getFeatures():
+        geom = feat.geometry()
         if geom.type() == QgsWkbTypes.LineGeometry:
             if geom.isMultipart():
                 lines = geom.asMultiPolyline()
             else:
                 lines = [geom.asPolyline()]
-            
+
             for line in lines:
                 for i in range(len(line) - 1):
-                    start = line[i]
-                    end = line[i + 1]
-                    
-                    # Füge die Knoten und Kanten zum Graphen hinzu
-                    G.add_node(tuple(start), pos=start)  # Verwenden von Tupeln als Knoten
-                    G.add_node(tuple(end), pos=end)
-                    G.add_edge(tuple(start), tuple(end))
-    
+                    start = QgsPointXY(*line[i])
+                    end = QgsPointXY(*line[i+1])
+
+                    # Finde den nächstgelegenen Punkt zum Linienstart und -ende
+                    start_nearest_ids = point_index.nearestNeighbor(start, 1)
+                    end_nearest_ids = point_index.nearestNeighbor(end, 1)
+                    start_nearest_point = point_features[start_nearest_ids[0]].geometry().asPoint()
+                    end_nearest_point = point_features[end_nearest_ids[0]].geometry().asPoint()
+
+                    # Prüfe, ob der Start- oder Endpunkt innerhalb der Distanzschwelle liegt
+                    if (start.distance(start_nearest_point) <= threshold or
+                        end.distance(end_nearest_point) <= threshold):
+                        G.add_node(tuple(start), pos=start)
+                        G.add_node(tuple(end), pos=end)
+                        G.add_edge(tuple(start), tuple(end))
+
     return G
 
 def find_nearest_node(point, graph):
@@ -219,9 +243,25 @@ def find_nearest_node(point, graph):
 
     return nearest_node
 
+
+def build_spatial_index(street_layer):
+    index = QgsSpatialIndex()
+    for feat in street_layer.getFeatures():
+        index.insertFeature(feat)
+    return index
+
+def find_nearest_street_nodes(point_geom, street_layer, spatial_index, threshold):
+    nearest_ids = spatial_index.nearestNeighbor(point_geom.asPoint(), 10)  # Die 10 nächsten Knoten finden
+    nearest_features = [street_layer.getFeature(id) for id in nearest_ids]
+    nearest_nodes_within_threshold = [
+        feat for feat in nearest_features if feat.geometry().distance(point_geom) <= threshold
+    ]
+    return nearest_nodes_within_threshold
+
 def generate_street_based_mst(point_set, street_layer, provider):
+    
     # Erstelle einen NetworkX Graphen basierend auf dem Straßenlayer
-    street_graph = create_graph_from_layer(street_layer)
+    street_graph = create_graph_from_layer(street_layer, point_set)
         
     # Zuweisen von Punkten zu den nächsten Straßenknoten
     point_to_node = {}
@@ -253,36 +293,26 @@ def generate_street_based_mst(point_set, street_layer, provider):
         line_feature.setGeometry(QgsGeometry.fromPolylineXY([start_point, end_point]))
         provider.addFeatures([line_feature])
 
-def layer_to_point_set(layer):
-    point_set = set()
-    for feat in layer.getFeatures():
-        geom = feat.geometry()
-        if geom.type() == QgsWkbTypes.PointGeometry:
-            if geom.isMultipart():
-                points = geom.asMultiPoint()
-            else:
-                points = [geom.asPoint()]
-            for point in points:
-                point_set.add(QgsPointXY(point))
-    return point_set
-
-def merge_point_sets(set1, set2):
-    return set1.union(set2)
-
-def generate_network_fl(layer_points_fl, layer_wea_fl, provider , layer_lines):
-    point_set_fl = layer_to_point_set(layer_points_fl)
-    point_set_wea_fl = layer_to_point_set(layer_wea_fl)
-    merged_set_fl = merge_point_sets(point_set_fl, point_set_wea_fl)
-    generate_street_based_mst(merged_set_fl, layer_lines, provider)
+# generate network for forward lines
+def generate_network_fl(layer_points_fl, layer_wea, provider , street_layer):
+    # Verwenden Sie die Funktion für beide Layer
+    points_end_points = process_layer_points(layer_points_fl, provider, street_layer)
+    wea_end_points = process_layer_points(layer_wea, provider, street_layer)
+    
+    # Vereinigen Sie die Endpunkte und sortieren Sie sie
+    all_end_points = sorted(points_end_points.union(wea_end_points), key=lambda p: (p.x(), p.y()))
+    
+    generate_street_based_mst(all_end_points, street_layer, provider)
 
 
 # generate network for return lines
-def generate_network_rl(layer_points_fl, layer_wea_fl, fixed_distance_rl, fixed_angle_rl, provider, layer_lines):
-    layer_points_rl = generate_rl_layer_points(layer_points_fl, fixed_distance_rl, fixed_angle_rl)
-    layer_wea_rl = generate_rl_layer_points(layer_wea_fl, fixed_distance_rl, fixed_angle_rl)
+def generate_network_rl(layer_points_rl, layer_wea, fixed_distance_rl, fixed_angle_rl, provider, street_layer):
+    # Verwenden Sie die Funktion für beide Layer
+    # Generate return lines for both layers
+    points_end_points = generate_return_lines(layer_points_rl, fixed_distance_rl, fixed_angle_rl, provider, street_layer)
+    points_end_wea = generate_return_lines(layer_wea, fixed_distance_rl, fixed_angle_rl, provider, street_layer)
     
-    point_set_rl = layer_to_point_set(layer_points_rl)
-    point_set_wea_rl = layer_to_point_set(layer_wea_rl)
-    merged_set_rl = merge_point_sets(point_set_rl, point_set_wea_rl)
+    # Vereinigen Sie die Endpunkte und sortieren Sie sie
+    all_end_points = sorted(points_end_points.union(points_end_wea), key=lambda p: (p.x(), p.y()))
     
-    generate_street_based_mst(merged_set_rl, layer_lines, provider)
+    generate_street_based_mst(all_end_points, street_layer, provider)

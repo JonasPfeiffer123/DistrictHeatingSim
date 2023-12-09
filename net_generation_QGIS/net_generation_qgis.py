@@ -1,7 +1,10 @@
 from qgis.core import (QgsFeature, QgsField, QgsGeometry, QgsPointXY, QgsProject, QgsRasterLayer, QgsVectorLayer,
                        QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsVectorFileWriter)
-from net_generation_qgis_street_MST import *
+
 import os
+
+#from net_generation_qgis_MST import *
+from net_generation_qgis_street_MST import *
 
 def load_layers(osm_street_layer_geojson_file, data_csv_file_name, x_coord, y_coord):
     """
@@ -87,6 +90,8 @@ def load_and_style_layer(file_path, layer_name, color):
 
 # Ausgabedateiname für GeoJSON-Datei
 osm_street_layer_geojson_file_name = "C:/Users/username/heating_network_generation/net_generation_QGIS/Beispiel Zittau/Straßen.geojson"
+#osm_street_layer_geojson_file_name = "C:/Users/username/heating_network_generation/net_generation_QGIS/Beispiel Zittau/Straßen.geojson"
+#osm_street_layer_geojson_file_name = "C:/Users/username/heating_network_generation/net_generation_QGIS/Beispiel Görlitz/Straßen.geojson"
 #osm_street_layer_geojson_file_name = "C:/Users/username/heating_network_generation/net_generation_QGIS/Beispiel Görlitz/Straßen.geojson"
 
 # data points csv file path

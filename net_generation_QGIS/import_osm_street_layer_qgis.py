@@ -53,7 +53,7 @@ def download_osm_street_data(query, output_filename):
 # Hier setzen Sie Ihre Overpass-Abfrage ein
 overpass_query = """
 [out:json][timeout:25];
-area[name="Görlitz"]->.area_0;
+area[name="Zittau"]->.area_0;
 (
   node["highway"="primary"](area.area_0);
   node["highway"="secondary"](area.area_0);
@@ -79,7 +79,7 @@ out body;
 """
 
 # Ausgabedateiname für GeoJSON-Datei
-output_geojson_file = "C:/Users/username/heating_network_generation/net_generation_QGIS/Beispiel Projekt/Straßen.geojson"
+output_geojson_file = "C:/Users/username/heating_network_generation/net_generation_QGIS/Beispiel Zittau/Straßen.geojson"
 
 # Download der Daten und Speichern als GeoJSON
 download_osm_street_data(overpass_query, output_geojson_file)
