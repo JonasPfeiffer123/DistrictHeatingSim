@@ -182,8 +182,7 @@ def generate_mst(all_end_points, provider):
     for point in all_end_points:
         for other_point in all_end_points:
             if point != other_point:
-                distance = point.distance(other_point)
-                g.add_edge((point.x(), point.y()), (other_point.x(), other_point.y()), weight=distance)
+                g.add_edge((point.x(), point.y()), (other_point.x(), other_point.y()), weight=point.distance(other_point))
     
     # calculate the MST
     mst = nx.minimum_spanning_tree(g)
