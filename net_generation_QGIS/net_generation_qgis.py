@@ -3,8 +3,9 @@ import os
 
 from import_and_create_layers_qgis import *
 
-#from net_generation_qgis_MST import *
-from net_generation_qgis_street_MST import *
+#from qgis_simple_MST import *
+#from qgis_street_MST import *
+from qgis_advanced_street_MST import *
 
 
 def load_layers(osm_street_layer_geojson_file, data_csv_file_name, x_coord, y_coord):
