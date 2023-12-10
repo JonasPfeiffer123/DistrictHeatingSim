@@ -1,0 +1,279 @@
+import numpy as np
+import pandas as pd
+from scipy.optimize import minimize
+from scipy.interpolate import RegularGridInterpolator
+import matplotlib.pyplot as plt
+from math import pi
+
+class HeatProducer:
+    def __init__(self, name, max_capacity, min_load, fuel_cost):
+        self.name = name
+        self.max_capacity = max_capacity
+        self.min_load = min_load
+        self.fuel_cost = fuel_cost
+
+    def calculate(self, load):
+        raise NotImplementedError("Subclass must implement this method")
+
+class HeatPump(HeatProducer):
+    def __init__(self, name, max_capacity, min_load, fuel_cost, source_temp, COP_data):
+        super().__init__(name, max_capacity, min_load, fuel_cost)
+        self.source_temp = source_temp
+        self.COP_data = COP_data
+
+    def calculate_COP(self, VLT_L):
+        values = self.COP_data
+        row_header = values[0, 1:]
+        col_header = values[1:, 0]
+        values = values[1:, 1:]
+        f = RegularGridInterpolator((col_header, row_header), values, method='linear')
+        VLT_L = np.minimum(VLT_L, 75)
+        QT_array = np.full_like(VLT_L, self.source_temp)
+        COP_L = f(np.column_stack((QT_array, VLT_L)))
+        return COP_L
+
+class WasteHeatPump(HeatPump):
+    def __init__(self, name, max_capacity, min_load, fuel_cost, source_temp, COP_data, cooling_load):
+        super().__init__(name, max_capacity, min_load, fuel_cost, source_temp, COP_data)
+        self.cooling_load = cooling_load
+
+    def calculate(self, load, cooling_load, VLT_L):
+        if cooling_load == 0:
+            return 0, 0, np.zeros_like(load), np.zeros_like(VLT_L), 0
+        
+        COP_L = self.calculate_COP(VLT_L)
+        heat_output_L = cooling_load / (1 - (1 / COP_L))
+        el_power_L = heat_output_L - cooling_load
+
+        mask = load >= heat_output_L
+        heat_output_sum = np.sum(np.where(mask, heat_output_L / 1000, 0))
+        el_power_sum = np.sum(np.where(mask, el_power_L / 1000, 0))
+        usage_hours = np.sum(mask)
+
+        max_heat_output = np.max(heat_output_L)
+
+        return heat_output_sum, el_power_sum, heat_output_L, el_power_L, max_heat_output, usage_hours
+
+class Geothermal(HeatPump):
+    def __init__(self, name, max_capacity, min_load, fuel_cost, source_temp, COP_data, area, borehole_depth, spec_drilling_cost=120, spec_extraction_power=50, full_usage_hours=2400, probe_distance=10):
+        super().__init__(name, max_capacity, min_load, fuel_cost, source_temp, COP_data)
+        self.area = area
+        self.borehole_depth = borehole_depth
+        self.spec_drilling_cost = spec_drilling_cost
+        self.spec_extraction_power = spec_extraction_power
+        self.full_usage_hours = full_usage_hours
+        self.probe_distance = probe_distance
+
+    def calculate(self, load, VLT_L):
+        COP_L = self.calculate_COP(VLT_L)
+
+        if self.area == 0 or self.borehole_depth == 0:
+            return 0, 0, np.zeros_like(load), np.zeros_like(VLT_L), 0, 0
+
+        probe_area = (pi/4) * (2*self.probe_distance)**2
+        number_of_probes = round(self.area / probe_area, 0)  # 22
+
+        extraction_power_2400 = self.borehole_depth * self.spec_extraction_power * number_of_probes / 1000
+        # kW for 2400 h, 22 probes, 50 W/m: 220 kW
+        extracted_heat_amount = extraction_power_2400 * self.full_usage_hours / 1000  # MWh
+        investment_costs_probes = self.borehole_depth * self.spec_drilling_cost * number_of_probes
+
+        # The actual number of operating hours of the heat pump depends on the heat output,
+        # which is related to the extraction power from the assumed number of operating hours
+        B_min = 1
+        B_max = 8760
+        tolerance = 0.5
+        while B_max - B_min > tolerance:
+            B = (B_min + B_max) / 2
+            # Calculate the extraction power
+            extraction_power = extracted_heat_amount * 1000 / B  # kW
+            # Calculate the heat output and electrical power
+            heat_output_L = extraction_power / (1 - (1 / COP_L))
+            electrical_power_L = heat_output_L - extraction_power
+
+            # Determine the portion that is actually used
+            portion = np.minimum(1, load / heat_output_L)
+
+            # Calculate the actual values
+            actual_heat_output_L = heat_output_L * portion
+            actual_electrical_power_L = electrical_power_L * portion
+            actual_extraction_power_L = actual_heat_output_L - actual_electrical_power_L
+            extracted_heat = np.sum(actual_extraction_power_L) / 1000
+            heat_amount = np.sum(actual_heat_output_L) / 1000
+            electricity_demand = np.sum(actual_electrical_power_L) / 1000
+            operating_hours = np.count_nonzero(actual_heat_output_L)
+
+            # If there is no usage, the result is 0
+            if operating_hours == 0:
+                actual_heat_output_L = np.array([0])
+                actual_electrical_power_L = np.array([0])
+
+            if extracted_heat > extracted_heat_amount:
+                B_min = B
+            else:
+                B_max = B
+
+        max_heat_output = max(actual_heat_output_L)
+        COP = heat_amount / electricity_demand
+
+        return heat_amount, electricity_demand, actual_heat_output_L, actual_electrical_power_L, max_heat_output, investment_costs_probes
+
+class CHP(HeatProducer):
+    def __init__(self, name, max_capacity, min_load, fuel_cost, efficiency):
+        super().__init__(name, max_capacity, min_load, fuel_cost)
+        self.efficiency = efficiency
+
+    def calculate(self, load, electrical_efficiency):
+        electrical_output_CHP = self.max_capacity*electrical_efficiency
+        heat_output_CHP_L = np.where(load >= self.max_capacity, self.max_capacity, load)
+        electrical_output_CHP_L = np.where(load >= self.max_capacity, electrical_output_CHP,
+                                           electrical_output_CHP * (load / self.max_capacity))
+        
+        heat_output_CHP_sum = np.sum(heat_output_CHP_L / 1000)
+        electrical_output_CHP_sum = np.sum(electrical_output_CHP_L / 1000)
+
+        fuel_demand_sum = (heat_output_CHP_sum + electrical_output_CHP_sum) / self.efficiency
+
+        return self.max_capacity, heat_output_CHP_L, electrical_output_CHP_L, heat_output_CHP_sum, \
+                electrical_output_CHP_sum, fuel_demand_sum
+
+class BiomassBoiler(HeatProducer):
+    def __init__(self, name, max_capacity, min_load, fuel_cost, efficiency):
+        super().__init__(name, max_capacity, min_load, fuel_cost)
+        self.efficiency = efficiency
+
+    def calculate(self, load):
+        heat_output_L = np.where(load >= self.max_capacity, self.max_capacity, load)
+        total_heat= np.sum(heat_output_L / 1000)
+        fuel_demand_sum = total_heat / self.efficiency
+        return total_heat, heat_output_L, fuel_demand_sum
+
+class GasBoiler(HeatProducer):
+    def __init__(self, name, max_capacity, min_load, fuel_cost, efficiency):
+        super().__init__(name, max_capacity, min_load, fuel_cost)
+        self.efficiency = efficiency
+
+    def calculate(self, load):
+        generated_heat_L = np.maximum(load, 0)
+        total_heat = np.sum(generated_heat_L) / 1000
+        fuel_demand_sum = total_heat / self.efficiency
+
+        return total_heat, generated_heat_L, fuel_demand_sum
+
+COP_data = np.loadtxt('heat_generators/Kennlinien WP.csv', delimiter=';')
+heat_pump = HeatPump("Heat Pump", 100, 0.1, 0.2, 5, COP_data)
+VLT_L = np.array([70, 65, 60])
+COP_L = heat_pump.calculate_COP(VLT_L)
+print(COP_L)
+
+waste_heat_pump = WasteHeatPump("Waste Heat Pump", 100, 0.1, 0.2, 5, COP_data, 50)
+load = np.array([40, 50, 60])
+cooling_load = 50
+VLT_L = np.array([70, 65, 60])
+results = waste_heat_pump.calculate(load, cooling_load, VLT_L)
+print(results)
+
+geothermal = Geothermal("Geothermal", 100, 0.2, 0.3, 1000, 100, 120, 50, 2400, 10)
+load = np.array([40, 50, 60])
+VLT_L = np.array([70, 65, 60])
+results = geothermal.calculate(load, VLT_L)
+print(results)
+
+chp = CHP("CHP Unit", 150, 0.3, 0.85, 0.4)
+load = np.array([120, 130, 140])
+electrical_efficiency = 0.33
+results = chp.calculate(load, electrical_efficiency)
+print(results)
+
+biomass_boiler = BiomassBoiler("Biomass Boiler", 100, 0.5, 0.75, 0.25)
+load = np.array([80, 90, 100])
+results = biomass_boiler.calculate(load)
+print(results)
+
+gas_boiler = GasBoiler("Gas Boiler", 120, 0.4, 0.9, 0.3)
+load = np.array([110, 115, 120])
+results = gas_boiler.calculate(load)
+print(results)
+
+"""
+# Wärmeerzeuger initialisieren
+boiler = HeatProducer('Boiler', max_capacity=1000, min_load=0.4, efficiency=0.9, fuel_cost=0.05)
+heat_pump = HeatProducer('HeatPump', max_capacity=500, min_load=0.3, efficiency=3.5, fuel_cost=0.20)
+chp = HeatProducer('CHP', max_capacity=800, min_load=1, efficiency=0.85, fuel_cost=0.04)
+
+producers = [boiler, heat_pump, chp]
+
+# Jahreslastgang aus CSV-Datei laden
+load_profile = pd.read_csv('results_time_series_net.csv', delimiter=';', parse_dates=['Zeitpunkt'])
+load_profile.set_index('Zeitpunkt', inplace=True)
+
+# Funktion zur Berechnung der Betriebskosten eines Wärmeerzeugers
+def calculate_operational_cost(producer, load):
+    if load > producer.max_capacity:
+        return np.inf  # Kosten sind unendlich, falls die Last außerhalb der Kapazitätsgrenzen liegt
+    else:
+        return load / producer.efficiency * producer.fuel_cost
+
+# Optimierungsfunktion
+def optimize_load_distribution(load, producers):
+    # Zielfunktion: Gesamtkosten
+    def objective(x):
+        return sum([calculate_operational_cost(producer, load) for producer, load in zip(producers, x)])
+    
+    # Nebenbedingungen
+    constraints = [{'type': 'eq', 'fun': lambda x: sum(x) - load}]  # Die Summe der Lasten muss der Gesamtlast entsprechen
+    bounds = [(producer.min_capacity, producer.max_capacity) for producer in producers]  # Kapazitätsgrenzen
+
+    # Anfangswerte
+    initial_guess = [load / len(producers) for _ in producers]
+
+    result = minimize(objective, initial_guess, method='SLSQP', bounds=bounds, constraints=constraints)
+    return result.x if result.success else None
+
+# Hauptfunktion zur Ausführung der Optimierung
+def main(load_profile, producers):
+    yearly_heating_demand = np.sum(load_profile["Heizlast_Netz_kW"])
+    total_cost = 0
+    time_steps = []
+    load_distributions = {producer.name: [] for producer in producers}
+    costs = []
+
+    for time_step, row in load_profile.iterrows():
+        total_load = row['Heizlast_Netz_kW']
+        optimal_load_distribution = optimize_load_distribution(total_load, producers)
+
+        if optimal_load_distribution is not None:
+            step_cost = sum([calculate_operational_cost(producer, load) for producer, load in zip(producers, optimal_load_distribution)])
+            total_cost += step_cost
+
+            # Speichere die Lastverteilung und Kosten
+            for producer, load in zip(producers, optimal_load_distribution):
+                load_distributions[producer.name].append(load)
+            costs.append(step_cost/total_load)
+            time_steps.append(time_step)
+        else:
+            print(f"Zeitschritt {time_step}: Keine optimale Lösung gefunden.")
+
+    # Plot-Erstellung
+    plt.figure(figsize=(12, 6))
+    plt.subplot(2, 1, 1)
+    for producer in producers:
+        plt.plot(time_steps, load_distributions[producer.name], label=producer.name)
+    plt.title('Lastverteilung über das Jahr')
+    plt.ylabel('Last (kW)')
+    plt.legend()
+
+    plt.subplot(2, 1, 2)
+    plt.plot(time_steps, costs, label='Wärmegestehungskosten')
+    plt.title('Kosten über das Jahr')
+    plt.ylabel('Kosten in €/kWh')
+    plt.xlabel('Zeit')
+
+    plt.tight_layout()
+    plt.show()
+
+    print(f"Gesamtkosten für das Jahr: {total_cost:.3f} €")
+    print(f"Gesamtkosten pro kWh über das Jahr: {total_cost/yearly_heating_demand:.3f} €/kWh")
+
+if __name__ == "__main__":
+    main(load_profile, producers)"""
