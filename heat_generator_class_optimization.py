@@ -414,22 +414,20 @@ def Berechnung_Erzeugermix(time_steps, calc1, calc2, bruttofläche_STA, vs, Typ,
     
     return WGK_Gesamt, Jahreswärmebedarf, Last_L, data, tech_order, colors, Wärmemengen, WGK, Anteile
 
-def optimize_mix(initial_values, time_steps, calc1, calc2, initial_data, TRY, COP_data, Typ, Gaspreis, Strompreis, Holzpreis, BEW, tech_order):
+def optimize_mix(initial_values, time_steps, calc1, calc2, initial_data, TRY, COP_data, Typ, Fläche, Bohrtiefe, Temperatur_Geothermie, Gaspreis, Strompreis, Holzpreis, BEW, tech_order, Kühlleistung_Abwärme, Temperatur_Abwärme):
     def objective(variables):
         bruttofläche_STA, vs, P_BMK, th_Leistung_BHKW = variables
 
         WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, colors_L, Wärmemengen, WGK, Anteile = \
-            Berechnung_Erzeugermix(time_steps, calc1, calc2, bruttofläche_STA, vs, Typ, 0, 0, 0, P_BMK, Gaspreis, Strompreis, \
+            Berechnung_Erzeugermix(time_steps, calc1, calc2, bruttofläche_STA, vs, Typ, Fläche, Bohrtiefe, Temperatur_Geothermie, P_BMK, Gaspreis, Strompreis, \
                                         Holzpreis, initial_data, TRY, tech_order, BEW, \
-                                        th_Leistung_BHKW, 0, 0, COP_data)
+                                        th_Leistung_BHKW, Kühlleistung_Abwärme, Temperatur_Abwärme, COP_data)
         
-        print(bruttofläche_STA, vs, P_BMK, th_Leistung_BHKW)
-        print(WGK_Gesamt)
         return WGK_Gesamt
 
     # Optimierung durchführen
     #result = minimize(objective, initial_values, method='SLSQP', bounds=[(0, 1000), (0, 100), (0, 500), (0, 500)], options={'maxiter': 1000})
-    result = minimize(objective, initial_values, method='L-BFGS-B', bounds=[(0, 1000), (0, 100), (0, 500), (0, 500)], options={'maxiter': 1000})
+    result = minimize(objective, initial_values, method='L-BFGS-B', bounds=[(0, 1000), (0, 1000), (0, 1000), (0, 1000)], options={'maxiter': 1000})
     #result = minimize(objective, initial_values, method='TNC', bounds=[(0, 1000), (0, 100), (0, 500), (0, 500)], options={'maxiter': 1000})
 
     if result.success:
@@ -437,9 +435,11 @@ def optimize_mix(initial_values, time_steps, calc1, calc2, initial_data, TRY, CO
         optimized_WGK_Gesamt = objective(optimized_values)
         print(f"Optimierte Werte: {optimized_values}")
         print(f"Minimale Wärmegestehungskosten: {optimized_WGK_Gesamt:.2f} €/MWh")
+        return optimized_values
     else:
         print("Optimierung nicht erfolgreich")
         print(result.message)
+
 
 
 

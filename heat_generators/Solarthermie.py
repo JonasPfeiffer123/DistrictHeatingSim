@@ -57,7 +57,7 @@ def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY, time_s
     Globalstrahlung_L = np.repeat(Globalstrahlung_L, repeat_factor)[calc1:calc2]
 
     if Bruttofläche_STA == 0 or VS == 0:
-        return 0, np.zeros_like(time_steps)
+        return 0, np.zeros_like(Last_L)
 
     Tag_des_Jahres_L = np.array([datetime.utcfromtimestamp(t.astype(int) * 60 * 15).timetuple().tm_yday for t in time_steps])
 
@@ -374,7 +374,7 @@ def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY, time_s
 
         Zähler += 1
 
-    return Gesamtwärmemenge, np.array(Speicher_Wärmeoutput_L)
+    return Gesamtwärmemenge, np.array(Speicher_Wärmeoutput_L).astype("float64")
 
 
 def Optimierung_WGK_STA(typ, solar_data, BEW="Nein", speicher=range(5, 60, 5), fläche=range(100, 1000, 100)):

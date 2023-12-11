@@ -104,9 +104,13 @@ def BHKW(Wärmeleistung_BHKW, Last_L, duration, el_Wirkungsgrad=0.33, KWK_Wirkun
     el_Leistung_Soll = Wärmeleistung_BHKW / thermischer_Wirkungsgrad * el_Wirkungsgrad
 
     # Berechnen der Strom- und Wärmemenge des BHKW
-    Wärmeleistung_BHKW_L = np.where(Last_L >= Wärmeleistung_BHKW, Wärmeleistung_BHKW, Last_L)
-    el_Leistung_BHKW_L = np.where(Last_L >= Wärmeleistung_BHKW, el_Leistung_Soll,
-                                  el_Leistung_Soll * (Last_L / Wärmeleistung_BHKW))
+    if Wärmeleistung_BHKW > 0:
+        Wärmeleistung_BHKW_L = np.where(Last_L >= Wärmeleistung_BHKW, Wärmeleistung_BHKW, Last_L)
+        el_Leistung_BHKW_L = np.where(Last_L >= Wärmeleistung_BHKW, el_Leistung_Soll,
+                                    el_Leistung_Soll * (Last_L / Wärmeleistung_BHKW))
+    else:
+        Wärmeleistung_BHKW_L, el_Leistung_BHKW_L = np.zeros_like(Last_L), np.zeros_like(Last_L)
+
     Wärmemenge_BHKW = np.sum(Wärmeleistung_BHKW_L / 1000)*duration
     Strommenge_BHKW = np.sum(el_Leistung_BHKW_L / 1000)*duration
 

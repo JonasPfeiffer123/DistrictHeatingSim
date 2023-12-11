@@ -136,9 +136,10 @@ def auslegung_erzeuger(time_steps, calc1, calc2, qext_kW, return_temp_circ_pump,
     TRY = import_TRY(TRY_filename)
     COP_data = np.genfromtxt('heat_generators/Kennlinien WP.csv', delimiter=';')
     Typ = "Vakuumröhrenkollektor"
-    Gaspreis = 60
+    
+    Gaspreis = 70
     Strompreis = 200
-    Holzpreis = 80
+    Holzpreis = 50
     Fläche = 0
     Bohrtiefe = 0
     Temperatur_Geothermie = 0
@@ -155,8 +156,17 @@ def auslegung_erzeuger(time_steps, calc1, calc2, qext_kW, return_temp_circ_pump,
 
     initial_values = [500, 30, 30, 40]
 
-    hgs2.optimize_mix(initial_values, time_steps, calc1, calc2, initial_data, TRY, COP_data, Typ, Gaspreis, Strompreis, Holzpreis, BEW, tech_order)
+    optimized_values = hgs2.optimize_mix(initial_values, time_steps, calc1, calc2, initial_data, TRY, \
+                                         COP_data, Typ, Fläche, Bohrtiefe, Temperatur_Geothermie, Gaspreis, \
+                                         Strompreis, Holzpreis, BEW, tech_order, Kühlleistung_Abwärme, Temperatur_Abwärme)
+    
+    bruttofläche_STA, vs, P_BMK, th_Leistung_BHKW = optimized_values
 
+    WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, colors_L, Wärmemengen, WGK, Anteile = \
+            hgs2.Berechnung_Erzeugermix(time_steps, calc1, calc2, bruttofläche_STA, vs, Typ, Fläche, Bohrtiefe, Temperatur_Geothermie, P_BMK, Gaspreis, Strompreis, \
+                                        Holzpreis, initial_data, TRY, tech_order, BEW, \
+                                        th_Leistung_BHKW, Kühlleistung_Abwärme, Temperatur_Abwärme, COP_data)
+    
     print(f"Jahreswärmebedarf:", f"{Jahreswärmebedarf:.2f} MWh")
     print(f"Wärmegestehungskosten Gesamt:", f"{WGK_Gesamt:.2f} €/MWh")
 
