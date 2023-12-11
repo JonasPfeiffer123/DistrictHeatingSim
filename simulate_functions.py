@@ -136,7 +136,7 @@ def auslegung_erzeuger(time_steps, calc1, calc2, qext_kW, return_temp_circ_pump,
     TRY = import_TRY(TRY_filename)
     COP_data = np.genfromtxt('heat_generators/Kennlinien WP.csv', delimiter=';')
     Typ = "Vakuumröhrenkollektor"
-    
+
     Gaspreis = 70
     Strompreis = 200
     Holzpreis = 50
@@ -154,7 +154,7 @@ def auslegung_erzeuger(time_steps, calc1, calc2, qext_kW, return_temp_circ_pump,
     #P_BMK = 30              # kW
     #th_Leistung_BHKW = 40   # kW
 
-    initial_values = [500, 30, 30, 40]
+    initial_values = [10, 10, 10, 10]
 
     optimized_values = hgs2.optimize_mix(initial_values, time_steps, calc1, calc2, initial_data, TRY, \
                                          COP_data, Typ, Fläche, Bohrtiefe, Temperatur_Geothermie, Gaspreis, \

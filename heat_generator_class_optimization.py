@@ -426,8 +426,8 @@ def optimize_mix(initial_values, time_steps, calc1, calc2, initial_data, TRY, CO
         return WGK_Gesamt
 
     # Optimierung durchführen
-    #result = minimize(objective, initial_values, method='SLSQP', bounds=[(0, 1000), (0, 100), (0, 500), (0, 500)], options={'maxiter': 1000})
-    result = minimize(objective, initial_values, method='L-BFGS-B', bounds=[(0, 1000), (0, 1000), (0, 1000), (0, 1000)], options={'maxiter': 1000})
+    result = minimize(objective, initial_values, method='SLSQP', bounds=[(0, 1000), (0, 100), (0, 500), (0, 500)], options={'maxiter': 1000})
+    #result = minimize(objective, initial_values, method='L-BFGS-B', bounds=[(0, 1000), (0, 1000), (0, 1000), (0, 1000)], options={'maxiter': 1000})
     #result = minimize(objective, initial_values, method='TNC', bounds=[(0, 1000), (0, 100), (0, 500), (0, 500)], options={'maxiter': 1000})
 
     if result.success:
