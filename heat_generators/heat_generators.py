@@ -24,22 +24,22 @@ def Berechnung_WP(Kühlleistung, QT, VLT_L, COP_data):
     return Wärmeleistung_L, el_Leistung_L
 
 # Änderung Kühlleistung und Temperatur zu Numpy-Array in aw sowie vor- und nachgelagerten Funktionen
-def aw(Last_L, VLT_L, Kühlleistung, Temperatur, COP_data):
+def aw(Last_L, VLT_L, Kühlleistung, Temperatur, COP_data, duration):
     if Kühlleistung == 0:
         return 0, 0, np.zeros_like(Last_L), np.zeros_like(VLT_L), 0
 
     Wärmeleistung_L, el_Leistung_L = Berechnung_WP(Kühlleistung, Temperatur, VLT_L, COP_data)
 
     mask = Last_L >= Wärmeleistung_L
-    Wärmemenge = np.sum(np.where(mask, Wärmeleistung_L / 1000, 0))
-    Strombedarf = np.sum(np.where(mask, el_Leistung_L / 1000, 0))
+    Wärmemenge = np.sum(np.where(mask, Wärmeleistung_L / 1000, 0))*duration
+    Strombedarf = np.sum(np.where(mask, el_Leistung_L / 1000, 0))*duration
     Betriebsstunden = np.sum(mask)
 
     max_Wärmeleistung = np.max(Wärmeleistung_L)
 
     return Wärmemenge, Strombedarf, Wärmeleistung_L, el_Leistung_L, max_Wärmeleistung, Betriebsstunden
 
-def Geothermie(Last_L, VLT_L, Fläche, Bohrtiefe, Quelltemperatur, COP_data, spez_Bohrkosten=120, spez_Entzugsleistung=50,
+def Geothermie(Last_L, VLT_L, Fläche, Bohrtiefe, Quelltemperatur, COP_data, duration, spez_Bohrkosten=120, spez_Entzugsleistung=50,
                Vollbenutzungsstunden=2400, Abstand_Sonden=6):
     if Fläche == 0 or Bohrtiefe == 0:
         return 0, 0, np.zeros_like(Last_L), np.zeros_like(VLT_L), 0, 0
@@ -92,22 +92,23 @@ def Geothermie(Last_L, VLT_L, Fläche, Bohrtiefe, Quelltemperatur, COP_data, spe
 
     max_Wärmeleistung = max(Wärmeleistung_tat_L)
     JAZ = Wärmemenge / Strombedarf
-
+    Wärmemenge, Strombedarf = Wärmemenge*duration, Strombedarf*duration
+    
     return Wärmemenge, Strombedarf, Wärmeleistung_tat_L, el_Leistung_tat_L, max_Wärmeleistung, Investitionskosten_Sonden
 
-def BHKW(el_Leistung_Soll, Last_L, el_Wirkungsgrad=0.33, KWK_Wirkungsgrad=0.9):
+def BHKW(Wärmeleistung_BHKW, Last_L, duration, el_Wirkungsgrad=0.33, KWK_Wirkungsgrad=0.9):
     # Berechnen der thermischen Effizienz
     thermischer_Wirkungsgrad = KWK_Wirkungsgrad - el_Wirkungsgrad
 
     # Berechnen der Wärmeleistung des BHKW
-    Wärmeleistung_BHKW = el_Leistung_Soll / el_Wirkungsgrad * thermischer_Wirkungsgrad
+    el_Leistung_Soll = Wärmeleistung_BHKW / thermischer_Wirkungsgrad * el_Wirkungsgrad
 
     # Berechnen der Strom- und Wärmemenge des BHKW
     Wärmeleistung_BHKW_L = np.where(Last_L >= Wärmeleistung_BHKW, Wärmeleistung_BHKW, Last_L)
     el_Leistung_BHKW_L = np.where(Last_L >= Wärmeleistung_BHKW, el_Leistung_Soll,
                                   el_Leistung_Soll * (Last_L / Wärmeleistung_BHKW))
-    Wärmemenge_BHKW = np.sum(Wärmeleistung_BHKW_L / 1000)
-    Strommenge_BHKW = np.sum(el_Leistung_BHKW_L / 1000)
+    Wärmemenge_BHKW = np.sum(Wärmeleistung_BHKW_L / 1000)*duration
+    Strommenge_BHKW = np.sum(el_Leistung_BHKW_L / 1000)*duration
 
     # Berechnen des Brennstoffbedarfs
     Brennstoffbedarf_BHKW = (Wärmemenge_BHKW + Strommenge_BHKW) / KWK_Wirkungsgrad
@@ -116,14 +117,15 @@ def BHKW(el_Leistung_Soll, Last_L, el_Wirkungsgrad=0.33, KWK_Wirkungsgrad=0.9):
     return Wärmeleistung_BHKW, Wärmeleistung_BHKW_L, el_Leistung_BHKW_L, Wärmemenge_BHKW, Strommenge_BHKW, \
         Brennstoffbedarf_BHKW
 
-def Biomassekessel(Last_L, P_BMK):
+def Biomassekessel(Last_L, P_BMK, duration):
     Wärmeleistung_BMK_L = np.where(Last_L >= P_BMK, P_BMK, Last_L)
-    Wärmemenge_BMK = np.sum(Wärmeleistung_BMK_L / 1000)
+    Wärmemenge_BMK = np.sum(Wärmeleistung_BMK_L / 1000)*duration
 
     return Wärmeleistung_BMK_L, Wärmemenge_BMK
-def Gaskessel(Last_L, Nutzungsgrad=0.9):
+
+def Gaskessel(Last_L, duration, Nutzungsgrad=0.9):
     Erzeugung_L = np.maximum(Last_L, 0)
-    Wärmemenge = np.sum(Erzeugung_L) / 1000
+    Wärmemenge = np.sum(Erzeugung_L/1000)*duration
     Brennstoffbedarf = Wärmemenge / Nutzungsgrad
 
     return Wärmemenge, Erzeugung_L, Brennstoffbedarf

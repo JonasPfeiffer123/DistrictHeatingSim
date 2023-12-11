@@ -12,20 +12,20 @@ def calculate_factors(Kapitalzins, Preissteigerungsrate, Betrachtungszeitraum):
     return q, r, T
 
 def Berechnung_Erzeugermix(time_steps, calc1, calc2, bruttofläche_STA, vs, Typ, Fläche, Bohrtiefe, Temperatur_Geothermie, P_BMK, Gaspreis,
-                           Strompreis, Holzpreis, initial_data, TRY_filename, tech_order, BEW, el_Leistung_BHKW, Kühlleistung_Abwärme,
-                           Temperatur_Abwärme, Kühlleistung_AWW, Temperatur_AWW, COP_data, Kapitalzins=5, Preissteigerungsrate=3,
+                           Strompreis, Holzpreis, initial_data, TRY_filename, tech_order, BEW, th_Leistung_BHKW, Kühlleistung_Abwärme,
+                           Temperatur_Abwärme, COP_data, Kapitalzins=5, Preissteigerungsrate=3,
                            Betrachtungszeitraum=20):
 
     # Kapitalzins und Preissteigerungsrate in % -> Umrechung in Zinsfaktor und Preissteigerungsfaktor
     q, r, T = calculate_factors(Kapitalzins, Preissteigerungsrate, Betrachtungszeitraum)
     Last_L, VLT_L, RLT_L = initial_data
-    Jahreswärmebedarf = np.sum(Last_L)
+    Jahreswärmebedarf = np.sum(Last_L)/1000
 
-    Restlast_L, Restwärmebedarf, WGK_Gesamt, Deckungsanteil = Last_L.copy(), Jahreswärmebedarf, 0, 0
+    Restlast_L, Restwärmebedarf, WGK_Gesamt = Last_L.copy(), Jahreswärmebedarf, 0
     data, colors, Wärmemengen, Anteile, WGK = [], [], [], [], []
 
     Strombedarf_WP, Strommenge_BHKW = 0, 0
-    el_Leistung_ges_L, Wärmeleistung_ges_L = np.zeros_like(Last_L), np.zeros_like(Last_L)
+    el_Leistung_ges_L = np.zeros_like(Last_L)
 
     # zunächst Berechnung der Erzeugung
     for tech in tech_order:
@@ -59,7 +59,6 @@ def Berechnung_Erzeugermix(time_steps, calc1, calc2, bruttofläche_STA, vs, Typ,
                                                                         Temperatur_Abwärme, COP_data)
 
             el_Leistung_ges_L += el_Leistung_Abwärme_L
-            Wärmeleistung_ges_L += Wärmeleistung_Abwärme_L
             Restlast_L -= Wärmeleistung_Abwärme_L
 
             Restwärmebedarf -= Wärmemenge_Abwärme
@@ -82,32 +81,6 @@ def Berechnung_Erzeugermix(time_steps, calc1, calc2, bruttofläche_STA, vs, Typ,
             #print("Anteil Abwärme an Wärmeversorgung: " + str(round(Anteil_Abwärme, 3)))
             #print("Wärmegestehungskosten Abwärme: " + str(round(WGK_Abwärme, 2)) + " €/MWh")
 
-        elif tech == "Abwasserwärme":
-            Wärmemenge_AWW, Strombedarf_AWW, Wärmeleistung_AWW_L, el_Leistung_AWW_L, max_Wärmeleistung_AWW, \
-                Betriebsstunden_AWW = aw(Restlast_L, VLT_L, Kühlleistung_AWW, Temperatur_AWW, COP_data)
-
-            el_Leistung_ges_L += el_Leistung_AWW_L
-            Wärmeleistung_ges_L += Wärmeleistung_AWW_L
-            Restlast_L -= Wärmeleistung_AWW_L
-
-            Restwärmebedarf -= Wärmemenge_AWW
-            Strombedarf_WP += Strombedarf_AWW
-
-            Anteil_AWW = Wärmemenge_AWW / Jahreswärmebedarf
-
-            data.append(Wärmeleistung_AWW_L)
-            colors.append("brown")
-
-            WGK_AWW = WGK_WP(max_Wärmeleistung_AWW, Wärmemenge_AWW, Strombedarf_AWW, tech, 0, Strompreis, q, r, T)
-            WGK_Gesamt += Wärmemenge_AWW * WGK_AWW
-
-            Wärmemengen.append(Wärmemenge_AWW)
-            Anteile.append(Anteil_AWW)
-            WGK.append(WGK_AWW)
-            #print("Wärmemenge Abwasserwärme: " + str(round(Wärmemenge_AWW, 2)) + " MWh")
-            #print("Anteil Abwasserwärme an Wärmeversorgung: " + str(round(Anteil_AWW, 3)))
-            #print("Wärmegestehungskosten Abwasserwärme: " + str(round(WGK_AWW, 2)) + " €/MWh")
-
         elif tech == "Geothermie":
             Wärmemenge_Geothermie, Strombedarf_Geothermie, Wärmeleistung_Geothermie_L, el_Leistung_Geothermie_L, \
                 max_Wärmeleistung, Investitionskosten_Sonden = Geothermie(Restlast_L, VLT_L, Fläche, Bohrtiefe,
@@ -115,7 +88,6 @@ def Berechnung_Erzeugermix(time_steps, calc1, calc2, bruttofläche_STA, vs, Typ,
             spez_Investitionskosten_Erdsonden = Investitionskosten_Sonden / max_Wärmeleistung
 
             el_Leistung_ges_L += el_Leistung_Geothermie_L
-            Wärmeleistung_ges_L += Wärmeleistung_Geothermie_L
             Restlast_L -= Wärmeleistung_Geothermie_L
 
             Restwärmebedarf -= Wärmemenge_Geothermie
@@ -139,9 +111,7 @@ def Berechnung_Erzeugermix(time_steps, calc1, calc2, bruttofläche_STA, vs, Typ,
 
         elif tech == "BHKW" or tech == "Holzgas-BHKW":
             Wärmeleistung_BHKW, Wärmeleistung_BHKW_L, el_Leistung_BHKW_L, Wärmemenge_BHKW, Strommenge_BHKW, \
-                Brennstoffbedarf_BHKW = BHKW(el_Leistung_BHKW, Restlast_L)
-
-            Wärmeleistung_ges_L += Wärmeleistung_BHKW_L
+                Brennstoffbedarf_BHKW = BHKW(th_Leistung_BHKW, Restlast_L)
 
             Restlast_L -= Wärmeleistung_BHKW_L
             Restwärmebedarf -= Wärmemenge_BHKW
@@ -215,7 +185,7 @@ def Berechnung_Erzeugermix(time_steps, calc1, calc2, bruttofläche_STA, vs, Typ,
     WGK_Gesamt /= Jahreswärmebedarf
     # print("Wärmegestehungskosten Gesamt: " + str(round(WGK_Gesamt, 2)) + " €/MWh")
 
-    if BEW == "Ja":
-        WGK_Gesamt = 0
+    #if BEW == "Ja":
+    #    WGK_Gesamt = 0
     
-    return WGK_Gesamt, Jahreswärmebedarf, Deckungsanteil, Last_L, data, tech_order, colors, Wärmemengen, WGK, Anteile
+    return WGK_Gesamt, Jahreswärmebedarf, Last_L, data, tech_order, colors, Wärmemengen, WGK, Anteile

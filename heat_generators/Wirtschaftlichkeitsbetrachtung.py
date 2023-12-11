@@ -47,6 +47,8 @@ def annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand=0, q=1.05, r=1.03, T=20, E
 # print(annuität(30000, 20, 1, 2, 0, 1.05, 1.03, 20, 20000, 0.1))
 
 def WGK_WP(Wärmeleistung, Wärmemenge, Strombedarf, Wärmequelle, spez_Investitionskosten_WQ, Strompreis, q, r, T, BEW="Nein"):
+    if Wärmemenge == 0:
+        return 0
     # Kosten Wärmepumpe: Viessmann Vitocal 350 HT-Pro: 140.000 €, 350 kW Nennleistung; 120 kW bei 10/85
     # Annahme Kosten Wärmepumpe: 1000 €/kW; Vereinfachung
     spezifische_Investitionskosten_WP = 1000  # €/kW
@@ -75,6 +77,8 @@ def WGK_WP(Wärmeleistung, Wärmemenge, Strombedarf, Wärmequelle, spez_Investit
     return WGK_Gesamt_a
 
 def WGK_Gaskessel(P_max, Wärmemenge, Brennstoffbedarf, Brennstoffkosten, q, r, T, BEW="Nein"):
+    if Wärmemenge == 0:
+        return 0
     # Kosten 1000 kW Gaskessel ~ 30000 €
     spez_Investitionskosten = 30  # €/kW
     Investitionskosten = spez_Investitionskosten * P_max
@@ -88,6 +92,8 @@ def WGK_Gaskessel(P_max, Wärmemenge, Brennstoffbedarf, Brennstoffkosten, q, r, 
     return WGK_a
 
 def WGK_Biomassekessel(Leistung_BMK, Wärmemenge, Brennstoffbedarf, Brennstoffkosten, q, r, T, BEW="Nein"):
+    if Wärmemenge == 0:
+        return 0
     # Kosten 200 kW Holzpelletkessel ~ 40000 €
     Nutzungsdauer = 15
     spez_Investitionskosten = 200  # €/kW
@@ -103,6 +109,8 @@ def WGK_Biomassekessel(Leistung_BMK, Wärmemenge, Brennstoffbedarf, Brennstoffko
     return WGK_a
 
 def WGK_BHKW(Wärmeleistung, Wärmemenge, Strommenge, Art, Brennstoffbedarf, Brennstoffkosten, Strompreis, q, r, T, BEW="Nein"):
+    if Wärmemenge == 0:
+        return 0
     # Holzvergaser-BHKW: 130 kW: 240.000 -> 1850 €/kW
     # (Erd-)Gas-BHKW: 100 kW: 150.000 € -> 1500 €/kW
     if Art == "BHKW":

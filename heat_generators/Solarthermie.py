@@ -42,12 +42,12 @@ def Daten(filename):
 
     return Last_L, VLT_L, RLT_L
 
-def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY_filename, time_steps, calc1, calc2, Tsmax=90, Longitude=-14.4222, STD_Longitude=-15, Latitude=51.1676):
-    Temperatur_L, Windgeschwindigkeit_L, Direktstrahlung_L, Globalstrahlung_L = import_TRY(TRY_filename)
+def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY, time_steps, calc1, calc2, duration, Tsmax=90, Longitude=-14.4222, STD_Longitude=-15, Latitude=51.1676):
+    Temperatur_L, Windgeschwindigkeit_L, Direktstrahlung_L, Globalstrahlung_L = TRY[0], TRY[1], TRY[2], TRY[3]
 
     # Bestimmen Sie das kleinste Zeitintervall in time_steps
     min_interval = np.min(np.diff(time_steps)).astype('timedelta64[m]').astype(int)
-    
+
     # Anpassen der stündlichen Werte an die time_steps
     # Wiederholen der stündlichen Werte entsprechend des kleinsten Zeitintervalls
     repeat_factor = 60 // min_interval  # Annahme: min_interval teilt 60 ohne Rest
@@ -370,7 +370,7 @@ def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY_filenam
 
         Speicherladung_L.append(QS)
         Speicher_Wärmeoutput_L.append(PSout)
-        Gesamtwärmemenge += PSout / 1000
+        Gesamtwärmemenge += (PSout / 1000) * duration
 
         Zähler += 1
 
