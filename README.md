@@ -14,7 +14,7 @@ Net generation in QGIS
 - When opening the QGIS-file, the output of "net_generation_functions.py" and "net_generation_qgis_ETRS89_MST.py" will be already there as the output-files were already created and imported
 - Alternatively you can open a new QGIS file. In this case, some things still have to be done manually. First of, change the crs (coordinate reference system) to EPSG:25833 (for the given data). 
 - Install the QuickOSM plugin. 
-- Import a street-layer with QuickOSM. For this project, I imported the key "highway" with the values "primary", "secondary", "tertiary" and "residential" in "Zittau". 
+- Import a street-layer with QuickOSM. For this project, I imported the key "highway" with the values "primary", "secondary", "tertiary" and "residential" in "Zittau", but also tested a few variations 
 - Run the python file "net_generation_qgis_ETRS89_MST.py" in QGIS. 
 Note: "net_generation_qgis_ETRS89_MST.py" calls functions from "net_generation_qgis_functions.py".
 
