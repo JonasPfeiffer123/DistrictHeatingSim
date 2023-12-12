@@ -10,7 +10,7 @@ from net_simulation_pandapipes import net_simulation_calculation
 from heat_requirement import heat_requirement_VDI4655
 from net_simulation_pandapipes.net_generation_test import initialize_test_net
 import heat_generators.heating_system as hgs1
-import heat_generator_class_optimization as hgs2
+import heat_generators.heat_generator_classes as hgs2
 from heat_generators.Solarthermie import import_TRY
 
 #Berechnung_Erzeugermix
@@ -140,28 +140,28 @@ def auslegung_erzeuger(time_steps, calc1, calc2, qext_kW, return_temp_circ_pump,
     Gaspreis = 70
     Strompreis = 150
     Holzpreis = 50
-    Fläche = 0
-    Bohrtiefe = 0
-    Temperatur_Geothermie = 0
+    Fläche = 100
+    Bohrtiefe = 100
+    Temperatur_Geothermie = 10
     BEW = "Nein"
     #BEW = "Ja"
-    Kühlleistung_Abwärme = 0
-    Temperatur_Abwärme = 0
+    Kühlleistung_Abwärme = 20
+    Temperatur_Abwärme = 30
     tech_order = ["Solarthermie", "Holzgas-BHKW", "Biomassekessel", "Gaskessel"]
 
     # variable Eingaben
-    #bruttofläche_STA = 0  # m²
-    #vs = 0                 # m³
-    #P_BMK = 30              # kW
-    #th_Leistung_BHKW = 40   # kW
+    bruttofläche_STA = 0  # m²
+    vs = 0                 # m³
+    P_BMK = 30              # kW
+    th_Leistung_BHKW = 40   # kW
 
-    initial_values = [10, 10, 10, 10]
+    """initial_values = [bruttofläche_STA, vs, P_BMK, th_Leistung_BHKW]
 
     optimized_values = hgs2.optimize_mix(initial_values, time_steps, calc1, calc2, initial_data, TRY, \
                                          COP_data, Typ, Fläche, Bohrtiefe, Temperatur_Geothermie, Gaspreis, \
                                          Strompreis, Holzpreis, BEW, tech_order, Kühlleistung_Abwärme, Temperatur_Abwärme)
     
-    bruttofläche_STA, vs, P_BMK, th_Leistung_BHKW = optimized_values
+    bruttofläche_STA, vs, P_BMK, th_Leistung_BHKW = optimized_values"""
 
     WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, colors_L, Wärmemengen, WGK, Anteile = \
             hgs2.Berechnung_Erzeugermix(time_steps, calc1, calc2, bruttofläche_STA, vs, Typ, Fläche, Bohrtiefe, Temperatur_Geothermie, P_BMK, Gaspreis, Strompreis, \
@@ -216,22 +216,17 @@ def auslegung_erzeuger(time_steps, calc1, calc2, qext_kW, return_temp_circ_pump,
 calc1, calc2 = 0, 35040 # min: 0; max: 35040
 filename = 'results_time_series_net.csv'
 
-#gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Görlitz/Vorlauf.geojson')
-#gdf_rl = gpd.read_file('net_generation_QGIS/Beispiel Görlitz/Rücklauf.geojson')
-#gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Görlitz/HAST.geojson')
-#gdf_WEA = gpd.read_file('net_generation_QGIS/Beispiel Görlitz/Erzeugeranlagen.geojson')
-
-gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Vorlauf.geojson')
-gdf_rl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Rücklauf.geojson')
-gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/HAST.geojson')
-gdf_WEA = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Erzeugeranlagen.geojson')
+#gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Vorlauf.geojson')
+#gdf_rl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Rücklauf.geojson')
+#gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/HAST.geojson')
+#gdf_WEA = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Erzeugeranlagen.geojson')
 
 #time_15min, time_steps, net, net_results = thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gdf_HAST, gdf_WEA)
 
 #mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, \
 #    return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW, pressure_junctions = calculate_results(net, net_results)
 
-
+###!!!!!this will overwrite the current csv file!!!!!#
 #save_results_csv(time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump, filename)
 
 time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump = import_results_csv(filename)
