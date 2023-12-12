@@ -127,6 +127,7 @@ Key Functionalities:
 Contributions or ideas for the project are welcome. Please adhere to standard coding practices and submit pull requests for review.
 
 # License
+Current version of software written and maintained by Jonas Pfeiffer (HSZG)
 MIT license
 
 
