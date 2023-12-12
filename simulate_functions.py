@@ -138,19 +138,20 @@ def auslegung_erzeuger(time_steps, calc1, calc2, qext_kW, return_temp_circ_pump,
     Typ = "Vakuumröhrenkollektor"
 
     Gaspreis = 70
-    Strompreis = 200
+    Strompreis = 150
     Holzpreis = 50
     Fläche = 0
     Bohrtiefe = 0
     Temperatur_Geothermie = 0
     BEW = "Nein"
+    #BEW = "Ja"
     Kühlleistung_Abwärme = 0
     Temperatur_Abwärme = 0
     tech_order = ["Solarthermie", "Holzgas-BHKW", "Biomassekessel", "Gaskessel"]
 
     # variable Eingaben
-    #bruttofläche_STA = 500  # m²
-    #vs = 30                 # m³
+    #bruttofläche_STA = 0  # m²
+    #vs = 0                 # m³
     #P_BMK = 30              # kW
     #th_Leistung_BHKW = 40   # kW
 

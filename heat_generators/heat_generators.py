@@ -37,7 +37,7 @@ def aw(Last_L, VLT_L, Kühlleistung, Temperatur, COP_data, duration):
 
     max_Wärmeleistung = np.max(Wärmeleistung_L)
 
-    return Wärmemenge, Strombedarf, Wärmeleistung_L, el_Leistung_L, max_Wärmeleistung, Betriebsstunden
+    return Wärmemenge, Strombedarf, Wärmeleistung_L, el_Leistung_L, max_Wärmeleistung
 
 def Geothermie(Last_L, VLT_L, Fläche, Bohrtiefe, Quelltemperatur, COP_data, duration, spez_Bohrkosten=120, spez_Entzugsleistung=50,
                Vollbenutzungsstunden=2400, Abstand_Sonden=6):

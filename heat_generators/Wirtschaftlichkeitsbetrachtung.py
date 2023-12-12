@@ -38,11 +38,11 @@ def annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand=0, q=1.05, r=1.03, T=20, E
     A_N = - (A_N_K + A_N_V + A_N_B + A_N_S)  # Annuität
 
     # Erlöse
-    A_NE = - A_N
+    A_NE = E1*a*b_E
 
-    E1 = A_NE/(a * b_E)
+    A_N += A_NE
 
-    return E1
+    return -A_N
 
 # print(annuität(30000, 20, 1, 2, 0, 1.05, 1.03, 20, 20000, 0.1))
 
@@ -85,9 +85,9 @@ def WGK_Gaskessel(P_max, Wärmemenge, Brennstoffbedarf, Brennstoffkosten, q, r, 
     Nutzungsdauer = 20
     f_Inst, f_W_Insp, Bedienaufwand = 1, 2, 0
 
-    E1 = annuität(Investitionskosten, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T,
+    A_N = annuität(Investitionskosten, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T,
                         Brennstoffbedarf, Brennstoffkosten)
-    WGK_a = E1 / Wärmemenge
+    WGK_a = A_N / Wärmemenge
 
     return WGK_a
 
@@ -102,9 +102,9 @@ def WGK_Biomassekessel(Leistung_BMK, Wärmemenge, Brennstoffbedarf, Brennstoffko
     Investitionskosten = spez_Investitionskosten * Leistung_BMK + spez_Investitionskosten_Holzlager * Größe_Holzlager
     f_Inst, f_W_Insp, Bedienaufwand = 3, 3, 0
 
-    E1 = annuität(Investitionskosten, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T, Brennstoffbedarf,
+    A_N = annuität(Investitionskosten, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T, Brennstoffbedarf,
                         Brennstoffkosten)
-    WGK_a = E1 / Wärmemenge
+    WGK_a = A_N / Wärmemenge
 
     return WGK_a
 
@@ -124,9 +124,9 @@ def WGK_BHKW(Wärmeleistung, Wärmemenge, Strommenge, Art, Brennstoffbedarf, Bre
 
     Stromeinnahmen = Strommenge * Strompreis
 
-    E1 = annuität(Investitionskosten, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T,
+    A_N = annuität(Investitionskosten, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T,
                         Brennstoffbedarf, Brennstoffkosten, Stromeinnahmen)
-    WGK_a = E1 / Wärmemenge
+    WGK_a = A_N / Wärmemenge
 
     return WGK_a
 
@@ -152,8 +152,8 @@ def WGK_STA(Bruttofläche_STA, VS, typ, Wärmemenge, q=1.05, r=1.03, T=20, BEW="
     Investitionskosten_STA = Bruttofläche_STA * Kosten_STA_spez
     Investitionskosten_Gesamt = Investitionskosten_Speicher + Investitionskosten_STA
 
-    E1 = annuität(Investitionskosten_Gesamt, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T)
-    WGK = E1 / Wärmemenge
+    A_N = annuität(Investitionskosten_Gesamt, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T)
+    WGK = A_N / Wärmemenge
 
     Anteil_Förderung_BEW = 0.4
     Eigenanteil = 1 - Anteil_Förderung_BEW
