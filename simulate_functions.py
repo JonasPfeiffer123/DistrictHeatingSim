@@ -9,8 +9,7 @@ from net_simulation_pandapipes import net_simulation
 from net_simulation_pandapipes import net_simulation_calculation
 from heat_requirement import heat_requirement_VDI4655
 from net_simulation_pandapipes.net_generation_test import initialize_test_net
-import heat_generators.heating_system as hgs1
-import heat_generators.heat_generator_classes as hgs2
+import heat_generators.heat_generator_classes as hgs
 from heat_generators.Solarthermie import import_TRY
 
 #Berechnung_Erzeugermix
@@ -122,14 +121,29 @@ def import_results_csv(filename):
     return_temp_circ_pump = data['Rücklauftemperatur_Netz_°C'].values.astype('float64')
     return time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump
 
-def auslegung_erzeuger(time_steps, calc1, calc2, qext_kW, return_temp_circ_pump, flow_temp_circ_pump):
+def auslegung_erzeuger():
+    ############## CALCULATION #################
+    calc1, calc2 = 0, 35040 # min: 0; max: 35040
+    filename = 'results_time_series_net.csv'
+
+    #gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Vorlauf.geojson')
+    #gdf_rl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Rücklauf.geojson')
+    #gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/HAST.geojson')
+    #gdf_WEA = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Erzeugeranlagen.geojson')
+
+    #time_15min, time_steps, net, net_results = thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gdf_HAST, gdf_WEA)
+
+    #mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, \
+    #    return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW, pressure_junctions = calculate_results(net, net_results)
+
+    ###!!!!!this will overwrite the current csv file!!!!!#
+    #save_results_csv(time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump, filename)
+
+    time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump = import_results_csv(filename)
+
+    #plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
+
     ### Berechnung Erzeugermix ###
-
-    # bruttufläche_STA: m²
-    # vs: Solarspeichervolumen m³
-    # Typ: Kollektortyp
-    # ...
-
     # fixe Eingaben
     initial_data = qext_kW, flow_temp_circ_pump, return_temp_circ_pump
     TRY_filename = 'heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat'
@@ -155,18 +169,17 @@ def auslegung_erzeuger(time_steps, calc1, calc2, qext_kW, return_temp_circ_pump,
     P_BMK = 30              # kW
     th_Leistung_BHKW = 40   # kW
 
-    """initial_values = [bruttofläche_STA, vs, P_BMK, th_Leistung_BHKW]
+    initial_values = [bruttofläche_STA, vs, P_BMK, th_Leistung_BHKW]
 
-    optimized_values = hgs2.optimize_mix(initial_values, time_steps, calc1, calc2, initial_data, TRY, \
+    optimized_values = hgs.optimize_mix(initial_values, time_steps, calc1, calc2, initial_data, TRY, \
                                          COP_data, Typ, Fläche, Bohrtiefe, Temperatur_Geothermie, Gaspreis, \
                                          Strompreis, Holzpreis, BEW, tech_order, Kühlleistung_Abwärme, Temperatur_Abwärme)
     
-    bruttofläche_STA, vs, P_BMK, th_Leistung_BHKW = optimized_values"""
+    bruttofläche_STA, vs, P_BMK, th_Leistung_BHKW = optimized_values
 
-    WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, colors_L, Wärmemengen, WGK, Anteile = \
-            hgs2.Berechnung_Erzeugermix(time_steps, calc1, calc2, bruttofläche_STA, vs, Typ, Fläche, Bohrtiefe, Temperatur_Geothermie, P_BMK, Gaspreis, Strompreis, \
-                                        Holzpreis, initial_data, TRY, tech_order, BEW, \
-                                        th_Leistung_BHKW, Kühlleistung_Abwärme, Temperatur_Abwärme, COP_data)
+    WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile = \
+            hgs.Berechnung_Erzeugermix(time_steps, calc1, calc2, bruttofläche_STA, vs, Typ, Fläche, Bohrtiefe, Temperatur_Geothermie, P_BMK, Gaspreis, Strompreis, \
+                                        Holzpreis, initial_data, TRY, tech_order, BEW, th_Leistung_BHKW, Kühlleistung_Abwärme, Temperatur_Abwärme, COP_data)
     
     print(f"Jahreswärmebedarf:", f"{Jahreswärmebedarf:.2f} MWh")
     print(f"Wärmegestehungskosten Gesamt:", f"{WGK_Gesamt:.2f} €/MWh")
@@ -176,13 +189,11 @@ def auslegung_erzeuger(time_steps, calc1, calc2, qext_kW, return_temp_circ_pump,
         print(f"Wärmegestehungskosten {t}:", f"{wgk:.2f} €/MWh")
         print(f"Anteil an Wärmeversorgung {t}:", f"{anteil:.2f}")
 
-    print(f"Wärmegestehungskosten Gesamt:", f"{WGK_Gesamt:.2f} €/MWh")
-
-    def Jahresdauerlinie(t, Last_L, data_L, data_labels_L, colors_L):
+    def Jahresdauerlinie(t, Last_L, data_L, data_labels_L):
         fig, ax = plt.subplots()
 
         #ax.plot(t, Last_L, color="black", linewidth=0.1, label="Last in kW")
-        ax.stackplot(t, data_L, labels=data_labels_L, colors=colors_L)
+        ax.stackplot(t, data_L, labels=data_labels_L)
         ax.set_title("Jahresdauerlinie")
         ax.set_xlabel("Jahresstunden")
         ax.set_ylabel("thermische Leistung in kW")
@@ -193,9 +204,9 @@ def auslegung_erzeuger(time_steps, calc1, calc2, qext_kW, return_temp_circ_pump,
         
         plt.show()
 
-    def Kreisdiagramm(data_labels_L, colors_L, Anteile):
+    def Kreisdiagramm(data_labels_L, Anteile):
         pie, ax1 = plt.subplots()
-        ax1.pie(Anteile, labels=data_labels_L, colors=colors_L, autopct='%1.1f%%', startangle=90)
+        ax1.pie(Anteile, labels=data_labels_L, autopct='%1.1f%%', startangle=90)
         ax1.set_title("Anteile Wärmeerzeugung")
         ax1.legend(loc='center right')
         ax1.axis("equal")
@@ -206,30 +217,6 @@ def auslegung_erzeuger(time_steps, calc1, calc2, qext_kW, return_temp_circ_pump,
         
         plt.show()
 
-    Jahresdauerlinie(time_steps, Last_L, data_L, data_labels_L, colors_L)
+    Jahresdauerlinie(time_steps, Last_L, data_L, data_labels_L)
 
-    Kreisdiagramm(data_labels_L, colors_L, Anteile)
-
-
-
-############## CALCULATION #################
-calc1, calc2 = 0, 35040 # min: 0; max: 35040
-filename = 'results_time_series_net.csv'
-
-#gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Vorlauf.geojson')
-#gdf_rl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Rücklauf.geojson')
-#gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/HAST.geojson')
-#gdf_WEA = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Erzeugeranlagen.geojson')
-
-#time_15min, time_steps, net, net_results = thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gdf_HAST, gdf_WEA)
-
-#mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, \
-#    return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW, pressure_junctions = calculate_results(net, net_results)
-
-###!!!!!this will overwrite the current csv file!!!!!#
-#save_results_csv(time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump, filename)
-
-time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump = import_results_csv(filename)
-
-#plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
-auslegung_erzeuger(time_steps, calc1, calc2, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
+    Kreisdiagramm(data_labels_L, Anteile)
