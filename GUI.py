@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QFileDialog, QHBoxLayout, QListWidget, QComboBox
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QFileDialog, QHBoxLayout, QListWidget, QComboBox, QDialog
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import numpy as np
@@ -8,9 +8,12 @@ import heat_generators.heat_generator_classes as hgs
 from simulate_functions import *
 from heat_generators.Solarthermie import import_TRY
 
+from GUI_Dialogfenster import TechInputDialog
+
 class HeatSystemDesignGUI(QWidget):
     def __init__(self):
         super().__init__()
+        self.tech_objects = []
         self.initUI()
     
     def initUI(self):
@@ -30,32 +33,14 @@ class HeatSystemDesignGUI(QWidget):
         #layout.addWidget(self.loadCOPFileButton)
 
         # Parameter Inputs
-        self.bruttoflächeSTAInput = QLineEdit("100")
-        self.vsInput = QLineEdit("10")
-        self.PBMKInput = QLineEdit("50")
-        self.thLeistungBHKWInput = QLineEdit("30")
         self.gaspreisInput = QLineEdit("70")
         self.strompreisInput = QLineEdit("150")
         self.holzpreisInput = QLineEdit("50")
-        self.flächeInput = QLineEdit("100")
-        self.bohrtiefeInput = QLineEdit("100")
-        self.temperaturGeothermieInput = QLineEdit("10")
-        self.KühlleistungAbwärmeInput = QLineEdit("20")
-        self.TemperaturAbwärmeInput = QLineEdit("30")
 
         # Labels
-        self.bruttoflächeSTALabel = QLabel('Bruttofläche STA (m²):')
-        self.vsLabel = QLabel('VS (m³):')
-        self.PBMKLabel = QLabel('P BMK (kW):')
-        self.thLeistungBHKWLabel = QLabel('th Leistung BHKW (kW):')
         self.gaspreisLabel = QLabel('Gaspreis:')
         self.strompreisLabel = QLabel('Strompreis:')
         self.holzpreisLabel = QLabel('Holzpreis:')
-        self.flächeLabel = QLabel('Fläche:')
-        self.bohrtiefeLabel = QLabel('Bohrtiefe:')
-        self.temperaturGeothermieLabel = QLabel('Temperatur Geothermie:')
-        self.KühlleistungAbwärmeLabel = QLabel('Kühlleistung Abwärme:')
-        self.TemperaturAbwärmeLabel = QLabel('Temperatur Abwärme:')
         
         # Buttons
         self.calculateButton = QPushButton('Berechnen')
@@ -88,35 +73,15 @@ class HeatSystemDesignGUI(QWidget):
 
         # Layout for inputs
         inputLayout = QHBoxLayout()
-        inputLayout.addWidget(self.bruttoflächeSTALabel)
-        inputLayout.addWidget(self.bruttoflächeSTAInput)
-        inputLayout.addWidget(self.vsLabel)
-        inputLayout.addWidget(self.vsInput)
-        inputLayout.addWidget(self.PBMKLabel)
-        inputLayout.addWidget(self.PBMKInput)
-        inputLayout.addWidget(self.thLeistungBHKWLabel)
-        inputLayout.addWidget(self.thLeistungBHKWInput)
         inputLayout.addWidget(self.gaspreisLabel)
         inputLayout.addWidget(self.gaspreisInput)
         inputLayout.addWidget(self.strompreisLabel)
         inputLayout.addWidget(self.strompreisInput)
         inputLayout.addWidget(self.holzpreisLabel)
         inputLayout.addWidget(self.holzpreisInput)
-        inputLayout.addWidget(self.flächeLabel)
-        inputLayout.addWidget(self.flächeInput)
-        inputLayout.addWidget(self.bohrtiefeLabel)
-        inputLayout.addWidget(self.bohrtiefeInput)
-        inputLayout.addWidget(self.temperaturGeothermieLabel)
-        inputLayout.addWidget(self.temperaturGeothermieInput)
-        inputLayout.addWidget(self.KühlleistungAbwärmeLabel)
-        inputLayout.addWidget(self.KühlleistungAbwärmeInput)
-        inputLayout.addWidget(self.TemperaturAbwärmeLabel)
-        inputLayout.addWidget(self.TemperaturAbwärmeInput)
-
 
         # Result Label
         self.resultLabel = QLabel('Ergebnisse werden hier angezeigt')
-
 
         # Diagramm-Layout
         chartLayout = QHBoxLayout()
@@ -148,11 +113,37 @@ class HeatSystemDesignGUI(QWidget):
         self.setLayout(layout)
 
     def addTech(self):
-        selectedTech = self.techComboBox.currentText()
-        self.techList.addItem(selectedTech)
+        current_index = self.techComboBox.currentIndex()
+        tech_type = self.techComboBox.itemText(current_index)
+        dialog = TechInputDialog(tech_type)
+        result = dialog.exec_()  # Öffnet den Dialog und wartet auf den Benutzer
+
+        if result == QDialog.Accepted:
+            # Wenn der Dialog mit "Ok" bestätigt wurde
+            inputs = dialog.getInputs()
+            
+            # Erstellen Sie hier das entsprechende Technologieobjekt
+            if tech_type == "Solarthermie":
+                new_tech = SolarThermal(name=tech_type, bruttofläche_STA=inputs["bruttofläche_STA"], vs=inputs["vs"], Typ=inputs["Typ"])
+            elif tech_type == "Biomassekessel":
+                new_tech = BiomassBoiler(name=tech_type, P_BMK=inputs["P_BMK"])
+            elif tech_type == "Gaskessel":
+                new_tech = GasBoiler(name=tech_type)  # Angenommen, GasBoiler benötigt keine zusätzlichen Eingaben
+            elif tech_type == "BHKW":
+                new_tech = CHP(name=tech_type, th_Leistung_BHKW=inputs["th_Leistung_BHKW"])
+            elif tech_type == "Holzgas-BHKW":
+                new_tech = CHP(name=tech_type, th_Leistung_BHKW=inputs["th_Leistung_BHKW"])  # Angenommen, Holzgas-BHKW verwendet dieselbe Klasse wie BHKW
+            elif tech_type == "Geothermie":
+                new_tech = Geothermal(name=tech_type, Fläche=inputs["Fläche"], Bohrtiefe=inputs["Bohrtiefe"], Temperatur_Geothermie=inputs["Temperatur_Geothermie"])
+            elif tech_type == "Abwärme":
+                new_tech = WasteHeatPump(name=tech_type, Kühlleistung_Abwärme=inputs["Kühlleistung_Abwärme"], Temperatur_Abwärme=inputs["Temperatur_Abwärme"])
+
+            self.techList.addItem(tech_type)
+            self.tech_objects.append(new_tech)
 
     def removeTech(self):
         self.techList.clear()
+        self.tech_objects = []
 
     def getListItems(self):
         items = []
@@ -168,14 +159,14 @@ class HeatSystemDesignGUI(QWidget):
             
             return fname
     
-    def showResults(self, Jahreswärmebedarf, WGK_Gesamt, tech_order, Wärmemengen, WGK, Anteile):
+    def showResults(self, Jahreswärmebedarf, WGK_Gesamt, techs, Wärmemengen, WGK, Anteile):
         resultText = f"Jahreswärmebedarf: {Jahreswärmebedarf:.2f} MWh\n"
         resultText += f"Wärmegestehungskosten Gesamt: {WGK_Gesamt:.2f} €/MWh\n\n"
 
-        for t, wärmemenge, anteil, wgk in zip(tech_order, Wärmemengen, Anteile, WGK):
-            resultText += f"Wärmemenge {t}: {wärmemenge:.2f} MWh\n"
-            resultText += f"Wärmegestehungskosten {t}: {wgk:.2f} €/MWh\n"
-            resultText += f"Anteil an Wärmeversorgung {t}: {anteil:.2f}\n\n"
+        for tech, wärmemenge, anteil, wgk in zip(techs, Wärmemengen, Anteile, WGK):
+            resultText += f"Wärmemenge {tech.name}: {wärmemenge:.2f} MWh\n"
+            resultText += f"Wärmegestehungskosten {tech.name}: {wgk:.2f} €/MWh\n"
+            resultText += f"Anteil an Wärmeversorgung {tech.name}: {anteil:.2f}\n\n"
 
         self.resultLabel.setText(resultText)
 
@@ -210,43 +201,25 @@ class HeatSystemDesignGUI(QWidget):
         TRY = import_TRY(TRY_filename)
         COP_data = np.genfromtxt('heat_generators/Kennlinien WP.csv', delimiter=';')
         
-        Typ = "Vakuumröhrenkollektor"
-        BEW = "Nein"
-
-        bruttofläche_STA = float(self.bruttoflächeSTAInput.text())
-        vs = float(self.vsInput.text())
-        P_BMK = float(self.PBMKInput.text())
-        th_Leistung_BHKW = float(self.thLeistungBHKWInput.text())
         Gaspreis = float(self.gaspreisInput.text())
         Strompreis = float(self.strompreisInput.text())
         Holzpreis = float(self.holzpreisInput.text())
-        Fläche = float(self.flächeInput.text())
-        Bohrtiefe = float(self.bohrtiefeInput.text())
-        Temperatur_Geothermie = float(self.temperaturGeothermieInput.text())
-        Kühlleistung_Abwärme = float(self.KühlleistungAbwärmeInput.text())
-        Temperatur_Abwärme = float(self.TemperaturAbwärmeInput.text())
+        BEW = "Nein"
 
-        tech_order = self.getListItems()
+        techs = self.tech_objects  
 
         if optimize == True:
-            initial_values = [10, 10, 10, 10]
+            techs = optimize_mix(techs, time_steps, calc1, calc2, initial_data, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW)
 
-            optimized_values = hgs.optimize_mix(initial_values, time_steps, calc1, calc2, initial_data, TRY, \
-                                         COP_data, Typ, Fläche, Bohrtiefe, Temperatur_Geothermie, Gaspreis, \
-                                         Strompreis, Holzpreis, BEW, tech_order, Kühlleistung_Abwärme, Temperatur_Abwärme)
-            
-            bruttofläche_STA, vs,  P_BMK, th_Leistung_BHKW = optimized_values
-
-        WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile, specific_emissions = \
-                hgs.Berechnung_Erzeugermix(time_steps, calc1, calc2, bruttofläche_STA, vs, Typ, Fläche, Bohrtiefe, Temperatur_Geothermie, P_BMK, Gaspreis, Strompreis, \
-                                            Holzpreis, initial_data, TRY, tech_order, BEW, th_Leistung_BHKW, Kühlleistung_Abwärme, Temperatur_Abwärme, COP_data)
+        WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile, specific_emissions  = \
+        Berechnung_Erzeugermix(techs, time_steps, calc1, calc2, initial_data, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW)
         
-        self.showResults(Jahreswärmebedarf, WGK_Gesamt, tech_order, Wärmemengen, WGK, Anteile)
+        self.showResults(Jahreswärmebedarf, WGK_Gesamt, techs, Wärmemengen, WGK, Anteile)
 
         # Example of plotting
-        self.plot(time_steps, data_L, data_labels_L, Anteile)
+        self.plot(time_steps, data_L, data_labels_L, Anteile, Last_L)
 
-    def plot(self, t, data_L, data_labels_L, Anteile):
+    def plot(self, t, data_L, data_labels_L, Anteile, Last_L):
         # Clear previous figure
         self.figure1.clear()
         self.figure2.clear()
@@ -254,7 +227,7 @@ class HeatSystemDesignGUI(QWidget):
         ax1 = self.figure1.add_subplot(111)
         ax2 = self.figure2.add_subplot(111)
 
-        #ax.plot(t, Last_L, color="black", linewidth=0.1, label="Last in kW")
+        ax1.plot(t, Last_L, color="black", linewidth=0.05, label="Last in kW")
         ax1.stackplot(t, data_L, labels=data_labels_L)
         ax1.set_title("Jahresdauerlinie")
         ax1.set_xlabel("Jahresstunden")

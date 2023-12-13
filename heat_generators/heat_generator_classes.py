@@ -53,7 +53,7 @@ class WasteHeatPump:
     
     def calculate(self, Restlast_L, VLT_L, COP_data, el_Leistung_ges_L, Restwärmebedarf, Strombedarf_WP, Jahreswärmebedarf, \
                   data, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, Strompreis, q, r, T, duration, tech_order):
-       
+        print(WGK)
         Wärmemenge, Strombedarf_Abwärme, Wärmeleistung_L, el_Leistung_L, max_Wärmeleistung = \
         self.abwärme(Restlast_L, VLT_L, self.Kühlleistung_Abwärme, self.Temperatur_Abwärme, COP_data, duration)
 
@@ -385,7 +385,7 @@ def Berechnung_Erzeugermix(tech_order, time_steps, calc1, calc2, initial_data, T
         elif tech.name == "Abwärme" or tech == "Abwasserwärme":
             el_Leistung_ges_L, Restlast_L, Restwärmebedarf, Strombedarf_WP, data_L, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order = \
                 tech.calculate(Restlast_L, VLT_L, COP_data, el_Leistung_ges_L, Restwärmebedarf, Strombedarf_WP, Jahreswärmebedarf, \
-                                     data_L, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK_Gesamt, Strompreis, q, r, T, duration, tech_order)
+                                     data_L, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, Strompreis, q, r, T, duration, tech_order)
             
         elif tech.name == "Geothermie":
             el_Leistung_ges_L, Restlast_L, Restwärmebedarf, Strombedarf_WP, data_L, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order = \

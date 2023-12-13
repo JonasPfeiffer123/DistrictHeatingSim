@@ -212,4 +212,4 @@ def auslegung_erzeuger():
 
     Kreisdiagramm(data_labels_L, Anteile)
 
-auslegung_erzeuger()
+#auslegung_erzeuger()
