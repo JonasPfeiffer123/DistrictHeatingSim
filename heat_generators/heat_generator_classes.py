@@ -454,19 +454,13 @@ def optimize_mix(tech_order, time_steps, calc1, calc2, initial_data, TRY, COP_da
         print(f"Optimierte Werte: {optimized_values}")
         print(f"Minimale Wärmegestehungskosten: {optimized_WGK_Gesamt:.2f} €/MWh")
 
-        index=0
         for tech in tech_order:
             if isinstance(tech, SolarThermal):
-                tech.bruttofläche_STA = optimized_values[index]
-                index += 1
-                tech.vs = optimized_values[index]
-                index += 1
+                tech.bruttofläche_STA, tech.vs = optimized_values[variables_order.index("bruttofläche_STA")], optimized_values[variables_order.index("vs")]
             elif isinstance(tech, BiomassBoiler):
-                tech.P_BMK = optimized_values[index]
-                index += 1
+                tech.P_BMK = optimized_values[variables_order.index("P_BMK")]
             elif isinstance(tech, CHP):
-                tech.th_Leistung_BHKW = optimized_values[index]
-                index += 1
+                tech.th_Leistung_BHKW = optimized_values[variables_order.index("th_Leistung_BHKW")]
 
         return tech_order
     else:
