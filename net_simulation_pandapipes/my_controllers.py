@@ -33,11 +33,11 @@ class WorstPointPressureController(BasicCtrl):
 
         new_plift = current_plift_bar + plift_adjustment
         
-        print(current_dp_bar)
+        """print(current_dp_bar)
         print(dp_error)
         print(current_plift_bar)
         print(plift_adjustment)
-        print(new_plift)
+        print(new_plift)"""
         net.circ_pump_pressure["plift_bar"].at[self.circ_pump_pressure_idx] = new_plift
         
         return super(WorstPointPressureController, self).control_step(net)

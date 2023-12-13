@@ -20,8 +20,8 @@ def thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gd
     net = net_simulation.initialize_net(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA)
 
     ### Ausgabe der Netzstruktur ###
-    #pp_plot.simple_plot(net, junction_size=0.2, heat_exchanger_size=0.2, pump_size=0.2, 
-    #                    pump_color='green', pipe_color='black', heat_exchanger_color='blue')
+    pp_plot.simple_plot(net, junction_size=0.2, heat_exchanger_size=0.2, pump_size=0.2, 
+                        pump_color='green', pipe_color='black', heat_exchanger_color='blue')
 
     ### define the heat requirement ###
     n = len(net.heat_exchanger)
@@ -41,7 +41,6 @@ def thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gd
     ### time series calculation ###
     t_rl_soll = 60
 
-    print(len(time_15min))
     time_steps = time_15min[calc1:calc2]
     net, net_results = net_simulation.time_series_net(net, t_rl_soll, waerme_ges_W, calc1, calc2)
 
@@ -121,26 +120,24 @@ def import_results_csv(filename):
     return_temp_circ_pump = data['Rücklauftemperatur_Netz_°C'].values.astype('float64')
     return time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump
 
-def auslegung_erzeuger():
-    ############## CALCULATION #################
-    calc1, calc2 = 0, 35040 # min: 0; max: 35040
-    filename = 'results_time_series_net.csv'
+def generate_net(calc1, calc2, filename):
+    gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Vorlauf.geojson')
+    gdf_rl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Rücklauf.geojson')
+    gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/HAST.geojson')
+    gdf_WEA = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Erzeugeranlagen.geojson')
 
-    #gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Vorlauf.geojson')
-    #gdf_rl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Rücklauf.geojson')
-    #gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/HAST.geojson')
-    #gdf_WEA = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Erzeugeranlagen.geojson')
+    time_15min, time_steps, net, net_results = thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gdf_HAST, gdf_WEA)
 
-    #time_15min, time_steps, net, net_results = thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gdf_HAST, gdf_WEA)
-
-    #mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, \
-    #    return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW, pressure_junctions = calculate_results(net, net_results)
+    mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, \
+        return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW, pressure_junctions = calculate_results(net, net_results)
 
     ###!!!!!this will overwrite the current csv file!!!!!#
-    #save_results_csv(time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump, filename)
+    save_results_csv(time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump, filename)
 
+    plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
+
+def auslegung_erzeuger(calc1, calc2, filename, optimize=False):
     time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump = import_results_csv(filename)
-
     #plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
 
     ### Berechnung Erzeugermix ###
@@ -167,7 +164,8 @@ def auslegung_erzeuger():
 
     techs = [solar_thermal, wood_chp, biomass_boiler1, gas_boiler]
 
-    techs = optimize_mix(techs, time_steps, calc1, calc2, initial_data, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW)
+    if optimize == True:
+        techs = optimize_mix(techs, time_steps, calc1, calc2, initial_data, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW)
 
     WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile, specific_emissions  = \
         Berechnung_Erzeugermix(techs, time_steps, calc1, calc2, initial_data, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW)
@@ -212,4 +210,10 @@ def auslegung_erzeuger():
 
     Kreisdiagramm(data_labels_L, Anteile)
 
-#auslegung_erzeuger()
+##########
+calc1, calc2 = 0, 35040 # min: 0; max: 35040
+filename_save = 'results_time_series_net1.csv'
+filename_load = 'results_time_series_net.csv'
+
+#generate_net(calc1, calc2, filename_save)
+auslegung_erzeuger(calc1, calc2, filename_load)
