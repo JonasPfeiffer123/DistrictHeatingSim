@@ -454,6 +454,7 @@ def optimize_mix(tech_order, time_steps, calc1, calc2, initial_data, TRY, COP_da
         print(f"Optimierte Werte: {optimized_values}")
         print(f"Minimale Wärmegestehungskosten: {optimized_WGK_Gesamt:.2f} €/MWh")
 
+        index=0
         for tech in tech_order:
             if isinstance(tech, SolarThermal):
                 tech.bruttofläche_STA = optimized_values[index]
