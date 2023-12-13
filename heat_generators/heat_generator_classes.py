@@ -424,18 +424,23 @@ def optimize_mix(tech_order, time_steps, calc1, calc2, initial_data, TRY, COP_da
     # solar Fläche, Speichervolumen solar, Leistung Biomasse, Leistung BHKW
     initial_values = []
     variables_order = []
+    bounds = []
     for tech in tech_order:
         if isinstance(tech, SolarThermal):
             initial_values.append(tech.bruttofläche_STA)
             variables_order.append("bruttofläche_STA")
+            bounds.append((0, 1000))
             initial_values.append(tech.vs)
             variables_order.append("vs")
+            bounds.append((0, 100))
         elif isinstance(tech, CHP):
             initial_values.append(tech.th_Leistung_BHKW)
             variables_order.append("th_Leistung_BHKW")
+            bounds.append((0, 500))
         elif isinstance(tech, BiomassBoiler):
             initial_values.append(tech.P_BMK)
             variables_order.append("P_BMK")
+            bounds.append((0, 500))
 
     def objective(variables):
         WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile, specific_emissions = \
@@ -444,9 +449,9 @@ def optimize_mix(tech_order, time_steps, calc1, calc2, initial_data, TRY, COP_da
         return WGK_Gesamt
 
     # optimization
-    result = minimize(objective, initial_values, method='SLSQP', bounds=[(0, 1000), (0, 100), (0, 500), (0, 500)], options={'maxiter': 1000})
-    #result = minimize(objective, initial_values, method='L-BFGS-B', bounds=[(0, 1000), (0, 1000), (0, 1000), (0, 1000)], options={'maxiter': 1000})
-    #result = minimize(objective, initial_values, method='TNC', bounds=[(0, 1000), (0, 100), (0, 500), (0, 500)], options={'maxiter': 1000})
+    result = minimize(objective, initial_values, method='SLSQP', bounds=bounds, options={'maxiter': 1000})
+    #result = minimize(objective, initial_values, method='L-BFGS-B', bounds=bounds, options={'maxiter': 1000})
+    #result = minimize(objective, initial_values, method='TNC', bounds=bounds, options={'maxiter': 1000})
 
     if result.success:
         optimized_values = result.x
