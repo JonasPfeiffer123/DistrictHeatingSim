@@ -36,11 +36,15 @@ class HeatSystemDesignGUI(QWidget):
         self.gaspreisInput = QLineEdit("70")
         self.strompreisInput = QLineEdit("150")
         self.holzpreisInput = QLineEdit("50")
+        self.BEWComboBox = QComboBox()
+        self.BEWOptions = ["Nein", "Ja"]
+        self.BEWComboBox.addItems(self.BEWOptions)
 
         # Labels
-        self.gaspreisLabel = QLabel('Gaspreis:')
-        self.strompreisLabel = QLabel('Strompreis:')
-        self.holzpreisLabel = QLabel('Holzpreis:')
+        self.gaspreisLabel = QLabel('Gaspreis (€/MWh):')
+        self.strompreisLabel = QLabel('Strompreis (€/MWh):')
+        self.holzpreisLabel = QLabel('Holzpreis (€/MWh):')
+        self.BEWLabel = QLabel('Berücksichtigung BEW-Förderung?:')
         
         # Buttons
         self.calculateButton = QPushButton('Berechnen')
@@ -79,6 +83,8 @@ class HeatSystemDesignGUI(QWidget):
         inputLayout.addWidget(self.strompreisInput)
         inputLayout.addWidget(self.holzpreisLabel)
         inputLayout.addWidget(self.holzpreisInput)
+        inputLayout.addWidget(self.BEWLabel)
+        inputLayout.addWidget(self.BEWComboBox)
 
         # Result Label
         self.resultLabel = QLabel('Ergebnisse werden hier angezeigt')
@@ -173,11 +179,39 @@ class HeatSystemDesignGUI(QWidget):
     def optimize(self):
         self.calculate(True)
     
-    def calculate(self, optimize=False):
-        ############## CALCULATION #################
-        calc1, calc2 = 0, 35040 # min: 0; max: 35040
-        filename = 'results_time_series_net.csv'
+    def berechne_und_visualisiere_WGK(self, techs, time_steps, calc1, calc2, initial_data, TRY, COP_data, BEW):
+        # Definieren Sie die Preisbereiche
+        Gaspreis_Bereich = np.arange(40, 51, 10)  # Beispiel: von 40 bis 100 in Schritten von 10
+        Strompreis_Bereich = np.arange(100, 121, 20)
+        Holzpreis_Bereich = np.arange(40, 51, 10)
 
+        # Initialisieren Sie ein leeres Array für die Ergebnisse
+        WGK_Ergebnisse = []
+
+        # Iterieren Sie über die Preisbereiche und führen Sie Berechnungen durch
+        for Gaspreis in Gaspreis_Bereich:
+            for Strompreis in Strompreis_Bereich:
+                for Holzpreis in Holzpreis_Bereich:
+                    WGK_Gesamt, _, _, _, _, _, _, _, _ = \
+                        Berechnung_Erzeugermix(techs, time_steps, calc1, calc2, initial_data, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW)
+                    WGK_Ergebnisse.append((Gaspreis, Strompreis, Holzpreis, WGK_Gesamt))
+
+        # Visualisieren Sie die Ergebnisse
+        plt.figure(figsize=(10, 6))
+        for Gaspreis, Strompreis, Holzpreis, WGK in WGK_Ergebnisse:
+            plt.scatter(Gaspreis, WGK, color='red', label='Gaspreis')
+            plt.scatter(Strompreis, WGK, color='blue', label='Strompreis')
+            plt.scatter(Holzpreis, WGK, color='green', label='Holzpreis')
+        plt.xlabel('Energiepreis (€/Einheit)')
+        plt.ylabel('Wärmegestehungskosten (€/MWh)')
+        plt.title('Wärmegestehungskosten in Abhängigkeit von den Energiepreisen')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+
+    def create_net(self):
+        calc1, calc2 = 0, 35040 # min: 0; max: 35040
+        filename = 'results_time_series_net1.csv'
         #gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Vorlauf.geojson')
         #gdf_rl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Rücklauf.geojson')
         #gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/HAST.geojson')
@@ -190,11 +224,14 @@ class HeatSystemDesignGUI(QWidget):
 
         ###!!!!!this will overwrite the current csv file!!!!!#
         #save_results_csv(time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump, filename)
-
-        time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump = import_results_csv(filename)
-
         #plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
 
+    def calculate(self, optimize=False):
+        calc1, calc2 = 0, 35040 # min: 0; max: 35040
+        filename = 'results_time_series_net.csv'
+
+        time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump = import_results_csv(filename)
+        #plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
         initial_data = qext_kW, flow_temp_circ_pump, return_temp_circ_pump
 
         TRY_filename = 'heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat'
@@ -204,8 +241,7 @@ class HeatSystemDesignGUI(QWidget):
         Gaspreis = float(self.gaspreisInput.text())
         Strompreis = float(self.strompreisInput.text())
         Holzpreis = float(self.holzpreisInput.text())
-        BEW = "Nein"
-
+        BEW = self.BEWComboBox.itemText(self.BEWComboBox.currentIndex())
         techs = self.tech_objects  
 
         if optimize == True:
@@ -215,6 +251,8 @@ class HeatSystemDesignGUI(QWidget):
         Berechnung_Erzeugermix(techs, time_steps, calc1, calc2, initial_data, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW)
         
         self.showResults(Jahreswärmebedarf, WGK_Gesamt, techs, Wärmemengen, WGK, Anteile)
+
+        #self.berechne_und_visualisiere_WGK(techs, time_steps, calc1, calc2, initial_data, TRY, COP_data, BEW)
 
         # Example of plotting
         self.plot(time_steps, data_L, data_labels_L, Anteile, Last_L)
@@ -227,7 +265,7 @@ class HeatSystemDesignGUI(QWidget):
         ax1 = self.figure1.add_subplot(111)
         ax2 = self.figure2.add_subplot(111)
 
-        ax1.plot(t, Last_L, color="black", linewidth=0.05, label="Last in kW")
+        #ax1.plot(t, Last_L, color="black", linewidth=0.05, label="Last in kW")
         ax1.stackplot(t, data_L, labels=data_labels_L)
         ax1.set_title("Jahresdauerlinie")
         ax1.set_xlabel("Jahresstunden")
@@ -237,7 +275,7 @@ class HeatSystemDesignGUI(QWidget):
 
         ax2.pie(Anteile, labels=data_labels_L, autopct='%1.1f%%', startangle=90)
         ax2.set_title("Anteile Wärmeerzeugung")
-        ax2.legend(loc='center right')
+        ax2.legend(loc='lower left')
         ax2.axis("equal")
         ax2.plot
 

@@ -14,7 +14,6 @@ from heat_generators.Solarthermie import import_TRY
 
 #Berechnung_Erzeugermix
 
-
 def thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gdf_HAST, gdf_WEA):
     ### generates the pandapipes net and initializes it ###
     net = net_simulation.initialize_net(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA)
@@ -216,4 +215,4 @@ filename_save = 'results_time_series_net1.csv'
 filename_load = 'results_time_series_net.csv'
 
 #generate_net(calc1, calc2, filename_save)
-auslegung_erzeuger(calc1, calc2, filename_load)
+#auslegung_erzeuger(calc1, calc2, filename_load, optimize=False)

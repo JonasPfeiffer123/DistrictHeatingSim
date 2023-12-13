@@ -1,4 +1,4 @@
-# Ertragsberechnungsprogramm Solarthermie in Wärmenetz (Berechnungsgrundlage: ScenoCalc Fernwärme 2.0
+# Ertragsberechnungsprogramm Solarthermie in Wärmenetz von Dipl.-Ing. (FH) Jonas Pfeiffer (Berechnungsgrundlage: ScenoCalc Fernwärme 2.0)
 # https://www.scfw.de/)
 
 # Import Bibliotheken
