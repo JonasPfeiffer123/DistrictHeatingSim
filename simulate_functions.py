@@ -9,7 +9,7 @@ from net_simulation_pandapipes import net_simulation
 from net_simulation_pandapipes import net_simulation_calculation
 from heat_requirement import heat_requirement_VDI4655
 from net_simulation_pandapipes.net_generation_test import initialize_test_net
-import heat_generators.heat_generator_classes as hgs
+from heat_generators.heat_generator_classes import *
 from heat_generators.Solarthermie import import_TRY
 
 #Berechnung_Erzeugermix
@@ -149,45 +149,36 @@ def auslegung_erzeuger():
     TRY_filename = 'heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat'
     TRY = import_TRY(TRY_filename)
     COP_data = np.genfromtxt('heat_generators/Kennlinien WP.csv', delimiter=';')
-    Typ = "Vakuumröhrenkollektor"
 
     Gaspreis = 70
     Strompreis = 150
     Holzpreis = 50
-    Fläche = 100
-    Bohrtiefe = 100
-    Temperatur_Geothermie = 10
     BEW = "Nein"
     #BEW = "Ja"
-    Kühlleistung_Abwärme = 20
-    Temperatur_Abwärme = 30
-    tech_order = ["Solarthermie", "Holzgas-BHKW", "Biomassekessel", "Gaskessel"]
 
-    # variable Eingaben
-    bruttofläche_STA = 0  # m²
-    vs = 0                 # m³
-    P_BMK = 30              # kW
-    th_Leistung_BHKW = 40   # kW
+    solar_thermal = SolarThermal(name="Solarthermie", bruttofläche_STA=200, vs=20, Typ="Vakuumröhrenkollektor")
+    geothermal = Geothermal(name="Geothermie", Fläche=100, Bohrtiefe=100, Temperatur_Geothermie=10)
+    waste_heat = WasteHeatPump(name="Abwärme", Kühlleistung_Abwärme=20, Temperatur_Abwärme=30)
+    biomass_boiler1 = BiomassBoiler(name="Biomassekessel", P_BMK=30)
+    biomass_boiler2 = BiomassBoiler(name="Biomassekessel", P_BMK=60)
+    wood_chp = CHP(name="BHKW", th_Leistung_BHKW=40)
+    chp2 = CHP(name="Holzgas-BHKW", th_Leistung_BHKW=40)
+    gas_boiler = GasBoiler(name="Gaskessel")
 
-    initial_values = [bruttofläche_STA, vs, P_BMK, th_Leistung_BHKW]
+    techs = [solar_thermal, wood_chp, biomass_boiler1, gas_boiler]
 
-    optimized_values = hgs.optimize_mix(initial_values, time_steps, calc1, calc2, initial_data, TRY, \
-                                         COP_data, Typ, Fläche, Bohrtiefe, Temperatur_Geothermie, Gaspreis, \
-                                         Strompreis, Holzpreis, BEW, tech_order, Kühlleistung_Abwärme, Temperatur_Abwärme)
-    
-    bruttofläche_STA, vs, P_BMK, th_Leistung_BHKW = optimized_values
+    techs = optimize_mix(techs, time_steps, calc1, calc2, initial_data, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW)
 
-    WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile = \
-            hgs.Berechnung_Erzeugermix(time_steps, calc1, calc2, bruttofläche_STA, vs, Typ, Fläche, Bohrtiefe, Temperatur_Geothermie, P_BMK, Gaspreis, Strompreis, \
-                                        Holzpreis, initial_data, TRY, tech_order, BEW, th_Leistung_BHKW, Kühlleistung_Abwärme, Temperatur_Abwärme, COP_data)
+    WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile, specific_emissions  = \
+        Berechnung_Erzeugermix(techs, time_steps, calc1, calc2, initial_data, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW)
     
     print(f"Jahreswärmebedarf:", f"{Jahreswärmebedarf:.2f} MWh")
     print(f"Wärmegestehungskosten Gesamt:", f"{WGK_Gesamt:.2f} €/MWh")
 
-    for t, wärmemenge, anteil, wgk in zip(tech_order, Wärmemengen, Anteile, WGK):
-        print(f"Wärmemenge {t}:", f"{wärmemenge:.2f} MWh")
-        print(f"Wärmegestehungskosten {t}:", f"{wgk:.2f} €/MWh")
-        print(f"Anteil an Wärmeversorgung {t}:", f"{anteil:.2f}")
+    for tech, wärmemenge, anteil, wgk in zip(techs, Wärmemengen, Anteile, WGK):
+        print(f"Wärmemenge {tech.name}:", f"{wärmemenge:.2f} MWh")
+        print(f"Wärmegestehungskosten {tech.name}:", f"{wgk:.2f} €/MWh")
+        print(f"Anteil an Wärmeversorgung {tech.name}:", f"{anteil:.2f}")
 
     def Jahresdauerlinie(t, Last_L, data_L, data_labels_L):
         fig, ax = plt.subplots()
@@ -220,3 +211,5 @@ def auslegung_erzeuger():
     Jahresdauerlinie(time_steps, Last_L, data_L, data_labels_L)
 
     Kreisdiagramm(data_labels_L, Anteile)
+
+auslegung_erzeuger()

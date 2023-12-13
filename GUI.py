@@ -237,7 +237,7 @@ class HeatSystemDesignGUI(QWidget):
             
             bruttofläche_STA, vs,  P_BMK, th_Leistung_BHKW = optimized_values
 
-        WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile = \
+        WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile, specific_emissions = \
                 hgs.Berechnung_Erzeugermix(time_steps, calc1, calc2, bruttofläche_STA, vs, Typ, Fläche, Bohrtiefe, Temperatur_Geothermie, P_BMK, Gaspreis, Strompreis, \
                                             Holzpreis, initial_data, TRY, tech_order, BEW, th_Leistung_BHKW, Kühlleistung_Abwärme, Temperatur_Abwärme, COP_data)
         

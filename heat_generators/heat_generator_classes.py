@@ -52,7 +52,7 @@ class WasteHeatPump:
         return Wärmemenge, Strombedarf, Wärmeleistung_L, el_Leistung_L, max_Wärmeleistung
     
     def calculate(self, Restlast_L, VLT_L, COP_data, el_Leistung_ges_L, Restwärmebedarf, Strombedarf_WP, Jahreswärmebedarf, \
-                  data, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech, Strompreis, q, r, T, duration, tech_order):
+                  data, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, Strompreis, q, r, T, duration, tech_order):
        
         Wärmemenge, Strombedarf_Abwärme, Wärmeleistung_L, el_Leistung_L, max_Wärmeleistung = \
         self.abwärme(Restlast_L, VLT_L, self.Kühlleistung_Abwärme, self.Temperatur_Abwärme, COP_data, duration)
@@ -65,7 +65,7 @@ class WasteHeatPump:
 
         Anteil = Wärmemenge / Jahreswärmebedarf
 
-        WGK_Abwärme = WGK_WP(max_Wärmeleistung, Wärmemenge, Strombedarf_Abwärme, tech, 0, Strompreis, q, r, T)
+        WGK_Abwärme = WGK_WP(max_Wärmeleistung, Wärmemenge, Strombedarf_Abwärme, self.name, 0, Strompreis, q, r, T)
 
         WGK_Gesamt += Wärmemenge * WGK_Abwärme
 
@@ -77,7 +77,7 @@ class WasteHeatPump:
             WGK.append(WGK_Abwärme)
         
         else:
-            tech_order.remove(self.name)
+            tech_order.remove(self)
 
         return el_Leistung_ges_L, Restlast_L, Restwärmebedarf, Strombedarf_WP, data, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order
 
@@ -145,9 +145,8 @@ class Geothermal:
         
         return Wärmemenge, Strombedarf, Wärmeleistung_tat_L, el_Leistung_tat_L, max_Wärmeleistung, Investitionskosten_Sonden
     
-    def calculate(self, Restlast_L, VLT_L, COP_data,el_Leistung_ges_L, Restwärmebedarf, Strombedarf_WP, \
-                    Jahreswärmebedarf, data, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, \
-                    tech, Strompreis, q, r, T, duration, tech_order):
+    def calculate(self, Restlast_L, VLT_L, COP_data, el_Leistung_ges_L, Restwärmebedarf, Strombedarf_WP, \
+                    Jahreswärmebedarf, data, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, Strompreis, q, r, T, duration, tech_order):
         # Hier fügen Sie die spezifische Logik für die Geothermie-Berechnung ein
         Wärmemenge, Strombedarf, Wärmeleistung_L, el_Leistung_Geothermie_L, \
         max_Wärmeleistung, Investitionskosten_Sonden = self.Geothermie(Restlast_L, VLT_L, self.Fläche, self.Bohrtiefe, self.Temperatur_Geothermie, COP_data, duration)
@@ -162,7 +161,7 @@ class Geothermal:
 
         Anteil = Wärmemenge / Jahreswärmebedarf
 
-        WGK_Geothermie = WGK_WP(max_Wärmeleistung, Wärmemenge, Strombedarf, tech, spez_Investitionskosten_Erdsonden, Strompreis, q, r, T)
+        WGK_Geothermie = WGK_WP(max_Wärmeleistung, Wärmemenge, Strombedarf, self.name, spez_Investitionskosten_Erdsonden, Strompreis, q, r, T)
         WGK_Gesamt += Wärmemenge * WGK_Geothermie
 
         if Wärmemenge > 0:
@@ -173,7 +172,7 @@ class Geothermal:
             WGK.append(WGK_Geothermie)
 
         else:
-            tech_order.remove(self.name)
+            tech_order.remove(self)
 
         return el_Leistung_ges_L, Restlast_L, Restwärmebedarf, Strombedarf_WP, data, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK , tech_order
 
@@ -207,16 +206,15 @@ class CHP:
         return Wärmeleistung_BHKW, Wärmeleistung_BHKW_L, el_Leistung_BHKW_L, Wärmemenge_BHKW, Strommenge_BHKW, \
             Brennstoffbedarf_BHKW
 
-    def calculate(self, Restlast_L, Gaspreis, Holzpreis, tech, Restwärmebedarf, \
-                  Jahreswärmebedarf, data, colors, Strompreis, q, r, T, Wärmemengen, Anteile, WGK, \
-                  el_Leistung_ges_L, Strommenge_BHKW, WGK_Gesamt, duration, tech_order):
+    def calculate(self, Restlast_L, Gaspreis, Holzpreis, Restwärmebedarf, Jahreswärmebedarf, data, colors, Strompreis, \
+                  q, r, T, Wärmemengen, Anteile, WGK, el_Leistung_ges_L, Strommenge_BHKW, WGK_Gesamt, duration, tech_order):
         
         Wärmeleistung_BHKW, Wärmeleistung_BHKW_L, el_Leistung_BHKW_L, Wärmemenge, Strommenge_BHKW, \
         Brennstoffbedarf_BHKW = self.BHKW(self.th_Leistung_BHKW, Restlast_L, duration)
 
-        if tech == "BHKW":
+        if self.name == "BHKW":
             Brennstoffpreis = Gaspreis
-        elif tech == "Holzgas-BHKW":
+        elif self.name == "Holzgas-BHKW":
             Brennstoffpreis = Holzpreis
 
         Restlast_L -= Wärmeleistung_BHKW_L
@@ -225,7 +223,7 @@ class CHP:
 
         Anteil_BHKW = Wärmemenge / Jahreswärmebedarf
 
-        wgk_BHKW = WGK_BHKW(Wärmeleistung_BHKW, Wärmemenge, Strommenge_BHKW, tech, Brennstoffbedarf_BHKW,
+        wgk_BHKW = WGK_BHKW(Wärmeleistung_BHKW, Wärmemenge, Strommenge_BHKW, self.name, Brennstoffbedarf_BHKW,
                             Brennstoffpreis, Strompreis, q, r, T)
         WGK_Gesamt += Wärmemenge * wgk_BHKW
 
@@ -237,7 +235,7 @@ class CHP:
             WGK.append(wgk_BHKW)
 
         else:
-            tech_order.remove(self.name)
+            tech_order.remove(self)
 
         return el_Leistung_ges_L, Restlast_L, Restwärmebedarf, Strommenge_BHKW, data, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order
 
@@ -275,7 +273,7 @@ class BiomassBoiler:
             WGK.append(WGK_BMK)
 
         else:
-            tech_order.remove(self.name)
+            tech_order.remove(self)
 
         return Restlast_L, Restwärmebedarf, data, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order
 
@@ -312,7 +310,7 @@ class GasBoiler:
             WGK.append(WGK_GK)
 
         else:
-            tech_order.remove(self.name)
+            tech_order.remove(self)
 
         return Restlast_L, Restwärmebedarf, data, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order
 
@@ -345,7 +343,7 @@ class SolarThermal:
             WGK.append(WGK_Solarthermie)
 
         else:
-            tech_order.remove(self.name)
+            tech_order.remove(self)
 
         return Restlast_L, Restwärmebedarf, data, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order
 
@@ -356,10 +354,7 @@ def calculate_factors(Kapitalzins, Preissteigerungsrate, Betrachtungszeitraum):
     T = Betrachtungszeitraum
     return q, r, T
 
-def Berechnung_Erzeugermix(time_steps, calc1, calc2, bruttofläche_STA, vs, Typ, Fläche, Bohrtiefe, Temperatur_Geothermie, P_BMK, Gaspreis,
-                           Strompreis, Holzpreis, initial_data, TRY, tech_order, BEW, th_Leistung_BHKW, Kühlleistung_Abwärme,
-                           Temperatur_Abwärme, COP_data, Kapitalzins=5, Preissteigerungsrate=3, Betrachtungszeitraum=20):
-
+def Berechnung_Erzeugermix(tech_order, time_steps, calc1, calc2, initial_data, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, variables=[], variables_order=[], Kapitalzins=5, Preissteigerungsrate=3, Betrachtungszeitraum=20):
     # Kapitalzins und Preissteigerungsrate in % -> Umrechung in Zinsfaktor und Preissteigerungsfaktor
     q, r, T = calculate_factors(Kapitalzins, Preissteigerungsrate, Betrachtungszeitraum)
     Last_L, VLT_L, RLT_L = initial_data
@@ -370,69 +365,85 @@ def Berechnung_Erzeugermix(time_steps, calc1, calc2, bruttofläche_STA, vs, Typ,
     Jahreswärmebedarf = (np.sum(Last_L)/1000) * duration
 
     Restlast_L, Restwärmebedarf, WGK_Gesamt = Last_L.copy(), Jahreswärmebedarf, 0
-    data, colors, Wärmemengen, Anteile, WGK = [], [], [], [], []
+    data_L, colors, Wärmemengen, Anteile, WGK = [], [], [], [], []
 
     Strombedarf_WP, Strommenge_BHKW = 0, 0
     el_Leistung_ges_L = np.zeros_like(Last_L)
 
+    specific_emissions = 1
+
     # zunächst Berechnung der Erzeugung
     for tech in tech_order.copy():
 
-        if tech == "Solarthermie":
-            solar_thermal = SolarThermal(tech, bruttofläche_STA, vs, Typ)
-
-            Restlast_L, Restwärmebedarf, data, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order = \
-                solar_thermal.calculate(Last_L, VLT_L, RLT_L, TRY, time_steps, calc1, calc2, Restlast_L, Restwärmebedarf, Jahreswärmebedarf, \
-                                        data, colors, q, r, T, BEW, WGK_Gesamt, Wärmemengen, Anteile, WGK, duration, tech_order)
+        if tech.name == "Solarthermie":
+            if len(variables) > 0:
+                tech.bruttofläche_STA, tech.vs = variables[variables_order.index("bruttofläche_STA")], variables[variables_order.index("vs")]
+            Restlast_L, Restwärmebedarf, data_L, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order = \
+                tech.calculate(Last_L, VLT_L, RLT_L, TRY, time_steps, calc1, calc2, Restlast_L, Restwärmebedarf, Jahreswärmebedarf, \
+                                        data_L, colors, q, r, T, BEW, WGK_Gesamt, Wärmemengen, Anteile, WGK, duration, tech_order)
         
-        elif tech == "Abwärme" or tech == "Abwasserwärme":
-            waste_heat = WasteHeatPump(tech, Kühlleistung_Abwärme, Temperatur_Abwärme)
-
-            el_Leistung_ges_L, Restlast_L, Restwärmebedarf, Strombedarf_WP, data, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order = \
-                waste_heat.calculate(Restlast_L, VLT_L, COP_data, el_Leistung_ges_L, Restwärmebedarf, Strombedarf_WP, Jahreswärmebedarf, \
-                                     data, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech, Strompreis, q, r, T, duration, tech_order)
+        elif tech.name == "Abwärme" or tech == "Abwasserwärme":
+            el_Leistung_ges_L, Restlast_L, Restwärmebedarf, Strombedarf_WP, data_L, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order = \
+                tech.calculate(Restlast_L, VLT_L, COP_data, el_Leistung_ges_L, Restwärmebedarf, Strombedarf_WP, Jahreswärmebedarf, \
+                                     data_L, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK_Gesamt, Strompreis, q, r, T, duration, tech_order)
             
-        elif tech == "Geothermie":
-            geothermal = Geothermal(tech, Fläche, Bohrtiefe, Temperatur_Geothermie)
-
-            el_Leistung_ges_L, Restlast_L, Restwärmebedarf, Strombedarf_WP, data, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order = \
-                geothermal.calculate(Restlast_L, VLT_L, COP_data,el_Leistung_ges_L, Restwärmebedarf, Strombedarf_WP, Jahreswärmebedarf, data, \
-                                     colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech, Strompreis, q, r, T, duration, tech_order)
+        elif tech.name == "Geothermie":
+            el_Leistung_ges_L, Restlast_L, Restwärmebedarf, Strombedarf_WP, data_L, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order = \
+                tech.calculate(Restlast_L, VLT_L, COP_data,el_Leistung_ges_L, Restwärmebedarf, Strombedarf_WP, Jahreswärmebedarf, data_L, \
+                                     colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, Strompreis, q, r, T, duration, tech_order)
             
-        elif tech == "BHKW" or tech == "Holzgas-BHKW":
-            chp = CHP(tech, th_Leistung_BHKW)
-
-            el_Leistung_ges_L, Restlast_L, Restwärmebedarf, Strommenge_BHKW, data, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order = \
-                chp.calculate(Restlast_L, Gaspreis, Holzpreis, tech, Restwärmebedarf, Jahreswärmebedarf, data, colors, \
+        elif tech.name == "BHKW" or tech.name == "Holzgas-BHKW":
+            if len(variables) > 0:
+                tech.th_Leistung_BHKW = variables[variables_order.index("th_Leistung_BHKW")]
+            el_Leistung_ges_L, Restlast_L, Restwärmebedarf, Strommenge_BHKW, data_L, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order = \
+                tech.calculate(Restlast_L, Gaspreis, Holzpreis, Restwärmebedarf, Jahreswärmebedarf, data_L, colors, \
                               Strompreis, q, r, T, Wärmemengen, Anteile, WGK, el_Leistung_ges_L, Strommenge_BHKW, WGK_Gesamt, duration, tech_order)
             
-        elif tech == "Biomassekessel":
-            biomass_boiler = BiomassBoiler(tech, P_BMK)
-
-            Restlast_L, Restwärmebedarf, data, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order = biomass_boiler.calculate(
-                Restlast_L, Restwärmebedarf, Jahreswärmebedarf, data, colors, Holzpreis, q, r, T, WGK_Gesamt, Wärmemengen, Anteile, WGK, duration, tech_order)
+        elif tech.name == "Biomassekessel":
+            if len(variables) > 0:
+                tech.P_BMK = variables[variables_order.index("P_BMK")]
+            Restlast_L, Restwärmebedarf, data_L, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order = tech.calculate(
+                Restlast_L, Restwärmebedarf, Jahreswärmebedarf, data_L, colors, Holzpreis, q, r, T, WGK_Gesamt, Wärmemengen, Anteile, WGK, duration, tech_order)
             
-        elif tech == "Gaskessel":
-            gas_boiler = GasBoiler(tech)
-            Restlast_L, Restwärmebedarf, data, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order = gas_boiler.calculate(
-                Restlast_L, Restwärmebedarf, Jahreswärmebedarf, data, colors, Gaspreis, q, r, T, WGK_Gesamt, Wärmemengen, Anteile, WGK, Last_L, duration, tech_order)
+        elif tech.name == "Gaskessel":
+            Restlast_L, Restwärmebedarf, data_L, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order = tech.calculate(
+                Restlast_L, Restwärmebedarf, Jahreswärmebedarf, data_L, colors, Gaspreis, q, r, T, WGK_Gesamt, Wärmemengen, Anteile, WGK, Last_L, duration, tech_order)
+            
+        else:
+            tech_order.remove(tech)
+            print(f"{tech.name} ist kein gültiger Erzeugertyp und wird daher nicht betrachtet.")
 
     WGK_Gesamt /= Jahreswärmebedarf
-    
-    return WGK_Gesamt, Jahreswärmebedarf, Last_L, data, tech_order, Wärmemengen, WGK, Anteile
 
-def optimize_mix(initial_values, time_steps, calc1, calc2, initial_data, TRY, COP_data, Typ, Fläche, Bohrtiefe, Temperatur_Geothermie, Gaspreis, Strompreis, Holzpreis, BEW, tech_order, Kühlleistung_Abwärme, Temperatur_Abwärme):
+    techs = []
+    for tech in tech_order:
+        techs.append(tech.name)
+    return WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, techs, Wärmemengen, WGK, Anteile, specific_emissions
+
+def optimize_mix(tech_order, time_steps, calc1, calc2, initial_data, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW):
+    # solar Fläche, Speichervolumen solar, Leistung Biomasse, Leistung BHKW
+    initial_values = []
+    variables_order = []
+    for tech in tech_order:
+        if isinstance(tech, SolarThermal):
+            initial_values.append(tech.bruttofläche_STA)
+            variables_order.append("bruttofläche_STA")
+            initial_values.append(tech.vs)
+            variables_order.append("vs")
+        elif isinstance(tech, CHP):
+            initial_values.append(tech.th_Leistung_BHKW)
+            variables_order.append("th_Leistung_BHKW")
+        elif isinstance(tech, BiomassBoiler):
+            initial_values.append(tech.P_BMK)
+            variables_order.append("P_BMK")
+
     def objective(variables):
-        bruttofläche_STA, vs, P_BMK, th_Leistung_BHKW = variables
-
-        WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile = \
-            Berechnung_Erzeugermix(time_steps, calc1, calc2, bruttofläche_STA, vs, Typ, Fläche, Bohrtiefe, Temperatur_Geothermie, P_BMK, Gaspreis, Strompreis, \
-                                        Holzpreis, initial_data, TRY, tech_order, BEW, \
-                                        th_Leistung_BHKW, Kühlleistung_Abwärme, Temperatur_Abwärme, COP_data)
+        WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile, specific_emissions = \
+            Berechnung_Erzeugermix(tech_order, time_steps, calc1, calc2, initial_data, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, variables, variables_order)
         
         return WGK_Gesamt
 
-    # Optimierung durchführen
+    # optimization
     result = minimize(objective, initial_values, method='SLSQP', bounds=[(0, 1000), (0, 100), (0, 500), (0, 500)], options={'maxiter': 1000})
     #result = minimize(objective, initial_values, method='L-BFGS-B', bounds=[(0, 1000), (0, 1000), (0, 1000), (0, 1000)], options={'maxiter': 1000})
     #result = minimize(objective, initial_values, method='TNC', bounds=[(0, 1000), (0, 100), (0, 500), (0, 500)], options={'maxiter': 1000})
@@ -442,8 +453,21 @@ def optimize_mix(initial_values, time_steps, calc1, calc2, initial_data, TRY, CO
         optimized_WGK_Gesamt = objective(optimized_values)
         print(f"Optimierte Werte: {optimized_values}")
         print(f"Minimale Wärmegestehungskosten: {optimized_WGK_Gesamt:.2f} €/MWh")
-        return optimized_values
+
+        for tech in tech_order:
+            if isinstance(tech, SolarThermal):
+                tech.bruttofläche_STA = optimized_values[index]
+                index += 1
+                tech.vs = optimized_values[index]
+                index += 1
+            elif isinstance(tech, BiomassBoiler):
+                tech.P_BMK = optimized_values[index]
+                index += 1
+            elif isinstance(tech, CHP):
+                tech.th_Leistung_BHKW = optimized_values[index]
+                index += 1
+
+        return tech_order
     else:
         print("Optimierung nicht erfolgreich")
         print(result.message)
-
