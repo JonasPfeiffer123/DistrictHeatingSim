@@ -3,7 +3,7 @@ import pandas as pd
 from scipy.optimize import minimize
 from scipy.interpolate import RegularGridInterpolator
 import matplotlib.pyplot as plt
-from math import pi
+from math import pi, sqrt
 
 from heat_generators.Solarthermie import Berechnung_STA
 
@@ -167,13 +167,11 @@ class Geothermal(HeatPump):
         self.Temperatur_Geothermie = Temperatur_Geothermie
 
     def Geothermie(self, Last_L, VLT_L, Fläche, Bohrtiefe, Quelltemperatur, COP_data, duration, spez_Bohrkosten=120, spez_Entzugsleistung=50,
-               Vollbenutzungsstunden=2400, Abstand_Sonden=6):
+               Vollbenutzungsstunden=2400, Abstand_Sonden=10):
         if Fläche == 0 or Bohrtiefe == 0:
             return 0, 0, np.zeros_like(Last_L), np.zeros_like(VLT_L), 0, 0
 
-        #noch der Falsche Berechnungsansatz
-        Fläche_Sonde = (pi/4) * (2*Abstand_Sonden)**2
-        Anzahl_Sonden = round(Fläche / Fläche_Sonde, 0)
+        Anzahl_Sonden = (round(sqrt(Fläche)/Abstand_Sonden)+1)**2
 
         Entzugsleistung_2400 = Bohrtiefe * spez_Entzugsleistung * Anzahl_Sonden / 1000
         # kW bei 2400 h, 22 Sonden, 50 W/m: 220 kW
@@ -520,10 +518,10 @@ def calculate_factors(Kapitalzins, Preissteigerungsrate, Betrachtungszeitraum):
     T = Betrachtungszeitraum
     return q, r, T
 
-def Berechnung_Erzeugermix(tech_order, time_steps, calc1, calc2, initial_data, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, variables=[], variables_order=[], Kapitalzins=5, Preissteigerungsrate=3, Betrachtungszeitraum=20):
+def Berechnung_Erzeugermix(tech_order, initial_data, calc1, calc2, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, variables=[], variables_order=[], Kapitalzins=5, Preissteigerungsrate=3, Betrachtungszeitraum=20):
     # Kapitalzins und Preissteigerungsrate in % -> Umrechung in Zinsfaktor und Preissteigerungsfaktor
     q, r, T = calculate_factors(Kapitalzins, Preissteigerungsrate, Betrachtungszeitraum)
-    Last_L, VLT_L, RLT_L = initial_data
+    time_steps, Last_L, VLT_L, RLT_L = initial_data
 
     duration = np.diff(time_steps[0:2]) / np.timedelta64(1, 'h')
     duration = duration[0]
@@ -586,7 +584,7 @@ def Berechnung_Erzeugermix(tech_order, time_steps, calc1, calc2, initial_data, T
         techs.append(tech.name)
     return WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, techs, Wärmemengen, WGK, Anteile, specific_emissions
 
-def optimize_mix(tech_order, time_steps, calc1, calc2, initial_data, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW):
+def optimize_mix(tech_order, initial_data, calc1, calc2, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW):
     # solar Fläche, Speichervolumen solar, Leistung Biomasse, Leistung BHKW
     initial_values = []
     variables_order = []
@@ -610,7 +608,7 @@ def optimize_mix(tech_order, time_steps, calc1, calc2, initial_data, TRY, COP_da
 
     def objective(variables):
         WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile, specific_emissions = \
-            Berechnung_Erzeugermix(tech_order, time_steps, calc1, calc2, initial_data, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, variables, variables_order)
+            Berechnung_Erzeugermix(tech_order, initial_data, calc1, calc2, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, variables, variables_order)
         
         return WGK_Gesamt
 
