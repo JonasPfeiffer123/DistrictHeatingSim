@@ -6,81 +6,94 @@ This project focuses on generating and analyzing heating networks using geospati
 
 # Usage
 
-geocoding
+"geocoding"-folder
 - for the geocoding python files the libraries "Nominatim" and "Transformer" are needed
+- There are 2 scripts which allow you to geocode given adresses
+- the folder is also used for storage of example data
 
-Net generation in QGIS
-- To run this project, a QGIS installation is needed. This project was created in QGIS 3.34.0. 
-- When opening the QGIS-file, the output of "net_generation_functions.py" and "net_generation_qgis_ETRS89_MST.py" will be already there as the output-files were already created and imported
+"net_generation_QGIS"-folder
+- To run this project, a QGIS installation is needed. This project was created in QGIS 3.34.0.
+- there are currently different example folders with two different synthetic "projects" created with different net generation algorithms
+- When opening a QGIS-file, the output of "net_generation_qgis.py" will be already there as the output-files were already created and imported
 - Alternatively you can open a new QGIS file. In this case, some things still have to be done manually. First of, change the crs (coordinate reference system) to EPSG:25833 (for the given data). 
-- Install the QuickOSM plugin. 
-- Import a street-layer with QuickOSM. For this project, I imported the key "highway" with the values "primary", "secondary", "tertiary" and "residential" in "Zittau", but also tested a few variations 
-- Run the python file "net_generation_qgis_ETRS89_MST.py" in QGIS. 
-Note: "net_generation_qgis_ETRS89_MST.py" calls functions from "net_generation_qgis_functions.py".
+- Optional: Install the QuickOSM plugin if you want to download specific street data. Alternatively you can use the "import_osm_street_layer_geojson.py"-file. This requires a specific osm-query.
+- For this project, I imported the key "highway" with the values "primary", "secondary", "tertiary", "residential", "road" and "living_street" for the cities "Zittau" and "Görlitz", but also tested a few variations 
+Note: "net_generation_qgis.py" calls functions from "import_and_create_layers_qgis.py" and from "qgis_simple_MST.py", "qgis_street_MST.py" or "qgis_advanced_street_MST.py" depending on the algorithm you want to use. "qgis_advanced_street_MST.py" is currently not working as intended
 
-Net simulation with pandapipes
-- the main file is "simulate.py" in the main folder
-- To run the python file "net_simulation.py" the "pandapipes" and "geopanda" libraries are needed.
-- "net_simulation.py" calls functions from "net_simulation_calculation.py", "net_generation_test.py" and "my_controllers.py".
-- "net_simulation.py" creates a pandapipes net from gis-data. Alternatively, "net_generation_test.py" can be used to create a test net with the same functionality to test future algorithms.
+"net_simulation_pandapipes"
+- the "pandapipes" and "geopanda" libraries are needed.
+- the main file is "simulate_functions.py" in the main folder, the net generation based on the gis data in its current form can be initiated with the generate_net()-function. This functions defines the Input-geojson-files and creates the pandapipes-net
+- "simulate_functions.py" calls functions from "net_simulation", "net_simulation_calculation.py", "net_generation_test.py" and "my_controllers.py".
+- "simulate_functions.py" creates a pandapipes net from gis-data. Alternatively, "net_generation_test.py" can be used to create a test net with the same functionality to test future algorithms.
 
-heat requirement
+"heat_requirement"
 - implementation of the VDI 4655 for load profile calculation (based on the available Excel-file from https://www.umwelt-campus.de/energietools)
+- uses TRY-data
+- call the "calculate"-function to get the timeseries-output
 
-heat generators
+"heat_generators"
 - I recently added a bunch of heat generator functions from a previous private project of mine, which are now being implemented in the whole calculation model
+- I recently updated and restructured the code. "Photovoltaik.py" and "Wirtschaftlichkeitsbetrachtung.py" is currently not used. The functionality of "Wirtschaftlichkeitsbetrachtung.py" is already implemented in heat_generator classes.
+- heat_generator_classes defines different heat generator classes and a function to calculate the heat generation mix based on a given load and predefined heat generators and an optimize-function to minimize the cost of such a system
+
+"Example_Results"
+- shows a few visual example outputs of the project
+
+"main-folder"
+- as already described, "simulate_functions.py" can be used for various calculations
+- for a more user friendly experience I created the "GUI.py" which currently has the functionality to calculate the generation mix and optimize it
 
 # Data
-For the developement and testing of the algorithms and functions, geodata is required. In this case a few local adresses in Zittau were choosed and geocoded. Also some synthetic datapoints were added. This dataset is saved as the csv-file "data_output_ETRS89.csv". The district heating network will be generated for these datapoints.
+For the developement and testing of the algorithms and functions, geodata is required. In this case a few local adresses in Zittau were choosed and geocoded. Also some synthetic datapoints were added. This example-datasets are saved in the geocoding-folder. The district heating network will be generated for these datapoints.
 
 # Scripts
-# net_generation_qgis_functions.py
-
-- Purpose: Provides utility functions for network generation within the GIS framework.
-- Key Functions:
-  - import_osm_layer(): Imports OpenStreetMap layer into the project.
-  - import_street_layer(area, values): Imports street layer data based on specified area and criteria.
-  - create_data_layer(text_file_path): Creates a data layer from a text file containing coordinates.
-  - create_point_layer(x_coord, y_coord): Generates a point layer from given coordinates.
-  - create_layer(layer_name, layer_type, crs_i): Generic function to create a new layer with specified parameters.
-  - create_offset_points(point, distance, angle_degrees): Creates offset points based on a given point, distance, and angle.
-  - generate_lines(layer, distance, angle_degrees, provider): Generates lines based on given parameters.
-  - find_nearest_point(current_point, other_points): Finds the nearest point to a given point from a set of points.
-  - find_nearest_line(point_geom, line_layer): Identifies the nearest line to a given point geometry.
-  - create_perpendicular_line(point_geom, line_geom, provider): Creates a perpendicular line from a point to a line geometry.
-  - process_layer_points(layer, provider, layer_lines): Processes points in a layer and finds corresponding street end points.
-  - generate_return_lines(layer, distance, angle_degrees, provider, layer_lines): Generates return lines for a layer.
-  - generate_mst(all_end_points, provider): Generates a Minimum Spanning Tree (MST) from a set of end points.
-  - generate_network_fl(layer_points_fl, layer_wea, provider, layer_lines): Generates a network for forward lines.
-  - generate_network_rl(layer_points_rl, layer_wea, fixed_distance_rl, fixed_angle_rl, provider, layer_lines): Generates a network for return lines.
-
-# net_generation_qgis_ETRS89_MST.py
+# net_generation_qgis.py
 
 - Purpose: Automates the process of generating heating network components and exporting them as GeoJSON files using QGIS functionalities.
 - Key Processes:
-  - Imports and uses functions from net_generation_functions.py.
-  - Creates data layers from provided CSV file paths and specified coordinates.
-  - Prepares the environment by setting up necessary layers like 'Beispieldaten_ETRS89', 'Straßen', and 'Erzeugerstandorte'.
-  - Generates heat exchanger and heat generator coordinates.
-  - Creates forward and return line networks.
-  - Commits changes to all layers and updates their extents.
-  - Writes layers as GeoJSON files and applies color coding for visual differentiation.
+  - GIS Integration: Integrates with QGIS for geospatial data processing.
+  - Layer Import: Facilitates importing and creating layers in QGIS from various data sources.
+  - Project Configuration: Supports different project settings based on geographic locations (e.g., Zittau, Görlitz).
+  - Layer Generation: Generates network layers such as HAST (heating substations), Rücklauf (return lines), Vorlauf (supply lines), and Erzeugeranlagen (production facilities).
+  - GeoJSON Export: Provides functionality to export generated network layers as GeoJSON files.
+  - Layer Styling: Includes features for styling layers in QGIS for better visualization.
+  - Error Handling: Implements error checking during layer loading and exporting processes.
+
+# qgis_simple_MST.py
+
+- Purpose: Provides utility functions for network generation within the GIS framework.
+- Key Functions:
+  - Nearest Line Finder: Identifies the nearest line feature to a given point in a QGIS layer.
+  - Perpendicular Line Creation: Generates perpendicular lines from points to their nearest lines.
+  - Layer Processing: Processes point layers to create connections to the nearest lines, forming a network.
+  - Return Lines Generation: Creates return lines for a network with an offset and angle.
+  - Minimum Spanning Tree (MST) Network: Utilizes NetworkX to generate a Minimum Spanning Tree, connecting all end points in the most efficient way.
+  - Forward and Return Network Generation: Facilitates the creation of both forward and return line networks in a geospatial environment.
+
+# qgis_street_MST.py
+
+The qgis_street_MST.py script enhances network generation capabilities compared to qgis_simple_MST.py by integrating spatial indexing and street-based network analysis. It uses QgsSpatialIndex for efficient querying of nearest streets and points, creating a more sophisticated and street-aligned Minimum Spanning Tree (MST). This approach considers actual street layouts, making the network generation process more realistic and applicable to urban environments. This added complexity provides a closer representation of real-world scenarios compared to the simpler MST approach in qgis_simple_MST.py.
+
+# qgis_advanced_street_MST.py
+
+Plans to implement an advanced pathfinding algorithm following the streets. Currently not working properly
 
 # net_simulation_calculation.py
 
 - Purpose: Simulates the heating network using the pandapipes framework, focusing on pipe flow and network optimization.
 - Key Functions:
-  - get_line_coords_and_lengths(gdf): Extracts coordinates and calculates lengths of lines from a GeoDataFrame.
-  - create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea): Creates the entire network with junctions, pipes, heat exchangers, and circulation pumps.
-  - correct_flow_directions(net): Adjusts the flow directions in the network to ensure correctness.
-  - optimize_diameter_parameters(initial_net, v_max, v_min, dx): Optimizes pipe diameters based on velocity constraints.
-  - optimize_diameter_types(initial_net, v_max, v_min): Alters pipe types to optimize for velocity constraints.
-  - export_net_geojson(net): Export the network data to a GeoJSON format.
-  - calculate_worst_point(net): finds the heat exchanger with the smallest delta p
+  - Network Creation from GIS Data: Utilizes geospatial data to create detailed models of district heating networks.
+  - Pipe Initialization: Supports both diameter-based and type-based pipe initialization for network modeling.
+  - Heat Exchanger Integration: Automates the addition of heat exchangers into the network with specified heat output.
+  - Flow Direction Optimization: Adjusts flow directions within the network to ensure optimal operation.
+  - Diameter Optimization: Dynamically adjusts pipe diameters for improved flow and efficiency.
+  - Network Export: Ability to export the network model as a GeoJSON file for geographical analysis.
+  - Worst Point Calculation: Identifies the least efficient point in the network based on pressure differences, aiding in targeted improvements.
 
 # my_controllers.py
 - This module defines custom controller classes that extend the functionality of the basic controllers provided by Pandapipes. These controllers are responsible for dynamic regulation of network parameters during simulations.
   - ReturnTemperatureController: Regulates the temperature of the returning fluid in the network to achieve a specified target temperature.
+  - WorstPointPressureController: Regulates the pressure lift at the circulation pump by setting a target pressure drop a the worst point in the network
 
 Both controllers utilize a proportional control approach to minimize the error between the current state and the desired state of the network.
 
@@ -90,27 +103,39 @@ Both controllers utilize a proportional control approach to minimize the error b
 
 # net_simulation.py
   - initialize_net: Prepares and configures the network for simulation, setting up the necessary parameters and default conditions.
-  - run_simulation: Conducts the actual simulation process, calculating the flow and pressure in each segment of the network.
+  - time_series_net: Conducts the actual simulation process, calculating the flow and pressure in each segment of the network.
 
-# simulate.py
+# simulate_functions.py
+This Python module, simulate_functions.py, is a comprehensive toolkit for simulating and analyzing district heating networks. It integrates various libraries such as matplotlib, pandapipes, pandas, and geopandas to facilitate complex thermohydraulic calculations and visualizations.
 
-This Python script is designed to bring together various modules and functions to simulate a piping network system, likely using the Pandapipes framework.
+Key Features
+  - Network Simulation: Initialize and simulate district heating networks using pandapipes.
+  - Heat Requirement Calculation: Implement heat requirement calculations based on VDI4655 standard.
+  - Data Import and Export: Functions to import weather data and export simulation results in CSV format.
+  - Thermohydraulic Time Series Analysis: Perform detailed time series analysis for network hydraulics and thermodynamics.
+  - Visualization: Plot results like network load, pump and temperature profiles.
+  - Customizable Heat Generator Classes: Incorporate various heat generators like solar thermal, geothermal, and waste heat pumps for flexible simulations.
 
-Key Functionalities:
-  - Network Initialization: It initializes the network with predefined parameters, which may include setting up pipes, junctions, pumps, valves, and other components.
-  - Controller Assignment: The script assigns custom controllers to regulate different aspects of the network, such as temperature control and mass flow control, to achieve the desired operational criteria.
-  - Simulation Execution: It runs the simulation over a defined range of time steps or until a steady-state is reached, using the controllers to dynamically adjust the network conditions.
-  - Result Processing: After the simulation is complete, the script processes the results, which might include updating network states, calculating efficiencies, or preparing data for output.
-  - Output Generation: The final step involves generating outputs, which could be in the form of plots showing various aspects like temperature profiles, mass flow rates, or pressure drops over time.
+Usage
+To use this module, import the necessary functions into your Python script. Ensure you have all the required dependencies installed. The module functions range from importing weather data, initializing test networks, calculating heat requirements, to plotting and saving results.
+
+# Heat System Design GUI
+
+This Python script implements a graphical user interface (GUI) for designing and analyzing heat systems, using PyQt5 for the interface and matplotlib for plotting. It allows users to input various parameters like gas, electricity, and wood prices, and choose whether to consider BEW funding. Users can add or remove different heating technologies, such as solar thermal systems, biomass boilers, and gas boilers, using a customizable dialog window. The GUI provides functionality to calculate and optimize heat generation costs and visualize results with pie charts and stack plots.
+Features
+  - User-friendly GUI for heat system design.
+  - Customizable inputs for prices and technologies.
+  - Visual representation of heating system performance.
+  - Options to calculate and optimize heat generation mix.
+
+This script is designed to be interactive and user-friendly, making it easier for users to experiment with different heating system configurations and understand their impact on overall system performance and cost.
 
 # To Do
 
-- Some parts of the code are still in german, will be fixed soon
+- Some parts of the code are still in german, will be fixed sometime
 - Optimization and generalization
   
-- In "net_generation_qgis_functions.py" a function named "import_street_layer(area, values)" is defined, but not used in "net_generation_qgis_ETRS89_MST.py" yet. This function is supposed to do the import of the street layer from the QuickOSM plugin. A working code for importing the necessary data still has to be figured out.
-- A function needs to be defined to set the right crs (coordinate reference system) in QGIS when executing "net_generation_qgis_ETRS89_MST.py"
-- A logic has to be programmed, which overwrites existing layers when executing the python file multiple times.
+- A function needs to be defined to set the right crs (coordinate reference system) in QGIS when executing "net_generation_qgis.py"
 
 - the results of the timeseries calculation have to be storaged fur later use 
 - next up is the creation of different heat generators for simulating a whole system
@@ -118,8 +143,8 @@ Key Functionalities:
   
 - the controller for the heat exchangers is not working perfectly at this point, maybe an alternative system has to be implemented
 
-- The geoJSON format is used as it can be used in advanced simulation software like SIM-VICUS (https://www.sim-vicus.de)
 
+- The geoJSON format is used as it can be used in advanced simulation software like SIM-VICUS (https://www.sim-vicus.de)
 - Currently the combination with further python-based simulation tools like flixOpt (https://github.com/flixOpt/flixOpt) or EnSySim (https://github.com/HSZittauGoerlitz/EnSySim) is being evaluated.
   
 # Contributing
