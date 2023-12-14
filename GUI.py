@@ -6,7 +6,7 @@ import numpy as np
 
 import heat_generators.heat_generator_classes as hgs
 from simulate_functions import *
-from heat_generators.Solarthermie import import_TRY
+from simulate_functions import import_TRY
 
 from GUI_Dialogfenster import TechInputDialog
 

@@ -11,37 +11,6 @@ from datetime import datetime
 from heat_generators.Wirtschaftlichkeitsbetrachtung import WGK_STA
 from heat_generators.Solarstrahlung import Berechnung_Solarstrahlung
 
-def import_TRY(dateiname):
-    # Import TRY
-    # Spaltenbreiten definieren
-    col_widths = [8, 8, 3, 3, 3, 6, 5, 4, 5, 2, 5, 4, 5, 5, 4, 5, 3]
-    # Spaltennamen definieren
-    col_names = ["RW", "HW", "MM", "DD", "HH", "t", "p", "WR", "WG", "N", "x", "RF", "B", "D", "A", "E", "IL"]
-
-    # Die Datei lesen
-    data = pd.read_fwf(dateiname, widths=col_widths, names=col_names,
-                       skiprows=34)
-
-    # Speichern der Spalten als Numpy-Arrays
-    temperature = data['t'].values
-    windspeed = data['WG'].values
-    direktstrahlung = data['B'].values
-    diffusstrahlung = data['D'].values
-    globalstrahlung = direktstrahlung + diffusstrahlung
-
-    return temperature, windspeed, direktstrahlung, globalstrahlung
-
-def Daten(filename):
-    with open(filename, 'r') as csv_file:
-        csv_reader = csv.reader(csv_file, delimiter=";")
-        next(csv_reader)  # skip header
-        data = np.array(list(csv_reader)).astype(float)
-        Last_L = data[:, 3]
-        VLT_L = data[:, 4]
-        RLT_L = data[:, 5]
-
-    return Last_L, VLT_L, RLT_L
-
 def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY, time_steps, calc1, calc2, duration, Tsmax=90, Longitude=-14.4222, STD_Longitude=-15, Latitude=51.1676):
     Temperatur_L, Windgeschwindigkeit_L, Direktstrahlung_L, Globalstrahlung_L = TRY[0], TRY[1], TRY[2], TRY[3]
 

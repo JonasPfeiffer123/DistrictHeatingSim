@@ -10,7 +10,26 @@ from net_simulation_pandapipes import net_simulation_calculation
 from heat_requirement import heat_requirement_VDI4655
 from net_simulation_pandapipes.net_generation_test import initialize_test_net
 from heat_generators.heat_generator_classes import *
-from heat_generators.Solarthermie import import_TRY
+
+def import_TRY(dateiname):
+    # Import TRY
+    # Spaltenbreiten definieren
+    col_widths = [8, 8, 3, 3, 3, 6, 5, 4, 5, 2, 5, 4, 5, 5, 4, 5, 3]
+    # Spaltennamen definieren
+    col_names = ["RW", "HW", "MM", "DD", "HH", "t", "p", "WR", "WG", "N", "x", "RF", "B", "D", "A", "E", "IL"]
+
+    # Die Datei lesen
+    data = pd.read_fwf(dateiname, widths=col_widths, names=col_names,
+                       skiprows=34)
+
+    # Speichern der Spalten als Numpy-Arrays
+    temperature = data['t'].values
+    windspeed = data['WG'].values
+    direktstrahlung = data['B'].values
+    diffusstrahlung = data['D'].values
+    globalstrahlung = direktstrahlung + diffusstrahlung
+
+    return temperature, windspeed, direktstrahlung, globalstrahlung
 
 #Berechnung_Erzeugermix
 
@@ -119,7 +138,7 @@ def import_results_csv(filename):
     return_temp_circ_pump = data['Rücklauftemperatur_Netz_°C'].values.astype('float64')
     return time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump
 
-def generate_net(calc1, calc2, filename):
+def generate_net(calc1=0, calc2=35040, filename='results_time_series_net1.csv'):
     gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Vorlauf.geojson')
     gdf_rl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Rücklauf.geojson')
     gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/HAST.geojson')
@@ -135,7 +154,7 @@ def generate_net(calc1, calc2, filename):
 
     plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
 
-def auslegung_erzeuger(calc1, calc2, filename, optimize=False):
+def auslegung_erzeuger(calc1=0, calc2=35040, filename='results_time_series_net.csv', optimize=False):
     time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump = import_results_csv(filename)
     #plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
 
@@ -209,10 +228,5 @@ def auslegung_erzeuger(calc1, calc2, filename, optimize=False):
 
     Kreisdiagramm(data_labels_L, Anteile)
 
-##########
-calc1, calc2 = 0, 35040 # min: 0; max: 35040
-filename_save = 'results_time_series_net1.csv'
-filename_load = 'results_time_series_net.csv'
-
-#generate_net(calc1, calc2, filename_save)
-#auslegung_erzeuger(calc1, calc2, filename_load, optimize=False)
+#generate_net()
+#auslegung_erzeuger(optimize=False)
