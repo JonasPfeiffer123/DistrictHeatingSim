@@ -38,13 +38,13 @@ def thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gd
     net = net_simulation.initialize_net(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA)
 
     ### Ausgabe der Netzstruktur ###
-    pp_plot.simple_plot(net, junction_size=0.2, heat_exchanger_size=0.2, pump_size=0.2, 
-                        pump_color='green', pipe_color='black', heat_exchanger_color='blue')
+    #pp_plot.simple_plot(net, junction_size=0.2, heat_exchanger_size=0.2, pump_size=0.2, 
+    #                    pump_color='green', pipe_color='black', heat_exchanger_color='blue')
 
     ### define the heat requirement ###
     n = len(net.heat_exchanger)
-    min_value = 20000  # kWhre
-    max_value = 70000  # kWh
+    min_value = 20000  # kWh
+    max_value = 60000  # kWh
     JEB_Wärme_ges_kWh = np.array([random.randint(min_value, max_value) for _ in range(n)])
     JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh = JEB_Wärme_ges_kWh*0.2, JEB_Wärme_ges_kWh*0.8
 
@@ -154,22 +154,15 @@ def generate_net(calc1=0, calc2=35040, filename='results_time_series_net1.csv'):
 
     plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
 
-def auslegung_erzeuger(calc1=0, calc2=35040, filename='results_time_series_net.csv', optimize=False):
+def auslegung_erzeuger(calc1=0, calc2=35040, filename='results_time_series_net.csv', optimize=False, load_scale_factor=1, Gaspreis=70, Strompreis=150, Holzpreis=50, BEW="Nein"):
     time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump = import_results_csv(filename)
+    qext_kW = qext_kW * load_scale_factor #MWh
     #plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
 
-    ### Berechnung Erzeugermix ###
-    # fixe Eingaben
-    initial_data = qext_kW, flow_temp_circ_pump, return_temp_circ_pump
-    TRY_filename = 'heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat'
-    TRY = import_TRY(TRY_filename)
-    COP_data = np.genfromtxt('heat_generators/Kennlinien WP.csv', delimiter=';')
+    initial_data = time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump
 
-    Gaspreis = 70
-    Strompreis = 150
-    Holzpreis = 50
-    BEW = "Nein"
-    #BEW = "Ja"
+    TRY = import_TRY('heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat')
+    COP_data = np.genfromtxt('heat_generators/Kennlinien WP.csv', delimiter=';')
 
     solar_thermal = SolarThermal(name="Solarthermie", bruttofläche_STA=200, vs=20, Typ="Vakuumröhrenkollektor")
     geothermal = Geothermal(name="Geothermie", Fläche=100, Bohrtiefe=100, Temperatur_Geothermie=10)
@@ -183,10 +176,10 @@ def auslegung_erzeuger(calc1=0, calc2=35040, filename='results_time_series_net.c
     techs = [solar_thermal, wood_chp, biomass_boiler1, gas_boiler]
 
     if optimize == True:
-        techs = optimize_mix(techs, time_steps, calc1, calc2, initial_data, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW)
+        techs = optimize_mix(techs, initial_data, calc1, calc2, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW)
 
     WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile, specific_emissions  = \
-        Berechnung_Erzeugermix(techs, time_steps, calc1, calc2, initial_data, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW)
+        Berechnung_Erzeugermix(techs, initial_data, calc1, calc2, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW)
     
     print(f"Jahreswärmebedarf:", f"{Jahreswärmebedarf:.2f} MWh")
     print(f"Wärmegestehungskosten Gesamt:", f"{WGK_Gesamt:.2f} €/MWh")
@@ -228,5 +221,6 @@ def auslegung_erzeuger(calc1=0, calc2=35040, filename='results_time_series_net.c
 
     Kreisdiagramm(data_labels_L, Anteile)
 
-#generate_net()
-#auslegung_erzeuger(optimize=False)
+#generate_net() 
+#auslegung_erzeuger(calc1=0, calc2= 8760, filename="heat_requirement/Summenlastgang_Scenocalc_skaliert_1MWh.csv", \
+#                   optimize=True, load_scale_factor=3000000, Gaspreis=70, Strompreis=150, Holzpreis=50, BEW="Ja")

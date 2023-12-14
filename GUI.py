@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QFileDialog, QHBoxLayout, QListWidget, QComboBox, QDialog
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QFileDialog, QHBoxLayout, QListWidget, QComboBox, QDialog, QTabWidget, QMenuBar, QAction
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import numpy as np
@@ -10,27 +10,137 @@ from simulate_functions import import_TRY
 
 from GUI_Dialogfenster import TechInputDialog
 
+
+from PyQt5.QtWebEngineWidgets import QWebEngineView
+from PyQt5.QtCore import QUrl
+import os
+import folium
+
+import geopandas as gpd
+
+import random
+
 class HeatSystemDesignGUI(QWidget):
     def __init__(self):
         super().__init__()
         self.tech_objects = []
+        self.initFileInputs()
         self.initUI()
     
+    def initFileInputs(self):
+        # Ergebnis-CSV Input
+        self.filenameInput = QLineEdit('results_time_series_net.csv')
+        self.selectFileButton = QPushButton('Ergebnis-CSV auswählen')
+        self.selectFileButton.clicked.connect(lambda: self.selectFilename(self.filenameInput))
+
+        # TRY-Datei Input
+        self.tryFilenameInput = QLineEdit('heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat')
+        self.selectTRYFileButton = QPushButton('TRY-Datei auswählen')
+        self.selectTRYFileButton.clicked.connect(lambda: self.selectFilename(self.tryFilenameInput))
+
+        # COP-Datei Input
+        self.copFilenameInput = QLineEdit('heat_generators/Kennlinien WP.csv')
+        self.selectCOPFileButton = QPushButton('COP-Datei auswählen')
+        self.selectCOPFileButton.clicked.connect(lambda: self.selectFilename(self.copFilenameInput))
+
     def initUI(self):
-        layout = QVBoxLayout()
+        self.setWindowTitle("Hier könnte ein cooler Softwarename stehen")
+        layout = QVBoxLayout(self)
 
-        # Create widgets
-        #self.loadDataFileButton = QPushButton('Load Data File')
-        #self.loadDataFileButton.clicked.connect(self.loadFile)
-        #layout.addWidget(self.loadDataFileButton)
+        # Erstellen des Tab-Widgets
+        tabWidget = QTabWidget()
+        layout.addWidget(tabWidget)
 
-        #self.loadTRYFileButton = QPushButton('Load TRY File')
-        #self.loadTRYFileButton.clicked.connect(self.loadFile)
-        #layout.addWidget(self.loadTRYFileButton)
+        # Erstellen der einzelnen Tabs
+        tab1 = QWidget()
+        tab2 = QWidget()
+        tab3 = QWidget()
 
-        #self.loadCOPFileButton = QPushButton('Load COP File')
-        #self.loadCOPFileButton.clicked.connect(self.loadFile)
-        #layout.addWidget(self.loadCOPFileButton)
+        # Hinzufügen der Tabs zum Tab-Widget
+        tabWidget.addTab(tab1, "Visualisierung GIS-Daten")
+        tabWidget.addTab(tab2, "Netzberechnung")
+        tabWidget.addTab(tab3, "Auslegung Erzeugermix")
+
+        # Setzen des Layouts für tab1
+        tab1Layout = QVBoxLayout()
+
+        # Initialisieren der Karte
+        self.m = folium.Map(location=[51.1657, 10.4515], zoom_start=6)
+        self.mapView = QWebEngineView()
+        # Erstellen der Menüleiste in tab1
+        self.menuBar = QMenuBar(tab1)
+        self.menuBar.setFixedHeight(30)  # Setzen Sie eine spezifische Höhe
+        fileMenu = self.menuBar.addMenu('Datei')
+
+        # Erstellen und Hinzufügen der Aktion "Import Netzdaten"
+        importAction = QAction('Import Netzdaten', self)
+        importAction.triggered.connect(self.importNetData)
+        fileMenu.addAction(importAction)
+
+        # Fügen Sie die Menüleiste dem Layout von tab1 hinzu
+        tab1Layout.addWidget(self.menuBar)
+        
+        # Fügen Sie das QWebEngineView-Widget zum Layout von tab1 hinzu
+        self.updateMapView()
+        tab1Layout.addWidget(self.mapView)
+        tab1.setLayout(tab1Layout)
+
+        #############################################################
+        tab2Layout = QVBoxLayout()
+        #Eingaben
+        StartTimeLayout = QHBoxLayout()
+        self.StartTimeStepLabel = QLabel('Zeitschritt Start (15 min Werte); Minimum: 0 :')
+        self.StartTimeStepInput = QLineEdit("0")
+        StartTimeLayout.addWidget(self.StartTimeStepLabel)
+        StartTimeLayout.addWidget(self.StartTimeStepInput)
+
+        tab2Layout.addLayout(StartTimeLayout)
+
+        EndTimeLayout = QHBoxLayout()
+        self.EndTimeStepLabel = QLabel('Zeitschritt Ende (15 min Werte); Maximum: 35040 (1 Jahr) :')
+        self.EndTimeStepInput = QLineEdit("96")
+        EndTimeLayout.addWidget(self.EndTimeStepLabel)
+        EndTimeLayout.addWidget(self.EndTimeStepInput)
+
+        tab2Layout.addLayout(EndTimeLayout)
+
+        # Buttons
+        self.calculateNetButton = QPushButton('Berechnen')
+        self.calculateNetButton.clicked.connect(self.create_net)
+        tab2Layout.addWidget(self.calculateNetButton)
+
+        self.figure3 = plt.figure()
+        self.canvas3 = FigureCanvas(self.figure3)
+        tab2Layout.addWidget(self.canvas3)
+
+        tab2.setLayout(tab2Layout)
+        
+        ###############################################################
+        tab3Layout = QVBoxLayout()
+
+        self.DatenEingabeLabel = QLabel('Dateneingaben')
+        tab3Layout.addWidget(self.DatenEingabeLabel)
+
+        # Hinzufügen zum Layout
+        fileLayout1 = QHBoxLayout()
+        fileLayout1.addWidget(self.filenameInput)
+        fileLayout1.addWidget(self.selectFileButton)
+        tab3Layout.addLayout(fileLayout1)
+
+        # Hinzufügen zum Layout
+        fileLayout2 = QHBoxLayout()
+        fileLayout2.addWidget(self.tryFilenameInput)
+        fileLayout2.addWidget(self.selectTRYFileButton)
+        tab3Layout.addLayout(fileLayout2)
+
+        # Hinzufügen zum Layout
+        fileLayout3 = QHBoxLayout()
+        fileLayout3.addWidget(self.copFilenameInput)
+        fileLayout3.addWidget(self.selectCOPFileButton)
+        tab3Layout.addLayout(fileLayout3)
+        
+        self.costEingabeLabel = QLabel('Wirtschaftliche Vorgaben')
+        tab3Layout.addWidget(self.costEingabeLabel)
 
         # Parameter Inputs
         self.gaspreisInput = QLineEdit("70")
@@ -45,7 +155,7 @@ class HeatSystemDesignGUI(QWidget):
         self.strompreisLabel = QLabel('Strompreis (€/MWh):')
         self.holzpreisLabel = QLabel('Holzpreis (€/MWh):')
         self.BEWLabel = QLabel('Berücksichtigung BEW-Förderung?:')
-        
+
         # Buttons
         self.calculateButton = QPushButton('Berechnen')
         self.calculateButton.clicked.connect(self.calculate)
@@ -86,6 +196,13 @@ class HeatSystemDesignGUI(QWidget):
         inputLayout.addWidget(self.BEWLabel)
         inputLayout.addWidget(self.BEWComboBox)
 
+        self.techEingabeLabel = QLabel('Auswahl Erzeugungstechnologien')
+        self.calculateEingabeLabel = QLabel('Berechnung des Erzeugermixes und der Wärmegestehungskosten anhand der Inputdaten')
+        self.optimizeEingabeLabel = QLabel('Optimierung der Zusammensetzung des Erzeugermixes zur Minimierung der Wärmegestehungskosten. Berechnung kann einige Zeit dauern.')
+
+        self.load_scale_factorLabel = QLabel('Lastgang skalieren?:')
+        self.load_scale_factorInput = QLineEdit("1")
+
         # Result Label
         self.resultLabel = QLabel('Ergebnisse werden hier angezeigt')
 
@@ -106,17 +223,76 @@ class HeatSystemDesignGUI(QWidget):
 
 
         # Add widgets to layout
-        layout.addLayout(inputLayout)
-        layout.addWidget(self.techComboBox)
-        layout.addLayout(buttonLayout)
-        layout.addWidget(self.techList)
-        layout.addWidget(self.calculateButton)
-        layout.addWidget(self.optimizeButton)
-        layout.addWidget(self.resultLabel)
-        layout.addLayout(chartLayout)
+        tab3Layout.addLayout(inputLayout)
+        tab3Layout.addWidget(self.techEingabeLabel)
+        tab3Layout.addWidget(self.techComboBox)
+        tab3Layout.addLayout(buttonLayout)
+        tab3Layout.addWidget(self.techList)
+        tab3Layout.addWidget(self.load_scale_factorLabel)
+        tab3Layout.addWidget(self.load_scale_factorInput)
+        tab3Layout.addWidget(self.calculateEingabeLabel)
+        tab3Layout.addWidget(self.calculateButton)
+        tab3Layout.addWidget(self.optimizeEingabeLabel)
+        tab3Layout.addWidget(self.optimizeButton)
+        tab3Layout.addWidget(self.resultLabel)
+        tab3Layout.addLayout(chartLayout)
+
+        tab3.setLayout(tab3Layout)
 
         # Set the layout
         self.setLayout(layout)
+
+    
+    # Methode zum Anzeigen der Karte in PyQt5
+    def display_map(self, m):
+        # Speichern Sie die Karte als HTML-Datei
+        map_file = 'map.html'
+        m.save(map_file)
+
+        # Verwenden Sie QWebEngineView, um die Karte anzuzeigen
+        webView = QWebEngineView()
+        webView.load(QUrl.fromLocalFile(os.path.abspath(map_file)))
+        return webView
+
+    def importNetData(self):
+        fnames, _ = QFileDialog.getOpenFileNames(self, 'Netzdaten importieren', '', 'GeoJSON Files (*.geojson);;All Files (*)')
+        if fnames:
+            for fname in fnames:
+                self.loadNetData(fname)
+            self.updateMapView()
+    
+    def loadNetData(self, filename):
+        # Laden der GeoJSON-Datei mit Geopandas
+        gdf = gpd.read_file(filename)
+
+        # Generieren einer zufälligen Farbe für das GeoJSON-Feature
+        color = "#{:06x}".format(random.randint(0, 0xFFFFFF))
+
+        # Hinzufügen der GeoJSON-Daten zur Karte mit der generierten Farbe
+        folium.GeoJson(
+            gdf,
+            name=os.path.basename(filename),
+            style_function=lambda feature: {
+                'fillColor': color,
+                'color': color,
+                'weight': 1.5,
+                'fillOpacity': 0.5,
+            }
+        ).add_to(self.m)
+
+
+    def updateMapView(self):
+        # Speichern Sie die aktualisierte Karte als HTML-Datei
+        map_file = 'map.html'
+        self.m.save(map_file)
+
+        # Aktualisieren Sie das QWebEngineView-Widget, um die neue Karte anzuzeigen
+        self.mapView.load(QUrl.fromLocalFile(os.path.abspath(map_file)))
+
+    def selectFilename(self, inputWidget):
+        fname, _ = QFileDialog.getOpenFileName(self, 'Datei auswählen', '', 'All Files (*);;CSV Files (*.csv);;Data Files (*.dat)')
+        if fname:  # Prüfen, ob ein Dateiname ausgewählt wurde
+            inputWidget.setText(fname)
 
     def addTech(self):
         current_index = self.techComboBox.currentIndex()
@@ -178,86 +354,62 @@ class HeatSystemDesignGUI(QWidget):
 
     def optimize(self):
         self.calculate(True)
-    
-    def berechne_und_visualisiere_WGK(self, techs, time_steps, calc1, calc2, initial_data, TRY, COP_data, BEW):
-        # Definieren Sie die Preisbereiche
-        Gaspreis_Bereich = np.arange(40, 51, 10)  # Beispiel: von 40 bis 100 in Schritten von 10
-        Strompreis_Bereich = np.arange(100, 121, 20)
-        Holzpreis_Bereich = np.arange(40, 51, 10)
 
-        # Initialisieren Sie ein leeres Array für die Ergebnisse
-        WGK_Ergebnisse = []
-
-        # Iterieren Sie über die Preisbereiche und führen Sie Berechnungen durch
-        for Gaspreis in Gaspreis_Bereich:
-            for Strompreis in Strompreis_Bereich:
-                for Holzpreis in Holzpreis_Bereich:
-                    WGK_Gesamt, _, _, _, _, _, _, _, _ = \
-                        Berechnung_Erzeugermix(techs, time_steps, calc1, calc2, initial_data, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW)
-                    WGK_Ergebnisse.append((Gaspreis, Strompreis, Holzpreis, WGK_Gesamt))
-
-        # Visualisieren Sie die Ergebnisse
-        plt.figure(figsize=(10, 6))
-        for Gaspreis, Strompreis, Holzpreis, WGK in WGK_Ergebnisse:
-            plt.scatter(Gaspreis, WGK, color='red', label='Gaspreis')
-            plt.scatter(Strompreis, WGK, color='blue', label='Strompreis')
-            plt.scatter(Holzpreis, WGK, color='green', label='Holzpreis')
-        plt.xlabel('Energiepreis (€/Einheit)')
-        plt.ylabel('Wärmegestehungskosten (€/MWh)')
-        plt.title('Wärmegestehungskosten in Abhängigkeit von den Energiepreisen')
-        plt.legend()
-        plt.grid(True)
-        plt.show()
-
-    def create_net(self):
-        calc1, calc2 = 0, 35040 # min: 0; max: 35040
+    def create_net(self, calc1=0, calc2=96):
+        #calc1, calc2 = 0, 96 # min: 0; max: 35040
+        calc1 = int(self.StartTimeStepInput.text())
+        calc2 = int(self.EndTimeStepInput.text())
         filename = 'results_time_series_net1.csv'
-        #gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Vorlauf.geojson')
-        #gdf_rl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Rücklauf.geojson')
-        #gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/HAST.geojson')
-        #gdf_WEA = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Erzeugeranlagen.geojson')
+        gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Vorlauf.geojson')
+        gdf_rl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Rücklauf.geojson')
+        gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/HAST.geojson')
+        gdf_WEA = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Erzeugeranlagen.geojson')
 
-        #time_15min, time_steps, net, net_results = thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gdf_HAST, gdf_WEA)
+        # diese Funktion gilt es nun mit Inputs umzusetzen
+        time_15min, time_steps, net, net_results = thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gdf_HAST, gdf_WEA)
 
-        #mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, \
-        #    return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW, pressure_junctions = calculate_results(net, net_results)
+        mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, \
+            return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW, pressure_junctions = calculate_results(net, net_results)
+
+        #plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
+
+        self.plot2(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
 
         ###!!!!!this will overwrite the current csv file!!!!!#
         #save_results_csv(time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump, filename)
-        #plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
 
-    def calculate(self, optimize=False):
-        calc1, calc2 = 0, 35040 # min: 0; max: 35040
-        filename = 'results_time_series_net.csv'
-
+    def calculate(self, optimize=False, load_scale_factor=1):
+        filename = self.filenameInput.text()
         time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump = import_results_csv(filename)
-        #plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
-        initial_data = qext_kW, flow_temp_circ_pump, return_temp_circ_pump
+        calc1, calc2 = 0, len(time_steps)
 
-        TRY_filename = 'heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat'
-        TRY = import_TRY(TRY_filename)
-        COP_data = np.genfromtxt('heat_generators/Kennlinien WP.csv', delimiter=';')
+        load_scale_factor = float(self.load_scale_factorInput.text())
+        qext_kW *= load_scale_factor
+
+        #plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
+        initial_data = time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump
+
+        TRY = import_TRY(self.tryFilenameInput.text())
+        COP_data = np.genfromtxt(self.copFilenameInput.text(), delimiter=';')
         
         Gaspreis = float(self.gaspreisInput.text())
         Strompreis = float(self.strompreisInput.text())
         Holzpreis = float(self.holzpreisInput.text())
         BEW = self.BEWComboBox.itemText(self.BEWComboBox.currentIndex())
-        techs = self.tech_objects  
+        techs = self.tech_objects 
 
         if optimize == True:
-            techs = optimize_mix(techs, time_steps, calc1, calc2, initial_data, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW)
+            techs = optimize_mix(techs, initial_data, calc1, calc2, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW)
 
         WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile, specific_emissions  = \
-        Berechnung_Erzeugermix(techs, time_steps, calc1, calc2, initial_data, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW)
+        Berechnung_Erzeugermix(techs, initial_data, calc1, calc2, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW)
         
         self.showResults(Jahreswärmebedarf, WGK_Gesamt, techs, Wärmemengen, WGK, Anteile)
 
-        #self.berechne_und_visualisiere_WGK(techs, time_steps, calc1, calc2, initial_data, TRY, COP_data, BEW)
-
         # Example of plotting
-        self.plot(time_steps, data_L, data_labels_L, Anteile, Last_L)
+        self.plot1(time_steps, data_L, data_labels_L, Anteile, Last_L)
 
-    def plot(self, t, data_L, data_labels_L, Anteile, Last_L):
+    def plot1(self, t, data_L, data_labels_L, Anteile, Last_L):
         # Clear previous figure
         self.figure1.clear()
         self.figure2.clear()
@@ -278,6 +430,28 @@ class HeatSystemDesignGUI(QWidget):
         ax2.legend(loc='lower left')
         ax2.axis("equal")
         ax2.plot
+
+    def plot2(self, time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump):
+        # Clear previous figure
+        self.figure3.clear()
+        ax1 = self.figure3.add_subplot(111)
+
+        # Plot für Wärmeleistung auf der ersten Y-Achse
+        ax1.plot(time_steps, qext_kW, 'b-', label="Gesamtlast")
+        ax1.set_xlabel("Zeit in 15 min Schritten")
+        ax1.set_ylabel("Wärmebedarf in kW / 15 min", color='b')
+        ax1.tick_params('y', colors='b')
+        ax1.legend(loc='upper left')
+        ax1.plot
+
+        # Zweite Y-Achse für die Temperatur
+        ax2 = ax1.twinx()
+        ax2.plot(time_steps, return_temp_circ_pump, 'm-o', label="circ pump return temperature")
+        ax2.plot(time_steps, flow_temp_circ_pump, 'c-o', label="circ pump flow temperature")
+        ax2.set_ylabel("temperature [°C]", color='m')
+        ax2.tick_params('y', colors='m')
+        ax2.legend(loc='upper right')
+        ax2.set_ylim(0,100)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
