@@ -1,8 +1,6 @@
 # heating_network_generation
 
-This project is being developed by Dipl.-Ing. (FH) Jonas Pfeiffer as part of the work being done for the SMWK-NEUES TG-70 project "Entwicklung und Erprobung von Methoden und Werkzeugen zur Konzeptionierung nachhaltiger Wärmenetze" (Development and testing of methods and tools for designing sustainable heating networks) at Hochschule Zittau/Görlitz.
-
-This project focuses on generating and analyzing heating networks using geospatial data. It integrates geographic information system (GIS) functionality with network analysis to model and simulate heating networks.
+This project, led by Dipl.-Ing. (FH) Jonas Pfeiffer for the SMWK-NEUES TG-70 project "Entwicklung und Erprobung von Methoden und Werkzeugen zur Konzeptionierung nachhaltiger Wärmenetze" (Development and testing of methods and tools for designing sustainable heating networks) at Hochschule Zittau/Görlitz, aims to develop and test tools for creating sustainable heating networks using geospatial data and GIS functionalities.
 
 # Usage
 
@@ -144,12 +142,12 @@ This script is designed to be interactive and user-friendly, making it easier fo
 - the controller for the heat exchangers is not working perfectly at this point, maybe an alternative system has to be implemented
 
 
-- The geoJSON format is used as it can be used in advanced simulation software like SIM-VICUS (https://www.sim-vicus.de)
-- Currently the combination with further python-based simulation tools like flixOpt (https://github.com/flixOpt/flixOpt) or EnSySim (https://github.com/HSZittauGoerlitz/EnSySim) is being evaluated.
+- Transition to English, CRS setting automation in QGIS, timeseries result storage, multiple heat pumps support, and controller optimization.
+- Evaluating integration with advanced simulation tools like SIM-VICUS, flixOpt, and EnSySim.
   
 # Contributing
 
-Contributions or ideas for the project are welcome. Please adhere to standard coding practices and submit pull requests for review.
+Contributions and ideas are welcome, with standard coding practices and pull request submissions.
 
 # License
 Current version of software written and maintained by Jonas Pfeiffer (HSZG)
@@ -157,5 +155,5 @@ MIT license
 
 
 # Contact
-
-For collaboration or queries, contact JonasPfeiffer123's GitHub profile or feel free to contact me over LinkedIn.
+  - Software maintained by Dipl.-Ing. (FH) Jonas Pfeiffer, under the MIT license.
+  - Contact via GitHub or LinkedIn for collaboration or queries.
