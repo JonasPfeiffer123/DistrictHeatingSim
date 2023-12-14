@@ -129,18 +129,14 @@ Features
 This script is designed to be interactive and user-friendly, making it easier for users to experiment with different heating system configurations and understand their impact on overall system performance and cost.
 
 # To Do
-
-- Some parts of the code are still in german, will be fixed sometime
-- Optimization and generalization
   
 - A function needs to be defined to set the right crs (coordinate reference system) in QGIS when executing "net_generation_qgis.py"
 
-- the results of the timeseries calculation have to be storaged fur later use 
-- next up is the creation of different heat generators for simulating a whole system
 - the network creation has to be modified to allow multiple pumps / entry points for heat
   
 - the controller for the heat exchangers is not working perfectly at this point, maybe an alternative system has to be implemented
 
+- Optimization and generalization
 
 - Transition to English, CRS setting automation in QGIS, timeseries result storage, multiple heat pumps support, and controller optimization.
 - Evaluating integration with advanced simulation tools like SIM-VICUS, flixOpt, and EnSySim.
