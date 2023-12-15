@@ -10,6 +10,7 @@ from net_simulation_pandapipes import net_simulation_calculation
 from heat_requirement import heat_requirement_VDI4655
 from net_simulation_pandapipes.net_generation_test import initialize_test_net
 from heat_generators.heat_generator_classes import *
+from net_test import config_plot
 
 def import_TRY(dateiname):
     # Import TRY
@@ -37,13 +38,9 @@ def thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gd
     ### generates the pandapipes net and initializes it ###
     net = net_simulation.initialize_net(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA)
 
-    ### Ausgabe der Netzstruktur ###
-    #pp_plot.simple_plot(net, junction_size=0.2, heat_exchanger_size=0.2, pump_size=0.2, 
-    #                    pump_color='green', pipe_color='black', heat_exchanger_color='blue')
-
     ### define the heat requirement ###
     n = len(net.heat_exchanger)
-    min_value = 20000  # kWh
+    min_value = 59000  # kWh
     max_value = 60000  # kWh
     JEB_Wärme_ges_kWh = np.array([random.randint(min_value, max_value) for _ in range(n)])
     JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh = JEB_Wärme_ges_kWh*0.2, JEB_Wärme_ges_kWh*0.8
@@ -61,9 +58,6 @@ def thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gd
 
     time_steps = time_15min[calc1:calc2]
     net, net_results = net_simulation.time_series_net(net, t_rl_soll, waerme_ges_W, calc1, calc2)
-
-    # dp_min, idx_dp_min = net_simulation_calculation.calculate_worst_point(net)
-    # print(f"Der Schlechtpunkt des Netzes liegt am Wärmeübertrager {idx_dp_min}. Der Differenzdruck beträgt {dp_min:.3f} bar.")
 
     return time_15min, time_steps, net, net_results
 
@@ -90,7 +84,7 @@ def calculate_results(net, net_results):
 
     return mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW, pressure_junctions
 
-def plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump):
+def plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump, return_pressure_circ_pump, flows_pressure_circ_pump, deltap_circ_pump, junction_pressure):
     # Erstellen Sie eine Figur und ein erstes Achsenobjekt
     fig, ax1 = plt.subplots()
 
@@ -99,7 +93,7 @@ def plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump
     ax1.set_xlabel("Zeit in 15 min Schritten")
     ax1.set_ylabel("Wärmebedarf in kW / 15 min", color='b')
     ax1.tick_params('y', colors='b')
-    ax1.legend(loc='upper left')
+    ax1.legend(loc='upper right')
 
     # Zweite Y-Achse für die Temperatur
     ax2 = ax1.twinx()
@@ -109,6 +103,16 @@ def plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump
     ax2.tick_params('y', colors='m')
     ax2.legend(loc='upper right')
     ax2.set_ylim(0,100)
+
+    # Zweite Y-Achse für die Temperatur
+    ax3 = ax1.twinx()
+    ax3.plot(time_steps, return_pressure_circ_pump, label="circ pump return pressure")
+    ax3.plot(time_steps, flows_pressure_circ_pump, label="circ pump flow pressure")
+    ax3.plot(time_steps, deltap_circ_pump, label="circ pump delta p")
+    ax3.plot(time_steps, junction_pressure)
+    ax3.set_ylabel("pressure [bar]")
+    ax3.tick_params('y')
+    ax3.legend(loc='upper left')
 
     # Titel und Raster hinzufügen
     plt.title("Lastgang Wärmenetz")
@@ -152,7 +156,13 @@ def generate_net(calc1=0, calc2=35040, filename='results_time_series_net1.csv'):
     ###!!!!!this will overwrite the current csv file!!!!!#
     save_results_csv(time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump, filename)
 
-    plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
+    junction_pressure = net_results["res_junction.p_bar"]
+    plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump, return_pressure_circ_pump, flows_pressure_circ_pump, deltap_circ_pump, junction_pressure)
+    
+    dp_min, idx_dp_min = net_simulation_calculation.calculate_worst_point(net)
+    print(f"Der Schlechtpunkt des Netzes liegt am Wärmeübertrager {idx_dp_min}. Der Differenzdruck beträgt {dp_min:.3f} bar.")
+
+    config_plot(net)
 
 def auslegung_erzeuger(calc1=0, calc2=35040, filename='results_time_series_net.csv', optimize=False, load_scale_factor=1, Gaspreis=70, Strompreis=150, Holzpreis=50, BEW="Nein"):
     time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump = import_results_csv(filename)
@@ -221,6 +231,6 @@ def auslegung_erzeuger(calc1=0, calc2=35040, filename='results_time_series_net.c
 
     Kreisdiagramm(data_labels_L, Anteile)
 
-#generate_net() 
+#generate_net(calc1=0, calc2=200, filename='results_time_series_net1.csv') 
 #auslegung_erzeuger(calc1=0, calc2= 8760, filename="heat_requirement/Summenlastgang_Scenocalc_skaliert_1MWh.csv", \
 #                   optimize=True, load_scale_factor=3000000, Gaspreis=70, Strompreis=150, Holzpreis=50, BEW="Ja")

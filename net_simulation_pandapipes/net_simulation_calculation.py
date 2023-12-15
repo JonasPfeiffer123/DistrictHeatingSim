@@ -1,6 +1,11 @@
 import pandapipes as pp
+import pandas as pd
 import geopandas as gpd
 from shapely.geometry import LineString
+
+from pandapower.timeseries import DFData
+from pandapower.control.controller.const_control import ConstControl
+from net_simulation_pandapipes.my_controllers import ReturnTemperatureController, WorstPointPressureController
 
 def get_line_coords_and_lengths(gdf):
     all_line_coords, all_line_lengths = [], []
@@ -27,7 +32,7 @@ def get_all_point_coords_from_line_cords(all_line_coords):
 
 
 def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w=50000, pipe_creation_mode="diameter", supply_temperature=85,
-                   flow_pressure_pump=4, lift_pressure_pump=1.5, massflow_mass_pump=4, diameter_mm=100, pipetype = "110_PE_100_SDR_17", k=0.1, alpha=10):
+                   flow_pressure_pump=4, lift_pressure_pump=1.5, massflow_mass_pump=4, diameter_mm=100, pipetype = "110_PE_100_SDR_17", k=0.05, alpha=10):
 
     def create_junctions_from_coords(net_i, all_coords):
         junction_dict = {}
@@ -57,7 +62,7 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w=50000, pipe_cr
 
             pp.create_flow_control(net_i, from_junction=junction_dict[coords[0]], to_junction=mid_junction_idx, controlled_mdot_kg_per_s=0.25, diameter_m=0.04)
 
-            pp.create_heat_exchanger(net_i, from_junction=mid_junction_idx, to_junction=junction_dict[coords[1]], diameter_m=0.04, loss_coefficient=100,
+            pp.create_heat_exchanger(net_i, from_junction=mid_junction_idx, to_junction=junction_dict[coords[1]], diameter_m=0.04, loss_coefficient=0.3,
                                      qext_w=q_heat_exchanger, name=f"{name_prefix} {i}")
 
     def create_circulation_pump_pressure(net_i, all_coords, junction_dict, name_prefix):
@@ -93,6 +98,23 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w=50000, pipe_cr
 
     return net
 
+def create_controllers(net, qext_w):
+    # creates controllers for the net
+    for i in range(len(net.heat_exchanger)):
+        # Erstelle ein einfaches DFData-Objekt als Platzhalter
+        placeholder_df = pd.DataFrame({f'qext_w_{i}': [qext_w]})
+        placeholder_data_source = DFData(placeholder_df)
+
+        ConstControl(net, element='heat_exchanger', variable='qext_w', element_index=i, data_source=placeholder_data_source, profile_name=f'qext_w_{i}')
+        
+        T_controller = ReturnTemperatureController(net, heat_exchanger_idx=i, target_temperature=60)
+        net.controller.loc[len(net.controller)] = [T_controller, True, -1, -1, False, False]
+
+    dp_min, idx_dp_min = calculate_worst_point(net)
+    dp_controller = WorstPointPressureController(net, idx_dp_min)
+    net.controller.loc[len(net.controller)] = [dp_controller, True, -1, -1, False, False]
+
+    return net
 
 def correct_flow_directions(net):
     # Initial pipeflow calculation
@@ -114,21 +136,53 @@ def correct_flow_directions(net):
     return net
 
 
-def optimize_diameter_parameters(initial_net, v_max=1, v_min=0.8, dx=0.001):
+def optimize_diameter_parameters(initial_net, element="pipe", v_max=1, v_min=0.8, dx=0.001):
     pp.pipeflow(initial_net, mode="all")
-    velocities = list(initial_net.res_pipe.v_mean_m_per_s)
-    
-    while max(velocities) > v_max or min(velocities) < v_min:
-        for pipe_idx in initial_net.pipe.index:
-            # check the average velocity in the Pipe
-            if initial_net.res_pipe.v_mean_m_per_s[pipe_idx] > v_max:
-                # enlarge diameter
-                initial_net.pipe.at[pipe_idx, 'diameter_m'] = initial_net.pipe.at[pipe_idx, 'diameter_m'] + dx
-            elif initial_net.res_pipe.v_mean_m_per_s[pipe_idx] < v_min:
-                # shrink diameter
-                initial_net.pipe.at[pipe_idx, 'diameter_m'] = initial_net.pipe.at[pipe_idx, 'diameter_m'] - dx
-        pp.pipeflow(initial_net, mode="all")
+
+    if element == "pipe":
         velocities = list(initial_net.res_pipe.v_mean_m_per_s)
+        
+        while max(velocities) > v_max or min(velocities) < v_min:
+            for pipe_idx in initial_net.pipe.index:
+                # check the average velocity in the Pipe
+                if initial_net.res_pipe.v_mean_m_per_s[pipe_idx] > v_max:
+                    # enlarge diameter
+                    initial_net.pipe.at[pipe_idx, 'diameter_m'] = initial_net.pipe.at[pipe_idx, 'diameter_m'] + dx
+                elif initial_net.res_pipe.v_mean_m_per_s[pipe_idx] < v_min:
+                    # shrink diameter
+                    initial_net.pipe.at[pipe_idx, 'diameter_m'] = initial_net.pipe.at[pipe_idx, 'diameter_m'] - dx
+            pp.pipeflow(initial_net, mode="all")
+            velocities = list(initial_net.res_pipe.v_mean_m_per_s)
+
+    if element == "flow_control":
+        velocities = list(initial_net.res_flow_control.v_mean_m_per_s)
+        
+        while max(velocities) > v_max or min(velocities) < v_min:
+            for fc_idx in initial_net.flow_control.index:
+                # check the average velocity in the Pipe
+                if initial_net.res_flow_control.v_mean_m_per_s[fc_idx] > v_max:
+                    # enlarge diameter
+                    initial_net.flow_control.at[fc_idx, 'diameter_m'] = initial_net.flow_control.at[fc_idx, 'diameter_m'] + dx
+                elif initial_net.res_flow_control.v_mean_m_per_s[fc_idx] < v_min:
+                    # shrink diameter
+                    initial_net.flow_control.at[fc_idx, 'diameter_m'] = initial_net.flow_control.at[fc_idx, 'diameter_m'] - dx
+            pp.pipeflow(initial_net, mode="all")
+            velocities = list(initial_net.res_flow_control.v_mean_m_per_s)
+
+    if element == "heat_exchanger":
+        velocities = list(initial_net.res_heat_exchanger.v_mean_m_per_s)
+        
+        while max(velocities) > v_max or min(velocities) < v_min:
+            for hx_idx in initial_net.heat_exchanger.index:
+                # check the average velocity in the Pipe
+                if initial_net.res_heat_exchanger.v_mean_m_per_s[hx_idx] > v_max:
+                    # enlarge diameter
+                    initial_net.heat_exchanger.at[hx_idx, 'diameter_m'] = initial_net.heat_exchanger.at[hx_idx, 'diameter_m'] + dx
+                elif initial_net.res_heat_exchanger.v_mean_m_per_s[hx_idx] < v_min:
+                    # shrink diameter
+                    initial_net.heat_exchanger.at[hx_idx, 'diameter_m'] = initial_net.heat_exchanger.at[hx_idx, 'diameter_m'] - dx
+            pp.pipeflow(initial_net, mode="all")
+            velocities = list(initial_net.res_heat_exchanger.v_mean_m_per_s)
 
     return initial_net
 
@@ -192,6 +246,9 @@ def calculate_worst_point(net):
     # specificially the worst point is defined as the heat exchanger with the lowest pressure difference between the forward and the return line, resulting in a lower mass flow
     # after finding the worst point a differential pressure control for the circulation pump could be implemented
 
+    # Initial pipeflow calculation
+    pp.pipeflow(net, mode="all")
+    
     dp = []
 
     for idx, p_from, p_to in zip(net.heat_exchanger.index, net.res_flow_control["p_from_bar"], net.res_heat_exchanger["p_to_bar"]):

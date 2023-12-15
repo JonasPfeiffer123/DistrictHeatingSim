@@ -28,18 +28,17 @@ class WorstPointPressureController(BasicCtrl):
         dp_error = self.target_dp_min_bar - current_dp_bar
 
         current_plift_bar = net.circ_pump_pressure["plift_bar"].at[self.circ_pump_pressure_idx]
+        current_pflow_bar = net.circ_pump_pressure["p_flow_bar"].at[self.circ_pump_pressure_idx]
         
-        plift_adjustment = dp_error * self.proportional_gain        
+        plift_adjustment = dp_error * self.proportional_gain
+        pflow_adjustment = dp_error * self.proportional_gain        
 
         new_plift = current_plift_bar + plift_adjustment
+        new_pflow = current_pflow_bar + pflow_adjustment
         
-        """print(current_dp_bar)
-        print(dp_error)
-        print(current_plift_bar)
-        print(plift_adjustment)
-        print(new_plift)"""
         net.circ_pump_pressure["plift_bar"].at[self.circ_pump_pressure_idx] = new_plift
-        
+        net.circ_pump_pressure["p_flow_bar"].at[self.circ_pump_pressure_idx] = new_pflow
+ 
         return super(WorstPointPressureController, self).control_step(net)
     
 
@@ -97,13 +96,6 @@ class ReturnTemperatureController(BasicCtrl):
         new_mass_flow = max(self.min_mass_flow, min(new_mass_flow, self.max_mass_flow))
         
         net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx] = new_mass_flow
-        
-        #print(self.heat_exchanger_idx)
-        #print(self.target_temperature)
-        #print(current_temperature)
-        #print(current_mass_flow)
-        #print(mass_flow_adjustment)
-        #print(new_mass_flow)
         
         return super(ReturnTemperatureController, self).control_step(net)
 
