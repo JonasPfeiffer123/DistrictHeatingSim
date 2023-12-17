@@ -44,7 +44,7 @@ class WorstPointPressureController(BasicCtrl):
     
 
 class ReturnTemperatureController(BasicCtrl):
-    def __init__(self, net, heat_exchanger_idx, target_temperature, tolerance=2, lower_proportional_gain=0.0005, higher_proportional_gain=0.0025, min_mass_flow=0.005, max_mass_flow=1,**kwargs):
+    def __init__(self, net, heat_exchanger_idx, target_temperature, tolerance=2, lower_proportional_gain=0.0005, higher_proportional_gain=0.0025, min_velocity=0.005, max_velocity=2,**kwargs):
         super(ReturnTemperatureController, self).__init__(net, **kwargs)
         self.heat_exchanger_idx = heat_exchanger_idx
         self.flow_control_idx = heat_exchanger_idx
@@ -53,8 +53,9 @@ class ReturnTemperatureController(BasicCtrl):
         self.tolerance = tolerance
         self.lower_proportional_gain = lower_proportional_gain
         self.higher_proportional_gain = higher_proportional_gain
-        self.min_mass_flow = min_mass_flow
-        self.max_mass_flow = max_mass_flow
+
+        self.min_mass_flow = min_velocity * ((pi/4)*(net.heat_exchanger["diameter_m"].at[heat_exchanger_idx] ** 2)) * 1000
+        self.max_mass_flow = max_velocity * ((pi/4)*(net.heat_exchanger["diameter_m"].at[heat_exchanger_idx] ** 2)) * 1000
 
     def time_step(self, net, time_step):
         return time_step
