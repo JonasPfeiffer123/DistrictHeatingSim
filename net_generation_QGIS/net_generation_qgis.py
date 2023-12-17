@@ -6,7 +6,6 @@ from import_and_create_layers_qgis import *
 ### Projektspezifische Eingaben ###
 #from qgis_simple_MST import *
 from qgis_street_MST import *
-#from qgis_advanced_street_MST import *
 
 # Projekt
 projekt = "Zittau"
