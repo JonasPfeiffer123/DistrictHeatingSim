@@ -1,7 +1,6 @@
 import overpy
 import json
 from decimal import Decimal
-from pyproj import Transformer
 
 def download_osm_street_data(query, output_filename):
     # Overpass API initialisieren
@@ -11,7 +10,7 @@ def download_osm_street_data(query, output_filename):
     result = api.query(query)
     
     # Transformer-Instanz für die Transformation erstellen
-    transformer = Transformer.from_crs("EPSG:4326", "EPSG:25833", always_xy=True)
+    #transformer = Transformer.from_crs("EPSG:4326", "EPSG:25833", always_xy=True)
     
     # GeoJSON Struktur vorbereiten
     geojson = {
@@ -22,18 +21,19 @@ def download_osm_street_data(query, output_filename):
     # Wege (Linien) aus dem Overpass Ergebnis hinzufügen
     for way in result.ways:
         # Liste für transformierte Koordinaten
-        transformed_coords = []
+        coords = []
         for node in way.nodes:
             # Koordinaten von WGS84 zu EPSG:25833 transformieren
-            x, y = transformer.transform(node.lon, node.lat)
-            transformed_coords.append([x, y])
+            x, y = node.lon, node.lat
+            # x, y = transformer.transform(node.lon, node.lat)
+            coords.append([x, y])
         
         # Erstelle eine Linie für jeden Weg
         line = {
             "type": "Feature",
             "geometry": {
                 "type": "LineString",
-                "coordinates": transformed_coords
+                "coordinates": coords
             },
             "properties": way.tags
         }
@@ -79,7 +79,7 @@ out body;
 """
 
 # Ausgabedateiname für GeoJSON-Datei
-output_geojson_file = "C:/Users/username/heating_network_generation/net_generation_QGIS/Beispiel Zittau/Straßen.geojson"
+output_geojson_file = "C:/Users/username/heating_network_generation/Straßen Zittau.geojson"
 
 # Download der Daten und Speichern als GeoJSON
-download_osm_street_data(overpass_query, output_geojson_file)
+#download_osm_street_data(overpass_query, output_geojson_file)
