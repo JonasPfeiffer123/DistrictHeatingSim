@@ -231,6 +231,6 @@ def auslegung_erzeuger(calc1=0, calc2=35040, filename='results_time_series_net.c
 
     Kreisdiagramm(data_labels_L, Anteile)
 
-#generate_net(calc1=0, calc2=200, filename='results_time_series_net1.csv') 
+generate_net(calc1=0, calc2=200, filename='results_time_series_net1.csv') 
 #auslegung_erzeuger(calc1=0, calc2= 8760, filename="heat_requirement/Summenlastgang_Scenocalc_skaliert_1MWh.csv", \
 #                   optimize=True, load_scale_factor=3000000, Gaspreis=70, Strompreis=150, Holzpreis=50, BEW="Ja")
