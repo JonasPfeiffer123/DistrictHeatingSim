@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QFileDialog, QHBoxLayout, QListWidget, QComboBox, QDialog, QTabWidget, QMenuBar, QAction
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QFileDialog, QHBoxLayout, QListWidget, QComboBox, QDialog, QTabWidget, QMenuBar, QAction, QInputDialog, QMessageBox
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import numpy as np
@@ -20,6 +20,8 @@ import geopandas as gpd
 
 import random
 
+from net_generation_QGIS.import_osm_street_layer_geojson import download_osm_street_data
+
 class HeatSystemDesignGUI(QWidget):
     def __init__(self):
         super().__init__()
@@ -28,10 +30,30 @@ class HeatSystemDesignGUI(QWidget):
         self.initUI()
     
     def initFileInputs(self):
+        # geojson 1
+        self.EAFilenameInput = QLineEdit('net_generation_QGIS/Beispiel Zittau 2/Erzeugeranlagen.geojson')
+        self.selectEAButton = QPushButton('geoJSON Erzeugeranlagen auswählen')
+        self.selectEAButton.clicked.connect(lambda: self.selectFilename(self.EAFilenameInput))
+
+        # geojson 2
+        self.HASTFilenameInput = QLineEdit('net_generation_QGIS/Beispiel Zittau 2/HAST.geojson')
+        self.selectHASTButton = QPushButton('geoJSON HAST auswählen')
+        self.selectHASTButton.clicked.connect(lambda: self.selectFilename(self.HASTFilenameInput))
+
+        # geojson 3
+        self.vlFilenameInput = QLineEdit('net_generation_QGIS/Beispiel Zittau 2/Vorlauf.geojson')
+        self.selectvlButton = QPushButton('geoJSON Vorlauf auswählen')
+        self.selectvlButton.clicked.connect(lambda: self.selectFilename(self.vlFilenameInput))
+
+        # geojson 4
+        self.rlFilenameInput = QLineEdit('net_generation_QGIS/Beispiel Zittau 2/Rücklauf.geojson')
+        self.selectrlButton = QPushButton('geoJSON Rücklauf auswählen')
+        self.selectrlButton.clicked.connect(lambda: self.selectFilename(self.rlFilenameInput))
+        
         # Ergebnis-CSV Input
-        self.filenameInput = QLineEdit('results_time_series_net.csv')
+        self.FilenameInput = QLineEdit('results_time_series_net.csv')
         self.selectFileButton = QPushButton('Ergebnis-CSV auswählen')
-        self.selectFileButton.clicked.connect(lambda: self.selectFilename(self.filenameInput))
+        self.selectFileButton.clicked.connect(lambda: self.selectFilename(self.FilenameInput))
 
         # TRY-Datei Input
         self.tryFilenameInput = QLineEdit('heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat')
@@ -77,6 +99,11 @@ class HeatSystemDesignGUI(QWidget):
         importAction.triggered.connect(self.importNetData)
         fileMenu.addAction(importAction)
 
+        # Aktion für Straßendaten-Download hinzufügen
+        downloadAction = QAction('Straßendaten herunterladen', self)
+        downloadAction.triggered.connect(self.promptDownloadStreetData)
+        fileMenu.addAction(downloadAction)
+
         # Fügen Sie die Menüleiste dem Layout von tab1 hinzu
         tab1Layout.addWidget(self.menuBar)
         
@@ -87,6 +114,30 @@ class HeatSystemDesignGUI(QWidget):
 
         #############################################################
         tab2Layout = QVBoxLayout()
+
+        # Hinzufügen zum Layout
+        geojsonImportLayoutEA = QHBoxLayout()
+        geojsonImportLayoutEA.addWidget(self.EAFilenameInput)
+        geojsonImportLayoutEA.addWidget(self.selectEAButton)
+        tab2Layout.addLayout(geojsonImportLayoutEA)
+
+        # Hinzufügen zum Layout
+        geojsonImportLayoutHAST = QHBoxLayout()
+        geojsonImportLayoutHAST.addWidget(self.HASTFilenameInput)
+        geojsonImportLayoutHAST.addWidget(self.selectHASTButton)
+        tab2Layout.addLayout(geojsonImportLayoutHAST)
+
+        # Hinzufügen zum Layout
+        geojsonImportLayoutvl = QHBoxLayout()
+        geojsonImportLayoutvl.addWidget(self.vlFilenameInput)
+        geojsonImportLayoutvl.addWidget(self.selectvlButton)
+        tab2Layout.addLayout(geojsonImportLayoutvl)
+
+        geojsonImportLayoutrl = QHBoxLayout()
+        geojsonImportLayoutrl.addWidget(self.rlFilenameInput)
+        geojsonImportLayoutrl.addWidget(self.selectrlButton)
+        tab2Layout.addLayout(geojsonImportLayoutrl)
+
         #Eingaben
         StartTimeLayout = QHBoxLayout()
         self.StartTimeStepLabel = QLabel('Zeitschritt Start (15 min Werte); Minimum: 0 :')
@@ -123,7 +174,7 @@ class HeatSystemDesignGUI(QWidget):
 
         # Hinzufügen zum Layout
         fileLayout1 = QHBoxLayout()
-        fileLayout1.addWidget(self.filenameInput)
+        fileLayout1.addWidget(self.FilenameInput)
         fileLayout1.addWidget(self.selectFileButton)
         tab3Layout.addLayout(fileLayout1)
 
@@ -289,6 +340,54 @@ class HeatSystemDesignGUI(QWidget):
         # Aktualisieren Sie das QWebEngineView-Widget, um die neue Karte anzuzeigen
         self.mapView.load(QUrl.fromLocalFile(os.path.abspath(map_file)))
 
+    def promptDownloadStreetData(self):
+        area, okPressed = QInputDialog.getText(self, "Straßendaten herunterladen", "Geben Sie den Bereich ein:")
+        if okPressed and area != '':
+            self.downloadStreetData(area)
+
+    def downloadStreetData(self, area):
+        overpass_query = f"""
+[out:json][timeout:25];
+area[name="{area}"]->.area_0;
+(
+  node["highway"="primary"](area.area_0);
+  node["highway"="secondary"](area.area_0);
+  node["highway"="tertiary"](area.area_0);
+  node["highway"="residential"](area.area_0);
+  node["highway"="road"](area.area_0);
+  node["highway"="living_street"](area.area_0);
+  way["highway"="primary"](area.area_0);
+  way["highway"="secondary"](area.area_0);
+  way["highway"="tertiary"](area.area_0);
+  way["highway"="residential"](area.area_0);
+  way["highway"="road"](area.area_0);
+  way["highway"="living_street"](area.area_0);
+  relation["highway"="primary"](area.area_0);
+  relation["highway"="secondary"](area.area_0);
+  relation["highway"="tertiary"](area.area_0);
+  relation["highway"="residential"](area.area_0);
+  relation["highway"="road"](area.area_0);
+  relation["highway"="living_street"](area.area_0);
+);
+(._;>;);
+out body;
+"""
+        print(overpass_query)
+        # Hier rufen Sie Ihr Download-Skript auf
+        # Ausgabedateiname für GeoJSON-Datei
+        output_geojson_file = "Straßen_TEST.geojson"
+
+        # Download der Daten und Speichern als GeoJSON
+        download_osm_street_data(overpass_query, output_geojson_file)
+        # Beispiel: download_osm_street_data(overpass_query.format(area), output_geojson_file)
+        QMessageBox.information(self, "Download", "Straßendaten für " + area + " heruntergeladen.")
+
+        self.loadNetData(output_geojson_file)
+        self.updateMapView()
+
+        QMessageBox.information(self, "Import", "Straßendaten für " + area + " importiert.")
+
+
     def selectFilename(self, inputWidget):
         fname, _ = QFileDialog.getOpenFileName(self, 'Datei auswählen', '', 'All Files (*);;CSV Files (*.csv);;Data Files (*.dat)')
         if fname:  # Prüfen, ob ein Dateiname ausgewählt wurde
@@ -359,11 +458,13 @@ class HeatSystemDesignGUI(QWidget):
         #calc1, calc2 = 0, 96 # min: 0; max: 35040
         calc1 = int(self.StartTimeStepInput.text())
         calc2 = int(self.EndTimeStepInput.text())
-        filename = 'results_time_series_net1.csv'
-        gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Vorlauf.geojson')
-        gdf_rl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Rücklauf.geojson')
-        gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/HAST.geojson')
-        gdf_WEA = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Erzeugeranlagen.geojson')
+
+        output_filename = 'results_time_series_net1.csv'
+
+        gdf_vl = gpd.read_file(self.vlFilenameInput.text())
+        gdf_rl = gpd.read_file(self.rlFilenameInput.text())
+        gdf_HAST = gpd.read_file(self.HASTFilenameInput.text())
+        gdf_WEA = gpd.read_file(self.EAFilenameInput.text())
 
         # diese Funktion gilt es nun mit Inputs umzusetzen
         time_15min, time_steps, net, net_results = thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gdf_HAST, gdf_WEA)
@@ -376,7 +477,7 @@ class HeatSystemDesignGUI(QWidget):
         self.plot2(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
 
         ###!!!!!this will overwrite the current csv file!!!!!#
-        #save_results_csv(time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump, filename)
+        #save_results_csv(time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump, output_filename)
 
     def calculate(self, optimize=False, load_scale_factor=1):
         filename = self.filenameInput.text()
