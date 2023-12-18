@@ -1,4 +1,5 @@
-from qgis.core import (QgsProject, QgsVectorLayer, QgsVectorFileWriter)
+from qgis.core import (QgsProject, QgsVectorLayer, QgsVectorFileWriter, QgsFeature, QgsGeometry, 
+                       QgsCoordinateReferenceSystem, QgsCoordinateTransform)
 import os
 
 from import_and_create_layers_qgis import *
@@ -13,8 +14,9 @@ projekt = "Zittau"
 
 if projekt == "Zittau":
     # Ausgabedateiname für GeoJSON-Datei
+    osm_street_layer_geojson_file_name = "C:/Users/username/heating_network_generation/Straßen_TEST.geojson"
     #osm_street_layer_geojson_file_name = "C:/Users/username/heating_network_generation/net_generation_QGIS/Straßen Zittau.geojson"
-    osm_street_layer_geojson_file_name = "C:/Users/username/heating_network_generation/net_generation_QGIS/Straßen Zittau.geojson"
+    #osm_street_layer_geojson_file_name = "C:/Users/username/heating_network_generation/net_generation_QGIS/Straßen Zittau.geojson"
     
     # data points csv file path
     #data_csv_file_name = "data_output_zi_ETRS89.csv"
@@ -61,13 +63,13 @@ def load_layers(osm_street_layer_geojson_file, data_csv_file_name, x_coord, y_co
 
         # Weitere Layer-Initialisierung
         layer_points = QgsProject.instance().mapLayersByName(data_csv_file_name)[0]
-        layer_lines = QgsProject.instance().mapLayersByName('Straßen')[0]
+        street_layer = QgsProject.instance().mapLayersByName('Straßen')[0]
         layer_WEA = QgsProject.instance().mapLayersByName('Erzeugerstandorte')[0]
-        return layer_points, layer_lines, layer_WEA
+        return layer_points, street_layer, layer_WEA
     except Exception as e:
         print(f"Fehler beim Laden der Layer: {e}")
 
-def generate_and_export_layers(layer_points, layer_lines, layer_WEA, fixed_angle=0, fixed_distance=1):
+def generate_and_export_layers(layer_points, street_layer, layer_WEA, fixed_angle=0, fixed_distance=1):
     """
     Generieren von Netzwerklayers und deren Export als GeoJSON.
     """
@@ -82,8 +84,9 @@ def generate_and_export_layers(layer_points, layer_lines, layer_WEA, fixed_angle
     # Generieren von Netzwerken
     generate_lines(layer_points, fixed_distance, fixed_angle, provider_hast)
     generate_lines(layer_WEA, fixed_distance, fixed_angle, provider_erzeugeranlagen)
-    generate_network_fl(layer_points, layer_WEA, provider_vl, layer_lines)
-    generate_network_rl(layer_points, layer_WEA, fixed_distance, fixed_angle, provider_rl, layer_lines)
+    
+    generate_network_fl(layer_points, layer_WEA, provider_vl, street_layer)
+    generate_network_rl(layer_points, layer_WEA, fixed_distance, fixed_angle, provider_rl, street_layer)
 
     # Commit und Export der Änderungen
     commit_and_export_layers([vl_hast, vl_rl, vl_vl, vl_erzeugeranlagen])
