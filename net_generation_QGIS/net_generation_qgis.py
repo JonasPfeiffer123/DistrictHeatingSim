@@ -4,8 +4,8 @@ import os
 from import_and_create_layers_qgis import *
 
 ### Projektspezifische Eingaben ###
-#from qgis_simple_MST import *
-from qgis_street_MST import *
+from qgis_simple_MST import *
+#from qgis_street_MST import *
 
 # Projekt
 projekt = "Zittau"
@@ -17,12 +17,19 @@ if projekt == "Zittau":
     osm_street_layer_geojson_file_name = "C:/Users/username/heating_network_generation/net_generation_QGIS/Straßen Zittau.geojson"
     
     # data points csv file path
-    data_csv_file_name = "data_output_zi_ETRS89.csv"
+    #data_csv_file_name = "data_output_zi_ETRS89.csv"
+    #data_csv_file_name = "data_output_Beleg1_ETRS89.csv"
+    data_csv_file_name = "data_output_Beleg2_ETRS89.csv"
     
     # Koordinaten für den Erzeugerstandort
+    # Beleg1
+    #x_coord = 487529.14
+    #y_coord = 5637768.19
+
+    #Beleg2
     x_coord = 486267.306999999971595  # Longitude
     y_coord = 5637294.910000000149012  # Latitude
-    
+
 if projekt == "Görlitz":
     #osm_street_layer_geojson_file_name = "C:/Users/username/heating_network_generation/net_generation_QGIS/Straßen Görlitz.geojson"
     osm_street_layer_geojson_file_name = "C:/Users/username/heating_network_generation/net_generation_QGIS/Straßen Görlitz.geojson"
