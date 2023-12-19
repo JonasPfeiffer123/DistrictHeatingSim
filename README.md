@@ -130,7 +130,7 @@ This script is designed to be interactive and user-friendly, making it easier fo
 
 - Optimization and generalization
 
-- Transition to English, CRS setting automation in QGIS, timeseries result storage, multiple heat pumps support, and controller optimization.
+- Transition to English
 - Evaluating integration with advanced simulation tools like SIM-VICUS, flixOpt, and EnSySim.
   
 # Contributing
