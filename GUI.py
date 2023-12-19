@@ -139,6 +139,10 @@ class HeatSystemDesignGUI(QWidget):
         tab2Layout.addLayout(geojsonImportLayoutrl)
 
         ### In Karte importieren - Button einbauen
+        # Buttons
+        self.LayerImportButton = QPushButton('Layers in Karte importieren')
+        self.LayerImportButton.clicked.connect(self.ImportLayers)
+        tab2Layout.addWidget(self.LayerImportButton)
         ### Wärmebedarfe aus geojson anzeigen wenn vorhanden
 
         #Eingaben
@@ -307,7 +311,19 @@ class HeatSystemDesignGUI(QWidget):
         webView = QWebEngineView()
         webView.load(QUrl.fromLocalFile(os.path.abspath(map_file)))
         return webView
-
+    
+    def ImportLayers(self):
+        vl = self.vlFilenameInput.text()
+        rl = self.rlFilenameInput.text()
+        HAST = self.HASTFilenameInput.text()
+        WEA = self.EAFilenameInput.text()
+                                
+        self.loadNetData(vl)
+        self.loadNetData(rl)
+        self.loadNetData(HAST)
+        self.loadNetData(WEA)
+        self.updateMapView()
+    
     def importNetData(self):
         fnames, _ = QFileDialog.getOpenFileNames(self, 'Netzdaten importieren', '', 'GeoJSON Files (*.geojson);;All Files (*)')
         if fnames:

@@ -35,23 +35,32 @@ def import_TRY(dateiname):
 #Berechnung_Erzeugermix
 
 def thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gdf_HAST, gdf_WEA):
-    ### generates the pandapipes net and initializes it ###
-    net = net_simulation.initialize_net(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA)
-
     ### define the heat requirement ###
-    n = len(net.heat_exchanger)
-    min_value = 59000  # kWh
-    max_value = 60000  # kWh
-    JEB_Wärme_ges_kWh = np.array([random.randint(min_value, max_value) for _ in range(n)])
+    try:
+        JEB_Wärme_ges_kWh = gdf_HAST["Wärmebedarf"].values
+
+    except:
+        print("Herauslesen des Wärmebedarfs aus geojson nicht möglich.")
+        n = len(net.heat_exchanger)
+        min_value = 59000  # kWh
+        max_value = 60000  # kWh
+        JEB_Wärme_ges_kWh = np.array([random.randint(min_value, max_value) for _ in range(n)])
+    
     JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh = JEB_Wärme_ges_kWh*0.2, JEB_Wärme_ges_kWh*0.8
 
     waerme_ges_W = []
+    max_waerme_ges_W = []
 
     for hw, tww in zip(JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh):
         time_15min, _, _, _, waerme_ges_kW = heat_requirement_VDI4655.calculate(hw, tww)
         waerme_ges_W.append(waerme_ges_kW * 1000)
+        max_waerme_ges_W.append(np.max(waerme_ges_kW * 1000))
 
     waerme_ges_W = np.array(waerme_ges_W)
+    max_waerme_ges_W = np.array(max_waerme_ges_W)
+    
+    ### generates the pandapipes net and initializes it ###
+    net = net_simulation.initialize_net(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, max_waerme_ges_W)
 
     ### time series calculation ###
     t_rl_soll = 60
@@ -231,6 +240,6 @@ def auslegung_erzeuger(calc1=0, calc2=35040, filename='results_time_series_net.c
 
     Kreisdiagramm(data_labels_L, Anteile)
 
-# generate_net(calc1=0, calc2=200, filename='results_time_series_net1.csv') 
+generate_net(calc1=0, calc2=87, filename='results_time_series_net1.csv') 
 #auslegung_erzeuger(calc1=0, calc2= 8760, filename="heat_requirement/Summenlastgang_Scenocalc_skaliert_1MWh.csv", \
 #                   optimize=True, load_scale_factor=3000000, Gaspreis=70, Strompreis=150, Holzpreis=50, BEW="Ja")
