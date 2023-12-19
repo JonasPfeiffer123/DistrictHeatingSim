@@ -1,6 +1,4 @@
-from qgis.PyQt.QtCore import QVariant
-from qgis.core import (QgsFeature, QgsField, QgsGeometry, QgsPointXY, 
-                       QgsProject, QgsRasterLayer, QgsVectorLayer, QgsVectorFileWriter)
+from qgis.core import (QgsFeature, QgsGeometry, QgsPointXY, QgsProject, QgsRasterLayer, QgsVectorLayer, QgsVectorFileWriter)
 
 import math
 import pandas as pd

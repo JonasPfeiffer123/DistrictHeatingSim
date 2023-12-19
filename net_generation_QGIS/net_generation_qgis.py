@@ -1,5 +1,4 @@
-from qgis.core import (QgsProject, QgsVectorLayer, QgsVectorFileWriter, QgsFeature, QgsGeometry, 
-                       QgsCoordinateReferenceSystem, QgsCoordinateTransform)
+from qgis.core import (QgsProject, QgsVectorLayer, QgsVectorFileWriter)
 import os
 import pandas as pd
 
