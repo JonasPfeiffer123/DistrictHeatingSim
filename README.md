@@ -16,7 +16,7 @@ This project, led by Dipl.-Ing. (FH) Jonas Pfeiffer for the SMWK-NEUES TG-70 pro
 - Alternatively you can open a new QGIS file. In this case, some things still have to be done manually. First of, change the crs (coordinate reference system) to EPSG:25833 (for the given data). 
 - Optional: Install the QuickOSM plugin if you want to download specific street data. Alternatively you can use the "import_osm_street_layer_geojson.py"-file. This requires a specific osm-query.
 - For this project, I imported the key "highway" with the values "primary", "secondary", "tertiary", "residential", "road" and "living_street" for the cities "Zittau" and "Görlitz", but also tested a few variations 
-Note: "net_generation_qgis.py" calls functions from "import_and_create_layers_qgis.py" and from "qgis_simple_MST.py", "qgis_street_MST.py" or "qgis_advanced_street_MST.py" depending on the algorithm you want to use. "qgis_advanced_street_MST.py" is currently not working as intended
+Note: "net_generation_qgis.py" calls functions from "import_and_create_layers_qgis.py" and from "qgis_simple_MST.py".
 
 "net_simulation_pandapipes"
 - the "pandapipes" and "geopanda" libraries are needed.
@@ -67,14 +67,6 @@ For the developement and testing of the algorithms and functions, geodata is req
   - Return Lines Generation: Creates return lines for a network with an offset and angle.
   - Minimum Spanning Tree (MST) Network: Utilizes NetworkX to generate a Minimum Spanning Tree, connecting all end points in the most efficient way.
   - Forward and Return Network Generation: Facilitates the creation of both forward and return line networks in a geospatial environment.
-
-# qgis_street_MST.py
-
-The qgis_street_MST.py script enhances network generation capabilities compared to qgis_simple_MST.py by integrating spatial indexing and street-based network analysis. It uses QgsSpatialIndex for efficient querying of nearest streets and points, creating a more sophisticated and street-aligned Minimum Spanning Tree (MST). This approach considers actual street layouts, making the network generation process more realistic and applicable to urban environments. This added complexity provides a closer representation of real-world scenarios compared to the simpler MST approach in qgis_simple_MST.py.
-
-# qgis_advanced_street_MST.py
-
-Plans to implement an advanced pathfinding algorithm following the streets. Currently not working properly
 
 # net_simulation_calculation.py
 
