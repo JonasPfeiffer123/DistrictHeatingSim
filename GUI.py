@@ -138,6 +138,9 @@ class HeatSystemDesignGUI(QWidget):
         geojsonImportLayoutrl.addWidget(self.selectrlButton)
         tab2Layout.addLayout(geojsonImportLayoutrl)
 
+        ### In Karte importieren - Button einbauen
+        ### Wärmebedarfe aus geojson anzeigen wenn vorhanden
+
         #Eingaben
         StartTimeLayout = QHBoxLayout()
         self.StartTimeStepLabel = QLabel('Zeitschritt Start (15 min Werte); Minimum: 0 :')

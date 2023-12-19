@@ -2,6 +2,8 @@ from qgis.core import (QgsProject, QgsVectorLayer, QgsVectorFileWriter, QgsFeatu
                        QgsCoordinateReferenceSystem, QgsCoordinateTransform)
 import os
 
+import pandas as pd
+
 from import_and_create_layers_qgis import *
 
 ### Projektspezifische Eingaben ###
@@ -14,14 +16,14 @@ projekt = "Zittau"
 
 if projekt == "Zittau":
     # Ausgabedateiname für GeoJSON-Datei
-    osm_street_layer_geojson_file_name = "C:/Users/username/heating_network_generation/Straßen_TEST.geojson"
+    #osm_street_layer_geojson_file_name = "C:/Users/username/heating_network_generation/Straßen_TEST.geojson"
     #osm_street_layer_geojson_file_name = "C:/Users/username/heating_network_generation/net_generation_QGIS/Straßen Zittau.geojson"
-    #osm_street_layer_geojson_file_name = "C:/Users/username/heating_network_generation/net_generation_QGIS/Straßen Zittau.geojson"
+    osm_street_layer_geojson_file_name = "C:/Users/username/heating_network_generation/net_generation_QGIS/Straßen Zittau.geojson"
     
     # data points csv file path
-    #data_csv_file_name = "data_output_zi_ETRS89.csv"
+    data_csv_file_name = "data_output_zi_ETRS89.csv"
     #data_csv_file_name = "data_output_Beleg1_ETRS89.csv"
-    data_csv_file_name = "data_output_Beleg2_ETRS89.csv"
+    #data_csv_file_name = "data_output_Beleg2_ETRS89.csv"
     
     # Koordinaten für den Erzeugerstandort
     # Beleg1
@@ -56,6 +58,8 @@ def load_layers(osm_street_layer_geojson_file, data_csv_file_name, x_coord, y_co
 
         # Aufbau des relativen Pfades zur CSV-Datei
         text_file_path = os.path.join(current_script_path, "..", "geocoding", data_csv_file_name)
+        df = pd.read_csv(text_file_path, sep=';')
+
         create_data_layer(text_file_path, data_csv_file_name)
 
         # Koordinaten für den Punkt
@@ -65,11 +69,13 @@ def load_layers(osm_street_layer_geojson_file, data_csv_file_name, x_coord, y_co
         layer_points = QgsProject.instance().mapLayersByName(data_csv_file_name)[0]
         street_layer = QgsProject.instance().mapLayersByName('Straßen')[0]
         layer_WEA = QgsProject.instance().mapLayersByName('Erzeugerstandorte')[0]
-        return layer_points, street_layer, layer_WEA
+
+        return layer_points, street_layer, layer_WEA, df
+    
     except Exception as e:
         print(f"Fehler beim Laden der Layer: {e}")
 
-def generate_and_export_layers(layer_points, street_layer, layer_WEA, fixed_angle=0, fixed_distance=1):
+def generate_and_export_layers(layer_points, street_layer, layer_WEA, df, fixed_angle=0, fixed_distance=1):
     """
     Generieren von Netzwerklayers und deren Export als GeoJSON.
     """
@@ -81,8 +87,17 @@ def generate_and_export_layers(layer_points, street_layer, layer_WEA, fixed_angl
     vl_vl, provider_vl = create_layer("Vorlauf", "Linestring", crs)
     vl_erzeugeranlagen, provider_erzeugeranlagen = create_layer("Erzeugeranlagen", "Linestring", crs)
 
+    if df is not None:
+        provider_hast.addAttributes([QgsField("Wärmebedarf", QVariant.Double)])  # Hinzufügen des Wärmebedarf-Felds
+        vl_hast.updateFields()
+        print("Attribut Wärmebedarf erfolgreich gesetzt.")
+        
+    layer_fields = vl_hast.fields()
+    for field in layer_fields:
+        print(f"Name: {field.name()}, Typ: {field.typeName()}")
+
     # Generieren von Netzwerken
-    generate_lines(layer_points, fixed_distance, fixed_angle, provider_hast)
+    generate_lines(layer_points, fixed_distance, fixed_angle, provider_hast, df)
     generate_lines(layer_WEA, fixed_distance, fixed_angle, provider_erzeugeranlagen)
     
     generate_network_fl(layer_points, layer_WEA, provider_vl, street_layer)
@@ -126,5 +141,5 @@ def load_and_style_layer(file_path, layer_name, color):
         QgsProject.instance().addMapLayer(v_layer)
         print(f"Layer {layer_name} wurde erfolgreich geladen!")
 
-layer_points, layer_lines, layer_WEA = load_layers(osm_street_layer_geojson_file_name, data_csv_file_name, x_coord, y_coord)
-generate_and_export_layers(layer_points, layer_lines, layer_WEA)
+layer_points, layer_lines, layer_WEA, df = load_layers(osm_street_layer_geojson_file_name, data_csv_file_name, x_coord, y_coord)
+generate_and_export_layers(layer_points, layer_lines, layer_WEA, df)
