@@ -1,22 +1,17 @@
 from qgis.core import (QgsProject, QgsVectorLayer, QgsVectorFileWriter, QgsFeature, QgsGeometry, 
                        QgsCoordinateReferenceSystem, QgsCoordinateTransform)
 import os
-
 import pandas as pd
 
 from import_and_create_layers_qgis import *
+from qgis_simple_MST import *
 
 ### Projektspezifische Eingaben ###
-from qgis_simple_MST import *
-#from qgis_street_MST import *
-
-# Projekt
 projekt = "Zittau"
 #projekt = "Görlitz"
 
 if projekt == "Zittau":
     # Ausgabedateiname für GeoJSON-Datei
-    #osm_street_layer_geojson_file_name = "C:/Users/username/heating_network_generation/Straßen_TEST.geojson"
     #osm_street_layer_geojson_file_name = "C:/Users/username/heating_network_generation/net_generation_QGIS/Straßen Zittau.geojson"
     osm_street_layer_geojson_file_name = "C:/Users/username/heating_network_generation/net_generation_QGIS/Straßen Zittau.geojson"
     
@@ -30,7 +25,7 @@ if projekt == "Zittau":
     #x_coord = 487529.14
     #y_coord = 5637768.19
 
-    #Beleg2
+    #Beleg2 und normaler Datensatz
     x_coord = 486267.306999999971595  # Longitude
     y_coord = 5637294.910000000149012  # Latitude
 
