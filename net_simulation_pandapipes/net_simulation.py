@@ -13,11 +13,12 @@ from net_simulation_pandapipes.my_controllers import ReturnTemperatureController
 from net_test import config_plot
 
 def init_timeseries_opt(net, qext_w, time_steps=3, target_temperature=60):
-        qext_w_profile = np.array([qext_w] * time_steps)
-        data = {}
-        for i in range(len(net.heat_exchanger)):
-            data[f'qext_w_{i}'] = qext_w_profile
+        # Überprüfen, ob qext_w eindimensional ist und die Länge mit der Anzahl der Wärmetauscher übereinstimmt
+        if qext_w.ndim != 1 or len(qext_w) != len(net.heat_exchanger):
+            raise ValueError("qext_w muss ein eindimensionales Array mit einer Länge gleich der Anzahl der Wärmetauscher sein.")
 
+        # Erstellen eines DataFrames, wobei jede Spalte eine Zeitreihe für einen Wärmetauscher ist
+        data = {f'qext_w_{i}': [qext_w[i]] * time_steps for i in range(len(qext_w))}
         df = pd.DataFrame(data, index=range(time_steps))
         data_source = DFData(df)
 
@@ -43,12 +44,12 @@ def init_timeseries_opt(net, qext_w, time_steps=3, target_temperature=60):
         
         return net
 
-def initialize_net(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w=80000, pipe_creation_mode="type"):
+def initialize_net(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, pipe_creation_mode="type"):
     # net generation from gis data
     net = create_network(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, pipe_creation_mode)
     net = create_controllers(net, qext_w)
     net = correct_flow_directions(net)
-    net = init_timeseries_opt(net, qext_w=qext_w, time_steps=3, target_temperature=60)
+    net = init_timeseries_opt(net, qext_w, time_steps=3, target_temperature=60)
 
     if pipe_creation_mode == "diameter":
         net = optimize_diameter_parameters(net)

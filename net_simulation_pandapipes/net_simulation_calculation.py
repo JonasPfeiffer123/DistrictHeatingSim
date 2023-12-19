@@ -31,7 +31,7 @@ def get_all_point_coords_from_line_cords(all_line_coords):
     return unique_point_coords
 
 
-def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w=50000, pipe_creation_mode="diameter", supply_temperature=85,
+def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w, pipe_creation_mode="diameter", supply_temperature=85,
                    flow_pressure_pump=4, lift_pressure_pump=1.5, massflow_mass_pump=4, diameter_mm=100, pipetype = "110_PE_100_SDR_17", k=0.05, alpha=10):
 
     def create_junctions_from_coords(net_i, all_coords):
@@ -54,8 +54,8 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w=50000, pipe_cr
                            std_type=pipetype, length_km=length_m/1000, k_mm=k, alpha_w_per_m2k=alpha,
                            name=f"{line_type} Pipe {i}", geodata=coords, sections=5, text_k=283)
 
-    def create_heat_exchangers(net_i, all_coords, q_heat_exchanger, junction_dict, name_prefix):
-        for i, coords in enumerate(all_coords, start=0):
+    def create_heat_exchangers(net_i, all_coords, junction_dict, name_prefix):
+        for i, (coords, q) in enumerate(zip(all_coords, qext_w)):
             # creates a middle coordinate to place the flow control an the heat exchanger
             mid_coord = ((coords[0][0] + coords[1][0]) / 2, (coords[0][1] + coords[1][1]) / 2)
             mid_junction_idx = pp.create_junction(net_i, pn_bar=1.05, tfluid_k=293.15, name=f"Junction {name_prefix}", geodata=mid_coord)
@@ -63,7 +63,7 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w=50000, pipe_cr
             pp.create_flow_control(net_i, from_junction=junction_dict[coords[0]], to_junction=mid_junction_idx, controlled_mdot_kg_per_s=0.25, diameter_m=0.04)
 
             pp.create_heat_exchanger(net_i, from_junction=mid_junction_idx, to_junction=junction_dict[coords[1]], diameter_m=0.04, loss_coefficient=0.3,
-                                     qext_w=q_heat_exchanger, name=f"{name_prefix} {i}")
+                                     qext_w=q, name=f"{name_prefix} {i}")
 
     def create_circulation_pump_pressure(net_i, all_coords, junction_dict, name_prefix):
         for i, coords in enumerate(all_coords, start=0):
@@ -90,8 +90,7 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w=50000, pipe_cr
         create_pipes_type(net, *get_line_coords_and_lengths(gdf_rl), junction_dict_rl, "retunr line", pipetype)
 
     # creates the heat exchangers
-    create_heat_exchangers(net, get_line_coords_and_lengths(gdf_hast)[0], qext_w,
-                           {**junction_dict_vl, **junction_dict_rl}, "heat exchanger")
+    create_heat_exchangers(net, get_line_coords_and_lengths(gdf_hast)[0], {**junction_dict_vl, **junction_dict_rl}, "heat exchanger")
     
     # creates the circulation pump pressure
     create_circulation_pump_pressure(net, get_line_coords_and_lengths(gdf_wea)[0], {**junction_dict_vl, **junction_dict_rl}, "heat source")

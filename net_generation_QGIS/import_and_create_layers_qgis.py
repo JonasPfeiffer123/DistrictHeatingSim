@@ -3,6 +3,7 @@ from qgis.core import (QgsFeature, QgsField, QgsGeometry, QgsPointXY,
                        QgsProject, QgsRasterLayer, QgsVectorLayer, QgsVectorFileWriter)
 
 import math
+import pandas as pd
 
 def import_osm_street_layer(osm_street_layer_geojson_file):
     layer = QgsVectorLayer(osm_street_layer_geojson_file, "Straßen", "ogr")
@@ -74,7 +75,7 @@ def create_point_layer(x_coord, y_coord):
 def create_layer(layer_name, layer_type, crs_i):
     vl_i = QgsVectorLayer(f"{layer_type}?crs={crs_i}", layer_name, "memory")
     provider = vl_i.dataProvider()
-    provider.addAttributes([QgsField("id", QVariant.Int)])
+    #provider.addAttributes([QgsField("id", QVariant.Int)])
     vl_i.updateFields()
     vl_i.startEditing()
     return vl_i, provider
@@ -89,13 +90,28 @@ def create_offset_points(point, distance, angle_degrees):
     return QgsPointXY(point.x() + dx, point.y() + dy)
 
 
-def generate_lines(layer, distance, angle_degrees, provider):
+def generate_lines(layer, distance, angle_degrees, provider, df=None):
     for point_feat in layer.getFeatures():
         original_point_geom = point_feat.geometry()
         original_point = original_point_geom.asPoint()
+
+        if df is not None:
+            try:
+                wärmebedarf = df[df['UTM_X'] == original_point.x()]['Wärmebedarf'].iloc[0]
+            except IndexError:
+                wärmebedarf = 0  # oder einen anderen Standardwert
+
         offset_point = create_offset_points(original_point, distance, angle_degrees)
         offset_point_geom = QgsGeometry.fromPointXY(offset_point)
         line = original_point_geom.shortestLine(offset_point_geom)
+        
         new_line = QgsFeature()
         new_line.setGeometry(line)
-        provider.addFeatures([new_line])
+        if df is not None:
+            print(type(float(wärmebedarf)))
+            new_line.setAttributes([float(wärmebedarf)])  # Setzen des Wärmebedarfs als Attribut
+            print(new_line.attributes())
+
+        #provider.addFeatures([new_line])
+        success = provider.addFeatures([new_line])
+        print("Feature hinzugefügt:", success)

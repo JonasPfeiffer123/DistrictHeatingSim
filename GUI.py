@@ -138,6 +138,13 @@ class HeatSystemDesignGUI(QWidget):
         geojsonImportLayoutrl.addWidget(self.selectrlButton)
         tab2Layout.addLayout(geojsonImportLayoutrl)
 
+        ### In Karte importieren - Button einbauen
+        # Buttons
+        self.LayerImportButton = QPushButton('Layers in Karte importieren')
+        self.LayerImportButton.clicked.connect(self.ImportLayers)
+        tab2Layout.addWidget(self.LayerImportButton)
+        ### Wärmebedarfe aus geojson anzeigen wenn vorhanden
+
         #Eingaben
         StartTimeLayout = QHBoxLayout()
         self.StartTimeStepLabel = QLabel('Zeitschritt Start (15 min Werte); Minimum: 0 :')
@@ -304,7 +311,19 @@ class HeatSystemDesignGUI(QWidget):
         webView = QWebEngineView()
         webView.load(QUrl.fromLocalFile(os.path.abspath(map_file)))
         return webView
-
+    
+    def ImportLayers(self):
+        vl = self.vlFilenameInput.text()
+        rl = self.rlFilenameInput.text()
+        HAST = self.HASTFilenameInput.text()
+        WEA = self.EAFilenameInput.text()
+                                
+        self.loadNetData(vl)
+        self.loadNetData(rl)
+        self.loadNetData(HAST)
+        self.loadNetData(WEA)
+        self.updateMapView()
+    
     def importNetData(self):
         fnames, _ = QFileDialog.getOpenFileNames(self, 'Netzdaten importieren', '', 'GeoJSON Files (*.geojson);;All Files (*)')
         if fnames:
@@ -466,7 +485,6 @@ out body;
         gdf_HAST = gpd.read_file(self.HASTFilenameInput.text())
         gdf_WEA = gpd.read_file(self.EAFilenameInput.text())
 
-        # diese Funktion gilt es nun mit Inputs umzusetzen
         time_15min, time_steps, net, net_results = thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gdf_HAST, gdf_WEA)
 
         mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, \
@@ -477,10 +495,10 @@ out body;
         self.plot2(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
 
         ###!!!!!this will overwrite the current csv file!!!!!#
-        #save_results_csv(time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump, output_filename)
+        save_results_csv(time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump, output_filename)
 
     def calculate(self, optimize=False, load_scale_factor=1):
-        filename = self.filenameInput.text()
+        filename = self.FilenameInput.text()
         time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump = import_results_csv(filename)
         calc1, calc2 = 0, len(time_steps)
 
