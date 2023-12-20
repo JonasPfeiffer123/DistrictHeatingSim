@@ -344,13 +344,11 @@ class BiomassBoiler:
 
         return Wärmeleistung_BMK_L, Wärmemenge_BMK
 
-    def WGK(self, Wärmemenge, Brennstoffbedarf, Brennstoffkosten, q, r, T, BEW="Nein"):
+    def WGK(self, Wärmemenge, Brennstoffbedarf, Brennstoffkosten, q, r, T, BEW="Nein", spez_Investitionskosten=200, spez_Investitionskosten_Holzlager=400):
         if Wärmemenge == 0:
             return 0
-        # Kosten 200 kW Holzpelletkessel ~ 40000 €
+        
         Nutzungsdauer = 15
-        spez_Investitionskosten = 200  # €/kW
-        spez_Investitionskosten_Holzlager = 400  # €/t
         Größe_Holzlager = 40  # t
         Investitionskosten = spez_Investitionskosten * self.P_BMK + spez_Investitionskosten_Holzlager * Größe_Holzlager
         f_Inst, f_W_Insp, Bedienaufwand = 3, 3, 0
@@ -399,11 +397,10 @@ class GasBoiler:
 
         return Wärmemenge, Erzeugung_L, Brennstoffbedarf
 
-    def WGK(self, P_max, Wärmemenge, Brennstoffbedarf, Brennstoffkosten, q, r, T, BEW="Nein"):
+    def WGK(self, P_max, Wärmemenge, Brennstoffbedarf, Brennstoffkosten, q, r, T, BEW="Nein", spez_Investitionskosten=30):
         if Wärmemenge == 0:
             return 0
-        # Kosten 1000 kW Gaskessel ~ 30000 €
-        spez_Investitionskosten = 30  # €/kW
+        
         Investitionskosten = spez_Investitionskosten * P_max
         Nutzungsdauer = 20
         f_Inst, f_W_Insp, Bedienaufwand = 1, 2, 0
@@ -447,21 +444,20 @@ class SolarThermal:
         self.vs = vs
         self.Typ = Typ
     
-    def WGK(self, Wärmemenge, q=1.05, r=1.03, T=20, BEW="Nein"):
+    def WGK(self, Wärmemenge, q=1.05, r=1.03, T=20, BEW="Nein", Kosten_Speicher_spez=750, Kosten_FK_spez=430, Kosten_VRK_spez=590):
         if Wärmemenge == 0:
             return 0
 
         kosten_pro_typ = {
             # Viessmann Flachkollektor Vitosol 200-FM, 2,56 m²: 697,9 € (brutto); 586,5 € (netto) -> 229 €/m²
             # + 200 €/m² Installation/Zubehör
-            "Flachkollektor": 430,
+            "Flachkollektor": Kosten_FK_spez,
             # Ritter Vakuumröhrenkollektor CPC XL1921 (4,99m²): 2299 € (brutto); 1932 € (Netto) -> 387 €/m²
             # + 200 €/m² Installation/Zubehör
-            "Vakuumröhrenkollektor": 590
+            "Vakuumröhrenkollektor": Kosten_VRK_spez
         }
 
         Kosten_STA_spez = kosten_pro_typ[self.Typ]  # €/m^2
-        Kosten_Speicher_spez = 750  # 750  # €/m^3
         Nutzungsdauer = 20
         f_Inst, f_W_Insp, Bedienaufwand = 0.5, 1, 0
 
