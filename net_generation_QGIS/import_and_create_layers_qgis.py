@@ -106,9 +106,7 @@ def generate_lines(layer, distance, angle_degrees, provider, df=None):
         new_line = QgsFeature()
         new_line.setGeometry(line)
         if df is not None:
-            print(type(float(wärmebedarf)))
             new_line.setAttributes([float(wärmebedarf)])  # Setzen des Wärmebedarfs als Attribut
-            print(new_line.attributes())
 
         #provider.addFeatures([new_line])
         success = provider.addFeatures([new_line])
