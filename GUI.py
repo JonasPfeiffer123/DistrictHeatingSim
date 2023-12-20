@@ -4,9 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import numpy as np
 
-import heat_generators.heat_generator_classes as hgs
 from simulate_functions import *
-from simulate_functions import import_TRY
 
 from GUI_Dialogfenster import TechInputDialog
 
@@ -31,22 +29,22 @@ class HeatSystemDesignGUI(QWidget):
     
     def initFileInputs(self):
         # geojson 1
-        self.EAFilenameInput = QLineEdit('net_generation_QGIS/Beispiel Zittau 2/Erzeugeranlagen.geojson')
+        self.EAFilenameInput = QLineEdit('net_generation_QGIS/Beispiel Zittau/Erzeugeranlagen.geojson')
         self.selectEAButton = QPushButton('geoJSON Erzeugeranlagen auswählen')
         self.selectEAButton.clicked.connect(lambda: self.selectFilename(self.EAFilenameInput))
 
         # geojson 2
-        self.HASTFilenameInput = QLineEdit('net_generation_QGIS/Beispiel Zittau 2/HAST.geojson')
+        self.HASTFilenameInput = QLineEdit('net_generation_QGIS/Beispiel Zittau/HAST.geojson')
         self.selectHASTButton = QPushButton('geoJSON HAST auswählen')
         self.selectHASTButton.clicked.connect(lambda: self.selectFilename(self.HASTFilenameInput))
 
         # geojson 3
-        self.vlFilenameInput = QLineEdit('net_generation_QGIS/Beispiel Zittau 2/Vorlauf.geojson')
+        self.vlFilenameInput = QLineEdit('net_generation_QGIS/Beispiel Zittau/Vorlauf.geojson')
         self.selectvlButton = QPushButton('geoJSON Vorlauf auswählen')
         self.selectvlButton.clicked.connect(lambda: self.selectFilename(self.vlFilenameInput))
 
         # geojson 4
-        self.rlFilenameInput = QLineEdit('net_generation_QGIS/Beispiel Zittau 2/Rücklauf.geojson')
+        self.rlFilenameInput = QLineEdit('net_generation_QGIS/Beispiel Zittau/Rücklauf.geojson')
         self.selectrlButton = QPushButton('geoJSON Rücklauf auswählen')
         self.selectrlButton.clicked.connect(lambda: self.selectFilename(self.rlFilenameInput))
         

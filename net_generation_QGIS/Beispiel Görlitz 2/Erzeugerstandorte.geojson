@@ -1,8 +1,0 @@
-{
-"type": "FeatureCollection",
-"name": "Erzeugerstandorte",
-"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::25833" } },
-"features": [
-{ "type": "Feature", "properties": { }, "geometry": { "type": "Point", "coordinates": [ 499827.909999999974389, 5666288.21999999973923 ] } }
-]
-}

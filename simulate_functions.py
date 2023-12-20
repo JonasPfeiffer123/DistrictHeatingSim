@@ -152,10 +152,10 @@ def import_results_csv(filename):
     return time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump
 
 def generate_net(calc1=0, calc2=35040, filename='results_time_series_net1.csv'):
-    gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Vorlauf.geojson')
-    gdf_rl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Rücklauf.geojson')
-    gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/HAST.geojson')
-    gdf_WEA = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Erzeugeranlagen.geojson')
+    gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Zittau/Vorlauf.geojson')
+    gdf_rl = gpd.read_file('net_generation_QGIS/Beispiel Zittau/Rücklauf.geojson')
+    gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Zittau/HAST.geojson')
+    gdf_WEA = gpd.read_file('net_generation_QGIS/Beispiel Zittau/Erzeugeranlagen.geojson')
 
     time_15min, time_steps, net, net_results = thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gdf_HAST, gdf_WEA)
 
