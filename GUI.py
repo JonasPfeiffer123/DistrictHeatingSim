@@ -1,24 +1,23 @@
+import matplotlib
+matplotlib.use('Qt5Agg')
+from matplotlib.figure import Figure
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QFileDialog, QHBoxLayout, QListWidget, QComboBox, QDialog, QTabWidget, QMenuBar, QAction, QInputDialog, QMessageBox
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLineEdit, QLabel, QFileDialog, QHBoxLayout, QListWidget, QComboBox, QDialog, QTabWidget, QMenuBar, QAction, QInputDialog, QMessageBox, QMainWindow
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 import numpy as np
-
+import matplotlib.pyplot as plt
 from simulate_functions import *
-
-from GUI_Dialogfenster import TechInputDialog
-
-
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtCore import QUrl
 import os
 import folium
-
 import geopandas as gpd
-
 import random
+import pandapipes as pp
 
-from net_generation_QGIS.import_osm_street_layer_geojson import download_osm_street_data
+from GUI_Dialogfenster import TechInputDialog
 
 class HeatSystemDesignGUI(QWidget):
     def __init__(self):
@@ -48,6 +47,11 @@ class HeatSystemDesignGUI(QWidget):
         self.selectrlButton = QPushButton('geoJSON Rücklauf auswählen')
         self.selectrlButton.clicked.connect(lambda: self.selectFilename(self.rlFilenameInput))
         
+        # Ergebnis-CSV Output
+        self.OutputFileInput = QLineEdit('results_time_series_net1.csv')
+        self.selectOutputFileButton = QPushButton('Ergebnis-CSV auswählen')
+        self.selectOutputFileButton.clicked.connect(lambda: self.selectFilename(self.OutputFileInput))
+
         # Ergebnis-CSV Input
         self.FilenameInput = QLineEdit('results_time_series_net.csv')
         self.selectFileButton = QPushButton('Ergebnis-CSV auswählen')
@@ -97,11 +101,6 @@ class HeatSystemDesignGUI(QWidget):
         importAction.triggered.connect(self.importNetData)
         fileMenu.addAction(importAction)
 
-        # Aktion für Straßendaten-Download hinzufügen
-        downloadAction = QAction('Straßendaten herunterladen', self)
-        downloadAction.triggered.connect(self.promptDownloadStreetData)
-        fileMenu.addAction(downloadAction)
-
         # Fügen Sie die Menüleiste dem Layout von tab1 hinzu
         tab1Layout.addWidget(self.menuBar)
         
@@ -112,6 +111,12 @@ class HeatSystemDesignGUI(QWidget):
 
         #############################################################
         tab2Layout = QVBoxLayout()
+
+        # Hinzufügen zum Layout
+        OutputFileLayout = QHBoxLayout()
+        OutputFileLayout.addWidget(self.OutputFileInput)
+        OutputFileLayout.addWidget(self.selectFileButton)
+        tab2Layout.addLayout(OutputFileLayout)
 
         # Hinzufügen zum Layout
         geojsonImportLayoutEA = QHBoxLayout()
@@ -144,12 +149,51 @@ class HeatSystemDesignGUI(QWidget):
         ### Wärmebedarfe aus geojson anzeigen wenn vorhanden
 
         #Eingaben
+        CalcMethodLayout = QHBoxLayout()
+        self.CalcMethodLabel = QLabel('Berechnungsmethode Standardlastprofile')
+        self.CalcMethodInput = QLineEdit("VDI4655")
+        CalcMethodLayout.addWidget(self.CalcMethodLabel)
+        CalcMethodLayout.addWidget(self.CalcMethodInput)
+        tab2Layout.addLayout(CalcMethodLayout)
+
+        BuildingTypeLayout = QHBoxLayout()
+        self.BuildingTypeLabel = QLabel('Gebäudetyp')
+        self.BuildingTypeInput = QLineEdit("MFH")
+        BuildingTypeLayout.addWidget(self.BuildingTypeLabel)
+        BuildingTypeLayout.addWidget(self.BuildingTypeInput)
+        tab2Layout.addLayout(BuildingTypeLayout)
+
+        self.initializeNetButton = QPushButton('Netz generieren und initialisieren')
+        self.initializeNetButton.clicked.connect(self.create_and_initialize_net)
+        tab2Layout.addWidget(self.initializeNetButton)
+
+        # Diagramm-Layout
+        self.chartLayout1 = QHBoxLayout()
+
+        self.chart4Layout = QVBoxLayout()
+        self.figure4 = Figure()
+        self.canvas4 = FigureCanvas(self.figure4)
+        self.toolbar4 = NavigationToolbar(self.canvas4, self)
+        self.chart4Layout.addWidget(self.canvas4)
+        self.chart4Layout.addWidget(self.toolbar4)  # Füge die Toolbar zum Layout hinzu
+        self.chartLayout1.addLayout(self.chart4Layout)
+
+        self.chart5Layout = QVBoxLayout()
+        self.figure5 = Figure()
+        self.canvas5 = FigureCanvas(self.figure5)
+        self.toolbar5 = NavigationToolbar(self.canvas5, self)
+        self.chart5Layout.addWidget(self.canvas5)
+        self.chart5Layout.addWidget(self.toolbar5)  # Füge die Toolbar zum Layout hinzu
+        self.chartLayout1.addLayout(self.chart5Layout)
+
+        # Füge die Canvas-Widgets zum Diagramm-Layout hinzu
+        tab2Layout.addLayout(self.chartLayout1)
+
         StartTimeLayout = QHBoxLayout()
         self.StartTimeStepLabel = QLabel('Zeitschritt Start (15 min Werte); Minimum: 0 :')
         self.StartTimeStepInput = QLineEdit("0")
         StartTimeLayout.addWidget(self.StartTimeStepLabel)
         StartTimeLayout.addWidget(self.StartTimeStepInput)
-
         tab2Layout.addLayout(StartTimeLayout)
 
         EndTimeLayout = QHBoxLayout()
@@ -157,15 +201,14 @@ class HeatSystemDesignGUI(QWidget):
         self.EndTimeStepInput = QLineEdit("96")
         EndTimeLayout.addWidget(self.EndTimeStepLabel)
         EndTimeLayout.addWidget(self.EndTimeStepInput)
-
         tab2Layout.addLayout(EndTimeLayout)
 
         # Buttons
-        self.calculateNetButton = QPushButton('Berechnen')
-        self.calculateNetButton.clicked.connect(self.create_net)
+        self.calculateNetButton = QPushButton('Zeitreihenberechnung durchführen')
+        self.calculateNetButton.clicked.connect(self.simulate_net)
         tab2Layout.addWidget(self.calculateNetButton)
 
-        self.figure3 = plt.figure()
+        self.figure3 = Figure()
         self.canvas3 = FigureCanvas(self.figure3)
         tab2Layout.addWidget(self.canvas3)
 
@@ -266,11 +309,11 @@ class HeatSystemDesignGUI(QWidget):
         chartLayout = QHBoxLayout()
 
         # Erstes Diagramm
-        self.figure1 = plt.figure()
+        self.figure1 = Figure()
         self.canvas1 = FigureCanvas(self.figure1)
         
         # Zweites Diagramm
-        self.figure2 = plt.figure()
+        self.figure2 = Figure()
         self.canvas2 = FigureCanvas(self.figure2)
 
         # Füge die Canvas-Widgets zum Diagramm-Layout hinzu
@@ -357,54 +400,6 @@ class HeatSystemDesignGUI(QWidget):
         # Aktualisieren Sie das QWebEngineView-Widget, um die neue Karte anzuzeigen
         self.mapView.load(QUrl.fromLocalFile(os.path.abspath(map_file)))
 
-    def promptDownloadStreetData(self):
-        area, okPressed = QInputDialog.getText(self, "Straßendaten herunterladen", "Geben Sie den Bereich ein:")
-        if okPressed and area != '':
-            self.downloadStreetData(area)
-
-    def downloadStreetData(self, area):
-        overpass_query = f"""
-[out:json][timeout:25];
-area[name="{area}"]->.area_0;
-(
-  node["highway"="primary"](area.area_0);
-  node["highway"="secondary"](area.area_0);
-  node["highway"="tertiary"](area.area_0);
-  node["highway"="residential"](area.area_0);
-  node["highway"="road"](area.area_0);
-  node["highway"="living_street"](area.area_0);
-  way["highway"="primary"](area.area_0);
-  way["highway"="secondary"](area.area_0);
-  way["highway"="tertiary"](area.area_0);
-  way["highway"="residential"](area.area_0);
-  way["highway"="road"](area.area_0);
-  way["highway"="living_street"](area.area_0);
-  relation["highway"="primary"](area.area_0);
-  relation["highway"="secondary"](area.area_0);
-  relation["highway"="tertiary"](area.area_0);
-  relation["highway"="residential"](area.area_0);
-  relation["highway"="road"](area.area_0);
-  relation["highway"="living_street"](area.area_0);
-);
-(._;>;);
-out body;
-"""
-        print(overpass_query)
-        # Hier rufen Sie Ihr Download-Skript auf
-        # Ausgabedateiname für GeoJSON-Datei
-        output_geojson_file = "Straßen_TEST.geojson"
-
-        # Download der Daten und Speichern als GeoJSON
-        download_osm_street_data(overpass_query, output_geojson_file)
-        # Beispiel: download_osm_street_data(overpass_query.format(area), output_geojson_file)
-        QMessageBox.information(self, "Download", "Straßendaten für " + area + " heruntergeladen.")
-
-        self.loadNetData(output_geojson_file)
-        self.updateMapView()
-
-        QMessageBox.information(self, "Import", "Straßendaten für " + area + " importiert.")
-
-
     def selectFilename(self, inputWidget):
         fname, _ = QFileDialog.getOpenFileName(self, 'Datei auswählen', '', 'All Files (*);;CSV Files (*.csv);;Data Files (*.dat)')
         if fname:  # Prüfen, ob ein Dateiname ausgewählt wurde
@@ -471,19 +466,36 @@ out body;
     def optimize(self):
         self.calculate(True)
 
-    def create_net(self, calc1=0, calc2=96):
+    def create_and_initialize_net(self):
+        gdf_vl = gpd.read_file(self.vlFilenameInput.text())
+        gdf_rl = gpd.read_file(self.rlFilenameInput.text())
+        gdf_HAST = gpd.read_file(self.HASTFilenameInput.text())
+        gdf_WEA = gpd.read_file(self.EAFilenameInput.text())
+
+        calc_method = self.CalcMethodInput.text()
+        building_type = self.BuildingTypeInput.text()
+
+        net, yearly_time_steps, waerme_ges_W = initialize_net_profile_calculation(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, building_type=building_type, calc_method=calc_method)
+
+        self.plot3(yearly_time_steps, waerme_ges_W/1000, net)
+
+    def simulate_net(self):
         #calc1, calc2 = 0, 96 # min: 0; max: 35040
         calc1 = int(self.StartTimeStepInput.text())
         calc2 = int(self.EndTimeStepInput.text())
 
-        output_filename = 'results_time_series_net1.csv'
+        output_filename = self.OutputFileInput.text()
 
         gdf_vl = gpd.read_file(self.vlFilenameInput.text())
         gdf_rl = gpd.read_file(self.rlFilenameInput.text())
         gdf_HAST = gpd.read_file(self.HASTFilenameInput.text())
         gdf_WEA = gpd.read_file(self.EAFilenameInput.text())
 
-        time_15min, time_steps, net, net_results = thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gdf_HAST, gdf_WEA)
+        calc_method = self.CalcMethodInput.text()
+        building_type = self.BuildingTypeInput.text()
+
+        net, yearly_time_steps, waerme_ges_W = initialize_net_profile_calculation(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, building_type=building_type, calc_method=calc_method)
+        time_steps, net, net_results = thermohydraulic_time_series_net_calculation(net, yearly_time_steps, waerme_ges_W, calc1, calc2)
 
         mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, \
             return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW, pressure_junctions = calculate_results(net, net_results)
@@ -541,12 +553,14 @@ out body;
         ax1.set_ylabel("thermische Leistung in kW")
         ax1.legend(loc='upper center')
         ax1.plot
+        self.canvas1.draw()
 
         ax2.pie(Anteile, labels=data_labels_L, autopct='%1.1f%%', startangle=90)
         ax2.set_title("Anteile Wärmeerzeugung")
         ax2.legend(loc='lower left')
         ax2.axis("equal")
         ax2.plot
+        self.canvas2.draw()
 
     def plot2(self, time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump):
         # Clear previous figure
@@ -555,8 +569,8 @@ out body;
 
         # Plot für Wärmeleistung auf der ersten Y-Achse
         ax1.plot(time_steps, qext_kW, 'b-', label="Gesamtlast")
-        ax1.set_xlabel("Zeit in 15 min Schritten")
-        ax1.set_ylabel("Wärmebedarf in kW / 15 min", color='b')
+        ax1.set_xlabel("Zeit")
+        ax1.set_ylabel("Wärmebedarf in kW", color='b')
         ax1.tick_params('y', colors='b')
         ax1.legend(loc='upper left')
         ax1.plot
@@ -569,6 +583,28 @@ out body;
         ax2.tick_params('y', colors='m')
         ax2.legend(loc='upper right')
         ax2.set_ylim(0,100)
+
+        self.canvas3.draw()
+
+    def plot3(self, time_steps, qext_kW, net):
+        # Clear previous figure
+        self.figure4.clear()
+        ax1 = self.figure4.add_subplot(111)
+
+        # Plot für Wärmeleistung auf der ersten Y-Achse
+        for i, q in enumerate(qext_kW):
+            ax1.plot(time_steps, q, 'b-', label=f"Last Gebäude {i}")
+        ax1.set_xlabel("Zeit")
+        ax1.set_ylabel("Wärmebedarf in kW", color='b')
+        ax1.tick_params('y', colors='b')
+        ax1.legend(loc='upper left')
+        ax1.plot
+        self.canvas4.draw()
+
+        self.figure5.clear()
+        ax = self.figure5.add_subplot(111)
+        config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_controls=False, show_heat_exchangers=True)
+        self.canvas5.draw()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

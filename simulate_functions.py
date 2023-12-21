@@ -33,8 +33,7 @@ def import_TRY(dateiname):
     return temperature, windspeed, direktstrahlung, globalstrahlung
 
 #Berechnung_Erzeugermix
-
-def thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gdf_HAST, gdf_WEA):
+def initialize_net_profile_calculation(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, building_type="MFH", calc_method="VDI4655"):
     ### define the heat requirement ###
     try:
         JEB_Wärme_ges_kWh = gdf_HAST["Wärmebedarf"].values
@@ -50,25 +49,32 @@ def thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gd
 
     waerme_ges_W = []
     max_waerme_ges_W = []
+    
+    if calc_method == "VDI4655":
+        for hw, tww in zip(JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh):
+            yearly_time_steps, _, _, _, waerme_ges_kW = heat_requirement_VDI4655.calculate(hw, tww, building_type=building_type)
+            waerme_ges_W.append(waerme_ges_kW * 1000)
+            max_waerme_ges_W.append(np.max(waerme_ges_kW * 1000))
 
-    for hw, tww in zip(JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh):
-        time_15min, _, _, _, waerme_ges_kW = heat_requirement_VDI4655.calculate(hw, tww)
-        waerme_ges_W.append(waerme_ges_kW * 1000)
-        max_waerme_ges_W.append(np.max(waerme_ges_kW * 1000))
+    if calc_method == "BDEW":
+        print("Berechnungsmethode BDEW noch nicht implementiert.")
+        pass
 
     waerme_ges_W = np.array(waerme_ges_W)
     max_waerme_ges_W = np.array(max_waerme_ges_W)
     
     ### generates the pandapipes net and initializes it ###
     net = net_simulation.initialize_net(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, max_waerme_ges_W)
+    
+    return net, yearly_time_steps, waerme_ges_W
 
+def thermohydraulic_time_series_net_calculation(net, yearly_time_steps, waerme_ges_W, calc1, calc2, t_rl_soll=60):
     ### time series calculation ###
-    t_rl_soll = 60
 
-    time_steps = time_15min[calc1:calc2]
+    time_steps = yearly_time_steps[calc1:calc2]
     net, net_results = net_simulation.time_series_net(net, t_rl_soll, waerme_ges_W, calc1, calc2)
 
-    return time_15min, time_steps, net, net_results
+    return time_steps, net, net_results
 
 def calculate_results(net, net_results):
     ### Plotten Ergebnisse Pumpe / Einspeisung ###
@@ -157,7 +163,8 @@ def generate_net(calc1=0, calc2=35040, filename='results_time_series_net1.csv'):
     gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Zittau/HAST.geojson')
     gdf_WEA = gpd.read_file('net_generation_QGIS/Beispiel Zittau/Erzeugeranlagen.geojson')
 
-    time_15min, time_steps, net, net_results = thermohydraulic_time_series_net_calculation(calc1, calc2, gdf_vl, gdf_rl, gdf_HAST, gdf_WEA)
+    net, yearly_time_steps, waerme_ges_W = initialize_net_profile_calculation(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA)
+    time_steps, net, net_results = thermohydraulic_time_series_net_calculation(net, yearly_time_steps, waerme_ges_W, calc1, calc2)
 
     mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, \
         return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW, pressure_junctions = calculate_results(net, net_results)

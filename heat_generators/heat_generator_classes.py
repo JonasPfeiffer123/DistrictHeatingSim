@@ -88,11 +88,9 @@ class HeatPump:
                             Strombedarf, Strompreis)
         WGK_WP_a = E1_WP/Wärmemenge
 
-        spezifische_Investitionskosten_WQ_dict = {"Abwärme": 500, "Abwasserwärme": 1000,
-                                                "Geothermie": spez_Investitionskosten_WQ}
         Nutzungsdauer_WQ_dict = {"Abwärme": 20, "Abwasserwärme": 20, "Geothermie": 30}
 
-        Investitionskosten_WQ = spezifische_Investitionskosten_WQ_dict[self.name] * Wärmeleistung
+        Investitionskosten_WQ = spez_Investitionskosten_WQ * Wärmeleistung
 
         E1_WQ = annuität(Investitionskosten_WQ, Nutzungsdauer_WQ_dict[self.name], f_Inst_WQ, f_W_Insp_WQ,
                             Bedienaufwand_WQ, q, r, T)
@@ -103,10 +101,11 @@ class HeatPump:
         return WGK_Gesamt_a
 
 class WasteHeatPump(HeatPump):
-    def __init__(self, name, Kühlleistung_Abwärme, Temperatur_Abwärme):
+    def __init__(self, name, Kühlleistung_Abwärme, Temperatur_Abwärme, spez_Investitionskosten_WQ=500):
         super().__init__(name)
         self.Kühlleistung_Abwärme = Kühlleistung_Abwärme
         self.Temperatur_Abwärme = Temperatur_Abwärme
+        self.spez_Investitionskosten_WQ = spez_Investitionskosten_WQ
 
     def Berechnung_WP(self, Kühlleistung, QT, VLT_L, COP_data):
         COP_L, VLT_L = self.COP_WP(VLT_L, QT, COP_data)
@@ -121,10 +120,11 @@ class WasteHeatPump(HeatPump):
 
         Wärmeleistung_L, el_Leistung_L = self.Berechnung_WP(Kühlleistung, Temperatur, VLT_L, COP_data)
 
-        mask = Last_L >= Wärmeleistung_L
-        Wärmemenge = np.sum(np.where(mask, Wärmeleistung_L / 1000, 0))*duration
-        Strombedarf = np.sum(np.where(mask, el_Leistung_L / 1000, 0))*duration
-        Betriebsstunden = np.sum(mask)
+        Wärmeleistung_L = np.where(Last_L >= Wärmeleistung_L, Wärmeleistung_L, Last_L)
+        el_Leistung_L = np.where(Last_L >= Wärmeleistung_L, el_Leistung_L, el_Leistung_L * (Last_L / Wärmeleistung_L))
+
+        Wärmemenge = np.sum(Wärmeleistung_L / 1000)*duration
+        Strombedarf = np.sum(el_Leistung_L / 1000)*duration
 
         max_Wärmeleistung = np.max(Wärmeleistung_L)
 
@@ -135,19 +135,19 @@ class WasteHeatPump(HeatPump):
         Wärmemenge, Strombedarf_Abwärme, Wärmeleistung_L, el_Leistung_L, max_Wärmeleistung = \
         self.abwärme(Restlast_L, VLT_L, self.Kühlleistung_Abwärme, self.Temperatur_Abwärme, COP_data, duration)
 
-        el_Leistung_ges_L += el_Leistung_L
-        Restlast_L -= Wärmeleistung_L
-
-        Restwärmebedarf -= Wärmemenge
-        Strombedarf_WP += Strombedarf_Abwärme
-
-        Anteil = Wärmemenge / Jahreswärmebedarf
-
-        WGK_Abwärme = self.WGK(max_Wärmeleistung, Wärmemenge, Strombedarf_Abwärme, 0, Strompreis, q, r, T)
-
-        WGK_Gesamt += Wärmemenge * WGK_Abwärme
-
         if Wärmemenge > 0:
+            el_Leistung_ges_L += el_Leistung_L
+            Restlast_L -= Wärmeleistung_L
+
+            Restwärmebedarf -= Wärmemenge
+            Strombedarf_WP += Strombedarf_Abwärme
+
+            Anteil = Wärmemenge / Jahreswärmebedarf
+
+            WGK_Abwärme = self.WGK(max_Wärmeleistung, Wärmemenge, Strombedarf_Abwärme, self.spez_Investitionskosten_WQ, Strompreis, q, r, T)
+
+            WGK_Gesamt += Wärmemenge * WGK_Abwärme
+
             data.append(Wärmeleistung_L)
             colors.append("grey")
             Wärmemengen.append(Wärmemenge)
@@ -160,23 +160,27 @@ class WasteHeatPump(HeatPump):
         return el_Leistung_ges_L, Restlast_L, Restwärmebedarf, Strombedarf_WP, data, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order
 
 class Geothermal(HeatPump):
-    def __init__(self, name, Fläche, Bohrtiefe, Temperatur_Geothermie):
+    def __init__(self, name, Fläche, Bohrtiefe, Temperatur_Geothermie, spez_Bohrkosten=120, spez_Entzugsleistung=50,
+                 Vollbenutzungsstunden=2400, Abstand_Sonden=10):
         super().__init__(name)
         self.Fläche = Fläche
         self.Bohrtiefe = Bohrtiefe
         self.Temperatur_Geothermie = Temperatur_Geothermie
+        self.spez_Bohrkosten = spez_Bohrkosten
+        self.spez_Entzugsleistung = spez_Entzugsleistung
+        self.Vollbenutzungsstunden = Vollbenutzungsstunden
+        self.Abstand_Sonden = Abstand_Sonden
 
-    def Geothermie(self, Last_L, VLT_L, Fläche, Bohrtiefe, Quelltemperatur, COP_data, duration, spez_Bohrkosten=120, spez_Entzugsleistung=50,
-               Vollbenutzungsstunden=2400, Abstand_Sonden=10):
-        if Fläche == 0 or Bohrtiefe == 0:
+    def Geothermie(self, Last_L, VLT_L, Quelltemperatur, COP_data, duration):
+        if self.Fläche == 0 or self.Bohrtiefe == 0:
             return 0, 0, np.zeros_like(Last_L), np.zeros_like(VLT_L), 0, 0
 
-        Anzahl_Sonden = (round(sqrt(Fläche)/Abstand_Sonden)+1)**2
+        Anzahl_Sonden = (round(sqrt(self.Fläche)/self.Abstand_Sonden)+1)**2
 
-        Entzugsleistung_2400 = Bohrtiefe * spez_Entzugsleistung * Anzahl_Sonden / 1000
+        Entzugsleistung_2400 = self.Bohrtiefe * self.spez_Entzugsleistung * Anzahl_Sonden / 1000
         # kW bei 2400 h, 22 Sonden, 50 W/m: 220 kW
-        Entzugswärmemenge = Entzugsleistung_2400 * Vollbenutzungsstunden / 1000  # MWh
-        Investitionskosten_Sonden = Bohrtiefe * spez_Bohrkosten * Anzahl_Sonden
+        Entzugswärmemenge = Entzugsleistung_2400 * self.Vollbenutzungsstunden / 1000  # MWh
+        Investitionskosten_Sonden = self.Bohrtiefe * self.spez_Bohrkosten * Anzahl_Sonden
 
         COP_L, VLT_WP = self.COP_WP(VLT_L, Quelltemperatur, COP_data)
 
@@ -222,22 +226,22 @@ class Geothermal(HeatPump):
                     Jahreswärmebedarf, data, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, Strompreis, q, r, T, duration, tech_order):
         # Hier fügen Sie die spezifische Logik für die Geothermie-Berechnung ein
         Wärmemenge, Strombedarf, Wärmeleistung_L, el_Leistung_Geothermie_L, \
-        max_Wärmeleistung, Investitionskosten_Sonden = self.Geothermie(Restlast_L, VLT_L, self.Fläche, self.Bohrtiefe, self.Temperatur_Geothermie, COP_data, duration)
-
-        spez_Investitionskosten_Erdsonden = Investitionskosten_Sonden / max_Wärmeleistung
-
-        el_Leistung_ges_L -= el_Leistung_Geothermie_L
-        Restlast_L -= Wärmeleistung_L
-
-        Restwärmebedarf -= Wärmemenge
-        Strombedarf_WP += Strombedarf
-
-        Anteil = Wärmemenge / Jahreswärmebedarf
-
-        WGK_Geothermie = self.WGK(max_Wärmeleistung, Wärmemenge, Strombedarf, spez_Investitionskosten_Erdsonden, Strompreis, q, r, T)
-        WGK_Gesamt += Wärmemenge * WGK_Geothermie
+        max_Wärmeleistung, Investitionskosten_Sonden = self.Geothermie(Restlast_L, VLT_L, self.Temperatur_Geothermie, COP_data, duration)
 
         if Wärmemenge > 0:
+            spez_Investitionskosten_Erdsonden = Investitionskosten_Sonden / max_Wärmeleistung
+
+            el_Leistung_ges_L -= el_Leistung_Geothermie_L
+            Restlast_L -= Wärmeleistung_L
+
+            Restwärmebedarf -= Wärmemenge
+            Strombedarf_WP += Strombedarf
+
+            Anteil = Wärmemenge / Jahreswärmebedarf
+
+            WGK_Geothermie = self.WGK(max_Wärmeleistung, Wärmemenge, Strombedarf, spez_Investitionskosten_Erdsonden, Strompreis, q, r, T)
+            WGK_Gesamt += Wärmemenge * WGK_Geothermie
+
             data.append(Wärmeleistung_L)
             colors.append("blue")
             Wärmemengen.append(Wärmemenge)
@@ -543,11 +547,15 @@ def Berechnung_Erzeugermix(tech_order, initial_data, calc1, calc2, TRY, COP_data
                                         data_L, colors, q, r, T, BEW, WGK_Gesamt, Wärmemengen, Anteile, WGK, duration, tech_order)
         
         elif tech.name == "Abwärme" or tech == "Abwasserwärme":
+            if len(variables) > 0:
+                tech.Kühlleistung_Abwärme = variables[variables_order.index("Kühlleistung_Abwärme")]
             el_Leistung_ges_L, Restlast_L, Restwärmebedarf, Strombedarf_WP, data_L, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order = \
                 tech.calculate(Restlast_L, VLT_L, COP_data, el_Leistung_ges_L, Restwärmebedarf, Strombedarf_WP, Jahreswärmebedarf, \
                                      data_L, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, Strompreis, q, r, T, duration, tech_order)
             
         elif tech.name == "Geothermie":
+            if len(variables) > 0:
+                tech.Fläche, tech.Bohrtiefe = variables[variables_order.index("Fläche")], variables[variables_order.index("Bohrtiefe")]
             el_Leistung_ges_L, Restlast_L, Restwärmebedarf, Strombedarf_WP, data_L, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order = \
                 tech.calculate(Restlast_L, VLT_L, COP_data,el_Leistung_ges_L, Restwärmebedarf, Strombedarf_WP, Jahreswärmebedarf, data_L, \
                                      colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, Strompreis, q, r, T, duration, tech_order)
@@ -601,6 +609,18 @@ def optimize_mix(tech_order, initial_data, calc1, calc2, TRY, COP_data, Gaspreis
             initial_values.append(tech.P_BMK)
             variables_order.append("P_BMK")
             bounds.append((0, 500))
+        elif isinstance(tech, Geothermal):
+            initial_values.append(tech.Fläche)
+            variables_order.append("Fläche")
+            bounds.append((0, 5000))
+            initial_values.append(tech.Bohrtiefe)
+            variables_order.append("Bohrtiefe")
+            bounds.append((0, 400))
+        elif isinstance(tech, WasteHeatPump):
+            initial_values.append(tech.Kühlleistung_Abwärme)
+            variables_order.append("Kühlleistung_Abwärme")
+            bounds.append((0, 500))
+
 
     def objective(variables):
         WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile, specific_emissions = \

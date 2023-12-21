@@ -59,7 +59,7 @@ def import_and_filter_building():
     # Speichern der gefilterten GeoDataFrame
     filtered_gdf.to_file('C:/Users/username/heating_network_generation/net_generation_QGIS/Beispiel Beleg 2/gefilterte Gebäude Zittau Beleg 2.geojson', driver='GeoJSON')
 
-import_and_filter_building()
+#import_and_filter_building()
     
 def calculate_building_area(geojson_file):
     gdf = gpd.read_file(geojson_file)
@@ -68,7 +68,7 @@ def calculate_building_area(geojson_file):
     
     # Berechnen der Fläche jedes Gebäudes in Quadratmetern
     gdf['area_sqm'] = gdf['geometry'].area
-    print(gdf)
+    print(gdf['area_sqm'])
 
 
 

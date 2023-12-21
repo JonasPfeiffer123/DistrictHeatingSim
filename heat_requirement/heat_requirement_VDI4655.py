@@ -216,10 +216,7 @@ def Jahresdauerlinie(weather_data, factors, gebäudetyp, anzahl_personen_haushal
 
 #############################
 
-def calculate(JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, building_type="MFH"):
-    # Betrachtetes Jahr: 
-    year = 2019
-
+def calculate(JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, JEB_Strom_kWh=1, building_type="MFH", personen_pro_haushalt=2, year=2019, Klimazone="9"):
     # Feiertage
     Neujahr = "2019-01-01"
     Karfreitag = "2019-04-19"
@@ -246,7 +243,9 @@ def calculate(JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, building_type="MFH"):
 
     factors = "heat_requirement/VDI 4655 data/Faktoren.csv"
 
-    time_15min, strom_kWh_15min, heizwaerme_kWh_15min, warmwasser_kWh_15min = berechnung_lastgang(weather_data, factors, building_type, 3, 2000, JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, Feiertage, "9", 2019)
+    time_15min, strom_kWh_15min, heizwaerme_kWh_15min, warmwasser_kWh_15min = berechnung_lastgang(weather_data, factors, building_type, personen_pro_haushalt, \
+                                                                                                  JEB_Strom_kWh, JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, \
+                                                                                                    Feiertage, Klimazone, year)
     waerme_ges_kWh_15min = heizwaerme_kWh_15min + warmwasser_kWh_15min
     strom_W, heizwaerme_kW, warmwasser_kW, waerme_ges_kW = strom_kWh_15min * 4, heizwaerme_kWh_15min * 4, warmwasser_kWh_15min * 4, waerme_ges_kWh_15min * 4
     # Jahresdauerlinie(weather_data, factors, building_type, 3, 2000, JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, Feiertage, "9", 2019)
