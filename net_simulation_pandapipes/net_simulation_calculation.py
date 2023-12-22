@@ -221,6 +221,7 @@ def optimize_diameter_types(net, v_max=1.1, v_min=0.7):
 
     return net
 
+
 def export_net_geojson(net):
     # check ig geographical data is available
     if 'pipe_geodata' in net and not net.pipe_geodata.empty:

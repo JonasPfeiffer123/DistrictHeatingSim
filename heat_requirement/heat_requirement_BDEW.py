@@ -154,11 +154,11 @@ def berechnung_lastgang(weather_data, JWB_kWh, lastprofiltyp, subtyp, Feiertage,
     hour_factor_T2 = merged_data_T2["Stundenfaktor"].values.astype(float)
 
     hour_factor_interpolation = hour_factor_T2+(hour_factor_T1-hour_factor_T2)*((hourly_temperature-upper_limit)/(5))
-    hourly_heat_demand = (hourly_daily_heat_demand*hour_factor_interpolation)/100
+    hourly_heat_demand = np.nan_to_num((hourly_daily_heat_demand*hour_factor_interpolation)/100).astype(float)
     hourly_heat_demand_normed = (hourly_heat_demand / np.sum(hourly_heat_demand)) * JWB_kWh
     hourly_intervals = calculate_quarter_hourly_intervals(year)
 
-    return hourly_intervals, hourly_heat_demand
+    return hourly_intervals, hourly_heat_demand_normed.astype(float)
 
 def Jahresdauerlinie(hourly_intervals, hourly_heat_demand):
     plt.plot(hourly_intervals, hourly_heat_demand, label="Wärmeleistung gesamt")
@@ -199,8 +199,8 @@ def calculate(JWB_kWh=10000, lastprofiltyp="HMF", subtyp="03", year=2019):
 
     hourly_intervals, hourly_heat_demand = berechnung_lastgang(weather_data, JWB_kWh, lastprofiltyp, subtyp, Feiertage, year=2019)
 
-    Jahresdauerlinie(hourly_intervals, hourly_heat_demand)
+    #Jahresdauerlinie(hourly_intervals, hourly_heat_demand)
 
     return hourly_intervals, hourly_heat_demand
 
-calculate(JWB_kWh=10000, lastprofiltyp="HMF", subtyp="03", year=2019)
+#calculate(JWB_kWh=10000, lastprofiltyp="HMF", subtyp="03", year=2019)

@@ -4,10 +4,12 @@ import random
 import numpy as np
 import pandas as pd
 import geopandas as gpd
+from matplotlib.figure import Figure
 
 from net_simulation_pandapipes import net_simulation
 from net_simulation_pandapipes import net_simulation_calculation
 from heat_requirement import heat_requirement_VDI4655
+from heat_requirement import heat_requirement_BDEW
 from net_simulation_pandapipes.net_generation_test import initialize_test_net
 from heat_generators.heat_generator_classes import *
 from net_test import config_plot
@@ -55,14 +57,16 @@ def initialize_net_profile_calculation(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, buildi
             yearly_time_steps, _, _, _, waerme_ges_kW = heat_requirement_VDI4655.calculate(hw, tww, building_type=building_type)
             waerme_ges_W.append(waerme_ges_kW * 1000)
             max_waerme_ges_W.append(np.max(waerme_ges_kW * 1000))
-
+        
     if calc_method == "BDEW":
-        print("Berechnungsmethode BDEW noch nicht implementiert.")
-        pass
+        for JWB in JEB_Wärme_ges_kWh:
+            yearly_time_steps, waerme_ges_kW  = heat_requirement_BDEW.calculate(JWB, building_type, subtyp="03")
+            waerme_ges_W.append(waerme_ges_kW * 1000)
+            max_waerme_ges_W.append(np.max(waerme_ges_kW * 1000))
 
     waerme_ges_W = np.array(waerme_ges_W)
     max_waerme_ges_W = np.array(max_waerme_ges_W)
-    
+
     ### generates the pandapipes net and initializes it ###
     net = net_simulation.initialize_net(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, max_waerme_ges_W)
     
@@ -163,7 +167,7 @@ def generate_net(calc1=0, calc2=35040, filename='results_time_series_net1.csv'):
     gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Zittau/HAST.geojson')
     gdf_WEA = gpd.read_file('net_generation_QGIS/Beispiel Zittau/Erzeugeranlagen.geojson')
 
-    net, yearly_time_steps, waerme_ges_W = initialize_net_profile_calculation(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA)
+    net, yearly_time_steps, waerme_ges_W = initialize_net_profile_calculation(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, building_type="EFH", calc_method="VDI4655")
     time_steps, net, net_results = thermohydraulic_time_series_net_calculation(net, yearly_time_steps, waerme_ges_W, calc1, calc2)
 
     mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, \
@@ -178,7 +182,7 @@ def generate_net(calc1=0, calc2=35040, filename='results_time_series_net1.csv'):
     dp_min, idx_dp_min = net_simulation_calculation.calculate_worst_point(net)
     print(f"Der Schlechtpunkt des Netzes liegt am Wärmeübertrager {idx_dp_min}. Der Differenzdruck beträgt {dp_min:.3f} bar.")
 
-    config_plot(net)
+    #config_plot(net)
 
 def auslegung_erzeuger(calc1=0, calc2=35040, filename='results_time_series_net.csv', optimize=False, load_scale_factor=1, Gaspreis=70, Strompreis=150, Holzpreis=50, BEW="Nein"):
     time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump = import_results_csv(filename)

@@ -7,7 +7,7 @@ from net_simulation_pandapipes.net_generation_test import initialize_test_net
 from net_simulation_pandapipes.net_simulation_calculation import create_network, correct_flow_directions, optimize_diameter_parameters, optimize_diameter_types
 import net_simulation_pandapipes.net_simulation_calculation as nsp
 
-def config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_controls=True, show_heat_exchangers=True):
+def config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_controls=True, show_heat_exchangers=True, show_plot=False):
     if not ax:
         raise ValueError("Achsenobjekt 'ax' darf nicht False oder None sein")
     
@@ -93,7 +93,7 @@ def config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_control
 
     pp_plot.simple_plot(net, junction_size=0.01, heat_exchanger_size=0.1, pump_size=0.1, \
                         pump_color='green', pipe_color='black', heat_exchanger_color='blue', ax=ax, \
-                        show_plot=False)  # Setzen Sie show_plot auf False, um den Plot später anzuzeigen
+                        show_plot=show_plot)  # Setzen Sie show_plot auf False, um den Plot später anzuzeigen
 
 def generate_net(qext_w=83000, pipe_creation_mode="type"):
     gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Zittau 2/Vorlauf.geojson')

@@ -44,7 +44,7 @@ def init_timeseries_opt(net, qext_w, time_steps=3, target_temperature=60):
         
         return net
 
-def initialize_net(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, pipe_creation_mode="type"):
+def initialize_net(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, pipe_creation_mode="diameter"):
     # net generation from gis data
     net = create_network(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, pipe_creation_mode)
     net = create_controllers(net, qext_w)
@@ -57,9 +57,8 @@ def initialize_net(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, pipe_creation_mode
     if pipe_creation_mode == "type":
         net = optimize_diameter_types(net)
 
-    net = optimize_diameter_parameters(net, element="heat_exchanger", v_max=1.5, v_min=1.25)
-    net = optimize_diameter_parameters(net, element="flow_control", v_max=1.5, v_min=1.25)
-
+    net = optimize_diameter_parameters(net, element="heat_exchanger", v_max=1.5, v_min=1)
+    net = optimize_diameter_parameters(net, element="flow_control", v_max=1.5, v_min=1)
     export_net_geojson(net)
 
     return net
