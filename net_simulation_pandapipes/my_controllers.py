@@ -44,7 +44,7 @@ class WorstPointPressureController(BasicCtrl):
     
 
 class ReturnTemperatureController(BasicCtrl):
-    def __init__(self, net, heat_exchanger_idx, target_temperature, tolerance=2, lower_proportional_gain=0.0005, higher_proportional_gain=0.0025, min_velocity=0.005, max_velocity=2,**kwargs):
+    def __init__(self, net, heat_exchanger_idx, target_temperature, tolerance=2, lower_proportional_gain=0.0005, higher_proportional_gain=0.003, min_velocity=0.005, max_velocity=2,**kwargs):
         super(ReturnTemperatureController, self).__init__(net, **kwargs)
         self.heat_exchanger_idx = heat_exchanger_idx
         self.flow_control_idx = heat_exchanger_idx
