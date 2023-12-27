@@ -3,7 +3,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, QMenuBar, QAction, \
     QFileDialog, QHBoxLayout, QComboBox, QLineEdit, QListWidget, QDialog, QFormLayout, \
-        QScrollArea, QSizePolicy
+        QScrollArea, QSizePolicy, QTableWidget, QTableWidgetItem
 import folium
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 import geopandas as gpd
@@ -91,6 +91,7 @@ class CalculationTab(QWidget):
 
         # Hier fügen Sie alle Ihre vorhandenen Setup-Funktionen hinzu
         self.setupFileInputs()
+        self.setupHeatDemandEditor()
         self.setupControlInputs()
         self.setupPlotLayout()
 
@@ -126,6 +127,40 @@ class CalculationTab(QWidget):
         layout.addWidget(button)
         self.container_layout.addLayout(layout)
         return line_edit
+    
+    def setupHeatDemandEditor(self):
+        self.heatDemandTable = QTableWidget(self)
+        self.loadHeatDemandData()
+        self.container_layout.addWidget(self.heatDemandTable)
+
+        saveButton = QPushButton("Änderungen speichern", self)
+        saveButton.clicked.connect(self.saveHeatDemandData)
+        self.container_layout.addWidget(saveButton)
+
+    def loadHeatDemandData(self):
+        # Laden der GeoJSON-Datei
+        self.gdf_HAST = gpd.read_file(self.HASTFilenameInput.text())
+        # Umwandeln in ein pandas DataFrame für die einfache Handhabung
+        df = pd.DataFrame(self.gdf_HAST)
+        
+        # Setzen der Tabelle
+        self.heatDemandTable.setRowCount(len(df))
+        self.heatDemandTable.setColumnCount(len(df.columns))
+        self.heatDemandTable.setHorizontalHeaderLabels(df.columns)
+
+        for i, row in df.iterrows():
+            for j, value in enumerate(row):
+                item = QTableWidgetItem(str(value))
+                self.heatDemandTable.setItem(i, j, item)
+
+    def saveHeatDemandData(self):
+        # Extrahieren der Daten aus der Tabelle
+        for i in range(self.heatDemandTable.rowCount()):
+            for j in range(self.heatDemandTable.columnCount()):
+                self.gdf_HAST.iat[i, j] = self.heatDemandTable.item(i, j).text()
+
+        # Speichern der geänderten Daten im GeoJSON-Format
+        self.gdf_HAST.to_file('modified_HAST.geojson', driver='GeoJSON')
 
     def setupControlInputs(self):
         # Initialisiere Combobox für Berechnungsmethoden
@@ -589,52 +624,3 @@ class MixDesignTab(QWidget):
         for index in range(self.techList.count()):
             items.append(self.techList.item(index).text())
         return items
-    
-"""Future Updates:
-import pandas as pd
-import geopandas as gpd
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QPushButton, QVBoxLayout
-
-class CalculationTab(QWidget):
-    # ...
-
-    def initUI(self):
-        # ...
-        self.setupHeatDemandEditor()
-        # ...
-
-    def setupHeatDemandEditor(self):
-        self.heatDemandTable = QTableWidget(self)
-        self.loadHeatDemandData()
-        self.container_layout.addWidget(self.heatDemandTable)
-
-        saveButton = QPushButton("Änderungen speichern", self)
-        saveButton.clicked.connect(self.saveHeatDemandData)
-        self.container_layout.addWidget(saveButton)
-
-    def loadHeatDemandData(self):
-        # Laden der GeoJSON-Datei
-        self.gdf_HAST = gpd.read_file(self.HASTFilenameInput.text())
-        # Umwandeln in ein pandas DataFrame für die einfache Handhabung
-        df = pd.DataFrame(self.gdf_HAST)
-        
-        # Setzen der Tabelle
-        self.heatDemandTable.setRowCount(len(df))
-        self.heatDemandTable.setColumnCount(len(df.columns))
-        self.heatDemandTable.setHorizontalHeaderLabels(df.columns)
-
-        for i, row in df.iterrows():
-            for j, value in enumerate(row):
-                item = QTableWidgetItem(str(value))
-                self.heatDemandTable.setItem(i, j, item)
-
-    def saveHeatDemandData(self):
-        # Extrahieren der Daten aus der Tabelle
-        for i in range(self.heatDemandTable.rowCount()):
-            for j in range(self.heatDemandTable.columnCount()):
-                self.gdf_HAST.iat[i, j] = self.heatDemandTable.item(i, j).text()
-
-        # Speichern der geänderten Daten im GeoJSON-Format
-        self.gdf_HAST.to_file('modified_HAST.geojson', driver='GeoJSON')
-
-"""

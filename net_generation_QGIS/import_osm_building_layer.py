@@ -1,6 +1,8 @@
 from import_osm_street_layer_geojson import download_osm_street_data
 import geopandas as gpd
 import pandas as pd
+import numpy as np
+
 
 def import_and_filter_building():
     # Hier setzen Sie Ihre Overpass-Abfrage ein
@@ -61,16 +63,35 @@ def import_and_filter_building():
 
 #import_and_filter_building()
     
-def calculate_building_area(geojson_file):
+
+def calculate_building_data(geojson_file, output_file):
+    # Einlesen der GeoJSON-Datei
     gdf = gpd.read_file(geojson_file)
-    #gdf = gdf.to_crs(epsg=3395)
+
+    # Umrechnen der Koordinaten
     gdf = gdf.to_crs(epsg=25833)
     
     # Berechnen der Fläche jedes Gebäudes in Quadratmetern
     gdf['area_sqm'] = gdf['geometry'].area
-    print(gdf['area_sqm'])
+
+    # Hinzufügen der Spalte für spezifischen Wärmebedarf mit Zufallszahlen zwischen 50 und 200
+    gdf['spez. Wärmebedarf [kWh/m²*a]'] = np.random.uniform(50, 200, gdf.shape[0])
+
+    # Hinzufügen der Spalte für die Anzahl der Geschosse (konstanter Wert 3)
+    gdf['Anzahl Geschosse'] = 3
+
+    # Berechnen des Jahreswärmebedarfs
+    gdf['Jahreswärmebedarf [kWh/a]'] = gdf['spez. Wärmebedarf [kWh/m²*a]'] * gdf['Anzahl Geschosse'] * gdf['area_sqm']
+
+    # Speichern des erweiterten GeoDataFrame in eine neue GeoJSON-Datei
+    gdf.to_file(output_file, driver='GeoJSON')
 
 
 
-calculate_building_area('C:/Users/username/heating_network_generation/net_generation_QGIS/Beispiel Beleg 1/gefilterte Gebäude Zittau Beleg 1.geojson')
-calculate_building_area('C:/Users/username/heating_network_generation/net_generation_QGIS/Beispiel Beleg 2/gefilterte Gebäude Zittau Beleg 2.geojson')
+#calculate_building_data('C:/Users/username/heating_network_generation/net_generation_QGIS/Beispiel Beleg 1/gefilterte Gebäude Zittau Beleg 1.geojson', 
+#                        'C:/Users/username/heating_network_generation/net_generation_QGIS/Beispiel Beleg 1/gefilterte Gebäude Zittau Beleg 1 berechnet.geojson')
+#calculate_building_data('C:/Users/username/heating_network_generation/net_generation_QGIS/Beispiel Beleg 2/gefilterte Gebäude Zittau Beleg 2.geojson', 
+#                        'C:/Users/username/heating_network_generation/net_generation_QGIS/Beispiel Beleg 2/gefilterte Gebäude Zittau Beleg 2 berechnet.geojson')
+
+calculate_building_data('C:/Users/username/heating_network_generation/net_generation_QGIS/Gebäude Zittau.geojson', 
+                        'C:/Users/username/heating_network_generation/net_generation_QGIS/Gebäude Zittau berechnet.geojson')
