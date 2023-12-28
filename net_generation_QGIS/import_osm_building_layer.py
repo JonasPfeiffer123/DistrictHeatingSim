@@ -62,7 +62,25 @@ def import_and_filter_building():
     filtered_gdf.to_file('C:/Users/username/heating_network_generation/net_generation_QGIS/Beispiel Beleg 2/gefilterte Gebäude Zittau Beleg 2.geojson', driver='GeoJSON')
 
 #import_and_filter_building()
-    
+
+def filter_building_data(geojson_file, output_file):
+    # Einlesen der GeoJSON-Datei
+    gdf = gpd.read_file(geojson_file)
+
+    # Liste der Gebäudetypen, die ignoriert werden sollen
+    ignore_types = ['ruins', 'greenhouse', 'shed', 'silo', 'slurry_tank', 
+                    'toilets', 'hut', 'cabin', 'ger', 'static_caravan', 
+                    'construction', 'cowshed', 'garage', 'garages', 'carport',
+                    'farm_auxiliary', 'roof', 'digester']
+
+    # Filtere Gebäude heraus, die ignorierten Typen entsprechen
+    filtered_gdf = gdf[~gdf['building'].isin(ignore_types)]
+
+    # Ausgabe der gefilterten Daten
+    print(filtered_gdf['building'])
+
+    # Exportiere die gefilterten Daten in eine neue GeoJSON-Datei
+    filtered_gdf.to_file(output_file, driver='GeoJSON')
 
 def calculate_building_data(geojson_file, output_file):
     # Einlesen der GeoJSON-Datei
@@ -93,5 +111,11 @@ def calculate_building_data(geojson_file, output_file):
 #calculate_building_data('C:/Users/username/heating_network_generation/net_generation_QGIS/Beispiel Beleg 2/gefilterte Gebäude Zittau Beleg 2.geojson', 
 #                        'C:/Users/username/heating_network_generation/net_generation_QGIS/Beispiel Beleg 2/gefilterte Gebäude Zittau Beleg 2 berechnet.geojson')
 
-calculate_building_data('C:/Users/username/heating_network_generation/net_generation_QGIS/Gebäude Zittau.geojson', 
-                        'C:/Users/username/heating_network_generation/net_generation_QGIS/Gebäude Zittau berechnet.geojson')
+#calculate_building_data('C:/Users/username/heating_network_generation/net_generation_QGIS/Gebäude Zittau.geojson', 
+#                        'C:/Users/username/heating_network_generation/net_generation_QGIS/Gebäude Zittau berechnet.geojson')
+
+filter_building_data('C:/Users/username/heating_network_generation/net_generation_QGIS/Gebäude Zittau.geojson',
+                     'C:/Users/username/heating_network_generation/net_generation_QGIS/Gebäude Zittau gefiltert.geojson')
+
+calculate_building_data('C:/Users/username/heating_network_generation/net_generation_QGIS/Gebäude Zittau gefiltert.geojson', 
+                        'C:/Users/username/heating_network_generation/net_generation_QGIS/Gebäude Zittau gefiltert berechnet.geojson')
