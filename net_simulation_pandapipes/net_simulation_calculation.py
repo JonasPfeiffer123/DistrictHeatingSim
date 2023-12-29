@@ -223,20 +223,23 @@ def optimize_diameter_types(net, v_max=1.1, v_min=0.7):
 
 
 def export_net_geojson(net):
-    # check ig geographical data is available
     if 'pipe_geodata' in net and not net.pipe_geodata.empty:
-        # convert the data to a GeoDataFrame
-        gdf = gpd.GeoDataFrame(net.pipe_geodata)
-        gdf['geometry'] = gdf['coords'].apply(lambda x: LineString(x))
+        # Erstelle eine Liste von LineString-Objekten aus den Koordinaten
+        geometry = [LineString(coords) for coords in net.pipe_geodata['coords']]
+
+        # Erstelle ein GeoDataFrame mit der Geometrie als aktiver Geometriespalte
+        gdf = gpd.GeoDataFrame(net.pipe_geodata, geometry=geometry)
+
+        # Entferne die jetzt überflüssige 'coords'-Spalte
         del gdf['coords']
 
-        # adding attribute 'diameter_m'
+        # Füge weitere Attribute hinzu
         gdf['diameter_mm'] = net.pipe['diameter_m'] / 1000
-    
-        # set crs (here EPSG:4326)
+
+        # Setze das Koordinatensystem (CRS)
         gdf.set_crs(epsg=25833, inplace=True)
 
-        # export as GeoJSON
+        # Exportiere als GeoJSON
         gdf.to_file("pipes_network.geojson", driver='GeoJSON')
     else:
         print("No geographical data available in the network.")

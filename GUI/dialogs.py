@@ -1,4 +1,7 @@
-from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QDialogButtonBox, QComboBox
+from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, \
+    QDialogButtonBox, QComboBox, QTableWidget, QPushButton, QTableWidgetItem
+
+import pandas as pd
 
 class TechInputDialog(QDialog):
     def __init__(self, tech_type):
@@ -120,3 +123,42 @@ class TechInputDialog(QDialog):
                 "Kühlleistung_Abwärme": float(self.PWHInput.text()),
                 "Temperatur_Abwärme": float(self.TWHInput.text())
             }
+        
+class HeatDemandEditDialog(QDialog):
+    def __init__(self, gdf_HAST, parent=None):
+        super(HeatDemandEditDialog, self).__init__(parent)
+        self.gdf_HAST = gdf_HAST
+        self.initUI()
+
+    def initUI(self):
+        self.layout = QVBoxLayout(self)
+
+        # Erstelle eine Tabelle für die Bearbeitung
+        self.heatDemandTable = QTableWidget(self)
+        self.loadHeatDemandData()
+        self.layout.addWidget(self.heatDemandTable)
+
+        # Speicher-Button
+        saveButton = QPushButton("Änderungen speichern", self)
+        saveButton.clicked.connect(self.saveHeatDemandData)
+        self.layout.addWidget(saveButton)
+
+    def loadHeatDemandData(self):
+        df = pd.DataFrame(self.gdf_HAST.drop(columns=[self.gdf_HAST.geometry.name]))
+        self.heatDemandTable.setRowCount(len(df))
+        self.heatDemandTable.setColumnCount(len(df.columns))
+        self.heatDemandTable.setHorizontalHeaderLabels(df.columns)
+
+        for i, row in df.iterrows():
+            for j, value in enumerate(row):
+                item = QTableWidgetItem(str(value))
+                self.heatDemandTable.setItem(i, j, item)
+
+    def saveHeatDemandData(self):
+        for i in range(self.heatDemandTable.rowCount()):
+            for j, column_name in enumerate(self.gdf_HAST.drop(columns=[self.gdf_HAST.geometry.name]).columns):
+                cell_value = self.heatDemandTable.item(i, j).text()
+                self.gdf_HAST.at[i, column_name] = cell_value
+
+        self.gdf_HAST.to_file(self.parent().Datei_HausanschlussstationenInput.text(), driver='GeoJSON')
+        self.accept()  # Schließt das Dialogfenster

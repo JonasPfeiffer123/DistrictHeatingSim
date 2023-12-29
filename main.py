@@ -38,31 +38,59 @@ def import_TRY(dateiname):
 def initialize_net_profile_calculation(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, building_type="MFH", calc_method="VDI4655"):
     ### define the heat requirement ###
     try:
-        JEB_Wärme_ges_kWh = gdf_HAST["Wärmebedarf"].values
-
-    except:
+        JEB_Wärme_ges_kWh = gdf_HAST["Wärmebedarf"].values.astype(float)
+    except KeyError:
         print("Herauslesen des Wärmebedarfs aus geojson nicht möglich.")
-        n = len(net.heat_exchanger)
-        min_value = 59000  # kWh
-        max_value = 60000  # kWh
-        JEB_Wärme_ges_kWh = np.array([random.randint(min_value, max_value) for _ in range(n)])
-    
-    JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh = JEB_Wärme_ges_kWh*0.2, JEB_Wärme_ges_kWh*0.8
+        return None
+
+    JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh = JEB_Wärme_ges_kWh * 0.2, JEB_Wärme_ges_kWh * 0.8
 
     waerme_ges_W = []
     max_waerme_ges_W = []
-    
-    if calc_method == "VDI4655":
-        for hw, tww in zip(JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh):
-            yearly_time_steps, _, _, _, waerme_ges_kW = heat_requirement_VDI4655.calculate(hw, tww, building_type=building_type)
-            waerme_ges_W.append(waerme_ges_kW * 1000)
-            max_waerme_ges_W.append(np.max(waerme_ges_kW * 1000))
-        
-    if calc_method == "BDEW":
-        for JWB in JEB_Wärme_ges_kWh:
-            yearly_time_steps, waerme_ges_kW  = heat_requirement_BDEW.calculate(JWB, building_type, subtyp="03")
-            waerme_ges_W.append(waerme_ges_kW * 1000)
-            max_waerme_ges_W.append(np.max(waerme_ges_kW * 1000))
+    yearly_time_steps = None
+
+    # Zuordnung von Gebäudetypen zu Berechnungsmethoden
+    building_type_to_method = {
+        "EFH": "VDI4655",
+        "MFH": "VDI4655",
+        "HEF": "BDEW",
+        "HMF": "BDEW",
+        "GKO": "BDEW",
+        "GHA": "BDEW",
+        "GMK": "BDEW",
+        "GBD": "BDEW",
+        "GBH": "BDEW",
+        "GWA": "BDEW",
+        "GGA": "BDEW",
+        "GBA": "BDEW",
+        "GGB": "BDEW",
+        "GPD": "BDEW",
+        "GMF": "BDEW",
+        "GHD": "BDEW",
+        # ... Fügen Sie hier weitere Zuordnungen hinzu, falls nötig
+    }
+
+    for idx, JWB in enumerate(JEB_Wärme_ges_kWh):
+        if calc_method == "Datensatz":
+            try:
+                current_building_type = gdf_HAST.at[idx, "Gebäudetyp"]
+                current_calc_method = building_type_to_method.get(current_building_type, "StandardMethode")
+            except KeyError:
+                print("Gebäudetyp-Spalte nicht in gdf_HAST gefunden.")
+                current_calc_method = "StandardMethode"
+        else:
+            current_building_type = building_type
+            current_calc_method = calc_method
+
+        # Wärmebedarfsberechnung basierend auf dem Gebäudetyp und der Berechnungsmethode
+        if current_calc_method == "VDI4655":
+            hw, tww = JEB_Heizwärme_kWh[idx], JEB_Trinkwarmwasser_kWh[idx]
+            yearly_time_steps, _, _, _, waerme_ges_kW = heat_requirement_VDI4655.calculate(hw, tww, building_type=current_building_type)
+        elif current_calc_method == "BDEW":
+            yearly_time_steps, waerme_ges_kW  = heat_requirement_BDEW.calculate(JWB, current_building_type, subtyp="03")
+
+        waerme_ges_W.append(waerme_ges_kW * 1000)
+        max_waerme_ges_W.append(np.max(waerme_ges_kW * 1000))
 
     waerme_ges_W = np.array(waerme_ges_W)
     max_waerme_ges_W = np.array(max_waerme_ges_W)

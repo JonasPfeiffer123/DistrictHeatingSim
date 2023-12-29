@@ -3,17 +3,20 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, QMenuBar, QAction, \
     QFileDialog, QHBoxLayout, QComboBox, QLineEdit, QListWidget, QDialog, QFormLayout, \
-        QScrollArea, QSizePolicy, QTableWidget, QTableWidgetItem
+        QScrollArea, QMessageBox, QProgressBar, QGridLayout
 import folium
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 import geopandas as gpd
-from main import *
-from GUI.dialogs import TechInputDialog
+from main import initialize_net_profile_calculation, calculate_results, save_results_csv
+from GUI.dialogs import TechInputDialog, HeatDemandEditDialog
 from PyQt5.QtCore import pyqtSignal
 import numpy as np
 
 from GUI.utils import add_geojson_to_map, update_map_view
+from GUI.threads import CalculationThread
 from net_test import config_plot
+
+import logging
 
 class VisualizationTab(QWidget):
     def __init__(self, data_manager, parent=None):
@@ -72,6 +75,14 @@ class VisualizationTab(QWidget):
 class CalculationTab(QWidget):
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
 
+    DEFAULT_PATHS = {
+        'Datei_Erzeugeranlagen': 'net_generation_QGIS/Beispiel Zittau/Erzeugeranlagen.geojson',
+        'Datei_Hausanschlussstationen': 'net_generation_QGIS/Beispiel Zittau/HAST.geojson',
+        'Datei_Vorlaufleitungen': 'net_generation_QGIS/Beispiel Zittau/Vorlauf.geojson',
+        'Datei_Rücklaufleitungen': 'net_generation_QGIS/Beispiel Zittau/Rücklauf.geojson',
+        'Datei_Ausgabe': 'results_time_series_net1.csv'
+    }
+
     def __init__(self, data_manager, parent=None):
         super().__init__(parent)
         self.data_manager = data_manager
@@ -100,77 +111,80 @@ class CalculationTab(QWidget):
         self.main_layout.addWidget(scroll_area)
         self.setLayout(self.main_layout)
 
+        self.progressBar = QProgressBar(self)
+        self.container_layout.addWidget(self.progressBar)
+
     def setupFileInputs(self):
-        # Ersetzen Sie dies durch Ihr QFormLayout
+        # Verwenden Sie ein Grid-Layout für eine saubere Anordnung
         form_layout = QFormLayout()
 
-        self.EAFilenameInput = self.createFileInput('net_generation_QGIS/Beispiel Zittau/Erzeugeranlagen.geojson', 'geoJSON Erzeugeranlagen auswählen')
-        self.HASTFilenameInput = self.createFileInput('net_generation_QGIS/Beispiel Zittau/HAST.geojson', 'geoJSON HAST auswählen')
-        self.vlFilenameInput = self.createFileInput('net_generation_QGIS/Beispiel Zittau/Vorlauf.geojson', 'geoJSON Vorlauf auswählen')
-        self.rlFilenameInput = self.createFileInput('net_generation_QGIS/Beispiel Zittau/Rücklauf.geojson', 'geoJSON Rücklauf auswählen')
-        self.OutputFileInput = self.createFileInput('results_time_series_net1.csv', 'Ergebnis-CSV auswählen')
-
-        form_layout.addRow('Erzeugeranlagen:', self.EAFilenameInput)
-        form_layout.addRow('HAST:', self.HASTFilenameInput)
-        form_layout.addRow('Vorlauf:', self.vlFilenameInput)
-        form_layout.addRow('Rücklauf:', self.rlFilenameInput)
-        form_layout.addRow('Ergebnis-CSV:', self.OutputFileInput)
+        # Erstellen Sie die Textfelder und Buttons und fügen Sie sie dem Layout hinzu
+        form_layout.addRow(self.createFileInput('Datei_ErzeugeranlagenInput', self.DEFAULT_PATHS['Datei_Erzeugeranlagen'], 'geoJSON Erzeugeranlagen auswählen'))
+        form_layout.addRow(self.createFileInput('Datei_HausanschlussstationenInput', self.DEFAULT_PATHS['Datei_Hausanschlussstationen'], 'geoJSON Hausanschlussstationen auswählen'))
+        form_layout.addRow(self.createFileInput('Datei_VorlaufleitungenInput', self.DEFAULT_PATHS['Datei_Vorlaufleitungen'], 'geoJSON Vorlaufleitungen auswählen'))
+        form_layout.addRow(self.createFileInput('Datei_Rücklaufleitungen', self.DEFAULT_PATHS['Datei_Rücklaufleitungen'], 'geoJSON Rücklaufleitungen auswählen'))
+        form_layout.addRow(self.createFileInput('Datei_Ausgabe', self.DEFAULT_PATHS['Datei_Ausgabe'], 'Ergebnis-CSV auswählen'))
 
         self.container_layout.addLayout(form_layout)
 
-    def createFileInput(self, default_text, button_text):
+    def createFileInput(self, attr_name, default_text, button_tooltip):
+        # Erstelle ein horizontales Layout
+        file_input_layout = QHBoxLayout()
+
+        # Erstelle das QLineEdit Widget
         line_edit = QLineEdit(default_text)
-        button = QPushButton(button_text)
+        line_edit.setPlaceholderText(button_tooltip)
+        setattr(self, attr_name, line_edit)
+
+        # Erstelle den Button
+        button = QPushButton("Datei auswählen")
+        button.setToolTip(button_tooltip)
         button.clicked.connect(lambda: self.selectFilename(line_edit))
-        layout = QHBoxLayout()
-        layout.addWidget(line_edit)
-        layout.addWidget(button)
-        self.container_layout.addLayout(layout)
-        return line_edit
+
+        # Füge Widgets zum Layout hinzu
+        file_input_layout.addWidget(line_edit)
+        file_input_layout.addWidget(button)
+
+        return file_input_layout
     
     def setupHeatDemandEditor(self):
-        self.heatDemandTable = QTableWidget(self)
-        self.loadHeatDemandData()
-        self.container_layout.addWidget(self.heatDemandTable)
+        # Erstelle einen "Bearbeiten"-Button
+        editButton = QPushButton("Hausanschlussstationen/Wärmeübertrager Bearbeiten", self)
+        editButton.clicked.connect(self.editHeatDemandData)
+        self.container_layout.addWidget(editButton)
 
-        saveButton = QPushButton("Änderungen speichern", self)
-        saveButton.clicked.connect(self.saveHeatDemandData)
-        self.container_layout.addWidget(saveButton)
+    def editHeatDemandData(self):
+        try:
+            self.gdf_HAST = gpd.read_file(self.Datei_HausanschlussstationenInput.text())
+            if "Gebäudetyp" not in self.gdf_HAST.columns:
+                self.gdf_HAST["Gebäudetyp"] = "HMF"
 
-    def loadHeatDemandData(self):
-        # Laden der GeoJSON-Datei
-        self.gdf_HAST = gpd.read_file(self.HASTFilenameInput.text())
-        # Umwandeln in ein pandas DataFrame für die einfache Handhabung
-        df = pd.DataFrame(self.gdf_HAST)
-        
-        # Setzen der Tabelle
-        self.heatDemandTable.setRowCount(len(df))
-        self.heatDemandTable.setColumnCount(len(df.columns))
-        self.heatDemandTable.setHorizontalHeaderLabels(df.columns)
+            self.dialog = HeatDemandEditDialog(self.gdf_HAST, self)
+            self.dialog.exec_()  # Öffnet den Dialog als Modal
+        except Exception as e:
+            logging.error(f"Fehler beim Laden der HAST-Daten: {e}")
+            QMessageBox.critical(self, "Fehler", "Fehler beim Laden der HAST-Daten.")
 
-        for i, row in df.iterrows():
-            for j, value in enumerate(row):
-                item = QTableWidgetItem(str(value))
-                self.heatDemandTable.setItem(i, j, item)
+    def updateLabelsForCalcMethod(self):
+        calc_method = self.CalcMethodInput.currentText()
+        if calc_method in ["BDEW", "Datensatz"]:  # Angenommen, diese Methoden verwenden 1h-Werte
+            time_step_text = "Zeitschritt (1h Werte); Minimum: 0, Maximum: 8760 (1 Jahr) :"
+        else:  # Für VDI4655 oder andere Methoden, die 15-min-Werte verwenden
+            time_step_text = "Zeitschritt (15 min Werte); Minimum: 0, Maximum: 35040 (1 Jahr) :"
 
-    def saveHeatDemandData(self):
-        # Extrahieren der Daten aus der Tabelle
-        for i in range(self.heatDemandTable.rowCount()):
-            for j in range(self.heatDemandTable.columnCount()):
-                self.gdf_HAST.iat[i, j] = self.heatDemandTable.item(i, j).text()
-
-        # Speichern der geänderten Daten im GeoJSON-Format
-        self.gdf_HAST.to_file('modified_HAST.geojson', driver='GeoJSON')
+        self.StartTimeStepLabel.setText(time_step_text)
+        self.EndTimeStepLabel.setText(time_step_text)
 
     def setupControlInputs(self):
         # Initialisiere Combobox für Berechnungsmethoden
         self.CalcMethodInput = QComboBox(self)
-        # Berechnungsmethoden und Gebäudetypen hinzufügen
-        self.CalcMethodInput.addItems(["VDI4655", "BDEW"])
+        self.CalcMethodInput.addItems(["Datensatz", "BDEW", "VDI4655"])
+        self.CalcMethodInput.setToolTip("Wählen Sie die Berechnungsmethode")
         self.CalcMethodInput.currentIndexChanged.connect(self.updateBuildingType)
 
         # Initialisiere Combobox für Gebäudetypen
         self.BuildingTypeInput = QComboBox(self)
+        self.BuildingTypeInput.setToolTip("Wählen Sie den Gebäudetyp")
         self.updateBuildingType()  # Aktualisierung der BuildingTypeInput beim Start
 
         # Buttons für die Berechnung und Initialisierung
@@ -192,12 +206,15 @@ class CalculationTab(QWidget):
         self.container_layout.addLayout(controls_layout)
 
         # Eingabefeld für den Startzeitpunkt der Simulation
-        self.StartTimeStepLabel = QLabel('Zeitschritt Start (15 min Werte); Minimum: 0 :', self)
+        self.StartTimeStepLabel = QLabel("", self)
         self.StartTimeStepInput = QLineEdit("0", self)
-
         # Eingabefeld für den Endzeitpunkt der Simulation
-        self.EndTimeStepLabel = QLabel('Zeitschritt Ende (15 min Werte); Maximum: 35040 (1 Jahr) :', self)
+        self.EndTimeStepLabel = QLabel("", self)
         self.EndTimeStepInput = QLineEdit("96", self)
+
+        self.CalcMethodInput.currentIndexChanged.connect(self.updateBuildingType)
+        self.CalcMethodInput.currentIndexChanged.connect(self.updateLabelsForCalcMethod)
+        self.updateLabelsForCalcMethod()  # Aktualisiere Labels beim Start
 
         # Button zur Ausführung der Zeitreihenberechnung
         self.calculateNetButton = QPushButton('Zeitreihenberechnung durchführen', self)
@@ -253,10 +270,10 @@ class CalculationTab(QWidget):
         self.container_layout.addWidget(self.scrollArea)
 
     def ImportLayers(self):
-        vl = self.vlFilenameInput.text()
-        rl = self.rlFilenameInput.text()
-        HAST = self.HASTFilenameInput.text()
-        WEA = self.EAFilenameInput.text()
+        vl = self.Datei_VorlaufleitungenInput.text()
+        rl = self.Datei_RücklaufleitungenInput.text()
+        HAST = self.Datei_HausanschlussstationenInput.text()
+        WEA = self.Datei_ErzeugeranlagenInput.text()
         
         # Daten zur zentralen Datenquelle hinzufügen
         self.data_manager.add_data(vl)
@@ -273,21 +290,25 @@ class CalculationTab(QWidget):
             inputWidget.setText(fname)
 
     def updateBuildingType(self):
-        # Aktualisieren der BuildingTypeInput-Elemente basierend auf der Auswahl von CalcMethodInput
+        # Aktualisieren der BuildingTypeInput-Elemente
         self.BuildingTypeInput.clear()
         if self.CalcMethodInput.currentText() == "VDI4655":
+            self.BuildingTypeInput.setDisabled(False)
             self.BuildingTypeInput.addItems(["EFH", "MFH"])
         elif self.CalcMethodInput.currentText() == "BDEW":
+            self.BuildingTypeInput.setDisabled(False)
             self.BuildingTypeInput.addItems(["HEF", "HMF", "GKO", "GHA", "GMK", "GBD", "GBH", "GWA", "GGA", "GBA", "GGB", "GPD", "GMF", "GHD"])
-    
-    def create_and_initialize_net(self):
-        gdf_vl = gpd.read_file(self.vlFilenameInput.text())
-        gdf_rl = gpd.read_file(self.rlFilenameInput.text())
-        gdf_HAST = gpd.read_file(self.HASTFilenameInput.text())
-        gdf_WEA = gpd.read_file(self.EAFilenameInput.text())
+        elif self.CalcMethodInput.currentText() == "Datensatz":
+            self.BuildingTypeInput.setDisabled(True)  # Deaktiviere das Auswahlfeld für Gebäudetypen
 
-        calc_method = self.CalcMethodInput.itemText(self.CalcMethodInput.currentIndex())
-        building_type = self.BuildingTypeInput.itemText(self.BuildingTypeInput.currentIndex())
+    def create_and_initialize_net(self):
+        gdf_vl = gpd.read_file(self.Datei_VorlaufleitungenInput.text())
+        gdf_rl = gpd.read_file(self.Datei_RücklaufleitungenInput.text())
+        gdf_HAST = gpd.read_file(self.Datei_HausanschlussstationenInput.text())
+        gdf_WEA = gpd.read_file(self.Datei_ErzeugeranlagenInput.text())
+
+        calc_method = self.CalcMethodInput.currentText()
+        building_type = None if calc_method == "Datensatz" else self.BuildingTypeInput.currentText()
 
         net, yearly_time_steps, waerme_ges_W = initialize_net_profile_calculation(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, building_type=building_type, calc_method=calc_method)
         
@@ -316,34 +337,79 @@ class CalculationTab(QWidget):
         config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_controls=False, show_heat_exchangers=True)
         self.canvas5.draw()
 
+    def adjustTimeParameters(self):
+        calc_method = self.CalcMethodInput.currentText()
+        try:
+            calc1 = int(self.StartTimeStepInput.text())
+            calc2 = int(self.EndTimeStepInput.text())
+
+            if calc_method in ["BDEW", "Datensatz"]:  # Angenommen, diese Methoden verwenden 1h-Werte
+                max_time_step = 8760  # 1 Jahr in Stunden
+                time_step_factor = 4  # 1 Stunde entspricht 4 Zeitintervallen von 15 Minuten
+            else:  # Für VDI4655 oder andere Methoden, die 15-min-Werte verwenden
+                max_time_step = 35040  # 1 Jahr in 15-min-Intervallen
+                time_step_factor = 1
+
+            if not (0 <= calc1 <= max_time_step and 0 <= calc2 <= max_time_step):
+                raise ValueError("Zeitschritt außerhalb des gültigen Bereichs")
+
+            return calc1 * time_step_factor, calc2 * time_step_factor
+
+        except ValueError as e:
+            QMessageBox.warning(self, "Ungültige Eingabe", str(e))
+            return None, None
+        
     def simulate_net(self):
-        #calc1, calc2 = 0, 96 # min: 0; max: 35040
-        calc1 = int(self.StartTimeStepInput.text())
-        calc2 = int(self.EndTimeStepInput.text())
+        gdf_vl = gpd.read_file(self.Datei_VorlaufleitungenInput.text())
+        gdf_rl = gpd.read_file(self.Datei_RücklaufleitungenInput.text())
+        gdf_HAST = gpd.read_file(self.Datei_HausanschlussstationenInput.text())
+        gdf_WEA = gpd.read_file(self.Datei_ErzeugeranlagenInput.text())
 
-        output_filename = self.OutputFileInput.text()
+        calc_method = self.CalcMethodInput.currentText()
+        building_type = None if calc_method == "Datensatz" else self.BuildingTypeInput.currentText()
 
-        gdf_vl = gpd.read_file(self.vlFilenameInput.text())
-        gdf_rl = gpd.read_file(self.rlFilenameInput.text())
-        gdf_HAST = gpd.read_file(self.HASTFilenameInput.text())
-        gdf_WEA = gpd.read_file(self.EAFilenameInput.text())
+        try:
+            calc1, calc2 = self.adjustTimeParameters()
+            if calc1 is None or calc2 is None:  # Ungültige Eingaben wurden bereits in adjustTimeParameters behandelt
+                return
 
-        calc_method = self.CalcMethodInput.itemText(self.CalcMethodInput.currentIndex())
-        building_type = self.BuildingTypeInput.itemText(self.BuildingTypeInput.currentIndex())
+            self.calculationThread = CalculationThread(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, building_type, calc_method, calc1, calc2)
+            self.calculationThread.calculation_done.connect(self.on_calculation_done)
+            self.calculationThread.calculation_error.connect(self.on_calculation_error)
+            self.calculationThread.start()
+            self.progressBar.setRange(0, 0)  # Aktiviert den indeterministischen Modus
 
-        net, yearly_time_steps, waerme_ges_W = initialize_net_profile_calculation(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, building_type=building_type, calc_method=calc_method)
-        time_steps, net, net_results = thermohydraulic_time_series_net_calculation(net, yearly_time_steps, waerme_ges_W, calc1, calc2)
+        except ValueError as e:
+            QMessageBox.warning("Ungültige Eingabe", str(e))
 
+    def on_calculation_done(self, results):
+        self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
+        time_steps, net, net_results = results
         mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, \
             return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW, pressure_junctions = calculate_results(net, net_results)
 
-        #plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
-
         self.plot2(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
 
-        ###!!!!!this will overwrite the current csv file!!!!!#
+        output_filename = self.Datei_AusgabeInput.text()
         save_results_csv(time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump, output_filename)
 
+    def on_calculation_error(self, error_message):
+        QMessageBox.critical(self, "Berechnungsfehler", error_message)
+        self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
+
+    def closeEvent(self, event):
+        if hasattr(self, 'calculationThread') and self.calculationThread.isRunning():
+            reply = QMessageBox.question(self, 'Thread läuft noch',
+                                         "Eine Berechnung läuft noch. Wollen Sie wirklich beenden?",
+                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+
+            if reply == QMessageBox.Yes:
+                self.calculationThread.stop()  # Stellen Sie sicher, dass der Thread beendet wird
+                event.accept()  # Schließen Sie das Fenster
+            else:
+                event.ignore()  # Lassen Sie das Fenster offen
+        else:
+            event.accept()  # Schließen Sie das Fenster, wenn kein Thread läuft
     def plot2(self, time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump):
         # Clear previous figure
         self.figure3.clear()

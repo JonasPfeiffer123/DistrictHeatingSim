@@ -15,6 +15,10 @@ class WorstPointPressureController(BasicCtrl):
         return time_step
 
     def is_converged(self, net):
+        qext_w = net.heat_exchanger["qext_w"].at[self.heat_exchanger_idx]
+        if qext_w <= 150:
+            # Wenn der Wärmestrom null ist, betrachte den Controller als nicht konvergiert
+            return True
         current_dp_bar = net.res_flow_control["p_from_bar"].at[self.flow_control_idx] - net.res_heat_exchanger["p_to_bar"].at[self.heat_exchanger_idx]
 
         # check, if the temperature converged
@@ -25,6 +29,12 @@ class WorstPointPressureController(BasicCtrl):
     
 
     def control_step(self, net):
+        # Überprüfe, ob der Wärmestrom im Wärmeübertrager null ist
+        qext_w = net.heat_exchanger["qext_w"].at[self.heat_exchanger_idx]
+        if qext_w <= 150:
+            # Wenn der Wärmestrom null ist, führe keine Anpassungen durch
+            return super(WorstPointPressureController, self).control_step(net)
+
         current_dp_bar = net.res_flow_control["p_from_bar"].at[self.flow_control_idx] - net.res_heat_exchanger["p_to_bar"].at[self.heat_exchanger_idx]
         dp_error = self.target_dp_min_bar - current_dp_bar
 
@@ -61,6 +71,10 @@ class ReturnTemperatureController(BasicCtrl):
         return time_step
 
     def is_converged(self, net):
+        qext_w = net.heat_exchanger["qext_w"].at[self.heat_exchanger_idx]
+        if qext_w <= 150:
+            # Wenn der Wärmestrom null ist, betrachte den Controller als nicht konvergiert
+            return True
         current_temperature = net.res_heat_exchanger["t_to_k"].at[self.heat_exchanger_idx] - 273.15
         current_mass_flow = net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx]
 
@@ -83,6 +97,11 @@ class ReturnTemperatureController(BasicCtrl):
     
 
     def control_step(self, net):
+        # Überprüfe, ob der Wärmestrom im Wärmeübertrager null ist
+        qext_w = net.heat_exchanger["qext_w"].at[self.heat_exchanger_idx]
+        if qext_w <= 150:
+            return super(ReturnTemperatureController, self).control_step(net)
+
         current_temperature = net.res_heat_exchanger["t_to_k"].at[self.heat_exchanger_idx] - 273.15
         temperature_error = self.target_temperature - current_temperature
 
