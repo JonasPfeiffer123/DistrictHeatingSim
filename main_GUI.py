@@ -1,6 +1,5 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTabWidget
-from PyQt5.QtWidgets import QApplication, QTabWidget
 from GUI.tabs import VisualizationTab, CalculationTab, MixDesignTab
 
 class CentralDataManager:
@@ -27,8 +26,6 @@ class HeatSystemDesignGUI(QWidget):
         #self.showFullScreen()
 
         layout = QVBoxLayout(self)
-
-        # Erstellen des Tab-Widgets
         tabWidget = QTabWidget()
         layout.addWidget(tabWidget)
 

@@ -3,11 +3,11 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, QMenuBar, QAction, \
     QFileDialog, QHBoxLayout, QComboBox, QLineEdit, QListWidget, QDialog, QFormLayout, \
-        QScrollArea, QMessageBox, QProgressBar, QGridLayout
+        QScrollArea, QMessageBox, QProgressBar
 import folium
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 import geopandas as gpd
-from main import initialize_net_profile_calculation, calculate_results, save_results_csv
+from main import initialize_net_profile_calculation, calculate_results, save_results_csv, import_results_csv, import_TRY
 from GUI.dialogs import TechInputDialog, HeatDemandEditDialog
 from PyQt5.QtCore import pyqtSignal
 import numpy as np
@@ -15,6 +15,8 @@ import numpy as np
 from GUI.utils import add_geojson_to_map, update_map_view
 from GUI.threads import CalculationThread
 from net_test import config_plot
+
+from heat_generators.heat_generator_classes import *
 
 import logging
 
@@ -122,8 +124,8 @@ class CalculationTab(QWidget):
         form_layout.addRow(self.createFileInput('Datei_ErzeugeranlagenInput', self.DEFAULT_PATHS['Datei_Erzeugeranlagen'], 'geoJSON Erzeugeranlagen auswählen'))
         form_layout.addRow(self.createFileInput('Datei_HausanschlussstationenInput', self.DEFAULT_PATHS['Datei_Hausanschlussstationen'], 'geoJSON Hausanschlussstationen auswählen'))
         form_layout.addRow(self.createFileInput('Datei_VorlaufleitungenInput', self.DEFAULT_PATHS['Datei_Vorlaufleitungen'], 'geoJSON Vorlaufleitungen auswählen'))
-        form_layout.addRow(self.createFileInput('Datei_Rücklaufleitungen', self.DEFAULT_PATHS['Datei_Rücklaufleitungen'], 'geoJSON Rücklaufleitungen auswählen'))
-        form_layout.addRow(self.createFileInput('Datei_Ausgabe', self.DEFAULT_PATHS['Datei_Ausgabe'], 'Ergebnis-CSV auswählen'))
+        form_layout.addRow(self.createFileInput('Datei_RücklaufleitungenInput', self.DEFAULT_PATHS['Datei_Rücklaufleitungen'], 'geoJSON Rücklaufleitungen auswählen'))
+        form_layout.addRow(self.createFileInput('Datei_AusgabeInput', self.DEFAULT_PATHS['Datei_Ausgabe'], 'Ergebnis-CSV auswählen'))
 
         self.container_layout.addLayout(form_layout)
 
