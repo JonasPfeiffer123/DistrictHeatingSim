@@ -161,7 +161,7 @@ class HeatDemandEditDialog(QDialog):
                 cell_value = self.heatDemandTable.item(i, j).text()
                 self.gdf_HAST.at[i, column_name] = cell_value
 
-        self.gdf_HAST.to_file(self.parent().Datei_HausanschlussstationenInput.text(), driver='GeoJSON')
+        self.gdf_HAST.to_file(self.parent().HASTInput.text(), driver='GeoJSON')
         self.accept()  # Schließt das Dialogfenster
 
 class LayerGenerationDialog(QDialog):

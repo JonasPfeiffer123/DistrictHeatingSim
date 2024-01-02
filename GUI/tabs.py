@@ -25,6 +25,8 @@ from heat_generators.heat_generator_classes import *
 from net_generation.import_and_create_layers import generate_and_export_layers
 
 class VisualizationTab(QWidget):
+    layers_imported = pyqtSignal(dict)
+
     def __init__(self, data_manager, parent=None):
         super().__init__(parent)
         self.data_manager = data_manager
@@ -75,6 +77,9 @@ class VisualizationTab(QWidget):
         layerManagementLayout.addWidget(self.changeColorButton)
         layout.addLayout(layerManagementLayout)
 
+        self.progressBar = QProgressBar(self)
+        layout.addWidget(self.progressBar)
+
         self.setLayout(layout)
 
     def connect_signals(self, calculation_tab):
@@ -95,25 +100,32 @@ class VisualizationTab(QWidget):
     def generateAndImportLayers(self, inputs):
         # Hier rufen Sie Ihre Funktion generate_and_export_layers auf
         generate_and_export_layers(inputs["streetLayer"], inputs["dataCsv"], 
-                                   float(inputs["xCoord"]), float(inputs["yCoord"]))
+                                float(inputs["xCoord"]), float(inputs["yCoord"]))
 
         # Automatisches Importieren der generierten Layer
         # Die Pfade zu den generierten Dateien müssen angegeben werden
-        generatedLayers = [
-            "C:/Users/username/heating_network_generation/net_generation/HAST.geojson",
-            "C:/Users/username/heating_network_generation/net_generation/Rücklauf.geojson",
-            "C:/Users/username/heating_network_generation/net_generation/Vorlauf.geojson",
-            "C:/Users/username/heating_network_generation/net_generation/Erzeugeranlagen.geojson"
-        ]
+        generatedLayers = {
+            'HAST': "C:/Users/username/heating_network_generation/net_generation/HAST.geojson",
+            'Rücklauf': "C:/Users/username/heating_network_generation/net_generation/Rücklauf.geojson",
+            'Vorlauf': "C:/Users/username/heating_network_generation/net_generation/Vorlauf.geojson",
+            'Erzeugeranlagen': "C:/Users/username/heating_network_generation/net_generation/Erzeugeranlagen.geojson"
+        }
 
-        for layerFile in generatedLayers:
+        for layerName, layerFile in generatedLayers.items():
             self.loadNetData(layerFile)
+
+        # Auslösen des Signals mit den Pfaden der generierten Layer
+        self.layers_imported.emit(generatedLayers)
 
     def importNetData(self):
         fnames, _ = QFileDialog.getOpenFileNames(self, 'Netzdaten importieren', '', 'GeoJSON Files (*.geojson);;All Files (*)')
         if fnames:
+            layerNames = {}
             for fname in fnames:
                 self.loadNetData(fname)
+                basename = os.path.basename(fname)
+                layerNames[basename.split('.')[0]] = fname  # Beispiel: 'HAST' : 'path/to/HAST.geojson'
+            self.layers_imported.emit(layerNames)
             self.updateMapView()
     
     def calculate_map_center_and_zoom(self):
@@ -231,11 +243,11 @@ class CalculationTab(QWidget):
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
 
     DEFAULT_PATHS = {
-        'Datei_Erzeugeranlagen': 'net_generation_QGIS/Beispiel Zittau/Erzeugeranlagen.geojson',
-        'Datei_Hausanschlussstationen': 'net_generation_QGIS/Beispiel Zittau/HAST.geojson',
-        'Datei_Vorlaufleitungen': 'net_generation_QGIS/Beispiel Zittau/Vorlauf.geojson',
-        'Datei_Rücklaufleitungen': 'net_generation_QGIS/Beispiel Zittau/Rücklauf.geojson',
-        'Datei_Ausgabe': 'results_time_series_net1.csv'
+        'Erzeugeranlagen': 'net_generation_QGIS/Beispiel Zittau/Erzeugeranlagen.geojson',
+        'HAST': 'net_generation_QGIS/Beispiel Zittau/HAST.geojson',
+        'Vorlauf': 'net_generation_QGIS/Beispiel Zittau/Vorlauf.geojson',
+        'Rücklauf': 'net_generation_QGIS/Beispiel Zittau/Rücklauf.geojson',
+        'Ausgabe': 'results_time_series_net1.csv'
     }
 
     def __init__(self, data_manager, parent=None):
@@ -243,6 +255,13 @@ class CalculationTab(QWidget):
         self.data_manager = data_manager
         self.initUI()
 
+    def updateFilePaths(self, layerNames):
+        for key, path in layerNames.items():
+            if key in self.DEFAULT_PATHS:
+                inputAttrName = f"{key}Input"
+                if hasattr(self, inputAttrName):
+                    getattr(self, inputAttrName).setText(path)
+                    
     def initUI(self):
         # Erstellen eines Scrollbereichs
         scroll_area = QScrollArea(self)
@@ -274,11 +293,11 @@ class CalculationTab(QWidget):
         form_layout = QFormLayout()
 
         # Erstellen Sie die Textfelder und Buttons und fügen Sie sie dem Layout hinzu
-        form_layout.addRow(self.createFileInput('Datei_ErzeugeranlagenInput', self.DEFAULT_PATHS['Datei_Erzeugeranlagen'], 'geoJSON Erzeugeranlagen auswählen'))
-        form_layout.addRow(self.createFileInput('Datei_HausanschlussstationenInput', self.DEFAULT_PATHS['Datei_Hausanschlussstationen'], 'geoJSON Hausanschlussstationen auswählen'))
-        form_layout.addRow(self.createFileInput('Datei_VorlaufleitungenInput', self.DEFAULT_PATHS['Datei_Vorlaufleitungen'], 'geoJSON Vorlaufleitungen auswählen'))
-        form_layout.addRow(self.createFileInput('Datei_RücklaufleitungenInput', self.DEFAULT_PATHS['Datei_Rücklaufleitungen'], 'geoJSON Rücklaufleitungen auswählen'))
-        form_layout.addRow(self.createFileInput('Datei_AusgabeInput', self.DEFAULT_PATHS['Datei_Ausgabe'], 'Ergebnis-CSV auswählen'))
+        form_layout.addRow(self.createFileInput('ErzeugeranlagenInput', self.DEFAULT_PATHS['Erzeugeranlagen'], 'geoJSON Erzeugeranlagen auswählen'))
+        form_layout.addRow(self.createFileInput('HASTInput', self.DEFAULT_PATHS['HAST'], 'geoJSON Hausanschlussstationen auswählen'))
+        form_layout.addRow(self.createFileInput('VorlaufInput', self.DEFAULT_PATHS['Vorlauf'], 'geoJSON Vorlaufleitungen auswählen'))
+        form_layout.addRow(self.createFileInput('RücklaufInput', self.DEFAULT_PATHS['Rücklauf'], 'geoJSON Rücklaufleitungen auswählen'))
+        form_layout.addRow(self.createFileInput('AusgabeInput', self.DEFAULT_PATHS['Ausgabe'], 'Ergebnis-CSV auswählen'))
 
         self.container_layout.addLayout(form_layout)
 
@@ -310,7 +329,7 @@ class CalculationTab(QWidget):
 
     def editHeatDemandData(self):
         try:
-            self.gdf_HAST = gpd.read_file(self.Datei_HausanschlussstationenInput.text())
+            self.gdf_HAST = gpd.read_file(self.HASTInput.text())
             if "Gebäudetyp" not in self.gdf_HAST.columns:
                 self.gdf_HAST["Gebäudetyp"] = "HMF"
 
@@ -425,10 +444,10 @@ class CalculationTab(QWidget):
         self.container_layout.addWidget(self.scrollArea)
 
     def ImportLayers(self):
-        vl = self.Datei_VorlaufleitungenInput.text()
-        rl = self.Datei_RücklaufleitungenInput.text()
-        HAST = self.Datei_HausanschlussstationenInput.text()
-        WEA = self.Datei_ErzeugeranlagenInput.text()
+        vl = self.VorlaufInput.text()
+        rl = self.RücklaufInput.text()
+        HAST = self.HASTInput.text()
+        WEA = self.ErzeugeranlagenInput.text()
         
         # Daten zur zentralen Datenquelle hinzufügen
         self.data_manager.add_data(vl)
@@ -457,10 +476,10 @@ class CalculationTab(QWidget):
             self.BuildingTypeInput.setDisabled(True)  # Deaktiviere das Auswahlfeld für Gebäudetypen
 
     def create_and_initialize_net(self):
-        gdf_vl = gpd.read_file(self.Datei_VorlaufleitungenInput.text())
-        gdf_rl = gpd.read_file(self.Datei_RücklaufleitungenInput.text())
-        gdf_HAST = gpd.read_file(self.Datei_HausanschlussstationenInput.text())
-        gdf_WEA = gpd.read_file(self.Datei_ErzeugeranlagenInput.text())
+        gdf_vl = gpd.read_file(self.VorlaufInput.text())
+        gdf_rl = gpd.read_file(self.RücklaufInput.text())
+        gdf_HAST = gpd.read_file(self.HASTInput.text())
+        gdf_WEA = gpd.read_file(self.ErzeugeranlagenInput.text())
 
         calc_method = self.CalcMethodInput.currentText()
         building_type = None if calc_method == "Datensatz" else self.BuildingTypeInput.currentText()
@@ -500,25 +519,26 @@ class CalculationTab(QWidget):
 
             if calc_method in ["BDEW", "Datensatz"]:  # Angenommen, diese Methoden verwenden 1h-Werte
                 max_time_step = 8760  # 1 Jahr in Stunden
-                time_step_factor = 4  # 1 Stunde entspricht 4 Zeitintervallen von 15 Minuten
             else:  # Für VDI4655 oder andere Methoden, die 15-min-Werte verwenden
                 max_time_step = 35040  # 1 Jahr in 15-min-Intervallen
-                time_step_factor = 1
 
             if not (0 <= calc1 <= max_time_step and 0 <= calc2 <= max_time_step):
                 raise ValueError("Zeitschritt außerhalb des gültigen Bereichs")
+            
+            if not calc1 < calc2:
+                raise ValueError("Der 1. Zeitschritt muss kleiner als der 2. Zeitschritt sein")
 
-            return calc1 * time_step_factor, calc2 * time_step_factor
+            return calc1, calc2
 
         except ValueError as e:
             QMessageBox.warning(self, "Ungültige Eingabe", str(e))
             return None, None
         
     def simulate_net(self):
-        gdf_vl = gpd.read_file(self.Datei_VorlaufleitungenInput.text())
-        gdf_rl = gpd.read_file(self.Datei_RücklaufleitungenInput.text())
-        gdf_HAST = gpd.read_file(self.Datei_HausanschlussstationenInput.text())
-        gdf_WEA = gpd.read_file(self.Datei_ErzeugeranlagenInput.text())
+        gdf_vl = gpd.read_file(self.VorlaufInput.text())
+        gdf_rl = gpd.read_file(self.RücklaufInput.text())
+        gdf_HAST = gpd.read_file(self.HASTInput.text())
+        gdf_WEA = gpd.read_file(self.ErzeugeranlagenInput.text())
 
         calc_method = self.CalcMethodInput.currentText()
         building_type = None if calc_method == "Datensatz" else self.BuildingTypeInput.currentText()
@@ -545,7 +565,7 @@ class CalculationTab(QWidget):
 
         self.plot2(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
 
-        output_filename = self.Datei_AusgabeInput.text()
+        output_filename = self.AusgabeInput.text()
         save_results_csv(time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump, output_filename)
 
     def on_calculation_error(self, error_message):

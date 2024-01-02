@@ -38,6 +38,7 @@ class HeatSystemDesignGUI(QWidget):
 
         # Hier stellen Sie die Verbindung her
         self.visTab.connect_signals(self.calcTab)
+        self.visTab.layers_imported.connect(self.calcTab.updateFilePaths)
 
         # Hinzufügen der Tabs zum Tab-Widget
         tabWidget.addTab(self.calcTab, "Netzberechnung")
