@@ -49,7 +49,6 @@ def download_osm_street_data(query, output_filename):
     with open(output_filename, 'w') as outfile:
         json.dump(geojson, outfile, default=decimal_default)
 
-
 # Hier setzen Sie Ihre Overpass-Abfrage ein
 overpass_query = """
 [out:json][timeout:25];
