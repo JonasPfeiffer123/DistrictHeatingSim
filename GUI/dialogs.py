@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, \
-    QDialogButtonBox, QComboBox, QTableWidget, QPushButton, QTableWidgetItem
+    QDialogButtonBox, QComboBox, QTableWidget, QPushButton, QTableWidgetItem, \
+    QFormLayout, QHBoxLayout, QFileDialog
 
 import pandas as pd
 
@@ -162,3 +163,64 @@ class HeatDemandEditDialog(QDialog):
 
         self.gdf_HAST.to_file(self.parent().Datei_HausanschlussstationenInput.text(), driver='GeoJSON')
         self.accept()  # Schließt das Dialogfenster
+
+class LayerGenerationDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.initUI()
+
+    def initUI(self):
+        self.setWindowTitle("Layer-Generierung")
+
+        layout = QVBoxLayout(self)
+
+        # Formularlayout für Eingaben
+        formLayout = QFormLayout()
+
+        # Dateiauswahl für Street Layer und Data CSV
+        self.streetLayerInput, self.streetLayerButton = self.createFileInput("C:/Users/username/heating_network_generation/net_generation_QGIS/Straßen Zittau.geojson")
+        self.dataCsvInput, self.dataCsvButton = self.createFileInput("C:/Users/username/heating_network_generation/geocoding/data_output_zi_ETRS89.csv")
+
+        # Koordinateneingaben
+        self.xCoordInput = QLineEdit("486267.306999999971595", self)
+        self.yCoordInput = QLineEdit("5637294.910000000149012", self)
+
+        formLayout.addRow("GeoJSON-Straßen-Layer:", self.createFileInputLayout(self.streetLayerInput, self.streetLayerButton))
+        formLayout.addRow("CSV mit Gebäudestandorten:", self.createFileInputLayout(self.dataCsvInput, self.dataCsvButton))
+        formLayout.addRow("X-Koordinate Erzeugerstandort:", self.xCoordInput)
+        formLayout.addRow("Y-Koordinate Erzeugerstandort:", self.yCoordInput)
+
+        # Buttons für OK und Abbrechen
+        self.okButton = QPushButton("OK", self)
+        self.okButton.clicked.connect(self.accept)
+        self.cancelButton = QPushButton("Abbrechen", self)
+        self.cancelButton.clicked.connect(self.reject)
+
+        layout.addLayout(formLayout)
+        layout.addWidget(self.okButton)
+        layout.addWidget(self.cancelButton)
+
+    def createFileInput(self, default_path):
+        lineEdit = QLineEdit(default_path)
+        button = QPushButton("Durchsuchen")
+        button.clicked.connect(lambda: self.selectFile(lineEdit))
+        return lineEdit, button
+
+    def createFileInputLayout(self, lineEdit, button):
+        layout = QHBoxLayout()
+        layout.addWidget(lineEdit)
+        layout.addWidget(button)
+        return layout
+
+    def selectFile(self, lineEdit):
+        filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", "", "All Files (*)")
+        if filename:
+            lineEdit.setText(filename)
+
+    def getInputs(self):
+        return {
+            "streetLayer": self.streetLayerInput.text(),
+            "dataCsv": self.dataCsvInput.text(),
+            "xCoord": self.xCoordInput.text(),
+            "yCoord": self.yCoordInput.text()
+        }
