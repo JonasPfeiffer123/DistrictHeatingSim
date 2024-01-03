@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, \
 import pandas as pd
 
 from net_generation_QGIS.import_osm_data_geojson import build_query, download_data, save_to_file
+from geocoding.geocodingETRS89 import process_data
 
 class TechInputDialog(QDialog):
     def __init__(self, tech_type):
@@ -322,3 +323,60 @@ class DownloadOSMDataDialog(QDialog):
         geojson_data = download_data(query)
         # Speichere die Daten als GeoJSON
         save_to_file(geojson_data, filename)
+
+class GeocodeAdressesDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.initUI()
+
+    def initUI(self):
+        self.setWindowTitle("Adressdaten geocodieren")
+
+        layout = QVBoxLayout(self)
+
+        # Stadtname Eingabefeld
+        self.inputfilenameLineEdit, fileButton = self.createFileInput("geocoding/data_input_zi.csv")
+        layout.addLayout(self.createFileInputLayout(self.inputfilenameLineEdit, fileButton))
+        
+        # Dateiname Eingabefeld
+        self.outputfilenameLineEdit, fileButton = self.createFileInput("geocoding/data_output_zi_ETRS89.csv")
+        layout.addLayout(self.createFileInputLayout(self.outputfilenameLineEdit, fileButton))
+        
+        # Buttons für OK und Abbrechen
+        self.okButton = QPushButton("OK", self)
+        self.okButton.clicked.connect(self.onAccept)
+        self.cancelButton = QPushButton("Abbrechen", self)
+        self.cancelButton.clicked.connect(self.reject)
+        
+        layout.addWidget(self.okButton)
+        layout.addWidget(self.cancelButton)
+
+    def createFileInput(self, default_path):
+        lineEdit = QLineEdit(default_path)
+        button = QPushButton("Durchsuchen")
+        button.clicked.connect(lambda: self.selectFile(lineEdit))
+        return lineEdit, button
+
+    def createFileInputLayout(self, lineEdit, button):
+        layout = QHBoxLayout()
+        layout.addWidget(lineEdit)
+        layout.addWidget(button)
+        return layout
+
+    def selectFile(self, lineEdit):
+        filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", "", "All Files (*)")
+        if filename:
+            lineEdit.setText(filename)
+
+    def onAccept(self):
+        # Daten sammeln
+        self.inputfilename = self.inputfilenameLineEdit.text()
+        self.outputfilename = self.outputfilenameLineEdit.text()
+        
+        # Abfrage erstellen und Daten herunterladen
+        self.geocodeAdresses(self.inputfilename, self.outputfilename)
+        self.accept()
+
+    # Die Methode des Dialogs, die die anderen Funktionen aufruft
+    def geocodeAdresses(self, inputfilename, outputfilename):
+        process_data(inputfilename, outputfilename)

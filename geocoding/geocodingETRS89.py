@@ -37,7 +37,7 @@ def process_data(input_csv, output_csv):
 
         for row in reader:
             # Extracting relevant data from the row
-            country, state, city, address, _, _, _ = row
+            country, state, city, address, _, = row
             full_address = f"{address}, {city}, {state}, {country}"
             utm_x, utm_y = get_coordinates(full_address)
 
@@ -52,8 +52,8 @@ def process_data(input_csv, output_csv):
 #input_csv = "geocoding/data_input_gr.csv"
 #output_csv = "geocoding/data_output_gr_ETRS89.csv"
 
-input_csv = "geocoding/data_input_Beleg2.csv"
-output_csv = "geocoding/data_output_Beleg2_ETRS89.csv"
+#input_csv = "geocoding/data_input_Beleg2.csv"
+#output_csv = "geocoding/data_output_Beleg2_ETRS89.csv"
 
 # Calling the process_data function to read from input_csv and write to output_csv
-process_data(input_csv, output_csv)
+#process_data(input_csv, output_csv)

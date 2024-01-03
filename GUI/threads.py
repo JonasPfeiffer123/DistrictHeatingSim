@@ -86,31 +86,31 @@ class NetGenerationThread(QThread):
             self.wait()  # Warten auf das sichere Beenden des Threads
 
 class FileImportThread(QThread):
-    calculation_done = pyqtSignal(object)
+    calculation_done = pyqtSignal(object)  # Dies könnte ein Dictionary oder eine Liste von Ergebnissen sein
     calculation_error = pyqtSignal(str)
 
-    def __init__(self, m, filename, color):
+    def __init__(self, m, filenames, color):
         super().__init__()
         self.m = m
-        self.filename = filename
+        self.filenames = filenames  # Eine Liste von Dateinamen
         self.color = color
 
     def run(self):
         try:
-            gdf = gpd.read_file(self.filename)
-            # Bereiten Sie die Daten vor, aber fügen Sie sie nicht hier zur GUI hinzu.
-            geojson_data = {
-                'gdf': gdf,
-                'name': os.path.basename(self.filename),
-                'style': {
-                    'fillColor': self.color,
-                    'color': self.color,
-                    'weight': 1.5,
-                    'fillOpacity': 0.5,
+            results = {}
+            for filename in self.filenames:
+                gdf = gpd.read_file(filename)
+                results[filename] = {
+                    'gdf': gdf,
+                    'name': os.path.basename(filename),
+                    'style': {
+                        'fillColor': self.color,
+                        'color': self.color,
+                        'weight': 1.5,
+                        'fillOpacity': 0.5,
+                    }
                 }
-            }
-
-            self.calculation_done.emit((geojson_data))
+            self.calculation_done.emit(results)
         except Exception as e:
             self.calculation_error.emit(str(e) + "\n" + traceback.format_exc())
 

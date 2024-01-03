@@ -1,30 +1,30 @@
-﻿Land;Bundesland;Stadt;Adresse;spezifischer Wärmebedarf;Nettogeschossfläche;Wärmebedarf
-Deutschland;Sachsen;Zittau;Uferweg 1;103.88;160.31;16652.96
-Deutschland;Sachsen;Zittau;Uferweg 2;103.88;160.31;16652.96
-Deutschland;Sachsen;Zittau;Uferweg 3;103.88;160.31;16652.96
-Deutschland;Sachsen;Zittau;Uferweg 4;141.45;127.27;18002.73
-Deutschland;Sachsen;Zittau;Uferweg 5;141.45;127.27;18002.73
-Deutschland;Sachsen;Zittau;Uferweg 6;74.77;139.35;10419.08
-Deutschland;Sachsen;Zittau;Uferweg 7;74.77;139.35;10419.08
-Deutschland;Sachsen;Zittau;Uferweg 8;83.33;159.54;13294.18
-Deutschland;Sachsen;Zittau;Uferweg 9;58.5;134.47;7866.43
-Deutschland;Sachsen;Zittau;Uferweg 10;91.57;150.77;13806.56
-Deutschland;Sachsen;Zittau;Uferweg 11;22.69;200.24;4543.94
-Deutschland;Sachsen;Zittau;Uferweg 12;116.7;76.76;8957.89
-Deutschland;Sachsen;Zittau;Uferweg 13;105.25;165.21;17388.2
-Deutschland;Sachsen;Zittau;Uferweg 14;97.52;167.9;16373.56
-Deutschland;Sachsen;Zittau;Uferweg 15;97.52;167.9;16373.56
-Deutschland;Sachsen;Zittau;Uferweg 16;97.52;167.9;16373.56
-Deutschland;Sachsen;Zittau;Uferweg 17;97.52;167.9;16373.56
-Deutschland;Sachsen;Zittau;Uferweg 18;97.52;167.9;16373.56
-Deutschland;Sachsen;Zittau;Bogatyniaer Straße 2;97.52;167.9;16373.56
-Deutschland;Sachsen;Zittau;Bogatyniaer Straße 4;97.52;167.9;16373.56
-Deutschland;Sachsen;Zittau;Bogatyniaer Straße 6;97.52;167.9;16373.56
-Deutschland;Sachsen;Zittau;Bogatyniaer Straße 8;97.52;167.9;16373.56
-Deutschland;Sachsen;Zittau;Bogatyniaer Straße 10;97.52;167.9;16373.56
-Deutschland;Sachsen;Zittau;Bogatyniaer Straße 12;97.52;167.9;16373.56
-Deutschland;Sachsen;Zittau;Bogatyniaer Straße 14;97.52;167.9;16373.56
-Deutschland;Sachsen;Zittau;Bogatyniaer Straße 16;97.52;167.9;16373.56
-Deutschland;Sachsen;Zittau;Bogatyniaer Straße 18;97.52;167.9;16373.56
-Deutschland;Sachsen;Zittau;Bogatyniaer Straße 20;97.52;167.9;16373.56
-Deutschland;Sachsen;Zittau;Bogatyniaer Straße 22;97.52;167.9;16373.56
+﻿Land;Bundesland;Stadt;Adresse;Wärmebedarf
+Deutschland;Sachsen;Zittau;Uferweg 1;28739
+Deutschland;Sachsen;Zittau;Uferweg 2;26028
+Deutschland;Sachsen;Zittau;Uferweg 3;28096
+Deutschland;Sachsen;Zittau;Uferweg 4;34139
+Deutschland;Sachsen;Zittau;Uferweg 5;29777
+Deutschland;Sachsen;Zittau;Uferweg 6;31742
+Deutschland;Sachsen;Zittau;Uferweg 7;36806
+Deutschland;Sachsen;Zittau;Uferweg 8;26924
+Deutschland;Sachsen;Zittau;Uferweg 9;29652
+Deutschland;Sachsen;Zittau;Uferweg 10;37456
+Deutschland;Sachsen;Zittau;Uferweg 11;33709
+Deutschland;Sachsen;Zittau;Uferweg 12;21062
+Deutschland;Sachsen;Zittau;Uferweg 13;30611
+Deutschland;Sachsen;Zittau;Uferweg 14;33628
+Deutschland;Sachsen;Zittau;Uferweg 15;34689
+Deutschland;Sachsen;Zittau;Uferweg 16;26995
+Deutschland;Sachsen;Zittau;Uferweg 17;35125
+Deutschland;Sachsen;Zittau;Uferweg 18;31008
+Deutschland;Sachsen;Zittau;Bogatyniaer Straße 2;20603
+Deutschland;Sachsen;Zittau;Bogatyniaer Straße 4;26311
+Deutschland;Sachsen;Zittau;Bogatyniaer Straße 6;32436
+Deutschland;Sachsen;Zittau;Bogatyniaer Straße 8;37231
+Deutschland;Sachsen;Zittau;Bogatyniaer Straße 10;32485
+Deutschland;Sachsen;Zittau;Bogatyniaer Straße 12;22495
+Deutschland;Sachsen;Zittau;Bogatyniaer Straße 14;28946
+Deutschland;Sachsen;Zittau;Bogatyniaer Straße 16;34729
+Deutschland;Sachsen;Zittau;Bogatyniaer Straße 18;32859
+Deutschland;Sachsen;Zittau;Bogatyniaer Straße 20;30667
+Deutschland;Sachsen;Zittau;Bogatyniaer Straße 22;32601
