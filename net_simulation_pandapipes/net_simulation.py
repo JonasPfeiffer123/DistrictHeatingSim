@@ -86,6 +86,6 @@ def time_series_net(net, temperature_target,  qext_w_profiles, calc1, calc2):
     
     ow = OutputWriter(net, time_steps, output_path=None, log_variables=log_variables)
 
-    run_time_series.run_timeseries(net, time_steps, mode="all")
+    run_time_series.run_timeseries(net, time_steps, mode="all", max_iter=50)
 
     return net, ow.np_results

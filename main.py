@@ -190,12 +190,12 @@ def import_results_csv(filename):
     return time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump
 
 def generate_net(calc1=0, calc2=35040, filename='results_time_series_net1.csv'):
-    gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Zittau/Vorlauf.geojson')
-    gdf_rl = gpd.read_file('net_generation_QGIS/Beispiel Zittau/Rücklauf.geojson')
-    gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Zittau/HAST.geojson')
-    gdf_WEA = gpd.read_file('net_generation_QGIS/Beispiel Zittau/Erzeugeranlagen.geojson')
+    gdf_vl = gpd.read_file('net_generation/Vorlauf.geojson')
+    gdf_rl = gpd.read_file('net_generation/Rücklauf.geojson')
+    gdf_HAST = gpd.read_file('net_generation/HAST.geojson')
+    gdf_WEA = gpd.read_file('net_generation/Erzeugeranlagen.geojson')
 
-    net, yearly_time_steps, waerme_ges_W = initialize_net_profile_calculation(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, building_type="EFH", calc_method="VDI4655")
+    net, yearly_time_steps, waerme_ges_W = initialize_net_profile_calculation(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, building_type="HMF", calc_method="Datensatz")
     time_steps, net, net_results = thermohydraulic_time_series_net_calculation(net, yearly_time_steps, waerme_ges_W, calc1, calc2)
 
     mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, \
@@ -279,6 +279,6 @@ def auslegung_erzeuger(calc1=0, calc2=35040, filename='results_time_series_net.c
 
     Kreisdiagramm(data_labels_L, Anteile)
 
-#generate_net(calc1=0, calc2=87, filename='results/results_time_series_net1.csv') 
+#generate_net(calc1=0, calc2=8760, filename='results/results_time_series_net3.csv') 
 #auslegung_erzeuger(calc1=0, calc2= 8760, filename="heat_requirement/Summenlastgang_Scenocalc_skaliert_1MWh.csv", \
 #                   optimize=True, load_scale_factor=3000000, Gaspreis=70, Strompreis=150, Holzpreis=50, BEW="Ja")
