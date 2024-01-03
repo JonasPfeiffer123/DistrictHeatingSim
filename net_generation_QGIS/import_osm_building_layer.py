@@ -1,4 +1,4 @@
-from import_osm_street_layer_geojson import download_osm_street_data
+from net_generation_QGIS.import_osm_data_geojson import download_osm_street_data
 import geopandas as gpd
 import pandas as pd
 import numpy as np

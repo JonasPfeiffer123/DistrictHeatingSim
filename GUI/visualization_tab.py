@@ -10,7 +10,7 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 import folium
 
-from gui.dialogs import LayerGenerationDialog
+from gui.dialogs import LayerGenerationDialog, DownloadOSMDataDialog
 from gui.threads import NetGenerationThread, FileImportThread
 
 class VisualizationTab(QWidget):
@@ -38,9 +38,13 @@ class VisualizationTab(QWidget):
         importAction.triggered.connect(self.importNetData)
         fileMenu.addAction(importAction)
 
-        generateAction = QAction('Layer generieren', self)
-        generateAction.triggered.connect(self.openLayerGenerationDialog)
-        fileMenu.addAction(generateAction)
+        downloadAction = QAction('Layer generieren', self)
+        downloadAction.triggered.connect(self.openLayerGenerationDialog)
+        fileMenu.addAction(downloadAction)
+
+        downloadAction = QAction('Download OSM-Daten', self)
+        downloadAction.triggered.connect(self.openDownloadOSMDataDialog)
+        fileMenu.addAction(downloadAction)
 
         # Fügen Sie die Menüleiste dem Layout von tab1 hinzu
         layout.addWidget(self.menuBar)
@@ -79,6 +83,12 @@ class VisualizationTab(QWidget):
             # Hinzufügen der Daten zur Karte
             self.loadNetData(data)
         self.updateMapView()
+
+    def openDownloadOSMDataDialog(self):
+        dialog = DownloadOSMDataDialog(self)
+        if dialog.exec_() == QDialog.Accepted:
+            pass
+            #self.generateAndImportLayers(inputs)
 
     def openLayerGenerationDialog(self):
         dialog = LayerGenerationDialog(self)

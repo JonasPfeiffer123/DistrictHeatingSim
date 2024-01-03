@@ -4,6 +4,8 @@ from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, \
 
 import pandas as pd
 
+from net_generation_QGIS.import_osm_data_geojson import build_query, download_data, save_to_file
+
 class TechInputDialog(QDialog):
     def __init__(self, tech_type):
         super().__init__()
@@ -224,3 +226,99 @@ class LayerGenerationDialog(QDialog):
             "xCoord": self.xCoordInput.text(),
             "yCoord": self.yCoordInput.text()
         }
+    
+class DownloadOSMDataDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.tags_to_download = []
+        self.initUI()
+
+    def initUI(self):
+        self.setWindowTitle("Download OSM-Data")
+
+        layout = QVBoxLayout(self)
+
+        # Stadtname Eingabefeld
+        self.cityLineEdit, cityButton = self.createCityInput("Stadtname")
+        layout.addLayout(self.createFileInputLayout(self.cityLineEdit, cityButton))
+        
+        # Dateiname Eingabefeld
+        self.filenameLineEdit, fileButton = self.createFileInput("osm_data.geojson")
+        layout.addLayout(self.createFileInputLayout(self.filenameLineEdit, fileButton))
+
+        # Tags-Auswahl
+        self.tagsLayout = QFormLayout()
+        layout.addLayout(self.tagsLayout)
+        self.addTagField()  # Erstes Tag-Feld hinzufügen
+        
+        # Buttons zum Hinzufügen/Entfernen von Tags
+        self.addTagButton = QPushButton("Tag hinzufügen", self)
+        self.addTagButton.clicked.connect(self.addTagField)
+        self.removeTagButton = QPushButton("Tag entfernen", self)
+        self.removeTagButton.clicked.connect(self.removeTagField)
+        layout.addWidget(self.addTagButton)
+        layout.addWidget(self.removeTagButton)
+        
+        # Buttons für OK und Abbrechen
+        self.okButton = QPushButton("OK", self)
+        self.okButton.clicked.connect(self.onAccept)
+        self.cancelButton = QPushButton("Abbrechen", self)
+        self.cancelButton.clicked.connect(self.reject)
+        
+        layout.addWidget(self.okButton)
+        layout.addWidget(self.cancelButton)
+
+    def createFileInput(self, default_path):
+        lineEdit = QLineEdit(default_path)
+        button = QPushButton("Durchsuchen")
+        button.clicked.connect(lambda: self.selectFile(lineEdit))
+        return lineEdit, button
+
+    def createFileInputLayout(self, lineEdit, button):
+        layout = QHBoxLayout()
+        layout.addWidget(lineEdit)
+        layout.addWidget(button)
+        return layout
+
+    def selectFile(self, lineEdit):
+        filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", "", "All Files (*)")
+        if filename:
+            lineEdit.setText(filename)
+    
+    def createCityInput(self, placeholder_text):
+        lineEdit = QLineEdit(placeholder_text)
+        button = QPushButton("Stadt bestätigen")
+        button.clicked.connect(lambda: self.setCityName(lineEdit))
+        return lineEdit, button
+
+    def setCityName(self, lineEdit):
+        self.city_name = lineEdit.text()
+    
+    def addTagField(self):
+        keyLineEdit = QLineEdit()
+        valueLineEdit = QLineEdit()
+        self.tagsLayout.addRow(keyLineEdit, valueLineEdit)
+        self.tags_to_download.append((keyLineEdit, valueLineEdit))
+    
+    def removeTagField(self):
+        if self.tags_to_download:
+            keyLineEdit, valueLineEdit = self.tags_to_download.pop()
+            self.tagsLayout.removeRow(keyLineEdit)
+    
+    def onAccept(self):
+        # Daten sammeln
+        self.filename = self.filenameLineEdit.text()
+        tags = {key.text(): value.text() for key, value in self.tags_to_download if key.text()}
+        
+        # Abfrage erstellen und Daten herunterladen
+        self.downloadOSMData(self.city_name, tags, self.filename)
+        self.accept()
+
+    # Die Methode des Dialogs, die die anderen Funktionen aufruft
+    def downloadOSMData(self, city_name, tags, filename):
+        # Erstelle die Overpass-Abfrage
+        query = build_query(city_name, tags)
+        # Lade die Daten herunter
+        geojson_data = download_data(query)
+        # Speichere die Daten als GeoJSON
+        save_to_file(geojson_data, filename)

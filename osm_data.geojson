@@ -1,0 +1,6015 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.810011,
+            50.898522
+          ],
+          [
+            14.810294,
+            50.898809
+          ],
+          [
+            14.810374,
+            50.898906
+          ],
+          [
+            14.810586,
+            50.899161
+          ],
+          [
+            14.811402,
+            50.900145
+          ],
+          [
+            14.811488,
+            50.900258
+          ],
+          [
+            14.811984,
+            50.900899
+          ],
+          [
+            14.812874,
+            50.902106
+          ],
+          [
+            14.813033,
+            50.902375
+          ]
+        ]
+      },
+      "properties": {
+        "destination": "L\u00f6bau",
+        "highway": "secondary",
+        "lanes": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Goethestra\u00dfe",
+        "oneway": "yes",
+        "parking:condition:right": "free",
+        "parking:left": "no",
+        "parking:left:restriction": "no_parking",
+        "parking:right": "yes",
+        "parking:right:orientation": "parallel",
+        "ref": "S 132",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.798844,
+            50.894301
+          ],
+          [
+            14.800739,
+            50.894335
+          ],
+          [
+            14.800827,
+            50.894337
+          ],
+          [
+            14.800998,
+            50.894358
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:right": "lane",
+        "cycleway:right:lane": "advisory",
+        "highway": "secondary",
+        "lanes": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Mandaustra\u00dfe",
+        "oneway": "yes",
+        "parking:condition:right": "free",
+        "parking:left": "no",
+        "parking:left:restriction": "no_parking",
+        "parking:right": "yes",
+        "parking:right:orientation": "parallel",
+        "ref": "S 133",
+        "sidewalk": "both",
+        "sidewalk:both:surface": "asphalt",
+        "smoothness": "good",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.769019,
+            50.900172
+          ],
+          [
+            14.768904,
+            50.900184
+          ],
+          [
+            14.768829,
+            50.900192
+          ],
+          [
+            14.768624,
+            50.900216
+          ]
+        ]
+      },
+      "properties": {
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lit": "yes",
+        "maxspeed:type": "DE:urban",
+        "name": "Hauptstra\u00dfe",
+        "oneway": "yes",
+        "ref": "S 137",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.800801,
+            50.895944
+          ],
+          [
+            14.800385,
+            50.895777
+          ],
+          [
+            14.800329,
+            50.89575
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:right": "lane",
+        "cycleway:right:lane": "advisory",
+        "destination": "Olbersdorf;Zittauer Gebirge",
+        "destination:colour": ";brown",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "\u00c4u\u00dfere Oybiner Stra\u00dfe",
+        "oneway": "yes",
+        "sidewalk": "right",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.812184,
+            50.903173
+          ],
+          [
+            14.812117,
+            50.90304
+          ],
+          [
+            14.812021,
+            50.902881
+          ],
+          [
+            14.811688,
+            50.90238
+          ],
+          [
+            14.81085,
+            50.901151
+          ],
+          [
+            14.810371,
+            50.900421
+          ],
+          [
+            14.810036,
+            50.899903
+          ],
+          [
+            14.809899,
+            50.899705
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:right": "no",
+        "highway": "secondary",
+        "lanes": "1",
+        "maxspeed": "50",
+        "name": "Schillerstra\u00dfe",
+        "oneway": "yes",
+        "parking:condition:right": "free",
+        "parking:left": "no",
+        "parking:left:restriction": "no_parking",
+        "parking:right": "yes",
+        "parking:right:orientation": "parallel",
+        "sidewalk": "both",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.798607,
+            50.894277
+          ],
+          [
+            14.798573,
+            50.894261
+          ]
+        ]
+      },
+      "properties": {
+        "bridge": "yes",
+        "cycleway:both": "lane",
+        "cycleway:both:lane": "advisory",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "2",
+        "layer": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "maxweight:signed": "no",
+        "name": "\u00c4u\u00dfere Oybiner Stra\u00dfe",
+        "ref": "S 133",
+        "sidewalk": "both",
+        "sidewalk:both:surface": "concrete",
+        "smoothness": "good",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.793224,
+            50.899617
+          ],
+          [
+            14.793195,
+            50.899522
+          ],
+          [
+            14.793159,
+            50.899338
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "3",
+        "lanes:backward": "2",
+        "lanes:forward": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Rietschelstra\u00dfe",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.809868,
+            50.8931
+          ],
+          [
+            14.80998,
+            50.893002
+          ],
+          [
+            14.810153,
+            50.892849
+          ],
+          [
+            14.810381,
+            50.892674
+          ]
+        ]
+      },
+      "properties": {
+        "destination:colour:lanes:backward": "|white",
+        "destination:lanes:backward": "|Zentrum;Tierpark",
+        "destination:symbol:lanes:backward": "|hospital;",
+        "highway": "secondary",
+        "lanes": "3",
+        "lanes:backward": "2",
+        "lanes:forward": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Friedensstra\u00dfe",
+        "placement:forward": "left_of:1",
+        "ref": "S 132",
+        "sidewalk": "separate",
+        "smoothness": "good",
+        "surface": "asphalt",
+        "turn:lanes:backward": "through|right"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.818615,
+            50.883889
+          ],
+          [
+            14.818922,
+            50.883712
+          ],
+          [
+            14.819117,
+            50.883606
+          ]
+        ]
+      },
+      "properties": {
+        "bridge": "yes",
+        "cycleway:left": "no",
+        "cycleway:right": "track",
+        "cycleway:right:bicycle": "designated",
+        "cycleway:right:oneway": "yes",
+        "cycleway:right:segregated": "no",
+        "cycleway:right:traffic_sign": "240",
+        "highway": "secondary",
+        "layer": "1",
+        "maxspeed": "50",
+        "maxspeed:type": "sign",
+        "name": "Grottauer Br\u00fccke",
+        "sidewalk": "both",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.792668,
+            50.892601
+          ],
+          [
+            14.7927,
+            50.892568
+          ],
+          [
+            14.792855,
+            50.892436
+          ],
+          [
+            14.792965,
+            50.892392
+          ],
+          [
+            14.793126,
+            50.892327
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "no",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Schrammstra\u00dfe",
+        "parking:both": "no_parking",
+        "sidewalk": "both",
+        "smoothness": "good",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.796613,
+            50.891348
+          ],
+          [
+            14.796732,
+            50.891306
+          ],
+          [
+            14.797234,
+            50.891136
+          ],
+          [
+            14.797871,
+            50.890903
+          ],
+          [
+            14.798203,
+            50.890768
+          ],
+          [
+            14.798556,
+            50.890624
+          ],
+          [
+            14.798986,
+            50.890452
+          ],
+          [
+            14.799315,
+            50.890319
+          ],
+          [
+            14.799578,
+            50.890214
+          ],
+          [
+            14.800154,
+            50.889977
+          ],
+          [
+            14.800903,
+            50.889675
+          ],
+          [
+            14.80133,
+            50.889499
+          ],
+          [
+            14.801398,
+            50.889471
+          ],
+          [
+            14.802164,
+            50.889177
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway": "lane",
+        "cycleway:lane": "advisory",
+        "highway": "secondary",
+        "maxspeed": "50",
+        "name": "Schrammstra\u00dfe",
+        "parking:both": "no_parking",
+        "sidewalk": "both",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.79287,
+            50.898689
+          ],
+          [
+            14.792797,
+            50.898573
+          ],
+          [
+            14.792694,
+            50.89845
+          ],
+          [
+            14.792619,
+            50.898313
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway": "lane",
+        "cycleway:lane": "advisory",
+        "destination:backward": "Oppach",
+        "destination:colour:forward": "brown",
+        "destination:forward": "Zittauer Gebirge",
+        "destination:ref:backward": "B 96",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Goldbachstra\u00dfe",
+        "sidewalk": "both",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.769181,
+            50.900011
+          ],
+          [
+            14.769214,
+            50.900016
+          ],
+          [
+            14.769244,
+            50.900026
+          ],
+          [
+            14.769271,
+            50.900039
+          ],
+          [
+            14.769293,
+            50.900056
+          ],
+          [
+            14.76931,
+            50.900077
+          ],
+          [
+            14.769319,
+            50.9001
+          ],
+          [
+            14.76932,
+            50.900123
+          ],
+          [
+            14.769313,
+            50.900146
+          ],
+          [
+            14.769298,
+            50.900167
+          ],
+          [
+            14.769276,
+            50.900185
+          ],
+          [
+            14.769248,
+            50.9002
+          ],
+          [
+            14.769215,
+            50.900211
+          ],
+          [
+            14.76918,
+            50.900217
+          ],
+          [
+            14.769143,
+            50.900218
+          ],
+          [
+            14.769106,
+            50.900213
+          ],
+          [
+            14.769072,
+            50.900204
+          ],
+          [
+            14.769043,
+            50.90019
+          ],
+          [
+            14.769019,
+            50.900172
+          ],
+          [
+            14.769,
+            50.900148
+          ],
+          [
+            14.768991,
+            50.900122
+          ],
+          [
+            14.768993,
+            50.900096
+          ],
+          [
+            14.769002,
+            50.900076
+          ],
+          [
+            14.769018,
+            50.900057
+          ],
+          [
+            14.769038,
+            50.900041
+          ],
+          [
+            14.769062,
+            50.900028
+          ],
+          [
+            14.769088,
+            50.900019
+          ],
+          [
+            14.769116,
+            50.900013
+          ],
+          [
+            14.769146,
+            50.90001
+          ],
+          [
+            14.769181,
+            50.900011
+          ]
+        ]
+      },
+      "properties": {
+        "hazmat": "designated",
+        "highway": "secondary",
+        "junction": "roundabout",
+        "lane_markings": "no",
+        "lit": "yes",
+        "maxspeed:type": "DE:urban",
+        "surface": "asphalt",
+        "unsigned_ref": "S 137"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.812462,
+            50.903831
+          ],
+          [
+            14.812786,
+            50.903756
+          ],
+          [
+            14.812949,
+            50.903703
+          ],
+          [
+            14.813266,
+            50.903598
+          ],
+          [
+            14.813661,
+            50.903468
+          ],
+          [
+            14.813721,
+            50.903448
+          ],
+          [
+            14.814438,
+            50.903183
+          ],
+          [
+            14.815051,
+            50.902956
+          ],
+          [
+            14.815127,
+            50.902928
+          ],
+          [
+            14.815379,
+            50.902833
+          ],
+          [
+            14.815949,
+            50.90262
+          ],
+          [
+            14.816304,
+            50.902488
+          ],
+          [
+            14.817271,
+            50.902128
+          ],
+          [
+            14.81794,
+            50.901883
+          ],
+          [
+            14.818623,
+            50.901629
+          ],
+          [
+            14.81882,
+            50.901553
+          ],
+          [
+            14.819461,
+            50.901325
+          ],
+          [
+            14.819624,
+            50.901239
+          ],
+          [
+            14.819838,
+            50.901131
+          ],
+          [
+            14.819982,
+            50.901058
+          ],
+          [
+            14.820068,
+            50.901001
+          ],
+          [
+            14.820468,
+            50.900739
+          ],
+          [
+            14.820656,
+            50.900626
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Leipziger Stra\u00dfe",
+        "ref": "S 146",
+        "smoothness": "intermediate",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.798573,
+            50.894261
+          ],
+          [
+            14.798201,
+            50.894096
+          ]
+        ]
+      },
+      "properties": {
+        "bridge": "yes",
+        "cycleway:both": "lane",
+        "cycleway:both:lane": "advisory",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "2",
+        "layer": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "maxweight:signed": "no",
+        "ref": "S 133",
+        "shoulder": "no",
+        "sidewalk": "both",
+        "sidewalk:both:surface": "concrete",
+        "smoothness": "good",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.792437,
+            50.894658
+          ],
+          [
+            14.792456,
+            50.894253
+          ]
+        ]
+      },
+      "properties": {
+        "bridge": "yes",
+        "highway": "secondary",
+        "layer": "1",
+        "maxspeed": "50",
+        "maxspeed:type": "sign",
+        "name": "Goldbachstra\u00dfe",
+        "sidewalk": "both",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.792456,
+            50.894253
+          ],
+          [
+            14.792459,
+            50.89421
+          ],
+          [
+            14.792465,
+            50.894004
+          ],
+          [
+            14.792509,
+            50.893427
+          ],
+          [
+            14.792536,
+            50.893077
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Goldbachstra\u00dfe",
+        "sidewalk": "both",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.810066,
+            50.888864
+          ],
+          [
+            14.80996,
+            50.888695
+          ],
+          [
+            14.809869,
+            50.888526
+          ]
+        ]
+      },
+      "properties": {
+        "bridge": "yes",
+        "bridge:name": "Prinz-Friedrich-August-Br\u00fccke",
+        "check_date": "2022-02-01",
+        "cycleway:both": "no",
+        "highway": "secondary",
+        "lanes": "2",
+        "layer": "1",
+        "maxspeed": "50",
+        "maxweight:signed": "no",
+        "oneway": "no",
+        "ref": "S 132",
+        "sidewalk": "both",
+        "sidewalk:both:surface": "concrete",
+        "smoothness": "excellent",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.809869,
+            50.888526
+          ],
+          [
+            14.809838,
+            50.888467
+          ]
+        ]
+      },
+      "properties": {
+        "check_date": "2022-02-01",
+        "cycleway:both": "no",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed:type": "DE:urban",
+        "name": "S\u00fcdstra\u00dfe",
+        "opening_date": "2022-11-22",
+        "ref": "S 132",
+        "sidewalk": "both",
+        "sidewalk:both:surface": "concrete",
+        "smoothness": "excellent",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.813345,
+            50.888658
+          ],
+          [
+            14.813561,
+            50.888322
+          ]
+        ]
+      },
+      "properties": {
+        "bridge": "yes",
+        "bridge:name": "K\u00f6nigin-Carola-Br\u00fccke",
+        "highway": "secondary",
+        "lanes": "3",
+        "lanes:backward": "1",
+        "lanes:forward": "2",
+        "layer": "1",
+        "maxspeed": "50",
+        "maxweight:signed": "no",
+        "name": "Friedensstra\u00dfe",
+        "ref": "S 132a",
+        "sidewalk": "separate",
+        "smoothness": "good",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.813561,
+            50.888322
+          ],
+          [
+            14.813603,
+            50.888266
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "2",
+        "maxspeed": "50",
+        "maxspeed:type": "sign",
+        "name": "Friedensstra\u00dfe",
+        "sidewalk": "separate",
+        "smoothness": "good",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.812436,
+            50.889797
+          ],
+          [
+            14.812495,
+            50.889732
+          ],
+          [
+            14.81262,
+            50.889593
+          ],
+          [
+            14.812679,
+            50.889528
+          ],
+          [
+            14.812817,
+            50.889375
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "3",
+        "lanes:backward": "1",
+        "lanes:forward": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Friedensstra\u00dfe",
+        "ref": "S 132a",
+        "sidewalk": "separate",
+        "smoothness": "good",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.809466,
+            50.88454
+          ],
+          [
+            14.809573,
+            50.884088
+          ],
+          [
+            14.809719,
+            50.883469
+          ],
+          [
+            14.809871,
+            50.882827
+          ],
+          [
+            14.809934,
+            50.88258
+          ],
+          [
+            14.809967,
+            50.882453
+          ],
+          [
+            14.810285,
+            50.881205
+          ],
+          [
+            14.810589,
+            50.880014
+          ],
+          [
+            14.810705,
+            50.879523
+          ],
+          [
+            14.810796,
+            50.879162
+          ],
+          [
+            14.810858,
+            50.878912
+          ],
+          [
+            14.810917,
+            50.878681
+          ],
+          [
+            14.811058,
+            50.878128
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway": "lane",
+        "cycleway:lane": "advisory",
+        "highway": "secondary",
+        "maxspeed": "50",
+        "name": "S\u00fcdstra\u00dfe",
+        "ref": "S 132",
+        "source:maxspeed": "DE:urban",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.8124,
+            50.905994
+          ],
+          [
+            14.812476,
+            50.905942
+          ],
+          [
+            14.812522,
+            50.905886
+          ],
+          [
+            14.812549,
+            50.905809
+          ],
+          [
+            14.812565,
+            50.905517
+          ],
+          [
+            14.812589,
+            50.905001
+          ],
+          [
+            14.812596,
+            50.904866
+          ],
+          [
+            14.812593,
+            50.904678
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "no",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Schillerstra\u00dfe",
+        "ref": "S 132",
+        "sidewalk": "both",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.792468,
+            50.888304
+          ],
+          [
+            14.79328,
+            50.888966
+          ],
+          [
+            14.793488,
+            50.889138
+          ],
+          [
+            14.793871,
+            50.889465
+          ],
+          [
+            14.794448,
+            50.890015
+          ],
+          [
+            14.794511,
+            50.890083
+          ],
+          [
+            14.795036,
+            50.890648
+          ]
+        ]
+      },
+      "properties": {
+        "hazmat": "designated",
+        "highway": "secondary",
+        "maxspeed": "50",
+        "name": "Humboldtstra\u00dfe",
+        "ref": "S 133",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.817538,
+            50.884538
+          ],
+          [
+            14.81754,
+            50.884484
+          ],
+          [
+            14.817661,
+            50.884396
+          ],
+          [
+            14.817966,
+            50.884215
+          ],
+          [
+            14.818185,
+            50.884088
+          ],
+          [
+            14.818383,
+            50.883989
+          ],
+          [
+            14.818615,
+            50.883889
+          ]
+        ]
+      },
+      "properties": {
+        "fixme": "anderes Stra\u00dfenst\u00fcck f\u00fcr Gegenverkehr in Relationen einbinden; nicht ganz klar wie radweg verl\u00e4uft; oneway auch f\u00fcr Rad?",
+        "highway": "secondary",
+        "lane_markings": "no",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Friedensstra\u00dfe",
+        "oneway": "yes",
+        "oneway:bicycle": "no",
+        "ref": "S 132a",
+        "sidewalk": "left",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.812817,
+            50.889375
+          ],
+          [
+            14.81291,
+            50.889257
+          ],
+          [
+            14.813101,
+            50.889009
+          ],
+          [
+            14.813284,
+            50.888757
+          ],
+          [
+            14.813333,
+            50.888677
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "3",
+        "lanes:backward": "2",
+        "lanes:forward": "1",
+        "maxspeed": "50",
+        "name": "Friedensstra\u00dfe",
+        "ref": "S 132a",
+        "sidewalk": "separate",
+        "smoothness": "excellent",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.793493,
+            50.854841
+          ],
+          [
+            14.793445,
+            50.854976
+          ],
+          [
+            14.793425,
+            50.85504
+          ],
+          [
+            14.793456,
+            50.855895
+          ],
+          [
+            14.793283,
+            50.856642
+          ]
+        ]
+      },
+      "properties": {
+        "alt_name": "Hartauer Stra\u00dfe",
+        "highway": "secondary",
+        "maxspeed": "70",
+        "name": "L\u00fcckendorfer Stra\u00dfe",
+        "oneway": "no",
+        "ref": "S 132",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.811738,
+            50.887253
+          ],
+          [
+            14.811339,
+            50.8872
+          ],
+          [
+            14.81098,
+            50.887154
+          ],
+          [
+            14.81052,
+            50.887109
+          ],
+          [
+            14.810236,
+            50.887097
+          ],
+          [
+            14.80986,
+            50.887091
+          ],
+          [
+            14.809428,
+            50.887086
+          ],
+          [
+            14.809216,
+            50.887083
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "no",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Schrammstra\u00dfe",
+        "parking:both": "no_parking",
+        "sidewalk": "both",
+        "sidewalk:both:surface": "asphalt",
+        "smoothness": "good",
+        "source:maxspeed": "DE:urban",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.793493,
+            50.854841
+          ],
+          [
+            14.793685,
+            50.854491
+          ],
+          [
+            14.793839,
+            50.854065
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "maxspeed": "70",
+        "oneway": "no",
+        "ref": "S 132",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.807544,
+            50.905803
+          ],
+          [
+            14.80827,
+            50.905862
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "no",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "L\u00f6bauer Platz",
+        "ref": "S 132",
+        "sidewalk": "both",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.794166,
+            50.851066
+          ],
+          [
+            14.794,
+            50.849971
+          ],
+          [
+            14.79386,
+            50.849354
+          ],
+          [
+            14.793777,
+            50.848907
+          ],
+          [
+            14.793733,
+            50.848404
+          ],
+          [
+            14.793605,
+            50.847574
+          ],
+          [
+            14.793545,
+            50.846706
+          ],
+          [
+            14.79367,
+            50.846145
+          ],
+          [
+            14.793922,
+            50.845522
+          ],
+          [
+            14.794167,
+            50.844836
+          ],
+          [
+            14.794224,
+            50.844402
+          ],
+          [
+            14.794345,
+            50.843123
+          ],
+          [
+            14.79442,
+            50.842504
+          ],
+          [
+            14.794472,
+            50.842081
+          ],
+          [
+            14.794572,
+            50.841841
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "maxspeed": "100",
+        "oneway": "no",
+        "ref": "S 132",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.808196,
+            50.887188
+          ],
+          [
+            14.807522,
+            50.887282
+          ],
+          [
+            14.806869,
+            50.887414
+          ],
+          [
+            14.806074,
+            50.887627
+          ],
+          [
+            14.805344,
+            50.887886
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "lane",
+        "cycleway:both:lane": "advisory",
+        "highway": "secondary",
+        "lane_markings": "no",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Schrammstra\u00dfe",
+        "parking:both": "no_parking",
+        "sidewalk": "both",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.813947,
+            50.887707
+          ],
+          [
+            14.814096,
+            50.887477
+          ],
+          [
+            14.81414,
+            50.887408
+          ],
+          [
+            14.814244,
+            50.887262
+          ],
+          [
+            14.81436,
+            50.887122
+          ],
+          [
+            14.81449,
+            50.886991
+          ],
+          [
+            14.81477,
+            50.886719
+          ],
+          [
+            14.815067,
+            50.886447
+          ],
+          [
+            14.815456,
+            50.886097
+          ],
+          [
+            14.815938,
+            50.885665
+          ],
+          [
+            14.816113,
+            50.885515
+          ],
+          [
+            14.816506,
+            50.885179
+          ],
+          [
+            14.817206,
+            50.884747
+          ],
+          [
+            14.817538,
+            50.884538
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Friedensstra\u00dfe",
+        "ref": "S 132a",
+        "sidewalk": "separate",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.809216,
+            50.887083
+          ],
+          [
+            14.80922,
+            50.886984
+          ],
+          [
+            14.809236,
+            50.886584
+          ],
+          [
+            14.809251,
+            50.886205
+          ],
+          [
+            14.80926,
+            50.886092
+          ],
+          [
+            14.809308,
+            50.88547
+          ],
+          [
+            14.809342,
+            50.885235
+          ],
+          [
+            14.809382,
+            50.884949
+          ],
+          [
+            14.809423,
+            50.884751
+          ],
+          [
+            14.809466,
+            50.88454
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "no",
+        "highway": "secondary",
+        "maxspeed": "50",
+        "name": "S\u00fcdstra\u00dfe",
+        "ref": "S 132",
+        "sidewalk": "both",
+        "source:maxspeed": "DE:urban",
+        "surface": "sett"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.795875,
+            50.891566
+          ],
+          [
+            14.796056,
+            50.891778
+          ],
+          [
+            14.79668,
+            50.892462
+          ],
+          [
+            14.797022,
+            50.892842
+          ],
+          [
+            14.797836,
+            50.893703
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "lane",
+        "cycleway:both:lane": "advisory",
+        "destination:colour:forward": "white",
+        "destination:forward": "Zentrum",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Humboldtstra\u00dfe",
+        "parking:both": "no_parking",
+        "ref": "S 133",
+        "sidewalk": "both",
+        "smoothness": "good",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.795334,
+            50.859881
+          ],
+          [
+            14.796309,
+            50.860642
+          ],
+          [
+            14.79652,
+            50.860806
+          ],
+          [
+            14.79873,
+            50.862545
+          ]
+        ]
+      },
+      "properties": {
+        "alt_name": "Hartauer Stra\u00dfe",
+        "highway": "secondary",
+        "lit": "yes",
+        "maxspeed": "60",
+        "name": "L\u00fcckendorfer Stra\u00dfe",
+        "ref": "S 132",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.794628,
+            50.859315
+          ],
+          [
+            14.794974,
+            50.859585
+          ],
+          [
+            14.795071,
+            50.859662
+          ],
+          [
+            14.795334,
+            50.859881
+          ]
+        ]
+      },
+      "properties": {
+        "alt_name": "Hartauer Stra\u00dfe",
+        "highway": "secondary",
+        "maxspeed": "60",
+        "name": "L\u00fcckendorfer Stra\u00dfe",
+        "ref": "S 132",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.800186,
+            50.896678
+          ],
+          [
+            14.800169,
+            50.896546
+          ],
+          [
+            14.800179,
+            50.896458
+          ],
+          [
+            14.800253,
+            50.896171
+          ],
+          [
+            14.800336,
+            50.895854
+          ],
+          [
+            14.800345,
+            50.8958
+          ],
+          [
+            14.800329,
+            50.89575
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:right": "no",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "oneway": "yes",
+        "ref": "S 133",
+        "sidewalk": "right",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.813333,
+            50.888677
+          ],
+          [
+            14.813345,
+            50.888658
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "2",
+        "maxspeed:type": "DE:urban",
+        "name": "Friedensstra\u00dfe",
+        "ref": "S 132a",
+        "sidewalk": "separate",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.813603,
+            50.888266
+          ],
+          [
+            14.813947,
+            50.887707
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "3",
+        "lanes:backward": "2",
+        "lanes:forward": "1",
+        "maxspeed": "50",
+        "name": "Friedensstra\u00dfe",
+        "ref": "S 132a",
+        "sidewalk": "separate",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.795036,
+            50.890648
+          ],
+          [
+            14.795099,
+            50.890714
+          ],
+          [
+            14.795167,
+            50.890789
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "lane",
+        "cycleway:both:lane": "advisory",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "maxheight": "4",
+        "maxspeed": "50",
+        "name": "Humboldtstra\u00dfe",
+        "ref": "S 133",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.795167,
+            50.890789
+          ],
+          [
+            14.795222,
+            50.89085
+          ],
+          [
+            14.795238,
+            50.890866
+          ],
+          [
+            14.795756,
+            50.891433
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "lane",
+        "cycleway:both:lane": "advisory",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Humboldtstra\u00dfe",
+        "parking:both": "no_parking",
+        "ref": "S 133",
+        "sidewalk": "both",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.809329,
+            50.887624
+          ],
+          [
+            14.809274,
+            50.887502
+          ],
+          [
+            14.80925,
+            50.887413
+          ],
+          [
+            14.809237,
+            50.887319
+          ],
+          [
+            14.809228,
+            50.887214
+          ],
+          [
+            14.809216,
+            50.887083
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "no",
+        "highway": "secondary",
+        "lanes": "3",
+        "lanes:backward": "1",
+        "lanes:forward": "2",
+        "maxspeed": "50",
+        "name": "S\u00fcdstra\u00dfe",
+        "ref": "S 132",
+        "sidewalk": "both",
+        "sidewalk:both:surface": "asphalt",
+        "smoothness": "intermediate",
+        "source:maxspeed": "DE:urban",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.808329,
+            50.905866
+          ],
+          [
+            14.809318,
+            50.905966
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "no",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Oststra\u00dfe",
+        "ref": "S 132",
+        "sidewalk": "both",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.79873,
+            50.862545
+          ],
+          [
+            14.798764,
+            50.862573
+          ],
+          [
+            14.799311,
+            50.863006
+          ],
+          [
+            14.799348,
+            50.863037
+          ],
+          [
+            14.799374,
+            50.863059
+          ],
+          [
+            14.799442,
+            50.863112
+          ],
+          [
+            14.799461,
+            50.863128
+          ],
+          [
+            14.799992,
+            50.86354
+          ],
+          [
+            14.800025,
+            50.863566
+          ],
+          [
+            14.80097,
+            50.864315
+          ],
+          [
+            14.801257,
+            50.864542
+          ],
+          [
+            14.80159,
+            50.864798
+          ],
+          [
+            14.802298,
+            50.865339
+          ],
+          [
+            14.802448,
+            50.865453
+          ],
+          [
+            14.803122,
+            50.865984
+          ],
+          [
+            14.80342,
+            50.866212
+          ],
+          [
+            14.80359,
+            50.866342
+          ]
+        ]
+      },
+      "properties": {
+        "alt_name": "Hartauer Stra\u00dfe",
+        "cycleway:both": "no",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "60",
+        "name": "L\u00fcckendorfer Stra\u00dfe",
+        "oneway": "no",
+        "ref": "S 132",
+        "sidewalk": "right",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.793164,
+            50.857657
+          ],
+          [
+            14.793156,
+            50.857829
+          ],
+          [
+            14.793177,
+            50.857951
+          ],
+          [
+            14.793223,
+            50.858062
+          ],
+          [
+            14.793288,
+            50.858171
+          ],
+          [
+            14.793388,
+            50.858294
+          ],
+          [
+            14.793462,
+            50.858375
+          ],
+          [
+            14.793739,
+            50.858616
+          ],
+          [
+            14.794313,
+            50.859072
+          ],
+          [
+            14.794516,
+            50.859233
+          ],
+          [
+            14.794628,
+            50.859315
+          ]
+        ]
+      },
+      "properties": {
+        "alt_name": "Hartauer Stra\u00dfe",
+        "highway": "secondary",
+        "maxspeed": "50",
+        "name": "L\u00fcckendorfer Stra\u00dfe",
+        "oneway": "no",
+        "ref": "S 132",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.812462,
+            50.903831
+          ],
+          [
+            14.81232,
+            50.903426
+          ],
+          [
+            14.812233,
+            50.903263
+          ],
+          [
+            14.812184,
+            50.903173
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "no",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxheight": "default",
+        "maxspeed": "50",
+        "name": "Schillerstra\u00dfe",
+        "ref": "S 132",
+        "sidewalk": "both",
+        "sidewalk:both:surface": "asphalt",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.77627,
+            50.89961
+          ],
+          [
+            14.775147,
+            50.899682
+          ],
+          [
+            14.774833,
+            50.899702
+          ],
+          [
+            14.773872,
+            50.89976
+          ],
+          [
+            14.773715,
+            50.899768
+          ],
+          [
+            14.773687,
+            50.89977
+          ],
+          [
+            14.773615,
+            50.899774
+          ],
+          [
+            14.772895,
+            50.899825
+          ],
+          [
+            14.772835,
+            50.899828
+          ],
+          [
+            14.77164,
+            50.899899
+          ]
+        ]
+      },
+      "properties": {
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Hauptstra\u00dfe",
+        "ref": "S 137",
+        "source:maxspeed": "DE:urban",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.79243,
+            50.896407
+          ],
+          [
+            14.792429,
+            50.896207
+          ],
+          [
+            14.79243,
+            50.89604
+          ],
+          [
+            14.79244,
+            50.895476
+          ],
+          [
+            14.792434,
+            50.894716
+          ],
+          [
+            14.792437,
+            50.894658
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Goldbachstra\u00dfe",
+        "sidewalk": "both",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.805702,
+            50.907248
+          ],
+          [
+            14.805822,
+            50.90703
+          ],
+          [
+            14.805889,
+            50.906918
+          ],
+          [
+            14.806059,
+            50.906692
+          ],
+          [
+            14.80619,
+            50.906556
+          ],
+          [
+            14.806466,
+            50.906302
+          ],
+          [
+            14.806656,
+            50.906155
+          ],
+          [
+            14.806829,
+            50.906044
+          ],
+          [
+            14.80701,
+            50.905944
+          ],
+          [
+            14.807186,
+            50.905853
+          ],
+          [
+            14.80731,
+            50.905803
+          ],
+          [
+            14.807408,
+            50.905796
+          ],
+          [
+            14.807544,
+            50.905803
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "L\u00f6bauer Stra\u00dfe",
+        "ref": "S 132",
+        "sidewalk:left": "separate",
+        "sidewalk:right": "no",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.809899,
+            50.899705
+          ],
+          [
+            14.809843,
+            50.899619
+          ],
+          [
+            14.809793,
+            50.899541
+          ],
+          [
+            14.809315,
+            50.898845
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:right": "no",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Schillerstra\u00dfe",
+        "oneway": "yes",
+        "parking:both": "no_parking",
+        "sidewalk": "both",
+        "sidewalk:both:surface": "asphalt",
+        "smoothness": "good",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.813033,
+            50.902375
+          ],
+          [
+            14.81302,
+            50.902416
+          ],
+          [
+            14.812454,
+            50.902936
+          ],
+          [
+            14.812338,
+            50.903031
+          ],
+          [
+            14.812184,
+            50.903173
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:right": "no",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Goethestra\u00dfe",
+        "oneway": "yes",
+        "parking:both": "no_parking",
+        "ref": "S 132",
+        "sidewalk": "both",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.763034,
+            50.900816
+          ],
+          [
+            14.762716,
+            50.900767
+          ],
+          [
+            14.762277,
+            50.9007
+          ],
+          [
+            14.761283,
+            50.900552
+          ]
+        ]
+      },
+      "properties": {
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "2",
+        "maxspeed": "50",
+        "name": "Hauptstra\u00dfe",
+        "ref": "S 137",
+        "smoothness": "good",
+        "source:maxspeed": "DE:urban",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.793049,
+            50.838597
+          ],
+          [
+            14.793022,
+            50.838484
+          ],
+          [
+            14.792866,
+            50.838205
+          ],
+          [
+            14.792825,
+            50.838091
+          ],
+          [
+            14.792772,
+            50.837898
+          ],
+          [
+            14.792746,
+            50.837664
+          ],
+          [
+            14.792718,
+            50.837324
+          ],
+          [
+            14.792693,
+            50.836896
+          ],
+          [
+            14.79265,
+            50.83658
+          ],
+          [
+            14.792615,
+            50.836428
+          ],
+          [
+            14.792596,
+            50.836362
+          ],
+          [
+            14.79232,
+            50.835779
+          ],
+          [
+            14.792149,
+            50.83546
+          ],
+          [
+            14.792045,
+            50.835309
+          ],
+          [
+            14.79194,
+            50.835194
+          ],
+          [
+            14.79177,
+            50.835044
+          ],
+          [
+            14.791513,
+            50.834885
+          ],
+          [
+            14.791169,
+            50.834705
+          ],
+          [
+            14.790427,
+            50.834359
+          ],
+          [
+            14.789955,
+            50.834165
+          ],
+          [
+            14.789772,
+            50.834112
+          ],
+          [
+            14.789271,
+            50.833977
+          ],
+          [
+            14.789016,
+            50.833881
+          ],
+          [
+            14.788695,
+            50.833749
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "maxspeed": "100",
+        "oneway": "no",
+        "ref": "S 132",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.804577,
+            50.911596
+          ],
+          [
+            14.805004,
+            50.910077
+          ],
+          [
+            14.805186,
+            50.909261
+          ],
+          [
+            14.805275,
+            50.908913
+          ],
+          [
+            14.805468,
+            50.908154
+          ]
+        ]
+      },
+      "properties": {
+        "bicycle": "use_sidepath",
+        "highway": "secondary",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "L\u00f6bauer Stra\u00dfe",
+        "ref": "S 132",
+        "sidewalk": "separate",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.785476,
+            50.899081
+          ],
+          [
+            14.785326,
+            50.899074
+          ],
+          [
+            14.785121,
+            50.899063
+          ]
+        ]
+      },
+      "properties": {
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "maxspeed:type": "DE:urban",
+        "name": "\u00c4u\u00dfere Weberstra\u00dfe",
+        "oneway": "yes",
+        "ref": "S 137",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.794572,
+            50.841841
+          ],
+          [
+            14.794652,
+            50.841781
+          ],
+          [
+            14.794797,
+            50.841709
+          ],
+          [
+            14.794904,
+            50.84167
+          ],
+          [
+            14.794956,
+            50.841651
+          ],
+          [
+            14.795195,
+            50.841594
+          ],
+          [
+            14.795348,
+            50.841542
+          ],
+          [
+            14.796053,
+            50.841358
+          ],
+          [
+            14.796484,
+            50.841202
+          ],
+          [
+            14.797032,
+            50.840987
+          ],
+          [
+            14.79821,
+            50.840474
+          ],
+          [
+            14.798791,
+            50.840223
+          ],
+          [
+            14.798955,
+            50.84013
+          ],
+          [
+            14.798995,
+            50.840072
+          ],
+          [
+            14.799012,
+            50.839971
+          ],
+          [
+            14.799003,
+            50.839919
+          ],
+          [
+            14.798957,
+            50.839851
+          ],
+          [
+            14.798884,
+            50.839806
+          ],
+          [
+            14.79881,
+            50.839774
+          ],
+          [
+            14.798672,
+            50.839751
+          ],
+          [
+            14.798563,
+            50.83975
+          ],
+          [
+            14.79815,
+            50.839815
+          ],
+          [
+            14.797768,
+            50.839887
+          ],
+          [
+            14.796289,
+            50.839994
+          ],
+          [
+            14.795612,
+            50.840076
+          ],
+          [
+            14.79486,
+            50.840174
+          ],
+          [
+            14.794507,
+            50.840232
+          ],
+          [
+            14.79418,
+            50.840278
+          ],
+          [
+            14.793888,
+            50.840279
+          ],
+          [
+            14.793684,
+            50.840259
+          ],
+          [
+            14.793384,
+            50.840187
+          ],
+          [
+            14.793182,
+            50.840116
+          ],
+          [
+            14.793041,
+            50.840048
+          ],
+          [
+            14.792906,
+            50.839969
+          ],
+          [
+            14.792776,
+            50.839849
+          ],
+          [
+            14.792724,
+            50.839729
+          ],
+          [
+            14.792698,
+            50.839628
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "maxspeed": "100",
+        "oneway": "no",
+        "ref": "S 132",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.786859,
+            50.833203
+          ],
+          [
+            14.786666,
+            50.833142
+          ],
+          [
+            14.786482,
+            50.833071
+          ],
+          [
+            14.786301,
+            50.832954
+          ],
+          [
+            14.786172,
+            50.832876
+          ],
+          [
+            14.786058,
+            50.832764
+          ],
+          [
+            14.785992,
+            50.832646
+          ],
+          [
+            14.785946,
+            50.832535
+          ],
+          [
+            14.785931,
+            50.83245
+          ],
+          [
+            14.785986,
+            50.832235
+          ],
+          [
+            14.786228,
+            50.831747
+          ],
+          [
+            14.786306,
+            50.831523
+          ],
+          [
+            14.786406,
+            50.831052
+          ],
+          [
+            14.786467,
+            50.830833
+          ],
+          [
+            14.786533,
+            50.830521
+          ],
+          [
+            14.786537,
+            50.830342
+          ],
+          [
+            14.786522,
+            50.830249
+          ],
+          [
+            14.786471,
+            50.830133
+          ],
+          [
+            14.786422,
+            50.830051
+          ],
+          [
+            14.7862,
+            50.829792
+          ],
+          [
+            14.785923,
+            50.829582
+          ],
+          [
+            14.78549,
+            50.829308
+          ],
+          [
+            14.785233,
+            50.829143
+          ],
+          [
+            14.785053,
+            50.829025
+          ],
+          [
+            14.784718,
+            50.828768
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "maxspeed": "100",
+        "oneway": "no",
+        "ref": "S 132",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.799407,
+            50.894942
+          ],
+          [
+            14.799352,
+            50.894893
+          ],
+          [
+            14.798716,
+            50.894361
+          ],
+          [
+            14.798682,
+            50.894335
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:right": "lane",
+        "cycleway:right:lane": "advisory",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "\u00c4u\u00dfere Oybiner Stra\u00dfe",
+        "oneway": "yes",
+        "parking:condition:right": "free",
+        "parking:left": "no",
+        "parking:left:restriction": "no_parking",
+        "parking:right": "yes",
+        "parking:right:orientation": "parallel",
+        "ref": "S 133",
+        "sidewalk": "both",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.760484,
+            50.900411
+          ],
+          [
+            14.759846,
+            50.900245
+          ]
+        ]
+      },
+      "properties": {
+        "bridge": "yes",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "2",
+        "layer": "1",
+        "maxspeed": "50",
+        "name": "Hauptstra\u00dfe",
+        "ref": "S 137",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.785643,
+            50.899084
+          ],
+          [
+            14.785476,
+            50.899081
+          ]
+        ]
+      },
+      "properties": {
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "maxspeed:type": "DE:urban",
+        "name": "\u00c4u\u00dfere Weberstra\u00dfe",
+        "oneway": "yes",
+        "ref": "S 137",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.806455,
+            50.868579
+          ],
+          [
+            14.806827,
+            50.86887
+          ],
+          [
+            14.808766,
+            50.87039
+          ],
+          [
+            14.808916,
+            50.870497
+          ],
+          [
+            14.809192,
+            50.870715
+          ],
+          [
+            14.809377,
+            50.870883
+          ],
+          [
+            14.809464,
+            50.87098
+          ],
+          [
+            14.809639,
+            50.871192
+          ]
+        ]
+      },
+      "properties": {
+        "alt_name": "Hartauer Stra\u00dfe",
+        "highway": "secondary",
+        "maxspeed": "70",
+        "name": "L\u00fcckendorfer Stra\u00dfe",
+        "oneway": "no",
+        "ref": "S 132",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.798201,
+            50.894096
+          ],
+          [
+            14.798059,
+            50.894023
+          ]
+        ]
+      },
+      "properties": {
+        "bridge": "yes",
+        "cycleway:right": "no",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "1",
+        "layer": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "maxweight:signed": "no",
+        "oneway": "yes",
+        "ref": "S 133",
+        "shoulder": "no",
+        "sidewalk": "right",
+        "sidewalk:right:surface": "paving_stones",
+        "smoothness": "good",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.797984,
+            50.89382
+          ],
+          [
+            14.798038,
+            50.893821
+          ],
+          [
+            14.798088,
+            50.893832
+          ],
+          [
+            14.79813,
+            50.893853
+          ],
+          [
+            14.798159,
+            50.893882
+          ],
+          [
+            14.798172,
+            50.893914
+          ],
+          [
+            14.798169,
+            50.893947
+          ],
+          [
+            14.798149,
+            50.893977
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:right": "no",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "junction": "roundabout",
+        "lanes": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "ref": "S 133",
+        "sidewalk": "right",
+        "source": "survey; gps",
+        "source:maxspeed": "sign",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.792536,
+            50.893077
+          ],
+          [
+            14.79254,
+            50.893029
+          ]
+        ]
+      },
+      "properties": {
+        "bridge": "yes",
+        "highway": "secondary",
+        "layer": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Goldbachstra\u00dfe",
+        "sidewalk": "both",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.79254,
+            50.893029
+          ],
+          [
+            14.792558,
+            50.892876
+          ],
+          [
+            14.792573,
+            50.892771
+          ],
+          [
+            14.79262,
+            50.89267
+          ],
+          [
+            14.792668,
+            50.892601
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "no",
+        "highway": "secondary",
+        "lane_markings": "no",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Goldbachstra\u00dfe",
+        "sidewalk": "both",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.818615,
+            50.883889
+          ],
+          [
+            14.818533,
+            50.883963
+          ],
+          [
+            14.818443,
+            50.884044
+          ],
+          [
+            14.818252,
+            50.884181
+          ],
+          [
+            14.817777,
+            50.884458
+          ],
+          [
+            14.817687,
+            50.884514
+          ],
+          [
+            14.817623,
+            50.88454
+          ],
+          [
+            14.817538,
+            50.884538
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:right": "track",
+        "cycleway:right:bicycle": "designated",
+        "cycleway:right:oneway": "yes",
+        "cycleway:right:segregated": "no",
+        "cycleway:right:traffic_sign": "240",
+        "highway": "secondary",
+        "lane_markings": "no",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Friedensstra\u00dfe",
+        "oneway": "yes",
+        "ref": "S 132a",
+        "sidewalk": "right",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.809318,
+            50.905966
+          ],
+          [
+            14.810376,
+            50.906017
+          ],
+          [
+            14.810904,
+            50.906045
+          ],
+          [
+            14.811654,
+            50.906073
+          ],
+          [
+            14.81192,
+            50.906083
+          ],
+          [
+            14.812048,
+            50.90608
+          ],
+          [
+            14.812162,
+            50.906072
+          ],
+          [
+            14.81229,
+            50.906035
+          ],
+          [
+            14.8124,
+            50.905994
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "no",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Oststra\u00dfe",
+        "ref": "S 132",
+        "sidewalk": "both",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.793283,
+            50.856642
+          ],
+          [
+            14.793164,
+            50.857657
+          ]
+        ]
+      },
+      "properties": {
+        "alt_name": "Hartauer Stra\u00dfe",
+        "highway": "secondary",
+        "maxspeed": "50",
+        "name": "L\u00fcckendorfer Stra\u00dfe",
+        "oneway": "no",
+        "ref": "S 132",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.793839,
+            50.854065
+          ],
+          [
+            14.794124,
+            50.853196
+          ],
+          [
+            14.794234,
+            50.852668
+          ],
+          [
+            14.794321,
+            50.852164
+          ],
+          [
+            14.794272,
+            50.851666
+          ],
+          [
+            14.794166,
+            50.851066
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "maxspeed": "100",
+        "oneway": "no",
+        "ref": "S 132",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.820656,
+            50.900626
+          ],
+          [
+            14.82095,
+            50.900472
+          ],
+          [
+            14.821082,
+            50.900402
+          ]
+        ]
+      },
+      "properties": {
+        "destination:arrow:lanes:forward": "|through;right",
+        "destination:backward": "Oppach;Bahnhof",
+        "destination:colour:backward": ";white",
+        "destination:colour:lanes:forward": "|;white",
+        "destination:country:lanes:forward": "CZ|PL;",
+        "destination:lanes:forward": "Reichenberg/Liberec;G\u00f6rlitz;L\u00f6bau|Kleinsch\u00f6nau;Zentrum",
+        "destination:symbol:backward": ";train_station",
+        "highway": "secondary",
+        "lanes": "3",
+        "lanes:backward": "1",
+        "lanes:forward": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Leipziger Stra\u00dfe",
+        "ref": "S 146",
+        "smoothness": "excellent",
+        "surface": "asphalt",
+        "turn:lanes:forward": "left|through;right"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.800998,
+            50.894358
+          ],
+          [
+            14.801314,
+            50.894391
+          ],
+          [
+            14.801606,
+            50.894425
+          ],
+          [
+            14.801683,
+            50.894433
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:right": "no",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "30",
+        "name": "Mandaustra\u00dfe",
+        "oneway": "yes",
+        "parking:condition:right": "free",
+        "parking:left": "no",
+        "parking:left:restriction": "no_parking",
+        "parking:right": "yes",
+        "parking:right:orientation": "parallel",
+        "ref": "S 133",
+        "sidewalk": "left",
+        "sidewalk:left:surface": "asphalt",
+        "smoothness": "good",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.810381,
+            50.892674
+          ],
+          [
+            14.810807,
+            50.892364
+          ],
+          [
+            14.811007,
+            50.892195
+          ],
+          [
+            14.811168,
+            50.892009
+          ],
+          [
+            14.811274,
+            50.891817
+          ],
+          [
+            14.811286,
+            50.891794
+          ],
+          [
+            14.811344,
+            50.891625
+          ],
+          [
+            14.811395,
+            50.891486
+          ],
+          [
+            14.811434,
+            50.891377
+          ],
+          [
+            14.811476,
+            50.891257
+          ],
+          [
+            14.811563,
+            50.891084
+          ],
+          [
+            14.811659,
+            50.890893
+          ],
+          [
+            14.8117,
+            50.890817
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Friedensstra\u00dfe",
+        "ref": "S 132",
+        "sidewalk": "separate",
+        "smoothness": "good",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.783432,
+            50.899152
+          ],
+          [
+            14.78223,
+            50.899232
+          ],
+          [
+            14.78127,
+            50.899298
+          ],
+          [
+            14.780662,
+            50.899338
+          ],
+          [
+            14.780201,
+            50.899368
+          ],
+          [
+            14.779963,
+            50.899383
+          ],
+          [
+            14.779411,
+            50.899415
+          ],
+          [
+            14.779237,
+            50.899427
+          ],
+          [
+            14.778808,
+            50.899457
+          ],
+          [
+            14.7785,
+            50.899475
+          ],
+          [
+            14.777303,
+            50.899549
+          ],
+          [
+            14.777039,
+            50.899563
+          ],
+          [
+            14.776441,
+            50.899599
+          ],
+          [
+            14.77627,
+            50.89961
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "\u00c4u\u00dfere Weberstra\u00dfe",
+        "ref": "S 137",
+        "source:maxspeed": "DE:urban",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.810602,
+            50.87512
+          ],
+          [
+            14.810583,
+            50.875037
+          ],
+          [
+            14.810572,
+            50.874984
+          ],
+          [
+            14.810271,
+            50.87358
+          ],
+          [
+            14.810036,
+            50.872494
+          ],
+          [
+            14.81,
+            50.872326
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "1",
+        "maxspeed": "70",
+        "maxspeed:type": "DE:rural",
+        "name": "Gerhart-Hauptmann-Stra\u00dfe",
+        "oneway": "no",
+        "ref": "S 132",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.8112,
+            50.876962
+          ],
+          [
+            14.811221,
+            50.877014
+          ],
+          [
+            14.811243,
+            50.877161
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Gerhart-Hauptmann-Stra\u00dfe",
+        "oneway": "no",
+        "smoothness": "good",
+        "source:maxspeed": "DE:urban",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.811235,
+            50.877448
+          ],
+          [
+            14.811058,
+            50.878128
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "lane",
+        "cycleway:both:lane": "advisory",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "S\u00fcdstra\u00dfe",
+        "oneway": "no",
+        "sidewalk": "both",
+        "smoothness": "good",
+        "source:maxspeed": "DE:urban",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.811885,
+            50.890474
+          ],
+          [
+            14.8117,
+            50.890412
+          ],
+          [
+            14.811526,
+            50.890344
+          ],
+          [
+            14.811467,
+            50.890314
+          ],
+          [
+            14.811359,
+            50.89026
+          ],
+          [
+            14.811228,
+            50.890185
+          ],
+          [
+            14.811136,
+            50.89013
+          ],
+          [
+            14.811027,
+            50.890049
+          ],
+          [
+            14.810959,
+            50.889989
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "3",
+        "lanes:backward": "2",
+        "lanes:forward": "1",
+        "maxspeed": "50",
+        "name": "S\u00fcdstra\u00dfe",
+        "ref": "S 132",
+        "sidewalk:left": "yes",
+        "sidewalk:right": "separate",
+        "smoothness": "good",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.800329,
+            50.89575
+          ],
+          [
+            14.800032,
+            50.895498
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:right": "lane",
+        "cycleway:right:lane": "advisory",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "\u00c4u\u00dfere Oybiner Stra\u00dfe",
+        "oneway": "yes",
+        "parking:both": "no",
+        "parking:both:restriction": "no_stopping",
+        "ref": "S 133",
+        "sidewalk": "both",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.804774,
+            50.888108
+          ],
+          [
+            14.804502,
+            50.888213
+          ],
+          [
+            14.804336,
+            50.888279
+          ],
+          [
+            14.803955,
+            50.888434
+          ],
+          [
+            14.803744,
+            50.888521
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "2",
+        "maxspeed": "50",
+        "name": "Schrammstra\u00dfe",
+        "parking:both": "no_parking",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.800382,
+            50.897058
+          ],
+          [
+            14.80024,
+            50.896839
+          ],
+          [
+            14.800186,
+            50.896678
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:right": "no",
+        "destination": "Olbersdorf;Zittauer Gebirge",
+        "destination:colour": ";brown",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "oneway": "yes",
+        "ref": "S 133",
+        "sidewalk": "right",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.803744,
+            50.888521
+          ],
+          [
+            14.803494,
+            50.88863
+          ],
+          [
+            14.803354,
+            50.888685
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "4",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Schrammstra\u00dfe",
+        "parking:both": "no_parking",
+        "sidewalk": "both",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.769293,
+            50.900056
+          ],
+          [
+            14.769418,
+            50.90005
+          ],
+          [
+            14.769513,
+            50.900046
+          ],
+          [
+            14.769781,
+            50.900041
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "name": "Hauptstra\u00dfe",
+        "oneway": "yes",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.797882,
+            50.893854
+          ],
+          [
+            14.797836,
+            50.893703
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:right": "no",
+        "destination": "Olbersdorf;Zittauer Gebirge",
+        "destination:colour": ";brown",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Humboldtstra\u00dfe",
+        "oneway": "yes",
+        "parking:both": "no_parking",
+        "ref": "S 133",
+        "sidewalk": "right",
+        "smoothness": "good",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.798149,
+            50.893977
+          ],
+          [
+            14.798201,
+            50.894096
+          ]
+        ]
+      },
+      "properties": {
+        "bridge": "yes",
+        "cycleway:right": "no",
+        "destination": "Zentrum",
+        "destination:colour": "white",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "1",
+        "layer": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "maxweight:signed": "no",
+        "oneway": "yes",
+        "ref": "S 133",
+        "shoulder": "no",
+        "sidewalk": "right",
+        "sidewalk:right:surface": "concrete",
+        "smoothness": "good",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.798607,
+            50.894277
+          ],
+          [
+            14.79874,
+            50.894294
+          ]
+        ]
+      },
+      "properties": {
+        "bridge": "yes",
+        "cycleway:right": "lane",
+        "cycleway:right:lane": "advisory",
+        "highway": "secondary",
+        "lanes": "1",
+        "layer": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "maxweight:signed": "no",
+        "name": "Mandaustra\u00dfe",
+        "oneway": "yes",
+        "parking:condition:right": "free",
+        "parking:left": "no",
+        "parking:left:restriction": "no_parking",
+        "parking:right": "yes",
+        "parking:right:orientation": "parallel",
+        "ref": "S 133",
+        "sidewalk": "right",
+        "sidewalk:right:surface": "concrete",
+        "smoothness": "good",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.802165,
+            50.921058
+          ],
+          [
+            14.802264,
+            50.920705
+          ],
+          [
+            14.802306,
+            50.920543
+          ],
+          [
+            14.802373,
+            50.920268
+          ],
+          [
+            14.802456,
+            50.919947
+          ],
+          [
+            14.802606,
+            50.919353
+          ],
+          [
+            14.802621,
+            50.919299
+          ],
+          [
+            14.802712,
+            50.918952
+          ],
+          [
+            14.802746,
+            50.918834
+          ],
+          [
+            14.802871,
+            50.918353
+          ],
+          [
+            14.803049,
+            50.917638
+          ],
+          [
+            14.803187,
+            50.917094
+          ],
+          [
+            14.803276,
+            50.916714
+          ],
+          [
+            14.803445,
+            50.91604
+          ],
+          [
+            14.803581,
+            50.915498
+          ],
+          [
+            14.803664,
+            50.915153
+          ]
+        ]
+      },
+      "properties": {
+        "bicycle": "use_sidepath",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "60",
+        "name": "L\u00f6bauer Stra\u00dfe",
+        "ref": "S 132",
+        "sidewalk:left": "no",
+        "sidewalk:right": "separate",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.769781,
+            50.900041
+          ],
+          [
+            14.769514,
+            50.900082
+          ],
+          [
+            14.769445,
+            50.900096
+          ],
+          [
+            14.76932,
+            50.900123
+          ]
+        ]
+      },
+      "properties": {
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed:type": "DE:urban",
+        "name": "Hauptstra\u00dfe",
+        "oneway": "yes",
+        "ref": "S 137",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.797836,
+            50.893703
+          ],
+          [
+            14.797984,
+            50.89382
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:right": "no",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Humboldtstra\u00dfe",
+        "oneway": "yes",
+        "parking:both": "no_parking",
+        "ref": "S 133",
+        "sidewalk": "right",
+        "smoothness": "good",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.792619,
+            50.898313
+          ],
+          [
+            14.792574,
+            50.89823
+          ],
+          [
+            14.792547,
+            50.898177
+          ],
+          [
+            14.792514,
+            50.898058
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway": "lane",
+        "cycleway:lane": "advisory",
+        "highway": "secondary",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Goldbachstra\u00dfe",
+        "noexit": "yes",
+        "sidewalk": "both",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.792514,
+            50.898058
+          ],
+          [
+            14.792461,
+            50.897801
+          ],
+          [
+            14.792456,
+            50.897682
+          ],
+          [
+            14.79243,
+            50.896407
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Goldbachstra\u00dfe",
+        "noexit": "yes",
+        "sidewalk": "both",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.785121,
+            50.899063
+          ],
+          [
+            14.784255,
+            50.899108
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "no",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "3",
+        "lanes:backward": "2",
+        "lanes:forward": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "maxspeed:type": "sign",
+        "name": "\u00c4u\u00dfere Weberstra\u00dfe",
+        "ref": "S 137",
+        "sidewalk": "both",
+        "sidewalk:both:surface": "paving_stones",
+        "smoothness": "good",
+        "surface": "asphalt",
+        "turn:lanes:backward": "slight_right|slight_right"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.768624,
+            50.900216
+          ],
+          [
+            14.768552,
+            50.90023
+          ],
+          [
+            14.768398,
+            50.90027
+          ],
+          [
+            14.768095,
+            50.900348
+          ],
+          [
+            14.767932,
+            50.900396
+          ],
+          [
+            14.767788,
+            50.900439
+          ],
+          [
+            14.767718,
+            50.90046
+          ],
+          [
+            14.767268,
+            50.900602
+          ],
+          [
+            14.766569,
+            50.90083
+          ],
+          [
+            14.766036,
+            50.900999
+          ],
+          [
+            14.765987,
+            50.901016
+          ],
+          [
+            14.765811,
+            50.901063
+          ],
+          [
+            14.765686,
+            50.901092
+          ],
+          [
+            14.765497,
+            50.901116
+          ],
+          [
+            14.76542,
+            50.90112
+          ],
+          [
+            14.76527,
+            50.901127
+          ],
+          [
+            14.765114,
+            50.901126
+          ],
+          [
+            14.764984,
+            50.901117
+          ],
+          [
+            14.76472,
+            50.901078
+          ],
+          [
+            14.763896,
+            50.900954
+          ],
+          [
+            14.763799,
+            50.900938
+          ],
+          [
+            14.763034,
+            50.900816
+          ]
+        ]
+      },
+      "properties": {
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "2",
+        "maxspeed": "50",
+        "name": "Hauptstra\u00dfe",
+        "ref": "S 137",
+        "source:maxspeed": "DE:urban",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.768624,
+            50.900216
+          ],
+          [
+            14.768865,
+            50.900132
+          ],
+          [
+            14.768993,
+            50.900096
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "name": "Hauptstra\u00dfe",
+        "oneway": "yes",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.79309,
+            50.899115
+          ],
+          [
+            14.79302,
+            50.898957
+          ],
+          [
+            14.792925,
+            50.89877
+          ],
+          [
+            14.79287,
+            50.898689
+          ]
+        ]
+      },
+      "properties": {
+        "destination:backward": "Oppach",
+        "destination:ref:backward": "B 96",
+        "highway": "secondary",
+        "lanes": "3",
+        "lanes:backward": "1",
+        "lanes:forward": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Rietschelstra\u00dfe",
+        "noexit": "yes",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.793159,
+            50.899338
+          ],
+          [
+            14.79309,
+            50.899115
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "2",
+        "lanes:backward": "1",
+        "lanes:forward": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Rietschelstra\u00dfe",
+        "smoothness": "good",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.784255,
+            50.899108
+          ],
+          [
+            14.783432,
+            50.899152
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "no",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "3",
+        "lanes:backward": "1",
+        "lanes:forward": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "maxspeed:type": "sign",
+        "name": "\u00c4u\u00dfere Weberstra\u00dfe",
+        "ref": "S 137",
+        "sidewalk": "both",
+        "sidewalk:both:surface": "paving_stones",
+        "smoothness": "good",
+        "surface": "asphalt",
+        "turn:lanes:forward": "left|through"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.812593,
+            50.904678
+          ],
+          [
+            14.812583,
+            50.904436
+          ],
+          [
+            14.812528,
+            50.904118
+          ],
+          [
+            14.812462,
+            50.903831
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "no",
+        "highway": "secondary",
+        "lanes": "3",
+        "lanes:backward": "1",
+        "lanes:forward": "2",
+        "lit": "yes",
+        "maxheight": "default",
+        "maxspeed": "50",
+        "name": "Schillerstra\u00dfe",
+        "ref": "S 132",
+        "sidewalk": "both",
+        "sidewalk:both:surface": "asphalt",
+        "surface": "asphalt",
+        "turn:lanes:backward": "through",
+        "turn:lanes:forward": "left|through",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.80827,
+            50.905862
+          ],
+          [
+            14.808329,
+            50.905866
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "no",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "L\u00f6bauer Platz",
+        "ref": "S 132",
+        "sidewalk": "both",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.770571,
+            50.89996
+          ],
+          [
+            14.769781,
+            50.900041
+          ]
+        ]
+      },
+      "properties": {
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Hauptstra\u00dfe",
+        "ref": "S 137",
+        "smoothness": "good",
+        "source:maxspeed": "DE:urban",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.771107,
+            50.899929
+          ],
+          [
+            14.770776,
+            50.899946
+          ]
+        ]
+      },
+      "properties": {
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Hauptstra\u00dfe",
+        "ref": "S 137",
+        "source:maxspeed": "DE:urban",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.787448,
+            50.884383
+          ],
+          [
+            14.788511,
+            50.885209
+          ],
+          [
+            14.788949,
+            50.885549
+          ],
+          [
+            14.790825,
+            50.887024
+          ],
+          [
+            14.791962,
+            50.887915
+          ],
+          [
+            14.792468,
+            50.888304
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "no",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "no",
+        "maxspeed": "70",
+        "name": "Humboldtstra\u00dfe",
+        "ref": "S 133",
+        "shoulder": "no",
+        "smoothness": "good",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.809216,
+            50.887083
+          ],
+          [
+            14.809011,
+            50.887102
+          ],
+          [
+            14.808896,
+            50.887112
+          ],
+          [
+            14.808196,
+            50.887188
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Schrammstra\u00dfe",
+        "parking:both": "no_parking",
+        "sidewalk": "both",
+        "source:maxspeed": "DE:urban",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.802164,
+            50.889177
+          ],
+          [
+            14.802376,
+            50.889091
+          ],
+          [
+            14.803202,
+            50.888749
+          ],
+          [
+            14.803354,
+            50.888685
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "no",
+        "highway": "secondary",
+        "lanes": "3",
+        "lanes:backward": "1",
+        "lanes:forward": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Schrammstra\u00dfe",
+        "parking:both": "no_parking",
+        "sidewalk": "both",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.795875,
+            50.891566
+          ],
+          [
+            14.796613,
+            50.891348
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "2",
+        "maxspeed": "50",
+        "name": "Schrammstra\u00dfe",
+        "parking:both": "no_parking",
+        "sidewalk": "both",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.795543,
+            50.891658
+          ],
+          [
+            14.795875,
+            50.891566
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "2",
+        "maxspeed": "50",
+        "name": "Schrammstra\u00dfe",
+        "parking:both": "no_parking",
+        "sidewalk": "both",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.793126,
+            50.892327
+          ],
+          [
+            14.793936,
+            50.892102
+          ],
+          [
+            14.795543,
+            50.891658
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway": "lane",
+        "cycleway:lane": "advisory",
+        "highway": "secondary",
+        "maxspeed": "50",
+        "name": "Schrammstra\u00dfe",
+        "parking:both": "no_parking",
+        "sidewalk": "both",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.795756,
+            50.891433
+          ],
+          [
+            14.795875,
+            50.891566
+          ]
+        ]
+      },
+      "properties": {
+        "destination:backward": "Olbersdorf;Zittauer Gebirge",
+        "destination:colour:backward": ";brown",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Humboldtstra\u00dfe",
+        "parking:both": "no_parking",
+        "ref": "S 133",
+        "sidewalk": "both",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.805344,
+            50.887886
+          ],
+          [
+            14.804774,
+            50.888108
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "lane",
+        "cycleway:both:lane": "advisory",
+        "highway": "secondary",
+        "lane_markings": "no",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Schrammstra\u00dfe",
+        "parking:both": "no_parking",
+        "sidewalk": "both",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.813947,
+            50.887707
+          ],
+          [
+            14.813801,
+            50.887677
+          ],
+          [
+            14.81273,
+            50.887455
+          ],
+          [
+            14.812499,
+            50.887407
+          ],
+          [
+            14.812212,
+            50.887348
+          ],
+          [
+            14.811738,
+            50.887253
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "lane",
+        "cycleway:both:lane": "advisory",
+        "highway": "secondary",
+        "lane_markings": "no",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Schrammstra\u00dfe",
+        "parking:both": "no_parking",
+        "sidewalk": "both",
+        "source:maxspeed": "DE:urban",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.810959,
+            50.889989
+          ],
+          [
+            14.810948,
+            50.889976
+          ],
+          [
+            14.810858,
+            50.889872
+          ],
+          [
+            14.810775,
+            50.889777
+          ],
+          [
+            14.810734,
+            50.88973
+          ],
+          [
+            14.810573,
+            50.88955
+          ],
+          [
+            14.810523,
+            50.889494
+          ],
+          [
+            14.810394,
+            50.889322
+          ],
+          [
+            14.810181,
+            50.889035
+          ],
+          [
+            14.810108,
+            50.888935
+          ],
+          [
+            14.810074,
+            50.888878
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "2",
+        "maxspeed": "50",
+        "name": "S\u00fcdstra\u00dfe",
+        "ref": "S 132",
+        "smoothness": "good",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.811885,
+            50.890474
+          ],
+          [
+            14.811998,
+            50.890331
+          ],
+          [
+            14.812321,
+            50.889924
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "no",
+        "highway": "secondary",
+        "lanes": "3",
+        "lanes:backward": "2",
+        "lanes:forward": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Friedensstra\u00dfe",
+        "ref": "S 132a",
+        "sidewalk": "separate",
+        "smoothness": "excellent",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.812321,
+            50.889924
+          ],
+          [
+            14.812436,
+            50.889797
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "4",
+        "lanes:backward": "2",
+        "lanes:forward": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Friedensstra\u00dfe",
+        "ref": "S 132a",
+        "sidewalk": "separate",
+        "smoothness": "good",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.8117,
+            50.890817
+          ],
+          [
+            14.811802,
+            50.890627
+          ],
+          [
+            14.811885,
+            50.890474
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "no",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Friedensstra\u00dfe",
+        "ref": "S 132",
+        "sidewalk": "separate",
+        "smoothness": "good",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.770776,
+            50.899946
+          ],
+          [
+            14.770571,
+            50.89996
+          ]
+        ]
+      },
+      "properties": {
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Hauptstra\u00dfe",
+        "ref": "S 137",
+        "source:maxspeed": "DE:urban",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.77164,
+            50.899899
+          ],
+          [
+            14.771107,
+            50.899929
+          ]
+        ]
+      },
+      "properties": {
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "Hauptstra\u00dfe",
+        "ref": "S 137",
+        "source:maxspeed": "DE:urban",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.798059,
+            50.894023
+          ],
+          [
+            14.798007,
+            50.894028
+          ],
+          [
+            14.797955,
+            50.894023
+          ],
+          [
+            14.797918,
+            50.894012
+          ],
+          [
+            14.797887,
+            50.893996
+          ],
+          [
+            14.797863,
+            50.893976
+          ],
+          [
+            14.797847,
+            50.893952
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:right": "no",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "junction": "roundabout",
+        "lane_markings": "no",
+        "lit": "yes",
+        "maxspeed": "50",
+        "ref": "S 133",
+        "sidewalk": "right",
+        "sidewalk:right:surface": "asphalt",
+        "smoothness": "good",
+        "source": "survey; gps",
+        "source:maxspeed": "sign",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.797882,
+            50.893854
+          ],
+          [
+            14.797912,
+            50.893838
+          ],
+          [
+            14.797946,
+            50.893826
+          ],
+          [
+            14.797984,
+            50.89382
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:right": "no",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "junction": "roundabout",
+        "lanes": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "ref": "S 133",
+        "sidewalk": "right",
+        "source": "survey; gps",
+        "source:maxspeed": "sign",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.81,
+            50.872326
+          ],
+          [
+            14.809936,
+            50.872029
+          ],
+          [
+            14.809913,
+            50.871922
+          ],
+          [
+            14.809902,
+            50.871868
+          ],
+          [
+            14.809845,
+            50.871636
+          ],
+          [
+            14.809787,
+            50.871455
+          ],
+          [
+            14.809639,
+            50.871192
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "1",
+        "maxspeed": "70",
+        "name": "Gerhart-Hauptmann-Stra\u00dfe",
+        "oneway": "no",
+        "ref": "S 132",
+        "source:maxspeed": "sign",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.8112,
+            50.876962
+          ],
+          [
+            14.811153,
+            50.876858
+          ],
+          [
+            14.810866,
+            50.876198
+          ],
+          [
+            14.81079,
+            50.875941
+          ],
+          [
+            14.810602,
+            50.87512
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "1",
+        "maxspeed": "50",
+        "maxspeed:type": "DE:urban",
+        "name": "Gerhart-Hauptmann-Stra\u00dfe",
+        "oneway": "no",
+        "ref": "S 132",
+        "source:maxspeed": "DE:urban",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.811243,
+            50.877161
+          ],
+          [
+            14.811249,
+            50.877222
+          ],
+          [
+            14.811246,
+            50.877334
+          ],
+          [
+            14.811235,
+            50.877448
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "secondary",
+        "lanes": "2",
+        "maxspeed": "50",
+        "name": "S\u00fcdstra\u00dfe",
+        "oneway": "no",
+        "smoothness": "good",
+        "source:maxspeed": "DE:urban",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.80359,
+            50.866342
+          ],
+          [
+            14.804749,
+            50.867246
+          ],
+          [
+            14.804816,
+            50.867299
+          ],
+          [
+            14.805132,
+            50.867546
+          ],
+          [
+            14.806093,
+            50.8683
+          ],
+          [
+            14.806455,
+            50.868579
+          ]
+        ]
+      },
+      "properties": {
+        "alt_name": "Hartauer Stra\u00dfe",
+        "highway": "secondary",
+        "maxspeed": "70",
+        "name": "L\u00fcckendorfer Stra\u00dfe",
+        "oneway": "no",
+        "ref": "S 132",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.800032,
+            50.895498
+          ],
+          [
+            14.79997,
+            50.895446
+          ],
+          [
+            14.799407,
+            50.894942
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:right": "lane",
+        "cycleway:right:lane": "advisory",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "\u00c4u\u00dfere Oybiner Stra\u00dfe",
+        "oneway": "yes",
+        "parking:condition:right": "free",
+        "parking:left": "no",
+        "parking:left:restriction": "no_parking",
+        "parking:right": "yes",
+        "parking:right:orientation": "parallel",
+        "ref": "S 133",
+        "sidewalk": "right",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.79874,
+            50.894294
+          ],
+          [
+            14.798844,
+            50.894301
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:right": "lane",
+        "cycleway:right:lane": "advisory",
+        "highway": "secondary",
+        "lanes": "1",
+        "lit": "no",
+        "maxspeed": "50",
+        "name": "Mandaustra\u00dfe",
+        "oneway": "yes",
+        "parking:condition:right": "free",
+        "parking:left": "no",
+        "parking:left:restriction": "no_parking",
+        "parking:right": "yes",
+        "parking:right:orientation": "parallel",
+        "ref": "S 133",
+        "sidewalk": "right",
+        "sidewalk:right:surface": "asphalt",
+        "smoothness": "good",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.798682,
+            50.894335
+          ],
+          [
+            14.798607,
+            50.894277
+          ]
+        ]
+      },
+      "properties": {
+        "bridge": "yes",
+        "cycleway:right": "lane",
+        "cycleway:right:lane": "advisory",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "1",
+        "layer": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "maxweight:signed": "no",
+        "name": "\u00c4u\u00dfere Oybiner Stra\u00dfe",
+        "oneway": "yes",
+        "parking:condition:right": "free",
+        "parking:left": "no",
+        "parking:left:restriction": "no_parking",
+        "parking:right": "yes",
+        "parking:right:orientation": "parallel",
+        "ref": "S 133",
+        "sidewalk": "right",
+        "sidewalk:right:surface": "asphalt",
+        "smoothness": "good",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.798149,
+            50.893977
+          ],
+          [
+            14.798125,
+            50.893997
+          ],
+          [
+            14.798095,
+            50.894013
+          ],
+          [
+            14.798059,
+            50.894023
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:right": "no",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "junction": "roundabout",
+        "lane_markings": "no",
+        "lit": "yes",
+        "maxspeed": "50",
+        "ref": "S 133",
+        "sidewalk": "right",
+        "sidewalk:right:surface": "asphalt",
+        "smoothness": "good",
+        "source": "survey; gps",
+        "source:maxspeed": "sign",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.797855,
+            50.893882
+          ],
+          [
+            14.797867,
+            50.893867
+          ],
+          [
+            14.797882,
+            50.893854
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:right": "no",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "junction": "roundabout",
+        "lanes": "1",
+        "lit": "yes",
+        "maxspeed": "50",
+        "ref": "S 133",
+        "sidewalk": "right",
+        "source": "survey; gps",
+        "source:maxspeed": "sign",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.805468,
+            50.908154
+          ],
+          [
+            14.805608,
+            50.907558
+          ],
+          [
+            14.805627,
+            50.907476
+          ],
+          [
+            14.805702,
+            50.907248
+          ]
+        ]
+      },
+      "properties": {
+        "bicycle": "use_sidepath",
+        "highway": "secondary",
+        "lit": "yes",
+        "maxspeed": "50",
+        "name": "L\u00f6bauer Stra\u00dfe",
+        "ref": "S 132",
+        "sidewalk": "separate",
+        "surface": "asphalt",
+        "zone:maxspeed": "DE:urban",
+        "zone:traffic": "DE:urban"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.803676,
+            50.915102
+          ],
+          [
+            14.803684,
+            50.915069
+          ],
+          [
+            14.803771,
+            50.914741
+          ],
+          [
+            14.803917,
+            50.914232
+          ],
+          [
+            14.804186,
+            50.913131
+          ],
+          [
+            14.804577,
+            50.911596
+          ]
+        ]
+      },
+      "properties": {
+        "bicycle": "use_sidepath",
+        "highway": "secondary",
+        "lanes": "2",
+        "lit": "yes",
+        "maxspeed": "60",
+        "name": "L\u00f6bauer Stra\u00dfe",
+        "ref": "S 132",
+        "sidewalk:left": "no",
+        "sidewalk:right": "separate",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.803664,
+            50.915153
+          ],
+          [
+            14.803676,
+            50.915102
+          ]
+        ]
+      },
+      "properties": {
+        "bicycle": "use_sidepath",
+        "bridge": "yes",
+        "highway": "secondary",
+        "lanes": "2",
+        "layer": "1",
+        "lit": "yes",
+        "maxspeed": "60",
+        "name": "L\u00f6bauer Stra\u00dfe",
+        "ref": "S 132",
+        "sidewalk:left": "no",
+        "sidewalk:right": "separate",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.797847,
+            50.893952
+          ],
+          [
+            14.797841,
+            50.893916
+          ],
+          [
+            14.797855,
+            50.893882
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:right": "no",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "junction": "roundabout",
+        "lane_markings": "no",
+        "lit": "yes",
+        "maxspeed": "50",
+        "ref": "S 133",
+        "sidewalk": "right",
+        "sidewalk:right:surface": "asphalt",
+        "smoothness": "good",
+        "source": "survey; gps",
+        "source:maxspeed": "sign",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.761158,
+            50.900533
+          ],
+          [
+            14.760902,
+            50.900495
+          ],
+          [
+            14.760553,
+            50.900428
+          ],
+          [
+            14.760484,
+            50.900411
+          ]
+        ]
+      },
+      "properties": {
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "2",
+        "maxspeed": "50",
+        "name": "Hauptstra\u00dfe",
+        "ref": "S 137",
+        "smoothness": "good",
+        "source:maxspeed": "DE:urban",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.761283,
+            50.900552
+          ],
+          [
+            14.761158,
+            50.900533
+          ]
+        ]
+      },
+      "properties": {
+        "bridge": "yes",
+        "hazmat": "designated",
+        "highway": "secondary",
+        "lanes": "2",
+        "layer": "1",
+        "maxspeed": "50",
+        "name": "Hauptstra\u00dfe",
+        "ref": "S 137",
+        "smoothness": "good",
+        "source:maxspeed": "DE:urban",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.809838,
+            50.888467
+          ],
+          [
+            14.809779,
+            50.888364
+          ],
+          [
+            14.809711,
+            50.888245
+          ],
+          [
+            14.809513,
+            50.887909
+          ],
+          [
+            14.809475,
+            50.88785
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "no",
+        "highway": "secondary",
+        "lane_markings": "no",
+        "maxspeed": "50",
+        "name": "S\u00fcdstra\u00dfe",
+        "ref": "S 132",
+        "sidewalk": "both",
+        "sidewalk:both:surface": "asphalt",
+        "smoothness": "very_bad",
+        "source:maxspeed": "DE:urban",
+        "surface": "sett"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.809475,
+            50.88785
+          ],
+          [
+            14.809329,
+            50.887624
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "no",
+        "highway": "secondary",
+        "lane_markings": "no",
+        "maxspeed": "50",
+        "name": "S\u00fcdstra\u00dfe",
+        "ref": "S 132",
+        "sidewalk": "both",
+        "sidewalk:left:surface": "asphalt",
+        "sidewalk:right:surface": "sett",
+        "smoothness": "very_bad",
+        "source:maxspeed": "DE:urban",
+        "surface": "sett"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.810074,
+            50.888878
+          ],
+          [
+            14.810066,
+            50.888864
+          ]
+        ]
+      },
+      "properties": {
+        "cycleway:both": "no",
+        "highway": "secondary",
+        "lanes": "2",
+        "maxspeed": "50",
+        "oneway": "no",
+        "ref": "S 132",
+        "sidewalk": "both",
+        "smoothness": "excellent",
+        "surface": "asphalt"
+      }
+    }
+  ]
+}
