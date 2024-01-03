@@ -1,11 +1,11 @@
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, \
     QDialogButtonBox, QComboBox, QTableWidget, QPushButton, QTableWidgetItem, \
-    QFormLayout, QHBoxLayout, QFileDialog
+    QFormLayout, QHBoxLayout, QFileDialog, QProgressBar, QMessageBox
 
 import pandas as pd
 
 from net_generation_QGIS.import_osm_data_geojson import build_query, download_data, save_to_file
-from geocoding.geocodingETRS89 import process_data
+from gui.threads import GeocodingThread
 
 class TechInputDialog(QDialog):
     def __init__(self, tech_type):
@@ -351,6 +351,9 @@ class GeocodeAdressesDialog(QDialog):
         layout.addWidget(self.okButton)
         layout.addWidget(self.cancelButton)
 
+        self.progressBar = QProgressBar(self)
+        layout.addWidget(self.progressBar)
+
     def createFileInput(self, default_path):
         lineEdit = QLineEdit(default_path)
         button = QPushButton("Durchsuchen")
@@ -375,8 +378,22 @@ class GeocodeAdressesDialog(QDialog):
         
         # Abfrage erstellen und Daten herunterladen
         self.geocodeAdresses(self.inputfilename, self.outputfilename)
-        self.accept()
 
     # Die Methode des Dialogs, die die anderen Funktionen aufruft
     def geocodeAdresses(self, inputfilename, outputfilename):
-        process_data(inputfilename, outputfilename)
+        # Stellen Sie sicher, dass der vorherige Thread beendet wird
+        if hasattr(self, 'geocodingThread') and self.geocodingThread.isRunning():
+            self.geocodingThread.terminate()
+            self.geocodingThread.wait()
+        self.geocodingThread = GeocodingThread(inputfilename, outputfilename)
+        self.geocodingThread.calculation_done.connect(self.on_generation_done)
+        self.geocodingThread.calculation_error.connect(self.on_generation_error)
+        self.geocodingThread.start()
+        self.progressBar.setRange(0, 0)  # Aktiviert den indeterministischen Modus
+
+    def on_generation_done(self, results):
+        self.accept()
+
+    def on_generation_error(self, error_message):
+        QMessageBox.critical(self, "Fehler beim Geocoding", error_message)
+        self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus

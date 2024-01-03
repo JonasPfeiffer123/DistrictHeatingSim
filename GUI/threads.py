@@ -8,6 +8,7 @@ import traceback
 from main import initialize_net_profile_calculation, thermohydraulic_time_series_net_calculation, import_results_csv, import_TRY
 from net_generation.import_and_create_layers import generate_and_export_layers
 from heat_generators.heat_generator_classes import Berechnung_Erzeugermix, optimize_mix
+from geocoding.geocodingETRS89 import process_data
 
 class NetInitializationThread(QThread):
     calculation_done = pyqtSignal(object)
@@ -119,6 +120,27 @@ class FileImportThread(QThread):
             self.requestInterruption()
             self.wait()  # Warten auf das sichere Beenden des Threads
 
+class GeocodingThread(QThread):
+    calculation_done = pyqtSignal(object)
+    calculation_error = pyqtSignal(Exception)
+
+    def __init__(self, inputfilename, outputfilename):
+        super().__init__()
+        self.inputfilename = inputfilename
+        self.outputfilename = outputfilename
+
+    def run(self):
+        try:
+            process_data(self.inputfilename, self.outputfilename)
+            self.calculation_done.emit(())    # Ergebnis zurückgeben
+        except Exception as e:
+            self.calculation_error.emit(str(e))  # Fehler zurückgeben
+
+    def stop(self):
+        if self.isRunning():
+            self.requestInterruption()
+            self.wait()  # Warten auf das sichere Beenden des Threads
+
 class CalculateMixThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(Exception)
@@ -157,4 +179,4 @@ class CalculateMixThread(QThread):
             result = WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile, specific_emissions, self.tech_objects, time_steps
             self.calculation_done.emit(result)  # Ergebnis zurückgeben
         except Exception as e:
-            self.calculation_error.emit(e)  # Fehler zurückgeben
+            self.calculation_error.emit(str(e))  # Fehler zurückgeben
