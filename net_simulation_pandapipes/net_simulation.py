@@ -4,13 +4,9 @@ from pandapower.timeseries import OutputWriter
 from pandapower.timeseries import DFData
 
 import pandas as pd
-import pandapipes as pp
-import numpy as np
 
 from net_simulation_pandapipes.net_simulation_calculation import *
 from net_simulation_pandapipes.my_controllers import ReturnTemperatureController
-
-from net_test import config_plot
 
 def init_timeseries_opt(net, qext_w, time_steps=3, target_temperature=60):
         # Überprüfen, ob qext_w eindimensional ist und die Länge mit der Anzahl der Wärmetauscher übereinstimmt

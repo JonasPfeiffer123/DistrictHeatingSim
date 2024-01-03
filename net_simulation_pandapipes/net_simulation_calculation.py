@@ -240,7 +240,7 @@ def export_net_geojson(net):
         gdf.set_crs(epsg=25833, inplace=True)
 
         # Exportiere als GeoJSON
-        gdf.to_file("pipes_network.geojson", driver='GeoJSON')
+        gdf.to_file("results/pipes_network.geojson", driver='GeoJSON')
     else:
         print("No geographical data available in the network.")
 

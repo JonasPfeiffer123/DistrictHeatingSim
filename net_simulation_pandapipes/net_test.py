@@ -1,10 +1,9 @@
 import pandapipes.plotting as pp_plot
-import matplotlib.pyplot as plt
 import geopandas as gpd
 
 
 from net_simulation_pandapipes.net_generation_test import initialize_test_net
-from net_simulation_pandapipes.net_simulation_calculation import create_network, correct_flow_directions, optimize_diameter_parameters, optimize_diameter_types
+from net_simulation_pandapipes.net_simulation_calculation import correct_flow_directions, optimize_diameter_parameters, optimize_diameter_types
 import net_simulation_pandapipes.net_simulation_calculation as nsp
 
 def config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_controls=True, show_heat_exchangers=True, show_plot=False):

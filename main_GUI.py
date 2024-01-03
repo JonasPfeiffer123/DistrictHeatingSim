@@ -1,6 +1,6 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTabWidget
-from GUI.tabs import VisualizationTab, CalculationTab, MixDesignTab
+from gui.tabs import VisualizationTab, CalculationTab, MixDesignTab
 
 class CentralDataManager:
     def __init__(self):
@@ -32,18 +32,18 @@ class HeatSystemDesignGUI(QWidget):
         # Erstellen der einzelnen Tabs
         self.data_manager = CentralDataManager()
 
+        self.visTab = VisualizationTab(self.data_manager)
         self.calcTab = CalculationTab(self.data_manager)
         self.mixDesignTab = MixDesignTab()
-        self.visTab = VisualizationTab(self.data_manager)
 
         # Hier stellen Sie die Verbindung her
         self.visTab.connect_signals(self.calcTab)
         self.visTab.layers_imported.connect(self.calcTab.updateFilePaths)
 
         # Hinzufügen der Tabs zum Tab-Widget
+        tabWidget.addTab(self.visTab, "Visualisierung GIS-Daten")
         tabWidget.addTab(self.calcTab, "Netzberechnung")
         tabWidget.addTab(self.mixDesignTab, "Auslegung Erzeugermix")
-        tabWidget.addTab(self.visTab, "Visualisierung GIS-Daten")
 
         # Set the layout
         self.setLayout(layout)

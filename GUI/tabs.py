@@ -18,9 +18,9 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView
 import folium
 
 from main import initialize_net_profile_calculation, calculate_results, save_results_csv, import_results_csv, import_TRY
-from GUI.dialogs import TechInputDialog, HeatDemandEditDialog, LayerGenerationDialog
-from GUI.threads import CalculationThread
-from net_test import config_plot
+from gui.dialogs import TechInputDialog, HeatDemandEditDialog, LayerGenerationDialog
+from gui.threads import CalculationThread
+from net_simulation_pandapipes.net_test import config_plot
 from heat_generators.heat_generator_classes import *
 from net_generation.import_and_create_layers import generate_and_export_layers
 
@@ -182,7 +182,7 @@ class VisualizationTab(QWidget):
 
     def update_map_view(self, mapView, map_obj):
         """ Aktualisiert die Kartenansicht in PyQt """
-        map_file = 'map.html'
+        map_file = 'results/map.html'
         map_obj.save(map_file)
         mapView.load(QUrl.fromLocalFile(os.path.abspath(map_file)))
 
@@ -247,7 +247,7 @@ class CalculationTab(QWidget):
         'HAST': 'net_generation_QGIS/Beispiel Zittau/HAST.geojson',
         'Vorlauf': 'net_generation_QGIS/Beispiel Zittau/Vorlauf.geojson',
         'Rücklauf': 'net_generation_QGIS/Beispiel Zittau/Rücklauf.geojson',
-        'Ausgabe': 'results_time_series_net1.csv'
+        'Ausgabe': 'results/results_time_series_net1.csv'
     }
 
     def __init__(self, data_manager, parent=None):
@@ -619,7 +619,7 @@ class MixDesignTab(QWidget):
 
     def initFileInputs(self):
         # Ergebnis-CSV Input
-        self.FilenameInput = QLineEdit('results_time_series_net.csv')
+        self.FilenameInput = QLineEdit('results/results_time_series_net.csv')
         self.selectFileButton = QPushButton('Ergebnis-CSV auswählen')
         self.selectFileButton.clicked.connect(lambda: self.selectFilename(self.FilenameInput))
 
