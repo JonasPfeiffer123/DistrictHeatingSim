@@ -1,6 +1,8 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTabWidget
-from gui.tabs import VisualizationTab, CalculationTab, MixDesignTab
+from gui.visualization_tab import VisualizationTab
+from gui.calculation_tab import CalculationTab
+from gui.mix_design_tab import MixDesignTab
 
 class CentralDataManager:
     def __init__(self):
