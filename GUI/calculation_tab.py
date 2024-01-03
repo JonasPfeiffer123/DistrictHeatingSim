@@ -11,9 +11,9 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, \
     QFileDialog, QHBoxLayout, QComboBox, QLineEdit, QFormLayout, \
         QScrollArea, QMessageBox, QProgressBar
 
-from main import initialize_net_profile_calculation, calculate_results, save_results_csv
+from main import calculate_results, save_results_csv
 from gui.dialogs import HeatDemandEditDialog
-from gui.threads import CalculationThread
+from gui.threads import NetInitializationThread, NetCalculationThread
 from net_simulation_pandapipes.net_test import config_plot
 
 class CalculationTab(QWidget):
@@ -261,11 +261,19 @@ class CalculationTab(QWidget):
         calc_method = self.CalcMethodInput.currentText()
         building_type = None if calc_method == "Datensatz" else self.BuildingTypeInput.currentText()
 
-        net, yearly_time_steps, waerme_ges_W = initialize_net_profile_calculation(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, building_type=building_type, calc_method=calc_method)
-        
-        waerme_ges_kW = np.where(waerme_ges_W == 0, 0, waerme_ges_W / 1000)
+        self.initializationThread = NetInitializationThread(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, building_type, calc_method)
+        self.initializationThread.calculation_done.connect(self.on_initialization_done)
+        self.initializationThread.calculation_error.connect(self.on_simulation_error)
+        self.initializationThread.start()
+        self.progressBar.setRange(0, 0)  # Aktiviert den indeterministischen Modus
 
-        self.plot(yearly_time_steps, waerme_ges_kW, net)
+    def on_initialization_done(self, results):
+        self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
+
+        self.net, self.yearly_time_steps, self.waerme_ges_W = results
+
+        self.waerme_ges_kW = np.where(self.waerme_ges_W == 0, 0, self.waerme_ges_W / 1000)
+        self.plot(self.yearly_time_steps, self.waerme_ges_kW, self.net)
 
     def plot(self, time_steps, qext_kW, net):
         # Clear previous figure
@@ -325,16 +333,16 @@ class CalculationTab(QWidget):
             if calc1 is None or calc2 is None:  # Ungültige Eingaben wurden bereits in adjustTimeParameters behandelt
                 return
 
-            self.calculationThread = CalculationThread(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, building_type, calc_method, calc1, calc2)
-            self.calculationThread.calculation_done.connect(self.on_calculation_done)
-            self.calculationThread.calculation_error.connect(self.on_calculation_error)
+            self.calculationThread = NetCalculationThread(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, building_type, calc_method, calc1, calc2)
+            self.calculationThread.calculation_done.connect(self.on_simulation_done)
+            self.calculationThread.calculation_error.connect(self.on_simulation_error)
             self.calculationThread.start()
             self.progressBar.setRange(0, 0)  # Aktiviert den indeterministischen Modus
 
         except ValueError as e:
             QMessageBox.warning("Ungültige Eingabe", str(e))
 
-    def on_calculation_done(self, results):
+    def on_simulation_done(self, results):
         self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
         time_steps, net, net_results = results
         mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, \
@@ -345,7 +353,7 @@ class CalculationTab(QWidget):
         output_filename = self.AusgabeInput.text()
         save_results_csv(time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump, output_filename)
 
-    def on_calculation_error(self, error_message):
+    def on_simulation_error(self, error_message):
         QMessageBox.critical(self, "Berechnungsfehler", error_message)
         self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
 

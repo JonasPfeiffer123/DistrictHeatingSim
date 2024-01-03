@@ -4,14 +4,14 @@ import geopandas as gpd
 
 from PyQt5.QtCore import pyqtSignal, QUrl
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QMenuBar, QAction, QFileDialog, \
-    QHBoxLayout, QListWidget, QDialog, QProgressBar, QColorDialog, QListWidgetItem
+    QHBoxLayout, QListWidget, QDialog, QProgressBar, QColorDialog, QListWidgetItem, QMessageBox
 from PyQt5.QtGui import QColor, QBrush
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 import folium
 
 from gui.dialogs import LayerGenerationDialog
-from net_generation.import_and_create_layers import generate_and_export_layers
+from gui.threads import NetGenerationThread, FileImportThread
 
 class VisualizationTab(QWidget):
     layers_imported = pyqtSignal(dict)
@@ -87,12 +87,15 @@ class VisualizationTab(QWidget):
             self.generateAndImportLayers(inputs)
 
     def generateAndImportLayers(self, inputs):
-        # Hier rufen Sie Ihre Funktion generate_and_export_layers auf
-        generate_and_export_layers(inputs["streetLayer"], inputs["dataCsv"], 
-                                float(inputs["xCoord"]), float(inputs["yCoord"]))
+        self.netgenerationThread = NetGenerationThread(inputs)
+        self.netgenerationThread.calculation_done.connect(self.on_import_done)
+        self.netgenerationThread.calculation_error.connect(self.on_generation_error)
+        self.netgenerationThread.start()
+        self.progressBar.setRange(0, 0)  # Aktiviert den indeterministischen Modus
 
-        # Automatisches Importieren der generierten Layer
-        # Die Pfade zu den generierten Dateien müssen angegeben werden
+    def on_import_done(self, results):
+        self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
+        
         generatedLayers = {
             'HAST': "C:/Users/username/heating_network_generation/net_generation/HAST.geojson",
             'Rücklauf': "C:/Users/username/heating_network_generation/net_generation/Rücklauf.geojson",
@@ -105,6 +108,10 @@ class VisualizationTab(QWidget):
 
         # Auslösen des Signals mit den Pfaden der generierten Layer
         self.layers_imported.emit(generatedLayers)
+
+    def on_generation_error(self, error_message):
+        QMessageBox.critical(self, "Berechnungsfehler", error_message)
+        self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
 
     def importNetData(self):
         fnames, _ = QFileDialog.getOpenFileNames(self, 'Netzdaten importieren', '', 'GeoJSON Files (*.geojson);;All Files (*)')
@@ -136,7 +143,7 @@ class VisualizationTab(QWidget):
 
         center_x = (minx + maxx) / 2
         center_y = (miny + maxy) / 2
-        zoom = 15  # Sie müssen möglicherweise einen Algorithmus entwickeln, um ein geeignetes Zoomlevel zu berechnen
+        zoom = 17  # Sie müssen möglicherweise einen Algorithmus entwickeln, um ein geeignetes Zoomlevel zu berechnen
 
         return [center_x, center_y], zoom
     
@@ -147,48 +154,55 @@ class VisualizationTab(QWidget):
             self.m.add_child(layer)
         self.update_map_view(self.mapView, self.m)
 
-    def loadNetData(self, filename, color=None):
-        if color is None:
-            color = "#{:06x}".format(random.randint(0, 0xFFFFFF))  # Zufällige Farbe, falls keine angegeben
-
-        layer = self.addGeoJsonLayer(self.m, filename, color)
-        if layer is not None:
-            self.layers[filename] = layer
-
-            # Überprüfen, ob der Layer bereits in der Liste ist
-            if filename not in [self.layerList.item(i).text() for i in range(self.layerList.count())]:
-                # Fügen Sie den Layer-Namen zum QListWidget hinzu, wenn er neu ist
-                listItem = QListWidgetItem(filename)
-                listItem.setBackground(QColor(color))  # Setzen Sie die Hintergrundfarbe
-                listItem.setForeground(QBrush(QColor('#FFFFFF')))  # Setzen Sie eine kontrastreiche Textfarbe
-                self.layerList.addItem(listItem)
-
-            self.updateMapView()
-
-    def load_geojson_data(self, filename):
-        """ Lädt GeoJSON-Daten und gibt ein Geopandas DataFrame zurück """
-        return gpd.read_file(filename)
-
     def update_map_view(self, mapView, map_obj):
         """ Aktualisiert die Kartenansicht in PyQt """
         map_file = 'results/map.html'
         map_obj.save(map_file)
         mapView.load(QUrl.fromLocalFile(os.path.abspath(map_file)))
 
+    def loadNetData(self, filename, color=None):
+        if color is None:
+            color = "#{:06x}".format(random.randint(0, 0xFFFFFF))  # Zufällige Farbe, falls keine angegeben
+
+        self.addGeoJsonLayer(self.m, filename, color)
+
+    # Diese Funktion startet nur den Thread und gibt nichts zurück.
     def addGeoJsonLayer(self, m, filename, color):
-        gdf = self.load_geojson_data(filename)
+        self.netgenerationThread = FileImportThread(m, filename, color)
+        self.netgenerationThread.calculation_done.connect(self.on_import_done)
+        self.netgenerationThread.calculation_error.connect(self.on_import_error)
+        self.netgenerationThread.start()
+        self.progressBar.setRange(0, 0)  # Aktiviert den indeterministischen Modus
+
+    # Dieser Slot wird aufgerufen, wenn der Thread fertig ist.
+    def on_import_done(self, geojson_data):
+        self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
         geojson_layer = folium.GeoJson(
-            gdf,
-            name=os.path.basename(filename),
-            style_function=lambda feature: {
-                'fillColor': color,
-                'color': color,
-                'weight': 1.5,
-                'fillOpacity': 0.5,
-            }
+            geojson_data['gdf'],
+            name=geojson_data['name'],
+            style_function=lambda feature: geojson_data['style']
         )
-        geojson_layer.add_to(m)
-        return geojson_layer
+        geojson_layer.add_to(self.m)
+
+        # Fügen Sie den Layer hier zur Verwaltung hinzu.
+        filename = geojson_data['name']
+        color = geojson_data['style']['fillColor']
+        self.layers[filename] = geojson_layer
+
+        # Überprüfen und aktualisieren Sie das QListWidget.
+        if filename not in [self.layerList.item(i).text() for i in range(self.layerList.count())]:
+            listItem = QListWidgetItem(filename)
+            listItem.setBackground(QColor(color))
+            listItem.setForeground(QBrush(QColor('#FFFFFF')))
+            self.layerList.addItem(listItem)
+
+        self.updateMapView()
+
+    def on_import_error(self, error_message):
+        # Zeigen Sie eine Fehlermeldung an oder loggen Sie den Fehler.
+        self.progressBar.setRange(0, 1)
+        print("Fehler beim Importieren der GeoJSON-Daten:", error_message)
+        # Zeigen Sie möglicherweise einen Dialog an oder aktualisieren Sie die Statusleiste.
 
     def removeSelectedLayer(self):
         selectedItems = self.layerList.selectedItems()
