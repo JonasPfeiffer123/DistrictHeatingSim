@@ -1,11 +1,13 @@
 import geopandas as gpd
 import os
+import numpy as np
 
 from PyQt5.QtCore import QThread, pyqtSignal
 import traceback
 
-from main import initialize_net_profile_calculation, thermohydraulic_time_series_net_calculation
+from main import initialize_net_profile_calculation, thermohydraulic_time_series_net_calculation, import_results_csv, import_TRY
 from net_generation.import_and_create_layers import generate_and_export_layers
+from heat_generators.heat_generator_classes import Berechnung_Erzeugermix, optimize_mix
 
 class NetInitializationThread(QThread):
     calculation_done = pyqtSignal(object)
@@ -116,3 +118,43 @@ class FileImportThread(QThread):
         if self.isRunning():
             self.requestInterruption()
             self.wait()  # Warten auf das sichere Beenden des Threads
+
+class CalculateMixThread(QThread):
+    calculation_done = pyqtSignal(object)
+    calculation_error = pyqtSignal(Exception)
+
+    def __init__(self, filename, load_scale_factor, try_filename, cop_filename, gaspreis, strompreis, holzpreis, BEW, tech_objects, optimize):
+        super().__init__()
+        self.filename = filename
+        self.load_scale_factor = load_scale_factor
+        self.try_filename = try_filename
+        self.cop_filename = cop_filename
+        self.gaspreis = gaspreis
+        self.strompreis = strompreis
+        self.holzpreis = holzpreis
+        self.BEW = BEW
+        self.tech_objects = tech_objects
+        self.optimize = optimize
+
+    def run(self):
+        try:
+            # Hier beginnt die Berechnung
+            time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump = import_results_csv(self.filename)
+            calc1, calc2 = 0, len(time_steps)
+
+            qext_kW *= self.load_scale_factor
+
+            initial_data = time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump
+
+            TRY = import_TRY(self.try_filename)
+            COP_data = np.genfromtxt(self.cop_filename, delimiter=';')
+
+            if self.optimize:
+                self.tech_objects = optimize_mix(self.tech_objects, initial_data, calc1, calc2, TRY, COP_data, self.gaspreis, self.strompreis, self.holzpreis, self.BEW)
+
+            WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile, specific_emissions = Berechnung_Erzeugermix(self.tech_objects, initial_data, calc1, calc2, TRY, COP_data, self.gaspreis, self.strompreis, self.holzpreis, self.BEW)
+
+            result = WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile, specific_emissions, self.tech_objects, time_steps
+            self.calculation_done.emit(result)  # Ergebnis zurückgeben
+        except Exception as e:
+            self.calculation_error.emit(e)  # Fehler zurückgeben

@@ -5,11 +5,11 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, \
-    QHBoxLayout, QComboBox, QLineEdit, QListWidget, QDialog
+    QHBoxLayout, QComboBox, QLineEdit, QListWidget, QDialog, QProgressBar, QMessageBox
 
-from main import import_results_csv, import_TRY
 from gui.dialogs import TechInputDialog
 from heat_generators.heat_generator_classes import *
+from gui.threads import CalculateMixThread
 
 class MixDesignTab(QWidget):
     def __init__(self, parent=None):
@@ -77,7 +77,7 @@ class MixDesignTab(QWidget):
 
         # Buttons
         self.calculateButton = QPushButton('Berechnen')
-        self.calculateButton.clicked.connect(self.calculate)
+        self.calculateButton.clicked.connect(self.start_calculation)
 
         # Buttons
         self.optimizeButton = QPushButton('Optimieren')
@@ -156,41 +156,48 @@ class MixDesignTab(QWidget):
         layout.addWidget(self.resultLabel)
         layout.addLayout(chartLayout)
 
+        self.progressBar = QProgressBar(self)
+        layout.addWidget(self.progressBar)
+
         self.setLayout(layout)
-        
+
     def optimize(self):
-        self.calculate(True)
+        self.start_calculation(True)
 
-    def calculate(self, optimize=False, load_scale_factor=1):
+    def start_calculation(self, optimize=False):
         filename = self.FilenameInput.text()
-        time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump = import_results_csv(filename)
-        calc1, calc2 = 0, len(time_steps)
-
         load_scale_factor = float(self.load_scale_factorInput.text())
-        qext_kW *= load_scale_factor
-
-        #plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
-        initial_data = time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump
-
-        TRY = import_TRY(self.tryFilenameInput.text())
-        COP_data = np.genfromtxt(self.copFilenameInput.text(), delimiter=';')
-        
-        Gaspreis = float(self.gaspreisInput.text())
-        Strompreis = float(self.strompreisInput.text())
-        Holzpreis = float(self.holzpreisInput.text())
+        try_filename = self.tryFilenameInput.text()
+        cop_filename = self.copFilenameInput.text()
+        gaspreis = float(self.gaspreisInput.text())
+        strompreis = float(self.strompreisInput.text())
+        holzpreis = float(self.holzpreisInput.text())
         BEW = self.BEWComboBox.itemText(self.BEWComboBox.currentIndex())
-        techs = self.tech_objects 
+        tech_objects = self.tech_objects  # Stellen Sie sicher, dass dies thread-sicher ist!
 
-        if optimize == True:
-            techs = optimize_mix(techs, initial_data, calc1, calc2, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW)
+        self.calculationThread = CalculateMixThread(
+            filename, load_scale_factor, try_filename, cop_filename,
+            gaspreis, strompreis, holzpreis, BEW, tech_objects, optimize
+        )
+        self.calculationThread.calculation_done.connect(self.on_calculation_done)
+        self.calculationThread.calculation_error.connect(self.on_calculation_error)
+        self.calculationThread.start()
+        self.progressBar.setRange(0, 0)  # Aktiviert den indeterministischen Modus
 
-        WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile, specific_emissions  = \
-        Berechnung_Erzeugermix(techs, initial_data, calc1, calc2, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW)
+    def on_calculation_done(self, result):
+        self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
+        # Extrahieren Sie die benötigten Daten aus dem Ergebnis
+        WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile, specific_emissions, techs, time_steps = result
         
+        # Aktualisieren Sie die GUI mit den Ergebnissen
         self.showResults(Jahreswärmebedarf, WGK_Gesamt, techs, Wärmemengen, WGK, Anteile)
-
-        # Example of plotting
+    
+        # Beispiel für das Plotten der Ergebnisse
         self.plot1(time_steps, data_L, data_labels_L, Anteile, Last_L)
+
+    def on_calculation_error(self, error_message):
+        self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
+        QMessageBox.critical(self, "Berechnungsfehler", error_message)
 
     def plot1(self, t, data_L, data_labels_L, Anteile, Last_L):
         # Clear previous figure
