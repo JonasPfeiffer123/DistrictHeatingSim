@@ -240,7 +240,7 @@ class DownloadOSMDataDialog(QDialog):
         layout = QVBoxLayout(self)
 
         # Stadtname Eingabefeld
-        self.cityLineEdit, cityButton = self.createCityInput("Stadtname")
+        self.cityLineEdit, cityButton = self.createCityInput("Zittau")
         layout.addLayout(self.createFileInputLayout(self.cityLineEdit, cityButton))
         
         # Dateiname Eingabefeld
