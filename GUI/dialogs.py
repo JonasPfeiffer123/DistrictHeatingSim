@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, \
 
 import pandas as pd
 
-from net_generation_QGIS.import_osm_data_geojson import build_query, download_data, save_to_file
+from osm_data.import_osm_data_geojson import build_query, download_data, save_to_file
 from gui.threads import GeocodingThread
 
 class TechInputDialog(QDialog):
@@ -244,7 +244,7 @@ class DownloadOSMDataDialog(QDialog):
         layout.addLayout(self.createFileInputLayout(self.cityLineEdit, cityButton))
         
         # Dateiname Eingabefeld
-        self.filenameLineEdit, fileButton = self.createFileInput("osm_data.geojson")
+        self.filenameLineEdit, fileButton = self.createFileInput("osm_data/osm_data.geojson")
         layout.addLayout(self.createFileInputLayout(self.filenameLineEdit, fileButton))
 
         # Tags-Auswahl

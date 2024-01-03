@@ -140,6 +140,6 @@ def run_here():
     tags = {"highway": "primary"}
     query = build_query(city_name, tags)
     geojson_data = download_data(query)
-    save_to_file(geojson_data, "osm_data_script.geojson")
+    save_to_file(geojson_data, "osm_data/osm_data_script.geojson")
 
-run_here()
+#run_here()
