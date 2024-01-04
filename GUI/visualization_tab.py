@@ -1,10 +1,15 @@
 import os
 import random
 import geopandas as gpd
+import csv
+import pandas as pd
+import json
+from shapely.geometry import Point
 
 from PyQt5.QtCore import pyqtSignal, QUrl
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QMenuBar, QAction, QFileDialog, \
-    QHBoxLayout, QListWidget, QDialog, QProgressBar, QColorDialog, QListWidgetItem, QMessageBox
+    QHBoxLayout, QListWidget, QDialog, QProgressBar, QColorDialog, QListWidgetItem, QMessageBox, \
+    QTableWidget, QTableWidgetItem
 from PyQt5.QtGui import QColor, QBrush
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 
@@ -34,11 +39,11 @@ class VisualizationTab(QWidget):
         fileMenu = self.menuBar.addMenu('Datei')
 
         # Erstellen und Hinzufügen der Aktion "Import Netzdaten"
-        importAction = QAction('Import Netzdaten', self)
+        importAction = QAction('Import geojson-Datei', self)
         importAction.triggered.connect(self.importNetData)
         fileMenu.addAction(importAction)
 
-        downloadAction = QAction('Layer generieren', self)
+        downloadAction = QAction('Wärmenetz aus Daten generieren', self)
         downloadAction.triggered.connect(self.openLayerGenerationDialog)
         fileMenu.addAction(downloadAction)
 
@@ -49,6 +54,14 @@ class VisualizationTab(QWidget):
         downloadAction = QAction('Adressdaten geocodieren', self)
         downloadAction.triggered.connect(self.openGeocodeAdressesDialog)
         fileMenu.addAction(downloadAction)
+
+        csvEditAction = QAction('CSV bearbeiten', self)
+        csvEditAction.triggered.connect(self.openCsvEditor)
+        fileMenu.addAction(csvEditAction)
+
+        loadCsvAction = QAction('CSV-Koordinaten laden', self)
+        loadCsvAction.triggered.connect(self.loadCsvCoordinates)
+        fileMenu.addAction(loadCsvAction)
 
         # Fügen Sie die Menüleiste dem Layout von tab1 hinzu
         layout.addWidget(self.menuBar)
@@ -273,3 +286,95 @@ class VisualizationTab(QWidget):
                 listItem.setBackground(QColor(new_color))
                 listItem.setForeground(QBrush(QColor('#FFFFFF')))  # Weiße Textfarbe für Kontrast
                 break
+
+    def openCsvEditor(self):
+        # Dialog erstellen
+        self.csvEditorDialog = QDialog(self)
+        self.csvEditorDialog.setWindowTitle('CSV-Editor')
+        layout = QVBoxLayout(self.csvEditorDialog)
+
+        # QTableWidget für CSV-Inhalte
+        self.csvTable = QTableWidget()
+        layout.addWidget(self.csvTable)
+
+        # Schaltflächen zum Öffnen und Speichern von CSV-Dateien
+        openButton = QPushButton("CSV öffnen")
+        openButton.clicked.connect(self.openCsv)
+        layout.addWidget(openButton)
+
+        saveButton = QPushButton("CSV speichern")
+        saveButton.clicked.connect(self.saveCsv)
+        layout.addWidget(saveButton)
+
+        # Dialog anzeigen
+        self.csvEditorDialog.setLayout(layout)
+        self.csvEditorDialog.exec_()
+
+    def openCsv(self):
+        fname, _ = QFileDialog.getOpenFileName(self, 'CSV öffnen', '', 'CSV Files (*.csv);;All Files (*)')
+        if fname:
+            with open(fname, 'r', encoding='utf-8') as file:
+                reader = csv.reader(file, delimiter=';')
+                headers = next(reader)  # Erste Zeile als Header
+                self.csvTable.setRowCount(0)
+                self.csvTable.setColumnCount(len(headers))
+                self.csvTable.setHorizontalHeaderLabels(headers)
+
+                for row_data in reader:
+                    row = self.csvTable.rowCount()
+                    self.csvTable.insertRow(row)
+                    for column, data in enumerate(row_data):
+                        item = QTableWidgetItem(data)
+                        self.csvTable.setItem(row, column, item)
+
+    def saveCsv(self):
+        fname, _ = QFileDialog.getSaveFileName(self, 'CSV speichern', '', 'CSV Files (*.csv);;All Files (*)')
+        if fname:
+            with open(fname, 'w', newline='', encoding='utf-8') as file:
+                writer = csv.writer(file, delimiter=';')
+                headers = [self.csvTable.horizontalHeaderItem(i).text() for i in range(self.csvTable.columnCount())]
+                writer.writerow(headers)
+
+                for row in range(self.csvTable.rowCount()):
+                    row_data = []
+                    for column in range(self.csvTable.columnCount()):
+                        item = self.csvTable.item(row, column)
+                        row_data.append(item.text() if item else '')
+                    writer.writerow(row_data)
+
+    def createGeoJsonFromCsv(self, csv_file_path, geojson_file_path):
+        # Lesen der CSV-Datei
+        df = pd.read_csv(csv_file_path, delimiter=';')
+
+        # Erstellen eines GeoDataFrames
+        gdf = gpd.GeoDataFrame(
+            df, 
+            geometry=[Point(xy) for xy in zip(df.UTM_X, df.UTM_Y)],
+            crs="EPSG:25833"  # Passen Sie dies an Ihr spezifisches Koordinatensystem an
+        )
+
+        # Konvertieren in GeoJSON und speichern
+        gdf.to_file(geojson_file_path, driver='GeoJSON')
+
+        print(f"GeoJSON-Datei erfolgreich erstellt: {geojson_file_path}")
+
+    def loadGeoJsonToMap(self, geojson_file_path):
+        try:
+            # Laden der GeoJSON-Datei in die Karte
+            folium.GeoJson(geojson_file_path).add_to(self.m)
+            self.updateMapView()
+            print("GeoJSON-Datei erfolgreich zur Karte hinzugefügt.")
+        except Exception as e:
+            print(f"Fehler beim Laden der GeoJSON-Datei: {e}")
+
+    def loadCsvCoordinates(self):
+        fname, _ = QFileDialog.getOpenFileName(self, 'CSV-Koordinaten laden', '', 'CSV Files (*.csv);;All Files (*)')
+        if fname:
+            # Pfad für die temporäre GeoJSON-Datei
+            temp_geojson_path = 'temp_geojson_file.geojson'
+
+            # Erstellen der GeoJSON-Datei aus der CSV-Datei
+            self.createGeoJsonFromCsv(fname, temp_geojson_path)
+
+            # Laden der GeoJSON-Datei in die Karte
+            self.loadGeoJsonToMap(temp_geojson_path)

@@ -1,0 +1,180 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            7.02158,
+            49.193298
+          ],
+          [
+            7.022233,
+            49.193463
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "living_street",
+        "lane_markings": "no",
+        "lanes": "2",
+        "lit": "yes",
+        "name": "Auf der Sch\u00f6nbach",
+        "sidewalk": "no",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            7.021798,
+            49.193023
+          ],
+          [
+            7.021853,
+            49.193036
+          ],
+          [
+            7.023236,
+            49.193355
+          ],
+          [
+            7.024273,
+            49.193562
+          ],
+          [
+            7.024226,
+            49.193621
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "living_street",
+        "lanes": "1",
+        "lit": "yes",
+        "name": "Sittersh\u00f6he",
+        "sidewalk": "no",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            7.022974,
+            49.193646
+          ],
+          [
+            7.022805,
+            49.193938
+          ],
+          [
+            7.023228,
+            49.194047
+          ],
+          [
+            7.023294,
+            49.194041
+          ],
+          [
+            7.023424,
+            49.19403
+          ],
+          [
+            7.023574,
+            49.194064
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "living_street",
+        "lit": "yes",
+        "name": "Kluthestra\u00dfe",
+        "sidewalk": "no",
+        "surface": "asphalt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.590059,
+            51.071744
+          ],
+          [
+            14.590164,
+            51.073132
+          ],
+          [
+            14.590242,
+            51.073187
+          ],
+          [
+            14.590591,
+            51.073185
+          ],
+          [
+            14.590717,
+            51.073172
+          ],
+          [
+            14.591197,
+            51.073208
+          ],
+          [
+            14.591326,
+            51.073147
+          ],
+          [
+            14.591462,
+            51.07212
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "living_street",
+        "name": "Waldweg",
+        "surface": "paved",
+        "width": "3"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            7.022233,
+            49.193463
+          ],
+          [
+            7.022974,
+            49.193646
+          ],
+          [
+            7.023359,
+            49.193744
+          ]
+        ]
+      },
+      "properties": {
+        "highway": "living_street",
+        "lane_markings": "no",
+        "lanes": "2",
+        "lit": "yes",
+        "name": "Auf der Sch\u00f6nbach",
+        "sidewalk": "left",
+        "surface": "asphalt"
+      }
+    }
+  ]
+}

@@ -8,11 +8,12 @@ from matplotlib.figure import Figure
 
 from net_simulation_pandapipes import net_simulation
 from net_simulation_pandapipes import net_simulation_calculation
+from net_simulation_pandapipes.net_test import config_plot
+#from stanet_import_pandapipes import create_net_from_stanet_csv
 from heat_requirement import heat_requirement_VDI4655
 from heat_requirement import heat_requirement_BDEW
 from net_simulation_pandapipes.net_generation_test import initialize_test_net
 from heat_generators.heat_generator_classes import *
-from net_simulation_pandapipes.net_test import config_plot
 
 def import_TRY(dateiname):
     # Import TRY
@@ -67,7 +68,6 @@ def initialize_net_profile_calculation(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, buildi
         "GPD": "BDEW",
         "GMF": "BDEW",
         "GHD": "BDEW",
-        # ... Fügen Sie hier weitere Zuordnungen hinzu, falls nötig
     }
 
     for idx, JWB in enumerate(JEB_Wärme_ges_kWh):
@@ -97,6 +97,7 @@ def initialize_net_profile_calculation(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, buildi
 
     ### generates the pandapipes net and initializes it ###
     net = net_simulation.initialize_net(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, max_waerme_ges_W)
+    #net, yearly_time_steps, waerme_ges_W = create_net_from_stanet_csv()
     
     return net, yearly_time_steps, waerme_ges_W
 

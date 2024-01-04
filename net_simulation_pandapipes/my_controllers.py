@@ -2,7 +2,7 @@ from pandapower.control.basic_controller import BasicCtrl
 from math import pi
 
 class WorstPointPressureController(BasicCtrl):
-    def __init__(self, net, worst_point_idx, circ_pump_pressure_idx=0, target_dp_min_bar=1, tolerance=0.1, proportional_gain=0.2,**kwargs):
+    def __init__(self, net, worst_point_idx, circ_pump_pressure_idx=0, target_dp_min_bar=1, tolerance=0.2, proportional_gain=0.2,**kwargs):
         super(WorstPointPressureController, self).__init__(net, **kwargs)
         self.heat_exchanger_idx = worst_point_idx
         self.flow_control_idx = worst_point_idx
@@ -91,7 +91,8 @@ class ReturnTemperatureController(BasicCtrl):
         # check, if the temperature converged
         temperature_within_tolerance = abs(current_temperature - self.target_temperature) < self.tolerance
 
-        #print(f"ReturnTemperatureController: is_converegd(), Wärmleistung: {qext_w}, aktuelle Temperatur: {current_temperature}, aktueller Massenstrom: {current_mass_flow}, Ziel erreicht: {temperature_within_tolerance}")
+        if self.heat_exchanger_idx == 13:
+            #print(f"ReturnTemperatureController: is_converegd(), heat_exchanger: {self.heat_exchanger_idx}, Wärmleistung: {qext_w}, aktuelle Temperatur: {current_temperature}, aktueller Massenstrom: {current_mass_flow}, Ziel erreicht: {temperature_within_tolerance}")
 
         if temperature_within_tolerance == False and at_max_mass_flow == True:
             self.target_temperature = current_temperature - 0.5
@@ -126,6 +127,7 @@ class ReturnTemperatureController(BasicCtrl):
         
         net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx] = new_mass_flow
 
-        #print(self.target_temperature, current_temperature, current_mass_flow, new_mass_flow)
+        #if self.heat_exchanger_idx == 13:
+         #   print(self.target_temperature, current_temperature, current_mass_flow, new_mass_flow, self.min_mass_flow, temperature_error)
         
         return super(ReturnTemperatureController, self).control_step(net)
