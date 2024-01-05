@@ -56,7 +56,7 @@ class NetCalculationThread(QThread):
 
             self.time_steps, self.net, self.net_results = thermohydraulic_time_series_net_calculation(self.net, self.yearly_time_steps, self.waerme_ges_W, self.calc1, self.calc2)
 
-            self.calculation_done.emit((self.time_steps, self.net, self.net_results))
+            self.calculation_done.emit((self.time_steps, self.net, self.net_results, self.waerme_ges_W))
         except Exception as e:
             self.calculation_error.emit(str(e) + "\n" + traceback.format_exc())
 

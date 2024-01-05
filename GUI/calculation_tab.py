@@ -344,11 +344,11 @@ class CalculationTab(QWidget):
 
     def on_simulation_done(self, results):
         self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
-        time_steps, net, net_results = results
+        time_steps, net, net_results, waerme_ges_W = results
         mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, \
             return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW, pressure_junctions = calculate_results(net, net_results)
 
-        self.plot2(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump)
+        self.plot2(time_steps, qext_kW, waerme_ges_W, return_temp_circ_pump, flow_temp_circ_pump)
 
         output_filename = self.AusgabeInput.text()
         save_results_csv(time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump, output_filename)
@@ -370,15 +370,17 @@ class CalculationTab(QWidget):
                 event.ignore()  # Lassen Sie das Fenster offen
         else:
             event.accept()  # Schließen Sie das Fenster, wenn kein Thread läuft
-    def plot2(self, time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump):
+    def plot2(self, time_steps, qext_kW, waerme_ges_W, return_temp_circ_pump, flow_temp_circ_pump):
+        waermebedarf_gesamt_kW = np.sum(waerme_ges_W, axis=0)/1000
         # Clear previous figure
         self.figure3.clear()
         ax1 = self.figure3.add_subplot(111)
 
         # Plot für Wärmeleistung auf der ersten Y-Achse
-        ax1.plot(time_steps, qext_kW, 'b-', label="Gesamtlast")
+        ax1.plot(time_steps, qext_kW, 'b-', label="Einspeiseleistung Heizzentrale in kW")
+        ax1.plot(time_steps, waermebedarf_gesamt_kW[:len(time_steps)], 'g-', label="Gesamtwärmebedarf Wärmeübertrager in kW")
         ax1.set_xlabel("Zeit")
-        ax1.set_ylabel("Wärmebedarf in kW", color='b')
+        ax1.set_ylabel("Wärmeleistung in kW", color='b')
         ax1.tick_params('y', colors='b')
         ax1.legend(loc='upper left')
         ax1.grid()
