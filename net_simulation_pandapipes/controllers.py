@@ -1,11 +1,6 @@
 from pandapower.control.basic_controller import BasicCtrl
 from math import pi
 
-#import logging
-
-# Konfigurieren Sie das Logging-System
-#logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
-
 class WorstPointPressureController(BasicCtrl):
     def __init__(self, net, worst_point_idx, circ_pump_pressure_idx=0, target_dp_min_bar=1, tolerance=0.2, proportional_gain=0.2,**kwargs):
         super(WorstPointPressureController, self).__init__(net, **kwargs)
@@ -26,8 +21,6 @@ class WorstPointPressureController(BasicCtrl):
     def is_converged(self, net):
         qext_w = net.heat_exchanger["qext_w"].at[self.heat_exchanger_idx]
         if qext_w <= 250:
-            #print("Da")
-            # Wenn der Wärmestrom null ist, betrachte den Controller als nicht konvergiert
             return True
         current_dp_bar = net.res_flow_control["p_from_bar"].at[self.flow_control_idx] - net.res_heat_exchanger["p_to_bar"].at[self.heat_exchanger_idx]
 
@@ -51,8 +44,6 @@ class WorstPointPressureController(BasicCtrl):
         #logging.debug(f'WorstPointPressureController vor control_step: Iteration: {self.iteration}, Heat Exchanger ID: {self.heat_exchanger_idx}, dp_bar={current_dp_bar}, qext_w={qext_w}, current_plift_bar={current_plift_bar}, current_pflow_bar={current_pflow_bar}')
         
         if qext_w <= 250:
-            #print("Hier")
-            # Wenn der Wärmestrom null ist, führe keine Anpassungen durch
             return super(WorstPointPressureController, self).control_step(net)
 
         dp_error = self.target_dp_min_bar - current_dp_bar
@@ -66,7 +57,6 @@ class WorstPointPressureController(BasicCtrl):
         net.circ_pump_pressure["plift_bar"].at[self.circ_pump_pressure_idx] = new_plift
         net.circ_pump_pressure["p_flow_bar"].at[self.circ_pump_pressure_idx] = new_pflow
 
-        #print(self.target_dp_min_bar, current_dp_bar, current_plift_bar, current_pflow_bar, new_plift, new_pflow)
         #logging.debug(f'WorstPointPressureController nach control_step: Iteration: {self.iteration}, Heat Exchanger ID: {self.heat_exchanger_idx}, new_plift={new_plift}, new_pflow={new_pflow}')
 
         return super(WorstPointPressureController, self).control_step(net)
@@ -96,8 +86,6 @@ class ReturnTemperatureController(BasicCtrl):
         qext_w = net.heat_exchanger["qext_w"].at[self.heat_exchanger_idx]
         
         if qext_w <= 250:
-            #print("Da2")
-            # Wenn der Wärmestrom null ist, betrachte den Controller als nicht konvergiert
             return True
         current_temperature = net.res_heat_exchanger["t_to_k"].at[self.heat_exchanger_idx] - 273.15
         current_mass_flow = net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx]
@@ -113,11 +101,9 @@ class ReturnTemperatureController(BasicCtrl):
         
         if temperature_within_tolerance == False and at_max_mass_flow == True:
             return at_max_mass_flow
-            #self.target_temperature = current_temperature - 0.5
         
         if temperature_within_tolerance == False and at_min_mass_flow == True:
             return at_min_mass_flow
-            #self.target_temperature = current_temperature + 0.5
 
         if temperature_within_tolerance == True:
             self.target_temperature = self.initial_target_temperature
@@ -135,7 +121,6 @@ class ReturnTemperatureController(BasicCtrl):
         #logging.debug(f'ReturnTemperatureController vor control_step: Iteration: {self.iteration}, Heat Exchanger ID: {self.heat_exchanger_idx}, qext_w={qext_w}, target_temperature={self.target_temperature}, current_temperature={current_temperature}, current_mass_flow={current_mass_flow}')
 
         if qext_w <= 250:
-            #print("Hier2")
             return super(ReturnTemperatureController, self).control_step(net)
 
         temperature_error = self.target_temperature - current_temperature
@@ -150,9 +135,7 @@ class ReturnTemperatureController(BasicCtrl):
         
         net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx] = new_mass_flow
 
-        #if self.heat_exchanger_idx == 13:
-         #   print(self.target_temperature, current_temperature, current_mass_flow, new_mass_flow, self.min_mass_flow, temperature_error)
-        new_temperature = net.res_heat_exchanger["t_to_k"].at[self.heat_exchanger_idx] - 273.15
+        #new_temperature = net.res_heat_exchanger["t_to_k"].at[self.heat_exchanger_idx] - 273.15
         #logging.debug(f'ReturnTemperatureController nach control_step: Iteration: {self.iteration}, Heat Exchanger ID: {self.heat_exchanger_idx}, new_mass_flow={new_mass_flow}, New temperature: {new_temperature}')
 
         return super(ReturnTemperatureController, self).control_step(net)

@@ -5,7 +5,7 @@ from shapely.geometry import LineString
 
 from pandapower.timeseries import DFData
 from pandapower.control.controller.const_control import ConstControl
-from net_simulation_pandapipes.my_controllers import ReturnTemperatureController, WorstPointPressureController
+from net_simulation_pandapipes.controllers import ReturnTemperatureController, WorstPointPressureController
 
 def get_line_coords_and_lengths(gdf):
     all_line_coords, all_line_lengths = [], []

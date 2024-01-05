@@ -3,13 +3,9 @@ import pandapipes as pp
 import numpy as np
 from pyproj import Transformer
 
-import pandapipes.plotting as plot
-import matplotlib.pyplot as plt
-
 from heat_requirement import heat_requirement_BDEW
 from net_simulation_pandapipes.net_simulation_calculation import create_controllers, correct_flow_directions, export_net_geojson, optimize_diameter_parameters
 from net_simulation_pandapipes.net_simulation import init_timeseries_opt
-#from main import thermohydraulic_time_series_net_calculation
 
 # Einlesen der CSV-Datei mit dem angegebenen Trennzeichen und Ignorieren von fehlerhaften Zeilen
 # Da wir nun spezifische Einträge suchen, lesen wir die ganze Datei als eine einzige Spalte ein
@@ -99,13 +95,6 @@ def create_net_from_stanet_csv(file_path):
     filtered_lei_df[['XRB', 'YHB']] = filtered_lei_df.apply(lambda row: transform_coords(row['XRB'], row['YHB']), axis=1, result_type="expand")
     filtered_wae_df[['XRECHTS', 'YHOCH']] = filtered_wae_df.apply(lambda row: transform_coords(row['XRECHTS'], row['YHOCH']), axis=1, result_type="expand")
     filtered_wae_df[['XRECHTS2', 'YHOCH2']] = filtered_wae_df.apply(lambda row: transform_coords(row['XRECHTS2'], row['YHOCH2']), axis=1, result_type="expand")
-
-    # Anzeigen der gefilterten Daten
-    #print(filtered_kno_df.head())
-    #print(filtered_lei_df.head())
-    #print(filtered_wae_df.head())
-    #print(filtered_hea_df.head())
-    #print(filtered_zae_df.head())
 
     # Zusammenführen der DataFrames
     merged_wae_zae_df = pd.merge(filtered_wae_df, filtered_zae_df, left_on='ANFNAM', right_on='KNAM')
@@ -203,16 +192,7 @@ def create_net_from_stanet_csv(file_path):
     
     net = optimize_diameter_parameters(net, element="heat_exchanger")
     net = optimize_diameter_parameters(net, element="flow_control")
-
-    #plot.simple_plot(net, junction_size=0.01, heat_exchanger_size=0.1, pump_size=0.1, \
-    #                    pump_color='green', pipe_color='black', heat_exchanger_color='blue')
     
     export_net_geojson(net)
 
-    #thermohydraulic_time_series_net_calculation(net, yearly_time_steps, waerme_ges_W_L, 0, 24)
-
     return net, yearly_time_steps, waerme_ges_W_L
-
-#file_path = "C:/Users/username/heating_network_generation/net_simulation_pandapipes/stanet files/Beleg_1/Beleg_1.CSV"
-#file_path = "C:/Users/username/heating_network_generation/net_simulation_pandapipes/stanet files/Einführungsbeispiel/Einfuehrungsbeispiel.CSV"
-#create_net_from_stanet_csv(file_path)

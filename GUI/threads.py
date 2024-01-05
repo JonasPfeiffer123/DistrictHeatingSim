@@ -5,9 +5,15 @@ import numpy as np
 from PyQt5.QtCore import QThread, pyqtSignal
 import traceback
 
-from main import initialize_net_profile_calculation, thermohydraulic_time_series_net_calculation, import_results_csv, import_TRY
+from main import import_TRY
+
 from net_generation.import_and_create_layers import generate_and_export_layers
+
+from net_simulation_pandapipes.net_simulation import initialize_net_geojson, generate_profiles_from_geojson, thermohydraulic_time_series_net_calculation, import_results_csv
+from net_simulation_pandapipes.stanet_import_pandapipes import create_net_from_stanet_csv
+
 from heat_generators.heat_generator_classes import Berechnung_Erzeugermix, optimize_mix
+
 from geocoding.geocodingETRS89 import process_data
 
 class NetInitializationThread(QThread):
@@ -25,7 +31,13 @@ class NetInitializationThread(QThread):
 
     def run(self):
         try:
-            self.net, self.yearly_time_steps, self.waerme_ges_W = initialize_net_profile_calculation(self.gdf_vl, self.gdf_rl, self.gdf_HAST, self.gdf_WEA, self.building_type, self.calc_method)
+            # geojson
+            self.yearly_time_steps, self.waerme_ges_W, self.max_waerme_ges_W = generate_profiles_from_geojson(self.gdf_HAST, self.building_type, self.calc_method)
+            self.net = initialize_net_geojson(self.gdf_vl, self.gdf_rl, self.gdf_HAST, self.gdf_WEA, self.max_waerme_ges_W)
+            
+            # STANET
+            #self.net, self.yearly_time_steps, self.waerme_ges_W = create_net_from_stanet_csv("C:/Users/username/heating_network_generation/net_simulation_pandapipes/stanet files/Beleg_1/Beleg_1.CSV")
+            
             self.calculation_done.emit((self.net, self.yearly_time_steps, self.waerme_ges_W))
         except Exception as e:
             self.calculation_error.emit(str(e) + "\n" + traceback.format_exc())
@@ -52,8 +64,13 @@ class NetCalculationThread(QThread):
 
     def run(self):
         try:
-            self.net, self.yearly_time_steps, self.waerme_ges_W = initialize_net_profile_calculation(self.gdf_vl, self.gdf_rl, self.gdf_HAST, self.gdf_WEA, self.building_type, self.calc_method)
-
+            # geojson
+            self.yearly_time_steps, self.waerme_ges_W, self.max_waerme_ges_W = generate_profiles_from_geojson(self.gdf_HAST, self.building_type, self.calc_method)
+            self.net = initialize_net_geojson(self.gdf_vl, self.gdf_rl, self.gdf_HAST, self.gdf_WEA, self.max_waerme_ges_W)
+            
+            # STANET
+            #self.net, self.yearly_time_steps, self.waerme_ges_W = create_net_from_stanet_csv("C:/Users/username/heating_network_generation/net_simulation_pandapipes/stanet files/Beleg_1/Beleg_1.CSV")
+            
             self.time_steps, self.net, self.net_results = thermohydraulic_time_series_net_calculation(self.net, self.yearly_time_steps, self.waerme_ges_W, self.calc1, self.calc2)
 
             self.calculation_done.emit((self.time_steps, self.net, self.net_results, self.waerme_ges_W))
