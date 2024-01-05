@@ -53,8 +53,8 @@ def initialize_net(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, pipe_creation_mode
     if pipe_creation_mode == "type":
         net = optimize_diameter_types(net)
 
-    net = optimize_diameter_parameters(net, element="heat_exchanger", v_max=1.5, v_min=1)
-    net = optimize_diameter_parameters(net, element="flow_control", v_max=1.5, v_min=1)
+    net = optimize_diameter_parameters(net, element="heat_exchanger")
+    net = optimize_diameter_parameters(net, element="flow_control")
     export_net_geojson(net)
 
     return net

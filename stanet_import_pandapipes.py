@@ -7,15 +7,15 @@ import pandapipes.plotting as plot
 import matplotlib.pyplot as plt
 
 from heat_requirement import heat_requirement_BDEW
-from net_simulation_pandapipes.net_simulation_calculation import create_controllers, correct_flow_directions, export_net_geojson
+from net_simulation_pandapipes.net_simulation_calculation import create_controllers, correct_flow_directions, export_net_geojson, optimize_diameter_parameters
 from net_simulation_pandapipes.net_simulation import init_timeseries_opt
-from main import thermohydraulic_time_series_net_calculation
+#from main import thermohydraulic_time_series_net_calculation
 
 # Einlesen der CSV-Datei mit dem angegebenen Trennzeichen und Ignorieren von fehlerhaften Zeilen
 # Da wir nun spezifische Einträge suchen, lesen wir die ganze Datei als eine einzige Spalte ein
 
-def create_net_from_stanet_csv():
-    file_path = "C:/Users/username/heating_network_generation/net_simulation_pandapipes/stanet files/Beleg_1.CSV"
+def create_net_from_stanet_csv(file_path):
+    #file_path = "C:/Users/username/heating_network_generation/net_simulation_pandapipes/stanet files/Beleg_1.CSV"
 
     # Kriterien für die verschiedenen Objekttypen und ihre Tabellenköpfe
     object_types = {
@@ -61,6 +61,7 @@ def create_net_from_stanet_csv():
         error_message = None
     except Exception as e:
         error_message = str(e)
+        print(error_message)
         dataframes_dict = None
 
     # Zugriff auf die erstellten DataFrames, z.B.:
@@ -199,14 +200,19 @@ def create_net_from_stanet_csv():
     net = create_controllers(net, max_waerme_ges_W_L)
     net = correct_flow_directions(net)
     net = init_timeseries_opt(net, max_waerme_ges_W_L, time_steps=3, target_temperature=60)
+    
+    net = optimize_diameter_parameters(net, element="heat_exchanger")
+    net = optimize_diameter_parameters(net, element="flow_control")
 
     #plot.simple_plot(net, junction_size=0.01, heat_exchanger_size=0.1, pump_size=0.1, \
     #                    pump_color='green', pipe_color='black', heat_exchanger_color='blue')
     
     export_net_geojson(net)
 
-    thermohydraulic_time_series_net_calculation(net, yearly_time_steps, waerme_ges_W_L, 0, 24)
+    #thermohydraulic_time_series_net_calculation(net, yearly_time_steps, waerme_ges_W_L, 0, 24)
 
     return net, yearly_time_steps, waerme_ges_W_L
 
-create_net_from_stanet_csv()
+#file_path = "C:/Users/username/heating_network_generation/net_simulation_pandapipes/stanet files/Beleg_1/Beleg_1.CSV"
+#file_path = "C:/Users/username/heating_network_generation/net_simulation_pandapipes/stanet files/Einführungsbeispiel/Einfuehrungsbeispiel.CSV"
+#create_net_from_stanet_csv(file_path)
