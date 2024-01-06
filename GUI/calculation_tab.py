@@ -272,7 +272,7 @@ class CalculationTab(QWidget):
         ax1 = self.figure4.add_subplot(111)
 
         # Plot für Wärmeleistung auf der ersten Y-Achse
-        qext_gesamt_kW = np.sum(qext_kW, axis=0)/1000
+        qext_gesamt_kW = np.sum(qext_kW, axis=0)
         ax1.plot(time_steps, qext_gesamt_kW, 'b-', label=f"Gesamtlast Gebäude")
         ax1.set_xlabel("Zeit")
         ax1.set_ylabel("Wärmebedarf in kW", color='b')
