@@ -56,7 +56,7 @@ class NetInitializationSTANETThread(QThread):
         try:
             # STANET
             self.net, self.yearly_time_steps, self.waerme_ges_W = create_net_from_stanet_csv(self.filename)
-            
+
             self.calculation_done.emit((self.net, self.yearly_time_steps, self.waerme_ges_W))
         except Exception as e:
             self.calculation_error.emit(str(e) + "\n" + traceback.format_exc())

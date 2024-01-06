@@ -150,6 +150,8 @@ def optimize_diameter_parameters(initial_net, element="pipe", v_max=2, v_min=1.5
                 elif initial_net.res_pipe.v_mean_m_per_s[pipe_idx] < v_min:
                     # shrink diameter
                     initial_net.pipe.at[pipe_idx, 'diameter_m'] = initial_net.pipe.at[pipe_idx, 'diameter_m'] - dx
+
+            
             pp.pipeflow(initial_net, mode="all")
             velocities = list(initial_net.res_pipe.v_mean_m_per_s)
 

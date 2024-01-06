@@ -3,9 +3,12 @@ import pandapipes as pp
 import numpy as np
 from pyproj import Transformer
 
+import sys
+sys.path.append('C:/Users/username/heating_network_generation')
+
 from heat_requirement import heat_requirement_BDEW
 from net_simulation_pandapipes.net_simulation_calculation import create_controllers, correct_flow_directions, export_net_geojson, optimize_diameter_parameters
-from net_simulation_pandapipes.net_simulation import init_timeseries_opt
+from net_simulation_pandapipes.net_simulation import init_timeseries_opt, thermohydraulic_time_series_net_calculation
 
 # Einlesen der CSV-Datei mit dem angegebenen Trennzeichen und Ignorieren von fehlerhaften Zeilen
 # Da wir nun spezifische Einträge suchen, lesen wir die ganze Datei als eine einzige Spalte ein
@@ -188,6 +191,7 @@ def create_net_from_stanet_csv(file_path):
 
     net = create_controllers(net, max_waerme_ges_W_L)
     net = correct_flow_directions(net)
+
     net = init_timeseries_opt(net, max_waerme_ges_W_L, time_steps=3, target_temperature=60)
     
     net = optimize_diameter_parameters(net, element="heat_exchanger")
@@ -196,3 +200,9 @@ def create_net_from_stanet_csv(file_path):
     export_net_geojson(net)
 
     return net, yearly_time_steps, waerme_ges_W_L
+
+
+#net, yearly_time_steps, waerme_ges_W_L = create_net_from_stanet_csv("C:/Users/username/heating_network_generation/net_simulation_pandapipes/stanet files/Beleg_1/Beleg_1.CSV")
+#calc1 = 2660
+#calc2 = 2670
+#thermohydraulic_time_series_net_calculation(net, yearly_time_steps, waerme_ges_W_L, calc1, calc2)

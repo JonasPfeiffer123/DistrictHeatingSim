@@ -272,8 +272,8 @@ class CalculationTab(QWidget):
         ax1 = self.figure4.add_subplot(111)
 
         # Plot für Wärmeleistung auf der ersten Y-Achse
-        for i, q in enumerate(qext_kW):
-            ax1.plot(time_steps, q, 'b-', label=f"Last Gebäude {i}")
+        qext_gesamt_kW = np.sum(qext_kW, axis=0)/1000
+        ax1.plot(time_steps, qext_gesamt_kW, 'b-', label=f"Gesamtlast Gebäude")
         ax1.set_xlabel("Zeit")
         ax1.set_ylabel("Wärmebedarf in kW", color='b')
         ax1.tick_params('y', colors='b')
@@ -317,11 +317,11 @@ class CalculationTab(QWidget):
         self.net, self.yearly_time_steps, self.waerme_ges_W = self.net_data
 
         try:
-            calc1, calc2 = self.adjustTimeParameters()
-            if calc1 is None or calc2 is None:  # Ungültige Eingaben wurden bereits in adjustTimeParameters behandelt
+            self.calc1, self.calc2 = self.adjustTimeParameters()
+            if self.calc1 is None or self.calc2 is None:  # Ungültige Eingaben wurden bereits in adjustTimeParameters behandelt
                 return
 
-            self.calculationThread = NetCalculationThread(self.net, self.yearly_time_steps, self.waerme_ges_W, calc1, calc2)
+            self.calculationThread = NetCalculationThread(self.net, self.yearly_time_steps, self.waerme_ges_W, self.calc1, self.calc2)
             self.calculationThread.calculation_done.connect(self.on_simulation_done)
             self.calculationThread.calculation_error.connect(self.on_simulation_error)
             self.calculationThread.start()
@@ -367,7 +367,7 @@ class CalculationTab(QWidget):
 
         # Plot für Wärmeleistung auf der ersten Y-Achse
         ax1.plot(time_steps, qext_kW, 'b-', label="Einspeiseleistung Heizzentrale in kW")
-        ax1.plot(time_steps, waermebedarf_gesamt_kW[:len(time_steps)], 'g-', label="Gesamtwärmebedarf Wärmeübertrager in kW")
+        ax1.plot(time_steps, waermebedarf_gesamt_kW[self.calc1:self.calc2], 'g-', label="Gesamtwärmebedarf Wärmeübertrager in kW")
         ax1.set_xlabel("Zeit")
         ax1.set_ylabel("Wärmeleistung in kW", color='b')
         ax1.tick_params('y', colors='b')
