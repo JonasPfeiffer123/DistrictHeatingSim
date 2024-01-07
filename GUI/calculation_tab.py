@@ -1,20 +1,22 @@
 import logging
 import numpy as np
 import geopandas as gpd
+import itertools
 
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, \
     QFileDialog, QHBoxLayout, QComboBox, QLineEdit, QFormLayout, \
-        QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction
+        QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction, QCheckBox
 
 from main import calculate_results, save_results_csv
 from gui.dialogs import HeatDemandEditDialog, GeojsonDialog, StanetDialog
 from gui.threads import NetInitializationGEOJSONThread, NetInitializationSTANETThread, NetCalculationThread
 from net_simulation_pandapipes.net_test import config_plot
+from gui.checkable_combobox import CheckableComboBox
 
 class CalculationTab(QWidget):
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
@@ -214,10 +216,10 @@ class CalculationTab(QWidget):
         self.toolbar5 = NavigationToolbar(self.canvas5, self)
 
         # Fügen Sie die Diagramme und Toolbars zum Container-Layout hinzu
-        self.scrollLayout.addWidget(self.canvas4)
-        self.scrollLayout.addWidget(self.toolbar4)
         self.scrollLayout.addWidget(self.canvas5)
         self.scrollLayout.addWidget(self.toolbar5)
+        self.scrollLayout.addWidget(self.canvas4)
+        self.scrollLayout.addWidget(self.toolbar4)
         self.scrollLayout.addWidget(self.canvas3)
         self.scrollLayout.addWidget(self.toolbar3)
 
@@ -228,6 +230,26 @@ class CalculationTab(QWidget):
         # Füge die ScrollArea zum Hauptlayout hinzu
         self.container_layout.addWidget(self.scrollArea)
     
+    def createPlotControlDropdown(self):
+        self.dropdownLayout = QHBoxLayout()
+        self.dataSelectionDropdown = CheckableComboBox(self)
+
+        # Hier wird angenommen, dass die erste Reihe von Daten standardmäßig geplottet wird.
+        initial_checked = True
+
+        # Füllen des Dropdown-Menüs mit Optionen und Setzen des Checkbox-Zustands
+        for label in self.plot_data.keys():
+            self.dataSelectionDropdown.addItem(label)
+            item = self.dataSelectionDropdown.model().item(self.dataSelectionDropdown.count() - 1, 0)
+            item.setCheckState(Qt.Checked if initial_checked else Qt.Unchecked)
+            initial_checked = False  # Nur das erste Element wird standardmäßig ausgewählt
+
+        self.dropdownLayout.addWidget(self.dataSelectionDropdown)
+        self.scrollLayout.addLayout(self.dropdownLayout)
+
+        # Verbindung des Dropdown-Menüs mit der Aktualisierungsfunktion
+        self.dataSelectionDropdown.checkedStateChanged.connect(self.updatePlot)
+
     def selectFilename(self, inputWidget):
         fname, _ = QFileDialog.getOpenFileName(self, 'Datei auswählen', '', 'All Files (*);;CSV Files (*.csv);;Data Files (*.dat)')
         if fname:  # Prüfen, ob ein Dateiname ausgewählt wurde
@@ -332,14 +354,40 @@ class CalculationTab(QWidget):
 
     def on_simulation_done(self, results):
         self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
-        time_steps, net, net_results, waerme_ges_W = results
-        mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, \
-            return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW, pressure_junctions = calculate_results(net, net_results)
+        self.time_steps, self.net, self.net_results, self.waerme_ges_W = results
+        self.mass_flow_circ_pump, self.deltap_circ_pump, self.rj_circ_pump, self.return_temp_circ_pump, self.flow_temp_circ_pump, \
+            self.return_pressure_circ_pump, self.flows_pressure_circ_pump, self.qext_kW, self.pressure_junctions = calculate_results(self.net, self.net_results)
 
-        self.plot2(time_steps, qext_kW, waerme_ges_W, return_temp_circ_pump, flow_temp_circ_pump)
+        self.waerme_ges_W = (np.sum(self.waerme_ges_W, axis=0)/1000)[self.calc1:self.calc2]
+        self.plot_data = {
+            "Einspeiseleistung Heizzentrale": {
+                "data": self.qext_kW,
+                "label": "Leistung in kW",
+                "axis": "left"
+            },
+            "Gesamtwärmebedarf Wärmeübertrager": {
+                "data": self.waerme_ges_W,
+                "label": "Wärmebedarf in kW",
+                "axis": "left"
+            },
+            "Rücklauftemperatur Heizzentrale": {
+                "data": self.return_temp_circ_pump,
+                "label": "Temperatur in °C",
+                "axis": "right"
+            },
+            "Vorlauftemperatur Heizzentrale": {
+                "data": self.flow_temp_circ_pump,
+                "label": "Temperatur in °C",
+                "axis": "right"
+            }
+            # Weitere Daten hinzufügen
+        }
 
-        output_filename = self.AusgabeInput.text()
-        save_results_csv(time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump, output_filename)
+
+        self.plot2()
+
+        self.output_filename = self.AusgabeInput.text()
+        save_results_csv(self.time_steps, self.qext_kW, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.output_filename)
 
     def on_simulation_error(self, error_message):
         QMessageBox.critical(self, "Berechnungsfehler", error_message)
@@ -359,29 +407,43 @@ class CalculationTab(QWidget):
         else:
             event.accept()  # Schließen Sie das Fenster, wenn kein Thread läuft
     
-    def plot2(self, time_steps, qext_kW, waerme_ges_W, return_temp_circ_pump, flow_temp_circ_pump):
-        waermebedarf_gesamt_kW = np.sum(waerme_ges_W, axis=0)/1000
-        # Clear previous figure
+    def plot2(self):
+        if not hasattr(self, 'dataSelectionDropdown'):
+            self.createPlotControlDropdown()
+        
+        self.updatePlot()  # Rufen Sie updatePlot auf, um den initialen Plot zu zeichnen
+
+
+    def updatePlot(self):
         self.figure3.clear()
-        ax1 = self.figure3.add_subplot(111)
+        ax_left = self.figure3.add_subplot(111)
+        ax_right = ax_left.twinx()
 
-        # Plot für Wärmeleistung auf der ersten Y-Achse
-        ax1.plot(time_steps, qext_kW, 'b-', label="Einspeiseleistung Heizzentrale in kW")
-        ax1.plot(time_steps, waermebedarf_gesamt_kW[self.calc1:self.calc2], 'g-', label="Gesamtwärmebedarf Wärmeübertrager in kW")
-        ax1.set_xlabel("Zeit")
-        ax1.set_ylabel("Wärmeleistung in kW", color='b')
-        ax1.tick_params('y', colors='b')
-        ax1.legend(loc='upper left')
-        ax1.grid()
-        ax1.plot
+        left_labels = set()
+        right_labels = set()
+        color_cycle = itertools.cycle(['b', 'g', 'r', 'c', 'm', 'y', 'k'])
 
-        # Zweite Y-Achse für die Temperatur
-        ax2 = ax1.twinx()
-        ax2.plot(time_steps, return_temp_circ_pump, 'm-o', label="circ pump return temperature")
-        ax2.plot(time_steps, flow_temp_circ_pump, 'c-o', label="circ pump flow temperature")
-        ax2.set_ylabel("temperature [°C]", color='m')
-        ax2.tick_params('y', colors='m')
-        ax2.legend(loc='upper right')
-        ax2.set_ylim(0,100)
+        for i in range(self.dataSelectionDropdown.model().rowCount()):
+            if self.dataSelectionDropdown.itemChecked(i):
+                key = self.dataSelectionDropdown.itemText(i)
+                data_info = self.plot_data[key]
+                color = next(color_cycle)
+                if data_info["axis"] == "left":
+                    ax_left.plot(self.time_steps, data_info["data"], label=data_info["label"], color=color)
+                    left_labels.add(data_info["label"])
+                elif data_info["axis"] == "right":
+                    ax_right.plot(self.time_steps, data_info["data"], label=data_info["label"], color=color)
+                    right_labels.add(data_info["label"])
 
+        ax_left.set_xlabel("Zeit")
+        ax_left.set_ylabel(", ".join(left_labels))
+        ax_right.set_ylabel(", ".join(right_labels))
+
+        # Erstellen der Legenden und Zusammenführen
+        lines_left, labels_left = ax_left.get_legend_handles_labels()
+        lines_right, labels_right = ax_right.get_legend_handles_labels()
+        by_label = dict(zip(labels_left + labels_right, lines_left + lines_right))
+        ax_left.legend(by_label.values(), by_label.keys(), loc='upper left')
+
+        ax_left.grid()
         self.canvas3.draw()

@@ -38,30 +38,30 @@ class VisualizationTab(QWidget):
         self.menuBar.setFixedHeight(30)  # Setzen Sie eine spezifische Höhe
         fileMenu = self.menuBar.addMenu('Datei')
 
-        # Erstellen und Hinzufügen der Aktion "Import Netzdaten"
-        importAction = QAction('Import geojson-Datei', self)
-        importAction.triggered.connect(self.importNetData)
-        fileMenu.addAction(importAction)
-
-        downloadAction = QAction('Wärmenetz aus Daten generieren', self)
-        downloadAction.triggered.connect(self.openLayerGenerationDialog)
-        fileMenu.addAction(downloadAction)
-
-        downloadAction = QAction('Download OSM-Daten', self)
-        downloadAction.triggered.connect(self.openDownloadOSMDataDialog)
-        fileMenu.addAction(downloadAction)
+        csvEditAction = QAction('CSV bearbeiten', self)
+        csvEditAction.triggered.connect(self.openCsvEditor)
+        fileMenu.addAction(csvEditAction)
 
         downloadAction = QAction('Adressdaten geocodieren', self)
         downloadAction.triggered.connect(self.openGeocodeAdressesDialog)
         fileMenu.addAction(downloadAction)
 
-        csvEditAction = QAction('CSV bearbeiten', self)
-        csvEditAction.triggered.connect(self.openCsvEditor)
-        fileMenu.addAction(csvEditAction)
-
         loadCsvAction = QAction('CSV-Koordinaten laden', self)
         loadCsvAction.triggered.connect(self.loadCsvCoordinates)
         fileMenu.addAction(loadCsvAction)
+
+        downloadAction = QAction('Download OSM-Daten', self)
+        downloadAction.triggered.connect(self.openDownloadOSMDataDialog)
+        fileMenu.addAction(downloadAction)
+
+        downloadAction = QAction('Wärmenetz aus Daten generieren', self)
+        downloadAction.triggered.connect(self.openLayerGenerationDialog)
+        fileMenu.addAction(downloadAction)
+
+        # Erstellen und Hinzufügen der Aktion "Import Netzdaten"
+        importAction = QAction('Import geojson-Datei', self)
+        importAction.triggered.connect(self.importNetData)
+        fileMenu.addAction(importAction)
 
         # Fügen Sie die Menüleiste dem Layout von tab1 hinzu
         layout.addWidget(self.menuBar)
@@ -93,13 +93,7 @@ class VisualizationTab(QWidget):
         self.setLayout(layout)
 
     def connect_signals(self, calculation_tab):
-        calculation_tab.data_added.connect(self.updateMapViewWithData)
-
-    def updateMapViewWithData(self, map_data):
-        for data in map_data:
-            # Hinzufügen der Daten zur Karte
-            self.loadNetData(data)
-        self.updateMapView()
+        calculation_tab.data_added.connect(self.loadNetData)
 
     def openDownloadOSMDataDialog(self):
         dialog = DownloadOSMDataDialog(self)
@@ -195,7 +189,6 @@ class VisualizationTab(QWidget):
 
         # Übergeben Sie die Farbe, falls angegeben, ansonsten wird eine zufällige Farbe im Thread generiert
         self.addGeoJsonLayer(self.m, filenames, color)
-
 
     # Diese Funktion startet nur den Thread und gibt nichts zurück.
     def addGeoJsonLayer(self, m, filenames, color):
