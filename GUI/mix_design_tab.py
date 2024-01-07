@@ -5,7 +5,8 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, \
-    QHBoxLayout, QComboBox, QLineEdit, QListWidget, QDialog, QProgressBar, QMessageBox
+    QHBoxLayout, QComboBox, QLineEdit, QListWidget, QDialog, QProgressBar, \
+        QMessageBox, QFileDialog, QScrollArea
 
 from gui.dialogs import TechInputDialog
 from heat_generators.heat_generator_classes import *
@@ -35,31 +36,36 @@ class MixDesignTab(QWidget):
         self.selectCOPFileButton.clicked.connect(lambda: self.selectFilename(self.copFilenameInput))
 
     def initUI(self):
-        layout = QVBoxLayout()
+        # Haupt-Scrollbereich für den gesamten Tab
+        mainScrollArea = QScrollArea(self)
+        mainScrollArea.setWidgetResizable(True)
+
+        mainWidget = QWidget()
+        mainLayout = QVBoxLayout(mainWidget)
         
         self.DatenEingabeLabel = QLabel('Dateneingaben')
-        layout.addWidget(self.DatenEingabeLabel)
+        mainLayout.addWidget(self.DatenEingabeLabel)
 
         # Hinzufügen zum Layout
         filemain_layout = QHBoxLayout()
         filemain_layout.addWidget(self.FilenameInput)
         filemain_layout.addWidget(self.selectFileButton)
-        layout.addLayout(filemain_layout)
+        mainLayout.addLayout(filemain_layout)
 
         # Hinzufügen zum Layout
         fileLayout2 = QHBoxLayout()
         fileLayout2.addWidget(self.tryFilenameInput)
         fileLayout2.addWidget(self.selectTRYFileButton)
-        layout.addLayout(fileLayout2)
+        mainLayout.addLayout(fileLayout2)
 
         # Hinzufügen zum Layout
         fileLayout3 = QHBoxLayout()
         fileLayout3.addWidget(self.copFilenameInput)
         fileLayout3.addWidget(self.selectCOPFileButton)
-        layout.addLayout(fileLayout3)
+        mainLayout.addLayout(fileLayout3)
         
         self.costEingabeLabel = QLabel('Wirtschaftliche Vorgaben')
-        layout.addWidget(self.costEingabeLabel)
+        mainLayout.addWidget(self.costEingabeLabel)
 
         # Parameter Inputs
         self.gaspreisInput = QLineEdit("70")
@@ -125,41 +131,60 @@ class MixDesignTab(QWidget):
         # Result Label
         self.resultLabel = QLabel('Ergebnisse werden hier angezeigt')
 
-        # Diagramm-Layout
-        chartLayout = QHBoxLayout()
+        # ScrollArea für Diagramme
+        diagramScrollArea = QScrollArea()
+        diagramScrollArea.setWidgetResizable(True)
+        diagramScrollArea.setMinimumSize(800, 1200) 
+
+        # Widget und Layout für Diagramme
+        diagramWidget = QWidget()
+        diagramLayout = QVBoxLayout(diagramWidget)
 
         # Erstes Diagramm
         self.figure1 = Figure()
         self.canvas1 = FigureCanvas(self.figure1)
-        
+        self.canvas1.setMinimumSize(800, 600)
+        diagramLayout.addWidget(self.canvas1)
+
         # Zweites Diagramm
         self.figure2 = Figure()
         self.canvas2 = FigureCanvas(self.figure2)
+        self.canvas2.setMinimumSize(800, 600)
+        diagramLayout.addWidget(self.canvas2)
 
-        # Füge die Canvas-Widgets zum Diagramm-Layout hinzu
-        chartLayout.addWidget(self.canvas1)
-        chartLayout.addWidget(self.canvas2)
-
+        # Fügen Sie das Diagramm-Widget der ScrollArea hinzu
+        diagramScrollArea.setWidget(diagramWidget)
 
         # Add widgets to layout
-        layout.addLayout(inputLayout)
-        layout.addWidget(self.techEingabeLabel)
-        layout.addWidget(self.techComboBox)
-        layout.addLayout(buttonLayout)
-        layout.addWidget(self.techList)
-        layout.addWidget(self.load_scale_factorLabel)
-        layout.addWidget(self.load_scale_factorInput)
-        layout.addWidget(self.calculateEingabeLabel)
-        layout.addWidget(self.calculateButton)
-        layout.addWidget(self.optimizeEingabeLabel)
-        layout.addWidget(self.optimizeButton)
-        layout.addWidget(self.resultLabel)
-        layout.addLayout(chartLayout)
+        mainLayout.addLayout(inputLayout)
+        mainLayout.addWidget(self.techEingabeLabel)
+        mainLayout.addWidget(self.techComboBox)
+        mainLayout.addLayout(buttonLayout)
+        mainLayout.addWidget(self.techList)
+        mainLayout.addWidget(self.load_scale_factorLabel)
+        mainLayout.addWidget(self.load_scale_factorInput)
+        mainLayout.addWidget(self.calculateEingabeLabel)
+        mainLayout.addWidget(self.calculateButton)
+        mainLayout.addWidget(self.optimizeEingabeLabel)
+        mainLayout.addWidget(self.optimizeButton)
+        mainLayout.addWidget(self.resultLabel)
+        mainLayout.addWidget(diagramScrollArea)
 
         self.progressBar = QProgressBar(self)
-        layout.addWidget(self.progressBar)
+        mainLayout.addWidget(self.progressBar)
 
-        self.setLayout(layout)
+        # Setzen Sie das Haupt-Widget in die Haupt-ScrollArea
+        mainScrollArea.setWidget(mainWidget)
+
+        # Setzen Sie das Layout des Tabs auf ein Layout, das nur die Haupt-ScrollArea enthält
+        tabLayout = QVBoxLayout(self)
+        tabLayout.addWidget(mainScrollArea)
+        self.setLayout(tabLayout)
+
+    def selectFilename(self, lineEdit):
+        filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen")
+        if filename:
+            lineEdit.setText(filename)
 
     def optimize(self):
         self.start_calculation(True)
