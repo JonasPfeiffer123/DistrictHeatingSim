@@ -202,17 +202,17 @@ class CalculationTab(QWidget):
 
         self.figure3 = Figure()
         self.canvas3 = FigureCanvas(self.figure3)
-        self.canvas3.setMinimumSize(500, 500)  # Setze eine Mindestgröße für die Canvas
+        self.canvas3.setMinimumSize(800, 800)  # Setze eine Mindestgröße für die Canvas
         self.toolbar3 = NavigationToolbar(self.canvas3, self)
 
         self.figure4 = Figure()
         self.canvas4 = FigureCanvas(self.figure4)
-        self.canvas4.setMinimumSize(500, 500)  # Setze eine Mindestgröße für die Canvas
+        self.canvas4.setMinimumSize(800, 800)  # Setze eine Mindestgröße für die Canvas
         self.toolbar4 = NavigationToolbar(self.canvas4, self)
 
         self.figure5 = Figure()
         self.canvas5 = FigureCanvas(self.figure5)
-        self.canvas5.setMinimumSize(500, 500)  # Setze eine Mindestgröße für die Canvas
+        self.canvas5.setMinimumSize(800, 800)  # Setze eine Mindestgröße für die Canvas
         self.toolbar5 = NavigationToolbar(self.canvas5, self)
 
         # Fügen Sie die Diagramme und Toolbars zum Container-Layout hinzu
@@ -355,8 +355,8 @@ class CalculationTab(QWidget):
     def on_simulation_done(self, results):
         self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
         self.time_steps, self.net, self.net_results, self.waerme_ges_W = results
-        self.mass_flow_circ_pump, self.deltap_circ_pump, self.rj_circ_pump, self.return_temp_circ_pump, self.flow_temp_circ_pump, \
-            self.return_pressure_circ_pump, self.flows_pressure_circ_pump, self.qext_kW, self.pressure_junctions = calculate_results(self.net, self.net_results)
+        self.mass_flow_circ_pump, self.deltap_circ_pump, self.return_temp_circ_pump, self.flow_temp_circ_pump, \
+            self.return_pressure_circ_pump, self.flow_pressure_circ_pump, self.qext_kW, self.pressure_junctions = calculate_results(self.net, self.net_results)
 
         self.waerme_ges_W = (np.sum(self.waerme_ges_W, axis=0)/1000)[self.calc1:self.calc2]
         self.plot_data = {
@@ -379,8 +379,27 @@ class CalculationTab(QWidget):
                 "data": self.flow_temp_circ_pump,
                 "label": "Temperatur in °C",
                 "axis": "right"
+            },
+            "Massenstrom Heizzentrale": {
+                "data": self.mass_flow_circ_pump,
+                "label": "Massenstrom in kg/s",
+                "axis": "right"
+            },
+            "Delta p Heizzentrale": {
+                "data": self.deltap_circ_pump,
+                "label": "Druck in bar",
+                "axis": "right"
+            },
+            "Rücklaufdruck Heizzentrale": {
+                "data": self.return_pressure_circ_pump,
+                "label": "Druck in bar",
+                "axis": "right"
+            },
+            "Vorlaufdruck Heizzentrale": {
+                "data": self.flow_pressure_circ_pump,
+                "label": "Druck in bar",
+                "axis": "right"
             }
-            # Weitere Daten hinzufügen
         }
 
 
@@ -429,10 +448,10 @@ class CalculationTab(QWidget):
                 data_info = self.plot_data[key]
                 color = next(color_cycle)
                 if data_info["axis"] == "left":
-                    ax_left.plot(self.time_steps, data_info["data"], label=data_info["label"], color=color)
+                    ax_left.plot(self.time_steps, data_info["data"], label=key, color=color)
                     left_labels.add(data_info["label"])
                 elif data_info["axis"] == "right":
-                    ax_right.plot(self.time_steps, data_info["data"], label=data_info["label"], color=color)
+                    ax_right.plot(self.time_steps, data_info["data"], label=key, color=color)
                     right_labels.add(data_info["label"])
 
         ax_left.set_xlabel("Zeit")
