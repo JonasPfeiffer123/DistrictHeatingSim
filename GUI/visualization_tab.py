@@ -130,15 +130,15 @@ class VisualizationTab(QWidget):
 
     def on_generation_done(self, results):
         self.progressBar.setRange(0, 1)
-        filenames = ["C:/Users/username/heating_network_generation/net_generation/HAST.geojson", "C:/Users/username/heating_network_generation/net_generation/Rücklauf.geojson",
-                     "C:/Users/username/heating_network_generation/net_generation/Vorlauf.geojson", "C:/Users/username/heating_network_generation/net_generation/Erzeugeranlagen.geojson"]
+        filenames = ["net_generation/HAST.geojson", "net_generation/Rücklauf.geojson",
+                     "net_generation/Vorlauf.geojson", "net_generation/Erzeugeranlagen.geojson"]
         self.loadNetData(filenames)
         
         generatedLayers = {
-            'HAST': "C:/Users/username/heating_network_generation/net_generation/HAST.geojson",
-            'Rücklauf': "C:/Users/username/heating_network_generation/net_generation/Rücklauf.geojson",
-            'Vorlauf': "C:/Users/username/heating_network_generation/net_generation/Vorlauf.geojson",
-            'Erzeugeranlagen': "C:/Users/username/heating_network_generation/net_generation/Erzeugeranlagen.geojson"
+            'HAST': "net_generation/HAST.geojson",
+            'Rücklauf': "net_generation/Rücklauf.geojson",
+            'Vorlauf': "net_generation/Vorlauf.geojson",
+            'Erzeugeranlagen': "net_generation/Erzeugeranlagen.geojson"
         }
 
         # Auslösen des Signals mit den Pfaden der generierten Layer
@@ -358,23 +358,14 @@ class VisualizationTab(QWidget):
 
         print(f"GeoJSON-Datei erfolgreich erstellt: {geojson_file_path}")
 
-    def loadGeoJsonToMap(self, geojson_file_path):
-        try:
-            # Laden der GeoJSON-Datei in die Karte
-            folium.GeoJson(geojson_file_path).add_to(self.m)
-            self.updateMapView()
-            print("GeoJSON-Datei erfolgreich zur Karte hinzugefügt.")
-        except Exception as e:
-            print(f"Fehler beim Laden der GeoJSON-Datei: {e}")
-
     def loadCsvCoordinates(self):
         fname, _ = QFileDialog.getOpenFileName(self, 'CSV-Koordinaten laden', '', 'CSV Files (*.csv);;All Files (*)')
         if fname:
             # Pfad für die temporäre GeoJSON-Datei
-            temp_geojson_path = 'temp_geojson_file.geojson'
+            geojson_path = 'results/Koordinaten.geojson'
 
             # Erstellen der GeoJSON-Datei aus der CSV-Datei
-            self.createGeoJsonFromCsv(fname, temp_geojson_path)
+            self.createGeoJsonFromCsv(fname, geojson_path)
 
             # Laden der GeoJSON-Datei in die Karte
-            self.loadGeoJsonToMap(temp_geojson_path)
+            self.addGeoJsonLayer(self.m, [geojson_path], color=None)

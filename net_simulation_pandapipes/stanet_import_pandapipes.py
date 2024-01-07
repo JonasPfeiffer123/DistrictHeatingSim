@@ -202,7 +202,7 @@ def create_net_from_stanet_csv(file_path):
     return net, yearly_time_steps, waerme_ges_W_L
 
 
-#net, yearly_time_steps, waerme_ges_W_L = create_net_from_stanet_csv("C:/Users/username/heating_network_generation/net_simulation_pandapipes/stanet files/Beleg_1/Beleg_1.CSV")
+#net, yearly_time_steps, waerme_ges_W_L = create_net_from_stanet_csv("net_simulation_pandapipes/stanet files/Beleg_1/Beleg_1.CSV")
 #calc1 = 2660
 #calc2 = 2670
 #thermohydraulic_time_series_net_calculation(net, yearly_time_steps, waerme_ges_W_L, calc1, calc2)

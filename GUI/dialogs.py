@@ -182,8 +182,8 @@ class LayerGenerationDialog(QDialog):
         formLayout = QFormLayout()
 
         # Dateiauswahl für Street Layer und Data CSV
-        self.streetLayerInput, self.streetLayerButton = self.createFileInput("C:/Users/username/heating_network_generation/net_generation_QGIS/Straßen Zittau.geojson")
-        self.dataCsvInput, self.dataCsvButton = self.createFileInput("C:/Users/username/heating_network_generation/geocoding/data_output_zi_ETRS89.csv")
+        self.streetLayerInput, self.streetLayerButton = self.createFileInput("net_generation_QGIS/Straßen Zittau.geojson")
+        self.dataCsvInput, self.dataCsvButton = self.createFileInput("geocoding/data_output_zi_ETRS89.csv")
 
         # Koordinateneingaben
         self.xCoordInput = QLineEdit("486267.306999999971595", self)
@@ -523,7 +523,7 @@ class StanetDialog(QDialog):
         layout = QVBoxLayout(self)
 
         # Standardpfad
-        default_path = "C:/Users/username/heating_network_generation/net_simulation_pandapipes/stanet files/Beleg_1/Beleg_1.CSV"
+        default_path = "net_simulation_pandapipes/stanet files/Beleg_1/Beleg_1.CSV"
 
         # Eingabefeld und Dateiauswahl-Button
         self.stanetCsvInputLayout = self.createFileInput("Stanet CSV:", default_path)

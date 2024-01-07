@@ -125,7 +125,9 @@ class FileImportThread(QThread):
     def run(self):
         try:
             results = {}
+            print(self.filenames)
             for filename in self.filenames:
+                print(filename)
                 gdf = gpd.read_file(filename)
                 results[filename] = {
                     'gdf': gdf,

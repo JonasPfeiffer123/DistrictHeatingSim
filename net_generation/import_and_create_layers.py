@@ -73,8 +73,8 @@ def generate_and_export_layers(osm_street_layer_geojson_file_name, data_csv_file
     vl_erzeugeranlagen = vl_erzeugeranlagen.set_crs("EPSG:25833")
     
     # Export der GeoDataFrames als GeoJSON
-    vl_hast.to_file("C:/Users/username/heating_network_generation/net_generation/HAST.geojson", driver="GeoJSON")
-    vl_rl.to_file("C:/Users/username/heating_network_generation/net_generation/Rücklauf.geojson", driver="GeoJSON")
-    vl_vl.to_file("C:/Users/username/heating_network_generation/net_generation/Vorlauf.geojson", driver="GeoJSON")
-    vl_erzeugeranlagen.to_file("C:/Users/username/heating_network_generation/net_generation/Erzeugeranlagen.geojson", driver="GeoJSON")
+    vl_hast.to_file("net_generation/HAST.geojson", driver="GeoJSON")
+    vl_rl.to_file("net_generation/Rücklauf.geojson", driver="GeoJSON")
+    vl_vl.to_file("net_generation/Vorlauf.geojson", driver="GeoJSON")
+    vl_erzeugeranlagen.to_file("net_generation/Erzeugeranlagen.geojson", driver="GeoJSON")
 
