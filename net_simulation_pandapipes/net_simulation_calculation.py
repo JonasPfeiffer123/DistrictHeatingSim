@@ -5,7 +5,7 @@ from shapely.geometry import LineString
 
 from pandapower.timeseries import DFData
 from pandapower.control.controller.const_control import ConstControl
-from net_simulation_pandapipes.my_controllers import ReturnTemperatureController, WorstPointPressureController
+from net_simulation_pandapipes.controllers import ReturnTemperatureController, WorstPointPressureController
 
 def get_line_coords_and_lengths(gdf):
     all_line_coords, all_line_lengths = [], []
@@ -135,7 +135,7 @@ def correct_flow_directions(net):
     return net
 
 
-def optimize_diameter_parameters(initial_net, element="pipe", v_max=1, v_min=0.8, dx=0.001):
+def optimize_diameter_parameters(initial_net, element="pipe", v_max=2, v_min=1.5, dx=0.001):
     pp.pipeflow(initial_net, mode="all")
 
     if element == "pipe":
@@ -150,6 +150,8 @@ def optimize_diameter_parameters(initial_net, element="pipe", v_max=1, v_min=0.8
                 elif initial_net.res_pipe.v_mean_m_per_s[pipe_idx] < v_min:
                     # shrink diameter
                     initial_net.pipe.at[pipe_idx, 'diameter_m'] = initial_net.pipe.at[pipe_idx, 'diameter_m'] - dx
+
+            
             pp.pipeflow(initial_net, mode="all")
             velocities = list(initial_net.res_pipe.v_mean_m_per_s)
 
@@ -223,21 +225,24 @@ def optimize_diameter_types(net, v_max=1.1, v_min=0.7):
 
 
 def export_net_geojson(net):
-    # check ig geographical data is available
     if 'pipe_geodata' in net and not net.pipe_geodata.empty:
-        # convert the data to a GeoDataFrame
-        gdf = gpd.GeoDataFrame(net.pipe_geodata)
-        gdf['geometry'] = gdf['coords'].apply(lambda x: LineString(x))
+        # Erstelle eine Liste von LineString-Objekten aus den Koordinaten
+        geometry = [LineString(coords) for coords in net.pipe_geodata['coords']]
+
+        # Erstelle ein GeoDataFrame mit der Geometrie als aktiver Geometriespalte
+        gdf = gpd.GeoDataFrame(net.pipe_geodata, geometry=geometry)
+
+        # Entferne die jetzt überflüssige 'coords'-Spalte
         del gdf['coords']
 
-        # adding attribute 'diameter_m'
+        # Füge weitere Attribute hinzu
         gdf['diameter_mm'] = net.pipe['diameter_m'] / 1000
-    
-        # set crs (here EPSG:4326)
+
+        # Setze das Koordinatensystem (CRS)
         gdf.set_crs(epsg=25833, inplace=True)
 
-        # export as GeoJSON
-        gdf.to_file("pipes_network.geojson", driver='GeoJSON')
+        # Exportiere als GeoJSON
+        gdf.to_file("results/pipes_network.geojson", driver='GeoJSON')
     else:
         print("No geographical data available in the network.")
 

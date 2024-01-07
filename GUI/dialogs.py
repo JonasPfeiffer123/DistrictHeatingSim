@@ -1,4 +1,11 @@
-from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QDialogButtonBox, QComboBox
+from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, \
+    QDialogButtonBox, QComboBox, QTableWidget, QPushButton, QTableWidgetItem, \
+    QFormLayout, QHBoxLayout, QFileDialog, QProgressBar, QMessageBox
+
+import pandas as pd
+
+from osm_data.import_osm_data_geojson import build_query, download_data, save_to_file
+from gui.threads import GeocodingThread
 
 class TechInputDialog(QDialog):
     def __init__(self, tech_type):
@@ -120,3 +127,430 @@ class TechInputDialog(QDialog):
                 "Kühlleistung_Abwärme": float(self.PWHInput.text()),
                 "Temperatur_Abwärme": float(self.TWHInput.text())
             }
+        
+class HeatDemandEditDialog(QDialog):
+    def __init__(self, gdf_HAST, hastInput, parent=None):
+        super(HeatDemandEditDialog, self).__init__(parent)
+        self.gdf_HAST = gdf_HAST
+        self.hastInput = hastInput
+        self.initUI()
+
+    def initUI(self):
+        self.layout = QVBoxLayout(self)
+
+        # Erstelle eine Tabelle für die Bearbeitung
+        self.heatDemandTable = QTableWidget(self)
+        self.loadHeatDemandData()
+        self.layout.addWidget(self.heatDemandTable)
+
+        # Speicher-Button
+        saveButton = QPushButton("Änderungen speichern", self)
+        saveButton.clicked.connect(self.saveHeatDemandData)
+        self.layout.addWidget(saveButton)
+
+    def loadHeatDemandData(self):
+        df = pd.DataFrame(self.gdf_HAST.drop(columns=[self.gdf_HAST.geometry.name]))
+        self.heatDemandTable.setRowCount(len(df))
+        self.heatDemandTable.setColumnCount(len(df.columns))
+        self.heatDemandTable.setHorizontalHeaderLabels(df.columns)
+
+        for i, row in df.iterrows():
+            for j, value in enumerate(row):
+                item = QTableWidgetItem(str(value))
+                self.heatDemandTable.setItem(i, j, item)
+
+    def saveHeatDemandData(self):
+        for i in range(self.heatDemandTable.rowCount()):
+            for j, column_name in enumerate(self.gdf_HAST.drop(columns=[self.gdf_HAST.geometry.name]).columns):
+                cell_value = self.heatDemandTable.item(i, j).text()
+                self.gdf_HAST.at[i, column_name] = cell_value
+
+        self.gdf_HAST.to_file(self.hastInput, driver='GeoJSON')
+        self.accept()  # Schließt das Dialogfenster
+
+class LayerGenerationDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.initUI()
+
+    def initUI(self):
+        self.setWindowTitle("Layer-Generierung")
+
+        layout = QVBoxLayout(self)
+
+        # Formularlayout für Eingaben
+        formLayout = QFormLayout()
+
+        # Dateiauswahl für Street Layer und Data CSV
+        self.streetLayerInput, self.streetLayerButton = self.createFileInput("net_generation_QGIS/Straßen Zittau.geojson")
+        self.dataCsvInput, self.dataCsvButton = self.createFileInput("geocoding/data_output_zi_ETRS89.csv")
+
+        # Koordinateneingaben
+        self.xCoordInput = QLineEdit("486267.306999999971595", self)
+        self.yCoordInput = QLineEdit("5637294.910000000149012", self)
+
+        formLayout.addRow("GeoJSON-Straßen-Layer:", self.createFileInputLayout(self.streetLayerInput, self.streetLayerButton))
+        formLayout.addRow("CSV mit Gebäudestandorten:", self.createFileInputLayout(self.dataCsvInput, self.dataCsvButton))
+        formLayout.addRow("X-Koordinate Erzeugerstandort:", self.xCoordInput)
+        formLayout.addRow("Y-Koordinate Erzeugerstandort:", self.yCoordInput)
+
+        # Buttons für OK und Abbrechen
+        self.okButton = QPushButton("OK", self)
+        self.okButton.clicked.connect(self.accept)
+        self.cancelButton = QPushButton("Abbrechen", self)
+        self.cancelButton.clicked.connect(self.reject)
+
+        layout.addLayout(formLayout)
+        layout.addWidget(self.okButton)
+        layout.addWidget(self.cancelButton)
+
+    def createFileInput(self, default_path):
+        lineEdit = QLineEdit(default_path)
+        button = QPushButton("Durchsuchen")
+        button.clicked.connect(lambda: self.selectFile(lineEdit))
+        return lineEdit, button
+
+    def createFileInputLayout(self, lineEdit, button):
+        layout = QHBoxLayout()
+        layout.addWidget(lineEdit)
+        layout.addWidget(button)
+        return layout
+
+    def selectFile(self, lineEdit):
+        filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", "", "All Files (*)")
+        if filename:
+            lineEdit.setText(filename)
+
+    def getInputs(self):
+        return {
+            "streetLayer": self.streetLayerInput.text(),
+            "dataCsv": self.dataCsvInput.text(),
+            "xCoord": self.xCoordInput.text(),
+            "yCoord": self.yCoordInput.text()
+        }
+    
+class DownloadOSMDataDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.tags_to_download = []
+        self.initUI()
+
+    def initUI(self):
+        self.setWindowTitle("Download OSM-Data")
+
+        layout = QVBoxLayout(self)
+
+        # Stadtname Eingabefeld
+        self.cityLineEdit, cityButton = self.createCityInput("Zittau")
+        layout.addLayout(self.createFileInputLayout(self.cityLineEdit, cityButton))
+        
+        # Dateiname Eingabefeld
+        self.filenameLineEdit, fileButton = self.createFileInput("osm_data/osm_data.geojson")
+        layout.addLayout(self.createFileInputLayout(self.filenameLineEdit, fileButton))
+
+        # Tags-Auswahl
+        self.tagsLayout = QFormLayout()
+        layout.addLayout(self.tagsLayout)
+        self.addTagField()  # Erstes Tag-Feld hinzufügen
+        
+        # Buttons zum Hinzufügen/Entfernen von Tags
+        self.addTagButton = QPushButton("Tag hinzufügen", self)
+        self.addTagButton.clicked.connect(self.addTagField)
+        self.removeTagButton = QPushButton("Tag entfernen", self)
+        self.removeTagButton.clicked.connect(self.removeTagField)
+        layout.addWidget(self.addTagButton)
+        layout.addWidget(self.removeTagButton)
+        
+        # Buttons für OK und Abbrechen
+        self.okButton = QPushButton("OK", self)
+        self.okButton.clicked.connect(self.onAccept)
+        self.cancelButton = QPushButton("Abbrechen", self)
+        self.cancelButton.clicked.connect(self.reject)
+        
+        layout.addWidget(self.okButton)
+        layout.addWidget(self.cancelButton)
+
+    def createFileInput(self, default_path):
+        lineEdit = QLineEdit(default_path)
+        button = QPushButton("Durchsuchen")
+        button.clicked.connect(lambda: self.selectFile(lineEdit))
+        return lineEdit, button
+
+    def createFileInputLayout(self, lineEdit, button):
+        layout = QHBoxLayout()
+        layout.addWidget(lineEdit)
+        layout.addWidget(button)
+        return layout
+
+    def selectFile(self, lineEdit):
+        filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", "", "All Files (*)")
+        if filename:
+            lineEdit.setText(filename)
+    
+    def createCityInput(self, placeholder_text):
+        lineEdit = QLineEdit(placeholder_text)
+        button = QPushButton("Stadt bestätigen")
+        button.clicked.connect(lambda: self.setCityName(lineEdit))
+        return lineEdit, button
+
+    def setCityName(self, lineEdit):
+        self.city_name = lineEdit.text()
+    
+    def addTagField(self):
+        keyLineEdit = QLineEdit()
+        valueLineEdit = QLineEdit()
+        self.tagsLayout.addRow(keyLineEdit, valueLineEdit)
+        self.tags_to_download.append((keyLineEdit, valueLineEdit))
+    
+    def removeTagField(self):
+        if self.tags_to_download:
+            keyLineEdit, valueLineEdit = self.tags_to_download.pop()
+            self.tagsLayout.removeRow(keyLineEdit)
+    
+    def onAccept(self):
+        # Daten sammeln
+        self.filename = self.filenameLineEdit.text()
+        tags = {key.text(): value.text() for key, value in self.tags_to_download if key.text()}
+        
+        # Abfrage erstellen und Daten herunterladen
+        self.downloadOSMData(self.city_name, tags, self.filename)
+        self.accept()
+
+    # Die Methode des Dialogs, die die anderen Funktionen aufruft
+    def downloadOSMData(self, city_name, tags, filename):
+        # Erstelle die Overpass-Abfrage
+        query = build_query(city_name, tags)
+        # Lade die Daten herunter
+        geojson_data = download_data(query)
+        # Speichere die Daten als GeoJSON
+        save_to_file(geojson_data, filename)
+
+class GeocodeAdressesDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.initUI()
+
+    def initUI(self):
+        self.setWindowTitle("Adressdaten geocodieren")
+
+        layout = QVBoxLayout(self)
+
+        # Stadtname Eingabefeld
+        self.inputfilenameLineEdit, fileButton = self.createFileInput("geocoding/data_input_zi.csv")
+        layout.addLayout(self.createFileInputLayout(self.inputfilenameLineEdit, fileButton))
+        
+        # Dateiname Eingabefeld
+        self.outputfilenameLineEdit, fileButton = self.createFileInput("geocoding/data_output_zi_ETRS89.csv")
+        layout.addLayout(self.createFileInputLayout(self.outputfilenameLineEdit, fileButton))
+        
+        # Buttons für OK und Abbrechen
+        self.okButton = QPushButton("OK", self)
+        self.okButton.clicked.connect(self.onAccept)
+        self.cancelButton = QPushButton("Abbrechen", self)
+        self.cancelButton.clicked.connect(self.reject)
+        
+        layout.addWidget(self.okButton)
+        layout.addWidget(self.cancelButton)
+
+        self.progressBar = QProgressBar(self)
+        layout.addWidget(self.progressBar)
+
+    def createFileInput(self, default_path):
+        lineEdit = QLineEdit(default_path)
+        button = QPushButton("Durchsuchen")
+        button.clicked.connect(lambda: self.selectFile(lineEdit))
+        return lineEdit, button
+
+    def createFileInputLayout(self, lineEdit, button):
+        layout = QHBoxLayout()
+        layout.addWidget(lineEdit)
+        layout.addWidget(button)
+        return layout
+
+    def selectFile(self, lineEdit):
+        filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", "", "All Files (*)")
+        if filename:
+            lineEdit.setText(filename)
+
+    def onAccept(self):
+        # Daten sammeln
+        self.inputfilename = self.inputfilenameLineEdit.text()
+        self.outputfilename = self.outputfilenameLineEdit.text()
+        
+        # Abfrage erstellen und Daten herunterladen
+        self.geocodeAdresses(self.inputfilename, self.outputfilename)
+
+    # Die Methode des Dialogs, die die anderen Funktionen aufruft
+    def geocodeAdresses(self, inputfilename, outputfilename):
+        # Stellen Sie sicher, dass der vorherige Thread beendet wird
+        if hasattr(self, 'geocodingThread') and self.geocodingThread.isRunning():
+            self.geocodingThread.terminate()
+            self.geocodingThread.wait()
+        self.geocodingThread = GeocodingThread(inputfilename, outputfilename)
+        self.geocodingThread.calculation_done.connect(self.on_generation_done)
+        self.geocodingThread.calculation_error.connect(self.on_generation_error)
+        self.geocodingThread.start()
+        self.progressBar.setRange(0, 0)  # Aktiviert den indeterministischen Modus
+
+    def on_generation_done(self, results):
+        self.accept()
+
+    def on_generation_error(self, error_message):
+        QMessageBox.critical(self, "Fehler beim Geocoding", error_message)
+        self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
+
+class GeojsonDialog(QDialog):
+    def __init__(self, generate_callback, edit_hast_callback, import_layers_callback, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Netz aus GeoJSON generieren")
+        self.generate_callback = generate_callback
+        self.edit_hast_callback = edit_hast_callback
+        self.import_layers_callback = import_layers_callback
+        self.initUI()
+
+    def initUI(self):
+        layout = QVBoxLayout(self)
+
+        # Standardpfade
+        default_paths = {
+            'Erzeugeranlagen': 'net_generation_QGIS/Beispiel Zittau/Erzeugeranlagen.geojson',
+            'HAST': 'net_generation_QGIS/Beispiel Zittau/HAST.geojson',
+            'Vorlauf': 'net_generation_QGIS/Beispiel Zittau/Vorlauf.geojson',
+            'Rücklauf': 'net_generation_QGIS/Beispiel Zittau/Rücklauf.geojson'
+        }
+
+        # Eingabefelder und Dateiauswahl-Buttons
+        self.vorlaufInput = self.createFileInput("Vorlauf GeoJSON:", default_paths['Vorlauf'])
+        self.ruecklaufInput = self.createFileInput("Rücklauf GeoJSON:", default_paths['Rücklauf'])
+        self.hastInput = self.createFileInput("HAST GeoJSON:", default_paths['HAST'])
+        self.erzeugeranlagenInput = self.createFileInput("Erzeugeranlagen GeoJSON:", default_paths['Erzeugeranlagen'])
+
+        layout.addLayout(self.vorlaufInput)
+        layout.addLayout(self.ruecklaufInput)
+        layout.addLayout(self.hastInput)
+        layout.addLayout(self.erzeugeranlagenInput)
+
+        # Hinzufügen der Berechnungsmethoden-Auswahl
+        self.calcMethodInput = QComboBox(self)
+        self.calcMethodInput.addItems(["Datensatz", "BDEW", "VDI4655"])
+        layout.addWidget(QLabel("Berechnungsmethode:"))
+        layout.addWidget(self.calcMethodInput)
+
+        # Hinzufügen der Gebäudetypen-Auswahl
+        self.buildingTypeInput = QComboBox(self)
+        layout.addWidget(QLabel("Gebäudetyp:"))
+        layout.addWidget(self.buildingTypeInput)
+        self.updateBuildingType()  # Initialisiert die Gebäudetypen basierend auf der Berechnungsmethode
+
+        self.calcMethodInput.currentIndexChanged.connect(self.updateBuildingType)
+
+        # Button für "Hausanschlussstationen bearbeiten"
+        self.editHASTButton = QPushButton("Hausanschlussstationen bearbeiten", self)
+        self.editHASTButton.clicked.connect(self.editHAST)
+        layout.addWidget(self.editHASTButton)
+
+        # Button für "Layers in Karte importieren"
+        self.importLayersButton = QPushButton("Layers in Karte importieren", self)
+        self.importLayersButton.clicked.connect(self.importLayers)
+        layout.addWidget(self.importLayersButton)
+
+        # Button zum Starten der Netzgenerierung
+        self.generateButton = QPushButton("Netz generieren", self)
+        self.generateButton.clicked.connect(self.generateNetwork)
+        layout.addWidget(self.generateButton)
+
+    def createFileInput(self, label_text, default_text):
+        layout = QHBoxLayout()
+        label = QLabel(label_text)
+        line_edit = QLineEdit(default_text)
+        button = QPushButton("Datei auswählen")
+        button.clicked.connect(lambda: self.selectFilename(line_edit))
+        layout.addWidget(label)
+        layout.addWidget(line_edit)
+        layout.addWidget(button)
+        return layout
+
+    def selectFilename(self, line_edit):
+        fname, _ = QFileDialog.getOpenFileName(self, 'Datei auswählen', '', 'GeoJSON Files (*.geojson);;All Files (*)')
+        if fname:
+            line_edit.setText(fname)
+
+    def updateBuildingType(self):
+        self.buildingTypeInput.clear()
+        if self.calcMethodInput.currentText() == "VDI4655":
+            self.buildingTypeInput.setDisabled(False)
+            self.buildingTypeInput.addItems(["EFH", "MFH"])
+        elif self.calcMethodInput.currentText() == "BDEW":
+            self.buildingTypeInput.setDisabled(False)
+            self.buildingTypeInput.addItems(["HEF", "HMF", "GKO", "GHA", "GMK", "GBD", "GBH", "GWA", "GGA", "GBA", "GGB", "GPD", "GMF", "GHD"])
+        else:
+            self.buildingTypeInput.setDisabled(True)
+
+    def editHAST(self):
+        hast_path = self.hastInput.itemAt(1).widget().text()  # Annahme: QLineEdit ist das zweite Widget im Layout
+        if self.edit_hast_callback:
+            self.edit_hast_callback(hast_path)
+
+    def importLayers(self):
+        if self.import_layers_callback:
+            self.import_layers_callback(
+                self.vorlaufInput.itemAt(1).widget().text(),
+                self.ruecklaufInput.itemAt(1).widget().text(),
+                self.hastInput.itemAt(1).widget().text(),
+                self.erzeugeranlagenInput.itemAt(1).widget().text()
+            )
+
+    def generateNetwork(self):
+        if self.generate_callback:
+            self.generate_callback(
+                self.vorlaufInput.itemAt(1).widget().text(),
+                self.ruecklaufInput.itemAt(1).widget().text(),
+                self.hastInput.itemAt(1).widget().text(),
+                self.erzeugeranlagenInput.itemAt(1).widget().text(),
+                self.calcMethodInput.currentText(),
+                self.buildingTypeInput.currentText() if self.calcMethodInput.currentText() != "Datensatz" else None
+            )
+        self.accept()
+
+class StanetDialog(QDialog):
+    def __init__(self, generate_callback, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Netz aus Stanet-CSV generieren")
+        self.generate_callback = generate_callback
+        self.initUI()
+
+    def initUI(self):
+        layout = QVBoxLayout(self)
+
+        # Standardpfad
+        default_path = "net_simulation_pandapipes/stanet files/Beleg_1/Beleg_1.CSV"
+
+        # Eingabefeld und Dateiauswahl-Button
+        self.stanetCsvInputLayout = self.createFileInput("Stanet CSV:", default_path)
+        layout.addLayout(self.stanetCsvInputLayout)
+
+        # Button zum Starten der Netzgenerierung
+        self.generateButton = QPushButton("Netz generieren", self)
+        self.generateButton.clicked.connect(self.generateNetwork)
+        layout.addWidget(self.generateButton)
+
+    def createFileInput(self, label_text, default_text):
+        layout = QHBoxLayout()
+        label = QLabel(label_text)
+        line_edit = QLineEdit(default_text)
+        button = QPushButton("Datei auswählen")
+        button.clicked.connect(lambda: self.selectFilename(line_edit))
+        layout.addWidget(label)
+        layout.addWidget(line_edit)
+        layout.addWidget(button)
+        return layout
+
+    def selectFilename(self, line_edit):
+        fname, _ = QFileDialog.getOpenFileName(self, 'Datei auswählen', '', 'CSV Files (*.csv);;All Files (*)')
+        if fname:
+            line_edit.setText(fname)
+
+    def generateNetwork(self):
+        if self.generate_callback:
+            self.generate_callback(self.stanetCsvInputLayout.itemAt(1).widget().text())
+        self.accept()

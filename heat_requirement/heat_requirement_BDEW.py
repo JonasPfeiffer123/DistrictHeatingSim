@@ -172,19 +172,19 @@ def Jahresdauerlinie(hourly_intervals, hourly_heat_demand):
 
 #############################
 
-def calculate(JWB_kWh=10000, lastprofiltyp="HMF", subtyp="03", year=2019):
+def calculate(JWB_kWh=10000, lastprofiltyp="HMF", subtyp="03", year=2021):
     # Feiertage
-    Neujahr = "2019-01-01"
-    Karfreitag = "2019-04-19"
-    Ostermontag = "2019-04-22"
-    Maifeiertag = "2019-05-01"
-    Pfingstmontag = "2019-05-30"
-    Christi_Himmelfahrt = "2019-06-10"
-    Fronleichnam = "2019-06-20"
-    Tag_der_deutschen_Einheit = "2019-10-03"
-    Allerheiligen = "2019-11-01"
-    Weihnachtsfeiertag1 = "2019-12-25"
-    Weihnachtsfeiertag2 = "2019-12-26"
+    Neujahr = "2021-01-01"
+    Karfreitag = "2021-04-02"
+    Ostermontag = "2021-04-05"
+    Maifeiertag = "2021-05-01"
+    Pfingstmontag = "2021-05-24"
+    Christi_Himmelfahrt = "2021-05-13"
+    Fronleichnam = "2021-06-03"
+    Tag_der_deutschen_Einheit = "2021-10-03"
+    Allerheiligen = "2021-11-01"
+    Weihnachtsfeiertag1 = "2021-12-25"
+    Weihnachtsfeiertag2 = "2021-12-26"
 
     Feiertage = np.array([Neujahr, Karfreitag, Ostermontag, Maifeiertag, Pfingstmontag, 
                 Christi_Himmelfahrt, Fronleichnam, Tag_der_deutschen_Einheit, 
@@ -197,7 +197,7 @@ def calculate(JWB_kWh=10000, lastprofiltyp="HMF", subtyp="03", year=2019):
     weather_data = TRY
     # weather_data = test_weather_data
 
-    hourly_intervals, hourly_heat_demand = berechnung_lastgang(weather_data, JWB_kWh, lastprofiltyp, subtyp, Feiertage, year=2019)
+    hourly_intervals, hourly_heat_demand = berechnung_lastgang(weather_data, JWB_kWh, lastprofiltyp, subtyp, Feiertage, year)
 
     #Jahresdauerlinie(hourly_intervals, hourly_heat_demand)
 

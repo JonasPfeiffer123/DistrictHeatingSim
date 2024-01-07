@@ -1,18 +1,12 @@
 import matplotlib.pyplot as plt
-import pandapipes.plotting as pp_plot
-import random
 import numpy as np
 import pandas as pd
 import geopandas as gpd
-from matplotlib.figure import Figure
 
-from net_simulation_pandapipes import net_simulation
-from net_simulation_pandapipes import net_simulation_calculation
-from heat_requirement import heat_requirement_VDI4655
-from heat_requirement import heat_requirement_BDEW
-from net_simulation_pandapipes.net_generation_test import initialize_test_net
+from net_simulation_pandapipes.net_simulation_calculation import calculate_worst_point
+from net_simulation_pandapipes.net_simulation import generate_profiles_from_geojson, initialize_net_geojson, thermohydraulic_time_series_net_calculation, calculate_results
 from heat_generators.heat_generator_classes import *
-from net_test import config_plot
+from net_simulation_pandapipes.net_simulation import save_results_csv, import_results_csv
 
 def import_TRY(dateiname):
     # Import TRY
@@ -33,75 +27,6 @@ def import_TRY(dateiname):
     globalstrahlung = direktstrahlung + diffusstrahlung
 
     return temperature, windspeed, direktstrahlung, globalstrahlung
-
-#Berechnung_Erzeugermix
-def initialize_net_profile_calculation(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, building_type="MFH", calc_method="VDI4655"):
-    ### define the heat requirement ###
-    try:
-        JEB_Wärme_ges_kWh = gdf_HAST["Wärmebedarf"].values
-
-    except:
-        print("Herauslesen des Wärmebedarfs aus geojson nicht möglich.")
-        n = len(net.heat_exchanger)
-        min_value = 59000  # kWh
-        max_value = 60000  # kWh
-        JEB_Wärme_ges_kWh = np.array([random.randint(min_value, max_value) for _ in range(n)])
-    
-    JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh = JEB_Wärme_ges_kWh*0.2, JEB_Wärme_ges_kWh*0.8
-
-    waerme_ges_W = []
-    max_waerme_ges_W = []
-    
-    if calc_method == "VDI4655":
-        for hw, tww in zip(JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh):
-            yearly_time_steps, _, _, _, waerme_ges_kW = heat_requirement_VDI4655.calculate(hw, tww, building_type=building_type)
-            waerme_ges_W.append(waerme_ges_kW * 1000)
-            max_waerme_ges_W.append(np.max(waerme_ges_kW * 1000))
-        
-    if calc_method == "BDEW":
-        for JWB in JEB_Wärme_ges_kWh:
-            yearly_time_steps, waerme_ges_kW  = heat_requirement_BDEW.calculate(JWB, building_type, subtyp="03")
-            waerme_ges_W.append(waerme_ges_kW * 1000)
-            max_waerme_ges_W.append(np.max(waerme_ges_kW * 1000))
-
-    waerme_ges_W = np.array(waerme_ges_W)
-    max_waerme_ges_W = np.array(max_waerme_ges_W)
-
-    ### generates the pandapipes net and initializes it ###
-    net = net_simulation.initialize_net(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, max_waerme_ges_W)
-    
-    return net, yearly_time_steps, waerme_ges_W
-
-def thermohydraulic_time_series_net_calculation(net, yearly_time_steps, waerme_ges_W, calc1, calc2, t_rl_soll=60):
-    ### time series calculation ###
-
-    time_steps = yearly_time_steps[calc1:calc2]
-    net, net_results = net_simulation.time_series_net(net, t_rl_soll, waerme_ges_W, calc1, calc2)
-
-    return time_steps, net, net_results
-
-def calculate_results(net, net_results):
-    ### Plotten Ergebnisse Pumpe / Einspeisung ###
-    mass_flow_circ_pump = net_results["res_circ_pump_pressure.mdot_flow_kg_per_s"][:, 0]
-    deltap_circ_pump =  net_results["res_circ_pump_pressure.deltap_bar"][:, 0]
-
-
-    rj_circ_pump = net.circ_pump_pressure["return_junction"][0]
-    fj_circ_pump = net.circ_pump_pressure["flow_junction"][0]
-
-    return_temp_circ_pump = net_results["res_junction.t_k"][:, rj_circ_pump] - 273.15
-    flow_temp_circ_pump = net_results["res_junction.t_k"][:, fj_circ_pump] - 273.15
-
-    return_pressure_circ_pump = net_results["res_junction.p_bar"][:, rj_circ_pump]
-    flows_pressure_circ_pump = net_results["res_junction.p_bar"][:, fj_circ_pump]
-
-    pressure_junctions = net_results["res_junction.p_bar"]
-
-    cp_kJ_kgK = 4.2 # kJ/kgK
-
-    qext_kW = mass_flow_circ_pump * cp_kJ_kgK * (flow_temp_circ_pump -return_temp_circ_pump)
-
-    return mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW, pressure_junctions
 
 def plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump, return_pressure_circ_pump, flows_pressure_circ_pump, deltap_circ_pump, junction_pressure):
     # Erstellen Sie eine Figur und ein erstes Achsenobjekt
@@ -140,34 +65,14 @@ def plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump
     # Zeigen Sie das kombinierte Diagramm an
     plt.show()
 
-def save_results_csv(time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump, filename):
-    # Umwandeln von time_steps in ein allgemeineres datetime64[ns]-Format
-    time_steps_ns = time_steps.astype('datetime64[ns]')
-    
-    # Konvertieren der Arrays in ein Pandas DataFrame
-    df = pd.DataFrame({'Zeitpunkt': time_steps_ns, 
-                       'Heizlast_Netz_kW': qext_kW, 
-                       'Vorlauftemperatur_Netz_°C': flow_temp_circ_pump, 
-                       'Rücklauftemperatur_Netz_°C': return_temp_circ_pump})
-
-    # Speichern des DataFrames als CSV
-    df.to_csv(filename, sep=';', index=False)
-
-def import_results_csv(filename):
-    data = pd.read_csv(filename, sep=';', parse_dates=['Zeitpunkt'])
-    time_steps = data["Zeitpunkt"].values.astype('datetime64[15m]')
-    qext_kW = data["Heizlast_Netz_kW"].values.astype('float64')
-    flow_temp_circ_pump = data['Vorlauftemperatur_Netz_°C'].values.astype('float64')
-    return_temp_circ_pump = data['Rücklauftemperatur_Netz_°C'].values.astype('float64')
-    return time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump
-
 def generate_net(calc1=0, calc2=35040, filename='results_time_series_net1.csv'):
-    gdf_vl = gpd.read_file('net_generation_QGIS/Beispiel Zittau/Vorlauf.geojson')
-    gdf_rl = gpd.read_file('net_generation_QGIS/Beispiel Zittau/Rücklauf.geojson')
-    gdf_HAST = gpd.read_file('net_generation_QGIS/Beispiel Zittau/HAST.geojson')
-    gdf_WEA = gpd.read_file('net_generation_QGIS/Beispiel Zittau/Erzeugeranlagen.geojson')
+    gdf_vl = gpd.read_file('net_generation/Vorlauf.geojson')
+    gdf_rl = gpd.read_file('net_generation/Rücklauf.geojson')
+    gdf_HAST = gpd.read_file('net_generation/HAST.geojson')
+    gdf_WEA = gpd.read_file('net_generation/Erzeugeranlagen.geojson')
 
-    net, yearly_time_steps, waerme_ges_W = initialize_net_profile_calculation(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, building_type="EFH", calc_method="VDI4655")
+    yearly_time_steps, waerme_ges_W, max_waerme_ges_W = generate_profiles_from_geojson(gdf_HAST, building_type="HMF", calc_method="Datensatz")
+    net = initialize_net_geojson(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, max_waerme_ges_W)
     time_steps, net, net_results = thermohydraulic_time_series_net_calculation(net, yearly_time_steps, waerme_ges_W, calc1, calc2)
 
     mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, \
@@ -179,7 +84,7 @@ def generate_net(calc1=0, calc2=35040, filename='results_time_series_net1.csv'):
     junction_pressure = net_results["res_junction.p_bar"]
     plot_results(time_steps, qext_kW, return_temp_circ_pump, flow_temp_circ_pump, return_pressure_circ_pump, flows_pressure_circ_pump, deltap_circ_pump, junction_pressure)
     
-    dp_min, idx_dp_min = net_simulation_calculation.calculate_worst_point(net)
+    dp_min, idx_dp_min = calculate_worst_point(net)
     print(f"Der Schlechtpunkt des Netzes liegt am Wärmeübertrager {idx_dp_min}. Der Differenzdruck beträgt {dp_min:.3f} bar.")
 
     #config_plot(net)
@@ -251,6 +156,6 @@ def auslegung_erzeuger(calc1=0, calc2=35040, filename='results_time_series_net.c
 
     Kreisdiagramm(data_labels_L, Anteile)
 
-#generate_net(calc1=0, calc2=87, filename='results_time_series_net1.csv') 
+#generate_net(calc1=0, calc2=8760, filename='results/results_time_series_net3.csv') 
 #auslegung_erzeuger(calc1=0, calc2= 8760, filename="heat_requirement/Summenlastgang_Scenocalc_skaliert_1MWh.csv", \
 #                   optimize=True, load_scale_factor=3000000, Gaspreis=70, Strompreis=150, Holzpreis=50, BEW="Ja")
