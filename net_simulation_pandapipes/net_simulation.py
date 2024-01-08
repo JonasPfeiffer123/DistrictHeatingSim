@@ -71,7 +71,7 @@ def generate_profiles_from_geojson(gdf_HAST, building_type="MFH", calc_method="V
 
     return yearly_time_steps, waerme_ges_W, max_waerme_ges_W
 
-def initialize_net_geojson(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, pipe_creation_mode="diameter"):
+def initialize_net_geojson(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, pipe_creation_mode="type"):
     # net generation from gis data
     net = create_network(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, pipe_creation_mode)
     net = create_controllers(net, qext_w)

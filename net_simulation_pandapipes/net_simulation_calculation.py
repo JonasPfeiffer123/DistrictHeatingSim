@@ -7,6 +7,8 @@ from pandapower.timeseries import DFData
 from pandapower.control.controller.const_control import ConstControl
 from net_simulation_pandapipes.controllers import ReturnTemperatureController, WorstPointPressureController
 
+import time
+
 def get_line_coords_and_lengths(gdf):
     all_line_coords, all_line_lengths = [], []
     # Berechnung der Länge jeder Linie
@@ -31,8 +33,8 @@ def get_all_point_coords_from_line_cords(all_line_coords):
     return unique_point_coords
 
 
-def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w, pipe_creation_mode="diameter", supply_temperature=85,
-                   flow_pressure_pump=4, lift_pressure_pump=1.5, massflow_mass_pump=4, diameter_mm=100, pipetype = "110_PE_100_SDR_17", k=0.05, alpha=10):
+def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w, pipe_creation_mode="type", supply_temperature=85,
+                   flow_pressure_pump=4, lift_pressure_pump=1.5, diameter_mm=53.9, pipetype="KMR 50/160-2v", k=0.0470, alpha=1.58):
 
     def create_junctions_from_coords(net_i, all_coords):
         junction_dict = {}
@@ -62,7 +64,7 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w, pipe_creation
 
             pp.create_flow_control(net_i, from_junction=junction_dict[coords[0]], to_junction=mid_junction_idx, controlled_mdot_kg_per_s=0.25, diameter_m=0.04)
 
-            pp.create_heat_exchanger(net_i, from_junction=mid_junction_idx, to_junction=junction_dict[coords[1]], diameter_m=0.04, loss_coefficient=0.3,
+            pp.create_heat_exchanger(net_i, from_junction=mid_junction_idx, to_junction=junction_dict[coords[1]], diameter_m=0.04, loss_coefficient=0,
                                      qext_w=q, name=f"{name_prefix} {i}")
 
     def create_circulation_pump_pressure(net_i, all_coords, junction_dict, name_prefix):
@@ -187,42 +189,68 @@ def optimize_diameter_parameters(initial_net, element="pipe", v_max=2, v_min=1.5
 
     return initial_net
 
-def optimize_diameter_types(net, v_max=1.1, v_min=0.7):
+def optimize_diameter_types(net, v_max=1.0):
     pp.pipeflow(net, mode="all")
 
-    # List all available standard types for pipes
+    # List and filter standard types for pipes
     pipe_std_types = pp.std_types.available_std_types(net, "pipe")
-    # Filter by a specific material, e.g., "PE 100"
-    filtered_pipe_types = pipe_std_types[pipe_std_types['material'] == 'PE 100']
+    filtered_by_material = pipe_std_types[pipe_std_types['material'] == 'KMR']
+    filtered_by_material_and_insulation = filtered_by_material[filtered_by_material['insulation'] == '2v']
 
-    # Create a dictionary that holds the position of each pipe type in the filtered DataFrame
-    type_position_dict = {type_name: i for i, type_name in enumerate(filtered_pipe_types.index)}
-    
-    while any(v > v_max or v < v_min for v in net.res_pipe.v_mean_m_per_s):
+    # Dictionary for pipe type positions
+    type_position_dict = {type_name: i for i, type_name in enumerate(filtered_by_material_and_insulation.index)}
+
+    change_made = True
+    while change_made:
+        change_made = False
+
         for pipe_idx, velocity in enumerate(net.res_pipe.v_mean_m_per_s):
             current_type = net.pipe.std_type.at[pipe_idx]
             current_type_position = type_position_dict[current_type]
 
-            if velocity > v_max and current_type_position > 0:
-                 # Update the pipe type to the previous type
-                new_type = filtered_pipe_types.index[current_type_position + 1]
-                net.pipe.std_type.at[pipe_idx] = new_type
-                # Update the properties of the pipe
-                properties = filtered_pipe_types.loc[new_type]
-                net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
+            if velocity > v_max and current_type_position < len(filtered_by_material_and_insulation) - 1:
+                # Decrease diameter
+                new_type = filtered_by_material_and_insulation.index[current_type_position + 1]
 
-            elif velocity < v_min and current_type_position < len(filtered_pipe_types) - 1:
-                # Update the pipe type to the next type
-                new_type = filtered_pipe_types.index[current_type_position - 1]
+                # Temporarily apply the new type
                 net.pipe.std_type.at[pipe_idx] = new_type
-                # Update the properties of the pipe
-                properties = filtered_pipe_types.loc[new_type]
+                properties = filtered_by_material_and_insulation.loc[new_type]
                 net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
-                
-        pp.pipeflow(net, mode="all")
+                net.pipe.at[pipe_idx, 'k_mm'] = properties['RAU']
+                net.pipe.at[pipe_idx, 'alpha_w_per_m2k'] = properties['WDZAHL']
+
+                change_made = True
+
+            elif velocity < v_max and current_type_position > 0:
+                # Increase diameter, but check if this increase makes the velocity exceed v_max
+                new_type = filtered_by_material_and_insulation.index[current_type_position - 1]
+
+                # Temporarily apply the new type
+                net.pipe.std_type.at[pipe_idx] = new_type
+                properties = filtered_by_material_and_insulation.loc[new_type]
+                net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
+                net.pipe.at[pipe_idx, 'k_mm'] = properties['RAU']
+                net.pipe.at[pipe_idx, 'alpha_w_per_m2k'] = properties['WDZAHL']
+
+                # Recalculate to check new velocity
+                pp.pipeflow(net, mode="all")
+                new_velocity = net.res_pipe.v_mean_m_per_s[pipe_idx]
+
+                if new_velocity <= v_max:
+                    change_made = True
+                else:
+                    # Revert to original type if velocity exceeds v_max
+                    net.pipe.std_type.at[pipe_idx] = current_type
+                    properties = filtered_by_material_and_insulation.loc[current_type]
+                    net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
+                    net.pipe.at[pipe_idx, 'k_mm'] = properties['RAU']
+                    net.pipe.at[pipe_idx, 'alpha_w_per_m2k'] = properties['WDZAHL']
+            
+        if change_made:
+            # Recalculate the pipe flow after all changes
+            pp.pipeflow(net, mode="all")
 
     return net
-
 
 def export_net_geojson(net):
     if 'pipe_geodata' in net and not net.pipe_geodata.empty:
