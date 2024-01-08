@@ -413,10 +413,10 @@ class GeojsonDialog(QDialog):
 
         # Standardpfade
         default_paths = {
-            'Erzeugeranlagen': 'net_generation_QGIS/Beispiel Zittau/Erzeugeranlagen.geojson',
-            'HAST': 'net_generation_QGIS/Beispiel Zittau/HAST.geojson',
-            'Vorlauf': 'net_generation_QGIS/Beispiel Zittau/Vorlauf.geojson',
-            'Rücklauf': 'net_generation_QGIS/Beispiel Zittau/Rücklauf.geojson'
+            'Erzeugeranlagen': 'net_generation/Erzeugeranlagen.geojson',
+            'HAST': 'net_generation/HAST.geojson',
+            'Vorlauf': 'net_generation/Vorlauf.geojson',
+            'Rücklauf': 'net_generation/Rücklauf.geojson'
         }
 
         # Eingabefelder und Dateiauswahl-Buttons
