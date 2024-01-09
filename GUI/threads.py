@@ -33,6 +33,7 @@ class NetInitializationGEOJSONThread(QThread):
         try:
             # geojson
             self.yearly_time_steps, self.waerme_ges_W, self.max_waerme_ges_W = generate_profiles_from_geojson(self.gdf_HAST, self.building_type, self.calc_method)
+            print(self.max_waerme_ges_W)
             self.net = initialize_net_geojson(self.gdf_vl, self.gdf_rl, self.gdf_HAST, self.gdf_WEA, self.max_waerme_ges_W)
             
             self.calculation_done.emit((self.net, self.yearly_time_steps, self.waerme_ges_W))

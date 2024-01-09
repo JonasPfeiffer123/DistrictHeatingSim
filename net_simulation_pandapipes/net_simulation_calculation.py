@@ -8,6 +8,7 @@ from pandapower.control.controller.const_control import ConstControl
 from net_simulation_pandapipes.controllers import ReturnTemperatureController, WorstPointPressureController
 
 import time
+import numpy as np
 
 def get_line_coords_and_lengths(gdf):
     all_line_coords, all_line_lengths = [], []
@@ -33,8 +34,17 @@ def get_all_point_coords_from_line_cords(all_line_coords):
     return unique_point_coords
 
 
-def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w, pipe_creation_mode="type", supply_temperature=85,
-                   flow_pressure_pump=4, lift_pressure_pump=1.5, diameter_mm=53.9, pipetype="KMR 50/160-2v", k=0.0470, alpha=1.58):
+def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w, return_temperature, pipe_creation_mode="type", supply_temperature=85,
+                   flow_pressure_pump=4, lift_pressure_pump=1.5, diameter_mm=107.1, pipetype="KMR 100/250-2v", k=0.0470, alpha=0.61):
+    print(qext_w)
+    initial_mdot_guess_kg_s = qext_w / (4170*(supply_temperature-return_temperature))#
+    print(initial_mdot_guess_kg_s)
+
+    initial_Vdot_guess_m3_s = initial_mdot_guess_kg_s/1000
+    v_max_m_s = 2.0
+    area_m2 = initial_Vdot_guess_m3_s/v_max_m_s
+    initial_dimension_guess_m = np.sqrt(area_m2 *(4/np.pi))
+    print(initial_dimension_guess_m)
 
     def create_junctions_from_coords(net_i, all_coords):
         junction_dict = {}
@@ -57,14 +67,14 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w, pipe_creation
                            name=f"{line_type} Pipe {i}", geodata=coords, sections=5, text_k=283)
 
     def create_heat_exchangers(net_i, all_coords, junction_dict, name_prefix):
-        for i, (coords, q) in enumerate(zip(all_coords, qext_w)):
+        for i, (coords, q, m, d) in enumerate(zip(all_coords, qext_w, initial_mdot_guess_kg_s, initial_dimension_guess_m)):
             # creates a middle coordinate to place the flow control an the heat exchanger
             mid_coord = ((coords[0][0] + coords[1][0]) / 2, (coords[0][1] + coords[1][1]) / 2)
             mid_junction_idx = pp.create_junction(net_i, pn_bar=1.05, tfluid_k=293.15, name=f"Junction {name_prefix}", geodata=mid_coord)
 
-            pp.create_flow_control(net_i, from_junction=junction_dict[coords[0]], to_junction=mid_junction_idx, controlled_mdot_kg_per_s=0.25, diameter_m=0.04)
+            pp.create_flow_control(net_i, from_junction=junction_dict[coords[0]], to_junction=mid_junction_idx, controlled_mdot_kg_per_s=m, diameter_m=d)
 
-            pp.create_heat_exchanger(net_i, from_junction=mid_junction_idx, to_junction=junction_dict[coords[1]], diameter_m=0.04, loss_coefficient=0,
+            pp.create_heat_exchanger(net_i, from_junction=mid_junction_idx, to_junction=junction_dict[coords[1]], diameter_m=d, loss_coefficient=0,
                                      qext_w=q, name=f"{name_prefix} {i}")
 
     def create_circulation_pump_pressure(net_i, all_coords, junction_dict, name_prefix):
@@ -99,7 +109,7 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w, pipe_creation
 
     return net
 
-def create_controllers(net, qext_w):
+def create_controllers(net, qext_w, target_temperature):
     # creates controllers for the net
     for i in range(len(net.heat_exchanger)):
         # Erstelle ein einfaches DFData-Objekt als Platzhalter
@@ -108,7 +118,7 @@ def create_controllers(net, qext_w):
 
         ConstControl(net, element='heat_exchanger', variable='qext_w', element_index=i, data_source=placeholder_data_source, profile_name=f'qext_w_{i}')
         
-        T_controller = ReturnTemperatureController(net, heat_exchanger_idx=i, target_temperature=60)
+        T_controller = ReturnTemperatureController(net, heat_exchanger_idx=i, target_temperature=target_temperature)
         net.controller.loc[len(net.controller)] = [T_controller, True, -1, -1, False, False]
 
     dp_min, idx_dp_min = calculate_worst_point(net)
