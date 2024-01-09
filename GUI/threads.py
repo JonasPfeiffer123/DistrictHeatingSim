@@ -208,4 +208,4 @@ class CalculateMixThread(QThread):
             result = WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile, specific_emissions, self.tech_objects, time_steps
             self.calculation_done.emit(result)  # Ergebnis zurückgeben
         except Exception as e:
-            self.calculation_error.emit(str(e))  # Fehler zurückgeben
+            self.calculation_error.emit(e)  # Fehler zurückgeben
