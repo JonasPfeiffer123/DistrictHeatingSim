@@ -10,7 +10,6 @@ Netzberechnung:
 - mehrere Erzeuger --> festlegen welches zirkulationspumpe, rest feste Einspeisung (oder Regelung durch Haupterzeugerstandort)
 
 Auslegung Erzeugermix
-- Erzeugerauslegung: Anpassung Erzeugerreihenfolge ermöglichen, Anpassung Dimension anpassen
 - umfassende Parametrisierung notwendig
 - schaffen von Standard-Komponenten
 - Einbindung weiterer Kosten in Wirtschaftlichkeitsrechnung
