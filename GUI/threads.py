@@ -12,7 +12,8 @@ from net_generation.import_and_create_layers import generate_and_export_layers
 from net_simulation_pandapipes.net_simulation import initialize_net_geojson, generate_profiles_from_geojson, thermohydraulic_time_series_net_calculation, import_results_csv
 from net_simulation_pandapipes.stanet_import_pandapipes import create_net_from_stanet_csv
 
-from heat_generators.heat_generator_classes import Berechnung_Erzeugermix, optimize_mix
+#from heat_generators.heat_generator_classes import Berechnung_Erzeugermix, optimize_mix
+from heat_generators.heat_generator_classes_v2 import Berechnung_Erzeugermix, optimize_mix
 
 from geocoding.geocodingETRS89 import process_data
 
@@ -190,12 +191,12 @@ class CalculateMixThread(QThread):
     def run(self):
         try:
             # Hier beginnt die Berechnung
-            time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump = import_results_csv(self.filename)
+            time_steps, Last_L, flow_temp_circ_pump, return_temp_circ_pump = import_results_csv(self.filename)
             calc1, calc2 = 0, len(time_steps)
 
-            qext_kW *= self.load_scale_factor
+            Last_L *= self.load_scale_factor
 
-            initial_data = time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump
+            initial_data = time_steps, Last_L, flow_temp_circ_pump, return_temp_circ_pump
 
             TRY = import_TRY(self.try_filename)
             COP_data = np.genfromtxt(self.cop_filename, delimiter=';')
@@ -203,9 +204,8 @@ class CalculateMixThread(QThread):
             if self.optimize:
                 self.tech_objects = optimize_mix(self.tech_objects, initial_data, calc1, calc2, TRY, COP_data, self.gaspreis, self.strompreis, self.holzpreis, self.BEW)
 
-            WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile, specific_emissions = Berechnung_Erzeugermix(self.tech_objects, initial_data, calc1, calc2, TRY, COP_data, self.gaspreis, self.strompreis, self.holzpreis, self.BEW)
+            result = Berechnung_Erzeugermix(self.tech_objects, initial_data, calc1, calc2, TRY, COP_data, self.gaspreis, self.strompreis, self.holzpreis, self.BEW)
 
-            result = WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile, specific_emissions, self.tech_objects, time_steps
             self.calculation_done.emit(result)  # Ergebnis zurückgeben
         except Exception as e:
-            self.calculation_error.emit(e)  # Fehler zurückgeben
+            self.calculation_error.emit(str(e) + "\n" + traceback.format_exc())  # Fehler zurückgeben

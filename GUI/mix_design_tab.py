@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
     QLineEdit, QListWidget, QDialog, QProgressBar, QMessageBox, QFileDialog, QScrollArea, QAbstractItemView
 )
 from gui.dialogs import TechInputDialog
-from heat_generators.heat_generator_classes import *
+from heat_generators.heat_generator_classes_v2 import *
 from gui.threads import CalculateMixThread
 
 class CustomListWidget(QListWidget):
@@ -220,23 +220,23 @@ class MixDesignTab(QWidget):
 
     def on_calculation_done(self, result):
         self.progressBar.setRange(0, 1)
-        self.showResults(*result)
-        self.plotResults(*result)
+        self.showResults(result)
+        self.plotResults(result)
 
     def on_calculation_error(self, error_message):
         self.progressBar.setRange(0, 1)
         QMessageBox.critical(self, "Berechnungsfehler", error_message)
 
-    def plotResults(self, WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile, specific_emissions, techs, time_steps):
+    def plotResults(self, results):
         self.figure1.clear()
         self.figure2.clear()
 
-        self.plotStackPlot(self.figure1, time_steps, data_L, data_labels_L, Anteile, Last_L)
-        self.plotPieChart(self.figure2, Anteile, data_labels_L)
+        self.plotStackPlot(self.figure1, results['time_steps'], results['Wärmeleistung_L'], results['techs'], results['Last_L'])
+        self.plotPieChart(self.figure2, results['Anteile'], results['techs'])
         self.canvas1.draw()
         self.canvas2.draw()
 
-    def plotStackPlot(self, figure, t, data, labels, Anteile, Last):
+    def plotStackPlot(self, figure, t, data, labels, Last):
         ax = figure.add_subplot(111)
         ax.stackplot(t, data, labels=labels)
         ax.set_title("Jahresdauerlinie")
@@ -252,11 +252,11 @@ class MixDesignTab(QWidget):
         ax.legend(loc='lower left')
         ax.axis("equal")
 
-    def showResults(self, WGK_Gesamt, Jahreswärmebedarf, Last_L, data_L, data_labels_L, Wärmemengen, WGK, Anteile, specific_emissions, techs, time_steps):
-        resultText = f"Jahreswärmebedarf: {Jahreswärmebedarf:.2f} MWh\n"
-        resultText += f"Wärmegestehungskosten Gesamt: {WGK_Gesamt:.2f} €/MWh\n\n"
-        for tech, wärmemenge, anteil, wgk in zip(techs, Wärmemengen, Anteile, WGK):
-            resultText += f"{tech.name}: {wärmemenge:.2f} MWh, {wgk:.2f} €/MWh, Anteil: {anteil*100:.2f}%\n"
+    def showResults(self, results):
+        resultText = f"Jahreswärmebedarf: {results['Jahreswärmebedarf']:.2f} MWh\n"
+        resultText += f"Wärmegestehungskosten Gesamt: {results['WGK_Gesamt']:.2f} €/MWh\n\n"
+        for tech, wärmemenge, anteil, wgk in zip(results['techs'], results['Wärmemengen'], results['Anteile'], results['WGK']):
+            resultText += f"{tech}: {wärmemenge:.2f} MWh, {wgk:.2f} €/MWh, Anteil: {anteil*100:.2f}%\n"
         self.resultLabel.setText(resultText)
 
     def addTech(self):

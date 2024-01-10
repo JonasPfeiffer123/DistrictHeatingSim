@@ -151,8 +151,8 @@ class TechInputDialog(QDialog):
         elif self.tech_type == "Holzgas-BHKW":
             inputs["th_Leistung_BHKW"] = float(self.PHBHKWInput.text())
         elif self.tech_type == "Geothermie":
-            inputs["Fläche"] = float(self.areaGInput.text()),
-            inputs["Bohrtiefe"] = float(self.depthInput.text()),
+            inputs["Fläche"] = float(self.areaGInput.text())
+            inputs["Bohrtiefe"] = float(self.depthInput.text())
             inputs["Temperatur_Geothermie"] = float(self.tempGInput.text())
         elif self.tech_type == "Abwärme":
             inputs["Kühlleistung_Abwärme"] = float(self.PWHInput.text())
