@@ -60,14 +60,25 @@ class HeatPump:
     def COP_WP(self, VLT_L, QT, COP_data):
         # Interpolationsformel für den COP
         values = COP_data  # np.genfromtxt('Kennlinien WP.csv', delimiter=';')
-        row_header = values[0, 1:]  # Vorlauftempertauren
+        row_header = values[0, 1:]  # Vorlauftemperaturen
         col_header = values[1:, 0]  # Quelltemperaturen
         values = values[1:, 1:]
         f = RegularGridInterpolator((col_header, row_header), values, method='linear')
 
         # technische Grenze der Wärmepumpe ist Temperaturhub von 75 °C
-        VLT_L = np.minimum(VLT_L, 75)
-        QT_array = np.full_like(VLT_L, QT)
+        VLT_L = np.minimum(VLT_L, 75+QT)
+
+        # Überprüfen, ob QT eine Zahl oder ein Array ist
+        if np.isscalar(QT):
+            # Wenn QT eine Zahl ist, erstellen wir ein Array mit dieser Zahl
+            QT_array = np.full_like(VLT_L, QT)
+        else:
+            # Wenn QT bereits ein Array ist, prüfen wir, ob es die gleiche Länge wie VLT_L hat
+            if len(QT) != len(VLT_L):
+                raise ValueError("QT muss entweder eine einzelne Zahl oder ein Array mit der gleichen Länge wie VLT_L sein.")
+            QT_array = QT
+
+        # Berechnung von COP_L
         COP_L = f(np.column_stack((QT_array, VLT_L)))
 
         return COP_L, VLT_L
@@ -88,7 +99,7 @@ class HeatPump:
                             Strombedarf, Strompreis)
         WGK_WP_a = E1_WP/Wärmemenge
 
-        Nutzungsdauer_WQ_dict = {"Abwärme": 20, "Abwasserwärme": 20, "Geothermie": 30}
+        Nutzungsdauer_WQ_dict = {"Abwärme": 20, "Abwasserwärme": 20, "Flusswasser": 20, "Geothermie": 30}
 
         Investitionskosten_WQ = spez_Investitionskosten_WQ * Wärmeleistung
 
@@ -100,6 +111,70 @@ class HeatPump:
 
         return WGK_Gesamt_a
 
+class RiverHeatPump(HeatPump):
+    def __init__(self, name, Wärmeleistung_FW_WP, Temperatur_FW_WP, dT=0, spez_Investitionskosten_WQ=1000):
+        super().__init__(name)
+        self.Wärmeleistung_FW_WP = Wärmeleistung_FW_WP
+        self.Temperatur_FW_WP = Temperatur_FW_WP
+        self.dT = dT
+        self.spez_Investitionskosten_WQ = spez_Investitionskosten_WQ
+
+    def Berechnung_WP(self, VLT_L, COP_data):
+        COP_L, VLT_L_WP = self.COP_WP(VLT_L, self.Temperatur_FW_WP, COP_data)
+        Kühlleistung_L = self.Wärmeleistung_FW_WP * (1 - (1 / COP_L))
+        el_Leistung_L = self.Wärmeleistung_FW_WP - Kühlleistung_L
+        return Kühlleistung_L, el_Leistung_L, VLT_L_WP
+
+    # Änderung Kühlleistung und Temperatur zu Numpy-Array in aw sowie vor- und nachgelagerten Funktionen
+    def abwärme(self, Last_L, VLT_L, COP_data, duration):
+        if self.Wärmeleistung_FW_WP == 0:
+            return 0, 0, np.zeros_like(Last_L), np.zeros_like(VLT_L), 0
+
+        Wärmeleistung_L = np.where(Last_L >= self.Wärmeleistung_FW_WP, self.Wärmeleistung_FW_WP, Last_L)
+
+        Kühlleistung_L, el_Leistung_L, VLT_L_WP = self.Berechnung_WP(VLT_L, COP_data)
+
+        # Wärmepumpe soll nur in Betrieb sein, wenn Sie die Vorlauftemperatur erreichen kann
+        Wärmeleistung_L = np.where(VLT_L_WP < VLT_L-self.dT, 0, Wärmeleistung_L)
+        Kühlleistung_L = np.where(VLT_L_WP < VLT_L-self.dT, 0, Kühlleistung_L)
+        el_Leistung_L = np.where(VLT_L_WP < VLT_L-self.dT, 0, el_Leistung_L)
+        
+        Wärmemenge = np.sum(Wärmeleistung_L / 1000)*duration
+        Kühlmenge = np.sum(Kühlleistung_L / 1000)*duration
+        Strombedarf = np.sum(el_Leistung_L / 1000)*duration
+
+        return Wärmemenge, Strombedarf, Wärmeleistung_L, el_Leistung_L, Kühlmenge, Kühlleistung_L
+    
+    def calculate(self, Restlast_L, VLT_L, COP_data, el_Leistung_ges_L, Restwärmebedarf, Strombedarf_WP, Jahreswärmebedarf, \
+                  data, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, Strompreis, q, r, T, duration, tech_order):
+        
+        Wärmemenge, Strombedarf_FW_WP, Wärmeleistung_L, el_Leistung_L, Kühlmenge, Kühlleistung_L = \
+        self.abwärme(Restlast_L, VLT_L, COP_data, duration)
+
+        if Wärmemenge > 0:
+            el_Leistung_ges_L += el_Leistung_L
+            Restlast_L -= Wärmeleistung_L
+
+            Restwärmebedarf -= Wärmemenge
+            Strombedarf_WP += Strombedarf_FW_WP
+
+            Anteil = Wärmemenge / Jahreswärmebedarf
+
+            WGK_Abwärme = self.WGK(self.Wärmeleistung_FW_WP, Wärmemenge, Strombedarf_FW_WP, self.spez_Investitionskosten_WQ, Strompreis, q, r, T)
+
+            WGK_Gesamt += Wärmemenge * WGK_Abwärme
+
+            data.append(Wärmeleistung_L)
+            colors.append("grey")
+            Wärmemengen.append(Wärmemenge)
+            Anteile.append(Anteil)
+            WGK.append(WGK_Abwärme)
+        
+        else:
+            tech_order.remove(self)
+
+        return el_Leistung_ges_L, Restlast_L, Restwärmebedarf, Strombedarf_WP, data, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order
+    
 class WasteHeatPump(HeatPump):
     def __init__(self, name, Kühlleistung_Abwärme, Temperatur_Abwärme, spez_Investitionskosten_WQ=500):
         super().__init__(name)
@@ -552,7 +627,14 @@ def Berechnung_Erzeugermix(tech_order, initial_data, calc1, calc2, TRY, COP_data
             el_Leistung_ges_L, Restlast_L, Restwärmebedarf, Strombedarf_WP, data_L, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order = \
                 tech.calculate(Restlast_L, VLT_L, COP_data, el_Leistung_ges_L, Restwärmebedarf, Strombedarf_WP, Jahreswärmebedarf, \
                                      data_L, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, Strompreis, q, r, T, duration, tech_order)
-            
+        
+        elif tech.name == "Flusswasser" :
+            if len(variables) > 0:
+                tech.Wärmeleistung_FW_WP = variables[variables_order.index("Wärmeleistung_FW_WP")]
+            el_Leistung_ges_L, Restlast_L, Restwärmebedarf, Strombedarf_WP, data_L, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, tech_order = \
+                tech.calculate(Restlast_L, VLT_L, COP_data, el_Leistung_ges_L, Restwärmebedarf, Strombedarf_WP, Jahreswärmebedarf, \
+                                     data_L, colors, WGK_Gesamt, Wärmemengen, Anteile, WGK, Strompreis, q, r, T, duration, tech_order)
+
         elif tech.name == "Geothermie":
             if len(variables) > 0:
                 tech.Fläche, tech.Bohrtiefe = variables[variables_order.index("Fläche")], variables[variables_order.index("Bohrtiefe")]
@@ -620,6 +702,10 @@ def optimize_mix(tech_order, initial_data, calc1, calc2, TRY, COP_data, Gaspreis
             initial_values.append(tech.Kühlleistung_Abwärme)
             variables_order.append("Kühlleistung_Abwärme")
             bounds.append((0, 500))
+        elif isinstance(tech, RiverHeatPump):
+            initial_values.append(tech.Wärmeleistung_FW_WP)
+            variables_order.append("Wärmeleistung_FW_WP")
+            bounds.append((0, 1000))
 
 
     def objective(variables):
@@ -646,6 +732,12 @@ def optimize_mix(tech_order, initial_data, calc1, calc2, TRY, COP_data, Gaspreis
                 tech.P_BMK = optimized_values[variables_order.index("P_BMK")]
             elif isinstance(tech, CHP):
                 tech.th_Leistung_BHKW = optimized_values[variables_order.index("th_Leistung_BHKW")]
+            elif isinstance(tech, Geothermal):
+                tech.Fläche, tech.Bohrtiefe = optimized_values[variables_order.index("Fläche")], optimized_values[variables_order.index("Bohrtiefe")]
+            elif isinstance(tech, WasteHeatPump):
+                tech.Kühlleistung_Abwärme = optimized_values[variables_order.index("Kühlleistung_Abwärme")]
+            elif isinstance(tech, RiverHeatPump):
+                tech.Wärmeleistung_FW_WP = optimized_values[variables_order.index("Wärmeleistung_FW_WP")]
 
         return tech_order
     else:

@@ -1,0 +1,17 @@
+Visualisierung und Import GIS-Daten:
+- Erzeugerimport über csv
+- Stanet Netz zu geojson und bei import import in Karte ermöglichen
+
+Netzberechnung:
+- Eingabe Vorlauf- und Rücklauftemperatur, sowie Druckhaltung
+- Eingabe Startdimensionierung Leitungen über GUI --> Vermeidung Probleme bei stark abweichenden Dimensionen
+- Berechnungsparameter überarbeiten (RL-Temp, Profile, VL-Temp (Außentemperaturgeregelt))
+- Profil-Subtypen ergänzen
+- mehrere Erzeuger --> festlegen welches zirkulationspumpe, rest feste Einspeisung (oder Regelung durch Haupterzeugerstandort)
+
+Auslegung Erzeugermix
+- umfassende Parametrisierung notwendig
+- schaffen von Standard-Komponenten
+- Einbindung weiterer Kosten in Wirtschaftlichkeitsrechnung
+- automatische Erstellung Übersicht erzeugte Variante: Energetisch, Diagramme, Eingabeparameter, Kosten etc.
+- 

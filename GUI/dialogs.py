@@ -3,33 +3,32 @@ from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, \
     QFormLayout, QHBoxLayout, QFileDialog, QProgressBar, QMessageBox
 
 import pandas as pd
+import numpy as np
 
 from osm_data.import_osm_data_geojson import build_query, download_data, save_to_file
 from gui.threads import GeocodingThread
 
 class TechInputDialog(QDialog):
-    def __init__(self, tech_type):
+    def __init__(self, tech_type, tech_data=None):
         super().__init__()
 
         self.tech_type = tech_type
+        self.tech_data = tech_data if tech_data is not None else {}
         self.initUI()
 
     def initUI(self):
         self.setWindowTitle(f"Eingabe für {self.tech_type}")
         layout = QVBoxLayout()
 
-        # Erstellen Sie hier Eingabefelder basierend auf self.tech_type
-        # Beispiel für Solarthermie:
         if self.tech_type == "Solarthermie":
-            # area solar
             self.areaSInput = QLineEdit(self)
-            self.areaSInput.setText("200")
+            self.areaSInput.setText(str(self.tech_data.get('bruttofläche_STA', "200")))
             layout.addWidget(QLabel("Kollektorbruttofläche in m²"))
             layout.addWidget(self.areaSInput)
 
             # volume solar heat storage
             self.vsInput = QLineEdit(self)
-            self.vsInput.setText("20")
+            self.vsInput.setText(str(self.tech_data.get('vs', "20")))
             layout.addWidget(QLabel("Solarspeichervolumen in m³"))
             layout.addWidget(self.vsInput)
 
@@ -37,12 +36,18 @@ class TechInputDialog(QDialog):
             self.typeInput = QComboBox(self)
             self.techOptions = ["Vakuumröhrenkollektor", "Flachkollektor"]
             self.typeInput.addItems(self.techOptions)
+
+            # Setzen des aktuellen Kollektortyps, falls vorhanden
+            if 'Typ' in self.tech_data:
+                current_type_index = self.techOptions.index(self.tech_data['Typ'])
+                self.typeInput.setCurrentIndex(current_type_index)
+
             layout.addWidget(QLabel("Kollektortyp"))
             layout.addWidget(self.typeInput)
 
         if self.tech_type == "Biomassekessel":
             self.PBMKInput = QLineEdit(self)
-            self.PBMKInput.setText("50")
+            self.PBMKInput.setText(str(self.tech_data.get('P_BMK', "50")))
             layout.addWidget(QLabel("thermische Leistung"))
             layout.addWidget(self.PBMKInput)
 
@@ -51,23 +56,23 @@ class TechInputDialog(QDialog):
 
         if self.tech_type == "BHKW":
             self.PBHKWInput = QLineEdit(self)
-            self.PBHKWInput.setText("40")
+            self.PBHKWInput.setText(str(self.tech_data.get('th_Leistung_BHKW', "40")))
             layout.addWidget(QLabel("thermische Leistung"))
             layout.addWidget(self.PBHKWInput)
 
         if self.tech_type == "Holzgas-BHKW":
             self.PHBHKWInput = QLineEdit(self)
-            self.PHBHKWInput.setText("30")
+            self.PHBHKWInput.setText(str(self.tech_data.get('th_Leistung_BHKW', "30")))
             layout.addWidget(QLabel("thermische Leistung"))
             layout.addWidget(self.PHBHKWInput)
 
         if self.tech_type == "Geothermie":
             self.areaGInput = QLineEdit(self)
-            self.areaGInput.setText("100")
+            self.areaGInput.setText(str(self.tech_data.get('Fläche', "100")))
             self.depthInput = QLineEdit(self)
-            self.depthInput.setText("100")
+            self.depthInput.setText(str(self.tech_data.get('Bohrtiefe', "100")))
             self.tempGInput = QLineEdit(self)
-            self.tempGInput.setText("10")
+            self.tempGInput.setText(str(self.tech_data.get('Temperatur_Geothermie', "10")))
 
             layout.addWidget(QLabel("Fläche Erdsondenfeld in m²"))
             layout.addWidget(self.areaGInput)
@@ -78,14 +83,37 @@ class TechInputDialog(QDialog):
         
         if self.tech_type == "Abwärme":
             self.PWHInput = QLineEdit(self)
-            self.PWHInput.setText("30")
+            self.PWHInput.setText(str(self.tech_data.get('Kühlleistung_Abwärme', "30")))
             layout.addWidget(QLabel("Kühlleistung Abwärme"))
             layout.addWidget(self.PWHInput)
 
             self.TWHInput = QLineEdit(self)
-            self.TWHInput.setText("30")
+            self.TWHInput.setText(str(self.tech_data.get('Temperatur_Abwärme', "30")))
             layout.addWidget(QLabel("Temperatur Abwärme"))
             layout.addWidget(self.TWHInput)
+
+        if self.tech_type == "Flusswasser":
+            self.PFWInput = QLineEdit(self)
+            self.PFWInput.setText(str(self.tech_data.get('Wärmeleistung_FW_WP', "200")))
+            layout.addWidget(QLabel("Wärmeleistung Wärmepumpe"))
+            layout.addWidget(self.PFWInput)
+
+            # Flusstemperatur direkt eingeben
+            self.TFWInput = QLineEdit(self)
+            if type(self.tech_data.get('Temperatur_FW_WP')) is float or self.tech_data == {}:
+                self.TFWInput.setText(str(self.tech_data.get('Temperatur_FW_WP', "10")))
+            layout.addWidget(QLabel("Flusstemperatur"))
+            layout.addWidget(self.TFWInput)
+
+            # Button zum Auswählen der CSV-Datei
+            self.csvButton = QPushButton("CSV für Flusstemperatur wählen", self)
+            self.csvButton.clicked.connect(self.openCSV)
+            layout.addWidget(self.csvButton)
+
+            self.DTFWInput = QLineEdit(self)
+            self.DTFWInput.setText(str(self.tech_data.get('dT', "0")))
+            layout.addWidget(QLabel("Zulässige Abweichung Vorlauftemperatur Wärmepumpe von Netzvorlauftemperatur"))
+            layout.addWidget(self.DTFWInput)
 
         # OK und Abbrechen Buttons
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -95,38 +123,60 @@ class TechInputDialog(QDialog):
 
         self.setLayout(layout)
 
+    def openCSV(self):
+        filename, _ = QFileDialog.getOpenFileName(self, "Open CSV", "", "CSV Files (*.csv)")
+        if filename:
+            self.loadCSV(filename)
+
+    def loadCSV(self, filename):
+        # Laden der CSV-Daten als NumPy-Array
+        # Beispiel für das Format: Erste Spalte Zeit, zweite Spalte Temperatur
+        data = np.loadtxt(filename, delimiter=';', skiprows=1, usecols=1).astype(float)
+        self.csvData = data
+        # Optional: Bestätigen, dass die Datei geladen wurde
+        QMessageBox.information(self, "CSV geladen", f"CSV-Datei {filename} erfolgreich geladen.")
+
     def getInputs(self):
+        inputs = {}
         if self.tech_type == "Solarthermie":
-            return {
-                "bruttofläche_STA": float(self.areaSInput.text()),
-                "vs": float(self.vsInput.text()),
-                "Typ": self.typeInput.itemText(self.typeInput.currentIndex())
-            }
+            inputs['bruttofläche_STA'] = float(self.areaSInput.text())
+            inputs["vs"] = float(self.vsInput.text())
+            inputs["Typ"] = self.typeInput.itemText(self.typeInput.currentIndex())
         elif self.tech_type == "Biomassekessel":
-            return {
-                "P_BMK": float(self.PBMKInput.text())
-            }
+            inputs["P_BMK"] = float(self.PBMKInput.text())
         elif self.tech_type == "Gaskessel":
-            return {}
+            pass
         elif self.tech_type == "BHKW":
-            return {
-                "th_Leistung_BHKW": float(self.PBHKWInput.text())
-            }
+            inputs["th_Leistung_BHKW"] = float(self.PBHKWInput.text())
         elif self.tech_type == "Holzgas-BHKW":
-            return {
-                "th_Leistung_BHKW": float(self.PHBHKWInput.text())
-            }
+            inputs["th_Leistung_BHKW"] = float(self.PHBHKWInput.text())
         elif self.tech_type == "Geothermie":
-            return {
-                "Fläche": float(self.areaGInput.text()),
-                "Bohrtiefe": float(self.depthInput.text()),
-                "Temperatur_Geothermie": float(self.tempGInput.text())
-            }
+            inputs["Fläche"] = float(self.areaGInput.text()),
+            inputs["Bohrtiefe"] = float(self.depthInput.text()),
+            inputs["Temperatur_Geothermie"] = float(self.tempGInput.text())
         elif self.tech_type == "Abwärme":
-            return {
-                "Kühlleistung_Abwärme": float(self.PWHInput.text()),
-                "Temperatur_Abwärme": float(self.TWHInput.text())
-            }
+            inputs["Kühlleistung_Abwärme"] = float(self.PWHInput.text())
+            inputs["Temperatur_Abwärme"] = float(self.TWHInput.text())
+        if self.tech_type == "Flusswasser":
+            inputs['Wärmeleistung_FW_WP'] = float(self.PFWInput.text())
+            try:
+                if hasattr(self, 'csvData'):
+                    inputs['Temperatur_FW_WP'] = self.csvData
+                elif type(self.tech_data.get('Temperatur_FW_WP')) is float:
+                    # Wenn der gespeicherte Wert ein Float ist, verwenden Sie ihn
+                    inputs['Temperatur_FW_WP'] = float(self.TFWInput.text())
+                elif isinstance(self.tech_data.get('Temperatur_FW_WP'), np.ndarray):
+                    # Wenn der gespeicherte Wert ein NumPy-Array ist, verwenden Sie es
+                    inputs['Temperatur_FW_WP'] = self.tech_data.get('Temperatur_FW_WP')
+                else:
+                    # Standardfall, wenn keine Daten vorhanden sind
+                    inputs['Temperatur_FW_WP'] = float(self.TFWInput.text())
+            except ValueError:
+                print("Ungültige Eingabe")
+                    
+            inputs['dT'] = float(self.DTFWInput.text())
+
+        return inputs
         
 class HeatDemandEditDialog(QDialog):
     def __init__(self, gdf_HAST, hastInput, parent=None):

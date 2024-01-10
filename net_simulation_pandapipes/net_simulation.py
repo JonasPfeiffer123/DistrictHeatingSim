@@ -71,11 +71,15 @@ def generate_profiles_from_geojson(gdf_HAST, building_type="MFH", calc_method="V
 
     return yearly_time_steps, waerme_ges_W, max_waerme_ges_W
 
-def initialize_net_geojson(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, pipe_creation_mode="type"):
+def initialize_net_geojson(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, return_temperature=60, pipe_creation_mode="type"):
     # net generation from gis data
-    net = create_network(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, pipe_creation_mode)
-    net = create_controllers(net, qext_w)
+    net = create_network(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, return_temperature, pipe_creation_mode)
+    net = create_controllers(net, qext_w, return_temperature)
     net = correct_flow_directions(net)
+
+    print(net.pipe, net.heat_exchanger, net.flow_control)
+    print(net.res_pipe, net.res_heat_exchanger, net.res_flow_control)
+
     net = init_timeseries_opt(net, qext_w, time_steps=3, target_temperature=60)
 
     if pipe_creation_mode == "diameter":
@@ -86,6 +90,7 @@ def initialize_net_geojson(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, pipe_creat
 
     net = optimize_diameter_parameters(net, element="heat_exchanger")
     net = optimize_diameter_parameters(net, element="flow_control")
+
     export_net_geojson(net)
 
     return net
