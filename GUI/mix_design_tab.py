@@ -1,4 +1,5 @@
 import numpy as np
+import itertools
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -6,9 +7,22 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QComboBox, 
     QLineEdit, QListWidget, QDialog, QProgressBar, QMessageBox, QFileDialog, QScrollArea, QAbstractItemView
 )
+from PyQt5.QtCore import Qt
 from gui.dialogs import TechInputDialog
 from heat_generators.heat_generator_classes_v2 import *
+from gui.checkable_combobox import CheckableComboBox
+
 from gui.threads import CalculateMixThread
+
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import inch
+import matplotlib.pyplot as plt
+
+from io import BytesIO
+
 
 class CustomListWidget(QListWidget):
     def __init__(self, parent=None):
@@ -41,6 +55,7 @@ class MixDesignTab(QWidget):
     def initUI(self):
         mainScrollArea, mainWidget, mainLayout = self.setupMainScrollArea()
 
+        self.mainLayout = mainLayout
         self.setupFileInputs(mainLayout)
         self.setupEconomicParameters(mainLayout)
         self.setupTechnologySelection(mainLayout)
@@ -141,6 +156,27 @@ class MixDesignTab(QWidget):
         mainLayout.addWidget(self.calculateButton)
         mainLayout.addWidget(self.optimizeButton)
 
+    def createPlotControlDropdown(self):
+        self.dropdownLayout = QHBoxLayout()
+        self.dataSelectionDropdown = CheckableComboBox(self)
+
+        # Hier wird angenommen, dass die erste Reihe von Daten standardmäßig geplottet wird.
+        initial_checked = True
+
+        # Füllen des Dropdown-Menüs mit Optionen und Setzen des Checkbox-Zustands
+        for label in self.results.keys():
+            if label.endswith('_L'):
+                self.dataSelectionDropdown.addItem(label)
+                item = self.dataSelectionDropdown.model().item(self.dataSelectionDropdown.count() - 1, 0)
+                item.setCheckState(Qt.Checked if initial_checked else Qt.Unchecked)
+                initial_checked = False  # Nur das erste Element wird standardmäßig ausgewählt
+
+        self.dropdownLayout.addWidget(self.dataSelectionDropdown)
+        self.mainLayout.addLayout(self.dropdownLayout)
+
+        # Verbindung des Dropdown-Menüs mit der Aktualisierungsfunktion
+        self.dataSelectionDropdown.checkedStateChanged.connect(self.updatePlot)
+
     def setupDiagrams(self, mainLayout):
         diagramScrollArea, diagramWidget, diagramLayout = self.setupDiagramScrollArea()
         self.setupFigures(diagramLayout)
@@ -227,31 +263,6 @@ class MixDesignTab(QWidget):
         self.progressBar.setRange(0, 1)
         QMessageBox.critical(self, "Berechnungsfehler", error_message)
 
-    def plotResults(self, results):
-        self.figure1.clear()
-        self.figure2.clear()
-
-        self.plotStackPlot(self.figure1, results['time_steps'], results['Wärmeleistung_L'], results['techs'], results['Last_L'])
-        self.plotPieChart(self.figure2, results['Anteile'], results['techs'])
-        self.canvas1.draw()
-        self.canvas2.draw()
-
-    def plotStackPlot(self, figure, t, data, labels, Last):
-        ax = figure.add_subplot(111)
-        ax.stackplot(t, data, labels=labels)
-        ax.set_title("Jahresdauerlinie")
-        ax.set_xlabel("Jahresstunden")
-        ax.set_ylabel("thermische Leistung in kW")
-        ax.legend(loc='upper center')
-        ax.grid()
-
-    def plotPieChart(self, figure, Anteile, labels):
-        ax = figure.add_subplot(111)
-        ax.pie(Anteile, labels=labels, autopct='%1.1f%%', startangle=90)
-        ax.set_title("Anteile Wärmeerzeugung")
-        ax.legend(loc='lower left')
-        ax.axis("equal")
-
     def showResults(self, results):
         resultText = f"Jahreswärmebedarf: {results['Jahreswärmebedarf']:.2f} MWh\n"
         resultText += f"Wärmegestehungskosten Gesamt: {results['WGK_Gesamt']:.2f} €/MWh\n\n"
@@ -327,3 +338,88 @@ class MixDesignTab(QWidget):
     def removeTech(self):
         self.techList.clear()
         self.tech_objects = []
+
+    def plotResults(self, results):
+        self.results = results
+        if not hasattr(self, 'dataSelectionDropdown'):
+            self.createPlotControlDropdown()
+
+        self.exportPDFButton = QPushButton('Export to PDF')
+        self.exportPDFButton.clicked.connect(self.on_export_pdf_clicked)
+        self.mainLayout.addWidget(self.exportPDFButton)
+
+        self.figure1.clear()
+        self.figure2.clear()
+
+        self.plotStackPlot(self.figure1, results['time_steps'], results['Wärmeleistung_L'], results['techs'], results['Last_L'])
+        self.plotPieChart(self.figure2, results['Anteile'], results['techs'])
+        self.canvas1.draw()
+        self.canvas2.draw()
+
+    def plotStackPlot(self, figure, t, data, labels, Last):
+        ax = figure.add_subplot(111)
+        ax.stackplot(t, data, labels=labels)
+        ax.set_title("Jahresdauerlinie")
+        ax.set_xlabel("Jahresstunden")
+        ax.set_ylabel("thermische Leistung in kW")
+        ax.legend(loc='upper center')
+        ax.grid()
+
+    def plotPieChart(self, figure, Anteile, labels):
+        ax = figure.add_subplot(111)
+        ax.pie(Anteile, labels=labels, autopct='%1.1f%%', startangle=90)
+        ax.set_title("Anteile Wärmeerzeugung")
+        ax.legend(loc='lower left')
+        ax.axis("equal")
+
+    def updatePlot(self):
+        self.figure1.clear()
+        ax = self.figure1.add_subplot(111)
+        color_cycle = itertools.cycle(['b', 'g', 'r', 'c', 'm', 'y', 'k'])
+
+        # Gehen Sie alle Optionen im Dropdown-Menü durch und zeichnen Sie nur die ausgewählten
+        for i in range(self.dataSelectionDropdown.count()):
+            if self.dataSelectionDropdown.itemChecked(i):
+                key = self.dataSelectionDropdown.itemText(i)
+                data = self.results[key]
+                color = next(color_cycle)
+                ax.plot(self.results['time_steps'], data, label=key, color=color)
+
+        ax.set_xlabel("Zeit")
+        ax.set_ylabel("Werte")
+        ax.legend(loc='upper left')
+        ax.grid()
+        self.canvas1.draw()
+
+    def create_pdf(self, filename):
+        doc = SimpleDocTemplate(filename, pagesize=letter)
+        story = []
+        styles = getSampleStyleSheet()
+        
+        # Eingaben als Text hinzufügen
+        for tech in self.tech_objects:
+            story.append(Paragraph(self.formatTechForDisplay(tech), styles['Normal']))
+            story.append(Spacer(1, 12))
+
+        # Textausgaben hinzufügen
+        story.append(Paragraph(self.resultLabel.text(), styles['Normal']))
+        story.append(Spacer(1, 12))
+
+        # Diagramme als Bilder hinzufügen
+        for figure in [self.figure1, self.figure2]:
+            img_buffer = BytesIO()  # Verwenden eines BytesIO-Objekts anstatt einer temporären Datei
+            figure.savefig(img_buffer, format='png')
+            img_buffer.seek(0)  # Zurück zum Anfang des Streams
+            img = Image(img_buffer)
+            img.drawHeight = 6 * inch  # oder eine andere Größe
+            img.drawWidth = 8 * inch
+            story.append(img)
+            story.append(Spacer(1, 12))
+        
+        # PDF-Dokument erstellen
+        doc.build(story)
+
+    def on_export_pdf_clicked(self):
+        filename, _ = QFileDialog.getSaveFileName(self, 'PDF speichern als...', filter='PDF Files (*.pdf)')
+        if filename:
+            self.create_pdf(filename)

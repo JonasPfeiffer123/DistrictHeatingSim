@@ -72,15 +72,35 @@ def create_net_from_stanet_csv(file_path):
 
     # Ausgewählte Spalten für Knoten
     selected_columns_kno = ["XRECHTS", "YHOCH", "KNAM"]
-    selected_columns_lei = ["ANFNAM", "ENDNAM", "WDZAHL", "RORL", "DM", "WANDDICKE", "OUTERDM", "RAU", "ZETA", "ROHRTYP", "DN", "XRA", "YHA", "XRB", "YHB"]
-    selected_columns_wae = ["ANFNAM", "ENDNAM", "WDZAHL", "RORL", "DM", "RAU", "XRECHTS", "YHOCH", "XRECHTS2", "YHOCH2"]
+    selected_columns_lei = ["ANFNAM", "ENDNAM", "WDZAHL", "RORL", "DM", "WANDDICKE", "OUTERDM", "RAU", "ZETA", "ROHRTYP", "DN"]
+    selected_columns_wae = ["ANFNAM", "ENDNAM", "WDZAHL", "RORL", "DM", "RAU"]
     selected_columns_hea = ["ANFNAM", "ENDNAM"]
     selected_columns_zae = ["KNAM", "VERBRAUCH", "PROFIL"]
 
     # Filtern des DataFrames auf die ausgewählten Spalten
     filtered_kno_df = kno_df[selected_columns_kno]
     filtered_lei_df = lei_df[selected_columns_lei]
+
+    # Koordinaten der Anfangs- und Endknoten den Leitungen zuweisen
+    filtered_lei_df = filtered_lei_df.merge(filtered_kno_df[['KNAM', 'XRECHTS', 'YHOCH']], left_on='ANFNAM', right_on='KNAM', how='left')
+    filtered_lei_df.rename(columns={'XRECHTS': 'ANF_X', 'YHOCH': 'ANF_Y'}, inplace=True)
+    filtered_lei_df = filtered_lei_df.merge(filtered_kno_df[['KNAM', 'XRECHTS', 'YHOCH']], left_on='ENDNAM', right_on='KNAM', how='left')
+    filtered_lei_df.rename(columns={'XRECHTS': 'END_X', 'YHOCH': 'END_Y'}, inplace=True)
+
+    # Entfernen der jetzt unnötigen Spalten 'KNAM'
+    filtered_lei_df.drop(columns=['KNAM_x', 'KNAM_y'], inplace=True)
+
+    # Transformieren der Koordinaten
     filtered_wae_df = wae_df[selected_columns_wae]
+    # Koordinaten der Anfangs- und Endknoten den Wärmeübertragern zuweisen
+    filtered_wae_df = filtered_wae_df.merge(filtered_kno_df[['KNAM', 'XRECHTS', 'YHOCH']], left_on='ANFNAM', right_on='KNAM', how='left')
+    filtered_wae_df.rename(columns={'XRECHTS': 'ANF_X', 'YHOCH': 'ANF_Y'}, inplace=True)
+    filtered_wae_df = filtered_wae_df.merge(filtered_kno_df[['KNAM', 'XRECHTS', 'YHOCH']], left_on='ENDNAM', right_on='KNAM', how='left')
+    filtered_wae_df.rename(columns={'XRECHTS': 'END_X', 'YHOCH': 'END_Y'}, inplace=True)
+
+    # Entfernen der jetzt unnötigen Spalten 'KNAM'
+    filtered_wae_df.drop(columns=['KNAM_x', 'KNAM_y'], inplace=True)
+
     filtered_hea_df = hea_df[selected_columns_hea]
     filtered_zae_df = zae_df[selected_columns_zae]
     filtered_zae_df['PROFIL'] = filtered_zae_df['PROFIL'].str.replace('*', '')
@@ -94,10 +114,11 @@ def create_net_from_stanet_csv(file_path):
 
     # Transformation der Koordinaten in den DataFrames
     filtered_kno_df[['XRECHTS', 'YHOCH']] = filtered_kno_df.apply(lambda row: transform_coords(row['XRECHTS'], row['YHOCH']), axis=1, result_type="expand")
-    filtered_lei_df[['XRA', 'YHA']] = filtered_lei_df.apply(lambda row: transform_coords(row['XRA'], row['YHA']), axis=1, result_type="expand")
-    filtered_lei_df[['XRB', 'YHB']] = filtered_lei_df.apply(lambda row: transform_coords(row['XRB'], row['YHB']), axis=1, result_type="expand")
-    filtered_wae_df[['XRECHTS', 'YHOCH']] = filtered_wae_df.apply(lambda row: transform_coords(row['XRECHTS'], row['YHOCH']), axis=1, result_type="expand")
-    filtered_wae_df[['XRECHTS2', 'YHOCH2']] = filtered_wae_df.apply(lambda row: transform_coords(row['XRECHTS2'], row['YHOCH2']), axis=1, result_type="expand")
+    filtered_lei_df[['ANF_X', 'ANF_Y']] = filtered_lei_df.apply(lambda row: transform_coords(row['ANF_X'], row['ANF_Y']), axis=1, result_type="expand")
+    filtered_lei_df[['END_X', 'END_Y']] = filtered_lei_df.apply(lambda row: transform_coords(row['END_X'], row['END_Y']), axis=1, result_type="expand")
+    filtered_wae_df[['ANF_X', 'ANF_Y']] = filtered_wae_df.apply(lambda row: transform_coords(row['ANF_X'], row['ANF_Y']), axis=1, result_type="expand")
+    filtered_wae_df[['END_X', 'END_Y']] = filtered_wae_df.apply(lambda row: transform_coords(row['END_X'], row['END_Y']), axis=1, result_type="expand")
+
 
     # Zusammenführen der DataFrames
     merged_wae_zae_df = pd.merge(filtered_wae_df, filtered_zae_df, left_on='ANFNAM', right_on='KNAM')
@@ -128,15 +149,16 @@ def create_net_from_stanet_csv(file_path):
         k_mm = float(row["RAU"])
         alpha_w_per_m2k = float(row["WDZAHL"])
 
-        # Extrahieren der Koordinaten für Anfangs- und Endpunkt der Leitung
-        from_coords = (row["XRA"], row["YHA"])
-        to_coords = (row["XRB"], row["YHB"])
+        # Verwenden der neuen Koordinaten für Anfangs- und Endpunkt der Leitung
+        from_coords = (float(row["ANF_X"]), float(row["ANF_Y"]))
+        to_coords = (float(row["END_X"]), float(row["END_Y"]))
         line_coords = [from_coords, to_coords]
 
         # Erstellen der Pipe in pandapipes
         pp.create_pipe(net, from_junction=from_junction, to_junction=to_junction, std_type=std_type, length_km=length_km, 
                     k_mm=k_mm, alpha_w_per_m2k=alpha_w_per_m2k, sections=5, text_k=281, name="Pipe_" + str(idx), fluid="water",
                     geodata=line_coords)  # oder entsprechendes Fluid
+
 
     for idx, row in filtered_hea_df.iterrows():
         # Finden der Indizes der Anfangs- und End-Junctions basierend auf den Namen
@@ -160,7 +182,7 @@ def create_net_from_stanet_csv(file_path):
         from_junction = get_junction_index(net, row["ANFNAM"])
         to_junction = get_junction_index(net, row["ENDNAM"])
         # Berechnen der mittleren Koordinaten
-        mid_coord = ((float(row["XRECHTS"]) + float(row["XRECHTS2"])) / 2, (float(row["YHOCH"]) + float(row["YHOCH2"])) / 2)
+        mid_coord = ((float(row["ANF_X"]) + float(row["END_X"])) / 2, (float(row["ANF_Y"]) + float(row["END_Y"])) / 2)
 
         # Extrahieren weiterer erforderlicher Parameter aus dem DataFrame
         diameter_m = float(row["DM"]) / 1000  # Durchmesser des Wärmetauschers in Metern
@@ -168,7 +190,7 @@ def create_net_from_stanet_csv(file_path):
         Verbrauch_kWh = float(row["VERBRAUCH"])
         current_building_type = row["PROFIL"]
 
-        yearly_time_steps, waerme_ges_kW  = heat_requirement_BDEW.calculate(Verbrauch_kWh, current_building_type, subtyp="03")
+        yearly_time_steps, waerme_ges_kW, hourly_temperatures  = heat_requirement_BDEW.calculate(Verbrauch_kWh, current_building_type, subtyp="03")
 
         waerme_ges_W_L.append(waerme_ges_kW * 1000)
         max_waerme_ges_W = np.max(waerme_ges_kW * 1000)
@@ -189,7 +211,7 @@ def create_net_from_stanet_csv(file_path):
         
     pp.pipeflow(net, mode="all")
 
-    net = create_controllers(net, max_waerme_ges_W_L)
+    net = create_controllers(net, max_waerme_ges_W_L,target_temperature=60)
     net = correct_flow_directions(net)
 
     net = init_timeseries_opt(net, max_waerme_ges_W_L, time_steps=3, target_temperature=60)
