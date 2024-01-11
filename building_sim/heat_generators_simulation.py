@@ -39,6 +39,22 @@ class HeatGenTab(QWidget):
         self.HeiztemperaturInput.setToolTip("Geben Sie eine Vorlauftemperatur ein.")
         formLayout.addWidget(self.HeiztemperaturInput)
 
+        # Dropdown-Menü für Wärmequelle
+        wärmequelle_label = QLabel("Wärmequelle:")
+        wärmequelle_label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
+        formLayout.addWidget(wärmequelle_label)
+
+        self.wärmequelleInput = QComboBox(self)
+        self.wärmequelleInput.addItems(["Luft", "Erdreich"])
+        self.wärmequelleInput.currentIndexChanged.connect(self.onWaermequelleChange) # Verbindung zum Event
+        formLayout.addWidget(self.wärmequelleInput)
+
+        # Zusätzliches Eingabefeld für Erdreichtemperatur
+        self.ErdreichTemperaturInput = QLineEdit("10", self)
+        self.ErdreichTemperaturInput.setToolTip("Geben Sie die Erdreichtemperatur ein.")
+        self.ErdreichTemperaturInput.setHidden(True) # Standardmäßig versteckt
+        formLayout.addWidget(self.ErdreichTemperaturInput)
+
         self.calculateNetButton = QPushButton('COP-Jahresverlauf berechnen', self)
         self.calculateNetButton.clicked.connect(self.calculate_cop)
         formLayout.addWidget(self.calculateNetButton)
@@ -89,12 +105,23 @@ class HeatGenTab(QWidget):
         self.scrollArea.setWidgetResizable(True)
         self.mainLayout.addWidget(self.scrollArea)
     
+    def onWaermequelleChange(self, index):
+        # Anzeigen des Erdreichtemperatur-Eingabefelds, wenn "Erdreich" ausgewählt ist
+        if self.wärmequelleInput.currentText() == "Erdreich":
+            self.ErdreichTemperaturInput.setHidden(False)
+        else:
+            self.ErdreichTemperaturInput.setHidden(True)
+
     def calculate_cop(self):
+        HT = float(self.HeiztemperaturInput.text())
         JEB_Wärme_ges_kWh = 1
         building_type = "HMF"
-        time_steps, waerme_ges_kW, hourly_temperatures  = heat_requirement_BDEW.calculate(JEB_Wärme_ges_kWh, building_type, subtyp="03")
+        time_steps, _, hourly_temperatures  = heat_requirement_BDEW.calculate(JEB_Wärme_ges_kWh, building_type, subtyp="03")
+        
+        if self.wärmequelleInput.currentText() == "Erdreich":
+            # Anpassen der Berechnungen für Erdreich
+            hourly_temperatures = np.full(8760, float(self.ErdreichTemperaturInput.text()))
 
-        HT = float(self.HeiztemperaturInput.text())
         COP_id = (HT + 273.15) / (HT - hourly_temperatures)
         COP = COP_id * 0.6
 
@@ -171,6 +198,11 @@ class HeatGenTab(QWidget):
         waerme_ges_kW = np.array(waerme_ges_kW)
 
         HT = float(self.HeiztemperaturInput.text())
+
+        if self.wärmequelleInput.currentText() == "Erdreich":
+            # Anpassen der Berechnungen für Erdreich
+            hourly_temperatures = np.full(8760, float(self.ErdreichTemperaturInput.text()))
+
         COP_id = (HT + 273.15) / (HT - hourly_temperatures)
         COP = COP_id * 0.6
 
