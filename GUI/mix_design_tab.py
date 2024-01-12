@@ -518,7 +518,7 @@ class MixDesignTab(QWidget):
             img_buffer.seek(0)  # Zurück zum Anfang des Streams
             img = Image(img_buffer)
             img.drawHeight = 6 * inch  # oder eine andere Größe
-            img.drawWidth = 8 * inch
+            img.drawWidth = 10 * inch
             story.append(img)
             story.append(Spacer(1, 12))
         

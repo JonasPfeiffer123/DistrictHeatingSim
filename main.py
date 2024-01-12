@@ -5,7 +5,7 @@ import geopandas as gpd
 
 from net_simulation_pandapipes.net_simulation_calculation import calculate_worst_point
 from net_simulation_pandapipes.net_simulation import generate_profiles_from_geojson, initialize_net_geojson, thermohydraulic_time_series_net_calculation, calculate_results
-from heat_generators.heat_generator_classes import *
+from heat_generators.heat_generator_classes_v2 import *
 from net_simulation_pandapipes.net_simulation import save_results_csv, import_results_csv
 
 def import_TRY(dateiname):
