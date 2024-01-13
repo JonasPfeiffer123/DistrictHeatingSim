@@ -1,0 +1,57 @@
+<!-- templates/index.html -->
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Simulationstool Wärmebedarfe Gebäude</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container">
+    <h1>Wärmesystem-Design</h1>
+    <ul class="nav nav-tabs">
+        <li class="nav-item">
+            <a class="nav-link active" href="#tab1" data-toggle="tab">Simulation Gebäudewärmebedarf</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="#tab2" data-toggle="tab">Simulation Wärmepumpe</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="#tab3" data-toggle="tab">Simulation Versorgung</a>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <div class="tab-pane active" id="tab1">
+            <!-- Teil von index.html für das Building Tab -->
+            <div id="buildingTab">
+                <h3>Gebäudesimulator</h3>
+                <input type="number" id="JEB_Wärme_ges_kWh" value="15000">
+                <select id="buildingType">
+                    <option value="HEF">Einfamilienhaus</option>
+                    <option value="HMF">Mehrfamilienhaus</option>
+                    <option value="GHD">Gewerbe/Handel/Dienstleistungen</option>
+                </select>
+                <button onclick="calculate()">Lastgang berechnen</button>
+                <div id="chartContainer" style="height: 600px; width: 100%;">
+                    <canvas id="myChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="tab-pane" id="tab2">
+            <!-- Inhalt für Tab 2 -->
+        </div>
+        <div class="tab-pane" id="tab3">
+            <!-- Inhalt für Tab 3 -->
+        </div>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+<script src="{{ url_for('static', filename='js/custom.js') }}"></script>
+</body>
+</html>
