@@ -1,5 +1,3 @@
-<!-- templates/index.html -->
-
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -40,11 +38,53 @@
             </div>
         </div>
         <div class="tab-pane" id="tab2">
-            <!-- Inhalt für Tab 2 -->
+            <!-- Wärmepumpen-Simulator Tab -->
+            <h3>Wärmepumpen-Simulator</h3>
+            <div id="heatPumpSimulator">
+                <div class="form-group">
+                    <label for="QuelltemperaturInput">Temperatur der Quelle in °C:</label>
+                    <input type="number" class="form-control" id="QuelltemperaturInput" value="5" min="-20" max="40">
+                </div>
+                <div class="form-group">
+                    <label for="HeiztemperaturInput">Vorlauftemperatur der Heizung in °C:</label>
+                    <input type="number" class="form-control" id="HeiztemperaturInput" value="65" min="0" max="100">
+                </div>
+                <button id="calculateCOPButton" class="btn btn-primary">COP berechnen</button>
+                <div class="form-group">
+                    <label for="resultOutput">Effizienz der Wärmepumpe (COP):</label>
+                    <input type="text" class="form-control" id="resultOutput" readonly>
+                </div>
+            </div>
         </div>
         <div class="tab-pane" id="tab3">
-            <!-- Inhalt für Tab 3 -->
-        </div>
+            <h3>Heizungsauslegung</h3>
+            <div id="heatGenTab">
+                <!-- Eingabefelder und Buttons -->
+                <div class="form-group">
+                    <label for="HeiztemperaturInput">Vorlauftemperatur der Heizung in °C:</label>
+                    <input type="number" class="form-control" id="HeiztemperaturInput" value="65">
+                </div>
+                <div class="form-group">
+                    <label for="wärmequelleInput">Wärmequelle:</label>
+                    <select class="form-control" id="wärmequelleInput">
+                        <option value="Luft">Luft</option>
+                        <option value="Erdreich">Erdreich</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="ErdreichTemperaturInput">Erdreichtemperatur in °C:</label>
+                    <input type="number" class="form-control" id="ErdreichTemperaturInput" value="10" hidden>
+                </div>
+                <!-- Weitere Eingabefelder und Buttons -->
+                <button id="calculateHeatGenButton" class="btn btn-primary">Berechnen</button>
+                <div id="heatGenResult" style="height: 600px; width: 100%;">
+                    <!-- Ergebnisse der Berechnungen anzeigen -->
+                    <p>Jahresarbeitszahl der Wärmepumpe (COP): <span id="resultCOP"></span></p>
+                    <p>Jährlicher Stromverbrauch der Wärmepumpe: <span id="resultStromverbrauch"></span> kWh</p>
+                    <canvas id="heatGenChart"></canvas>
+                </div>                
+            </div>
+        </div>        
     </div>
 </div>
 <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>

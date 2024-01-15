@@ -74,3 +74,105 @@ function drawChart(data) {
         }
     });
 }
+
+// Event-Listener für den COP-Berechnungsknopf
+document.getElementById('calculateCOPButton').addEventListener('click', function() {
+    const quelltemperatur = document.getElementById('QuelltemperaturInput').value;
+    const heiztemperatur = document.getElementById('HeiztemperaturInput').value;
+
+    fetch('/calculate_cop', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ quelltemperatur, heiztemperatur }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            document.getElementById('resultOutput').value = data.error;
+        } else {
+            document.getElementById('resultOutput').value = data.cop.toFixed(2);
+        }
+    })
+    .catch(error => {
+        console.error('Error during fetch operation:', error);
+        document.getElementById('resultOutput').value = 'Fehler bei der Berechnung';
+    });
+});
+
+document.getElementById('calculateHeatGenButton').addEventListener('click', function() {
+    const heiztemperatur = document.getElementById('HeiztemperaturInput').value;
+    const waermequelle = document.getElementById('wärmequelleInput').value;
+    const erdreich_temperatur = document.getElementById('ErdreichTemperaturInput').value;
+
+    fetch('/calculate_heatgen', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ heiztemperatur, waermequelle, erdreich_temperatur }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            console.error('Error:', data.error);
+            // Fehlerbehandlung
+        } else {
+            updateHeatGenResults(data);
+            drawHeatGenChart(data);
+        }
+    })
+    .catch(error => {
+        console.error('Error during fetch operation:', error);
+        // Fehlerbehandlung
+    });
+});
+
+function updateHeatGenResults(data) {
+    // Ergebnisse aus dem Antwortobjekt abrufen
+    const cop = data.cop;
+    const stromverbrauch = data.stromverbrauch;
+
+    // Elemente im DOM mit den neuen Werten aktualisieren
+    document.getElementById('resultCOP').innerText = cop.toFixed(2); // Formatieren Sie die Zahl auf 2 Dezimalstellen
+    document.getElementById('resultStromverbrauch').innerText = stromverbrauch.toFixed(2); // Formatieren Sie die Zahl auf 2 Dezimalstellen
+}
+
+function drawHeatGenChart(data) {
+    const ctx = document.getElementById('heatGenChart').getContext('2d');
+    if (window.heatGenChartInstance) {
+        window.heatGenChartInstance.destroy();
+    }
+    window.heatGenChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.time_steps, // Ersetzen Sie dies durch Ihre Zeitachsen-Daten
+            datasets: [{
+                label: 'COP',
+                data: data.cop, // Ersetzen Sie dies durch Ihre COP-Daten
+                borderColor: 'blue',
+                borderWidth: 1
+            }, {
+                label: 'Stromverbrauch',
+                data: data.stromverbrauch, // Ersetzen Sie dies durch Ihre Stromverbrauchsdaten
+                borderColor: 'red',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            title: {
+                display: true,
+                text: 'Heizungsauslegung'
+            },
+            scales: {
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true
+                    }
+                }]
+            }
+        }
+    });
+}
