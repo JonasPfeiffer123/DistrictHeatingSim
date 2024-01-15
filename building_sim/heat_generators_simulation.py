@@ -184,8 +184,6 @@ class HeatGenTab(QWidget):
         
         building_type_name = self.buildingTypeInput.currentText()
 
-        time_steps = None
-
         if building_type_name == "Einfamilienhaus":
             building_type = "HEF"
         if building_type_name == "Mehrfamilienhaus":

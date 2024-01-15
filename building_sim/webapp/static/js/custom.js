@@ -101,77 +101,149 @@ document.getElementById('calculateCOPButton').addEventListener('click', function
     });
 });
 
-document.getElementById('calculateHeatGenButton').addEventListener('click', function() {
-    const heiztemperatur = document.getElementById('HeiztemperaturInput').value;
-    const waermequelle = document.getElementById('wärmequelleInput').value;
-    const erdreich_temperatur = document.getElementById('ErdreichTemperaturInput').value;
+function calculateCOPYearly() {
+    var heiztemperatur = document.getElementById("heiztemperatur").value;
+    var wärmequelle = document.getElementById("wärmequelle").value;
+    var erdreichTemperatur = document.getElementById("erdreichTemperatur").value;
 
-    fetch('/calculate_heatgen', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
+    $.ajax({
+        url: '/calculate_cop_yearly',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ 
+            Heiztemperatur: heiztemperatur,
+            wärmequelle: wärmequelle,
+            ErdreichTemperatur: erdreichTemperatur 
+        }),
+        success: function(response) {
+            // Zeichnen Sie das Diagramm mit den abgerufenen Daten
+            drawCOPChart(response);
         },
-        body: JSON.stringify({ heiztemperatur, waermequelle, erdreich_temperatur }),
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.error) {
-            console.error('Error:', data.error);
-            // Fehlerbehandlung
-        } else {
-            updateHeatGenResults(data);
-            drawHeatGenChart(data);
+        error: function(error) {
+            console.log(error);
         }
-    })
-    .catch(error => {
-        console.error('Error during fetch operation:', error);
-        // Fehlerbehandlung
     });
-});
-
-function updateHeatGenResults(data) {
-    // Ergebnisse aus dem Antwortobjekt abrufen
-    const cop = data.cop;
-    const stromverbrauch = data.stromverbrauch;
-
-    // Elemente im DOM mit den neuen Werten aktualisieren
-    document.getElementById('resultCOP').innerText = cop.toFixed(2); // Formatieren Sie die Zahl auf 2 Dezimalstellen
-    document.getElementById('resultStromverbrauch').innerText = stromverbrauch.toFixed(2); // Formatieren Sie die Zahl auf 2 Dezimalstellen
 }
 
-function drawHeatGenChart(data) {
-    const ctx = document.getElementById('heatGenChart').getContext('2d');
-    if (window.heatGenChartInstance) {
-        window.heatGenChartInstance.destroy();
+function drawCOPChart(data) {
+    const ctx = document.getElementById('copChart').getContext('2d'); // Stellen Sie sicher, dass im HTML ein Canvas-Element mit der ID 'copChart' vorhanden ist.
+    if (window.copChartInstance) {
+        window.copChartInstance.destroy(); // Zerstören Sie die vorherige Instanz, wenn sie existiert.
     }
-    window.heatGenChartInstance = new Chart(ctx, {
+    window.copChartInstance = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: data.time_steps, // Ersetzen Sie dies durch Ihre Zeitachsen-Daten
+            labels: data.time_steps, // Dies sind Ihre X-Achsen-Daten
             datasets: [{
                 label: 'COP',
-                data: data.cop, // Ersetzen Sie dies durch Ihre COP-Daten
+                data: data.COP,
                 borderColor: 'blue',
-                borderWidth: 1
+                borderWidth: 1,
+                yAxisID: 'y',
+                pointRadius: 0
             }, {
-                label: 'Stromverbrauch',
-                data: data.stromverbrauch, // Ersetzen Sie dies durch Ihre Stromverbrauchsdaten
+                label: 'Stündliche Temperatur (°C)',
+                data: data.hourly_temperatures,
                 borderColor: 'red',
-                borderWidth: 1
+                borderWidth: 1,
+                yAxisID: 'y1',
+                pointRadius: 0
             }]
         },
         options: {
-            responsive: true,
-            title: {
-                display: true,
-                text: 'Heizungsauslegung'
-            },
             scales: {
-                yAxes: [{
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+
+                    // Spiegeln der Y-Achse auf die rechte Seite des Diagramms
+                    grid: {
+                        drawOnChartArea: false, // Nur Gitterlinien für diese Achse ausblenden
+                    },
+                },
+                x: {
                     ticks: {
-                        beginAtZero: true
+                        // Das automatische Überspringen und die Begrenzung der Anzeige der Ticks
+                        autoSkip: true,
+                        maxTicksLimit: 12 // Begrenzen Sie die Anzahl der X-Achsen-Ticks
                     }
-                }]
+                }
+            }
+        }
+    });
+}
+
+function calculateStrombedarf() {
+    var heiztemperatur = document.getElementById("heiztemperatur").value;
+    var JEB_Wärme_ges_kWh = document.getElementById("JEB_Wärme_ges_kWh").value;
+    var buildingType = document.getElementById("buildingType").value;
+
+    $.ajax({
+        url: '/calculate_strombedarf',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ 
+            JEB_Wärme_ges_kWh: JEB_Wärme_ges_kWh,
+            buildingType: buildingType, 
+            Heiztemperatur: heiztemperatur,
+            wärmequelle: wärmequelle,
+            ErdreichTemperatur: erdreichTemperatur 
+        }),
+        success: function(response) {
+            // Zeichnen Sie das Diagramm mit den abgerufenen Daten
+            drawStromChart(response);
+        },
+        error: function(error) {
+            console.log(error);
+        }
+    });
+}
+
+function drawStromChart(data) {
+    const ctx = document.getElementById('stromChart').getContext('2d');
+    if (window.stromChartInstance) {
+        window.stromChartInstance.destroy();
+    }
+    window.stromChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.time_steps, // Dies sind Ihre X-Achsen-Daten
+            datasets: [{
+                label: 'Wärmebedarf Gebäude (kW)',
+                data: data.waerme_ges_kW,
+                borderColor: 'red',
+                borderWidth: 1,
+                yAxisID: 'y',
+                pointRadius: 0
+            }, {
+                label: 'Stromverbrauch Wärmepumpe (kW)',
+                data: data.strom_ges_kW,
+                borderColor: 'blue',
+                borderWidth: 1,
+                yAxisID: 'y',
+                pointRadius: 0
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                },
+                x: {
+                    ticks: {
+                        // Das automatische Überspringen und die Begrenzung der Anzeige der Ticks
+                        autoSkip: true,
+                        maxTicksLimit: 12 // Begrenzen Sie die Anzahl der X-Achsen-Ticks
+                    }
+                }
             }
         }
     });
