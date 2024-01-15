@@ -604,3 +604,183 @@ class StanetDialog(QDialog):
         if self.generate_callback:
             self.generate_callback(self.stanetCsvInputLayout.itemAt(1).widget().text())
         self.accept()
+
+class EconomicParametersDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.initUI()
+        self.initDefaultValues()
+
+    def initUI(self):
+        self.layout = QVBoxLayout(self)
+
+        self.gaspreisLabel = QLabel("Gaspreis (€/MWh):", self)
+        self.gaspreisInput = QLineEdit(self)
+        self.layout.addWidget(self.gaspreisLabel)
+        self.layout.addWidget(self.gaspreisInput)
+
+        self.strompreisLabel = QLabel("Strompreis (€/MWh):", self)
+        self.strompreisInput = QLineEdit(self)
+        self.layout.addWidget(self.strompreisLabel)
+        self.layout.addWidget(self.strompreisInput)
+
+        self.holzpreisLabel = QLabel("Holzpreis (€/MWh):", self)
+        self.holzpreisInput = QLineEdit(self)
+        self.layout.addWidget(self.holzpreisLabel)
+        self.layout.addWidget(self.holzpreisInput)
+
+        self.BEWLabel = QLabel("Berücksichtigung BEW-Förderung?:", self)
+        self.BEWComboBox = QComboBox(self)
+        self.BEWComboBox.addItems(["Nein", "Ja"])
+        self.layout.addWidget(self.BEWLabel)
+        self.layout.addWidget(self.BEWComboBox)
+
+        self.kapitalzinsLabel = QLabel("Kapitalzins (%):", self)
+        self.kapitalzinsInput = QLineEdit(self)
+        self.layout.addWidget(self.kapitalzinsLabel)
+        self.layout.addWidget(self.kapitalzinsInput)
+
+        self.preissteigerungsrateLabel = QLabel("Preissteigerungsrate (%):", self)
+        self.preissteigerungsrateInput = QLineEdit(self)
+        self.layout.addWidget(self.preissteigerungsrateLabel)
+        self.layout.addWidget(self.preissteigerungsrateInput)
+
+        self.betrachtungszeitraumLabel = QLabel("Betrachtungszeitraum (Jahre):", self)
+        self.betrachtungszeitraumInput = QLineEdit(self)
+        self.layout.addWidget(self.betrachtungszeitraumLabel)
+        self.layout.addWidget(self.betrachtungszeitraumInput)
+
+        self.setLayout(self.layout)
+
+        buttonLayout = QHBoxLayout()
+        okButton = QPushButton("OK", self)
+        cancelButton = QPushButton("Abbrechen", self)
+        
+        okButton.clicked.connect(self.accept)
+        cancelButton.clicked.connect(self.reject)
+        
+        buttonLayout.addWidget(okButton)
+        buttonLayout.addWidget(cancelButton)
+
+        self.layout.addLayout(buttonLayout)
+
+    def initDefaultValues(self):
+        self.gaspreisInput.setText("70")
+        self.strompreisInput.setText("150")
+        self.holzpreisInput.setText("50")
+        self.BEWComboBox.setCurrentIndex(0)  # Setzt die Auswahl auf "Nein"
+        self.kapitalzinsInput.setText("5")
+        self.preissteigerungsrateInput.setText("3")
+        self.betrachtungszeitraumInput.setText("20")
+
+    def getValues(self):
+        return {
+            'gaspreis': float(self.gaspreisInput.text()),
+            'strompreis': float(self.strompreisInput.text()),
+            'holzpreis': float(self.holzpreisInput.text()),
+            'BEW': self.BEWComboBox.currentText(),
+            'kapitalzins': float(self.kapitalzinsInput.text()),
+            'preissteigerungsrate': float(self.preissteigerungsrateInput.text()),
+            'betrachtungszeitraum': int(self.betrachtungszeitraumInput.text()),
+        }
+    
+class NetInfrastructureDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.initUI()
+        self.initDefaultValues()
+
+    def initUI(self):
+        self.layout = QVBoxLayout(self)
+
+        # Liste von Infrastruktur-Objekten
+        self.infraObjects = ['waermenetz', 'druckhaltung', 'hydraulik', 'elektroinstallation', 'planungskosten']
+        self.inputs = {}  # Speichert die Eingabefelder für jedes Objekt
+
+        for obj in self.infraObjects:
+            self.initInfraObjectGroup(obj)
+
+        # Button-Leiste
+        buttonLayout = QHBoxLayout()
+        okButton = QPushButton("OK", self)
+        cancelButton = QPushButton("Abbrechen", self)
+        
+        # Verbinden der Buttons mit ihren Funktionen
+        okButton.clicked.connect(self.accept)
+        cancelButton.clicked.connect(self.reject)
+        
+        buttonLayout.addWidget(okButton)
+        buttonLayout.addWidget(cancelButton)
+
+        self.layout.addLayout(buttonLayout)
+
+    def initInfraObjectGroup(self, obj_name):
+        # Erstellen einer Untergruppe von Feldern für jedes Infrastruktur-Objekt
+        groupLayout = QVBoxLayout()
+        nameLabel = QLabel(f"{obj_name.capitalize()}:", self)
+        groupLayout.addWidget(nameLabel)
+
+        # Zusätzliche Felder
+        for field in ['kosten','technische nutzungsdauer', 'f_inst', 'f_w_insp', 'bedienaufwand']:
+            label = QLabel(f"{field} für {obj_name}:", self)
+            inputField = QLineEdit(self)
+            groupLayout.addWidget(label)
+            groupLayout.addWidget(inputField)
+            # Speichern der Eingabefelder im Dictionary
+            self.inputs[f"{obj_name}_{field}"] = inputField
+
+        # Fügen Sie die Gruppe zum Hauptlayout hinzu
+        self.layout.addLayout(groupLayout)
+
+    def initDefaultValues(self):
+        # Standardwerte für jedes Infrastruktur-Objekt
+        defaultValues = {
+            'waermenetz': {
+                'kosten': "2000000",
+                'technische nutzungsdauer': "40",
+                'f_inst': "1",
+                'f_w_insp': "0",
+                'bedienaufwand': "5"
+            },
+            'druckhaltung': {
+                'kosten': "20000",
+                'technische nutzungsdauer': "20",
+                'f_inst': "1",
+                'f_w_insp': "1",
+                'bedienaufwand': "2"
+            },
+            'hydraulik': {
+                'kosten': "40000",
+                'technische nutzungsdauer': "40",
+                'f_inst': "1",
+                'f_w_insp': "0",
+                'bedienaufwand': "0"
+            },
+            'elektroinstallation': {
+                'kosten': "15000",
+                'technische nutzungsdauer': "15",
+                'f_inst': "1",
+                'f_w_insp': "1",
+                'bedienaufwand': "5"
+            },
+            'planungskosten': {
+                'kosten': "500000",
+                'technische nutzungsdauer': "20",
+                'f_inst': "0",
+                'f_w_insp': "0",
+                'bedienaufwand': "0"
+            }
+        }
+
+        for obj in self.infraObjects:
+            for field in ['kosten', 'technische nutzungsdauer', 'f_inst', 'f_w_insp', 'bedienaufwand']:
+                key = f"{obj}_{field}"
+                if key in self.inputs: # Überprüfen, ob der Schlüssel existiert
+                    self.inputs[key].setText(defaultValues[obj][field])
+
+    def getValues(self):
+        # Extrahiere die Werte aus allen Eingabefeldern
+        values = {}
+        for key, inputField in self.inputs.items():
+            values[key] = float(inputField.text())
+        return values

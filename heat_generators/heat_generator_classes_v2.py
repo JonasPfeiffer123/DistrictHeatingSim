@@ -528,9 +528,9 @@ def calculate_factors(Kapitalzins, Preissteigerungsrate, Betrachtungszeitraum):
     T = Betrachtungszeitraum
     return q, r, T
 
-def Berechnung_Erzeugermix(tech_order, initial_data, calc1, calc2, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, variables=[], variables_order=[], Kapitalzins=5, Preissteigerungsrate=3, Betrachtungszeitraum=20):
+def Berechnung_Erzeugermix(tech_order, initial_data, calc1, calc2, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, variables=[], variables_order=[], kapitalzins=5, preissteigerungsrate=3, betrachtungszeitraum=20):
     # Kapitalzins und Preissteigerungsrate in % -> Umrechung in Zinsfaktor und Preissteigerungsfaktor
-    q, r, T = calculate_factors(Kapitalzins, Preissteigerungsrate, Betrachtungszeitraum)
+    q, r, T = calculate_factors(kapitalzins, preissteigerungsrate, betrachtungszeitraum)
     time_steps, Last_L, VLT_L, RLT_L = initial_data
 
     duration = np.diff(time_steps[0:2]) / np.timedelta64(1, 'h')
@@ -630,7 +630,7 @@ def Berechnung_Erzeugermix(tech_order, initial_data, calc1, calc2, TRY, COP_data
 
     return general_results
 
-def optimize_mix(tech_order, initial_data, calc1, calc2, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW):
+def optimize_mix(tech_order, initial_data, calc1, calc2, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, kapitalzins, preissteigerungsrate, betrachtungszeitraum):
     # solar Fläche, Speichervolumen solar, Leistung Biomasse, Leistung BHKW
     initial_values = []
     variables_order = []
@@ -669,7 +669,8 @@ def optimize_mix(tech_order, initial_data, calc1, calc2, TRY, COP_data, Gaspreis
 
 
     def objective(variables):
-        general_results = Berechnung_Erzeugermix(tech_order, initial_data, calc1, calc2, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, variables, variables_order)
+        general_results = Berechnung_Erzeugermix(tech_order, initial_data, calc1, calc2, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, variables, variables_order, \
+                                            kapitalzins=kapitalzins, preissteigerungsrate=preissteigerungsrate, betrachtungszeitraum=betrachtungszeitraum)
         
         return general_results["WGK_Gesamt"]
 

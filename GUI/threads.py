@@ -175,7 +175,7 @@ class CalculateMixThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(Exception)
 
-    def __init__(self, filename, load_scale_factor, try_filename, cop_filename, gaspreis, strompreis, holzpreis, BEW, tech_objects, optimize):
+    def __init__(self, filename, load_scale_factor, try_filename, cop_filename, gaspreis, strompreis, holzpreis, BEW, tech_objects, optimize, kapitalzins, preissteigerungsrate, betrachtungszeitraum):
         super().__init__()
         self.filename = filename
         self.load_scale_factor = load_scale_factor
@@ -187,6 +187,9 @@ class CalculateMixThread(QThread):
         self.BEW = BEW
         self.tech_objects = tech_objects
         self.optimize = optimize
+        self.kapitalzins = kapitalzins
+        self.preissteigerungsrate = preissteigerungsrate
+        self.betrachtungszeitraum = betrachtungszeitraum
 
     def run(self):
         try:
@@ -202,9 +205,11 @@ class CalculateMixThread(QThread):
             COP_data = np.genfromtxt(self.cop_filename, delimiter=';')
 
             if self.optimize:
-                self.tech_objects = optimize_mix(self.tech_objects, initial_data, calc1, calc2, TRY, COP_data, self.gaspreis, self.strompreis, self.holzpreis, self.BEW)
+                self.tech_objects = optimize_mix(self.tech_objects, initial_data, calc1, calc2, TRY, COP_data, self.gaspreis, self.strompreis, self.holzpreis, self.BEW, \
+                                            kapitalzins=self.kapitalzins, preissteigerungsrate=self.preissteigerungsrate, betrachtungszeitraum=self.betrachtungszeitraum)
 
-            result = Berechnung_Erzeugermix(self.tech_objects, initial_data, calc1, calc2, TRY, COP_data, self.gaspreis, self.strompreis, self.holzpreis, self.BEW)
+            result = Berechnung_Erzeugermix(self.tech_objects, initial_data, calc1, calc2, TRY, COP_data, self.gaspreis, self.strompreis, self.holzpreis, self.BEW, \
+                                            kapitalzins=self.kapitalzins, preissteigerungsrate=self.preissteigerungsrate, betrachtungszeitraum=self.betrachtungszeitraum)
 
             self.calculation_done.emit(result)  # Ergebnis zurückgeben
         except Exception as e:

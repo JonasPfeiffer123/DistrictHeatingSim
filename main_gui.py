@@ -25,9 +25,6 @@ class HeatSystemDesignGUI(QWidget):
         self.setWindowTitle("Hier könnte ein cooler Softwarename stehen")
         self.setGeometry(100, 100, 800, 600)  # Optional, Standardgröße vor Vollbild
 
-        # Starten Sie im Vollbildmodus
-        #self.showFullScreen()
-
         layout = QVBoxLayout(self)
         tabWidget = QTabWidget()
         layout.addWidget(tabWidget)
