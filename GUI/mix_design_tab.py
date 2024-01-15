@@ -5,6 +5,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QLineEdit, QListWidget, QDialog, QProgressBar, \
     QMessageBox, QFileDialog, QMenuBar, QScrollArea, QAction, QAbstractItemView, QTableWidget, QTableWidgetItem, QHeaderView)
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont
 from gui.dialogs import TechInputDialog, EconomicParametersDialog, NetInfrastructureDialog
 from heat_generators.heat_generator_classes_v2 import *
 from gui.checkable_combobox import CheckableComboBox
@@ -34,11 +35,9 @@ class MixDesignTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.results = {}
-        self.header_labels = ['Beschreibung', 'Kosten', 'Technische Nutzungsdauer', 'f_Inst', 'f_W_Insp', 'Bedienaufwand']
         self.economicParametersDialog = EconomicParametersDialog(self)
         self.netInfrastructureDialog = NetInfrastructureDialog(self)
         self.setupEconomicParameters()
-        self.setupInfrastructureCosts()
         self.tech_objects = []
         self.initFileInputs()
         self.initUI()
@@ -318,58 +317,82 @@ class MixDesignTab(QWidget):
         table.setFixedHeight(header_height + rows_height)
 
     def setupInfrastructureCostsTable(self, mainLayout):
-        self.TableLabel = QLabel("Wärmenetzinfrastruktur")
-        mainLayout.addWidget(self.TableLabel)
+        self.infrastructure_costs = self.netInfrastructureDialog.getValues()
         self.infrastructureCostsTable = QTableWidget()
-        self.infrastructureCostsTable.setColumnCount(len(self.header_labels))
-        self.infrastructureCostsTable.setHorizontalHeaderLabels(self.header_labels)
-
-        # Hinzufügen von Zeilen für jedes Infrastrukturobjekt
-        total_costs = 0
-        for obj, properties in self.infrastructure_costs.items():
-            self.addInfrastructureCostRow(obj, properties)
-            total_costs += properties.get('kosten', 0)
-
-        # Zeile für die Summe der Kosten
-        total_costs_str = f"{total_costs:.2f} €"
-        totalRowProperties = {'kosten': total_costs}
-        self.addInfrastructureCostRow('Gesamtkosten', totalRowProperties, isTotal=True)
-        
+        self.infrastructureCostsTable.setColumnCount(7)  # Eine zusätzliche Spalte für Annuität
+        self.infrastructureCostsTable.setHorizontalHeaderLabels(['Beschreibung', 'Kosten', 'Technische Nutzungsdauer', 'f_Inst', 'f_W_Insp', 'Bedienaufwand', 'Annuität'])
         mainLayout.addWidget(self.infrastructureCostsTable)
+        self.updateInfrastructureTable(self.infrastructure_costs)  # Tabelle mit Standardwerten füllen
+
+    def openInfrastructureCostsDialog(self):
+        dialog = NetInfrastructureDialog(self)
+        if dialog.exec_():
+            updated_values = dialog.getValues()
+            self.updateInfrastructureTable(updated_values)
+
+    def updateInfrastructureTable(self, values):
+        infraObjects = ['waermenetz', 'druckhaltung', 'hydraulik', 'elektroinstallation', 'planungskosten']
+        columns = ['Beschreibung', 'Kosten', 'Technische Nutzungsdauer', 'f_Inst', 'f_W_Insp', 'Bedienaufwand', 'Gesamtannuität']
+
+        self.infrastructureCostsTable.setRowCount(len(infraObjects))
+        self.infrastructureCostsTable.setColumnCount(len(columns))  # Hier 7 Spalten setzen
+        self.infrastructureCostsTable.setHorizontalHeaderLabels(columns)
+
+        # Summen initialisieren
+        summe_investitionskosten = 0
+        summe_annuität = 0
+
+        for i, obj in enumerate(infraObjects):
+            self.infrastructureCostsTable.setItem(i, 0, QTableWidgetItem(obj.capitalize()))
+            for j, col in enumerate(columns[1:], 1):
+                key = f"{obj}_{col.lower()}"
+                value = values.get(key, "")
+                self.infrastructureCostsTable.setItem(i, j, QTableWidgetItem(str(value)))
+
+            # Annuität berechnen und hinzufügen
+            A0 = float(values.get(f"{obj}_kosten", 0))
+            TN = int(values.get(f"{obj}_technische nutzungsdauer", 0))
+            f_Inst = float(values.get(f"{obj}_f_inst", 0))
+            f_W_Insp = float(values.get(f"{obj}_f_w_insp", 0))
+            Bedienaufwand = float(values.get(f"{obj}_bedienaufwand", 0))
+            annuität = self.calc_annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand)
+            self.infrastructureCostsTable.setItem(i, 6, QTableWidgetItem(str(annuität)))
+            # Summen berechnen
+            summe_investitionskosten += float(values.get(f"{obj}_kosten", 0))
+            summe_annuität += self.calc_annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand)
+
+        # Neue Zeile für Summen hinzufügen
+        summen_row_index = self.infrastructureCostsTable.rowCount()
+        self.infrastructureCostsTable.insertRow(summen_row_index)
+
+        # Fettgedruckten Font erstellen
+        boldFont = QFont()
+        boldFont.setBold(True)
+
+        # Summenzellen hinzufügen und formatieren
+        summen_beschreibung_item = QTableWidgetItem("Summen")
+        summen_beschreibung_item.setFont(boldFont)
+        self.infrastructureCostsTable.setItem(summen_row_index, 0, summen_beschreibung_item)
+
+        # Formatieren der Zahlen auf eine Dezimalstelle
+        summen_kosten_item = QTableWidgetItem("{:.0f}".format(summe_investitionskosten))
+        summen_kosten_item.setFont(boldFont)
+        self.infrastructureCostsTable.setItem(summen_row_index, 1, summen_kosten_item)
+
+        summen_annuität_item = QTableWidgetItem("{:.0f}".format(summe_annuität))
+        summen_annuität_item.setFont(boldFont)
+        self.infrastructureCostsTable.setItem(summen_row_index, 6, summen_annuität_item)
+
         self.infrastructureCostsTable.resizeColumnsToContents()
         self.adjustTableSize(self.infrastructureCostsTable)
 
-    def addInfrastructureCostRow(self, obj_name, properties, isTotal=False):
-        rowCount = self.infrastructureCostsTable.rowCount()
-        self.infrastructureCostsTable.insertRow(rowCount)
+    def calc_annuität(self, A0, TN, f_Inst, f_W_Insp, Bedienaufwand):
+        q = 1 + (self.kapitalzins / 100)
+        r = 1 + (self.preissteigerungsrate / 100)
+        t = int(self.betrachtungszeitraum)
 
-        # Zelle für die Beschreibung hinzufügen
-        descriptionItem = QTableWidgetItem(obj_name.capitalize())
-        if isTotal:
-            # Hervorhebung der Zelle, wenn es sich um Gesamtkosten handelt
-            font = descriptionItem.font()
-            font.setBold(True)
-            descriptionItem.setFont(font)
-        self.infrastructureCostsTable.setItem(rowCount, 0, descriptionItem)
-
-        # Zellen für die Eigenschaften hinzufügen
-        for i, header in enumerate(self.header_labels[1:]):  # Startet bei 1, da 'Beschreibung' übersprungen wird
-            if header.lower() in properties:
-                value = properties[header.lower()]
-                item = QTableWidgetItem(f"{value:.2f}" if header == 'Kosten' else str(value))
-            else:
-                item = QTableWidgetItem("-")  # Standardwert, falls Eigenschaft nicht vorhanden ist
-
-            if isTotal:
-                item.setFont(font)  # Hervorhebung der Zelle, wenn es sich um Gesamtkosten handelt
-            self.infrastructureCostsTable.setItem(rowCount, i + 1, item)  # i + 1, da 'Beschreibung' übersprungen wird
-
-        self.infrastructureCostsTable.resizeColumnsToContents()
-        self.adjustTableSize(self.infrastructureCostsTable)
-
-    def calc_annuität(self):
-        #annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand=0, q=1+(self.kapitalzins/100), r=1+(self.preissteigerungsrate/100), t=self.betrachtungszeitraum
-        pass
+        a = annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand, q=q, r=r, T=t)
+        return a
                  
     ### Setup Diagramm-Plots ###
     def setupDiagrams(self, mainLayout):
@@ -593,27 +616,6 @@ class MixDesignTab(QWidget):
             self.kapitalzins = values['kapitalzins']
             self.preissteigerungsrate = values['preissteigerungsrate']
             self.betrachtungszeitraum = values['betrachtungszeitraum']
-
-    # Eingabe sonstige Investitionen
-    def setupInfrastructureCosts(self):
-        values = self.netInfrastructureDialog.getValues()
-        self.infrastructure_costs = {}
-
-        # Liste der Infrastrukturobjekte
-        infra_objects = ['waermenetz', 'druckhaltung', 'hydraulik', 'elektroinstallation', 'planungskosten']
-
-        # Liste der Eigenschaften für jedes Infrastrukturobjekt
-        properties = ['kosten', 'technische nutzungsdauer', 'f_inst', 'f_w_insp', 'bedienaufwand']
-
-        for obj in infra_objects:
-            self.infrastructure_costs[obj] = {}
-            for prop in properties:
-                key = f"{obj}_{prop}"
-                self.infrastructure_costs[obj][prop] = values.get(key, None)  # Verwendung von .get() für Sicherheit
-
-    def openInfrastructureCostsDialog(self):
-        if self.netInfrastructureDialog.exec_():
-            self.setupInfrastructureCosts()
 
     ### Export Ergebnisse mit PDF ###
     def create_pdf(self, filename):

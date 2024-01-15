@@ -693,47 +693,45 @@ class NetInfrastructureDialog(QDialog):
     def initUI(self):
         self.layout = QVBoxLayout(self)
 
-        # Liste von Infrastruktur-Objekten
+        # Erstellen der Tabelle
+        self.table = QTableWidget(self)
         self.infraObjects = ['waermenetz', 'druckhaltung', 'hydraulik', 'elektroinstallation', 'planungskosten']
-        self.inputs = {}  # Speichert die Eingabefelder für jedes Objekt
-
-        for obj in self.infraObjects:
-            self.initInfraObjectGroup(obj)
+        self.table.setRowCount(len(self.infraObjects))
+        self.table.setColumnCount(5)  # Für jede Eigenschaft eine Spalte
+        self.table.setHorizontalHeaderLabels(['kosten', 'technische nutzungsdauer', 'f_inst', 'f_w_insp', 'bedienaufwand'])
+        self.table.setVerticalHeaderLabels(self.infraObjects)
+        self.layout.addWidget(self.table)
 
         # Button-Leiste
         buttonLayout = QHBoxLayout()
+        # Hinzufügen und Entfernen von Schaltflächen
+        self.addButton = QPushButton("Zeile hinzufügen", self)
+        self.removeButton = QPushButton("Zeile entfernen", self)
+        self.addButton.clicked.connect(self.addRow)
+        self.removeButton.clicked.connect(self.removeRow)
+        buttonLayout.addWidget(self.addButton)
+        buttonLayout.addWidget(self.removeButton)
+
         okButton = QPushButton("OK", self)
         cancelButton = QPushButton("Abbrechen", self)
-        
-        # Verbinden der Buttons mit ihren Funktionen
         okButton.clicked.connect(self.accept)
         cancelButton.clicked.connect(self.reject)
-        
         buttonLayout.addWidget(okButton)
         buttonLayout.addWidget(cancelButton)
-
         self.layout.addLayout(buttonLayout)
 
-    def initInfraObjectGroup(self, obj_name):
-        # Erstellen einer Untergruppe von Feldern für jedes Infrastruktur-Objekt
-        groupLayout = QVBoxLayout()
-        nameLabel = QLabel(f"{obj_name.capitalize()}:", self)
-        groupLayout.addWidget(nameLabel)
+    def addRow(self):
+        row_count = self.table.rowCount()
+        self.table.insertRow(row_count)
+        # Füllen Sie die neue Zeile mit Standardwerten oder leeren Zellen
 
-        # Zusätzliche Felder
-        for field in ['kosten','technische nutzungsdauer', 'f_inst', 'f_w_insp', 'bedienaufwand']:
-            label = QLabel(f"{field} für {obj_name}:", self)
-            inputField = QLineEdit(self)
-            groupLayout.addWidget(label)
-            groupLayout.addWidget(inputField)
-            # Speichern der Eingabefelder im Dictionary
-            self.inputs[f"{obj_name}_{field}"] = inputField
-
-        # Fügen Sie die Gruppe zum Hauptlayout hinzu
-        self.layout.addLayout(groupLayout)
+    def removeRow(self):
+        current_row = self.table.currentRow()
+        if current_row != -1:
+            self.table.removeRow(current_row)
 
     def initDefaultValues(self):
-        # Standardwerte für jedes Infrastruktur-Objekt
+        # Standardwerte wie zuvor definiert
         defaultValues = {
             'waermenetz': {
                 'kosten': "2000000",
@@ -772,15 +770,14 @@ class NetInfrastructureDialog(QDialog):
             }
         }
 
-        for obj in self.infraObjects:
-            for field in ['kosten', 'technische nutzungsdauer', 'f_inst', 'f_w_insp', 'bedienaufwand']:
-                key = f"{obj}_{field}"
-                if key in self.inputs: # Überprüfen, ob der Schlüssel existiert
-                    self.inputs[key].setText(defaultValues[obj][field])
+        for i, obj in enumerate(self.infraObjects):
+            for j, field in enumerate(['kosten', 'technische nutzungsdauer', 'f_inst', 'f_w_insp', 'bedienaufwand']):
+                self.table.setItem(i, j, QTableWidgetItem(str(defaultValues[obj][field])))
 
     def getValues(self):
-        # Extrahiere die Werte aus allen Eingabefeldern
         values = {}
-        for key, inputField in self.inputs.items():
-            values[key] = float(inputField.text())
+        for i, obj in enumerate(self.infraObjects):
+            for j, field in enumerate(['kosten', 'technische nutzungsdauer', 'f_inst', 'f_w_insp', 'bedienaufwand']):
+                key = f"{obj}_{field}"
+                values[key] = float(self.table.item(i, j).text())
         return values
