@@ -63,6 +63,7 @@ class MixDesignTab(QWidget):
         self.setupMenu()
         self.setupFileInputs()
         self.setupScaleFactor(mainLayout)
+        self.setupInfrastructureCostsTable(mainLayout)
         self.setupTechnologySelection(mainLayout)
         self.setupCalculationOptimization(mainLayout)
         self.setupDiagrams(mainLayout)
@@ -264,7 +265,6 @@ class MixDesignTab(QWidget):
         self.resultLabel = QLabel('Berechnungsergebnisse werden hier angezeigt')
         mainLayout.addWidget(self.resultLabel)
         self.setupTechDataTable(mainLayout)
-        self.setupInfrastructureCostsTable(mainLayout)
         self.setupResultsTable(mainLayout)
 
     def setupTechDataTable(self, mainLayout):
@@ -318,6 +318,8 @@ class MixDesignTab(QWidget):
         table.setFixedHeight(header_height + rows_height)
 
     def setupInfrastructureCostsTable(self, mainLayout):
+        self.TableLabel = QLabel("Wärmenetzinfrastruktur")
+        mainLayout.addWidget(self.TableLabel)
         self.infrastructureCostsTable = QTableWidget()
         self.infrastructureCostsTable.setColumnCount(len(self.header_labels))
         self.infrastructureCostsTable.setHorizontalHeaderLabels(self.header_labels)
@@ -325,14 +327,12 @@ class MixDesignTab(QWidget):
         # Hinzufügen von Zeilen für jedes Infrastrukturobjekt
         total_costs = 0
         for obj, properties in self.infrastructure_costs.items():
-            print(properties)
             self.addInfrastructureCostRow(obj, properties)
             total_costs += properties.get('kosten', 0)
 
         # Zeile für die Summe der Kosten
         total_costs_str = f"{total_costs:.2f} €"
         totalRowProperties = {'kosten': total_costs}
-        print(totalRowProperties)
         self.addInfrastructureCostRow('Gesamtkosten', totalRowProperties, isTotal=True)
         
         mainLayout.addWidget(self.infrastructureCostsTable)
