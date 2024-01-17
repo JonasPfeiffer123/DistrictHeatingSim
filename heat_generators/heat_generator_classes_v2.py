@@ -178,7 +178,7 @@ class WasteHeatPump(HeatPump):
     # Änderung Kühlleistung und Temperatur zu Numpy-Array in aw sowie vor- und nachgelagerten Funktionen
     def abwärme(self, Last_L, VLT_L, Kühlleistung, Temperatur, COP_data, duration):
         if Kühlleistung == 0:
-            return 0, 0, np.zeros_like(Last_L), np.zeros_like(VLT_L), 0
+            return 0, 0, np.zeros_like(Last_L), np.zeros_like(VLT_L)
 
         Wärmeleistung_L, el_Leistung_L = self.Berechnung_WP(Kühlleistung, Temperatur, VLT_L, COP_data)
 
@@ -223,7 +223,7 @@ class Geothermal(HeatPump):
 
     def Geothermie(self, Last_L, VLT_L, Quelltemperatur, COP_data, duration):
         if self.Fläche == 0 or self.Bohrtiefe == 0:
-            return 0, 0, np.zeros_like(Last_L), np.zeros_like(VLT_L), 0, 0
+            return 0, 0, np.zeros_like(Last_L), np.zeros_like(VLT_L)
 
         Anzahl_Sonden = (round(sqrt(self.Fläche)/self.Abstand_Sonden)+1)**2
 
@@ -274,6 +274,7 @@ class Geothermal(HeatPump):
     
     def calculate(self, VLT_L, COP_data, Strompreis, q, r, T, BEW, duration, general_results):
         # Hier fügen Sie die spezifische Logik für die Geothermie-Berechnung ein
+        print(self.Geothermie(general_results['Restlast_L'], VLT_L, self.Temperatur_Geothermie, COP_data, duration))
         Wärmemenge, Strombedarf, Wärmeleistung_L, el_Leistung_Geothermie_L = self.Geothermie(general_results['Restlast_L'], VLT_L, self.Temperatur_Geothermie, COP_data, duration)
 
         self.spez_Investitionskosten_Erdsonden = self.Investitionskosten_Sonden / self.max_Wärmeleistung

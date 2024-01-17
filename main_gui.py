@@ -3,7 +3,6 @@ from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTabWidget
 from gui.visualization_tab import VisualizationTab
 from gui.calculation_tab import CalculationTab
 from gui.mix_design_main_window import MixDesignMainWindow
-from gui.mix_design_tab import MixDesignTab
 
 class CentralDataManager:
     def __init__(self):

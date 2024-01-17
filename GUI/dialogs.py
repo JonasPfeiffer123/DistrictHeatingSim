@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, \
     QDialogButtonBox, QComboBox, QTableWidget, QPushButton, QTableWidgetItem, \
-    QFormLayout, QHBoxLayout, QFileDialog, QProgressBar, QMessageBox
-
+    QFormLayout, QHBoxLayout, QFileDialog, QProgressBar, QMessageBox, QMenu, QInputDialog
+from PyQt5.QtCore import Qt
 import pandas as pd
 import numpy as np
 
@@ -689,6 +689,9 @@ class NetInfrastructureDialog(QDialog):
         super().__init__(parent)
         self.initUI()
         self.initDefaultValues()
+         # Kontextmenü für vertikale Kopfzeilen
+        self.table.verticalHeader().setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table.verticalHeader().customContextMenuRequested.connect(self.openHeaderContextMenu)
 
     def initUI(self):
         self.layout = QVBoxLayout(self)
@@ -720,14 +723,35 @@ class NetInfrastructureDialog(QDialog):
         buttonLayout.addWidget(cancelButton)
         self.layout.addLayout(buttonLayout)
 
+    def renameHeader(self, row):
+        newName, okPressed = QInputDialog.getText(self, "Name ändern", "Neuer Name:", QLineEdit.Normal, "")
+        if okPressed and newName != '':
+            self.table.verticalHeaderItem(row).setText(newName)
+            self.infraObjects[row] = newName
+
+    def openHeaderContextMenu(self, position):
+        menu = QMenu()
+
+        renameAction = menu.addAction("Umbenennen")
+        action = menu.exec_(self.table.verticalHeader().mapToGlobal(position))
+
+        if action == renameAction:
+            row = self.table.verticalHeader().logicalIndexAt(position)
+            if row != -1:
+                self.renameHeader(row)
+
     def addRow(self):
         row_count = self.table.rowCount()
         self.table.insertRow(row_count)
-        # Füllen Sie die neue Zeile mit Standardwerten oder leeren Zellen
+        new_row_name = f"Neues Objekt"
+        self.table.setVerticalHeaderItem(row_count, QTableWidgetItem(new_row_name))
+        self.infraObjects.append(new_row_name)
 
     def removeRow(self):
         current_row = self.table.currentRow()
         if current_row != -1:
+            # Entfernen Sie das Element aus der infraObjects-Liste
+            del self.infraObjects[current_row]
             self.table.removeRow(current_row)
 
     def initDefaultValues(self):
@@ -774,10 +798,19 @@ class NetInfrastructureDialog(QDialog):
             for j, field in enumerate(['kosten', 'technische nutzungsdauer', 'f_inst', 'f_w_insp', 'bedienaufwand']):
                 self.table.setItem(i, j, QTableWidgetItem(str(defaultValues[obj][field])))
 
+    def getCurrentInfraObjects(self):
+        return self.infraObjects
+    
     def getValues(self):
         values = {}
         for i, obj in enumerate(self.infraObjects):
             for j, field in enumerate(['kosten', 'technische nutzungsdauer', 'f_inst', 'f_w_insp', 'bedienaufwand']):
                 key = f"{obj}_{field}"
-                values[key] = float(self.table.item(i, j).text())
+                item = self.table.item(i, j)
+                # Überprüfen Sie, ob das Element vorhanden ist
+                if item is not None:
+                    values[key] = float(item.text())
+                else:
+                    # Standardwert oder eine geeignete Behandlung, wenn das Element nicht vorhanden ist
+                    values[key] = 0.0  # oder ein anderer angemessener Standardwert
         return values
