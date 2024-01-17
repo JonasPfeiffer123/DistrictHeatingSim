@@ -70,7 +70,7 @@ class MixDesignTab(QWidget):
         self.setupInfrastructureCostsTable(mainLayout)
         self.setupFileInputs()
         self.setupScaleFactor(mainLayout)
-        self.setupCalculationOptimization(mainLayout)
+        self.setupCalculationOptimization()
         self.setupDiagrams(mainLayout)
 
         self.progressBar = QProgressBar(self)
@@ -97,6 +97,10 @@ class MixDesignTab(QWidget):
         loadAction = QAction('Laden', self)
         loadAction.triggered.connect(self.loadConfiguration)
         fileMenu.addAction(loadAction)
+        #Ergebnis als PDF speichern
+        pdfAction = QAction('Ergebnisse als PDF speichern', self)
+        pdfAction.triggered.connect(self.on_export_pdf_clicked)
+        fileMenu.addAction(pdfAction)
 
         # Neues Menü für Einstellungen
         settingsMenu = self.menuBar.addMenu('Einstellungen')
@@ -253,64 +257,8 @@ class MixDesignTab(QWidget):
             if key != 'name':
                 display_text += f", {key}: {value}"
         return display_text
-
-    ### Setup der Berechnungsergebnistabellen ###
-    def setupCalculationOptimization(self, mainLayout):
-        self.resultLabel = QLabel('Berechnungsergebnisse werden hier angezeigt')
-        mainLayout.addWidget(self.resultLabel)
-        self.setupTechDataTable(mainLayout)
-        self.setupResultsTable(mainLayout)
-
-    def setupTechDataTable(self, mainLayout):
-        self.techDataTable = QTableWidget()
-        self.techDataTable.setColumnCount(4)  # Anpassen an die Anzahl der benötigten Spalten
-        self.techDataTable.setHorizontalHeaderLabels(['Name', 'Typ', 'Dimensionen', 'Wirtschaftliche Bedingungen'])
-        mainLayout.addWidget(self.techDataTable)
     
-    def updateTechDataTable(self, tech_objects):
-        self.techDataTable.setRowCount(len(tech_objects))
-
-        for i, tech in enumerate(tech_objects):
-            name, dimensions, economic_conditions = self.extractTechData(tech)
-            self.techDataTable.setItem(i, 0, QTableWidgetItem(name))
-            self.techDataTable.setItem(i, 1, QTableWidgetItem(type(tech).__name__))  # Klassenname als Typ
-            self.techDataTable.setItem(i, 2, QTableWidgetItem(dimensions))
-            self.techDataTable.setItem(i, 3, QTableWidgetItem(economic_conditions))
-
-        self.techDataTable.resizeColumnsToContents()
-        self.adjustTableSize(self.techDataTable)
-
-    def setupResultsTable(self, mainLayout):
-        # Tabelle initialisieren
-        self.resultsTable = QTableWidget()
-        self.resultsTable.setColumnCount(4)  # Anzahl der Spalten
-        self.resultsTable.setHorizontalHeaderLabels(['Technologie', 'Wärmemenge (MWh)', 'Kosten (€/MWh)', 'Anteil (%)'])
-        self.resultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)  # Spaltenbreite anpassen
-        mainLayout.addWidget(self.resultsTable)
-
-    def showResultsInTable(self, results):
-        self.resultsTable.setRowCount(len(results['techs']))  # Zeilenanzahl basierend auf der Anzahl der Technologien
-
-        for i, (tech, wärmemenge, wgk, anteil) in enumerate(zip(results['techs'], results['Wärmemengen'], results['WGK'], results['Anteile'])):
-            # Setzen der Zellenwerte für jede Zeile
-            self.resultsTable.setItem(i, 0, QTableWidgetItem(tech))
-            self.resultsTable.setItem(i, 1, QTableWidgetItem(f"{wärmemenge:.2f}"))
-            self.resultsTable.setItem(i, 2, QTableWidgetItem(f"{wgk:.2f}"))
-            self.resultsTable.setItem(i, 3, QTableWidgetItem(f"{anteil*100:.2f}%"))
-
-        self.resultsTable.resizeColumnsToContents()  # Passt die Spaltenbreite an den Inhalt an
-        self.adjustTableSize(self.resultsTable)  # Anpassen der Größe der Tabelle
-
-    def adjustTableSize(self, table):
-        # Höhe der Headerzeile
-        header_height = table.horizontalHeader().height()
-
-        # Höhe aller Zeilen
-        rows_height = sum([table.rowHeight(i) for i in range(table.rowCount())])
-
-        # Anpassen der Höhe der Tabelle
-        table.setFixedHeight(header_height + rows_height)
-
+    ### Infrastrukturtabellen ###
     def setupInfrastructureCostsTable(self, mainLayout):
         self.addLabel(mainLayout, 'Wärmenetzinfrastruktur')
         self.infrastructure_costs = self.netInfrastructureDialog.getValues()
@@ -394,7 +342,99 @@ class MixDesignTab(QWidget):
 
         a = annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand, q=q, r=r, T=t)
         return a
-                 
+    
+    ### Setup der Berechnungsergebnistabellen ###
+    def setupCalculationOptimization(self):
+        self.resultLabel = QLabel('Berechnungsergebnisse:')
+        self.mainLayout.addWidget(self.resultLabel)
+        self.setupTechDataTable()
+        self.setupResultsTable()
+        self.setupAdditionalResultsTable()
+
+    def setupTechDataTable(self):
+        self.techDataTable = QTableWidget()
+        self.techDataTable.setColumnCount(4)  # Anpassen an die Anzahl der benötigten Spalten
+        self.techDataTable.setHorizontalHeaderLabels(['Name', 'Typ', 'Dimensionen', 'Wirtschaftliche Bedingungen'])
+        self.mainLayout.addWidget(self.techDataTable)
+    
+    def updateTechDataTable(self, tech_objects):
+        self.techDataTable.setRowCount(len(tech_objects))
+
+        for i, tech in enumerate(tech_objects):
+            name, dimensions, economic_conditions = self.extractTechData(tech)
+            self.techDataTable.setItem(i, 0, QTableWidgetItem(name))
+            self.techDataTable.setItem(i, 1, QTableWidgetItem(type(tech).__name__))  # Klassenname als Typ
+            self.techDataTable.setItem(i, 2, QTableWidgetItem(dimensions))
+            self.techDataTable.setItem(i, 3, QTableWidgetItem(economic_conditions))
+
+        self.techDataTable.resizeColumnsToContents()
+        self.adjustTableSize(self.techDataTable)
+
+    def setupResultsTable(self):
+        # Tabelle initialisieren
+        self.resultsTable = QTableWidget()
+        self.resultsTable.setColumnCount(4)  # Anzahl der Spalten
+        self.resultsTable.setHorizontalHeaderLabels(['Technologie', 'Wärmemenge (MWh)', 'Kosten (€/MWh)', 'Anteil (%)'])
+        self.resultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)  # Spaltenbreite anpassen
+        self.mainLayout.addWidget(self.resultsTable)
+
+    def showResultsInTable(self, results):
+        self.resultsTable.setRowCount(len(results['techs']))  # Zeilenanzahl basierend auf der Anzahl der Technologien
+
+        for i, (tech, wärmemenge, wgk, anteil) in enumerate(zip(results['techs'], results['Wärmemengen'], results['WGK'], results['Anteile'])):
+            # Setzen der Zellenwerte für jede Zeile
+            self.resultsTable.setItem(i, 0, QTableWidgetItem(tech))
+            self.resultsTable.setItem(i, 1, QTableWidgetItem(f"{wärmemenge:.2f}"))
+            self.resultsTable.setItem(i, 2, QTableWidgetItem(f"{wgk:.2f}"))
+            self.resultsTable.setItem(i, 3, QTableWidgetItem(f"{anteil*100:.2f}%"))
+
+        self.resultsTable.resizeColumnsToContents()  # Passt die Spaltenbreite an den Inhalt an
+        self.adjustTableSize(self.resultsTable)  # Anpassen der Größe der Tabelle
+    
+    def setupAdditionalResultsTable(self):
+        # Tabelle initialisieren
+        self.additionalResultsTable = QTableWidget()
+        self.additionalResultsTable.setColumnCount(3)  # Anzahl der Spalten
+        self.additionalResultsTable.setHorizontalHeaderLabels(['Ergebnis', 'Wert', 'Einheit'])
+        self.additionalResultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)  # Spaltenbreite anpassen
+        self.mainLayout.addWidget(self.additionalResultsTable)
+
+    def showAdditionalResultsTable(self):
+        self.WGK_Infra = self.summe_annuität/self.results['Jahreswärmebedarf']
+        self.WGK_Gesamt = self.results['WGK_Gesamt'] + self.WGK_Infra
+
+        # Daten für die Tabelle
+        data = [
+            ("Jahreswärmebedarf", self.results['Jahreswärmebedarf'], "MWh"),
+            ("Stromerzeugung", self.results['Strommenge'], "MWh"),
+            ("Strombedarf", self.results['Strombedarf'], "MWh"),
+            ("Wärmegestehungskosten Erzeugeranlagen", self.results['WGK_Gesamt'], "€/MWh"),
+            ("Wärmegestehungskosten Netzinfrastruktur", self.WGK_Infra, "€/MWh"),
+            ("Wärmegestehungskosten Gesamt", self.WGK_Gesamt, "€/MWh")
+        ]
+
+        self.additionalResultsTable.setRowCount(len(data))
+
+        # Daten in die Tabelle einfügen
+        for i, (description, value, unit) in enumerate(data):
+            self.additionalResultsTable.setItem(i, 0, QTableWidgetItem(description))
+            self.additionalResultsTable.setItem(i, 1, QTableWidgetItem(str(value)))
+            self.additionalResultsTable.setItem(i, 2, QTableWidgetItem(unit))
+
+        self.additionalResultsTable.resizeColumnsToContents()
+        self.adjustTableSize(self.additionalResultsTable)
+
+
+    def adjustTableSize(self, table):
+        # Höhe der Headerzeile
+        header_height = table.horizontalHeader().height()
+
+        # Höhe aller Zeilen
+        rows_height = sum([table.rowHeight(i) for i in range(table.rowCount())])
+
+        # Anpassen der Höhe der Tabelle
+        table.setFixedHeight(header_height + rows_height)
+                
     ### Setup Diagramm-Plots ###
     def setupDiagrams(self, mainLayout):
         diagramScrollArea, diagramWidget, diagramLayout = self.setupDiagramScrollArea()
@@ -470,44 +510,13 @@ class MixDesignTab(QWidget):
         self.progressBar.setRange(0, 1)
         self.results = result
         self.updateTechDataTable(self.tech_objects)
-        self.updateResultLabel()
         self.showResultsInTable(result)
+        self.showAdditionalResultsTable()
         self.plotResults(result)
 
     def on_calculation_error(self, error_message):
         self.progressBar.setRange(0, 1)
         QMessageBox.critical(self, "Berechnungsfehler", error_message)
-
-    def updateResultLabel(self):
-        print(self.tech_objects)
-        print(self.results)
-
-        # Im GUI ausgeben
-        gui_output = ""
-        for i, (tech_obj, wärmemenge, anteil, wgk) in enumerate(zip(self.tech_objects, self.results['Wärmemengen'], self.results['Anteile'], self.results['WGK'])):
-            gui_output += f"Wärmeerzeuger {i + 1}: {tech_obj.name}\n"
-            gui_output += f"Erzeugte Wärmemenge: {wärmemenge:.1f} MWh\n"
-            gui_output += f"Anteil an Wärmebedarf: {anteil*100:.2f} %\n"
-            gui_output += f"Wärmegestehungskosten: {wgk:.2f} €/MWh\n"
-
-            # Weitere Informationen je nach Bedarf hinzufügen, z.B. tech_obj.get_capacity()
-        
-        # Weitere Informationen aus den Ergebnissen hinzufügen, z.B. results['Jahreswärmebedarf']
-        gui_output += f"Jahreswärmebedarf: {self.results['Jahreswärmebedarf']:.1f} MWh\n"
-        gui_output += f"Stromerzeugung: {self.results['Strommenge']:.1f} MWh\n"
-        gui_output += f"Strombedarf: {self.results['Strombedarf']:.1f} MWh\n"
-        gui_output += f"Wärmegestehungskosten Erzeugeranlagen: {self.results['WGK_Gesamt']:.1f} €/MWh\n"
-
-        self.WGK_Infra = self.summe_annuität/self.results['Jahreswärmebedarf']
-        gui_output += f"Wärmegestehungskosten Netzinfrastruktur: {self.WGK_Infra:.1f} €/MWh\n"
-
-        self.WGK_Gesamt = self.results['WGK_Gesamt'] + self.WGK_Infra
-        gui_output += f"Wärmegestehungskosten Gesamt: {self.WGK_Gesamt:.1f} €/MWh\n"
-        
-        print(gui_output)
-
-        #self.gesamtkostenInfrastruktur = (self.waermenetz) + self.druckhaltung + self.hydraulik + self.elektroinstallation + self.planungskosten
-        self.resultLabel.setText(gui_output)
 
     ### Extraktion Ergebnisse Berechnung ###
     def extractTechData(self, tech):
@@ -552,11 +561,6 @@ class MixDesignTab(QWidget):
         self.results = results
         if not hasattr(self, 'dataSelectionDropdown'):
             self.createPlotControlDropdown()
-
-        if not hasattr(self, 'exportPDFButton'):
-            self.exportPDFButton = QPushButton('Export to PDF')
-            self.exportPDFButton.clicked.connect(self.on_export_pdf_clicked)
-            self.mainLayout.addWidget(self.exportPDFButton)
 
         self.figure1.clear()
         self.figure2.clear()
@@ -828,7 +832,6 @@ class MixDesignTab(QWidget):
         filename, _ = QFileDialog.getSaveFileName(self, 'PDF speichern als...', filter='PDF Files (*.pdf)')
         if filename:
             self.create_pdf(filename)
-
 
     ### Programmstatus Speichern ###
     def saveConfiguration(self):
