@@ -1,5 +1,11 @@
+- Projektdateien einführen
+    - Speichern und Laden
+    - Über Tabs hinweg Informationen Verfügbar machen.
+    - Möglichkeit mehrere Projekte gleichzeitig zu bearbeiten
+
 Visualisierung und Import GIS-Daten:
-- Erzeugerimport über csv
+- Download OSM-Daten Query-Abfragen ausbauen
+- Erzeugerdefinition durch geocodierung im Dialogfensterg / alternativ Koordinaten direkt eintragen oder Erzeugerstandortimport über csv --> mehrere möglich
 - Stanet Netz zu geojson und bei import import in Karte ermöglichen
 
 Netzberechnung:
@@ -10,8 +16,9 @@ Netzberechnung:
 - mehrere Erzeuger --> festlegen welches zirkulationspumpe, rest feste Einspeisung (oder Regelung durch Haupterzeugerstandort)
 
 Auslegung Erzeugermix
-- umfassende Parametrisierung notwendig
+- Parametervariation Preise
+- bei Optimieren soll Kopie des aktuellen Tabs erstellt werden und die optimale Zusammensetzung in neuer Variante ausgegeben werden
+- CO2-Emissionensfaktoren für Brennstoffe hinzufügen --> Berechnung Emissionen für Wärmeversorgung --> CO2-Emissionen als weitere Optimierungsgröße
+- PDF-Export weiter anpassen
 - schaffen von Standard-Komponenten
-- Einbindung weiterer Kosten in Wirtschaftlichkeitsrechnung
-- automatische Erstellung Übersicht erzeugte Variante: Energetisch, Diagramme, Eingabeparameter, Kosten etc.
 - 

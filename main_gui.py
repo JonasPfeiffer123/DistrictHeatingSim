@@ -2,7 +2,7 @@ import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTabWidget
 from gui.visualization_tab import VisualizationTab
 from gui.calculation_tab import CalculationTab
-from gui.mix_design_tab import MixDesignTab
+from gui.mix_design_main_window import MixDesignMainWindow
 
 class CentralDataManager:
     def __init__(self):
@@ -24,9 +24,6 @@ class HeatSystemDesignGUI(QWidget):
         self.setWindowTitle("Hier könnte ein cooler Softwarename stehen")
         self.setGeometry(100, 100, 800, 600)  # Optional, Standardgröße vor Vollbild
 
-        # Starten Sie im Vollbildmodus
-        #self.showFullScreen()
-
         layout = QVBoxLayout(self)
         tabWidget = QTabWidget()
         layout.addWidget(tabWidget)
@@ -36,7 +33,7 @@ class HeatSystemDesignGUI(QWidget):
 
         self.visTab = VisualizationTab(self.data_manager)
         self.calcTab = CalculationTab(self.data_manager)
-        self.mixDesignTab = MixDesignTab()
+        self.mixDesignTab1 = MixDesignMainWindow()
 
         # Hier stellen Sie die Verbindung her
         self.visTab.connect_signals(self.calcTab)
@@ -45,10 +42,13 @@ class HeatSystemDesignGUI(QWidget):
         # Hinzufügen der Tabs zum Tab-Widget
         tabWidget.addTab(self.visTab, "Visualisierung GIS-Daten")
         tabWidget.addTab(self.calcTab, "Netzberechnung")
-        tabWidget.addTab(self.mixDesignTab, "Auslegung Erzeugermix")
+        tabWidget.addTab(self.mixDesignTab1, "Auslegung Erzeugermix")
 
         # Set the layout
         self.setLayout(layout)
+
+        # Maximieren Sie das Hauptfenster auf die Bildschirmgröße
+        self.showMaximized()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

@@ -9,8 +9,8 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, \
-    QFileDialog, QHBoxLayout, QComboBox, QLineEdit, QFormLayout, \
-        QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction, QCheckBox
+    QFileDialog, QHBoxLayout, QLineEdit, QFormLayout, \
+        QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction
 
 from main import calculate_results, save_results_csv
 from gui.dialogs import HeatDemandEditDialog, GeojsonDialog, StanetDialog

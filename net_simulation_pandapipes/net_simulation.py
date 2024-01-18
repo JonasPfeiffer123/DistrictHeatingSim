@@ -61,7 +61,7 @@ def generate_profiles_from_geojson(gdf_HAST, building_type="MFH", calc_method="V
             hw, tww = JEB_Heizwärme_kWh[idx], JEB_Trinkwarmwasser_kWh[idx]
             yearly_time_steps, _, _, _, waerme_ges_kW = heat_requirement_VDI4655.calculate(hw, tww, building_type=current_building_type)
         elif current_calc_method == "BDEW":
-            yearly_time_steps, waerme_ges_kW  = heat_requirement_BDEW.calculate(JWB, current_building_type, subtyp="03")
+            yearly_time_steps, waerme_ges_kW, hourly_temperatures  = heat_requirement_BDEW.calculate(JWB, current_building_type, subtyp="03")
 
         waerme_ges_W.append(waerme_ges_kW * 1000)
         max_waerme_ges_W.append(np.max(waerme_ges_kW * 1000))
