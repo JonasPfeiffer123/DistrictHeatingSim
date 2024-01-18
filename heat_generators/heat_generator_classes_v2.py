@@ -112,12 +112,12 @@ class HeatPump:
         return WGK_Gesamt_a
 
 class RiverHeatPump(HeatPump):
-    def __init__(self, name, Wärmeleistung_FW_WP, Temperatur_FW_WP, dT=0, spez_Investitionskosten_WQ=1000):
-        super().__init__(name)
+    def __init__(self, name, Wärmeleistung_FW_WP, Temperatur_FW_WP, dT=0, spez_Investitionskosten_Flusswasser=1000, spezifische_Investitionskosten_WP=1000):
+        super().__init__(name, spezifische_Investitionskosten_WP=spezifische_Investitionskosten_WP)
         self.Wärmeleistung_FW_WP = Wärmeleistung_FW_WP
         self.Temperatur_FW_WP = Temperatur_FW_WP
         self.dT = dT
-        self.spez_Investitionskosten_WQ = spez_Investitionskosten_WQ
+        self.spez_Investitionskosten_Flusswasser = spez_Investitionskosten_Flusswasser
 
     def Berechnung_WP(self, VLT_L, COP_data):
         COP_L, VLT_L_WP = self.COP_WP(VLT_L, self.Temperatur_FW_WP, COP_data)
@@ -149,7 +149,7 @@ class RiverHeatPump(HeatPump):
         
         Wärmemenge, Strombedarf_FW_WP, Wärmeleistung_L, el_Leistung_L, Kühlmenge, Kühlleistung_L = self.abwärme(general_results["Restlast_L"], VLT_L, COP_data, duration)
 
-        WGK_Abwärme = self.WGK(self.Wärmeleistung_FW_WP, Wärmemenge, Strombedarf_FW_WP, self.spez_Investitionskosten_WQ, Strompreis, q, r, T, BEW)
+        WGK_Abwärme = self.WGK(self.Wärmeleistung_FW_WP, Wärmemenge, Strombedarf_FW_WP, self.spez_Investitionskosten_Flusswasser, Strompreis, q, r, T, BEW)
 
         results = {
             'Wärmemenge': Wärmemenge,
@@ -163,11 +163,11 @@ class RiverHeatPump(HeatPump):
         return results
     
 class WasteHeatPump(HeatPump):
-    def __init__(self, name, Kühlleistung_Abwärme, Temperatur_Abwärme, spez_Investitionskosten_WQ=500):
-        super().__init__(name)
+    def __init__(self, name, Kühlleistung_Abwärme, Temperatur_Abwärme, spez_Investitionskosten_Abwärme=500, spezifische_Investitionskosten_WP=1000):
+        super().__init__(name, spezifische_Investitionskosten_WP=spezifische_Investitionskosten_WP)
         self.Kühlleistung_Abwärme = Kühlleistung_Abwärme
         self.Temperatur_Abwärme = Temperatur_Abwärme
-        self.spez_Investitionskosten_WQ = spez_Investitionskosten_WQ
+        self.spez_Investitionskosten_Abwärme = spez_Investitionskosten_Abwärme
 
     def Berechnung_WP(self, Kühlleistung, QT, VLT_L, COP_data):
         COP_L, VLT_L = self.COP_WP(VLT_L, QT, COP_data)
@@ -196,7 +196,7 @@ class WasteHeatPump(HeatPump):
         
         Wärmemenge, Strombedarf_Abwärme, Wärmeleistung_L, el_Leistung_L= self.abwärme(general_results['Restlast_L'], VLT_L, self.Kühlleistung_Abwärme, self.Temperatur_Abwärme, COP_data, duration)
 
-        WGK_Abwärme = self.WGK(self.max_Wärmeleistung, Wärmemenge, Strombedarf_Abwärme, self.spez_Investitionskosten_WQ, Strompreis, q, r, T, BEW)
+        WGK_Abwärme = self.WGK(self.max_Wärmeleistung, Wärmemenge, Strombedarf_Abwärme, self.spez_Investitionskosten_Abwärme, Strompreis, q, r, T, BEW)
 
         results = {
             'Wärmemenge': Wärmemenge,
@@ -211,8 +211,8 @@ class WasteHeatPump(HeatPump):
 
 class Geothermal(HeatPump):
     def __init__(self, name, Fläche, Bohrtiefe, Temperatur_Geothermie, spez_Bohrkosten=120, spez_Entzugsleistung=50,
-                 Vollbenutzungsstunden=2400, Abstand_Sonden=10):
-        super().__init__(name)
+                 Vollbenutzungsstunden=2400, Abstand_Sonden=10, spezifische_Investitionskosten_WP=1000):
+        super().__init__(name, spezifische_Investitionskosten_WP=spezifische_Investitionskosten_WP)
         self.Fläche = Fläche
         self.Bohrtiefe = Bohrtiefe
         self.Temperatur_Geothermie = Temperatur_Geothermie
@@ -488,14 +488,14 @@ class SolarThermal:
 
         self.Investitionskosten_Speicher = self.vs * self.kosten_speicher_spez
         self.Investitionskosten_STA = self.bruttofläche_STA * self.Kosten_STA_spez
-        self.Investitionskosten_Gesamt = self.Investitionskosten_Speicher + self.Investitionskosten_STA
+        self.Investitionskosten = self.Investitionskosten_Speicher + self.Investitionskosten_STA
 
-        self.A_N = annuität(self.Investitionskosten_Gesamt, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T)
+        self.A_N = annuität(self.Investitionskosten, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T)
         self.WGK = self.A_N / Wärmemenge
 
         Anteil_Förderung_BEW = 0.4
         Eigenanteil = 1 - Anteil_Förderung_BEW
-        Investitionskosten_Gesamt_BEW = self.Investitionskosten_Gesamt * Eigenanteil
+        Investitionskosten_Gesamt_BEW = self.Investitionskosten * Eigenanteil
         Annuität_BEW = annuität(Investitionskosten_Gesamt_BEW, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T)
         self.WGK_BEW = Annuität_BEW / Wärmemenge
 

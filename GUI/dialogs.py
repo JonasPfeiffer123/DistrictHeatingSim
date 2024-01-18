@@ -45,14 +45,49 @@ class TechInputDialog(QDialog):
             layout.addWidget(QLabel("Kollektortyp"))
             layout.addWidget(self.typeInput)
 
+            # volume solar heat storage
+            self.vscostInput = QLineEdit(self)
+            self.vscostInput.setText(str(self.tech_data.get('kosten_speicher_spez', "750")))
+            layout.addWidget(QLabel("spez. Kosten Solarspeicher in €/m³"))
+            layout.addWidget(self.vscostInput)
+
+            self.areaScostfkInput = QLineEdit(self)
+            self.areaScostfkInput.setText(str(self.tech_data.get('kosten_fk_spez', "430")))
+            layout.addWidget(QLabel("spez. Kosten Flachkollektor in €/m²"))
+            layout.addWidget(self.areaScostfkInput)
+
+            self.areaScostvrkInput = QLineEdit(self)
+            self.areaScostvrkInput.setText(str(self.tech_data.get('kosten_vrk_spez', "590")))
+            layout.addWidget(QLabel("spez. Kosten Vakuumröhrenkollektor in €/m²"))
+            layout.addWidget(self.areaScostvrkInput)
+
         if self.tech_type == "Biomassekessel":
             self.PBMKInput = QLineEdit(self)
             self.PBMKInput.setText(str(self.tech_data.get('P_BMK', "50")))
-            layout.addWidget(QLabel("thermische Leistung"))
+            layout.addWidget(QLabel("th. Leistung in kW"))
             layout.addWidget(self.PBMKInput)
+
+            self.HLsizeInput = QLineEdit(self)
+            self.HLsizeInput.setText(str(self.tech_data.get('Größe_Holzlager', "40")))
+            layout.addWidget(QLabel("Größe Holzlager in t"))
+            layout.addWidget(self.HLsizeInput)
+
+            self.BMKcostInput = QLineEdit(self)
+            self.BMKcostInput.setText(str(self.tech_data.get('spez_Investitionskosten', "200")))
+            layout.addWidget(QLabel("spez. Investitionskosten Kessel in €/kW"))
+            layout.addWidget(self.BMKcostInput)
+
+            self.HLcostInput = QLineEdit(self)
+            self.HLcostInput.setText(str(self.tech_data.get('spez_Investitionskosten_Holzlager', "400")))
+            layout.addWidget(QLabel("spez. Investitionskosten Holzlager in €/t"))
+            layout.addWidget(self.HLcostInput)
 
         if self.tech_type == "Gaskessel":
             layout.addWidget(QLabel("aktuell keine Dimensionierungseingaben, Leistung wird anhand der Gesamtlast berechnet"))
+            self.spezcostGKInput = QLineEdit(self)
+            self.spezcostGKInput.setText(str(self.tech_data.get('spez_Investitionskosten', "30")))
+            layout.addWidget(QLabel("spez. Investitionskosten in €/kW"))
+            layout.addWidget(self.spezcostGKInput)
 
         if self.tech_type == "BHKW":
             self.PBHKWInput = QLineEdit(self)
@@ -60,49 +95,95 @@ class TechInputDialog(QDialog):
             layout.addWidget(QLabel("thermische Leistung"))
             layout.addWidget(self.PBHKWInput)
 
+            self.GBHKWcostInput = QLineEdit(self)
+            self.GBHKWcostInput.setText(str(self.tech_data.get('spez_Investitionskosten_GBHKW', "1500")))
+            layout.addWidget(QLabel("spez. Investitionskosten BHKW"))
+            layout.addWidget(self.GBHKWcostInput)
+
         if self.tech_type == "Holzgas-BHKW":
             self.PHBHKWInput = QLineEdit(self)
             self.PHBHKWInput.setText(str(self.tech_data.get('th_Leistung_BHKW', "30")))
             layout.addWidget(QLabel("thermische Leistung"))
             layout.addWidget(self.PHBHKWInput)
 
+            self.HBHKWcostInput = QLineEdit(self)
+            self.HBHKWcostInput.setText(str(self.tech_data.get('spez_Investitionskosten_HBHKW', "1850")))
+            layout.addWidget(QLabel("spez. Investitionskosten BHKW"))
+            layout.addWidget(self.HBHKWcostInput)
+
         if self.tech_type == "Geothermie":
             self.areaGInput = QLineEdit(self)
             self.areaGInput.setText(str(self.tech_data.get('Fläche', "100")))
-            self.depthInput = QLineEdit(self)
-            self.depthInput.setText(str(self.tech_data.get('Bohrtiefe', "100")))
-            self.tempGInput = QLineEdit(self)
-            self.tempGInput.setText(str(self.tech_data.get('Temperatur_Geothermie', "10")))
-
             layout.addWidget(QLabel("Fläche Erdsondenfeld in m²"))
             layout.addWidget(self.areaGInput)
+
+            self.depthInput = QLineEdit(self)
+            self.depthInput.setText(str(self.tech_data.get('Bohrtiefe', "100")))
             layout.addWidget(QLabel("Bohrtiefe Sonden in m³"))
             layout.addWidget(self.depthInput)
-            layout.addWidget(QLabel("Quelltemperatur"))
+
+            self.tempGInput = QLineEdit(self)
+            self.tempGInput.setText(str(self.tech_data.get('Temperatur_Geothermie', "10")))
+            layout.addWidget(QLabel("Quelltemperatur in °C"))
             layout.addWidget(self.tempGInput)
+
+            self.distholeInput = QLineEdit(self)
+            self.distholeInput.setText(str(self.tech_data.get('Abstand_Sonden', "10")))
+            layout.addWidget(QLabel("Abstand Erdsonden in m"))
+            layout.addWidget(self.distholeInput)
+
+            self.costdethInput = QLineEdit(self)
+            self.costdethInput.setText(str(self.tech_data.get('spez_Bohrkosten', "120")))
+            layout.addWidget(QLabel("spez. Bohrkosten pro Bohrmeter in €/m"))
+            layout.addWidget(self.costdethInput)
+
+            self.spezPInput = QLineEdit(self)
+            self.spezPInput.setText(str(self.tech_data.get('spez_Entzugsleistung', "50")))
+            layout.addWidget(QLabel("spez. Entzugsleistung Untergrund in W/m"))
+            layout.addWidget(self.spezPInput)
+
+            self.VBHInput = QLineEdit(self)
+            self.VBHInput.setText(str(self.tech_data.get('Vollbenutzungsstunden', "2400")))
+            layout.addWidget(QLabel("Vollbenutzungsstunden Sondenfeld in h"))
+            layout.addWidget(self.VBHInput)
+
+            self.WPGcostInput = QLineEdit(self)
+            self.WPGcostInput.setText(str(self.tech_data.get('spezifische_Investitionskosten_WP', "1000")))
+            layout.addWidget(QLabel("spez. Invstitionskosten Wärmepumpe"))
+            layout.addWidget(self.WPGcostInput)
         
         if self.tech_type == "Abwärme":
             self.PWHInput = QLineEdit(self)
             self.PWHInput.setText(str(self.tech_data.get('Kühlleistung_Abwärme', "30")))
-            layout.addWidget(QLabel("Kühlleistung Abwärme"))
+            layout.addWidget(QLabel("Kühlleistung Abwärme in kW"))
             layout.addWidget(self.PWHInput)
 
             self.TWHInput = QLineEdit(self)
             self.TWHInput.setText(str(self.tech_data.get('Temperatur_Abwärme', "30")))
-            layout.addWidget(QLabel("Temperatur Abwärme"))
+            layout.addWidget(QLabel("Temperatur Abwärme in °C"))
             layout.addWidget(self.TWHInput)
+
+            self.WHcostInput = QLineEdit(self)
+            self.WHcostInput.setText(str(self.tech_data.get('spez_Investitionskosten_Abwärme', "500")))
+            layout.addWidget(QLabel("spez. Investitionskosten Abwärmenutzung in €/kW"))
+            layout.addWidget(self.WHcostInput)
+
+            self.WPWHcostInput = QLineEdit(self)
+            self.WPWHcostInput.setText(str(self.tech_data.get('spezifische_Investitionskosten_WP', "1000")))
+            layout.addWidget(QLabel("spez. Invstitionskosten Wärmepumpe"))
+            layout.addWidget(self.WPWHcostInput)
 
         if self.tech_type == "Flusswasser":
             self.PFWInput = QLineEdit(self)
             self.PFWInput.setText(str(self.tech_data.get('Wärmeleistung_FW_WP', "200")))
-            layout.addWidget(QLabel("Wärmeleistung Wärmepumpe"))
+            layout.addWidget(QLabel("th. Leistung Wärmepumpe in kW"))
             layout.addWidget(self.PFWInput)
 
             # Flusstemperatur direkt eingeben
             self.TFWInput = QLineEdit(self)
             if type(self.tech_data.get('Temperatur_FW_WP')) is float or self.tech_data == {}:
                 self.TFWInput.setText(str(self.tech_data.get('Temperatur_FW_WP', "10")))
-            layout.addWidget(QLabel("Flusstemperatur"))
+            layout.addWidget(QLabel("Flusstemperatur in °C"))
             layout.addWidget(self.TFWInput)
 
             # Button zum Auswählen der CSV-Datei
@@ -114,6 +195,16 @@ class TechInputDialog(QDialog):
             self.DTFWInput.setText(str(self.tech_data.get('dT', "0")))
             layout.addWidget(QLabel("Zulässige Abweichung Vorlauftemperatur Wärmepumpe von Netzvorlauftemperatur"))
             layout.addWidget(self.DTFWInput)
+
+            self.RHcostInput = QLineEdit(self)
+            self.RHcostInput.setText(str(self.tech_data.get('spez_Investitionskosten_Flusswasser', "1000")))
+            layout.addWidget(QLabel("spez. Invstitionskosten Flusswärmenutzung"))
+            layout.addWidget(self.RHcostInput)
+
+            self.WPRHcostInput = QLineEdit(self)
+            self.WPRHcostInput.setText(str(self.tech_data.get('spezifische_Investitionskosten_WP', "1000")))
+            layout.addWidget(QLabel("spez. Invstitionskosten Wärmepumpe"))
+            layout.addWidget(self.WPRHcostInput)
 
         # OK und Abbrechen Buttons
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -142,21 +233,43 @@ class TechInputDialog(QDialog):
             inputs['bruttofläche_STA'] = float(self.areaSInput.text())
             inputs["vs"] = float(self.vsInput.text())
             inputs["Typ"] = self.typeInput.itemText(self.typeInput.currentIndex())
+            inputs["kosten_speicher_spez"] = float(self.vscostInput.text())
+            inputs["kosten_fk_spez"] = float(self.areaScostfkInput.text())
+            inputs["kosten_vrk_spez"] = float(self.areaScostvrkInput.text())
+
         elif self.tech_type == "Biomassekessel":
             inputs["P_BMK"] = float(self.PBMKInput.text())
+            inputs["Größe_Holzlager"] = float(self.HLsizeInput.text())
+            inputs["spez_Investitionskosten"] = float(self.BMKcostInput.text())
+            inputs["spez_Investitionskosten_Holzlager"] = float(self.HLcostInput.text())
+            
         elif self.tech_type == "Gaskessel":
-            pass
+            inputs["spez_Investitionskosten"] = float(self.spezcostGKInput.text())
+
         elif self.tech_type == "BHKW":
             inputs["th_Leistung_BHKW"] = float(self.PBHKWInput.text())
+            inputs["spez_Investitionskosten_GBHKW"] = float(self.GBHKWcostInput.text())
+
         elif self.tech_type == "Holzgas-BHKW":
             inputs["th_Leistung_BHKW"] = float(self.PHBHKWInput.text())
+            inputs["spez_Investitionskosten_HBHKW"] = float(self.HBHKWcostInput.text())
+
         elif self.tech_type == "Geothermie":
             inputs["Fläche"] = float(self.areaGInput.text())
             inputs["Bohrtiefe"] = float(self.depthInput.text())
             inputs["Temperatur_Geothermie"] = float(self.tempGInput.text())
+            inputs["Abstand_Sonden"] = float(self.distholeInput.text())
+            inputs["spez_Bohrkosten"] = float(self.costdethInput.text())
+            inputs["spez_Entzugsleistung"] = float(self.spezPInput.text())
+            inputs["Vollbenutzungsstunden"] = float(self.VBHInput.text())
+            inputs["spezifische_Investitionskosten_WP"] = float(self.WPGcostInput.text())
+
         elif self.tech_type == "Abwärme":
             inputs["Kühlleistung_Abwärme"] = float(self.PWHInput.text())
             inputs["Temperatur_Abwärme"] = float(self.TWHInput.text())
+            inputs["spez_Investitionskosten_Abwärme"] = float(self.WHcostInput.text())
+            inputs["spezifische_Investitionskosten_WP"] = float(self.WPWHcostInput.text())
+
         if self.tech_type == "Flusswasser":
             inputs['Wärmeleistung_FW_WP'] = float(self.PFWInput.text())
             try:
@@ -175,9 +288,11 @@ class TechInputDialog(QDialog):
                 print("Ungültige Eingabe")
                     
             inputs['dT'] = float(self.DTFWInput.text())
+            inputs["spez_Investitionskosten_Flusswasser"] = float(self.RHcostInput.text())
+            inputs["spezifische_Investitionskosten_WP"] = float(self.WPRHcostInput.text())
 
         return inputs
-        
+
 class HeatDemandEditDialog(QDialog):
     def __init__(self, gdf_HAST, hastInput, parent=None):
         super(HeatDemandEditDialog, self).__init__(parent)
@@ -675,13 +790,13 @@ class EconomicParametersDialog(QDialog):
 
     def getValues(self):
         return {
-            'gaspreis': float(self.gaspreisInput.text()),
-            'strompreis': float(self.strompreisInput.text()),
-            'holzpreis': float(self.holzpreisInput.text()),
-            'BEW': self.BEWComboBox.currentText(),
-            'kapitalzins': float(self.kapitalzinsInput.text()),
-            'preissteigerungsrate': float(self.preissteigerungsrateInput.text()),
-            'betrachtungszeitraum': int(self.betrachtungszeitraumInput.text()),
+            'Gaspreis in €/MWh': float(self.gaspreisInput.text()),
+            'Strompreis in €/MWh': float(self.strompreisInput.text()),
+            'Holzpreis in €/MWh': float(self.holzpreisInput.text()),
+            'BEW-Förderung': self.BEWComboBox.currentText(),
+            'Kapitalzins in %': float(self.kapitalzinsInput.text()),
+            'Preissteigerungsrate in %': float(self.preissteigerungsrateInput.text()),
+            'Betrachtungszeitraum in a': int(self.betrachtungszeitraumInput.text()),
         }
     
 class NetInfrastructureDialog(QDialog):

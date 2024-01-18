@@ -255,11 +255,11 @@ class MixDesignTab(QWidget):
         display_text = f"{tech.name}: "
     
         if isinstance(tech, RiverHeatPump):
-            display_text += f"Wärmeleistung FW WP: {tech.Wärmeleistung_FW_WP} kW, Temperatur FW WP: {tech.Temperatur_FW_WP} °C, dT: {tech.dT} K, spez. Investitionskosten Flusswärme: {tech.spez_Investitionskosten_WQ} €/kW"
+            display_text += f"Wärmeleistung FW WP: {tech.Wärmeleistung_FW_WP} kW, Temperatur FW WP: {tech.Temperatur_FW_WP} °C, dT: {tech.dT} K, spez. Investitionskosten Flusswärme: {tech.spez_Investitionskosten_Flusswasser} €/kW, spez. Investitionskosten Wärmepumpe: {tech.spezifische_Investitionskosten_WP} €/kW"
         elif isinstance(tech, WasteHeatPump):
-            display_text += f"Kühlleistung Abwärme: {tech.Kühlleistung_Abwärme} kW, Temperatur Abwärme: {tech.Temperatur_Abwärme} °C, spez. Investitionskosten Abwärme: {tech.spez_Investitionskosten_WQ} €/kW"
+            display_text += f"Kühlleistung Abwärme: {tech.Kühlleistung_Abwärme} kW, Temperatur Abwärme: {tech.Temperatur_Abwärme} °C, spez. Investitionskosten Abwärme: {tech.spez_Investitionskosten_Abwärme} €/kW, spez. Investitionskosten Wärmepumpe: {tech.spezifische_Investitionskosten_WP} €/kW"
         elif isinstance(tech, Geothermal):
-            display_text += f"Fläche Sondenfeld: {tech.Fläche} m², Bohrtiefe: {tech.Bohrtiefe} m, Quelltemperatur Erdreich: {tech.Temperatur_Geothermie} °C, spez. Bohrkosten: {tech.spez_Bohrkosten} €/m, spez. Entzugsleistung: {tech.spez_Entzugsleistung} W/m, Vollbenutzungsstunden: {tech.Vollbenutzungsstunden} h, Abstand Sonden: {tech.Abstand_Sonden} m"
+            display_text += f"Fläche Sondenfeld: {tech.Fläche} m², Bohrtiefe: {tech.Bohrtiefe} m, Quelltemperatur Erdreich: {tech.Temperatur_Geothermie} °C, spez. Bohrkosten: {tech.spez_Bohrkosten} €/m, spez. Entzugsleistung: {tech.spez_Entzugsleistung} W/m, Vollbenutzungsstunden: {tech.Vollbenutzungsstunden} h, Abstand Sonden: {tech.Abstand_Sonden} m, spez. Investitionskosten Wärmepumpe: {tech.spezifische_Investitionskosten_WP} €/kW"
         elif isinstance(tech, CHP):
             display_text += f"th. Leistung: {tech.th_Leistung_BHKW} kW, spez. Investitionskosten Erdgas-BHKW: {tech.spez_Investitionskosten_GBHKW} €/BHKW, spez. Investitionskosten Holzgas-BHKW: {tech.spez_Investitionskosten_HBHKW} €/kW"
         elif isinstance(tech, BiomassBoiler):
@@ -369,21 +369,65 @@ class MixDesignTab(QWidget):
     def setupTechDataTable(self):
         self.techDataTable = QTableWidget()
         self.techDataTable.setColumnCount(4)  # Anpassen an die Anzahl der benötigten Spalten
-        self.techDataTable.setHorizontalHeaderLabels(['Name', 'Typ', 'Dimensionen', 'Wirtschaftliche Bedingungen'])
+        self.techDataTable.setHorizontalHeaderLabels(['Name', 'Dimensionen', 'Kosten', 'Gesamtkosten'])
         self.mainLayout.addWidget(self.techDataTable)
     
     def updateTechDataTable(self, tech_objects):
         self.techDataTable.setRowCount(len(tech_objects))
 
         for i, tech in enumerate(tech_objects):
-            name, dimensions, economic_conditions = self.extractTechData(tech)
+            name, dimensions, costs, full_costs = self.extractTechData(tech)
             self.techDataTable.setItem(i, 0, QTableWidgetItem(name))
-            self.techDataTable.setItem(i, 1, QTableWidgetItem(type(tech).__name__))  # Klassenname als Typ
-            self.techDataTable.setItem(i, 2, QTableWidgetItem(dimensions))
-            self.techDataTable.setItem(i, 3, QTableWidgetItem(economic_conditions))
+            self.techDataTable.setItem(i, 1, QTableWidgetItem(dimensions))
+            self.techDataTable.setItem(i, 2, QTableWidgetItem(costs))
+            self.techDataTable.setItem(i, 3, QTableWidgetItem(full_costs))
 
         self.techDataTable.resizeColumnsToContents()
         self.adjustTableSize(self.techDataTable)
+
+    ### Extraktion Ergebnisse Berechnung ###
+    def extractTechData(self, tech):
+        if isinstance(tech, RiverHeatPump):
+            dimensions = f"th. Leistung: {tech.Wärmeleistung_FW_WP} kW"
+            costs = f"Investitionskosten Flusswärmenutzung: {tech.spez_Investitionskosten_Flusswasser*tech.Wärmeleistung_FW_WP:.1f}, Investitionskosten Wärmepumpe: {tech.spezifische_Investitionskosten_WP*tech.Wärmeleistung_FW_WP:.1f}"
+            full_costs = f"{tech.spez_Investitionskosten_Flusswasser*tech.Wärmeleistung_FW_WP + tech.spezifische_Investitionskosten_WP*tech.Wärmeleistung_FW_WP:.1f}"
+
+        elif isinstance(tech, WasteHeatPump):
+            dimensions = f"Kühlleistung Abwärme: {tech.Kühlleistung_Abwärme} kW, Temperatur Abwärme: {tech.Temperatur_Abwärme} °C, th. Leistung: {tech.max_Wärmeleistung} kW"
+            costs = f"Investitionskosten Abwärmenutzung: {tech.spez_Investitionskosten_Abwärme*tech.max_Wärmeleistung:.1f}, Investitionskosten Wärmepumpe: {tech.spezifische_Investitionskosten_WP*tech.max_Wärmeleistung:.1f}"
+            full_costs = f"{tech.spez_Investitionskosten_Abwärme*tech.max_Wärmeleistung + tech.spezifische_Investitionskosten_WP*tech.max_Wärmeleistung:.1f}"
+
+        elif isinstance(tech, Geothermal):
+            dimensions = f"Fläche: {tech.Fläche} m², Bohrtiefe: {tech.Bohrtiefe} m, Temperatur Geothermie: {tech.Temperatur_Geothermie} °C, Entzugsleistung: {tech.spez_Entzugsleistung} W/m, th. Leistung: {tech.max_Wärmeleistung} kW"
+            costs = f"Investitionskosten Sondenfeld: {tech.Investitionskosten_Sonden:.1f}, Investitionskosten Wärmepumpe: {tech.spezifische_Investitionskosten_WP*tech.max_Wärmeleistung:.1f}"
+            full_costs = f"{tech.Investitionskosten_Sonden + tech.spezifische_Investitionskosten_WP*tech.max_Wärmeleistung:.1f}"
+
+        elif isinstance(tech, CHP):
+            dimensions = f"th. Leistung: {tech.th_Leistung_BHKW} kW, el. Leistung: {tech.el_Leistung_Soll} kW"
+            costs = f"Investitionskosten: {tech.Investitionskosten:.1f}"
+            full_costs = f"{tech.Investitionskosten:.1f}"
+
+        elif isinstance(tech, BiomassBoiler):
+            dimensions = f"th. Leistung: {tech.P_BMK} kW, Größe Holzlager: {tech.Größe_Holzlager} t"
+            costs = f"Investitionskosten Kessel: {tech.Investitionskosten_Kessel:.1f} €, Investitionskosten Holzlager: {tech.Investitionskosten_Holzlager:.1f} €"
+            full_costs = f"{tech.Investitionskosten:.1f}"
+
+        elif isinstance(tech, GasBoiler):
+            dimensions = f"th. Leistung: {tech.P_max:.1f} kW"
+            costs = f"Investitionskosten: {tech.Investitionskosten:.1f} €"
+            full_costs = f"{tech.Investitionskosten:.1f}"
+            
+        elif isinstance(tech, SolarThermal):
+            dimensions = f"Bruttokollekttorfläche: {tech.bruttofläche_STA} m², Speichervolumen: {tech.vs} m³; Kollektortyp: {tech.Typ}"
+            costs = f"Investitionskosten Speicher: {tech.Investitionskosten_Speicher:.1f} €, Investitionskosten STA: {tech.Investitionskosten_STA:.1f} €"
+            full_costs = f"{tech.Investitionskosten:.1f}"
+
+        else:
+            dimensions = "N/A"
+            costs = "N/A"
+            full_costs = "N/A"
+
+        return tech.name, dimensions, costs, full_costs
 
     def setupResultsTable(self):
         # Tabelle initialisieren
@@ -472,30 +516,30 @@ class MixDesignTab(QWidget):
         self.figure2, self.canvas2 = self.addFigure(diagramLayout)
 
     def addFigure(self, layout):
-        figure = Figure()
+        figure = Figure(figsize=(8, 6))  # Breite und Höhe in Zoll einstellen
         canvas = FigureCanvas(figure)
-        canvas.setMinimumSize(800, 600)
+        canvas.setMinimumSize(800, 600)  # Größe in Pixel
         layout.addWidget(canvas)
         return figure, canvas
     
     ### Technologie erstellen ###
     def createTechnology(self, tech_type, inputs):
         if tech_type == "Solarthermie":
-            return SolarThermal(name=tech_type, bruttofläche_STA=inputs["bruttofläche_STA"], vs=inputs["vs"], Typ=inputs["Typ"])
+            return SolarThermal(name=tech_type, bruttofläche_STA=inputs["bruttofläche_STA"], vs=inputs["vs"], Typ=inputs["Typ"], kosten_speicher_spez=inputs["kosten_speicher_spez"], kosten_fk_spez=inputs["kosten_fk_spez"], kosten_vrk_spez=inputs["kosten_vrk_spez"])
         elif tech_type == "Biomassekessel":
-            return BiomassBoiler(name=tech_type, P_BMK=inputs["P_BMK"])
+            return BiomassBoiler(name=tech_type, P_BMK=inputs["P_BMK"], Größe_Holzlager=inputs["Größe_Holzlager"], spez_Investitionskosten=inputs["spez_Investitionskosten"], spez_Investitionskosten_Holzlager=inputs["spez_Investitionskosten_Holzlager"])
         elif tech_type == "Gaskessel":
-            return GasBoiler(name=tech_type)  # Angenommen, GasBoiler benötigt keine zusätzlichen Eingaben
+            return GasBoiler(name=tech_type, spez_Investitionskosten=inputs["spez_Investitionskosten"])  # Angenommen, GasBoiler benötigt keine zusätzlichen Eingaben
         elif tech_type == "BHKW":
-            return CHP(name=tech_type, th_Leistung_BHKW=inputs["th_Leistung_BHKW"])
+            return CHP(name=tech_type, th_Leistung_BHKW=inputs["th_Leistung_BHKW"], spez_Investitionskosten_GBHKW=inputs["spez_Investitionskosten_GBHKW"])
         elif tech_type == "Holzgas-BHKW":
-            return CHP(name=tech_type, th_Leistung_BHKW=inputs["th_Leistung_BHKW"])  # Angenommen, Holzgas-BHKW verwendet dieselbe Klasse wie BHKW
+            return CHP(name=tech_type, th_Leistung_BHKW=inputs["th_Leistung_BHKW"], spez_Investitionskosten_HBHKW=inputs["spez_Investitionskosten_HBHKW"])  # Angenommen, Holzgas-BHKW verwendet dieselbe Klasse wie BHKW
         elif tech_type == "Geothermie":
-            return Geothermal(name=tech_type, Fläche=inputs["Fläche"], Bohrtiefe=inputs["Bohrtiefe"], Temperatur_Geothermie=inputs["Temperatur_Geothermie"])
+            return Geothermal(name=tech_type, Fläche=inputs["Fläche"], Bohrtiefe=inputs["Bohrtiefe"], Temperatur_Geothermie=inputs["Temperatur_Geothermie"], Abstand_Sonden=inputs["Abstand_Sonden"], spez_Bohrkosten=inputs["spez_Bohrkosten"], spez_Entzugsleistung=inputs["spez_Entzugsleistung"], Vollbenutzungsstunden=inputs["Vollbenutzungsstunden"], spezifische_Investitionskosten_WP=inputs["spezifische_Investitionskosten_WP"])
         elif tech_type == "Abwärme":
-            return WasteHeatPump(name=tech_type, Kühlleistung_Abwärme=inputs["Kühlleistung_Abwärme"], Temperatur_Abwärme=inputs["Temperatur_Abwärme"])
+            return WasteHeatPump(name=tech_type, Kühlleistung_Abwärme=inputs["Kühlleistung_Abwärme"], Temperatur_Abwärme=inputs["Temperatur_Abwärme"], spez_Investitionskosten_Abwärme=inputs["spez_Investitionskosten_Abwärme"], spezifische_Investitionskosten_WP=inputs["spezifische_Investitionskosten_WP"])
         elif tech_type == "Flusswasser":
-            return RiverHeatPump(name=tech_type, Wärmeleistung_FW_WP=inputs["Wärmeleistung_FW_WP"], Temperatur_FW_WP=inputs["Temperatur_FW_WP"], dT=inputs["dT"])
+            return RiverHeatPump(name=tech_type, Wärmeleistung_FW_WP=inputs["Wärmeleistung_FW_WP"], Temperatur_FW_WP=inputs["Temperatur_FW_WP"], dT=inputs["dT"], spez_Investitionskosten_Flusswasser=inputs["spez_Investitionskosten_Flusswasser"], spezifische_Investitionskosten_WP=inputs["spezifische_Investitionskosten_WP"])
         else:
             raise ValueError(f"Unbekannter Technologietyp: {tech_type}")
         
@@ -532,44 +576,6 @@ class MixDesignTab(QWidget):
     def on_calculation_error(self, error_message):
         self.progressBar.setRange(0, 1)
         QMessageBox.critical(self, "Berechnungsfehler", error_message)
-
-    ### Extraktion Ergebnisse Berechnung ###
-    def extractTechData(self, tech):
-        if isinstance(tech, RiverHeatPump):
-            dimensions = f"th. Leistung: {tech.Wärmeleistung_FW_WP} m², Temperatur Fluss: {tech.Temperatur_FW_WP} m"
-            economic_conditions = f"spez. Investitionsksoten Flusswärme: {tech.spez_Investitionskosten_WQ} €/kW, spez. Investitionsksoten Wärmepumpe: {tech.spezifische_Investitionskosten_WP} €/kW"
-
-        elif isinstance(tech, WasteHeatPump):
-            dimensions = f"Kühlleistung Abwärme: {tech.Kühlleistung_Abwärme} m², Temperatur Abwärme: {tech.Temperatur_Abwärme} m, th. Leistung: {tech.max_Wärmeleistung} kW"
-            economic_conditions = f"spez. Investitionskosten Abwärme: {tech.spez_Investitionskosten_WQ} €/kW, spez. Investitionsksoten Wärmepumpe: {tech.spezifische_Investitionskosten_WP} €/kW"
-
-        elif isinstance(tech, Geothermal):
-            dimensions = f"Fläche: {tech.Fläche} m², Bohrtiefe: {tech.Bohrtiefe} m, Temperatur Geothermie: {tech.Temperatur_Geothermie} °C, Entzugsleistung: {tech.spez_Entzugsleistung} W/m, th. Leistung: {tech.max_Wärmeleistung} kW"
-            economic_conditions = f"Bohrkosten: {tech.spez_Bohrkosten} €/m, Investitionskosten Sonden: {tech.Investitionskosten_Sonden} €, spez. Investitionskosten Sonden: {tech.spez_Investitionskosten_Erdsonden} €/kW, spez. Investitionsksoten Wärmepumpe: {tech.spezifische_Investitionskosten_WP} €/kW"
-
-        elif isinstance(tech, CHP):
-            dimensions = f"th. Leistung: {tech.th_Leistung_BHKW} kW, el. Leistung: {tech.el_Leistung_Soll} kW"
-            economic_conditions = f"spez. Investitionskosten Gas-BHKW: {tech.spez_Investitionskosten_GBHKW} €/kW, spez. Investitionskosten Holz-BHKW: {tech.spez_Investitionskosten_HBHKW} €/kW, Investitionskosten BHKW: {tech.Investitionskosten} €"
-
-        elif isinstance(tech, BiomassBoiler):
-            dimensions = f"th. Leistung: {tech.P_BMK} kW, Größe Holzlager: {tech.Größe_Holzlager} t"
-            economic_conditions = f"spez. Investitionskosten Kessel: {tech.spez_Investitionskosten} €/kW, spez. Investitionskosten Holzlager: {tech.spez_Investitionskosten_Holzlager} €/t, \
-                Investitionskosten Kessel: {tech.Investitionskosten_Kessel} €, Investitionskosten Holzlager: {tech.Investitionskosten_Holzlager} €, Investitionskosten Gesamt: {tech.Investitionskosten} €"
-            
-        elif isinstance(tech, GasBoiler):
-            dimensions = f"th. Leistung: {tech.P_max:.1f} kW"
-            economic_conditions = f"spez. Investitionskosten: {tech.spez_Investitionskosten} €/kW, Investitionskosten: {tech.Investitionskosten:.1f} €"
-        
-        elif isinstance(tech, SolarThermal):
-            dimensions = f"Bruttokollekttorfläche: {tech.bruttofläche_STA} m², Speichervolumen: {tech.vs} m³; Kollektortyp: {tech.Typ}"
-            economic_conditions = f"spez. Kosten Speicher: {tech.kosten_speicher_spez} €/m³, spez. Kosten FK: {tech.kosten_fk_spez} €/m², spez. Kosten VRK: {tech.kosten_vrk_spez} €/m², \
-                Investitionskosten Speicher: {tech.Investitionskosten_Speicher} €, Investitionskosten STA: {tech.Investitionskosten_STA} €, Investitionskosten Gesamt: {tech.Investitionskosten_Gesamt} €"
-
-        else:
-            dimensions = "N/A"
-            economic_conditions = "N/A"
-
-        return tech.name, dimensions, economic_conditions
 
     ### Plotten der Ergebnisse ###
     def plotResults(self, results):
@@ -657,25 +663,24 @@ class MixDesignTab(QWidget):
     ### Eingabe wirtschaftliche Randbedingungen ###
     def setupEconomicParameters(self):
         values = self.economicParametersDialog.getValues()
-        self.gaspreis = values['gaspreis']
-        self.strompreis = values['strompreis']
-        self.holzpreis = values['holzpreis']
-        self.BEW = values['BEW']
-        self.kapitalzins = values['kapitalzins']
-        self.preissteigerungsrate = values['preissteigerungsrate']
-        self.betrachtungszeitraum = values['betrachtungszeitraum']
+        self.gaspreis = values['Gaspreis in €/MWh']
+        self.strompreis = values['Strompreis in €/MWh']
+        self.holzpreis = values['Holzpreis in €/MWh']
+        self.BEW = values['BEW-Förderung']
+        self.kapitalzins = values['Kapitalzins in %']
+        self.preissteigerungsrate = values['Preissteigerungsrate in %']
+        self.betrachtungszeitraum = values['Betrachtungszeitraum in a']
 
     def openEconomicParametersDialog(self):
         if self.economicParametersDialog.exec_():
             values = self.economicParametersDialog.getValues()
-            # Setzen Sie hier die Werte auf Ihre Klassenattribute oder -methoden
-            self.gaspreis = values['gaspreis']
-            self.strompreis = values['strompreis']
-            self.holzpreis = values['holzpreis']
-            self.BEW = values['BEW']
-            self.kapitalzins = values['kapitalzins']
-            self.preissteigerungsrate = values['preissteigerungsrate']
-            self.betrachtungszeitraum = values['betrachtungszeitraum']
+            self.gaspreis = values['Gaspreis in €/MWh']
+            self.strompreis = values['Strompreis in €/MWh']
+            self.holzpreis = values['Holzpreis in €/MWh']
+            self.BEW = values['BEW-Förderung']
+            self.kapitalzins = values['Kapitalzins in %']
+            self.preissteigerungsrate = values['Preissteigerungsrate in %']
+            self.betrachtungszeitraum = values['Betrachtungszeitraum in a']
     
     ### Export Ergebnisse mit PDF ###
     def create_pdf(self, filename):
@@ -710,12 +715,12 @@ class MixDesignTab(QWidget):
 
         # Schleife durch die Werte der wirtschaftlichen Bedingungen und in Tabelle umwandeln
         economic_conditions_data = [(key, value) for key, value in economic_conditions.items()]
-        economic_conditions_table = Table(economic_conditions_data, colWidths=[200, 100])
+        economic_conditions_table = Table(economic_conditions_data, colWidths=[150, 50])
         economic_conditions_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.beige),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica'),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
             ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
             ('GRID', (0, 0), (-1, -1), 1, colors.black)
@@ -742,19 +747,23 @@ class MixDesignTab(QWidget):
 
         for i, obj in enumerate(infraObjects):
             row_data = [obj.capitalize()]
+            annuität = 0  # Initialisiere Annuität auf 0
             for j, col in enumerate(columns[1:], 1):
                 key = f"{obj}_{col.lower()}"
                 value = values.get(key, "")
-                row_data.append(str(value))
+                if value != "":
+                    row_data.append(str(value))
 
-            # Annuität berechnen und hinzufügen
-            A0 = float(values.get(f"{obj}_kosten", 0))
-            TN = int(values.get(f"{obj}_technische nutzungsdauer", 0))
-            f_Inst = float(values.get(f"{obj}_f_inst", 0))
-            f_W_Insp = float(values.get(f"{obj}_f_w_insp", 0))
-            Bedienaufwand = float(values.get(f"{obj}_bedienaufwand", 0))
-            annuität = self.calc_annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand)
-            row_data.append("{:.1f}".format(annuität))
+                if col == 'Kosten':
+                    # Annuität berechnen und hinzufügen
+                    A0 = float(values.get(f"{obj}_kosten", 0))
+                    TN = int(values.get(f"{obj}_technische nutzungsdauer", 0))
+                    f_Inst = float(values.get(f"{obj}_f_inst", 0))
+                    f_W_Insp = float(values.get(f"{obj}_f_w_insp", 0))
+                    Bedienaufwand = float(values.get(f"{obj}_bedienaufwand", 0))
+                    annuität = self.calc_annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand)
+     
+            row_data.append("{:.0f}".format(annuität))
 
             infra_data.append(row_data)
 
@@ -785,7 +794,7 @@ class MixDesignTab(QWidget):
             (tech, f"{wärmemenge:.2f}", f"{wgk:.2f}", f"{anteil*100:.2f}%")
             for tech, wärmemenge, wgk, anteil in zip(self.results['techs'], self.results['Wärmemengen'], self.results['WGK'], self.results['Anteile'])
         ])
-        results_table = Table(results_data, colWidths=[150, 150, 150, 150])
+        results_table = Table(results_data)
         results_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
@@ -800,12 +809,12 @@ class MixDesignTab(QWidget):
 
         # Daten für die zusätzlichen Informationen sammeln
         additional_info_data = [
-            ("Jahreswärmebedarf (MWh)", self.results['Jahreswärmebedarf']),
-            ("Stromerzeugung (MWh)", self.results['Strommenge']),
-            ("Strombedarf (MWh)", self.results['Strombedarf']),
-            ("Wärmegestehungskosten Erzeugeranlagen (€/MWh)", self.results['WGK_Gesamt']),
-            ("Wärmegestehungskosten Netzinfrastruktur (€/MWh)", self.WGK_Infra),
-            ("Wärmegestehungskosten Gesamt (€/MWh)", self.WGK_Gesamt)
+            ("Jahreswärmebedarf (MWh)", f"{self.results['Jahreswärmebedarf']:.0f}"),
+            ("Stromerzeugung (MWh)", f"{self.results['Strommenge']:.0f}"),
+            ("Strombedarf (MWh)", f"{self.results['Strombedarf']:.0f}"),
+            ("Wärmegestehungskosten Erzeugeranlagen (€/MWh)", f"{self.results['WGK_Gesamt']:.2f}"),
+            ("Wärmegestehungskosten Netzinfrastruktur (€/MWh)", f"{self.WGK_Infra:.2f}"),
+            ("Wärmegestehungskosten Gesamt (€/MWh)", f"{self.WGK_Gesamt:.2f}")
         ]
 
         # Tabelle für die zusätzlichen Informationen erstellen
@@ -827,11 +836,12 @@ class MixDesignTab(QWidget):
         # Diagramme als Bilder hinzufügen
         for figure in [self.figure1, self.figure2]:
             img_buffer = BytesIO()
-            figure.savefig(img_buffer, format='png', bbox_inches='tight')
+            figure.savefig(img_buffer, format='png', bbox_inches='tight', dpi=300)
             img_buffer.seek(0)
             img = Image(img_buffer)
-            img.drawHeight = 4 * inch
-            img.drawWidth = 6 * inch
+            img.drawHeight = 4 * inch  # Höhe einstellen
+            img.drawWidth = 6 * inch  # Breite einstellen
+            img.keepAspectRatio = True  # Seitenverhältnis beibehalten
             story.append(img)
             story.append(Spacer(1, 12))
 
