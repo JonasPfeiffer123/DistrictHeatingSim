@@ -47,6 +47,9 @@ class HeatSystemDesignGUI(QWidget):
         # Set the layout
         self.setLayout(layout)
 
+        # Maximieren Sie das Hauptfenster auf die Bildschirmgröße
+        self.showMaximized()
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = HeatSystemDesignGUI()
