@@ -71,14 +71,11 @@ def generate_profiles_from_geojson(gdf_HAST, building_type="MFH", calc_method="V
 
     return yearly_time_steps, waerme_ges_W, max_waerme_ges_W
 
-def initialize_net_geojson(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, return_temperature=60, pipe_creation_mode="type"):
+def initialize_net_geojson(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, return_temperature=60, supply_temperature=85, flow_pressure_pump=4, lift_pressure_pump=1.5, diameter_mm=107.1, pipetype="KMR 100/250-2v", k=0.0470, alpha=0.61, pipe_creation_mode="type"):
     # net generation from gis data
-    net = create_network(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, return_temperature, pipe_creation_mode)
+    net = create_network(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, return_temperature, supply_temperature, flow_pressure_pump, lift_pressure_pump, diameter_mm, pipetype, k, alpha, pipe_creation_mode)
     net = create_controllers(net, qext_w, return_temperature)
     net = correct_flow_directions(net)
-
-    print(net.pipe, net.heat_exchanger, net.flow_control)
-    print(net.res_pipe, net.res_heat_exchanger, net.res_flow_control)
 
     net = init_timeseries_opt(net, qext_w, time_steps=3, target_temperature=60)
 

@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, \
         QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction
 
 from main import calculate_results, save_results_csv
-from gui.dialogs import HeatDemandEditDialog, GeojsonDialog, StanetDialog
+from gui.calculation_dialogs import HeatDemandEditDialog, GeojsonDialog, StanetDialog
 from gui.threads import NetInitializationGEOJSONThread, NetInitializationSTANETThread, NetCalculationThread
 from net_simulation_pandapipes.net_test import config_plot
 from gui.checkable_combobox import CheckableComboBox
@@ -255,7 +255,7 @@ class CalculationTab(QWidget):
         if fname:  # Prüfen, ob ein Dateiname ausgewählt wurde
             inputWidget.setText(fname)
 
-    def create_and_initialize_net_geojson(self, vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type):
+    def create_and_initialize_net_geojson(self, vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temp, supply_temp, flow_pressure_pump, lift_pressure_pump):
         gdf_vl = gpd.read_file(vorlauf)
         gdf_rl = gpd.read_file(ruecklauf)
         gdf_HAST = gpd.read_file(hast)
@@ -263,7 +263,7 @@ class CalculationTab(QWidget):
 
         self.updateLabelsForCalcMethod(calc_method)
 
-        self.initializationgeojsonThread = NetInitializationGEOJSONThread(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, building_type, calc_method)
+        self.initializationgeojsonThread = NetInitializationGEOJSONThread(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, building_type, calc_method, return_temp, supply_temp, flow_pressure_pump, lift_pressure_pump)
         self.initializationgeojsonThread.calculation_done.connect(self.on_initialization_done)
         self.initializationgeojsonThread.calculation_error.connect(self.on_simulation_error)
         self.initializationgeojsonThread.start()

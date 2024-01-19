@@ -34,17 +34,14 @@ def get_all_point_coords_from_line_cords(all_line_coords):
     return unique_point_coords
 
 
-def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w, return_temperature, pipe_creation_mode="type", supply_temperature=85,
-                   flow_pressure_pump=4, lift_pressure_pump=1.5, diameter_mm=107.1, pipetype="KMR 100/250-2v", k=0.0470, alpha=0.61):
-    print(qext_w)
+def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w, return_temperature=60, supply_temperature=85, flow_pressure_pump=4, lift_pressure_pump=1.5, 
+                   diameter_mm=107.1, pipetype="KMR 100/250-2v", k=0.0470, alpha=0.61, pipe_creation_mode="type"):
     initial_mdot_guess_kg_s = qext_w / (4170*(supply_temperature-return_temperature))#
-    print(initial_mdot_guess_kg_s)
 
     initial_Vdot_guess_m3_s = initial_mdot_guess_kg_s/1000
     v_max_m_s = 2.0
     area_m2 = initial_Vdot_guess_m3_s/v_max_m_s
     initial_dimension_guess_m = np.sqrt(area_m2 *(4/np.pi))
-    print(initial_dimension_guess_m)
 
     def create_junctions_from_coords(net_i, all_coords):
         junction_dict = {}
@@ -53,18 +50,22 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w, return_temper
             junction_dict[coords] = junction_id
         return junction_dict
 
-    def create_pipes_diameter(net_i, all_line_coords, all_line_lengths, junction_dict, pipe_type, diameter_mm):
-        for coords, length_m, i in zip(all_line_coords, all_line_lengths, range(0, len(all_line_coords))):
-            pp.create_pipe_from_parameters(net_i, from_junction=junction_dict[coords[0]],
-                                           to_junction=junction_dict[coords[1]], length_km=length_m/1000,
-                                           diameter_m=diameter_mm/1000, k_mm=k, alpha_w_per_m2k=alpha, name=f"{pipe_type} Pipe {i}",
-                                           geodata=coords, sections=5, text_k=283)
+    def create_pipes(net_i, all_line_coords, all_line_lengths, junction_dict, pipe_mode, pipe_type_or_diameter, line_type):
+        for coords, length_m, i in zip(all_line_coords, all_line_lengths, range(len(all_line_coords))):
+            if pipe_mode == "diameter":
+                diameter_mm = pipe_type_or_diameter
+                pipe_name = f"{line_type} Diameter Pipe {i}"
+                pp.create_pipe_from_parameters(net_i, from_junction=junction_dict[coords[0]],
+                                            to_junction=junction_dict[coords[1]], length_km=length_m/1000,
+                                            diameter_m=diameter_mm/1000, k_mm=k, alpha_w_per_m2k=alpha, 
+                                            name=pipe_name, geodata=coords, sections=5, text_k=283)
+            elif pipe_mode == "type":
+                pipetype = pipe_type_or_diameter
+                pipe_name = f"{line_type} Type Pipe {i}"
+                pp.create_pipe(net_i, from_junction=junction_dict[coords[0]], to_junction=junction_dict[coords[1]],
+                            std_type=pipetype, length_km=length_m/1000, k_mm=k, alpha_w_per_m2k=alpha,
+                            name=pipe_name, geodata=coords, sections=5, text_k=283)
 
-    def create_pipes_type(net_i, all_line_coords, all_line_lengths, junction_dict, line_type, pipetype):
-        for coords, length_m, i in zip(all_line_coords, all_line_lengths, range(0, len(all_line_coords))):
-            pp.create_pipe(net_i, from_junction=junction_dict[coords[0]], to_junction=junction_dict[coords[1]],
-                           std_type=pipetype, length_km=length_m/1000, k_mm=k, alpha_w_per_m2k=alpha,
-                           name=f"{line_type} Pipe {i}", geodata=coords, sections=5, text_k=283)
 
     def create_heat_exchangers(net_i, all_coords, junction_dict, name_prefix):
         for i, (coords, q, m, d) in enumerate(zip(all_coords, qext_w, initial_mdot_guess_kg_s, initial_dimension_guess_m)):
@@ -93,14 +94,9 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w, return_temper
         get_line_coords_and_lengths(gdf_rl)[0]))
 
     # creates the pipes
-    if pipe_creation_mode == "diameter":
-        create_pipes_diameter(net, *get_line_coords_and_lengths(gdf_vorlauf), junction_dict_vl, "forward line", diameter_mm)
-        create_pipes_diameter(net, *get_line_coords_and_lengths(gdf_rl), junction_dict_rl, "return line", diameter_mm)
-
-    if pipe_creation_mode == "type":
-        create_pipes_type(net, *get_line_coords_and_lengths(gdf_vorlauf), junction_dict_vl, "forward line", pipetype)
-        create_pipes_type(net, *get_line_coords_and_lengths(gdf_rl), junction_dict_rl, "retunr line", pipetype)
-
+    create_pipes(net, *get_line_coords_and_lengths(gdf_vorlauf), junction_dict_vl, pipe_creation_mode, diameter_mm if pipe_creation_mode == "diameter" else pipetype, "forward")
+    create_pipes(net, *get_line_coords_and_lengths(gdf_rl), junction_dict_rl, pipe_creation_mode, diameter_mm if pipe_creation_mode == "diameter" else pipetype, "return")
+    
     # creates the heat exchangers
     create_heat_exchangers(net, get_line_coords_and_lengths(gdf_hast)[0], {**junction_dict_vl, **junction_dict_rl}, "heat exchanger")
     

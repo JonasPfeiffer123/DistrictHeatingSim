@@ -21,7 +21,7 @@ class NetInitializationGEOJSONThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(str)
 
-    def __init__(self, gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, building_type, calc_method):
+    def __init__(self, gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, building_type, calc_method, return_temperature=60, supply_temperature=85, flow_pressure_pump=4, lift_pressure_pump=1.5, diameter_mm=107.1, pipetype="KMR 100/250-2v", k=0.0470, alpha=0.61, pipe_creation_mode="type"):
         super().__init__()
         self.gdf_vl = gdf_vl
         self.gdf_rl = gdf_rl
@@ -29,13 +29,22 @@ class NetInitializationGEOJSONThread(QThread):
         self.gdf_WEA = gdf_WEA
         self.building_type = building_type
         self.calc_method = calc_method
+        # Neue Parameter
+        self.return_temperature = return_temperature
+        self.supply_temperature = supply_temperature
+        self.flow_pressure_pump = flow_pressure_pump
+        self.lift_pressure_pump = lift_pressure_pump
+        self.diameter_mm = diameter_mm
+        self.pipetype = pipetype
+        self.k = k
+        self.alpha = alpha
+        self.pipe_creation_mode = pipe_creation_mode
 
     def run(self):
         try:
             # geojson
             self.yearly_time_steps, self.waerme_ges_W, self.max_waerme_ges_W = generate_profiles_from_geojson(self.gdf_HAST, self.building_type, self.calc_method)
-            print(self.max_waerme_ges_W)
-            self.net = initialize_net_geojson(self.gdf_vl, self.gdf_rl, self.gdf_HAST, self.gdf_WEA, self.max_waerme_ges_W)
+            self.net = initialize_net_geojson(self.gdf_vl, self.gdf_rl, self.gdf_HAST, self.gdf_WEA, self.max_waerme_ges_W, self.return_temperature, self.supply_temperature, self.flow_pressure_pump, self.lift_pressure_pump, self.diameter_mm, self.pipetype, self.k, self.alpha, self.pipe_creation_mode)
             
             self.calculation_done.emit((self.net, self.yearly_time_steps, self.waerme_ges_W))
         except Exception as e:
@@ -45,6 +54,7 @@ class NetInitializationGEOJSONThread(QThread):
         if self.isRunning():
             self.requestInterruption()
             self.wait()  # Warten auf das sichere Beenden des Threads
+
 
 class NetInitializationSTANETThread(QThread):
     calculation_done = pyqtSignal(object)
