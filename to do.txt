@@ -14,6 +14,8 @@ Netzberechnung:
 - Berechnungsparameter überarbeiten (RL-Temp, Profile, VL-Temp (Außentemperaturgeregelt))
 - Profil-Subtypen ergänzen
 - mehrere Erzeuger --> festlegen welches zirkulationspumpe, rest feste Einspeisung (oder Regelung durch Haupterzeugerstandort)
+- Konfiguration Verbraucher/Wärmeübertrager für Wärmepumpen-Übergabestationen
+    Konfigurierbare Vorlauftemperaturen --> Effizienz der Wärmepumpen
 
 Auslegung Erzeugermix
 - Parametervariation Preise
