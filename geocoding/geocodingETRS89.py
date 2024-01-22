@@ -2,14 +2,14 @@ from geopy.geocoders import Nominatim
 from pyproj import Transformer
 import csv
 
-# Initialize the Geolocator
-geolocator = Nominatim(user_agent="district_heating")
-
-# Initialize the Transformer function with PyProj
-# This transforms coordinates from WGS84 (GPS) to ETRS89 / UTM Zone 33N
-transformer = Transformer.from_crs("epsg:4326", "epsg:25833", always_xy=True)
-
 def get_coordinates(address):
+    # Initialize the Geolocator
+    geolocator = Nominatim(user_agent="district_heating")
+
+    # Initialize the Transformer function with PyProj
+    # This transforms coordinates from WGS84 (GPS) to ETRS89 / UTM Zone 33N
+    transformer = Transformer.from_crs("epsg:4326", "epsg:25833", always_xy=True)
+
     try:
         # Attempt to geocode the address
         location = geolocator.geocode(address)

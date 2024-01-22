@@ -3,7 +3,6 @@ import random
 import geopandas as gpd
 import csv
 import pandas as pd
-import json
 from shapely.geometry import Point
 
 from PyQt5.QtCore import pyqtSignal, QUrl
@@ -15,7 +14,7 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 import folium
 
-from gui.dialogs import LayerGenerationDialog, DownloadOSMDataDialog, GeocodeAdressesDialog
+from gui.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, GeocodeAdressesDialog
 from gui.threads import NetGenerationThread, FileImportThread
 
 class VisualizationTab(QWidget):

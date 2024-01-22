@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLay
     QMessageBox, QFileDialog, QMenuBar, QScrollArea, QAction, QAbstractItemView, QTableWidget, QTableWidgetItem, QHeaderView)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
-from gui.dialogs import TechInputDialog, EconomicParametersDialog, NetInfrastructureDialog
+from gui.mix_design_dialogs import TechInputDialog, EconomicParametersDialog, NetInfrastructureDialog
 from heat_generators.heat_generator_classes_v2 import *
 from gui.checkable_combobox import CheckableComboBox
 
