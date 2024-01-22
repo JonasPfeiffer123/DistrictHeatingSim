@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QDialog, QComboBox, QPushButton, \
-    QFormLayout, QHBoxLayout, QFileDialog, QProgressBar, QMessageBox
+    QFormLayout, QHBoxLayout, QFileDialog, QProgressBar, QMessageBox, QLabel
 
 from osm_data.import_osm_data_geojson import build_query, download_data, save_to_file
 from gui.threads import GeocodingThread
@@ -117,8 +117,13 @@ class LayerGenerationDialog(QDialog):
     def createFileInput(self, default_path):
         lineEdit = QLineEdit(default_path)
         button = QPushButton("Durchsuchen")
-        # Hier sollten Sie den Code für den Durchsuchen-Button implementieren
+        button.clicked.connect(lambda: self.openFileDialog(lineEdit))
         return lineEdit, button
+
+    def openFileDialog(self, lineEdit):
+        filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", "", "All Files (*)")
+        if filename:
+            lineEdit.setText(filename)
 
     def createFileInputLayout(self, lineEdit, button):
         layout = QHBoxLayout()
@@ -151,8 +156,13 @@ class DownloadOSMDataDialog(QDialog):
         self.setWindowTitle("Download OSM-Data")
         layout = QVBoxLayout(self)
 
-        # Stadtname Eingabefeld
+        # Postleitzahl Eingabefeld
+        #self.postalCodeLineEdit = QLineEdit(self)
+        #self.postalCodeLineEdit.setPlaceholderText("Postleitzahl")
+        #layout.addWidget(QLabel("Postleitzahl:"))
+        #layout.addWidget(self.postalCodeLineEdit)
 
+        # Stadtname Eingabefeld
         self.cityLineEdit = QLineEdit("Zittau")
         layout.addWidget(self.cityLineEdit)
         
@@ -185,10 +195,15 @@ class DownloadOSMDataDialog(QDialog):
         self.removeTagButton = QPushButton("Tag entfernen", self)
         self.removeTagButton.clicked.connect(self.removeTagField)
         layout.addWidget(self.removeTagButton)
+
+        # Abfrage-Button
+        self.queryButton = QPushButton("Abfrage starten", self)
+        self.queryButton.clicked.connect(self.startQuery)
+        layout.addWidget(self.queryButton)
         
         # Buttons für OK und Abbrechen
         self.okButton = QPushButton("OK", self)
-        self.okButton.clicked.connect(self.onAccept)
+        self.okButton.clicked.connect(self.accept)
         layout.addWidget(self.okButton)
 
         self.cancelButton = QPushButton("Abbrechen", self)
@@ -239,23 +254,140 @@ class DownloadOSMDataDialog(QDialog):
         value = tag[key]
         self.addTagField(key, value)
     
-    def onAccept(self):
+    def startQuery(self):
         # Daten sammeln
+        #postal_code = self.postalCodeLineEdit.text()
         self.filename = self.filenameLineEdit.text()
         tags = {key.text(): value.text() for key, value in self.tags_to_download if key.text()}
         
-        # Abfrage erstellen und Daten herunterladen
-        self.downloadOSMData(self.cityLineEdit.text(), tags, self.filename)
-        self.accept()
+        city_name =self.cityLineEdit.text()
 
-    # Die Methode des Dialogs, die die anderen Funktionen aufruft
-    def downloadOSMData(self, city_name, tags, filename):
         # Erstelle die Overpass-Abfrage
-        query = build_query(city_name, tags)
+        query = build_query(city_name, tags, element_type="way")
         # Lade die Daten herunter
-        geojson_data = download_data(query)
+        geojson_data = download_data(query, element_type="way")
         # Speichere die Daten als GeoJSON
-        save_to_file(geojson_data, filename)
+        save_to_file(geojson_data, self.filename)
+
+        QMessageBox.information(self, "Erfolg", f"Abfrageergebnisse gespeichert in {self.filename}")
+            
+        # Rufen Sie die loadNetData-Methode des Haupt-Tabs auf
+        self.parent().loadNetData(self.filename)
+
+class OSMBuildingQueryDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.initUI()
+
+    def initUI(self):
+        layout = QVBoxLayout(self)
+        self.setWindowTitle("OSM Gebäudeabfrage")
+
+        # Postleitzahl Eingabefeld
+        #self.postalCodeLineEdit = QLineEdit(self)
+        #self.postalCodeLineEdit.setPlaceholderText("Postleitzahl")
+        #layout.addWidget(QLabel("Postleitzahl:"))
+        #layout.addWidget(self.postalCodeLineEdit)
+
+        # Stadtname Eingabefeld
+        self.cityLineEdit = QLineEdit(self)
+        layout.addWidget(QLabel("Stadtname:"))
+        layout.addWidget(self.cityLineEdit)
+
+        # Dateiname Eingabefeld
+        self.filenameLineEdit = QLineEdit("osm_data/output_buildings.geojson", self)
+        layout.addWidget(QLabel("Ausgabedatei:"))
+        layout.addWidget(self.filenameLineEdit)
+
+        # Koordinaten Eingabefelder
+        self.minLatLineEdit = QLineEdit(self)
+        self.minLatLineEdit.setPlaceholderText("Optional: Minimale Breite")
+        layout.addWidget(QLabel("Minimale Breite:"))
+        layout.addWidget(self.minLatLineEdit)
+
+        self.minLonLineEdit = QLineEdit(self)
+        self.minLonLineEdit.setPlaceholderText("Optional: Minimale Länge")
+        layout.addWidget(QLabel("Minimale Länge:"))
+        layout.addWidget(self.minLonLineEdit)
+
+        self.maxLatLineEdit = QLineEdit(self)
+        self.maxLatLineEdit.setPlaceholderText("Optional: Maximale Breite")
+        layout.addWidget(QLabel("Maximale Breite:"))
+        layout.addWidget(self.maxLatLineEdit)
+
+        self.maxLonLineEdit = QLineEdit(self)
+        self.maxLonLineEdit.setPlaceholderText("Optional: Maximale Länge")
+        layout.addWidget(QLabel("Maximale Länge:"))
+        layout.addWidget(self.maxLonLineEdit)
+
+        # Abfrage-Button
+        self.queryButton = QPushButton("Abfrage starten", self)
+        self.queryButton.clicked.connect(self.startQuery)
+        layout.addWidget(self.queryButton)
+
+        # OK und Abbrechen Buttons
+        self.okButton = QPushButton("OK", self)
+        self.okButton.clicked.connect(self.accept)
+        layout.addWidget(self.okButton)
+        self.cancelButton = QPushButton("Abbrechen", self)
+        self.cancelButton.clicked.connect(self.reject)
+        layout.addWidget(self.cancelButton)
+
+    def startQuery(self):
+        #postal_code = self.postalCodeLineEdit.text()
+        city_name = self.cityLineEdit.text()
+        filename = self.filenameLineEdit.text()
+        if city_name and filename:
+            # Führen Sie hier Ihre Abfrage-Logik durch
+            tags = {"building": "yes"}  # oder andere Tags
+            query = build_query(city_name, tags, element_type="building")
+            geojson_data = download_data(query, element_type="building")
+
+            min_lat = self.minLatLineEdit.text() #51.054091
+            min_lon = self.minLonLineEdit.text() #14.549694
+            max_lat = self.maxLatLineEdit.text() #51.070836
+            max_lon = self.maxLonLineEdit.text() #14.589713
+
+            if min_lat and min_lon and max_lat and max_lon:
+                geojson_data = self.filter_geojson_data(geojson_data, min_lat, min_lon, max_lat, max_lon)
+
+            save_to_file(geojson_data, filename)
+            QMessageBox.information(self, "Erfolg", f"Abfrageergebnisse gespeichert in {filename}")
+            
+            # Rufen Sie die loadNetData-Methode des Haupt-Tabs auf
+            self.parent().loadNetData(filename)
+        else:
+            QMessageBox.warning(self, "Warnung", "Bitte geben Sie Postleitzahl, Stadtname und Ausgabedatei an.")
+
+    def filter_geojson_data(self, geojson_data, min_lat, min_lon, max_lat, max_lon):
+        min_lat, min_lon, max_lat, max_lon = map(float, [min_lat, min_lon, max_lat, max_lon])
+
+        def is_within_bounds(lat, lon):
+            return min_lon <= lon <= max_lon and min_lat <= lat <= max_lat
+
+        def is_polygon_within_bounds(polygon):
+            # Überprüfen, ob irgendein Punkt des Polygons innerhalb der Grenzen liegt
+            for ring in polygon:
+                if any(is_within_bounds(lat, lon) for lon, lat in ring):
+                    return True
+            return False
+
+        filtered_features = []
+        for feature in geojson_data['features']:
+            geometry = feature['geometry']
+            if geometry['type'] == 'Polygon':
+                if is_polygon_within_bounds(geometry['coordinates']):
+                    filtered_features.append(feature)
+            elif geometry['type'] == 'MultiPolygon':
+                if any(is_polygon_within_bounds(polygon) for polygon in geometry['coordinates']):
+                    filtered_features.append(feature)
+
+        # Erstelle ein neues GeoJSON-Objekt mit den gefilterten Features
+        filtered_geojson = {
+            "type": "FeatureCollection",
+            "features": filtered_features
+        }
+        return filtered_geojson
 
 class GeocodeAdressesDialog(QDialog):
     def __init__(self, parent=None):

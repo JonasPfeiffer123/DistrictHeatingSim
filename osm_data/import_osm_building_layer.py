@@ -1,4 +1,4 @@
-from osm_data.import_osm_data_geojson import download_osm_street_data
+from osm_data.import_osm_data_geojson import download_data
 import geopandas as gpd
 import pandas as pd
 import numpy as np
@@ -11,6 +11,7 @@ def import_and_filter_building():
     area[name="Zittau"]->.area_0;
     (
     relation["building"](area.area_0);
+    way["building"](area.searchArea);
     );
     (._;>;);
     out body;
@@ -19,7 +20,7 @@ def import_and_filter_building():
     geojson_file = "C:/Users/username/heating_network_generation/net_generation_QGIS/Gebäude Zittau.geojson"
 
     # Download der Daten und Speichern als GeoJSON
-    #download_osm_street_data(overpass_query, geojson_file)
+    download_data(overpass_query, geojson_file)
 
     # Einlesen der GeoJSON-Datei
     gdf = gpd.read_file(geojson_file)
