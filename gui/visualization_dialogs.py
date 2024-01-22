@@ -1,9 +1,13 @@
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QDialog, QComboBox, QPushButton, \
-    QFormLayout, QHBoxLayout, QFileDialog, QProgressBar, QMessageBox, QLabel
+    QFormLayout, QHBoxLayout, QFileDialog, QProgressBar, QMessageBox, QLabel, QWidget
 
 from osm_data.import_osm_data_geojson import build_query, download_data, save_to_file
 from gui.threads import GeocodingThread
 from geocoding.geocodingETRS89 import get_coordinates, process_data
+import geopandas as gpd
+import pandas as pd
+import json
+from math import radians, sin, cos, sqrt, atan2
    
 class LayerGenerationDialog(QDialog):
     def __init__(self, parent=None):
@@ -283,12 +287,6 @@ class OSMBuildingQueryDialog(QDialog):
         layout = QVBoxLayout(self)
         self.setWindowTitle("OSM Gebäudeabfrage")
 
-        # Postleitzahl Eingabefeld
-        #self.postalCodeLineEdit = QLineEdit(self)
-        #self.postalCodeLineEdit.setPlaceholderText("Postleitzahl")
-        #layout.addWidget(QLabel("Postleitzahl:"))
-        #layout.addWidget(self.postalCodeLineEdit)
-
         # Stadtname Eingabefeld
         self.cityLineEdit = QLineEdit(self)
         layout.addWidget(QLabel("Stadtname:"))
@@ -299,26 +297,67 @@ class OSMBuildingQueryDialog(QDialog):
         layout.addWidget(QLabel("Ausgabedatei:"))
         layout.addWidget(self.filenameLineEdit)
 
+        # Dropdown für Filteroptionen
+        self.filterComboBox = QComboBox(self)
+        self.filterComboBox.addItem("Kein Filter")
+        self.filterComboBox.addItem("Filtern mit Koordinatenbereich")
+        self.filterComboBox.addItem("Filtern mit zentralen Koordinaten und Radius als Abstand")
+        self.filterComboBox.addItem("Filtern mit Adressen aus CSV")
+        layout.addWidget(QLabel("Filteroptionen:"))
+        layout.addWidget(self.filterComboBox)
+
+        # Widgets für Koordinaten
         # Koordinaten Eingabefelder
+        self.coordWidget = QWidget(self)
+        coordLayout = QVBoxLayout(self.coordWidget)
         self.minLatLineEdit = QLineEdit(self)
-        self.minLatLineEdit.setPlaceholderText("Optional: Minimale Breite")
-        layout.addWidget(QLabel("Minimale Breite:"))
-        layout.addWidget(self.minLatLineEdit)
+        self.minLatLineEdit.setPlaceholderText("Minimale Breite")
+        coordLayout.addWidget(QLabel("Minimale Breite:"))
+        coordLayout.addWidget(self.minLatLineEdit)
 
         self.minLonLineEdit = QLineEdit(self)
-        self.minLonLineEdit.setPlaceholderText("Optional: Minimale Länge")
-        layout.addWidget(QLabel("Minimale Länge:"))
-        layout.addWidget(self.minLonLineEdit)
+        self.minLonLineEdit.setPlaceholderText("Minimale Länge")
+        coordLayout.addWidget(QLabel("Minimale Länge:"))
+        coordLayout.addWidget(self.minLonLineEdit)
 
         self.maxLatLineEdit = QLineEdit(self)
-        self.maxLatLineEdit.setPlaceholderText("Optional: Maximale Breite")
-        layout.addWidget(QLabel("Maximale Breite:"))
-        layout.addWidget(self.maxLatLineEdit)
+        self.maxLatLineEdit.setPlaceholderText("Maximale Breite")
+        coordLayout.addWidget(QLabel("Maximale Breite:"))
+        coordLayout.addWidget(self.maxLatLineEdit)
 
         self.maxLonLineEdit = QLineEdit(self)
-        self.maxLonLineEdit.setPlaceholderText("Optional: Maximale Länge")
-        layout.addWidget(QLabel("Maximale Länge:"))
-        layout.addWidget(self.maxLonLineEdit)
+        self.maxLonLineEdit.setPlaceholderText("Maximale Länge")
+        coordLayout.addWidget(QLabel("Maximale Länge:"))
+        coordLayout.addWidget(self.maxLonLineEdit)
+        layout.addWidget(self.coordWidget)
+
+        # Widgets für Koordinaten und Radius
+        # Koordinaten
+        self.coordRadiusWidget = QWidget(self)
+        coordRadiusLayout = QVBoxLayout(self.coordRadiusWidget)
+        self.centerLatLineEdit = QLineEdit(self)
+        self.centerLatLineEdit.setPlaceholderText("Breite")
+        coordRadiusLayout.addWidget(QLabel("Minimale Breite:"))
+        coordRadiusLayout.addWidget(self.centerLatLineEdit)
+
+        self.centerLonLineEdit = QLineEdit(self)
+        self.centerLonLineEdit.setPlaceholderText("Minimale Länge")
+        coordRadiusLayout.addWidget(QLabel("Minimale Länge:"))
+        coordRadiusLayout.addWidget(self.centerLonLineEdit)
+
+        # Radius
+        self.radiusLineEdit = QLineEdit(self)
+        self.radiusLineEdit.setPlaceholderText("Radius in Metern")
+        coordRadiusLayout.addWidget(QLabel("Radius in Metern:"))
+        coordRadiusLayout.addWidget(self.radiusLineEdit)
+        layout.addWidget(self.coordRadiusWidget)
+
+        # Widget für Adressen aus CSV
+        self.csvWidget = QWidget(self)
+        csvLayout = QVBoxLayout(self.csvWidget)
+        self.addressCsvLineEdit, self.addressCsvButton = self.createFileInput("geocoding/")
+        csvLayout.addLayout(self.createFileInputLayout(self.addressCsvLineEdit, self.addressCsvButton))
+        layout.addWidget(self.csvWidget)
 
         # Abfrage-Button
         self.queryButton = QPushButton("Abfrage starten", self)
@@ -333,31 +372,104 @@ class OSMBuildingQueryDialog(QDialog):
         self.cancelButton.clicked.connect(self.reject)
         layout.addWidget(self.cancelButton)
 
+        # Verbinden Sie das Dropdown mit der Anzeige der entsprechenden Filteroptionen
+        self.filterComboBox.currentIndexChanged.connect(self.showSelectedFilter)
+
+        # Zu Beginn nur Standardmethode anzeigen
+        self.showSelectedFilter()
+
+    def createFileInput(self, default_path):
+        lineEdit = QLineEdit(default_path)
+        button = QPushButton("Durchsuchen")
+        button.clicked.connect(lambda: self.selectFile(lineEdit))
+        return lineEdit, button
+
+    def selectFile(self, lineEdit):
+        filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", "", "All Files (*)")
+        if filename:
+            lineEdit.setText(filename)
+
+    def createFileInputLayout(self, lineEdit, button):
+        layout = QHBoxLayout()
+        layout.addWidget(lineEdit)
+        layout.addWidget(button)
+        return layout
+
+    def showSelectedFilter(self):
+        selected_filter = self.filterComboBox.currentText()
+        self.coordWidget.setVisible(selected_filter == "Filtern mit Koordinatenbereich")
+        self.coordRadiusWidget.setVisible(selected_filter == "Filtern mit zentralen Koordinaten und Radius als Abstand")
+        self.csvWidget.setVisible(selected_filter == "Filtern mit Adressen aus CSV")
+
+    def haversine(self, lat1, lon1, lat2, lon2):
+        # Radius der Erde in Metern
+        earth_radius = 6371000.0
+
+        # Umrechnung von Grad in Radian
+        lat1, lon1, lat2, lon2 = map(radians, [float(lat1), float(lon1), float(lat2), float(lon2)])
+
+        # Deltas der Koordinaten
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+
+        # Haversine-Formel
+        a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
+        c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        distance = earth_radius * c
+
+        return distance
+
     def startQuery(self):
-        #postal_code = self.postalCodeLineEdit.text()
         city_name = self.cityLineEdit.text()
         filename = self.filenameLineEdit.text()
+        selected_filter = self.filterComboBox.currentText()
+
         if city_name and filename:
             # Führen Sie hier Ihre Abfrage-Logik durch
             tags = {"building": "yes"}  # oder andere Tags
             query = build_query(city_name, tags, element_type="building")
             geojson_data = download_data(query, element_type="building")
 
-            min_lat = self.minLatLineEdit.text() #51.054091
-            min_lon = self.minLonLineEdit.text() #14.549694
-            max_lat = self.maxLatLineEdit.text() #51.070836
-            max_lon = self.maxLonLineEdit.text() #14.589713
+            if selected_filter == "Filtern mit Koordinatenbereich":
+                min_lat = self.minLatLineEdit.text()
+                min_lon = self.minLonLineEdit.text()
+                max_lat = self.maxLatLineEdit.text()
+                max_lon = self.maxLonLineEdit.text()
 
-            if min_lat and min_lon and max_lat and max_lon:
-                geojson_data = self.filter_geojson_data(geojson_data, min_lat, min_lon, max_lat, max_lon)
+                if min_lat and min_lon and max_lat and max_lon:
+                    geojson_data = self.filter_geojson_data(geojson_data, min_lat, min_lon, max_lat, max_lon)
 
+            elif selected_filter == "Filtern mit zentralen Koordinaten und Radius als Abstand":
+                center_lat = float(self.centerLatLineEdit.text())
+                center_lon = float(self.centerLonLineEdit.text())
+                radius = float(self.radiusLineEdit.text())
+
+                if center_lat and center_lon and radius:
+                    gdf = gpd.GeoDataFrame.from_features(geojson_data['features'])
+                    gdf['distance'] = gdf.apply(lambda row: self.haversine(center_lat, center_lon, row['geometry'].centroid.y, row['geometry'].centroid.x), axis=1)
+                    gdf = gdf[gdf['distance'] <= radius]
+                    geojson_data = json.loads(gdf.to_json())
+
+            elif selected_filter == "Filtern mit Adressen aus CSV":
+                address_csv_file = self.addressCsvLineEdit.text()
+
+                if address_csv_file:
+                    gdf = gpd.GeoDataFrame.from_features(geojson_data['features'])
+                    csv_df = pd.read_csv(address_csv_file, sep=';')
+                    addresses_from_csv = csv_df['Adresse'].tolist()
+                    gdf['full_address'] = gdf['addr:street'] + ' ' + gdf['addr:housenumber']
+                    gdf = gdf[gdf['full_address'].isin(addresses_from_csv)]
+                    geojson_data = json.loads(gdf.to_json())
+
+            # Speichern und Benachrichtigung wie zuvor
             save_to_file(geojson_data, filename)
             QMessageBox.information(self, "Erfolg", f"Abfrageergebnisse gespeichert in {filename}")
-            
+
             # Rufen Sie die loadNetData-Methode des Haupt-Tabs auf
             self.parent().loadNetData(filename)
         else:
-            QMessageBox.warning(self, "Warnung", "Bitte geben Sie Postleitzahl, Stadtname und Ausgabedatei an.")
+            QMessageBox.warning(self, "Warnung", "Bitte geben Sie Stadtname und Ausgabedatei an.")
+
 
     def filter_geojson_data(self, geojson_data, min_lat, min_lon, max_lat, max_lon):
         min_lat, min_lon, max_lat, max_lon = map(float, [min_lat, min_lon, max_lat, max_lon])
