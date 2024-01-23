@@ -17,7 +17,7 @@ Versuchen Sie nach dem Neustart die Installation von hdbscan erneut mit dem Befe
 
 pip install hdbscan"""
 
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, shape
 from shapely.ops import unary_union
 from geopandas.tools import overlay
 import matplotlib.pyplot as plt
@@ -27,10 +27,7 @@ import matplotlib.pyplot as plt
 # Gebäude über dem Wasserstoff-Schwellwert erhalten eine Wasserstoffversorgung,
 # alle anderen erhalten eine Einzelversorgungslösung.
 
-schwellwert_waermenetz = 90  # kWh/m²*a Beispielwert für Wärmenetz
-schwellwert_wasserstoff = 60  # kW/m²*a Beispielwert für Wasserstoff
-
-def versorgungsgebiet_bestimmen(flaechenspezifischer_waermebedarf):
+def versorgungsgebiet_bestimmen(flaechenspezifischer_waermebedarf, schwellwert_waermenetz, schwellwert_wasserstoff):
     if flaechenspezifischer_waermebedarf > schwellwert_waermenetz:
         return 'Wärmenetzversorgung'
     elif flaechenspezifischer_waermebedarf > schwellwert_wasserstoff:
@@ -38,7 +35,7 @@ def versorgungsgebiet_bestimmen(flaechenspezifischer_waermebedarf):
     else:
         return 'Einzelversorgungslösung'
 
-def clustering_quartiere_hdbscan(gdf, buffer_size=10):
+def clustering_quartiere_hdbscan(gdf, buffer_size=10, min_cluster_size=30, min_samples=1, schwellwert_waermenetz=90, schwellwert_wasserstoff=60):
     # Pufferzone um jedes Gebäude hinzufügen
     gdf['buffered_geometry'] = gdf.geometry.buffer(buffer_size)
 
@@ -46,7 +43,7 @@ def clustering_quartiere_hdbscan(gdf, buffer_size=10):
     coords = np.array(list(zip(gdf['buffered_geometry'].centroid.x, gdf['buffered_geometry'].centroid.y)))
 
     # HDBSCAN-Algorithmus zum Clustern der Koordinaten anwenden
-    clusterer = hdbscan.HDBSCAN(min_cluster_size=30, min_samples=1, gen_min_span_tree=True)
+    clusterer = hdbscan.HDBSCAN(min_cluster_size=min_cluster_size, min_samples=min_samples, gen_min_span_tree=True)
     cluster_labels = clusterer.fit_predict(coords)
 
     # Hinzufügen der Cluster-Labels zum GeoDataFrame
@@ -57,6 +54,12 @@ def clustering_quartiere_hdbscan(gdf, buffer_size=10):
 
     # Gruppieren der Gebäude in Cluster und Erstellen von Polygonen für jedes Cluster
     # Verwenden Sie eine angepasste Aggregationsfunktion für die Geometriedaten
+    for index, row in gdf.iterrows():
+        geom = shape(row['geometry'])
+        if not geom.is_valid:
+            # Wenn die Geometrie ungültig ist, können Sie sie reparieren oder entfernen
+            # Hier verwenden wir `buffer(0)` zur Fehlerbehebung, um ungültige Geometrien zu entfernen
+            gdf.at[index, 'geometry'] = geom.buffer(0)
     quartiere = gdf.dissolve(by='quartier_label', aggfunc={'buffered_geometry': lambda x: x.unary_union.convex_hull})
 
     # Definieren der Quartiersgrenzen mit konvexen Hüllen
@@ -68,13 +71,11 @@ def clustering_quartiere_hdbscan(gdf, buffer_size=10):
     quartiere['flaechenspezifischer_waermebedarf'] = quartiere['gesamtwaermebedarf'] / quartiere['flaeche']
 
     # Versorgungsgebiet auf Basis des flächenspezifischen Wärmebedarfs zuweisen
-    quartiere['Versorgungsgebiet'] = quartiere['flaechenspezifischer_waermebedarf'].apply(versorgungsgebiet_bestimmen)
+    quartiere['Versorgungsgebiet'] = quartiere.apply(lambda row: versorgungsgebiet_bestimmen(row['flaechenspezifischer_waermebedarf'], schwellwert_waermenetz, schwellwert_wasserstoff), axis=1)
 
     # Löschen aller unnötigen Spalten, behalten nur die relevanten
     quartiere = quartiere[['geometry', 'gesamtwaermebedarf', 'flaeche', 'flaechenspezifischer_waermebedarf', 'Versorgungsgebiet']]
-
-    # Ergebnis als GeoJSON-Datei exportieren
-    quartiere.to_file('quartiere_hdbscan.geojson', driver='GeoJSON')
+    quartiere = quartiere.reset_index()
 
     return quartiere
 
@@ -86,7 +87,7 @@ def postprocessing_hdbscan(quartiere):
     overlapping_exists = True
     while overlapping_exists:
         # Erstellen Sie eine Kopie für das Postprocessing
-        quartiere_postprocessed = quartiere
+        quartiere_postprocessed = quartiere.copy()
         quartiere_postprocessed = quartiere_postprocessed.drop_duplicates(subset=['quartier_label'])
         quartiere_postprocessed = quartiere_postprocessed.dropna(subset=['Versorgungsgebiet'])
         
@@ -126,18 +127,14 @@ def postprocessing_hdbscan(quartiere):
     # Reset Index außerhalb der Schleife
     quartiere_postprocessed.reset_index(drop=True, inplace=True)
 
-    # Speichern der postprozessierten Daten
-    quartiere_postprocessed.to_file('quartiere_nach_postprocessing.geojson', driver='GeoJSON')
-
     return quartiere_postprocessed
 
 def allocate_overlapping_area(quartiere):
     # Spatial Join für sich überschneidende Polygone
     overlapping = gpd.sjoin(quartiere, quartiere, how='inner', predicate='intersects')
-    print(overlapping)
+
     # Filtere nur Paare mit unterschiedlichen Versorgungsarten
     different_supply = overlapping[overlapping['Versorgungsgebiet_left'] != overlapping['Versorgungsgebiet_right']]
-    print(different_supply)
 
     for idx, row in different_supply.iterrows():
         idx_left = row['quartier_label_left']
@@ -175,17 +172,40 @@ def allocate_overlapping_area(quartiere):
 
 ### Ausführen ###
 
-# Laden Sie Ihren GeoJSON-Datensatz
-gdf = gpd.read_file('C:/Users/username/heating_network_generation/net_generation_QGIS/Gebäude Zittau gefiltert berechnet.geojson')
+def run_here():
+    # Laden Sie Ihren GeoJSON-Datensatz
+    gdf = gpd.read_file('C:/Users/username/heating_network_generation/osm_data/output_buildings.geojson', driver='GeoJSON').to_crs(epsg=25833)
 
-clustering_quartiere_hdbscan(gdf)
+    def calculate_building_data(gdf, output_filename):
+            # Berechnen der Fläche jedes Gebäudes in Quadratmetern
+            gdf['area_sqm'] = gdf['geometry'].area
+            # Hinzufügen der Spalte für spezifischen Wärmebedarf mit Zufallszahlen zwischen 50 und 200
+            gdf['spez. Wärmebedarf [kWh/m²*a]'] = np.random.uniform(50, 200, gdf.shape[0])
+            # Hinzufügen der Spalte für die Anzahl der Geschosse (konstanter Wert 3)
+            gdf['Anzahl Geschosse'] = 3
+            # Berechnen des Jahreswärmebedarfs
+            gdf['Jahreswärmebedarf [kWh/a]'] = gdf['spez. Wärmebedarf [kWh/m²*a]'] * gdf['Anzahl Geschosse'] * gdf['area_sqm']
+            # Speichern des erweiterten GeoDataFrame in eine neue GeoJSON-Datei
+            gdf.to_file(output_filename, driver='GeoJSON')
 
-# Laden der GeoJSON-Daten
-quartiere = gpd.read_file('quartiere_hdbscan.geojson')
+            return gdf
 
-# Füge Quartiere gleicher Versorgungsart zusammen
-quartiere_joined = postprocessing_hdbscan(quartiere)
+    gdf = calculate_building_data(gdf, 'C:/Users/username/heating_network_generation/osm_data/output_buildings.geojson')
 
-# allocate_overlapping_area-Ansatz anwenden
-quartiere_overlayed = allocate_overlapping_area(quartiere_joined)
-quartiere_overlayed.to_file('quartiere_allocate_overlapping_area.geojson', driver='GeoJSON')
+    quartiere = clustering_quartiere_hdbscan(gdf)
+    #Ergebnis als GeoJSON-Datei exportieren
+    quartiere.to_file('C:/Users/username/heating_network_generation/osm_data/quartiere_hdbscan.geojson', driver='GeoJSON')
+
+    # Laden der GeoJSON-Daten
+    #quartiere = gpd.read_file('C:/Users/username/heating_network_generation/osm_data/quartiere_hdbscan.geojson', driver='GeoJSON')
+
+    # Füge Quartiere gleicher Versorgungsart zusammen
+    quartiere_joined = postprocessing_hdbscan(quartiere)
+    # Speichern der postprozessierten Daten
+    quartiere_joined.to_file('quartiere_postprocessed.geojson', driver='GeoJSON')
+
+    # allocate_overlapping_area-Ansatz anwenden
+    quartiere_overlayed = allocate_overlapping_area(quartiere_joined)
+    quartiere_overlayed.to_file('C:/Users/username/heating_network_generation/osm_data/quartiere_allocated.geojson', driver='GeoJSON')
+
+#run_here()

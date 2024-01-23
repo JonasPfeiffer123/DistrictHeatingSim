@@ -6,8 +6,12 @@ from gui.threads import GeocodingThread
 from geocoding.geocodingETRS89 import get_coordinates, process_data
 import geopandas as gpd
 import pandas as pd
+import numpy as np
 import json
+import csv
 from math import radians, sin, cos, sqrt, atan2
+
+from net_generation_QGIS.Wärmeversorgungsgebiete import clustering_quartiere_hdbscan, postprocessing_hdbscan, allocate_overlapping_area
    
 class LayerGenerationDialog(QDialog):
     def __init__(self, parent=None):
@@ -20,9 +24,12 @@ class LayerGenerationDialog(QDialog):
         # Formularlayout für Eingaben
         formLayout = QFormLayout()
 
+        self.fileInput, self.fileButton = self.createFileInput("osm_data/Straßen Zittau.geojson")
         # Eingabefelder für Dateipfade und Koordinaten
-        self.streetLayerInput, self.streetLayerButton = self.createFileInput("net_generation_QGIS/Straßen Zittau.geojson")
-        self.dataCsvInput, self.dataCsvButton = self.createFileInput("geocoding/data_output_zi_ETRS89.csv")
+        self.dataTypeComboBox = QComboBox(self)
+        self.dataTypeComboBox.addItems(["CSV", "GeoJSON"])
+        self.dataTypeComboBox.currentIndexChanged.connect(self.toggleFileInputMode)
+        self.dataInput, self.dataCsvButton = self.createFileInput("geocoding/data_output_zi_ETRS89.csv")
 
         # Auswahlmodus für Erzeugerstandort
         self.locationModeComboBox = QComboBox(self)
@@ -43,7 +50,7 @@ class LayerGenerationDialog(QDialog):
         self.streetInput = QLineEdit(self)
         self.streetInput.setPlaceholderText("Straße und Hausnummer")
         self.streetInput.setEnabled(False)
-        self.coordsCsvInput, self.coordsCsvButton = self.createFileInput("Pfad/zu/Koordinaten.csv")
+        self.coordsCsvInput, self.coordsCsvButton = self.createFileInput("geocoding/data_output_zi_ETRS89.csv")
         self.coordsCsvInput.setEnabled(False)
         self.coordsCsvButton.setEnabled(False)
 
@@ -51,13 +58,19 @@ class LayerGenerationDialog(QDialog):
         self.geocodeButton = QPushButton("Adresse geocodieren", self)
         self.geocodeButton.clicked.connect(self.geocodeAddress)
         self.geocodeButton.setEnabled(False)
-        self.loadCoordsButton = QPushButton("Koordinaten aus csv laden", self)
+
+        self.loadCoordsButton = QPushButton("Erzeugerkoordinaten aus CSV laden", self)
         self.loadCoordsButton.clicked.connect(self.loadCoordsFromCSV)
         self.loadCoordsButton.setEnabled(False)
 
+        self.loadgeojsonCoordsButton = QPushButton("Gebäudekoordinaten aus geojson laden", self)
+        self.loadgeojsonCoordsButton.clicked.connect(self.createCsvFromGeoJson)
+
         # Hinzufügen von Widgets zum Formularlayout
-        formLayout.addRow("GeoJSON-Straßen-Layer:", self.createFileInputLayout(self.streetLayerInput, self.streetLayerButton))
-        formLayout.addRow("CSV mit Gebäudestandorten:", self.createFileInputLayout(self.dataCsvInput, self.dataCsvButton))
+        formLayout.addRow("GeoJSON-Straßen-Layer:", self.createFileInputLayout(self.fileInput, self.fileButton))
+        formLayout.addRow("Dateityp Gebäudestandorte:", self.dataTypeComboBox)
+        formLayout.addRow("Datei Gebäudestandorte:", self.createFileInputLayout(self.dataInput, self.dataCsvButton))
+        formLayout.addRow(self.loadgeojsonCoordsButton)
         formLayout.addRow("Modus für Erzeugerstandort:", self.locationModeComboBox)
         formLayout.addRow("X-Koordinate Erzeugerstandort:", self.xCoordInput)
         formLayout.addRow("Y-Koordinate Erzeugerstandort:", self.yCoordInput)
@@ -81,6 +94,13 @@ class LayerGenerationDialog(QDialog):
         layout.addWidget(self.cancelButton)
 
         self.setLayout(layout)
+
+    def toggleFileInputMode(self, index):
+        self.loadgeojsonCoordsButton.setEnabled(index == 1)
+        if index == 0:
+            self.dataInput.setText("geocoding/data_output_zi_ETRS89.csv")
+        elif index == 1:
+            self.dataInput.setText("osm_data/waermenetz_buildings.geojson")
 
     def toggleLocationInputMode(self, index):
         self.xCoordInput.setEnabled(index == 0)
@@ -135,10 +155,80 @@ class LayerGenerationDialog(QDialog):
         layout.addWidget(button)
         return layout
 
+    def createCsvFromGeoJson(self):
+        try:
+            geojson_file = self.dataInput.text()
+            csv_file = "geocoding/generated_building_data.csv"
+            with open(geojson_file, 'r') as geojson_file:
+                data = json.load(geojson_file)
+            
+            with open(csv_file, 'w', encoding='utf-8', newline='') as csvfile:
+                fieldnames = ["Land", "Bundesland", "Stadt", "Adresse", "Wärmebedarf", "UTM_X", "UTM_Y"]
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter=";")
+                writer.writeheader()
+
+                for feature in data['features']:
+                    if feature['geometry']['type'] == 'MultiPolygon':
+                        for polygon_coords in feature['geometry']['coordinates']:
+                            centroid = self.calculateCentroid(polygon_coords)
+                            writer.writerow({
+                                "Land": "",
+                                "Bundesland": "",
+                                "Stadt": "",
+                                "Adresse": "",
+                                "Wärmebedarf": "",
+                                "UTM_X": centroid[0],
+                                "UTM_Y": centroid[1]
+                            })
+                    elif feature['geometry']['type'] == 'Polygon':
+                        centroid = self.calculateCentroid(feature['geometry']['coordinates'])
+                        writer.writerow({
+                            "Land": "",
+                            "Bundesland": "",
+                            "Stadt": "",
+                            "Adresse": "",
+                            "Wärmebedarf": "",
+                            "UTM_X": centroid[0],
+                            "UTM_Y": centroid[1]
+                        })
+            
+            self.dataInput.setText(csv_file)
+
+            data_df = pd.read_csv(csv_file, sep=';')
+
+            QMessageBox.information(self, "Info", "CSV-Datei wurde erfolgreich erstellt.")
+        except Exception as e:
+            QMessageBox.critical(self, "Fehler", f"Ein Fehler ist aufgetreten: {str(e)}")
+
+    def calculateCentroid(self, coordinates):
+        x_sum = 0
+        y_sum = 0
+        total_points = 0
+
+        if isinstance(coordinates[0], float):
+            x_sum += coordinates[0]
+            y_sum += coordinates[1]
+            total_points += 1
+        else:
+            for item in coordinates:
+                x, y = self.calculateCentroid(item)
+                if x is not None and y is not None:
+                    x_sum += x
+                    y_sum += y
+                    total_points += 1
+
+        if total_points > 0:
+            centroid_x = x_sum / total_points
+            centroid_y = y_sum / total_points
+            return centroid_x, centroid_y
+        else:
+            return None, None
+
+    
     def getInputs(self):
         return {
-            "streetLayer": self.streetLayerInput.text(),
-            "dataCsv": self.dataCsvInput.text(),
+            "streetLayer": self.fileInput.text(),
+            "dataCsv": self.dataInput.text(),
             "xCoord": self.xCoordInput.text(),
             "yCoord": self.yCoordInput.text()
         }
@@ -152,7 +242,10 @@ class DownloadOSMDataDialog(QDialog):
             {"highway": "primary"},
             {"highway": "secondary"},
             {"highway": "tertiary"},
-            {"highway": "residential"}
+            {"highway": "residential"},
+            {"highway": "living_street"},
+            {"highway": "motorway"},
+            {"highway": "road"}
         ]
         self.initUI()
 
@@ -272,6 +365,8 @@ class DownloadOSMDataDialog(QDialog):
         geojson_data = download_data(query, element_type="way")
         # Speichere die Daten als GeoJSON
         save_to_file(geojson_data, self.filename)
+        gdf = gpd.read_file(self.filename, driver='GeoJSON').to_crs(epsg=25833)
+        gdf.to_file(self.filename, driver='GeoJSON')
 
         QMessageBox.information(self, "Erfolg", f"Abfrageergebnisse gespeichert in {self.filename}")
             
@@ -500,6 +595,114 @@ class OSMBuildingQueryDialog(QDialog):
             "features": filtered_features
         }
         return filtered_geojson
+
+class SpatialAnalysisDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.initUI()
+
+    def initUI(self):
+        layout = QVBoxLayout(self)
+        self.setWindowTitle("Räumliche Analyse")
+
+        # Gebäude-geojson
+        self.geojsonWidget = QWidget(self)
+        geojsonLayout = QVBoxLayout(self.geojsonWidget)
+        self.geojsonLineEdit, self.geojsonButton = self.createFileInput("osm_data/output_buildings.geojson")
+        geojsonLayout.addLayout(self.createFileInputLayout(self.geojsonLineEdit, self.geojsonButton))
+        layout.addWidget(self.geojsonWidget)
+
+        # Quartier-geojson
+        self.geojsonareaWidget = QWidget(self)
+        geojsonareaLayout = QVBoxLayout(self.geojsonareaWidget)
+        self.geojsonareaLineEdit, self.geojsonareaButton = self.createFileInput("osm_data/quartiere.geojson")
+        geojsonareaLayout.addLayout(self.createFileInputLayout(self.geojsonareaLineEdit, self.geojsonareaButton))
+        layout.addWidget(self.geojsonareaWidget)
+
+        # Wärmenetzgebiet-Gebäude-geojson
+        self.geojsonfilteredbuildingsWidget = QWidget(self)
+        geojsonfilteredbuildingsLayout = QVBoxLayout(self.geojsonfilteredbuildingsWidget)
+        self.geojsonfilteredbuildingsLineEdit, self.geojsonfilteredbuildingsButton = self.createFileInput("osm_data/waermenetz_buildings.geojson")
+        geojsonfilteredbuildingsLayout.addLayout(self.createFileInputLayout(self.geojsonfilteredbuildingsLineEdit, self.geojsonfilteredbuildingsButton))
+        layout.addWidget(self.geojsonfilteredbuildingsWidget)
+
+        # Abfrage-Button
+        self.queryButton = QPushButton("Berechnung Starten", self)
+        self.queryButton.clicked.connect(self.calculate)
+        layout.addWidget(self.queryButton)
+
+        # OK und Abbrechen Buttons
+        self.okButton = QPushButton("OK", self)
+        self.okButton.clicked.connect(self.accept)
+        layout.addWidget(self.okButton)
+        self.cancelButton = QPushButton("Abbrechen", self)
+        self.cancelButton.clicked.connect(self.reject)
+        layout.addWidget(self.cancelButton)
+
+
+    def createFileInput(self, default_path):
+        lineEdit = QLineEdit(default_path)
+        button = QPushButton("Durchsuchen")
+        button.clicked.connect(lambda: self.selectFile(lineEdit))
+        return lineEdit, button
+
+    def selectFile(self, lineEdit):
+        filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", "", "All Files (*)")
+        if filename:
+            lineEdit.setText(filename)
+
+    def createFileInputLayout(self, lineEdit, button):
+        layout = QHBoxLayout()
+        layout.addWidget(lineEdit)
+        layout.addWidget(button)
+        return layout
+
+    def calculate_building_data(self, gdf, output_filename):
+        # Berechnen der Fläche jedes Gebäudes in Quadratmetern
+        gdf['area_sqm'] = gdf['geometry'].area
+        # Hinzufügen der Spalte für spezifischen Wärmebedarf mit Zufallszahlen zwischen 50 und 200
+        gdf['spez. Wärmebedarf [kWh/m²*a]'] = np.random.uniform(50, 200, gdf.shape[0])
+        # Hinzufügen der Spalte für die Anzahl der Geschosse (konstanter Wert 3)
+        gdf['Anzahl Geschosse'] = 3
+        # Berechnen des Jahreswärmebedarfs
+        gdf['Jahreswärmebedarf [kWh/a]'] = gdf['spez. Wärmebedarf [kWh/m²*a]'] * gdf['Anzahl Geschosse'] * gdf['area_sqm']
+        # Speichern des erweiterten GeoDataFrame in eine neue GeoJSON-Datei
+        gdf.to_file(output_filename, driver='GeoJSON')
+
+        return gdf
+
+    def calculate(self):
+        geojson_file_buildings = self.geojsonLineEdit.text()
+        geojson_file_areas = self.geojsonareaLineEdit.text()
+        geojson_file_filtered_buildings = self.geojsonfilteredbuildingsLineEdit.text()
+        gdf = gpd.read_file(geojson_file_buildings, driver='GeoJSON').to_crs(epsg=25833)
+        ignore_types = ['ruins', 'greenhouse', 'shed', 'silo', 'slurry_tank', 
+                    'toilets', 'hut', 'cabin', 'ger', 'static_caravan', 
+                    'construction', 'cowshed', 'garage', 'garages', 'carport',
+                    'farm_auxiliary', 'roof', 'digester']
+
+        # Filtere Gebäude heraus, die ignorierten Typen entsprechen
+        gdf = gdf[~gdf['building'].isin(ignore_types)]
+
+        gdf = self.calculate_building_data(gdf, geojson_file_buildings)
+        
+        quartiere = clustering_quartiere_hdbscan(gdf)
+        quartiere = postprocessing_hdbscan(quartiere)
+        quartiere = allocate_overlapping_area(quartiere)
+        quartiere.to_file(geojson_file_areas, driver='GeoJSON')
+
+        # Filtern und speichern Sie Gebäude in Clustern mit der Versorgungsart "Wärmenetzversorgung"
+        waermenetz_buildings = gdf[gdf['quartier_label'].isin(quartiere[quartiere['Versorgungsgebiet'] == 'Wärmenetzversorgung'].index)]
+
+        # Lassen Sie nur die benötigte Geometriespalte (z.B. 'geometry') in waermenetz_buildings
+        waermenetz_buildings = waermenetz_buildings[['geometry']]
+
+        # Speichern Sie die gefilterten Gebäude in eine separate GeoJSON-Datei
+        waermenetz_buildings.to_file(geojson_file_filtered_buildings, driver='GeoJSON')
+
+        # Rufen Sie die loadNetData-Methode des Haupt-Tabs auf
+        self.parent().loadNetData(geojson_file_filtered_buildings)
+        self.parent().loadNetData(geojson_file_areas)
 
 class GeocodeAdressesDialog(QDialog):
     def __init__(self, parent=None):

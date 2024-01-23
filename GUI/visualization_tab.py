@@ -14,7 +14,7 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 import folium
 
-from gui.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog, GeocodeAdressesDialog
+from gui.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog, SpatialAnalysisDialog, GeocodeAdressesDialog
 from gui.threads import NetGenerationThread, FileImportThread
 
 class VisualizationTab(QWidget):
@@ -56,6 +56,10 @@ class VisualizationTab(QWidget):
         osmBuildingAction = QAction('OSM Gebäudeabfrage', self)
         osmBuildingAction.triggered.connect(self.openOSMBuildingQueryDialog)
         fileMenu.addAction(osmBuildingAction)
+
+        spatialAnalysisAction = QAction('Raumanalyse', self)
+        spatialAnalysisAction.triggered.connect(self.openspatialAnalysisDialog)
+        fileMenu.addAction(spatialAnalysisAction)
 
         downloadAction = QAction('Wärmenetz aus Daten generieren', self)
         downloadAction.triggered.connect(self.openLayerGenerationDialog)
@@ -105,6 +109,12 @@ class VisualizationTab(QWidget):
 
     def openOSMBuildingQueryDialog(self):
         dialog = OSMBuildingQueryDialog(self)
+        if dialog.exec_() == QDialog.Accepted:
+            # Hier könnten Sie die Daten aus dem Dialog verarbeiten
+            pass
+
+    def openspatialAnalysisDialog(self):
+        dialog = SpatialAnalysisDialog(self)
         if dialog.exec_() == QDialog.Accepted:
             # Hier könnten Sie die Daten aus dem Dialog verarbeiten
             pass
