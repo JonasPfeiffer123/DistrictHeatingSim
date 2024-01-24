@@ -36,13 +36,11 @@ def get_all_point_coords_from_line_cords(all_line_coords):
 
 def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w, return_temperature=60, supply_temperature=85, flow_pressure_pump=4, lift_pressure_pump=1.5, 
                    diameter_mm=107.1, pipetype="KMR 100/250-2v", k=0.0470, alpha=0.61, pipe_creation_mode="type"):
-    initial_mdot_guess_kg_s = qext_w / (4170*(supply_temperature-return_temperature))#
-    print(initial_mdot_guess_kg_s)
+    initial_mdot_guess_kg_s = qext_w / (4170*(supply_temperature-return_temperature))
     initial_Vdot_guess_m3_s = initial_mdot_guess_kg_s/1000
-    v_max_m_s = 1.9
+    v_max_m_s = 1.7
     area_m2 = initial_Vdot_guess_m3_s/v_max_m_s
     initial_dimension_guess_m = np.sqrt(area_m2 *(4/np.pi))
-    print(initial_dimension_guess_m)
 
     def create_junctions_from_coords(net_i, all_coords):
         junction_dict = {}

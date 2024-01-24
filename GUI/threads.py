@@ -9,7 +9,7 @@ from main import import_TRY
 
 from net_generation.import_and_create_layers import generate_and_export_layers
 
-from net_simulation_pandapipes.net_simulation import initialize_net_geojson, generate_profiles_from_geojson, thermohydraulic_time_series_net_calculation, import_results_csv
+from net_simulation_pandapipes.net_simulation import initialize_net_geojson, generate_profiles_from_geojson, thermohydraulic_time_series_net, import_results_csv
 from net_simulation_pandapipes.stanet_import_pandapipes import create_net_from_stanet_csv
 
 #from heat_generators.heat_generator_classes import Berechnung_Erzeugermix, optimize_mix
@@ -82,17 +82,19 @@ class NetCalculationThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(str)
 
-    def __init__(self, net, yearly_time_steps, waerme_ges_W, calc1, calc2):
+    def __init__(self, net, yearly_time_steps, waerme_ges_W, calc1, calc2, supply_temperature, return_temperature=60):
         super().__init__()
         self.net = net
         self.yearly_time_steps = yearly_time_steps
         self.waerme_ges_W = waerme_ges_W
         self.calc1 = calc1
         self.calc2 = calc2
+        self.supply_temperature = supply_temperature
+        self.return_temperature = return_temperature
 
     def run(self):
         try:
-            self.time_steps, self.net, self.net_results = thermohydraulic_time_series_net_calculation(self.net, self.yearly_time_steps, self.waerme_ges_W, self.calc1, self.calc2)
+            self.time_steps, self.net, self.net_results = thermohydraulic_time_series_net(self.net, self.yearly_time_steps, self.waerme_ges_W, self.calc1, self.calc2, self.supply_temperature, self.return_temperature)
 
             self.calculation_done.emit((self.time_steps, self.net, self.net_results, self.waerme_ges_W))
         except Exception as e:

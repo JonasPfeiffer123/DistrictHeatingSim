@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, \
         QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction
 
 from main import calculate_results, save_results_csv
-from gui.calculation_dialogs import HeatDemandEditDialog, GeojsonDialog, StanetDialog
+from gui.calculation_dialogs import HeatDemandEditDialog, GeojsonDialog, StanetDialog, SaveLoadNetDialog
 from gui.threads import NetInitializationGEOJSONThread, NetInitializationSTANETThread, NetCalculationThread
 from net_simulation_pandapipes.net_test import config_plot
 from gui.checkable_combobox import CheckableComboBox
@@ -32,6 +32,7 @@ class CalculationTab(QWidget):
         self.initUI()
 
         self.net_data = None  # Variable zum Speichern der Netzdaten
+        self.supply_temperature = None # Variable Vorlauftemperatur
 
     def updateFilePaths(self, layerNames):
         for key, path in layerNames.items():
@@ -50,8 +51,10 @@ class CalculationTab(QWidget):
         # Unterpunkte für geojson und Stanet
         geojsonAction = QAction('Netz aus geojson generieren', self)
         stanetAction = QAction('Netz aus Stanet-CSV generieren', self)
+        loadsaveppnetAction = QAction('Import/Export Pandapipes Netz', self)
         networkMenu.addAction(geojsonAction)
         networkMenu.addAction(stanetAction)
+        networkMenu.addAction(loadsaveppnetAction)
 
         # Fügen Sie die Menüleiste dem Layout von tab1 hinzu
         self.container_layout.addWidget(self.menubar)
@@ -59,6 +62,7 @@ class CalculationTab(QWidget):
         # Verbindungen zu den Funktionen
         geojsonAction.triggered.connect(self.openGeojsonDialog)
         stanetAction.triggered.connect(self.openStanetDialog)
+        loadsaveppnetAction.triggered.connect(self.openLoadSavePpNetDialog)
 
     def initUI(self):
         # Erstellen eines Scrollbereichs
@@ -125,6 +129,10 @@ class CalculationTab(QWidget):
     def openStanetDialog(self):
         dialog = StanetDialog(self.create_and_initialize_net_stanet, self)
         dialog.exec_()
+
+    def openLoadSavePpNetDialog(self):
+        save_load_dialog = SaveLoadNetDialog(self.net_data)
+        save_load_dialog.exec_()
 
     def editHeatDemandData(self, hastInput):
         try:
@@ -255,15 +263,20 @@ class CalculationTab(QWidget):
         if fname:  # Prüfen, ob ein Dateiname ausgewählt wurde
             inputWidget.setText(fname)
 
-    def create_and_initialize_net_geojson(self, vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temp, supply_temp, flow_pressure_pump, lift_pressure_pump):
-        gdf_vl = gpd.read_file(vorlauf)
-        gdf_rl = gpd.read_file(ruecklauf)
-        gdf_HAST = gpd.read_file(hast)
-        gdf_WEA = gpd.read_file(erzeugeranlagen)
+    def create_and_initialize_net_geojson(self, vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump):
+        self.supply_temperature = supply_temperature
+
+        if isinstance(supply_temperature, np.ndarray):
+            supply_temperature = float(np.max(supply_temperature))
+
+        gdf_vl = gpd.read_file(vorlauf, driver='GeoJSON')
+        gdf_rl = gpd.read_file(ruecklauf, driver='GeoJSON')
+        gdf_HAST = gpd.read_file(hast, driver='GeoJSON')
+        gdf_WEA = gpd.read_file(erzeugeranlagen, driver='GeoJSON')
 
         self.updateLabelsForCalcMethod(calc_method)
 
-        self.initializationgeojsonThread = NetInitializationGEOJSONThread(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, building_type, calc_method, return_temp, supply_temp, flow_pressure_pump, lift_pressure_pump)
+        self.initializationgeojsonThread = NetInitializationGEOJSONThread(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, building_type, calc_method, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump)
         self.initializationgeojsonThread.calculation_done.connect(self.on_initialization_done)
         self.initializationgeojsonThread.calculation_error.connect(self.on_simulation_error)
         self.initializationgeojsonThread.start()
@@ -282,11 +295,10 @@ class CalculationTab(QWidget):
         self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
 
         self.net, self.yearly_time_steps, self.waerme_ges_W = results
+        self.net_data = results
 
         self.waerme_ges_kW = np.where(self.waerme_ges_W == 0, 0, self.waerme_ges_W / 1000)
         self.plot(self.yearly_time_steps, self.waerme_ges_kW, self.net)
-
-        self.net_data = results
 
     def plot(self, time_steps, qext_kW, net):
         # Clear previous figure
@@ -343,7 +355,7 @@ class CalculationTab(QWidget):
             if self.calc1 is None or self.calc2 is None:  # Ungültige Eingaben wurden bereits in adjustTimeParameters behandelt
                 return
 
-            self.calculationThread = NetCalculationThread(self.net, self.yearly_time_steps, self.waerme_ges_W, self.calc1, self.calc2)
+            self.calculationThread = NetCalculationThread(self.net, self.yearly_time_steps, self.waerme_ges_W, self.calc1, self.calc2, self.supply_temperature)
             self.calculationThread.calculation_done.connect(self.on_simulation_done)
             self.calculationThread.calculation_error.connect(self.on_simulation_error)
             self.calculationThread.start()
