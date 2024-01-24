@@ -264,9 +264,8 @@ class CalculationTab(QWidget):
             inputWidget.setText(fname)
 
     def create_and_initialize_net_geojson(self, vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump):
-        self.supply_temperature = supply_temperature
-
         if isinstance(supply_temperature, np.ndarray):
+            self.supply_temperature = supply_temperature
             supply_temperature = float(np.max(supply_temperature))
 
         gdf_vl = gpd.read_file(vorlauf, driver='GeoJSON')

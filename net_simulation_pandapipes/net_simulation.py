@@ -128,21 +128,19 @@ def update_const_controls(net, qext_w_profiles, time_steps, start, end):
     for i, qext_w_profile in enumerate(qext_w_profiles):
         df = pd.DataFrame(index=time_steps, data={f'qext_w_{i}': qext_w_profile[start:end]})
         data_source = DFData(df)
-        for ctrl in net.controller.object.values():
+        for ctrl in net.controller.object.values:
             if isinstance(ctrl, ConstControl) and ctrl.element_index == i and ctrl.variable == 'qext_w':
                 ctrl.data_source = data_source
 
 def update_return_temperature_controller(net, temperature_target):
-    for ctrl in net.controller.object.values():
+    for ctrl in net.controller.object.values:
         if isinstance(ctrl, ReturnTemperatureController):
             ctrl.target_temperature = temperature_target
 
 def update_supply_temperature_controls(net, supply_temperature, time_steps, start, end):
-    df_supply_temp = pd.DataFrame(index=time_steps, data={'supply_temperature': supply_temperature[start:end]})
+    df_supply_temp = pd.DataFrame(index=time_steps, data={'supply_temperature': supply_temperature[start:end]+273.15})
     data_source_supply_temp = DFData(df_supply_temp)
-    for i, _ in enumerate(net.circ_pump_pressure):
-        ConstControl(net, element='circ_pump_pressure', variable='supply_temperature', element_index=i, data_source=data_source_supply_temp, profile_name=f'supply_temperature_{i}')
-
+    ConstControl(net, element='circ_pump_pressure', variable='t_flow_k', element_index=0, data_source=data_source_supply_temp, profile_name=f'supply_temperature')
 
 def create_log_variables():
     log_variables = [
@@ -161,9 +159,10 @@ def create_log_variables():
 
 def thermohydraulic_time_series_net(net, yearly_time_steps, qext_w_profiles, start, end, supply_temperature=None, target_temp=60):
     # Zeitreihenberechnung vorbereiten
-    time_steps = yearly_time_steps[start:end]
+    yearly_time_steps = yearly_time_steps[start:end]
 
     # Aktualisieren der ConstControl und ReturnTemperatureController
+    time_steps = range(0, len(qext_w_profiles[0][start:end]))
     update_const_controls(net, qext_w_profiles, time_steps, start, end)
     update_return_temperature_controller(net, target_temp)
 
@@ -174,9 +173,9 @@ def thermohydraulic_time_series_net(net, yearly_time_steps, qext_w_profiles, sta
     # Log-Variablen und Ausführen der Zeitreihenberechnung
     log_variables = create_log_variables()
     ow = OutputWriter(net, time_steps, output_path=None, log_variables=log_variables)
-    run_time_series.run_timeseries(net, time_steps)
+    run_time_series.run_timeseries(net, time_steps, mode="all")
 
-    return time_steps, net, ow.np_results
+    return yearly_time_steps, net, ow.np_results
 
 def calculate_results(net, net_results):
     ### Plotten Ergebnisse Pumpe / Einspeisung ###

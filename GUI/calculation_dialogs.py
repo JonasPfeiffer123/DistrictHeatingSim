@@ -229,16 +229,17 @@ class GeojsonDialog(QDialog):
             # Berechnung der Temperaturkurve basierend auf den ausgewählten Einstellungen
             temperature_curve = []
 
+            # Berechnen der Steigung der linearen Gleichung
+            slope = (max_supply_temperature - min_supply_temperature) / (min_air_temperature - max_air_temperature)
+
             for air_temperature in air_temperature_data:
-                if air_temperature < min_air_temperature:
+                if air_temperature <= min_air_temperature:
                     temperature_curve.append(max_supply_temperature)
-                elif air_temperature > max_air_temperature:
+                elif air_temperature >= max_air_temperature:
                     temperature_curve.append(min_supply_temperature)
                 else:
-                    # Lineare Anpassung zwischen min_supply_temperature und max_supply_temperature
-                    temperature_range = max_air_temperature - min_air_temperature
-                    temperature_ratio = (air_temperature - min_air_temperature) / temperature_range
-                    temperature = min_supply_temperature + temperature_ratio * (max_supply_temperature - min_supply_temperature)
+                    # Anwendung der linearen Gleichung für die Temperaturberechnung
+                    temperature = max_supply_temperature + slope * (air_temperature - min_air_temperature)
                     temperature_curve.append(temperature)
 
             return np.array(temperature_curve)
