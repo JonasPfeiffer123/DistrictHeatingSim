@@ -65,7 +65,7 @@ class NetInitializationThread(QThread):
         # Gemeinsame Schritte nach der Netzinitialisierung
         net = create_controllers(net, max_waerme_ges_W, self.return_temperature)
         net = correct_flow_directions(net)
-        net = init_timeseries_opt(net, max_waerme_ges_W, time_steps=3, target_temperature=60)
+        net = init_timeseries_opt(net, max_waerme_ges_W, target_temperature=self.return_temperature)
 
         if self.kwargs.get("import_type") == "GeoJSON":
             if self.pipe_creation_mode == "diameter":
@@ -88,7 +88,7 @@ class NetCalculationThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(str)
 
-    def __init__(self, net, yearly_time_steps, waerme_ges_W, calc1, calc2, supply_temperature, return_temperature=60):
+    def __init__(self, net, yearly_time_steps, waerme_ges_W, calc1, calc2, supply_temperature, return_temperature):
         
         super().__init__()
         self.net = net
