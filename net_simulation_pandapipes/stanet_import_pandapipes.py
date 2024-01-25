@@ -7,15 +7,11 @@ import sys
 sys.path.append('C:/Users/username/heating_network_generation')
 
 from heat_requirement import heat_requirement_BDEW
-from net_simulation_pandapipes.net_simulation_calculation import create_controllers, correct_flow_directions, export_net_geojson, optimize_diameter_parameters
-from net_simulation_pandapipes.net_simulation import init_timeseries_opt, thermohydraulic_time_series_net
 
 # Einlesen der CSV-Datei mit dem angegebenen Trennzeichen und Ignorieren von fehlerhaften Zeilen
 # Da wir nun spezifische Einträge suchen, lesen wir die ganze Datei als eine einzige Spalte ein
 
-def create_net_from_stanet_csv(file_path):
-    #file_path = "C:/Users/username/heating_network_generation/net_simulation_pandapipes/stanet files/Beleg_1.CSV"
-
+def create_net_from_stanet_csv(file_path, supply_temperature, flow_pressure_pump, lift_pressure_pump):
     # Kriterien für die verschiedenen Objekttypen und ihre Tabellenköpfe
     object_types = {
         'KNO': 'REM FLDNAM KNO',
@@ -165,15 +161,10 @@ def create_net_from_stanet_csv(file_path):
         from_junction = get_junction_index(net, row["ANFNAM"])
         to_junction = get_junction_index(net, row["ENDNAM"])
 
-        # Parameter für die Pumpe
-        p_flow_bar = 4  # Druckanstieg über die Pumpe in bar
-        plift_bar = 1.5  # Förderhöhe der Pumpe in bar
-        t_flow_k = 273.15 + 90  # Fördermediumtemperatur in Kelvin
-
         # Erstellen der Pumpe in pandapipes
         pp.create_circ_pump_const_pressure(net, return_junction=from_junction, flow_junction=to_junction,
-                                        p_flow_bar=p_flow_bar, plift_bar=plift_bar,
-                                        t_flow_k=t_flow_k, type="auto", name="Pump_" + str(idx))
+                                        p_flow_bar=flow_pressure_pump, plift_bar=lift_pressure_pump,
+                                        t_flow_k=supply_temperature, type="auto", name="Pump_" + str(idx))
         
     waerme_ges_W_L = []
     max_waerme_ges_W_L = []
@@ -211,17 +202,7 @@ def create_net_from_stanet_csv(file_path):
         
     pp.pipeflow(net, mode="all")
 
-    net = create_controllers(net, max_waerme_ges_W_L,target_temperature=60)
-    net = correct_flow_directions(net)
-
-    net = init_timeseries_opt(net, max_waerme_ges_W_L, time_steps=3, target_temperature=60)
-    
-    net = optimize_diameter_parameters(net, element="heat_exchanger")
-    net = optimize_diameter_parameters(net, element="flow_control")
-    
-    export_net_geojson(net)
-
-    return net, yearly_time_steps, waerme_ges_W_L
+    return net, yearly_time_steps, waerme_ges_W_L, max_waerme_ges_W_L
 
 
 #net, yearly_time_steps, waerme_ges_W_L = create_net_from_stanet_csv("net_simulation_pandapipes/stanet files/Beleg_1/Beleg_1.CSV")

@@ -55,7 +55,6 @@ def generate_profiles_from_geojson(gdf_HAST, building_type="MFH", calc_method="V
         else:
             current_building_type = building_type
             current_calc_method = calc_method
-
         # Wärmebedarfsberechnung basierend auf dem Gebäudetyp und der Berechnungsmethode
         if current_calc_method == "VDI4655":
             hw, tww = JEB_Heizwärme_kWh[idx], JEB_Trinkwarmwasser_kWh[idx]
@@ -87,8 +86,6 @@ def initialize_net_geojson(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, return_tem
 
     net = optimize_diameter_parameters(net, element="heat_exchanger")
     net = optimize_diameter_parameters(net, element="flow_control")
-
-    export_net_geojson(net)
 
     return net
 

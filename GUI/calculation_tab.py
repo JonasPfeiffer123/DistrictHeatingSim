@@ -13,8 +13,8 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, \
         QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction
 
 from main import calculate_results, save_results_csv
-from gui.calculation_dialogs import HeatDemandEditDialog, GeojsonDialog, StanetDialog, SaveLoadNetDialog
-from gui.threads import NetInitializationGEOJSONThread, NetInitializationSTANETThread, NetCalculationThread
+from gui.calculation_dialogs import HeatDemandEditDialog, NetGenerationDialog, GeojsonDialog, StanetDialog, SaveLoadNetDialog
+from gui.threads import NetInitializationThread, NetCalculationThread
 from net_simulation_pandapipes.net_test import config_plot
 from gui.checkable_combobox import CheckableComboBox
 
@@ -49,19 +49,16 @@ class CalculationTab(QWidget):
         networkMenu = self.menubar.addMenu('Wärmenetz generieren')
 
         # Unterpunkte für geojson und Stanet
-        geojsonAction = QAction('Netz aus geojson generieren', self)
-        stanetAction = QAction('Netz aus Stanet-CSV generieren', self)
+        generateNetAction = QAction('Netz generieren', self)
         loadsaveppnetAction = QAction('Import/Export Pandapipes Netz', self)
-        networkMenu.addAction(geojsonAction)
-        networkMenu.addAction(stanetAction)
+        networkMenu.addAction(generateNetAction)
         networkMenu.addAction(loadsaveppnetAction)
 
         # Fügen Sie die Menüleiste dem Layout von tab1 hinzu
         self.container_layout.addWidget(self.menubar)
 
         # Verbindungen zu den Funktionen
-        geojsonAction.triggered.connect(self.openGeojsonDialog)
-        stanetAction.triggered.connect(self.openStanetDialog)
+        generateNetAction.triggered.connect(self.openNetGenerationDialog)
         loadsaveppnetAction.triggered.connect(self.openLoadSavePpNetDialog)
 
     def initUI(self):
@@ -117,18 +114,26 @@ class CalculationTab(QWidget):
 
         return file_input_layout
     
-    def openGeojsonDialog(self):
-        dialog = GeojsonDialog(
-            self.create_and_initialize_net_geojson, 
-            self.editHeatDemandData, 
-            self.ImportLayers,
+    def openNetGenerationDialog(self):
+        dialog = NetGenerationDialog(
+            self.generateNetworkCallback,
+            self.editHeatDemandData,
             self
         )
         dialog.exec_()
 
-    def openStanetDialog(self):
-        dialog = StanetDialog(self.create_and_initialize_net_stanet, self)
-        dialog.exec_()
+    def generateNetworkCallback(self, *args):
+        # Das letzte Element in args ist import_type
+        import_type = args[-1]
+
+        if import_type == "GeoJSON":
+            print(*args)
+            # Übergeben Sie alle Argumente außer dem letzten (import_type)
+            self.create_and_initialize_net_geojson(*args[:-1])
+        elif import_type == "Stanet":
+            print(*args)
+            # Übergeben Sie alle Argumente außer dem letzten (import_type)
+            self.create_and_initialize_net_stanet(*args[:-1])
 
     def openLoadSavePpNetDialog(self):
         save_load_dialog = SaveLoadNetDialog(self.net_data)
@@ -264,30 +269,22 @@ class CalculationTab(QWidget):
             inputWidget.setText(fname)
 
     def create_and_initialize_net_geojson(self, vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump):
-        if isinstance(supply_temperature, np.ndarray):
-            self.supply_temperature = supply_temperature
-            supply_temperature = float(np.max(supply_temperature))
-
-        gdf_vl = gpd.read_file(vorlauf, driver='GeoJSON')
-        gdf_rl = gpd.read_file(ruecklauf, driver='GeoJSON')
-        gdf_HAST = gpd.read_file(hast, driver='GeoJSON')
-        gdf_WEA = gpd.read_file(erzeugeranlagen, driver='GeoJSON')
-
         self.updateLabelsForCalcMethod(calc_method)
+        args = (vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump)
+        kwargs = {"import_type": "GeoJSON"}
+        self.initializationThread = NetInitializationThread(*args, **kwargs)
+        self.common_thread_initialization()
 
-        self.initializationgeojsonThread = NetInitializationGEOJSONThread(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, building_type, calc_method, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump)
-        self.initializationgeojsonThread.calculation_done.connect(self.on_initialization_done)
-        self.initializationgeojsonThread.calculation_error.connect(self.on_simulation_error)
-        self.initializationgeojsonThread.start()
-        self.progressBar.setRange(0, 0)  # Aktiviert den indeterministischen Modus
+    def create_and_initialize_net_stanet(self, stanet_csv, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump):
+        args = (stanet_csv, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump)
+        kwargs = {"import_type": "Stanet"}
+        self.initializationThread = NetInitializationThread(*args, **kwargs)
+        self.common_thread_initialization()
 
-    def create_and_initialize_net_stanet(self, stanet_csv):
-        #stanet_csv = "C:/Users/username/heating_network_generation/net_simulation_pandapipes/stanet files/Beleg_1/Beleg_1.CSV"
-
-        self.initializationstanetThread = NetInitializationSTANETThread(stanet_csv)
-        self.initializationstanetThread.calculation_done.connect(self.on_initialization_done)
-        self.initializationstanetThread.calculation_error.connect(self.on_simulation_error)
-        self.initializationstanetThread.start()
+    def common_thread_initialization(self):
+        self.initializationThread.calculation_done.connect(self.on_initialization_done)
+        self.initializationThread.calculation_error.connect(self.on_simulation_error)
+        self.initializationThread.start()
         self.progressBar.setRange(0, 0)  # Aktiviert den indeterministischen Modus
 
     def on_initialization_done(self, results):
