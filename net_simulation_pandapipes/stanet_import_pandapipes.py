@@ -164,7 +164,7 @@ def create_net_from_stanet_csv(file_path, supply_temperature, flow_pressure_pump
         # Erstellen der Pumpe in pandapipes
         pp.create_circ_pump_const_pressure(net, return_junction=from_junction, flow_junction=to_junction,
                                         p_flow_bar=flow_pressure_pump, plift_bar=lift_pressure_pump,
-                                        t_flow_k=supply_temperature, type="auto", name="Pump_" + str(idx))
+                                        t_flow_k=273.15+supply_temperature, type="auto", name="Pump_" + str(idx))
         
     waerme_ges_W_L = []
     max_waerme_ges_W_L = []

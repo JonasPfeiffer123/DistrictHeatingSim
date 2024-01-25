@@ -164,7 +164,7 @@ def thermohydraulic_time_series_net(net, yearly_time_steps, qext_w_profiles, sta
     update_return_temperature_controller(net, target_temp)
 
     # Wenn supply_temperature Daten vorhanden sind, entsprechende Controller erstellen
-    if supply_temperature is not None:
+    if supply_temperature is not None and isinstance(supply_temperature, np.ndarray):
         update_supply_temperature_controls(net, supply_temperature, time_steps, start, end)
 
     # Log-Variablen und Ausführen der Zeitreihenberechnung

@@ -270,12 +270,18 @@ class CalculationTab(QWidget):
 
     def create_and_initialize_net_geojson(self, vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump):
         self.updateLabelsForCalcMethod(calc_method)
+        self.return_temperature = return_temp
+        self.supply_temperature = supply_temperature
+        supply_temperature = np.max(supply_temperature)
         args = (vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump)
         kwargs = {"import_type": "GeoJSON"}
         self.initializationThread = NetInitializationThread(*args, **kwargs)
         self.common_thread_initialization()
 
     def create_and_initialize_net_stanet(self, stanet_csv, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump):
+        self.return_temperature = return_temp
+        self.supply_temperature = supply_temperature
+        supply_temperature = np.max(supply_temperature)
         args = (stanet_csv, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump)
         kwargs = {"import_type": "Stanet"}
         self.initializationThread = NetInitializationThread(*args, **kwargs)
@@ -351,7 +357,7 @@ class CalculationTab(QWidget):
             if self.calc1 is None or self.calc2 is None:  # Ungültige Eingaben wurden bereits in adjustTimeParameters behandelt
                 return
 
-            self.calculationThread = NetCalculationThread(self.net, self.yearly_time_steps, self.waerme_ges_W, self.calc1, self.calc2, self.supply_temperature)
+            self.calculationThread = NetCalculationThread(self.net, self.yearly_time_steps, self.waerme_ges_W, self.calc1, self.calc2, self.supply_temperature, self.return_temperature)
             self.calculationThread.calculation_done.connect(self.on_simulation_done)
             self.calculationThread.calculation_error.connect(self.on_simulation_error)
             self.calculationThread.start()
