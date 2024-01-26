@@ -571,11 +571,34 @@ class MixDesignTab(QWidget):
         self.updateTechDataTable(self.tech_objects)
         self.showResultsInTable(result)
         self.showAdditionalResultsTable()
+        self.save_results_to_csv(result)
         self.plotResults(result)
 
     def on_calculation_error(self, error_message):
         self.progressBar.setRange(0, 1)
         QMessageBox.critical(self, "Berechnungsfehler", error_message)
+
+    
+    def save_results_to_csv(self, results):
+        # Initialisiere den DataFrame mit den Zeitstempeln
+        df = pd.DataFrame({'time_steps': results['time_steps']})
+        
+        # Füge die Last hinzu
+        df['Last_L'] = results['Last_L']
+        
+        # Füge die Daten für Wärmeleistung hinzu. Jede Technologie wird eine Spalte haben.
+        for i, tech in enumerate(results['techs']):
+            df[tech] = results['Wärmeleistung_L'][i]
+        
+        # Füge die elektrischen Leistungsdaten hinzu
+        df['el_Leistungsbedarf_L'] = results['el_Leistungsbedarf_L']
+        df['el_Leistung_L'] = results['el_Leistung_L']
+        df['el_Leistung_ges_L'] = results['el_Leistung_ges_L']
+        
+        # Speichere den DataFrame als CSV-Datei
+        csv_filename = "results.csv"
+        df.to_csv(csv_filename, index=False)
+        print(f"Ergebnisse wurden in '{csv_filename}' gespeichert.")
 
     ### Plotten der Ergebnisse ###
     def plotResults(self, results):
