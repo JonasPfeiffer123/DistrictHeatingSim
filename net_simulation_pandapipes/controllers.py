@@ -125,11 +125,11 @@ class ReturnTemperatureController(BasicCtrl):
         #if self.heat_exchanger_idx == 13:
         #print(f'heat_exchanger_idx: {self.heat_exchanger_idx}, qext_w: {qext_w}, current_temperature: {current_T_in}, previous_temperature: {previous_T_in}, to_temperature: {current_T_out}, current_mass_flow: {current_mass_flow}')
         
-        if at_min_mass_flow_limit:
+        if at_min_mass_flow_limit and self.iteration > 20:
             print(f'Wärmeübertrager {self.heat_exchanger_idx}: Minimale Massenstromgrenze erreicht. Überprüfung der Dimensionierung notwendig')
             return True
         
-        if at_max_mass_flow_limit:
+        if at_max_mass_flow_limit and self.iteration > 20:
             print(f'Wärmeübertrager {self.heat_exchanger_idx}: Maximale Massenstromgrenze erreicht. Überprüfung der Dimensionierung notwendig')
             return True
         

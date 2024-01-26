@@ -135,9 +135,24 @@ def update_return_temperature_controller(net, temperature_target):
             ctrl.target_temperature = temperature_target
 
 def update_supply_temperature_controls(net, supply_temperature, time_steps, start, end):
-    df_supply_temp = pd.DataFrame(index=time_steps, data={'supply_temperature': supply_temperature[start:end]+273.15})
+    # Erstellen des DataFrame für die Versorgungstemperatur
+    df_supply_temp = pd.DataFrame(index=time_steps, data={'supply_temperature': supply_temperature[start:end] + 273.15})
     data_source_supply_temp = DFData(df_supply_temp)
-    ConstControl(net, element='circ_pump_pressure', variable='t_flow_k', element_index=0, data_source=data_source_supply_temp, profile_name=f'supply_temperature')
+
+    # Überprüfen, ob ein passender ConstControl existiert
+    control_exists = False
+    for ctrl in net.controller.object.values:
+        if (isinstance(ctrl, ConstControl) and ctrl.element == 'circ_pump_pressure'):
+            control_exists = True
+            # Aktualisiere die Datenquelle des bestehenden ConstControls
+            ctrl.data_source = data_source_supply_temp
+            ctrl.profile_name = 'supply_temperature'
+            break
+
+    # Wenn kein passender ConstControl existiert, erstelle einen neuen
+    if not control_exists:
+        ConstControl(net, element='circ_pump_pressure', variable='t_flow_k', element_index=0, 
+                     data_source=data_source_supply_temp, profile_name='supply_temperature')
 
 def create_log_variables():
     log_variables = [

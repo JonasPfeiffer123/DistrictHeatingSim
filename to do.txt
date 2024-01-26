@@ -13,7 +13,7 @@ Visualisierung und Import GIS-Daten:
 
 Netzberechnung:
 - Eingabe Startdimensionierung Leitungen über GUI --> Vermeidung Probleme bei stark abweichenden Dimensionen
-- Berechnungsparameter überarbeiten (RL-Temp, Profile, VL-Temp (Außentemperaturgeregelt))
+- Berechnungsparameter überarbeiten (RL-Temp, Profile)
 - Profil-Subtypen ergänzen
 - mehrere Erzeuger --> festlegen welches zirkulationspumpe, rest feste Einspeisung (oder Regelung durch Haupterzeugerstandort)
 - Konfiguration Verbraucher/Wärmeübertrager für Wärmepumpen-Übergabestationen
