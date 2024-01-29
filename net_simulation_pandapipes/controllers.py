@@ -1,11 +1,6 @@
 from pandapower.control.basic_controller import BasicCtrl
 from math import pi
 
-import logging
-
-# Konfigurieren Sie das Logging-System
-#logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
-
 class WorstPointPressureController(BasicCtrl):
     def __init__(self, net, worst_point_idx, circ_pump_pressure_idx=0, target_dp_min_bar=1, tolerance=0.2, proportional_gain=0.2,**kwargs):
         super(WorstPointPressureController, self).__init__(net, **kwargs)
@@ -32,8 +27,6 @@ class WorstPointPressureController(BasicCtrl):
         # check, if the temperature converged
         dp_within_tolerance = abs(current_dp_bar - self.target_dp_min_bar) < self.tolerance
 
-        #logging.debug(f'WorstPointPressureController is_converged: Iteration: {self.iteration}, Heat Exchanger ID: {self.heat_exchanger_idx}, qext_w={qext_w}, current_dp_bar={current_dp_bar}, dp_within_tolerance: {dp_within_tolerance}')
-
         if dp_within_tolerance == True:
             return dp_within_tolerance
     
@@ -46,8 +39,7 @@ class WorstPointPressureController(BasicCtrl):
         current_dp_bar = net.res_flow_control["p_from_bar"].at[self.flow_control_idx] - net.res_heat_exchanger["p_to_bar"].at[self.heat_exchanger_idx]
         current_plift_bar = net.circ_pump_pressure["plift_bar"].at[self.circ_pump_pressure_idx]
         current_pflow_bar = net.circ_pump_pressure["p_flow_bar"].at[self.circ_pump_pressure_idx]
-        #logging.debug(f'WorstPointPressureController vor control_step: Iteration: {self.iteration}, Heat Exchanger ID: {self.heat_exchanger_idx}, dp_bar={current_dp_bar}, qext_w={qext_w}, current_plift_bar={current_plift_bar}, current_pflow_bar={current_pflow_bar}')
-        
+
         if qext_w <= 300:
             return super(WorstPointPressureController, self).control_step(net)
 
@@ -61,8 +53,6 @@ class WorstPointPressureController(BasicCtrl):
         
         net.circ_pump_pressure["plift_bar"].at[self.circ_pump_pressure_idx] = new_plift
         net.circ_pump_pressure["p_flow_bar"].at[self.circ_pump_pressure_idx] = new_pflow
-
-        #logging.debug(f'WorstPointPressureController nach control_step: Iteration: {self.iteration}, Heat Exchanger ID: {self.heat_exchanger_idx}, new_plift={new_plift}, new_pflow={new_pflow}')
 
         return super(WorstPointPressureController, self).control_step(net)
 
