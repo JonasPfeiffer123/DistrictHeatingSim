@@ -4,7 +4,7 @@ import pandas as pd
 import geopandas as gpd
 
 from net_simulation_pandapipes.net_simulation_calculation import calculate_worst_point
-from net_simulation_pandapipes.net_simulation import generate_profiles_from_geojson, initialize_net_geojson, thermohydraulic_time_series_net_calculation, calculate_results
+from net_simulation_pandapipes.net_simulation import generate_profiles_from_geojson, initialize_net_geojson, thermohydraulic_time_series_net, calculate_results
 from heat_generators.heat_generator_classes_v2 import *
 from net_simulation_pandapipes.net_simulation import save_results_csv, import_results_csv
 
@@ -73,7 +73,7 @@ def generate_net(calc1=0, calc2=35040, filename='results_time_series_net1.csv'):
 
     yearly_time_steps, waerme_ges_W, max_waerme_ges_W = generate_profiles_from_geojson(gdf_HAST, building_type="HMF", calc_method="Datensatz")
     net = initialize_net_geojson(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, max_waerme_ges_W)
-    time_steps, net, net_results = thermohydraulic_time_series_net_calculation(net, yearly_time_steps, waerme_ges_W, calc1, calc2)
+    time_steps, net, net_results = thermohydraulic_time_series_net(net, yearly_time_steps, waerme_ges_W, calc1, calc2)
 
     mass_flow_circ_pump, deltap_circ_pump, rj_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, \
         return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW, pressure_junctions = calculate_results(net, net_results)

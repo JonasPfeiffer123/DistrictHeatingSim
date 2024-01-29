@@ -55,7 +55,6 @@ def generate_profiles_from_geojson(gdf_HAST, building_type="MFH", calc_method="V
         else:
             current_building_type = building_type
             current_calc_method = calc_method
-
         # Wärmebedarfsberechnung basierend auf dem Gebäudetyp und der Berechnungsmethode
         if current_calc_method == "VDI4655":
             hw, tww = JEB_Heizwärme_kWh[idx], JEB_Trinkwarmwasser_kWh[idx]
@@ -71,14 +70,11 @@ def generate_profiles_from_geojson(gdf_HAST, building_type="MFH", calc_method="V
 
     return yearly_time_steps, waerme_ges_W, max_waerme_ges_W
 
-def initialize_net_geojson(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, return_temperature=60, pipe_creation_mode="type"):
+def initialize_net_geojson(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, return_temperature=60, supply_temperature=85, flow_pressure_pump=4, lift_pressure_pump=1.5, diameter_mm=107.1, pipetype="KMR 100/250-2v", k=0.0470, alpha=0.61, pipe_creation_mode="type"):
     # net generation from gis data
-    net = create_network(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, return_temperature, pipe_creation_mode)
+    net = create_network(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, return_temperature, supply_temperature, flow_pressure_pump, lift_pressure_pump, diameter_mm, pipetype, k, alpha, pipe_creation_mode)
     net = create_controllers(net, qext_w, return_temperature)
     net = correct_flow_directions(net)
-
-    print(net.pipe, net.heat_exchanger, net.flow_control)
-    print(net.res_pipe, net.res_heat_exchanger, net.res_flow_control)
 
     net = init_timeseries_opt(net, qext_w, time_steps=3, target_temperature=60)
 
@@ -90,8 +86,6 @@ def initialize_net_geojson(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, return_tem
 
     net = optimize_diameter_parameters(net, element="heat_exchanger")
     net = optimize_diameter_parameters(net, element="flow_control")
-
-    export_net_geojson(net)
 
     return net
 
@@ -127,44 +121,73 @@ def init_timeseries_opt(net, qext_w, time_steps=3, target_temperature=60):
         
         return net
 
-def time_series_net(net, temperature_target,  qext_w_profiles, calc1, calc2):
-    time_steps = range(0, len(qext_w_profiles[0][calc1:calc2]))  # hourly time steps
-
-    # Update data source for ConstControl controllers
+def update_const_controls(net, qext_w_profiles, time_steps, start, end):
     for i, qext_w_profile in enumerate(qext_w_profiles):
-        qext_w_profile = qext_w_profile[calc1:calc2]
-        df = pd.DataFrame(index=time_steps, data={'qext_w_' + str(i): qext_w_profile})
+        df = pd.DataFrame(index=time_steps, data={f'qext_w_{i}': qext_w_profile[start:end]})
         data_source = DFData(df)
-
-        # Durchlaufen aller Controller
         for ctrl in net.controller.object.values:
             if isinstance(ctrl, ConstControl) and ctrl.element_index == i and ctrl.variable == 'qext_w':
                 ctrl.data_source = data_source
-    
-    # Aktualisieren der benutzerdefinierten Controller
+
+def update_return_temperature_controller(net, temperature_target):
     for ctrl in net.controller.object.values:
         if isinstance(ctrl, ReturnTemperatureController):
-            ctrl.target_temperature = temperature_target  # aktualisiere Zieltemperatur, wenn nötig
-    
-    log_variables = [('res_junction', 'p_bar'), ('res_junction', 't_k'),
-                     ('heat_exchanger', 'qext_w'), ('res_heat_exchanger', 'v_mean_m_per_s'), 
-                     ('res_heat_exchanger', 't_from_k'), ('res_heat_exchanger', 't_to_k'), 
-                     ('circ_pump_pressure', 't_flow_k'),  ('res_heat_exchanger', 'mdot_from_kg_per_s'),
-                     ('res_circ_pump_pressure', 'mdot_flow_kg_per_s'), ('res_circ_pump_pressure', 'deltap_bar')]
-    
+            ctrl.target_temperature = temperature_target
+
+def update_supply_temperature_controls(net, supply_temperature, time_steps, start, end):
+    # Erstellen des DataFrame für die Versorgungstemperatur
+    df_supply_temp = pd.DataFrame(index=time_steps, data={'supply_temperature': supply_temperature[start:end] + 273.15})
+    data_source_supply_temp = DFData(df_supply_temp)
+
+    # Überprüfen, ob ein passender ConstControl existiert
+    control_exists = False
+    for ctrl in net.controller.object.values:
+        if (isinstance(ctrl, ConstControl) and ctrl.element == 'circ_pump_pressure'):
+            control_exists = True
+            # Aktualisiere die Datenquelle des bestehenden ConstControls
+            ctrl.data_source = data_source_supply_temp
+            ctrl.profile_name = 'supply_temperature'
+            break
+
+    # Wenn kein passender ConstControl existiert, erstelle einen neuen
+    if not control_exists:
+        ConstControl(net, element='circ_pump_pressure', variable='t_flow_k', element_index=0, 
+                     data_source=data_source_supply_temp, profile_name='supply_temperature')
+
+def create_log_variables():
+    log_variables = [
+        ('res_junction', 'p_bar'), 
+        ('res_junction', 't_k'),
+        ('heat_exchanger', 'qext_w'),
+        ('res_heat_exchanger', 'v_mean_m_per_s'),
+        ('res_heat_exchanger', 't_from_k'),
+        ('res_heat_exchanger', 't_to_k'),
+        ('circ_pump_pressure', 't_flow_k'),
+        ('res_heat_exchanger', 'mdot_from_kg_per_s'),
+        ('res_circ_pump_pressure', 'mdot_flow_kg_per_s'),
+        ('res_circ_pump_pressure', 'deltap_bar')
+    ]
+    return log_variables
+
+def thermohydraulic_time_series_net(net, yearly_time_steps, qext_w_profiles, start, end, supply_temperature=None, target_temp=60):
+    # Zeitreihenberechnung vorbereiten
+    yearly_time_steps = yearly_time_steps[start:end]
+
+    # Aktualisieren der ConstControl und ReturnTemperatureController
+    time_steps = range(0, len(qext_w_profiles[0][start:end]))
+    update_const_controls(net, qext_w_profiles, time_steps, start, end)
+    update_return_temperature_controller(net, target_temp)
+
+    # Wenn supply_temperature Daten vorhanden sind, entsprechende Controller erstellen
+    if supply_temperature is not None and isinstance(supply_temperature, np.ndarray):
+        update_supply_temperature_controls(net, supply_temperature, time_steps, start, end)
+
+    # Log-Variablen und Ausführen der Zeitreihenberechnung
+    log_variables = create_log_variables()
     ow = OutputWriter(net, time_steps, output_path=None, log_variables=log_variables)
+    run_time_series.run_timeseries(net, time_steps, mode="all")
 
-    run_time_series.run_timeseries(net, time_steps, mode="all", max_iter=50)
-
-    return net, ow.np_results
-
-def thermohydraulic_time_series_net_calculation(net, yearly_time_steps, waerme_ges_W, calc1, calc2, t_rl_soll=60):
-    ### time series calculation ###
-
-    time_steps = yearly_time_steps[calc1:calc2]
-    net, net_results = time_series_net(net, t_rl_soll, waerme_ges_W, calc1, calc2)
-
-    return time_steps, net, net_results
+    return yearly_time_steps, net, ow.np_results
 
 def calculate_results(net, net_results):
     ### Plotten Ergebnisse Pumpe / Einspeisung ###
@@ -209,3 +232,42 @@ def import_results_csv(filename):
     flow_temp_circ_pump = data['Vorlauftemperatur_Netz_°C'].values.astype('float64')
     return_temp_circ_pump = data['Rücklauftemperatur_Netz_°C'].values.astype('float64')
     return time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump
+
+"""def time_series_net(net, temperature_target,  qext_w_profiles, calc1, calc2):
+    time_steps = range(0, len(qext_w_profiles[0][calc1:calc2]))  # hourly time steps
+
+    # Update data source for ConstControl controllers
+    for i, qext_w_profile in enumerate(qext_w_profiles):
+        qext_w_profile = qext_w_profile[calc1:calc2]
+        df = pd.DataFrame(index=time_steps, data={'qext_w_' + str(i): qext_w_profile})
+        data_source = DFData(df)
+
+        # Durchlaufen aller Controller
+        for ctrl in net.controller.object.values:
+            if isinstance(ctrl, ConstControl) and ctrl.element_index == i and ctrl.variable == 'qext_w':
+                ctrl.data_source = data_source
+    
+    # Aktualisieren der benutzerdefinierten Controller
+    for ctrl in net.controller.object.values:
+        if isinstance(ctrl, ReturnTemperatureController):
+            ctrl.target_temperature = temperature_target  # aktualisiere Zieltemperatur, wenn nötig
+    
+    log_variables = [('res_junction', 'p_bar'), ('res_junction', 't_k'),
+                     ('heat_exchanger', 'qext_w'), ('res_heat_exchanger', 'v_mean_m_per_s'), 
+                     ('res_heat_exchanger', 't_from_k'), ('res_heat_exchanger', 't_to_k'), 
+                     ('circ_pump_pressure', 't_flow_k'),  ('res_heat_exchanger', 'mdot_from_kg_per_s'),
+                     ('res_circ_pump_pressure', 'mdot_flow_kg_per_s'), ('res_circ_pump_pressure', 'deltap_bar')]
+    
+    ow = OutputWriter(net, time_steps, output_path=None, log_variables=log_variables)
+
+    run_time_series.run_timeseries(net, time_steps, mode="all", max_iter=50)
+
+    return net, ow.np_results
+
+def thermohydraulic_time_series_net_calculation(net, yearly_time_steps, waerme_ges_W, calc1, calc2, t_rl_soll=60):
+    ### time series calculation ###
+
+    time_steps = yearly_time_steps[calc1:calc2]
+    net, net_results = time_series_net(net, t_rl_soll, waerme_ges_W, calc1, calc2)
+
+    return time_steps, net, net_results"""

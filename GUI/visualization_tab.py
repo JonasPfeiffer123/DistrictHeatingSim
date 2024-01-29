@@ -3,7 +3,6 @@ import random
 import geopandas as gpd
 import csv
 import pandas as pd
-import json
 from shapely.geometry import Point
 
 from PyQt5.QtCore import pyqtSignal, QUrl
@@ -15,7 +14,7 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 import folium
 
-from gui.dialogs import LayerGenerationDialog, DownloadOSMDataDialog, GeocodeAdressesDialog
+from gui.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog, SpatialAnalysisDialog, GeocodeAdressesDialog
 from gui.threads import NetGenerationThread, FileImportThread
 
 class VisualizationTab(QWidget):
@@ -50,9 +49,17 @@ class VisualizationTab(QWidget):
         loadCsvAction.triggered.connect(self.loadCsvCoordinates)
         fileMenu.addAction(loadCsvAction)
 
-        downloadAction = QAction('Download OSM-Daten', self)
+        downloadAction = QAction('OSM Straßenabfrage', self)
         downloadAction.triggered.connect(self.openDownloadOSMDataDialog)
         fileMenu.addAction(downloadAction)
+
+        osmBuildingAction = QAction('OSM Gebäudeabfrage', self)
+        osmBuildingAction.triggered.connect(self.openOSMBuildingQueryDialog)
+        fileMenu.addAction(osmBuildingAction)
+
+        spatialAnalysisAction = QAction('Raumanalyse', self)
+        spatialAnalysisAction.triggered.connect(self.openspatialAnalysisDialog)
+        fileMenu.addAction(spatialAnalysisAction)
 
         downloadAction = QAction('Wärmenetz aus Daten generieren', self)
         downloadAction.triggered.connect(self.openLayerGenerationDialog)
@@ -98,6 +105,18 @@ class VisualizationTab(QWidget):
     def openDownloadOSMDataDialog(self):
         dialog = DownloadOSMDataDialog(self)
         if dialog.exec_() == QDialog.Accepted:
+            pass
+
+    def openOSMBuildingQueryDialog(self):
+        dialog = OSMBuildingQueryDialog(self)
+        if dialog.exec_() == QDialog.Accepted:
+            # Hier könnten Sie die Daten aus dem Dialog verarbeiten
+            pass
+
+    def openspatialAnalysisDialog(self):
+        dialog = SpatialAnalysisDialog(self)
+        if dialog.exec_() == QDialog.Accepted:
+            # Hier könnten Sie die Daten aus dem Dialog verarbeiten
             pass
 
     def openGeocodeAdressesDialog(self):

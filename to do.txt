@@ -1,3 +1,5 @@
+Fehlerbehandlung
+
 - Projektdateien einführen
     - Speichern und Laden
     - Über Tabs hinweg Informationen Verfügbar machen.
@@ -5,15 +7,17 @@
 
 Visualisierung und Import GIS-Daten:
 - Download OSM-Daten Query-Abfragen ausbauen
-- Erzeugerdefinition durch geocodierung im Dialogfensterg / alternativ Koordinaten direkt eintragen oder Erzeugerstandortimport über csv --> mehrere möglich
+- Erzeugerstandortimport über csv --> mehrere möglich
 - Stanet Netz zu geojson und bei import import in Karte ermöglichen
+- Fehlerbehandlung
 
 Netzberechnung:
-- Eingabe Vorlauf- und Rücklauftemperatur, sowie Druckhaltung
 - Eingabe Startdimensionierung Leitungen über GUI --> Vermeidung Probleme bei stark abweichenden Dimensionen
-- Berechnungsparameter überarbeiten (RL-Temp, Profile, VL-Temp (Außentemperaturgeregelt))
+- Berechnungsparameter überarbeiten (RL-Temp, Profile)
 - Profil-Subtypen ergänzen
 - mehrere Erzeuger --> festlegen welches zirkulationspumpe, rest feste Einspeisung (oder Regelung durch Haupterzeugerstandort)
+- Konfiguration Verbraucher/Wärmeübertrager für Wärmepumpen-Übergabestationen
+    Konfigurierbare Vorlauftemperaturen --> Effizienz der Wärmepumpen
 
 Auslegung Erzeugermix
 - Parametervariation Preise

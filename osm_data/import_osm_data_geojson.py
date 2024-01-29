@@ -3,46 +3,68 @@ import json
 from decimal import Decimal
 import geojson
 
-def build_query(city_name, tags):
-    # Basis-Query, die nach der Stadt sucht
+def build_query(city_name, tags, element_type="way"):
     query = f"""
     [out:json][timeout:25];
     area[name="{city_name}"]->.searchArea;
     (
     """
-    # Fügt jedes Tag-Paar zur Query hinzu, aber für way-Elemente
-    for key, value in tags.items():
-        query += f'way["{key}"="{value}"](area.searchArea);\n'
+
+    if element_type == "way":
+        for key, value in tags.items():
+            query += f'way["{key}"="{value}"](area.searchArea);'
     
-    # Schließt die Query
+    elif element_type == "building":
+        query += 'relation["building"](area.searchArea);'
+        query += 'way["building"](area.searchArea);'
+    
     query += """
     );
+    (._;>;);
     out body;
-    >;
-    out skel qt;
     """
     return query
 
-# Die Funktion zum Herunterladen der Daten
-def download_data(query):
+def download_data(query, element_type):
     api = overpy.Overpass()
     result = api.query(query)
 
-    # Konvertieren Sie die Overpass-Resultate in GeoJSON-Features
     features = []
-    for way in result.ways:
-        # Extrahieren Sie die Koordinaten der Knotenpunkte, die den Weg bilden
-        coordinates = [(node.lon, node.lat) for node in way.nodes]
-        
-        # Erstellen Sie ein LineString-Feature für den Weg
-        linestring = geojson.LineString(coordinates)
-        properties = way.tags
-        feature = geojson.Feature(geometry=linestring, properties=properties)
-        features.append(feature)
 
-    # Erstellen eines GeoJSON FeatureCollections
-    feature_collection = geojson.FeatureCollection(features)
-    return feature_collection
+    if element_type == "way":  # Für Straßen
+        for way in result.ways:
+            coordinates = [(node.lon, node.lat) for node in way.nodes]
+            linestring = geojson.LineString(coordinates)
+            properties = way.tags
+            feature = geojson.Feature(geometry=linestring, properties=properties)
+            features.append(feature)
+    
+    elif element_type == "building":  # Für Gebäude
+        for relation in result.relations:
+            multipolygon = []
+            for member in relation.members:
+                if member.role == "outer" or member.role == "inner":
+                    way = member.resolve()
+                    coordinates = [(node.lon, node.lat) for node in way.nodes]
+                    if coordinates[0] != coordinates[-1]:
+                        coordinates.append(coordinates[0])
+                    multipolygon.append(coordinates)
+
+            properties = relation.tags
+            feature = geojson.Feature(geometry=geojson.MultiPolygon([multipolygon]), properties=properties)
+            features.append(feature)
+
+        for way in result.ways:
+            # Stellen Sie sicher, dass das Gebäude geschlossen ist (erster und letzter Punkt gleich)
+            if way.nodes[0] != way.nodes[-1]:
+                way.nodes.append(way.nodes[0])
+            coordinates = [(node.lon, node.lat) for node in way.nodes]
+            polygon = geojson.Polygon([coordinates])
+            properties = way.tags
+            feature = geojson.Feature(geometry=polygon, properties=properties)
+            features.append(feature)
+
+    return geojson.FeatureCollection(features)
 
 def json_serial(obj):
     """JSON serializer für Objekte, die nicht serienmäßig serialisierbar sind."""
