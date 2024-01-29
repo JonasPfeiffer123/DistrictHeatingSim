@@ -50,16 +50,16 @@ class CalculationTab(QWidget):
 
         # Unterpunkte für geojson und Stanet
         generateNetAction = QAction('Netz generieren', self)
-        loadsaveppnetAction = QAction('Import/Export Pandapipes Netz', self)
+        #loadsaveppnetAction = QAction('Import/Export Pandapipes Netz', self)
         networkMenu.addAction(generateNetAction)
-        networkMenu.addAction(loadsaveppnetAction)
+        #networkMenu.addAction(loadsaveppnetAction)
 
         # Fügen Sie die Menüleiste dem Layout von tab1 hinzu
         self.container_layout.addWidget(self.menubar)
 
         # Verbindungen zu den Funktionen
         generateNetAction.triggered.connect(self.openNetGenerationDialog)
-        loadsaveppnetAction.triggered.connect(self.openLoadSavePpNetDialog)
+        #loadsaveppnetAction.triggered.connect(self.openLoadSavePpNetDialog)
 
     def initUI(self):
         # Erstellen eines Scrollbereichs
