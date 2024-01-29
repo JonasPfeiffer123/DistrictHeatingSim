@@ -8,9 +8,46 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 
-from heat_generators.Wirtschaftlichkeitsbetrachtung import WGK_STA
 from heat_generators.Solarstrahlung import Berechnung_Solarstrahlung
 
+def WGK_STA(Bruttofläche_STA, VS, typ, Wärmemenge, q=1.05, r=1.03, T=20, BEW="Nein"):
+    if Wärmemenge == 0:
+        return 0
+
+    kosten_pro_typ = {
+        # Viessmann Flachkollektor Vitosol 200-FM, 2,56 m²: 697,9 € (brutto); 586,5 € (netto) -> 229 €/m²
+        # + 200 €/m² Installation/Zubehör
+        "Flachkollektor": 430,
+        # Ritter Vakuumröhrenkollektor CPC XL1921 (4,99m²): 2299 € (brutto); 1932 € (Netto) -> 387 €/m²
+        # + 200 €/m² Installation/Zubehör
+        "Vakuumröhrenkollektor": 590
+    }
+
+    Kosten_STA_spez = kosten_pro_typ[typ]  # €/m^2
+    Kosten_Speicher_spez = 0  # 750  # €/m^3
+    Nutzungsdauer = 20
+    f_Inst, f_W_Insp, Bedienaufwand = 0.5, 1, 0
+
+    Investitionskosten_Speicher = VS * Kosten_Speicher_spez
+    Investitionskosten_STA = Bruttofläche_STA * Kosten_STA_spez
+    Investitionskosten_Gesamt = Investitionskosten_Speicher + Investitionskosten_STA
+
+    E1 = annuität(Investitionskosten_Gesamt, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T)
+    WGK = E1 / Wärmemenge
+
+    Anteil_Förderung_BEW = 0.4
+    Eigenanteil = 1 - Anteil_Förderung_BEW
+    Investitionskosten_Gesamt_BEW = Investitionskosten_Gesamt * Eigenanteil
+    Annuität_BEW = annuität(Investitionskosten_Gesamt_BEW, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T)
+    WGK_BEW = Annuität_BEW / Wärmemenge
+
+    WGK_BEW_BKF = WGK_BEW - 10  # €/MWh 10 Jahre
+
+    if BEW == "Nein":
+        return WGK
+    elif BEW == "Ja":
+        return WGK_BEW_BKF
+    
 def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY, time_steps, calc1, calc2, duration, Tsmax=90, Longitude=-14.4222, STD_Longitude=-15, Latitude=51.1676):
     Temperatur_L, Windgeschwindigkeit_L, Direktstrahlung_L, Globalstrahlung_L = TRY[0], TRY[1], TRY[2], TRY[3]
 
