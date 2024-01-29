@@ -3,14 +3,11 @@
 
 # Import Bibliotheken
 from math import pi, exp, log, sqrt
-import csv
 import numpy as np
-import pandas as pd
 from datetime import datetime
 
-from heat_generators.Wirtschaftlichkeitsbetrachtung import WGK_STA
 from heat_generators.Solarstrahlung import Berechnung_Solarstrahlung
-
+    
 def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY, time_steps, calc1, calc2, duration, Tsmax=90, Longitude=-14.4222, STD_Longitude=-15, Latitude=51.1676):
     Temperatur_L, Windgeschwindigkeit_L, Direktstrahlung_L, Globalstrahlung_L = TRY[0], TRY[1], TRY[2], TRY[3]
 
@@ -344,12 +341,3 @@ def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY, time_s
         Zähler += 1
 
     return Gesamtwärmemenge, np.array(Speicher_Wärmeoutput_L).astype("float64")
-
-
-def Optimierung_WGK_STA(typ, solar_data, BEW="Nein", speicher=range(5, 60, 5), fläche=range(100, 1000, 100)):
-    results = [(WGK_STA(f, v, typ, Berechnung_STA(f, v, typ, solar_data)[0], 1.05, 1.03, 20, BEW), f, v) for v in speicher for f in fläche]
-    min_WGK, optimum_Bruttofläche, optimum_VS = min(results)
-    print(typ)
-    print("Die minimalen Wärmegestehungskosten der Solarthermieanlage betragen: " + str(round(min_WGK, 2)) + " €/MWh")
-    print("Die Speichergröße beträgt: " + str(optimum_VS) + " m^3")
-    print("Die Bruttokollektorfläche beträgt: " + str(optimum_Bruttofläche) + " m^2")
