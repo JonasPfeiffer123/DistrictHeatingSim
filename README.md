@@ -125,8 +125,6 @@ This script is designed to be interactive and user-friendly, making it easier fo
 - A function needs to be defined to set the right crs (coordinate reference system) in QGIS when executing "net_generation_qgis.py"
 
 - the network creation has to be modified to allow multiple pumps / entry points for heat
-  
-- the controller for the heat exchangers is not working perfectly at this point, maybe an alternative system has to be implemented
 
 - Optimization and generalization
 
