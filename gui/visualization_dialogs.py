@@ -11,7 +11,7 @@ import json
 import csv
 from math import radians, sin, cos, sqrt, atan2
 
-from net_generation_QGIS.Wärmeversorgungsgebiete import clustering_quartiere_hdbscan, postprocessing_hdbscan, allocate_overlapping_area
+from osm_data.Wärmeversorgungsgebiete import clustering_quartiere_hdbscan, postprocessing_hdbscan, allocate_overlapping_area
    
 class LayerGenerationDialog(QDialog):
     def __init__(self, parent=None):
