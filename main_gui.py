@@ -21,33 +21,33 @@ class HeatSystemDesignGUI(QWidget):
         self.initUI()
 
     def initUI(self):
-        self.setWindowTitle("Hier könnte ein cooler Softwarename stehen")
-        self.setGeometry(100, 100, 800, 600)  # Optional, Standardgröße vor Vollbild
+        self.setWindowTitle("Here could be a cool software name")
+        self.setGeometry(100, 100, 800, 600)  # Optional, standard size before full-screen
 
         layout = QVBoxLayout(self)
         tabWidget = QTabWidget()
         layout.addWidget(tabWidget)
 
-        # Erstellen der einzelnen Tabs
+        # Creating individual tabs
         self.data_manager = CentralDataManager()
 
         self.visTab = VisualizationTab(self.data_manager)
         self.calcTab = CalculationTab(self.data_manager)
         self.mixDesignTab1 = MixDesignMainWindow()
 
-        # Hier stellen Sie die Verbindung her
+        # Establishing connections here
         self.visTab.connect_signals(self.calcTab)
         self.visTab.layers_imported.connect(self.calcTab.updateFilePaths)
 
-        # Hinzufügen der Tabs zum Tab-Widget
-        tabWidget.addTab(self.visTab, "Visualisierung GIS-Daten")
-        tabWidget.addTab(self.calcTab, "Netzberechnung")
-        tabWidget.addTab(self.mixDesignTab1, "Auslegung Erzeugermix")
+        # Adding tabs to the tab widget
+        tabWidget.addTab(self.visTab, "Visualization GIS Data")
+        tabWidget.addTab(self.calcTab, "Network Calculation")
+        tabWidget.addTab(self.mixDesignTab1, "Generator Mix Design")
 
         # Set the layout
         self.setLayout(layout)
 
-        # Maximieren Sie das Hauptfenster auf die Bildschirmgröße
+        # Maximize the main window to the screen size
         self.showMaximized()
 
 if __name__ == '__main__':

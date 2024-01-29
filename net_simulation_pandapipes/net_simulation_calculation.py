@@ -142,7 +142,7 @@ def correct_flow_directions(net):
     return net
 
 
-def optimize_diameter_parameters(initial_net, element="pipe", v_max=2, v_min=1.5, dx=0.001):
+def optimize_diameter_parameters(initial_net, element="pipe", v_max=2.2, v_min=1.8, dx=0.001):
     pp.pipeflow(initial_net, mode="all")
 
     if element == "pipe":
