@@ -12,7 +12,7 @@ from net_simulation_pandapipes.net_simulation_calculation import *
 from net_simulation_pandapipes.net_simulation import generate_profiles_from_geojson, thermohydraulic_time_series_net, import_results_csv, init_timeseries_opt
 from net_simulation_pandapipes.stanet_import_pandapipes import create_net_from_stanet_csv
 
-from heat_generators.heat_generator_classes_v2 import Berechnung_Erzeugermix, optimize_mix
+from heat_generators.heat_generator_classes import Berechnung_Erzeugermix, optimize_mix
 
 from geocoding.geocodingETRS89 import process_data
 

@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLay
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 from gui.mix_design_dialogs import TechInputDialog, EconomicParametersDialog, NetInfrastructureDialog
-from heat_generators.heat_generator_classes_v2 import *
+from heat_generators.heat_generator_classes import *
 from gui.checkable_combobox import CheckableComboBox
 
 from gui.threads import CalculateMixThread

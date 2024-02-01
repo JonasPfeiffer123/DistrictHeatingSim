@@ -8,10 +8,37 @@ import numpy as np
 DEG_TO_RAD = np.pi / 180
 
 def deg_to_rad(deg):
+    """
+    Funktion zur Konvertierung von Grad in Radian.
+
+    :param deg: Winkel in Grad
+    :return: Winkel in Radian
+    """
     return deg * DEG_TO_RAD
 
 def Berechnung_Solarstrahlung(Globalstrahlung_L, D_L, Tag_des_Jahres_L, time_steps, Longitude, STD_Longitude, Latitude, Albedo, IAM_W, IAM_N,
                               EWCaa, CTA):
+    """
+    Diese Funktion berechnet die Solarstrahlung auf einer schrägen Oberfläche, einschließlich des direkten und diffusen Beitrags,
+    sowie den Einfallswinkel der Sonnenstrahlung auf den Kollektor. Sie verwendet die geografische Position, den Tag des Jahres,
+    die Globalstrahlung und weitere Parameter als Eingabe.
+
+    :param Globalstrahlung_L: Globalstrahlung auf horizontaler Oberfläche (W/m²)
+    :param D_L: Direktstrahlung auf horizontaler Oberfläche (W/m²)
+    :param Tag_des_Jahres_L: Tag des Jahres
+    :param time_steps: Liste von Zeitstempeln, die den Zeitverlauf der Berechnungen darstellen
+    :param Longitude: Geografische Länge (°)
+    :param STD_Longitude: Zeitzone (°)
+    :param Latitude: Geografische Breite (°)
+    :param Albedo: Albedo der Oberfläche (Reflexionskoeffizient)
+    :param IAM_W: Dictionary mit Einstrahlungs-Winkelabhängigkeitsdaten für die EW-Richtung
+    :param IAM_N: Dictionary mit Einstrahlungs-Winkelabhängigkeitsdaten für die NS-Richtung
+    :param EWCaa: Azimutwinkel des Kollektors (°)
+    :param CTA: Neigungswinkel des Kollektors (°)
+    :return: Gesamtstrahlung auf der schrägen Oberfläche, Einstrahlungsfaktor, Direkte Strahlung auf der schrägen Oberfläche,
+    Diffuse Strahlung auf der schrägen Oberfläche
+    """
+    
     Stunde_L = (time_steps - time_steps.astype('datetime64[D]')).astype('timedelta64[m]').astype(float) / 60
 
     # Berechnet den Tag des Jahres als Winkel
