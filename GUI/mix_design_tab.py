@@ -45,7 +45,7 @@ class MixDesignTab(QWidget):
         self.initUI()
 
     def initFileInputs(self):
-        self.FilenameInput = QLineEdit('results/Lastgang Nahwärmenetz Görlitz Stadtbrücke.csv')
+        self.FilenameInput = QLineEdit('results/Lastgang_85C_70C_60C.csv')
         self.tryFilenameInput = QLineEdit('heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat')
         self.copFilenameInput = QLineEdit('heat_generators/Kennlinien WP.csv')
 
