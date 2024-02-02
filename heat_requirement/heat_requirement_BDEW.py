@@ -48,7 +48,7 @@ def calculate_daily_averages(temperature):
 
     return daily_avg_temperature
 
-def calculate_quarter_hourly_intervals(year):
+def calculate_hourly_intervals(year):
     # First day of the year
     start_date = np.datetime64(f'{year}-01-01')
     # Number of days in the year (consider leap year)
@@ -156,11 +156,11 @@ def berechnung_lastgang(weather_data, JWB_kWh, lastprofiltyp, subtyp, Feiertage,
     hour_factor_interpolation = hour_factor_T2+(hour_factor_T1-hour_factor_T2)*((hourly_temperature-upper_limit)/(5))
     hourly_heat_demand = np.nan_to_num((hourly_daily_heat_demand*hour_factor_interpolation)/100).astype(float)
     hourly_heat_demand_normed = (hourly_heat_demand / np.sum(hourly_heat_demand)) * JWB_kWh
-    hourly_intervals = calculate_quarter_hourly_intervals(year)
+    hourly_intervals = calculate_hourly_intervals(year)
 
     return hourly_intervals, hourly_heat_demand_normed.astype(float), hourly_temperature
 
-def Jahresdauerlinie(hourly_intervals, hourly_heat_demand):
+def Jahresdauerlinie(hourly_intervals, hourly_heat_demand, hourly_temperature):
     plt.plot(hourly_intervals, hourly_heat_demand, label="Wärmeleistung gesamt")
 
     plt.title("Jahresdauerlinie")
@@ -172,7 +172,7 @@ def Jahresdauerlinie(hourly_intervals, hourly_heat_demand):
 
 #############################
 
-def calculate(JWB_kWh=10000, lastprofiltyp="HMF", subtyp="03", year=2021):
+def calculate(JWB_kWh=10000, lastprofiltyp="HMF", subtyp="03", TRY="heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat", year=2021):
     # Feiertage
     Neujahr = "2021-01-01"
     Karfreitag = "2021-04-02"
@@ -190,17 +190,13 @@ def calculate(JWB_kWh=10000, lastprofiltyp="HMF", subtyp="03", year=2021):
                 Christi_Himmelfahrt, Fronleichnam, Tag_der_deutschen_Einheit, 
                 Allerheiligen, Weihnachtsfeiertag1, Weihnachtsfeiertag2]).astype('datetime64[D]')
         
-
-    TRY = "heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat"
     test_weather_data = "heat_requirement/weather_data.csv"
-
     weather_data = TRY
     # weather_data = test_weather_data
 
     hourly_intervals, hourly_heat_demand, hourly_temperature = berechnung_lastgang(weather_data, JWB_kWh, lastprofiltyp, subtyp, Feiertage, year)
 
-    #Jahresdauerlinie(hourly_intervals, hourly_heat_demand)
-
     return hourly_intervals, hourly_heat_demand, hourly_temperature
 
-#calculate(JWB_kWh=10000, lastprofiltyp="HMF", subtyp="03", year=2019)
+#hourly_intervals, hourly_heat_demand, hourly_temperature = calculate(JWB_kWh=10000, lastprofiltyp="HMF", subtyp="03", year=2019)
+#Jahresdauerlinie(hourly_intervals, hourly_heat_demand, hourly_temperature)

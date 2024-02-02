@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, \
 from main import calculate_results, save_results_csv
 from gui.calculation_dialogs import HeatDemandEditDialog, NetGenerationDialog, GeojsonDialog, StanetDialog, SaveLoadNetDialog
 from gui.threads import NetInitializationThread, NetCalculationThread
-from net_simulation_pandapipes.net_test import config_plot
+from net_simulation_pandapipes.config_plot import config_plot
 from gui.checkable_combobox import CheckableComboBox
 
 class CalculationTab(QWidget):
