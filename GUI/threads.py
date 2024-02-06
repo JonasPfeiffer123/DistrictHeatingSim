@@ -72,10 +72,10 @@ class NetInitializationThread(QThread):
                 net = optimize_diameter_parameters(net)
 
             if self.pipe_creation_mode == "type":
-                net = optimize_diameter_types(net)
+                net = optimize_diameter_types(net, v_max=1.0)
 
-        net = optimize_diameter_parameters(net, element="heat_exchanger")
-        net = optimize_diameter_parameters(net, element="flow_control")
+        net = optimize_diameter_parameters(net, element="heat_exchanger", v_max_he=2.2, v_min_he=1.8)
+        net = optimize_diameter_parameters(net, element="flow_control", v_max_he=2.2, v_min_he=1.8)
         
         return net
     

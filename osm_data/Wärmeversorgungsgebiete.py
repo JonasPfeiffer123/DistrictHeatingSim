@@ -174,7 +174,7 @@ def allocate_overlapping_area(quartiere):
 
 def run_here():
     # Laden Sie Ihren GeoJSON-Datensatz
-    gdf = gpd.read_file('C:/Users/username/heating_network_generation/osm_data/output_buildings.geojson', driver='GeoJSON').to_crs(epsg=25833)
+    gdf = gpd.read_file('osm_data/output_buildings.geojson', driver='GeoJSON').to_crs(epsg=25833)
 
     def calculate_building_data(gdf, output_filename):
             # Berechnen der Fläche jedes Gebäudes in Quadratmetern
@@ -190,7 +190,7 @@ def run_here():
 
             return gdf
 
-    gdf = calculate_building_data(gdf, 'C:/Users/username/heating_network_generation/osm_data/output_buildings.geojson')
+    gdf = calculate_building_data(gdf, 'osm_data/output_buildings.geojson')
 
     quartiere = clustering_quartiere_hdbscan(gdf)
     #Ergebnis als GeoJSON-Datei exportieren

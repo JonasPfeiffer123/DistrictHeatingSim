@@ -1,4 +1,5 @@
-from osm_data.import_osm_data_geojson import download_data
+#from osm_data.import_osm_data_geojson import download_data
+from import_osm_data_geojson import download_data
 import geopandas as gpd
 import pandas as pd
 import numpy as np
@@ -87,8 +88,6 @@ def calculate_building_data(geojson_file, output_file):
     # Speichern des erweiterten GeoDataFrame in eine neue GeoJSON-Datei
     gdf.to_file(output_file, driver='GeoJSON')
 
-filter_building_data('C:/Users/username/heating_network_generation/net_generation_QGIS/Gebäude Zittau.geojson',
-                     'C:/Users/username/heating_network_generation/net_generation_QGIS/Gebäude Zittau gefiltert.geojson')
+filter_building_data('osm_data/output_buildings.geojson', 'osm_data/output_buildings_filtered.geojson')
 
-calculate_building_data('C:/Users/username/heating_network_generation/net_generation_QGIS/Gebäude Zittau gefiltert.geojson', 
-                        'C:/Users/username/heating_network_generation/net_generation_QGIS/Gebäude Zittau gefiltert berechnet.geojson')
+calculate_building_data('osm_data/output_buildings_filtered.geojson', 'osm_data/output_buildings_filtered_calculated')

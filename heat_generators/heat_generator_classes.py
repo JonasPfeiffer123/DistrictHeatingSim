@@ -34,7 +34,7 @@ def annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand=0, q=1.05, r=1.03, T=20, E
     A_N_V = A_V1 * a * b_v
 
     # betriebsgebundene Kosten#
-    stundensatz = 100  # €
+    stundensatz = 45  # €
     A_B1 = Bedienaufwand * stundensatz
     A_IN = A0 * (f_Inst + f_W_Insp)/100
     A_N_B = A_B1 * a * b_B + A_IN * a * b_IN

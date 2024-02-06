@@ -141,6 +141,7 @@ class VisualizationTab(QWidget):
         self.netgenerationThread.start()
         self.progressBar.setRange(0, 0)  # Aktiviert den indeterministischen Modus
 
+    # Speicherort muss Variabel werden
     def on_generation_done(self, results):
         self.progressBar.setRange(0, 1)
         filenames = ["net_generation/HAST.geojson", "net_generation/Rücklauf.geojson",
