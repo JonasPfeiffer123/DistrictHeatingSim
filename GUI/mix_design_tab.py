@@ -4,7 +4,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QLineEdit, QListWidget, QDialog, QProgressBar, \
     QMessageBox, QFileDialog, QMenuBar, QScrollArea, QAction, QAbstractItemView, QTableWidget, QTableWidgetItem, QHeaderView)
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QFont
 from gui.mix_design_dialogs import TechInputDialog, EconomicParametersDialog, NetInfrastructureDialog
 from heat_generators.heat_generator_classes import *
@@ -34,6 +34,8 @@ class CustomListWidget(QListWidget):
         self.parent().updateTechObjectsOrder()
 
 class MixDesignTab(QWidget):
+    data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
+    
     def __init__(self, parent=None):
         super().__init__(parent)
         self.results = {}

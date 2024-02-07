@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, \
         QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction
 
 from main import calculate_results, save_results_csv
-from gui.calculation_dialogs import HeatDemandEditDialog, NetGenerationDialog, GeojsonDialog, StanetDialog, SaveLoadNetDialog
+from gui.calculation_dialogs import HeatDemandEditDialog, NetGenerationDialog, SaveLoadNetDialog
 from gui.threads import NetInitializationThread, NetCalculationThread
 from net_simulation_pandapipes.config_plot import config_plot
 from gui.checkable_combobox import CheckableComboBox
@@ -22,7 +22,7 @@ class CalculationTab(QWidget):
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
 
     DEFAULT_PATHS = {
-        'Ausgabe': 'results/results_time_series_net1.csv'
+        'Ausgabe': 'project_data/Beispiel Zittau/Lastgang/Lastgang.csv'
     }
 
     def __init__(self, data_manager, parent=None):
@@ -33,6 +33,14 @@ class CalculationTab(QWidget):
 
         self.net_data = None  # Variable zum Speichern der Netzdaten
         self.supply_temperature = None # Variable Vorlauftemperatur
+
+    def updateDefaultPath(self, new_base_path):
+        # Pfad für Ausgabe aktualisieren
+        new_output_path = f"{new_base_path}/Lastgang/Lastgang.csv"
+        self.DEFAULT_PATHS['Ausgabe'] = new_output_path
+        # Aktualisiere das Eingabefeld, falls bereits initialisiert
+        if hasattr(self, 'AusgabeInput'):
+            self.AusgabeInput.setText(new_output_path)
 
     def updateFilePaths(self, layerNames):
         for key, path in layerNames.items():

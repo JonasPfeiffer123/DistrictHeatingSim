@@ -1,0 +1,14 @@
+{
+"type": "FeatureCollection",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::25833" } },
+"features": [
+{ "type": "Feature", "properties": { "Wärmebedarf": "16652.96", "Gebäudetyp": "HMF" }, "geometry": { "type": "LineString", "coordinates": [ [ 486263.228, 5637343.071000000461936 ], [ 486264.228, 5637343.071000000461936 ] ] } },
+{ "type": "Feature", "properties": { "Wärmebedarf": "18002.73", "Gebäudetyp": "HMF" }, "geometry": { "type": "LineString", "coordinates": [ [ 486254.207999999984168, 5637331.237999999895692 ], [ 486255.207999999984168, 5637331.237999999895692 ] ] } },
+{ "type": "Feature", "properties": { "Wärmebedarf": "10419.08", "Gebäudetyp": "HMF" }, "geometry": { "type": "LineString", "coordinates": [ [ 486244.424400000018068, 5637318.165 ], [ 486245.424400000018068, 5637318.165 ] ] } },
+{ "type": "Feature", "properties": { "Wärmebedarf": "13294.18", "Gebäudetyp": "HMF" }, "geometry": { "type": "LineString", "coordinates": [ [ 486234.8714, 5637305.401999999769032 ], [ 486235.8714, 5637305.401999999769032 ] ] } },
+{ "type": "Feature", "properties": { "Wärmebedarf": "7866.43", "Gebäudetyp": "HMF" }, "geometry": { "type": "LineString", "coordinates": [ [ 486225.6852, 5637293.122000000439584 ], [ 486226.6852, 5637293.122000000439584 ] ] } },
+{ "type": "Feature", "properties": { "Wärmebedarf": "13806.56", "Gebäudetyp": "HMF" }, "geometry": { "type": "LineString", "coordinates": [ [ 486216.211399999971036, 5637280.458999999798834 ], [ 486217.211399999971036, 5637280.458999999798834 ] ] } },
+{ "type": "Feature", "properties": { "Wärmebedarf": "16373.56", "Gebäudetyp": "HMF" }, "geometry": { "type": "LineString", "coordinates": [ [ 486286.019099999975879, 5637283.093000000342727 ], [ 486287.019099999975879, 5637283.093000000342727 ] ] } },
+{ "type": "Feature", "properties": { "Wärmebedarf": "16373.56", "Gebäudetyp": "HMF" }, "geometry": { "type": "LineString", "coordinates": [ [ 486253.923799999989569, 5637243.572999999858439 ], [ 486254.923799999989569, 5637243.572999999858439 ] ] } }
+]
+}

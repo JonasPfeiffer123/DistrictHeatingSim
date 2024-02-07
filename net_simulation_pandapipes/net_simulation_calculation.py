@@ -142,7 +142,7 @@ def correct_flow_directions(net):
     return net
 
 
-def optimize_diameter_parameters(initial_net, element="pipe", v_max=2.2, v_min=1.8, dx=0.001):
+def optimize_diameter_parameters(initial_net, element="pipe", v_max=2.2, v_min=1.8, v_max_he=2.2, v_min_he=1.8, dx=0.001):
     pp.pipeflow(initial_net, mode="all")
 
     if element == "pipe":
@@ -165,13 +165,13 @@ def optimize_diameter_parameters(initial_net, element="pipe", v_max=2.2, v_min=1
     if element == "flow_control":
         velocities = list(initial_net.res_flow_control.v_mean_m_per_s)
         
-        while max(velocities) > v_max or min(velocities) < v_min:
+        while max(velocities) > v_max_he or min(velocities) < v_min_he:
             for fc_idx in initial_net.flow_control.index:
                 # check the average velocity in the Pipe
-                if initial_net.res_flow_control.v_mean_m_per_s[fc_idx] > v_max:
+                if initial_net.res_flow_control.v_mean_m_per_s[fc_idx] > v_max_he:
                     # enlarge diameter
                     initial_net.flow_control.at[fc_idx, 'diameter_m'] = initial_net.flow_control.at[fc_idx, 'diameter_m'] + dx
-                elif initial_net.res_flow_control.v_mean_m_per_s[fc_idx] < v_min:
+                elif initial_net.res_flow_control.v_mean_m_per_s[fc_idx] < v_min_he:
                     # shrink diameter
                     initial_net.flow_control.at[fc_idx, 'diameter_m'] = initial_net.flow_control.at[fc_idx, 'diameter_m'] - dx
             pp.pipeflow(initial_net, mode="all")
@@ -180,13 +180,13 @@ def optimize_diameter_parameters(initial_net, element="pipe", v_max=2.2, v_min=1
     if element == "heat_exchanger":
         velocities = list(initial_net.res_heat_exchanger.v_mean_m_per_s)
         
-        while max(velocities) > v_max or min(velocities) < v_min:
+        while max(velocities) > v_max_he or min(velocities) < v_min_he:
             for hx_idx in initial_net.heat_exchanger.index:
                 # check the average velocity in the Pipe
-                if initial_net.res_heat_exchanger.v_mean_m_per_s[hx_idx] > v_max:
+                if initial_net.res_heat_exchanger.v_mean_m_per_s[hx_idx] > v_max_he:
                     # enlarge diameter
                     initial_net.heat_exchanger.at[hx_idx, 'diameter_m'] = initial_net.heat_exchanger.at[hx_idx, 'diameter_m'] + dx
-                elif initial_net.res_heat_exchanger.v_mean_m_per_s[hx_idx] < v_min:
+                elif initial_net.res_heat_exchanger.v_mean_m_per_s[hx_idx] < v_min_he:
                     # shrink diameter
                     initial_net.heat_exchanger.at[hx_idx, 'diameter_m'] = initial_net.heat_exchanger.at[hx_idx, 'diameter_m'] - dx
             pp.pipeflow(initial_net, mode="all")

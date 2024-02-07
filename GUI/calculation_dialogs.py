@@ -48,313 +48,6 @@ class HeatDemandEditDialog(QDialog):
         self.gdf_HAST.to_file(self.hastInput, driver='GeoJSON')
         self.accept()  # Schließt das Dialogfenster
 
-class GeojsonDialog(QDialog):
-    def __init__(self, generate_callback, edit_hast_callback, import_layers_callback, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Netz aus GeoJSON generieren")
-        self.generate_callback = generate_callback
-        self.edit_hast_callback = edit_hast_callback
-        self.import_layers_callback = import_layers_callback
-        self.initUI()
-
-    def initUI(self):
-        layout = QVBoxLayout(self)
-
-        default_paths = {
-            'Erzeugeranlagen': 'net_generation/Erzeugeranlagen.geojson',
-            'HAST': 'net_generation/HAST.geojson',
-            'Vorlauf': 'net_generation/Vorlauf.geojson',
-            'Rücklauf': 'net_generation/Rücklauf.geojson'
-        }
-
-        file_inputs_layout = self.createFileInputs(default_paths)
-        layout.addLayout(file_inputs_layout)
-
-        calculation_method_layout = self.createCalculationMethodInput()
-        layout.addLayout(calculation_method_layout)
-
-        building_type_layout = self.createBuildingTypeInput()
-        layout.addLayout(building_type_layout)
-
-        edit_hast_layout = self.createEditHASTButton()
-        layout.addLayout(edit_hast_layout)
-
-        temperature_control_layout = self.createTemperatureControlInput()
-        layout.addLayout(temperature_control_layout)
-
-        parameter_inputs_layout = self.createParameterInputs()
-        layout.addLayout(parameter_inputs_layout)
-
-        generate_button = self.createGenerateButton()
-        layout.addWidget(generate_button)
-
-        self.updateInputFieldsVisibility()
-
-    def createFileInputs(self, default_paths):
-        layout = QVBoxLayout()
-        self.vorlaufInput = self.createFileInput("Vorlauf GeoJSON:", default_paths['Vorlauf'])
-        layout.addLayout(self.vorlaufInput)
-        
-        self.ruecklaufInput = self.createFileInput("Rücklauf GeoJSON:", default_paths['Rücklauf'])
-        layout.addLayout(self.ruecklaufInput)
-
-        self.hastInput = self.createFileInput("HAST GeoJSON:", default_paths['HAST'])
-        layout.addLayout(self.hastInput)
-
-        self.erzeugeranlagenInput = self.createFileInput("Erzeugeranlagen GeoJSON:", default_paths['Erzeugeranlagen'])
-        layout.addLayout(self.erzeugeranlagenInput)
-
-        return layout
-    
-    def createFileInput(self, label_text, default_text):
-        layout = QHBoxLayout()
-        label = QLabel(label_text)
-        line_edit = QLineEdit(default_text)
-        button = QPushButton("Datei auswählen")
-        button.clicked.connect(lambda: self.selectFilename(line_edit))
-        layout.addWidget(label)
-        layout.addWidget(line_edit)
-        layout.addWidget(button)
-        return layout
-
-    def createCalculationMethodInput(self):
-        layout = QVBoxLayout()
-        self.calcMethodInput = QComboBox(self)
-        self.calcMethodInput.addItems(["Datensatz", "BDEW", "VDI4655"])
-        layout.addWidget(QLabel("Berechnungsmethode:"))
-        layout.addWidget(self.calcMethodInput)
-        return layout
-
-    def createBuildingTypeInput(self):
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel("Gebäudetyp:"))
-        self.buildingTypeInput = QComboBox(self)
-        layout.addWidget(self.buildingTypeInput)
-        self.updateBuildingType()
-        self.calcMethodInput.currentIndexChanged.connect(self.updateBuildingType)
-        return layout
-
-    def createEditHASTButton(self):
-        layout = QVBoxLayout()
-        self.editHASTButton = QPushButton("Hausanschlussstationen bearbeiten", self)
-        self.editHASTButton.clicked.connect(self.editHAST)
-        layout.addWidget(self.editHASTButton)
-        return layout
-
-    def createTemperatureControlInput(self):
-        layout = QVBoxLayout()
-        self.temperatureControlInput = QComboBox(self)
-        self.temperatureControlInput.addItems(["Statisch", "Gleitend"])
-        layout.addWidget(QLabel("Vorlauftemperatur-Regelung:"))
-        layout.addWidget(self.temperatureControlInput)
-        self.temperatureControlInput.currentIndexChanged.connect(self.updateInputFieldsVisibility)
-        return layout
-
-    def createParameterInputs(self):
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel("Parameter:"))
-
-        self.parameter_rows = []
-
-        # Parameterzeile für Vorlauftemperatur
-        supply_temp_row = self.createParameterRow("Vorlauftemperatur:", "85")
-        self.parameter_rows.append(supply_temp_row)
-        layout.addLayout(supply_temp_row)
-
-        # Parameterzeile für Maximale Vorlauftemperatur
-        max_supply_temp_row = self.createParameterRow("Maximale Vorlauftemperatur:", "85")
-        self.parameter_rows.append(max_supply_temp_row)
-        layout.addLayout(max_supply_temp_row)
-
-        # Parameterzeile für Minimale Vorlauftemperatur
-        min_supply_temp_row = self.createParameterRow("Minimale Vorlauftemperatur:", "70")
-        self.parameter_rows.append(min_supply_temp_row)
-        layout.addLayout(min_supply_temp_row)
-
-        # Parameterzeile für Obere Grenze der Lufttemperatur
-        max_air_temp_row = self.createParameterRow("Obere Grenze der Lufttemperatur:", "15")
-        self.parameter_rows.append(max_air_temp_row)
-        layout.addLayout(max_air_temp_row)
-
-        # Parameterzeile für Untere Grenze der Lufttemperatur
-        min_air_temp_row = self.createParameterRow("Untere Grenze der Lufttemperatur:", "-10")
-        self.parameter_rows.append(min_air_temp_row)
-        layout.addLayout(min_air_temp_row)
-
-        # Parameterzeile für Rücklauftemperatur
-        return_temp_row = self.createParameterRow("Rücklauftemperatur:", "60")
-        self.parameter_rows.append(return_temp_row)
-        layout.addLayout(return_temp_row)
-
-        # Parameterzeile für Vorlaufdruck
-        flow_pressure_row = self.createParameterRow("Vorlaufdruck:", "4")
-        self.parameter_rows.append(flow_pressure_row)
-        layout.addLayout(flow_pressure_row)
-
-        # Parameterzeile für Druckdifferenz Vorlauf/Rücklauf
-        lift_pressure_row = self.createParameterRow("Druckdifferenz Vorlauf/Rücklauf:", "1.5")
-        self.parameter_rows.append(lift_pressure_row)
-        layout.addLayout(lift_pressure_row)
-
-        return layout
-    
-    def createParameterRow(self, label_text, default_text):
-        row_layout = QHBoxLayout()
-        label = QLabel(label_text)
-        line_edit = QLineEdit(default_text)
-        row_layout.addWidget(label)
-        row_layout.addWidget(line_edit)
-        return row_layout
-    
-    def createGenerateButton(self):
-        generate_button = QPushButton("Netz generieren", self)
-        generate_button.clicked.connect(self.generateNetwork)
-        return generate_button
-    
-    def updateInputFieldsVisibility(self):
-        control_mode = self.temperatureControlInput.currentText()
-
-        if control_mode == "Statisch":
-            # Zeige die Widgets für Vorlauftemperatur (Index 0)
-            for i in range(self.parameter_rows[0].count()):
-                widget = self.parameter_rows[0].itemAt(i).widget()
-                if widget:
-                    widget.setVisible(True)
-            
-            # Blende die Widgets für Maximale Vorlauftemperatur, Minimale Vorlauftemperatur,
-            # Obere Grenze der Lufttemperatur und Untere Grenze der Lufttemperatur (Index 1 bis 4) aus
-            for parameter_row in self.parameter_rows[1:5]:
-                for i in range(parameter_row.count()):
-                    widget = parameter_row.itemAt(i).widget()
-                    if widget:
-                        widget.setVisible(False)
-
-        elif control_mode == "Gleitend":
-            # Blende die Widgets für Vorlauftemperatur (Index 0) aus
-            for i in range(self.parameter_rows[0].count()):
-                widget = self.parameter_rows[0].itemAt(i).widget()
-                if widget:
-                    widget.setVisible(False)
-
-            # Zeige die Widgets für Maximale Vorlauftemperatur, Minimale Vorlauftemperatur,
-            # Obere Grenze der Lufttemperatur und Untere Grenze der Lufttemperatur (Index 1 bis 4)
-            for parameter_row in self.parameter_rows[1:5]:
-                for i in range(parameter_row.count()):
-                    widget = parameter_row.itemAt(i).widget()
-                    if widget:
-                        widget.setVisible(True)
-
-    def selectFilename(self, line_edit):
-        fname, _ = QFileDialog.getOpenFileName(self, 'Datei auswählen', '', 'GeoJSON Files (*.geojson);;All Files (*)')
-        if fname:
-            line_edit.setText(fname)
-
-    def updateBuildingType(self):
-        self.buildingTypeInput.clear()
-        if self.calcMethodInput.currentText() == "VDI4655":
-            self.buildingTypeInput.setDisabled(False)
-            self.buildingTypeInput.addItems(["EFH", "MFH"])
-        elif self.calcMethodInput.currentText() == "BDEW":
-            self.buildingTypeInput.setDisabled(False)
-            self.buildingTypeInput.addItems(["HEF", "HMF", "GKO", "GHA", "GMK", "GBD", "GBH", "GWA", "GGA", "GBA", "GGB", "GPD", "GMF", "GHD"])
-        else:
-            self.buildingTypeInput.setDisabled(True)
-
-    def editHAST(self):
-        hast_path = self.hastInput.itemAt(1).widget().text()  # Annahme: QLineEdit ist das zweite Widget im Layout
-        if self.edit_hast_callback:
-            self.edit_hast_callback(hast_path)
-
-    def calculateTemperatureCurve(self):
-        control_mode = self.temperatureControlInput.currentText()
-        if control_mode == "Statisch":
-            return float(self.parameter_rows[0].itemAt(1).widget().text())
-        elif control_mode == "Gleitend":
-            max_supply_temperature = float(self.parameter_rows[1].itemAt(1).widget().text())
-            min_supply_temperature = float(self.parameter_rows[2].itemAt(1).widget().text())
-            max_air_temperature = float(self.parameter_rows[3].itemAt(1).widget().text())
-            min_air_temperature = float(self.parameter_rows[4].itemAt(1).widget().text())
-
-
-            air_temperature_data = import_TRY("heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat")
-
-            # Berechnung der Temperaturkurve basierend auf den ausgewählten Einstellungen
-            temperature_curve = []
-
-            # Berechnen der Steigung der linearen Gleichung
-            slope = (max_supply_temperature - min_supply_temperature) / (min_air_temperature - max_air_temperature)
-
-            for air_temperature in air_temperature_data:
-                if air_temperature <= min_air_temperature:
-                    temperature_curve.append(max_supply_temperature)
-                elif air_temperature >= max_air_temperature:
-                    temperature_curve.append(min_supply_temperature)
-                else:
-                    # Anwendung der linearen Gleichung für die Temperaturberechnung
-                    temperature = max_supply_temperature + slope * (air_temperature - min_air_temperature)
-                    temperature_curve.append(temperature)
-
-            return np.array(temperature_curve)
-    
-    def generateNetwork(self):
-        if self.generate_callback:
-            self.generate_callback(
-                self.vorlaufInput.itemAt(1).widget().text(),
-                self.ruecklaufInput.itemAt(1).widget().text(),
-                self.hastInput.itemAt(1).widget().text(),
-                self.erzeugeranlagenInput.itemAt(1).widget().text(),
-                self.calcMethodInput.currentText(),
-                self.buildingTypeInput.currentText() if self.calcMethodInput.currentText() != "Datensatz" else None,
-                float(self.parameter_rows[5].itemAt(1).widget().text()),
-                self.calculateTemperatureCurve(),
-                float(self.parameter_rows[6].itemAt(1).widget().text()),
-                float(self.parameter_rows[7].itemAt(1).widget().text())
-            )
-        self.accept()
-
-class StanetDialog(QDialog):
-    def __init__(self, generate_callback, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Netz aus Stanet-CSV generieren")
-        self.generate_callback = generate_callback
-        self.initUI()
-
-    def initUI(self):
-        layout = QVBoxLayout(self)
-
-        # Standardpfad
-        default_path = "net_simulation_pandapipes/stanet files/Beleg_1/Beleg_1.CSV"
-
-        # Eingabefeld und Dateiauswahl-Button
-        self.stanetCsvInputLayout = self.createFileInput("Stanet CSV:", default_path)
-        layout.addLayout(self.stanetCsvInputLayout)
-
-        # Button zum Starten der Netzgenerierung
-        self.generateButton = QPushButton("Netz generieren", self)
-        self.generateButton.clicked.connect(self.generateNetwork)
-        layout.addWidget(self.generateButton)
-
-    def createFileInput(self, label_text, default_text):
-        layout = QHBoxLayout()
-        label = QLabel(label_text)
-        line_edit = QLineEdit(default_text)
-        button = QPushButton("Datei auswählen")
-        button.clicked.connect(lambda: self.selectFilename(line_edit))
-        layout.addWidget(label)
-        layout.addWidget(line_edit)
-        layout.addWidget(button)
-        return layout
-
-    def selectFilename(self, line_edit):
-        fname, _ = QFileDialog.getOpenFileName(self, 'Datei auswählen', '', 'CSV Files (*.csv);;All Files (*)')
-        if fname:
-            line_edit.setText(fname)
-
-    def generateNetwork(self):
-        if self.generate_callback:
-            self.generate_callback(self.stanetCsvInputLayout.itemAt(1).widget().text())
-        self.accept()
-
 class NetGenerationDialog(QDialog):
     def __init__(self, generate_callback, edit_hast_callback, parent=None):
         super().__init__(parent)
@@ -399,10 +92,10 @@ class NetGenerationDialog(QDialog):
 
     def createGeojsonInputs(self):
         default_paths = {
-            'Erzeugeranlagen': 'net_generation/Erzeugeranlagen.geojson',
-            'HAST': 'net_generation/HAST.geojson',
-            'Vorlauf': 'net_generation/Vorlauf.geojson',
-            'Rücklauf': 'net_generation/Rücklauf.geojson'
+            'Erzeugeranlagen': 'project_data/Beispiel Zittau/Wärmenetz/Erzeugeranlagen.geojson',
+            'HAST': 'project_data/Beispiel Zittau/Wärmenetz/HAST.geojson',
+            'Vorlauf': 'project_data/Beispiel Zittau/Wärmenetz/Vorlauf.geojson',
+            'Rücklauf': 'project_data/Beispiel Zittau/Wärmenetz/Rücklauf.geojson'
         }
 
         file_inputs_layout = self.createFileInputsGeoJSON(default_paths)
@@ -419,9 +112,11 @@ class NetGenerationDialog(QDialog):
         return inputs
 
     def createStanetInputs(self):
-        default_path = "net_simulation_pandapipes/stanet files/Beleg_1/Beleg_1.CSV"
+        default_path = "project_data/Beispiel Stanet/Wärmenetz/Beleg_1.CSV"
+
+        self.stanetinput = self.createFileInput("Stanet CSV:", default_path)
         inputs = [
-            self.createFileInput("Stanet CSV:", default_path)
+           self.stanetinput
         ]
         return inputs
 
@@ -653,6 +348,23 @@ class NetGenerationDialog(QDialog):
                     temperature_curve.append(temperature)
 
             return np.array(temperature_curve)
+        
+    def updatePathsBasedOnProjectFolder(self, new_folder_path):
+        # Aktualisiere hier die Standardpfade basierend auf dem neuen Ordnerpfad
+        new_paths = {
+            'Erzeugeranlagen': f'{new_folder_path}/Wärmenetz/Erzeugeranlagen.geojson',
+            'HAST': f'{new_folder_path}/Wärmenetz/HAST.geojson',
+            'Vorlauf': f'{new_folder_path}/Wärmenetz/Vorlauf.geojson',
+            'Rücklauf': f'{new_folder_path}/Wärmenetz/Rücklauf.geojson',
+            'Stanet CSV': f'{new_folder_path}/Wärmenetz/Beleg_1.CSV'
+
+        }
+        # Dies setzt voraus, dass Ihre Eingabefelder oder deren Layouts entsprechend benannt sind
+        self.vorlaufInput.itemAt(1).widget().setText(new_paths['Vorlauf'])
+        self.ruecklaufInput.itemAt(1).widget().setText(new_paths['Rücklauf'])
+        self.hastInput.itemAt(1).widget().setText(new_paths['HAST'])
+        self.erzeugeranlagenInput.itemAt(1).widget().setText(new_paths['Erzeugeranlagen'])
+        self.stanetinput.itemAt(1).widget().setText(new_paths['Stanet'])
         
     def generateNetwork(self):
         rl_temp = float(self.parameter_rows[5].itemAt(1).widget().text())
