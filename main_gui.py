@@ -13,7 +13,7 @@ class CentralDataManager(QObject):
     def __init__(self):
         super(CentralDataManager, self).__init__()  # QObject Konstruktor aufrufen
         self.map_data = []
-        self.project_folder = ""  # Variable zum Speichern des ausgewählten Ordnerpfads
+        self.project_folder = "project_data/Beispiel Zittau"  # Variable zum Speichern des ausgewählten Ordnerpfads
 
     def add_data(self, data):
         self.map_data.append(data)
@@ -32,40 +32,41 @@ class HeatSystemDesignGUI(QWidget):
         super().__init__()
         self.initUI()
         self.data_manager.project_folder_changed.connect(self.calcTab.updateDefaultPath)
+        self.data_manager.project_folder_changed.connect(self.visTab.updateDefaultPath)
+        self.data_manager.project_folder_changed.connect(self.mixDesignMainWindow.project_folder_changed.emit)
 
     def initUI(self):
         self.setWindowTitle("Hier könnte ein cooler Softwarename stehen")
         self.setGeometry(100, 100, 800, 600)  # Optional, standard size before full-screen
 
-        self.layout = QVBoxLayout(self)
+        self.layout1 = QVBoxLayout(self)
 
         self.initMenuBar()
 
         tabWidget = QTabWidget()
-        self.layout.addWidget(tabWidget)
+        self.layout1.addWidget(tabWidget)
 
         # Creating individual tabs
         self.data_manager = CentralDataManager()
 
         self.visTab = VisualizationTab(self.data_manager)
         self.calcTab = CalculationTab(self.data_manager)
-        self.mixDesignTab1 = MixDesignMainWindow()
-
-        # Establishing connections here
-        self.visTab.connect_signals(self.calcTab)
-        self.visTab.layers_imported.connect(self.calcTab.updateFilePaths)
+        self.mixDesignMainWindow = MixDesignMainWindow()
 
         # Adding tabs to the tab widget
-        tabWidget.addTab(self.visTab, "Visualisierung GIS-Daten")
+        tabWidget.addTab(self.visTab, "Räumliche Analyse")
         tabWidget.addTab(self.calcTab, "Wärmenetzberechnung")
-        tabWidget.addTab(self.mixDesignTab1, "Erzeugerauslegung und Wirtschftlichkeitrechnung")
+        tabWidget.addTab(self.mixDesignMainWindow, "Erzeugerauslegung und Wirtschftlichkeitrechnung")
 
         # Ordnerauswahl Label
-        self.folderLabel = QLabel("Kein Ordner ausgewählt")
-        self.layout.addWidget(self.folderLabel)
+        if self.data_manager.project_folder != "" or self.data_manager.project_folder != None:
+            self.folderLabel = QLabel(f"Standard-Projektordner: {self.data_manager.project_folder}")
+        else:
+            self.folderLabel = QLabel("Kein Ordner ausgewählt")
+        self.layout1.addWidget(self.folderLabel)
 
         # Set the layout
-        self.setLayout(self.layout)
+        self.setLayout(self.layout1)
 
         # Maximize the main window to the screen size
         self.showMaximized()
@@ -77,7 +78,7 @@ class HeatSystemDesignGUI(QWidget):
         networkMenu = self.menubar.addMenu('Datei')
         generateNetAction = QAction('Projektordner festlegen', self)
         networkMenu.addAction(generateNetAction)
-        self.layout.addWidget(self.menubar)
+        self.layout1.addWidget(self.menubar)
 
         # Verbindungen zu der Funktion
         generateNetAction.triggered.connect(self.ProjektordnerNameDialog)

@@ -49,10 +49,11 @@ class HeatDemandEditDialog(QDialog):
         self.accept()  # Schließt das Dialogfenster
 
 class NetGenerationDialog(QDialog):
-    def __init__(self, generate_callback, edit_hast_callback, parent=None):
+    def __init__(self, generate_callback, edit_hast_callback, base_path,parent=None):
         super().__init__(parent)
         self.generate_callback = generate_callback
         self.edit_hast_callback = edit_hast_callback
+        self.base_path = base_path
         self.initUI()
 
     def initUI(self):
@@ -92,10 +93,10 @@ class NetGenerationDialog(QDialog):
 
     def createGeojsonInputs(self):
         default_paths = {
-            'Erzeugeranlagen': 'project_data/Beispiel Zittau/Wärmenetz/Erzeugeranlagen.geojson',
-            'HAST': 'project_data/Beispiel Zittau/Wärmenetz/HAST.geojson',
-            'Vorlauf': 'project_data/Beispiel Zittau/Wärmenetz/Vorlauf.geojson',
-            'Rücklauf': 'project_data/Beispiel Zittau/Wärmenetz/Rücklauf.geojson'
+            'Erzeugeranlagen': f'{self.base_path}/Wärmenetz/Erzeugeranlagen.geojson',
+            'HAST': f'{self.base_path}/Wärmenetz/HAST.geojson',
+            'Vorlauf': f'{self.base_path}/Wärmenetz/Vorlauf.geojson',
+            'Rücklauf': f'{self.base_path}/Wärmenetz/Rücklauf.geojson'
         }
 
         file_inputs_layout = self.createFileInputsGeoJSON(default_paths)
@@ -112,14 +113,14 @@ class NetGenerationDialog(QDialog):
         return inputs
 
     def createStanetInputs(self):
-        default_path = "project_data/Beispiel Stanet/Wärmenetz/Beleg_1.CSV"
+        default_path = f'{self.base_path}/Wärmenetz/Beleg_1.CSV'
 
         self.stanetinput = self.createFileInput("Stanet CSV:", default_path)
         inputs = [
            self.stanetinput
         ]
         return inputs
-
+    
     def createFileInputsGeoJSON(self, default_paths):
         layout = QVBoxLayout()
         self.vorlaufInput = self.createFileInput("Vorlauf GeoJSON:", default_paths['Vorlauf'])
@@ -348,23 +349,6 @@ class NetGenerationDialog(QDialog):
                     temperature_curve.append(temperature)
 
             return np.array(temperature_curve)
-        
-    def updatePathsBasedOnProjectFolder(self, new_folder_path):
-        # Aktualisiere hier die Standardpfade basierend auf dem neuen Ordnerpfad
-        new_paths = {
-            'Erzeugeranlagen': f'{new_folder_path}/Wärmenetz/Erzeugeranlagen.geojson',
-            'HAST': f'{new_folder_path}/Wärmenetz/HAST.geojson',
-            'Vorlauf': f'{new_folder_path}/Wärmenetz/Vorlauf.geojson',
-            'Rücklauf': f'{new_folder_path}/Wärmenetz/Rücklauf.geojson',
-            'Stanet CSV': f'{new_folder_path}/Wärmenetz/Beleg_1.CSV'
-
-        }
-        # Dies setzt voraus, dass Ihre Eingabefelder oder deren Layouts entsprechend benannt sind
-        self.vorlaufInput.itemAt(1).widget().setText(new_paths['Vorlauf'])
-        self.ruecklaufInput.itemAt(1).widget().setText(new_paths['Rücklauf'])
-        self.hastInput.itemAt(1).widget().setText(new_paths['HAST'])
-        self.erzeugeranlagenInput.itemAt(1).widget().setText(new_paths['Erzeugeranlagen'])
-        self.stanetinput.itemAt(1).widget().setText(new_paths['Stanet'])
         
     def generateNetwork(self):
         rl_temp = float(self.parameter_rows[5].itemAt(1).widget().text())

@@ -14,8 +14,9 @@ from math import radians, sin, cos, sqrt, atan2
 from osm_data.Wärmeversorgungsgebiete import clustering_quartiere_hdbscan, postprocessing_hdbscan, allocate_overlapping_area
    
 class LayerGenerationDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, base_path, parent=None):
         super().__init__(parent)
+        self.base_path = base_path
         self.initUI()
 
     def initUI(self):
@@ -24,12 +25,12 @@ class LayerGenerationDialog(QDialog):
         # Formularlayout für Eingaben
         formLayout = QFormLayout()
 
-        self.fileInput, self.fileButton = self.createFileInput("osm_data/Straßen Zittau.geojson")
+        self.fileInput, self.fileButton = self.createFileInput(f"{self.base_path}/Raumanalyse/Straßen.geojson")
         # Eingabefelder für Dateipfade und Koordinaten
         self.dataTypeComboBox = QComboBox(self)
         self.dataTypeComboBox.addItems(["CSV", "GeoJSON"])
         self.dataTypeComboBox.currentIndexChanged.connect(self.toggleFileInputMode)
-        self.dataInput, self.dataCsvButton = self.createFileInput("geocoding/data_output_zi_ETRS89.csv")
+        self.dataInput, self.dataCsvButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/data_output_zi_ETRS89.csv")
 
         # Auswahlmodus für Erzeugerstandort
         self.locationModeComboBox = QComboBox(self)
@@ -50,7 +51,7 @@ class LayerGenerationDialog(QDialog):
         self.streetInput = QLineEdit(self)
         self.streetInput.setPlaceholderText("Straße und Hausnummer")
         self.streetInput.setEnabled(False)
-        self.coordsCsvInput, self.coordsCsvButton = self.createFileInput("geocoding/data_output_zi_ETRS89.csv")
+        self.coordsCsvInput, self.coordsCsvButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/data_output_zi_ETRS89.csv")
         self.coordsCsvInput.setEnabled(False)
         self.coordsCsvButton.setEnabled(False)
 
@@ -98,9 +99,9 @@ class LayerGenerationDialog(QDialog):
     def toggleFileInputMode(self, index):
         self.loadgeojsonCoordsButton.setEnabled(index == 1)
         if index == 0:
-            self.dataInput.setText("geocoding/data_output_zi_ETRS89.csv")
+            self.dataInput.setText(f"{self.base_path}/Gebäudedaten/data_output_zi_ETRS89.csv")
         elif index == 1:
-            self.dataInput.setText("osm_data/waermenetz_buildings.geojson")
+            self.dataInput.setText(f"{self.base_path}/Raumanalyse/waermenetz_buildings.geojson")
 
     def toggleLocationInputMode(self, index):
         self.xCoordInput.setEnabled(index == 0)
@@ -158,7 +159,7 @@ class LayerGenerationDialog(QDialog):
     def createCsvFromGeoJson(self):
         try:
             geojson_file = self.dataInput.text()
-            csv_file = "geocoding/generated_building_data.csv"
+            csv_file = f"{self.base_path}/Gebäudedaten/generated_building_data.csv"
             with open(geojson_file, 'r') as geojson_file:
                 data = json.load(geojson_file)
             
@@ -235,8 +236,9 @@ class LayerGenerationDialog(QDialog):
 
 
 class DownloadOSMDataDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, base_path, parent=None):
         super().__init__(parent)
+        self.base_path = base_path
         self.tags_to_download = []
         self.standard_tags = [
             {"highway": "primary"},
@@ -264,7 +266,7 @@ class DownloadOSMDataDialog(QDialog):
         layout.addWidget(self.cityLineEdit)
         
         # Dateiname Eingabefeld
-        self.filenameLineEdit, fileButton = self.createFileInput("osm_data/osm_data.geojson")
+        self.filenameLineEdit, fileButton = self.createFileInput(f"{self.base_path}/Raumanalyse/Straßen.geojson")
         layout.addLayout(self.createFileInputLayout(self.filenameLineEdit, fileButton))
 
         # Dropdown-Menü für einzelne Standard-Tags
@@ -374,8 +376,9 @@ class DownloadOSMDataDialog(QDialog):
         self.parent().loadNetData(self.filename)
 
 class OSMBuildingQueryDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, base_path, parent=None):
         super().__init__(parent)
+        self.base_path = base_path
         self.initUI()
 
     def initUI(self):
@@ -388,7 +391,7 @@ class OSMBuildingQueryDialog(QDialog):
         layout.addWidget(self.cityLineEdit)
 
         # Dateiname Eingabefeld
-        self.filenameLineEdit = QLineEdit("osm_data/output_buildings.geojson", self)
+        self.filenameLineEdit = QLineEdit(f"{self.base_path}/Raumanalyse/output_buildings.geojson", self)
         layout.addWidget(QLabel("Ausgabedatei:"))
         layout.addWidget(self.filenameLineEdit)
 
@@ -450,7 +453,7 @@ class OSMBuildingQueryDialog(QDialog):
         # Widget für Adressen aus CSV
         self.csvWidget = QWidget(self)
         csvLayout = QVBoxLayout(self.csvWidget)
-        self.addressCsvLineEdit, self.addressCsvButton = self.createFileInput("geocoding/")
+        self.addressCsvLineEdit, self.addressCsvButton = self.createFileInput(f"{self.base_path}/")
         csvLayout.addLayout(self.createFileInputLayout(self.addressCsvLineEdit, self.addressCsvButton))
         layout.addWidget(self.csvWidget)
 
@@ -597,8 +600,9 @@ class OSMBuildingQueryDialog(QDialog):
         return filtered_geojson
 
 class SpatialAnalysisDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, base_path, parent=None):
         super().__init__(parent)
+        self.base_path = base_path
         self.initUI()
 
     def initUI(self):
@@ -608,21 +612,21 @@ class SpatialAnalysisDialog(QDialog):
         # Gebäude-geojson
         self.geojsonWidget = QWidget(self)
         geojsonLayout = QVBoxLayout(self.geojsonWidget)
-        self.geojsonLineEdit, self.geojsonButton = self.createFileInput("osm_data/output_buildings.geojson")
+        self.geojsonLineEdit, self.geojsonButton = self.createFileInput(f"{self.base_path}/Raumanalyse/output_buildings.geojson")
         geojsonLayout.addLayout(self.createFileInputLayout(self.geojsonLineEdit, self.geojsonButton))
         layout.addWidget(self.geojsonWidget)
 
         # Quartier-geojson
         self.geojsonareaWidget = QWidget(self)
         geojsonareaLayout = QVBoxLayout(self.geojsonareaWidget)
-        self.geojsonareaLineEdit, self.geojsonareaButton = self.createFileInput("osm_data/quartiere.geojson")
+        self.geojsonareaLineEdit, self.geojsonareaButton = self.createFileInput(f"{self.base_path}/Raumanalyse/quartiere.geojson")
         geojsonareaLayout.addLayout(self.createFileInputLayout(self.geojsonareaLineEdit, self.geojsonareaButton))
         layout.addWidget(self.geojsonareaWidget)
 
         # Wärmenetzgebiet-Gebäude-geojson
         self.geojsonfilteredbuildingsWidget = QWidget(self)
         geojsonfilteredbuildingsLayout = QVBoxLayout(self.geojsonfilteredbuildingsWidget)
-        self.geojsonfilteredbuildingsLineEdit, self.geojsonfilteredbuildingsButton = self.createFileInput("osm_data/waermenetz_buildings.geojson")
+        self.geojsonfilteredbuildingsLineEdit, self.geojsonfilteredbuildingsButton = self.createFileInput(f"{self.base_path}/Raumanalyse/waermenetz_buildings.geojson")
         geojsonfilteredbuildingsLayout.addLayout(self.createFileInputLayout(self.geojsonfilteredbuildingsLineEdit, self.geojsonfilteredbuildingsButton))
         layout.addWidget(self.geojsonfilteredbuildingsWidget)
 
@@ -705,8 +709,9 @@ class SpatialAnalysisDialog(QDialog):
         self.parent().loadNetData(geojson_file_areas)
 
 class GeocodeAdressesDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, base_path, parent=None):
         super().__init__(parent)
+        self.base_path = base_path
         self.initUI()
 
     def initUI(self):
@@ -715,11 +720,11 @@ class GeocodeAdressesDialog(QDialog):
         layout = QVBoxLayout(self)
 
         # Stadtname Eingabefeld
-        self.inputfilenameLineEdit, fileButton = self.createFileInput("geocoding/data_input_zi.csv")
+        self.inputfilenameLineEdit, fileButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/data_input_zi.csv")
         layout.addLayout(self.createFileInputLayout(self.inputfilenameLineEdit, fileButton))
         
         # Dateiname Eingabefeld
-        self.outputfilenameLineEdit, fileButton = self.createFileInput("geocoding/data_output_zi_ETRS89.csv")
+        self.outputfilenameLineEdit, fileButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/data_output_zi_ETRS89.csv")
         layout.addLayout(self.createFileInputLayout(self.outputfilenameLineEdit, fileButton))
         
         # Buttons für OK und Abbrechen

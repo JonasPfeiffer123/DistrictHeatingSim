@@ -25,6 +25,8 @@ class VisualizationTab(QWidget):
         self.data_manager = data_manager
         self.layers = {}
         self.initUI()
+        self.base_path = "project_data/Beispiel Zittau"  # Basispfad initialisieren
+        self.updateDefaultPath(self.base_path)
     
     def initUI(self):
         layout = QVBoxLayout()
@@ -99,33 +101,36 @@ class VisualizationTab(QWidget):
 
         self.setLayout(layout)
 
+    def updateDefaultPath(self, new_base_path):
+        self.base_path = new_base_path
+
     def connect_signals(self, calculation_tab):
         calculation_tab.data_added.connect(self.loadNetData)
 
     def openDownloadOSMDataDialog(self):
-        dialog = DownloadOSMDataDialog(self)
+        dialog = DownloadOSMDataDialog(self.base_path, self)
         if dialog.exec_() == QDialog.Accepted:
             pass
 
     def openOSMBuildingQueryDialog(self):
-        dialog = OSMBuildingQueryDialog(self)
+        dialog = OSMBuildingQueryDialog(self.base_path, self)
         if dialog.exec_() == QDialog.Accepted:
             # Hier könnten Sie die Daten aus dem Dialog verarbeiten
             pass
 
     def openspatialAnalysisDialog(self):
-        dialog = SpatialAnalysisDialog(self)
+        dialog = SpatialAnalysisDialog(self.base_path, self)
         if dialog.exec_() == QDialog.Accepted:
             # Hier könnten Sie die Daten aus dem Dialog verarbeiten
             pass
 
     def openGeocodeAdressesDialog(self):
-        dialog = GeocodeAdressesDialog(self)
+        dialog = GeocodeAdressesDialog(self.base_path, self)
         if dialog.exec_() == QDialog.Accepted:
             pass
 
     def openLayerGenerationDialog(self):
-        dialog = LayerGenerationDialog(self)
+        dialog = LayerGenerationDialog(self.base_path, self)
         if dialog.exec_() == QDialog.Accepted:
             inputs = dialog.getInputs()
             self.generateAndImportLayers(inputs)
@@ -144,15 +149,15 @@ class VisualizationTab(QWidget):
     # Speicherort muss Variabel werden
     def on_generation_done(self, results):
         self.progressBar.setRange(0, 1)
-        filenames = ["net_generation/HAST.geojson", "net_generation/Rücklauf.geojson",
-                     "net_generation/Vorlauf.geojson", "net_generation/Erzeugeranlagen.geojson"]
+        filenames = [f"{self.base_path}/Wärmenetz/HAST.geojson", f"{self.base_path}/Wärmenetz/Rücklauf.geojson",
+                     f"{self.base_path}/Wärmenetz/Vorlauf.geojson", f"{self.base_path}/Wärmenetz/Erzeugeranlagen.geojson"]
         self.loadNetData(filenames)
         
         generatedLayers = {
-            'HAST': "net_generation/HAST.geojson",
-            'Rücklauf': "net_generation/Rücklauf.geojson",
-            'Vorlauf': "net_generation/Vorlauf.geojson",
-            'Erzeugeranlagen': "net_generation/Erzeugeranlagen.geojson"
+            'HAST': f"{self.base_path}/Wärmenetz/HAST.geojson",
+            'Rücklauf': f"{self.base_path}/Wärmenetz/Rücklauf.geojson",
+            'Vorlauf': f"{self.base_path}/Wärmenetz/Vorlauf.geojson",
+            'Erzeugeranlagen': f"{self.base_path}/Wärmenetz/Erzeugeranlagen.geojson"
         }
 
         # Auslösen des Signals mit den Pfaden der generierten Layer
@@ -199,7 +204,7 @@ class VisualizationTab(QWidget):
 
     def update_map_view(self, mapView, map_obj):
         """ Aktualisiert die Kartenansicht in PyQt """
-        map_file = 'results/map.html'
+        map_file = "results/map.html"
         map_obj.save(map_file)
         mapView.load(QUrl.fromLocalFile(os.path.abspath(map_file)))
 
@@ -375,7 +380,7 @@ class VisualizationTab(QWidget):
         fname, _ = QFileDialog.getOpenFileName(self, 'CSV-Koordinaten laden', '', 'CSV Files (*.csv);;All Files (*)')
         if fname:
             # Pfad für die temporäre GeoJSON-Datei
-            geojson_path = 'results/Koordinaten.geojson'
+            geojson_path = f"{self.base_path}/Gebäudedaten/Koordinaten.geojson"
 
             # Erstellen der GeoJSON-Datei aus der CSV-Datei
             self.createGeoJsonFromCsv(fname, geojson_path)

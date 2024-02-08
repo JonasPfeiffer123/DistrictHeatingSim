@@ -21,33 +21,42 @@ from gui.checkable_combobox import CheckableComboBox
 class CalculationTab(QWidget):
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
 
-    DEFAULT_PATHS = {
-        'Ausgabe': 'project_data/Beispiel Zittau/Lastgang/Lastgang.csv'
-    }
-
     def __init__(self, data_manager, parent=None):
         super().__init__(parent)
         self.data_manager = data_manager
         self.calc_method = "Datensatz"
         self.initUI()
+        self.base_path = "project_data/Beispiel Zittau"  # Basispfad initialisieren
+        self.updateDefaultPath(self.base_path)
 
         self.net_data = None  # Variable zum Speichern der Netzdaten
         self.supply_temperature = None # Variable Vorlauftemperatur
 
-    def updateDefaultPath(self, new_base_path):
-        # Pfad für Ausgabe aktualisieren
-        new_output_path = f"{new_base_path}/Lastgang/Lastgang.csv"
-        self.DEFAULT_PATHS['Ausgabe'] = new_output_path
-        # Aktualisiere das Eingabefeld, falls bereits initialisiert
-        if hasattr(self, 'AusgabeInput'):
-            self.AusgabeInput.setText(new_output_path)
+    def initUI(self):
+        # Erstellen eines Scrollbereichs
+        scroll_area = QScrollArea(self)
+        scroll_area.setWidgetResizable(True)
 
-    def updateFilePaths(self, layerNames):
-        for key, path in layerNames.items():
-            if key in self.DEFAULT_PATHS:
-                inputAttrName = f"{key}Input"
-                if hasattr(self, inputAttrName):
-                    getattr(self, inputAttrName).setText(path)
+        # Erstellen eines Container-Widgets für den Scrollbereich
+        container_widget = QWidget()
+        scroll_area.setWidget(container_widget)
+
+        # Erstellen eines Layouts für das Container-Widget
+        self.container_layout = QVBoxLayout(container_widget)
+
+        # Hier fügen Sie alle Ihre vorhandenen Setup-Funktionen hinzu
+        self.initMenuBar()
+        self.createFileInput()
+        self.setupControlInputs()
+        self.setupPlotLayout()
+
+        # Hauptlayout für das Tab
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.addWidget(scroll_area)
+        self.setLayout(self.main_layout)
+
+        self.progressBar = QProgressBar(self)
+        self.container_layout.addWidget(self.progressBar)
 
     def initMenuBar(self):
         self.menubar = QMenuBar(self)
@@ -69,63 +78,46 @@ class CalculationTab(QWidget):
         generateNetAction.triggered.connect(self.openNetGenerationDialog)
         #loadsaveppnetAction.triggered.connect(self.openLoadSavePpNetDialog)
 
-    def initUI(self):
-        # Erstellen eines Scrollbereichs
-        scroll_area = QScrollArea(self)
-        scroll_area.setWidgetResizable(True)
-
-        # Erstellen eines Container-Widgets für den Scrollbereich
-        container_widget = QWidget()
-        scroll_area.setWidget(container_widget)
-
-        # Erstellen eines Layouts für das Container-Widget
-        self.container_layout = QVBoxLayout(container_widget)
-
-        # Hier fügen Sie alle Ihre vorhandenen Setup-Funktionen hinzu
-        self.initMenuBar()
-        self.setupFileInputs()
-        self.setupControlInputs()
-        self.setupPlotLayout()
-
-        # Hauptlayout für das Tab
-        self.main_layout = QVBoxLayout(self)
-        self.main_layout.addWidget(scroll_area)
-        self.setLayout(self.main_layout)
-
-        self.progressBar = QProgressBar(self)
-        self.container_layout.addWidget(self.progressBar)
-
-    def setupFileInputs(self):
+    def createFileInput(self):
         # Verwenden Sie ein Grid-Layout für eine saubere Anordnung
         form_layout = QFormLayout()
-        # Erstellen Sie die Textfelder und Buttons und fügen Sie sie dem Layout hinzu
-        form_layout.addRow(self.createFileInput('AusgabeInput', self.DEFAULT_PATHS['Ausgabe'], 'Ergebnis-CSV auswählen'))
-        self.container_layout.addLayout(form_layout)
-
-    def createFileInput(self, attr_name, default_text, button_tooltip):
+        
         # Erstelle ein horizontales Layout
         file_input_layout = QHBoxLayout()
 
         # Erstelle das QLineEdit Widget
-        line_edit = QLineEdit(default_text)
-        line_edit.setPlaceholderText(button_tooltip)
-        setattr(self, attr_name, line_edit)
+        line_edit = QLineEdit('')
+        line_edit.setPlaceholderText('Ergebnis-CSV auswählen')
+        setattr(self, 'AusgabeInput', line_edit)
 
         # Erstelle den Button
         button = QPushButton("Datei auswählen")
-        button.setToolTip(button_tooltip)
+        button.setToolTip('Ergebnis-CSV auswählen')
         button.clicked.connect(lambda: self.selectFilename(line_edit))
 
         # Füge Widgets zum Layout hinzu
         file_input_layout.addWidget(line_edit)
         file_input_layout.addWidget(button)
 
+        form_layout.addRow(file_input_layout)
+        self.container_layout.addLayout(form_layout)
+
         return file_input_layout
     
+    def updateDefaultPath(self, new_base_path):
+        self.base_path = new_base_path
+
+        # Pfad für Ausgabe aktualisieren
+        new_output_path = f"{self.base_path}/Lastgang/Lastgang.csv"
+
+        self.AusgabeInput.setText(new_output_path)
+    
     def openNetGenerationDialog(self):
+        print(self.base_path)
         dialog = NetGenerationDialog(
             self.generateNetworkCallback,
             self.editHeatDemandData,
+            self.base_path,
             self
         )
         dialog.exec_()
@@ -158,16 +150,6 @@ class CalculationTab(QWidget):
         except Exception as e:
             logging.error(f"Fehler beim Laden der HAST-Daten: {e}")
             QMessageBox.critical(self, "Fehler", "Fehler beim Laden der HAST-Daten.")
-
-    def ImportLayers(self, vorlaufInput, ruecklaufInput, hastInput, erzeugeranlagenInput):
-        # Daten zur zentralen Datenquelle hinzufügen
-        self.data_manager.add_data(vorlaufInput)
-        self.data_manager.add_data(ruecklaufInput)
-        self.data_manager.add_data(hastInput)
-        self.data_manager.add_data(erzeugeranlagenInput)
-        
-        # Signal senden, dass Daten hinzugefügt wurden
-        self.data_added.emit(self.data_manager.get_map_data())
 
     def updateLabelsForCalcMethod(self, calc_method):
         self.calc_method = calc_method
