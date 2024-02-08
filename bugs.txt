@@ -1,17 +1,4 @@
 ####
-Wenn leere Daten geladen werden:
-Traceback (most recent call last):
-  File "c:\Users\username\heating_network_generation\gui\visualization_tab.py", line 262, in on_import_done
-    self.updateMapView()
-  File "c:\Users\username\heating_network_generation\gui\visualization_tab.py", line 199, in updateMapView
-    center, zoom = self.calculate_map_center_and_zoom()
-                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "c:\Users\username\heating_network_generation\gui\visualization_tab.py", line 183, in calculate_map_center_and_zoom
-    if minx is None or bounds[0][0] < minx:
-                       ^^^^^^^^^^^^^^^^^^^
-TypeError: '<' not supported between instances of 'NoneType' and 'float'
-
-####
 Exception-Handling OSM-Download:
 Traceback (most recent call last):
   File "c:\Users\username\heating_network_generation\gui\visualization_dialogs.py", line 369, in startQuery

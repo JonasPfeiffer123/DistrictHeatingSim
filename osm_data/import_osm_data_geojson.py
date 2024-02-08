@@ -11,7 +11,7 @@ def build_query(city_name, tags, element_type="way"):
     """
 
     if element_type == "way":
-        for key, value in tags.items():
+        for key, value in tags:
             query += f'way["{key}"="{value}"](area.searchArea);'
     
     elif element_type == "building":

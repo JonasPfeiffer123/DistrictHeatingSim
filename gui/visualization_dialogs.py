@@ -1,5 +1,7 @@
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QDialog, QComboBox, QPushButton, \
     QFormLayout, QHBoxLayout, QFileDialog, QProgressBar, QMessageBox, QLabel, QWidget
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont
 
 from osm_data.import_osm_data_geojson import build_query, download_data, save_to_file
 from gui.threads import GeocodingThread
@@ -37,8 +39,8 @@ class LayerGenerationDialog(QDialog):
         self.locationModeComboBox.addItems(["Koordinaten direkt eingeben", "Adresse eingeben", "Koordinaten aus CSV laden"])
         self.locationModeComboBox.currentIndexChanged.connect(self.toggleLocationInputMode)
 
-        self.xCoordInput = QLineEdit("486267.306999999971595", self)
-        self.yCoordInput = QLineEdit("5637294.910000000149012", self)
+        self.xCoordInput = QLineEdit("486267.307", self)
+        self.yCoordInput = QLineEdit("5637294.91", self)
         self.countryInput = QLineEdit(self)
         self.countryInput.setPlaceholderText("Land")
         self.countryInput.setEnabled(False)
@@ -240,26 +242,21 @@ class DownloadOSMDataDialog(QDialog):
         super().__init__(parent)
         self.base_path = base_path
         self.tags_to_download = []
+        self.tagsLayoutList = []
+
         self.standard_tags = [
             {"highway": "primary"},
             {"highway": "secondary"},
             {"highway": "tertiary"},
             {"highway": "residential"},
-            {"highway": "living_street"},
-            {"highway": "motorway"},
-            {"highway": "road"}
+            {"highway": "living_street"}
         ]
+
         self.initUI()
 
     def initUI(self):
         self.setWindowTitle("Download OSM-Data")
         layout = QVBoxLayout(self)
-
-        # Postleitzahl Eingabefeld
-        #self.postalCodeLineEdit = QLineEdit(self)
-        #self.postalCodeLineEdit.setPlaceholderText("Postleitzahl")
-        #layout.addWidget(QLabel("Postleitzahl:"))
-        #layout.addWidget(self.postalCodeLineEdit)
 
         # Stadtname Eingabefeld
         self.cityLineEdit = QLineEdit("Zittau")
@@ -287,9 +284,9 @@ class DownloadOSMDataDialog(QDialog):
         layout.addLayout(self.tagsLayout)
         
         # Buttons zum Hinzufügen/Entfernen von Tags
-        self.addTagButton = QPushButton("Tag hinzufügen", self)
-        self.addTagButton.clicked.connect(self.addTagField)
-        layout.addWidget(self.addTagButton)
+        #self.addTagButton = QPushButton("Tag hinzufügen", self)
+        #self.addTagButton.clicked.connect(self.addTagField)
+        #layout.addWidget(self.addTagButton)
 
         self.removeTagButton = QPushButton("Tag entfernen", self)
         self.removeTagButton.clicked.connect(self.removeTagField)
@@ -333,12 +330,17 @@ class DownloadOSMDataDialog(QDialog):
         keyLineEdit = QLineEdit(key)
         valueLineEdit = QLineEdit(value)
         self.tagsLayout.addRow(keyLineEdit, valueLineEdit)
-        self.tags_to_download.append((keyLineEdit, valueLineEdit))
+
+        self.tagsLayoutList.append((keyLineEdit, valueLineEdit))
+        self.tags_to_download.append((key, value))
+        print(self.tags_to_download)
 
     def removeTagField(self):
         if self.tags_to_download:
-            keyLineEdit, valueLineEdit = self.tags_to_download.pop()
+            keyLineEdit, valueLineEdit = self.tagsLayoutList.pop()
+            self.tags_to_download.pop()
             self.tagsLayout.removeRow(keyLineEdit)
+            print(self.tags_to_download)
 
     def loadAllStandardTags(self):
         for tag in self.standard_tags:
@@ -357,12 +359,12 @@ class DownloadOSMDataDialog(QDialog):
         # Daten sammeln
         #postal_code = self.postalCodeLineEdit.text()
         self.filename = self.filenameLineEdit.text()
-        tags = {key.text(): value.text() for key, value in self.tags_to_download if key.text()}
+        print(self.tags_to_download)
         
         city_name =self.cityLineEdit.text()
 
         # Erstelle die Overpass-Abfrage
-        query = build_query(city_name, tags, element_type="way")
+        query = build_query(city_name, self.tags_to_download, element_type="way")
         # Lade die Daten herunter
         geojson_data = download_data(query, element_type="way")
         # Speichere die Daten als GeoJSON
@@ -708,7 +710,7 @@ class SpatialAnalysisDialog(QDialog):
         self.parent().loadNetData(geojson_file_filtered_buildings)
         self.parent().loadNetData(geojson_file_areas)
 
-class GeocodeAdressesDialog(QDialog):
+class GeocodeAddressesDialog(QDialog):
     def __init__(self, base_path, parent=None):
         super().__init__(parent)
         self.base_path = base_path
@@ -716,37 +718,53 @@ class GeocodeAdressesDialog(QDialog):
 
     def initUI(self):
         self.setWindowTitle("Adressdaten geocodieren")
-
+        self.setGeometry(300, 300, 600, 200)  # Anpassung der Fenstergröße
+        
         layout = QVBoxLayout(self)
+        layout.setSpacing(10)  # Abstand zwischen den Widgets
+        layout.setContentsMargins(10, 10, 10, 10)  # Rand des Layouts
 
-        # Stadtname Eingabefeld
-        self.inputfilenameLineEdit, fileButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/data_input_zi.csv")
-        layout.addLayout(self.createFileInputLayout(self.inputfilenameLineEdit, fileButton))
+        font = QFont()
+        font.setPointSize(10)  # Größere Schrift für bessere Lesbarkeit
         
-        # Dateiname Eingabefeld
-        self.outputfilenameLineEdit, fileButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/data_output_zi_ETRS89.csv")
-        layout.addLayout(self.createFileInputLayout(self.outputfilenameLineEdit, fileButton))
+        # Eingabefeld für die Eingabedatei
+        self.inputfilenameLineEdit, inputFileButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/data_input_zi.csv", font)
+        layout.addLayout(self.createFileInputLayout("Eingabedatei:", self.inputfilenameLineEdit, inputFileButton, font))
         
-        # Buttons für OK und Abbrechen
+        # Eingabefeld für die Ausgabedatei
+        self.outputfilenameLineEdit, outputFileButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/data_output_zi_ETRS89.csv", font)
+        layout.addLayout(self.createFileInputLayout("Ausgabedatei:", self.outputfilenameLineEdit, outputFileButton, font))
+        
+        # Buttons für OK und Abbrechen in einem horizontalen Layout
+        buttonLayout = QHBoxLayout()
         self.okButton = QPushButton("OK", self)
+        self.okButton.setFont(font)
         self.okButton.clicked.connect(self.onAccept)
         self.cancelButton = QPushButton("Abbrechen", self)
+        self.cancelButton.setFont(font)
         self.cancelButton.clicked.connect(self.reject)
-        
-        layout.addWidget(self.okButton)
-        layout.addWidget(self.cancelButton)
+        buttonLayout.addWidget(self.okButton)
+        buttonLayout.addWidget(self.cancelButton)
+        layout.addLayout(buttonLayout)
 
+        # Verbesserte Fortschrittsanzeige
         self.progressBar = QProgressBar(self)
+        self.progressBar.setFont(font)
         layout.addWidget(self.progressBar)
 
-    def createFileInput(self, default_path):
+    def createFileInput(self, default_path, font):
         lineEdit = QLineEdit(default_path)
+        lineEdit.setFont(font)
         button = QPushButton("Durchsuchen")
+        button.setFont(font)
         button.clicked.connect(lambda: self.selectFile(lineEdit))
         return lineEdit, button
 
-    def createFileInputLayout(self, lineEdit, button):
+    def createFileInputLayout(self, label_text, lineEdit, button, font):
         layout = QHBoxLayout()
+        label = QLabel(label_text)
+        label.setFont(font)
+        layout.addWidget(label)
         layout.addWidget(lineEdit)
         layout.addWidget(button)
         return layout

@@ -217,10 +217,10 @@ def generate_net(start, end, gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, filename):
 # Example for using "generate_profiles_from_geojson", "initialize_net_geojson", "thermohydraulic_time_series_net", "calculate_results", "save_results_csv", "plot_results", "calculate_worst_point", "config_plot" with generate_net
 start = 0
 end = 24
-gdf_vl = gpd.read_file('net_generation/Vorlauf.geojson')
-gdf_rl = gpd.read_file('net_generation/Rücklauf.geojson')
-gdf_HAST = gpd.read_file('net_generation/HAST.geojson')
-gdf_WEA = gpd.read_file('net_generation/Erzeugeranlagen.geojson')
+#gdf_vl = gpd.read_file('project_data/Beispiel Zittau/Wärmenetz/Vorlauf.geojson')
+#gdf_rl = gpd.read_file('project_data/Beispiel Zittau/Wärmenetz/Rücklauf.geojson')
+#gdf_HAST = gpd.read_file('project_data/Beispiel Zittau/Wärmenetz/HAST.geojson')
+#gdf_WEA = gpd.read_file('project_data/Beispiel Zittau/Wärmenetz/Erzeugeranlagen.geojson')
 results_filename='results/results_main.csv'
 
 # generate_net(start, end, gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, results_filename)

@@ -14,7 +14,7 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 import folium
 
-from gui.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog, SpatialAnalysisDialog, GeocodeAdressesDialog
+from gui.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog, SpatialAnalysisDialog, GeocodeAddressesDialog
 from gui.threads import NetGenerationThread, FileImportThread
 
 class VisualizationTab(QWidget):
@@ -125,7 +125,7 @@ class VisualizationTab(QWidget):
             pass
 
     def openGeocodeAdressesDialog(self):
-        dialog = GeocodeAdressesDialog(self.base_path, self)
+        dialog = GeocodeAddressesDialog(self.base_path, self)
         if dialog.exec_() == QDialog.Accepted:
             pass
 
@@ -196,11 +196,17 @@ class VisualizationTab(QWidget):
         return [center_x, center_y], zoom
     
     def updateMapView(self):
-        center, zoom = self.calculate_map_center_and_zoom()
-        self.m = folium.Map(location=center, zoom_start=zoom)
-        for layer in self.layers.values():
-            self.m.add_child(layer)
-        self.update_map_view(self.mapView, self.m)
+        try:
+            center, zoom = self.calculate_map_center_and_zoom()
+            if center is None or zoom is None:
+                raise ValueError("Keine gültigen Daten zum Berechnen des Kartenmittelpunkts und Zooms gefunden.")
+
+            self.m = folium.Map(location=center, zoom_start=zoom)
+            for layer in self.layers.values():
+                self.m.add_child(layer)
+            self.update_map_view(self.mapView, self.m)
+        except Exception as e:
+            QMessageBox.critical(self, "Fehler beim Laden der Daten", f"Es gab ein Problem beim Laden der Daten: {str(e)}\nBitte überprüfen Sie, ob die Datei leer ist oder ungültige Daten enthält.")
 
     def update_map_view(self, mapView, map_obj):
         """ Aktualisiert die Kartenansicht in PyQt """
@@ -208,7 +214,7 @@ class VisualizationTab(QWidget):
         map_obj.save(map_file)
         mapView.load(QUrl.fromLocalFile(os.path.abspath(map_file)))
 
-    def loadNetData(self, filenames, color=None):
+    def loadNetData(self, filenames, color="#{:06x}".format(random.randint(0, 0xFFFFFF))):
         if not isinstance(filenames, list):
             filenames = [filenames]
 
@@ -233,29 +239,30 @@ class VisualizationTab(QWidget):
     def on_import_done(self, results):
         self.progressBar.setRange(0, 1)
         for filename, geojson_data in results.items():
-            # Generieren Sie eine zufällige Farbe für jeden Layer
-            color = "#{:06x}".format(random.randint(0, 0xFFFFFF))
-
-            # Fügen Sie den Layer zur Karte hinzu
-            geojson_layer = folium.GeoJson(
-                geojson_data['gdf'],
-                name=geojson_data['name'],
-                style_function=lambda feature, color=color: {
+            # Funktion zur Erzeugung einer style_function mit aktuellem Kontext
+            def create_style_function(color, weight, fillOpacity):
+                return lambda feature: {
                     'fillColor': color,
                     'color': color,
                     'weight': 1.5,
                     'fillOpacity': 0.5,
                 }
+
+            # Fügen Sie den Layer zur Karte hinzu, mit der dynamischen style_function
+            geojson_layer = folium.GeoJson(
+                geojson_data['gdf'],
+                name=geojson_data['name'],
+                style_function=create_style_function(geojson_data['style']['color'], geojson_data['style']['weight'], geojson_data['style']['fillOpacity'])
             )
             geojson_layer.add_to(self.m)
 
-            # Fügen Sie den Layer hier zur Verwaltung hinzu
+            # Fügen Sie den Layer zur Verwaltung hinzu
             self.layers[geojson_data['name']] = geojson_layer
 
             # Aktualisieren Sie das QListWidget
             if geojson_data['name'] not in [self.layerList.item(i).text() for i in range(self.layerList.count())]:
                 listItem = QListWidgetItem(geojson_data['name'])
-                listItem.setBackground(QColor(color))
+                listItem.setBackground(QColor(geojson_data['style']['color']))
                 listItem.setForeground(QBrush(QColor('#FFFFFF')))
                 self.layerList.addItem(listItem)
 
