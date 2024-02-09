@@ -4,8 +4,8 @@ import pandas as pd
 import numpy as np
 from heat_requirement.heat_requirement_BDEW import import_TRY
 import pandapipes as pp
-import os
-import json
+import csv
+from datetime import datetime
 
 
 class HeatDemandEditDialog(QDialog):
@@ -378,82 +378,3 @@ class NetGenerationDialog(QDialog):
             self.generate_callback(stanet_csv, rl_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump, import_type)
 
         self.accept()
-
-class SaveLoadNetDialog(QDialog):
-    def __init__(self, net_data, parent=None):
-        super().__init__(parent)
-        self.net_data = net_data
-        self.initUI()
-
-    def initUI(self):
-        layout = QVBoxLayout(self)
-
-        save_button = QPushButton("Netz speichern", self)
-        load_button = QPushButton("Netz laden", self)
-
-        layout.addWidget(save_button)
-        layout.addWidget(load_button)
-
-        save_button.clicked.connect(self.saveNet)
-        load_button.clicked.connect(self.loadNet)
-
-    def saveNet(self):
-        if self.net_data:  # Überprüfe, ob das Netzwerk vorhanden ist
-            net, yearly_time_steps, waerme_ges_W = self.net_data
-            options = QFileDialog.Options()
-            file_name, _ = QFileDialog.getSaveFileName(self, "Pandapipes-Netz als JSON speichern", "", "JSON Files (*.json)", options=options)
-            if file_name:
-                # Überführe Fluid-Objekte in JSON-serialisierbaren Zustand
-                net_fluid_data = {}
-                for fluid_name, fluid_obj in net.fluid.items():
-                    fluid_data = {
-                        "name": fluid_obj.name,
-                        "temperature": fluid_obj.temperature,
-                        # Füge weitere Attribute hinzu, die du benötigst
-                    }
-                    net_fluid_data[fluid_name] = fluid_data
-
-                # Erstelle ein Dictionary, das die Daten enthält
-                saved_data = {
-                    "net_fluid_data": net_fluid_data,
-                    "yearly_time_steps": yearly_time_steps,
-                    "waerme_ges_W": waerme_ges_W
-                }
-
-                # Speichere das Dictionary im JSON-Format
-                with open(file_name, "w") as json_file:
-                    json.dump(saved_data, json_file, indent=2)
-                print("Pandapipes-Netz erfolgreich gespeichert als JSON:", file_name)
-        else:
-            print("Kein Pandapipes-Netzwerk zum Speichern vorhanden.")
-
-    def loadNet(self):
-        options = QFileDialog.Options()
-        file_name, _ = QFileDialog.getOpenFileName(self, "Netz laden", "", "JSON Files (*.json)", options=options)
-        if file_name and os.path.isfile(file_name):
-            # Lade das JSON-Datei in ein Dictionary
-            with open(file_name, "r") as json_file:
-                loaded_data = json.load(json_file)
-
-            if loaded_data:
-                # Extrahiere die Fluid-Objekte aus dem geladenen JSON-Daten
-                loaded_net_fluid_data = loaded_data.get("net_fluid_data", {})
-                # Erstelle Fluid-Objekte aus den geladenen Daten
-                loaded_net_fluids = {}
-                for fluid_name, fluid_data in loaded_net_fluid_data.items():
-                    fluid_obj = pp.fluid.Fluid(
-                        name=fluid_data["name"],
-                        temperature=fluid_data["temperature"],
-                        # Füge weitere Attribute hinzu, die du benötigst
-                    )
-                    loaded_net_fluids[fluid_name] = fluid_obj
-
-                # Extrahiere die übrigen Daten aus dem geladenen JSON-Daten
-                loaded_yearly_time_steps = loaded_data.get("yearly_time_steps")
-                loaded_waerme_ges_W = loaded_data.get("waerme_ges_W")
-
-                # Aktualisiere die net_data-Variable mit den geladenen Daten
-                self.net_data = (loaded_net_fluids, loaded_yearly_time_steps, loaded_waerme_ges_W)
-                # Führen Sie die erforderlichen Aktionen für das geladene Netzwerk aus
-                # Zum Beispiel: Aktualisieren Sie die Ansicht des Netzwerks
-                print("Netz erfolgreich geladen.")
