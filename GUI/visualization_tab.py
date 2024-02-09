@@ -140,7 +140,7 @@ class VisualizationTab(QWidget):
         if hasattr(self, 'netgenerationThread') and self.netgenerationThread.isRunning():
             self.netgenerationThread.terminate()
             self.netgenerationThread.wait()
-        self.netgenerationThread = NetGenerationThread(inputs)
+        self.netgenerationThread = NetGenerationThread(inputs, self.base_path)
         self.netgenerationThread.calculation_done.connect(self.on_generation_done)
         self.netgenerationThread.calculation_error.connect(self.on_generation_error)
         self.netgenerationThread.start()

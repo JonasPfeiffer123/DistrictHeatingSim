@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QDialog, QComboBox, QPushBut
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 
-from osm_data.import_osm_data_geojson import build_query, download_data, save_to_file
+from osm.import_osm_data_geojson import build_query, download_data, save_to_file
 from gui.threads import GeocodingThread
 from geocoding.geocodingETRS89 import get_coordinates, process_data
 import geopandas as gpd
@@ -13,7 +13,7 @@ import json
 import csv
 from math import radians, sin, cos, sqrt, atan2
 
-from osm_data.Wärmeversorgungsgebiete import clustering_quartiere_hdbscan, postprocessing_hdbscan, allocate_overlapping_area
+from osm.Wärmeversorgungsgebiete import clustering_quartiere_hdbscan, postprocessing_hdbscan, allocate_overlapping_area
    
 class LayerGenerationDialog(QDialog):
     def __init__(self, base_path, parent=None):
@@ -194,10 +194,6 @@ class LayerGenerationDialog(QDialog):
                             "UTM_X": centroid[0],
                             "UTM_Y": centroid[1]
                         })
-            
-            self.dataInput.setText(csv_file)
-
-            data_df = pd.read_csv(csv_file, sep=';')
 
             QMessageBox.information(self, "Info", "CSV-Datei wurde erfolgreich erstellt.")
         except Exception as e:

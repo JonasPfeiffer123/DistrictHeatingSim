@@ -116,13 +116,14 @@ class NetGenerationThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(str)
 
-    def __init__(self, inputs):
+    def __init__(self, inputs, base_path):
         super().__init__()
         self.inputs = inputs
+        self.base_path = base_path
 
     def run(self):
         try:
-            generate_and_export_layers(self.inputs["streetLayer"], self.inputs["dataCsv"], float(self.inputs["xCoord"]), float(self.inputs["yCoord"]))
+            generate_and_export_layers(self.inputs["streetLayer"], self.inputs["dataCsv"], float(self.inputs["xCoord"]), float(self.inputs["yCoord"]), self.base_path)
 
             self.calculation_done.emit(())
         except Exception as e:
