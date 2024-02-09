@@ -69,13 +69,13 @@ class NetInitializationThread(QThread):
 
         if self.kwargs.get("import_type") == "GeoJSON":
             if self.pipe_creation_mode == "diameter":
-                net = optimize_diameter_parameters(net)
+                net = optimize_diameter_parameters(net, element="pipe", v_max=1)
 
             if self.pipe_creation_mode == "type":
-                net = optimize_diameter_types(net, v_max=1.0)
+                net = optimize_diameter_types(net, v_max=1)
 
-        net = optimize_diameter_parameters(net, element="heat_exchanger", v_max_he=2.2, v_min_he=1.8)
-        net = optimize_diameter_parameters(net, element="flow_control", v_max_he=2.2, v_min_he=1.8)
+        net = optimize_diameter_parameters(net, element="heat_exchanger", v_max=1.5)
+        net = optimize_diameter_parameters(net, element="flow_control", v_max=1.5)
         
         return net
     

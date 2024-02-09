@@ -1,22 +1,22 @@
-﻿Land;Bundesland;Stadt;Adresse;Wärmebedarf
-Deutschland;Sachsen;Görlitz;Brückenstraße 10;33733
-Deutschland;Sachsen;Görlitz;Brückenstraße 4;22428
-Deutschland;Sachsen;Görlitz;Brückenstraße 3;28802
-Deutschland;Sachsen;Görlitz;Brückenstraße 2;30166
-Deutschland;Sachsen;Görlitz;Furtstraße 1;33916
-Deutschland;Sachsen;Görlitz;Furtstraße 2;28846
-Deutschland;Sachsen;Görlitz;Furtstraße 3;37511
-Deutschland;Sachsen;Görlitz;Heynestraße 2;37155
-Deutschland;Sachsen;Görlitz;Heynestraße 7;23271
-Deutschland;Sachsen;Görlitz;Heynestraße 8;32691
-Deutschland;Sachsen;Görlitz;Heynestraße 9;20363
-Deutschland;Sachsen;Görlitz;Parkstraße 1;26557
-Deutschland;Sachsen;Görlitz;Parkstraße 2;32333
-Deutschland;Sachsen;Görlitz;Parkstraße 3;21236
-Deutschland;Sachsen;Görlitz;Parkstraße 4;35969
-Deutschland;Sachsen;Görlitz;Am Stadtpark 1;21398
-Deutschland;Sachsen;Görlitz;Am Stadtpark 2;27926
-Deutschland;Sachsen;Görlitz;Am Stadtpark 4;28386
-Deutschland;Sachsen;Görlitz;Am Stadtpark 6;31622
-Deutschland;Sachsen;Görlitz;Am Stadtpark 8;33498
-Deutschland;Sachsen;Görlitz;Dr.-Kahlbaum-Allee 31;29891
+﻿Land;Bundesland;Stadt;Adresse;Wärmebedarf;Bezeichnung
+Deutschland;Sachsen;Görlitz;Brückenstraße 10;33733;Expleo
+Deutschland;Sachsen;Görlitz;Brückenstraße 4;22428;
+Deutschland;Sachsen;Görlitz;Brückenstraße 3;28802;
+Deutschland;Sachsen;Görlitz;Brückenstraße 2;30166;
+Deutschland;Sachsen;Görlitz;Furtstraße 1;33916;
+Deutschland;Sachsen;Görlitz;Furtstraße 2;28846;
+Deutschland;Sachsen;Görlitz;Furtstraße 3;37511;
+Deutschland;Sachsen;Görlitz;Heynestraße 2;37155;
+Deutschland;Sachsen;Görlitz;Heynestraße 7;23271;
+Deutschland;Sachsen;Görlitz;Heynestraße 8;32691;
+Deutschland;Sachsen;Görlitz;Heynestraße 9;20363;
+Deutschland;Sachsen;Görlitz;Parkstraße 1;26557;
+Deutschland;Sachsen;Görlitz;Parkstraße 2;32333;
+Deutschland;Sachsen;Görlitz;Parkstraße 3;21236;
+Deutschland;Sachsen;Görlitz;Parkstraße 4;35969;
+Deutschland;Sachsen;Görlitz;Am Stadtpark 1;21398;
+Deutschland;Sachsen;Görlitz;Am Stadtpark 2;27926;
+Deutschland;Sachsen;Görlitz;Am Stadtpark 4;28386;
+Deutschland;Sachsen;Görlitz;Am Stadtpark 6;31622;
+Deutschland;Sachsen;Görlitz;Am Stadtpark 8;33498;
+Deutschland;Sachsen;Görlitz;Dr.-Kahlbaum-Allee 31;29891;

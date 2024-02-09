@@ -534,5 +534,6 @@ class CalculationTab(QWidget):
     def load_net_results(self):
         results_csv_filepath = f"{self.base_path}/Lastgang/Lastgang.csv"
         plot_data = import_results_csv(results_csv_filepath)
+        self.time_steps, self.qext_kW, self.waerme_ges_W, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, self.return_pressure_circ_pump, self.flow_pressure_circ_pump = plot_data
         self.plot_data_func(plot_data)
         self.plot2()
