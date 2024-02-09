@@ -182,7 +182,7 @@ class GeocodingThread(QThread):
             process_data(self.inputfilename, self.outputfilename)
             self.calculation_done.emit(())    # Ergebnis zurückgeben
         except Exception as e:
-            self.calculation_error.emit(str(e))  # Fehler zurückgeben
+            self.calculation_error.emit(e)  # Fehler zurückgeben
 
     def stop(self):
         if self.isRunning():

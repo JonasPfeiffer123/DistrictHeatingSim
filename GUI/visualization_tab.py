@@ -316,7 +316,11 @@ class VisualizationTab(QWidget):
         # Dialog erstellen
         self.csvEditorDialog = QDialog(self)
         self.csvEditorDialog.setWindowTitle('CSV-Editor')
+        self.csvEditorDialog.setGeometry(300, 300, 600, 200)  # Anpassung der Fenstergröße
+
         layout = QVBoxLayout(self.csvEditorDialog)
+        layout.setSpacing(10)  # Abstand zwischen den Widgets
+        layout.setContentsMargins(10, 10, 10, 10)  # Rand des Layouts
 
         # QTableWidget für CSV-Inhalte
         self.csvTable = QTableWidget()

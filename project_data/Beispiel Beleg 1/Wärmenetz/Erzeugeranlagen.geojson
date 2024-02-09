@@ -2,6 +2,6 @@
 "type": "FeatureCollection",
 "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::25833" } },
 "features": [
-{ "type": "Feature", "properties": { "Wärmebedarf": 0 }, "geometry": { "type": "LineString", "coordinates": [ [ 487458.677129430929199, 5637845.024999815970659 ], [ 487459.677129430929199, 5637845.024999815970659 ] ] } }
+{ "type": "Feature", "properties": { "Wärmebedarf": 0 }, "geometry": { "type": "LineString", "coordinates": [ [ 486267.306999999971595, 5637294.910000000149012 ], [ 486268.306999999971595, 5637294.910000000149012 ] ] } }
 ]
 }

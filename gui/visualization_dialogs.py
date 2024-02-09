@@ -2,6 +2,12 @@ from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QDialog, QComboBox, QPushBut
     QFormLayout, QHBoxLayout, QFileDialog, QProgressBar, QMessageBox, QLabel, QWidget
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
+from shapely.geometry import box, Point
+from geopy.distance import geodesic
+import geopy.distance
+import geopandas as gpd
+import pyproj
+from shapely.ops import transform
 
 from osm.import_osm_data_geojson import build_query, download_data, save_to_file
 from gui.threads import GeocodingThread
@@ -520,82 +526,82 @@ class OSMBuildingQueryDialog(QDialog):
         filename = self.filenameLineEdit.text()
         selected_filter = self.filterComboBox.currentText()
 
-        if city_name and filename:
-            # Führen Sie hier Ihre Abfrage-Logik durch
-            tags = {"building": "yes"}  # oder andere Tags
-            query = build_query(city_name, tags, element_type="building")
-            geojson_data = download_data(query, element_type="building")
-
-            if selected_filter == "Filtern mit Koordinatenbereich":
-                min_lat = self.minLatLineEdit.text()
-                min_lon = self.minLonLineEdit.text()
-                max_lat = self.maxLatLineEdit.text()
-                max_lon = self.maxLonLineEdit.text()
-
-                if min_lat and min_lon and max_lat and max_lon:
-                    geojson_data = self.filter_geojson_data(geojson_data, min_lat, min_lon, max_lat, max_lon)
-
-            elif selected_filter == "Filtern mit zentralen Koordinaten und Radius als Abstand":
-                center_lat = float(self.centerLatLineEdit.text())
-                center_lon = float(self.centerLonLineEdit.text())
-                radius = float(self.radiusLineEdit.text())
-
-                if center_lat and center_lon and radius:
-                    gdf = gpd.GeoDataFrame.from_features(geojson_data['features'])
-                    gdf['distance'] = gdf.apply(lambda row: self.haversine(center_lat, center_lon, row['geometry'].centroid.y, row['geometry'].centroid.x), axis=1)
-                    gdf = gdf[gdf['distance'] <= radius]
-                    geojson_data = json.loads(gdf.to_json())
-
-            elif selected_filter == "Filtern mit Adressen aus CSV":
-                address_csv_file = self.addressCsvLineEdit.text()
-
-                if address_csv_file:
-                    gdf = gpd.GeoDataFrame.from_features(geojson_data['features'])
-                    csv_df = pd.read_csv(address_csv_file, sep=';')
-                    addresses_from_csv = csv_df['Adresse'].tolist()
-                    gdf['full_address'] = gdf['addr:street'] + ' ' + gdf['addr:housenumber']
-                    gdf = gdf[gdf['full_address'].isin(addresses_from_csv)]
-                    geojson_data = json.loads(gdf.to_json())
-
-            # Speichern und Benachrichtigung wie zuvor
-            save_to_file(geojson_data, filename)
-            QMessageBox.information(self, "Erfolg", f"Abfrageergebnisse gespeichert in {filename}")
-
-            # Rufen Sie die loadNetData-Methode des Haupt-Tabs auf
-            self.parent().loadNetData(filename)
-        else:
+        if not city_name or not filename:
             QMessageBox.warning(self, "Warnung", "Bitte geben Sie Stadtname und Ausgabedatei an.")
+            return
 
+        # Führen Sie hier Ihre Abfrage-Logik durch
+        tags = {"building": "yes"}  # oder andere Tags
+        query = build_query(city_name, tags, element_type="building")
+        geojson_data = download_data(query, element_type="building")
+        gdf = self.prepare_gdf(geojson_data)
 
-    def filter_geojson_data(self, geojson_data, min_lat, min_lon, max_lat, max_lon):
-        min_lat, min_lon, max_lat, max_lon = map(float, [min_lat, min_lon, max_lat, max_lon])
+        if selected_filter == "Filtern mit Koordinatenbereich":
+            self.filter_with_bbox(gdf, filename)
+        elif selected_filter == "Filtern mit zentralen Koordinaten und Radius als Abstand":
+            self.filter_with_central_coords_and_radius(gdf, filename)
+        elif selected_filter == "Filtern mit Adressen aus CSV":
+            self.filter_with_csv_addresses(gdf, filename)
 
-        def is_within_bounds(lat, lon):
-            return min_lon <= lon <= max_lon and min_lat <= lat <= max_lat
+        QMessageBox.information(self, "Erfolg", f"Abfrageergebnisse gespeichert in {filename}")
+        # Rufen Sie die loadNetData-Methode des Haupt-Tabs auf
+        self.parent().loadNetData(filename)
 
-        def is_polygon_within_bounds(polygon):
-            # Überprüfen, ob irgendein Punkt des Polygons innerhalb der Grenzen liegt
-            for ring in polygon:
-                if any(is_within_bounds(lat, lon) for lon, lat in ring):
-                    return True
-            return False
+    def prepare_gdf(self, geojson_data):
+        gdf = gpd.GeoDataFrame.from_features(geojson_data['features'])
+        gdf.crs = "EPSG:4326"
+        return gdf.to_crs(epsg=25833)
 
-        filtered_features = []
-        for feature in geojson_data['features']:
-            geometry = feature['geometry']
-            if geometry['type'] == 'Polygon':
-                if is_polygon_within_bounds(geometry['coordinates']):
-                    filtered_features.append(feature)
-            elif geometry['type'] == 'MultiPolygon':
-                if any(is_polygon_within_bounds(polygon) for polygon in geometry['coordinates']):
-                    filtered_features.append(feature)
+    def filter_with_bbox(self, gdf, filename):
+        min_lat = float(self.minLatLineEdit.text())
+        min_lon = float(self.minLonLineEdit.text())
+        max_lat = float(self.maxLatLineEdit.text())
+        max_lon = float(self.maxLonLineEdit.text())
 
-        # Erstelle ein neues GeoJSON-Objekt mit den gefilterten Features
-        filtered_geojson = {
-            "type": "FeatureCollection",
-            "features": filtered_features
-        }
-        return filtered_geojson
+        # Erstelle ein Bounding Box Polygon im WGS84 Koordinatensystem
+        bbox_polygon_wgs84 = box(min_lon, min_lat, max_lon, max_lat)
+
+        # Projektionstransformation vorbereiten von WGS84 (EPSG:4326) zu Zielkoordinatensystem des gdf
+        project_to_target_crs = pyproj.Transformer.from_proj(
+            pyproj.Proj(init='epsg:4326'),  # Quellkoordinatensystem (WGS84)
+            pyproj.Proj(init='epsg:25833'),  # Zielkoordinatensystem des gdf
+            always_xy=True
+        )
+
+        # Transformiere das Bounding Box Polygon ins Zielkoordinatensystem des gdf
+        bbox_polygon_transformed = transform(project_to_target_crs.transform, bbox_polygon_wgs84)
+
+        # Filtere die GeoDataFrame basierend auf dem transformierten Bounding Box Polygon
+        gdf_filtered = gdf[gdf.intersects(bbox_polygon_transformed)]
+
+        # Speichern der gefilterten GeoDataFrame
+        gdf_filtered.to_file(filename, driver='GeoJSON')
+
+    def filter_with_central_coords_and_radius(self, gdf, filename):
+        center_lat = float(self.centerLatLineEdit.text())
+        center_lon = float(self.centerLonLineEdit.text())
+        radius = float(self.radiusLineEdit.text())  # Radius in Kilometern für geopy.distance
+
+        center_point_wgs84 = Point(center_lon, center_lat)
+        project = pyproj.Transformer.from_proj(
+            pyproj.Proj(init='epsg:4326'),  # Quellkoordinatensystem (WGS84)
+            pyproj.Proj(init='epsg:25833')  # Zielkoordinatensystem (hier beispielhaft EPSG:25833)
+        )
+
+        center_point_transformed = transform(project.transform, center_point_wgs84)
+        gdf['distance'] = gdf.geometry.distance(center_point_transformed)
+        radius_m = radius
+        gdf_filtered = gdf[gdf['distance'] <= radius_m]
+        gdf_filtered.to_file(filename, driver='GeoJSON')
+
+    def filter_with_csv_addresses(self, gdf, filename):
+        address_csv_file = self.addressCsvLineEdit.text()
+        if address_csv_file:
+            csv_df = pd.read_csv(address_csv_file, sep=';')
+            addresses_from_csv = csv_df['Adresse'].tolist()
+            gdf['full_address'] = gdf['addr:street'] + ' ' + gdf['addr:housenumber']
+            gdf_filtered = gdf[gdf['full_address'].isin(addresses_from_csv)]
+            gdf_filtered.to_file(filename, driver='GeoJSON')
 
 class SpatialAnalysisDialog(QDialog):
     def __init__(self, base_path, parent=None):
@@ -794,5 +800,5 @@ class GeocodeAddressesDialog(QDialog):
         self.accept()
 
     def on_generation_error(self, error_message):
-        QMessageBox.critical(self, "Fehler beim Geocoding", error_message)
+        QMessageBox.critical(self, "Fehler beim Geocoding", str(error_message))
         self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
