@@ -61,7 +61,7 @@ def generate_profiles_from_geojson(gdf_HAST, building_type="MFH", calc_method="V
             yearly_time_steps, _, _, _, waerme_ges_kW = heat_requirement_VDI4655.calculate(hw, tww, building_type=current_building_type)
         elif current_calc_method == "BDEW":
             yearly_time_steps, waerme_ges_kW, hourly_temperatures  = heat_requirement_BDEW.calculate(JWB, current_building_type, subtyp="03")
-            print(np.min(waerme_ges_kW))
+            #print(np.min(waerme_ges_kW))
 
         waerme_ges_kW = np.where(waerme_ges_kW<0, 0, waerme_ges_kW)
         waerme_ges_W.append(waerme_ges_kW * 1000)
@@ -228,7 +228,7 @@ def save_results_csv(time_steps, qext_kW, waerme_ges_W, flow_temp_circ_pump, ret
                        'Vorlaufdruck_Netzpumpe_bar': flow_pressure_circ_pump})
 
     # Speichern des DataFrames als CSV
-    df.to_csv(filename, sep=';', date_format='%Y-%m-%dT%H:%M:%S', index=False)
+    df.to_csv(filename, sep=';', date_format='%Y-%m-%d %H:%M:%S', index=False)
 
 def import_results_csv(filename):
     data = pd.read_csv(filename, sep=';', parse_dates=['Zeit'])

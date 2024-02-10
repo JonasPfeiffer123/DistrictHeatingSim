@@ -1,0 +1,33 @@
+Ideen Umsetzung:
+
+Netzsimulation:
+- Überarbeitung Darstellung
+- Gebäude genauer Darstellen --> Max Vorlauftemperatur / Heizkurve / WW-Anteil / RL-Temperatur --> genauere Simulationsparameter
+- Dezentrale Wärmepumpen als Wärmeübertrager simulieren
+
+
+- Arbeite seit nun 3 Monaten als Forschungsmitarbeiter im SMWK-NEUES TG70 Projekt "Entwicklung und Erprobung von Methoden und Werkzeugen zur Konzeptionierung nachhaltiger Wärmenetze" 
+    an der Hochschule Zittau/Görlitz
+- Inhalt des Projekts zielt darauf ab die Arbeitsschritte und den Prozess der Konzeptionierung von Wärmeversorgungslösungen 
+    speziell von Wärmenetzen zu analysieren und entsprechende Verbesserungsmöglichkeiten herauszuarbeiten, im Rahmen dessen
+    analysiere ich verfügbare Daten, die Datenverarbeitung, verfügbare kommerzielle und freie Software. Fokus liegt für uns in Zittau
+    vor allem am Kompetenzaufbau und -ausbau in dem Bereich
+- weiterhin hat es sich so ergeben, dass ich für bekannte Problemstellungen ein Programm im Python geschrieben habe welches dem workflow folgt, 
+    wie ich bereits bei vergangenen Projekten vorgegangen bin
+- hier kleiner Einblick in einige von meinen bereits umgesetzten Funktionen:
+    Gedanklich: Es soll ein Wärmenetz für ein Quartier konzeptioniert und mögliche Wärmeversorgungslösungen untersucht werden
+    Vorgabe: Adressen + Wärmebedarfe zu versorgender Gebäude
+    -> Algorithmus für vereinfachte Netzgenerierung zwischen den Gebäuden und Speichern der GIS-Daten
+    -> Nutzung der Python-Bibliothek "pandapipes" vom Fraunhofer IEE https://github.com/e2nIEE/pandapipes
+        -> selbst stark konfiguriert um regelbares Wärmenetz zu implementieren 
+        -> thermohydraulische Netzberechnung + Dimensionierung Rohrleitungen Anhand Wärmebedarfe, BDEW Profile und GIS-Daten
+    -> Möglichkeit vereinfachte Erzeugeranlagen-Auslegung + Wirtschaftlichkeitsrechnung nach VDI 2067
+    -> Ergebnis-PDF mit Dimensionen, Kosten, Wirtschaftlichkeitsrechnung
+
+- sehr vereinfachte Betrachtungen -> in Zukunft weitere Qualifizierung und Detailierung der Funktionen 
+    ->  - Verbesserung Netzgenerierungsalgorithmus
+        - Ausweitung Funktionen Netzsimulation (kalte Netze + WP, mehrere Erzeuger)
+        - Ausweitung Erzeugersimulation + Verbesserung Wirtschaftlichkeitsrechnung
+        - Verbesserung Räumliche Analysen -> kommunale Wärmeplanung
+
+- bin interessiert an fachlichem Input / Austausch etc
