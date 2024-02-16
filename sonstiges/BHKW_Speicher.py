@@ -10,8 +10,8 @@ speicher_stand = 0  # Anfangsstand des Speichers in kWh
 gaspreis = 50  # EUR/MWh
 
 # Pfad zu den CSV-Daten
-strom_data = "Strompreise_day_ahead_2023.csv"
-lastgang_data = "results/Lastgang_85C_70C_60C.csv"
+strom_data = "sonstiges/Strompreise_day_ahead_2023.csv"
+lastgang_data = "project_data/Görlitz/Lastgang/Lastgang_85C_70C_60C.csv"
 
 def einlesen_strompreise(dateipfad):
     df = pd.read_csv(dateipfad, header=[0, 1], index_col=0)
@@ -20,7 +20,7 @@ def einlesen_strompreise(dateipfad):
     return df["Day Ahead Auktion Preis (EUR/MWh, EUR/tCO2)"].values
 
 def einlesen_lastgang(dateipfad):
-    return pd.read_csv(dateipfad, sep=';', parse_dates=['Zeitpunkt'], index_col='Zeitpunkt')
+    return pd.read_csv(dateipfad, sep=';', parse_dates=['Zeit'], index_col='Zeit')
 
 def berechne_daten(df, bhkw_kapazitaet, bhkw_zustand, speicher_kapazitaet, speicher_stand, gaspreis, strompreis, nutzungsgrad_strom=0.33, nutzungsgrad_waerme=0.57):
     df["Gaspreis_EUR_MWh"] = gaspreis
