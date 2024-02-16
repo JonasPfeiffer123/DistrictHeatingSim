@@ -12,7 +12,7 @@ from net_simulation_pandapipes.net_simulation_calculation import *
 from net_simulation_pandapipes.net_simulation import generate_profiles_from_geojson, thermohydraulic_time_series_net, import_results_csv, init_timeseries_opt
 from net_simulation_pandapipes.stanet_import_pandapipes import create_net_from_stanet_csv
 
-from heat_generators.heat_generator_classes_v2 import Berechnung_Erzeugermix, optimize_mix
+from heat_generators.heat_generator_classes import Berechnung_Erzeugermix, optimize_mix
 
 from geocoding.geocodingETRS89 import process_data
 
@@ -69,13 +69,13 @@ class NetInitializationThread(QThread):
 
         if self.kwargs.get("import_type") == "GeoJSON":
             if self.pipe_creation_mode == "diameter":
-                net = optimize_diameter_parameters(net)
+                net = optimize_diameter_parameters(net, element="pipe", v_max=1)
 
             if self.pipe_creation_mode == "type":
-                net = optimize_diameter_types(net)
+                net = optimize_diameter_types(net, v_max=1)
 
-        net = optimize_diameter_parameters(net, element="heat_exchanger")
-        net = optimize_diameter_parameters(net, element="flow_control")
+        net = optimize_diameter_parameters(net, element="heat_exchanger", v_max=1.5)
+        net = optimize_diameter_parameters(net, element="flow_control", v_max=1.5)
         
         return net
     
@@ -116,13 +116,14 @@ class NetGenerationThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(str)
 
-    def __init__(self, inputs):
+    def __init__(self, inputs, base_path):
         super().__init__()
         self.inputs = inputs
+        self.base_path = base_path
 
     def run(self):
         try:
-            generate_and_export_layers(self.inputs["streetLayer"], self.inputs["dataCsv"], float(self.inputs["xCoord"]), float(self.inputs["yCoord"]))
+            generate_and_export_layers(self.inputs["streetLayer"], self.inputs["dataCsv"], float(self.inputs["xCoord"]), float(self.inputs["yCoord"]), self.base_path)
 
             self.calculation_done.emit(())
         except Exception as e:
@@ -146,13 +147,11 @@ class FileImportThread(QThread):
     def run(self):
         try:
             results = {}
-            print(self.filenames)
             for filename in self.filenames:
-                print(filename)
                 gdf = gpd.read_file(filename)
                 results[filename] = {
                     'gdf': gdf,
-                    'name': os.path.basename(filename),
+                    'name': filename,
                     'style': {
                         'fillColor': self.color,
                         'color': self.color,
@@ -183,7 +182,7 @@ class GeocodingThread(QThread):
             process_data(self.inputfilename, self.outputfilename)
             self.calculation_done.emit(())    # Ergebnis zurückgeben
         except Exception as e:
-            self.calculation_error.emit(str(e))  # Fehler zurückgeben
+            self.calculation_error.emit(e)  # Fehler zurückgeben
 
     def stop(self):
         if self.isRunning():
@@ -213,12 +212,13 @@ class CalculateMixThread(QThread):
     def run(self):
         try:
             # Hier beginnt die Berechnung
-            time_steps, Last_L, flow_temp_circ_pump, return_temp_circ_pump = import_results_csv(self.filename)
+            time_steps, qext_kW, waerme_ges_W, flow_temp_circ_pump, return_temp_circ_pump, mass_flow_circ_pump, deltap_circ_pump, return_pressure_circ_pump, flow_pressure_circ_pump = import_results_csv(self.filename)
             calc1, calc2 = 0, len(time_steps)
 
-            Last_L *= self.load_scale_factor
+            print(time_steps)
+            qext_kW *= self.load_scale_factor
 
-            initial_data = time_steps, Last_L, flow_temp_circ_pump, return_temp_circ_pump
+            initial_data = time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump
 
             TRY = import_TRY(self.try_filename)
             COP_data = np.genfromtxt(self.cop_filename, delimiter=';')

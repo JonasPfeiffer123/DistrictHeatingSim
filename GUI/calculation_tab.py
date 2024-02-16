@@ -1,6 +1,9 @@
 import logging
 import numpy as np
 import geopandas as gpd
+import pandapipes as pp
+import csv
+import pandas as pd
 import itertools
 
 from matplotlib.figure import Figure
@@ -12,54 +15,25 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, \
     QFileDialog, QHBoxLayout, QLineEdit, QFormLayout, \
         QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction
 
-from main import calculate_results, save_results_csv
-from gui.calculation_dialogs import HeatDemandEditDialog, NetGenerationDialog, GeojsonDialog, StanetDialog, SaveLoadNetDialog
+from main import calculate_results, save_results_csv, import_results_csv
+from gui.calculation_dialogs import HeatDemandEditDialog, NetGenerationDialog
 from gui.threads import NetInitializationThread, NetCalculationThread
-from net_simulation_pandapipes.net_test import config_plot
+from net_simulation_pandapipes.config_plot import config_plot
 from gui.checkable_combobox import CheckableComboBox
 
 class CalculationTab(QWidget):
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
-
-    DEFAULT_PATHS = {
-        'Ausgabe': 'results/results_time_series_net1.csv'
-    }
 
     def __init__(self, data_manager, parent=None):
         super().__init__(parent)
         self.data_manager = data_manager
         self.calc_method = "Datensatz"
         self.initUI()
+        self.base_path = "project_data/Beispiel Zittau"  # Basispfad initialisieren
+        self.updateDefaultPath(self.base_path)
 
         self.net_data = None  # Variable zum Speichern der Netzdaten
         self.supply_temperature = None # Variable Vorlauftemperatur
-
-    def updateFilePaths(self, layerNames):
-        for key, path in layerNames.items():
-            if key in self.DEFAULT_PATHS:
-                inputAttrName = f"{key}Input"
-                if hasattr(self, inputAttrName):
-                    getattr(self, inputAttrName).setText(path)
-
-    def initMenuBar(self):
-        self.menubar = QMenuBar(self)
-        self.menubar.setFixedHeight(30)
-
-        # Wärmenetz-Generierungsmenü
-        networkMenu = self.menubar.addMenu('Wärmenetz generieren')
-
-        # Unterpunkte für geojson und Stanet
-        generateNetAction = QAction('Netz generieren', self)
-        #loadsaveppnetAction = QAction('Import/Export Pandapipes Netz', self)
-        networkMenu.addAction(generateNetAction)
-        #networkMenu.addAction(loadsaveppnetAction)
-
-        # Fügen Sie die Menüleiste dem Layout von tab1 hinzu
-        self.container_layout.addWidget(self.menubar)
-
-        # Verbindungen zu den Funktionen
-        generateNetAction.triggered.connect(self.openNetGenerationDialog)
-        #loadsaveppnetAction.triggered.connect(self.openLoadSavePpNetDialog)
 
     def initUI(self):
         # Erstellen eines Scrollbereichs
@@ -75,7 +49,7 @@ class CalculationTab(QWidget):
 
         # Hier fügen Sie alle Ihre vorhandenen Setup-Funktionen hinzu
         self.initMenuBar()
-        self.setupFileInputs()
+        self.createFileInput()
         self.setupControlInputs()
         self.setupPlotLayout()
 
@@ -87,89 +61,58 @@ class CalculationTab(QWidget):
         self.progressBar = QProgressBar(self)
         self.container_layout.addWidget(self.progressBar)
 
-    def setupFileInputs(self):
-        # Verwenden Sie ein Grid-Layout für eine saubere Anordnung
-        form_layout = QFormLayout()
-        # Erstellen Sie die Textfelder und Buttons und fügen Sie sie dem Layout hinzu
-        form_layout.addRow(self.createFileInput('AusgabeInput', self.DEFAULT_PATHS['Ausgabe'], 'Ergebnis-CSV auswählen'))
-        self.container_layout.addLayout(form_layout)
+    def initMenuBar(self):
+        self.menubar = QMenuBar(self)
+        self.menubar.setFixedHeight(30)
 
-    def createFileInput(self, attr_name, default_text, button_tooltip):
+        # Wärmenetz-Generierungsmenü
+        networkMenu = self.menubar.addMenu('Wärmenetz generieren')
+
+        # Unterpunkte für geojson und Stanet
+        generateNetAction = QAction('Netz generieren', self)
+        saveppnetAction = QAction('Export Pandapipes Netz', self)
+        loadppnetAction = QAction('Import Pandapipes Netz', self)
+        loadresultsppAction = QAction('Ergebnisse Zeitreihenrechnung Laden', self)
+        networkMenu.addAction(generateNetAction)
+        networkMenu.addAction(saveppnetAction)
+        networkMenu.addAction(loadppnetAction)
+        networkMenu.addAction(loadresultsppAction)
+
+        # Fügen Sie die Menüleiste dem Layout von tab1 hinzu
+        self.container_layout.addWidget(self.menubar)
+
+        # Verbindungen zu den Funktionen
+        generateNetAction.triggered.connect(self.openNetGenerationDialog)
+        saveppnetAction.triggered.connect(self.saveNet)
+        loadppnetAction.triggered.connect(self.loadNet)
+        loadresultsppAction.triggered.connect(self.load_net_results)
+
+    def createFileInput(self):
         # Erstelle ein horizontales Layout
         file_input_layout = QHBoxLayout()
 
         # Erstelle das QLineEdit Widget
-        line_edit = QLineEdit(default_text)
-        line_edit.setPlaceholderText(button_tooltip)
-        setattr(self, attr_name, line_edit)
+        line_edit = QLineEdit('')
+        line_edit.setPlaceholderText('Ergebnis-CSV auswählen')
+        setattr(self, 'AusgabeInput', line_edit)
 
         # Erstelle den Button
         button = QPushButton("Datei auswählen")
-        button.setToolTip(button_tooltip)
+        button.setToolTip('Ergebnis-CSV auswählen')
         button.clicked.connect(lambda: self.selectFilename(line_edit))
 
         # Füge Widgets zum Layout hinzu
         file_input_layout.addWidget(line_edit)
         file_input_layout.addWidget(button)
 
+        self.container_layout.addLayout(file_input_layout)
+
         return file_input_layout
     
-    def openNetGenerationDialog(self):
-        dialog = NetGenerationDialog(
-            self.generateNetworkCallback,
-            self.editHeatDemandData,
-            self
-        )
-        dialog.exec_()
-
-    def generateNetworkCallback(self, *args):
-        # Das letzte Element in args ist import_type
-        import_type = args[-1]
-
-        if import_type == "GeoJSON":
-            print(*args)
-            # Übergeben Sie alle Argumente außer dem letzten (import_type)
-            self.create_and_initialize_net_geojson(*args[:-1])
-        elif import_type == "Stanet":
-            print(*args)
-            # Übergeben Sie alle Argumente außer dem letzten (import_type)
-            self.create_and_initialize_net_stanet(*args[:-1])
-
-    def openLoadSavePpNetDialog(self):
-        save_load_dialog = SaveLoadNetDialog(self.net_data)
-        save_load_dialog.exec_()
-
-    def editHeatDemandData(self, hastInput):
-        try:
-            self.gdf_HAST = gpd.read_file(hastInput)
-            if "Gebäudetyp" not in self.gdf_HAST.columns:
-                self.gdf_HAST["Gebäudetyp"] = "HMF"
-
-            self.dialog = HeatDemandEditDialog(self.gdf_HAST, hastInput, self)
-            self.dialog.exec_()  # Öffnet den Dialog als Modal
-        except Exception as e:
-            logging.error(f"Fehler beim Laden der HAST-Daten: {e}")
-            QMessageBox.critical(self, "Fehler", "Fehler beim Laden der HAST-Daten.")
-
-    def ImportLayers(self, vorlaufInput, ruecklaufInput, hastInput, erzeugeranlagenInput):
-        # Daten zur zentralen Datenquelle hinzufügen
-        self.data_manager.add_data(vorlaufInput)
-        self.data_manager.add_data(ruecklaufInput)
-        self.data_manager.add_data(hastInput)
-        self.data_manager.add_data(erzeugeranlagenInput)
-        
-        # Signal senden, dass Daten hinzugefügt wurden
-        self.data_added.emit(self.data_manager.get_map_data())
-
-    def updateLabelsForCalcMethod(self, calc_method):
-        self.calc_method = calc_method
-        if calc_method in ["BDEW", "Datensatz"]:  # Angenommen, diese Methoden verwenden 1h-Werte
-            time_step_text = "Zeitschritt (1h Werte); Minimum: 0, Maximum: 8760 (1 Jahr) :"
-        else:  # Für VDI4655 oder andere Methoden, die 15-min-Werte verwenden
-            time_step_text = "Zeitschritt (15 min Werte); Minimum: 0, Maximum: 35040 (1 Jahr) :"
-
-        self.StartTimeStepLabel.setText(time_step_text)
-        self.EndTimeStepLabel.setText(time_step_text)
+    def selectFilename(self, inputWidget):
+        fname, _ = QFileDialog.getOpenFileName(self, 'Datei auswählen', '', 'All Files (*);;CSV Files (*.csv);;Data Files (*.dat)')
+        if fname:  # Prüfen, ob ein Dateiname ausgewählt wurde
+            inputWidget.setText(fname)
 
     def setupControlInputs(self):
         # Buttons für die Berechnung und Initialisierung
@@ -263,10 +206,58 @@ class CalculationTab(QWidget):
         # Verbindung des Dropdown-Menüs mit der Aktualisierungsfunktion
         self.dataSelectionDropdown.checkedStateChanged.connect(self.updatePlot)
 
-    def selectFilename(self, inputWidget):
-        fname, _ = QFileDialog.getOpenFileName(self, 'Datei auswählen', '', 'All Files (*);;CSV Files (*.csv);;Data Files (*.dat)')
-        if fname:  # Prüfen, ob ein Dateiname ausgewählt wurde
-            inputWidget.setText(fname)
+    def updateDefaultPath(self, new_base_path):
+        self.base_path = new_base_path
+
+        # Pfad für Ausgabe aktualisieren
+        new_output_path = f"{self.base_path}/Lastgang/Lastgang.csv"
+
+        self.AusgabeInput.setText(new_output_path)
+    
+    def openNetGenerationDialog(self):
+        print(self.base_path)
+        dialog = NetGenerationDialog(
+            self.generateNetworkCallback,
+            self.editHeatDemandData,
+            self.base_path,
+            self
+        )
+        dialog.exec_()
+
+    def generateNetworkCallback(self, *args):
+        # Das letzte Element in args ist import_type
+        import_type = args[-1]
+
+        if import_type == "GeoJSON":
+            print(*args)
+            # Übergeben Sie alle Argumente außer dem letzten (import_type)
+            self.create_and_initialize_net_geojson(*args[:-1])
+        elif import_type == "Stanet":
+            print(*args)
+            # Übergeben Sie alle Argumente außer dem letzten (import_type)
+            self.create_and_initialize_net_stanet(*args[:-1])
+    
+    def editHeatDemandData(self, hastInput):
+        try:
+            self.gdf_HAST = gpd.read_file(hastInput)
+            if "Gebäudetyp" not in self.gdf_HAST.columns:
+                self.gdf_HAST["Gebäudetyp"] = "HMF"
+
+            self.dialog = HeatDemandEditDialog(self.gdf_HAST, hastInput, self)
+            self.dialog.exec_()  # Öffnet den Dialog als Modal
+        except Exception as e:
+            logging.error(f"Fehler beim Laden der HAST-Daten: {e}")
+            QMessageBox.critical(self, "Fehler", "Fehler beim Laden der HAST-Daten.")
+
+    def updateLabelsForCalcMethod(self, calc_method):
+        self.calc_method = calc_method
+        if calc_method in ["BDEW", "Datensatz"]:  # Angenommen, diese Methoden verwenden 1h-Werte
+            time_step_text = "Zeitschritt (1h Werte); Minimum: 0, Maximum: 8760 (1 Jahr) :"
+        else:  # Für VDI4655 oder andere Methoden, die 15-min-Werte verwenden
+            time_step_text = "Zeitschritt (15 min Werte); Minimum: 0, Maximum: 35040 (1 Jahr) :"
+
+        self.StartTimeStepLabel.setText(time_step_text)
+        self.EndTimeStepLabel.setText(time_step_text)
 
     def create_and_initialize_net_geojson(self, vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump):
         self.updateLabelsForCalcMethod(calc_method)
@@ -300,9 +291,9 @@ class CalculationTab(QWidget):
         self.net_data = results
 
         self.waerme_ges_kW = np.where(self.waerme_ges_W == 0, 0, self.waerme_ges_W / 1000)
-        self.plot(self.yearly_time_steps, self.waerme_ges_kW, self.net)
+        self.plot(self.net, self.yearly_time_steps, self.waerme_ges_kW)
 
-    def plot(self, time_steps, qext_kW, net):
+    def plot(self, net, time_steps, qext_kW):
         # Clear previous figure
         self.figure4.clear()
         ax1 = self.figure4.add_subplot(111)
@@ -323,6 +314,8 @@ class CalculationTab(QWidget):
         config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_controls=False, show_heat_exchangers=True)
         self.canvas5.draw()
 
+
+    ### Zeitreihensimulation ###
     def adjustTimeParameters(self):
         try:
             calc1 = int(self.StartTimeStepInput.text())
@@ -373,6 +366,18 @@ class CalculationTab(QWidget):
             self.return_pressure_circ_pump, self.flow_pressure_circ_pump, self.qext_kW, self.pressure_junctions = calculate_results(self.net, self.net_results)
 
         self.waerme_ges_W = (np.sum(self.waerme_ges_W, axis=0)/1000)[self.calc1:self.calc2]
+
+        plot_data =  self.time_steps, self.qext_kW, self.waerme_ges_W, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, self.return_pressure_circ_pump, self.flow_pressure_circ_pump
+        
+        self.plot_data_func(plot_data)
+        self.plot2()
+
+        self.output_filename = self.AusgabeInput.text()
+        save_results_csv(self.time_steps, self.qext_kW, self.waerme_ges_W, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, self.return_pressure_circ_pump, self.flow_pressure_circ_pump, self.output_filename)
+
+    def plot_data_func(self, plot_data):
+        self.time_steps, self.qext_kW, self.waerme_ges_W, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, self.return_pressure_circ_pump, self.flow_pressure_circ_pump = plot_data
+        
         self.plot_data = {
             "Einspeiseleistung Heizzentrale": {
                 "data": self.qext_kW,
@@ -416,12 +421,6 @@ class CalculationTab(QWidget):
             }
         }
 
-
-        self.plot2()
-
-        self.output_filename = self.AusgabeInput.text()
-        save_results_csv(self.time_steps, self.qext_kW, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.output_filename)
-
     def on_simulation_error(self, error_message):
         QMessageBox.critical(self, "Berechnungsfehler", error_message)
         self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
@@ -445,7 +444,6 @@ class CalculationTab(QWidget):
             self.createPlotControlDropdown()
         
         self.updatePlot()  # Rufen Sie updatePlot auf, um den initialen Plot zu zeichnen
-
 
     def updatePlot(self):
         self.figure3.clear()
@@ -480,3 +478,62 @@ class CalculationTab(QWidget):
 
         ax_left.grid()
         self.canvas3.draw()
+
+    def saveNet(self):
+        pickle_file_path = f"{self.base_path}/Wärmenetz/Ergebnisse Netzinitialisierung.p"
+        csv_file_path = f"{self.base_path}/Wärmenetz/Ergebnisse Netzinitialisierung.csv"
+        if self.net_data:  # Überprüfe, ob das Netzwerk vorhanden ist
+            net, yearly_time_steps, waerme_ges_W = self.net_data
+            
+            try:
+                # Pandapipes-Netz als pickle speichern
+                pp.to_pickle(net, pickle_file_path)
+                
+                # Umwandlung der Daten in ein DataFrame und Speichern als CSV
+                data = np.column_stack([waerme_ges_W[i] for i in range(waerme_ges_W.shape[0])])
+                df = pd.DataFrame(data, index=yearly_time_steps, columns=[f'waerme_ges_W_{i+1}' for i in range(waerme_ges_W.shape[0])])
+                df.to_csv(csv_file_path, sep=';', date_format='%Y-%m-%dT%H:%M:%S')
+                
+                QMessageBox.information(self, "Speichern erfolgreich", f"Pandapipes Netz erfolgreich gespeichert in: {pickle_file_path}, Daten erfolgreich gespeichert in: {csv_file_path}")
+            except Exception as e:
+                QMessageBox.critical(self, "Speichern fehlgeschlagen", f"Fehler beim Speichern der Daten: {e}")
+        else:
+            QMessageBox.warning(self, "Keine Daten", "Kein Pandapipes-Netzwerk zum Speichern vorhanden.")
+
+
+    def loadNet(self):
+        csv_file_path = f"{self.base_path}/Wärmenetz/Ergebnisse Netzinitialisierung.csv"
+        pickle_file_path = f"{self.base_path}/Wärmenetz/Ergebnisse Netzinitialisierung.p"
+        try:
+            net = pp.from_pickle(pickle_file_path)
+            
+            with open(csv_file_path, newline='') as csvfile:
+                reader = csv.reader(csvfile, delimiter=';')
+                next(reader)  # Überspringe die Kopfzeile
+                
+                formatted_time_steps = []
+                waerme_ges_W_data = []
+                
+                for row in reader:
+                    formatted_time_steps.append(np.datetime64(row[0]))
+                    waerme_ges_W_data.append([float(value) for value in row[1:]])
+                
+                # Konvertiere Listen zu passenden Formaten
+                yearly_time_steps = np.array(formatted_time_steps)
+                waerme_ges_W = np.array(waerme_ges_W_data).transpose()
+                
+                self.net_data = (net, yearly_time_steps, waerme_ges_W)
+                self.net, self.yearly_time_steps, self.waerme_ges_W = self.net_data
+                self.waerme_ges_kW = np.where(self.waerme_ges_W == 0, 0, self.waerme_ges_W / 1000)
+                self.plot(self.net, self.yearly_time_steps, self.waerme_ges_kW)
+                
+                QMessageBox.information(self, "Laden erfolgreich", f"Daten erfolgreich aus {csv_file_path} und {pickle_file_path} geladen.")
+        except Exception as e:
+            QMessageBox.critical(self, "Laden fehlgeschlagen", f"Fehler beim Laden der Daten: {e}")
+
+    def load_net_results(self):
+        results_csv_filepath = f"{self.base_path}/Lastgang/Lastgang.csv"
+        plot_data = import_results_csv(results_csv_filepath)
+        self.time_steps, self.qext_kW, self.waerme_ges_W, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, self.return_pressure_circ_pump, self.flow_pressure_circ_pump = plot_data
+        self.plot_data_func(plot_data)
+        self.plot2()

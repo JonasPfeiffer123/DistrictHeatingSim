@@ -38,9 +38,9 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w, return_temper
                    diameter_mm=107.1, pipetype="KMR 100/250-2v", k=0.0470, alpha=0.61, pipe_creation_mode="type"):
     initial_mdot_guess_kg_s = qext_w / (4170*(supply_temperature-return_temperature))
     initial_Vdot_guess_m3_s = initial_mdot_guess_kg_s/1000
-    v_max_m_s = 1.7
+    v_max_m_s = 1.5
     area_m2 = initial_Vdot_guess_m3_s/v_max_m_s
-    initial_dimension_guess_m = np.sqrt(area_m2 *(4/np.pi))
+    initial_dimension_guess_m = np.round(np.sqrt(area_m2 *(4/np.pi)), 3)
 
     def create_junctions_from_coords(net_i, all_coords):
         junction_dict = {}
@@ -142,55 +142,43 @@ def correct_flow_directions(net):
     return net
 
 
-def optimize_diameter_parameters(initial_net, element="pipe", v_max=2, v_min=1.5, dx=0.001):
+def optimize_diameter_parameters(initial_net, element="pipe", v_max=2, dx=0.001):
     pp.pipeflow(initial_net, mode="all")
 
-    if element == "pipe":
-        velocities = list(initial_net.res_pipe.v_mean_m_per_s)
-        
-        while max(velocities) > v_max or min(velocities) < v_min:
-            for pipe_idx in initial_net.pipe.index:
-                # check the average velocity in the Pipe
-                if initial_net.res_pipe.v_mean_m_per_s[pipe_idx] > v_max:
-                    # enlarge diameter
-                    initial_net.pipe.at[pipe_idx, 'diameter_m'] = initial_net.pipe.at[pipe_idx, 'diameter_m'] + dx
-                elif initial_net.res_pipe.v_mean_m_per_s[pipe_idx] < v_min:
-                    # shrink diameter
-                    initial_net.pipe.at[pipe_idx, 'diameter_m'] = initial_net.pipe.at[pipe_idx, 'diameter_m'] - dx
-
+    element_df = getattr(initial_net, element)  # Zugriff auf die DataFrame des Elements
+    res_df = getattr(initial_net, f"res_{element}")  # Zugriff auf die Ergebnis-DataFrame
             
-            pp.pipeflow(initial_net, mode="all")
-            velocities = list(initial_net.res_pipe.v_mean_m_per_s)
-
-    if element == "flow_control":
-        velocities = list(initial_net.res_flow_control.v_mean_m_per_s)
+    change_made = True
+    while change_made:
+        change_made = False
         
-        while max(velocities) > v_max or min(velocities) < v_min:
-            for fc_idx in initial_net.flow_control.index:
-                # check the average velocity in the Pipe
-                if initial_net.res_flow_control.v_mean_m_per_s[fc_idx] > v_max:
-                    # enlarge diameter
-                    initial_net.flow_control.at[fc_idx, 'diameter_m'] = initial_net.flow_control.at[fc_idx, 'diameter_m'] + dx
-                elif initial_net.res_flow_control.v_mean_m_per_s[fc_idx] < v_min:
-                    # shrink diameter
-                    initial_net.flow_control.at[fc_idx, 'diameter_m'] = initial_net.flow_control.at[fc_idx, 'diameter_m'] - dx
-            pp.pipeflow(initial_net, mode="all")
-            velocities = list(initial_net.res_flow_control.v_mean_m_per_s)
+        for idx in element_df.index:
+            current_velocity = res_df.v_mean_m_per_s[idx]
+            current_diameter = element_df.at[idx, 'diameter_m']
+            
+            # Vergrößern, wenn Geschwindigkeit > v_max
+            if current_velocity > v_max:
+                element_df.at[idx, 'diameter_m'] += dx
+                change_made = True
 
-    if element == "heat_exchanger":
-        velocities = list(initial_net.res_heat_exchanger.v_mean_m_per_s)
+            # Verkleinern, solange Geschwindigkeit < v_max, und prüfen
+            elif current_velocity < v_max:
+                element_df.at[idx, 'diameter_m'] -= dx
+                pp.pipeflow(initial_net, mode="all")
+                element_df = getattr(initial_net, element)  # Zugriff auf die DataFrame des Elements
+                res_df = getattr(initial_net, f"res_{element}")  # Zugriff auf die Ergebnis-DataFrame
+                new_velocity = res_df.v_mean_m_per_s[idx]
+
+                if new_velocity > v_max:
+                    # Zurücksetzen, wenn neue Geschwindigkeit v_max übersteigt
+                    element_df.at[idx, 'diameter_m'] = current_diameter
+                else:
+                    change_made = True
         
-        while max(velocities) > v_max or min(velocities) < v_min:
-            for hx_idx in initial_net.heat_exchanger.index:
-                # check the average velocity in the Pipe
-                if initial_net.res_heat_exchanger.v_mean_m_per_s[hx_idx] > v_max:
-                    # enlarge diameter
-                    initial_net.heat_exchanger.at[hx_idx, 'diameter_m'] = initial_net.heat_exchanger.at[hx_idx, 'diameter_m'] + dx
-                elif initial_net.res_heat_exchanger.v_mean_m_per_s[hx_idx] < v_min:
-                    # shrink diameter
-                    initial_net.heat_exchanger.at[hx_idx, 'diameter_m'] = initial_net.heat_exchanger.at[hx_idx, 'diameter_m'] - dx
-            pp.pipeflow(initial_net, mode="all")
-            velocities = list(initial_net.res_heat_exchanger.v_mean_m_per_s)
+        if change_made:
+            pp.pipeflow(initial_net, mode="all")  # Neuberechnung nur wenn Änderungen gemacht wurden
+            element_df = getattr(initial_net, element)  # Zugriff auf die DataFrame des Elements
+            res_df = getattr(initial_net, f"res_{element}")  # Zugriff auf die Ergebnis-DataFrame
 
     return initial_net
 
@@ -213,8 +201,9 @@ def optimize_diameter_types(net, v_max=1.0):
             current_type = net.pipe.std_type.at[pipe_idx]
             current_type_position = type_position_dict[current_type]
 
+
             if velocity > v_max and current_type_position < len(filtered_by_material_and_insulation) - 1:
-                # Decrease diameter
+                 # enlarge diameter
                 new_type = filtered_by_material_and_insulation.index[current_type_position + 1]
 
                 # Temporarily apply the new type
@@ -227,7 +216,7 @@ def optimize_diameter_types(net, v_max=1.0):
                 change_made = True
 
             elif velocity < v_max and current_type_position > 0:
-                # Increase diameter, but check if this increase makes the velocity exceed v_max
+                # shrink diameter, but check if this shrink makes the velocity exceed v_max
                 new_type = filtered_by_material_and_insulation.index[current_type_position - 1]
 
                 # Temporarily apply the new type

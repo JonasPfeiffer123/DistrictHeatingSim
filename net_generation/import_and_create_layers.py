@@ -57,7 +57,7 @@ def load_layers(osm_street_layer_geojson_file, data_csv_file_name, x_coord, y_co
         print(f"Fehler beim Laden der Layer: {e}")
         return None, None, None, None
 
-def generate_and_export_layers(osm_street_layer_geojson_file_name, data_csv_file_name, x_coord, y_coord, fixed_angle=0, fixed_distance=1):
+def generate_and_export_layers(osm_street_layer_geojson_file_name, data_csv_file_name, x_coord, y_coord, base_path, fixed_angle=0, fixed_distance=1):
     street_layer, layer_points, layer_WEA, df = load_layers(osm_street_layer_geojson_file_name, data_csv_file_name, x_coord, y_coord)
     
     # Verwenden Sie die angepassten Funktionen, um die Linien zu generieren
@@ -73,8 +73,8 @@ def generate_and_export_layers(osm_street_layer_geojson_file_name, data_csv_file
     vl_erzeugeranlagen = vl_erzeugeranlagen.set_crs("EPSG:25833")
     
     # Export der GeoDataFrames als GeoJSON
-    vl_hast.to_file("net_generation/HAST.geojson", driver="GeoJSON")
-    vl_rl.to_file("net_generation/Rücklauf.geojson", driver="GeoJSON")
-    vl_vl.to_file("net_generation/Vorlauf.geojson", driver="GeoJSON")
-    vl_erzeugeranlagen.to_file("net_generation/Erzeugeranlagen.geojson", driver="GeoJSON")
+    vl_hast.to_file(f"{base_path}/Wärmenetz/HAST.geojson", driver="GeoJSON")
+    vl_rl.to_file(f"{base_path}/Wärmenetz/Rücklauf.geojson", driver="GeoJSON")
+    vl_vl.to_file(f"{base_path}/Wärmenetz/Vorlauf.geojson", driver="GeoJSON")
+    vl_erzeugeranlagen.to_file(f"{base_path}/Wärmenetz/Erzeugeranlagen.geojson", driver="GeoJSON")
 

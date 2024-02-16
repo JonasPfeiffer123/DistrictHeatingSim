@@ -1,0 +1,12 @@
+####
+Exception-Handling OSM-Download:
+Traceback (most recent call last):
+  File "c:\Users\username\heating_network_generation\gui\visualization_dialogs.py", line 369, in startQuery
+    save_to_file(geojson_data, self.filename)
+  File "c:\Users\username\heating_network_generation\osm_data\import_osm_data_geojson.py", line 76, in save_to_file
+    with open(filename, 'w') as outfile:
+         ^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'C:/Users/username/heating_network_generation/project_data/Bad Muskau/Raumanalyse/Stra▀en.geojson'
+
+####
+Mehrere Tags herunterladen OSM-Query

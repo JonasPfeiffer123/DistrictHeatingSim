@@ -61,7 +61,9 @@ def generate_profiles_from_geojson(gdf_HAST, building_type="MFH", calc_method="V
             yearly_time_steps, _, _, _, waerme_ges_kW = heat_requirement_VDI4655.calculate(hw, tww, building_type=current_building_type)
         elif current_calc_method == "BDEW":
             yearly_time_steps, waerme_ges_kW, hourly_temperatures  = heat_requirement_BDEW.calculate(JWB, current_building_type, subtyp="03")
+            #print(np.min(waerme_ges_kW))
 
+        waerme_ges_kW = np.where(waerme_ges_kW<0, 0, waerme_ges_kW)
         waerme_ges_W.append(waerme_ges_kW * 1000)
         max_waerme_ges_W.append(np.max(waerme_ges_kW * 1000))
 
@@ -212,23 +214,32 @@ def calculate_results(net, net_results):
 
     return mass_flow_circ_pump, deltap_circ_pump, return_temp_circ_pump, flow_temp_circ_pump, return_pressure_circ_pump, flows_pressure_circ_pump, qext_kW, pressure_junctions
 
-def save_results_csv(time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump, filename):
-    # Umwandeln von time_steps in ein allgemeineres datetime64[ns]-Format
-    time_steps_ns = time_steps.astype('datetime64[ns]')
-    
+def save_results_csv(time_steps, qext_kW, waerme_ges_W, flow_temp_circ_pump, return_temp_circ_pump, mass_flow_circ_pump, deltap_circ_pump, return_pressure_circ_pump, flow_pressure_circ_pump, filename):
+
     # Konvertieren der Arrays in ein Pandas DataFrame
-    df = pd.DataFrame({'Zeitpunkt': time_steps_ns, 
-                       'Heizlast_Netz_kW': qext_kW, 
+    df = pd.DataFrame({'Zeit': time_steps, 
+                       'Heizlast_Netz_kW': qext_kW,
+                       'Gesamtwärmebedarf_Gebäude_kW': waerme_ges_W,
                        'Vorlauftemperatur_Netz_°C': flow_temp_circ_pump, 
-                       'Rücklauftemperatur_Netz_°C': return_temp_circ_pump})
+                       'Rücklauftemperatur_Netz_°C': return_temp_circ_pump,
+                       'Massenstrom_Netzpumpe_kg_s': mass_flow_circ_pump,
+                       'Delta_p_Netzpumpe_bar': deltap_circ_pump,
+                       'Rücklaufdruck_Netzpumpe_bar': return_pressure_circ_pump,
+                       'Vorlaufdruck_Netzpumpe_bar': flow_pressure_circ_pump})
 
     # Speichern des DataFrames als CSV
-    df.to_csv(filename, sep=';', index=False)
+    df.to_csv(filename, sep=';', date_format='%Y-%m-%d %H:%M:%S', index=False)
 
 def import_results_csv(filename):
-    data = pd.read_csv(filename, sep=';', parse_dates=['Zeitpunkt'])
-    time_steps = data["Zeitpunkt"].values.astype('datetime64[15m]')
+    data = pd.read_csv(filename, sep=';', parse_dates=['Zeit'])
+    time_steps = data["Zeit"].values.astype('datetime64')
     qext_kW = data["Heizlast_Netz_kW"].values.astype('float64')
+    waerme_ges_W = data["Gesamtwärmebedarf_Gebäude_kW"].values.astype('float64')
     flow_temp_circ_pump = data['Vorlauftemperatur_Netz_°C'].values.astype('float64')
     return_temp_circ_pump = data['Rücklauftemperatur_Netz_°C'].values.astype('float64')
-    return time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump
+    mass_flow_circ_pump = data["Massenstrom_Netzpumpe_kg_s"].values.astype('float64')
+    deltap_circ_pump = data["Delta_p_Netzpumpe_bar"].values.astype('float64')
+    return_pressure_circ_pump = data["Rücklaufdruck_Netzpumpe_bar"].values.astype('float64')
+    flow_pressure_circ_pump = data["Vorlaufdruck_Netzpumpe_bar"].values.astype('float64')
+
+    return time_steps, qext_kW, waerme_ges_W, flow_temp_circ_pump, return_temp_circ_pump, mass_flow_circ_pump, deltap_circ_pump, return_pressure_circ_pump, flow_pressure_circ_pump

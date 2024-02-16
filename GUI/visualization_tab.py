@@ -14,7 +14,7 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 import folium
 
-from gui.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog, SpatialAnalysisDialog, GeocodeAdressesDialog
+from gui.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog, SpatialAnalysisDialog, GeocodeAddressesDialog
 from gui.threads import NetGenerationThread, FileImportThread
 
 class VisualizationTab(QWidget):
@@ -25,6 +25,8 @@ class VisualizationTab(QWidget):
         self.data_manager = data_manager
         self.layers = {}
         self.initUI()
+        self.base_path = "project_data/Beispiel Zittau"  # Basispfad initialisieren
+        self.updateDefaultPath(self.base_path)
     
     def initUI(self):
         layout = QVBoxLayout()
@@ -99,33 +101,36 @@ class VisualizationTab(QWidget):
 
         self.setLayout(layout)
 
+    def updateDefaultPath(self, new_base_path):
+        self.base_path = new_base_path
+
     def connect_signals(self, calculation_tab):
         calculation_tab.data_added.connect(self.loadNetData)
 
     def openDownloadOSMDataDialog(self):
-        dialog = DownloadOSMDataDialog(self)
+        dialog = DownloadOSMDataDialog(self.base_path, self)
         if dialog.exec_() == QDialog.Accepted:
             pass
 
     def openOSMBuildingQueryDialog(self):
-        dialog = OSMBuildingQueryDialog(self)
+        dialog = OSMBuildingQueryDialog(self.base_path, self)
         if dialog.exec_() == QDialog.Accepted:
             # Hier könnten Sie die Daten aus dem Dialog verarbeiten
             pass
 
     def openspatialAnalysisDialog(self):
-        dialog = SpatialAnalysisDialog(self)
+        dialog = SpatialAnalysisDialog(self.base_path, self)
         if dialog.exec_() == QDialog.Accepted:
             # Hier könnten Sie die Daten aus dem Dialog verarbeiten
             pass
 
     def openGeocodeAdressesDialog(self):
-        dialog = GeocodeAdressesDialog(self)
+        dialog = GeocodeAddressesDialog(self.base_path, self)
         if dialog.exec_() == QDialog.Accepted:
             pass
 
     def openLayerGenerationDialog(self):
-        dialog = LayerGenerationDialog(self)
+        dialog = LayerGenerationDialog(self.base_path, self)
         if dialog.exec_() == QDialog.Accepted:
             inputs = dialog.getInputs()
             self.generateAndImportLayers(inputs)
@@ -135,23 +140,24 @@ class VisualizationTab(QWidget):
         if hasattr(self, 'netgenerationThread') and self.netgenerationThread.isRunning():
             self.netgenerationThread.terminate()
             self.netgenerationThread.wait()
-        self.netgenerationThread = NetGenerationThread(inputs)
+        self.netgenerationThread = NetGenerationThread(inputs, self.base_path)
         self.netgenerationThread.calculation_done.connect(self.on_generation_done)
         self.netgenerationThread.calculation_error.connect(self.on_generation_error)
         self.netgenerationThread.start()
         self.progressBar.setRange(0, 0)  # Aktiviert den indeterministischen Modus
 
+    # Speicherort muss Variabel werden
     def on_generation_done(self, results):
         self.progressBar.setRange(0, 1)
-        filenames = ["net_generation/HAST.geojson", "net_generation/Rücklauf.geojson",
-                     "net_generation/Vorlauf.geojson", "net_generation/Erzeugeranlagen.geojson"]
+        filenames = [f"{self.base_path}/Wärmenetz/HAST.geojson", f"{self.base_path}/Wärmenetz/Rücklauf.geojson",
+                     f"{self.base_path}/Wärmenetz/Vorlauf.geojson", f"{self.base_path}/Wärmenetz/Erzeugeranlagen.geojson"]
         self.loadNetData(filenames)
         
         generatedLayers = {
-            'HAST': "net_generation/HAST.geojson",
-            'Rücklauf': "net_generation/Rücklauf.geojson",
-            'Vorlauf': "net_generation/Vorlauf.geojson",
-            'Erzeugeranlagen': "net_generation/Erzeugeranlagen.geojson"
+            'HAST': f"{self.base_path}/Wärmenetz/HAST.geojson",
+            'Rücklauf': f"{self.base_path}/Wärmenetz/Rücklauf.geojson",
+            'Vorlauf': f"{self.base_path}/Wärmenetz/Vorlauf.geojson",
+            'Erzeugeranlagen': f"{self.base_path}/Wärmenetz/Erzeugeranlagen.geojson"
         }
 
         # Auslösen des Signals mit den Pfaden der generierten Layer
@@ -190,19 +196,25 @@ class VisualizationTab(QWidget):
         return [center_x, center_y], zoom
     
     def updateMapView(self):
-        center, zoom = self.calculate_map_center_and_zoom()
-        self.m = folium.Map(location=center, zoom_start=zoom)
-        for layer in self.layers.values():
-            self.m.add_child(layer)
-        self.update_map_view(self.mapView, self.m)
+        try:
+            center, zoom = self.calculate_map_center_and_zoom()
+            if center is None or zoom is None:
+                raise ValueError("Keine gültigen Daten zum Berechnen des Kartenmittelpunkts und Zooms gefunden.")
+
+            self.m = folium.Map(location=center, zoom_start=zoom)
+            for layer in self.layers.values():
+                self.m.add_child(layer)
+            self.update_map_view(self.mapView, self.m)
+        except Exception as e:
+            QMessageBox.critical(self, "Fehler beim Laden der Daten", f"Es gab ein Problem beim Laden der Daten: {str(e)}\nBitte überprüfen Sie, ob die Datei leer ist oder ungültige Daten enthält.")
 
     def update_map_view(self, mapView, map_obj):
         """ Aktualisiert die Kartenansicht in PyQt """
-        map_file = 'results/map.html'
+        map_file = "results/map.html"
         map_obj.save(map_file)
         mapView.load(QUrl.fromLocalFile(os.path.abspath(map_file)))
 
-    def loadNetData(self, filenames, color=None):
+    def loadNetData(self, filenames, color="#{:06x}".format(random.randint(0, 0xFFFFFF))):
         if not isinstance(filenames, list):
             filenames = [filenames]
 
@@ -227,29 +239,30 @@ class VisualizationTab(QWidget):
     def on_import_done(self, results):
         self.progressBar.setRange(0, 1)
         for filename, geojson_data in results.items():
-            # Generieren Sie eine zufällige Farbe für jeden Layer
-            color = "#{:06x}".format(random.randint(0, 0xFFFFFF))
-
-            # Fügen Sie den Layer zur Karte hinzu
-            geojson_layer = folium.GeoJson(
-                geojson_data['gdf'],
-                name=geojson_data['name'],
-                style_function=lambda feature, color=color: {
+            # Funktion zur Erzeugung einer style_function mit aktuellem Kontext
+            def create_style_function(color, weight, fillOpacity):
+                return lambda feature: {
                     'fillColor': color,
                     'color': color,
                     'weight': 1.5,
                     'fillOpacity': 0.5,
                 }
+
+            # Fügen Sie den Layer zur Karte hinzu, mit der dynamischen style_function
+            geojson_layer = folium.GeoJson(
+                geojson_data['gdf'],
+                name=geojson_data['name'],
+                style_function=create_style_function(geojson_data['style']['color'], geojson_data['style']['weight'], geojson_data['style']['fillOpacity'])
             )
             geojson_layer.add_to(self.m)
 
-            # Fügen Sie den Layer hier zur Verwaltung hinzu
+            # Fügen Sie den Layer zur Verwaltung hinzu
             self.layers[geojson_data['name']] = geojson_layer
 
             # Aktualisieren Sie das QListWidget
             if geojson_data['name'] not in [self.layerList.item(i).text() for i in range(self.layerList.count())]:
                 listItem = QListWidgetItem(geojson_data['name'])
-                listItem.setBackground(QColor(color))
+                listItem.setBackground(QColor(geojson_data['style']['color']))
                 listItem.setForeground(QBrush(QColor('#FFFFFF')))
                 self.layerList.addItem(listItem)
 
@@ -303,7 +316,11 @@ class VisualizationTab(QWidget):
         # Dialog erstellen
         self.csvEditorDialog = QDialog(self)
         self.csvEditorDialog.setWindowTitle('CSV-Editor')
+        self.csvEditorDialog.setGeometry(300, 300, 600, 200)  # Anpassung der Fenstergröße
+
         layout = QVBoxLayout(self.csvEditorDialog)
+        layout.setSpacing(10)  # Abstand zwischen den Widgets
+        layout.setContentsMargins(10, 10, 10, 10)  # Rand des Layouts
 
         # QTableWidget für CSV-Inhalte
         self.csvTable = QTableWidget()
@@ -374,7 +391,7 @@ class VisualizationTab(QWidget):
         fname, _ = QFileDialog.getOpenFileName(self, 'CSV-Koordinaten laden', '', 'CSV Files (*.csv);;All Files (*)')
         if fname:
             # Pfad für die temporäre GeoJSON-Datei
-            geojson_path = 'results/Koordinaten.geojson'
+            geojson_path = f"{self.base_path}/Gebäudedaten/Koordinaten.geojson"
 
             # Erstellen der GeoJSON-Datei aus der CSV-Datei
             self.createGeoJsonFromCsv(fname, geojson_path)

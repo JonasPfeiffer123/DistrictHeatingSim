@@ -4,10 +4,10 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QLineEdit, QListWidget, QDialog, QProgressBar, \
     QMessageBox, QFileDialog, QMenuBar, QScrollArea, QAction, QAbstractItemView, QTableWidget, QTableWidgetItem, QHeaderView)
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QFont
 from gui.mix_design_dialogs import TechInputDialog, EconomicParametersDialog, NetInfrastructureDialog
-from heat_generators.heat_generator_classes_v2 import *
+from heat_generators.heat_generator_classes import *
 from gui.checkable_combobox import CheckableComboBox
 
 from gui.threads import CalculateMixThread
@@ -34,6 +34,8 @@ class CustomListWidget(QListWidget):
         self.parent().updateTechObjectsOrder()
 
 class MixDesignTab(QWidget):
+    data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
+    
     def __init__(self, parent=None):
         super().__init__(parent)
         self.results = {}
@@ -43,9 +45,11 @@ class MixDesignTab(QWidget):
         self.tech_objects = []
         self.initFileInputs()
         self.initUI()
+        self.base_path = "project_data/Beispiel Zittau"  # Basispfad initialisieren
+        self.updateDefaultPath(self.base_path)
 
     def initFileInputs(self):
-        self.FilenameInput = QLineEdit('results/Lastgang Nahwärmenetz Görlitz Stadtbrücke.csv')
+        self.FilenameInput = QLineEdit('')
         self.tryFilenameInput = QLineEdit('heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat')
         self.copFilenameInput = QLineEdit('heat_generators/Kennlinien WP.csv')
 
@@ -56,6 +60,16 @@ class MixDesignTab(QWidget):
         self.selectFileButton.clicked.connect(lambda: self.selectFilename(self.FilenameInput))
         self.selectTRYFileButton.clicked.connect(lambda: self.selectFilename(self.tryFilenameInput))
         self.selectCOPFileButton.clicked.connect(lambda: self.selectFilename(self.copFilenameInput))
+
+    def updateDefaultPath(self, new_base_path):
+        self.base_path = new_base_path
+
+        # Pfad für Ausgabe aktualisieren
+        new_output_path = f"{self.base_path}/Lastgang/Lastgang.csv"
+        # Dies setzt voraus, dass Ihre Eingabefelder oder deren Layouts entsprechend benannt sind
+        self.FilenameInput.setText(new_output_path)
+
+        # Optional für mögliche Dialogfenster
 
     def initUI(self):
         mainScrollArea = QScrollArea(self)
@@ -897,7 +911,7 @@ class MixDesignTab(QWidget):
             'techObjects': [self.formatTechForSave(tech) for tech in self.tech_objects]
         }
 
-        with open('saved_state.json', 'w') as f:
+        with open('project_data/Beispiel Zittau/Speicherstand.json', 'w') as f:
             json.dump(state, f)
         
         print("Konfiguration gespeichert")
@@ -907,7 +921,7 @@ class MixDesignTab(QWidget):
     
     def loadConfiguration(self):
         try:
-            with open('saved_state.json', 'r') as f:
+            with open('project_data/Beispiel Zittau/Speicherstand.json', 'r') as f:
                 state = json.load(f)
 
             self.FilenameInput.setText(state['filename'])

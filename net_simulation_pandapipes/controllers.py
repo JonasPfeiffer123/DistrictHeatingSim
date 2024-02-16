@@ -57,7 +57,7 @@ class WorstPointPressureController(BasicCtrl):
         return super(WorstPointPressureController, self).control_step(net)
 
 class ReturnTemperatureController(BasicCtrl):
-    def __init__(self, net, heat_exchanger_idx, target_temperature, tolerance=2, min_velocity=0.005, max_velocity=2, **kwargs):
+    def __init__(self, net, heat_exchanger_idx, target_temperature, tolerance=2, min_velocity=0.001, max_velocity=2, **kwargs):
         super(ReturnTemperatureController, self).__init__(net, **kwargs)
         self.heat_exchanger_idx = heat_exchanger_idx
         self.flow_control_idx = heat_exchanger_idx
@@ -71,9 +71,16 @@ class ReturnTemperatureController(BasicCtrl):
         self.calculate_mass_flow_limits(net)
         self.previous_temperatures = {}
 
+        self.at_min_mass_flow_limit = False
+        self.at_max_mass_flow_limit = False
+
     def time_step(self, net, time_step):
         self.iteration = 0  # Iterationszähler reset
         self.previous_temperatures = {}
+        if self.at_min_mass_flow_limit:
+            net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx] = self.min_mass_flow * 1.05
+        if self.at_max_mass_flow_limit:
+            net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx] = self.max_mass_flow * 0.95
         return time_step
 
     def update_state(self, net):
@@ -89,8 +96,9 @@ class ReturnTemperatureController(BasicCtrl):
 
     def is_converged(self, net):
         qext_w = net.heat_exchanger["qext_w"].at[self.heat_exchanger_idx]
-        if qext_w <= 300:
+        if qext_w == 0:
             return True
+
         # Prüfen Sie, ob sich die Temperaturen innerhalb der festgelegten Toleranz geändert haben
         current_T_in = net.res_heat_exchanger["t_from_k"].at[self.heat_exchanger_idx]
         previous_T_in = self.previous_temperatures.get(self.heat_exchanger_idx)
@@ -109,23 +117,23 @@ class ReturnTemperatureController(BasicCtrl):
         current_mass_flow = net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx]
 
         # Überprüfe, ob die Massenstromgrenzen erreicht sind
-        at_min_mass_flow_limit = current_mass_flow <= self.min_mass_flow
-        at_max_mass_flow_limit = current_mass_flow >= self.max_mass_flow
+        self.at_min_mass_flow_limit = current_mass_flow <= self.min_mass_flow
+        self.at_max_mass_flow_limit = current_mass_flow >= self.max_mass_flow
 
-        #if self.heat_exchanger_idx == 13:
-        #print(f'heat_exchanger_idx: {self.heat_exchanger_idx}, qext_w: {qext_w}, current_temperature: {current_T_in}, previous_temperature: {previous_T_in}, to_temperature: {current_T_out}, current_mass_flow: {current_mass_flow}')
-        
-        if at_min_mass_flow_limit and self.iteration > 20:
+        if self.at_min_mass_flow_limit and self.iteration > 10:
             print(f'Wärmeübertrager {self.heat_exchanger_idx}: Minimale Massenstromgrenze erreicht. Überprüfung der Dimensionierung notwendig')
+            print(f'heat_exchanger_idx: {self.heat_exchanger_idx}, qext_w: {qext_w}, current_temperature: {current_T_in}, previous_temperature: {previous_T_in}, to_temperature: {current_T_out}, current_mass_flow: {current_mass_flow}')
             return True
         
-        if at_max_mass_flow_limit and self.iteration > 20:
+        if self.at_max_mass_flow_limit and self.iteration > 10:
             print(f'Wärmeübertrager {self.heat_exchanger_idx}: Maximale Massenstromgrenze erreicht. Überprüfung der Dimensionierung notwendig')
+            print(f'heat_exchanger_idx: {self.heat_exchanger_idx}, qext_w: {qext_w}, current_temperature: {current_T_in}, previous_temperature: {previous_T_in}, to_temperature: {current_T_out}, current_mass_flow: {current_mass_flow}')
             return True
         
         if converged_T_in and converged_T_out:
+            #print(f'Regler konvergiert: heat_exchanger_idx: {self.heat_exchanger_idx}, qext_w: {qext_w}, current_temperature: {current_T_in}, previous_temperature: {previous_T_in}, to_temperature: {current_T_out}, current_mass_flow: {current_mass_flow}')
             return True
-
+        
     def control_step(self, net):
         # Inkrementieren des Iterationszählers
         self.iteration += 1
@@ -134,49 +142,50 @@ class ReturnTemperatureController(BasicCtrl):
         qext_w = net.heat_exchanger["qext_w"].at[self.heat_exchanger_idx]
         #print(qext_w)
         # Überprüfen, ob die Wärmeleistung niedrig genug ist, um keine Anpassung vorzunehmen
-        if qext_w <= 300:
+        if qext_w == 0:
             net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx] = 0
             return super(ReturnTemperatureController, self).control_step(net)
 
         # Aktuelle Austrittstemperatur des Fluids
         current_T_out = net.res_heat_exchanger["t_to_k"].at[self.heat_exchanger_idx] - 273.15
-        cp = 4185.1 # Spezifische Wärmekapazität in J/(kg·K)
+        cp = 4190 # Spezifische Wärmekapazität in J/(kg·K)
         current_T_in = net.res_heat_exchanger["t_from_k"].at[self.heat_exchanger_idx] - 273.15 # Eintrittstemperatur in °C
 
         current_mass_flow = net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx]
         
-        #if self.heat_exchanger_idx == 13:
-        #print(f'ReturnTemperatureController vor control_step: Iteration: {self.iteration}, Heat Exchanger ID: {self.heat_exchanger_idx}, qext_w={qext_w}, target_temperature={self.target_temperature}, current_temperature={current_T_out}, current_mass_flow={current_mass_flow}')
+        #if self.heat_exchanger_idx == 3:
+        #print(f'ReturnTemperatureController vor control_step: Iteration: {self.iteration}, Heat Exchanger ID: {self.heat_exchanger_idx}, current_massflow={current_mass_flow}, qext_w={qext_w}, target_temperature_out={self.target_temperature}, current_temperature_out={current_T_out}, current_temperature_in={current_T_in}')
 
         # Sicherstellen, dass die Zieltemperatur nicht gleich der Eintrittstemperatur ist, um Division durch Null zu vermeiden
-        if self.target_temperature != current_T_in:
-            required_mass_flow = qext_w / (cp * (current_T_in- self.target_temperature))
-            #print(f'Berechneter Massenstrom: {required_mass_flow}')
+        if abs(self.target_temperature-current_T_in) >= 0.1 and abs(current_T_out - current_T_in) >= 0.1:
+            required_mass_flow = current_mass_flow - (qext_w / cp) * ((-self.target_temperature + current_T_out)/((current_T_in - current_T_out) * (current_T_in - self.target_temperature)))
         else:
             # Wenn die Zieltemperatur bereits erreicht ist, muss der Massenstrom nicht angepasst werden
-            required_mass_flow = net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx]
+            required_mass_flow = current_mass_flow
 
         # Dämpfungsfaktor hinzufügen (z.B. 0.5)
-        damping_factor = 0.65
+        damping_factor = 0.5
         # Aktueller Massenstrom
         current_mass_flow = net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx]
-        #print(f'Bisheriger Massenstrom: {current_mass_flow}')
 
         # Berechneter Massenstrom unter Berücksichtigung der Dämpfung
         new_mass_flow = (damping_factor * current_mass_flow) + ((1 - damping_factor) * required_mass_flow)
-        #print(f'neuer Massenstrom: {new_mass_flow}')
+        """if self.heat_exchanger_idx == 0:
+            print(f'Bisheriger Massenstrom: {current_mass_flow}')
+            #print(f'Berechneter Massenstrom neu: {required_mass_flow1}')
+            print(f'Berechneter Massenstrom: {required_mass_flow}')
+            print(f'neuer Massenstrom: {new_mass_flow}')
 
-        #print(f'max Massenstrom: {self.max_mass_flow}')
-        #print(f'min Massenstrom: {self.min_mass_flow}')
+            print(f'max Massenstrom: {self.max_mass_flow}')
+            print(f'min Massenstrom: {self.min_mass_flow}')
 
-        #print(f'Durchmesser Wärmeübertrager: {net.heat_exchanger["diameter_m"].at[self.heat_exchanger_idx]}')
+            print(f'Durchmesser Wärmeübertrager: {net.heat_exchanger["diameter_m"].at[self.heat_exchanger_idx]}')"""
 
         # Überprüfen der Massenstromgrenzen und Aktualisieren des Massenstroms im Netzwerkmodell
         new_mass_flow = max(min(new_mass_flow, self.max_mass_flow), self.min_mass_flow)
-        #print(f'neuer Massenstrom: {new_mass_flow}')
         net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx] = new_mass_flow
         
-        #if self.heat_exchanger_idx == 13:
+        #if self.heat_exchanger_idx == 3:
         #print(f'ReturnTemperatureController nach control_step: Iteration: {self.iteration}, Heat Exchanger ID: {self.heat_exchanger_idx}, new_mass_flow={new_mass_flow}')
 
         return super(ReturnTemperatureController, self).control_step(net)
