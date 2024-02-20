@@ -38,7 +38,7 @@ class LayerGenerationDialog(QDialog):
         self.dataTypeComboBox = QComboBox(self)
         self.dataTypeComboBox.addItems(["CSV", "GeoJSON"])
         self.dataTypeComboBox.currentIndexChanged.connect(self.toggleFileInputMode)
-        self.dataInput, self.dataCsvButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/data_output_zi_ETRS89.csv")
+        self.dataInput, self.dataCsvButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/data_output_ETRS89.csv")
 
         # Auswahlmodus für Erzeugerstandort
         self.locationModeComboBox = QComboBox(self)
@@ -59,7 +59,7 @@ class LayerGenerationDialog(QDialog):
         self.streetInput = QLineEdit(self)
         self.streetInput.setPlaceholderText("Straße und Hausnummer")
         self.streetInput.setEnabled(False)
-        self.coordsCsvInput, self.coordsCsvButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/data_output_zi_ETRS89.csv")
+        self.coordsCsvInput, self.coordsCsvButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/data_output_ETRS89.csv")
         self.coordsCsvInput.setEnabled(False)
         self.coordsCsvButton.setEnabled(False)
 
@@ -107,7 +107,7 @@ class LayerGenerationDialog(QDialog):
     def toggleFileInputMode(self, index):
         self.loadgeojsonCoordsButton.setEnabled(index == 1)
         if index == 0:
-            self.dataInput.setText(f"{self.base_path}/Gebäudedaten/data_output_zi_ETRS89.csv")
+            self.dataInput.setText(f"{self.base_path}/Gebäudedaten/data_output_ETRS89.csv")
         elif index == 1:
             self.dataInput.setText(f"{self.base_path}/Raumanalyse/waermenetz_buildings.geojson")
 
@@ -237,7 +237,6 @@ class LayerGenerationDialog(QDialog):
             "xCoord": self.xCoordInput.text(),
             "yCoord": self.yCoordInput.text()
         }
-
 
 class DownloadOSMDataDialog(QDialog):
     def __init__(self, base_path, parent=None):
@@ -730,11 +729,11 @@ class GeocodeAddressesDialog(QDialog):
         font.setPointSize(10)  # Größere Schrift für bessere Lesbarkeit
         
         # Eingabefeld für die Eingabedatei
-        self.inputfilenameLineEdit, inputFileButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/data_input_zi.csv", font)
+        self.inputfilenameLineEdit, inputFileButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/data_input.csv", font)
         layout.addLayout(self.createFileInputLayout("Eingabedatei:", self.inputfilenameLineEdit, inputFileButton, font))
         
         # Eingabefeld für die Ausgabedatei
-        self.outputfilenameLineEdit, outputFileButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/data_output_zi_ETRS89.csv", font)
+        self.outputfilenameLineEdit, outputFileButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/data_output_ETRS89.csv", font)
         layout.addLayout(self.createFileInputLayout("Ausgabedatei:", self.outputfilenameLineEdit, outputFileButton, font))
         
         # Buttons für OK und Abbrechen in einem horizontalen Layout

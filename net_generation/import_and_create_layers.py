@@ -21,18 +21,42 @@ def generate_lines(layer, distance, angle_degrees, df=None):
         # Umwandlung von Shapely-Geometrie in Koordinaten
         original_point = (point.x, point.y)
 
-        wärmebedarf = 0
+        # Initialisiere alle Attribute mit Standardwerten oder None
+        attr = {
+            'Land': None,
+            'Bundesland': None,
+            'Stadt': None,
+            'Adresse': None,
+            'Wärmebedarf': None,
+            'Gebäudetyp': None,
+            'WW_Anteil': None,
+            'Typ_Heizflächen': None,
+            'VLT_max': None,
+            'Steigung_Heizkurve': None,
+            'RLT_max': None
+        }
+
         if df is not None:
-            # Ermittlung des Wärmebedarfs basierend auf der Koordinate
+            # Ermittlung der Attribute basierend auf der Koordinate
             match = df[(df['UTM_X'] == original_point[0]) & (df['UTM_Y'] == original_point[1])]
             if not match.empty:
-                wärmebedarf = match['Wärmebedarf'].iloc[0]
+                attr['Land'] = match['Land'].iloc[0]
+                attr['Bundesland'] = match['Bundesland'].iloc[0]
+                attr['Stadt'] = match['Stadt'].iloc[0]
+                attr['Adresse'] = match['Adresse'].iloc[0]
+                attr['Wärmebedarf'] = match['Wärmebedarf'].iloc[0]
+                attr['Gebäudetyp'] = match['Gebäudetyp'].iloc[0]
+                attr['WW_Anteil'] = match['WW_Anteil'].iloc[0]
+                attr['Typ_Heizflächen'] = match['Typ_Heizflächen'].iloc[0]
+                attr['VLT_max'] = match['VLT_max'].iloc[0]
+                attr['Steigung_Heizkurve'] = match['Steigung_Heizkurve'].iloc[0]
+                attr['RLT_max'] = match['RLT_max'].iloc[0]
 
         offset_point = create_offset_points(point, distance, angle_degrees)
         line = LineString([point, offset_point])
         
         lines.append(line)
-        attributes.append({'Wärmebedarf': wärmebedarf})
+        attributes.append(attr)
 
     # Erstellung eines GeoDataFrames mit den Linien und Attributen
     lines_gdf = gpd.GeoDataFrame(attributes, geometry=lines)

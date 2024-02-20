@@ -7,6 +7,3 @@ Traceback (most recent call last):
     with open(filename, 'w') as outfile:
          ^^^^^^^^^^^^^^^^^^^
 FileNotFoundError: [Errno 2] No such file or directory: 'C:/Users/username/heating_network_generation/project_data/Bad Muskau/Raumanalyse/Stra▀en.geojson'
-
-####
-Mehrere Tags herunterladen OSM-Query

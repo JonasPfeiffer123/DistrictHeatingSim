@@ -34,8 +34,18 @@ def get_all_point_coords_from_line_cords(all_line_coords):
     return unique_point_coords
 
 
-def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w, return_temperature=60, supply_temperature=85, flow_pressure_pump=4, lift_pressure_pump=1.5, 
-                   diameter_mm=107.1, pipetype="KMR 100/250-2v", k=0.0470, alpha=0.61, pipe_creation_mode="type"):
+def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w, return_temperature=60, supply_temperature=85, 
+                   flow_pressure_pump=4, lift_pressure_pump=1.5, pipetype="KMR 100/250-2v",  pipe_creation_mode="type"):
+    net = pp.create_empty_network(fluid="water")
+
+    # List and filter standard types for pipes
+    pipe_std_types = pp.std_types.available_std_types(net, "pipe")
+
+    properties = pipe_std_types.loc[pipetype]
+    diameter_mm  = properties['inner_diameter_mm']
+    k = properties['RAU']
+    alpha = properties['WDZAHL']
+
     initial_mdot_guess_kg_s = qext_w / (4170*(supply_temperature-return_temperature))
     initial_Vdot_guess_m3_s = initial_mdot_guess_kg_s/1000
     v_max_m_s = 1.5
@@ -84,8 +94,6 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w, return_temper
                                                t_flow_k=273.15 + supply_temperature, type="auto",
                                                name=f"{name_prefix} {i}")
 
-    net = pp.create_empty_network(fluid="water")
-
     # creates the junction dictonaries for the forward an return line
     junction_dict_vl = create_junctions_from_coords(net, get_all_point_coords_from_line_cords(
         get_line_coords_and_lengths(gdf_vorlauf)[0]))
@@ -104,20 +112,24 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w, return_temper
 
     return net
 
-def create_controllers(net, qext_w, target_temperature):
-    # creates controllers for the net
+def create_controllers(net, qext_w, return_temperature):
+    if len(qext_w) != len(return_temperature):
+        raise ValueError("Die Längen von qext_w und return_temperature müssen gleich sein.")
+
+    # Erstellt Controller für das Netz
     for i in range(len(net.heat_exchanger)):
-        # Erstelle ein einfaches DFData-Objekt als Platzhalter
-        placeholder_df = pd.DataFrame({f'qext_w_{i}': [qext_w]})
+        # Erstelle ein einfaches DFData-Objekt für qext_w mit dem spezifischen Wert für diesen Durchlauf
+        placeholder_df = pd.DataFrame({f'qext_w_{i}': [qext_w[i]]})
         placeholder_data_source = DFData(placeholder_df)
 
         ConstControl(net, element='heat_exchanger', variable='qext_w', element_index=i, data_source=placeholder_data_source, profile_name=f'qext_w_{i}')
         
-        T_controller = ReturnTemperatureController(net, heat_exchanger_idx=i, target_temperature=target_temperature)
+        # Anpassung für die Verwendung von return_temperature als Array
+        T_controller = ReturnTemperatureController(net, heat_exchanger_idx=i, target_temperature=return_temperature[i])
         net.controller.loc[len(net.controller)] = [T_controller, True, -1, -1, False, False]
 
-    dp_min, idx_dp_min = calculate_worst_point(net)
-    dp_controller = WorstPointPressureController(net, idx_dp_min)
+    dp_min, idx_dp_min = calculate_worst_point(net)  # Diese Funktion muss definiert sein
+    dp_controller = WorstPointPressureController(net, idx_dp_min)  # Diese Klasse muss definiert sein
     net.controller.loc[len(net.controller)] = [dp_controller, True, -1, -1, False, False]
 
     return net
@@ -182,13 +194,13 @@ def optimize_diameter_parameters(initial_net, element="pipe", v_max=2, dx=0.001)
 
     return initial_net
 
-def optimize_diameter_types(net, v_max=1.0):
+def optimize_diameter_types(net, v_max=1.0, material_filter="KMR", insulation_filter="2v"):
     pp.pipeflow(net, mode="all")
 
     # List and filter standard types for pipes
     pipe_std_types = pp.std_types.available_std_types(net, "pipe")
-    filtered_by_material = pipe_std_types[pipe_std_types['material'] == 'KMR']
-    filtered_by_material_and_insulation = filtered_by_material[filtered_by_material['insulation'] == '2v']
+    filtered_by_material = pipe_std_types[pipe_std_types['material'] == material_filter]
+    filtered_by_material_and_insulation = filtered_by_material[filtered_by_material['insulation'] == insulation_filter]
 
     # Dictionary for pipe type positions
     type_position_dict = {type_name: i for i, type_name in enumerate(filtered_by_material_and_insulation.index)}

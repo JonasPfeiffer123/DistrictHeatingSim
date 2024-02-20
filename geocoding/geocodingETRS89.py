@@ -37,7 +37,7 @@ def process_data(input_csv, output_csv):
 
         for row in reader:
             # Extracting relevant data from the row
-            country, state, city, address, _, = row
+            country, state, city, address, _, _, _, _, _, _, _ = row
             full_address = f"{address}, {city}, {state}, {country}"
             utm_x, utm_y = get_coordinates(full_address)
 

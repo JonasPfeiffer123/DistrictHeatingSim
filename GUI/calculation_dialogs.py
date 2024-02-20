@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QComboBox, \
-    QTableWidget, QPushButton, QTableWidgetItem, QHBoxLayout, QFileDialog
+    QTableWidget, QPushButton, QTableWidgetItem, QHBoxLayout, QFileDialog, QCheckBox
 import pandas as pd
 import numpy as np
 from heat_requirement.heat_requirement_BDEW import import_TRY
@@ -76,11 +76,12 @@ class NetGenerationDialog(QDialog):
         for input_layout in self.geojsonInputs + self.stanetInputs:
             layout.addLayout(input_layout)
 
-        temperature_control_layout = self.createTemperatureControlInput()
-        layout.addLayout(temperature_control_layout)
-
-        parameter_inputs_layout = self.createParameterInputs()
-        layout.addLayout(parameter_inputs_layout)
+        layout.addLayout(self.createNetconfigurationControlInput())
+        layout.addLayout(self.createTemperatureControlInput())
+        layout.addLayout(self.createReturnTemperatureCheckbox())
+        layout.addLayout(self.createParameterInputs())
+        layout.addLayout(self.createinitialpipetypeInput())
+        layout.addLayout(self.createDiameterOptInput())
 
         # Button zum Starten der Netzgenerierung
         self.generateButton = QPushButton("Netz generieren", self)
@@ -172,6 +173,15 @@ class NetGenerationDialog(QDialog):
         layout.addWidget(self.editHASTButton)
         return layout
     
+    def createNetconfigurationControlInput(self):
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel("Netzkonfiguration:"))
+        self.netconfigurationControlInput = QComboBox(self)
+        self.netconfigurationControlInput.addItems(["Niedertemperaturnetz", "wechselwarmes Netz", "kaltes Netz"])
+        layout.addWidget(self.netconfigurationControlInput)
+        self.netconfigurationControlInput.currentIndexChanged.connect(self.updateInputFieldsVisibility)
+        return layout
+    
     def createTemperatureControlInput(self):
         layout = QVBoxLayout()
         self.temperatureControlInput = QComboBox(self)
@@ -179,6 +189,16 @@ class NetGenerationDialog(QDialog):
         layout.addWidget(QLabel("Vorlauftemperatur-Regelung:"))
         layout.addWidget(self.temperatureControlInput)
         self.temperatureControlInput.currentIndexChanged.connect(self.updateInputFieldsVisibility)
+        return layout
+    
+    def createReturnTemperatureCheckbox(self):
+        layout = QVBoxLayout()
+        self.returnTempCheckbox = QCheckBox("Rücklauftemperatur für alle HA-Stationen festlegen.")
+        layout.addWidget(self.returnTempCheckbox)
+
+        # Verbinde das stateChanged Signal der Checkbox mit der update-Methode
+        self.returnTempCheckbox.stateChanged.connect(self.updateInputFieldsVisibility)
+        
         return layout
 
     def createParameterInputs(self):
@@ -188,39 +208,39 @@ class NetGenerationDialog(QDialog):
         self.parameter_rows = []
 
         # Parameterzeile für Vorlauftemperatur
-        supply_temp_row = self.createParameterRow("Vorlauftemperatur:", "85")
-        self.parameter_rows.append(supply_temp_row)
-        layout.addLayout(supply_temp_row)
+        self.supply_temp_row = self.createParameterRow("Vorlauftemperatur:", "85")
+        self.parameter_rows.append(self.supply_temp_row)
+        layout.addLayout(self.supply_temp_row)
 
         # Parameterzeile für Maximale Vorlauftemperatur
-        max_supply_temp_row = self.createParameterRow("Maximale Vorlauftemperatur:", "85")
-        self.parameter_rows.append(max_supply_temp_row)
-        layout.addLayout(max_supply_temp_row)
+        self.max_supply_temp_row = self.createParameterRow("Maximale Vorlauftemperatur:", "85")
+        self.parameter_rows.append(self.max_supply_temp_row)
+        layout.addLayout(self.max_supply_temp_row)
 
         # Parameterzeile für Minimale Vorlauftemperatur
-        min_supply_temp_row = self.createParameterRow("Minimale Vorlauftemperatur:", "70")
-        self.parameter_rows.append(min_supply_temp_row)
-        layout.addLayout(min_supply_temp_row)
+        self.min_supply_temp_row = self.createParameterRow("Minimale Vorlauftemperatur:", "70")
+        self.parameter_rows.append(self.min_supply_temp_row)
+        layout.addLayout(self.min_supply_temp_row)
 
         # Parameterzeile für Obere Grenze der Lufttemperatur
-        max_air_temp_row = self.createParameterRow("Obere Grenze der Lufttemperatur:", "15")
-        self.parameter_rows.append(max_air_temp_row)
-        layout.addLayout(max_air_temp_row)
+        self.max_air_temp_row = self.createParameterRow("Obere Grenze der Lufttemperatur:", "15")
+        self.parameter_rows.append(self.max_air_temp_row)
+        layout.addLayout(self.max_air_temp_row)
 
         # Parameterzeile für Untere Grenze der Lufttemperatur
-        min_air_temp_row = self.createParameterRow("Untere Grenze der Lufttemperatur:", "-10")
-        self.parameter_rows.append(min_air_temp_row)
-        layout.addLayout(min_air_temp_row)
+        self.min_air_temp_row = self.createParameterRow("Untere Grenze der Lufttemperatur:", "-10")
+        self.parameter_rows.append(self.min_air_temp_row)
+        layout.addLayout(self.min_air_temp_row)
 
         # Parameterzeile für Rücklauftemperatur
-        return_temp_row = self.createParameterRow("Rücklauftemperatur:", "60")
-        self.parameter_rows.append(return_temp_row)
-        layout.addLayout(return_temp_row)
+        self.return_temp_row = self.createParameterRow("Rücklauftemperatur:", "60")
+        self.parameter_rows.append(self.return_temp_row)
+        layout.addLayout(self.return_temp_row)
 
         # Parameterzeile für Vorlaufdruck
-        flow_pressure_row = self.createParameterRow("Vorlaufdruck:", "4")
-        self.parameter_rows.append(flow_pressure_row)
-        layout.addLayout(flow_pressure_row)
+        self.flow_pressure_row = self.createParameterRow("Vorlaufdruck:", "4")
+        self.parameter_rows.append(self.flow_pressure_row)
+        layout.addLayout(self.flow_pressure_row)
 
         # Parameterzeile für Druckdifferenz Vorlauf/Rücklauf
         lift_pressure_row = self.createParameterRow("Druckdifferenz Vorlauf/Rücklauf:", "1.5")
@@ -237,6 +257,50 @@ class NetGenerationDialog(QDialog):
         row_layout.addWidget(line_edit)
         return row_layout
     
+    def createinitialpipetypeInput(self):
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel("Rohrtyp zur Initialisierung des Netzes:"))
+        self.initialpipetypeInput = QComboBox(self)
+        pipetypes = pp.std_types.available_std_types(pp.create_empty_network(fluid="water"), "pipe").index.tolist()
+        print(pipetypes)
+        self.initialpipetypeInput.addItems(pipetypes)
+        layout.addWidget(self.initialpipetypeInput)
+        self.initialpipetypeInput.currentIndexChanged.connect(self.updateInputFieldsVisibility)
+
+        # Setze einen Startwert
+        default_pipe_type = "KMR 100/250-2v"  # Ersetzen Sie "Ihr Startwert" mit dem tatsächlichen Wert
+        if default_pipe_type in pipetypes:
+            self.initialpipetypeInput.setCurrentText(default_pipe_type)
+        else:
+            print(f"Warnung: Startwert '{default_pipe_type}' nicht in der Liste der Rohrtypen gefunden.")
+        
+        self.initialpipetypeInput.currentIndexChanged.connect(self.updateInputFieldsVisibility)
+    
+        return layout
+    
+    def createDiameterOptInput(self):
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel("Eingaben zur Durchmesseroptimierung der Rohrleitungen:"))
+
+        row_layout = QHBoxLayout()
+        label = QLabel("Maximale Strömungsgeschwindigkeit:")
+        self.v_max_pipeInput = QLineEdit("1.0")
+        row_layout.addWidget(label)
+        row_layout.addWidget(self.v_max_pipeInput)
+        layout.addLayout(row_layout)
+
+        self.material_filterInput = QComboBox(self)
+        self.material_filterInput.addItems(["KMR", "FL", "HK"])
+        layout.addWidget(self.material_filterInput)
+        self.material_filterInput.currentIndexChanged.connect(self.updateInputFieldsVisibility)
+
+        self.insulation_filterInput = QComboBox(self)
+        self.insulation_filterInput.addItems(["2v", "1v", "S"])
+        layout.addWidget(self.insulation_filterInput)
+        self.insulation_filterInput.currentIndexChanged.connect(self.updateInputFieldsVisibility)
+    
+        return layout
+
     def set_layout_visibility(self, layout, visible):
         for i in range(layout.count()):
             item = layout.itemAt(i)
@@ -245,6 +309,14 @@ class NetGenerationDialog(QDialog):
                 widget.setVisible(visible)
             elif item.layout():
                 self.set_layout_visibility(item.layout(), visible)
+
+    def set_default_value(self, parameter_row, value):
+        # Zugriff auf das QLineEdit Widget in der Parameterzeile und Aktualisieren des Textes
+        for i in range(parameter_row.count()):
+            widget = parameter_row.itemAt(i).widget()
+            if isinstance(widget, QLineEdit):
+                widget.setText(value)
+                break  # Beendet die Schleife, sobald das QLineEdit gefunden und aktualisiert wurde
 
     def updateInputFieldsVisibility(self):
         is_geojson = self.importTypeComboBox.currentText() == "GeoJSON"
@@ -258,17 +330,35 @@ class NetGenerationDialog(QDialog):
         for input_layout in self.stanetInputs:
             self.set_layout_visibility(input_layout, is_stanet)
 
+        self.netconfiguration = self.netconfigurationControlInput.currentText()
+        is_low_temp_net = self.netconfigurationControlInput.currentText() == "Niedertemperaturnetz"
+        is_changing_temp_net = self.netconfigurationControlInput.currentText() == "wechselwarmes Netz"
+        is_cold_temp_net = self.netconfigurationControlInput.currentText() == "kaltes Netz"
 
-        # Stanet-spezifische Eingabefelder
-        for input_layout in self.stanetInputs:
-            for i in range(input_layout.count()):
-                widget = input_layout.itemAt(i).widget()
-                if widget:
-                    widget.setVisible(is_stanet)
+        if is_low_temp_net:
+            # Setze neue Standardwerte für das Niedertemperaturnetz
+            self.set_default_value(self.supply_temp_row, "85")
+            self.set_default_value(self.max_supply_temp_row, "85")
+            self.set_default_value(self.min_supply_temp_row, "70")
+            self.set_default_value(self.return_temp_row, "60")
+        elif is_changing_temp_net:
+            # Setze neue Standardwerte für das wechselwarme Netz
+            self.set_default_value(self.supply_temp_row, "45")
+            self.set_default_value(self.max_supply_temp_row, "45")
+            self.set_default_value(self.min_supply_temp_row, "30")
+            self.set_default_value(self.return_temp_row, "20")
+        elif is_cold_temp_net:
+            # Setze neue Standardwerte für das kalte Netz
+            self.set_default_value(self.supply_temp_row, "10")
+            self.set_default_value(self.max_supply_temp_row, "10")
+            self.set_default_value(self.min_supply_temp_row, "5")
+            self.set_default_value(self.return_temp_row, "3")
 
-        control_mode = self.temperatureControlInput.currentText()
 
-        if control_mode == "Statisch":
+        is_control_mode_static = self.temperatureControlInput.currentText() == "Statisch"
+        is_control_mode_dynamic = self.temperatureControlInput.currentText() == "Gleitend"
+
+        if is_control_mode_static:
             # Zeige die Widgets für Vorlauftemperatur (Index 0)
             for i in range(self.parameter_rows[0].count()):
                 widget = self.parameter_rows[0].itemAt(i).widget()
@@ -283,7 +373,7 @@ class NetGenerationDialog(QDialog):
                     if widget:
                         widget.setVisible(False)
 
-        elif control_mode == "Gleitend":
+        elif is_control_mode_dynamic:
             # Blende die Widgets für Vorlauftemperatur (Index 0) aus
             for i in range(self.parameter_rows[0].count()):
                 widget = self.parameter_rows[0].itemAt(i).widget()
@@ -297,6 +387,9 @@ class NetGenerationDialog(QDialog):
                     widget = parameter_row.itemAt(i).widget()
                     if widget:
                         widget.setVisible(True)
+
+        self.return_temp_visible = self.returnTempCheckbox.isChecked()
+        self.set_layout_visibility(self.return_temp_row, self.return_temp_visible)
 
     def selectFilename(self, line_edit):
         fname, _ = QFileDialog.getOpenFileName(self, 'Datei auswählen', '', 'All Files (*);;CSV Files (*.csv);;GeoJSON Files (*.geojson)')
@@ -351,7 +444,10 @@ class NetGenerationDialog(QDialog):
             return np.array(temperature_curve)
         
     def generateNetwork(self):
-        rl_temp = float(self.parameter_rows[5].itemAt(1).widget().text())
+        if self.return_temp_visible == True:
+            rl_temp = float(self.parameter_rows[5].itemAt(1).widget().text())
+        else:
+            rl_temp = None
         supply_temperature = self.calculateTemperatureCurve()
         flow_pressure_pump = float(self.parameter_rows[6].itemAt(1).widget().text())
         lift_pressure_pump = float(self.parameter_rows[7].itemAt(1).widget().text())
@@ -367,9 +463,17 @@ class NetGenerationDialog(QDialog):
             calc_method = self.calcMethodInput.currentText()
             building_type = self.buildingTypeInput.currentText() if self.calcMethodInput.currentText() != "Datensatz" else "HMF"
 
+            pipetype = self.initialpipetypeInput.currentText()
+
+            v_max_pipe = float(self.v_max_pipeInput.text())
+            material_filter = self.material_filterInput.currentText()
+            insulation_filter = self.insulation_filterInput.currentText()
+
             # Führen Sie die Netzgenerierung für GeoJSON durch
             if self.generate_callback:
-                self.generate_callback(vorlauf_path, ruecklauf_path, hast_path, erzeugeranlagen_path, calc_method, building_type, rl_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump, import_type)
+                self.generate_callback(vorlauf_path, ruecklauf_path, hast_path, erzeugeranlagen_path, calc_method, building_type, rl_temp, 
+                                       supply_temperature, flow_pressure_pump, lift_pressure_pump, self.netconfiguration, pipetype, 
+                                       v_max_pipe, material_filter, insulation_filter, import_type)
 
         elif import_type == "Stanet":
             # Sammeln Sie den Dateipfad für Stanet und rufen Sie generate_callback auf

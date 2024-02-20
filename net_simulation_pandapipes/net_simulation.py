@@ -10,15 +10,13 @@ from net_simulation_pandapipes.net_simulation_calculation import *
 from net_simulation_pandapipes.controllers import ReturnTemperatureController
 from heat_requirement import heat_requirement_VDI4655, heat_requirement_BDEW
 
-def generate_profiles_from_geojson(gdf_HAST, building_type="MFH", calc_method="VDI4655"):
+def generate_profiles_from_geojson(gdf_HAST, building_type="HMF", calc_method="BDEW", max_supply_temperature=70, max_return_temperature=55):
     ### define the heat requirement ###
     try:
         JEB_Wärme_ges_kWh = gdf_HAST["Wärmebedarf"].values.astype(float)
     except KeyError:
         print("Herauslesen des Wärmebedarfs aus geojson nicht möglich.")
         return None
-
-    JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh = JEB_Wärme_ges_kWh * 0.2, JEB_Wärme_ges_kWh * 0.8
 
     waerme_ges_W = []
     max_waerme_ges_W = []
@@ -57,8 +55,9 @@ def generate_profiles_from_geojson(gdf_HAST, building_type="MFH", calc_method="V
             current_calc_method = calc_method
         # Wärmebedarfsberechnung basierend auf dem Gebäudetyp und der Berechnungsmethode
         if current_calc_method == "VDI4655":
+            JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh = JEB_Wärme_ges_kWh * 0.2, JEB_Wärme_ges_kWh * 0.8
             hw, tww = JEB_Heizwärme_kWh[idx], JEB_Trinkwarmwasser_kWh[idx]
-            yearly_time_steps, _, _, _, waerme_ges_kW = heat_requirement_VDI4655.calculate(hw, tww, building_type=current_building_type)
+            yearly_time_steps, strom_W, heizwaerme_kW, warmwasser_kW, waerme_ges_kW, hourly_temperature = heat_requirement_VDI4655.calculate(hw, tww, building_type=current_building_type)
         elif current_calc_method == "BDEW":
             yearly_time_steps, waerme_ges_kW, hourly_temperatures  = heat_requirement_BDEW.calculate(JWB, current_building_type, subtyp="03")
             #print(np.min(waerme_ges_kW))
@@ -70,7 +69,33 @@ def generate_profiles_from_geojson(gdf_HAST, building_type="MFH", calc_method="V
     waerme_ges_W = np.array(waerme_ges_W)
     max_waerme_ges_W = np.array(max_waerme_ges_W)
 
-    return yearly_time_steps, waerme_ges_W, max_waerme_ges_W
+    # Berechnung der Temperaturkurve basierend auf den ausgewählten Einstellungen
+    supply_temperature_curve = []
+    return_temperature_curve = []
+
+    # Berechnen der Steigung der linearen Gleichung
+    slope = -gdf_HAST["Steigung_Heizkurve"].values.astype(float)
+
+    min_air_temperature = -12 # aka Auslegungstemperatur
+
+    for st, rt in zip(max_supply_temperature, max_return_temperature):
+        for air_temperature in hourly_temperatures:
+            if air_temperature <= min_air_temperature:
+                supply_temperature_curve.append(st)
+                return_temperature_curve.append(rt)
+            else:
+                # Anwendung der linearen Gleichung für die Temperaturberechnung
+                supply_temperature = st + slope * (air_temperature - min_air_temperature)
+                supply_temperature_curve.append(supply_temperature)
+
+                return_temperature = rt + slope * (air_temperature - min_air_temperature)
+                return_temperature_curve.append(return_temperature)
+
+
+    supply_temperature_curve = np.array(supply_temperature_curve)
+    return_temperature_curve = np.array(return_temperature_curve)
+
+    return yearly_time_steps, waerme_ges_W, max_waerme_ges_W, supply_temperature_curve, return_temperature_curve
 
 def initialize_net_geojson(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, return_temperature=60, supply_temperature=85, flow_pressure_pump=4, lift_pressure_pump=1.5, diameter_mm=107.1, pipetype="KMR 100/250-2v", k=0.0470, alpha=0.61, pipe_creation_mode="type"):
     # net generation from gis data
@@ -78,7 +103,7 @@ def initialize_net_geojson(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, return_tem
     net = create_controllers(net, qext_w, return_temperature)
     net = correct_flow_directions(net)
 
-    net = init_timeseries_opt(net, qext_w, time_steps=3, target_temperature=60)
+    net = init_timeseries_opt(net, qext_w, return_temperature)
 
     if pipe_creation_mode == "diameter":
         net = optimize_diameter_parameters(net)
@@ -91,7 +116,7 @@ def initialize_net_geojson(gdf_vl, gdf_rl, gdf_HAST, gdf_WEA, qext_w, return_tem
 
     return net
 
-def init_timeseries_opt(net, qext_w, time_steps=3, target_temperature=60):
+def init_timeseries_opt(net, qext_w, return_temperature, time_steps=3):
         # Überprüfen, ob qext_w eindimensional ist und die Länge mit der Anzahl der Wärmetauscher übereinstimmt
         if qext_w.ndim != 1 or len(qext_w) != len(net.heat_exchanger):
             raise ValueError("qext_w muss ein eindimensionales Array mit einer Länge gleich der Anzahl der Wärmetauscher sein.")
@@ -108,9 +133,11 @@ def init_timeseries_opt(net, qext_w, time_steps=3, target_temperature=60):
                     ctrl.data_source = data_source
         
         # Aktualisieren der benutzerdefinierten Controller
+        i_rt = 0
         for ctrl in net.controller.object.values:
             if isinstance(ctrl, ReturnTemperatureController):
-                ctrl.target_temperature = target_temperature  # aktualisiere Zieltemperatur, wenn nötig
+                ctrl.target_temperature = return_temperature[i_rt]  # aktualisiere Zieltemperatur, wenn nötig
+                i_rt += 1
         
         log_variables = [('res_junction', 'p_bar'), ('res_junction', 't_k'), ('heat_exchanger', 'qext_w'), \
                          ('res_heat_exchanger', 'v_mean_m_per_s'), ('res_heat_exchanger', 't_to_k'), 
@@ -132,9 +159,11 @@ def update_const_controls(net, qext_w_profiles, time_steps, start, end):
                 ctrl.data_source = data_source
 
 def update_return_temperature_controller(net, temperature_target):
+    temp_count = 0
     for ctrl in net.controller.object.values:
         if isinstance(ctrl, ReturnTemperatureController):
-            ctrl.target_temperature = temperature_target
+            ctrl.target_temperature = temperature_target[temp_count]
+            temp_count += 1
 
 def update_supply_temperature_controls(net, supply_temperature, time_steps, start, end):
     # Erstellen des DataFrame für die Versorgungstemperatur

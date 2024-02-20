@@ -259,12 +259,12 @@ class CalculationTab(QWidget):
         self.StartTimeStepLabel.setText(time_step_text)
         self.EndTimeStepLabel.setText(time_step_text)
 
-    def create_and_initialize_net_geojson(self, vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump):
+    def create_and_initialize_net_geojson(self, vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump, netconfiguration, pipetype, v_max_pipe, material_filter, insulation_filter):
         self.updateLabelsForCalcMethod(calc_method)
         self.return_temperature = return_temp
         self.supply_temperature = supply_temperature
         supply_temperature = np.max(supply_temperature)
-        args = (vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump)
+        args = (vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump, netconfiguration, pipetype, v_max_pipe, material_filter, insulation_filter)
         kwargs = {"import_type": "GeoJSON"}
         self.initializationThread = NetInitializationThread(*args, **kwargs)
         self.common_thread_initialization()
@@ -287,7 +287,7 @@ class CalculationTab(QWidget):
     def on_initialization_done(self, results):
         self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
 
-        self.net, self.yearly_time_steps, self.waerme_ges_W = results
+        self.net, self.yearly_time_steps, self.waerme_ges_W, self.return_temperature, self.supply_temperature_curve, self.return_temperature_curv = results
         self.net_data = results
 
         self.waerme_ges_kW = np.where(self.waerme_ges_W == 0, 0, self.waerme_ges_W / 1000)
@@ -343,7 +343,7 @@ class CalculationTab(QWidget):
             QMessageBox.warning(self, "Keine Netzdaten", "Bitte generieren Sie zuerst ein Netz.")
             return
         
-        self.net, self.yearly_time_steps, self.waerme_ges_W = self.net_data
+        self.net, self.yearly_time_steps, self.waerme_ges_W, self.return_temperature, self.supply_temperature_curve, self.return_temperature_curv = self.net_data
 
         try:
             self.calc1, self.calc2 = self.adjustTimeParameters()
