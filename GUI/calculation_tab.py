@@ -21,6 +21,8 @@ from gui.threads import NetInitializationThread, NetCalculationThread
 from net_simulation_pandapipes.config_plot import config_plot
 from gui.checkable_combobox import CheckableComboBox
 
+from net_simulation_pandapipes.net_simulation_calculation import export_net_geojson
+
 class CalculationTab(QWidget):
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
 
@@ -70,13 +72,15 @@ class CalculationTab(QWidget):
 
         # Unterpunkte für geojson und Stanet
         generateNetAction = QAction('Netz generieren', self)
-        saveppnetAction = QAction('Export Pandapipes Netz', self)
-        loadppnetAction = QAction('Import Pandapipes Netz', self)
+        saveppnetAction = QAction('Pandapipes Netz speichern', self)
+        loadppnetAction = QAction('Pandapipes Netz laden', self)
         loadresultsppAction = QAction('Ergebnisse Zeitreihenrechnung Laden', self)
+        exportppnetGeoJSONAction = QAction('Pandapipes Netz als geoJSON exportieren', self)
         networkMenu.addAction(generateNetAction)
         networkMenu.addAction(saveppnetAction)
         networkMenu.addAction(loadppnetAction)
         networkMenu.addAction(loadresultsppAction)
+        networkMenu.addAction(exportppnetGeoJSONAction)
 
         # Fügen Sie die Menüleiste dem Layout von tab1 hinzu
         self.container_layout.addWidget(self.menubar)
@@ -86,6 +90,7 @@ class CalculationTab(QWidget):
         saveppnetAction.triggered.connect(self.saveNet)
         loadppnetAction.triggered.connect(self.loadNet)
         loadresultsppAction.triggered.connect(self.load_net_results)
+        exportppnetGeoJSONAction.triggered.connect(self.exportNetGeoJSON)
 
     def createFileInput(self):
         # Erstelle ein horizontales Layout
@@ -215,7 +220,6 @@ class CalculationTab(QWidget):
         self.AusgabeInput.setText(new_output_path)
     
     def openNetGenerationDialog(self):
-        print(self.base_path)
         dialog = NetGenerationDialog(
             self.generateNetworkCallback,
             self.editHeatDemandData,
@@ -287,8 +291,9 @@ class CalculationTab(QWidget):
     def on_initialization_done(self, results):
         self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
 
+        # Datenhaltung optimieren
         self.net, self.yearly_time_steps, self.waerme_ges_W, self.return_temperature, self.supply_temperature_curve, self.return_temperature_curv = results
-        self.net_data = results
+        self.net_data = self.net, self.yearly_time_steps, self.waerme_ges_W
 
         self.waerme_ges_kW = np.where(self.waerme_ges_W == 0, 0, self.waerme_ges_W / 1000)
         self.plot(self.net, self.yearly_time_steps, self.waerme_ges_kW)
@@ -500,6 +505,17 @@ class CalculationTab(QWidget):
         else:
             QMessageBox.warning(self, "Keine Daten", "Kein Pandapipes-Netzwerk zum Speichern vorhanden.")
 
+    def exportNetGeoJSON(self):
+        geoJSON_filepath = f"{self.base_path}/Wärmenetz/dimensioniertes Wärmenetz.geojson"
+        if self.net_data:  # Überprüfe, ob das Netzwerk vorhanden ist
+            net, _, _ = self.net_data
+            
+            try:
+                export_net_geojson(net, geoJSON_filepath)
+                
+                QMessageBox.information(self, "Speichern erfolgreich", f"Pandapipes Wärmenetz erfolgreich als geoJSON gespeichert in: {geoJSON_filepath}")
+            except Exception as e:
+                QMessageBox.critical(self, "Speichern fehlgeschlagen", f"Fehler beim Speichern der Daten: {e}")
 
     def loadNet(self):
         csv_file_path = f"{self.base_path}/Wärmenetz/Ergebnisse Netzinitialisierung.csv"

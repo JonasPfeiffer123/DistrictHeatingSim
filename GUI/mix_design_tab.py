@@ -39,14 +39,14 @@ class MixDesignTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.results = {}
+        self.initFileInputs()
+        self.base_path = "project_data/Beispiel Zittau"  # Basispfad initialisieren
         self.economicParametersDialog = EconomicParametersDialog(self)
         self.netInfrastructureDialog = NetInfrastructureDialog(self)
+        self.updateDefaultPath(self.base_path)
         self.setupEconomicParameters()
         self.tech_objects = []
-        self.initFileInputs()
         self.initUI()
-        self.base_path = "project_data/Beispiel Zittau"  # Basispfad initialisieren
-        self.updateDefaultPath(self.base_path)
 
     def initFileInputs(self):
         self.FilenameInput = QLineEdit('')
@@ -68,6 +68,8 @@ class MixDesignTab(QWidget):
         new_output_path = f"{self.base_path}/Lastgang/Lastgang.csv"
         # Dies setzt voraus, dass Ihre Eingabefelder oder deren Layouts entsprechend benannt sind
         self.FilenameInput.setText(new_output_path)
+
+        self.netInfrastructureDialog.base_path = self.base_path
 
         # Optional für mögliche Dialogfenster
 
@@ -613,7 +615,7 @@ class MixDesignTab(QWidget):
         df['el_Leistung_ges_L'] = results['el_Leistung_ges_L']
         
         # Speichere den DataFrame als CSV-Datei
-        csv_filename = "results.csv"
+        csv_filename = f"{self.base_path}/Lastgang/results.csv"
         df.to_csv(csv_filename, index=False, sep=";")
         print(f"Ergebnisse wurden in '{csv_filename}' gespeichert.")
 

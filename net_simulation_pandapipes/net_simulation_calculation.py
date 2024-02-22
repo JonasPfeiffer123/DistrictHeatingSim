@@ -1,7 +1,7 @@
 import pandapipes as pp
 import pandas as pd
 import geopandas as gpd
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Point
 
 from pandapower.timeseries import DFData
 from pandapower.control.controller.const_control import ConstControl
@@ -63,14 +63,14 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w, return_temper
         for coords, length_m, i in zip(all_line_coords, all_line_lengths, range(len(all_line_coords))):
             if pipe_mode == "diameter":
                 diameter_mm = pipe_type_or_diameter
-                pipe_name = f"{line_type} Diameter Pipe {i}"
+                pipe_name = line_type
                 pp.create_pipe_from_parameters(net_i, from_junction=junction_dict[coords[0]],
                                             to_junction=junction_dict[coords[1]], length_km=length_m/1000,
                                             diameter_m=diameter_mm/1000, k_mm=k, alpha_w_per_m2k=alpha, 
                                             name=pipe_name, geodata=coords, sections=5, text_k=283)
             elif pipe_mode == "type":
                 pipetype = pipe_type_or_diameter
-                pipe_name = f"{line_type} Type Pipe {i}"
+                pipe_name = line_type
                 pp.create_pipe(net_i, from_junction=junction_dict[coords[0]], to_junction=junction_dict[coords[1]],
                             std_type=pipetype, length_km=length_m/1000, k_mm=k, alpha_w_per_m2k=alpha,
                             name=pipe_name, geodata=coords, sections=5, text_k=283)
@@ -101,8 +101,8 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w, return_temper
         get_line_coords_and_lengths(gdf_rl)[0]))
 
     # creates the pipes
-    create_pipes(net, *get_line_coords_and_lengths(gdf_vorlauf), junction_dict_vl, pipe_creation_mode, diameter_mm if pipe_creation_mode == "diameter" else pipetype, "forward")
-    create_pipes(net, *get_line_coords_and_lengths(gdf_rl), junction_dict_rl, pipe_creation_mode, diameter_mm if pipe_creation_mode == "diameter" else pipetype, "return")
+    create_pipes(net, *get_line_coords_and_lengths(gdf_vorlauf), junction_dict_vl, pipe_creation_mode, diameter_mm if pipe_creation_mode == "diameter" else pipetype, "flow line")
+    create_pipes(net, *get_line_coords_and_lengths(gdf_rl), junction_dict_rl, pipe_creation_mode, diameter_mm if pipe_creation_mode == "diameter" else pipetype, "return line")
     
     # creates the heat exchangers
     create_heat_exchangers(net, get_line_coords_and_lengths(gdf_hast)[0], {**junction_dict_vl, **junction_dict_rl}, "heat exchanger")
@@ -258,28 +258,6 @@ def optimize_diameter_types(net, v_max=1.0, material_filter="KMR", insulation_fi
 
     return net
 
-def export_net_geojson(net):
-    if 'pipe_geodata' in net and not net.pipe_geodata.empty:
-        # Erstelle eine Liste von LineString-Objekten aus den Koordinaten
-        geometry = [LineString(coords) for coords in net.pipe_geodata['coords']]
-
-        # Erstelle ein GeoDataFrame mit der Geometrie als aktiver Geometriespalte
-        gdf = gpd.GeoDataFrame(net.pipe_geodata, geometry=geometry)
-
-        # Entferne die jetzt überflüssige 'coords'-Spalte
-        del gdf['coords']
-
-        # Füge weitere Attribute hinzu
-        gdf['diameter_mm'] = net.pipe['diameter_m'] / 1000
-
-        # Setze das Koordinatensystem (CRS)
-        gdf.set_crs(epsg=25833, inplace=True)
-
-        # Exportiere als GeoJSON
-        gdf.to_file("results/pipes_network.geojson", driver='GeoJSON')
-    else:
-        print("No geographical data available in the network.")
-
 def calculate_worst_point(net):
     # with this function, the worst point in the heating network is being calculated
     # specificially the worst point is defined as the heat exchanger with the lowest pressure difference between the forward and the return line, resulting in a lower mass flow
@@ -299,3 +277,69 @@ def calculate_worst_point(net):
     dp_min, idx_min = min(dp, key=lambda x: x[0])
 
     return dp_min, idx_min
+
+def export_net_geojson(net, filename):
+    features = []  # Liste, um GeoDataFrames aller Komponenten zu sammeln
+    
+    # Verarbeite Leitungen
+    if 'pipe_geodata' in net and not net.pipe_geodata.empty:
+        geometry_lines = [LineString(coords) for coords in net.pipe_geodata['coords']]
+        gdf_lines = gpd.GeoDataFrame(net.pipe_geodata, geometry=geometry_lines)
+        del gdf_lines['coords']  # Entferne die 'coords'-Spalte
+        # Füge Attribute hinzu
+        gdf_lines['name'] = net.pipe['name']
+        gdf_lines['diameter_mm'] = net.pipe['diameter_m'] * 1000
+        gdf_lines['std_type'] = net.pipe['std_type']
+        gdf_lines['length_m'] = net.pipe['length_km'] * 1000
+        features.append(gdf_lines)
+
+    if 'circ_pump_pressure' in net and not net.circ_pump_pressure.empty:
+        # Berechne die Geometrie
+        pump_lines = [LineString([
+            (net.junction_geodata.loc[pump['return_junction']]['x'], net.junction_geodata.loc[pump['return_junction']]['y']),
+            (net.junction_geodata.loc[pump['flow_junction']]['x'], net.junction_geodata.loc[pump['flow_junction']]['y'])
+        ]) for index, pump in net.circ_pump_pressure.iterrows()]
+        
+        # Filtere nur relevante Spalten (angepasst an tatsächlich vorhandene Daten)
+        relevant_columns = ['name', 'geometry']  # Beispiel
+        gdf_pumps = gpd.GeoDataFrame(net.circ_pump_pressure, geometry=pump_lines)[relevant_columns]
+        
+        features.append(gdf_pumps)
+
+    if 'heat_exchanger' in net and not net.heat_exchanger.empty and 'flow_control' in net and not net.flow_control.empty:
+        # Iteriere durch jedes Paar von heat_exchanger und flow_control
+        for idx, heat_exchanger in net.heat_exchanger.iterrows():
+            # Da flow_controls und heat_exchangers zusammen erstellt werden, nehmen wir an, dass sie
+            # die gleiche Reihenfolge haben oder über eine Logik verknüpft werden können, die hier implementiert werden muss
+            # Beispiel: flow_control = net.flow_control.iloc[idx] falls direkt korrelierbar
+            flow_control = net.flow_control.loc[net.flow_control['to_junction'] == heat_exchanger['from_junction']].iloc[0]
+
+            # Ermittle die Koordinaten für flow_control's Anfangs- und heat_exchanger's Endkoordinate
+            start_coords = net.junction_geodata.loc[flow_control['from_junction']]
+            end_coords = net.junction_geodata.loc[heat_exchanger['to_junction']]
+
+            # Erstelle eine Linie zwischen diesen Punkten
+            line = LineString([(start_coords['x'], start_coords['y']), (end_coords['x'], end_coords['y'])])
+            
+            # Erstelle einen GeoDataFrame für diese kombinierte Komponente
+            gdf_component = gpd.GeoDataFrame({
+                'name': "HAST",
+                'diameter_mm': f"{heat_exchanger['diameter_m']*1000:.1f}",
+                'qext_W': f"{heat_exchanger['qext_w']:.0f}",
+                'geometry': [line]
+            }, crs="EPSG:25833") # Stellen Sie sicher, dass das CRS zu Ihrem Netzwerk passt
+            
+            features.append(gdf_component)
+
+    # Setze das Koordinatensystem (CRS) für alle GeoDataFrames und füge sie zusammen
+    for feature in features:
+        feature.set_crs(epsg=25833, inplace=True)
+
+    # Kombiniere alle GeoDataFrames zu einer FeatureCollection
+    gdf_all = gpd.GeoDataFrame(pd.concat(features, ignore_index=True), crs="EPSG:25833")
+
+    # Exportiere als GeoJSON
+    if not gdf_all.empty:
+        gdf_all.to_file(filename, driver='GeoJSON')
+    else:
+        print("No geographical data available in the network.")
