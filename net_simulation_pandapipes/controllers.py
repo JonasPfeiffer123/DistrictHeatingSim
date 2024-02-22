@@ -74,6 +74,8 @@ class ReturnTemperatureController(BasicCtrl):
         self.at_min_mass_flow_limit = False
         self.at_max_mass_flow_limit = False
 
+        self.data_source = None
+
     def time_step(self, net, time_step):
         self.iteration = 0  # Iterationszähler reset
         self.previous_temperatures = {}
@@ -81,6 +83,11 @@ class ReturnTemperatureController(BasicCtrl):
             net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx] = self.min_mass_flow * 1.05
         if self.at_max_mass_flow_limit:
             net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx] = self.max_mass_flow * 0.95
+
+        # Überprüfen, ob eine Datenquelle vorhanden ist und die Zieltemperatur für den aktuellen Zeitschritt abrufen
+        if self.data_source is not None:
+            self.target_temperature = self.data_source.df.at[time_step, 'return_temperature']
+        
         return time_step
 
     def update_state(self, net):
@@ -121,13 +128,9 @@ class ReturnTemperatureController(BasicCtrl):
         self.at_max_mass_flow_limit = current_mass_flow >= self.max_mass_flow
 
         if self.at_min_mass_flow_limit and self.iteration > 10:
-            #print(f'Wärmeübertrager {self.heat_exchanger_idx}: Minimale Massenstromgrenze erreicht. Überprüfung der Dimensionierung notwendig')
-            #print(f'heat_exchanger_idx: {self.heat_exchanger_idx}, qext_w: {qext_w}, current_temperature: {current_T_in}, previous_temperature: {previous_T_in}, to_temperature: {current_T_out}, current_mass_flow: {current_mass_flow}')
             return True
         
         if self.at_max_mass_flow_limit and self.iteration > 10:
-            #print(f'Wärmeübertrager {self.heat_exchanger_idx}: Maximale Massenstromgrenze erreicht. Überprüfung der Dimensionierung notwendig')
-            #print(f'heat_exchanger_idx: {self.heat_exchanger_idx}, qext_w: {qext_w}, current_temperature: {current_T_in}, previous_temperature: {previous_T_in}, to_temperature: {current_T_out}, current_mass_flow: {current_mass_flow}')
             return True
         
         if converged_T_in and converged_T_out:
@@ -138,6 +141,7 @@ class ReturnTemperatureController(BasicCtrl):
         # Inkrementieren des Iterationszählers
         self.iteration += 1
         self.calculate_mass_flow_limits(net)
+
         # Wärmeleistung des Wärmeübertragers
         qext_w = net.heat_exchanger["qext_w"].at[self.heat_exchanger_idx]
         #print(qext_w)
@@ -170,16 +174,6 @@ class ReturnTemperatureController(BasicCtrl):
 
         # Berechneter Massenstrom unter Berücksichtigung der Dämpfung
         new_mass_flow = (damping_factor * current_mass_flow) + ((1 - damping_factor) * required_mass_flow)
-        """if self.heat_exchanger_idx == 0:
-            print(f'Bisheriger Massenstrom: {current_mass_flow}')
-            #print(f'Berechneter Massenstrom neu: {required_mass_flow1}')
-            print(f'Berechneter Massenstrom: {required_mass_flow}')
-            print(f'neuer Massenstrom: {new_mass_flow}')
-
-            print(f'max Massenstrom: {self.max_mass_flow}')
-            print(f'min Massenstrom: {self.min_mass_flow}')
-
-            print(f'Durchmesser Wärmeübertrager: {net.heat_exchanger["diameter_m"].at[self.heat_exchanger_idx]}')"""
 
         # Überprüfen der Massenstromgrenzen und Aktualisieren des Massenstroms im Netzwerkmodell
         new_mass_flow = max(min(new_mass_flow, self.max_mass_flow), self.min_mass_flow)

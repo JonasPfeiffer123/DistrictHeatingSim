@@ -18,13 +18,41 @@ from geocoding.geocodingETRS89 import process_data
 
 from scipy.interpolate import RegularGridInterpolator
 
+def COP_WP(VLT_L, QT):
+    # Interpolationsformel für den COP
+    values = np.genfromtxt('C:/Users/username/heating_network_generation/heat_generators/Kennlinien WP.csv', delimiter=';')
+    row_header = values[0, 1:]  # Vorlauftemperaturen
+    col_header = values[1:, 0]  # Quelltemperaturen
+    values = values[1:, 1:]
+    f = RegularGridInterpolator((col_header, row_header), values, method='linear')
+
+    # technische Grenze der Wärmepumpe ist Temperaturhub von 75 °C
+    VLT_L = np.minimum(VLT_L, 75+QT)
+    VLT_L = np.maximum(VLT_L, 35)
+
+    # Überprüfen, ob QT eine Zahl oder ein Array ist
+    if np.isscalar(QT):
+        # Wenn QT eine Zahl ist, erstellen wir ein Array mit dieser Zahl
+        QT_array = np.full_like(VLT_L, QT)
+    else:
+        # Wenn QT bereits ein Array ist, prüfen wir, ob es die gleiche Länge wie VLT_L hat
+        if len(QT) != len(VLT_L):
+            raise ValueError("QT muss entweder eine einzelne Zahl oder ein Array mit der gleichen Länge wie VLT_L sein.")
+        QT_array = QT
+
+    # Berechnung von COP_L
+    COP_L = f(np.column_stack((QT_array, VLT_L)))
+
+    return COP_L, VLT_L
+
 class NetInitializationThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(str)
 
-    def __init__(self, *args, pipe_creation_mode="type", **kwargs):
+    def __init__(self, *args, dT_RL=5, pipe_creation_mode="type", **kwargs):
         super().__init__()
         self.args = args
+        self.dT_RL = dT_RL
         self.pipe_creation_mode = pipe_creation_mode
         self.kwargs = kwargs
 
@@ -39,37 +67,12 @@ class NetInitializationThread(QThread):
 
             # Gemeinsame Schritte für beide Importtypen
             self.net = self.common_net_initialization(self.net, self.max_waerme_hast_ges_W)
-            self.calculation_done.emit((self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.return_temperature, self.supply_temperature_curve, self.return_temperature_curve))
+            self.calculation_done.emit((self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.return_temperature, self.supply_temperature_buildings, \
+                                        self.return_temperature_buildings, self.supply_temperature_building_curve, self.return_temperature_building_curve))
 
         except Exception as e:
             self.calculation_error.emit(str(e) + "\n" + traceback.format_exc())
 
-    def COP_WP(self, VLT_L, QT):
-            # Interpolationsformel für den COP
-            values = np.genfromtxt('C:/Users/username/heating_network_generation/heat_generators/Kennlinien WP.csv', delimiter=';')
-            row_header = values[0, 1:]  # Vorlauftemperaturen
-            col_header = values[1:, 0]  # Quelltemperaturen
-            values = values[1:, 1:]
-            f = RegularGridInterpolator((col_header, row_header), values, method='linear')
-
-            # technische Grenze der Wärmepumpe ist Temperaturhub von 75 °C
-            VLT_L = np.minimum(VLT_L, 75+QT)
-
-            # Überprüfen, ob QT eine Zahl oder ein Array ist
-            if np.isscalar(QT):
-                # Wenn QT eine Zahl ist, erstellen wir ein Array mit dieser Zahl
-                QT_array = np.full_like(VLT_L, QT)
-            else:
-                # Wenn QT bereits ein Array ist, prüfen wir, ob es die gleiche Länge wie VLT_L hat
-                if len(QT) != len(VLT_L):
-                    raise ValueError("QT muss entweder eine einzelne Zahl oder ein Array mit der gleichen Länge wie VLT_L sein.")
-                QT_array = QT
-
-            # Berechnung von COP_L
-            COP_L = f(np.column_stack((QT_array, VLT_L)))
-
-            return COP_L, VLT_L
-    
     def initialize_geojson(self):
         self.vorlauf, self.ruecklauf, self.hast, self.erzeugeranlagen, self.calc_method, self.building_type, self.return_temperature, self.supply_temperature, \
             self.flow_pressure_pump, self.lift_pressure_pump, self.netconfiguration, self.pipetype, self.v_max_pipe, self.material_filter, self.insulation_filter = self.args
@@ -83,12 +86,11 @@ class NetInitializationThread(QThread):
         self.supply_temperature_buildings = self.hast["VLT_max"].values.astype(float)
         print(f"Vorlauftemperatur Gebäude: {self.supply_temperature_buildings} °C")
 
-        dT_RL = 5 # K
-        self.return_temperature_buildings = self.hast["RLT_max"].values.astype(float) + dT_RL
+        self.return_temperature_buildings = self.hast["RLT_max"].values.astype(float)
         print(f"Rücklauftemperatur Gebäude: {self.return_temperature_buildings} °C")
 
         if self.return_temperature == None:
-            self.return_temperature = self.return_temperature_buildings
+            self.return_temperature = self.return_temperature_buildings + self.dT_RL
             print(f"Rücklauftemperatur HAST: {self.return_temperature} °C")
         else:
             self.return_temperature = np.full_like(self.return_temperature_buildings, self.return_temperature)
@@ -97,12 +99,14 @@ class NetInitializationThread(QThread):
         if np.any(self.return_temperature >= self.supply_temperature):
             raise ValueError("Rücklauftemperatur darf nicht höher als die Vorlauftemperatur sein. Bitte überprüfen sie die Eingaben.")
 
-        self.yearly_time_steps, self.waerme_gebaeude_ges_W, self.max_waerme_gebaeude_ges_W, self.supply_temperature_curve, self.return_temperature_curve = generate_profiles_from_geojson(self.hast, self.building_type, self.calc_method, self.supply_temperature_buildings, self.return_temperature_buildings)
+        self.yearly_time_steps, self.waerme_gebaeude_ges_W, self.max_waerme_gebaeude_ges_W, self.supply_temperature_building_curve, \
+            self.return_temperature_building_curve = generate_profiles_from_geojson(self.hast, self.building_type, self.calc_method, \
+                                                                                    self.supply_temperature_buildings, self.return_temperature_buildings)
 
         self.waerme_hast_ges_W = []
         self.max_waerme_hast_ges_W = []
         if self.netconfiguration == "kaltes Netz":
-            self.COP, _ = self.COP_WP(self.supply_temperature_buildings, self.return_temperature)
+            self.COP, _ = COP_WP(self.supply_temperature_buildings, self.return_temperature)
             print(f"COP dezentrale Wärmepumpen Gebäude: {self.COP}")
 
             for waerme_gebaeude, leistung_gebaeude, cop in zip(self.waerme_gebaeude_ges_W, self.max_waerme_gebaeude_ges_W, self.COP):
@@ -121,11 +125,13 @@ class NetInitializationThread(QThread):
             self.waerme_hast_ges_W = self.waerme_gebaeude_ges_W
             self.max_waerme_hast_ges_W = self.max_waerme_gebaeude_ges_W
 
-        self.net = create_network(self.vorlauf, self.ruecklauf, self.hast, self.erzeugeranlagen, self.max_waerme_hast_ges_W, self.return_temperature, self.supply_temperature, self.flow_pressure_pump, self.lift_pressure_pump, self.pipetype)
+        self.net = create_network(self.vorlauf, self.ruecklauf, self.hast, self.erzeugeranlagen, self.max_waerme_hast_ges_W, self.return_temperature, \
+                                  self.supply_temperature, self.flow_pressure_pump, self.lift_pressure_pump, self.pipetype)
 
     def initialize_stanet(self):
         self.stanet_csv, self.return_temperature, self.supply_temperature, self.flow_pressure_pump, self.lift_pressure_pump = self.args
-        self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.max_waerme_hast_ges_W = create_net_from_stanet_csv(self.stanet_csv, self.supply_temperature, self.flow_pressure_pump, self.lift_pressure_pump)
+        self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.max_waerme_hast_ges_W = create_net_from_stanet_csv(self.stanet_csv, self.supply_temperature, \
+                                                                                                                          self.flow_pressure_pump, self.lift_pressure_pump)
 
     def common_net_initialization(self, net, max_waerme_ges_W):
         # Gemeinsame Schritte nach der Netzinitialisierung
@@ -154,7 +160,8 @@ class NetCalculationThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(str)
 
-    def __init__(self, net, yearly_time_steps, waerme_ges_W, calc1, calc2, supply_temperature, return_temperature):
+    def __init__(self, net, yearly_time_steps, waerme_ges_W, calc1, calc2, supply_temperature, return_temperature, supply_temperature_buildings, \
+                 return_temperature_buildings, supply_temperature_buildings_curve, return_temperature_buildings_curve, dT_RL=5, netconfiguration=None, building_temp_checked=False):
         
         super().__init__()
         self.net = net
@@ -164,12 +171,74 @@ class NetCalculationThread(QThread):
         self.calc2 = calc2
         self.supply_temperature = supply_temperature
         self.return_temperature = return_temperature
-
+        self.supply_temperature_buildings = supply_temperature_buildings
+        self.return_temperature_buildings = return_temperature_buildings
+        self.supply_temperature_buildings_curve = supply_temperature_buildings_curve
+        self.return_temperature_buildings_curve = return_temperature_buildings_curve
+        self.dT_RL = dT_RL
+        self.netconfiguration = netconfiguration
+        self.building_temp_checked = building_temp_checked
+    
     def run(self):
         try:
-            self.time_steps, self.net, self.net_results = thermohydraulic_time_series_net(self.net, self.yearly_time_steps, self.waerme_ges_W, self.calc1, self.calc2, self.supply_temperature, self.return_temperature)
+            print(f"Vorlauftemperatur Netz: {self.supply_temperature} °C")
+            print(f"Rücklauftemperatur HAST: {self.return_temperature} °C")
+            print(f"Vorlauftemperatur Gebäude: {self.supply_temperature_buildings} °C")
+            print(f"Rücklauftemperatur Gebäude: {self.return_temperature_buildings} °C")
 
-            self.calculation_done.emit((self.time_steps, self.net, self.net_results, self.waerme_ges_W))
+            # Gebäudetemperaturen sind nicht zeitveränderlich, daher wird return_temperature aus der Initialisierung verwendet, es erfolgt keine COP-Berechnung
+            if self.building_temp_checked == False and self.netconfiguration != "kaltes Netz":
+                self.waerme_hast_ges_W = self.waerme_ges_W
+                self.strom_wp = None
+
+            # Gebäudetemperaturen sind nicht zeitveränderlich, daher wird return_temperature aus der Initialisierung verwendet, es erfolgt eine COP-Berechnung mit nicht zeitveränderlichen Gebäudetemperaturen
+            elif self.building_temp_checked == False and self.netconfiguration == "kaltes Netz":
+                self.waerme_hast_ges_W = []
+                self.strom_hast_ges_W = []
+
+                self.COP, _ = COP_WP(self.supply_temperature_buildings, self.return_temperature)
+                print(f"COP dezentrale Wärmepumpen Gebäude: {self.COP}")
+
+                for waerme_gebaeude, cop in zip(self.waerme_ges_W, self.COP):
+                    self.strom_wp = waerme_gebaeude/cop
+                    self.waerme_hast = waerme_gebaeude - self.strom_wp
+
+                    self.waerme_hast_ges_W.append(self.waerme_hast)
+                    self.strom_hast_ges_W.append(self.strom_wp)
+
+                self.waerme_hast_ges_W = np.array(self.waerme_hast_ges_W)
+                self.strom_hast_ges_W = np.array(self.strom_hast_ges_W)
+            
+            # Gebäudetemperaturen sind zeitveränderlich, daher wird return_temperature aus den Gebäudetemperauren bestimmt, es erfolgt keine COP-Berechnung
+            if self.building_temp_checked == True and self.netconfiguration != "kaltes Netz":
+                self.return_temperature = self.return_temperature_buildings_curve + self.dT_RL
+                self.waerme_hast_ges_W = self.waerme_ges_W
+                self.strom_wp = None
+
+            # Gebäudetemperaturen sind zeitveränderlich, daher wird return_temperature aus den Gebäudetemperauren bestimmt, es erfolgt eine COP-Berechnung mit zeitveränderlichen Gebäudetemperaturen
+            elif self.building_temp_checked == True and self.netconfiguration == "kaltes Netz":
+                self.waerme_hast_ges_W = []
+                self.strom_hast_ges_W = []
+
+                for st, rt, waerme_gebaeude in zip(self.supply_temperature_buildings_curve, self.return_temperature, self.waerme_ges_W):
+                    cop, _ = COP_WP(st, rt)
+
+                    self.strom_wp = waerme_gebaeude/cop
+                    self.waerme_hast = waerme_gebaeude - self.strom_wp
+
+                    self.waerme_hast_ges_W.append(self.waerme_hast)
+                    self.strom_hast_ges_W.append(self.strom_wp)
+
+                self.waerme_hast_ges_W = np.array(self.waerme_hast_ges_W)
+                self.strom_hast_ges_W = np.array(self.strom_hast_ges_W)
+
+            print(f"Rücklauftemperatur HAST: {self.return_temperature} °C")
+
+
+            self.time_steps, self.net, self.net_results = thermohydraulic_time_series_net(self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.calc1, \
+                                                                                          self.calc2, self.supply_temperature, self.return_temperature)
+
+            self.calculation_done.emit((self.time_steps, self.net, self.net_results, self.waerme_hast_ges_W, self.strom_hast_ges_W))
         except Exception as e:
             self.calculation_error.emit(str(e) + "\n" + traceback.format_exc())
 

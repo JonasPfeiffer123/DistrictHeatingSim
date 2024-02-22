@@ -78,18 +78,14 @@ def generate_profiles_from_geojson(gdf_HAST, building_type="HMF", calc_method="B
 
     min_air_temperature = -12 # aka Auslegungstemperatur
 
-    for st, rt in zip(max_supply_temperature, max_return_temperature):
-        for air_temperature in hourly_temperatures:
-            if air_temperature <= min_air_temperature:
-                supply_temperature_curve.append(st)
-                return_temperature_curve.append(rt)
-            else:
-                # Anwendung der linearen Gleichung für die Temperaturberechnung
-                supply_temperature = st + slope * (air_temperature - min_air_temperature)
-                supply_temperature_curve.append(supply_temperature)
 
-                return_temperature = rt + slope * (air_temperature - min_air_temperature)
-                return_temperature_curve.append(return_temperature)
+    for st, rt, s in zip(max_supply_temperature, max_return_temperature, slope):
+        # Berechnung der Temperaturkurven für Vorlauf und Rücklauf
+        st_curve = np.where(hourly_temperatures <= min_air_temperature, st, st + (s * (hourly_temperatures - min_air_temperature)))
+        rt_curve = np.where(hourly_temperatures <= min_air_temperature, rt, rt + (s * (hourly_temperatures - min_air_temperature)))
+        
+        supply_temperature_curve.append(st_curve)
+        return_temperature_curve.append(rt_curve)
 
 
     supply_temperature_curve = np.array(supply_temperature_curve)
@@ -158,12 +154,18 @@ def update_const_controls(net, qext_w_profiles, time_steps, start, end):
             if isinstance(ctrl, ConstControl) and ctrl.element_index == i and ctrl.variable == 'qext_w':
                 ctrl.data_source = data_source
 
-def update_return_temperature_controller(net, temperature_target):
-    temp_count = 0
+def update_return_temperature_controller(net, return_temperature, time_steps, start, end):
+    # ursprünglicher Code
+    controller_count = 0
     for ctrl in net.controller.object.values:
-        if isinstance(ctrl, ReturnTemperatureController):
-            ctrl.target_temperature = temperature_target[temp_count]
-            temp_count += 1
+        if isinstance(ctrl, ReturnTemperatureController) :
+            # Erstellen des DataFrame für die Versorgungstemperatur
+            df_return_temp = pd.DataFrame(index=time_steps, data={'return_temperature': return_temperature[controller_count][start:end]})
+            data_source_return_temp = DFData(df_return_temp)
+
+            # Aktualisiere die Datenquelle des bestehenden ConstControls
+            ctrl.data_source = data_source_return_temp
+            controller_count += 1
 
 def update_supply_temperature_controls(net, supply_temperature, time_steps, start, end):
     # Erstellen des DataFrame für die Versorgungstemperatur
@@ -200,16 +202,19 @@ def create_log_variables():
     ]
     return log_variables
 
-def thermohydraulic_time_series_net(net, yearly_time_steps, qext_w_profiles, start, end, supply_temperature=None, target_temp=60):
+def thermohydraulic_time_series_net(net, yearly_time_steps, qext_w_profiles, start, end, supply_temperature=None, return_temperature=60):
     # Zeitreihenberechnung vorbereiten
     yearly_time_steps = yearly_time_steps[start:end]
 
-    # Aktualisieren der ConstControl und ReturnTemperatureController
+    # Aktualisieren der ConstControl
     time_steps = range(0, len(qext_w_profiles[0][start:end]))
     update_const_controls(net, qext_w_profiles, time_steps, start, end)
-    update_return_temperature_controller(net, target_temp)
 
-    # Wenn supply_temperature Daten vorhanden sind, entsprechende Controller erstellen
+    # Wenn return_temperature Daten vorhanden sind, entsprechende ReturnTemperatureController aktualisieren
+    if return_temperature is not None and isinstance(return_temperature, np.ndarray) and return_temperature.ndim == 2:
+        update_return_temperature_controller(net, return_temperature, time_steps, start, end)
+
+    # Wenn supply_temperature Daten vorhanden sind, entsprechende ReturnTemperatureController aktualisieren
     if supply_temperature is not None and isinstance(supply_temperature, np.ndarray):
         update_supply_temperature_controls(net, supply_temperature, time_steps, start, end)
 

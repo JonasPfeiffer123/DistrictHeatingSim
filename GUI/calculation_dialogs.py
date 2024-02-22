@@ -78,6 +78,7 @@ class NetGenerationDialog(QDialog):
 
         layout.addLayout(self.createNetconfigurationControlInput())
         layout.addLayout(self.createTemperatureControlInput())
+        layout.addLayout(self.createBuildingTemperatureCheckbox())
         layout.addLayout(self.createReturnTemperatureCheckbox())
         layout.addLayout(self.createParameterInputs())
         layout.addLayout(self.createinitialpipetypeInput())
@@ -191,6 +192,16 @@ class NetGenerationDialog(QDialog):
         self.temperatureControlInput.currentIndexChanged.connect(self.updateInputFieldsVisibility)
         return layout
     
+    def createBuildingTemperatureCheckbox(self):
+        layout = QVBoxLayout()
+        self.buildingTempCheckbox = QCheckBox("Gebäudeheizungstemperaturen im zeitlichen Verlauf berücksichtigen.")
+        layout.addWidget(self.buildingTempCheckbox)
+
+        # Verbinde das stateChanged Signal der Checkbox mit der update-Methode
+        self.buildingTempCheckbox.stateChanged.connect(self.updateInputFieldsVisibility)
+        
+        return layout
+    
     def createReturnTemperatureCheckbox(self):
         layout = QVBoxLayout()
         self.returnTempCheckbox = QCheckBox("Rücklauftemperatur für alle HA-Stationen festlegen.")
@@ -262,7 +273,6 @@ class NetGenerationDialog(QDialog):
         layout.addWidget(QLabel("Rohrtyp zur Initialisierung des Netzes:"))
         self.initialpipetypeInput = QComboBox(self)
         pipetypes = pp.std_types.available_std_types(pp.create_empty_network(fluid="water"), "pipe").index.tolist()
-        print(pipetypes)
         self.initialpipetypeInput.addItems(pipetypes)
         layout.addWidget(self.initialpipetypeInput)
         self.initialpipetypeInput.currentIndexChanged.connect(self.updateInputFieldsVisibility)
@@ -387,9 +397,11 @@ class NetGenerationDialog(QDialog):
                     widget = parameter_row.itemAt(i).widget()
                     if widget:
                         widget.setVisible(True)
+                        
+        self.building_temp_checked =  self.buildingTempCheckbox.isChecked()
 
-        self.return_temp_visible = self.returnTempCheckbox.isChecked()
-        self.set_layout_visibility(self.return_temp_row, self.return_temp_visible)
+        self.return_temp_checked = self.returnTempCheckbox.isChecked()
+        self.set_layout_visibility(self.return_temp_row, self.return_temp_checked)
 
     def selectFilename(self, line_edit):
         fname, _ = QFileDialog.getOpenFileName(self, 'Datei auswählen', '', 'All Files (*);;CSV Files (*.csv);;GeoJSON Files (*.geojson)')
@@ -444,7 +456,7 @@ class NetGenerationDialog(QDialog):
             return np.array(temperature_curve)
         
     def generateNetwork(self):
-        if self.return_temp_visible == True:
+        if self.return_temp_checked == True:
             rl_temp = float(self.parameter_rows[5].itemAt(1).widget().text())
         else:
             rl_temp = None
@@ -463,6 +475,7 @@ class NetGenerationDialog(QDialog):
             calc_method = self.calcMethodInput.currentText()
             building_type = self.buildingTypeInput.currentText() if self.calcMethodInput.currentText() != "Datensatz" else "HMF"
 
+            self.dT_RL = 5 #self.dT_RLInput.text()
             pipetype = self.initialpipetypeInput.currentText()
 
             v_max_pipe = float(self.v_max_pipeInput.text())
@@ -472,7 +485,7 @@ class NetGenerationDialog(QDialog):
             # Führen Sie die Netzgenerierung für GeoJSON durch
             if self.generate_callback:
                 self.generate_callback(vorlauf_path, ruecklauf_path, hast_path, erzeugeranlagen_path, calc_method, building_type, rl_temp, 
-                                       supply_temperature, flow_pressure_pump, lift_pressure_pump, self.netconfiguration, pipetype, 
+                                       supply_temperature, flow_pressure_pump, lift_pressure_pump, self.netconfiguration, self.dT_RL, self.building_temp_checked, pipetype, 
                                        v_max_pipe, material_filter, insulation_filter, import_type)
 
         elif import_type == "Stanet":

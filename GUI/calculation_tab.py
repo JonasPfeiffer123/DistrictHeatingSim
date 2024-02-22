@@ -263,12 +263,17 @@ class CalculationTab(QWidget):
         self.StartTimeStepLabel.setText(time_step_text)
         self.EndTimeStepLabel.setText(time_step_text)
 
-    def create_and_initialize_net_geojson(self, vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump, netconfiguration, pipetype, v_max_pipe, material_filter, insulation_filter):
+    def create_and_initialize_net_geojson(self, vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temp, supply_temperature, \
+                                          flow_pressure_pump, lift_pressure_pump, netconfiguration, dT_RL, building_temp_checked, pipetype, v_max_pipe, material_filter, insulation_filter):
         self.updateLabelsForCalcMethod(calc_method)
         self.return_temperature = return_temp
         self.supply_temperature = supply_temperature
         supply_temperature = np.max(supply_temperature)
-        args = (vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump, netconfiguration, pipetype, v_max_pipe, material_filter, insulation_filter)
+        self.netconfiguration = netconfiguration
+        self.dT_RL = dT_RL
+        self.building_temp_checked = building_temp_checked
+        args = (vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump, \
+                netconfiguration, pipetype, v_max_pipe, material_filter, insulation_filter)
         kwargs = {"import_type": "GeoJSON"}
         self.initializationThread = NetInitializationThread(*args, **kwargs)
         self.common_thread_initialization()
@@ -292,10 +297,13 @@ class CalculationTab(QWidget):
         self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
 
         # Datenhaltung optimieren
-        self.net, self.yearly_time_steps, self.waerme_ges_W, self.return_temperature, self.supply_temperature_curve, self.return_temperature_curv = results
-        self.net_data = self.net, self.yearly_time_steps, self.waerme_ges_W
+        self.net, self.yearly_time_steps, self.waerme_ges_kW, self.return_temperature, self.supply_temperature_buildings, self.return_temperature_buildings, \
+            self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve = results
+        
+        self.net_data = self.net, self.yearly_time_steps, self.waerme_ges_kW, self.supply_temperature, self.return_temperature, self.supply_temperature_buildings, self.return_temperature_buildings, \
+            self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.netconfiguration, self.dT_RL, self.building_temp_checked
 
-        self.waerme_ges_kW = np.where(self.waerme_ges_W == 0, 0, self.waerme_ges_W / 1000)
+        self.waerme_ges_kW = np.where(self.waerme_ges_kW == 0, 0, self.waerme_ges_kW / 1000)
         self.plot(self.net, self.yearly_time_steps, self.waerme_ges_kW)
 
     def plot(self, net, time_steps, qext_kW):
@@ -348,14 +356,17 @@ class CalculationTab(QWidget):
             QMessageBox.warning(self, "Keine Netzdaten", "Bitte generieren Sie zuerst ein Netz.")
             return
         
-        self.net, self.yearly_time_steps, self.waerme_ges_W, self.return_temperature, self.supply_temperature_curve, self.return_temperature_curv = self.net_data
+        self.net, self.yearly_time_steps, self.waerme_ges_kW, self.supply_temperature, self.return_temperature, self.supply_temperature_buildings, self.return_temperature_buildings, \
+            self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.netconfiguration, self.dT_RL, self.building_temp_checked = self.net_data
 
         try:
             self.calc1, self.calc2 = self.adjustTimeParameters()
             if self.calc1 is None or self.calc2 is None:  # Ungültige Eingaben wurden bereits in adjustTimeParameters behandelt
                 return
 
-            self.calculationThread = NetCalculationThread(self.net, self.yearly_time_steps, self.waerme_ges_W, self.calc1, self.calc2, self.supply_temperature, self.return_temperature)
+            self.calculationThread = NetCalculationThread(self.net, self.yearly_time_steps, self.waerme_ges_kW, self.calc1, self.calc2, self.supply_temperature, self.return_temperature, \
+                                                          self.supply_temperature_buildings, self.return_temperature_buildings, self.supply_temperature_buildings_curve, \
+                                                            self.return_temperature_buildings_curve, self.dT_RL, self.netconfiguration, self.building_temp_checked)
             self.calculationThread.calculation_done.connect(self.on_simulation_done)
             self.calculationThread.calculation_error.connect(self.on_simulation_error)
             self.calculationThread.start()
@@ -366,22 +377,28 @@ class CalculationTab(QWidget):
 
     def on_simulation_done(self, results):
         self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
-        self.time_steps, self.net, self.net_results, self.waerme_ges_W = results
+        self.time_steps, self.net, self.net_results, self.waerme_ges_kW, self.strom_wp_kW = results
         self.mass_flow_circ_pump, self.deltap_circ_pump, self.return_temp_circ_pump, self.flow_temp_circ_pump, \
             self.return_pressure_circ_pump, self.flow_pressure_circ_pump, self.qext_kW, self.pressure_junctions = calculate_results(self.net, self.net_results)
 
-        self.waerme_ges_W = (np.sum(self.waerme_ges_W, axis=0)/1000)[self.calc1:self.calc2]
+        self.waerme_ges_kW = (np.sum(self.waerme_ges_kW, axis=0)/1000)[self.calc1:self.calc2]
+        
+        if self.strom_wp_kW is not None:
+            self.strom_wp_kW = (np.sum(self.strom_wp_kW, axis=0)/1000)[self.calc1:self.calc2]
 
-        plot_data =  self.time_steps, self.qext_kW, self.waerme_ges_W, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, self.return_pressure_circ_pump, self.flow_pressure_circ_pump
+        plot_data =  self.time_steps, self.qext_kW, self.waerme_ges_kW, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, \
+            self.return_pressure_circ_pump, self.flow_pressure_circ_pump
         
         self.plot_data_func(plot_data)
         self.plot2()
 
         self.output_filename = self.AusgabeInput.text()
-        save_results_csv(self.time_steps, self.qext_kW, self.waerme_ges_W, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, self.return_pressure_circ_pump, self.flow_pressure_circ_pump, self.output_filename)
+        save_results_csv(self.time_steps, self.qext_kW, self.waerme_ges_kW, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, \
+                         self.return_pressure_circ_pump, self.flow_pressure_circ_pump, self.output_filename)
 
     def plot_data_func(self, plot_data):
-        self.time_steps, self.qext_kW, self.waerme_ges_W, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, self.return_pressure_circ_pump, self.flow_pressure_circ_pump = plot_data
+        self.time_steps, self.qext_kW, self.waerme_ges_kW, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, \
+        self.return_pressure_circ_pump, self.flow_pressure_circ_pump = plot_data
         
         self.plot_data = {
             "Einspeiseleistung Heizzentrale": {
@@ -390,7 +407,7 @@ class CalculationTab(QWidget):
                 "axis": "left"
             },
             "Gesamtwärmebedarf Wärmeübertrager": {
-                "data": self.waerme_ges_W,
+                "data": self.waerme_ges_kW,
                 "label": "Wärmebedarf in kW",
                 "axis": "left"
             },
@@ -488,15 +505,16 @@ class CalculationTab(QWidget):
         pickle_file_path = f"{self.base_path}/Wärmenetz/Ergebnisse Netzinitialisierung.p"
         csv_file_path = f"{self.base_path}/Wärmenetz/Ergebnisse Netzinitialisierung.csv"
         if self.net_data:  # Überprüfe, ob das Netzwerk vorhanden ist
-            net, yearly_time_steps, waerme_ges_W = self.net_data
+            # Muss aktualisiert werden
+            self.net, self.yearly_time_steps, self.waerme_ges_kW, self.supply_temperature, self.return_temperature, self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve = self.net_data
             
             try:
                 # Pandapipes-Netz als pickle speichern
-                pp.to_pickle(net, pickle_file_path)
+                pp.to_pickle(self.net, pickle_file_path)
                 
                 # Umwandlung der Daten in ein DataFrame und Speichern als CSV
-                data = np.column_stack([waerme_ges_W[i] for i in range(waerme_ges_W.shape[0])])
-                df = pd.DataFrame(data, index=yearly_time_steps, columns=[f'waerme_ges_W_{i+1}' for i in range(waerme_ges_W.shape[0])])
+                data = np.column_stack([self.waerme_ges_kW[i] for i in range(self.waerme_ges_kW.shape[0])])
+                df = pd.DataFrame(data, index=self.yearly_time_steps, columns=[f'waerme_ges_W_{i+1}' for i in range(self.waerme_ges_kW.shape[0])])
                 df.to_csv(csv_file_path, sep=';', date_format='%Y-%m-%dT%H:%M:%S')
                 
                 QMessageBox.information(self, "Speichern erfolgreich", f"Pandapipes Netz erfolgreich gespeichert in: {pickle_file_path}, Daten erfolgreich gespeichert in: {csv_file_path}")
@@ -508,7 +526,7 @@ class CalculationTab(QWidget):
     def exportNetGeoJSON(self):
         geoJSON_filepath = f"{self.base_path}/Wärmenetz/dimensioniertes Wärmenetz.geojson"
         if self.net_data:  # Überprüfe, ob das Netzwerk vorhanden ist
-            net, _, _ = self.net_data
+            net = self.net_data[0]
             
             try:
                 export_net_geojson(net, geoJSON_filepath)
@@ -539,8 +557,8 @@ class CalculationTab(QWidget):
                 waerme_ges_W = np.array(waerme_ges_W_data).transpose()
                 
                 self.net_data = (net, yearly_time_steps, waerme_ges_W)
-                self.net, self.yearly_time_steps, self.waerme_ges_W = self.net_data
-                self.waerme_ges_kW = np.where(self.waerme_ges_W == 0, 0, self.waerme_ges_W / 1000)
+                self.net, self.yearly_time_steps, self.waerme_ges_kW = self.net_data
+                self.waerme_ges_kW = np.where(self.waerme_ges_kW == 0, 0, self.waerme_ges_kW / 1000)
                 self.plot(self.net, self.yearly_time_steps, self.waerme_ges_kW)
                 
                 QMessageBox.information(self, "Laden erfolgreich", f"Daten erfolgreich aus {csv_file_path} und {pickle_file_path} geladen.")
@@ -550,6 +568,6 @@ class CalculationTab(QWidget):
     def load_net_results(self):
         results_csv_filepath = f"{self.base_path}/Lastgang/Lastgang.csv"
         plot_data = import_results_csv(results_csv_filepath)
-        self.time_steps, self.qext_kW, self.waerme_ges_W, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, self.return_pressure_circ_pump, self.flow_pressure_circ_pump = plot_data
+        self.time_steps, self.qext_kW, self.waerme_ges_kW, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, self.return_pressure_circ_pump, self.flow_pressure_circ_pump = plot_data
         self.plot_data_func(plot_data)
         self.plot2()
