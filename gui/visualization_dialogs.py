@@ -1,22 +1,21 @@
-from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QDialog, QComboBox, QPushButton, \
-    QFormLayout, QHBoxLayout, QFileDialog, QProgressBar, QMessageBox, QLabel, QWidget
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
-from shapely.geometry import box, Point
-import geopandas as gpd
-import pyproj
-from shapely.ops import transform
-
-from osm.import_osm_data_geojson import build_query, download_data, save_to_file
-from gui.threads import GeocodingThread
-from geocoding.geocodingETRS89 import get_coordinates, process_data
 import geopandas as gpd
 import pandas as pd
 import numpy as np
 import json
 import csv
 from math import radians, sin, cos, sqrt, atan2
+from shapely.geometry import box, Point
+from shapely.ops import transform
+import pyproj
 
+from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QDialog, QComboBox, QPushButton, \
+    QFormLayout, QHBoxLayout, QFileDialog, QProgressBar, QMessageBox, QLabel, QWidget
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont
+
+from gui.threads import GeocodingThread
+from geocoding.geocodingETRS89 import get_coordinates, process_data
+from osm.import_osm_data_geojson import build_query, download_data, save_to_file
 from osm.Wärmeversorgungsgebiete import clustering_quartiere_hdbscan, postprocessing_hdbscan, allocate_overlapping_area
    
 class LayerGenerationDialog(QDialog):

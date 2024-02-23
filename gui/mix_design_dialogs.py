@@ -1,9 +1,10 @@
+import numpy as np
+import geopandas as gpd
+
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, \
     QDialogButtonBox, QComboBox, QTableWidget, QPushButton, QTableWidgetItem, \
     QHBoxLayout, QFileDialog, QMessageBox, QMenu, QInputDialog
 from PyQt5.QtCore import Qt
-import numpy as np
-import geopandas as gpd
 
 class TechInputDialog(QDialog):
     def __init__(self, tech_type, tech_data=None):

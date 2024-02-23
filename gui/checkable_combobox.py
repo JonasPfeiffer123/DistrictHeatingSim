@@ -17,7 +17,7 @@ class CheckableComboBox(QComboBox):
             item.setCheckState(Qt.Unchecked)
         else:
             item.setCheckState(Qt.Checked)
-        # Signal auslösen, dass sich der Zustand geändert hat
+        
         self.checkedStateChanged.emit()
 
     def itemChecked(self, index):

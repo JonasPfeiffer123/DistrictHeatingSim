@@ -1,8 +1,9 @@
 import sys
 
 from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QTabWidget
-from gui.mix_design_tab import MixDesignTab
 from PyQt5.QtCore import pyqtSignal
+
+from gui.mix_design_tab import MixDesignTab
 
 class MixDesignMainWindow(QMainWindow):
     # Proxy-Signal definieren

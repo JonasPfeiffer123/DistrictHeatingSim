@@ -506,9 +506,11 @@ class CalculationTab(QWidget):
         csv_file_path = f"{self.base_path}/Wärmenetz/Ergebnisse Netzinitialisierung.csv"
         if self.net_data:  # Überprüfe, ob das Netzwerk vorhanden ist
             # Muss aktualisiert werden
-            self.net, self.yearly_time_steps, self.waerme_ges_kW, self.supply_temperature, self.return_temperature, self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve = self.net_data
-            
+            #self.net, self.yearly_time_steps, self.waerme_ges_kW, self.supply_temperature, self.return_temperature, self.supply_temperature_buildings, self.return_temperature_buildings, \
+            #self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.netconfiguration, self.dT_RL, self.building_temp_checked = self.net_data
             try:
+                self.net, self.yearly_time_steps, self.waerme_ges_kW, self.supply_temperature, self.return_temperature, self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve = self.net_data
+            
                 # Pandapipes-Netz als pickle speichern
                 pp.to_pickle(self.net, pickle_file_path)
                 

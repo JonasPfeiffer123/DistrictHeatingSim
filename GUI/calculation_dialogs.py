@@ -1,12 +1,12 @@
-from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QComboBox, \
-    QTableWidget, QPushButton, QTableWidgetItem, QHBoxLayout, QFileDialog, QCheckBox
 import pandas as pd
 import numpy as np
-from heat_requirement.heat_requirement_BDEW import import_TRY
-import pandapipes as pp
-import csv
-from datetime import datetime
 
+from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QComboBox, \
+    QTableWidget, QPushButton, QTableWidgetItem, QHBoxLayout, QFileDialog, QCheckBox
+
+import pandapipes as pp
+
+from heat_requirement.heat_requirement_BDEW import import_TRY
 
 class HeatDemandEditDialog(QDialog):
     def __init__(self, gdf_HAST, hastInput, parent=None):

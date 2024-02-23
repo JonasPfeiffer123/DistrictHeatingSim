@@ -103,7 +103,7 @@ class ReturnTemperatureController(BasicCtrl):
 
     def is_converged(self, net):
         qext_w = net.heat_exchanger["qext_w"].at[self.heat_exchanger_idx]
-        if qext_w == 0:
+        if qext_w <= 300:
             return True
 
         # Check whether the temperatures have changed within the specified tolerance
@@ -146,7 +146,7 @@ class ReturnTemperatureController(BasicCtrl):
         qext_w = net.heat_exchanger["qext_w"].at[self.heat_exchanger_idx]
 
         # Check if the heat output is low enough to not make an adjustment
-        if qext_w == 0:
+        if qext_w <= 300:
             net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx] = 0
             return super(ReturnTemperatureController, self).control_step(net)
 
