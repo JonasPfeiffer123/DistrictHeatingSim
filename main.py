@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import geopandas as gpd
 import pandapipes as pp
 
 from net_simulation_pandapipes.config_plot import config_plot
@@ -95,7 +94,6 @@ def import_TRY(dateiname):
 def Jahresdauerlinie(t, Last_L, data_L, data_labels_L):
     fig, ax = plt.subplots()
 
-    #ax.plot(t, Last_L, color="black", linewidth=0.1, label="Last in kW")
     ax.stackplot(t, data_L, labels=data_labels_L)
     ax.set_title("Jahresdauerlinie")
     ax.set_xlabel("Jahresstunden")

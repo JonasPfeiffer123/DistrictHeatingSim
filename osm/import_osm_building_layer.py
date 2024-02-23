@@ -5,7 +5,7 @@ import numpy as np
 
 
 def import_and_filter_building():
-    # Hier setzen Sie Ihre Overpass-Abfrage ein
+    # This is where you insert your overpass query
     overpass_query = """
     [out:json][timeout:25];
     area[name="Zittau"]->.area_0;
@@ -16,77 +16,61 @@ def import_and_filter_building():
     (._;>;);
     out body;
     """
-    # Ausgabedateiname für GeoJSON-Datei
+    # Output filename for GeoJSON file
     geojson_file = "C:/Users/username/heating_network_generation/net_generation_QGIS/Gebäude Zittau.geojson"
-
-    # Download der Daten und Speichern als GeoJSON
+    # Download the data and save as GeoJSON
     download_data(overpass_query, geojson_file)
-
-    # Einlesen der GeoJSON-Datei
+    # Reading the GeoJSON file
     gdf = gpd.read_file(geojson_file)
     gdf['full_address'] = gdf['addr:street'] + ' ' + gdf['addr:housenumber']
-
-
-    ### Beleg 1 ###
-    # Einlesen der CSV-Datei
+    # Reading the CSV file
     csv_file = "C:/Users/username/heating_network_generation/geocoding/data_output_Beleg1_ETRS89.csv"
     csv_df = pd.read_csv(csv_file, sep=';')
-
-    # Liste der Adressen aus der CSV-Datei erstellen
+    # Create list of addresses from CSV file
     addresses_from_csv = csv_df['Adresse'].tolist()
-
-    # Filtern der GeoJSON-Daten auf Basis der Adressen aus der CSV-Datei
+    # Filter the GeoJSON data based on the addresses from the CSV file
     filtered_gdf = gdf[gdf['full_address'].isin(addresses_from_csv)]
-
-    # Anzeigen der gefilterten GeoDataFrame
+    # Display the filtered GeoDataFrame
     filtered_gdf
-
-    # Speichern der gefilterten GeoDataFrame
+    # Save the filtered GeoDataFrame
     filtered_gdf.to_file('C:/Users/username/heating_network_generation/net_generation_QGIS/Beispiel Beleg 1/gefilterte Gebäude Zittau Beleg 1.geojson', driver='GeoJSON')
 
 #import_and_filter_building()
 
 def filter_building_data(geojson_file, output_file):
-    # Einlesen der GeoJSON-Datei
+    # Reading the GeoJSON file
     gdf = gpd.read_file(geojson_file)
 
-    # Liste der Gebäudetypen, die ignoriert werden sollen
+    # List of building types to ignore
     ignore_types = ['ruins', 'greenhouse', 'shed', 'silo', 'slurry_tank', 
                     'toilets', 'hut', 'cabin', 'ger', 'static_caravan', 
                     'construction', 'cowshed', 'garage', 'garages', 'carport',
                     'farm_auxiliary', 'roof', 'digester']
 
-    # Filtere Gebäude heraus, die ignorierten Typen entsprechen
+    # Filter out buildings that match ignored types
     filtered_gdf = gdf[~gdf['building'].isin(ignore_types)]
 
-    # Ausgabe der gefilterten Daten
+    # Output the filtered data
     print(filtered_gdf['building'])
 
-    # Exportiere die gefilterten Daten in eine neue GeoJSON-Datei
+    # Export the filtered data to a new GeoJSON file
     filtered_gdf.to_file(output_file, driver='GeoJSON')
 
 def calculate_building_data(geojson_file, output_file):
-    # Einlesen der GeoJSON-Datei
+    # Reading the GeoJSON file
     gdf = gpd.read_file(geojson_file)
-
-    # Umrechnen der Koordinaten
+    # Convert the coordinates
     gdf = gdf.to_crs(epsg=25833)
-    
-    # Berechnen der Fläche jedes Gebäudes in Quadratmetern
+    # Calculate the area of ​​each building in square meters
     gdf['area_sqm'] = gdf['geometry'].area
-
-    # Hinzufügen der Spalte für spezifischen Wärmebedarf mit Zufallszahlen zwischen 50 und 200
+    # Adding specific heat demand column with random numbers between 50 and 200
     gdf['spez. Wärmebedarf [kWh/m²*a]'] = np.random.uniform(50, 200, gdf.shape[0])
-
-    # Hinzufügen der Spalte für die Anzahl der Geschosse (konstanter Wert 3)
+    # Add column for number of floors (constant value 3)
     gdf['Anzahl Geschosse'] = 3
-
-    # Berechnen des Jahreswärmebedarfs
+    # Calculate the annual heat requirement
     gdf['Jahreswärmebedarf [kWh/a]'] = gdf['spez. Wärmebedarf [kWh/m²*a]'] * gdf['Anzahl Geschosse'] * gdf['area_sqm']
-
-    # Speichern des erweiterten GeoDataFrame in eine neue GeoJSON-Datei
+    # Save the extended GeoDataFrame to a new GeoJSON file
     gdf.to_file(output_file, driver='GeoJSON')
 
-filter_building_data('osm_data/output_buildings.geojson', 'osm_data/output_buildings_filtered.geojson')
-
-calculate_building_data('osm_data/output_buildings_filtered.geojson', 'osm_data/output_buildings_filtered_calculated')
+#filter_building_data('osm_data/output_buildings.geojson', 'osm_data/output_buildings_filtered.geojson')
+#calculate_building_data('osm_data/output_buildings_filtered.geojson', 'osm_data/output_buildings_filtered_calculated')
