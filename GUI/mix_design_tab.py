@@ -1,6 +1,7 @@
 from io import BytesIO
 import json
 import itertools
+import pandas as pd
 
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -590,7 +591,7 @@ class MixDesignTab(QWidget):
 
     def on_calculation_error(self, error_message):
         self.progressBar.setRange(0, 1)
-        QMessageBox.critical(self, "Berechnungsfehler", error_message)
+        QMessageBox.critical(self, "Berechnungsfehler", str(error_message))
     
     def save_results_to_csv(self, results):
         # Initialisiere den DataFrame mit den Zeitstempeln

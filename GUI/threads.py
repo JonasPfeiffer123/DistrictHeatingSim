@@ -358,4 +358,4 @@ class CalculateMixThread(QThread):
 
             self.calculation_done.emit(result)
         except Exception as e:
-            self.calculation_error.emit(str(e) + "\n" + traceback.format_exc())
+            self.calculation_error.emit(e)
