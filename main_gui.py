@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTabWidget, QMen
 from PyQt5.QtCore import QObject, pyqtSignal
 from gui.visualization_tab import VisualizationTab
 from gui.calculation_tab import CalculationTab
-from gui.mix_design_main_window import MixDesignMainWindow
+from gui.mix_design_tab import MixDesignTab
 
 from PyQt5.QtCore import QObject, pyqtSignal
 
@@ -31,7 +31,7 @@ class HeatSystemDesignGUI(QWidget):
         self.initUI()
         self.data_manager.project_folder_changed.connect(self.calcTab.updateDefaultPath)
         self.data_manager.project_folder_changed.connect(self.visTab.updateDefaultPath)
-        self.data_manager.project_folder_changed.connect(self.mixDesignMainWindow.project_folder_changed.emit)
+        self.data_manager.project_folder_changed.connect(self.mixDesignTab.updateDefaultPath)
 
     def initUI(self):
         self.setWindowTitle("Hier könnte ein cooler Softwarename stehen")
@@ -49,12 +49,12 @@ class HeatSystemDesignGUI(QWidget):
 
         self.visTab = VisualizationTab(self.data_manager)
         self.calcTab = CalculationTab(self.data_manager)
-        self.mixDesignMainWindow = MixDesignMainWindow()
+        self.mixDesignTab = MixDesignTab()
 
         # Adding tabs to the tab widget
         tabWidget.addTab(self.visTab, "Räumliche Analyse")
         tabWidget.addTab(self.calcTab, "Wärmenetzberechnung")
-        tabWidget.addTab(self.mixDesignMainWindow, "Erzeugerauslegung und Wirtschftlichkeitrechnung")
+        tabWidget.addTab(self.mixDesignTab, "Erzeugerauslegung und Wirtschftlichkeitrechnung")
 
         # folder path Label
         if self.data_manager.project_folder != "" or self.data_manager.project_folder != None:
