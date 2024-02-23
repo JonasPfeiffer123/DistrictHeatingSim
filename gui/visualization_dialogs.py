@@ -3,8 +3,6 @@ from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QDialog, QComboBox, QPushBut
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 from shapely.geometry import box, Point
-from geopy.distance import geodesic
-import geopy.distance
 import geopandas as gpd
 import pyproj
 from shapely.ops import transform

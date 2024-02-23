@@ -186,16 +186,16 @@ class NetCalculationThread(QThread):
             print(f"Vorlauftemperatur Gebäude: {self.supply_temperature_buildings} °C")
             print(f"Rücklauftemperatur Gebäude: {self.return_temperature_buildings} °C")
 
+            self.waerme_hast_ges_W = []
+            self.strom_hast_ges_W = []
+            
             # Gebäudetemperaturen sind nicht zeitveränderlich, daher wird return_temperature aus der Initialisierung verwendet, es erfolgt keine COP-Berechnung
             if self.building_temp_checked == False and self.netconfiguration != "kaltes Netz":
                 self.waerme_hast_ges_W = self.waerme_ges_W
-                self.strom_wp = None
+                self.strom_hast_ges_W = None
 
             # Gebäudetemperaturen sind nicht zeitveränderlich, daher wird return_temperature aus der Initialisierung verwendet, es erfolgt eine COP-Berechnung mit nicht zeitveränderlichen Gebäudetemperaturen
             elif self.building_temp_checked == False and self.netconfiguration == "kaltes Netz":
-                self.waerme_hast_ges_W = []
-                self.strom_hast_ges_W = []
-
                 self.COP, _ = COP_WP(self.supply_temperature_buildings, self.return_temperature)
                 print(f"COP dezentrale Wärmepumpen Gebäude: {self.COP}")
 
@@ -213,13 +213,10 @@ class NetCalculationThread(QThread):
             if self.building_temp_checked == True and self.netconfiguration != "kaltes Netz":
                 self.return_temperature = self.return_temperature_buildings_curve + self.dT_RL
                 self.waerme_hast_ges_W = self.waerme_ges_W
-                self.strom_wp = None
+                self.strom_hast_ges_W = None
 
             # Gebäudetemperaturen sind zeitveränderlich, daher wird return_temperature aus den Gebäudetemperauren bestimmt, es erfolgt eine COP-Berechnung mit zeitveränderlichen Gebäudetemperaturen
             elif self.building_temp_checked == True and self.netconfiguration == "kaltes Netz":
-                self.waerme_hast_ges_W = []
-                self.strom_hast_ges_W = []
-
                 for st, rt, waerme_gebaeude in zip(self.supply_temperature_buildings_curve, self.return_temperature, self.waerme_ges_W):
                     cop, _ = COP_WP(st, rt)
 

@@ -1,4 +1,3 @@
-#from osm_data.import_osm_data_geojson import download_data
 from import_osm_data_geojson import download_data
 import geopandas as gpd
 import pandas as pd

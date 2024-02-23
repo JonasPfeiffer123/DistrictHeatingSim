@@ -7,7 +7,6 @@ from pandapower.timeseries import DFData
 from pandapower.control.controller.const_control import ConstControl
 from net_simulation_pandapipes.controllers import ReturnTemperatureController, WorstPointPressureController
 
-import time
 import numpy as np
 
 def get_line_coords_and_lengths(gdf):
@@ -34,7 +33,7 @@ def get_all_point_coords_from_line_cords(all_line_coords):
     return unique_point_coords
 
 
-def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w, return_temperature=60, supply_temperature=85, 
+def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_producer, qext_w, return_temperature=60, supply_temperature=85, 
                    flow_pressure_pump=4, lift_pressure_pump=1.5, pipetype="KMR 100/250-2v",  pipe_creation_mode="type"):
     net = pp.create_empty_network(fluid="water")
 
@@ -96,19 +95,19 @@ def create_network(gdf_vorlauf, gdf_rl, gdf_hast, gdf_wea, qext_w, return_temper
 
     # creates the junction dictonaries for the forward an return line
     junction_dict_vl = create_junctions_from_coords(net, get_all_point_coords_from_line_cords(
-        get_line_coords_and_lengths(gdf_vorlauf)[0]))
+        get_line_coords_and_lengths(gdf_flow_line)[0]))
     junction_dict_rl = create_junctions_from_coords(net, get_all_point_coords_from_line_cords(
-        get_line_coords_and_lengths(gdf_rl)[0]))
+        get_line_coords_and_lengths(gdf_return_line)[0]))
 
     # creates the pipes
-    create_pipes(net, *get_line_coords_and_lengths(gdf_vorlauf), junction_dict_vl, pipe_creation_mode, diameter_mm if pipe_creation_mode == "diameter" else pipetype, "flow line")
-    create_pipes(net, *get_line_coords_and_lengths(gdf_rl), junction_dict_rl, pipe_creation_mode, diameter_mm if pipe_creation_mode == "diameter" else pipetype, "return line")
+    create_pipes(net, *get_line_coords_and_lengths(gdf_flow_line), junction_dict_vl, pipe_creation_mode, diameter_mm if pipe_creation_mode == "diameter" else pipetype, "flow line")
+    create_pipes(net, *get_line_coords_and_lengths(gdf_return_line), junction_dict_rl, pipe_creation_mode, diameter_mm if pipe_creation_mode == "diameter" else pipetype, "return line")
     
     # creates the heat exchangers
-    create_heat_exchangers(net, get_line_coords_and_lengths(gdf_hast)[0], {**junction_dict_vl, **junction_dict_rl}, "heat exchanger")
+    create_heat_exchangers(net, get_line_coords_and_lengths(gdf_heat_exchanger)[0], {**junction_dict_vl, **junction_dict_rl}, "heat exchanger")
     
     # creates the circulation pump pressure
-    create_circulation_pump_pressure(net, get_line_coords_and_lengths(gdf_wea)[0], {**junction_dict_vl, **junction_dict_rl}, "heat source")
+    create_circulation_pump_pressure(net, get_line_coords_and_lengths(gdf_heat_producer)[0], {**junction_dict_vl, **junction_dict_rl}, "heat source")
 
     return net
 
@@ -116,20 +115,20 @@ def create_controllers(net, qext_w, return_temperature):
     if len(qext_w) != len(return_temperature):
         raise ValueError("Die Längen von qext_w und return_temperature müssen gleich sein.")
 
-    # Erstellt Controller für das Netz
+    # Creates controllers for the network
     for i in range(len(net.heat_exchanger)):
-        # Erstelle ein einfaches DFData-Objekt für qext_w mit dem spezifischen Wert für diesen Durchlauf
+        # Create a simple DFData object for qext_w with the specific value for this pass
         placeholder_df = pd.DataFrame({f'qext_w_{i}': [qext_w[i]]})
         placeholder_data_source = DFData(placeholder_df)
 
         ConstControl(net, element='heat_exchanger', variable='qext_w', element_index=i, data_source=placeholder_data_source, profile_name=f'qext_w_{i}')
         
-        # Anpassung für die Verwendung von return_temperature als Array
+        # Adjustment for using return_temperature as an array
         T_controller = ReturnTemperatureController(net, heat_exchanger_idx=i, target_temperature=return_temperature[i])
         net.controller.loc[len(net.controller)] = [T_controller, True, -1, -1, False, False]
 
-    dp_min, idx_dp_min = calculate_worst_point(net)  # Diese Funktion muss definiert sein
-    dp_controller = WorstPointPressureController(net, idx_dp_min)  # Diese Klasse muss definiert sein
+    dp_min, idx_dp_min = calculate_worst_point(net)  # This function must be defined
+    dp_controller = WorstPointPressureController(net, idx_dp_min)  # This class must be defined
     net.controller.loc[len(net.controller)] = [dp_controller, True, -1, -1, False, False]
 
     return net
@@ -157,8 +156,8 @@ def correct_flow_directions(net):
 def optimize_diameter_parameters(initial_net, element="pipe", v_max=2, dx=0.001):
     pp.pipeflow(initial_net, mode="all")
 
-    element_df = getattr(initial_net, element)  # Zugriff auf die DataFrame des Elements
-    res_df = getattr(initial_net, f"res_{element}")  # Zugriff auf die Ergebnis-DataFrame
+    element_df = getattr(initial_net, element)  # Access the element's DataFrame
+    res_df = getattr(initial_net, f"res_{element}")  # Access the result DataFrame
             
     change_made = True
     while change_made:
@@ -168,29 +167,29 @@ def optimize_diameter_parameters(initial_net, element="pipe", v_max=2, dx=0.001)
             current_velocity = res_df.v_mean_m_per_s[idx]
             current_diameter = element_df.at[idx, 'diameter_m']
             
-            # Vergrößern, wenn Geschwindigkeit > v_max
+            # enlarge if speed > v_max
             if current_velocity > v_max:
                 element_df.at[idx, 'diameter_m'] += dx
                 change_made = True
 
-            # Verkleinern, solange Geschwindigkeit < v_max, und prüfen
+           # shrink as long as speed < v_max and check
             elif current_velocity < v_max:
                 element_df.at[idx, 'diameter_m'] -= dx
                 pp.pipeflow(initial_net, mode="all")
-                element_df = getattr(initial_net, element)  # Zugriff auf die DataFrame des Elements
-                res_df = getattr(initial_net, f"res_{element}")  # Zugriff auf die Ergebnis-DataFrame
+                element_df = getattr(initial_net, element)  # Access the element's DataFrame
+                res_df = getattr(initial_net, f"res_{element}")  # Access the result DataFrame
                 new_velocity = res_df.v_mean_m_per_s[idx]
 
                 if new_velocity > v_max:
-                    # Zurücksetzen, wenn neue Geschwindigkeit v_max übersteigt
+                    # Reset if new speed exceeds v_max
                     element_df.at[idx, 'diameter_m'] = current_diameter
                 else:
                     change_made = True
         
         if change_made:
-            pp.pipeflow(initial_net, mode="all")  # Neuberechnung nur wenn Änderungen gemacht wurden
-            element_df = getattr(initial_net, element)  # Zugriff auf die DataFrame des Elements
-            res_df = getattr(initial_net, f"res_{element}")  # Zugriff auf die Ergebnis-DataFrame
+            pp.pipeflow(initial_net, mode="all")  # Recalculation only if changes were made
+            element_df = getattr(initial_net, element)
+            res_df = getattr(initial_net, f"res_{element}")
 
     return initial_net
 
@@ -279,14 +278,14 @@ def calculate_worst_point(net):
     return dp_min, idx_min
 
 def export_net_geojson(net, filename):
-    features = []  # Liste, um GeoDataFrames aller Komponenten zu sammeln
+    features = []  # List to collect GeoDataFrames of all components
     
-    # Verarbeite Leitungen
+    # Process lines
     if 'pipe_geodata' in net and not net.pipe_geodata.empty:
         geometry_lines = [LineString(coords) for coords in net.pipe_geodata['coords']]
         gdf_lines = gpd.GeoDataFrame(net.pipe_geodata, geometry=geometry_lines)
-        del gdf_lines['coords']  # Entferne die 'coords'-Spalte
-        # Füge Attribute hinzu
+        del gdf_lines['coords'] # Remove the 'coords' column
+        # Add attributes
         gdf_lines['name'] = net.pipe['name']
         gdf_lines['diameter_mm'] = net.pipe['diameter_m'] * 1000
         gdf_lines['std_type'] = net.pipe['std_type']
@@ -294,51 +293,50 @@ def export_net_geojson(net, filename):
         features.append(gdf_lines)
 
     if 'circ_pump_pressure' in net and not net.circ_pump_pressure.empty:
-        # Berechne die Geometrie
+        # Calculate the geometry
         pump_lines = [LineString([
             (net.junction_geodata.loc[pump['return_junction']]['x'], net.junction_geodata.loc[pump['return_junction']]['y']),
             (net.junction_geodata.loc[pump['flow_junction']]['x'], net.junction_geodata.loc[pump['flow_junction']]['y'])
         ]) for index, pump in net.circ_pump_pressure.iterrows()]
         
-        # Filtere nur relevante Spalten (angepasst an tatsächlich vorhandene Daten)
-        relevant_columns = ['name', 'geometry']  # Beispiel
+        # Filter only relevant columns (adapted to actual data)
+        relevant_columns = ['name', 'geometry']
         gdf_pumps = gpd.GeoDataFrame(net.circ_pump_pressure, geometry=pump_lines)[relevant_columns]
         
         features.append(gdf_pumps)
 
     if 'heat_exchanger' in net and not net.heat_exchanger.empty and 'flow_control' in net and not net.flow_control.empty:
-        # Iteriere durch jedes Paar von heat_exchanger und flow_control
+        # Iterate through each pair of heat_exchanger and flow_control
         for idx, heat_exchanger in net.heat_exchanger.iterrows():
-            # Da flow_controls und heat_exchangers zusammen erstellt werden, nehmen wir an, dass sie
-            # die gleiche Reihenfolge haben oder über eine Logik verknüpft werden können, die hier implementiert werden muss
-            # Beispiel: flow_control = net.flow_control.iloc[idx] falls direkt korrelierbar
+            # Since flow_controls and heat_exchangers are created together, we assume that they
+            # have the same order or can be linked via logic that must be implemented here
             flow_control = net.flow_control.loc[net.flow_control['to_junction'] == heat_exchanger['from_junction']].iloc[0]
 
-            # Ermittle die Koordinaten für flow_control's Anfangs- und heat_exchanger's Endkoordinate
+            # Get the coordinates for flow_control's start and heat_exchanger's end coordinates
             start_coords = net.junction_geodata.loc[flow_control['from_junction']]
             end_coords = net.junction_geodata.loc[heat_exchanger['to_junction']]
 
-            # Erstelle eine Linie zwischen diesen Punkten
+            # Create a line between these points
             line = LineString([(start_coords['x'], start_coords['y']), (end_coords['x'], end_coords['y'])])
             
-            # Erstelle einen GeoDataFrame für diese kombinierte Komponente
+            # Create a GeoDataFrame for this combined component
             gdf_component = gpd.GeoDataFrame({
                 'name': "HAST",
                 'diameter_mm': f"{heat_exchanger['diameter_m']*1000:.1f}",
                 'qext_W': f"{heat_exchanger['qext_w']:.0f}",
                 'geometry': [line]
-            }, crs="EPSG:25833") # Stellen Sie sicher, dass das CRS zu Ihrem Netzwerk passt
+            }, crs="EPSG:25833") # set crs to EPSG:25833
             
             features.append(gdf_component)
 
-    # Setze das Koordinatensystem (CRS) für alle GeoDataFrames und füge sie zusammen
+    # Set the coordinate system (CRS) for all GeoDataFrames and merge them
     for feature in features:
         feature.set_crs(epsg=25833, inplace=True)
 
-    # Kombiniere alle GeoDataFrames zu einer FeatureCollection
+    # Combine all GeoDataFrames into a FeatureCollection
     gdf_all = gpd.GeoDataFrame(pd.concat(features, ignore_index=True), crs="EPSG:25833")
 
-    # Exportiere als GeoJSON
+    # export as GeoJSON
     if not gdf_all.empty:
         gdf_all.to_file(filename, driver='GeoJSON')
     else:

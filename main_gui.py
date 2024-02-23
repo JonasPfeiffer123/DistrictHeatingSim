@@ -8,13 +8,12 @@ from gui.mix_design_main_window import MixDesignMainWindow
 from PyQt5.QtCore import QObject, pyqtSignal
 
 class CentralDataManager(QObject):
-    project_folder_changed = pyqtSignal(str)  # Signaldefinition
+    project_folder_changed = pyqtSignal(str)  # definition of the signal
 
     def __init__(self):
-        super(CentralDataManager, self).__init__()  # QObject Konstruktor aufrufen
+        super(CentralDataManager, self).__init__()  # calling QObject constructor
         self.map_data = []
-        self.project_folder = "project_data/Beispiel Zittau"  # Variable zum Speichern des ausgewählten Ordnerpfads
-
+        self.project_folder = "project_data/Beispiel Zittau"  # variable project folder path
     def add_data(self, data):
         self.map_data.append(data)
         # Trigger any updates needed for the map
@@ -24,7 +23,7 @@ class CentralDataManager(QObject):
 
     def set_project_folder(self, path):
         self.project_folder = path
-        self.project_folder_changed.emit(path)  # Signal auslösen, wenn der Pfad geändert wird
+        self.project_folder_changed.emit(path)  # emit signal if path got changed
 
 class HeatSystemDesignGUI(QWidget):
     def __init__(self):
@@ -57,7 +56,7 @@ class HeatSystemDesignGUI(QWidget):
         tabWidget.addTab(self.calcTab, "Wärmenetzberechnung")
         tabWidget.addTab(self.mixDesignMainWindow, "Erzeugerauslegung und Wirtschftlichkeitrechnung")
 
-        # Ordnerauswahl Label
+        # folder path Label
         if self.data_manager.project_folder != "" or self.data_manager.project_folder != None:
             self.folderLabel = QLabel(f"Standard-Projektordner: {self.data_manager.project_folder}")
         else:
@@ -79,7 +78,7 @@ class HeatSystemDesignGUI(QWidget):
         networkMenu.addAction(generateNetAction)
         self.layout1.addWidget(self.menubar)
 
-        # Verbindungen zu der Funktion
+        # connection to function
         generateNetAction.triggered.connect(self.ProjektordnerNameDialog)
 
     def ProjektordnerNameDialog(self):

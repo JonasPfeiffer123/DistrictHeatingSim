@@ -138,86 +138,61 @@ def standardized_quarter_hourly_profile(year, building_type, days_of_year, type_
     hot_water_demand = merged_df['Warmwasser normiert'].values
 
     return quarter_hourly_intervals, electricity_demand, heating_demand, hot_water_demand
-    
-def berechnung_lastgang(weather_data, factors, gebäudetyp, anzahl_personen_haushalt, JEB_Strom_kWh, 
-                       JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, Feiertage, klimazone="9", year=2019):
+
+# YEU - yearly energy usage
+def calculation_load_profile(TRY, factors, building_type, number_people_household, YEU_electricity_kWh, 
+                       YEU_heating_kWh, YEU_hot_water_kWh, holidays, climate_zone="9", year=2019):
 
     days_of_year, months, days, weekdays = generate_year_months_days_weekdays(year)
 
     # import weather data
-    temperature, bedeckungsgrad = import_TRY(weather_data)
-    # temperature, bedeckungsgrad = import_csv(weather_data)["Temperatur in °C"].values, import_csv(weather_data)["Bedeckungsgrad (0-8)"].values
+    temperature, degree_of_coverage = import_TRY(TRY)
 
-    daily_avg_temperature, daily_avg_bedeckungsgrad = calculate_daily_averages(temperature, bedeckungsgrad)
+    daily_avg_temperature, daily_avg_degree_of_coverage = calculate_daily_averages(temperature, degree_of_coverage)
     
-    jahreszeit = np.where(daily_avg_temperature < 5, "W", np.where((daily_avg_temperature >= 5) & (daily_avg_temperature <= 15), "Ü", "S"))
-    tagart = np.where((weekdays == 1) | np.isin(days_of_year, Feiertage), "S", "W")
-    bedeckungsgrad = np.where(jahreszeit == "S", "X", np.where((daily_avg_bedeckungsgrad >= 0) & (daily_avg_bedeckungsgrad < 4), "H", "B"))
+    season = np.where(daily_avg_temperature < 5, "W", np.where((daily_avg_temperature >= 5) & (daily_avg_temperature <= 15), "Ü", "S"))
+    day_type = np.where((weekdays == 1) | np.isin(days_of_year, holidays), "S", "W")
+    degree_of_coverage = np.where(season == "S", "X", np.where((daily_avg_degree_of_coverage >= 0) & (daily_avg_degree_of_coverage < 4), "H", "B"))
     
-    typtag = np.char.add(np.char.add(jahreszeit, tagart), bedeckungsgrad)
-    Profiltag = np.char.add((gebäudetyp + klimazone), typtag)
+    type_day = np.char.add(np.char.add(season, day_type), degree_of_coverage)
+    profile_day = np.char.add((building_type + climate_zone), type_day)
 
     factor_data = import_csv(factors)
 
     # vetorized calculation of the neccessary factors
-    f_heiz_tt = np.zeros(len(Profiltag))
-    f_el_tt = np.zeros(len(Profiltag))
-    f_tww_tt = np.zeros(len(Profiltag))
+    f_heating_tt = np.zeros(len(profile_day))
+    f_el_tt = np.zeros(len(profile_day))
+    f_hotwater_tt = np.zeros(len(profile_day))
     
-    for i, tag in enumerate(Profiltag):
+    for i, tag in enumerate(profile_day):
         index = factor_data[factor_data['Profiltag'] == tag].index[0]
-        f_heiz_tt[i] = factor_data.loc[index, 'Fheiz,TT']
+        f_heating_tt[i] = factor_data.loc[index, 'Fheiz,TT']
         f_el_tt[i] = factor_data.loc[index, 'Fel,TT']
-        f_tww_tt[i] = factor_data.loc[index, 'FTWW,TT']
+        f_hotwater_tt[i] = factor_data.loc[index, 'FTWW,TT']
 
-    Tagesstrom = JEB_Strom_kWh * ((1/365) + (anzahl_personen_haushalt*f_el_tt))
-    Tagesheizwärme = JEB_Heizwärme_kWh * f_heiz_tt
-    Tages_WW = JEB_Trinkwarmwasser_kWh * ((1/365) + (anzahl_personen_haushalt*f_tww_tt))
+    daily_electricity = YEU_electricity_kWh * ((1/365) + (number_people_household*f_el_tt))
+    daily_heating = YEU_heating_kWh * f_heating_tt
+    daily_hot_water = YEU_hot_water_kWh * ((1/365) + (number_people_household*f_hotwater_tt))
 
-    quarter_hourly_intervals, strom_kWh, heizwaerme_kWh, warmwasser_kWh = standardized_quarter_hourly_profile(year, gebäudetyp, days_of_year, typtag)
+    quarter_hourly_intervals, electricity_kWh, heating_kWh, hot_water_kWh = standardized_quarter_hourly_profile(year, building_type, days_of_year, type_day)
 
-    quarter_hourly_Tagesstrom = quarter_hourly_data(Tagesstrom)
-    quarter_hourly_Tagesheizwärme = quarter_hourly_data(Tagesheizwärme)
-    quarte_hourly_Tages_WW = quarter_hourly_data(Tages_WW)
+    quarter_hourly_daily_electricity = quarter_hourly_data(daily_electricity)
+    quarter_hourly_daily_heating = quarter_hourly_data(daily_heating)
+    quarte_hourly_daily_hot_water = quarter_hourly_data(daily_hot_water)
 
-    strom_normiert = strom_kWh * quarter_hourly_Tagesstrom
-    heizwaerme_normiert = heizwaerme_kWh * quarter_hourly_Tagesheizwärme
-    warmwasser_normiert = warmwasser_kWh * quarte_hourly_Tages_WW
+    electricity_normed = electricity_kWh * quarter_hourly_daily_electricity
+    heating_normed = heating_kWh * quarter_hourly_daily_heating
+    hot_water_normed = hot_water_kWh * quarte_hourly_daily_hot_water
 
-    strom_korrekt = strom_normiert/sum(strom_normiert)*JEB_Strom_kWh
-    heizwaerme_korrekt = heizwaerme_normiert/sum(heizwaerme_normiert)*JEB_Heizwärme_kWh
-    warmwasser_korrekt = warmwasser_normiert/sum(warmwasser_normiert)*JEB_Trinkwarmwasser_kWh
+    electricity_corrected = electricity_normed/sum(electricity_normed)*YEU_electricity_kWh
+    heating_corrected = heating_normed/sum(heating_normed)*YEU_heating_kWh
+    hot_water_corrected = hot_water_normed/sum(hot_water_normed)*YEU_hot_water_kWh
 
-    return quarter_hourly_intervals, strom_korrekt, heizwaerme_korrekt, warmwasser_korrekt, temperature
+    return quarter_hourly_intervals, electricity_corrected, heating_corrected, hot_water_corrected, temperature
 
-
-def Jahresdauerlinie(weather_data, factors, gebäudetyp, anzahl_personen_haushalt, JEB_Strom_kWh, 
-                       JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, Feiertage, klimazone="9", year=2019):
-    
-    time_15min, strom_kWh_15min, heizwaerme_kWh_15min, warmwasser_kWh_15min = berechnung_lastgang(weather_data,
-                                                                                        factors, gebäudetyp, 
-                                                                                        anzahl_personen_haushalt, 
-                                                                                        JEB_Strom_kWh, JEB_Heizwärme_kWh, 
-                                                                                        JEB_Trinkwarmwasser_kWh, Feiertage, klimazone, year)
-    
-    waerme_ges_kWh_15min = heizwaerme_kWh_15min + warmwasser_kWh_15min
-
-    strom_kW, heizwaerme_kW, warmwasser_kW, waerme_ges_kW = strom_kWh_15min * 4, heizwaerme_kWh_15min * 4, warmwasser_kWh_15min * 4, waerme_ges_kWh_15min * 4
-
-    # plt.plot(time_15min[2000:3000], waerme_ges_kW[2000:3000], label="Wärmeleistung gesamt")
-    plt.plot(time_15min, waerme_ges_kW, label="Wärmeleistung gesamt")
-
-    plt.title("Jahresdauerlinie")
-    plt.legend()
-    plt.xlabel("Zeit in 15 min Schritten")
-    plt.ylabel("Wärmebedarf in kW / 15 min")
-
-    plt.show()
-
-#############################
-
-def calculate(JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, JEB_Strom_kWh=1, building_type="MFH", personen_pro_haushalt=2, year=2019, Klimazone="9"):
-    # Feiertage
+# YEU - yearly energy usage
+def calculate(YEU_heating_kWh, YEU_hot_water_kWh, YEU_electricity_kWh=1, building_type="MFH", number_people_household=2, year=2019, climate_zone="9"):
+    # holidays
     Neujahr = "2019-01-01"
     Karfreitag = "2019-04-19"
     Ostermontag = "2019-04-22"
@@ -230,24 +205,39 @@ def calculate(JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, JEB_Strom_kWh=1, buil
     Weihnachtsfeiertag1 = "2019-12-25"
     Weihnachtsfeiertag2 = "2019-12-26"
 
-    Feiertage = np.array([Neujahr, Karfreitag, Ostermontag, Maifeiertag, Pfingstmontag, 
+    holidays = np.array([Neujahr, Karfreitag, Ostermontag, Maifeiertag, Pfingstmontag, 
                 Christi_Himmelfahrt, Fronleichnam, Tag_der_deutschen_Einheit, 
                 Allerheiligen, Weihnachtsfeiertag1, Weihnachtsfeiertag2]).astype('datetime64[D]')
         
-
     TRY = "heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat"
-    test_weather_data = "heat_requirement/weather_data.csv"
-
-    weather_data = TRY
-    # weather_data = test_weather_data
-
     factors = "heat_requirement/VDI 4655 data/Faktoren.csv"
 
-    time_15min, strom_kWh_15min, heizwaerme_kWh_15min, warmwasser_kWh_15min, temperature = berechnung_lastgang(weather_data, factors, building_type, personen_pro_haushalt, \
-                                                                                                  JEB_Strom_kWh, JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, \
-                                                                                                    Feiertage, Klimazone, year)
-    waerme_ges_kWh_15min = heizwaerme_kWh_15min + warmwasser_kWh_15min
-    strom_W, heizwaerme_kW, warmwasser_kW, waerme_ges_kW = strom_kWh_15min * 4, heizwaerme_kWh_15min * 4, warmwasser_kWh_15min * 4, waerme_ges_kWh_15min * 4
-    # Jahresdauerlinie(weather_data, factors, building_type, 3, 2000, JEB_Heizwärme_kWh, JEB_Trinkwarmwasser_kWh, Feiertage, "9", 2019)
+    time_15min, electricity_kWh_15min, heating_kWh_15min, hot_water_kWh_15min, temperature = calculation_load_profile(TRY, factors, building_type, number_people_household, \
+                                                                                                  YEU_electricity_kWh, YEU_heating_kWh, YEU_hot_water_kWh, \
+                                                                                                    holidays, climate_zone, year)
+    total_heat_kWh_15min = heating_kWh_15min + hot_water_kWh_15min
+    electricity_kW, heating_kW, hot_water_kW, total_heat_kW = electricity_kWh_15min * 4, heating_kWh_15min * 4, hot_water_kWh_15min * 4, total_heat_kWh_15min * 4
 
-    return time_15min, strom_W, heizwaerme_kW, warmwasser_kW, waerme_ges_kW, temperature
+    return time_15min, electricity_kW, heating_kW, hot_water_kW, total_heat_kW, temperature
+
+def annual_duration_line(weather_data, factors, building_type, number_people_household, YEU_electricity_kWh, 
+                       YEU_heating_kWh, YEU_hot_water_kWh, holidays, climate_zone="9", year=2019):
+    
+    time_15min, electricity_kWh_15min, heating_kWh_15min, hot_water_kWh_15min, temperature = calculation_load_profile(weather_data,
+                                                                                        factors, building_type, 
+                                                                                        number_people_household, 
+                                                                                        YEU_electricity_kWh, YEU_heating_kWh, 
+                                                                                        YEU_hot_water_kWh, holidays, climate_zone, year)
+    
+    total_heat_kWh_15min = heating_kWh_15min + hot_water_kWh_15min
+
+    electricity_kW, heating_kW, hot_water_kW, total_heat_kW = electricity_kWh_15min * 4, heating_kWh_15min * 4, hot_water_kWh_15min * 4, total_heat_kWh_15min * 4
+
+    plt.plot(time_15min, total_heat_kW, label="Wärmeleistung gesamt")
+
+    plt.title("Jahresdauerlinie")
+    plt.legend()
+    plt.xlabel("Zeit in 15 min Schritten")
+    plt.ylabel("Wärmebedarf in kW / 15 min")
+
+    plt.show()
