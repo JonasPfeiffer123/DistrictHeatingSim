@@ -77,22 +77,22 @@ This script is designed to be interactive and user-friendly, making it easier fo
     - Ability to Work on Multiple Projects Simultaneously
 
 Visualization and Import of GIS Data:
-    - Expand Query Requests for Downloading OSM Data
-    - Import of Generator Locations via CSV --> Multiple Entries Possible
-    - Convert Stanet Network to GeoJSON and Enable Import into Map
-    - Error Handling
+  - Expand Query Requests for Downloading OSM Data
+  - Import of Generator Locations via CSV --> Multiple Entries Possible
+  - Convert Stanet Network to GeoJSON and Enable Import into Map
+  - Error Handling
 
 Network Calculation:
-    - Revise Calculation Parameters (Return Line Temperature, Profiles)
-    - Add Profile Subtypes
-    - Multiple Generators --> Determine Which One Uses Circulation Pump, Others Set as Fixed Injection (or Controlled by Main Generator Location)
+  - Revise Calculation Parameters (Return Line Temperature, Profiles)
+  - Add Profile Subtypes
+  - Multiple Generators --> Determine Which One Uses Circulation Pump, Others Set as Fixed Injection (or Controlled by Main Generator Location)
 
 Design of Generator Mix
-    - Parameter Variation for Pricing
-    - When Optimizing, a Copy of the Current Tab Should be Created and the Optimal Composition Displayed in a New Variant
-    - Add CO2 Emission Factors for Fuels --> Calculate Emissions for Heat Supply --> CO2 Emissions as Another Optimization Metric
-    - Further Customize PDF Export
-    - Create Standard Components
+  - Parameter Variation for Pricing
+  - When Optimizing, a Copy of the Current Tab Should be Created and the Optimal Composition Displayed in a New Variant
+  - Add CO2 Emission Factors for Fuels --> Calculate Emissions for Heat Supply --> CO2 Emissions as Another Optimization Metric
+  - Further Customize PDF Export
+  - Create Standard Components
 
 - Evaluating integration with advanced simulation tools like SIM-VICUS, flixOpt, GHEtool and EnSySim.
   
