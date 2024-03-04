@@ -1,8 +1,10 @@
+import numpy as np
+import geopandas as gpd
+
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, \
     QDialogButtonBox, QComboBox, QTableWidget, QPushButton, QTableWidgetItem, \
     QHBoxLayout, QFileDialog, QMessageBox, QMenu, QInputDialog
 from PyQt5.QtCore import Qt
-import numpy as np
 
 class TechInputDialog(QDialog):
     def __init__(self, tech_type, tech_data=None):
@@ -367,10 +369,58 @@ class EconomicParametersDialog(QDialog):
             'Preissteigerungsrate in %': float(self.preissteigerungsrateInput.text()),
             'Betrachtungszeitraum in a': int(self.betrachtungszeitraumInput.text()),
         }
-    
+
+class KostenBerechnungDialog(QDialog):
+    def __init__(self, parent=None, label=None, value=None, type=None):
+        super().__init__(parent)
+        self.base_path = parent.base_path
+        self.filename = f"{self.base_path}/Wärmenetz/dimensioniertes Wärmenetz.geojson"
+        self.label = label
+        self.value = value
+        self.type = type
+        self.total_cost = None
+        self.initUI()
+
+    def initUI(self):
+        self.layout = QVBoxLayout(self)
+
+        self.specCostLabel = QLabel(self.label)
+        self.specCostInput = QLineEdit(self.value, self)
+        self.layout.addWidget(self.specCostLabel)
+        self.layout.addWidget(self.specCostInput)
+
+        self.filenameLabel = QLabel("Datei Wärmenetz")
+        self.filenameInput = QLineEdit(self.filename, self)
+        self.layout.addWidget(self.filenameLabel)
+        self.layout.addWidget(self.filenameInput)
+
+        okButton = QPushButton("OK", self)
+        cancelButton = QPushButton("Abbrechen", self)
+        okButton.clicked.connect(self.onAccept)
+        cancelButton.clicked.connect(self.reject)
+        self.layout.addWidget(okButton)
+        self.layout.addWidget(cancelButton)
+
+    def onAccept(self):
+        gdf_net = gpd.read_file(self.filename)
+        gdf_net_filtered = gdf_net[gdf_net["name"]==self.type]
+
+        if self.type == "flow line":
+            self.length_values = gdf_net_filtered["length_m"].values.astype(float)
+            self.cost_lines = self.length_values * float(self.specCostInput.text())
+            self.total_cost = round(np.sum(self.cost_lines),0)
+
+        if self.type == "HAST":
+            self.qext_values = gdf_net_filtered["qext_W"].values.astype(float)/1000
+            self.cost_lines = self.qext_values * float(self.specCostInput.text())
+            self.total_cost = round(np.sum(self.cost_lines),0)
+
+        self.accept()
+
 class NetInfrastructureDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.base_path = parent.base_path
         self.initUI()
         self.initDefaultValues()
          # Kontextmenü für vertikale Kopfzeilen
@@ -382,12 +432,22 @@ class NetInfrastructureDialog(QDialog):
 
         # Erstellen der Tabelle
         self.table = QTableWidget(self)
-        self.infraObjects = ['waermenetz', 'druckhaltung', 'hydraulik', 'elektroinstallation', 'planungskosten']
+        self.infraObjects = ['waermenetz', 'hausanschlussstationen', 'druckhaltung', 'hydraulik', 'elektroinstallation', 'planungskosten']
         self.table.setRowCount(len(self.infraObjects))
         self.table.setColumnCount(5)  # Für jede Eigenschaft eine Spalte
         self.table.setHorizontalHeaderLabels(['kosten', 'technische nutzungsdauer', 'f_inst', 'f_w_insp', 'bedienaufwand'])
         self.table.setVerticalHeaderLabels(self.infraObjects)
         self.layout.addWidget(self.table)
+
+        # Button für die Kostenberechnung des Wärmenetzes hinzufügen
+        self.berechneWärmenetzKostenButton = QPushButton("Kosten Wärmenetz aus geoJSON berechnen", self)
+        self.berechneWärmenetzKostenButton.clicked.connect(self.berechneWaermenetzKosten)
+        self.layout.addWidget(self.berechneWärmenetzKostenButton)
+
+        # Button für die Kostenberechnung der Hausanschlussstationen hinzufügen
+        self.berechneHausanschlussKostenButton = QPushButton("Kosten Hausanschlusstationen aus geoJSON berechnen", self)
+        self.berechneHausanschlussKostenButton.clicked.connect(self.berechneHausanschlussKosten)
+        self.layout.addWidget(self.berechneHausanschlussKostenButton)
 
         # Button-Leiste
         buttonLayout = QHBoxLayout()
@@ -448,6 +508,13 @@ class NetInfrastructureDialog(QDialog):
                 'f_w_insp': "0",
                 'bedienaufwand': "5"
             },
+            'hausanschlussstationen': {
+                'kosten': "100000",
+                'technische nutzungsdauer': "20",
+                'f_inst': "1",
+                'f_w_insp': "1",
+                'bedienaufwand': "2"
+            },
             'druckhaltung': {
                 'kosten': "20000",
                 'technische nutzungsdauer': "20",
@@ -481,6 +548,34 @@ class NetInfrastructureDialog(QDialog):
         for i, obj in enumerate(self.infraObjects):
             for j, field in enumerate(['kosten', 'technische nutzungsdauer', 'f_inst', 'f_w_insp', 'bedienaufwand']):
                 self.table.setItem(i, j, QTableWidgetItem(str(defaultValues[obj][field])))
+
+    def updateTableValue(self, row, column, value):
+        """
+        Aktualisiert den Wert in der Tabelle.
+
+        :param row: Zeilenindex der Tabelle, beginnend bei 0.
+        :param column: Spaltenindex der Tabelle, beginnend bei 0.
+        :param value: Der neue Wert, der in die Zelle eingetragen werden soll.
+        """
+        # Überprüfung, ob der angegebene Zeilen- und Spaltenindex gültig ist
+        if 0 <= row < self.table.rowCount() and 0 <= column < self.table.columnCount():
+            self.table.setItem(row, column, QTableWidgetItem(str(value)))
+        else:
+            print("Fehler: Ungültiger Zeilen- oder Spaltenindex.")
+
+    def berechneWaermenetzKosten(self):
+        dialog = KostenBerechnungDialog(self, label="spez. Kosten Wärmenetz pro m_Trasse (inkl. Tiefbau) in €/m", value="1000", type="flow line")
+        dialog.setWindowTitle("Kosten Wärmenetz berechnen")
+        if dialog.exec_():
+            cost_net = dialog.total_cost
+            self.updateTableValue(row=0, column=0, value=cost_net)
+
+    def berechneHausanschlussKosten(self):
+        dialog = KostenBerechnungDialog(self, label="spez. Kosten Hausanschlussstationen pro kW max. Wärmebedarf in €/kW", value="250", type="HAST")
+        dialog.setWindowTitle("Kosten Hausanschlussstationen berechnen")
+        if dialog.exec_():
+            cost_net = dialog.total_cost
+            self.updateTableValue(row=1, column=0, value=cost_net)
 
     def getCurrentInfraObjects(self):
         return self.infraObjects

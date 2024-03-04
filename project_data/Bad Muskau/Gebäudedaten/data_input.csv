@@ -1,0 +1,17 @@
+﻿Land;Bundesland;Stadt;Adresse;Wärmebedarf;Gebäudetyp;WW_Anteil;Typ_Heizflächen;VLT_max;Steigung_Heizkurve;RLT_max
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 11;31770;GHD;0.19;HK;70;1.5;55
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 13;38054;HMF;0.39;HK;70;1.5;55
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 15;37002;HMF;0.33;FBH;35;0.4;25
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 17;40547;HMF;0.1;HK;70;1.5;55
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 19;38262;HMF;0.31;NTHK;50;0.8;35
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 21;40442;HMF;0.18;HK;70;1.5;55
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 2;33884;GHD;0.25;HK;70;1.5;55
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 4;46656;HMF;0.22;FBH;35;0.4;25
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 6;31631;HMF;0.23;HK;70;1.5;55
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 8;36819;HMF;0.17;NTHK;50;0.8;35
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 10;47361;HMF;0.06;HK;70;1.5;55
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 12;36331;GHD;0.01;HK;70;1.5;55
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 14;41887;HMF;0.07;HK;70;1.5;55
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 16;46721;HMF;0.32;HK;70;1.5;55
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 18;40713;HMF;0.39;FBH;35;0.4;25
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 20;35821;GHD;0.26;NTHK;50;0.8;35

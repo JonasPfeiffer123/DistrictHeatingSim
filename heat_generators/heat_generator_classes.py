@@ -1,9 +1,8 @@
 import numpy as np
-import pandas as pd
+from math import pi, sqrt
+
 from scipy.optimize import minimize
 from scipy.interpolate import RegularGridInterpolator
-import matplotlib.pyplot as plt
-from math import pi, sqrt
 
 from heat_generators.Solarthermie import Berechnung_STA
 

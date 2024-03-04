@@ -1,29 +1,28 @@
+from io import BytesIO
+import json
 import itertools
+import pandas as pd
+
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QLineEdit, QListWidget, QDialog, QProgressBar, \
     QMessageBox, QFileDialog, QMenuBar, QScrollArea, QAction, QAbstractItemView, QTableWidget, QTableWidgetItem, QHeaderView)
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QFont
-from gui.mix_design_dialogs import TechInputDialog, EconomicParametersDialog, NetInfrastructureDialog
-from heat_generators.heat_generator_classes import *
-from gui.checkable_combobox import CheckableComboBox
-
-from gui.threads import CalculateMixThread
 
 import PyPDF2
-from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, PageBreak
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.lib import colors
-import matplotlib.pyplot as plt
 
-from io import BytesIO
-import json
-
+from heat_generators.heat_generator_classes import *
+from gui.mix_design_dialogs import TechInputDialog, EconomicParametersDialog, NetInfrastructureDialog
+from gui.checkable_combobox import CheckableComboBox
+from gui.threads import CalculateMixThread
 
 class CustomListWidget(QListWidget):
     def __init__(self, parent=None):
@@ -39,14 +38,14 @@ class MixDesignTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.results = {}
+        self.initFileInputs()
+        self.base_path = "project_data/Beispiel Zittau"  # Basispfad initialisieren
         self.economicParametersDialog = EconomicParametersDialog(self)
         self.netInfrastructureDialog = NetInfrastructureDialog(self)
+        self.updateDefaultPath(self.base_path)
         self.setupEconomicParameters()
         self.tech_objects = []
-        self.initFileInputs()
         self.initUI()
-        self.base_path = "project_data/Beispiel Zittau"  # Basispfad initialisieren
-        self.updateDefaultPath(self.base_path)
 
     def initFileInputs(self):
         self.FilenameInput = QLineEdit('')
@@ -68,6 +67,8 @@ class MixDesignTab(QWidget):
         new_output_path = f"{self.base_path}/Lastgang/Lastgang.csv"
         # Dies setzt voraus, dass Ihre Eingabefelder oder deren Layouts entsprechend benannt sind
         self.FilenameInput.setText(new_output_path)
+
+        self.netInfrastructureDialog.base_path = self.base_path
 
         # Optional für mögliche Dialogfenster
 
@@ -590,7 +591,7 @@ class MixDesignTab(QWidget):
 
     def on_calculation_error(self, error_message):
         self.progressBar.setRange(0, 1)
-        QMessageBox.critical(self, "Berechnungsfehler", error_message)
+        QMessageBox.critical(self, "Berechnungsfehler", str(error_message))
     
     def save_results_to_csv(self, results):
         # Initialisiere den DataFrame mit den Zeitstempeln
@@ -613,7 +614,7 @@ class MixDesignTab(QWidget):
         df['el_Leistung_ges_L'] = results['el_Leistung_ges_L']
         
         # Speichere den DataFrame als CSV-Datei
-        csv_filename = "results.csv"
+        csv_filename = f"{self.base_path}/Lastgang/results.csv"
         df.to_csv(csv_filename, index=False, sep=";")
         print(f"Ergebnisse wurden in '{csv_filename}' gespeichert.")
 

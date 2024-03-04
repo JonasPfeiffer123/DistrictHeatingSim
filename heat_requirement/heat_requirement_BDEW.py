@@ -62,53 +62,49 @@ def calculate_hourly_intervals(year):
 
     return hourly_intervals
 
-# Funktion um die Koeffizienten zu erhalten
-def get_coefficients(lastprofiltyp, subtyp, daily_data):
-    profil = lastprofiltyp + subtyp
-    row = daily_data[daily_data['Standardlastprofil'] == profil].iloc[0]
+# function for getting the coefficients
+def get_coefficients(profiletype, subtype, daily_data):
+    profile = profiletype + subtype
+    row = daily_data[daily_data['Standardlastprofil'] == profile].iloc[0]
     return float(row['A']), float(row['B']), float(row['C']), float(row['D']), float(row['mH']), float(row['bH']), float(row['mW']), float(row['bW'])
 
-# Funktion um den Wochentagsfaktor zu erhalten
-def get_weekday_factor(daily_weekdays, lastprofiltyp, subtyp, daily_data):
-    profil = lastprofiltyp + subtyp
-    # Wähle die Zeile aus, die dem Profil entspricht
+# function for getting the weekday factor
+def get_weekday_factor(daily_weekdays, profiletype, subtype, daily_data):
+    profil = profiletype + subtype
     profil_row = daily_data[daily_data['Standardlastprofil'] == profil]
 
     if profil_row.empty:
         raise ValueError("Profil nicht gefunden")
 
-    # Extrahiere die Wochentagsfaktoren für die gegebenen Tage
-
     weekday_factors = np.array([profil_row.iloc[0][str(day)] for day in daily_weekdays]).astype(float)
 
     return weekday_factors
 
-def berechnung_lastgang(weather_data, JWB_kWh, lastprofiltyp, subtyp, Feiertage, year=2019):
+def calculation_load_profile(TRY, JWB_kWh, profiletype, subtype, holidays, year):
     days_of_year, months, days, daily_weekdays = generate_year_months_days_weekdays(year)
 
     # import weather data
-    hourly_temperature = import_TRY(weather_data)
-    # temperature = import_csv(weather_data)["Temperatur in °C"].values
+    hourly_temperature = import_TRY(TRY)
 
-    # Wetter Berechnung
+    # process temperature data
     daily_avg_temperature = np.round(calculate_daily_averages(hourly_temperature), 1)
     daily_reference_temperature = np.round((daily_avg_temperature+2.5)*2, -1)/2-2.5
 
     daily_data = pd.read_csv('heat_requirement/BDEW factors/daily_coefficients.csv', delimiter=';')
 
-    # Tageberechnung
-    h_A, h_B, h_C, h_D, mH, bH, mW, bW = get_coefficients(lastprofiltyp, subtyp, daily_data)
+    # calculate daily factors
+    h_A, h_B, h_C, h_D, mH, bH, mW, bW = get_coefficients(profiletype, subtype, daily_data)
     lin = mH + bH + mW + bW
     h_T = h_A/(1+(h_B/(daily_avg_temperature-40))**h_C)+h_D+lin
 
-    # Wochentagsfaktor
-    F_D = get_weekday_factor(daily_weekdays, lastprofiltyp, subtyp, daily_data)
+    # calculate weekday factors
+    F_D = get_weekday_factor(daily_weekdays, profiletype, subtype, daily_data)
     h_T_F_D = h_T * F_D
     sum_h_T_F_D = np.sum(h_T_F_D)
     KW_kWh = JWB_kWh/sum_h_T_F_D
     daily_heat_demand = h_T_F_D * KW_kWh
 
-    # Stundenberechnung
+    # calculate hourly data
     hourly_reference_temperature = np.round((hourly_temperature+2.5)*2, -1)/2-2.5
     hourly_reference_temperature_2 = np.where(hourly_reference_temperature>hourly_temperature, hourly_reference_temperature-5, \
                                               np.where(hourly_reference_temperature>27.5, 27.5, hourly_reference_temperature+5))
@@ -121,9 +117,9 @@ def berechnung_lastgang(weather_data, JWB_kWh, lastprofiltyp, subtyp, Feiertage,
     hourly_daily_heat_demand = np.repeat(daily_heat_demand, 24)
     
     hourly_data = pd.read_csv('heat_requirement/BDEW factors/hourly_coefficients.csv', delimiter=';')
-    filtered_hourly_data = hourly_data[hourly_data["Typ"]==lastprofiltyp]
+    filtered_hourly_data = hourly_data[hourly_data["Typ"]==profiletype]
 
-    # Erstellen eines DataFrame zur leichteren Verarbeitung
+    # create dataframe
     hourly_conditions = pd.DataFrame({
         'Wochentag': hourly_weekdays,
         'TemperaturLower': lower_limit,
@@ -131,8 +127,7 @@ def berechnung_lastgang(weather_data, JWB_kWh, lastprofiltyp, subtyp, Feiertage,
         'Stunde': daily_hours
     })
 
-    # Stellen Sie sicher, dass die Spalten 'Typ', 'Wochentag' und 'Stunde' in beiden DataFrames übereinstimmen
-    # Dies setzt voraus, dass 'hourly_conditions' bereits erstellt wurde
+    # merging data
     merged_data_T1 = pd.merge(
         hourly_conditions,
         filtered_hourly_data,
@@ -149,10 +144,10 @@ def berechnung_lastgang(weather_data, JWB_kWh, lastprofiltyp, subtyp, Feiertage,
         right_on=['Wochentag', 'Temperatur', 'Stunde']
     )
 
-    # Prüfen Sie die Bedingungen und wählen Sie die entsprechenden Stundenfaktoren
     hour_factor_T1 = merged_data_T1["Stundenfaktor"].values.astype(float)
     hour_factor_T2 = merged_data_T2["Stundenfaktor"].values.astype(float)
 
+    # final calculation
     hour_factor_interpolation = hour_factor_T2+(hour_factor_T1-hour_factor_T2)*((hourly_temperature-upper_limit)/(5))
     hourly_heat_demand = np.nan_to_num((hourly_daily_heat_demand*hour_factor_interpolation)/100).astype(float)
     hourly_heat_demand_normed = (hourly_heat_demand / np.sum(hourly_heat_demand)) * JWB_kWh
@@ -160,20 +155,8 @@ def berechnung_lastgang(weather_data, JWB_kWh, lastprofiltyp, subtyp, Feiertage,
 
     return hourly_intervals, hourly_heat_demand_normed.astype(float), hourly_temperature
 
-def Jahresdauerlinie(hourly_intervals, hourly_heat_demand, hourly_temperature):
-    plt.plot(hourly_intervals, hourly_heat_demand, label="Wärmeleistung gesamt")
-
-    plt.title("Jahresdauerlinie")
-    plt.legend()
-    plt.xlabel("Zeit")
-    plt.ylabel("Wärmebedarf in kW")
-
-    plt.show()
-
-#############################
-
-def calculate(JWB_kWh=10000, lastprofiltyp="HMF", subtyp="03", TRY="heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat", year=2021):
-    # Feiertage
+def calculate(JWB_kWh=10000, profiletype="HMF", subtyp="03", TRY="heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat", year=2021):
+    # holidays
     Neujahr = "2021-01-01"
     Karfreitag = "2021-04-02"
     Ostermontag = "2021-04-05"
@@ -189,14 +172,17 @@ def calculate(JWB_kWh=10000, lastprofiltyp="HMF", subtyp="03", TRY="heat_require
     Feiertage = np.array([Neujahr, Karfreitag, Ostermontag, Maifeiertag, Pfingstmontag, 
                 Christi_Himmelfahrt, Fronleichnam, Tag_der_deutschen_Einheit, 
                 Allerheiligen, Weihnachtsfeiertag1, Weihnachtsfeiertag2]).astype('datetime64[D]')
-        
-    test_weather_data = "heat_requirement/weather_data.csv"
-    weather_data = TRY
-    # weather_data = test_weather_data
 
-    hourly_intervals, hourly_heat_demand, hourly_temperature = berechnung_lastgang(weather_data, JWB_kWh, lastprofiltyp, subtyp, Feiertage, year)
+    hourly_intervals, hourly_heat_demand, hourly_temperature = calculation_load_profile(TRY, JWB_kWh, profiletype, subtyp, Feiertage, year)
 
     return hourly_intervals, hourly_heat_demand, hourly_temperature
 
-#hourly_intervals, hourly_heat_demand, hourly_temperature = calculate(JWB_kWh=10000, lastprofiltyp="HMF", subtyp="03", year=2019)
-#Jahresdauerlinie(hourly_intervals, hourly_heat_demand, hourly_temperature)
+def annual_duration_line(hourly_intervals, hourly_heat_demand, hourly_temperature):
+    plt.plot(hourly_intervals, hourly_heat_demand, label="Wärmeleistung gesamt")
+
+    plt.title("Jahresdauerlinie")
+    plt.legend()
+    plt.xlabel("Zeit")
+    plt.ylabel("Wärmebedarf in kW")
+
+    plt.show()

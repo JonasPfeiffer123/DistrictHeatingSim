@@ -4,7 +4,7 @@
 # Import Bibliotheken
 from math import pi, exp, log, sqrt
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timezone
 
 from heat_generators.Solarstrahlung import Berechnung_Solarstrahlung
     
@@ -24,8 +24,8 @@ def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY, time_s
 
     if Bruttofläche_STA == 0 or VS == 0:
         return 0, np.zeros_like(Last_L)
-
-    Tag_des_Jahres_L = np.array([datetime.utcfromtimestamp(t.astype(np.int64) * 60 * 15).timetuple().tm_yday for t in time_steps])
+    
+    Tag_des_Jahres_L = np.array([datetime.fromtimestamp(t.astype('datetime64[s]').astype(np.int64), tz=timezone.utc).timetuple().tm_yday for t in time_steps])
 
     Albedo = 0.2
     wcorr = 0.5

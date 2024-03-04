@@ -31,7 +31,7 @@ def download_data(query, element_type):
 
     features = []
 
-    if element_type == "way":  # Für Straßen
+    if element_type == "way":  # for streets
         for way in result.ways:
             coordinates = [(node.lon, node.lat) for node in way.nodes]
             linestring = geojson.LineString(coordinates)
@@ -39,7 +39,7 @@ def download_data(query, element_type):
             feature = geojson.Feature(geometry=linestring, properties=properties)
             features.append(feature)
     
-    elif element_type == "building":  # Für Gebäude
+    elif element_type == "building":  # fro buildings
         for relation in result.relations:
             multipolygon = []
             for member in relation.members:
@@ -55,7 +55,7 @@ def download_data(query, element_type):
             features.append(feature)
 
         for way in result.ways:
-            # Stellen Sie sicher, dass das Gebäude geschlossen ist (erster und letzter Punkt gleich)
+            # Make sure the building is closed (first and last points the same)
             if way.nodes[0] != way.nodes[-1]:
                 way.nodes.append(way.nodes[0])
             coordinates = [(node.lon, node.lat) for node in way.nodes]

@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-# Importieren der erforderlichen Bibliotheken
 import geopandas as gpd
 from sklearn.cluster import DBSCAN # pip install scikit-learn
 import hdbscan
@@ -22,90 +21,90 @@ from shapely.ops import unary_union
 from geopandas.tools import overlay
 import matplotlib.pyplot as plt
 
-# Schwellwerte für die Entscheidung über die Versorgungsmethode festlegen
-# Gebäude mit einem Wärmebedarf über dem Wärmenetz-Schwellwert erhalten eine Wärmenetzversorgung,
-# Gebäude über dem Wasserstoff-Schwellwert erhalten eine Wasserstoffversorgung,
-# alle anderen erhalten eine Einzelversorgungslösung.
+# Set thresholds for deciding on the supply method
+# Buildings with a heat requirement above the heating network threshold receive a heating network supply,
+# Buildings above the hydrogen threshold receive a hydrogen supply,
+# all others receive a single supply solution.
 
-def versorgungsgebiet_bestimmen(flaechenspezifischer_waermebedarf, schwellwert_waermenetz, schwellwert_wasserstoff):
-    if flaechenspezifischer_waermebedarf > schwellwert_waermenetz:
+def versorgungsgebiet_bestimmen(area_specific_heat_requirement, threshold_heat_network, threshold_hydrogen):
+    if area_specific_heat_requirement > threshold_heat_network:
         return 'Wärmenetzversorgung'
-    elif flaechenspezifischer_waermebedarf > schwellwert_wasserstoff:
+    elif area_specific_heat_requirement > threshold_hydrogen:
         return 'Wasserstoffversorgung'
     else:
         return 'Einzelversorgungslösung'
 
-def clustering_quartiere_hdbscan(gdf, buffer_size=10, min_cluster_size=30, min_samples=1, schwellwert_waermenetz=90, schwellwert_wasserstoff=60):
-    # Pufferzone um jedes Gebäude hinzufügen
+def clustering_quartiere_hdbscan(gdf, buffer_size=10, min_cluster_size=30, min_samples=1, threshold_heat_network=90, threshold_hydrogen=60):
+    # Add buffer zone around each building
     gdf['buffered_geometry'] = gdf.geometry.buffer(buffer_size)
 
-    # Koordinaten der Gebäudezentren (unter Berücksichtigung des Puffers) für das Clustering vorbereiten
+    # Prepare coordinates of building centers (taking the buffer into account) for clustering
     coords = np.array(list(zip(gdf['buffered_geometry'].centroid.x, gdf['buffered_geometry'].centroid.y)))
 
-    # HDBSCAN-Algorithmus zum Clustern der Koordinaten anwenden
+    # Apply HDBSCAN algorithm to cluster the coordinates
     clusterer = hdbscan.HDBSCAN(min_cluster_size=min_cluster_size, min_samples=min_samples, gen_min_span_tree=True)
     cluster_labels = clusterer.fit_predict(coords)
 
-    # Hinzufügen der Cluster-Labels zum GeoDataFrame
+    # Adding the cluster labels to the GeoDataFrame
     gdf['quartier_label'] = cluster_labels
 
-    # Entfernen von Rauschen, das als '-1' gekennzeichnet ist
+    # Remove noise marked as '-1'
     gdf = gdf[gdf['quartier_label'] != -1]
 
-    # Gruppieren der Gebäude in Cluster und Erstellen von Polygonen für jedes Cluster
-    # Verwenden Sie eine angepasste Aggregationsfunktion für die Geometriedaten
+    # Grouping the buildings into clusters and creating polygons for each cluster
+    # Use a custom aggregation function on the geometry data
     for index, row in gdf.iterrows():
         geom = shape(row['geometry'])
         if not geom.is_valid:
-            # Wenn die Geometrie ungültig ist, können Sie sie reparieren oder entfernen
-            # Hier verwenden wir `buffer(0)` zur Fehlerbehebung, um ungültige Geometrien zu entfernen
+            # If the geometry is invalid, you can repair or remove it
+            # Here we use `buffer(0)` to debug to remove invalid geometries
             gdf.at[index, 'geometry'] = geom.buffer(0)
-    quartiere = gdf.dissolve(by='quartier_label', aggfunc={'buffered_geometry': lambda x: x.unary_union.convex_hull})
+    quarters = gdf.dissolve(by='quartier_label', aggfunc={'buffered_geometry': lambda x: x.unary_union.convex_hull})
 
-    # Definieren der Quartiersgrenzen mit konvexen Hüllen
-    quartiere['geometry'] = quartiere['buffered_geometry']
+    # Defining neighborhood boundaries with convex hulls
+    quarters['geometry'] = quarters['buffered_geometry']
 
-    # Flächenspezifischen Wärmebedarf berechnen
-    quartiere['gesamtwaermebedarf'] = gdf.groupby('quartier_label')['Jahreswärmebedarf [kWh/a]'].sum()
-    quartiere['flaeche'] = quartiere.geometry.area
-    quartiere['flaechenspezifischer_waermebedarf'] = quartiere['gesamtwaermebedarf'] / quartiere['flaeche']
+    # Calculate area-specific heat requirements
+    quarters['gesamtwaermebedarf'] = gdf.groupby('quartier_label')['Jahreswärmebedarf [kWh/a]'].sum()
+    quarters['flaeche'] = quarters.geometry.area
+    quarters['flaechenspezifischer_waermebedarf'] = quarters['gesamtwaermebedarf'] / quarters['flaeche']
 
-    # Versorgungsgebiet auf Basis des flächenspezifischen Wärmebedarfs zuweisen
-    quartiere['Versorgungsgebiet'] = quartiere.apply(lambda row: versorgungsgebiet_bestimmen(row['flaechenspezifischer_waermebedarf'], schwellwert_waermenetz, schwellwert_wasserstoff), axis=1)
+    # Assign supply area based on area-specific heat requirements
+    quarters['Versorgungsgebiet'] = quarters.apply(lambda row: versorgungsgebiet_bestimmen(row['flaechenspezifischer_waermebedarf'], threshold_heat_network, threshold_hydrogen), axis=1)
 
-    # Löschen aller unnötigen Spalten, behalten nur die relevanten
-    quartiere = quartiere[['geometry', 'gesamtwaermebedarf', 'flaeche', 'flaechenspezifischer_waermebedarf', 'Versorgungsgebiet']]
-    quartiere = quartiere.reset_index()
+    # Delete all unnecessary columns, keeping only the relevant ones
+    quarters = quarters[['geometry', 'gesamtwaermebedarf', 'flaeche', 'flaechenspezifischer_waermebedarf', 'Versorgungsgebiet']]
+    quarters = quarters.reset_index()
 
-    return quartiere
+    return quarters
 
-def postprocessing_hdbscan(quartiere):
-    # Laden Sie die ursprünglichen Cluster-Daten
-    quartiere['geometry'] = quartiere['geometry'].buffer(0)  # Dies kann helfen, einige Geometrieprobleme zu beheben
+def postprocessing_hdbscan(quarters):
+    # Load the original cluster data
+    quarters['geometry'] = quarters['geometry'].buffer(0)  # This can help fix some geometry problems
 
-    # Flag, um den Fortschritt der Überschneidungsauflösung zu verfolgen
+    # Flag to track overlap resolution progress
     overlapping_exists = True
     while overlapping_exists:
-        # Erstellen Sie eine Kopie für das Postprocessing
-        quartiere_postprocessed = quartiere.copy()
-        quartiere_postprocessed = quartiere_postprocessed.drop_duplicates(subset=['quartier_label'])
-        quartiere_postprocessed = quartiere_postprocessed.dropna(subset=['Versorgungsgebiet'])
+        # Make a copy for postprocessing
+        quarters_postprocessed = quarters.copy()
+        quarters_postprocessed = quarters_postprocessed.drop_duplicates(subset=['quartier_label'])
+        quarters_postprocessed = quarters_postprocessed.dropna(subset=['Versorgungsgebiet'])
         
-        # Führen Sie einen spatial join durch, um benachbarte Polygone zu identifizieren
-        joined = gpd.sjoin(quartiere_postprocessed, quartiere_postprocessed, how='left', predicate='intersects')
-        # Filtern Sie die Ergebnisse, um nur Paare mit derselben Versorgungsart zu behalten
+        # Perform a spatial join to identify neighboring polygons
+        joined = gpd.sjoin(quarters_postprocessed, quarters_postprocessed, how='left', predicate='intersects')
+        # Filter results to only keep couples with the same care type
         same_supply_type = joined[joined['Versorgungsgebiet_left'] == joined['Versorgungsgebiet_right']]
 
         overlapping_exists = False
 
-        # Vereinigen Sie die Polygone, die die gleiche Versorgungsart haben und einander berühren
+        # Merge the polygons that have the same supply type and touch each other
         for index, row in same_supply_type.iterrows():
             index_left = row['quartier_label_left']
             index_right = row['quartier_label_right']
 
             if index_left != index_right:
-                left_geoms = quartiere_postprocessed[quartiere_postprocessed['quartier_label'] == index_left]['geometry']
-                right_geoms = quartiere_postprocessed[quartiere_postprocessed['quartier_label'] == index_right]['geometry']
+                left_geoms = quarters_postprocessed[quarters_postprocessed['quartier_label'] == index_left]['geometry']
+                right_geoms = quarters_postprocessed[quarters_postprocessed['quartier_label'] == index_right]['geometry']
 
                 if not left_geoms.is_empty.all() and not right_geoms.is_empty.all():
                     current_geometry = left_geoms.unary_union
@@ -114,98 +113,98 @@ def postprocessing_hdbscan(quartiere):
                     if current_geometry is not None and touching_geometry is not None:
                         unified_geometry = current_geometry.union(touching_geometry)
                         
-                        # Aktualisiere die Geometrie für jede Zeile einzeln
-                        for idx in quartiere_postprocessed[quartiere_postprocessed['quartier_label'] == index_left].index:
-                            quartiere_postprocessed.at[idx, 'geometry'] = unified_geometry
+                        # Update geometry for each line individually
+                        for idx in quarters_postprocessed[quarters_postprocessed['quartier_label'] == index_left].index:
+                            quarters_postprocessed.at[idx, 'geometry'] = unified_geometry
                         
-                        # Lösche das zweite Polygon
-                        quartiere_postprocessed = quartiere_postprocessed[quartiere_postprocessed['quartier_label'] != index_right]
+                        # Delete the second polygon
+                        quarters_postprocessed = quarters_postprocessed[quarters_postprocessed['quartier_label'] != index_right]
                         overlapping_exists = True
 
-        quartiere = quartiere_postprocessed
+        quarters = quarters_postprocessed
 
-    # Reset Index außerhalb der Schleife
-    quartiere_postprocessed.reset_index(drop=True, inplace=True)
+    # Reset index outside the loop
+    quarters_postprocessed.reset_index(drop=True, inplace=True)
 
-    return quartiere_postprocessed
+    return quarters_postprocessed
 
-def allocate_overlapping_area(quartiere):
-    # Spatial Join für sich überschneidende Polygone
-    overlapping = gpd.sjoin(quartiere, quartiere, how='inner', predicate='intersects')
+def allocate_overlapping_area(quarters):
+    # Spatial join for intersecting polygons
+    overlapping = gpd.sjoin(quarters, quarters, how='inner', predicate='intersects')
 
-    # Filtere nur Paare mit unterschiedlichen Versorgungsarten
+    # Filter only couples with different care types
     different_supply = overlapping[overlapping['Versorgungsgebiet_left'] != overlapping['Versorgungsgebiet_right']]
 
     for idx, row in different_supply.iterrows():
         idx_left = row['quartier_label_left']
         idx_right = row['quartier_label_right']
 
-        # Finde die Zeilen, die den gegebenen Cluster-Labels entsprechen
-        row_left = quartiere[quartiere['quartier_label'] == idx_left]
-        row_right = quartiere[quartiere['quartier_label'] == idx_right]
+        # Find the rows corresponding to the given cluster labels
+        row_left = quarters[quarters['quartier_label'] == idx_left]
+        row_right = quarters[quarters['quartier_label'] == idx_right]
 
         if not row_left.empty and not row_right.empty:
-            # Finden Sie die zugehörigen Geometrien basierend auf den Cluster-Labels
+            # Find the associated geometries based on the cluster labels
             geom_left = row_left.geometry.iloc[0]
             geom_right = row_right.geometry.iloc[0]
 
-            # Anwenden eines kleinen Buffers zur Bereinigung von Geometrieunregelmäßigkeiten
+            # Applying a small buffer to clean up geometry irregularities
             buffered_geom_left = geom_left.buffer(0.0001)
             buffered_geom_right = geom_right.buffer(0.0001)
 
             intersection = buffered_geom_left.intersection(buffered_geom_right)
 
             if not intersection.is_empty and isinstance(intersection, Polygon):
-                # Entscheide, welcher Cluster die Überschneidungsfläche erhält, basierend auf dem gesamten Wärmebedarf
+                # Decide which cluster gets the overlap area based on the total heat demand
                 if row_left['gesamtwaermebedarf'].iloc[0] > row_right['gesamtwaermebedarf'].iloc[0]:
-                    # Füge die Überschneidungsfläche zum linken Polygon hinzu
-                    quartiere.loc[row_left.index, 'geometry'] = buffered_geom_left.union(intersection).buffer(-0.0001)
-                    # Entferne die Überschneidungsfläche vom rechten Polygon
-                    quartiere.loc[row_right.index, 'geometry'] = buffered_geom_right.difference(intersection).buffer(-0.0001)
+                    # Add the intersection area to the left polygon
+                    quarters.loc[row_left.index, 'geometry'] = buffered_geom_left.union(intersection).buffer(-0.0001)
+                    # Remove the intersection area from the right polygon
+                    quarters.loc[row_right.index, 'geometry'] = buffered_geom_right.difference(intersection).buffer(-0.0001)
                 else:
-                    # Füge die Überschneidungsfläche zum rechten Polygon hinzu
-                    quartiere.loc[row_right.index, 'geometry'] = buffered_geom_right.union(intersection).buffer(-0.0001)
-                    # Entferne die Überschneidungsfläche vom linken Polygon
-                    quartiere.loc[row_left.index, 'geometry'] = buffered_geom_left.difference(intersection).buffer(-0.0001)
+                    # Add the intersection area to the right polygon
+                    quarters.loc[row_right.index, 'geometry'] = buffered_geom_right.union(intersection).buffer(-0.0001)
+                    # Remove the intersection area from the left polygon
+                    quarters.loc[row_left.index, 'geometry'] = buffered_geom_left.difference(intersection).buffer(-0.0001)
 
-    return quartiere
+    return quarters
 
-### Ausführen ###
+### run ###
 
 def run_here():
-    # Laden Sie Ihren GeoJSON-Datensatz
-    gdf = gpd.read_file('osm_data/output_buildings.geojson', driver='GeoJSON').to_crs(epsg=25833)
+    # Load your GeoJSON dataset
+    gdf = gpd.read_file('osm/output_buildings.geojson', driver='GeoJSON').to_crs(epsg=25833)
 
     def calculate_building_data(gdf, output_filename):
-            # Berechnen der Fläche jedes Gebäudes in Quadratmetern
+            # Calculate the area of ​​each building in square meters
             gdf['area_sqm'] = gdf['geometry'].area
-            # Hinzufügen der Spalte für spezifischen Wärmebedarf mit Zufallszahlen zwischen 50 und 200
+            # Adding specific heat demand column with random numbers between 50 and 200
             gdf['spez. Wärmebedarf [kWh/m²*a]'] = np.random.uniform(50, 200, gdf.shape[0])
-            # Hinzufügen der Spalte für die Anzahl der Geschosse (konstanter Wert 3)
+            # Add column for number of floors (constant value 3)
             gdf['Anzahl Geschosse'] = 3
-            # Berechnen des Jahreswärmebedarfs
+            # Calculate the annual heat requirement
             gdf['Jahreswärmebedarf [kWh/a]'] = gdf['spez. Wärmebedarf [kWh/m²*a]'] * gdf['Anzahl Geschosse'] * gdf['area_sqm']
-            # Speichern des erweiterten GeoDataFrame in eine neue GeoJSON-Datei
+            # Save the extended GeoDataFrame to a new GeoJSON file
             gdf.to_file(output_filename, driver='GeoJSON')
 
             return gdf
 
     gdf = calculate_building_data(gdf, 'osm_data/output_buildings.geojson')
 
-    quartiere = clustering_quartiere_hdbscan(gdf)
-    #Ergebnis als GeoJSON-Datei exportieren
-    quartiere.to_file('C:/Users/username/heating_network_generation/osm_data/quartiere_hdbscan.geojson', driver='GeoJSON')
+    quarters = clustering_quartiere_hdbscan(gdf)
+    #Export result as GeoJSON file
+    quarters.to_file('C:/Users/username/heating_network_generation/osm_data/quartiere_hdbscan.geojson', driver='GeoJSON')
 
-    # Laden der GeoJSON-Daten
-    #quartiere = gpd.read_file('C:/Users/username/heating_network_generation/osm_data/quartiere_hdbscan.geojson', driver='GeoJSON')
+    # Loading GeoJSON data
+    #quarters = gpd.read_file('C:/Users/username/heating_network_generation/osm_data/quartiere_hdbscan.geojson', driver='GeoJSON')
 
-    # Füge Quartiere gleicher Versorgungsart zusammen
-    quartiere_joined = postprocessing_hdbscan(quartiere)
-    # Speichern der postprozessierten Daten
-    quartiere_joined.to_file('quartiere_postprocessed.geojson', driver='GeoJSON')
+    # Merge neighborhoods with the same type of supply
+    quarters_joined = postprocessing_hdbscan(quarters)
+    # Saving the post-processed data
+    quarters_joined.to_file('quartiere_postprocessed.geojson', driver='GeoJSON')
 
-    # allocate_overlapping_area-Ansatz anwenden
-    quartiere_overlayed = allocate_overlapping_area(quartiere_joined)
-    quartiere_overlayed.to_file('C:/Users/username/heating_network_generation/osm_data/quartiere_allocated.geojson', driver='GeoJSON')
+    # Apply allocate_overlapping_area approach
+    quarters_overlayed = allocate_overlapping_area(quarters_joined)
+    quarters_overlayed.to_file('C:/Users/username/heating_network_generation/osm_data/quartiere_allocated.geojson', driver='GeoJSON')
 
 #run_here()
