@@ -55,7 +55,7 @@ Overall, these scripts work in tandem to facilitate the detailed creation, analy
 - "main.py" can also be used to test functionality
 
 # Data
-For the developement and testing of the algorithms and functions, geodata is required. In this case a few local adresses in Zittau were choosed and geocoded. Also some synthetic datapoints were added. This example-datasets are saved in the geocoding-folder. The district heating network will be generated for these datapoints.
+For the developement and testing of the algorithms and functions, geodata is required. In this case a few local adresses in Zittau, Görlitz and Bad Muskau were choosed and geocoded. Also some synthetic datapoints were added. This example-datasets are saved in the project_data-folder. The district heating network were generated for these datapoints.
 
 # Heat System Design GUI
 
