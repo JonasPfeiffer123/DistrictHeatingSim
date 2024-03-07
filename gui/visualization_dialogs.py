@@ -401,6 +401,7 @@ class OSMBuildingQueryDialog(QDialog):
         self.filterComboBox.addItem("Filtern mit Koordinatenbereich")
         self.filterComboBox.addItem("Filtern mit zentralen Koordinaten und Radius als Abstand")
         self.filterComboBox.addItem("Filtern mit Adressen aus CSV")
+        self.filterComboBox.addItem("Filtern mit Polygon-geoJSON")
         layout.addWidget(QLabel("Filteroptionen:"))
         layout.addWidget(self.filterComboBox)
 
@@ -457,6 +458,13 @@ class OSMBuildingQueryDialog(QDialog):
         csvLayout.addLayout(self.createFileInputLayout(self.addressCsvLineEdit, self.addressCsvButton))
         layout.addWidget(self.csvWidget)
 
+        # Widget für Gebäude aus geoJSON
+        self.geoJSONWidget = QWidget(self)
+        geoJSONLayout = QVBoxLayout(self.geoJSONWidget)
+        self.geoJSONLineEdit, self.geoJSONButton = self.createFileInput(f"{self.base_path}/")
+        geoJSONLayout.addLayout(self.createFileInputLayout(self.geoJSONLineEdit, self.geoJSONButton))
+        layout.addWidget(self.geoJSONWidget)
+
         # Abfrage-Button
         self.queryButton = QPushButton("Abfrage starten", self)
         self.queryButton.clicked.connect(self.startQuery)
@@ -498,6 +506,7 @@ class OSMBuildingQueryDialog(QDialog):
         self.coordWidget.setVisible(selected_filter == "Filtern mit Koordinatenbereich")
         self.coordRadiusWidget.setVisible(selected_filter == "Filtern mit zentralen Koordinaten und Radius als Abstand")
         self.csvWidget.setVisible(selected_filter == "Filtern mit Adressen aus CSV")
+        self.geoJSONWidget.setVisible(selected_filter == "Filtern mit Polygon-geoJSON")
 
     def haversine(self, lat1, lon1, lat2, lon2):
         # Radius der Erde in Metern
@@ -538,6 +547,10 @@ class OSMBuildingQueryDialog(QDialog):
             self.filter_with_central_coords_and_radius(gdf, filename)
         elif selected_filter == "Filtern mit Adressen aus CSV":
             self.filter_with_csv_addresses(gdf, filename)
+        elif selected_filter == "Filtern mit Polygon-geoJSON":
+            self.filter_with_polygon(gdf, filename)
+        else:
+            gdf.to_file(filename, driver='GeoJSON')
 
         QMessageBox.information(self, "Erfolg", f"Abfrageergebnisse gespeichert in {filename}")
         # Rufen Sie die loadNetData-Methode des Haupt-Tabs auf
@@ -598,6 +611,23 @@ class OSMBuildingQueryDialog(QDialog):
             gdf['full_address'] = gdf['addr:street'] + ' ' + gdf['addr:housenumber']
             gdf_filtered = gdf[gdf['full_address'].isin(addresses_from_csv)]
             gdf_filtered.to_file(filename, driver='GeoJSON')
+
+    def filter_with_polygon(self, gdf, filename):
+        geoJSON_file = self.geoJSONLineEdit.text()
+        if geoJSON_file:
+            # Polygon aus der geoJSON-Datei laden
+            polygon_gdf = gpd.read_file(geoJSON_file)
+            
+            # Annahme: Das Polygon ist das erste Element im GeoDataFrame
+            # Falls das Polygon-GeoJSON mehrere Polygone enthält, könnte hier eine Anpassung notwendig sein
+            polygon = polygon_gdf.geometry.iloc[0]
+            
+            # Filtern der Gebäude, die innerhalb des Polygons liegen
+            # Verwendung der 'within'-Methode, um zu überprüfen, ob ein Punkt/Gebäude innerhalb des Polygons liegt
+            filtered_gdf = gdf[gdf.geometry.within(polygon)]
+
+            filtered_gdf.to_file(filename, driver='GeoJSON')
+
 
 class SpatialAnalysisDialog(QDialog):
     def __init__(self, base_path, parent=None):
