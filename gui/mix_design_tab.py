@@ -20,7 +20,7 @@ from reportlab.lib.units import inch
 from reportlab.lib import colors
 
 from heat_generators.heat_generator_classes import *
-from gui.mix_design_dialogs import TechInputDialog, EconomicParametersDialog, NetInfrastructureDialog
+from gui.mix_design_dialogs import TechInputDialog, EconomicParametersDialog, NetInfrastructureDialog, TemperatureDataDialog, HeatPumpDataDialog
 from gui.checkable_combobox import CheckableComboBox
 from gui.threads import CalculateMixThread
 
@@ -42,23 +42,17 @@ class MixDesignTab(QWidget):
         self.base_path = "project_data/Beispiel Zittau"  # Basispfad initialisieren
         self.economicParametersDialog = EconomicParametersDialog(self)
         self.netInfrastructureDialog = NetInfrastructureDialog(self)
+        self.temperatureDataDialog = TemperatureDataDialog(self)
+        self.heatPumpDataDialog = HeatPumpDataDialog(self)
         self.updateDefaultPath(self.base_path)
-        self.setupEconomicParameters()
+        self.setupParameters()
         self.tech_objects = []
         self.initUI()
 
     def initFileInputs(self):
         self.FilenameInput = QLineEdit('')
-        self.tryFilenameInput = QLineEdit('heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat')
-        self.copFilenameInput = QLineEdit('heat_generators/Kennlinien WP.csv')
-
         self.selectFileButton = QPushButton('Ergebnis-CSV auswählen')
-        self.selectTRYFileButton = QPushButton('TRY-Datei auswählen')
-        self.selectCOPFileButton = QPushButton('COP-Datei auswählen')
-
         self.selectFileButton.clicked.connect(lambda: self.selectFilename(self.FilenameInput))
-        self.selectTRYFileButton.clicked.connect(lambda: self.selectFilename(self.tryFilenameInput))
-        self.selectCOPFileButton.clicked.connect(lambda: self.selectFilename(self.copFilenameInput))
 
     def updateDefaultPath(self, new_base_path):
         self.base_path = new_base_path
@@ -81,10 +75,10 @@ class MixDesignTab(QWidget):
 
         self.mainLayout = mainLayout
         self.setupMenu()
-        self.setupTechnologySelection(mainLayout)
-        self.setupInfrastructureCostsTable(mainLayout)
         self.setupFileInputs()
         self.setupScaleFactor(mainLayout)
+        self.setupTechnologySelection(mainLayout)
+        self.setupInfrastructureCostsTable(mainLayout)
         self.setupCalculationOptimization()
         self.setupDiagrams(mainLayout)
 
@@ -127,6 +121,14 @@ class MixDesignTab(QWidget):
         infrastructureCostsAction = QAction('Infrastrukturkosten...', self)
         infrastructureCostsAction.triggered.connect(self.openInfrastructureCostsDialog)
         settingsMenu.addAction(infrastructureCostsAction)
+        # Aktion für Temperaturdaten
+        temperatureDataAction = QAction('Temperaturdaten...', self)
+        temperatureDataAction.triggered.connect(self.opentemperatureDataDialog)
+        settingsMenu.addAction(temperatureDataAction)
+        # Aktion für Temperaturdaten
+        heatPumpDataAction = QAction('COP-Kennfeld Wärmepumpe...', self)
+        heatPumpDataAction.triggered.connect(self.openheatPumpDataDialog)
+        settingsMenu.addAction(heatPumpDataAction)
 
         # Menü für das Hinzufügen von Wärmeerzeugern
         addHeatGeneratorMenu = self.menuBar.addMenu('Wärmeerzeuger hinzufügen')
@@ -160,10 +162,8 @@ class MixDesignTab(QWidget):
 
     ### Eingabe Dateien ###
     def setupFileInputs(self):
-        self.addLabel(self.mainLayout, 'Dateneingaben')
+        self.addLabel(self.mainLayout, 'Eingabe csv-Datei berechneter Lastgang Wärmenetz')
         self.addFileInputLayout(self.mainLayout, self.FilenameInput, self.selectFileButton)
-        self.addFileInputLayout(self.mainLayout, self.tryFilenameInput, self.selectTRYFileButton)
-        self.addFileInputLayout(self.mainLayout, self.copFilenameInput, self.selectCOPFileButton)
 
     def addFileInputLayout(self, mainLayout, lineEdit, button):
         layout = QHBoxLayout()
@@ -190,7 +190,7 @@ class MixDesignTab(QWidget):
 
     ### Setup und Funktionen Wärmeerzeugertechnologien-Verwaltung ###
     def setupTechnologySelection(self, mainLayout):
-        self.addLabel(mainLayout, 'Wärmeerzeuger')
+        self.addLabel(mainLayout, 'Definierte Wärmeerzeuger')
         
         self.techList = QListWidget()
         self.techList.setDragDropMode(QAbstractItemView.InternalMove)
@@ -567,12 +567,10 @@ class MixDesignTab(QWidget):
 
         filename = self.FilenameInput.text()
         load_scale_factor = float(self.load_scale_factorInput.text())
-        try_filename = self.tryFilenameInput.text()
-        cop_filename = self.copFilenameInput.text()
         tech_objects = self.tech_objects
 
         self.calculationThread = CalculateMixThread(
-            filename, load_scale_factor, try_filename, cop_filename,
+            filename, load_scale_factor, self.try_filename, self.cop_filename,
             self.gaspreis, self.strompreis, self.holzpreis, self.BEW, tech_objects, optimize, self.kapitalzins, self.preissteigerungsrate, self.betrachtungszeitraum
         )
         self.calculationThread.calculation_done.connect(self.on_calculation_done)
@@ -702,7 +700,7 @@ class MixDesignTab(QWidget):
         self.dataSelectionDropdown.checkedStateChanged.connect(self.updatePlot)
 
     ### Eingabe wirtschaftliche Randbedingungen ###
-    def setupEconomicParameters(self):
+    def setupParameters(self):
         values = self.economicParametersDialog.getValues()
         self.gaspreis = values['Gaspreis in €/MWh']
         self.strompreis = values['Strompreis in €/MWh']
@@ -711,6 +709,12 @@ class MixDesignTab(QWidget):
         self.kapitalzins = values['Kapitalzins in %']
         self.preissteigerungsrate = values['Preissteigerungsrate in %']
         self.betrachtungszeitraum = values['Betrachtungszeitraum in a']
+
+        TRY = self.temperatureDataDialog.getValues()
+        self.try_filename = TRY['TRY-filename']
+
+        COP = self.heatPumpDataDialog.getValues()
+        self.cop_filename = COP['COP-filename']
 
     def openEconomicParametersDialog(self):
         if self.economicParametersDialog.exec_():
@@ -722,6 +726,16 @@ class MixDesignTab(QWidget):
             self.kapitalzins = values['Kapitalzins in %']
             self.preissteigerungsrate = values['Preissteigerungsrate in %']
             self.betrachtungszeitraum = values['Betrachtungszeitraum in a']
+
+    def opentemperatureDataDialog(self):
+        if self.temperatureDataDialog.exec_():
+            TRY = self.temperatureDataDialog.getValues()
+            self.try_filename = TRY['TRY-filename']
+
+    def openheatPumpDataDialog(self):
+        if self.heatPumpDataDialog.exec_():
+            COP = self.heatPumpDataDialog.getValues()
+            self.cop_filename = COP['COP-filename']
     
     ### Export Ergebnisse mit PDF ###
     def create_pdf(self, filename):

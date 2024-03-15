@@ -628,7 +628,6 @@ class OSMBuildingQueryDialog(QDialog):
 
             filtered_gdf.to_file(filename, driver='GeoJSON')
 
-
 class SpatialAnalysisDialog(QDialog):
     def __init__(self, base_path, parent=None):
         super().__init__(parent)

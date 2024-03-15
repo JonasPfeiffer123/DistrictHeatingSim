@@ -11,9 +11,8 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
 from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, \
-    QFileDialog, QHBoxLayout, QLineEdit, QFormLayout, \
-        QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, QFileDialog, QHBoxLayout, \
+    QLineEdit, QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction
 
 from main import calculate_results, save_results_csv, import_results_csv
 from gui.calculation_dialogs import HeatDemandEditDialog, NetGenerationDialog
@@ -68,19 +67,25 @@ class CalculationTab(QWidget):
         self.menubar.setFixedHeight(30)
 
         # Wärmenetz-Generierungsmenü
+        fileMenu = self.menubar.addMenu('Datei')
         networkMenu = self.menubar.addMenu('Wärmenetz generieren')
+        calcMenu = self.menubar.addMenu('Zeitreihenberechnung durchführen')
 
         # Unterpunkte für geojson und Stanet
-        generateNetAction = QAction('Netz generieren', self)
         saveppnetAction = QAction('Pandapipes Netz speichern', self)
         loadppnetAction = QAction('Pandapipes Netz laden', self)
         loadresultsppAction = QAction('Ergebnisse Zeitreihenrechnung Laden', self)
         exportppnetGeoJSONAction = QAction('Pandapipes Netz als geoJSON exportieren', self)
+        fileMenu.addAction(saveppnetAction)
+        fileMenu.addAction(loadppnetAction)
+        fileMenu.addAction(loadresultsppAction)
+        fileMenu.addAction(exportppnetGeoJSONAction)
+
+        generateNetAction = QAction('Netz generieren', self)
         networkMenu.addAction(generateNetAction)
-        networkMenu.addAction(saveppnetAction)
-        networkMenu.addAction(loadppnetAction)
-        networkMenu.addAction(loadresultsppAction)
-        networkMenu.addAction(exportppnetGeoJSONAction)
+
+        calculateNetAction = QAction('Zeitreihenberechnung', self)
+        calcMenu.addAction(calculateNetAction)
 
         # Fügen Sie die Menüleiste dem Layout von tab1 hinzu
         self.container_layout.addWidget(self.menubar)
