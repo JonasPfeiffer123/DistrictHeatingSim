@@ -39,7 +39,7 @@ class MixDesignTab(QWidget):
         super().__init__(parent)
         self.results = {}
         self.initFileInputs()
-        self.base_path = "project_data/Beispiel Zittau"  # Basispfad initialisieren
+        self.base_path = "project_data/Beispiel Bad Muskau"  # Basispfad initialisieren
         self.economicParametersDialog = EconomicParametersDialog(self)
         self.netInfrastructureDialog = NetInfrastructureDialog(self)
         self.temperatureDataDialog = TemperatureDataDialog(self)
@@ -375,10 +375,16 @@ class MixDesignTab(QWidget):
     
     ### Setup der Berechnungsergebnistabellen ###
     def setupCalculationOptimization(self):
-        self.resultLabel = QLabel('Berechnungsergebnisse:')
+        self.resultLabel = QLabel('Kosten Erzeuger')
         self.mainLayout.addWidget(self.resultLabel)
         self.setupTechDataTable()
+
+        self.resultLabel = QLabel('Übersicht Erzeugung')
+        self.mainLayout.addWidget(self.resultLabel)
         self.setupResultsTable()
+
+        self.resultLabel = QLabel('Ergebnisse Wirtschaftlichkeit')
+        self.mainLayout.addWidget(self.resultLabel)
         self.setupAdditionalResultsTable()
 
     def setupTechDataTable(self):
@@ -479,12 +485,12 @@ class MixDesignTab(QWidget):
 
         # Daten für die Tabelle
         data = [
-            ("Jahreswärmebedarf", self.results['Jahreswärmebedarf'], "MWh"),
-            ("Stromerzeugung", self.results['Strommenge'], "MWh"),
-            ("Strombedarf", self.results['Strombedarf'], "MWh"),
-            ("Wärmegestehungskosten Erzeugeranlagen", self.results['WGK_Gesamt'], "€/MWh"),
-            ("Wärmegestehungskosten Netzinfrastruktur", self.WGK_Infra, "€/MWh"),
-            ("Wärmegestehungskosten Gesamt", self.WGK_Gesamt, "€/MWh")
+            ("Jahreswärmebedarf", round(self.results['Jahreswärmebedarf'],1), "MWh"),
+            ("Stromerzeugung", round(self.results['Strommenge'], 2), "MWh"),
+            ("Strombedarf", round(self.results['Strombedarf'], 2), "MWh"),
+            ("Wärmegestehungskosten Erzeugeranlagen", round(self.results['WGK_Gesamt'], 2), "€/MWh"),
+            ("Wärmegestehungskosten Netzinfrastruktur", round(self.WGK_Infra, 2), "€/MWh"),
+            ("Wärmegestehungskosten Gesamt", round(self.WGK_Gesamt, 2), "€/MWh")
         ]
 
         self.additionalResultsTable.setRowCount(len(data))

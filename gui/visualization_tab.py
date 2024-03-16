@@ -25,7 +25,7 @@ class VisualizationTab(QWidget):
         self.data_manager = data_manager
         self.layers = {}
         self.initUI()
-        self.base_path = "project_data/Beispiel Zittau"  # initializing base path
+        self.base_path = "project_data/Beispiel Bad Muskau"  # initializing base path
         self.updateDefaultPath(self.base_path)
     
     def initUI(self):
