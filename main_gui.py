@@ -1,11 +1,39 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTabWidget, QMenuBar, QAction, QFileDialog, QLabel
+import os
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTabWidget, QMenuBar, QAction, QFileDialog, QLabel, QDialog, QPushButton, QMessageBox, QInputDialog
 from PyQt5.QtCore import QObject, pyqtSignal
 from gui.visualization_tab import VisualizationTab
 from gui.calculation_tab import CalculationTab
 from gui.mix_design_tab import MixDesignTab
 
 from PyQt5.QtCore import QObject, pyqtSignal
+
+class StartDialog(QDialog):
+    def __init__(self, parent=None):
+        super(StartDialog, self).__init__(parent)
+        self.parent = parent
+
+        self.setWindowTitle("Projekt Auswahl")
+        self.setGeometry(100, 100, 300, 100)
+        layout = QVBoxLayout()
+
+        self.openProjectBtn = QPushButton("Projekt öffnen")
+        self.newProjectBtn = QPushButton("Neues Projekt erstellen")
+        layout.addWidget(self.openProjectBtn)
+        layout.addWidget(self.newProjectBtn)
+
+        self.setLayout(layout)
+
+        self.openProjectBtn.clicked.connect(self.openProject)
+        self.newProjectBtn.clicked.connect(self.newProject)
+
+    def openProject(self):
+        self.parent.openExistingProject()
+        self.accept()
+
+    def newProject(self):
+        self.parent.createNewProject()
+        self.accept()
 
 class CentralDataManager(QObject):
     project_folder_changed = pyqtSignal(str)  # definition of the signal
@@ -26,12 +54,51 @@ class CentralDataManager(QObject):
         self.project_folder_changed.emit(path)  # emit signal if path got changed
 
 class HeatSystemDesignGUI(QWidget):
-    def __init__(self):
+    def __init__(self):#
         super().__init__()
+        self.data_manager = CentralDataManager()
+
         self.initUI()
+
         self.data_manager.project_folder_changed.connect(self.calcTab.updateDefaultPath)
         self.data_manager.project_folder_changed.connect(self.visTab.updateDefaultPath)
         self.data_manager.project_folder_changed.connect(self.mixDesignTab.updateDefaultPath)
+
+        self.showStartDialog()
+
+    def createNewProject(self):
+        folder_path = QFileDialog.getExistingDirectory(self, "Speicherort für neues Projekt wählen")
+        if folder_path:
+            projectName, ok = QInputDialog.getText(self, 'Neues Projekt', 'Projektnamen eingeben:')
+            if ok and projectName:
+                try:
+                    full_path = os.path.join(folder_path, projectName)
+                    os.makedirs(full_path)
+                    for subdir in ["Gebäudedaten", "Lastgang", "Raumanalyse", "Wärmenetz"]:
+                        os.makedirs(os.path.join(full_path, subdir))
+                    QMessageBox.information(self, "Projekt erstellt", f"Projekt '{projectName}' wurde erfolgreich erstellt.")
+                    self.setProjectFolderPath(full_path)
+                except Exception as e:
+                    QMessageBox.critical(self, "Fehler", f"Ein Fehler ist aufgetreten: {e}")
+
+    def openExistingProject(self):
+        folder_path = QFileDialog.getExistingDirectory(self, "Projektordner auswählen")
+        if folder_path:
+            self.setProjectFolderPath(folder_path)
+
+    def setProjectFolderPath(self, path):
+        self.projectFolderPath = path
+        self.data_manager.set_project_folder(path)
+        self.folderLabel.setText(f"Ausgewählter Projektordner: {path}")
+
+    def showStartDialog(self):
+        self.startDialog = StartDialog(self)
+        if self.startDialog.exec_() == QDialog.Accepted:
+            if self.projectFolderPath:
+                self.data_manager.set_project_folder(self.projectFolderPath)
+                self.folderLabel.setText(f"Ausgewählter Projektordner: {self.projectFolderPath}")
+            else:
+                self.folderLabel.setText("Kein Ordner ausgewählt")
 
     def initUI(self):
         self.setWindowTitle("Hier könnte ein cooler Softwarename stehen")
@@ -43,9 +110,6 @@ class HeatSystemDesignGUI(QWidget):
 
         tabWidget = QTabWidget()
         self.layout1.addWidget(tabWidget)
-
-        # Creating individual tabs
-        self.data_manager = CentralDataManager()
 
         self.visTab = VisualizationTab(self.data_manager)
         self.calcTab = CalculationTab(self.data_manager)
@@ -73,22 +137,18 @@ class HeatSystemDesignGUI(QWidget):
         self.menubar = QMenuBar(self)
         self.menubar.setFixedHeight(30)
 
-        networkMenu = self.menubar.addMenu('Datei')
-        generateNetAction = QAction('Projektordner festlegen', self)
-        networkMenu.addAction(generateNetAction)
+        fileMenu = self.menubar.addMenu('Datei')
+
+        chooseProjectFolderAction = QAction('Projektordner festlegen', self)
+        createNewProjectFolderAction = QAction('Neues Projekt erstellen', self)
+        fileMenu.addAction(chooseProjectFolderAction)
+        fileMenu.addAction(createNewProjectFolderAction)
+
         self.layout1.addWidget(self.menubar)
 
         # connection to function
-        generateNetAction.triggered.connect(self.ProjektordnerNameDialog)
-
-    def ProjektordnerNameDialog(self):
-        folder_path = QFileDialog.getExistingDirectory(self, "Projektordner auswählen")
-        if folder_path:
-            self.data_manager.set_project_folder(folder_path)
-            self.folderLabel.setText(f"Ausgewählter Projektordner: {folder_path}")
-        else:
-            self.folderLabel.setText("Kein Ordner ausgewählt")
-
+        chooseProjectFolderAction.triggered.connect(self.openExistingProject)
+        createNewProjectFolderAction.triggered.connect(self.createNewProject)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

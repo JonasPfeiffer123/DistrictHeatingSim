@@ -1,0 +1,52 @@
+Eingaben Qualifizieren
+Gebäudehülle Darstellen --> Eingabemöglichkeiten Gebäude nach TABULA?
+Eigene Preisentwicklungen --> alternativ zu Kostenvorgabe + Preissteigerung, Preissteigerungen durch Diagramme visualisieren, Option für verschiedene Preissteigerungsraten fü verschiedene Brennstoffe
+innovative Technologien betrachten --> PVT, Großwärmespeicher (saisonal), Sondenregeneration, AquvaHeat, Wasserstoff?(dumm)
+
+Szenarienentwicklung, Schrittweiser Umbau von Bestandssystemen --> gestaffelte Wirtschaftlichkeit
+
+
+Ziel: Hilfsmittel für Quartiersplanung
+
+Räumliche Analyse:
+-	Integration LOD2-Daten
+-	Genauere Defnition Gebäude ermöglichen
+-	Bedarfe räumlich ermitteln und in Programm integrieren
+Netzgenerierung:
+-	Verbesserung Algorithmus zur Netzgenerierung
+-	Einführung geoJSON mit allen 4 Objekttypen
+
+Netzsimulation:
+Optimierungen:
+-	Regelung in der Simulation optimieren, sodass auch kleinere Massenströme sinn-voll berechnet werden können
+Funktionserweiterungen:
+-	Lastfaktor Auslegung Wärmeübertrager -> Faktor für maximale Leistung nach Profil
+-	mehrere Erzeugerstandorte
+-	Wechselwarm: Anpassung Profile auf ohne WW, irgendwie Überprüfung Vorlauf-temperatur -> Meldung, wenn Gebäude höheren soll Vorlauf hat, macht nur mit Kühlung Sinn,
+Gebäude:
+-	3D-LOD2-Gebäudedaten
+-	Ermittlung Stockwerke -> Ermittlung flächenspezifischer Wärmebedarf
+-	Ermittlung der Außenflächen
+-	Manuelle Klassifizierung der Gebäude (TABULA)
+-	Ermittlung Sanierungspotenziale
+-	Kostenabschätzung
+-	Einschätzung Einsparung Wärmeverbrauch, Absenkung VL-Temperatur
+-	- Amortisation / Wirtschaftlichkeit
+
+Erzeugerauslegung:
+-	Eigene Preisentwicklungsszenarien vorgeben
+-	innovative Technologien betrachten
+
+-	Neu: Mit Grobauslegung detaillierte Netzberechnung zur Ermittlung der Betriebsweise der Anlagen
+
+- Datenmanagement in der Erzeugerauslegung verbessern, damit es speicherbar wird
+
+
+Wie könnte man Varianten im Gebäudezustand implementieren?
+- Prozentuale Reduktion?
+- Reduktion auf bestimmte spez. Wärmebedarfe --> Was ist mit den Temperaturen
+- bei Einsatz der Daten über Gebäudehüllen wäre es einfacher, wie bekommen wir das umgesetzt?
+- Wie stell ich in Varianten dar, was verändert wurde?
+- Knopf Sanierungsvariante hinzufügen -> alternative CSV mit Eingangsdaten --> neue Netzgenerierung, etc. --> eigentlich Variantenordner je Projekt notwendig bzw verschiedene Projektordner --> eindeutige Bezeichnung in Projektnamen?
+    --> das scheint praktikabel
+    --> Daten aus mehreren Projekten vergleichen --> sollte zu schaffen scheint

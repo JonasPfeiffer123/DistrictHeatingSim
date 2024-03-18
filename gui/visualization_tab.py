@@ -39,6 +39,10 @@ class VisualizationTab(QWidget):
         self.menuBar.setFixedHeight(30)  # set specific height
         fileMenu = self.menuBar.addMenu('Datei')
 
+        csvCreateAction = QAction('CSV mit Geäudedaten erstellen', self)
+        csvCreateAction.triggered.connect(self.openCsvCreator)
+        fileMenu.addAction(csvCreateAction)
+
         csvEditAction = QAction('CSV bearbeiten', self)
         csvEditAction.triggered.connect(self.openCsvEditor)
         fileMenu.addAction(csvEditAction)
@@ -305,6 +309,9 @@ class VisualizationTab(QWidget):
                 listItem.setBackground(QColor(new_color))
                 listItem.setForeground(QBrush(QColor('#FFFFFF')))  # White text color for contrast
                 break
+
+    def openCsvCreator(self):
+        pass
 
     def openCsvEditor(self):
         #create dialog
