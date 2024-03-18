@@ -50,3 +50,6 @@ Wie könnte man Varianten im Gebäudezustand implementieren?
 - Knopf Sanierungsvariante hinzufügen -> alternative CSV mit Eingangsdaten --> neue Netzgenerierung, etc. --> eigentlich Variantenordner je Projekt notwendig bzw verschiedene Projektordner --> eindeutige Bezeichnung in Projektnamen?
     --> das scheint praktikabel
     --> Daten aus mehreren Projekten vergleichen --> sollte zu schaffen scheint
+
+
+Anzeige definierte Erzeuger nach Optimierung anpassen
