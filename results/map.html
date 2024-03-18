@@ -25,7 +25,7 @@
             <meta name="viewport" content="width=device-width,
                 initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
             <style>
-                #map_65fa174f0865586f39d5c565aacfdb3d {
+                #map_9a42c9bff15c73a07c8549e99a814021 {
                     position: relative;
                     width: 100.0%;
                     height: 100.0%;
@@ -39,18 +39,18 @@
 <body>
     
     
-            <div class="folium-map" id="map_65fa174f0865586f39d5c565aacfdb3d" ></div>
+            <div class="folium-map" id="map_9a42c9bff15c73a07c8549e99a814021" ></div>
         
 </body>
 <script>
     
     
-            var map_65fa174f0865586f39d5c565aacfdb3d = L.map(
-                "map_65fa174f0865586f39d5c565aacfdb3d",
+            var map_9a42c9bff15c73a07c8549e99a814021 = L.map(
+                "map_9a42c9bff15c73a07c8549e99a814021",
                 {
-                    center: [51.1657, 10.4515],
+                    center: [51.14871517709484, 14.996586544305956],
                     crs: L.CRS.EPSG3857,
-                    zoom: 6,
+                    zoom: 17,
                     zoomControl: true,
                     preferCanvas: false,
                 }
@@ -60,13 +60,153 @@
 
         
     
-            var tile_layer_058c00da29e19c59dd4ead0a92c8a865 = L.tileLayer(
+            var tile_layer_29ca5b1c31d12ceec7f049a7b6c153a7 = L.tileLayer(
                 "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                 {"attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors", "detectRetina": false, "maxNativeZoom": 19, "maxZoom": 19, "minZoom": 0, "noWrap": false, "opacity": 1, "subdomains": "abc", "tms": false}
             );
         
     
-            tile_layer_058c00da29e19c59dd4ead0a92c8a865.addTo(map_65fa174f0865586f39d5c565aacfdb3d);
+            tile_layer_29ca5b1c31d12ceec7f049a7b6c153a7.addTo(map_9a42c9bff15c73a07c8549e99a814021);
+        
+    
+        function geo_json_f35305f1c1723d8c71b28b214c058876_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": null, "fillColor": null, "fillOpacity": 0.5, "weight": 1.5};
+            }
+        }
+
+        function geo_json_f35305f1c1723d8c71b28b214c058876_onEachFeature(feature, layer) {
+            layer.on({
+            });
+        };
+        var geo_json_f35305f1c1723d8c71b28b214c058876 = L.geoJson(null, {
+                onEachFeature: geo_json_f35305f1c1723d8c71b28b214c058876_onEachFeature,
+            
+                style: geo_json_f35305f1c1723d8c71b28b214c058876_styler,
+        });
+
+        function geo_json_f35305f1c1723d8c71b28b214c058876_add (data) {
+            geo_json_f35305f1c1723d8c71b28b214c058876
+                .addData(data);
+        }
+            geo_json_f35305f1c1723d8c71b28b214c058876_add({"bbox": [14.99364779158221, 51.146926955461694, 14.999510999867121, 51.15050339858078], "features": [{"bbox": [14.997548026919993, 51.146926955461694, 14.997548026919993, 51.146926955461694], "geometry": {"coordinates": [14.997548026919993, 51.146926955461694], "type": "Point"}, "id": "0", "properties": {"Adresse": "Br\u00fcckenstra\u00dfe 10", "Bundesland": "Sachsen", "Geb\u00e4udetyp": "GBD", "Land": "Deutschland", "RLT_max": 55, "Stadt": "G\u00f6rlitz", "Steigung_Heizkurve": 1.5, "Typ_Heizfl\u00e4chen": "HK", "UTM_X": 499828.49, "UTM_Y": 5666163.93, "VLT_max": 70, "WW_Anteil": 0.2, "W\u00e4rmebedarf": 108000}, "type": "Feature"}, {"bbox": [14.997496465326497, 51.14867568143258, 14.997496465326497, 51.14867568143258], "geometry": {"coordinates": [14.997496465326497, 51.14867568143258], "type": "Point"}, "id": "1", "properties": {"Adresse": "Br\u00fcckenstra\u00dfe 3", "Bundesland": "Sachsen", "Geb\u00e4udetyp": "HMF", "Land": "Deutschland", "RLT_max": 55, "Stadt": "G\u00f6rlitz", "Steigung_Heizkurve": 1.5, "Typ_Heizfl\u00e4chen": "HK", "UTM_X": 499824.89, "UTM_Y": 5666358.4, "VLT_max": 70, "WW_Anteil": 0.3, "W\u00e4rmebedarf": 50000}, "type": "Feature"}, {"bbox": [14.998325234163419, 51.14933743736631, 14.998325234163419, 51.14933743736631], "geometry": {"coordinates": [14.998325234163419, 51.14933743736631], "type": "Point"}, "id": "2", "properties": {"Adresse": "Furtstra\u00dfe 1", "Bundesland": "Sachsen", "Geb\u00e4udetyp": "GKO", "Land": "Deutschland", "RLT_max": 55, "Stadt": "G\u00f6rlitz", "Steigung_Heizkurve": 1.5, "Typ_Heizfl\u00e4chen": "HK", "UTM_X": 499882.86, "UTM_Y": 5666431.99, "VLT_max": 70, "WW_Anteil": 0.4, "W\u00e4rmebedarf": 1100000}, "type": "Feature"}, {"bbox": [14.999510999867121, 51.14944210036203, 14.999510999867121, 51.14944210036203], "geometry": {"coordinates": [14.999510999867121, 51.14944210036203], "type": "Point"}, "id": "3", "properties": {"Adresse": "Furtstra\u00dfe 3", "Bundesland": "Sachsen", "Geb\u00e4udetyp": "GBD", "Land": "Deutschland", "RLT_max": 55, "Stadt": "G\u00f6rlitz", "Steigung_Heizkurve": 1.5, "Typ_Heizfl\u00e4chen": "HK", "UTM_X": 499965.7974, "UTM_Y": 5666443.628, "VLT_max": 70, "WW_Anteil": 0.2, "W\u00e4rmebedarf": 520000}, "type": "Feature"}, {"bbox": [14.99841248981341, 51.14828789679058, 14.99841248981341, 51.14828789679058], "geometry": {"coordinates": [14.99841248981341, 51.14828789679058], "type": "Point"}, "id": "4", "properties": {"Adresse": "Heynestra\u00dfe 7", "Bundesland": "Sachsen", "Geb\u00e4udetyp": "HMF", "Land": "Deutschland", "RLT_max": 55, "Stadt": "G\u00f6rlitz", "Steigung_Heizkurve": 1.5, "Typ_Heizfl\u00e4chen": "HK", "UTM_X": 499888.9605, "UTM_Y": 5666315.274, "VLT_max": 70, "WW_Anteil": 0.3, "W\u00e4rmebedarf": 50000}, "type": "Feature"}, {"bbox": [14.99650890008869, 51.14959589801746, 14.99650890008869, 51.14959589801746], "geometry": {"coordinates": [14.99650890008869, 51.14959589801746], "type": "Point"}, "id": "5", "properties": {"Adresse": "Parkstra\u00dfe 3", "Bundesland": "Sachsen", "Geb\u00e4udetyp": "HMF", "Land": "Deutschland", "RLT_max": 55, "Stadt": "G\u00f6rlitz", "Steigung_Heizkurve": 1.5, "Typ_Heizfl\u00e4chen": "HK", "UTM_X": 499755.8195, "UTM_Y": 5666460.737, "VLT_max": 70, "WW_Anteil": 0.4, "W\u00e4rmebedarf": 100000}, "type": "Feature"}, {"bbox": [14.998788545034408, 51.15050339858078, 14.998788545034408, 51.15050339858078], "geometry": {"coordinates": [14.998788545034408, 51.15050339858078], "type": "Point"}, "id": "6", "properties": {"Adresse": "Am Stadtpark 1", "Bundesland": "Sachsen", "Geb\u00e4udetyp": "GBD", "Land": "Deutschland", "RLT_max": 55, "Stadt": "G\u00f6rlitz", "Steigung_Heizkurve": 1.5, "Typ_Heizfl\u00e4chen": "HK", "UTM_X": 499915.268, "UTM_Y": 5666561.652, "VLT_max": 70, "WW_Anteil": 0.2, "W\u00e4rmebedarf": 1300000}, "type": "Feature"}, {"bbox": [14.996073654273786, 51.149799702979934, 14.996073654273786, 51.149799702979934], "geometry": {"coordinates": [14.996073654273786, 51.149799702979934], "type": "Point"}, "id": "7", "properties": {"Adresse": "Am Stadtpark 6", "Bundesland": "Sachsen", "Geb\u00e4udetyp": "HMF", "Land": "Deutschland", "RLT_max": 55, "Stadt": "G\u00f6rlitz", "Steigung_Heizkurve": 1.5, "Typ_Heizfl\u00e4chen": "HK", "UTM_X": 499725.378, "UTM_Y": 5666483.403, "VLT_max": 70, "WW_Anteil": 0.3, "W\u00e4rmebedarf": 100000}, "type": "Feature"}, {"bbox": [14.99364779158221, 51.14991459851987, 14.99364779158221, 51.14991459851987], "geometry": {"coordinates": [14.99364779158221, 51.14991459851987], "type": "Point"}, "id": "8", "properties": {"Adresse": "Dr.-Kahlbaum-Allee 31", "Bundesland": "Sachsen", "Geb\u00e4udetyp": "GBD", "Land": "Deutschland", "RLT_max": 55, "Stadt": "G\u00f6rlitz", "Steigung_Heizkurve": 1.5, "Typ_Heizfl\u00e4chen": "HK", "UTM_X": 499555.706, "UTM_Y": 5666496.192, "VLT_max": 70, "WW_Anteil": 0.4, "W\u00e4rmebedarf": 825000}, "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+            geo_json_f35305f1c1723d8c71b28b214c058876.addTo(map_9a42c9bff15c73a07c8549e99a814021);
+        
+    
+        function geo_json_4467ad749eeff370e0ef06bb0bf0efa4_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "#67180b", "fillColor": "#67180b", "fillOpacity": 0.5, "weight": 1.5};
+            }
+        }
+
+        function geo_json_4467ad749eeff370e0ef06bb0bf0efa4_onEachFeature(feature, layer) {
+            layer.on({
+            });
+        };
+        var geo_json_4467ad749eeff370e0ef06bb0bf0efa4 = L.geoJson(null, {
+                onEachFeature: geo_json_4467ad749eeff370e0ef06bb0bf0efa4_onEachFeature,
+            
+                style: geo_json_4467ad749eeff370e0ef06bb0bf0efa4_styler,
+        });
+
+        function geo_json_4467ad749eeff370e0ef06bb0bf0efa4_add (data) {
+            geo_json_4467ad749eeff370e0ef06bb0bf0efa4
+                .addData(data);
+        }
+            geo_json_4467ad749eeff370e0ef06bb0bf0efa4_add({"bbox": [14.997310600000002, 51.148403099999996, 14.99732489684155, 51.148403100327826], "features": [{"bbox": [14.997310600000002, 51.148403099999996, 14.99732489684155, 51.148403100327826], "geometry": {"coordinates": [[14.997310600000002, 51.148403099999996], [14.99732489684155, 51.148403100327826]], "type": "LineString"}, "id": "0", "properties": {"Adresse": null, "Bundesland": null, "Geb\u00e4udetyp": null, "Land": null, "RLT_max": null, "Stadt": null, "Steigung_Heizkurve": null, "Typ_Heizfl\u00e4chen": null, "VLT_max": null, "WW_Anteil": null, "W\u00e4rmebedarf": null}, "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+            geo_json_4467ad749eeff370e0ef06bb0bf0efa4.addTo(map_9a42c9bff15c73a07c8549e99a814021);
+        
+    
+        function geo_json_76d42b42a90ee8b0961aff04c5247adb_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "#67180b", "fillColor": "#67180b", "fillOpacity": 0.5, "weight": 1.5};
+            }
+        }
+
+        function geo_json_76d42b42a90ee8b0961aff04c5247adb_onEachFeature(feature, layer) {
+            layer.on({
+            });
+        };
+        var geo_json_76d42b42a90ee8b0961aff04c5247adb = L.geoJson(null, {
+                onEachFeature: geo_json_76d42b42a90ee8b0961aff04c5247adb_onEachFeature,
+            
+                style: geo_json_76d42b42a90ee8b0961aff04c5247adb_styler,
+        });
+
+        function geo_json_76d42b42a90ee8b0961aff04c5247adb_add (data) {
+            geo_json_76d42b42a90ee8b0961aff04c5247adb
+                .addData(data);
+        }
+            geo_json_76d42b42a90ee8b0961aff04c5247adb_add({"bbox": [14.99364779158221, 51.146926955461694, 14.999525297029702, 51.150503398728], "features": [{"bbox": [14.997548026919993, 51.146926955461694, 14.997562323305498, 51.1469269557605], "geometry": {"coordinates": [[14.997548026919993, 51.146926955461694], [14.997562323305498, 51.1469269557605]], "type": "LineString"}, "id": "0", "properties": {"Adresse": "Br\u00fcckenstra\u00dfe 10", "Bundesland": "Sachsen", "Geb\u00e4udetyp": "GBD", "Land": "Deutschland", "RLT_max": 55, "Stadt": "G\u00f6rlitz", "Steigung_Heizkurve": 1.5, "Typ_Heizfl\u00e4chen": "HK", "VLT_max": 70, "WW_Anteil": 0.2, "W\u00e4rmebedarf": 108000}, "type": "Feature"}, {"bbox": [14.997496465326497, 51.14867568143258, 14.997510762252263, 51.14867568173769], "geometry": {"coordinates": [[14.997496465326497, 51.14867568143258], [14.997510762252263, 51.14867568173769]], "type": "LineString"}, "id": "1", "properties": {"Adresse": "Br\u00fcckenstra\u00dfe 3", "Bundesland": "Sachsen", "Geb\u00e4udetyp": "HMF", "Land": "Deutschland", "RLT_max": 55, "Stadt": "G\u00f6rlitz", "Steigung_Heizkurve": 1.5, "Typ_Heizfl\u00e4chen": "HK", "VLT_max": 70, "WW_Anteil": 0.3, "W\u00e4rmebedarf": 50000}, "type": "Feature"}, {"bbox": [14.998325234163419, 51.14933743736631, 14.998339531293654, 51.14933743757013], "geometry": {"coordinates": [[14.998325234163419, 51.14933743736631], [14.998339531293654, 51.14933743757013]], "type": "LineString"}, "id": "2", "properties": {"Adresse": "Furtstra\u00dfe 1", "Bundesland": "Sachsen", "Geb\u00e4udetyp": "GKO", "Land": "Deutschland", "RLT_max": 55, "Stadt": "G\u00f6rlitz", "Steigung_Heizkurve": 1.5, "Typ_Heizfl\u00e4chen": "HK", "VLT_max": 70, "WW_Anteil": 0.4, "W\u00e4rmebedarf": 1100000}, "type": "Feature"}, {"bbox": [14.999510999867121, 51.14944210036203, 14.999525297029702, 51.14944210042092], "geometry": {"coordinates": [[14.999510999867121, 51.14944210036203], [14.999525297029702, 51.14944210042092]], "type": "LineString"}, "id": "3", "properties": {"Adresse": "Furtstra\u00dfe 3", "Bundesland": "Sachsen", "Geb\u00e4udetyp": "GBD", "Land": "Deutschland", "RLT_max": 55, "Stadt": "G\u00f6rlitz", "Steigung_Heizkurve": 1.5, "Typ_Heizfl\u00e4chen": "HK", "VLT_max": 70, "WW_Anteil": 0.2, "W\u00e4rmebedarf": 520000}, "type": "Feature"}, {"bbox": [14.99841248981341, 51.14828789679058, 14.998426786619373, 51.148287896983746], "geometry": {"coordinates": [[14.99841248981341, 51.14828789679058], [14.998426786619373, 51.148287896983746]], "type": "LineString"}, "id": "4", "properties": {"Adresse": "Heynestra\u00dfe 7", "Bundesland": "Sachsen", "Geb\u00e4udetyp": "HMF", "Land": "Deutschland", "RLT_max": 55, "Stadt": "G\u00f6rlitz", "Steigung_Heizkurve": 1.5, "Typ_Heizfl\u00e4chen": "HK", "VLT_max": 70, "WW_Anteil": 0.3, "W\u00e4rmebedarf": 50000}, "type": "Feature"}, {"bbox": [14.99650890008869, 51.14959589801746, 14.996523197298764, 51.14959589844329], "geometry": {"coordinates": [[14.99650890008869, 51.14959589801746], [14.996523197298764, 51.14959589844329]], "type": "LineString"}, "id": "5", "properties": {"Adresse": "Parkstra\u00dfe 3", "Bundesland": "Sachsen", "Geb\u00e4udetyp": "HMF", "Land": "Deutschland", "RLT_max": 55, "Stadt": "G\u00f6rlitz", "Steigung_Heizkurve": 1.5, "Typ_Heizfl\u00e4chen": "HK", "VLT_max": 70, "WW_Anteil": 0.4, "W\u00e4rmebedarf": 100000}, "type": "Feature"}, {"bbox": [14.998788545034408, 51.15050339858078, 14.99880284252491, 51.150503398728], "geometry": {"coordinates": [[14.998788545034408, 51.15050339858078], [14.99880284252491, 51.150503398728]], "type": "LineString"}, "id": "6", "properties": {"Adresse": "Am Stadtpark 1", "Bundesland": "Sachsen", "Geb\u00e4udetyp": "GBD", "Land": "Deutschland", "RLT_max": 55, "Stadt": "G\u00f6rlitz", "Steigung_Heizkurve": 1.5, "Typ_Heizfl\u00e4chen": "HK", "VLT_max": 70, "WW_Anteil": 0.2, "W\u00e4rmebedarf": 1300000}, "type": "Feature"}, {"bbox": [14.996073654273786, 51.149799702979934, 14.996087951546823, 51.14979970345897], "geometry": {"coordinates": [[14.996073654273786, 51.149799702979934], [14.996087951546823, 51.14979970345897]], "type": "LineString"}, "id": "7", "properties": {"Adresse": "Am Stadtpark 6", "Bundesland": "Sachsen", "Geb\u00e4udetyp": "HMF", "Land": "Deutschland", "RLT_max": 55, "Stadt": "G\u00f6rlitz", "Steigung_Heizkurve": 1.5, "Typ_Heizfl\u00e4chen": "HK", "VLT_max": 70, "WW_Anteil": 0.3, "W\u00e4rmebedarf": 100000}, "type": "Feature"}, {"bbox": [14.99364779158221, 51.14991459851987, 14.993662088890696, 51.1499145992954], "geometry": {"coordinates": [[14.99364779158221, 51.14991459851987], [14.993662088890696, 51.1499145992954]], "type": "LineString"}, "id": "8", "properties": {"Adresse": "Dr.-Kahlbaum-Allee 31", "Bundesland": "Sachsen", "Geb\u00e4udetyp": "GBD", "Land": "Deutschland", "RLT_max": 55, "Stadt": "G\u00f6rlitz", "Steigung_Heizkurve": 1.5, "Typ_Heizfl\u00e4chen": "HK", "VLT_max": 70, "WW_Anteil": 0.4, "W\u00e4rmebedarf": 825000}, "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+            geo_json_76d42b42a90ee8b0961aff04c5247adb.addTo(map_9a42c9bff15c73a07c8549e99a814021);
+        
+    
+        function geo_json_5d1b268c8ff5fde4671d1cd57f7edbf0_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "#67180b", "fillColor": "#67180b", "fillOpacity": 0.5, "weight": 1.5};
+            }
+        }
+
+        function geo_json_5d1b268c8ff5fde4671d1cd57f7edbf0_onEachFeature(feature, layer) {
+            layer.on({
+            });
+        };
+        var geo_json_5d1b268c8ff5fde4671d1cd57f7edbf0 = L.geoJson(null, {
+                onEachFeature: geo_json_5d1b268c8ff5fde4671d1cd57f7edbf0_onEachFeature,
+            
+                style: geo_json_5d1b268c8ff5fde4671d1cd57f7edbf0_styler,
+        });
+
+        function geo_json_5d1b268c8ff5fde4671d1cd57f7edbf0_add (data) {
+            geo_json_5d1b268c8ff5fde4671d1cd57f7edbf0
+                .addData(data);
+        }
+            geo_json_5d1b268c8ff5fde4671d1cd57f7edbf0_add({"bbox": [14.993662088890696, 51.1469269557605, 14.999525297029702, 51.150503398728], "features": [{"bbox": [14.998095994670352, 51.149553717906485, 14.998521500000003, 51.149717200000005], "geometry": {"coordinates": [[14.998521500000003, 51.149717200000005], [14.998095994670352, 51.149553717906485]], "type": "LineString"}, "id": "0", "properties": {}, "type": "Feature"}, {"bbox": [14.998521500000003, 51.149717200000005, 14.999088, 51.15025510000001], "geometry": {"coordinates": [[14.998521500000003, 51.149717200000005], [14.999088, 51.15025510000001]], "type": "LineString"}, "id": "1", "properties": {}, "type": "Feature"}, {"bbox": [14.997330889225227, 51.14817001529092, 14.998356134895536, 51.14841309895881], "geometry": {"coordinates": [[14.998356134895536, 51.14817001529092], [14.997330889225227, 51.14841309895881]], "type": "LineString"}, "id": "2", "properties": {}, "type": "Feature"}, {"bbox": [14.994239369864301, 51.14998139470172, 14.996150992413074, 51.1500494835428], "geometry": {"coordinates": [[14.994239369864301, 51.1500494835428], [14.996150992413074, 51.14998139470172]], "type": "LineString"}, "id": "3", "properties": {}, "type": "Feature"}, {"bbox": [14.997249813924908, 51.14841309895881, 14.997330889225227, 51.14865064284637], "geometry": {"coordinates": [[14.997249813924908, 51.14865064284637], [14.997330889225227, 51.14841309895881]], "type": "LineString"}, "id": "4", "properties": {}, "type": "Feature"}, {"bbox": [14.997249813924908, 51.14865064284637, 14.998095994670352, 51.149553717906485], "geometry": {"coordinates": [[14.997249813924908, 51.14865064284637], [14.998095994670352, 51.149553717906485]], "type": "LineString"}, "id": "5", "properties": {}, "type": "Feature"}, {"bbox": [14.996879777551003, 51.14723862595286, 14.997330889225227, 51.14841309895881], "geometry": {"coordinates": [[14.997330889225227, 51.14841309895881], [14.996879777551003, 51.14723862595286]], "type": "LineString"}, "id": "6", "properties": {}, "type": "Feature"}, {"bbox": [14.996678590452346, 51.149553717906485, 14.998095994670352, 51.14964661565234], "geometry": {"coordinates": [[14.998095994670352, 51.149553717906485], [14.996678590452346, 51.14964661565234]], "type": "LineString"}, "id": "7", "properties": {}, "type": "Feature"}, {"bbox": [14.996150992413074, 51.14964661565234, 14.996678590452346, 51.14998139470172], "geometry": {"coordinates": [[14.996150992413074, 51.14998139470172], [14.996678590452346, 51.14964661565234]], "type": "LineString"}, "id": "8", "properties": {}, "type": "Feature"}, {"bbox": [14.996879777551003, 51.1469269557605, 14.997562323305498, 51.14723862595286], "geometry": {"coordinates": [[14.997562323305498, 51.1469269557605], [14.996879777551003, 51.14723862595286]], "type": "LineString"}, "id": "9", "properties": {}, "type": "Feature"}, {"bbox": [14.997249813924908, 51.14865064284637, 14.997510762252263, 51.14867568173769], "geometry": {"coordinates": [[14.997510762252263, 51.14867568173769], [14.997249813924908, 51.14865064284637]], "type": "LineString"}, "id": "10", "properties": {}, "type": "Feature"}, {"bbox": [14.998095994670352, 51.14933743757013, 14.998339531293654, 51.149553717906485], "geometry": {"coordinates": [[14.998339531293654, 51.14933743757013], [14.998095994670352, 51.149553717906485]], "type": "LineString"}, "id": "11", "properties": {}, "type": "Feature"}, {"bbox": [14.998521500000003, 51.14944210042092, 14.999525297029702, 51.149717200000005], "geometry": {"coordinates": [[14.999525297029702, 51.14944210042092], [14.998521500000003, 51.149717200000005]], "type": "LineString"}, "id": "12", "properties": {}, "type": "Feature"}, {"bbox": [14.998356134895536, 51.14817001529092, 14.998426786619373, 51.148287896983746], "geometry": {"coordinates": [[14.998426786619373, 51.148287896983746], [14.998356134895536, 51.14817001529092]], "type": "LineString"}, "id": "13", "properties": {}, "type": "Feature"}, {"bbox": [14.996523197298764, 51.14959589844329, 14.996678590452346, 51.14964661565234], "geometry": {"coordinates": [[14.996523197298764, 51.14959589844329], [14.996678590452346, 51.14964661565234]], "type": "LineString"}, "id": "14", "properties": {}, "type": "Feature"}, {"bbox": [14.99880284252491, 51.15025510000001, 14.999088, 51.150503398728], "geometry": {"coordinates": [[14.99880284252491, 51.150503398728], [14.999088, 51.15025510000001]], "type": "LineString"}, "id": "15", "properties": {}, "type": "Feature"}, {"bbox": [14.996087951546823, 51.14979970345897, 14.996150992413074, 51.14998139470172], "geometry": {"coordinates": [[14.996087951546823, 51.14979970345897], [14.996150992413074, 51.14998139470172]], "type": "LineString"}, "id": "16", "properties": {}, "type": "Feature"}, {"bbox": [14.993662088890696, 51.1499145992954, 14.994239369864301, 51.1500494835428], "geometry": {"coordinates": [[14.993662088890696, 51.1499145992954], [14.994239369864301, 51.1500494835428]], "type": "LineString"}, "id": "17", "properties": {}, "type": "Feature"}, {"bbox": [14.99732489684155, 51.148403100327826, 14.997330889225227, 51.14841309895881], "geometry": {"coordinates": [[14.99732489684155, 51.148403100327826], [14.997330889225227, 51.14841309895881]], "type": "LineString"}, "id": "18", "properties": {}, "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+            geo_json_5d1b268c8ff5fde4671d1cd57f7edbf0.addTo(map_9a42c9bff15c73a07c8549e99a814021);
+        
+    
+        function geo_json_9bc2dff9a3e22a83d0a5449e27dc89a8_styler(feature) {
+            switch(feature.id) {
+                default:
+                    return {"color": "#67180b", "fillColor": "#67180b", "fillOpacity": 0.5, "weight": 1.5};
+            }
+        }
+
+        function geo_json_9bc2dff9a3e22a83d0a5449e27dc89a8_onEachFeature(feature, layer) {
+            layer.on({
+            });
+        };
+        var geo_json_9bc2dff9a3e22a83d0a5449e27dc89a8 = L.geoJson(null, {
+                onEachFeature: geo_json_9bc2dff9a3e22a83d0a5449e27dc89a8_onEachFeature,
+            
+                style: geo_json_9bc2dff9a3e22a83d0a5449e27dc89a8_styler,
+        });
+
+        function geo_json_9bc2dff9a3e22a83d0a5449e27dc89a8_add (data) {
+            geo_json_9bc2dff9a3e22a83d0a5449e27dc89a8
+                .addData(data);
+        }
+            geo_json_9bc2dff9a3e22a83d0a5449e27dc89a8_add({"bbox": [14.99364779158221, 51.146926955461694, 14.999510999867121, 51.15050339858078], "features": [{"bbox": [14.994237636351558, 51.149983267813624, 14.996137345157504, 51.15005241839519], "geometry": {"coordinates": [[14.994237636351558, 51.15005241839519], [14.996137345157504, 51.149983267813624]], "type": "LineString"}, "id": "0", "properties": {}, "type": "Feature"}, {"bbox": [14.997249488821298, 51.14840310000007, 14.997306000000002, 51.148651983170275], "geometry": {"coordinates": [[14.997306000000002, 51.14840310000007], [14.997249488821298, 51.148651983170275]], "type": "LineString"}, "id": "1", "properties": {}, "type": "Feature"}, {"bbox": [14.997306000000002, 51.148172983303844, 14.998343617102831, 51.14840310000007], "geometry": {"coordinates": [[14.997306000000002, 51.14840310000007], [14.998343617102831, 51.148172983303844]], "type": "LineString"}, "id": "2", "properties": {}, "type": "Feature"}, {"bbox": [14.996874900000002, 51.147234399999995, 14.997306000000002, 51.14840310000007], "geometry": {"coordinates": [[14.997306000000002, 51.14840310000007], [14.996874900000002, 51.147234399999995]], "type": "LineString"}, "id": "3", "properties": {}, "type": "Feature"}, {"bbox": [14.998086473032954, 51.14954947661349, 14.998521500000003, 51.149717200000005], "geometry": {"coordinates": [[14.998521500000003, 51.149717200000005], [14.998086473032954, 51.14954947661349]], "type": "LineString"}, "id": "4", "properties": {}, "type": "Feature"}, {"bbox": [14.998521500000003, 51.149717200000005, 14.999088, 51.15025510000001], "geometry": {"coordinates": [[14.998521500000003, 51.149717200000005], [14.999088, 51.15025510000001]], "type": "LineString"}, "id": "5", "properties": {}, "type": "Feature"}, {"bbox": [14.997249488821298, 51.148651983170275, 14.998086473032954, 51.14954947661349], "geometry": {"coordinates": [[14.997249488821298, 51.148651983170275], [14.998086473032954, 51.14954947661349]], "type": "LineString"}, "id": "6", "properties": {}, "type": "Feature"}, {"bbox": [14.996137345157504, 51.149650291669836, 14.996675557506155, 51.149983267813624], "geometry": {"coordinates": [[14.996675557506155, 51.149650291669836], [14.996137345157504, 51.149983267813624]], "type": "LineString"}, "id": "7", "properties": {}, "type": "Feature"}, {"bbox": [14.996675557506155, 51.14954947661349, 14.998086473032954, 51.149650291669836], "geometry": {"coordinates": [[14.996675557506155, 51.149650291669836], [14.998086473032954, 51.14954947661349]], "type": "LineString"}, "id": "8", "properties": {}, "type": "Feature"}, {"bbox": [14.996874900000002, 51.146926955461694, 14.997548026919993, 51.147234399999995], "geometry": {"coordinates": [[14.997548026919993, 51.146926955461694], [14.996874900000002, 51.147234399999995]], "type": "LineString"}, "id": "9", "properties": {}, "type": "Feature"}, {"bbox": [14.997249488821298, 51.148651983170275, 14.997496465326497, 51.14867568143258], "geometry": {"coordinates": [[14.997496465326497, 51.14867568143258], [14.997249488821298, 51.148651983170275]], "type": "LineString"}, "id": "10", "properties": {}, "type": "Feature"}, {"bbox": [14.998086473032954, 51.14933743736631, 14.998325234163419, 51.14954947661349], "geometry": {"coordinates": [[14.998325234163419, 51.14933743736631], [14.998086473032954, 51.14954947661349]], "type": "LineString"}, "id": "11", "properties": {}, "type": "Feature"}, {"bbox": [14.998521500000003, 51.14944210036203, 14.999510999867121, 51.149717200000005], "geometry": {"coordinates": [[14.999510999867121, 51.14944210036203], [14.998521500000003, 51.149717200000005]], "type": "LineString"}, "id": "12", "properties": {}, "type": "Feature"}, {"bbox": [14.998343617102831, 51.148172983303844, 14.99841248981341, 51.14828789679058], "geometry": {"coordinates": [[14.99841248981341, 51.14828789679058], [14.998343617102831, 51.148172983303844]], "type": "LineString"}, "id": "13", "properties": {}, "type": "Feature"}, {"bbox": [14.99650890008869, 51.14959589801746, 14.996675557506155, 51.149650291669836], "geometry": {"coordinates": [[14.99650890008869, 51.14959589801746], [14.996675557506155, 51.149650291669836]], "type": "LineString"}, "id": "14", "properties": {}, "type": "Feature"}, {"bbox": [14.998788545034408, 51.15025510000001, 14.999088, 51.15050339858078], "geometry": {"coordinates": [[14.998788545034408, 51.15050339858078], [14.999088, 51.15025510000001]], "type": "LineString"}, "id": "15", "properties": {}, "type": "Feature"}, {"bbox": [14.996073654273786, 51.149799702979934, 14.996137345157504, 51.149983267813624], "geometry": {"coordinates": [[14.996073654273786, 51.149799702979934], [14.996137345157504, 51.149983267813624]], "type": "LineString"}, "id": "16", "properties": {}, "type": "Feature"}, {"bbox": [14.99364779158221, 51.14991459851987, 14.994237636351558, 51.15005241839519], "geometry": {"coordinates": [[14.99364779158221, 51.14991459851987], [14.994237636351558, 51.15005241839519]], "type": "LineString"}, "id": "17", "properties": {}, "type": "Feature"}, {"bbox": [14.997306000000002, 51.148403099999996, 14.997310600000002, 51.14840310000007], "geometry": {"coordinates": [[14.997310600000002, 51.148403099999996], [14.997306000000002, 51.14840310000007]], "type": "LineString"}, "id": "18", "properties": {}, "type": "Feature"}], "type": "FeatureCollection"});
+
+        
+    
+            geo_json_9bc2dff9a3e22a83d0a5449e27dc89a8.addTo(map_9a42c9bff15c73a07c8549e99a814021);
         
 </script>
 </html>

@@ -8,7 +8,8 @@
 
 1.2 Netzgenerierung
 - Verbesserung des Algorithmus zur Netzgenerierung
-- 
+- 3D-Daten fhlen aktuell noch
+
 1.3 Datenhaltung
 - eine geoJSON für alle Netzbestandteile?
 
@@ -34,3 +35,27 @@
 - Entwicklung von Szenarien für den schrittweisen Umbau von Bestandssystemen und deren Wirtschaftlichkeit. (Wie soll ich das automatisieren?)
 - im Dialog für wirtschaftliche Parameter Preisentwicklung der Daten über Zeitraum hinterlegen
 - in Auswertung Preisentwicklung darstellen: kapitalgebundene/bedarfsgebundene/betriebsgebundene Kosten der einzelnen Technologien über Zeitraum, Balkendiagramm
+
+3.3 Erweiterung PDF-Ausgabe
+    - weg von rein wirtschaftlicher Ausgabe hin zur projektspezifischen Ergebnis-PDF inklusive Dateninput, Eingaben Netzkonfiguration, Netz und der bisher schon Umgesetzten Erzeugerkonfig sowie Wirtschaftlichkeit
+
+3.4. Visualisierung
+- Option zum Anzeigen weiterer Diagramme schaffen -> Was? Keine Ahnung
+
+3.5 Datenhaltung
+- Speicherformat entwerfen!!!
+
+4. (Neu!) Variantenvergleich
+- Auswahl welche Projekte miteinander Verglichen werden sollen
+- Tabellarischer/Visueller Vergleich von Daten (Wärmebedarfe, Temperaturen(?), Netzdimensionen, Erzeugern, Kosten)
+
+diverses:
+- Kostenindikation Pumpenstrom über Massenstrom und dp?
+- Einzelversorgungslösung rechnen
+    - Auslegung nach DIN/VDI?
+    - Problem der Datenqualität
+- Implementation Stromprofile zur Sektorkopplung? --> Verbraucher- und Erzeugerseitig
+
+- Wie muss das UI optimalerweise aussehen?
+
+- Wie kann ich das Projekt optimiert auf GitHub präsentieren?
