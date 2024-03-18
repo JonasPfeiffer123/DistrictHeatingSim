@@ -1,55 +1,36 @@
-Eingaben Qualifizieren
-Gebäudehülle Darstellen --> Eingabemöglichkeiten Gebäude nach TABULA?
-Eigene Preisentwicklungen --> alternativ zu Kostenvorgabe + Preissteigerung, Preissteigerungen durch Diagramme visualisieren, Option für verschiedene Preissteigerungsraten fü verschiedene Brennstoffe
-innovative Technologien betrachten --> PVT, Großwärmespeicher (saisonal), Sondenregeneration, AquvaHeat, Wasserstoff?(dumm)
+1. Räumliche Analyse
+1.1 Ausbau Möglichkeiten Dateninput
+- Integration von LOD2-Daten für eine genauere Definition und räumliche Analyse von Gebäuden.
+- Eingabemöglichkeiten für Gebäude nach TABULA für eine differenzierte Betrachtung von Gebäudetypen.
+- Manuelle Klassifizierung von Gebäuden (TABULA), Ermittlung von Sanierungspotenzialen und Kostenabschätzung.
+- Einschätzung der Einsparung von Wärmeverbrauch und Absenkung der Vorlauftemperatur für eine Amortisation und Wirtschaftlichkeitsberechnung
+    - wie werden diese Informationen/Daten gehalten?
 
-Szenarienentwicklung, Schrittweiser Umbau von Bestandssystemen --> gestaffelte Wirtschaftlichkeit
+1.2 Netzgenerierung
+- Verbesserung des Algorithmus zur Netzgenerierung
+- 
+1.3 Datenhaltung
+- eine geoJSON für alle Netzbestandteile?
 
+1.4 Variantengenerierung
+- Implementierung von Varianten durch prozentuale Reduktion oder spezifische Anpassung des Wärmebedarfs
+- Erstellung alternativer CSV-Dateien für neue Netzgenerierungen und Variantenordner für verschiedene Projekte
 
-Ziel: Hilfsmittel für Quartiersplanung
+2. Wärmenetzberechnung
+2.1 Funktionalitäten
+- Optimierung Regelung Simulation
 
-Räumliche Analyse:
--	Integration LOD2-Daten
--	Genauere Defnition Gebäude ermöglichen
--	Bedarfe räumlich ermitteln und in Programm integrieren
-Netzgenerierung:
--	Verbesserung Algorithmus zur Netzgenerierung
--	Einführung geoJSON mit allen 4 Objekttypen
+2.2 Visualisierung
 
-Netzsimulation:
-Optimierungen:
--	Regelung in der Simulation optimieren, sodass auch kleinere Massenströme sinn-voll berechnet werden können
-Funktionserweiterungen:
--	Lastfaktor Auslegung Wärmeübertrager -> Faktor für maximale Leistung nach Profil
--	mehrere Erzeugerstandorte
--	Wechselwarm: Anpassung Profile auf ohne WW, irgendwie Überprüfung Vorlauf-temperatur -> Meldung, wenn Gebäude höheren soll Vorlauf hat, macht nur mit Kühlung Sinn,
-Gebäude:
--	3D-LOD2-Gebäudedaten
--	Ermittlung Stockwerke -> Ermittlung flächenspezifischer Wärmebedarf
--	Ermittlung der Außenflächen
--	Manuelle Klassifizierung der Gebäude (TABULA)
--	Ermittlung Sanierungspotenziale
--	Kostenabschätzung
--	Einschätzung Einsparung Wärmeverbrauch, Absenkung VL-Temperatur
--	- Amortisation / Wirtschaftlichkeit
+3. Erzeugerauslegung und Wirtschaftlichkeitsrechnung:
+3.1 Überarbeitung Erzeugerauslegung
+- Ausbau Eingaben Solathermie
+- BHKW, WP, Biomasse, etc sollen optionalen Speicher erhalten zur Verlängerung von Volllaststunden (einfache Regelung), Teillastbereich muss definiert werden --> Ziel Reduktion Gaseinsatz Gaskessel
+- Neue Technologien implementieren: PVT, Großwärmespeicher, AquvaHeat, Wasserstoff, Power-to-heat, Geothermie mit Sondenregeneration???
+- Ausgewählte Erzeuger müssen nach Optimierung in der Anzeige aktualisiert werden
 
-Erzeugerauslegung:
--	Eigene Preisentwicklungsszenarien vorgeben
--	innovative Technologien betrachten
-
--	Neu: Mit Grobauslegung detaillierte Netzberechnung zur Ermittlung der Betriebsweise der Anlagen
-
-- Datenmanagement in der Erzeugerauslegung verbessern, damit es speicherbar wird
-
-
-Wie könnte man Varianten im Gebäudezustand implementieren?
-- Prozentuale Reduktion?
-- Reduktion auf bestimmte spez. Wärmebedarfe --> Was ist mit den Temperaturen
-- bei Einsatz der Daten über Gebäudehüllen wäre es einfacher, wie bekommen wir das umgesetzt?
-- Wie stell ich in Varianten dar, was verändert wurde?
-- Knopf Sanierungsvariante hinzufügen -> alternative CSV mit Eingangsdaten --> neue Netzgenerierung, etc. --> eigentlich Variantenordner je Projekt notwendig bzw verschiedene Projektordner --> eindeutige Bezeichnung in Projektnamen?
-    --> das scheint praktikabel
-    --> Daten aus mehreren Projekten vergleichen --> sollte zu schaffen scheint
-
-
-Anzeige definierte Erzeuger nach Optimierung anpassen
+3.2. Wirtschaftlichkeit
+- Eigene Preisentwicklungsszenarien für Erzeugerauslegung und Betrachtung alternativer Brennstoffpreisentwicklungen (alternativ zu derzeitigem Ansatz (Auswahlmöglichkeiten))
+- Entwicklung von Szenarien für den schrittweisen Umbau von Bestandssystemen und deren Wirtschaftlichkeit. (Wie soll ich das automatisieren?)
+- im Dialog für wirtschaftliche Parameter Preisentwicklung der Daten über Zeitraum hinterlegen
+- in Auswertung Preisentwicklung darstellen: kapitalgebundene/bedarfsgebundene/betriebsgebundene Kosten der einzelnen Technologien über Zeitraum, Balkendiagramm
