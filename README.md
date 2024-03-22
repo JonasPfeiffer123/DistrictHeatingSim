@@ -7,7 +7,6 @@ This project, led by Dipl.-Ing. (FH) Jonas Pfeiffer for the SMWK-NEUES TG-70 pro
 "geocoding"
 - for the geocoding python files the libraries "Nominatim" and "Transformer" are needed
 - There are 2 scripts which allow you to geocode given adresses
-- the folder is also used for storage of example data
 
 "gui"
 - contains all gui related scripts
