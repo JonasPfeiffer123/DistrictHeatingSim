@@ -1,13 +1,12 @@
 import pandapipes as pp
 import pandas as pd
 import geopandas as gpd
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString
+import numpy as np
 
 from pandapower.timeseries import DFData
 from pandapower.control.controller.const_control import ConstControl
 from net_simulation_pandapipes.controllers import ReturnTemperatureController, WorstPointPressureController
-
-import numpy as np
 
 def get_line_coords_and_lengths(gdf):
     all_line_coords, all_line_lengths = [], []
@@ -31,7 +30,6 @@ def get_all_point_coords_from_line_cords(all_line_coords):
     point_coords = [koordinate for paar in all_line_coords for koordinate in paar]
     unique_point_coords = list(set(point_coords))
     return unique_point_coords
-
 
 def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_producer, qext_w, return_temperature=60, supply_temperature=85, 
                    flow_pressure_pump=4, lift_pressure_pump=1.5, pipetype="KMR 100/250-2v",  pipe_creation_mode="type"):
@@ -132,6 +130,7 @@ def create_controllers(net, qext_w, return_temperature):
     net.controller.loc[len(net.controller)] = [dp_controller, True, -1, -1, False, False]
 
     return net
+
 
 def correct_flow_directions(net):
     # Initial pipeflow calculation

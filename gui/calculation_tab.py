@@ -11,12 +11,10 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
 from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, \
-    QFileDialog, QHBoxLayout, QLineEdit, QFormLayout, \
-        QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction
 
 from main import calculate_results, save_results_csv, import_results_csv
-from gui.calculation_dialogs import HeatDemandEditDialog, NetGenerationDialog
+from gui.calculation_dialogs import HeatDemandEditDialog, NetGenerationDialog, ZeitreihenrechnungDialog
 from gui.threads import NetInitializationThread, NetCalculationThread
 from net_simulation_pandapipes.config_plot import config_plot
 from gui.checkable_combobox import CheckableComboBox
@@ -31,7 +29,7 @@ class CalculationTab(QWidget):
         self.data_manager = data_manager
         self.calc_method = "Datensatz"
         self.initUI()
-        self.base_path = "project_data/Beispiel Zittau"  # Basispfad initialisieren
+        self.base_path = "project_data/Beispiel Bad Muskau"  # Basispfad initialisieren
         self.updateDefaultPath(self.base_path)
 
         self.net_data = None  # Variable zum Speichern der Netzdaten
@@ -51,8 +49,6 @@ class CalculationTab(QWidget):
 
         # Hier fügen Sie alle Ihre vorhandenen Setup-Funktionen hinzu
         self.initMenuBar()
-        self.createFileInput()
-        self.setupControlInputs()
         self.setupPlotLayout()
 
         # Hauptlayout für das Tab
@@ -68,19 +64,25 @@ class CalculationTab(QWidget):
         self.menubar.setFixedHeight(30)
 
         # Wärmenetz-Generierungsmenü
+        fileMenu = self.menubar.addMenu('Datei')
         networkMenu = self.menubar.addMenu('Wärmenetz generieren')
+        calcMenu = self.menubar.addMenu('Zeitreihenberechnung durchführen')
 
         # Unterpunkte für geojson und Stanet
-        generateNetAction = QAction('Netz generieren', self)
         saveppnetAction = QAction('Pandapipes Netz speichern', self)
         loadppnetAction = QAction('Pandapipes Netz laden', self)
         loadresultsppAction = QAction('Ergebnisse Zeitreihenrechnung Laden', self)
         exportppnetGeoJSONAction = QAction('Pandapipes Netz als geoJSON exportieren', self)
+        fileMenu.addAction(saveppnetAction)
+        fileMenu.addAction(loadppnetAction)
+        fileMenu.addAction(loadresultsppAction)
+        fileMenu.addAction(exportppnetGeoJSONAction)
+
+        generateNetAction = QAction('Netz generieren', self)
         networkMenu.addAction(generateNetAction)
-        networkMenu.addAction(saveppnetAction)
-        networkMenu.addAction(loadppnetAction)
-        networkMenu.addAction(loadresultsppAction)
-        networkMenu.addAction(exportppnetGeoJSONAction)
+
+        calculateNetAction = QAction('Zeitreihenberechnung', self)
+        calcMenu.addAction(calculateNetAction)
 
         # Fügen Sie die Menüleiste dem Layout von tab1 hinzu
         self.container_layout.addWidget(self.menubar)
@@ -91,70 +93,7 @@ class CalculationTab(QWidget):
         loadppnetAction.triggered.connect(self.loadNet)
         loadresultsppAction.triggered.connect(self.load_net_results)
         exportppnetGeoJSONAction.triggered.connect(self.exportNetGeoJSON)
-
-    def createFileInput(self):
-        # Erstelle ein horizontales Layout
-        file_input_layout = QHBoxLayout()
-
-        # Erstelle das QLineEdit Widget
-        line_edit = QLineEdit('')
-        line_edit.setPlaceholderText('Ergebnis-CSV auswählen')
-        setattr(self, 'AusgabeInput', line_edit)
-
-        # Erstelle den Button
-        button = QPushButton("Datei auswählen")
-        button.setToolTip('Ergebnis-CSV auswählen')
-        button.clicked.connect(lambda: self.selectFilename(line_edit))
-
-        # Füge Widgets zum Layout hinzu
-        file_input_layout.addWidget(line_edit)
-        file_input_layout.addWidget(button)
-
-        self.container_layout.addLayout(file_input_layout)
-
-        return file_input_layout
-    
-    def selectFilename(self, inputWidget):
-        fname, _ = QFileDialog.getOpenFileName(self, 'Datei auswählen', '', 'All Files (*);;CSV Files (*.csv);;Data Files (*.dat)')
-        if fname:  # Prüfen, ob ein Dateiname ausgewählt wurde
-            inputWidget.setText(fname)
-
-    def setupControlInputs(self):
-        # Buttons für die Berechnung und Initialisierung
-        self.calculateNetButton = QPushButton('Zeitreihenberechnung durchführen')
-        self.LayerImportButton = QPushButton('Layers in Karte importieren')
-
-        # Verbindungen für die Buttons
-        self.calculateNetButton.clicked.connect(self.simulate_net)
-
-        # Layout für die Steuerelemente
-        controls_layout = QVBoxLayout()
-        self.container_layout.addLayout(controls_layout)
-
-        # Eingabefeld für den Startzeitpunkt der Simulation
-        self.StartTimeStepLabel = QLabel("", self)
-        self.StartTimeStepInput = QLineEdit("0", self)
-        # Eingabefeld für den Endzeitpunkt der Simulation
-        self.EndTimeStepLabel = QLabel("", self)
-        self.EndTimeStepInput = QLineEdit("96", self)
-
-        # Button zur Ausführung der Zeitreihenberechnung
-        self.calculateNetButton = QPushButton('Zeitreihenberechnung durchführen', self)
-        self.calculateNetButton.clicked.connect(self.simulate_net)
-
-        # Layout für die Zeitsteuerungselemente
-        startTimeLayout = QHBoxLayout()
-        startTimeLayout.addWidget(self.StartTimeStepLabel)
-        startTimeLayout.addWidget(self.StartTimeStepInput)
-
-        endTimeLayout = QHBoxLayout()
-        endTimeLayout.addWidget(self.EndTimeStepLabel)
-        endTimeLayout.addWidget(self.EndTimeStepInput)
-
-        # Hinzufügen der Layouts zum Hauptlayout
-        self.container_layout.addLayout(startTimeLayout)
-        self.container_layout.addLayout(endTimeLayout)
-        self.container_layout.addWidget(self.calculateNetButton)
+        calculateNetAction.triggered.connect(self.opencalculateNetDialog)
 
     def setupPlotLayout(self):
         self.scrollArea = QScrollArea(self)  # Erstelle ein ScrollArea-Widget
@@ -163,17 +102,17 @@ class CalculationTab(QWidget):
 
         self.figure3 = Figure()
         self.canvas3 = FigureCanvas(self.figure3)
-        self.canvas3.setMinimumSize(800, 800)  # Setze eine Mindestgröße für die Canvas
+        self.canvas3.setMinimumSize(700, 700)  # Setze eine Mindestgröße für die Canvas
         self.toolbar3 = NavigationToolbar(self.canvas3, self)
 
         self.figure4 = Figure()
         self.canvas4 = FigureCanvas(self.figure4)
-        self.canvas4.setMinimumSize(800, 800)  # Setze eine Mindestgröße für die Canvas
+        self.canvas4.setMinimumSize(700, 700)  # Setze eine Mindestgröße für die Canvas
         self.toolbar4 = NavigationToolbar(self.canvas4, self)
 
         self.figure5 = Figure()
         self.canvas5 = FigureCanvas(self.figure5)
-        self.canvas5.setMinimumSize(800, 800)  # Setze eine Mindestgröße für die Canvas
+        self.canvas5.setMinimumSize(700, 700)  # Setze eine Mindestgröße für die Canvas
         self.toolbar5 = NavigationToolbar(self.canvas5, self)
 
         # Fügen Sie die Diagramme und Toolbars zum Container-Layout hinzu
@@ -213,11 +152,6 @@ class CalculationTab(QWidget):
 
     def updateDefaultPath(self, new_base_path):
         self.base_path = new_base_path
-
-        # Pfad für Ausgabe aktualisieren
-        new_output_path = f"{self.base_path}/Lastgang/Lastgang.csv"
-
-        self.AusgabeInput.setText(new_output_path)
     
     def openNetGenerationDialog(self):
         dialog = NetGenerationDialog(
@@ -253,19 +187,17 @@ class CalculationTab(QWidget):
             logging.error(f"Fehler beim Laden der HAST-Daten: {e}")
             QMessageBox.critical(self, "Fehler", "Fehler beim Laden der HAST-Daten.")
 
-    def updateLabelsForCalcMethod(self, calc_method):
-        self.calc_method = calc_method
-        if calc_method in ["BDEW", "Datensatz"]:  # Angenommen, diese Methoden verwenden 1h-Werte
-            time_step_text = "Zeitschritt (1h Werte); Minimum: 0, Maximum: 8760 (1 Jahr) :"
-        else:  # Für VDI4655 oder andere Methoden, die 15-min-Werte verwenden
-            time_step_text = "Zeitschritt (15 min Werte); Minimum: 0, Maximum: 35040 (1 Jahr) :"
-
-        self.StartTimeStepLabel.setText(time_step_text)
-        self.EndTimeStepLabel.setText(time_step_text)
-
+    def opencalculateNetDialog(self):
+        dialog = ZeitreihenrechnungDialog(self.base_path, self)
+        if dialog.exec_():
+            netCalcInputs = dialog.getValues()
+            self.calc1 = netCalcInputs["start"]
+            self.calc2 = netCalcInputs["end"]
+            self.output_filename = netCalcInputs["results_filename"]
+            self.simulate_net()
+      
     def create_and_initialize_net_geojson(self, vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temp, supply_temperature, \
                                           flow_pressure_pump, lift_pressure_pump, netconfiguration, dT_RL, building_temp_checked, pipetype, v_max_pipe, material_filter, insulation_filter):
-        self.updateLabelsForCalcMethod(calc_method)
         self.return_temperature = return_temp
         self.supply_temperature = supply_temperature
         supply_temperature = np.max(supply_temperature)
@@ -327,30 +259,7 @@ class CalculationTab(QWidget):
         config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_controls=False, show_heat_exchangers=True)
         self.canvas5.draw()
 
-
     ### Zeitreihensimulation ###
-    def adjustTimeParameters(self):
-        try:
-            calc1 = int(self.StartTimeStepInput.text())
-            calc2 = int(self.EndTimeStepInput.text())
-
-            if self.calc_method in ["BDEW", "Datensatz"]:  # Angenommen, diese Methoden verwenden 1h-Werte
-                max_time_step = 8760  # 1 Jahr in Stunden
-            else:  # Für VDI4655 oder andere Methoden, die 15-min-Werte verwenden
-                max_time_step = 35040  # 1 Jahr in 15-min-Intervallen
-
-            if not (0 <= calc1 <= max_time_step and 0 <= calc2 <= max_time_step):
-                raise ValueError("Zeitschritt außerhalb des gültigen Bereichs")
-            
-            if not calc1 < calc2:
-                raise ValueError("Der 1. Zeitschritt muss kleiner als der 2. Zeitschritt sein")
-
-            return calc1, calc2
-
-        except ValueError as e:
-            QMessageBox.warning(self, "Ungültige Eingabe", str(e))
-            return None, None
-
     def simulate_net(self):
         if self.net_data is None:
             QMessageBox.warning(self, "Keine Netzdaten", "Bitte generieren Sie zuerst ein Netz.")
@@ -360,10 +269,6 @@ class CalculationTab(QWidget):
             self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.netconfiguration, self.dT_RL, self.building_temp_checked = self.net_data
 
         try:
-            self.calc1, self.calc2 = self.adjustTimeParameters()
-            if self.calc1 is None or self.calc2 is None:  # Ungültige Eingaben wurden bereits in adjustTimeParameters behandelt
-                return
-
             self.calculationThread = NetCalculationThread(self.net, self.yearly_time_steps, self.waerme_ges_kW, self.calc1, self.calc2, self.supply_temperature, self.return_temperature, \
                                                           self.supply_temperature_buildings, self.return_temperature_buildings, self.supply_temperature_buildings_curve, \
                                                             self.return_temperature_buildings_curve, self.dT_RL, self.netconfiguration, self.building_temp_checked)
@@ -392,7 +297,6 @@ class CalculationTab(QWidget):
         self.plot_data_func(plot_data)
         self.plot2()
 
-        self.output_filename = self.AusgabeInput.text()
         save_results_csv(self.time_steps, self.qext_kW, self.waerme_ges_kW, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, \
                          self.return_pressure_circ_pump, self.flow_pressure_circ_pump, self.output_filename)
 
@@ -401,46 +305,14 @@ class CalculationTab(QWidget):
         self.return_pressure_circ_pump, self.flow_pressure_circ_pump = plot_data
         
         self.plot_data = {
-            "Einspeiseleistung Heizzentrale": {
-                "data": self.qext_kW,
-                "label": "Leistung in kW",
-                "axis": "left"
-            },
-            "Gesamtwärmebedarf Wärmeübertrager": {
-                "data": self.waerme_ges_kW,
-                "label": "Wärmebedarf in kW",
-                "axis": "left"
-            },
-            "Rücklauftemperatur Heizzentrale": {
-                "data": self.return_temp_circ_pump,
-                "label": "Temperatur in °C",
-                "axis": "right"
-            },
-            "Vorlauftemperatur Heizzentrale": {
-                "data": self.flow_temp_circ_pump,
-                "label": "Temperatur in °C",
-                "axis": "right"
-            },
-            "Massenstrom Heizzentrale": {
-                "data": self.mass_flow_circ_pump,
-                "label": "Massenstrom in kg/s",
-                "axis": "right"
-            },
-            "Delta p Heizzentrale": {
-                "data": self.deltap_circ_pump,
-                "label": "Druck in bar",
-                "axis": "right"
-            },
-            "Rücklaufdruck Heizzentrale": {
-                "data": self.return_pressure_circ_pump,
-                "label": "Druck in bar",
-                "axis": "right"
-            },
-            "Vorlaufdruck Heizzentrale": {
-                "data": self.flow_pressure_circ_pump,
-                "label": "Druck in bar",
-                "axis": "right"
-            }
+            "Einspeiseleistung Heizzentrale": {"data": self.qext_kW, "label": "Leistung in kW", "axis": "left"},
+            "Gesamtwärmebedarf Wärmeübertrager": {"data": self.waerme_ges_kW, "label": "Wärmebedarf in kW", "axis": "left"},
+            "Rücklauftemperatur Heizzentrale": {"data": self.return_temp_circ_pump, "label": "Temperatur in °C", "axis": "right"},
+            "Vorlauftemperatur Heizzentrale": {"data": self.flow_temp_circ_pump, "label": "Temperatur in °C", "axis": "right"},
+            "Massenstrom Heizzentrale": {"data": self.mass_flow_circ_pump, "label": "Massenstrom in kg/s", "axis": "right"},
+            "Delta p Heizzentrale": {"data": self.deltap_circ_pump, "label": "Druck in bar", "axis": "right"},
+            "Rücklaufdruck Heizzentrale": {"data": self.return_pressure_circ_pump, "label": "Druck in bar", "axis": "right"},
+            "Vorlaufdruck Heizzentrale": {"data": self.flow_pressure_circ_pump, "label": "Druck in bar", "axis": "right"}
         }
 
     def on_simulation_error(self, error_message):

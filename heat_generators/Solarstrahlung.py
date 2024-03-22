@@ -1,3 +1,4 @@
+# Erstellt von Dipl.-Ing.(FH) Jonas
 # Ertragsberechnungsprogramm Solarstrahlung (Berechnungsgrundlage: ScenoCalc Fernwärme 2.0
 # https://www.scfw.de/)
 

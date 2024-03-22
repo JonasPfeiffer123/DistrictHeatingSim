@@ -459,7 +459,8 @@ class GasBoiler:
         return results
 
 class SolarThermal:
-    def __init__(self, name, bruttofläche_STA, vs, Typ, kosten_speicher_spez=750, kosten_fk_spez=430, kosten_vrk_spez=590):
+    def __init__(self, name, bruttofläche_STA, vs, Typ, kosten_speicher_spez=750, kosten_fk_spez=430, kosten_vrk_spez=590, Tsmax=90, Longitude=-14.4222, 
+                 STD_Longitude=-15, Latitude=51.1676, East_West_collector_azimuth_angle=0, Collector_tilt_angle=36, Tm_rl=60, Qsa=0, Vorwärmung_K=8, DT_WT_Solar_K=5, DT_WT_Netz_K=5):
         self.name = name
         self.bruttofläche_STA = bruttofläche_STA
         self.vs = vs
@@ -467,6 +468,17 @@ class SolarThermal:
         self.kosten_speicher_spez = kosten_speicher_spez
         self.kosten_fk_spez = kosten_fk_spez
         self.kosten_vrk_spez = kosten_vrk_spez
+        self.Tsmax = Tsmax
+        self.Longitude = Longitude
+        self.STD_Longitude = STD_Longitude
+        self.Latitude = Latitude
+        self.East_West_collector_azimuth_angle = East_West_collector_azimuth_angle
+        self.Collector_tilt_angle = Collector_tilt_angle
+        self.Tm_rl = Tm_rl
+        self.Qsa = Qsa
+        self.Vorwärmung_K = Vorwärmung_K
+        self.DT_WT_Solar_K = DT_WT_Solar_K
+        self.DT_WT_Netz_K = DT_WT_Netz_K
     
     def calc_WGK(self, Wärmemenge, q=1.05, r=1.03, T=20, BEW="Nein"):
         if Wärmemenge == 0:
@@ -508,11 +520,14 @@ class SolarThermal:
         #tech_results = tech.calculate(VLT_L, RLT_L, TRY, time_steps, calc1, calc2, q, r, T, BEW, duration, general_results)
     def calculate(self, VLT_L, RLT_L, TRY, time_steps, calc1, calc2, q, r, T, BEW, duration, general_results):
         # Hier fügen Sie die spezifische Logik für die Solarthermie-Berechnung ein
-        Wärmemenge, Wärmeleistung_Solarthermie_L = Berechnung_STA(self.bruttofläche_STA, self.vs, self.Typ, general_results['Restlast_L'], VLT_L, RLT_L, TRY, time_steps, calc1, calc2, duration)
+        Wärmemenge, Wärmeleistung_Solarthermie_L, Speicherladung_L, Speicherfüllstand_L = Berechnung_STA(self.bruttofläche_STA, self.vs, self.Typ, general_results['Restlast_L'], VLT_L, RLT_L, 
+                                                                                                        TRY, time_steps, calc1, calc2, duration, self.Tsmax, self.Longitude, self.STD_Longitude, 
+                                                                                                        self.Latitude, self.East_West_collector_azimuth_angle, self.Collector_tilt_angle, self.Tm_rl, 
+                                                                                                        self.Qsa, self.Vorwärmung_K, self.DT_WT_Solar_K, self.DT_WT_Netz_K)
 
         WGK_Solarthermie = self.calc_WGK(Wärmemenge, q, r, T, BEW)
 
-        results = {
+        results = { 
             'Wärmemenge': Wärmemenge,
             'Wärmeleistung_L': Wärmeleistung_Solarthermie_L,
             'WGK': WGK_Solarthermie,
@@ -520,7 +535,6 @@ class SolarThermal:
         }
 
         return results
-
 
 def calculate_factors(Kapitalzins, Preissteigerungsrate, Betrachtungszeitraum):
     q = 1 + Kapitalzins / 100

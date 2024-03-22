@@ -428,16 +428,29 @@ class NetInfrastructureDialog(QDialog):
         self.table.verticalHeader().customContextMenuRequested.connect(self.openHeaderContextMenu)
 
     def initUI(self):
+        self.setWindowTitle("Netzinfrastruktur-Verwaltung")
+        self.resize(800, 600)  # Größeres und anpassbares Fenster
+
         self.layout = QVBoxLayout(self)
 
-        # Erstellen der Tabelle
+        # Erstellen der Tabelle mit verbesserter Nutzerinteraktion
         self.table = QTableWidget(self)
-        self.infraObjects = ['waermenetz', 'hausanschlussstationen', 'druckhaltung', 'hydraulik', 'elektroinstallation', 'planungskosten']
+        self.infraObjects = ['Wärmenetz', 'Hausanschlussstationen', 'Druckhaltung', 'Hydraulik', 'Elektroinstallation', 'Planungskosten']
         self.table.setRowCount(len(self.infraObjects))
-        self.table.setColumnCount(5)  # Für jede Eigenschaft eine Spalte
-        self.table.setHorizontalHeaderLabels(['kosten', 'technische nutzungsdauer', 'f_inst', 'f_w_insp', 'bedienaufwand'])
+        self.table.setColumnCount(5)
+        self.table.setHorizontalHeaderLabels(['Kosten', 'Techn. Nutzungsdauer', 'F_inst', 'F_w_insp', 'Bedienaufwand'])
         self.table.setVerticalHeaderLabels(self.infraObjects)
         self.layout.addWidget(self.table)
+
+        # Kontextmenü für vertikale Kopfzeilen hinzugefügt
+        self.table.verticalHeader().setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table.verticalHeader().customContextMenuRequested.connect(self.openHeaderContextMenu)
+
+        # Buttons für spezifische Funktionen hinzugefügt
+        self.addButton = QPushButton("Zeile hinzufügen", self)
+        self.removeButton = QPushButton("Zeile entfernen", self)
+        self.addButton.clicked.connect(self.addRow)
+        self.removeButton.clicked.connect(self.removeRow)
 
         # Button für die Kostenberechnung des Wärmenetzes hinzufügen
         self.berechneWärmenetzKostenButton = QPushButton("Kosten Wärmenetz aus geoJSON berechnen", self)
@@ -449,33 +462,23 @@ class NetInfrastructureDialog(QDialog):
         self.berechneHausanschlussKostenButton.clicked.connect(self.berechneHausanschlussKosten)
         self.layout.addWidget(self.berechneHausanschlussKostenButton)
 
-        # Button-Leiste
+        # Button-Leiste mit klar definierten Aktionen
         buttonLayout = QHBoxLayout()
-        # Hinzufügen und Entfernen von Schaltflächen
-        self.addButton = QPushButton("Zeile hinzufügen", self)
-        self.removeButton = QPushButton("Zeile entfernen", self)
-        self.addButton.clicked.connect(self.addRow)
-        self.removeButton.clicked.connect(self.removeRow)
         buttonLayout.addWidget(self.addButton)
         buttonLayout.addWidget(self.removeButton)
 
+        # Standard OK und Abbrechen Buttons
         okButton = QPushButton("OK", self)
         cancelButton = QPushButton("Abbrechen", self)
         okButton.clicked.connect(self.accept)
         cancelButton.clicked.connect(self.reject)
         buttonLayout.addWidget(okButton)
         buttonLayout.addWidget(cancelButton)
-        self.layout.addLayout(buttonLayout)
 
-    def renameHeader(self, row):
-        newName, okPressed = QInputDialog.getText(self, "Name ändern", "Neuer Name:", QLineEdit.Normal, "")
-        if okPressed and newName != '':
-            self.table.verticalHeaderItem(row).setText(newName)
-            self.infraObjects[row] = newName
+        self.layout.addLayout(buttonLayout)
 
     def openHeaderContextMenu(self, position):
         menu = QMenu()
-
         renameAction = menu.addAction("Umbenennen")
         action = menu.exec_(self.table.verticalHeader().mapToGlobal(position))
 
@@ -484,65 +487,34 @@ class NetInfrastructureDialog(QDialog):
             if row != -1:
                 self.renameHeader(row)
 
+    def renameHeader(self, row):
+        newName, okPressed = QInputDialog.getText(self, "Name ändern", "Neuer Name:", QLineEdit.Normal, "")
+        if okPressed and newName:
+            self.table.verticalHeaderItem(row).setText(newName)
+            self.infraObjects[row] = newName
+
     def addRow(self):
         row_count = self.table.rowCount()
         self.table.insertRow(row_count)
-        new_row_name = f"Neues Objekt"
+        new_row_name = "Neues Objekt {}".format(row_count + 1)
         self.table.setVerticalHeaderItem(row_count, QTableWidgetItem(new_row_name))
         self.infraObjects.append(new_row_name)
 
     def removeRow(self):
         current_row = self.table.currentRow()
         if current_row != -1:
-            # Entfernen Sie das Element aus der infraObjects-Liste
             del self.infraObjects[current_row]
             self.table.removeRow(current_row)
 
     def initDefaultValues(self):
         # Standardwerte wie zuvor definiert
         defaultValues = {
-            'waermenetz': {
-                'kosten': "2000000",
-                'technische nutzungsdauer': "40",
-                'f_inst': "1",
-                'f_w_insp': "0",
-                'bedienaufwand': "5"
-            },
-            'hausanschlussstationen': {
-                'kosten': "100000",
-                'technische nutzungsdauer': "20",
-                'f_inst': "1",
-                'f_w_insp': "1",
-                'bedienaufwand': "2"
-            },
-            'druckhaltung': {
-                'kosten': "20000",
-                'technische nutzungsdauer': "20",
-                'f_inst': "1",
-                'f_w_insp': "1",
-                'bedienaufwand': "2"
-            },
-            'hydraulik': {
-                'kosten': "40000",
-                'technische nutzungsdauer': "40",
-                'f_inst': "1",
-                'f_w_insp': "0",
-                'bedienaufwand': "0"
-            },
-            'elektroinstallation': {
-                'kosten': "15000",
-                'technische nutzungsdauer': "15",
-                'f_inst': "1",
-                'f_w_insp': "1",
-                'bedienaufwand': "5"
-            },
-            'planungskosten': {
-                'kosten': "500000",
-                'technische nutzungsdauer': "20",
-                'f_inst': "0",
-                'f_w_insp': "0",
-                'bedienaufwand': "0"
-            }
+            'Wärmenetz': {'kosten': "2000000", 'technische nutzungsdauer': "40", 'f_inst': "1", 'f_w_insp': "0", 'bedienaufwand': "5"},
+            'Hausanschlussstationen': {'kosten': "100000", 'technische nutzungsdauer': "20", 'f_inst': "1", 'f_w_insp': "1", 'bedienaufwand': "2"},
+            'Druckhaltung': {'kosten': "20000", 'technische nutzungsdauer': "20", 'f_inst': "1", 'f_w_insp': "1", 'bedienaufwand': "2"},
+            'Hydraulik': {'kosten': "40000", 'technische nutzungsdauer': "40", 'f_inst': "1", 'f_w_insp': "0", 'bedienaufwand': "0"},
+            'Elektroinstallation': {'kosten': "15000", 'technische nutzungsdauer': "15", 'f_inst': "1", 'f_w_insp': "1", 'bedienaufwand': "5"},
+            'Planungskosten': {'kosten': "500000", 'technische nutzungsdauer': "20", 'f_inst': "0", 'f_w_insp': "0", 'bedienaufwand': "0"}
         }
 
         for i, obj in enumerate(self.infraObjects):
@@ -593,3 +565,115 @@ class NetInfrastructureDialog(QDialog):
                     # Standardwert oder eine geeignete Behandlung, wenn das Element nicht vorhanden ist
                     values[key] = 0.0  # oder ein anderer angemessener Standardwert
         return values
+    
+
+class TemperatureDataDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.initUI()
+        self.initDefaultValues()
+
+    def initUI(self):
+        self.setWindowTitle("Temperaturdaten-Verwaltung")
+        self.resize(400, 200)  # Größeres und anpassbares Fenster
+
+        self.layout = QVBoxLayout(self)
+
+        self.temperatureDataFileLabel = QLabel("TRY-Datei:", self)
+        self.temperatureDataFileInput = QLineEdit(self)
+        self.selectTRYFileButton = QPushButton('csv-Datei auswählen')
+        self.selectTRYFileButton.clicked.connect(lambda: self.selectFilename(self.temperatureDataFileInput))
+
+        self.layout.addWidget(self.temperatureDataFileLabel)
+        self.layout.addWidget(self.temperatureDataFileInput)
+        self.layout.addWidget(self.selectTRYFileButton)
+
+        self.setLayout(self.layout)
+
+        buttonLayout = QHBoxLayout()
+        okButton = QPushButton("OK", self)
+        cancelButton = QPushButton("Abbrechen", self)
+        
+        okButton.clicked.connect(self.accept)
+        cancelButton.clicked.connect(self.reject)
+        
+        buttonLayout.addWidget(okButton)
+        buttonLayout.addWidget(cancelButton)
+
+        self.layout.addLayout(buttonLayout)
+
+    def selectFilename(self, lineEdit):
+        filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen")
+        if filename:
+            lineEdit.setText(filename)
+
+    def initDefaultValues(self):
+        self.temperatureDataFileInput.setText("heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat")
+
+    def getValues(self):
+        return {
+            'TRY-filename': self.temperatureDataFileInput.text()
+        }
+    
+class HeatPumpDataDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Wärmepumpendaten")
+        self.initUI()
+        self.initDefaultValues()
+
+    def initUI(self):
+        self.setWindowTitle("COP-Daten-Verwaltung")
+        self.resize(400, 200)  # Größeres und anpassbares Fenster
+        
+        # Hauptlayout
+        mainLayout = QVBoxLayout(self)
+
+        # Datenfelder und Label
+        dataLayout = QVBoxLayout()
+        self.heatPumpDataFileLabel = QLabel("csv-Datei mit Wärmepumpenkennfeld:")
+        self.heatPumpDataFileInput = QLineEdit()
+        self.heatPumpDataFileInput.setPlaceholderText("heat_generators/Kennlinien WP.csv")
+        self.selectCOPFileButton = QPushButton('csv-Datei auswählen')
+        self.selectCOPFileButton.clicked.connect(lambda: self.selectFilename(self.heatPumpDataFileInput))
+        
+        # Styling
+        self.selectCOPFileButton.setStyleSheet("background-color: #0057b7; color: white; padding: 5px;")
+        self.heatPumpDataFileInput.setStyleSheet("padding: 4px;")
+        
+        dataLayout.addWidget(self.heatPumpDataFileLabel)
+        dataLayout.addWidget(self.heatPumpDataFileInput)
+        dataLayout.addWidget(self.selectCOPFileButton)
+
+        mainLayout.addLayout(dataLayout)
+
+        # Button Layout für OK und Abbrechen
+        buttonLayout = QHBoxLayout()
+        okButton = QPushButton("OK")
+        cancelButton = QPushButton("Abbrechen")
+        okButton.setStyleSheet("background-color: #4CAF50; color: white; padding: 5px;")
+        cancelButton.setStyleSheet("background-color: #f44336; color: white; padding: 5px;")
+
+        okButton.clicked.connect(self.accept)
+        cancelButton.clicked.connect(self.reject)
+
+        buttonLayout.addWidget(okButton)
+        buttonLayout.addWidget(cancelButton)
+
+        mainLayout.addLayout(buttonLayout)
+        self.setLayout(mainLayout)
+
+    def selectFilename(self, lineEdit):
+        filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", "", "CSV-Dateien (*.csv)")
+        if filename:
+            lineEdit.setText(filename)
+
+    def initDefaultValues(self):
+        # Standardwert, könnte durch Benutzerinteraktion überschrieben werden
+        self.heatPumpDataFileInput.setText("heat_generators/Kennlinien WP.csv")
+
+    def getValues(self):
+        # Zurückgeben der Werte zur weiteren Verarbeitung
+        return {
+            'COP-filename': self.heatPumpDataFileInput.text()
+        }

@@ -10,8 +10,8 @@ speicher_stand = 0  # Anfangsstand des Speichers in kWh
 gaspreis = 50  # EUR/MWh
 
 # Pfad zu den CSV-Daten
-strom_data = "sonstiges/Strompreise_day_ahead_2023.csv"
-lastgang_data = "project_data/Görlitz/Lastgang/Lastgang_85C_70C_60C.csv"
+strom_data = "currently_not_used/Strompreise_day_ahead_2023.csv"
+lastgang_data = "currently_not_used/Lastgang_85C_70C_60C.csv"
 
 def einlesen_strompreise(dateipfad):
     df = pd.read_csv(dateipfad, header=[0, 1], index_col=0)

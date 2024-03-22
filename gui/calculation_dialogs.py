@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QComboBox, \
-    QTableWidget, QPushButton, QTableWidgetItem, QHBoxLayout, QFileDialog, QCheckBox
+    QTableWidget, QPushButton, QTableWidgetItem, QHBoxLayout, QFileDialog, QCheckBox, QMessageBox
 
 import pandapipes as pp
 
@@ -495,3 +495,81 @@ class NetGenerationDialog(QDialog):
             self.generate_callback(stanet_csv, rl_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump, import_type)
 
         self.accept()
+
+class ZeitreihenrechnungDialog(QDialog):
+    def __init__(self, base_path, parent=None):
+        super().__init__(parent)
+        self.base_path = base_path
+        self.initUI()
+
+    def initUI(self):
+        self.setWindowTitle("Zeitreihenrechnung")
+        self.resize(400, 200)
+
+        self.layout = QVBoxLayout(self)
+
+        # Zeitschritte
+        self.StartTimeStepLabel = QLabel("Zeitschritt Simulationsstart (min 0):", self)
+        self.StartTimeStepInput = QLineEdit("0", self)
+        self.EndTimeStepLabel = QLabel("Zeitschritt Simulationsende (max 8760):", self)
+        self.EndTimeStepInput = QLineEdit("96", self)
+
+        self.layout.addWidget(self.StartTimeStepLabel)
+        self.layout.addWidget(self.StartTimeStepInput)
+        self.layout.addWidget(self.EndTimeStepLabel)
+        self.layout.addWidget(self.EndTimeStepInput)
+
+        # Dateiauswahl
+        self.fileInputlayout = QHBoxLayout(self)
+
+        self.resultsFileLabel = QLabel("Ausgabedatei Lastgang:", self)
+        self.resultsFileInput = QLineEdit(f"{self.base_path}/Lastgang/Lastgang.csv", self)
+        self.selectresultsFileButton = QPushButton('csv-Datei auswählen')
+        self.selectresultsFileButton.clicked.connect(lambda: self.selectFilename(self.resultsFileInput))
+
+        self.fileInputlayout.addWidget(self.resultsFileLabel)
+        self.fileInputlayout.addWidget(self.resultsFileInput)
+        self.fileInputlayout.addWidget(self.selectresultsFileButton)
+
+        self.layout.addLayout(self.fileInputlayout)
+
+        # Buttons
+        buttonLayout = QHBoxLayout()
+        okButton = QPushButton("OK", self)
+        cancelButton = QPushButton("Abbrechen", self)
+        
+        okButton.clicked.connect(self.onAccept)
+        cancelButton.clicked.connect(self.reject)
+        
+        buttonLayout.addWidget(okButton)
+        buttonLayout.addWidget(cancelButton)
+
+        self.layout.addLayout(buttonLayout)
+
+    def onAccept(self):
+        if self.validateInputs():
+            self.accept()
+
+    def validateInputs(self):
+        start = int(self.StartTimeStepInput.text())
+        end = int(self.EndTimeStepInput.text())
+        
+        if start < 0 or start > 8760 or end < 0 or end > 8760:
+            QMessageBox.warning(self, "Ungültige Eingabe", "Start- und Endzeitschritte müssen zwischen 0 und 8760 liegen.")
+            return False
+        if start > end:
+            QMessageBox.warning(self, "Ungültige Eingabe", "Der Startschritt darf nicht größer als der Endschritt sein.")
+            return False
+        return True
+
+    def selectFilename(self, lineEdit):
+        filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen")
+        if filename:
+            lineEdit.setText(filename)
+
+    def getValues(self):
+        return {
+            'results_filename': self.resultsFileInput.text(),
+            'start': int(self.StartTimeStepInput.text()),
+            'end': int(self.EndTimeStepInput.text())
+        }
