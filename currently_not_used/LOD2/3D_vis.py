@@ -3,11 +3,11 @@ import numpy as np
 import pyvista as pv
 
 # Shapefile laden
-gdf = gpd.read_file('C:/Users/username/heating_network_generation/currently_not_used/LOD2/shape/lod2_33484_5636_2_sn_shape/lod2_33484_5636_2_sn.shp')
+gdf = gpd.read_file('C:/Users/username/heating_network_generation/project_data/Beispiel Görlitz/Gebäudedaten/lod2_33498_5666_2_sn_shape/lod2_33498_5666_2_sn.shp')
 
 # Einzigartige Geometrietypen ermitteln
 unique_geometry_types = gdf.geometry.type.unique()
-
+     
 print(unique_geometry_types)
 
 # Funktion, um die Koordinaten aus einer Geometrie zu extrahieren
