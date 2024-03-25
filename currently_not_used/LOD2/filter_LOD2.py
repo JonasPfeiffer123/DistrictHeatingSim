@@ -1,7 +1,8 @@
 import pandas as pd
 import geopandas as gpd
-from shapely.geometry import Polygon, MultiPolygon
-from shapely.geometry import box
+from shapely.geometry import Polygon, MultiPolygon, GeometryCollection, box
+from shapely.ops import unary_union, cascaded_union
+
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -106,44 +107,136 @@ def test():
 
     # Gefilterte Daten in einer neuen geoJSON speichern
     filtered_lod_gdf.to_file(output_geojson_path, driver='GeoJSON')
-    
+
 def spatial_filter_with_polygon():
     # Pfadangaben
-    lod_shapefile_path = 'C:/Users/username/heating_network_generation/project_data/Beispiel Görlitz/Gebäudedaten/lod2_33498_5666_2_sn_shape/lod2_33498_5666_2_sn.shp'
-    polygon_shapefile_path = 'C:/Users/username/heating_network_generation/project_data/Beispiel Görlitz/Gebäudedaten/Quartier_Konzept_vereinfacht.shp'  # Pfad zur Polygon-Shapefile
+    lod_geojson_path = 'C:/Users/username/heating_network_generation/project_data/Beispiel Görlitz/lod2_33498_5666_2_sn.geojson'
+    polygon_shapefile_path = 'C:/Users/username/heating_network_generation/project_data/Beispiel Görlitz/Gebäudedaten/Quartier_Konzept_vereinfacht.shp'
     output_geojson_path = 'C:/Users/username/heating_network_generation/project_data/Beispiel Görlitz/Gebäudedaten/filtered_LOD_quartier.geojson'
 
     # Polygon-Shapefile laden
     polygon_gdf = gpd.read_file(polygon_shapefile_path)
-    print(polygon_gdf.head())
-
     # LOD-Daten laden
-    lod_gdf = gpd.read_file(lod_shapefile_path)
-    print(lod_gdf.head())
+    lod_gdf = gpd.read_file(lod_geojson_path)
 
+    # CRS anpassen
     polygon_gdf = polygon_gdf.to_crs(lod_gdf.crs)
-
-    fig, ax = plt.subplots()
-    polygon_gdf.plot(ax=ax, color='red', alpha=0.5)
-    lod_gdf.plot(ax=ax, color='blue', alpha=0.5)
-    plt.show()
 
     # Überprüfen der Gültigkeit und Reparieren von Polygon-Geometrien
     polygon_gdf['geometry'] = polygon_gdf['geometry'].buffer(0)
 
-    # Gegebenenfalls für LOD2-Daten wiederholen
-    lod_gdf['geometry'] = lod_gdf['geometry'].buffer(0)
+    # 2D-Geometrien oder gepufferte Version für die Identifizierung der Objekt-IDs verwenden
+    lod_gdf_2d = lod_gdf.copy()
+    lod_gdf_2d['geometry'] = lod_gdf_2d['geometry'].buffer(0)
+    
+    # Identifiziere Objekte, die vollständig innerhalb des Polygons liegen, basierend auf der 2D-Repräsentation
+    ids_within_polygon = lod_gdf_2d[lod_gdf_2d.within(polygon_gdf.unary_union)]['ID'].unique()
 
-    # Räumlichen Filter anwenden: behalte nur Gebäude, die innerhalb des Polygons liegen
-    filtered_lod_gdf = lod_gdf[lod_gdf.intersects(polygon_gdf.unary_union)]
+    # Filtere die ursprünglichen LOD-Daten basierend auf den identifizierten IDs
+    filtered_lod_gdf = lod_gdf[lod_gdf['ID'].isin(ids_within_polygon)]
 
-    # Gefilterte Daten in einer neuen geoJSON speichern
+    # Gefilterte Daten in einer neuen GeoJSON-Datei speichern
     filtered_lod_gdf.to_file(output_geojson_path, driver='GeoJSON')
-    lod_gdf.to_file("C:/Users/username/heating_network_generation/project_data/Beispiel Görlitz/Gebäudedaten/lod2_33498_5666_2_sn_shape/lod2_33498_5666_2_sn.geojson", driver='GeoJSON')
+
+
+def calculate_polygon_area_3d(polygon):
+    """Berechnet die Fläche eines 3D-Polygons durch Zerlegung in Dreiecke."""
+    if isinstance(polygon, Polygon):
+        coords = list(polygon.exterior.coords)
+        # Entferne den letzten Punkt, wenn er mit dem ersten identisch ist (geschlossene Polygone in Shapely).
+        if coords[0] == coords[-1]:
+            coords.pop()
+            
+        # Berechne die Fläche, indem Dreiecke verwendet werden.
+        area = 0.0
+        origin = coords[0]  # Wähle den ersten Punkt als Ursprung
+        
+        for i in range(1, len(coords) - 1):
+            # Berechne die Fläche des Dreiecks, das vom Ursprung und zwei aufeinanderfolgenden Punkten gebildet wird.
+            area += calculate_triangle_area_3d(origin, coords[i], coords[i+1])
+            
+        return area
+    else:
+        return None
+
+def calculate_triangle_area_3d(p1, p2, p3):
+    """Berechnet die Fläche eines Dreiecks im 3D-Raum mithilfe der Heron-Formel."""
+    a = calculate_distance_3d(p1, p2)
+    b = calculate_distance_3d(p2, p3)
+    c = calculate_distance_3d(p3, p1)
+    s = (a + b + c) / 2  # Semiperimeter
+    return np.sqrt(s * (s - a) * (s - b) * (s - c))  # Heron-Formel
+
+def calculate_distance_3d(point1, point2):
+    """Berechnet die Distanz zwischen zwei Punkten im 3D-Raum."""
+    return np.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2 + (point1[2] - point2[2])**2)
+
+def calculate_area_3d_for_feature(geometry):
+    """Berechnet die 3D-Fläche für ein einzelnes Feature."""
+    total_area = 0
+    if isinstance(geometry, Polygon):
+        total_area = calculate_polygon_area_3d(geometry)
+    elif isinstance(geometry, MultiPolygon):
+        for polygon in geometry.geoms:
+            total_area += calculate_polygon_area_3d(polygon)
+    return total_area
+
+def process_lod2():
+    # Dateipfad zur GeoJSON-Datei
+    file_path = 'C:/Users/username/heating_network_generation/project_data/Beispiel Görlitz/Gebäudedaten/filtered_LOD_quartier.geojson'
+
+    # Lade die GeoJSON-Datei
+    gdf = gpd.read_file(file_path)
+
+    # Untersuche die ersten Einträge, um die Struktur der Daten zu verstehen
+    print(gdf.head())
+
+    # Berechne die Fläche für Gebäudegrundflächen
+    ground_geoms = gdf[gdf['Geometr_3D'] == 'Ground']
+    ground_areas = ground_geoms.area
+    print(f"Flächen der Gebäudegrundflächen: {ground_areas} m²")
+
+    # Iteriere über jede Zeile im GeoDataFrame und berechne die Fläche für Wand- und Dachflächen
+    for feature_type in ['Wall', 'Roof']:
+        print(f"\nFlächen der {feature_type}-Flächen:")
+        features = gdf[gdf['Geometr_3D'] == feature_type]
+        for _, row in features.iterrows():
+            area = calculate_area_3d_for_feature(row['geometry'])
+            print(f"ID: {row['ID']}, Name: {row.get('Name', 'N/A')}, Fläche: {area:.2f} m²")
+
+    # Mapping von Parent-IDs zu Child-Geometrien erstellen
+    parent_to_children = {}
+
+    # Gehe durch jede Zeile im GeoDataFrame
+    for idx, row in gdf.iterrows():
+        parent_id = row['Obj_Parent']
+        if parent_id:
+            if parent_id not in parent_to_children:
+                parent_to_children[parent_id] = []
+            parent_to_children[parent_id].append(row['geometry'])
+
+    print("\nSumme Außenwandflächen:")
+    # Für jedes Parent-Objekt die Flächen der Child-Geometrien berechnen
+    for parent_id, children_geometries in parent_to_children.items():
+        # Anfangsfläche für die Wände und Closures des Parent-Objekts ist 0
+        wall_area = 0
+
+        # Durchlaufe alle untergeordneten Geometrien und summiere ihre Flächen
+        for child_geom in children_geometries:
+            # Finde die entsprechende Zeile im GeoDataFrame für die aktuelle Geometrie
+            child_row = gdf[gdf['geometry'] == child_geom].iloc[0]
+
+            # Führe die Flächenberechnung basierend auf dem Typ der Geometrie durch
+            if child_row['Geometr_3D'] == 'Wall':
+                wall_area += calculate_area_3d_for_feature(child_geom)
+
+        print(f"Parent ID: {parent_id}, Wall Area: {wall_area:.2f} m²")
 
 #plot3D()
 
 #test()
     
 # Rufe die Funktion auf, um den Filterprozess zu starten
-spatial_filter_with_polygon()
+#spatial_filter_with_polygon()#
+
+process_lod2()
