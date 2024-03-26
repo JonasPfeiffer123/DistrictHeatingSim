@@ -108,12 +108,7 @@ def test():
     # Gefilterte Daten in einer neuen geoJSON speichern
     filtered_lod_gdf.to_file(output_geojson_path, driver='GeoJSON')
 
-def spatial_filter_with_polygon():
-    # Pfadangaben
-    lod_geojson_path = 'C:/Users/username/heating_network_generation/project_data/Beispiel Görlitz/lod2_33498_5666_2_sn.geojson'
-    polygon_shapefile_path = 'C:/Users/username/heating_network_generation/project_data/Beispiel Görlitz/Gebäudedaten/Quartier_Konzept_vereinfacht.shp'
-    output_geojson_path = 'C:/Users/username/heating_network_generation/project_data/Beispiel Görlitz/Gebäudedaten/filtered_LOD_quartier.geojson'
-
+def spatial_filter_with_polygon(lod_geojson_path, polygon_shapefile_path, output_geojson_path):
     # Polygon-Shapefile laden
     polygon_gdf = gpd.read_file(polygon_shapefile_path)
     # LOD-Daten laden
@@ -181,10 +176,7 @@ def calculate_area_3d_for_feature(geometry):
             total_area += calculate_polygon_area_3d(polygon)
     return total_area
 
-def process_lod2():
-    # Dateipfad zur GeoJSON-Datei
-    file_path = 'C:/Users/username/heating_network_generation/project_data/Beispiel Görlitz/Gebäudedaten/filtered_LOD_quartier.geojson'
-
+def process_lod2(file_path):
     # Lade die GeoJSON-Datei
     gdf = gpd.read_file(file_path)
 
@@ -233,10 +225,17 @@ def process_lod2():
         print(f"Parent ID: {parent_id}, Wall Area: {wall_area:.2f} m²")
 
 #plot3D()
-
 #test()
-    
+# Pfadangaben
+#lod_geojson_path = 'C:/Users/username/heating_network_generation/project_data/Beispiel Görlitz/lod2_33498_5666_2_sn.geojson'
+lod_geojson_path = 'C:/Users/username/heating_network_generation/project_data/Bautzen/lod2_33458_5668_2_sn.geojson'
+#polygon_shapefile_path = 'C:/Users/username/heating_network_generation/project_data/Beispiel Görlitz/Gebäudedaten/Quartier_Konzept_vereinfacht.shp'
+polygon_shapefile_path = 'C:/Users/username/heating_network_generation/project_data/Bautzen/filter_polygon.shp'
+#output_geojson_path = 'C:/Users/username/heating_network_generation/project_data/Beispiel Görlitz/Gebäudedaten/filtered_LOD_quartier.geojson'
+output_geojson_path = 'C:/Users/username/heating_network_generation/project_data/Bautzen/filtered_LOD_quartier.geojson'
 # Rufe die Funktion auf, um den Filterprozess zu starten
-#spatial_filter_with_polygon()#
+spatial_filter_with_polygon(lod_geojson_path, polygon_shapefile_path, output_geojson_path)
 
-process_lod2()
+#file_path = 'C:/Users/username/heating_network_generation/project_data/Beispiel Görlitz/Gebäudedaten/filtered_LOD_quartier.geojson'
+file_path = 'C:/Users/username/heating_network_generation/project_data/Bautzen/filtered_LOD_quartier.geojson'
+process_lod2(file_path)
