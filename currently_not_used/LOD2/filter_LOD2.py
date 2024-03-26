@@ -202,7 +202,7 @@ def process_lod2():
         features = gdf[gdf['Geometr_3D'] == feature_type]
         for _, row in features.iterrows():
             area = calculate_area_3d_for_feature(row['geometry'])
-            print(f"ID: {row['ID']}, Name: {row.get('Name', 'N/A')}, Fläche: {area:.2f} m²")
+            print(f"ID: {row['ID']}, Dachorient: {row.get('Dachorient', 'N/A')}, Dachneig: {row.get('Dachneig', 'N/A')}, Fläche: {area:.2f} m²")
 
     # Mapping von Parent-IDs zu Child-Geometrien erstellen
     parent_to_children = {}
