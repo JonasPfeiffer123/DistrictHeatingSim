@@ -1,0 +1,3 @@
+﻿Land;Bundesland;Stadt;Adresse;Wärmebedarf;Gebäudetyp;WW_Anteil;Typ_Heizflächen;VLT_max;Steigung_Heizkurve;RLT_max;UTM_X;UTM_Y
+Deutschland;Sachsen;Görlitz;Furtstraße 1;1100000;GBD;0.4;HK;70;1.5;55;499882.86;5666431.99
+Deutschland;Sachsen;Görlitz;Am Stadtpark 1;1300000;GBD;0.2;HK;70;1.5;55;499915.268;5666561.652

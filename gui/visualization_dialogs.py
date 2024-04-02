@@ -17,6 +17,7 @@ from gui.threads import GeocodingThread
 from geocoding.geocodingETRS89 import get_coordinates, process_data
 from osm.import_osm_data_geojson import build_query, download_data, save_to_file
 from osm.Wärmeversorgungsgebiete import clustering_quartiere_hdbscan, postprocessing_hdbscan, allocate_overlapping_area
+from lod2.scripts.filter_LOD2 import spatial_filter_with_polygon
    
 class LayerGenerationDialog(QDialog):
     def __init__(self, base_path, parent=None):
@@ -827,3 +828,86 @@ class GeocodeAddressesDialog(QDialog):
     def on_generation_error(self, error_message):
         QMessageBox.critical(self, "Fehler beim Geocoding", str(error_message))
         self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
+
+class ProcessLOD2DataDialog(QDialog):
+    def __init__(self, base_path, parent=None):
+        super().__init__(parent)
+        self.base_path = base_path
+        self.initUI()
+
+    def initUI(self):
+        self.setWindowTitle("Adressdaten geocodieren")
+        self.setGeometry(300, 300, 600, 200)  # Anpassung der Fenstergröße
+        
+        layout = QVBoxLayout(self)
+        layout.setSpacing(10)  # Abstand zwischen den Widgets
+        layout.setContentsMargins(10, 10, 10, 10)  # Rand des Layouts
+
+        font = QFont()
+        font.setPointSize(10)  # Größere Schrift für bessere Lesbarkeit
+        
+        # Eingabefeld für die Eingabe-LOD2-geojson
+        self.inputLOD2geojsonLineEdit, inputLOD2geojsonButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/lod2_33458_5668_2_sn.geojson", font)
+        layout.addLayout(self.createFileInputLayout("Eingabe-LOD2-geojson:", self.inputLOD2geojsonLineEdit, inputLOD2geojsonButton, font))
+
+        # Eingabefeld für die Eingabe-Filter-Polygon-shapefile
+        self.inputfilterPolygonLineEdit, inputfilterPolygonButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/filter_polygon.shp", font)
+        layout.addLayout(self.createFileInputLayout("Eingabe-Filter-Polygon-shapefile:", self.inputfilterPolygonLineEdit, inputfilterPolygonButton, font))
+
+        # Eingabefeld für die Ausgabe-LOD2-geojson
+        self.outputLOD2geojsonLineEdit, outputLOD2geojsonButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/filtered_LOD_quartier.geojson", font)
+        layout.addLayout(self.createFileInputLayout("Ausgabe-LOD2-geojson:", self.outputLOD2geojsonLineEdit, outputLOD2geojsonButton, font))
+        
+        # Eingabefeld für die Ausgabe-csv
+        #self.outputcsvLineEdit, outputcsvButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/building_data.csv", font)
+        #layout.addLayout(self.createFileInputLayout("Ausgabe-csv:", self.outputcsvLineEdit, outputcsvButton, font))
+        
+        # Buttons für OK und Abbrechen in einem horizontalen Layout
+        buttonLayout = QHBoxLayout()
+        self.okButton = QPushButton("OK", self)
+        self.okButton.setFont(font)
+        self.okButton.clicked.connect(self.onAccept)
+        self.cancelButton = QPushButton("Abbrechen", self)
+        self.cancelButton.setFont(font)
+        self.cancelButton.clicked.connect(self.reject)
+        buttonLayout.addWidget(self.okButton)
+        buttonLayout.addWidget(self.cancelButton)
+        layout.addLayout(buttonLayout)
+
+        # Verbesserte Fortschrittsanzeige
+        self.progressBar = QProgressBar(self)
+        self.progressBar.setFont(font)
+        layout.addWidget(self.progressBar)
+
+    def createFileInput(self, default_path, font):
+        lineEdit = QLineEdit(default_path)
+        lineEdit.setFont(font)
+        button = QPushButton("Durchsuchen")
+        button.setFont(font)
+        button.clicked.connect(lambda: self.selectFile(lineEdit))
+        return lineEdit, button
+
+    def createFileInputLayout(self, label_text, lineEdit, button, font):
+        layout = QHBoxLayout()
+        label = QLabel(label_text)
+        label.setFont(font)
+        layout.addWidget(label)
+        layout.addWidget(lineEdit)
+        layout.addWidget(button)
+        return layout
+
+    def selectFile(self, lineEdit):
+        filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", "", "All Files (*)")
+        if filename:
+            lineEdit.setText(filename)
+
+    def onAccept(self):
+        # Daten sammeln
+        self.inputLOD2geojsonfilename = self.inputLOD2geojsonLineEdit.text()
+        self.inputfilterPolygonfilename = self.inputfilterPolygonLineEdit.text()
+        self.outputLOD2geojsonfilename = self.outputLOD2geojsonLineEdit.text()
+        self.outputcsvfilename = f"{self.base_path}/Gebäudedaten/building_data.csv" # self.outputcsvLineEdit.text()        
+        self.processData()
+
+    def processData(self):
+        spatial_filter_with_polygon(self.inputLOD2geojsonfilename, self.inputfilterPolygonfilename, self.outputLOD2geojsonfilename)

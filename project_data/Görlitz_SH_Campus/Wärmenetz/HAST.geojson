@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::25833" } },
+"features": [
+{ "type": "Feature", "properties": { "Land": "Deutschland", "Bundesland": "Sachsen", "Stadt": "Görlitz", "Adresse": "Furtstraße 1", "Wärmebedarf": "1100000", "Gebäudetyp": "GBD", "WW_Anteil": "0.4", "Typ_Heizflächen": "HK", "VLT_max": "70", "Steigung_Heizkurve": "1.5", "RLT_max": "55" }, "geometry": { "type": "LineString", "coordinates": [ [ 499882.85999999998603, 5666431.990000000223517 ], [ 499883.85999999998603, 5666431.990000000223517 ] ] } },
+{ "type": "Feature", "properties": { "Land": "Deutschland", "Bundesland": "Sachsen", "Stadt": "Görlitz", "Adresse": "Am Stadtpark 1", "Wärmebedarf": "1300000", "Gebäudetyp": "GBD", "WW_Anteil": "0.2", "Typ_Heizflächen": "HK", "VLT_max": "70", "Steigung_Heizkurve": "1.5", "RLT_max": "55" }, "geometry": { "type": "LineString", "coordinates": [ [ 499915.267999999981839, 5666561.651999999769032 ], [ 499916.267999999981839, 5666561.651999999769032 ] ] } }
+]
+}
