@@ -14,7 +14,7 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 import folium
 
-from gui.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog, SpatialAnalysisDialog, GeocodeAddressesDialog
+from gui.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog, SpatialAnalysisDialog, GeocodeAddressesDialog, ProcessLOD2DataDialog
 from gui.threads import NetGenerationThread, FileImportThread
 
 class VisualizationTab(QWidget):
@@ -25,7 +25,7 @@ class VisualizationTab(QWidget):
         self.data_manager = data_manager
         self.layers = {}
         self.initUI()
-        self.base_path = "project_data/Beispiel Bad Muskau"  # initializing base path
+        self.base_path = "project_data/Bad Muskau"  # initializing base path
         self.updateDefaultPath(self.base_path)
     
     def initUI(self):
@@ -66,6 +66,10 @@ class VisualizationTab(QWidget):
         spatialAnalysisAction = QAction('Raumanalyse', self)
         spatialAnalysisAction.triggered.connect(self.openspatialAnalysisDialog)
         fileMenu.addAction(spatialAnalysisAction)
+
+        processLOD2Action = QAction('Process LOD2', self)
+        processLOD2Action.triggered.connect(self.openprocessLOD2Dialog)
+        fileMenu.addAction(processLOD2Action)
 
         downloadAction = QAction('Wärmenetz aus Daten generieren', self)
         downloadAction.triggered.connect(self.openLayerGenerationDialog)
@@ -132,6 +136,11 @@ class VisualizationTab(QWidget):
         if dialog.exec_() == QDialog.Accepted:
             inputs = dialog.getInputs()
             self.generateAndImportLayers(inputs)
+
+    def openprocessLOD2Dialog(self):
+        dialog = ProcessLOD2DataDialog(self.base_path, self)
+        if dialog.exec_() == QDialog.Accepted:
+            pass
 
     def generateAndImportLayers(self, inputs):
         # Make sure the previous thread exits

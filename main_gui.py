@@ -41,7 +41,7 @@ class CentralDataManager(QObject):
     def __init__(self):
         super(CentralDataManager, self).__init__()  # calling QObject constructor
         self.map_data = []
-        self.project_folder = "project_data/Beispiel Bad Muskau"  # variable project folder path
+        self.project_folder = "project_data/Bad Muskau"  # variable project folder path
     def add_data(self, data):
         self.map_data.append(data)
         # Trigger any updates needed for the map

@@ -39,7 +39,7 @@ class MixDesignTab(QWidget):
         super().__init__(parent)
         self.results = {}
         self.initFileInputs()
-        self.base_path = "project_data/Beispiel Bad Muskau"  # Basispfad initialisieren
+        self.base_path = "project_data/Bad Muskau"  # Basispfad initialisieren
         self.economicParametersDialog = EconomicParametersDialog(self)
         self.netInfrastructureDialog = NetInfrastructureDialog(self)
         self.temperatureDataDialog = TemperatureDataDialog(self)
@@ -923,12 +923,6 @@ class MixDesignTab(QWidget):
     def saveConfiguration(self):
         state = {
             'filename': self.FilenameInput.text(),
-            'tryFilename': self.tryFilenameInput.text(),
-            'copFilename': self.copFilenameInput.text(),
-            'gaspreis': self.gaspreisInput.text(),
-            'strompreis': self.strompreisInput.text(),
-            'holzpreis': self.holzpreisInput.text(),
-            'BEW': self.BEWComboBox.currentText(),
             'techObjects': [self.formatTechForSave(tech) for tech in self.tech_objects]
         }
 
@@ -946,12 +940,6 @@ class MixDesignTab(QWidget):
                 state = json.load(f)
 
             self.FilenameInput.setText(state['filename'])
-            self.tryFilenameInput.setText(state['tryFilename'])
-            self.copFilenameInput.setText(state['copFilename'])
-            self.gaspreisInput.setText(state['gaspreis'])
-            self.strompreisInput.setText(state['strompreis'])
-            self.holzpreisInput.setText(state['holzpreis'])
-            self.BEWComboBox.setCurrentText(state['BEW'])
 
             self.tech_objects = [self.createTechnologyFromSavedData(tech_data) for tech_data in state['techObjects']]
             self.updateTechList()
