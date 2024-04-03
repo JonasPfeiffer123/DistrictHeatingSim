@@ -39,7 +39,7 @@ class MixDesignTab(QWidget):
         super().__init__(parent)
         self.results = {}
         self.initFileInputs()
-        self.base_path = "project_data/Beispiel Bad Muskau"  # Basispfad initialisieren
+        self.base_path = "project_data/Bad Muskau"  # Basispfad initialisieren
         self.economicParametersDialog = EconomicParametersDialog(self)
         self.netInfrastructureDialog = NetInfrastructureDialog(self)
         self.temperatureDataDialog = TemperatureDataDialog(self)

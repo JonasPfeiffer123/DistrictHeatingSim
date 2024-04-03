@@ -29,7 +29,7 @@ class CalculationTab(QWidget):
         self.data_manager = data_manager
         self.calc_method = "Datensatz"
         self.initUI()
-        self.base_path = "project_data/Beispiel Bad Muskau"  # Basispfad initialisieren
+        self.base_path = "project_data/Bad Muskau"  # Basispfad initialisieren
         self.updateDefaultPath(self.base_path)
 
         self.net_data = None  # Variable zum Speichern der Netzdaten

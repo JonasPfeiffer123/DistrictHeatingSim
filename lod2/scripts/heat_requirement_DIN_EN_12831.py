@@ -5,7 +5,7 @@
 
 import pandas as pd
 
-from filter_LOD2 import spatial_filter_with_polygon, process_lod2, calculate_centroid_and_geocode
+from lod2.scripts.filter_LOD2 import spatial_filter_with_polygon, process_lod2, calculate_centroid_and_geocode
 
 class Building:
     STANDARD_U_VALUES = {
@@ -13,7 +13,7 @@ class Building:
         'window_u': 1.3, 'door_u': 1.3, 'air_change_rate': 0.5,
         'floors': 4, 'fracture_windows': 0.10, 'fracture_doors': 0.01,
         'min_air_temp': -15, 'room_temp': 20, 'max_air_temp_heating': 15,
-        'ww_demand_Wh_per_m2': 12800, "filename_TRY": "data/TRY2015_511676144222_Jahr.dat"
+        'ww_demand_Wh_per_m2': 12800, "filename_TRY": "lod2/data/TRY2015_511676144222_Jahr.dat"
     }
 
     def __init__(self, ground_area, wall_area, roof_area, building_volume, u_type=None, building_state=None):
@@ -96,14 +96,14 @@ class Building:
 
     def load_u_values(self, u_type, building_state):                
         # Angenommen, die CSV-Datei heißt 'u_values.csv' und befindet sich im gleichen Verzeichnis
-        df = pd.read_csv('data/standard_u_values_TABULA.csv', sep=";")
-        u_values_row = df[df['Typ'] == u_type and df['building_state'] == building_state]
+        df = pd.read_csv('lod2/data/standard_u_values_TABULA.csv', sep=";")
+        u_values_row = df[(df['Typ'] == u_type) & (df['building_state'] == building_state)]
         
         if not u_values_row.empty:
-            # Umwandeln der ersten Zeile in ein Dictionary, ohne die Typ-Spalte
-            return u_values_row.iloc[0].drop('Typ').to_dict()
+            # Umwandeln der ersten Zeile in ein Dictionary, ohne die Typ- und Gebäudezustandsspalte
+            return u_values_row.iloc[0].drop(['Typ', 'building_state']).to_dict()
         else:
-            print(f"Keine U-Werte für Typ '{u_type}' gefunden. Verwende Standardwerte.")
+            print(f"Keine U-Werte für Typ '{u_type}' und Zustand '{building_state}' gefunden. Verwende Standardwerte.")
             return {}
 
 def calculate_heat_demand_for_lod2_area(lod_geojson_path, polygon_shapefile_path, output_geojson_path, output_csv_path):

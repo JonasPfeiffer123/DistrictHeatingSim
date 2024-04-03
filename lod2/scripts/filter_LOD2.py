@@ -138,7 +138,7 @@ def process_lod2(file_path):
         h_boden = info['H_Boden']
         info['Volume'] = (h_traufe - h_boden) * info['Ground_Area'] if h_traufe and h_boden else None
 
-        print(f"Parent ID: {parent_id}, Ground Area: {info['Ground_Area']:.2f} m², Wall Area: {info['Wall_Area']:.2f} m², Roof Area: {info['Roof_Area']:.2f} m², Volume: {info['Volume']:.2f} m³")
+        print(f"Parent ID: {parent_id}, Ground Area: {info['Ground_Area']:.1f} m², Wall Area: {info['Wall_Area']:.1f} m², Roof Area: {info['Roof_Area']:.1f} m², Volume: {info['Volume']:.1f} m³")
 
     return building_info
 
@@ -156,21 +156,39 @@ def calculate_centroid_and_geocode(building_info):
 
             # Erstellen eines GeoDataFrame für die Umrechnung
             gdf = gpd.GeoDataFrame([{'geometry': centroid}], crs="EPSG:25833")
+            # Ergänzung der Koordinaten im building_info Dictionary
+            info['Koordinaten'] = (gdf.geometry.iloc[0].x, gdf.geometry.iloc[0].y)
+
             # Umrechnung von EPSG:25833 nach EPSG:4326
             gdf = gdf.to_crs(epsg=4326)
 
             # Zugriff auf den umgerechneten Punkt
             centroid_transformed = gdf.geometry.iloc[0]
             lat, lon = centroid_transformed.y, centroid_transformed.x
-            adresse = geocode(lat, lon)
 
-            # Ergänzung der Koordinaten und der Adresse im building_info Dictionary
-            info['Koordinaten'] = (lat, lon)
-            info['Adresse'] = adresse
+            # Geokodierung und Adressdaten extrahieren
+            address_components = geocode(lat, lon)
+            
+            # Extrahiere die gewünschten Teile der Adresse
+            land = address_components.split(", ")[6]
+            bundesland = address_components.split(", ")[4]
+            stadt = address_components.split(", ")[3]
+            strasse = address_components.split(", ")[2]
+            hausnummer = address_components.split(", ")[1]
+
+            # Ergänzung der Adresse im building_info Dictionary
+            info['Land'] = land
+            info['Bundesland'] = bundesland
+            info['Stadt'] = stadt
+            info['Adresse'] = f"{strasse} {hausnummer}"
+
         else:
             print(f"Keine Ground-Geometrie für Gebäude {parent_id} gefunden. Überspringe.")
             info['Koordinaten'] = None
-            info['Adresse'] = "Adresse konnte nicht gefunden werden"
+            info['Land'] = None
+            info['Bundesland'] = None
+            info['Stadt'] = None
+            info['Adresse'] = None
 
     return building_info
 
