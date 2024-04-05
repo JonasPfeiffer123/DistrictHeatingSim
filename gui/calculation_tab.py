@@ -14,7 +14,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction
 
-from main import calculate_results, save_results_csv, import_results_csv
+from tests.main import calculate_results, save_results_csv, import_results_csv
 from gui.calculation_dialogs import HeatDemandEditDialog, NetGenerationDialog, ZeitreihenrechnungDialog
 from gui.threads import NetInitializationThread, NetCalculationThread
 from net_simulation_pandapipes.config_plot import config_plot
