@@ -4,7 +4,7 @@ from math import pi, sqrt
 from scipy.optimize import minimize
 from scipy.interpolate import RegularGridInterpolator
 
-from heat_generators.Solarthermie import Berechnung_STA
+from heat_generators.Solarthermie_optimierung import Berechnung_STA
 
 # Wirtschaftlichkeitsberechnung für technische Anlagen nach VDI 2067
 def annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand=0, q=1.05, r=1.03, T=20, Energiebedarf=0, Energiekosten=0, E1=0):
@@ -689,9 +689,9 @@ def optimize_mix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, 
         return general_results["WGK_Gesamt"]
 
     # optimization
-    result = minimize(objective, initial_values, method='SLSQP', bounds=bounds, options={'maxiter': 1000})
-    #result = minimize(objective, initial_values, method='L-BFGS-B', bounds=bounds, options={'maxiter': 1000})
-    #result = minimize(objective, initial_values, method='TNC', bounds=bounds, options={'maxiter': 1000})
+    result = minimize(objective, initial_values, method='SLSQP', bounds=bounds, options={'maxiter': 100})
+    #result = minimize(objective, initial_values, method='L-BFGS-B', bounds=bounds, options={'maxiter': 100})
+    #result = minimize(objective, initial_values, method='TNC', bounds=bounds, options={'maxiter': 100})
 
     if result.success:
         optimized_values = result.x

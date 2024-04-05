@@ -32,7 +32,7 @@
 
 3.2. Wirtschaftlichkeit
 - Eigene Preisentwicklungsszenarien für Erzeugerauslegung und Betrachtung alternativer Brennstoffpreisentwicklungen (alternativ zu derzeitigem Ansatz (Auswahlmöglichkeiten))
-- Entwicklung von Szenarien für den schrittweisen Umbau von Bestandssystemen und deren Wirtschaftlichkeit. (Wie soll ich das automatisieren?)
+- Entwicklung von Szenarien für den schrittweisen Umbau von Bestandssystemen und deren Wirtschaftlichkeit. (Wie automatisierbar?)
 - im Dialog für wirtschaftliche Parameter Preisentwicklung der Daten über Zeitraum hinterlegen
 - in Auswertung Preisentwicklung darstellen: kapitalgebundene/bedarfsgebundene/betriebsgebundene Kosten der einzelnen Technologien über Zeitraum, Balkendiagramm
 
@@ -40,7 +40,7 @@
     - weg von rein wirtschaftlicher Ausgabe hin zur projektspezifischen Ergebnis-PDF inklusive Dateninput, Eingaben Netzkonfiguration, Netz und der bisher schon Umgesetzten Erzeugerkonfig sowie Wirtschaftlichkeit
 
 3.4. Visualisierung
-- Option zum Anzeigen weiterer Diagramme schaffen -> Was? Keine Ahnung
+- Option zum Anzeigen weiterer Diagramme schaffen -> Was?
 
 3.5 Datenhaltung
 - Speicherformat entwerfen!!!

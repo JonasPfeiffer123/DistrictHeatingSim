@@ -56,9 +56,9 @@ def generate_profiles_from_geojson(gdf_heat_exchanger, building_type="HMF", calc
 
         # Heat demand calculation based on building type and calculation method
         if current_calc_method == "VDI4655":
-            YEU_heating_kWh, YEU_hot_water_kWh = YEU_total_heat_kWh * 0.2, YEU_total_heat_kWh * 0.8
+            YEU_heating_kWh, YEU_hot_water_kWh = YEU_total_heat_kWh * 0.8, YEU_total_heat_kWh * 0.2
             heating, hot_water = YEU_heating_kWh[idx], YEU_hot_water_kWh[idx]
-            yearly_time_steps, electricity_kW, heating_kW, hot_water_kW, total_heat_kW, hourly_temperature = heat_requirement_VDI4655.calculate(heating, hot_water, building_type=current_building_type)
+            yearly_time_steps, electricity_kW, heating_kW, hot_water_kW, total_heat_kW, hourly_temperatures = heat_requirement_VDI4655.calculate(heating, hot_water, building_type=current_building_type)
 
         elif current_calc_method == "BDEW":
             yearly_time_steps, total_heat_kW, hourly_temperatures  = heat_requirement_BDEW.calculate(YEU, current_building_type, subtyp="03")

@@ -149,6 +149,7 @@ def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY, time_s
             PSV = 0
             Tag_des_Jahres_alt = Tag_des_Jahres
             Stagnation = 0
+            S_HFG = QS / QSmax  # Speicherfüllungsgrad
 
         else:
             T_koll_a_alt = T_koll_a

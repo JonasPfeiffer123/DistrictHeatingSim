@@ -54,7 +54,7 @@ class CentralDataManager(QObject):
         self.project_folder_changed.emit(path)  # emit signal if path got changed
 
 class HeatSystemDesignGUI(QWidget):
-    def __init__(self):#
+    def __init__(self):
         super().__init__()
         self.data_manager = CentralDataManager()
 

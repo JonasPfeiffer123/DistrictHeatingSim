@@ -99,13 +99,13 @@ class MixDesignTab(QWidget):
         # Erstellen des 'Datei'-Menüs
         fileMenu = self.menuBar.addMenu('Datei')
         # Aktion zum Speichern hinzufügen
-        saveAction = QAction('Speichern', self)
-        saveAction.triggered.connect(self.saveConfiguration)
-        fileMenu.addAction(saveAction)
+        #saveAction = QAction('Speichern', self)
+        #saveAction.triggered.connect(self.saveConfiguration)
+        #fileMenu.addAction(saveAction)
         # Aktion zum Laden hinzufügen
-        loadAction = QAction('Laden', self)
-        loadAction.triggered.connect(self.loadConfiguration)
-        fileMenu.addAction(loadAction)
+        #loadAction = QAction('Laden', self)
+        #loadAction.triggered.connect(self.loadConfiguration)
+        #fileMenu.addAction(loadAction)
         #Ergebnis als PDF speichern
         pdfAction = QAction('Ergebnisse als PDF speichern', self)
         pdfAction.triggered.connect(self.on_export_pdf_clicked)
