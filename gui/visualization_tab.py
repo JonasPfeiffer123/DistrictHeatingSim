@@ -1,7 +1,6 @@
 import os
 import random
 import geopandas as gpd
-import csv
 import pandas as pd
 from shapely.geometry import Point
 

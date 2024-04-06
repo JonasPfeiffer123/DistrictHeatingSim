@@ -6,8 +6,6 @@ from gui.visualization_tab import VisualizationTab
 from gui.calculation_tab import CalculationTab
 from gui.mix_design_tab import MixDesignTab
 
-from PyQt5.QtCore import QObject, pyqtSignal
-
 class StartDialog(QDialog):
     def __init__(self, parent=None):
         super(StartDialog, self).__init__(parent)

@@ -11,7 +11,6 @@ import pyproj
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QDialog, QComboBox, QPushButton, \
     QFormLayout, QHBoxLayout, QFileDialog, QProgressBar, QMessageBox, QLabel, QWidget, \
     QTableWidget, QTableWidgetItem
-from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 
 from gui.threads import GeocodingThread

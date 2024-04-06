@@ -2,8 +2,6 @@ import requests
 import os
 import zipfile
 
-import pandas as pd
-import geopandas as gpd
 import os
 
 def download_file(url, destination_folder):

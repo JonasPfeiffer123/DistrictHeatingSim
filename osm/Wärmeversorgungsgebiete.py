@@ -1,7 +1,6 @@
 import numpy as np
-import pandas as pd
 import geopandas as gpd
-from sklearn.cluster import DBSCAN # pip install scikit-learn
+#from sklearn.cluster import DBSCAN # pip install scikit-learn
 import hdbscan
 """To install hdbscan: 
 Besuchen Sie die Webseite für die Microsoft C++ Build Tools.
@@ -17,9 +16,6 @@ Versuchen Sie nach dem Neustart die Installation von hdbscan erneut mit dem Befe
 pip install hdbscan"""
 
 from shapely.geometry import Polygon, shape
-from shapely.ops import unary_union
-from geopandas.tools import overlay
-import matplotlib.pyplot as plt
 
 # Set thresholds for deciding on the supply method
 # Buildings with a heat requirement above the heating network threshold receive a heating network supply,
