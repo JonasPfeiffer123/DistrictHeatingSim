@@ -1,4 +1,6 @@
+import sys
 import os
+
 import random
 import geopandas as gpd
 import pandas as pd
@@ -15,6 +17,18 @@ import folium
 from gui.visualization_dialogs import CSVEditorDialog, LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog, SpatialAnalysisDialog, GeocodeAddressesDialog, ProcessLOD2DataDialog
 from gui.threads import NetGenerationThread, FileImportThread
 
+# defines the map path
+def get_resource_path(relative_path):
+    """ Get the absolute path to the resource, works for dev and for PyInstaller """
+    if getattr(sys, 'frozen', False):
+        # Wenn die Anwendung eingefroren ist, ist der Basispfad der Temp-Ordner, wo PyInstaller alles extrahiert
+        base_path = sys._MEIPASS
+    else:
+        # Wenn die Anwendung nicht eingefroren ist, ist der Basispfad der Ordner, in dem die Hauptdatei liegt
+        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_path, relative_path)
+
+# Tab class
 class VisualizationTab(QWidget):
     layers_imported = pyqtSignal(dict)
 
@@ -216,9 +230,11 @@ class VisualizationTab(QWidget):
 
     def update_map_view(self, mapView, map_obj):
         """ Aktualisiert die Kartenansicht in PyQt """
-        map_file = "results/map.html"
+        # Hier verwendest du die angepasste get_resource_path-Funktion, um den korrekten Pfad zu finden
+        map_file = get_resource_path(os.path.join('results', 'map.html'))
         map_obj.save(map_file)
-        mapView.load(QUrl.fromLocalFile(os.path.abspath(map_file)))
+        # Verwende den absoluten Pfad zum Laden der Karte
+        mapView.load(QUrl.fromLocalFile(map_file))
 
     def loadNetData(self, filenames, color="#{:06x}".format(random.randint(0, 0xFFFFFF))):
         if not isinstance(filenames, list):
