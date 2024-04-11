@@ -34,16 +34,19 @@ class CustomListWidget(QListWidget):
 class MixDesignTab(QWidget):
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
     
-    def __init__(self, parent=None):
+    def __init__(self, data_manager, parent=None):
         super().__init__(parent)
+        self.data_manager = data_manager
         self.results = {}
         self.initFileInputs()
-        self.base_path = "project_data/Bad Muskau"  # Basispfad initialisieren
+        # Connect to the data manager signal
+        self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
+        # Update the base path immediately with the current project folder
         self.economicParametersDialog = EconomicParametersDialog(self)
         self.netInfrastructureDialog = NetInfrastructureDialog(self)
         self.temperatureDataDialog = TemperatureDataDialog(self)
         self.heatPumpDataDialog = HeatPumpDataDialog(self)
-        self.updateDefaultPath(self.base_path)
+        self.updateDefaultPath(self.data_manager.project_folder)
         self.setupParameters()
         self.tech_objects = []
         self.initUI()
@@ -57,7 +60,7 @@ class MixDesignTab(QWidget):
         self.base_path = new_base_path
 
         # Pfad für Ausgabe aktualisieren
-        new_output_path = f"{self.base_path}/Lastgang/Lastgang.csv"
+        new_output_path = f"{self.base_path}\Lastgang\Lastgang.csv"
         # Dies setzt voraus, dass Ihre Eingabefelder oder deren Layouts entsprechend benannt sind
         self.FilenameInput.setText(new_output_path)
 

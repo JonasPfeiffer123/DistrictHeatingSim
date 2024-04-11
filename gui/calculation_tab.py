@@ -1,3 +1,6 @@
+import sys
+import os
+
 import logging
 import numpy as np
 import geopandas as gpd
@@ -29,10 +32,11 @@ class CalculationTab(QWidget):
         super().__init__(parent)
         self.data_manager = data_manager
         self.calc_method = "Datensatz"
+        # Connect to the data manager signal
+        self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
+        # Update the base path immediately with the current project folder
+        self.updateDefaultPath(self.data_manager.project_folder)
         self.initUI()
-        self.base_path = "project_data/Bad Muskau"  # Basispfad initialisieren
-        self.updateDefaultPath(self.base_path)
-
         self.net_data = None  # Variable zum Speichern der Netzdaten
         self.supply_temperature = None # Variable Vorlauftemperatur
 
@@ -155,13 +159,17 @@ class CalculationTab(QWidget):
         self.base_path = new_base_path
     
     def openNetGenerationDialog(self):
-        dialog = NetGenerationDialog(
-            self.generateNetworkCallback,
-            self.editHeatDemandData,
-            self.base_path,
-            self
-        )
-        dialog.exec_()
+        try:
+            dialog = NetGenerationDialog(
+                self.generateNetworkCallback,
+                self.editHeatDemandData,
+                self.base_path,
+                self
+            )
+            dialog.exec_()
+        except Exception as e:
+            logging.error(f"Fehler beim öffnen des Dialogs aufgetreten: {e}")
+            QMessageBox.critical(self, "Fehler", f"Fehler beim öffnen des Dialogs aufgetreten: {e}")
 
     def generateNetworkCallback(self, *args):
         # Das letzte Element in args ist import_type
@@ -375,9 +383,9 @@ class CalculationTab(QWidget):
         self.canvas3.draw()
 
     def saveNet(self):
-        pickle_file_path = f"{self.base_path}/Wärmenetz/Ergebnisse Netzinitialisierung.p"
-        csv_file_path = f"{self.base_path}/Wärmenetz/Ergebnisse Netzinitialisierung.csv"
-        json_file_path = f"{self.base_path}/Wärmenetz/Konfiguration Netzinitialisierung.json"
+        pickle_file_path = f"{self.base_path}\Wärmenetz\Ergebnisse Netzinitialisierung.p"
+        csv_file_path = f"{self.base_path}\Wärmenetz\Ergebnisse Netzinitialisierung.csv"
+        json_file_path = f"{self.base_path}\Wärmenetz\Konfiguration Netzinitialisierung.json"
         
         if self.net_data:  # Überprüfe, ob das Netzwerk vorhanden ist
             try:
@@ -416,9 +424,9 @@ class CalculationTab(QWidget):
             QMessageBox.warning(self, "Keine Daten", "Kein Pandapipes-Netzwerk zum Speichern vorhanden.")
 
     def loadNet(self):
-        csv_file_path = f"{self.base_path}/Wärmenetz/Ergebnisse Netzinitialisierung.csv"
-        pickle_file_path = f"{self.base_path}/Wärmenetz/Ergebnisse Netzinitialisierung.p"
-        json_file_path = f"{self.base_path}/Wärmenetz/Konfiguration Netzinitialisierung.json"  # Pfad zur JSON-Datei
+        csv_file_path = f"{self.base_path}\Wärmenetz\Ergebnisse Netzinitialisierung.csv"
+        pickle_file_path = f"{self.base_path}\Wärmenetz\Ergebnisse Netzinitialisierung.p"
+        json_file_path = f"{self.base_path}\Wärmenetz\Konfiguration Netzinitialisierung.json"  # Pfad zur JSON-Datei
         
         try:
             # Laden des Pandapipes-Netzes aus der Pickle-Datei
@@ -467,14 +475,14 @@ class CalculationTab(QWidget):
             QMessageBox.critical(self, "Laden fehlgeschlagen", "Fehler beim Laden der Daten: {}".format(e))
 
     def load_net_results(self):
-        results_csv_filepath = f"{self.base_path}/Lastgang/Lastgang.csv"
+        results_csv_filepath = f"{self.base_path}\Lastgang\Lastgang.csv"
         plot_data = import_results_csv(results_csv_filepath)
         self.time_steps, self.qext_kW, self.waerme_ges_W, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, self.return_pressure_circ_pump, self.flow_pressure_circ_pump = plot_data
         self.plot_data_func(plot_data)
         self.plot2()
     
     def exportNetGeoJSON(self):
-        geoJSON_filepath = f"{self.base_path}/Wärmenetz/dimensioniertes Wärmenetz.geojson"
+        geoJSON_filepath = f"{self.base_path}\Wärmenetz\dimensioniertes Wärmenetz.geojson"
         if self.net_data:  # Überprüfe, ob das Netzwerk vorhanden ist
             net = self.net_data[0]
             

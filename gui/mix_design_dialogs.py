@@ -420,7 +420,7 @@ class KostenBerechnungDialog(QDialog):
 class NetInfrastructureDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.base_path = parent.base_path
+        self.base_path = None
         self.initUI()
         self.initDefaultValues()
          # Kontextmenü für vertikale Kopfzeilen

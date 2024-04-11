@@ -17,17 +17,6 @@ import folium
 from gui.visualization_dialogs import CSVEditorDialog, LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog, SpatialAnalysisDialog, GeocodeAddressesDialog, ProcessLOD2DataDialog
 from gui.threads import NetGenerationThread, FileImportThread
 
-# defines the map path
-def get_resource_path(relative_path):
-    """ Get the absolute path to the resource, works for dev and for PyInstaller """
-    if getattr(sys, 'frozen', False):
-        # Wenn die Anwendung eingefroren ist, ist der Basispfad der Temp-Ordner, wo PyInstaller alles extrahiert
-        base_path = sys._MEIPASS
-    else:
-        # Wenn die Anwendung nicht eingefroren ist, ist der Basispfad der Ordner, in dem die Hauptdatei liegt
-        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    return os.path.join(base_path, relative_path)
-
 # Tab class
 class VisualizationTab(QWidget):
     layers_imported = pyqtSignal(dict)
@@ -36,10 +25,15 @@ class VisualizationTab(QWidget):
         super().__init__(parent)
         self.data_manager = data_manager
         self.layers = {}
+
+        # Connect to the data manager signal
+        self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
+
+        # Update the base path immediately with the current project folder
+        self.updateDefaultPath(self.data_manager.project_folder)
+
         self.initUI()
-        self.base_path = "project_data/Bad Muskau"  # initializing base path
-        self.updateDefaultPath(self.base_path)
-    
+
     def initUI(self):
         layout = QVBoxLayout()
 
@@ -169,15 +163,15 @@ class VisualizationTab(QWidget):
     # Storage location must be variable
     def on_generation_done(self, results):
         self.progressBar.setRange(0, 1)
-        filenames = [f"{self.base_path}/Wärmenetz/HAST.geojson", f"{self.base_path}/Wärmenetz/Rücklauf.geojson",
-                     f"{self.base_path}/Wärmenetz/Vorlauf.geojson", f"{self.base_path}/Wärmenetz/Erzeugeranlagen.geojson"]
+        filenames = [f"{self.base_path}\Wärmenetz\HAST.geojson", f"{self.base_path}\Wärmenetz\Rücklauf.geojson",
+                     f"{self.base_path}\Wärmenetz\Vorlauf.geojson", f"{self.base_path}\Wärmenetz\Erzeugeranlagen.geojson"]
         self.loadNetData(filenames)
         
         generatedLayers = {
-            'HAST': f"{self.base_path}/Wärmenetz/HAST.geojson",
-            'Rücklauf': f"{self.base_path}/Wärmenetz/Rücklauf.geojson",
-            'Vorlauf': f"{self.base_path}/Wärmenetz/Vorlauf.geojson",
-            'Erzeugeranlagen': f"{self.base_path}/Wärmenetz/Erzeugeranlagen.geojson"
+            'HAST': f"{self.base_path}\Wärmenetz\HAST.geojson",
+            'Rücklauf': f"{self.base_path}\Wärmenetz\Rücklauf.geojson",
+            'Vorlauf': f"{self.base_path}\Wärmenetz\Vorlauf.geojson",
+            'Erzeugeranlagen': f"{self.base_path}\Wärmenetz\Erzeugeranlagen.geojson"
         }
 
         # Trigger the signal with the paths of the generated layers
@@ -231,7 +225,7 @@ class VisualizationTab(QWidget):
     def update_map_view(self, mapView, map_obj):
         """ Aktualisiert die Kartenansicht in PyQt """
         # Hier verwendest du die angepasste get_resource_path-Funktion, um den korrekten Pfad zu finden
-        map_file = get_resource_path(os.path.join('results', 'map.html'))
+        map_file = os.path.join(self.base_path, 'results', 'map.html')
         map_obj.save(map_file)
         # Verwende den absoluten Pfad zum Laden der Karte
         mapView.load(QUrl.fromLocalFile(map_file))
@@ -354,7 +348,7 @@ class VisualizationTab(QWidget):
         fname, _ = QFileDialog.getOpenFileName(self, 'CSV-Koordinaten laden', '', 'CSV Files (*.csv);;All Files (*)')
         if fname:
             # Path for the temporary GeoJSON file
-            geojson_path = f"{self.base_path}/Gebäudedaten/Koordinaten.geojson"
+            geojson_path = f"{self.base_path}\Gebäudedaten\Koordinaten.geojson"
 
             # Creating GeoJSON file from CSV file
             self.createGeoJsonFromCsv(fname, geojson_path)

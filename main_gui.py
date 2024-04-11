@@ -6,6 +6,18 @@ from gui.visualization_tab import VisualizationTab
 from gui.calculation_tab import CalculationTab
 from gui.mix_design_tab import MixDesignTab
 
+# defines the map path
+def get_resource_path(relative_path):
+    """ Get the absolute path to the resource, works for dev and for PyInstaller """
+    if getattr(sys, 'frozen', False):
+        # Wenn die Anwendung eingefroren ist, ist der Basispfad der Temp-Ordner, wo PyInstaller alles extrahiert
+        base_path = sys._MEIPASS
+    else:
+        # Wenn die Anwendung nicht eingefroren ist, ist der Basispfad der Ordner, in dem die Hauptdatei liegt
+        base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'heating_network_generation')
+
+    return os.path.join(base_path, relative_path)
+
 class StartDialog(QDialog):
     def __init__(self, parent=None):
         super(StartDialog, self).__init__(parent)
@@ -39,7 +51,8 @@ class CentralDataManager(QObject):
     def __init__(self):
         super(CentralDataManager, self).__init__()  # calling QObject constructor
         self.map_data = []
-        self.project_folder = "project_data/Bad Muskau"  # variable project folder path
+        self.project_folder = get_resource_path("project_data\Bad Muskau")  # variable project folder path
+        print(self.project_folder)
     def add_data(self, data):
         self.map_data.append(data)
         # Trigger any updates needed for the map
@@ -111,7 +124,7 @@ class HeatSystemDesignGUI(QWidget):
 
         self.visTab = VisualizationTab(self.data_manager)
         self.calcTab = CalculationTab(self.data_manager)
-        self.mixDesignTab = MixDesignTab()
+        self.mixDesignTab = MixDesignTab(self.data_manager)
 
         # Adding tabs to the tab widget
         tabWidget.addTab(self.visTab, "Räumliche Analyse")
