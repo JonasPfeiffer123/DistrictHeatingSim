@@ -99,7 +99,7 @@ class HeatSystemDesignGUI(QWidget):
                 self.folderLabel.setText("Kein Ordner ausgewählt")
 
     def initUI(self):
-        self.setWindowTitle("Hier könnte ein cooler Softwarename stehen")
+        self.setWindowTitle("DistrictHeatSim")
         self.setGeometry(100, 100, 800, 600)  # Optional, standard size before full-screen
 
         self.layout1 = QVBoxLayout(self)

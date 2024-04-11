@@ -358,4 +358,6 @@ class CalculateMixThread(QThread):
 
             self.calculation_done.emit(result)
         except Exception as e:
-            self.calculation_error.emit(e)
+            tb = traceback.format_exc()  # Gibt den kompletten Traceback als String zurück
+            error_message = f"Ein Fehler ist aufgetreten: {e}\n{tb}"
+            self.calculation_error.emit(Exception(error_message))
