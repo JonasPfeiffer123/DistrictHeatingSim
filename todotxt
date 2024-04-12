@@ -59,3 +59,35 @@ diverses:
 - Wie muss das UI optimalerweise aussehen?
 
 - Wie kann ich das Projekt optimiert auf GitHub präsentieren?
+
+
+Räumliche Analyse:
+-	Integration LOD2-Daten
+-	Genauere Defnition Gebäude ermöglichen
+-	Bedarfe räumlich ermitteln und in Programm integrieren
+Netzgenerierung:
+-	Verbesserung Algorithmus zur Netzgenerierung
+-	Einführung geoJSON mit allen 4 Objekttypen
+
+Netzsimulation:
+Optimierungen:
+-	Regelung in der Simulation optimieren, sodass auch kleinere Massenströme sinnvoll berechnet werden können
+Funktionserweiterungen:
+-	Lastfaktor Auslegung Wärmeübertrager  Faktor für maximale Leistung nach Profil
+-	mehrere Erzeugerstandorte
+-	Wechselwarm: Anpassung Profile auf ohne WW, irgendwie Überprüfung Vorlauftemperatur  Meldung, wenn Gebäude höheren soll Vorlauf hat, macht nur mit Kühlung Sinn,
+Gebäude:
+-	3D-LOD2-Gebäudedaten
+o	Ermittlung Stockwerke  Ermittlung flächenspezifischer Wärmebedarf
+o	Ermittlung der Außenflächen
+o	Manuelle Klassifizierung der Gebäude (TABULA)
+	Ermittlung Sanierungspotenziale
+	Kostenabschätzung
+	Einschätzung Einsparung Wärmeverbrauch, Absenkung VL-Temperatur
+	 Amortisation / Wirtschaftlichkeit
+
+Erzeugerauslegung:
+-	Eigene Preisentwicklungsszenarien vorgeben
+-	innovative Technologien betrachten
+
+-	Neu: Mit Grobauslegung detaillierte Netzberechnung zur Ermittlung der Betriebsweise der Anlagen

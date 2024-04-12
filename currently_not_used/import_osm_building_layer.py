@@ -1,4 +1,4 @@
-from import_osm_data_geojson import download_data
+#from import_osm_data_geojson import download_data
 import geopandas as gpd
 import pandas as pd
 import numpy as np
@@ -19,7 +19,7 @@ def import_and_filter_building():
     # Output filename for GeoJSON file
     geojson_file = "C:/Users/username/heating_network_generation/net_generation_QGIS/Gebäude Zittau.geojson"
     # Download the data and save as GeoJSON
-    download_data(overpass_query, geojson_file)
+    #download_data(overpass_query, geojson_file)
     # Reading the GeoJSON file
     gdf = gpd.read_file(geojson_file)
     gdf['full_address'] = gdf['addr:street'] + ' ' + gdf['addr:housenumber']
