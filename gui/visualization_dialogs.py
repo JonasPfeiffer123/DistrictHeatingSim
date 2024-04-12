@@ -143,7 +143,7 @@ class CSVEditorDialog(QDialog):
     def createCsvFromGeoJson(self):
         try:
             geojson_file, _ = QFileDialog.getOpenFileName(self, "geoJSON auswählen", "", "All Files (*)")
-            csv_file = f"{self.base_path}/Gebäudedaten/generated_building_data.csv"
+            csv_file = f"{self.base_path}\Gebäudedaten\generated_building_data.csv"
             with open(geojson_file, 'r') as geojson_file:
                 data = json.load(geojson_file)
             
@@ -236,9 +236,9 @@ class LayerGenerationDialog(QDialog):
         # Formularlayout für Eingaben
         formLayout = QFormLayout()
 
-        self.fileInput, self.fileButton = self.createFileInput(f"{self.base_path}/Raumanalyse/Straßen.geojson")
+        self.fileInput, self.fileButton = self.createFileInput(f"{self.base_path}\Raumanalyse\Straßen.geojson")
         # Eingabefelder für Dateipfade und Koordinaten
-        self.dataInput, self.dataCsvButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/data_output_ETRS89.csv")
+        self.dataInput, self.dataCsvButton = self.createFileInput(f"{self.base_path}\Gebäudedaten\data_output_ETRS89.csv")
 
         # Auswahlmodus für Erzeugerstandort
         self.locationModeComboBox = QComboBox(self)
@@ -391,7 +391,7 @@ class DownloadOSMDataDialog(QDialog):
         
         # Dateiname Eingabefeld
         self.filenameLabel = QLabel("Dateiname, unter dem die Straßendaten als geojson gespeichert werden sollen:")
-        self.filenameLineEdit, fileButton = self.createFileInput(f"{self.base_path}/Raumanalyse/Straßen.geojson")
+        self.filenameLineEdit, fileButton = self.createFileInput(f"{self.base_path}\Raumanalyse\Straßen.geojson")
         layout.addWidget(self.filenameLabel)
         layout.addLayout(self.createFileInputLayout(self.filenameLineEdit, fileButton))
 
@@ -525,7 +525,7 @@ class OSMBuildingQueryDialog(QDialog):
         layout.addWidget(self.cityLineEdit)
 
         # Dateiname Eingabefeld
-        self.filenameLineEdit = QLineEdit(f"{self.base_path}/Raumanalyse/output_buildings.geojson", self)
+        self.filenameLineEdit = QLineEdit(f"{self.base_path}\Raumanalyse\output_buildings.geojson", self)
         layout.addWidget(QLabel("Dateiname, unter dem die Gebäudedaten als geojson gespeichert werde sollen:"))
         layout.addWidget(self.filenameLineEdit)
 
@@ -780,7 +780,7 @@ class SpatialAnalysisDialog(QDialog):
         self.geojsonWidget = QWidget(self)
         geojsonLayout = QVBoxLayout(self.geojsonWidget)
         self.geojsonLabel = QLabel("Dateiname der geojson mit den Gebäuden die geclustert werden sollen.")
-        self.geojsonLineEdit, self.geojsonButton = self.createFileInput(f"{self.base_path}/Raumanalyse/output_buildings.geojson")
+        self.geojsonLineEdit, self.geojsonButton = self.createFileInput(f"{self.base_path}\Raumanalyse\output_buildings.geojson")
         geojsonLayout.addLayout(self.createFileInputLayout(self.geojsonLineEdit, self.geojsonButton))
         layout.addWidget(self.geojsonLabel)
         layout.addWidget(self.geojsonWidget)
@@ -789,7 +789,7 @@ class SpatialAnalysisDialog(QDialog):
         self.geojsonareaWidget = QWidget(self)
         geojsonareaLayout = QVBoxLayout(self.geojsonareaWidget)
         self.geojsonareaLabel = QLabel("Dateiname der geojson in der die Polygone der ermittelten Quartiere/Cluster gespeichert werden sollen.")
-        self.geojsonareaLineEdit, self.geojsonareaButton = self.createFileInput(f"{self.base_path}/Raumanalyse/quartiere.geojson")
+        self.geojsonareaLineEdit, self.geojsonareaButton = self.createFileInput(f"{self.base_path}\Raumanalyse\quartiere.geojson")
         geojsonareaLayout.addLayout(self.createFileInputLayout(self.geojsonareaLineEdit, self.geojsonareaButton))
         layout.addWidget(self.geojsonareaLabel)
         layout.addWidget(self.geojsonareaWidget)
@@ -798,7 +798,7 @@ class SpatialAnalysisDialog(QDialog):
         self.geojsonfilteredbuildingsWidget = QWidget(self)
         geojsonfilteredbuildingsLayout = QVBoxLayout(self.geojsonfilteredbuildingsWidget)
         self.geojsonfilteredbuildingsLabel = QLabel("Dateiname der geojson in der die nach Wärmenetzversorgung gefilterten gebäude gespeichert werden sollen.")
-        self.geojsonfilteredbuildingsLineEdit, self.geojsonfilteredbuildingsButton = self.createFileInput(f"{self.base_path}/Raumanalyse/waermenetz_buildings.geojson")
+        self.geojsonfilteredbuildingsLineEdit, self.geojsonfilteredbuildingsButton = self.createFileInput(f"{self.base_path}\Raumanalyse\waermenetz_buildings.geojson")
         geojsonfilteredbuildingsLayout.addLayout(self.createFileInputLayout(self.geojsonfilteredbuildingsLineEdit, self.geojsonfilteredbuildingsButton))
         layout.addWidget(self.geojsonfilteredbuildingsLabel)
         layout.addWidget(self.geojsonfilteredbuildingsWidget)
@@ -899,11 +899,11 @@ class GeocodeAddressesDialog(QDialog):
         font.setPointSize(10)  # Größere Schrift für bessere Lesbarkeit
         
         # Eingabefeld für die Eingabedatei
-        self.inputfilenameLineEdit, inputFileButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/data_input.csv", font)
+        self.inputfilenameLineEdit, inputFileButton = self.createFileInput(f"{self.base_path}\Gebäudedaten\data_input.csv", font)
         layout.addLayout(self.createFileInputLayout("Eingabedatei:", self.inputfilenameLineEdit, inputFileButton, font))
         
         # Eingabefeld für die Ausgabedatei
-        self.outputfilenameLineEdit, outputFileButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/data_output_ETRS89.csv", font)
+        self.outputfilenameLineEdit, outputFileButton = self.createFileInput(f"{self.base_path}\Gebäudedaten\data_output_ETRS89.csv", font)
         layout.addLayout(self.createFileInputLayout("Ausgabedatei:", self.outputfilenameLineEdit, outputFileButton, font))
         
         # Buttons für OK und Abbrechen in einem horizontalen Layout
@@ -977,7 +977,7 @@ class ProcessLOD2DataDialog(QDialog):
         super().__init__(parent)
         self.base_path = base_path
         self.initUI()
-        self.comboBoxBuildingTypesItems = pd.read_csv('lod2/data/standard_u_values_TABULA.csv', sep=";")['Typ'].unique().tolist()
+        self.comboBoxBuildingTypesItems = pd.read_csv(f'{base_path}\lod2\data\standard_u_values_TABULA.csv', sep=";")['Typ'].unique().tolist()
 
     def initUI(self):
         self.setWindowTitle("Verarbeitung LOD2-Daten")
@@ -1081,7 +1081,7 @@ class ProcessLOD2DataDialog(QDialog):
         self.inputLOD2geojsonfilename = self.inputLOD2geojsonLineEdit.text()
         self.inputfilterPolygonfilename = self.inputfilterPolygonLineEdit.text()
         self.outputLOD2geojsonfilename = self.outputLOD2geojsonLineEdit.text()
-        self.outputcsvfilename = f"{self.base_path}/Gebäudedaten/building_data.csv" # self.outputcsvLineEdit.text()
+        self.outputcsvfilename = f'{self.base_path}\Gebäudedaten\building_data.csv' # self.outputcsvLineEdit.text()
         spatial_filter_with_polygon(self.inputLOD2geojsonfilename, self.inputfilterPolygonfilename, self.outputLOD2geojsonfilename)
         # Rufen Sie die loadNetData-Methode des Haupt-Tabs auf
         self.parent().loadNetData(self.outputLOD2geojsonfilename)

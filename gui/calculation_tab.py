@@ -214,7 +214,7 @@ class CalculationTab(QWidget):
         self.dT_RL = dT_RL
         self.building_temp_checked = building_temp_checked
         args = (vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump, \
-                netconfiguration, pipetype, v_max_pipe, material_filter, insulation_filter)
+                netconfiguration, pipetype, v_max_pipe, material_filter, insulation_filter, self.base_path)
         kwargs = {"import_type": "GeoJSON"}
         self.initializationThread = NetInitializationThread(*args, **kwargs)
         self.common_thread_initialization()

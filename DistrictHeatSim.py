@@ -85,7 +85,7 @@ class HeatSystemDesignGUI(QWidget):
                 try:
                     full_path = os.path.join(folder_path, projectName)
                     os.makedirs(full_path)
-                    for subdir in ["Gebäudedaten", "Lastgang", "Raumanalyse", "Wärmenetz"]:
+                    for subdir in ["Gebäudedaten", "Lastgang", "Raumanalyse", "Wärmenetz", "results"]:
                         os.makedirs(os.path.join(full_path, subdir))
                     QMessageBox.information(self, "Projekt erstellt", f"Projekt '{projectName}' wurde erfolgreich erstellt.")
                     self.setProjectFolderPath(full_path)

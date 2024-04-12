@@ -2,6 +2,20 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+import os
+import sys
+
+def get_resource_path(relative_path):
+    """ Get the absolute path to the resource, works for dev and for PyInstaller """
+    if getattr(sys, 'frozen', False):
+        # Wenn die Anwendung eingefroren ist, ist der Basispfad der Temp-Ordner, wo PyInstaller alles extrahiert
+        base_path = sys._MEIPASS
+    else:
+        # Wenn die Anwendung nicht eingefroren ist, ist der Basispfad der Ordner, in dem die Hauptdatei liegt
+        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    return os.path.join(base_path, relative_path)
+
 def import_TRY(filename):
     # Import TRY
     # Define column widths
@@ -90,7 +104,7 @@ def calculation_load_profile(TRY, JWB_kWh, profiletype, subtype, holidays, year)
     daily_avg_temperature = np.round(calculate_daily_averages(hourly_temperature), 1)
     daily_reference_temperature = np.round((daily_avg_temperature+2.5)*2, -1)/2-2.5
 
-    daily_data = pd.read_csv('heat_requirement/BDEW factors/daily_coefficients.csv', delimiter=';')
+    daily_data = pd.read_csv(get_resource_path('heat_requirement\BDEW factors\daily_coefficients.csv'), delimiter=';')
 
     # calculate daily factors
     h_A, h_B, h_C, h_D, mH, bH, mW, bW = get_coefficients(profiletype, subtype, daily_data)
@@ -116,7 +130,7 @@ def calculation_load_profile(TRY, JWB_kWh, profiletype, subtype, holidays, year)
     hourly_weekdays = np.repeat(daily_weekdays, 24)
     hourly_daily_heat_demand = np.repeat(daily_heat_demand, 24)
     
-    hourly_data = pd.read_csv('heat_requirement/BDEW factors/hourly_coefficients.csv', delimiter=';')
+    hourly_data = pd.read_csv(get_resource_path('heat_requirement\BDEW factors\hourly_coefficients.csv'), delimiter=';')
     filtered_hourly_data = hourly_data[hourly_data["Typ"]==profiletype]
 
     # create dataframe
@@ -155,7 +169,7 @@ def calculation_load_profile(TRY, JWB_kWh, profiletype, subtype, holidays, year)
 
     return hourly_intervals, hourly_heat_demand_normed.astype(float), hourly_temperature
 
-def calculate(JWB_kWh=10000, profiletype="HMF", subtyp="03", TRY="heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat", year=2021):
+def calculate(JWB_kWh=10000, profiletype="HMF", subtyp="03", year=2021):
     # holidays
     Neujahr = "2021-01-01"
     Karfreitag = "2021-04-02"
@@ -172,6 +186,8 @@ def calculate(JWB_kWh=10000, profiletype="HMF", subtyp="03", TRY="heat_requireme
     Feiertage = np.array([Neujahr, Karfreitag, Ostermontag, Maifeiertag, Pfingstmontag, 
                 Christi_Himmelfahrt, Fronleichnam, Tag_der_deutschen_Einheit, 
                 Allerheiligen, Weihnachtsfeiertag1, Weihnachtsfeiertag2]).astype('datetime64[D]')
+
+    TRY = get_resource_path('heat_requirement\TRY_511676144222\TRY2015_511676144222_Jahr.dat')
 
     hourly_intervals, hourly_heat_demand, hourly_temperature = calculation_load_profile(TRY, JWB_kWh, profiletype, subtyp, Feiertage, year)
 

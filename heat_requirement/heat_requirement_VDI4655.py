@@ -2,6 +2,21 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+import os
+import sys
+
+# defines the map path
+def get_resource_path(relative_path):
+    """ Get the absolute path to the resource, works for dev and for PyInstaller """
+    if getattr(sys, 'frozen', False):
+        # Wenn die Anwendung eingefroren ist, ist der Basispfad der Temp-Ordner, wo PyInstaller alles extrahiert
+        base_path = sys._MEIPASS
+    else:
+        # Wenn die Anwendung nicht eingefroren ist, ist der Basispfad der Ordner, in dem die Hauptdatei liegt
+        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    return os.path.join(base_path, relative_path)
+
 # Klimazonen
     # Zone	Beschreibung
     #  1    Nordseeküste
@@ -111,7 +126,7 @@ def standardized_quarter_hourly_profile(year, building_type, days_of_year, type_
     all_type_days = np.unique(quarterly_type_days)
 
     # Read all CSV files once and filter as needed
-    all_data = {f"{building_type}{type_day}": import_csv(f"heat_requirement/VDI 4655 load profiles/{building_type}{type_day}.csv") 
+    all_data = {f"{building_type}{type_day}": import_csv(get_resource_path('heat_requirement\VDI 4655 load profiles\{building_type}{type_day}.csv')) 
                 for type_day in all_type_days}
 
     profile_days = np.char.add(building_type, quarterly_type_days)
@@ -191,7 +206,7 @@ def calculation_load_profile(TRY, factors, building_type, number_people_househol
     return quarter_hourly_intervals, electricity_corrected, heating_corrected, hot_water_corrected, temperature
 
 # YEU - yearly energy usage
-def calculate(YEU_heating_kWh, YEU_hot_water_kWh, YEU_electricity_kWh=1, building_type="MFH", number_people_household=2, year=2019, climate_zone="9"):
+def calculate(YEU_heating_kWh, YEU_hot_water_kWh, YEU_electricity_kWh=1, building_type="MFH", number_people_household=2, year=2019, climate_zone="9", base_path=""):
     # holidays
     Neujahr = "2019-01-01"
     Karfreitag = "2019-04-19"
@@ -208,9 +223,9 @@ def calculate(YEU_heating_kWh, YEU_hot_water_kWh, YEU_electricity_kWh=1, buildin
     holidays = np.array([Neujahr, Karfreitag, Ostermontag, Maifeiertag, Pfingstmontag, 
                 Christi_Himmelfahrt, Fronleichnam, Tag_der_deutschen_Einheit, 
                 Allerheiligen, Weihnachtsfeiertag1, Weihnachtsfeiertag2]).astype('datetime64[D]')
-        
-    TRY = "heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat"
-    factors = "heat_requirement/VDI 4655 data/Faktoren.csv"
+    
+    TRY = get_resource_path('heat_requirement\TRY_511676144222\TRY2015_511676144222_Jahr.dat')
+    factors = get_resource_path('heat_requirement\VDI 4655 data\Faktoren.csv')
 
     time_15min, electricity_kWh_15min, heating_kWh_15min, hot_water_kWh_15min, temperature = calculation_load_profile(TRY, factors, building_type, number_people_household, \
                                                                                                   YEU_electricity_kWh, YEU_heating_kWh, YEU_hot_water_kWh, \
@@ -221,7 +236,7 @@ def calculate(YEU_heating_kWh, YEU_hot_water_kWh, YEU_electricity_kWh=1, buildin
     return time_15min, electricity_kW, heating_kW, hot_water_kW, total_heat_kW, temperature
 
 def annual_duration_line(weather_data, factors, building_type, number_people_household, YEU_electricity_kWh, 
-                       YEU_heating_kWh, YEU_hot_water_kWh, holidays, climate_zone="9", year=2019):
+                       YEU_heating_kWh, YEU_hot_water_kWh, holidays, climate_zone="9", year=2019, base_path=""):
     
     time_15min, electricity_kWh_15min, heating_kWh_15min, hot_water_kWh_15min, temperature = calculation_load_profile(weather_data,
                                                                                         factors, building_type, 
