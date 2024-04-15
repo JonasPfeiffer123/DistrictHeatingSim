@@ -1,3 +1,6 @@
+import sys
+import os
+
 import numpy as np
 import geopandas as gpd
 
@@ -5,6 +8,18 @@ from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, \
     QDialogButtonBox, QComboBox, QTableWidget, QPushButton, QTableWidgetItem, \
     QHBoxLayout, QFileDialog, QMessageBox, QMenu, QInputDialog
 from PyQt5.QtCore import Qt
+
+# defines the map path
+def get_resource_path(relative_path):
+    """ Get the absolute path to the resource, works for dev and for PyInstaller """
+    if getattr(sys, 'frozen', False):
+        # Wenn die Anwendung eingefroren ist, ist der Basispfad der Temp-Ordner, wo PyInstaller alles extrahiert
+        base_path = sys._MEIPASS
+    else:
+        # Wenn die Anwendung nicht eingefroren ist, ist der Basispfad der Ordner, in dem die Hauptdatei liegt
+        base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+    return os.path.join(base_path, relative_path)
 
 class TechInputDialog(QDialog):
     def __init__(self, tech_type, tech_data=None):
@@ -569,9 +584,7 @@ class NetInfrastructureDialog(QDialog):
 class TemperatureDataDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.base_path = None
         self.initUI()
-        self.initDefaultValues()
 
     def initUI(self):
         self.setWindowTitle("Temperaturdaten-Verwaltung")
@@ -581,6 +594,7 @@ class TemperatureDataDialog(QDialog):
 
         self.temperatureDataFileLabel = QLabel("TRY-Datei:", self)
         self.temperatureDataFileInput = QLineEdit(self)
+        self.temperatureDataFileInput.setText(get_resource_path("heat_requirement\TRY_511676144222\TRY2015_511676144222_Jahr.dat"))
         self.selectTRYFileButton = QPushButton('csv-Datei auswählen')
         self.selectTRYFileButton.clicked.connect(lambda: self.selectFilename(self.temperatureDataFileInput))
 
@@ -607,9 +621,6 @@ class TemperatureDataDialog(QDialog):
         if filename:
             lineEdit.setText(filename)
 
-    def initDefaultValues(self):
-        self.temperatureDataFileInput.setText(f"{self.base_path}\heat_requirement\TRY_511676144222\TRY2015_511676144222_Jahr.dat")
-
     def getValues(self):
         return {
             'TRY-filename': self.temperatureDataFileInput.text()
@@ -618,10 +629,8 @@ class TemperatureDataDialog(QDialog):
 class HeatPumpDataDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.base_path = None
         self.setWindowTitle("Wärmepumpendaten")
         self.initUI()
-        self.initDefaultValues()
 
     def initUI(self):
         self.setWindowTitle("COP-Daten-Verwaltung")
@@ -634,7 +643,7 @@ class HeatPumpDataDialog(QDialog):
         dataLayout = QVBoxLayout()
         self.heatPumpDataFileLabel = QLabel("csv-Datei mit Wärmepumpenkennfeld:")
         self.heatPumpDataFileInput = QLineEdit()
-        self.heatPumpDataFileInput.setPlaceholderText(f"{self.base_path}\heat_generators\Kennlinien WP.csv")
+        self.heatPumpDataFileInput.setText(get_resource_path("heat_generators\Kennlinien WP.csv"))
         self.selectCOPFileButton = QPushButton('csv-Datei auswählen')
         self.selectCOPFileButton.clicked.connect(lambda: self.selectFilename(self.heatPumpDataFileInput))
         
@@ -668,10 +677,6 @@ class HeatPumpDataDialog(QDialog):
         filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", "", "CSV-Dateien (*.csv)")
         if filename:
             lineEdit.setText(filename)
-
-    def initDefaultValues(self):
-        # Standardwert, könnte durch Benutzerinteraktion überschrieben werden
-        self.heatPumpDataFileInput.setText("heat_generators/Kennlinien WP.csv")
 
     def getValues(self):
         # Zurückgeben der Werte zur weiteren Verarbeitung

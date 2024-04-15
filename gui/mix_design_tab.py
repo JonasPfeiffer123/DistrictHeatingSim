@@ -65,10 +65,6 @@ class MixDesignTab(QWidget):
         self.FilenameInput.setText(new_output_path)
 
         self.netInfrastructureDialog.base_path = self.base_path
-        self.temperatureDataDialog.base_path = self.base_path
-        self.heatPumpDataDialog.base_path = self.base_path
-
-        # Optional für mögliche Dialogfenster
 
     def initUI(self):
         mainScrollArea = QScrollArea(self)

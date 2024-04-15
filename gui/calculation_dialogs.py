@@ -1,3 +1,6 @@
+import os
+import sys
+
 import pandas as pd
 import numpy as np
 
@@ -7,6 +10,17 @@ from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QComboBox, 
 import pandapipes as pp
 
 from heat_requirement.heat_requirement_BDEW import import_TRY
+
+def get_resource_path(relative_path):
+    """ Get the absolute path to the resource, works for dev and for PyInstaller """
+    if getattr(sys, 'frozen', False):
+        # Wenn die Anwendung eingefroren ist, ist der Basispfad der Temp-Ordner, wo PyInstaller alles extrahiert
+        base_path = sys._MEIPASS
+    else:
+        # Wenn die Anwendung nicht eingefroren ist, ist der Basispfad der Ordner, in dem die Hauptdatei liegt
+        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    return os.path.join(base_path, relative_path)
 
 class HeatDemandEditDialog(QDialog):
     def __init__(self, gdf_HAST, hastInput, parent=None):
@@ -435,7 +449,7 @@ class NetGenerationDialog(QDialog):
             min_air_temperature = float(self.parameter_rows[4].itemAt(1).widget().text())
 
 
-            air_temperature_data = import_TRY("heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat")
+            air_temperature_data = import_TRY(get_resource_path("heat_requirement\TRY_511676144222\TRY2015_511676144222_Jahr.dat"))
 
             # Berechnung der Temperaturkurve basierend auf den ausgewählten Einstellungen
             temperature_curve = []
