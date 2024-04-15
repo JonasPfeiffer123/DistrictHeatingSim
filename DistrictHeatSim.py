@@ -6,7 +6,17 @@ from gui.visualization_tab import VisualizationTab
 from gui.calculation_tab import CalculationTab
 from gui.mix_design_tab import MixDesignTab
 
-from PyQt5.QtCore import QObject, pyqtSignal
+# defines the map path
+def get_resource_path(relative_path):
+    """ Get the absolute path to the resource, works for dev and for PyInstaller """
+    if getattr(sys, 'frozen', False):
+        # Wenn die Anwendung eingefroren ist, ist der Basispfad der Temp-Ordner, wo PyInstaller alles extrahiert
+        base_path = sys._MEIPASS
+    else:
+        # Wenn die Anwendung nicht eingefroren ist, ist der Basispfad der Ordner, in dem die Hauptdatei liegt
+        base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'heating_network_generation')
+
+    return os.path.join(base_path, relative_path)
 
 class StartDialog(QDialog):
     def __init__(self, parent=None):
@@ -41,7 +51,8 @@ class CentralDataManager(QObject):
     def __init__(self):
         super(CentralDataManager, self).__init__()  # calling QObject constructor
         self.map_data = []
-        self.project_folder = "project_data/Bad Muskau"  # variable project folder path
+        self.project_folder = get_resource_path("project_data\Bad Muskau")  # variable project folder path
+        print(self.project_folder)
     def add_data(self, data):
         self.map_data.append(data)
         # Trigger any updates needed for the map
@@ -54,7 +65,7 @@ class CentralDataManager(QObject):
         self.project_folder_changed.emit(path)  # emit signal if path got changed
 
 class HeatSystemDesignGUI(QWidget):
-    def __init__(self):#
+    def __init__(self):
         super().__init__()
         self.data_manager = CentralDataManager()
 
@@ -74,7 +85,7 @@ class HeatSystemDesignGUI(QWidget):
                 try:
                     full_path = os.path.join(folder_path, projectName)
                     os.makedirs(full_path)
-                    for subdir in ["Gebäudedaten", "Lastgang", "Raumanalyse", "Wärmenetz"]:
+                    for subdir in ["Gebäudedaten", "Lastgang", "Raumanalyse", "Wärmenetz", "results"]:
                         os.makedirs(os.path.join(full_path, subdir))
                     QMessageBox.information(self, "Projekt erstellt", f"Projekt '{projectName}' wurde erfolgreich erstellt.")
                     self.setProjectFolderPath(full_path)
@@ -101,7 +112,7 @@ class HeatSystemDesignGUI(QWidget):
                 self.folderLabel.setText("Kein Ordner ausgewählt")
 
     def initUI(self):
-        self.setWindowTitle("Hier könnte ein cooler Softwarename stehen")
+        self.setWindowTitle("DistrictHeatSim")
         self.setGeometry(100, 100, 800, 600)  # Optional, standard size before full-screen
 
         self.layout1 = QVBoxLayout(self)
@@ -113,7 +124,7 @@ class HeatSystemDesignGUI(QWidget):
 
         self.visTab = VisualizationTab(self.data_manager)
         self.calcTab = CalculationTab(self.data_manager)
-        self.mixDesignTab = MixDesignTab()
+        self.mixDesignTab = MixDesignTab(self.data_manager)
 
         # Adding tabs to the tab widget
         tabWidget.addTab(self.visTab, "Räumliche Analyse")

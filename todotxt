@@ -8,7 +8,7 @@
 
 1.2 Netzgenerierung
 - Verbesserung des Algorithmus zur Netzgenerierung
-- 3D-Daten fhlen aktuell noch
+- 3D-Daten fehlen aktuell noch
 
 1.3 Datenhaltung
 - eine geoJSON für alle Netzbestandteile?
@@ -32,7 +32,7 @@
 
 3.2. Wirtschaftlichkeit
 - Eigene Preisentwicklungsszenarien für Erzeugerauslegung und Betrachtung alternativer Brennstoffpreisentwicklungen (alternativ zu derzeitigem Ansatz (Auswahlmöglichkeiten))
-- Entwicklung von Szenarien für den schrittweisen Umbau von Bestandssystemen und deren Wirtschaftlichkeit. (Wie soll ich das automatisieren?)
+- Entwicklung von Szenarien für den schrittweisen Umbau von Bestandssystemen und deren Wirtschaftlichkeit. (Wie automatisierbar?)
 - im Dialog für wirtschaftliche Parameter Preisentwicklung der Daten über Zeitraum hinterlegen
 - in Auswertung Preisentwicklung darstellen: kapitalgebundene/bedarfsgebundene/betriebsgebundene Kosten der einzelnen Technologien über Zeitraum, Balkendiagramm
 
@@ -40,7 +40,7 @@
     - weg von rein wirtschaftlicher Ausgabe hin zur projektspezifischen Ergebnis-PDF inklusive Dateninput, Eingaben Netzkonfiguration, Netz und der bisher schon Umgesetzten Erzeugerkonfig sowie Wirtschaftlichkeit
 
 3.4. Visualisierung
-- Option zum Anzeigen weiterer Diagramme schaffen -> Was? Keine Ahnung
+- Option zum Anzeigen weiterer Diagramme schaffen -> Was?
 
 3.5 Datenhaltung
 - Speicherformat entwerfen!!!
@@ -59,3 +59,35 @@ diverses:
 - Wie muss das UI optimalerweise aussehen?
 
 - Wie kann ich das Projekt optimiert auf GitHub präsentieren?
+
+
+Räumliche Analyse:
+-	Integration LOD2-Daten
+-	Genauere Defnition Gebäude ermöglichen
+-	Bedarfe räumlich ermitteln und in Programm integrieren
+Netzgenerierung:
+-	Verbesserung Algorithmus zur Netzgenerierung
+-	Einführung geoJSON mit allen 4 Objekttypen
+
+Netzsimulation:
+Optimierungen:
+-	Regelung in der Simulation optimieren, sodass auch kleinere Massenströme sinnvoll berechnet werden können
+Funktionserweiterungen:
+-	Lastfaktor Auslegung Wärmeübertrager  Faktor für maximale Leistung nach Profil
+-	mehrere Erzeugerstandorte
+-	Wechselwarm: Anpassung Profile auf ohne WW, irgendwie Überprüfung Vorlauftemperatur  Meldung, wenn Gebäude höheren soll Vorlauf hat, macht nur mit Kühlung Sinn,
+Gebäude:
+-	3D-LOD2-Gebäudedaten
+o	Ermittlung Stockwerke  Ermittlung flächenspezifischer Wärmebedarf
+o	Ermittlung der Außenflächen
+o	Manuelle Klassifizierung der Gebäude (TABULA)
+	Ermittlung Sanierungspotenziale
+	Kostenabschätzung
+	Einschätzung Einsparung Wärmeverbrauch, Absenkung VL-Temperatur
+	 Amortisation / Wirtschaftlichkeit
+
+Erzeugerauslegung:
+-	Eigene Preisentwicklungsszenarien vorgeben
+-	innovative Technologien betrachten
+
+-	Neu: Mit Grobauslegung detaillierte Netzberechnung zur Ermittlung der Betriebsweise der Anlagen

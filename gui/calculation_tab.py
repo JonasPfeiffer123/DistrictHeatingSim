@@ -1,3 +1,6 @@
+import sys
+import os
+
 import logging
 import numpy as np
 import geopandas as gpd
@@ -5,6 +8,7 @@ import pandapipes as pp
 import csv
 import pandas as pd
 import itertools
+import json
 
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -13,7 +17,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction
 
-from main import calculate_results, save_results_csv, import_results_csv
+from tests.main import calculate_results, save_results_csv, import_results_csv
 from gui.calculation_dialogs import HeatDemandEditDialog, NetGenerationDialog, ZeitreihenrechnungDialog
 from gui.threads import NetInitializationThread, NetCalculationThread
 from net_simulation_pandapipes.config_plot import config_plot
@@ -28,10 +32,11 @@ class CalculationTab(QWidget):
         super().__init__(parent)
         self.data_manager = data_manager
         self.calc_method = "Datensatz"
+        # Connect to the data manager signal
+        self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
+        # Update the base path immediately with the current project folder
+        self.updateDefaultPath(self.data_manager.project_folder)
         self.initUI()
-        self.base_path = "project_data/Bad Muskau"  # Basispfad initialisieren
-        self.updateDefaultPath(self.base_path)
-
         self.net_data = None  # Variable zum Speichern der Netzdaten
         self.supply_temperature = None # Variable Vorlauftemperatur
 
@@ -154,13 +159,17 @@ class CalculationTab(QWidget):
         self.base_path = new_base_path
     
     def openNetGenerationDialog(self):
-        dialog = NetGenerationDialog(
-            self.generateNetworkCallback,
-            self.editHeatDemandData,
-            self.base_path,
-            self
-        )
-        dialog.exec_()
+        try:
+            dialog = NetGenerationDialog(
+                self.generateNetworkCallback,
+                self.editHeatDemandData,
+                self.base_path,
+                self
+            )
+            dialog.exec_()
+        except Exception as e:
+            logging.error(f"Fehler beim öffnen des Dialogs aufgetreten: {e}")
+            QMessageBox.critical(self, "Fehler", f"Fehler beim öffnen des Dialogs aufgetreten: {e}")
 
     def generateNetworkCallback(self, *args):
         # Das letzte Element in args ist import_type
@@ -205,7 +214,7 @@ class CalculationTab(QWidget):
         self.dT_RL = dT_RL
         self.building_temp_checked = building_temp_checked
         args = (vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump, \
-                netconfiguration, pipetype, v_max_pipe, material_filter, insulation_filter)
+                netconfiguration, pipetype, v_max_pipe, material_filter, insulation_filter, self.base_path)
         kwargs = {"import_type": "GeoJSON"}
         self.initializationThread = NetInitializationThread(*args, **kwargs)
         self.common_thread_initialization()
@@ -229,13 +238,13 @@ class CalculationTab(QWidget):
         self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
 
         # Datenhaltung optimieren
-        self.net, self.yearly_time_steps, self.waerme_ges_kW, self.return_temperature, self.supply_temperature_buildings, self.return_temperature_buildings, \
+        self.net, self.yearly_time_steps, self.waerme_ges_W, self.return_temperature, self.supply_temperature_buildings, self.return_temperature_buildings, \
             self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve = results
         
-        self.net_data = self.net, self.yearly_time_steps, self.waerme_ges_kW, self.supply_temperature, self.return_temperature, self.supply_temperature_buildings, self.return_temperature_buildings, \
+        self.net_data = self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature, self.return_temperature, self.supply_temperature_buildings, self.return_temperature_buildings, \
             self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.netconfiguration, self.dT_RL, self.building_temp_checked
 
-        self.waerme_ges_kW = np.where(self.waerme_ges_kW == 0, 0, self.waerme_ges_kW / 1000)
+        self.waerme_ges_kW = np.where(self.waerme_ges_W == 0, 0, self.waerme_ges_W / 1000)
         self.plot(self.net, self.yearly_time_steps, self.waerme_ges_kW)
 
     def plot(self, net, time_steps, qext_kW):
@@ -265,11 +274,11 @@ class CalculationTab(QWidget):
             QMessageBox.warning(self, "Keine Netzdaten", "Bitte generieren Sie zuerst ein Netz.")
             return
         
-        self.net, self.yearly_time_steps, self.waerme_ges_kW, self.supply_temperature, self.return_temperature, self.supply_temperature_buildings, self.return_temperature_buildings, \
+        self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature, self.return_temperature, self.supply_temperature_buildings, self.return_temperature_buildings, \
             self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.netconfiguration, self.dT_RL, self.building_temp_checked = self.net_data
 
         try:
-            self.calculationThread = NetCalculationThread(self.net, self.yearly_time_steps, self.waerme_ges_kW, self.calc1, self.calc2, self.supply_temperature, self.return_temperature, \
+            self.calculationThread = NetCalculationThread(self.net, self.yearly_time_steps, self.waerme_ges_W, self.calc1, self.calc2, self.supply_temperature, self.return_temperature, \
                                                           self.supply_temperature_buildings, self.return_temperature_buildings, self.supply_temperature_buildings_curve, \
                                                             self.return_temperature_buildings_curve, self.dT_RL, self.netconfiguration, self.building_temp_checked)
             self.calculationThread.calculation_done.connect(self.on_simulation_done)
@@ -282,31 +291,31 @@ class CalculationTab(QWidget):
 
     def on_simulation_done(self, results):
         self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
-        self.time_steps, self.net, self.net_results, self.waerme_ges_kW, self.strom_wp_kW = results
+        self.time_steps, self.net, self.net_results, self.waerme_ges_W, self.strom_wp_kW = results
         self.mass_flow_circ_pump, self.deltap_circ_pump, self.return_temp_circ_pump, self.flow_temp_circ_pump, \
             self.return_pressure_circ_pump, self.flow_pressure_circ_pump, self.qext_kW, self.pressure_junctions = calculate_results(self.net, self.net_results)
 
-        self.waerme_ges_kW = (np.sum(self.waerme_ges_kW, axis=0)/1000)[self.calc1:self.calc2]
+        self.waerme_ges_W = (np.sum(self.waerme_ges_W, axis=0)/1000)[self.calc1:self.calc2]
         
         if self.strom_wp_kW is not None:
             self.strom_wp_kW = (np.sum(self.strom_wp_kW, axis=0)/1000)[self.calc1:self.calc2]
 
-        plot_data =  self.time_steps, self.qext_kW, self.waerme_ges_kW, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, \
+        plot_data =  self.time_steps, self.qext_kW, self.waerme_ges_W, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, \
             self.return_pressure_circ_pump, self.flow_pressure_circ_pump
         
         self.plot_data_func(plot_data)
         self.plot2()
 
-        save_results_csv(self.time_steps, self.qext_kW, self.waerme_ges_kW, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, \
+        save_results_csv(self.time_steps, self.qext_kW, self.waerme_ges_W, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, \
                          self.return_pressure_circ_pump, self.flow_pressure_circ_pump, self.output_filename)
 
     def plot_data_func(self, plot_data):
-        self.time_steps, self.qext_kW, self.waerme_ges_kW, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, \
+        self.time_steps, self.qext_kW, self.waerme_ges_W, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, \
         self.return_pressure_circ_pump, self.flow_pressure_circ_pump = plot_data
         
         self.plot_data = {
             "Einspeiseleistung Heizzentrale": {"data": self.qext_kW, "label": "Leistung in kW", "axis": "left"},
-            "Gesamtwärmebedarf Wärmeübertrager": {"data": self.waerme_ges_kW, "label": "Wärmebedarf in kW", "axis": "left"},
+            "Gesamtwärmebedarf Wärmeübertrager": {"data": self.waerme_ges_W, "label": "Wärmebedarf in kW", "axis": "left"},
             "Rücklauftemperatur Heizzentrale": {"data": self.return_temp_circ_pump, "label": "Temperatur in °C", "axis": "right"},
             "Vorlauftemperatur Heizzentrale": {"data": self.flow_temp_circ_pump, "label": "Temperatur in °C", "axis": "right"},
             "Massenstrom Heizzentrale": {"data": self.mass_flow_circ_pump, "label": "Massenstrom in kg/s", "axis": "right"},
@@ -374,47 +383,56 @@ class CalculationTab(QWidget):
         self.canvas3.draw()
 
     def saveNet(self):
-        pickle_file_path = f"{self.base_path}/Wärmenetz/Ergebnisse Netzinitialisierung.p"
-        csv_file_path = f"{self.base_path}/Wärmenetz/Ergebnisse Netzinitialisierung.csv"
+        pickle_file_path = f"{self.base_path}\Wärmenetz\Ergebnisse Netzinitialisierung.p"
+        csv_file_path = f"{self.base_path}\Wärmenetz\Ergebnisse Netzinitialisierung.csv"
+        json_file_path = f"{self.base_path}\Wärmenetz\Konfiguration Netzinitialisierung.json"
+        
         if self.net_data:  # Überprüfe, ob das Netzwerk vorhanden ist
-            # Muss aktualisiert werden
-            #self.net, self.yearly_time_steps, self.waerme_ges_kW, self.supply_temperature, self.return_temperature, self.supply_temperature_buildings, self.return_temperature_buildings, \
-            #self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.netconfiguration, self.dT_RL, self.building_temp_checked = self.net_data
             try:
-                self.net, self.yearly_time_steps, self.waerme_ges_kW, self.supply_temperature, self.return_temperature, self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve = self.net_data
-            
+                self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature, self.return_temperature, self.supply_temperature_buildings, self.return_temperature_buildings, \
+                self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.netconfiguration, self.dT_RL, self.building_temp_checked = self.net_data
+
                 # Pandapipes-Netz als pickle speichern
                 pp.to_pickle(self.net, pickle_file_path)
                 
                 # Umwandlung der Daten in ein DataFrame und Speichern als CSV
-                data = np.column_stack([self.waerme_ges_kW[i] for i in range(self.waerme_ges_kW.shape[0])])
-                df = pd.DataFrame(data, index=self.yearly_time_steps, columns=[f'waerme_ges_W_{i+1}' for i in range(self.waerme_ges_kW.shape[0])])
+                data = np.column_stack([self.waerme_ges_W[i] for i in range(self.waerme_ges_W.shape[0])])
+                df = pd.DataFrame(data, index=self.yearly_time_steps, columns=[f'waerme_ges_W_{i+1}' for i in range(self.waerme_ges_W.shape[0])])
                 df.to_csv(csv_file_path, sep=';', date_format='%Y-%m-%dT%H:%M:%S')
+
+                # Vorbereiten der zusätzlichen Daten für JSON
+                additional_data = {
+                    'supply_temperature': self.supply_temperature.tolist(),
+                    'return_temperature': self.return_temperature.tolist(),
+                    'supply_temperature_buildings': self.supply_temperature_buildings.tolist(),
+                    'return_temperature_buildings': self.return_temperature_buildings.tolist(),
+                    'supply_temperature_buildings_curve': self.supply_temperature_buildings_curve.tolist(),
+                    'return_temperature_buildings_curve': self.return_temperature_buildings_curve.tolist(),
+                    'netconfiguration': self.netconfiguration,
+                    'dT_RL': self.dT_RL,
+                    'building_temp_checked': self.building_temp_checked
+                }
                 
-                QMessageBox.information(self, "Speichern erfolgreich", f"Pandapipes Netz erfolgreich gespeichert in: {pickle_file_path}, Daten erfolgreich gespeichert in: {csv_file_path}")
+                # Speichern der zusätzlichen Daten als JSON
+                with open(json_file_path, 'w') as json_file:
+                    json.dump(additional_data, json_file, indent=4)
+                
+                QMessageBox.information(self, "Speichern erfolgreich", f"Pandapipes Netz erfolgreich gespeichert in: {pickle_file_path}, Daten erfolgreich gespeichert in: {csv_file_path} und {json_file_path}")
             except Exception as e:
                 QMessageBox.critical(self, "Speichern fehlgeschlagen", f"Fehler beim Speichern der Daten: {e}")
         else:
             QMessageBox.warning(self, "Keine Daten", "Kein Pandapipes-Netzwerk zum Speichern vorhanden.")
 
-    def exportNetGeoJSON(self):
-        geoJSON_filepath = f"{self.base_path}/Wärmenetz/dimensioniertes Wärmenetz.geojson"
-        if self.net_data:  # Überprüfe, ob das Netzwerk vorhanden ist
-            net = self.net_data[0]
-            
-            try:
-                export_net_geojson(net, geoJSON_filepath)
-                
-                QMessageBox.information(self, "Speichern erfolgreich", f"Pandapipes Wärmenetz erfolgreich als geoJSON gespeichert in: {geoJSON_filepath}")
-            except Exception as e:
-                QMessageBox.critical(self, "Speichern fehlgeschlagen", f"Fehler beim Speichern der Daten: {e}")
-
     def loadNet(self):
-        csv_file_path = f"{self.base_path}/Wärmenetz/Ergebnisse Netzinitialisierung.csv"
-        pickle_file_path = f"{self.base_path}/Wärmenetz/Ergebnisse Netzinitialisierung.p"
+        csv_file_path = f"{self.base_path}\Wärmenetz\Ergebnisse Netzinitialisierung.csv"
+        pickle_file_path = f"{self.base_path}\Wärmenetz\Ergebnisse Netzinitialisierung.p"
+        json_file_path = f"{self.base_path}\Wärmenetz\Konfiguration Netzinitialisierung.json"  # Pfad zur JSON-Datei
+        
         try:
-            net = pp.from_pickle(pickle_file_path)
+            # Laden des Pandapipes-Netzes aus der Pickle-Datei
+            self.net = pp.from_pickle(pickle_file_path)
             
+            # Laden der Wärmeleistungsdaten aus der CSV-Datei
             with open(csv_file_path, newline='') as csvfile:
                 reader = csv.reader(csvfile, delimiter=';')
                 next(reader)  # Überspringe die Kopfzeile
@@ -426,22 +444,51 @@ class CalculationTab(QWidget):
                     formatted_time_steps.append(np.datetime64(row[0]))
                     waerme_ges_W_data.append([float(value) for value in row[1:]])
                 
-                # Konvertiere Listen zu passenden Formaten
-                yearly_time_steps = np.array(formatted_time_steps)
-                waerme_ges_W = np.array(waerme_ges_W_data).transpose()
+                self.yearly_time_steps = np.array(formatted_time_steps)
+                self.waerme_ges_W = np.array(waerme_ges_W_data).transpose()
                 
-                self.net_data = (net, yearly_time_steps, waerme_ges_W)
-                self.net, self.yearly_time_steps, self.waerme_ges_kW = self.net_data
-                self.waerme_ges_kW = np.where(self.waerme_ges_kW == 0, 0, self.waerme_ges_kW / 1000)
-                self.plot(self.net, self.yearly_time_steps, self.waerme_ges_kW)
+            # Laden der zusätzlichen Daten aus der JSON-Datei
+            with open(json_file_path, 'r') as json_file:
+                additional_data = json.load(json_file)
                 
-                QMessageBox.information(self, "Laden erfolgreich", f"Daten erfolgreich aus {csv_file_path} und {pickle_file_path} geladen.")
+            # Rekonstruktion der zusätzlichen Daten
+            self.supply_temperature = np.array(additional_data['supply_temperature'])
+            self.return_temperature = np.array(additional_data['return_temperature'])
+            self.supply_temperature_buildings = np.array(additional_data['supply_temperature_buildings'])
+            self.return_temperature_buildings = np.array(additional_data['return_temperature_buildings'])
+            self.supply_temperature_buildings_curve = np.array(additional_data['supply_temperature_buildings_curve'])
+            self.return_temperature_buildings_curve = np.array(additional_data['return_temperature_buildings_curve'])
+            self.netconfiguration = additional_data['netconfiguration']
+            self.dT_RL = additional_data['dT_RL']
+            self.building_temp_checked = additional_data['building_temp_checked']
+            
+            # Aktualisierung der net_data Eigenschaft mit den geladenen Daten
+            self.net_data = self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature, self.return_temperature, self.supply_temperature_buildings, self.return_temperature_buildings, \
+                            self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.netconfiguration, self.dT_RL, self.building_temp_checked
+            
+            # Weiterverarbeitung oder Anzeigen der geladenen Daten
+            self.waerme_ges_kW = np.where(self.waerme_ges_W == 0, 0, self.waerme_ges_W / 1000)
+            self.plot(self.net, self.yearly_time_steps, self.waerme_ges_kW)
+            
+            QMessageBox.information(self, "Laden erfolgreich", "Daten erfolgreich geladen aus: {}, {} und {}.".format(csv_file_path, pickle_file_path, json_file_path))
         except Exception as e:
-            QMessageBox.critical(self, "Laden fehlgeschlagen", f"Fehler beim Laden der Daten: {e}")
+            QMessageBox.critical(self, "Laden fehlgeschlagen", "Fehler beim Laden der Daten: {}".format(e))
 
     def load_net_results(self):
-        results_csv_filepath = f"{self.base_path}/Lastgang/Lastgang.csv"
+        results_csv_filepath = f"{self.base_path}\Lastgang\Lastgang.csv"
         plot_data = import_results_csv(results_csv_filepath)
-        self.time_steps, self.qext_kW, self.waerme_ges_kW, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, self.return_pressure_circ_pump, self.flow_pressure_circ_pump = plot_data
+        self.time_steps, self.qext_kW, self.waerme_ges_W, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, self.return_pressure_circ_pump, self.flow_pressure_circ_pump = plot_data
         self.plot_data_func(plot_data)
         self.plot2()
+    
+    def exportNetGeoJSON(self):
+        geoJSON_filepath = f"{self.base_path}\Wärmenetz\dimensioniertes Wärmenetz.geojson"
+        if self.net_data:  # Überprüfe, ob das Netzwerk vorhanden ist
+            net = self.net_data[0]
+            
+            try:
+                export_net_geojson(net, geoJSON_filepath)
+                
+                QMessageBox.information(self, "Speichern erfolgreich", f"Pandapipes Wärmenetz erfolgreich als geoJSON gespeichert in: {geoJSON_filepath}")
+            except Exception as e:
+                QMessageBox.critical(self, "Speichern fehlgeschlagen", f"Fehler beim Speichern der Daten: {e}")

@@ -1,22 +1,23 @@
+import sys
 import os
+
 import random
 import geopandas as gpd
-import csv
 import pandas as pd
 from shapely.geometry import Point
 
 from PyQt5.QtCore import pyqtSignal, QUrl
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QMenuBar, QAction, QFileDialog, \
-    QHBoxLayout, QListWidget, QDialog, QProgressBar, QColorDialog, QListWidgetItem, QMessageBox, \
-    QTableWidget, QTableWidgetItem
+    QHBoxLayout, QListWidget, QDialog, QProgressBar, QColorDialog, QListWidgetItem, QMessageBox
 from PyQt5.QtGui import QColor, QBrush
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 import folium
 
-from gui.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog, SpatialAnalysisDialog, GeocodeAddressesDialog, ProcessLOD2DataDialog
+from gui.visualization_dialogs import CSVEditorDialog, LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog, SpatialAnalysisDialog, GeocodeAddressesDialog, ProcessLOD2DataDialog
 from gui.threads import NetGenerationThread, FileImportThread
 
+# Tab class
 class VisualizationTab(QWidget):
     layers_imported = pyqtSignal(dict)
 
@@ -24,10 +25,15 @@ class VisualizationTab(QWidget):
         super().__init__(parent)
         self.data_manager = data_manager
         self.layers = {}
+
+        # Connect to the data manager signal
+        self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
+
+        # Update the base path immediately with the current project folder
+        self.updateDefaultPath(self.data_manager.project_folder)
+
         self.initUI()
-        self.base_path = "project_data/Bad Muskau"  # initializing base path
-        self.updateDefaultPath(self.base_path)
-    
+
     def initUI(self):
         layout = QVBoxLayout()
 
@@ -39,12 +45,8 @@ class VisualizationTab(QWidget):
         self.menuBar.setFixedHeight(30)  # set specific height
         fileMenu = self.menuBar.addMenu('Datei')
 
-        csvCreateAction = QAction('CSV mit Geäudedaten erstellen', self)
-        csvCreateAction.triggered.connect(self.openCsvCreator)
-        fileMenu.addAction(csvCreateAction)
-
-        csvEditAction = QAction('CSV bearbeiten', self)
-        csvEditAction.triggered.connect(self.openCsvEditor)
+        csvEditAction = QAction('CSV erstellen/bearbeiten', self)
+        csvEditAction.triggered.connect(self.openCsvEditorDialog)
         fileMenu.addAction(csvEditAction)
 
         downloadAction = QAction('Adressdaten geocodieren', self)
@@ -111,6 +113,16 @@ class VisualizationTab(QWidget):
     def connect_signals(self, calculation_tab):
         calculation_tab.data_added.connect(self.loadNetData)
 
+    def openCsvEditorDialog(self):
+        dialog = CSVEditorDialog(self.base_path, self)
+        if dialog.exec_() == QDialog.Accepted:
+            pass
+    
+    def openGeocodeAdressesDialog(self):
+        dialog = GeocodeAddressesDialog(self.base_path, self)
+        if dialog.exec_() == QDialog.Accepted:
+            pass
+
     def openDownloadOSMDataDialog(self):
         dialog = DownloadOSMDataDialog(self.base_path, self)
         if dialog.exec_() == QDialog.Accepted:
@@ -123,11 +135,6 @@ class VisualizationTab(QWidget):
 
     def openspatialAnalysisDialog(self):
         dialog = SpatialAnalysisDialog(self.base_path, self)
-        if dialog.exec_() == QDialog.Accepted:
-            pass
-
-    def openGeocodeAdressesDialog(self):
-        dialog = GeocodeAddressesDialog(self.base_path, self)
         if dialog.exec_() == QDialog.Accepted:
             pass
 
@@ -156,15 +163,15 @@ class VisualizationTab(QWidget):
     # Storage location must be variable
     def on_generation_done(self, results):
         self.progressBar.setRange(0, 1)
-        filenames = [f"{self.base_path}/Wärmenetz/HAST.geojson", f"{self.base_path}/Wärmenetz/Rücklauf.geojson",
-                     f"{self.base_path}/Wärmenetz/Vorlauf.geojson", f"{self.base_path}/Wärmenetz/Erzeugeranlagen.geojson"]
+        filenames = [f"{self.base_path}\Wärmenetz\HAST.geojson", f"{self.base_path}\Wärmenetz\Rücklauf.geojson",
+                     f"{self.base_path}\Wärmenetz\Vorlauf.geojson", f"{self.base_path}\Wärmenetz\Erzeugeranlagen.geojson"]
         self.loadNetData(filenames)
         
         generatedLayers = {
-            'HAST': f"{self.base_path}/Wärmenetz/HAST.geojson",
-            'Rücklauf': f"{self.base_path}/Wärmenetz/Rücklauf.geojson",
-            'Vorlauf': f"{self.base_path}/Wärmenetz/Vorlauf.geojson",
-            'Erzeugeranlagen': f"{self.base_path}/Wärmenetz/Erzeugeranlagen.geojson"
+            'HAST': f"{self.base_path}\Wärmenetz\HAST.geojson",
+            'Rücklauf': f"{self.base_path}\Wärmenetz\Rücklauf.geojson",
+            'Vorlauf': f"{self.base_path}\Wärmenetz\Vorlauf.geojson",
+            'Erzeugeranlagen': f"{self.base_path}\Wärmenetz\Erzeugeranlagen.geojson"
         }
 
         # Trigger the signal with the paths of the generated layers
@@ -217,9 +224,11 @@ class VisualizationTab(QWidget):
 
     def update_map_view(self, mapView, map_obj):
         """ Aktualisiert die Kartenansicht in PyQt """
-        map_file = "results/map.html"
+        # Hier verwendest du die angepasste get_resource_path-Funktion, um den korrekten Pfad zu finden
+        map_file = os.path.join(self.base_path, 'results', 'map.html')
         map_obj.save(map_file)
-        mapView.load(QUrl.fromLocalFile(os.path.abspath(map_file)))
+        # Verwende den absoluten Pfad zum Laden der Karte
+        mapView.load(QUrl.fromLocalFile(map_file))
 
     def loadNetData(self, filenames, color="#{:06x}".format(random.randint(0, 0xFFFFFF))):
         if not isinstance(filenames, list):
@@ -319,68 +328,6 @@ class VisualizationTab(QWidget):
                 listItem.setForeground(QBrush(QColor('#FFFFFF')))  # White text color for contrast
                 break
 
-    def openCsvCreator(self):
-        pass
-
-    def openCsvEditor(self):
-        #create dialog
-        self.csvEditorDialog = QDialog(self)
-        self.csvEditorDialog.setWindowTitle('CSV-Editor')
-        self.csvEditorDialog.setGeometry(300, 300, 600, 200)
-
-        layout = QVBoxLayout(self.csvEditorDialog)
-        layout.setSpacing(10)  # spacing between widgets
-        layout.setContentsMargins(10, 10, 10, 10)  # Border of the layout
-
-        # QTableWidget for CSV content
-        self.csvTable = QTableWidget()
-        layout.addWidget(self.csvTable)
-
-        # Buttons to open and save CSV filesn
-        openButton = QPushButton("CSV öffnen")
-        openButton.clicked.connect(self.openCsv)
-        layout.addWidget(openButton)
-
-        saveButton = QPushButton("CSV speichern")
-        saveButton.clicked.connect(self.saveCsv)
-        layout.addWidget(saveButton)
-
-        # show dialog
-        self.csvEditorDialog.setLayout(layout)
-        self.csvEditorDialog.exec_()
-
-    def openCsv(self):
-        fname, _ = QFileDialog.getOpenFileName(self, 'CSV öffnen', '', 'CSV Files (*.csv);;All Files (*)')
-        if fname:
-            with open(fname, 'r', encoding='utf-8') as file:
-                reader = csv.reader(file, delimiter=';')
-                headers = next(reader)  # Erste Zeile als Header
-                self.csvTable.setRowCount(0)
-                self.csvTable.setColumnCount(len(headers))
-                self.csvTable.setHorizontalHeaderLabels(headers)
-
-                for row_data in reader:
-                    row = self.csvTable.rowCount()
-                    self.csvTable.insertRow(row)
-                    for column, data in enumerate(row_data):
-                        item = QTableWidgetItem(data)
-                        self.csvTable.setItem(row, column, item)
-
-    def saveCsv(self):
-        fname, _ = QFileDialog.getSaveFileName(self, 'CSV speichern', '', 'CSV Files (*.csv);;All Files (*)')
-        if fname:
-            with open(fname, 'w', newline='', encoding='utf-8') as file:
-                writer = csv.writer(file, delimiter=';')
-                headers = [self.csvTable.horizontalHeaderItem(i).text() for i in range(self.csvTable.columnCount())]
-                writer.writerow(headers)
-
-                for row in range(self.csvTable.rowCount()):
-                    row_data = []
-                    for column in range(self.csvTable.columnCount()):
-                        item = self.csvTable.item(row, column)
-                        row_data.append(item.text() if item else '')
-                    writer.writerow(row_data)
-
     def createGeoJsonFromCsv(self, csv_file_path, geojson_file_path):
         # read csv-file
         df = pd.read_csv(csv_file_path, delimiter=';')
@@ -401,7 +348,7 @@ class VisualizationTab(QWidget):
         fname, _ = QFileDialog.getOpenFileName(self, 'CSV-Koordinaten laden', '', 'CSV Files (*.csv);;All Files (*)')
         if fname:
             # Path for the temporary GeoJSON file
-            geojson_path = f"{self.base_path}/Gebäudedaten/Koordinaten.geojson"
+            geojson_path = f"{self.base_path}\Gebäudedaten\Koordinaten.geojson"
 
             # Creating GeoJSON file from CSV file
             self.createGeoJsonFromCsv(fname, geojson_path)

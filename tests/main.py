@@ -144,8 +144,8 @@ def auslegung_erzeuger(start, end, filename, optimize, load_scale_factor, Gaspre
 
     general_results = Berechnung_Erzeugermix(techs, initial_data, start, end, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, variables=[], variables_order=[], kapitalzins=kapitalzins, preissteigerungsrate=preissteigerungsrate, betrachtungszeitraum=betrachtungszeitraum)
     
-    print(f"Jahreswärmebedarf:", f"{general_results["Jahreswärmebedarf"]:.2f} MWh")
-    print(f"Wärmegestehungskosten Gesamt:", f"{general_results["WGK_Gesamt"]:.2f} €/MWh")
+    print(f"Jahreswärmebedarf:", f"{general_results['Jahreswärmebedarf']:.2f} MWh")
+    print(f"Wärmegestehungskosten Gesamt:", f"{general_results['WGK_Gesamt']:.2f} €/MWh")
 
     for tech, wärmemenge, anteil, wgk in zip(techs, general_results["Wärmemengen"], general_results["Anteile"], general_results["WGK"]):
         print(f"Wärmemenge {tech.name}:", f"{wärmemenge:.2f} MWh")

@@ -374,7 +374,7 @@ class KostenBerechnungDialog(QDialog):
     def __init__(self, parent=None, label=None, value=None, type=None):
         super().__init__(parent)
         self.base_path = parent.base_path
-        self.filename = f"{self.base_path}/Wärmenetz/dimensioniertes Wärmenetz.geojson"
+        self.filename = f"{self.base_path}\Wärmenetz\dimensioniertes Wärmenetz.geojson"
         self.label = label
         self.value = value
         self.type = type
@@ -420,7 +420,7 @@ class KostenBerechnungDialog(QDialog):
 class NetInfrastructureDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.base_path = parent.base_path
+        self.base_path = None
         self.initUI()
         self.initDefaultValues()
          # Kontextmenü für vertikale Kopfzeilen
@@ -566,10 +566,10 @@ class NetInfrastructureDialog(QDialog):
                     values[key] = 0.0  # oder ein anderer angemessener Standardwert
         return values
     
-
 class TemperatureDataDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.base_path = None
         self.initUI()
         self.initDefaultValues()
 
@@ -608,7 +608,7 @@ class TemperatureDataDialog(QDialog):
             lineEdit.setText(filename)
 
     def initDefaultValues(self):
-        self.temperatureDataFileInput.setText("heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat")
+        self.temperatureDataFileInput.setText(f"{self.base_path}\heat_requirement\TRY_511676144222\TRY2015_511676144222_Jahr.dat")
 
     def getValues(self):
         return {
@@ -618,6 +618,7 @@ class TemperatureDataDialog(QDialog):
 class HeatPumpDataDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.base_path = None
         self.setWindowTitle("Wärmepumpendaten")
         self.initUI()
         self.initDefaultValues()
@@ -633,7 +634,7 @@ class HeatPumpDataDialog(QDialog):
         dataLayout = QVBoxLayout()
         self.heatPumpDataFileLabel = QLabel("csv-Datei mit Wärmepumpenkennfeld:")
         self.heatPumpDataFileInput = QLineEdit()
-        self.heatPumpDataFileInput.setPlaceholderText("heat_generators/Kennlinien WP.csv")
+        self.heatPumpDataFileInput.setPlaceholderText(f"{self.base_path}\heat_generators\Kennlinien WP.csv")
         self.selectCOPFileButton = QPushButton('csv-Datei auswählen')
         self.selectCOPFileButton.clicked.connect(lambda: self.selectFilename(self.heatPumpDataFileInput))
         

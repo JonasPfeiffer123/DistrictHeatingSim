@@ -24,7 +24,7 @@ def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY, time_s
     Globalstrahlung_L = np.repeat(Globalstrahlung_L, repeat_factor)[calc1:calc2]
 
     if Bruttofläche_STA == 0 or VS == 0:
-        return 0, np.zeros_like(Last_L)
+        return 0, np.zeros_like(Last_L), np.zeros_like(Last_L), np.zeros_like(Last_L)
     
     Tag_des_Jahres_L = np.array([datetime.fromtimestamp(t.astype('datetime64[s]').astype(np.int64), tz=timezone.utc).timetuple().tm_yday for t in time_steps])
 
@@ -149,6 +149,7 @@ def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY, time_s
             PSV = 0
             Tag_des_Jahres_alt = Tag_des_Jahres
             Stagnation = 0
+            S_HFG = QS / QSmax  # Speicherfüllungsgrad
 
         else:
             T_koll_a_alt = T_koll_a

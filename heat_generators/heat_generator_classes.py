@@ -4,10 +4,10 @@ from math import pi, sqrt
 from scipy.optimize import minimize
 from scipy.interpolate import RegularGridInterpolator
 
-from heat_generators.Solarthermie import Berechnung_STA
+from heat_generators.Solarthermie_optimierung import Berechnung_STA
 
 # Wirtschaftlichkeitsberechnung für technische Anlagen nach VDI 2067
-def annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand=0, q=1.05, r=1.03, T=20, Energiebedarf=0, Energiekosten=0, E1=0):
+def annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand=0, q=1.05, r=1.03, T=20, Energiebedarf=0, Energiekosten=0, E1=0, stundensatz=45):
     if T > TN:
         n = T // TN
     else:
@@ -32,8 +32,7 @@ def annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand=0, q=1.05, r=1.03, T=20, E
     A_V1 = Energiebedarf * Energiekosten
     A_N_V = A_V1 * a * b_v
 
-    # betriebsgebundene Kosten#
-    stundensatz = 45  # €
+    # betriebsgebundene Kosten
     A_B1 = Bedienaufwand * stundensatz
     A_IN = A0 * (f_Inst + f_W_Insp)/100
     A_N_B = A_B1 * a * b_B + A_IN * a * b_IN
@@ -118,10 +117,10 @@ class RiverHeatPump(HeatPump):
         self.dT = dT
         self.spez_Investitionskosten_Flusswasser = spez_Investitionskosten_Flusswasser
 
-    def Berechnung_WP(self, VLT_L, COP_data):
+    def Berechnung_WP(self, Wärmeleistung_L, VLT_L, COP_data):
         COP_L, VLT_L_WP = self.COP_WP(VLT_L, self.Temperatur_FW_WP, COP_data)
-        Kühlleistung_L = self.Wärmeleistung_FW_WP * (1 - (1 / COP_L))
-        el_Leistung_L = self.Wärmeleistung_FW_WP - Kühlleistung_L
+        Kühlleistung_L = Wärmeleistung_L * (1 - (1 / COP_L))
+        el_Leistung_L = Wärmeleistung_L - Kühlleistung_L
         return Kühlleistung_L, el_Leistung_L, VLT_L_WP
 
     # Änderung Kühlleistung und Temperatur zu Numpy-Array in aw sowie vor- und nachgelagerten Funktionen
@@ -131,7 +130,7 @@ class RiverHeatPump(HeatPump):
 
         Wärmeleistung_L = np.where(Last_L >= self.Wärmeleistung_FW_WP, self.Wärmeleistung_FW_WP, Last_L)
 
-        Kühlleistung_L, el_Leistung_L, VLT_L_WP = self.Berechnung_WP(VLT_L, COP_data)
+        Kühlleistung_L, el_Leistung_L, VLT_L_WP = self.Berechnung_WP(Wärmeleistung_L, VLT_L, COP_data)
 
         # Wärmepumpe soll nur in Betrieb sein, wenn Sie die Vorlauftemperatur erreichen kann
         Wärmeleistung_L = np.where(VLT_L_WP < VLT_L-self.dT, 0, Wärmeleistung_L)
@@ -168,18 +167,18 @@ class WasteHeatPump(HeatPump):
         self.Temperatur_Abwärme = Temperatur_Abwärme
         self.spez_Investitionskosten_Abwärme = spez_Investitionskosten_Abwärme
 
-    def Berechnung_WP(self, Kühlleistung, QT, VLT_L, COP_data):
-        COP_L, VLT_L = self.COP_WP(VLT_L, QT, COP_data)
-        Wärmeleistung_L = Kühlleistung / (1 - (1 / COP_L))
-        el_Leistung_L = Wärmeleistung_L - Kühlleistung
+    def Berechnung_WP(self, VLT_L, COP_data):
+        COP_L, VLT_L = self.COP_WP(VLT_L, self.Temperatur_Abwärme, COP_data)
+        Wärmeleistung_L = self.Kühlleistung_Abwärme / (1 - (1 / COP_L))
+        el_Leistung_L = Wärmeleistung_L - self.Kühlleistung_Abwärme
         return Wärmeleistung_L, el_Leistung_L
 
     # Änderung Kühlleistung und Temperatur zu Numpy-Array in aw sowie vor- und nachgelagerten Funktionen
-    def abwärme(self, Last_L, VLT_L, Kühlleistung, Temperatur, COP_data, duration):
-        if Kühlleistung == 0:
+    def abwärme(self, Last_L, VLT_L, COP_data, duration):
+        if self.Kühlleistung_Abwärme == 0:
             return 0, 0, np.zeros_like(Last_L), np.zeros_like(VLT_L)
 
-        Wärmeleistung_L, el_Leistung_L = self.Berechnung_WP(Kühlleistung, Temperatur, VLT_L, COP_data)
+        Wärmeleistung_L, el_Leistung_L = self.Berechnung_WP(VLT_L, COP_data)
 
         Wärmeleistung_L = np.where(Last_L >= Wärmeleistung_L, Wärmeleistung_L, Last_L)
         el_Leistung_L = np.where(Last_L >= Wärmeleistung_L, el_Leistung_L, el_Leistung_L * (Last_L / Wärmeleistung_L))
@@ -193,7 +192,7 @@ class WasteHeatPump(HeatPump):
     
     def calculate(self, VLT_L, COP_data, Strompreis, q, r, T, BEW, duration, general_results):
         
-        Wärmemenge, Strombedarf_Abwärme, Wärmeleistung_L, el_Leistung_L= self.abwärme(general_results['Restlast_L'], VLT_L, self.Kühlleistung_Abwärme, self.Temperatur_Abwärme, COP_data, duration)
+        Wärmemenge, Strombedarf_Abwärme, Wärmeleistung_L, el_Leistung_L= self.abwärme(general_results['Restlast_L'], VLT_L, COP_data, duration)
 
         WGK_Abwärme = self.WGK(self.max_Wärmeleistung, Wärmemenge, Strombedarf_Abwärme, self.spez_Investitionskosten_Abwärme, Strompreis, q, r, T, BEW)
 
@@ -209,7 +208,7 @@ class WasteHeatPump(HeatPump):
         return results
 
 class Geothermal(HeatPump):
-    def __init__(self, name, Fläche, Bohrtiefe, Temperatur_Geothermie, spez_Bohrkosten=120, spez_Entzugsleistung=50,
+    def __init__(self, name, Fläche, Bohrtiefe, Temperatur_Geothermie, spez_Bohrkosten=100, spez_Entzugsleistung=50,
                  Vollbenutzungsstunden=2400, Abstand_Sonden=10, spezifische_Investitionskosten_WP=1000):
         super().__init__(name, spezifische_Investitionskosten_WP=spezifische_Investitionskosten_WP)
         self.Fläche = Fläche
@@ -220,7 +219,7 @@ class Geothermal(HeatPump):
         self.Vollbenutzungsstunden = Vollbenutzungsstunden
         self.Abstand_Sonden = Abstand_Sonden
 
-    def Geothermie(self, Last_L, VLT_L, Quelltemperatur, COP_data, duration):
+    def Geothermie(self, Last_L, VLT_L, COP_data, duration):
         if self.Fläche == 0 or self.Bohrtiefe == 0:
             return 0, 0, np.zeros_like(Last_L), np.zeros_like(VLT_L)
 
@@ -231,7 +230,7 @@ class Geothermal(HeatPump):
         Entzugswärmemenge = Entzugsleistung_2400 * self.Vollbenutzungsstunden / 1000  # MWh
         self.Investitionskosten_Sonden = self.Bohrtiefe * self.spez_Bohrkosten * Anzahl_Sonden
 
-        COP_L, VLT_WP = self.COP_WP(VLT_L, Quelltemperatur, COP_data)
+        COP_L, VLT_WP = self.COP_WP(VLT_L, self.Temperatur_Geothermie, COP_data)
 
         # tatsächliche Anzahl der Betriebsstunden der Wärmepumpe hängt von der Wärmeleistung ab,
         # diese hängt über Entzugsleistung von der angenommenen Betriebsstundenzahl ab
@@ -273,8 +272,7 @@ class Geothermal(HeatPump):
     
     def calculate(self, VLT_L, COP_data, Strompreis, q, r, T, BEW, duration, general_results):
         # Hier fügen Sie die spezifische Logik für die Geothermie-Berechnung ein
-        print(self.Geothermie(general_results['Restlast_L'], VLT_L, self.Temperatur_Geothermie, COP_data, duration))
-        Wärmemenge, Strombedarf, Wärmeleistung_L, el_Leistung_Geothermie_L = self.Geothermie(general_results['Restlast_L'], VLT_L, self.Temperatur_Geothermie, COP_data, duration)
+        Wärmemenge, Strombedarf, Wärmeleistung_L, el_Leistung_Geothermie_L = self.Geothermie(general_results['Restlast_L'], VLT_L, COP_data, duration)
 
         self.spez_Investitionskosten_Erdsonden = self.Investitionskosten_Sonden / self.max_Wärmeleistung
         WGK_Geothermie = self.WGK(self.max_Wärmeleistung, Wärmemenge, Strombedarf, self.spez_Investitionskosten_Erdsonden, Strompreis, q, r, T, BEW)
@@ -296,28 +294,6 @@ class CHP:
         self.th_Leistung_BHKW = th_Leistung_BHKW
         self.spez_Investitionskosten_GBHKW = spez_Investitionskosten_GBHKW
         self.spez_Investitionskosten_HBHKW = spez_Investitionskosten_HBHKW
-
-    def WGK(self, Wärmemenge, Strommenge, Brennstoffbedarf, Brennstoffkosten, Strompreis, q, r, T, BEW):
-        if Wärmemenge == 0:
-            return 0
-        # Holzvergaser-BHKW: 130 kW: 240.000 -> 1850 €/kW
-        # (Erd-)Gas-BHKW: 100 kW: 150.000 € -> 1500 €/kW
-        if self.name == "BHKW":
-            spez_Investitionskosten = self.spez_Investitionskosten_GBHKW  # €/kW
-        elif self.name == "Holzgas-BHKW":
-            spez_Investitionskosten = self.spez_Investitionskosten_HBHKW  # €/kW
-
-        self.Investitionskosten = spez_Investitionskosten * self.th_Leistung_BHKW
-        Nutzungsdauer = 15
-        f_Inst, f_W_Insp, Bedienaufwand = 6, 2, 0
-
-        Stromeinnahmen = Strommenge * Strompreis
-
-        A_N = annuität(self.Investitionskosten, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T,
-                            Brennstoffbedarf, Brennstoffkosten, Stromeinnahmen)
-        WGK_a = A_N / Wärmemenge
-
-        return WGK_a
 
     def BHKW(self, Last_L, duration, el_Wirkungsgrad=0.33, KWK_Wirkungsgrad=0.9):
         # Berechnen der thermischen Effizienz
@@ -343,6 +319,28 @@ class CHP:
         # Rückgabe der berechneten Werte
         return Wärmeleistung_BHKW_L, el_Leistung_BHKW_L, Wärmemenge_BHKW, Strommenge_BHKW, \
             Brennstoffbedarf_BHKW
+    
+    def WGK(self, Wärmemenge, Strommenge, Brennstoffbedarf, Brennstoffkosten, Strompreis, q, r, T, BEW):
+        if Wärmemenge == 0:
+            return 0
+        # Holzvergaser-BHKW: 130 kW: 240.000 -> 1850 €/kW
+        # (Erd-)Gas-BHKW: 100 kW: 150.000 € -> 1500 €/kW
+        if self.name == "BHKW":
+            spez_Investitionskosten = self.spez_Investitionskosten_GBHKW  # €/kW
+        elif self.name == "Holzgas-BHKW":
+            spez_Investitionskosten = self.spez_Investitionskosten_HBHKW  # €/kW
+
+        self.Investitionskosten = spez_Investitionskosten * self.th_Leistung_BHKW
+        Nutzungsdauer = 15
+        f_Inst, f_W_Insp, Bedienaufwand = 6, 2, 0
+
+        Stromeinnahmen = Strommenge * Strompreis
+
+        A_N = annuität(self.Investitionskosten, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T,
+                            Brennstoffbedarf, Brennstoffkosten, Stromeinnahmen)
+        WGK_a = A_N / Wärmemenge
+
+        return WGK_a
 
     def calculate(self, Gaspreis, Holzpreis, Strompreis, q, r, T, BEW, duration, general_results):
         
@@ -376,8 +374,8 @@ class BiomassBoiler:
         self.spez_Investitionskosten = spez_Investitionskosten
         self.spez_Investitionskosten_Holzlager = spez_Investitionskosten_Holzlager
 
-    def Biomassekessel(self, Last_L, P_BMK, duration):
-        Wärmeleistung_BMK_L = np.where(Last_L >= P_BMK, P_BMK, Last_L)
+    def Biomassekessel(self, Last_L, duration):
+        Wärmeleistung_BMK_L = np.where(Last_L >= self.P_BMK, self.P_BMK, Last_L)
         Wärmemenge_BMK = np.sum(Wärmeleistung_BMK_L / 1000)*duration
 
         return Wärmeleistung_BMK_L, Wärmemenge_BMK
@@ -400,7 +398,7 @@ class BiomassBoiler:
 
     def calculate(self, Holzpreis, q, r, T, BEW, duration, general_results):
         # Hier fügen Sie die spezifische Logik für die Biomassekessel-Berechnung ein
-        Wärmeleistung_BMK_L, Wärmemenge = self.Biomassekessel(general_results["Restlast_L"], self.P_BMK, duration)
+        Wärmeleistung_BMK_L, Wärmemenge = self.Biomassekessel(general_results["Restlast_L"], duration)
 
         Nutzungsgrad_BMK = 0.8
         Brennstoffbedarf_BMK = Wärmemenge/Nutzungsgrad_BMK
@@ -689,9 +687,9 @@ def optimize_mix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, 
         return general_results["WGK_Gesamt"]
 
     # optimization
-    result = minimize(objective, initial_values, method='SLSQP', bounds=bounds, options={'maxiter': 1000})
-    #result = minimize(objective, initial_values, method='L-BFGS-B', bounds=bounds, options={'maxiter': 1000})
-    #result = minimize(objective, initial_values, method='TNC', bounds=bounds, options={'maxiter': 1000})
+    result = minimize(objective, initial_values, method='SLSQP', bounds=bounds, options={'maxiter': 100})
+    #result = minimize(objective, initial_values, method='L-BFGS-B', bounds=bounds, options={'maxiter': 100})
+    #result = minimize(objective, initial_values, method='TNC', bounds=bounds, options={'maxiter': 100})
 
     if result.success:
         optimized_values = result.x

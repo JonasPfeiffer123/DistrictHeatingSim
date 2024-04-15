@@ -5,7 +5,7 @@ import traceback
 
 from PyQt5.QtCore import QThread, pyqtSignal
 
-from main import import_TRY
+from tests.main import import_TRY
 from net_generation.import_and_create_layers import generate_and_export_layers
 from net_simulation_pandapipes.net_simulation_calculation import *
 from net_simulation_pandapipes.net_simulation import generate_profiles_from_geojson, thermohydraulic_time_series_net, import_results_csv, init_timeseries_opt
@@ -13,10 +13,24 @@ from net_simulation_pandapipes.stanet_import_pandapipes import create_net_from_s
 from heat_generators.heat_generator_classes import Berechnung_Erzeugermix, optimize_mix
 from geocoding.geocodingETRS89 import process_data
 
+import os
+import sys
+
+def get_resource_path(relative_path):
+    """ Get the absolute path to the resource, works for dev and for PyInstaller """
+    if getattr(sys, 'frozen', False):
+        # Wenn die Anwendung eingefroren ist, ist der Basispfad der Temp-Ordner, wo PyInstaller alles extrahiert
+        base_path = sys._MEIPASS
+    else:
+        # Wenn die Anwendung nicht eingefroren ist, ist der Basispfad der Ordner, in dem die Hauptdatei liegt
+        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    return os.path.join(base_path, relative_path)
+
 
 def COP_WP(VLT_L, QT):
     # Interpolation formula for the COP
-    values = np.genfromtxt('C:/Users/username/heating_network_generation/heat_generators/Kennlinien WP.csv', delimiter=';')
+    values = np.genfromtxt(get_resource_path('heat_generators/Kennlinien WP.csv', delimiter=';'))
     row_header = values[0, 1:]  # Vorlauftemperaturen
     col_header = values[1:, 0]  # Quelltemperaturen
     values = values[1:, 1:]
@@ -71,7 +85,7 @@ class NetInitializationThread(QThread):
 
     def initialize_geojson(self):
         self.vorlauf, self.ruecklauf, self.hast, self.erzeugeranlagen, self.calc_method, self.building_type, self.return_temperature, self.supply_temperature, \
-            self.flow_pressure_pump, self.lift_pressure_pump, self.netconfiguration, self.pipetype, self.v_max_pipe, self.material_filter, self.insulation_filter = self.args
+            self.flow_pressure_pump, self.lift_pressure_pump, self.netconfiguration, self.pipetype, self.v_max_pipe, self.material_filter, self.insulation_filter, self.base_path = self.args
 
         self.vorlauf = gpd.read_file(self.vorlauf, driver='GeoJSON')
         self.ruecklauf = gpd.read_file(self.ruecklauf, driver='GeoJSON')
@@ -358,4 +372,6 @@ class CalculateMixThread(QThread):
 
             self.calculation_done.emit(result)
         except Exception as e:
-            self.calculation_error.emit(e)
+            tb = traceback.format_exc()  # Gibt den kompletten Traceback als String zurück
+            error_message = f"Ein Fehler ist aufgetreten: {e}\n{tb}"
+            self.calculation_error.emit(Exception(error_message))

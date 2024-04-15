@@ -5,7 +5,6 @@ import pandas as pd
 
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QLineEdit, QListWidget, QDialog, QProgressBar, \
     QMessageBox, QFileDialog, QMenuBar, QScrollArea, QAction, QAbstractItemView, QTableWidget, QTableWidgetItem, QHeaderView)
@@ -35,16 +34,19 @@ class CustomListWidget(QListWidget):
 class MixDesignTab(QWidget):
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
     
-    def __init__(self, parent=None):
+    def __init__(self, data_manager, parent=None):
         super().__init__(parent)
+        self.data_manager = data_manager
         self.results = {}
         self.initFileInputs()
-        self.base_path = "project_data/Bad Muskau"  # Basispfad initialisieren
+        # Connect to the data manager signal
+        self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
+        # Update the base path immediately with the current project folder
         self.economicParametersDialog = EconomicParametersDialog(self)
         self.netInfrastructureDialog = NetInfrastructureDialog(self)
         self.temperatureDataDialog = TemperatureDataDialog(self)
         self.heatPumpDataDialog = HeatPumpDataDialog(self)
-        self.updateDefaultPath(self.base_path)
+        self.updateDefaultPath(self.data_manager.project_folder)
         self.setupParameters()
         self.tech_objects = []
         self.initUI()
@@ -58,11 +60,13 @@ class MixDesignTab(QWidget):
         self.base_path = new_base_path
 
         # Pfad für Ausgabe aktualisieren
-        new_output_path = f"{self.base_path}/Lastgang/Lastgang.csv"
+        new_output_path = f"{self.base_path}\Lastgang\Lastgang.csv"
         # Dies setzt voraus, dass Ihre Eingabefelder oder deren Layouts entsprechend benannt sind
         self.FilenameInput.setText(new_output_path)
 
         self.netInfrastructureDialog.base_path = self.base_path
+        self.temperatureDataDialog.base_path = self.base_path
+        self.heatPumpDataDialog.base_path = self.base_path
 
         # Optional für mögliche Dialogfenster
 
@@ -99,13 +103,13 @@ class MixDesignTab(QWidget):
         # Erstellen des 'Datei'-Menüs
         fileMenu = self.menuBar.addMenu('Datei')
         # Aktion zum Speichern hinzufügen
-        saveAction = QAction('Speichern', self)
-        saveAction.triggered.connect(self.saveConfiguration)
-        fileMenu.addAction(saveAction)
+        #saveAction = QAction('Speichern', self)
+        #saveAction.triggered.connect(self.saveConfiguration)
+        #fileMenu.addAction(saveAction)
         # Aktion zum Laden hinzufügen
-        loadAction = QAction('Laden', self)
-        loadAction.triggered.connect(self.loadConfiguration)
-        fileMenu.addAction(loadAction)
+        #loadAction = QAction('Laden', self)
+        #loadAction.triggered.connect(self.loadConfiguration)
+        #fileMenu.addAction(loadAction)
         #Ergebnis als PDF speichern
         pdfAction = QAction('Ergebnisse als PDF speichern', self)
         pdfAction.triggered.connect(self.on_export_pdf_clicked)

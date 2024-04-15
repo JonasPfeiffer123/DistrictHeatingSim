@@ -124,7 +124,7 @@ def calculate_heat_demand_for_lod2_area(lod_geojson_path, polygon_shapefile_path
         building_volume = info['Volume']
         
         if ground_area is not None and wall_area is not None and roof_area is not None and building_volume is not None:
-            print(f"\nBuilding ID: {building_id}, {info["Adresse"]}")
+            print(f"\nBuilding ID: {building_id}, {info['Adresse']}")
             print('Welchen Gebäudetyp hat das Gebäude?:')
             u_type = input()
             #u_type='DE.N.SFH.02.GEN'

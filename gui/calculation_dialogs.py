@@ -49,7 +49,7 @@ class HeatDemandEditDialog(QDialog):
         self.accept()  # Schließt das Dialogfenster
 
 class NetGenerationDialog(QDialog):
-    def __init__(self, generate_callback, edit_hast_callback, base_path,parent=None):
+    def __init__(self, generate_callback, edit_hast_callback, base_path, parent=None):
         super().__init__(parent)
         self.generate_callback = generate_callback
         self.edit_hast_callback = edit_hast_callback
