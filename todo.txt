@@ -21,15 +21,12 @@
 
 3. Erzeugerauslegung und Wirtschaftlichkeitsrechnung:
 3.1 Überarbeitung Erzeugerauslegung
-- Ausbau Eingaben Solathermie
 - BHKW, WP, Biomasse, etc sollen optionalen Speicher erhalten zur Verlängerung von Volllaststunden (einfache Regelung), Teillastbereich muss definiert werden --> Ziel Reduktion Gaseinsatz Gaskessel
 - Neue Technologien implementieren: PVT, Großwärmespeicher, AquvaHeat, Wasserstoff, Power-to-heat, Geothermie mit Sondenregeneration???
-- Ausgewählte Erzeuger müssen nach Optimierung in der Anzeige aktualisiert werden
 
 3.2. Wirtschaftlichkeit
 - Eigene Preisentwicklungsszenarien für Erzeugerauslegung und Betrachtung alternativer Brennstoffpreisentwicklungen (alternativ zu derzeitigem Ansatz (Auswahlmöglichkeiten))
 - Entwicklung von Szenarien für den schrittweisen Umbau von Bestandssystemen und deren Wirtschaftlichkeit. (Wie automatisierbar?)
-- im Dialog für wirtschaftliche Parameter Preisentwicklung der Daten über Zeitraum hinterlegen
 - in Auswertung Preisentwicklung darstellen: kapitalgebundene/bedarfsgebundene/betriebsgebundene Kosten der einzelnen Technologien über Zeitraum, Balkendiagramm
 
 3.3 Erweiterung PDF-Ausgabe

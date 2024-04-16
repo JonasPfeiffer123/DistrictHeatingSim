@@ -546,7 +546,11 @@ class MixDesignTab(QWidget):
     ### Technologie erstellen ###
     def createTechnology(self, tech_type, inputs):
         if tech_type == "Solarthermie":
-            return SolarThermal(name=tech_type, bruttofläche_STA=inputs["bruttofläche_STA"], vs=inputs["vs"], Typ=inputs["Typ"], kosten_speicher_spez=inputs["kosten_speicher_spez"], kosten_fk_spez=inputs["kosten_fk_spez"], kosten_vrk_spez=inputs["kosten_vrk_spez"])
+            return SolarThermal(name=tech_type, bruttofläche_STA=inputs["bruttofläche_STA"], vs=inputs["vs"], Typ=inputs["Typ"], kosten_speicher_spez=inputs["kosten_speicher_spez"], 
+                                kosten_fk_spez=inputs["kosten_fk_spez"], kosten_vrk_spez=inputs["kosten_vrk_spez"], Tsmax=inputs["Tsmax"], Longitude=inputs["Longitude"], 
+                                STD_Longitude=inputs["STD_Longitude"], Latitude=inputs["Latitude"], East_West_collector_azimuth_angle=inputs["East_West_collector_azimuth_angle"], 
+                                Collector_tilt_angle=inputs["Collector_tilt_angle"], Tm_rl=inputs["Tm_rl"], Qsa=inputs["Qsa"], Vorwärmung_K=inputs["Vorwärmung_K"], 
+                                DT_WT_Solar_K=inputs["DT_WT_Solar_K"], DT_WT_Netz_K=inputs["DT_WT_Netz_K"])
         elif tech_type == "Biomassekessel":
             return BiomassBoiler(name=tech_type, P_BMK=inputs["P_BMK"], Größe_Holzlager=inputs["Größe_Holzlager"], spez_Investitionskosten=inputs["spez_Investitionskosten"], spez_Investitionskosten_Holzlager=inputs["spez_Investitionskosten_Holzlager"])
         elif tech_type == "Gaskessel":

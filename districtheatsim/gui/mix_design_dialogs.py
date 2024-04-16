@@ -9,6 +9,9 @@ from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, \
     QHBoxLayout, QFileDialog, QMessageBox, QMenu, QInputDialog
 from PyQt5.QtCore import Qt
 
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+import matplotlib.pyplot as plt
+
 # defines the map path
 def get_resource_path(relative_path):
     """ Get the absolute path to the resource, works for dev and for PyInstaller """
@@ -58,7 +61,73 @@ class TechInputDialog(QDialog):
             layout.addWidget(QLabel("Kollektortyp"))
             layout.addWidget(self.typeInput)
 
-            # volume solar heat storage
+            # max solar heat storage temperature
+            self.TsmaxInput = QLineEdit(self)
+            self.TsmaxInput.setText(str(self.tech_data.get('Tsmax', "90")))
+            layout.addWidget(QLabel("Maximale Speichertemperatur in °C"))
+            layout.addWidget(self.TsmaxInput)
+
+            # Longitude
+            self.LongitudeInput = QLineEdit(self)
+            self.LongitudeInput.setText(str(self.tech_data.get('Longitude', "-14.4222")))
+            layout.addWidget(QLabel("Longitude des Erzeugerstandortes"))
+            layout.addWidget(self.LongitudeInput)
+
+            # STD_Longitude
+            self.STD_LongitudeInput = QLineEdit(self)
+            self.STD_LongitudeInput.setText(str(self.tech_data.get('STD_Longitude', "15")))
+            layout.addWidget(QLabel("STD_Longitude des Erzeugerstandortes"))
+            layout.addWidget(self.STD_LongitudeInput)
+
+            # Latitude
+            self.LatitudeInput = QLineEdit(self)
+            self.LatitudeInput.setText(str(self.tech_data.get('Latitude', "51.1676")))
+            layout.addWidget(QLabel("Latitude des Erzeugerstandortes"))
+            layout.addWidget(self.LatitudeInput)
+
+            # East_West_collector_azimuth_angle
+            self.East_West_collector_azimuth_angleInput = QLineEdit(self)
+            self.East_West_collector_azimuth_angleInput.setText(str(self.tech_data.get('East_West_collector_azimuth_angle', "0")))
+            layout.addWidget(QLabel("Azimuth-Ausrichtung des Kollektors in °"))
+            layout.addWidget(self.East_West_collector_azimuth_angleInput)
+
+            # Collector_tilt_angle
+            self.Collector_tilt_angleInput = QLineEdit(self)
+            self.Collector_tilt_angleInput.setText(str(self.tech_data.get('Collector_tilt_angle', "36")))
+            layout.addWidget(QLabel("Neigungswinkel des Kollektors in ° (0-90)"))
+            layout.addWidget(self.Collector_tilt_angleInput)
+
+            # Return Temperature storage at start
+            self.Tm_rlInput = QLineEdit(self)
+            self.Tm_rlInput.setText(str(self.tech_data.get('Tm_rl', "60")))
+            layout.addWidget(QLabel("Startwert Rücklauftemperatur in Speicher in °C"))
+            layout.addWidget(self.Tm_rlInput)
+
+            # storage level at start
+            self.QsaInput = QLineEdit(self)
+            self.QsaInput.setText(str(self.tech_data.get('Qsa', "0")))
+            layout.addWidget(QLabel("Startwert Speicherfüllstand"))
+            layout.addWidget(self.QsaInput)
+
+            # storage level at start
+            self.Vorwärmung_KInput = QLineEdit(self)
+            self.Vorwärmung_KInput.setText(str(self.tech_data.get('Vorwärmung_K', "8")))
+            layout.addWidget(QLabel("Mögliche Abweichung von Solltemperatur bei Vorwärmung"))
+            layout.addWidget(self.Vorwärmung_KInput)
+
+            # dT heat exchanger solar/storage
+            self.DT_WT_Solar_KInput = QLineEdit(self)
+            self.DT_WT_Solar_KInput.setText(str(self.tech_data.get('DT_WT_Solar_K', "5")))
+            layout.addWidget(QLabel("Grädigkeit Wärmeübertrager Kollektor/Speicher"))
+            layout.addWidget(self.DT_WT_Solar_KInput)
+
+            # dT heat exchanger storage/net
+            self.DT_WT_Netz_KInput = QLineEdit(self)
+            self.DT_WT_Netz_KInput.setText(str(self.tech_data.get('DT_WT_Netz_K', "5")))
+            layout.addWidget(QLabel("Grädigkeit Wärmeübertrager Speicher/Netz"))
+            layout.addWidget(self.DT_WT_Netz_KInput)
+
+            # cost storage and solar
             self.vscostInput = QLineEdit(self)
             self.vscostInput.setText(str(self.tech_data.get('kosten_speicher_spez', "750")))
             layout.addWidget(QLabel("spez. Kosten Solarspeicher in €/m³"))
@@ -246,6 +315,17 @@ class TechInputDialog(QDialog):
             inputs['bruttofläche_STA'] = float(self.areaSInput.text())
             inputs["vs"] = float(self.vsInput.text())
             inputs["Typ"] = self.typeInput.itemText(self.typeInput.currentIndex())
+            inputs["Tsmax"] = float(self.TsmaxInput.text())
+            inputs["Longitude"] = float(self.LongitudeInput.text())
+            inputs["STD_Longitude"] = int(self.STD_LongitudeInput.text())
+            inputs["Latitude"] = float(self.LatitudeInput.text())
+            inputs["East_West_collector_azimuth_angle"] = float(self.East_West_collector_azimuth_angleInput.text())
+            inputs["Collector_tilt_angle"] = float(self.Collector_tilt_angleInput.text())
+            inputs["Tm_rl"] = float(self.Tm_rlInput.text())
+            inputs["Qsa"] = float(self.QsaInput.text())
+            inputs["Vorwärmung_K"] = float(self.Vorwärmung_KInput.text())
+            inputs["DT_WT_Solar_K"] = float(self.DT_WT_Solar_KInput.text())
+            inputs["DT_WT_Netz_K"] = float(self.DT_WT_Netz_KInput.text())
             inputs["kosten_speicher_spez"] = float(self.vscostInput.text())
             inputs["kosten_fk_spez"] = float(self.areaScostfkInput.text())
             inputs["kosten_vrk_spez"] = float(self.areaScostvrkInput.text())
@@ -311,47 +391,52 @@ class EconomicParametersDialog(QDialog):
         super().__init__(parent)
         self.initUI()
         self.initDefaultValues()
+        self.validateInput()
+        self.connectSignals()
 
     def initUI(self):
-        self.layout = QVBoxLayout(self)
+        self.setWindowTitle(f"Eingabe wirtschaftliche Parameter")
+
+        self.mainLayout = QHBoxLayout(self)
+
+        # Left Column
+        self.leftLayout = QVBoxLayout()
 
         self.gaspreisLabel = QLabel("Gaspreis (€/MWh):", self)
         self.gaspreisInput = QLineEdit(self)
-        self.layout.addWidget(self.gaspreisLabel)
-        self.layout.addWidget(self.gaspreisInput)
+        self.leftLayout.addWidget(self.gaspreisLabel)
+        self.leftLayout.addWidget(self.gaspreisInput)
 
         self.strompreisLabel = QLabel("Strompreis (€/MWh):", self)
         self.strompreisInput = QLineEdit(self)
-        self.layout.addWidget(self.strompreisLabel)
-        self.layout.addWidget(self.strompreisInput)
+        self.leftLayout.addWidget(self.strompreisLabel)
+        self.leftLayout.addWidget(self.strompreisInput)
 
         self.holzpreisLabel = QLabel("Holzpreis (€/MWh):", self)
         self.holzpreisInput = QLineEdit(self)
-        self.layout.addWidget(self.holzpreisLabel)
-        self.layout.addWidget(self.holzpreisInput)
+        self.leftLayout.addWidget(self.holzpreisLabel)
+        self.leftLayout.addWidget(self.holzpreisInput)
+
+        self.kapitalzinsLabel = QLabel("Kapitalzins (%):", self)
+        self.kapitalzinsInput = QLineEdit(self)
+        self.leftLayout.addWidget(self.kapitalzinsLabel)
+        self.leftLayout.addWidget(self.kapitalzinsInput)
+
+        self.preissteigerungsrateLabel = QLabel("Preissteigerungsrate (%):", self)
+        self.preissteigerungsrateInput = QLineEdit(self)
+        self.leftLayout.addWidget(self.preissteigerungsrateLabel)
+        self.leftLayout.addWidget(self.preissteigerungsrateInput)
+
+        self.betrachtungszeitraumLabel = QLabel("Betrachtungszeitraum (Jahre):", self)
+        self.betrachtungszeitraumInput = QLineEdit(self)
+        self.leftLayout.addWidget(self.betrachtungszeitraumLabel)
+        self.leftLayout.addWidget(self.betrachtungszeitraumInput)
 
         self.BEWLabel = QLabel("Berücksichtigung BEW-Förderung?:", self)
         self.BEWComboBox = QComboBox(self)
         self.BEWComboBox.addItems(["Nein", "Ja"])
-        self.layout.addWidget(self.BEWLabel)
-        self.layout.addWidget(self.BEWComboBox)
-
-        self.kapitalzinsLabel = QLabel("Kapitalzins (%):", self)
-        self.kapitalzinsInput = QLineEdit(self)
-        self.layout.addWidget(self.kapitalzinsLabel)
-        self.layout.addWidget(self.kapitalzinsInput)
-
-        self.preissteigerungsrateLabel = QLabel("Preissteigerungsrate (%):", self)
-        self.preissteigerungsrateInput = QLineEdit(self)
-        self.layout.addWidget(self.preissteigerungsrateLabel)
-        self.layout.addWidget(self.preissteigerungsrateInput)
-
-        self.betrachtungszeitraumLabel = QLabel("Betrachtungszeitraum (Jahre):", self)
-        self.betrachtungszeitraumInput = QLineEdit(self)
-        self.layout.addWidget(self.betrachtungszeitraumLabel)
-        self.layout.addWidget(self.betrachtungszeitraumInput)
-
-        self.setLayout(self.layout)
+        self.leftLayout.addWidget(self.BEWLabel)
+        self.leftLayout.addWidget(self.BEWComboBox)
 
         buttonLayout = QHBoxLayout()
         okButton = QPushButton("OK", self)
@@ -363,16 +448,84 @@ class EconomicParametersDialog(QDialog):
         buttonLayout.addWidget(okButton)
         buttonLayout.addWidget(cancelButton)
 
-        self.layout.addLayout(buttonLayout)
+        self.leftLayout.addLayout(buttonLayout)
+        self.mainLayout.addLayout(self.leftLayout)
+
+        # Right Column (Matplotlib Plot)
+        self.fig, self.ax = plt.subplots()
+        self.canvas = FigureCanvas(self.fig)
+        self.mainLayout.addWidget(self.canvas)
 
     def initDefaultValues(self):
         self.gaspreisInput.setText("70")
         self.strompreisInput.setText("150")
         self.holzpreisInput.setText("50")
-        self.BEWComboBox.setCurrentIndex(0)  # Setzt die Auswahl auf "Nein"
         self.kapitalzinsInput.setText("5")
         self.preissteigerungsrateInput.setText("3")
         self.betrachtungszeitraumInput.setText("20")
+        self.BEWComboBox.setCurrentIndex(0)  # Setzt die Auswahl auf "Nein"
+
+    def connectSignals(self):
+        # Connect signals of QLineEdit widgets to plotPriceDevelopment method
+        self.gaspreisInput.textChanged.connect(self.validateInput)
+        self.strompreisInput.textChanged.connect(self.validateInput)
+        self.holzpreisInput.textChanged.connect(self.validateInput)
+        self.preissteigerungsrateInput.textChanged.connect(self.validateInput)
+
+    def validateInput(self):
+        gas_price = self.gaspreisInput.text()
+        strom_price = self.strompreisInput.text()
+        holz_price = self.holzpreisInput.text()
+        kapitalzins = self.kapitalzinsInput.text()
+        preissteigerungsrate = self.preissteigerungsrateInput.text()
+        betrachtungszeitraum = self.betrachtungszeitraumInput.text()
+
+        if not (gas_price and strom_price and holz_price and kapitalzins and preissteigerungsrate and betrachtungszeitraum):
+            self.showErrorMessage("Alle Felder müssen ausgefüllt sein.")
+            return
+
+        try:
+            float(gas_price)
+            float(strom_price)
+            float(holz_price)
+            float(kapitalzins)
+            float(preissteigerungsrate)
+            int(betrachtungszeitraum)
+        except ValueError:
+            self.showErrorMessage("Ungültige Eingabe. Bitte geben Sie numerische Werte ein.")
+            return
+
+        self.plotPriceDevelopment()
+
+    def showErrorMessage(self, message):
+        msgBox = QMessageBox()
+        msgBox.setIcon(QMessageBox.Warning)
+        msgBox.setText(message)
+        msgBox.setWindowTitle("Fehler")
+        msgBox.exec_()
+
+    def plotPriceDevelopment(self):
+        # Clear existing lines from the plot
+        self.ax.clear()
+
+        years = range(1, int(self.betrachtungszeitraumInput.text()) + 1)
+        gas_prices = [float(self.gaspreisInput.text()) * (1 + float(self.preissteigerungsrateInput.text()) / 100) ** year for year in years]
+        strom_prices = [float(self.strompreisInput.text()) * (1 + float(self.preissteigerungsrateInput.text()) / 100) ** year for year in years]
+        holz_prices = [float(self.holzpreisInput.text()) * (1 + float(self.preissteigerungsrateInput.text()) / 100) ** year for year in years]
+
+        self.ax.plot(years, gas_prices, label='Gaspreis')
+        self.ax.plot(years, strom_prices, label='Strompreis')
+        self.ax.plot(years, holz_prices, label='Holzpreis')
+
+        self.ax.set_xticks(years[::1])  # Setze X-Achsen-Ticks auf jede zweite Position
+        self.ax.set_xticklabels(years[::1])  # Setze die Beschriftungen der X-Achse mit einer Drehung von 45 Grad
+        self.ax.set_xlabel('Jahr')
+        self.ax.set_ylabel('Preis (€/MWh)')
+        self.ax.set_title('Preisentwicklung der Energieträger')
+        self.ax.legend()
+
+        self.fig.tight_layout()
+        self.canvas.draw()
 
     def getValues(self):
         return {
