@@ -1,66 +1,24 @@
-# heating_network_generation
+# DistrictHeatSim
 
 This project, led by Dipl.-Ing. (FH) Jonas Pfeiffer for the SMWK-NEUES TG-70 project "Entwicklung und Erprobung von Methoden und Werkzeugen zur Konzeptionierung nachhaltiger Wärmenetze" (Development and testing of methods and tools for designing sustainable heating networks) at Hochschule Zittau/Görlitz, aims to develop and test tools for creating sustainable heating networks using geospatial data, GIS functionalities.
 
 # Usage
+Install all required libraries with pip install -r requirements.txt.
 
-"geocoding"
-- for the geocoding python files the libraries "Nominatim" and "Transformer" are needed
-- There are 2 scripts which allow you to geocode given adresses
+In the tests-folder you can find different tests, which show the functionalities of the tool.
 
-"gui"
-- contains all gui related scripts
-
-"heat_generators"
-- heat_generator_classes defines different heat generator classes and a function to calculate the heat generation mix based on a given load and predefined heat generators and an optimize-function to minimize the cost of such a system
-
-"heat_requirement"
-- implementation of the VDI 4655 and BDEW load profile calculations (based on the available Excel-file from https://www.umwelt-campus.de/energietools)
-- uses TRY-data
-
-"net_generation"
-The collection of Python scripts provides a comprehensive solution for designing and analyzing district heating (DH) networks, with a strong emphasis on geospatial data processing and network optimization.
-- import_and_create_layers.py: Essential for importing, processing, and exporting geospatial data, this script uses geopandas and shapely. Key features include importing street layers, generating line objects based on spatial points, and creating GeoDataFrames for different layers. It effectively integrates multiple data sources into usable geographic layers, which are then exported as GeoJSON for further use.
-
-- simple_MST.py: Focused on network structuring, this script utilizes networkx to construct Minimum Spanning Trees (MST) from geospatial data. It includes several geometric manipulation functions, like creating offset points and finding the nearest line to a point. The script is instrumental in generating network structures for both supply and return lines, ensuring efficient connectivity within the DH network based on geographic considerations.
-
-Overall, these scripts work in tandem to facilitate the detailed creation, analysis, and optimization of district heating networks, addressing both the geometric complexities of urban environments and the specific requirements of efficient heat distribution systems.
-
-"net_generation_QGIS"
-- basically brings the same functionality as the net_generation-folder but is designed for the usage inside the QGIS application
-
-"net_simulation_pandapipes"
-- the "pandapipes" and "geopanda" libraries are needed.
-- Purpose: Simulates the heating network using the pandapipes framework, focusing on pipe flow and network optimization.
-- Key Functions:
-  - Network Creation from GIS Data: Utilizes geospatial data to create detailed models of district heating networks.
-  - Pipe Initialization: Supports both diameter-based and type-based pipe initialization for network modeling.
-  - Heat Exchanger Integration: Automates the addition of heat exchangers into the network with specified heat output.
-  - Flow Direction Optimization: Adjusts flow directions within the network to ensure optimal operation.
-  - Diameter Optimization: Dynamically adjusts pipe diameters for improved flow and efficiency.
-  - Network Export: Ability to export the network model as a GeoJSON file for geographical analysis.
-  - Worst Point Calculation: Identifies the least efficient point in the network based on pressure differences, aiding in targeted improvements.
-  - controllers.py
-    - This module defines custom controller classes that extend the functionality of the basic controllers provided by Pandapipes. These controllers are responsible for dynamic regulation of network parameters during simulations.
-    - ReturnTemperatureController: Regulates the temperature of the returning fluid in the network to achieve a specified target temperature.
-    - WorstPointPressureController: Regulates the pressure lift at the circulation pump by setting a target pressure drop a the worst point in the network
-    Both controllers utilize a proportional control approach to minimize the error between the current state and the desired state of the network.
-
-"osm_data"
-- contains functions for OSM download and analysis
-
-"main-folder"
-- "main_gui.py" is the main application
-- "main.py" can also be used to test functionality
+In the districtheatsim-folder you can find the tool, which can be run with "DistrictHeatSim.py".
 
 # Data
-For the developement and testing of the algorithms and functions, geodata is required. In this case a few local adresses in Zittau, Görlitz and Bad Muskau were choosed and geocoded. Also some synthetic datapoints were added. This example-datasets are saved in the project_data-folder. The district heating network were generated for these datapoints.
+For the developement and testing of the algorithms and functions, geodata is required. In this case data examples from the city of Bad Muskau were choosed and geocoded. Also some synthetic datapoints were added. This example-datasets are saved in the project_data-folder. The district heating network were generated for these datapoints.
 
 # Heat System Design GUI
 
-This Python script implements a graphical user interface (GUI) for designing and analyzing heat systems, using PyQt5 for the interface and matplotlib for plotting. It allows users to input various parameters like gas, electricity, and wood prices, and choose whether to consider BEW funding. Users can add or remove different heating technologies, such as solar thermal systems, biomass boilers, and gas boilers, using a customizable dialog window. The GUI provides functionality to calculate and optimize heat generation costs and visualize results with pie charts and stack plots.
+This Python script implements a graphical user interface (GUI) for designing and analyzing heat systems, using PyQt5 for the interface and matplotlib for plotting. It allows users to input various parameters like gas, electricity, and wood prices. Users can add different heating technologies, such as solar thermal systems, biomass boilers, and gas boilers, using a customizable dialog window. The GUI provides functionality to calculate and optimize heat generation costs and visualize results with pie charts and stack plots.
 Features
   - GUI for heat system design.
+  - Map-feature allows the import and visualisation of GIS-data
+  - pandapipes-powered thermohydraulic net calculation simulates heating demand
   - Customizable inputs for prices and technologies.
   - Visual representation of heating system performance.
   - Options to calculate and optimize heat generation mix.
