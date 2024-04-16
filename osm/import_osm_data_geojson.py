@@ -75,12 +75,3 @@ def json_serial(obj):
 def save_to_file(geojson_data, filename):
     with open(filename, 'w') as outfile:
         json.dump(geojson_data, outfile, indent=2, default=json_serial)
-
-def run_here():
-    city_name = "Zittau"
-    tags = {"highway": "primary"}
-    query = build_query(city_name, tags)
-    geojson_data = download_data(query)
-    save_to_file(geojson_data, "osm_data/osm_data_script.geojson")
-
-#run_here()

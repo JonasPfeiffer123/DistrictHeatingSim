@@ -5,13 +5,7 @@ from geopy.geocoders import Nominatim
 
 import numpy as np
 
-def filter_LOD2_with_OSM_and_adress():
-    # Pfadangaben
-    csv_file_path = 'examples/Zittau/data_input.csv'
-    osm_geojson_path = 'examples/Zittau/buildings_zittau.geojson'
-    lod_shapefile_path = 'examples/Zittau/lod2_33486_5636_2_sn.shp'
-    output_geojson_path = 'examples/Zittau/filtered_LOD.geojson'
-
+def filter_LOD2_with_OSM_and_adress(csv_file_path, osm_geojson_path, lod_shapefile_path, output_geojson_path):
     # OSM-Gebäudedaten laden und nach Adressen filtern
     osm_gdf = gpd.read_file(osm_geojson_path)
 
@@ -191,22 +185,3 @@ def calculate_centroid_and_geocode(building_info):
             info['Adresse'] = None
 
     return building_info
-
-# filter_LOD2_with_OSM_and_adress()
-
-def run():
-    # Pfadangaben
-    #lod_geojson_path = 'examples/Görlitz/lod2_33498_5666_2_sn.geojson'
-    lod_geojson_path = 'examples/Bautzen/lod2_33458_5668_2_sn.geojson'
-    #polygon_shapefile_path = 'examples/Görlitz/Quartier_Konzept_vereinfacht.shp'
-    polygon_shapefile_path = 'examples/Bautzen/filter_polygon.shp'
-    #output_geojson_path = 'examples/Görlitz/filtered_LOD_quartier.geojson'
-    output_geojson_path = 'examples/Bautzen/filtered_LOD_quartier.geojson'
-    # Rufe die Funktion auf, um den Filterprozess zu starten
-    #spatial_filter_with_polygon(lod_geojson_path, polygon_shapefile_path, output_geojson_path)
-
-    #file_path = 'examples/Görlitz/filtered_LOD_quartier.geojson'
-    file_path = 'examples/Bautzen/filtered_LOD_quartier.geojson'
-    process_lod2(file_path)
-
-# run()

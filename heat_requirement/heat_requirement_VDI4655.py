@@ -56,7 +56,6 @@ def import_csv(filename):
     data = pd.read_csv(filename, sep=';')
     return data
 
-
 def generate_year_months_days_weekdays(year):
     # First day of the year
     start_date = np.datetime64(f'{year}-01-01')
@@ -126,7 +125,7 @@ def standardized_quarter_hourly_profile(year, building_type, days_of_year, type_
     all_type_days = np.unique(quarterly_type_days)
 
     # Read all CSV files once and filter as needed
-    all_data = {f"{building_type}{type_day}": import_csv(get_resource_path('heat_requirement\VDI 4655 load profiles\{building_type}{type_day}.csv')) 
+    all_data = {f"{building_type}{type_day}": import_csv(get_resource_path(f'heat_requirement\VDI 4655 load profiles\{building_type}{type_day}.csv')) 
                 for type_day in all_type_days}
 
     profile_days = np.char.add(building_type, quarterly_type_days)
@@ -206,7 +205,7 @@ def calculation_load_profile(TRY, factors, building_type, number_people_househol
     return quarter_hourly_intervals, electricity_corrected, heating_corrected, hot_water_corrected, temperature
 
 # YEU - yearly energy usage
-def calculate(YEU_heating_kWh, YEU_hot_water_kWh, YEU_electricity_kWh=1, building_type="MFH", number_people_household=2, year=2019, climate_zone="9", base_path=""):
+def calculate(YEU_heating_kWh, YEU_hot_water_kWh, YEU_electricity_kWh=1, building_type="MFH", number_people_household=2, year=2019, climate_zone="9"):
     # holidays
     Neujahr = "2019-01-01"
     Karfreitag = "2019-04-19"
@@ -234,25 +233,3 @@ def calculate(YEU_heating_kWh, YEU_hot_water_kWh, YEU_electricity_kWh=1, buildin
     electricity_kW, heating_kW, hot_water_kW, total_heat_kW = electricity_kWh_15min * 4, heating_kWh_15min * 4, hot_water_kWh_15min * 4, total_heat_kWh_15min * 4
 
     return time_15min, electricity_kW, heating_kW, hot_water_kW, total_heat_kW, temperature
-
-def annual_duration_line(weather_data, factors, building_type, number_people_household, YEU_electricity_kWh, 
-                       YEU_heating_kWh, YEU_hot_water_kWh, holidays, climate_zone="9", year=2019, base_path=""):
-    
-    time_15min, electricity_kWh_15min, heating_kWh_15min, hot_water_kWh_15min, temperature = calculation_load_profile(weather_data,
-                                                                                        factors, building_type, 
-                                                                                        number_people_household, 
-                                                                                        YEU_electricity_kWh, YEU_heating_kWh, 
-                                                                                        YEU_hot_water_kWh, holidays, climate_zone, year)
-    
-    total_heat_kWh_15min = heating_kWh_15min + hot_water_kWh_15min
-
-    electricity_kW, heating_kW, hot_water_kW, total_heat_kW = electricity_kWh_15min * 4, heating_kWh_15min * 4, hot_water_kWh_15min * 4, total_heat_kWh_15min * 4
-
-    plt.plot(time_15min, total_heat_kW, label="Wärmeleistung gesamt")
-
-    plt.title("Jahresdauerlinie")
-    plt.legend()
-    plt.xlabel("Zeit in 15 min Schritten")
-    plt.ylabel("Wärmebedarf in kW / 15 min")
-
-    plt.show()

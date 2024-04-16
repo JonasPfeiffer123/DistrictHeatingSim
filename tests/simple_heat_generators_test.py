@@ -5,7 +5,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from heat_generators import Solarthermie, heat_generator_classes
-from tests.main import import_TRY
+from utilities.test_reference_year import import_TRY
 
 import numpy as np
 

@@ -192,13 +192,3 @@ def calculate(JWB_kWh=10000, profiletype="HMF", subtyp="03", year=2021):
     hourly_intervals, hourly_heat_demand, hourly_temperature = calculation_load_profile(TRY, JWB_kWh, profiletype, subtyp, Feiertage, year)
 
     return hourly_intervals, hourly_heat_demand, hourly_temperature
-
-def annual_duration_line(hourly_intervals, hourly_heat_demand, hourly_temperature):
-    plt.plot(hourly_intervals, hourly_heat_demand, label="Wärmeleistung gesamt")
-
-    plt.title("Jahresdauerlinie")
-    plt.legend()
-    plt.xlabel("Zeit")
-    plt.ylabel("Wärmebedarf in kW")
-
-    plt.show()

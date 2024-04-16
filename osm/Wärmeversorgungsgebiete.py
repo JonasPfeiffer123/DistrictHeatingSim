@@ -11,9 +11,7 @@ Wählen Sie im Installer die Option "C++ build tools" aus, stellen Sie sicher, d
 
 Schließen Sie die Installation ab und starten Sie Ihren Computer neu, wenn dazu aufgefordert wird.
 
-Versuchen Sie nach dem Neustart die Installation von hdbscan erneut mit dem Befehl, den Sie bereits verwendet haben:
-
-pip install hdbscan"""
+Installieren sie hdbscan mit pip install hdbscan"""
 
 from shapely.geometry import Polygon, shape
 
@@ -164,43 +162,3 @@ def allocate_overlapping_area(quarters):
                     quarters.loc[row_left.index, 'geometry'] = buffered_geom_left.difference(intersection).buffer(-0.0001)
 
     return quarters
-
-### run ###
-
-def run_here():
-    # Load your GeoJSON dataset
-    gdf = gpd.read_file('osm/output_buildings.geojson', driver='GeoJSON').to_crs(epsg=25833)
-
-    def calculate_building_data(gdf, output_filename):
-            # Calculate the area of ​​each building in square meters
-            gdf['area_sqm'] = gdf['geometry'].area
-            # Adding specific heat demand column with random numbers between 50 and 200
-            gdf['spez. Wärmebedarf [kWh/m²*a]'] = np.random.uniform(50, 200, gdf.shape[0])
-            # Add column for number of floors (constant value 3)
-            gdf['Anzahl Geschosse'] = 3
-            # Calculate the annual heat requirement
-            gdf['Jahreswärmebedarf [kWh/a]'] = gdf['spez. Wärmebedarf [kWh/m²*a]'] * gdf['Anzahl Geschosse'] * gdf['area_sqm']
-            # Save the extended GeoDataFrame to a new GeoJSON file
-            gdf.to_file(output_filename, driver='GeoJSON')
-
-            return gdf
-
-    gdf = calculate_building_data(gdf, 'osm_data/output_buildings.geojson')
-
-    quarters = clustering_quartiere_hdbscan(gdf)
-    #Export result as GeoJSON file
-    quarters.to_file('C:/Users/username/heating_network_generation/osm_data/quartiere_hdbscan.geojson', driver='GeoJSON')
-
-    # Loading GeoJSON data
-    #quarters = gpd.read_file('C:/Users/username/heating_network_generation/osm_data/quartiere_hdbscan.geojson', driver='GeoJSON')
-
-    # Merge neighborhoods with the same type of supply
-    quarters_joined = postprocessing_hdbscan(quarters)
-    # Saving the post-processed data
-    quarters_joined.to_file('quartiere_postprocessed.geojson', driver='GeoJSON')
-
-    # Apply allocate_overlapping_area approach
-    quarters_overlayed = allocate_overlapping_area(quarters_joined)
-    quarters_overlayed.to_file('C:/Users/username/heating_network_generation/osm_data/quartiere_allocated.geojson', driver='GeoJSON')
-
-#run_here()

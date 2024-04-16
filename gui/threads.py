@@ -5,7 +5,7 @@ import traceback
 
 from PyQt5.QtCore import QThread, pyqtSignal
 
-from tests.main import import_TRY
+from utilities.test_reference_year import import_TRY
 from net_generation.import_and_create_layers import generate_and_export_layers
 from net_simulation_pandapipes.net_simulation_calculation import *
 from net_simulation_pandapipes.net_simulation import generate_profiles_from_geojson, thermohydraulic_time_series_net, import_results_csv, init_timeseries_opt
