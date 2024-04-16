@@ -68,6 +68,7 @@ class HeatSystemDesignGUI(QWidget):
     def __init__(self):
         super().__init__()
         self.data_manager = CentralDataManager()
+        self.projectFolderPath = None  # Initialisierung des Projektordnerpfads
 
         self.initUI()
 
@@ -103,6 +104,8 @@ class HeatSystemDesignGUI(QWidget):
         self.folderLabel.setText(f"Ausgewählter Projektordner: {path}")
 
     def showStartDialog(self):
+        if self.projectFolderPath is None:
+            self.projectFolderPath = self.data_manager.project_folder  # Verwenden Sie den Standardordner, wenn kein Projektordner ausgewählt wurde
         self.startDialog = StartDialog(self)
         if self.startDialog.exec_() == QDialog.Accepted:
             if self.projectFolderPath:

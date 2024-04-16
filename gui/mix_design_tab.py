@@ -587,15 +587,25 @@ class MixDesignTab(QWidget):
     def on_calculation_done(self, result):
         self.progressBar.setRange(0, 1)
         self.results = result
+        self.updateTechList()
         self.updateTechDataTable(self.tech_objects)
         self.showResultsInTable(result)
         self.showAdditionalResultsTable()
         self.save_results_to_csv(result)
+        self.showConfirmationDialog()
         self.plotResults(result)
 
     def on_calculation_error(self, error_message):
         self.progressBar.setRange(0, 1)
         QMessageBox.critical(self, "Berechnungsfehler", str(error_message))
+
+    def showConfirmationDialog(self):
+        msgBox = QMessageBox()
+        msgBox.setIcon(QMessageBox.Information)
+        msgBox.setText(f"Die Berechnung des Erzeugermixes war erfolgreich. Die Ergebnisse wurden unter {self.base_path}\Lastgang\\results.csv gespeichert.")
+        msgBox.setWindowTitle("Berechnung Erfolgreich")
+        msgBox.setStandardButtons(QMessageBox.Ok)
+        msgBox.exec_()
     
     def save_results_to_csv(self, results):
         # Initialisiere den DataFrame mit den Zeitstempeln
@@ -609,8 +619,8 @@ class MixDesignTab(QWidget):
         #for i, tech in enumerate(results['techs']):
         #    df[tech] = results['Wärmeleistung_L'][i]
 
-        for i, tech_results in enumerate(results['Wärmeleistung_L']):
-            df[f"Erzeuger {i}"] = tech_results
+        for i, (tech_results, techs) in enumerate(zip(results['Wärmeleistung_L'], results['techs'])):
+            df[techs] = tech_results
         
         # Füge die elektrischen Leistungsdaten hinzu
         df['el_Leistungsbedarf_L'] = results['el_Leistungsbedarf_L']
@@ -618,7 +628,7 @@ class MixDesignTab(QWidget):
         df['el_Leistung_ges_L'] = results['el_Leistung_ges_L']
         
         # Speichere den DataFrame als CSV-Datei
-        csv_filename = f"{self.base_path}/Lastgang/results.csv"
+        csv_filename = f"{self.base_path}\Lastgang\\results.csv"
         df.to_csv(csv_filename, index=False, sep=";")
         print(f"Ergebnisse wurden in '{csv_filename}' gespeichert.")
 
@@ -631,14 +641,14 @@ class MixDesignTab(QWidget):
         self.figure1.clear()
         self.figure2.clear()
 
-        self.plotStackPlot(self.figure1, results['time_steps'], results['Wärmeleistung_L'], results['techs'], results['Last_L'])
-        self.plotPieChart(self.figure2, results['Anteile'], results['techs'])
+        self.plotStackPlot(self.figure1, results['time_steps'], results['Wärmeleistung_L'], results['techs'], results['colors'], results['Last_L'])
+        self.plotPieChart(self.figure2, results['Anteile'], results['techs'], results['colors'])
         self.canvas1.draw()
         self.canvas2.draw()
 
-    def plotStackPlot(self, figure, t, data, labels, Last):
+    def plotStackPlot(self, figure, t, data, labels, colors, Last):
         ax = figure.add_subplot(111)
-        ax.stackplot(t, data, labels=labels)
+        ax.stackplot(t, data, labels=labels, colors=colors)
         ax.set_title("Jahresdauerlinie")
         ax.set_xlabel("Jahresstunden")
         ax.set_ylabel("thermische Leistung in kW")
@@ -647,9 +657,9 @@ class MixDesignTab(QWidget):
 
         # Hinzufügen von Last_L als Linienplot
         ax1 = self.figure1.gca()  # Get current axis
-        ax1.plot(t, Last, color='black', linewidth=0.5)  # Zeichnen der Last_L Linie
+        ax1.plot(t, Last, color='blue')  # Zeichnen der Last_L Linie
 
-    def plotPieChart(self, figure, Anteile, labels):
+    def plotPieChart(self, figure, Anteile, labels, colors):
         ax = figure.add_subplot(111)
 
         # Überprüfen, ob die Summe der Anteile weniger als 1 (100 %) beträgt
@@ -659,7 +669,7 @@ class MixDesignTab(QWidget):
             Anteile.append(1 - summe)
             labels.append("ungedeckter Bedarf")  # Oder einen anderen passenden Text für den leeren Bereich
 
-        ax.pie(Anteile, labels=labels, autopct='%1.1f%%', startangle=90)
+        ax.pie(Anteile, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90)
         ax.set_title("Anteile Wärmeerzeugung")
         ax.legend(loc='lower left')
         ax.axis("equal")  # Stellt sicher, dass der Pie-Chart kreisförmig bleibt
@@ -675,7 +685,12 @@ class MixDesignTab(QWidget):
                 key = self.dataSelectionDropdown.itemText(i)
                 data = self.results[key]
                 color = next(color_cycle)
-                ax.plot(self.results['time_steps'], data, label=key, color=color)
+                if key == 'Wärmeleistung_L':
+                    # Stackplot für Wärmeleistung_L
+                    ax.stackplot(self.results['time_steps'], data, labels=self.results['techs'], colors=self.results['colors'])
+                else:
+                    # Plotten der anderen Daten als Linienplot
+                    ax.plot(self.results['time_steps'], data, label=key, color=color)
 
         ax.set_xlabel("Zeit")
         ax.set_ylabel("Werte")
@@ -696,8 +711,12 @@ class MixDesignTab(QWidget):
             if label.endswith('_L'):
                 self.dataSelectionDropdown.addItem(label)
                 item = self.dataSelectionDropdown.model().item(self.dataSelectionDropdown.count() - 1, 0)
-                item.setCheckState(Qt.Checked if initial_checked else Qt.Unchecked)
-                initial_checked = False  # Nur das erste Element wird standardmäßig ausgewählt
+                # Prüfen, ob es sich um "Wärmeleistung_L" oder "Last_L" handelt und entsprechend markieren
+                if label == 'Wärmeleistung_L':
+                    item.setCheckState(Qt.Checked)
+                else:
+                    item.setCheckState(Qt.Checked if initial_checked else Qt.Unchecked)
+                    initial_checked = False  # Nur das erste Element wird standardmäßig ausgewählt
 
         self.dropdownLayout.addWidget(self.dataSelectionDropdown)
         self.mainLayout.addLayout(self.dropdownLayout)
@@ -919,6 +938,7 @@ class MixDesignTab(QWidget):
         if filename:
             self.create_pdf(filename)
 
+    ##### currently not used #####
     ### Programmstatus Speichern ###
     def saveConfiguration(self):
         state = {
@@ -926,7 +946,7 @@ class MixDesignTab(QWidget):
             'techObjects': [self.formatTechForSave(tech) for tech in self.tech_objects]
         }
 
-        with open('project_data/Beispiel Zittau/Speicherstand.json', 'w') as f:
+        with open(f'{self.base_path}\Speicherstand.json', 'w') as f:
             json.dump(state, f)
         
         print("Konfiguration gespeichert")
@@ -936,7 +956,7 @@ class MixDesignTab(QWidget):
     
     def loadConfiguration(self):
         try:
-            with open('project_data/Beispiel Zittau/Speicherstand.json', 'r') as f:
+            with open(f'{self.base_path}Speicherstand.json', 'r') as f:
                 state = json.load(f)
 
             self.FilenameInput.setText(state['filename'])

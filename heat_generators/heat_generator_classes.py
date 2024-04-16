@@ -155,7 +155,7 @@ class RiverHeatPump(HeatPump):
             'Strombedarf': Strombedarf_FW_WP,
             'el_Leistung_L': el_Leistung_L,
             'WGK': WGK_Abwärme,
-            'color': "purple"
+            'color': "blue"
         }
 
         return results
@@ -283,7 +283,7 @@ class Geothermal(HeatPump):
             'Strombedarf': Strombedarf,
             'el_Leistung_L': el_Leistung_Geothermie_L,
             'WGK': WGK_Geothermie,
-            'color': "blue"
+            'color': "darkorange"
         }
 
         return results
@@ -360,7 +360,7 @@ class CHP:
             'WGK': wgk_BHKW,
             'Strommenge': Strommenge_BHKW,
             'el_Leistung_L': el_Leistung_BHKW_L,
-            'color': "orange"
+            'color': "yellow"
         }
 
 
@@ -451,7 +451,7 @@ class GasBoiler:
             'Wärmeleistung_L': Wärmeleistung_GK_L,
             'Brennstoffbedarf': Gasbedarf,
             'WGK': WGK_GK,
-            "color": "brown"
+            "color": "saddlebrown"
         }
 
         return results
