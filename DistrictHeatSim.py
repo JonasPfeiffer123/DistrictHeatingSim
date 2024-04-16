@@ -14,7 +14,7 @@ def get_resource_path(relative_path):
         base_path = sys._MEIPASS
     else:
         # Wenn die Anwendung nicht eingefroren ist, ist der Basispfad der Ordner, in dem die Hauptdatei liegt
-        base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'heating_network_generation')
+        base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'DistrictHeatSim')
 
     return os.path.join(base_path, relative_path)
 
