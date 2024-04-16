@@ -63,5 +63,5 @@ MIT license
 
 
 # Contact
-  - Software maintained by Dipl.-Ing. (FH) Jonas Pfeiffer, under the MIT license.
+  - Dipl.-Ing. (FH) Jonas Pfeiffer, Hochschule Zittau/Görlitz
   - Contact via GitHub or LinkedIn for collaboration or queries.
