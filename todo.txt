@@ -56,4 +56,4 @@ diverses:
 
 - Wie kann ich das Projekt optimiert auf GitHub präsentieren?
 
-Die Temperaturdaten und COP-Daten brauchen noch ein zentrales Datenmanagement. Aktuell ist echt kacke
+Die Temperaturdaten und COP-Daten brauchen noch ein zentrales Datenmanagement.

@@ -4,7 +4,7 @@ from math import pi, sqrt
 from scipy.optimize import minimize
 from scipy.interpolate import RegularGridInterpolator
 
-from heat_generators.Solarthermie_optimierung import Berechnung_STA
+from heat_generators.Solarthermie import Berechnung_STA
 
 # Wirtschaftlichkeitsberechnung für technische Anlagen nach VDI 2067
 def annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand=0, q=1.05, r=1.03, T=20, Energiebedarf=0, Energiekosten=0, E1=0, stundensatz=45):
