@@ -1,3 +1,6 @@
+import sys
+import os
+
 import geopandas as gpd
 import pandas as pd
 import numpy as np
@@ -19,6 +22,18 @@ from osm.import_osm_data_geojson import build_query, download_data, save_to_file
 from osm.Wärmeversorgungsgebiete import clustering_quartiere_hdbscan, postprocessing_hdbscan, allocate_overlapping_area
 from lod2.scripts.filter_LOD2 import spatial_filter_with_polygon, process_lod2, calculate_centroid_and_geocode
 from lod2.scripts.heat_requirement_DIN_EN_12831 import Building
+
+# defines the map path
+def get_resource_path(relative_path):
+    """ Get the absolute path to the resource, works for dev and for PyInstaller """
+    if getattr(sys, 'frozen', False):
+        # Wenn die Anwendung eingefroren ist, ist der Basispfad der Temp-Ordner, wo PyInstaller alles extrahiert
+        base_path = sys._MEIPASS
+    else:
+        # Wenn die Anwendung nicht eingefroren ist, ist der Basispfad der Ordner, in dem die Hauptdatei liegt
+        base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+    return os.path.join(base_path, relative_path)
 
 class CSVEditorDialog(QDialog):
     def __init__(self, base_path, parent=None):
@@ -977,7 +992,7 @@ class ProcessLOD2DataDialog(QDialog):
         super().__init__(parent)
         self.base_path = base_path
         self.initUI()
-        self.comboBoxBuildingTypesItems = pd.read_csv(f'{base_path}\lod2\data\standard_u_values_TABULA.csv', sep=";")['Typ'].unique().tolist()
+        self.comboBoxBuildingTypesItems = pd.read_csv(get_resource_path('lod2\data\standard_u_values_TABULA.csv'), sep=";")['Typ'].unique().tolist()
 
     def initUI(self):
         self.setWindowTitle("Verarbeitung LOD2-Daten")
@@ -991,15 +1006,15 @@ class ProcessLOD2DataDialog(QDialog):
         font.setPointSize(10)  # Größere Schrift für bessere Lesbarkeit
         
         # Eingabefeld für die Eingabe-LOD2-geojson
-        self.inputLOD2geojsonLineEdit, inputLOD2geojsonButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/lod2_data/lod2_data.geojson", font)
+        self.inputLOD2geojsonLineEdit, inputLOD2geojsonButton = self.createFileInput(f"{self.base_path}\\Gebäudedaten\\lod2_data\\lod2_data.geojson", font)
         layout.addLayout(self.createFileInputLayout("Eingabe-LOD2-geojson:", self.inputLOD2geojsonLineEdit, inputLOD2geojsonButton, font))
 
         # Eingabefeld für die Eingabe-Filter-Polygon-shapefile
-        self.inputfilterPolygonLineEdit, inputfilterPolygonButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/lod2_data/quartier_1.geojson", font)
+        self.inputfilterPolygonLineEdit, inputfilterPolygonButton = self.createFileInput(f"{self.base_path}\\Gebäudedaten\\lod2_data\\quartier_1.geojson", font)
         layout.addLayout(self.createFileInputLayout("Eingabe-Filter-Polygon-shapefile:", self.inputfilterPolygonLineEdit, inputfilterPolygonButton, font))
 
         # Eingabefeld für die Ausgabe-LOD2-geojson
-        self.outputLOD2geojsonLineEdit, outputLOD2geojsonButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/lod2_data/filtered_LOD_quartier_1.geojson", font)
+        self.outputLOD2geojsonLineEdit, outputLOD2geojsonButton = self.createFileInput(f"{self.base_path}\\Gebäudedaten\\lod2_data\\filtered_LOD_quartier_1.geojson", font)
         layout.addLayout(self.createFileInputLayout("Ausgabe-LOD2-geojson:", self.outputLOD2geojsonLineEdit, outputLOD2geojsonButton, font))
         
         # Eingabefeld für die Ausgabe-csv
