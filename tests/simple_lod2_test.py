@@ -4,8 +4,8 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lod2.scripts.filter_LOD2 import filter_LOD2_with_OSM_and_adress, spatial_filter_with_polygon, process_lod2
-from lod2.scripts.heat_requirement_DIN_EN_12831 import calculate_heat_demand_for_lod2_area, Building
+from districtheatsim.lod2.scripts.filter_LOD2 import filter_LOD2_with_OSM_and_adress, spatial_filter_with_polygon, process_lod2
+from districtheatsim.lod2.scripts.heat_requirement_DIN_EN_12831 import calculate_heat_demand_for_lod2_area, Building
 
 ### aktuell sind die Pfade noch nicht enthalten ###
 def test_lod2_adress_filter():

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 import pandapipes as pp
 
-from net_simulation_pandapipes.config_plot import config_plot
+from districtheatsim.net_simulation_pandapipes.config_plot import config_plot
 
 
 def initialize_test_net():

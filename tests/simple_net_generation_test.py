@@ -4,8 +4,8 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from geocoding.geocodingETRS89 import process_data
-from net_generation.import_and_create_layers import generate_and_export_layers
+from districtheatsim.geocoding.geocodingETRS89 import process_data
+from districtheatsim.net_generation.import_and_create_layers import generate_and_export_layers
 
 ### this is an example on how to use the net generation features ###
 ### Project-specific inputs ###

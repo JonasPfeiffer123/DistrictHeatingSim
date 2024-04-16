@@ -4,8 +4,8 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from heat_requirement import heat_requirement_BDEW
-from heat_requirement import heat_requirement_VDI4655
+from districtheatsim.heat_requirement import heat_requirement_BDEW
+from districtheatsim.heat_requirement import heat_requirement_VDI4655
 
 # Berechnung mit BDEW-SLPs
 def VDI4655():

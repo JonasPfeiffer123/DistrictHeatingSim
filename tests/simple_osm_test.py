@@ -7,8 +7,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import numpy as np
 import geopandas as gpd
 
-from osm.import_osm_data_geojson import build_query, download_data, save_to_file
-from osm.Wärmeversorgungsgebiete import clustering_quartiere_hdbscan, postprocessing_hdbscan, allocate_overlapping_area
+from districtheatsim.osm.import_osm_data_geojson import build_query, download_data, save_to_file
+from districtheatsim.osm.Wärmeversorgungsgebiete import clustering_quartiere_hdbscan, postprocessing_hdbscan, allocate_overlapping_area
 
 ### OSM-Download von Straßendaten ###
 def osm_street_query():
