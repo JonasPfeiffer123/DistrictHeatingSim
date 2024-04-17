@@ -1179,7 +1179,7 @@ class ProcessLOD2DataDialog(QDialog):
 
     def createComboBox(self, columnIndex):
         if columnIndex == 7:
-            comboBoxItems = ["MFH", "EFH", "GHD", "GBD"]
+            comboBoxItems = ["HMF", "HEF", "GHD", "GBD"]
         elif columnIndex == 8:
             comboBoxItems = self.comboBoxBuildingTypesItems
         else:  # columnIndex == 9

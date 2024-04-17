@@ -3,9 +3,23 @@
 # along with the weather data from a Test Reference Year (TRY) dataset, to estimate the annual heating and warm water needs. 
 # The example demonstrates the usage for three buildings with specific dimensions and U-values, outputting their volumes and calculated heat demands.
 
+import os
+import sys
+
 import pandas as pd
 
 from lod2.scripts.filter_LOD2 import spatial_filter_with_polygon, process_lod2, calculate_centroid_and_geocode
+
+def get_resource_path(relative_path):
+    """ Get the absolute path to the resource, works for dev and for PyInstaller """
+    if getattr(sys, 'frozen', False):
+        # Wenn die Anwendung eingefroren ist, ist der Basispfad der Temp-Ordner, wo PyInstaller alles extrahiert
+        base_path = sys._MEIPASS
+    else:
+        # Wenn die Anwendung nicht eingefroren ist, ist der Basispfad der Ordner, in dem die Hauptdatei liegt
+        base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+    return os.path.join(base_path, relative_path)
 
 class Building:
     STANDARD_U_VALUES = {
@@ -13,7 +27,7 @@ class Building:
         'window_u': 1.3, 'door_u': 1.3, 'air_change_rate': 0.5,
         'floors': 4, 'fracture_windows': 0.10, 'fracture_doors': 0.01,
         'min_air_temp': -15, 'room_temp': 20, 'max_air_temp_heating': 15,
-        'ww_demand_Wh_per_m2': 12800, "filename_TRY": "lod2/data/TRY2015_511676144222_Jahr.dat"
+        'ww_demand_Wh_per_m2': 12800, "filename_TRY": get_resource_path("data\\TRY2015_511676144222_Jahr.dat")
     }
 
     def __init__(self, ground_area, wall_area, roof_area, building_volume, u_type=None, building_state=None):
@@ -96,7 +110,7 @@ class Building:
 
     def load_u_values(self, u_type, building_state):                
         # Angenommen, die CSV-Datei heißt 'u_values.csv' und befindet sich im gleichen Verzeichnis
-        df = pd.read_csv('lod2/data/standard_u_values_TABULA.csv', sep=";")
+        df = pd.read_csv(get_resource_path('data\\standard_u_values_TABULA.csv'), sep=";")
         u_values_row = df[(df['Typ'] == u_type) & (df['building_state'] == building_state)]
         
         if not u_values_row.empty:

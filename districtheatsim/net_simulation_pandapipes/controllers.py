@@ -20,7 +20,7 @@ class WorstPointPressureController(BasicCtrl):
 
     def is_converged(self, net):
         qext_w = net.heat_exchanger["qext_w"].at[self.heat_exchanger_idx]
-        if qext_w <= 300:
+        if qext_w <= 350:
             return True
         current_dp_bar = net.res_flow_control["p_from_bar"].at[self.flow_control_idx] - net.res_heat_exchanger["p_to_bar"].at[self.heat_exchanger_idx]
 
@@ -40,7 +40,7 @@ class WorstPointPressureController(BasicCtrl):
         current_plift_bar = net.circ_pump_pressure["plift_bar"].at[self.circ_pump_pressure_idx]
         current_pflow_bar = net.circ_pump_pressure["p_flow_bar"].at[self.circ_pump_pressure_idx]
 
-        if qext_w <= 300:
+        if qext_w <= 350:
             return super(WorstPointPressureController, self).control_step(net)
 
         dp_error = self.target_dp_min_bar - current_dp_bar
@@ -103,7 +103,7 @@ class ReturnTemperatureController(BasicCtrl):
 
     def is_converged(self, net):
         qext_w = net.heat_exchanger["qext_w"].at[self.heat_exchanger_idx]
-        if qext_w <= 300:
+        if qext_w <= 350:
             return True
 
         # Check whether the temperatures have changed within the specified tolerance
@@ -146,7 +146,7 @@ class ReturnTemperatureController(BasicCtrl):
         qext_w = net.heat_exchanger["qext_w"].at[self.heat_exchanger_idx]
 
         # Check if the heat output is low enough to not make an adjustment
-        if qext_w <= 300:
+        if qext_w <= 350:
             net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx] = 0
             return super(ReturnTemperatureController, self).control_step(net)
 

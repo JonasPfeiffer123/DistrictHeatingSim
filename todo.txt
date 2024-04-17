@@ -54,3 +54,5 @@ diverses:
 - Wie kann ich das Projekt optimiert auf GitHub präsentieren?
 
 Die Temperaturdaten und COP-Daten brauchen noch ein zentrales Datenmanagement.
+
+LOD2-Datenverarbeitung muss mit nan-Werten umgehen können --> Meldung das nan-Wert ermittelt wurde, entfernen aus Datensatz
