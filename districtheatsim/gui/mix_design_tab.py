@@ -1,5 +1,3 @@
-from io import BytesIO
-import json
 import itertools
 import pandas as pd
 
@@ -11,17 +9,11 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLay
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QFont
 
-import PyPDF2
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.lib.units import inch
-from reportlab.lib import colors
-
 from heat_generators.heat_generator_classes import *
 from gui.mix_design_dialogs import TechInputDialog, EconomicParametersDialog, NetInfrastructureDialog, TemperatureDataDialog, HeatPumpDataDialog
 from gui.checkable_combobox import CheckableComboBox
 from gui.threads import CalculateMixThread
+from gui.results_pdf import create_pdf
 
 class CustomListWidget(QListWidget):
     def __init__(self, parent=None):
@@ -98,15 +90,6 @@ class MixDesignTab(QWidget):
 
         # Erstellen des 'Datei'-Menüs
         fileMenu = self.menuBar.addMenu('Datei')
-        # Aktion zum Speichern hinzufügen
-        #saveAction = QAction('Speichern', self)
-        #saveAction.triggered.connect(self.saveConfiguration)
-        #fileMenu.addAction(saveAction)
-        # Aktion zum Laden hinzufügen
-        #loadAction = QAction('Laden', self)
-        #loadAction.triggered.connect(self.loadConfiguration)
-        #fileMenu.addAction(loadAction)
-        #Ergebnis als PDF speichern
         pdfAction = QAction('Ergebnisse als PDF speichern', self)
         pdfAction.triggered.connect(self.on_export_pdf_clicked)
         fileMenu.addAction(pdfAction)
@@ -154,16 +137,67 @@ class MixDesignTab(QWidget):
         optimizeAction.triggered.connect(self.optimize)
         calculationsMenu.addAction(optimizeAction)
 
+        showAdditionalResultsMenu = self.menuBar.addMenu('weitere Ergebnisse Anzeigen')
+        # Aktion für die Berechnung starten
+        showAdditionalResultsAction = QAction('Kostenzusammensetzung über Betrachtungszeitraum', self)
+        showAdditionalResultsAction.triggered.connect(self.show_additional_results)
+        showAdditionalResultsMenu.addAction(showAdditionalResultsAction)
+
         self.mainLayout.addWidget(self.menuBar)
 
-    def addLabel(self, layout, text):
-        label = QLabel(text)
-        layout.addWidget(label)
+    ### Eingabe wirtschaftliche Randbedingungen ###
+    def setupParameters(self):
+        values = self.economicParametersDialog.getValues()
+        self.gaspreis = values['Gaspreis in €/MWh']
+        self.strompreis = values['Strompreis in €/MWh']
+        self.holzpreis = values['Holzpreis in €/MWh']
+        self.BEW = values['BEW-Förderung']
+        self.kapitalzins = values['Kapitalzins in %']
+        self.preissteigerungsrate = values['Preissteigerungsrate in %']
+        self.betrachtungszeitraum = values['Betrachtungszeitraum in a']
+
+        TRY = self.temperatureDataDialog.getValues()
+        self.try_filename = TRY['TRY-filename']
+
+        COP = self.heatPumpDataDialog.getValues()
+        self.cop_filename = COP['COP-filename']
+
+    ### Dialoge ###
+    def openEconomicParametersDialog(self):
+        if self.economicParametersDialog.exec_():
+            values = self.economicParametersDialog.getValues()
+            self.gaspreis = values['Gaspreis in €/MWh']
+            self.strompreis = values['Strompreis in €/MWh']
+            self.holzpreis = values['Holzpreis in €/MWh']
+            self.BEW = values['BEW-Förderung']
+            self.kapitalzins = values['Kapitalzins in %']
+            self.preissteigerungsrate = values['Preissteigerungsrate in %']
+            self.betrachtungszeitraum = values['Betrachtungszeitraum in a']
+
+    def openInfrastructureCostsDialog(self):
+        dialog = self.netInfrastructureDialog
+        if dialog.exec_():
+            updated_values = dialog.getValues()
+            self.updateInfrastructureTable(updated_values)
+
+    def opentemperatureDataDialog(self):
+        if self.temperatureDataDialog.exec_():
+            TRY = self.temperatureDataDialog.getValues()
+            self.try_filename = TRY['TRY-filename']
+
+    def openheatPumpDataDialog(self):
+        if self.heatPumpDataDialog.exec_():
+            COP = self.heatPumpDataDialog.getValues()
+            self.cop_filename = COP['COP-filename']
 
     ### Eingabe Dateien ###
     def setupFileInputs(self):
         self.addLabel(self.mainLayout, 'Eingabe csv-Datei berechneter Lastgang Wärmenetz')
         self.addFileInputLayout(self.mainLayout, self.FilenameInput, self.selectFileButton)
+
+    def addLabel(self, layout, text):
+        label = QLabel(text)
+        layout.addWidget(label)
 
     def addFileInputLayout(self, mainLayout, lineEdit, button):
         layout = QHBoxLayout()
@@ -210,6 +244,31 @@ class MixDesignTab(QWidget):
         self.btnDeleteSelectedTech.clicked.connect(self.removeSelectedTech)
         self.btnRemoveTech.clicked.connect(self.removeTech)
 
+    ### Technologie erstellen ###
+    def createTechnology(self, tech_type, inputs):
+        if tech_type == "Solarthermie":
+            return SolarThermal(name=tech_type, bruttofläche_STA=inputs["bruttofläche_STA"], vs=inputs["vs"], Typ=inputs["Typ"], kosten_speicher_spez=inputs["kosten_speicher_spez"], 
+                                kosten_fk_spez=inputs["kosten_fk_spez"], kosten_vrk_spez=inputs["kosten_vrk_spez"], Tsmax=inputs["Tsmax"], Longitude=inputs["Longitude"], 
+                                STD_Longitude=inputs["STD_Longitude"], Latitude=inputs["Latitude"], East_West_collector_azimuth_angle=inputs["East_West_collector_azimuth_angle"], 
+                                Collector_tilt_angle=inputs["Collector_tilt_angle"], Tm_rl=inputs["Tm_rl"], Qsa=inputs["Qsa"], Vorwärmung_K=inputs["Vorwärmung_K"], 
+                                DT_WT_Solar_K=inputs["DT_WT_Solar_K"], DT_WT_Netz_K=inputs["DT_WT_Netz_K"])
+        elif tech_type == "Biomassekessel":
+            return BiomassBoiler(name=tech_type, P_BMK=inputs["P_BMK"], Größe_Holzlager=inputs["Größe_Holzlager"], spez_Investitionskosten=inputs["spez_Investitionskosten"], spez_Investitionskosten_Holzlager=inputs["spez_Investitionskosten_Holzlager"])
+        elif tech_type == "Gaskessel":
+            return GasBoiler(name=tech_type, spez_Investitionskosten=inputs["spez_Investitionskosten"])  # Angenommen, GasBoiler benötigt keine zusätzlichen Eingaben
+        elif tech_type == "BHKW":
+            return CHP(name=tech_type, th_Leistung_BHKW=inputs["th_Leistung_BHKW"], spez_Investitionskosten_GBHKW=inputs["spez_Investitionskosten_GBHKW"])
+        elif tech_type == "Holzgas-BHKW":
+            return CHP(name=tech_type, th_Leistung_BHKW=inputs["th_Leistung_BHKW"], spez_Investitionskosten_HBHKW=inputs["spez_Investitionskosten_HBHKW"])  # Angenommen, Holzgas-BHKW verwendet dieselbe Klasse wie BHKW
+        elif tech_type == "Geothermie":
+            return Geothermal(name=tech_type, Fläche=inputs["Fläche"], Bohrtiefe=inputs["Bohrtiefe"], Temperatur_Geothermie=inputs["Temperatur_Geothermie"], Abstand_Sonden=inputs["Abstand_Sonden"], spez_Bohrkosten=inputs["spez_Bohrkosten"], spez_Entzugsleistung=inputs["spez_Entzugsleistung"], Vollbenutzungsstunden=inputs["Vollbenutzungsstunden"], spezifische_Investitionskosten_WP=inputs["spezifische_Investitionskosten_WP"])
+        elif tech_type == "Abwärme":
+            return WasteHeatPump(name=tech_type, Kühlleistung_Abwärme=inputs["Kühlleistung_Abwärme"], Temperatur_Abwärme=inputs["Temperatur_Abwärme"], spez_Investitionskosten_Abwärme=inputs["spez_Investitionskosten_Abwärme"], spezifische_Investitionskosten_WP=inputs["spezifische_Investitionskosten_WP"])
+        elif tech_type == "Flusswasser":
+            return RiverHeatPump(name=tech_type, Wärmeleistung_FW_WP=inputs["Wärmeleistung_FW_WP"], Temperatur_FW_WP=inputs["Temperatur_FW_WP"], dT=inputs["dT"], spez_Investitionskosten_Flusswasser=inputs["spez_Investitionskosten_Flusswasser"], spezifische_Investitionskosten_WP=inputs["spezifische_Investitionskosten_WP"])
+        else:
+            raise ValueError(f"Unbekannter Technologietyp: {tech_type}")
+        
     def addTech(self, tech_type, tech_data):
         # Öffnet das Dialogfenster für den gegebenen Technologietyp
         # Hier übergeben wir `tech_data`, welches standardmäßig auf `None` gesetzt ist, falls es nicht spezifiziert wurde.
@@ -298,19 +357,9 @@ class MixDesignTab(QWidget):
         mainLayout.addWidget(self.infrastructureCostsTable)
         self.updateInfrastructureTable(self.infrastructure_costs)  # Tabelle mit Standardwerten füllen
 
-    def openInfrastructureCostsDialog(self):
-        dialog = self.netInfrastructureDialog
-        if dialog.exec_():
-            updated_values = dialog.getValues()
-            self.updateInfrastructureTable(updated_values)
-
-    def getCurrentInfraObjects(self):
-        # Verwenden Sie die Dialoginstanz, die im Hauptfenster gespeichert ist
-        return self.netInfrastructureDialog.getCurrentInfraObjects()
-
     def updateInfrastructureTable(self, values):
         # Hole die aktuellen Infrastruktur-Objekte aus dem Dialog
-        infraObjects = self.getCurrentInfraObjects()
+        infraObjects = self.netInfrastructureDialog.getCurrentInfraObjects()
         columns = ['Beschreibung', 'Kosten', 'Technische Nutzungsdauer', 'f_Inst', 'f_W_Insp', 'Bedienaufwand', 'Gesamtannuität']
 
         self.infrastructureCostsTable.setRowCount(len(infraObjects))
@@ -387,6 +436,7 @@ class MixDesignTab(QWidget):
         self.mainLayout.addWidget(self.resultLabel)
         self.setupAdditionalResultsTable()
 
+    ### Tech Data Table ###
     def setupTechDataTable(self):
         self.techDataTable = QTableWidget()
         self.techDataTable.setColumnCount(4)  # Anpassen an die Anzahl der benötigten Spalten
@@ -450,6 +500,7 @@ class MixDesignTab(QWidget):
 
         return tech.name, dimensions, costs, full_costs
 
+    ### Results Table ###
     def setupResultsTable(self):
         # Tabelle initialisieren
         self.resultsTable = QTableWidget()
@@ -471,6 +522,7 @@ class MixDesignTab(QWidget):
         self.resultsTable.resizeColumnsToContents()  # Passt die Spaltenbreite an den Inhalt an
         self.adjustTableSize(self.resultsTable)  # Anpassen der Größe der Tabelle
     
+    ### Additional Results Table ###
     def setupAdditionalResultsTable(self):
         # Tabelle initialisieren
         self.additionalResultsTable = QTableWidget()
@@ -504,15 +556,13 @@ class MixDesignTab(QWidget):
         self.additionalResultsTable.resizeColumnsToContents()
         self.adjustTableSize(self.additionalResultsTable)
 
-
+    ### Table size adjustment function ###
     def adjustTableSize(self, table):
-        # Höhe der Headerzeile
+        # header row height
         header_height = table.horizontalHeader().height()
-
-        # Höhe aller Zeilen
+        # hight of all rows
         rows_height = sum([table.rowHeight(i) for i in range(table.rowCount())])
-
-        # Anpassen der Höhe der Tabelle
+        # configuring table height
         table.setFixedHeight(header_height + rows_height)
                 
     ### Setup Diagramm-Plots ###
@@ -542,51 +592,33 @@ class MixDesignTab(QWidget):
         canvas.setMinimumSize(800, 600)  # Größe in Pixel
         layout.addWidget(canvas)
         return figure, canvas
-    
-    ### Technologie erstellen ###
-    def createTechnology(self, tech_type, inputs):
-        if tech_type == "Solarthermie":
-            return SolarThermal(name=tech_type, bruttofläche_STA=inputs["bruttofläche_STA"], vs=inputs["vs"], Typ=inputs["Typ"], kosten_speicher_spez=inputs["kosten_speicher_spez"], 
-                                kosten_fk_spez=inputs["kosten_fk_spez"], kosten_vrk_spez=inputs["kosten_vrk_spez"], Tsmax=inputs["Tsmax"], Longitude=inputs["Longitude"], 
-                                STD_Longitude=inputs["STD_Longitude"], Latitude=inputs["Latitude"], East_West_collector_azimuth_angle=inputs["East_West_collector_azimuth_angle"], 
-                                Collector_tilt_angle=inputs["Collector_tilt_angle"], Tm_rl=inputs["Tm_rl"], Qsa=inputs["Qsa"], Vorwärmung_K=inputs["Vorwärmung_K"], 
-                                DT_WT_Solar_K=inputs["DT_WT_Solar_K"], DT_WT_Netz_K=inputs["DT_WT_Netz_K"])
-        elif tech_type == "Biomassekessel":
-            return BiomassBoiler(name=tech_type, P_BMK=inputs["P_BMK"], Größe_Holzlager=inputs["Größe_Holzlager"], spez_Investitionskosten=inputs["spez_Investitionskosten"], spez_Investitionskosten_Holzlager=inputs["spez_Investitionskosten_Holzlager"])
-        elif tech_type == "Gaskessel":
-            return GasBoiler(name=tech_type, spez_Investitionskosten=inputs["spez_Investitionskosten"])  # Angenommen, GasBoiler benötigt keine zusätzlichen Eingaben
-        elif tech_type == "BHKW":
-            return CHP(name=tech_type, th_Leistung_BHKW=inputs["th_Leistung_BHKW"], spez_Investitionskosten_GBHKW=inputs["spez_Investitionskosten_GBHKW"])
-        elif tech_type == "Holzgas-BHKW":
-            return CHP(name=tech_type, th_Leistung_BHKW=inputs["th_Leistung_BHKW"], spez_Investitionskosten_HBHKW=inputs["spez_Investitionskosten_HBHKW"])  # Angenommen, Holzgas-BHKW verwendet dieselbe Klasse wie BHKW
-        elif tech_type == "Geothermie":
-            return Geothermal(name=tech_type, Fläche=inputs["Fläche"], Bohrtiefe=inputs["Bohrtiefe"], Temperatur_Geothermie=inputs["Temperatur_Geothermie"], Abstand_Sonden=inputs["Abstand_Sonden"], spez_Bohrkosten=inputs["spez_Bohrkosten"], spez_Entzugsleistung=inputs["spez_Entzugsleistung"], Vollbenutzungsstunden=inputs["Vollbenutzungsstunden"], spezifische_Investitionskosten_WP=inputs["spezifische_Investitionskosten_WP"])
-        elif tech_type == "Abwärme":
-            return WasteHeatPump(name=tech_type, Kühlleistung_Abwärme=inputs["Kühlleistung_Abwärme"], Temperatur_Abwärme=inputs["Temperatur_Abwärme"], spez_Investitionskosten_Abwärme=inputs["spez_Investitionskosten_Abwärme"], spezifische_Investitionskosten_WP=inputs["spezifische_Investitionskosten_WP"])
-        elif tech_type == "Flusswasser":
-            return RiverHeatPump(name=tech_type, Wärmeleistung_FW_WP=inputs["Wärmeleistung_FW_WP"], Temperatur_FW_WP=inputs["Temperatur_FW_WP"], dT=inputs["dT"], spez_Investitionskosten_Flusswasser=inputs["spez_Investitionskosten_Flusswasser"], spezifische_Investitionskosten_WP=inputs["spezifische_Investitionskosten_WP"])
-        else:
-            raise ValueError(f"Unbekannter Technologietyp: {tech_type}")
         
     ### Berechnungsfunktionen ###
     def optimize(self):
         self.start_calculation(True)
 
     def start_calculation(self, optimize=False):
-        #self.updateTechObjectsOrder()
+        if self.tech_objects != []:
+            #self.updateTechObjectsOrder()
 
-        filename = self.FilenameInput.text()
-        load_scale_factor = float(self.load_scale_factorInput.text())
-        tech_objects = self.tech_objects
+            filename = self.FilenameInput.text()
+            load_scale_factor = float(self.load_scale_factorInput.text())
 
-        self.calculationThread = CalculateMixThread(
-            filename, load_scale_factor, self.try_filename, self.cop_filename,
-            self.gaspreis, self.strompreis, self.holzpreis, self.BEW, tech_objects, optimize, self.kapitalzins, self.preissteigerungsrate, self.betrachtungszeitraum
-        )
-        self.calculationThread.calculation_done.connect(self.on_calculation_done)
-        self.calculationThread.calculation_error.connect(self.on_calculation_error)
-        self.calculationThread.start()
-        self.progressBar.setRange(0, 0)
+            self.calculationThread = CalculateMixThread(filename, load_scale_factor, self.try_filename, self.cop_filename, self.gaspreis, 
+                                                        self.strompreis, self.holzpreis, self.BEW, self.tech_objects, optimize, self.kapitalzins, 
+                                                        self.preissteigerungsrate, self.betrachtungszeitraum)
+            self.calculationThread.calculation_done.connect(self.on_calculation_done)
+            self.calculationThread.calculation_error.connect(self.on_calculation_error)
+            self.calculationThread.start()
+            self.progressBar.setRange(0, 0)
+
+        else:
+            msgBox = QMessageBox()
+            msgBox.setIcon(QMessageBox.Information)
+            msgBox.setText(f"Es wurden keine Erzeugeranlagen definiert. Keine Berechnung möglich.")
+            msgBox.setWindowTitle("Keine Erzeugeranlagen für die Berechnung vorhanden.")
+            msgBox.setStandardButtons(QMessageBox.Ok)
+            msgBox.exec_()
 
     def on_calculation_done(self, result):
         self.progressBar.setRange(0, 1)
@@ -611,6 +643,7 @@ class MixDesignTab(QWidget):
         msgBox.setStandardButtons(QMessageBox.Ok)
         msgBox.exec_()
     
+    ### Speicherung der Berechnungsergebnisse der Erzeugerauslegung als csv ###
     def save_results_to_csv(self, results):
         # Initialisiere den DataFrame mit den Zeitstempeln
         df = pd.DataFrame({'time_steps': results['time_steps']})
@@ -728,267 +761,28 @@ class MixDesignTab(QWidget):
         # Verbindung des Dropdown-Menüs mit der Aktualisierungsfunktion
         self.dataSelectionDropdown.checkedStateChanged.connect(self.updatePlot)
 
-    ### Eingabe wirtschaftliche Randbedingungen ###
-    def setupParameters(self):
-        values = self.economicParametersDialog.getValues()
-        self.gaspreis = values['Gaspreis in €/MWh']
-        self.strompreis = values['Strompreis in €/MWh']
-        self.holzpreis = values['Holzpreis in €/MWh']
-        self.BEW = values['BEW-Förderung']
-        self.kapitalzins = values['Kapitalzins in %']
-        self.preissteigerungsrate = values['Preissteigerungsrate in %']
-        self.betrachtungszeitraum = values['Betrachtungszeitraum in a']
+    def show_additional_results(self):
+        if self.tech_objects != [] and self.results != {}:
+            print(self.results)
+            print(self.tech_objects)
 
-        TRY = self.temperatureDataDialog.getValues()
-        self.try_filename = TRY['TRY-filename']
+            msgBox = QMessageBox()
+            msgBox.setIcon(QMessageBox.Information)
+            msgBox.setText(f"Hier gibts noch nichts zu sehen. Nur Konsolenausgabe.")
+            msgBox.setWindowTitle("Hier könnten Ergebnisse Visualisiert werden.")
+            msgBox.setStandardButtons(QMessageBox.Ok)
+            msgBox.exec_()
 
-        COP = self.heatPumpDataDialog.getValues()
-        self.cop_filename = COP['COP-filename']
+        else:
+            msgBox = QMessageBox()
+            msgBox.setIcon(QMessageBox.Information)
+            msgBox.setText(f"Es sind keine Berechnungsergebnisse verfügbar. Führen Sie zunächst eine Berechnung durch.")
+            msgBox.setWindowTitle("Keine Berechnungsergebnisse vorhanden.")
+            msgBox.setStandardButtons(QMessageBox.Ok)
+            msgBox.exec_()
 
-    def openEconomicParametersDialog(self):
-        if self.economicParametersDialog.exec_():
-            values = self.economicParametersDialog.getValues()
-            self.gaspreis = values['Gaspreis in €/MWh']
-            self.strompreis = values['Strompreis in €/MWh']
-            self.holzpreis = values['Holzpreis in €/MWh']
-            self.BEW = values['BEW-Förderung']
-            self.kapitalzins = values['Kapitalzins in %']
-            self.preissteigerungsrate = values['Preissteigerungsrate in %']
-            self.betrachtungszeitraum = values['Betrachtungszeitraum in a']
-
-    def opentemperatureDataDialog(self):
-        if self.temperatureDataDialog.exec_():
-            TRY = self.temperatureDataDialog.getValues()
-            self.try_filename = TRY['TRY-filename']
-
-    def openheatPumpDataDialog(self):
-        if self.heatPumpDataDialog.exec_():
-            COP = self.heatPumpDataDialog.getValues()
-            self.cop_filename = COP['COP-filename']
-    
-    ### Export Ergebnisse mit PDF ###
-    def create_pdf(self, filename):
-        # Erstellen eines leeren PDF-Dokuments
-        pdf = PyPDF2.PdfWriter()
-
-        # Erstellen eines PDF-Berichts mit ReportLab
-        doc = SimpleDocTemplate(filename, pagesize=letter)
-        story = []
-        styles = getSampleStyleSheet()
-
-        # Überschrift "Ergebnisse Variante 1"
-        story.append(Paragraph("Ergebnisse Variante 1", styles['Heading1']))
-
-        # Beschreibung
-        description_text = "Beschreibung: ..."
-        story.append(Paragraph(description_text, styles['Normal']))
-        story.append(Spacer(1, 12))
-
-        # Platzhalter für das Bild
-        """image_path = "path/to/your/image.png"  # Pfad zum Bild
-        img = Image(image_path)
-        img.drawHeight = 2 * inch  # Passen Sie die Größe nach Bedarf an
-        img.drawWidth = 4 * inch  # Passen Sie die Größe nach Bedarf an
-        story.append(img)
-        story.append(Spacer(1, 12))"""
-
-        # Darstellung der wirtschaftlichen Randbedingungen
-        story.append(Paragraph("Wirtschaftliche Randbedingungen", styles['Heading2']))
-        # Werte der wirtschaftlichen Bedingungen aus der Funktion getValues holen
-        economic_conditions = self.economicParametersDialog.getValues()
-
-        # Schleife durch die Werte der wirtschaftlichen Bedingungen und in Tabelle umwandeln
-        economic_conditions_data = [(key, value) for key, value in economic_conditions.items()]
-        economic_conditions_table = Table(economic_conditions_data, colWidths=[150, 50])
-        economic_conditions_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.beige),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica'),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
-        ]))
-        story.append(economic_conditions_table)
-
-        # Darstellung der Technologien
-        story.append(Paragraph("Technologien", styles['Heading2']))
-        for tech in self.tech_objects:
-            story.append(Paragraph(self.formatTechForDisplay(tech), styles['Normal']))
-            story.append(Spacer(1, 12))
-        
-
-        # Darstellung der Netzinfrastruktur
-        story.append(Paragraph("Netzinfrastruktur", styles['Heading2']))
-        # Tabelle erstellen
-        # Hole die aktuellen Infrastruktur-Objekte aus dem Dialog
-        values = self.netInfrastructureDialog.getValues()
-        infraObjects = self.getCurrentInfraObjects()
-        columns = ['Beschreibung', 'Kosten', 'Technische Nutzungsdauer', 'f_Inst', 'f_W_Insp', 'Bedienaufwand', 'Gesamtannuität']
-        
-        infra_data = []
-        infra_data.append(columns)
-
-        for i, obj in enumerate(infraObjects):
-            row_data = [obj.capitalize()]
-            annuität = 0  # Initialisiere Annuität auf 0
-            for j, col in enumerate(columns[1:], 1):
-                key = f"{obj}_{col.lower()}"
-                value = values.get(key, "")
-                if value != "":
-                    row_data.append(str(value))
-
-                if col == 'Kosten':
-                    # Annuität berechnen und hinzufügen
-                    A0 = float(values.get(f"{obj}_kosten", 0))
-                    TN = int(values.get(f"{obj}_technische nutzungsdauer", 0))
-                    f_Inst = float(values.get(f"{obj}_f_inst", 0))
-                    f_W_Insp = float(values.get(f"{obj}_f_w_insp", 0))
-                    Bedienaufwand = float(values.get(f"{obj}_bedienaufwand", 0))
-                    annuität = self.calc_annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand)
-     
-            row_data.append("{:.0f}".format(annuität))
-
-            infra_data.append(row_data)
-
-        # Summenzeile hinzufügen
-        summen_row = ["Summe Infrastruktur", "{:.0f}".format(self.summe_investitionskosten), "", "", "", "", "{:.0f}".format(self.summe_annuität)]
-        infra_data.append(summen_row)
-
-        # Tabelle formatieren
-        infra_table = Table(infra_data)
-        infra_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
-        ]))
-
-        # Tabelle zur Story hinzufügen
-        story.append(infra_table)
-        story.append(Spacer(1, 12))
-
-        story.append(Paragraph("Berechnungsergebnisse", styles['Heading2']))
-        # Ergebnisse in Tabelle umwandeln
-        results_data = [("Technologie", "Wärmemenge (MWh)", "Kosten (€/MWh)", "Anteil (%)")]
-        results_data.extend([
-            (tech, f"{wärmemenge:.2f}", f"{wgk:.2f}", f"{anteil*100:.2f}%")
-            for tech, wärmemenge, wgk, anteil in zip(self.results['techs'], self.results['Wärmemengen'], self.results['WGK'], self.results['Anteile'])
-        ])
-        results_table = Table(results_data)
-        results_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
-        ]))
-        story.append(results_table)
-        story.append(Spacer(1, 12))
-
-        # Daten für die zusätzlichen Informationen sammeln
-        additional_info_data = [
-            ("Jahreswärmebedarf (MWh)", f"{self.results['Jahreswärmebedarf']:.0f}"),
-            ("Stromerzeugung (MWh)", f"{self.results['Strommenge']:.0f}"),
-            ("Strombedarf (MWh)", f"{self.results['Strombedarf']:.0f}"),
-            ("Wärmegestehungskosten Erzeugeranlagen (€/MWh)", f"{self.results['WGK_Gesamt']:.2f}"),
-            ("Wärmegestehungskosten Netzinfrastruktur (€/MWh)", f"{self.WGK_Infra:.2f}"),
-            ("Wärmegestehungskosten Gesamt (€/MWh)", f"{self.WGK_Gesamt:.2f}")
-        ]
-
-        # Tabelle für die zusätzlichen Informationen erstellen
-        additional_info_table = Table(additional_info_data, colWidths=[250, 100])
-        additional_info_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
-        ]))
-
-        # Zusätzliche Informationen zur Story hinzufügen
-        story.append(additional_info_table)
-        story.append(Spacer(1, 12))
-
-        # Diagramme als Bilder hinzufügen
-        for figure in [self.figure1, self.figure2]:
-            img_buffer = BytesIO()
-            figure.savefig(img_buffer, format='png', bbox_inches='tight', dpi=300)
-            img_buffer.seek(0)
-            img = Image(img_buffer)
-            img.drawHeight = 4 * inch  # Höhe einstellen
-            img.drawWidth = 6 * inch  # Breite einstellen
-            img.keepAspectRatio = True  # Seitenverhältnis beibehalten
-            story.append(img)
-            story.append(Spacer(1, 12))
-
-        # PDF-Dokument erstellen
-        doc.build(story)
-
-        # Fügen Sie das erstellte PDF zum leeren PDF-Dokument hinzu
-        pdf_report = open(filename, 'rb')
-        pdf_reader = PyPDF2.PdfReader(pdf_report)
-        pdf.add_page(pdf_reader.pages[0])
-
+       
     def on_export_pdf_clicked(self):
         filename, _ = QFileDialog.getSaveFileName(self, 'PDF speichern als...', filter='PDF Files (*.pdf)')
         if filename:
-            self.create_pdf(filename)
-
-    ##### currently not used #####
-    ### Programmstatus Speichern ###
-    def saveConfiguration(self):
-        state = {
-            'filename': self.FilenameInput.text(),
-            'techObjects': [self.formatTechForSave(tech) for tech in self.tech_objects]
-        }
-
-        with open(f'{self.base_path}\Speicherstand.json', 'w') as f:
-            json.dump(state, f)
-        
-        print("Konfiguration gespeichert")
-
-    def formatTechForSave(self, tech):
-        return {k: v for k, v in tech.__dict__.items() if not k.startswith('_')}
-    
-    def loadConfiguration(self):
-        try:
-            with open(f'{self.base_path}Speicherstand.json', 'r') as f:
-                state = json.load(f)
-
-            self.FilenameInput.setText(state['filename'])
-
-            self.tech_objects = [self.createTechnologyFromSavedData(tech_data) for tech_data in state['techObjects']]
-            self.updateTechList()
-        except FileNotFoundError:
-            print("Speicherdatei nicht gefunden.")
-
-        print("Konfiguration geladen")
-
-    def createTechnologyFromSavedData(self, data):
-        tech_type = data.get('name')
-        
-        if tech_type == "Solarthermie":
-            return SolarThermal(**data)
-        elif tech_type == "Biomassekessel":
-            return BiomassBoiler(**data)
-        elif tech_type == "Gaskessel":
-            return GasBoiler(**data)
-        elif tech_type == "BHKW" or tech_type == "Holzgas-BHKW":
-            return CHP(**data)
-        elif tech_type == "Geothermie":
-            return Geothermal(**data)
-        elif tech_type == "Abwärme":
-            return WasteHeatPump(**data)
-        elif tech_type == "Flusswasser":
-            return RiverHeatPump(**data)
-        else:
-            raise ValueError(f"Unbekannter Technologietyp: {tech_type}")
-
+            create_pdf(self, filename)

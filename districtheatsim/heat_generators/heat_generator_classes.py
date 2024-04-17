@@ -5,6 +5,7 @@ from scipy.optimize import minimize
 from scipy.interpolate import RegularGridInterpolator
 
 from heat_generators.Solarthermie import Berechnung_STA
+from heat_generators.Photovoltaik import Calculate_PV
 
 # Wirtschaftlichkeitsberechnung für technische Anlagen nach VDI 2067
 def annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand=0, q=1.05, r=1.03, T=20, Energiebedarf=0, Energiekosten=0, E1=0, stundensatz=45):
@@ -477,7 +478,7 @@ class SolarThermal:
         self.Vorwärmung_K = Vorwärmung_K
         self.DT_WT_Solar_K = DT_WT_Solar_K
         self.DT_WT_Netz_K = DT_WT_Netz_K
-    
+
     def calc_WGK(self, Wärmemenge, q=1.05, r=1.03, T=20, BEW="Nein"):
         if Wärmemenge == 0:
             return 0
@@ -533,6 +534,68 @@ class SolarThermal:
         }
 
         return results
+
+# Diese Klasse ist nocht fertig implementiert und die Nutzung auch noch nicht durchdacht, Wie muss dass ganze bilanziert werden?
+class Photovoltaics:
+    def __init__(self, name, TRY_data, Gross_area, Longitude, STD_Longitude, Latitude, East_West_collector_azimuth_angle=0, Collector_tilt_angle=36, Albedo=0.2):
+        self.name = name
+        self.TRY_data = TRY_data
+        self.Gross_area = Gross_area
+        self.Longitude = Longitude
+        self.STD_Longitude = STD_Longitude
+        self.Latitude = Latitude
+        self.East_West_collector_azimuth_angle = East_West_collector_azimuth_angle
+        self.Collector_tilt_angle = Collector_tilt_angle
+        self.Albedo = Albedo
+
+    def calc_WGK(self, Strommenge, q=1.05, r=1.03, T=20, BEW="Nein"):
+        if Strommenge == 0:
+            return 0
+
+        self.Kosten_STA_spez = 100 # €/m²
+        Nutzungsdauer = 20
+        f_Inst, f_W_Insp, Bedienaufwand = 0.5, 1, 0
+
+        self.Investitionskosten = self.Gross_area * self.Kosten_STA_spez
+
+        self.A_N = annuität(self.Investitionskosten, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T)
+        self.WGK = self.A_N / Strommenge
+
+        Anteil_Förderung_BEW = 0.4
+        Eigenanteil = 1 - Anteil_Förderung_BEW
+        Investitionskosten_Gesamt_BEW = self.Investitionskosten * Eigenanteil
+        Annuität_BEW = annuität(Investitionskosten_Gesamt_BEW, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T)
+        self.WGK_BEW = Annuität_BEW / Strommenge
+
+        self.WGK_BEW_BKF = self.WGK_BEW - 10  # €/MWh 10 Jahre
+
+        if BEW == "Nein":
+            return self.WGK
+        elif BEW == "Ja":
+            return self.WGK_BEW_BKF
+        
+    def calculate(self, q, r, T, BEW):
+        # Hier fügen Sie die spezifische Logik für die PV-Berechnung ein
+        yield_kWh, P_max, P_L = Calculate_PV(self.TRY_data, self.Gross_area, self.Longitude, self.STD_Longitude, self.Latitude, self.Albedo, self.East_West_collector_azimuth_angle, self.Collector_tilt_angle)
+
+        WGK_PV = self.calc_WGK(yield_kWh/1000, q, r, T, BEW)
+
+        results = { 
+            'Strommenge': yield_kWh,
+            'el_Leistung_L': P_L,
+            'WGK': WGK_PV,
+            'color': "red"
+        }
+
+        return results
+
+# Idee Photovoltaisch-Thermische-Anlagen (PVT) mit zu simulieren
+class PVT:
+    def __init__(self, area):
+        self.area = area
+
+    def calculate(self):
+        pass
 
 def calculate_factors(Kapitalzins, Preissteigerungsrate, Betrachtungszeitraum):
     q = 1 + Kapitalzins / 100

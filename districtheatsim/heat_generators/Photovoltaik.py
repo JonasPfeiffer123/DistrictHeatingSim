@@ -2,7 +2,6 @@
 # Calculation of solar irradiation according to Scenocalc District Heating 2.0 and PV according to eupvgis
 
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
 
 def import_TRY(filename):
@@ -205,4 +204,4 @@ def calculate_building(TRY_data, building_data, output_filename):
     # Save the DataFrame after completing the loop
     df.to_csv(output_filename, index=False, sep=';')
 
-calculate_building("heating_network_generation/heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat", "building_data_pv.csv", 'pv_data_results.csv')
+# calculate_building("heating_network_generation/heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat", "building_data_pv.csv", 'pv_data_results.csv')

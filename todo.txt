@@ -16,6 +16,7 @@
 2. Wärmenetzberechnung
 2.1 Funktionalitäten
 - Optimierung Regelung Simulation
+- Implementation von mehreren Erzeugerstandorten
 
 2.2 Visualisierung
 
@@ -56,3 +57,13 @@ diverses:
 Die Temperaturdaten und COP-Daten brauchen noch ein zentrales Datenmanagement.
 
 LOD2-Datenverarbeitung muss mit nan-Werten umgehen können --> Meldung das nan-Wert ermittelt wurde, entfernen aus Datensatz
+
+PV-Klasse --> Stromerzeugung
+Option bei Solarthermie und PV Fläche, Orientierung, Neigung aus LOD2 auszulesen: LOD2 auswählen --> Objekt auswählen
+
+Auswertungsoption neben Berechnen:
+- Diagramme
+- Sensivitätsuntersuchung Energiepreise --> WGK mit verschiedenen Preisen berechen ... 3-dim darstellen?
+
+Bei Optimierungsfunktion Auswahlmöglichkeit was optimiert werden soll, ggf. sogar mit Grenzen
+
