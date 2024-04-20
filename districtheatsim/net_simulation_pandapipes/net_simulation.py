@@ -6,7 +6,6 @@ from pandapower.timeseries import DFData
 import pandas as pd
 import numpy as np
 
-from net_simulation_pandapipes.net_simulation_calculation import *
 from net_simulation_pandapipes.controllers import ReturnTemperatureController
 from heat_requirement import heat_requirement_VDI4655, heat_requirement_BDEW
 
@@ -92,61 +91,6 @@ def generate_profiles_from_geojson(gdf_heat_exchanger, building_type="HMF", calc
     return_temperature_curve = np.array(return_temperature_curve)
 
     return yearly_time_steps, total_heat_W, max_heat_requirement_W, supply_temperature_curve, return_temperature_curve
-
-def initialize_net_geojson(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_producer, qext_w, return_temperature=60, supply_temperature=85, \
-                           flow_pressure_pump=4, lift_pressure_pump=1.5, diameter_mm=107.1, pipetype="KMR 100/250-2v", k=0.0470, alpha=0.61, pipe_creation_mode="type"):
-    # net generation from gis data
-    net = create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_producer, qext_w, return_temperature, supply_temperature, flow_pressure_pump, \
-                         lift_pressure_pump, diameter_mm, pipetype, k, alpha, pipe_creation_mode)
-    net = create_controllers(net, qext_w, return_temperature)
-    net = correct_flow_directions(net)
-
-    net = init_timeseries_opt(net, qext_w, return_temperature)
-
-    if pipe_creation_mode == "diameter":
-        net = optimize_diameter_parameters(net)
-
-    if pipe_creation_mode == "type":
-        net = optimize_diameter_types(net)
-
-    net = optimize_diameter_parameters(net, element="heat_exchanger")
-    net = optimize_diameter_parameters(net, element="flow_control")
-
-    return net
-
-def init_timeseries_opt(net, qext_w, return_temperature, time_steps=3):
-        # Check whether qext_w is one-dimensional and the length matches the number of heat exchangers
-        if qext_w.ndim != 1 or len(qext_w) != len(net.heat_exchanger):
-            raise ValueError("qext_w muss ein eindimensionales Array mit einer Länge gleich der Anzahl der Wärmetauscher sein.")
-
-        # Create a DataFrame where each column is a time series for a heat exchanger
-        data = {f'qext_w_{i}': [qext_w[i]] * time_steps for i in range(len(qext_w))}
-        df = pd.DataFrame(data, index=range(time_steps))
-        data_source = DFData(df)
-
-        # Update data source for ConstControl controllers
-        for i in range(len(net.heat_exchanger)):
-            for ctrl in net.controller.object.values:
-                if isinstance(ctrl, ConstControl) and ctrl.element_index == i and ctrl.variable == 'qext_w':
-                    ctrl.data_source = data_source
-        
-        # Updating the custom controllers
-        i_rt = 0
-        for ctrl in net.controller.object.values:
-            if isinstance(ctrl, ReturnTemperatureController):
-                ctrl.target_temperature = return_temperature[i_rt]  # update target temperature if necessary
-                i_rt += 1
-        
-        log_variables = [('res_junction', 'p_bar'), ('res_junction', 't_k'), ('heat_exchanger', 'qext_w'), \
-                         ('res_heat_exchanger', 'v_mean_m_per_s'), ('res_heat_exchanger', 't_to_k'), 
-                        ('circ_pump_pressure', 't_flow_k'),  ('res_heat_exchanger', 'mdot_from_kg_per_s'),
-                        ('res_circ_pump_pressure', 'mdot_flow_kg_per_s'), ('res_circ_pump_pressure', 'deltap_bar')]
-        
-        ow = OutputWriter(net, time_steps, output_path=None, log_variables=log_variables)
-
-        run_time_series.run_timeseries(net, time_steps, mode="all")
-        
-        return net
 
 def update_const_controls(net, qext_w_profiles, time_steps, start, end):
     for i, qext_w_profile in enumerate(qext_w_profiles):

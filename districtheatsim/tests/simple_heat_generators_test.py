@@ -4,8 +4,8 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from districtheatsim.heat_generators import Solarthermie, heat_generator_classes
-from districtheatsim.utilities.test_reference_year import import_TRY
+from heat_generators import Solarthermie, heat_generator_classes
+from utilities.test_reference_year import import_TRY
 
 import numpy as np
 

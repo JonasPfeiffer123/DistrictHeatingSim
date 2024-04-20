@@ -13,6 +13,8 @@ from net_simulation_pandapipes.stanet_import_pandapipes import create_net_from_s
 from heat_generators.heat_generator_classes import Berechnung_Erzeugermix, optimize_mix
 from geocoding.geocodingETRS89 import process_data
 
+from pandapipes.control.run_control import run_control
+
 import os
 import sys
 
@@ -59,11 +61,10 @@ class NetInitializationThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(str)
 
-    def __init__(self, *args, dT_RL=5, pipe_creation_mode="type", **kwargs):
+    def __init__(self, *args, dT_RL=5, **kwargs):
         super().__init__()
         self.args = args
         self.dT_RL = dT_RL
-        self.pipe_creation_mode = pipe_creation_mode
         self.kwargs = kwargs
 
     def run(self):
@@ -76,7 +77,7 @@ class NetInitializationThread(QThread):
                 raise ValueError("Unbekannter Importtyp")
 
             # Common steps for both import types
-            self.net = self.common_net_initialization(self.net, self.max_waerme_hast_ges_W)
+            self.common_net_initialization()
             self.calculation_done.emit((self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.return_temperature, self.supply_temperature_buildings, \
                                         self.return_temperature_buildings, self.supply_temperature_building_curve, self.return_temperature_building_curve))
 
@@ -143,23 +144,17 @@ class NetInitializationThread(QThread):
         self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.max_waerme_hast_ges_W = create_net_from_stanet_csv(self.stanet_csv, self.supply_temperature, \
                                                                                                                           self.flow_pressure_pump, self.lift_pressure_pump)
 
-    def common_net_initialization(self, net, max_waerme_ges_W):
-        # Common steps after network initialization
-        net = create_controllers(net, max_waerme_ges_W, self.return_temperature)
-        net = correct_flow_directions(net)
-        net = init_timeseries_opt(net, max_waerme_ges_W, return_temperature=self.return_temperature)
+    def common_net_initialization(self):
+        # net, net_results = init_timeseries_opt(net, self.max_waerme_hast_ges_W, self.return_temperature)
+        run_control(self.net, mode="all")
 
         if self.kwargs.get("import_type") == "GeoJSON":
-            if self.pipe_creation_mode == "diameter":
-                net = optimize_diameter_parameters(net, element="pipe", v_max=1)
+            self.net = optimize_diameter_types(self.net, v_max=self.v_max_pipe, material_filter=self.material_filter, insulation_filter=self.insulation_filter)
 
-            if self.pipe_creation_mode == "type":
-                net = optimize_diameter_types(net, v_max=self.v_max_pipe, material_filter=self.material_filter, insulation_filter=self.insulation_filter)
+        self.net = optimize_diameter_parameters(self.net, element="heat_exchanger", v_max=1.5)
+        self.net = optimize_diameter_parameters(self.net, element="flow_control", v_max=1.5)
 
-        net = optimize_diameter_parameters(net, element="heat_exchanger", v_max=1.5)
-        net = optimize_diameter_parameters(net, element="flow_control", v_max=1.5)
-        
-        return net
+        run_control(self.net, mode="all")
     
     def stop(self):
         if self.isRunning():

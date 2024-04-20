@@ -1,9 +1,9 @@
-import pandapipes as pp
 import pandas as pd
 import geopandas as gpd
 from shapely.geometry import LineString
 import numpy as np
 
+import pandapipes as pp
 from pandapower.timeseries import DFData
 from pandapower.control.controller.const_control import ConstControl
 from net_simulation_pandapipes.controllers import ReturnTemperatureController, WorstPointPressureController
@@ -32,7 +32,7 @@ def get_all_point_coords_from_line_cords(all_line_coords):
     return unique_point_coords
 
 def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_producer, qext_w, return_temperature=60, supply_temperature=85, 
-                   flow_pressure_pump=4, lift_pressure_pump=1.5, pipetype="KMR 100/250-2v",  pipe_creation_mode="type"):
+                   flow_pressure_pump=4, lift_pressure_pump=1.5, pipetype="KMR 100/250-2v",  pipe_creation_mode="type", v_max_m_s=1.5):
     net = pp.create_empty_network(fluid="water")
 
     # List and filter standard types for pipes
@@ -45,7 +45,6 @@ def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_
 
     initial_mdot_guess_kg_s = qext_w / (4170*(supply_temperature-return_temperature))
     initial_Vdot_guess_m3_s = initial_mdot_guess_kg_s/1000
-    v_max_m_s = 1.5
     area_m2 = initial_Vdot_guess_m3_s/v_max_m_s
     initial_dimension_guess_m = np.round(np.sqrt(area_m2 *(4/np.pi)), 3)
 
@@ -90,6 +89,13 @@ def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_
                                                p_flow_bar=flow_pressure_pump, plift_bar=lift_pressure_pump,
                                                t_flow_k=273.15 + supply_temperature, type="auto",
                                                name=f"{name_prefix} {i}")
+            
+    def create_circulation_pump_mass_flow(net_i, all_coords, junction_dict, name_prefix):
+        for i, coords in enumerate(all_coords, start=0):
+            pp.create_circ_pump_const_mass_flow(net_i, junction_dict[coords[1]], junction_dict[coords[0]],
+                                               p_flow_bar=flow_pressure_pump, mdot_flow_kg_per_s=0.1,
+                                               t_flow_k=273.15 + supply_temperature, type="auto",
+                                               name=f"{name_prefix} {i}")
 
     # creates the junction dictonaries for the forward an return line
     junction_dict_vl = create_junctions_from_coords(net, get_all_point_coords_from_line_cords(
@@ -104,8 +110,16 @@ def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_
     # creates the heat exchangers
     create_heat_exchangers(net, get_line_coords_and_lengths(gdf_heat_exchanger)[0], {**junction_dict_vl, **junction_dict_rl}, "heat exchanger")
     
-    # creates the circulation pump pressure
+    # creates the circulation pump pressure for the first heat producer location // might implement some functionality to choose which one is main producer
     create_circulation_pump_pressure(net, get_line_coords_and_lengths(gdf_heat_producer)[0], {**junction_dict_vl, **junction_dict_rl}, "heat source")
+
+    # creates circulation pump mass flow for the remaining producer locations
+    # count_heat_producer = 2
+    # if count_heat_producer > 1:
+    # create_circulation_pump_mass_flow(net, get_line_coords_and_lengths(gdf_heat_producer)[0], {**junction_dict_vl, **junction_dict_rl}, "heat source slave")
+
+    net = create_controllers(net, qext_w, return_temperature)
+    net = correct_flow_directions(net)
 
     return net
 
@@ -131,7 +145,6 @@ def create_controllers(net, qext_w, return_temperature):
 
     return net
 
-
 def correct_flow_directions(net):
     # Initial pipeflow calculation
     pp.pipeflow(net, mode="all")
@@ -152,11 +165,10 @@ def correct_flow_directions(net):
     return net
 
 
-def optimize_diameter_parameters(initial_net, element="pipe", v_max=2, dx=0.001):
-    pp.pipeflow(initial_net, mode="all")
-
-    element_df = getattr(initial_net, element)  # Access the element's DataFrame
-    res_df = getattr(initial_net, f"res_{element}")  # Access the result DataFrame
+def optimize_diameter_parameters(net, element="pipe", v_max=2, dx=0.001):
+    pp.pipeflow(net, mode="all")
+    element_df = getattr(net, element)  # Access the element's DataFrame
+    res_df = getattr(net, f"res_{element}")  # Access the result DataFrame
             
     change_made = True
     while change_made:
@@ -174,9 +186,9 @@ def optimize_diameter_parameters(initial_net, element="pipe", v_max=2, dx=0.001)
            # shrink as long as speed < v_max and check
             elif current_velocity < v_max:
                 element_df.at[idx, 'diameter_m'] -= dx
-                pp.pipeflow(initial_net, mode="all")
-                element_df = getattr(initial_net, element)  # Access the element's DataFrame
-                res_df = getattr(initial_net, f"res_{element}")  # Access the result DataFrame
+                pp.pipeflow(net, mode="all")
+                element_df = getattr(net, element)  # Access the element's DataFrame
+                res_df = getattr(net, f"res_{element}")  # Access the result DataFrame
                 new_velocity = res_df.v_mean_m_per_s[idx]
 
                 if new_velocity > v_max:
@@ -186,11 +198,11 @@ def optimize_diameter_parameters(initial_net, element="pipe", v_max=2, dx=0.001)
                     change_made = True
         
         if change_made:
-            pp.pipeflow(initial_net, mode="all")  # Recalculation only if changes were made
-            element_df = getattr(initial_net, element)
-            res_df = getattr(initial_net, f"res_{element}")
+            pp.pipeflow(net, mode="all")  # Recalculation only if changes were made
+            element_df = getattr(net, element)
+            res_df = getattr(net, f"res_{element}")
 
-    return initial_net
+    return net
 
 def optimize_diameter_types(net, v_max=1.0, material_filter="KMR", insulation_filter="2v"):
     pp.pipeflow(net, mode="all")

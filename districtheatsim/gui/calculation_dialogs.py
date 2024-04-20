@@ -129,7 +129,7 @@ class NetGenerationDialog(QDialog):
         return inputs
 
     def createStanetInputs(self):
-        default_path = f'{self.base_path}/Wärmenetz/Beleg_1.CSV'
+        default_path = f'{self.base_path}\Wärmenetz\Beleg_1.CSV'
 
         self.stanetinput = self.createFileInput("Stanet CSV:", default_path)
         inputs = [
