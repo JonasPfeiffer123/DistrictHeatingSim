@@ -5,10 +5,13 @@ import pandas as pd
 import numpy as np
 import geopandas as gpd
 
+from shapely import Point
+
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QComboBox, \
     QTableWidget, QPushButton, QTableWidgetItem, QHBoxLayout, QFileDialog, QCheckBox, QMessageBox, QGroupBox
 
 from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
@@ -77,6 +80,7 @@ class NetGenerationDialog(QDialog):
 
     def initUI(self):
         self.setWindowTitle("Netz generieren")
+        self.resize(800, 800)
         mainMainLayout = QHBoxLayout(self) 
         mainLayout1 = QVBoxLayout()
 
@@ -135,12 +139,12 @@ class NetGenerationDialog(QDialog):
 
         self.figure1 = Figure()
         self.canvas1 = FigureCanvas(self.figure1)
-        #self.canvas2.setMinimumSize(700, 700)  # Setze eine Mindestgröße für die Canvas
+        self.canvas1.setMinimumSize(350, 350)  # Setze eine Mindestgröße für die Canvas
         self.toolbar1 = NavigationToolbar(self.canvas1, self)
 
         self.figure2 = Figure()
         self.canvas2 = FigureCanvas(self.figure2)
-        #self.canvas2.setMinimumSize(700, 700)  # Setze eine Mindestgröße für die Canvas
+        self.canvas2.setMinimumSize(350, 350)  # Setze eine Mindestgröße für die Canvas
         self.toolbar2 = NavigationToolbar(self.canvas2, self)
 
         DiagramsLayout.addWidget(self.canvas1)
@@ -556,29 +560,55 @@ class NetGenerationDialog(QDialog):
                     temperature_curve.append(temperature)
 
             return np.array(temperature_curve)
-        
-    ### update / plot Diagramms
+
     def update_plot(self):
         try:
+            # Pfade auslesen
             vorlauf_path = self.vorlaufInput.itemAt(1).widget().text()
             ruecklauf_path = self.ruecklaufInput.itemAt(1).widget().text()
             hast_path = self.hastInput.itemAt(1).widget().text()
             erzeugeranlagen_path = self.erzeugeranlagenInput.itemAt(1).widget().text()
 
+            # Dateien einlesen
             vorlauf = gpd.read_file(vorlauf_path)
             ruecklauf = gpd.read_file(ruecklauf_path)
             hast = gpd.read_file(hast_path)
             erzeugeranlagen = gpd.read_file(erzeugeranlagen_path)
 
+            # Plot vorbereiten
             self.figure1.clear()
             ax = self.figure1.add_subplot(111)
-            
-            vorlauf.plot(ax=ax, color='red')  # Plot die Geometrien auf der Achse
-            ruecklauf.plot(ax=ax, color='blue')  # Plot die Geometrien auf der Achse
-            hast.plot(ax=ax, color='green')  # Plot die Geometrien auf der Achse
-            erzeugeranlagen.plot(ax=ax, color='black')  # Plot die Geometrien auf der Achse
+            vorlauf.plot(ax=ax, color='red')
+            ruecklauf.plot(ax=ax, color='blue')
+            hast.plot(ax=ax, color='green')
+            erzeugeranlagen.plot(ax=ax, color='black')
 
-            # Achse und Titel anpassen
+            # Annotations vorbereiten
+            annotations = []
+            for idx, row in hast.iterrows():
+                point = row['geometry'].representative_point()
+                label = f"{row['Adresse']}\nWärmebedarf: {row['Wärmebedarf']}\nGebäudetyp: {row['Gebäudetyp']}\nVLT_max:{row['VLT_max']}\nRLT_max:{row['RLT_max']}"
+                annotation = ax.annotate(label, xy=(point.x, point.y), xytext=(10, 10),
+                                        textcoords="offset points", bbox=dict(boxstyle="round", fc="w"))
+                annotation.set_visible(False)
+                annotations.append((point, annotation))
+
+            # Event-Handler definieren
+            def on_move(event):
+                visibility_changed = False
+                for point, annotation in annotations:
+                    should_be_visible = (point.distance(Point(event.xdata, event.ydata)) < 5)
+
+                    if should_be_visible != annotation.get_visible():
+                        visibility_changed = True
+                        annotation.set_visible(should_be_visible)
+
+                if visibility_changed:
+                    self.canvas1.draw()
+
+            # Maus-Bewegung-Event verbinden
+            self.figure1.canvas.mpl_connect('motion_notify_event', on_move)
+
             ax.set_title('Visualisierung der GeoJSON-Netz-Daten')
             ax.set_xlabel('Longitude')
             ax.set_ylabel('Latitude')
@@ -587,9 +617,10 @@ class NetGenerationDialog(QDialog):
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Critical)
             msg.setText("Ein Fehler ist aufgetreten")
-            msg.setInformativeText(e)
+            msg.setInformativeText(str(e))
             msg.setWindowTitle("Fehler")
             msg.exec_()
+
         
     def generateNetwork(self):
         if self.return_temp_checked == True:
