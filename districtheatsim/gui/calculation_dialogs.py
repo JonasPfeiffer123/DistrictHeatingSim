@@ -3,9 +3,14 @@ import sys
 
 import pandas as pd
 import numpy as np
+import geopandas as gpd
 
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QComboBox, \
-    QTableWidget, QPushButton, QTableWidgetItem, QHBoxLayout, QFileDialog, QCheckBox, QMessageBox
+    QTableWidget, QPushButton, QTableWidgetItem, QHBoxLayout, QFileDialog, QCheckBox, QMessageBox, QGroupBox
+
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
 import pandapipes as pp
 
@@ -71,48 +76,93 @@ class NetGenerationDialog(QDialog):
         self.initUI()
 
     def initUI(self):
-        layout = QVBoxLayout(self)
         self.setWindowTitle("Netz generieren")
+        mainMainLayout = QHBoxLayout(self) 
+        mainLayout1 = QVBoxLayout()
 
-        # Importtyp-Auswahl
-        self.importTypeComboBox = QComboBox(self)
-        self.importTypeComboBox.addItems(["GeoJSON", "Stanet"])
-        layout.addWidget(QLabel("Importtyp:"))
-        layout.addWidget(self.importTypeComboBox)
-
-        # GeoJSON-spezifische Eingabefelder
-        self.geojsonInputs = self.createGeojsonInputs()
-
-        # Stanet-spezifische Eingabefelder
-        self.stanetInputs = self.createStanetInputs()
-
-        # Hinzufügen der Eingabefelder zum Layout
-        for input_layout in self.geojsonInputs + self.stanetInputs:
-            layout.addLayout(input_layout)
-
-        layout.addLayout(self.createNetconfigurationControlInput())
-        layout.addLayout(self.createTemperatureControlInput())
-        layout.addLayout(self.createBuildingTemperatureCheckbox())
-        layout.addLayout(self.createReturnTemperatureCheckbox())
-        layout.addLayout(self.createParameterInputs())
-        layout.addLayout(self.createinitialpipetypeInput())
-        layout.addLayout(self.createDiameterOptInput())
-
-        # Button zum Starten der Netzgenerierung
-        self.generateButton = QPushButton("Netz generieren", self)
-        self.generateButton.clicked.connect(self.generateNetwork)
-        layout.addWidget(self.generateButton)
-
-        # Update der Sichtbarkeit basierend auf dem gewählten Importtyp
+        # Import-Bereich
+        importGroup = QGroupBox("Import Netzdaten und Definition Wärmebedarfsrechnung")
+        importGroup.setStyleSheet("QGroupBox { font-size: 11pt; font-weight: bold; }")  # Setzt die Schriftgröße und macht den Text fett
+        importLayout = QVBoxLayout()
+        importLayout.addWidget(QLabel("Importtyp:"))
+        self.importTypeComboBox = QComboBox()
+        self.importTypeComboBox.addItems(["GeoJSON"])#, "Stanet"])
+        importLayout.addWidget(self.importTypeComboBox)
         self.importTypeComboBox.currentIndexChanged.connect(self.updateInputFieldsVisibility)
+
+        # Dynamische Eingabefelder hinzufügen
+        self.geojsonInputs = self.createGeojsonInputs()
+        self.stanetInputs = self.createStanetInputs()
+        for input_layout in self.geojsonInputs + self.stanetInputs:
+            importLayout.addLayout(input_layout)
+        importGroup.setLayout(importLayout)
+        mainLayout1.addWidget(importGroup)
+
+        # Netzkonfiguration und Temperatursteuerung
+        netConfigGroup = QGroupBox("Netzkonfiguration und Temperatursteuerung")
+        netConfigGroup.setStyleSheet("QGroupBox { font-size: 11pt; font-weight: bold; }")  # Setzt die Schriftgröße und macht den Text fett
+        netConfigLayout = QVBoxLayout()
+        netConfigLayout.addLayout(self.createNetconfigurationControlInput())
+        netConfigLayout.addLayout(self.createTemperatureControlInput())
+        netConfigLayout.addLayout(self.createBuildingTemperatureCheckbox())
+        netConfigLayout.addLayout(self.createReturnTemperatureCheckbox())
+        netConfigLayout.addLayout(self.createParameterInputs())
+        netConfigLayout.addLayout(self.createinitialpipetypeInput())
+        netConfigGroup.setLayout(netConfigLayout)
+        mainLayout1.addWidget(netConfigGroup)
+
+        # Netz generieren Button
+        self.generateButton = QPushButton("Netz generieren")
+        self.generateButton.clicked.connect(self.generateNetwork)
+        mainLayout1.addWidget(self.generateButton)
+
+        mainMainLayout.addLayout(mainLayout1)
+
+        mainLayout2 = QVBoxLayout()
+
+        # Einstellungen Durchmesseroptimierung
+        OptDiameterGroup = QGroupBox("Durchmesseroptimierung im Netz")
+        OptDiameterGroup.setStyleSheet("QGroupBox { font-size: 11pt; font-weight: bold; }")  # Setzt die Schriftgröße und macht den Text fett
+        OptDiameterLayout = QVBoxLayout()
+        OptDiameterLayout.addLayout(self.createDiameterOptCheckbox())
+        OptDiameterLayout.addLayout(self.createDiameterOptInput())
+        OptDiameterGroup.setLayout(OptDiameterLayout)
+        mainLayout2.addWidget(OptDiameterGroup)
+
+        DiagramsGroup = QGroupBox("Vorschau Netz und zeitlicher Verlauf")
+        DiagramsGroup.setStyleSheet("QGroupBox { font-size: 11pt; font-weight: bold; }")  # Setzt die Schriftgröße und macht den Text fett
+        DiagramsLayout = QVBoxLayout()
+
+        self.figure1 = Figure()
+        self.canvas1 = FigureCanvas(self.figure1)
+        #self.canvas2.setMinimumSize(700, 700)  # Setze eine Mindestgröße für die Canvas
+        self.toolbar1 = NavigationToolbar(self.canvas1, self)
+
+        self.figure2 = Figure()
+        self.canvas2 = FigureCanvas(self.figure2)
+        #self.canvas2.setMinimumSize(700, 700)  # Setze eine Mindestgröße für die Canvas
+        self.toolbar2 = NavigationToolbar(self.canvas2, self)
+
+        DiagramsLayout.addWidget(self.canvas1)
+        DiagramsLayout.addWidget(self.toolbar1)
+        DiagramsLayout.addWidget(self.canvas2)
+        DiagramsLayout.addWidget(self.toolbar2)
+
+        DiagramsGroup.setLayout(DiagramsLayout)
+        mainLayout2.addWidget(DiagramsGroup)
+
+        mainMainLayout.addLayout(mainLayout2)
+
+        # Update der Sichtbarkeit
         self.updateInputFieldsVisibility()
+        self.update_plot()
 
     def createGeojsonInputs(self):
         default_paths = {
-            'Erzeugeranlagen': f'{self.base_path}/Wärmenetz/Erzeugeranlagen.geojson',
-            'HAST': f'{self.base_path}/Wärmenetz/HAST.geojson',
-            'Vorlauf': f'{self.base_path}/Wärmenetz/Vorlauf.geojson',
-            'Rücklauf': f'{self.base_path}/Wärmenetz/Rücklauf.geojson'
+            'Erzeugeranlagen': f'{self.base_path}\Wärmenetz\Erzeugeranlagen.geojson',
+            'HAST': f'{self.base_path}\Wärmenetz\HAST.geojson',
+            'Vorlauf': f'{self.base_path}\Wärmenetz\Vorlauf.geojson',
+            'Rücklauf': f'{self.base_path}\Wärmenetz\Rücklauf.geojson'
         }
 
         file_inputs_layout = self.createFileInputsGeoJSON(default_paths)
@@ -200,7 +250,7 @@ class NetGenerationDialog(QDialog):
     def createTemperatureControlInput(self):
         layout = QVBoxLayout()
         self.temperatureControlInput = QComboBox(self)
-        self.temperatureControlInput.addItems(["Statisch", "Gleitend"])
+        self.temperatureControlInput.addItems(["Gleitend", "Statisch"])
         layout.addWidget(QLabel("Vorlauftemperatur-Regelung:"))
         layout.addWidget(self.temperatureControlInput)
         self.temperatureControlInput.currentIndexChanged.connect(self.updateInputFieldsVisibility)
@@ -272,6 +322,11 @@ class NetGenerationDialog(QDialog):
         self.parameter_rows.append(lift_pressure_row)
         layout.addLayout(lift_pressure_row)
 
+        # Parameterzeile für Temperaturdifferenz Netz/HAST
+        dT_RL = self.createParameterRow("Temperaturdifferenz Netz/HAST:", "5")
+        self.parameter_rows.append(dT_RL)
+        layout.addLayout(dT_RL)
+
         return layout
 
     def createParameterRow(self, label_text, default_text):
@@ -282,6 +337,20 @@ class NetGenerationDialog(QDialog):
         row_layout.addWidget(line_edit)
         return row_layout
     
+    def createDiameterOptCheckbox(self):
+        layout = QVBoxLayout()
+        self.DiameterOptCheckbox = QCheckBox("Durchmesser optimieren.")
+        layout.addWidget(self.DiameterOptCheckbox)
+
+        # Setze die Checkbox bei der Initialisierung als ausgewählt
+        self.DiameterOptCheckbox.setChecked(True)
+
+        # Verbinde das stateChanged Signal der Checkbox mit der update-Methode
+        self.DiameterOptCheckbox.stateChanged.connect(self.updateInputFieldsVisibility)
+
+        return layout
+
+    
     def createinitialpipetypeInput(self):
         layout = QVBoxLayout()
         layout.addWidget(QLabel("Rohrtyp zur Initialisierung des Netzes:"))
@@ -289,17 +358,14 @@ class NetGenerationDialog(QDialog):
         pipetypes = pp.std_types.available_std_types(pp.create_empty_network(fluid="water"), "pipe").index.tolist()
         self.initialpipetypeInput.addItems(pipetypes)
         layout.addWidget(self.initialpipetypeInput)
-        self.initialpipetypeInput.currentIndexChanged.connect(self.updateInputFieldsVisibility)
-
+        
         # Setze einen Startwert
         default_pipe_type = "KMR 100/250-2v"  # Ersetzen Sie "Ihr Startwert" mit dem tatsächlichen Wert
         if default_pipe_type in pipetypes:
             self.initialpipetypeInput.setCurrentText(default_pipe_type)
         else:
             print(f"Warnung: Startwert '{default_pipe_type}' nicht in der Liste der Rohrtypen gefunden.")
-        
-        self.initialpipetypeInput.currentIndexChanged.connect(self.updateInputFieldsVisibility)
-    
+
         return layout
     
     def createDiameterOptInput(self):
@@ -307,10 +373,16 @@ class NetGenerationDialog(QDialog):
         layout.addWidget(QLabel("Eingaben zur Durchmesseroptimierung der Rohrleitungen:"))
 
         row_layout = QHBoxLayout()
-        label = QLabel("Maximale Strömungsgeschwindigkeit:")
+        self.v_max_pipelabel = QLabel("Maximale Strömungsgeschwindigkeit Leitungen:")
         self.v_max_pipeInput = QLineEdit("1.0")
-        row_layout.addWidget(label)
+        row_layout.addWidget(self.v_max_pipelabel)
         row_layout.addWidget(self.v_max_pipeInput)
+        layout.addLayout(row_layout)
+
+        self.v_max_heat_exchangerLabel = QLabel("Maximale Strömungsgeschwindigkeit HAST:")
+        self.v_max_heat_exchangerInput = QLineEdit("1.5")
+        row_layout.addWidget(self.v_max_heat_exchangerLabel)
+        row_layout.addWidget(self.v_max_heat_exchangerInput)
         layout.addLayout(row_layout)
 
         self.material_filterInput = QComboBox(self)
@@ -411,7 +483,21 @@ class NetGenerationDialog(QDialog):
                     widget = parameter_row.itemAt(i).widget()
                     if widget:
                         widget.setVisible(True)
-                        
+        
+        self.DiameterOpt_ckecked = self.DiameterOptCheckbox.isChecked()
+
+        # Anzeige Optimierungsoptionen
+        self.v_max_pipelabel.setVisible(self.DiameterOpt_ckecked)
+        self.v_max_pipeInput.setVisible(self.DiameterOpt_ckecked)
+
+        self.v_max_heat_exchangerLabel.setVisible(self.DiameterOpt_ckecked)
+        self.v_max_heat_exchangerInput.setVisible(self.DiameterOpt_ckecked)
+
+        self.material_filterInput.setVisible(self.DiameterOpt_ckecked)
+        self.insulation_filterInput.setVisible(self.DiameterOpt_ckecked)
+
+        self.insulation_filterInput.currentIndexChanged.connect(self.updateInputFieldsVisibility)
+
         self.building_temp_checked =  self.buildingTempCheckbox.isChecked()
 
         self.return_temp_checked = self.returnTempCheckbox.isChecked()
@@ -421,6 +507,7 @@ class NetGenerationDialog(QDialog):
         fname, _ = QFileDialog.getOpenFileName(self, 'Datei auswählen', '', 'All Files (*);;CSV Files (*.csv);;GeoJSON Files (*.geojson)')
         if fname:
             line_edit.setText(fname)
+            self.update_plot()
 
     def updateBuildingType(self):
         self.buildingTypeInput.clear()
@@ -438,6 +525,7 @@ class NetGenerationDialog(QDialog):
         if self.edit_hast_callback:
             self.edit_hast_callback(hast_path)
 
+    ### Hier vielleicht noch Funktionalitäten auslagern
     def calculateTemperatureCurve(self):
         control_mode = self.temperatureControlInput.currentText()
         if control_mode == "Statisch":
@@ -469,6 +557,40 @@ class NetGenerationDialog(QDialog):
 
             return np.array(temperature_curve)
         
+    ### update / plot Diagramms
+    def update_plot(self):
+        try:
+            vorlauf_path = self.vorlaufInput.itemAt(1).widget().text()
+            ruecklauf_path = self.ruecklaufInput.itemAt(1).widget().text()
+            hast_path = self.hastInput.itemAt(1).widget().text()
+            erzeugeranlagen_path = self.erzeugeranlagenInput.itemAt(1).widget().text()
+
+            vorlauf = gpd.read_file(vorlauf_path)
+            ruecklauf = gpd.read_file(ruecklauf_path)
+            hast = gpd.read_file(hast_path)
+            erzeugeranlagen = gpd.read_file(erzeugeranlagen_path)
+
+            self.figure1.clear()
+            ax = self.figure1.add_subplot(111)
+            
+            vorlauf.plot(ax=ax, color='red')  # Plot die Geometrien auf der Achse
+            ruecklauf.plot(ax=ax, color='blue')  # Plot die Geometrien auf der Achse
+            hast.plot(ax=ax, color='green')  # Plot die Geometrien auf der Achse
+            erzeugeranlagen.plot(ax=ax, color='black')  # Plot die Geometrien auf der Achse
+
+            # Achse und Titel anpassen
+            ax.set_title('Visualisierung der GeoJSON-Netz-Daten')
+            ax.set_xlabel('Longitude')
+            ax.set_ylabel('Latitude')
+
+        except Exception as e:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Critical)
+            msg.setText("Ein Fehler ist aufgetreten")
+            msg.setInformativeText(e)
+            msg.setWindowTitle("Fehler")
+            msg.exec_()
+        
     def generateNetwork(self):
         if self.return_temp_checked == True:
             rl_temp = float(self.parameter_rows[5].itemAt(1).widget().text())
@@ -489,7 +611,8 @@ class NetGenerationDialog(QDialog):
             calc_method = self.calcMethodInput.currentText()
             building_type = self.buildingTypeInput.currentText() if self.calcMethodInput.currentText() != "Datensatz" else "HMF"
 
-            self.dT_RL = 5 #self.dT_RLInput.text()
+            dT_RL = float(self.parameter_rows[8].itemAt(1).widget().text())
+            v_max_heat_exchanger  = float(self.v_max_heat_exchangerInput.text())
             pipetype = self.initialpipetypeInput.currentText()
 
             v_max_pipe = float(self.v_max_pipeInput.text())
@@ -499,8 +622,8 @@ class NetGenerationDialog(QDialog):
             # Führen Sie die Netzgenerierung für GeoJSON durch
             if self.generate_callback:
                 self.generate_callback(vorlauf_path, ruecklauf_path, hast_path, erzeugeranlagen_path, calc_method, building_type, rl_temp, 
-                                       supply_temperature, flow_pressure_pump, lift_pressure_pump, self.netconfiguration, self.dT_RL, self.building_temp_checked, pipetype, 
-                                       v_max_pipe, material_filter, insulation_filter, import_type)
+                                       supply_temperature, flow_pressure_pump, lift_pressure_pump, self.netconfiguration, dT_RL, v_max_heat_exchanger,
+                                       self.building_temp_checked, pipetype, v_max_pipe, material_filter, insulation_filter, self.DiameterOpt_ckecked, import_type)
 
         elif import_type == "Stanet":
             # Sammeln Sie den Dateipfad für Stanet und rufen Sie generate_callback auf

@@ -17,14 +17,14 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction
 
-from net_simulation_pandapipes.net_simulation import calculate_results, save_results_csv, import_results_csv
+from net_simulation_pandapipes.pp_net_time_series_simulation import calculate_results, save_results_csv, import_results_csv
 
 from gui.calculation_dialogs import HeatDemandEditDialog, NetGenerationDialog, ZeitreihenrechnungDialog
 from gui.threads import NetInitializationThread, NetCalculationThread
 from net_simulation_pandapipes.config_plot import config_plot
 from gui.checkable_combobox import CheckableComboBox
 
-from net_simulation_pandapipes.net_simulation_calculation import export_net_geojson
+from net_simulation_pandapipes.utilities import export_net_geojson
 
 class CalculationTab(QWidget):
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
@@ -207,15 +207,18 @@ class CalculationTab(QWidget):
             self.simulate_net()
       
     def create_and_initialize_net_geojson(self, vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temp, supply_temperature, \
-                                          flow_pressure_pump, lift_pressure_pump, netconfiguration, dT_RL, building_temp_checked, pipetype, v_max_pipe, material_filter, insulation_filter):
+                                          flow_pressure_pump, lift_pressure_pump, netconfiguration, dT_RL, v_max_heat_exchanger, building_temp_checked, \
+                                          pipetype, v_max_pipe, material_filter, insulation_filter, DiameterOpt_ckecked):
         self.return_temperature = return_temp
         self.supply_temperature = supply_temperature
         supply_temperature = np.max(supply_temperature)
         self.netconfiguration = netconfiguration
         self.dT_RL = dT_RL
+        self.v_max_heat_exchanger = v_max_heat_exchanger
         self.building_temp_checked = building_temp_checked
+        self.DiameterOpt_ckecked = DiameterOpt_ckecked
         args = (vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump, \
-                netconfiguration, pipetype, v_max_pipe, material_filter, insulation_filter, self.base_path)
+                netconfiguration, pipetype, v_max_pipe, material_filter, insulation_filter, self.base_path, self.dT_RL, self.v_max_heat_exchanger, self.DiameterOpt_ckecked)
         kwargs = {"import_type": "GeoJSON"}
         self.initializationThread = NetInitializationThread(*args, **kwargs)
         self.common_thread_initialization()
