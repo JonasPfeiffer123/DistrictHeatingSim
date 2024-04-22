@@ -57,12 +57,13 @@ class WorstPointPressureController(BasicCtrl):
         return super(WorstPointPressureController, self).control_step(net)
 
 class ReturnTemperatureController(BasicCtrl):
-    def __init__(self, net, heat_exchanger_idx, target_temperature, tolerance=2, min_velocity=0.001, max_velocity=2, **kwargs):
+    def __init__(self, net, heat_exchanger_idx, target_temperature, debug=False, tolerance=2, min_velocity=0.001, max_velocity=2, **kwargs):
         super(ReturnTemperatureController, self).__init__(net, **kwargs)
         self.heat_exchanger_idx = heat_exchanger_idx
         self.flow_control_idx = heat_exchanger_idx
         self.target_temperature = target_temperature
         self.initial_target_temperature = target_temperature
+        self.debug = debug
         self.tolerance = tolerance
         self.min_velocity = min_velocity
         self.max_velocity = max_velocity
@@ -134,7 +135,9 @@ class ReturnTemperatureController(BasicCtrl):
             return True
         
         if converged_T_in and converged_T_out:
-            #print(f'Regler konvergiert: heat_exchanger_idx: {self.heat_exchanger_idx}, qext_w: {qext_w}, current_temperature: {current_T_in}, previous_temperature: {previous_T_in}, to_temperature: {current_T_out}, current_mass_flow: {current_mass_flow}')
+            self.debug=False
+            if self.debug == True:
+                print(f'Regler konvergiert: heat_exchanger_idx: {self.heat_exchanger_idx}, qext_w: {qext_w}, current_temperature: {current_T_in}, previous_temperature: {previous_T_in}, to_temperature: {current_T_out}, current_mass_flow: {current_mass_flow}')
             return True
         
     def control_step(self, net):
@@ -157,11 +160,16 @@ class ReturnTemperatureController(BasicCtrl):
 
         current_mass_flow = net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx]
         
-        #print(f'ReturnTemperatureController vor control_step: Iteration: {self.iteration}, Heat Exchanger ID: {self.heat_exchanger_idx}, current_massflow={current_mass_flow}, qext_w={qext_w}, target_temperature_out={self.target_temperature}, current_temperature_out={current_T_out}, current_temperature_in={current_T_in}')
+        self.debug=False
+        if self.debug == True:
+            print(f'ReturnTemperatureController vor control_step: Iteration: {self.iteration}, Heat Exchanger ID: {self.heat_exchanger_idx}, current_massflow={current_mass_flow}, qext_w={qext_w}, target_temperature_out={self.target_temperature}, current_temperature_out={current_T_out}, current_temperature_in={current_T_in}')
 
         # Make sure the target temperature is not the same as the inlet temperature to avoid division by zero
         if abs(self.target_temperature-current_T_in) >= 0.1 and abs(current_T_out - current_T_in) >= 0.1:
-            required_mass_flow = current_mass_flow - (qext_w / cp) * ((-self.target_temperature + current_T_out)/((current_T_in - current_T_out) * (current_T_in - self.target_temperature)))
+            # required_mass_flow = current_mass_flow - (qext_w / cp) * ((-self.target_temperature + current_T_out)/((current_T_in - current_T_out) * (current_T_in - self.target_temperature)))
+
+            # required mass flow is defined by qext, cp in W and the dT between current_T_in and current_T_out
+            required_mass_flow = (qext_w / cp) * (1 / (current_T_in - self.target_temperature))
         else:
             # If the target temperature has already been reached, the mass flow does not need to be adjusted
             required_mass_flow = current_mass_flow
@@ -172,13 +180,15 @@ class ReturnTemperatureController(BasicCtrl):
         # Current mass flow
         current_mass_flow = net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx]
 
-        # Calculated mass flow taking damping into account
+        # Calculated mass flow taking damping into account, is required to prevent big flow rate changes in the network
         new_mass_flow = (damping_factor * current_mass_flow) + ((1 - damping_factor) * required_mass_flow)
 
         # Check mass flow limits and update mass flow in network model
         new_mass_flow = max(min(new_mass_flow, self.max_mass_flow), self.min_mass_flow)
         net.flow_control["controlled_mdot_kg_per_s"].at[self.flow_control_idx] = new_mass_flow
         
-        #print(f'ReturnTemperatureController nach control_step: Iteration: {self.iteration}, Heat Exchanger ID: {self.heat_exchanger_idx}, new_mass_flow={new_mass_flow}')
+        self.debug=False
+        if self.debug == True:
+            print(f'ReturnTemperatureController nach control_step: Iteration: {self.iteration}, Heat Exchanger ID: {self.heat_exchanger_idx}, new_mass_flow={new_mass_flow}')
 
         return super(ReturnTemperatureController, self).control_step(net)
