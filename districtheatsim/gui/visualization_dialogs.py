@@ -257,49 +257,42 @@ class LayerGenerationDialog(QDialog):
 
         # Auswahlmodus für Erzeugerstandort
         self.locationModeComboBox = QComboBox(self)
-        self.locationModeComboBox.addItems(["Koordinaten direkt eingeben", "Adresse eingeben"])#, "Koordinaten aus CSV laden"])
+        self.locationModeComboBox.addItems(["Koordinaten direkt eingeben", "Adresse eingeben", "Koordinaten aus csv laden"])#, "Koordinaten aus CSV laden"])
         self.locationModeComboBox.currentIndexChanged.connect(self.toggleLocationInputMode)
 
-        self.xCoordInput = QLineEdit("486267.307", self)
-        self.yCoordInput = QLineEdit("5637294.91", self)
-        self.countryInput = QLineEdit(self)
-        self.countryInput.setPlaceholderText("Land")
-        self.countryInput.setEnabled(False)
-        self.stateInput = QLineEdit(self)
-        self.stateInput.setPlaceholderText("Bundesland")
-        self.stateInput.setEnabled(False)
-        self.cityInput = QLineEdit(self)
-        self.cityInput.setPlaceholderText("Stadt")
-        self.cityInput.setEnabled(False)
-        self.streetInput = QLineEdit(self)
-        self.streetInput.setPlaceholderText("Straße und Hausnummer")
-        self.streetInput.setEnabled(False)
-        #self.coordsCsvInput, self.coordsCsvButton = self.createFileInput(f"{self.base_path}/Gebäudedaten/data_output_ETRS89.csv")
-        #self.coordsCsvInput.setEnabled(False)
-        #self.coordsCsvButton.setEnabled(False)
+        # Koordinaten direkt eingeben
+        self.coordInput = QLineEdit(self)
+        self.coordInput.setText("480198.58,5711044.00")
+        self.coordInput.setToolTip("Eingabe in folgender Form: 'X-Koordinate, Y-Koordinate' CRS: ESPG:25833")
+        self.addCoordButton = QPushButton("Koordinate hinzufügen", self)
+        self.addCoordButton.clicked.connect(self.addCoordFromInput)
 
-        # Buttons
+        # Adress-Eingabe
+        self.addressInput = QLineEdit(self)
+        self.addressInput.setText("Deutschland,Sachsen,Bad Muskau,Gablenzer Straße 4")
+        self.addressInput.setToolTip("Eingabe in folgender Form: 'Land,Bundesland,Stadt,Adresse'")
         self.geocodeButton = QPushButton("Adresse geocodieren", self)
-        self.geocodeButton.clicked.connect(self.geocodeAddress)
-        self.geocodeButton.setEnabled(False)
+        self.geocodeButton.clicked.connect(self.geocodeAndAdd)
 
-        #self.loadCoordsButton = QPushButton("Erzeugerkoordinaten aus CSV laden", self)
-        #self.loadCoordsButton.clicked.connect(self.loadCoordsFromCSV)
-        #self.loadCoordsButton.setEnabled(False)
+        # CSV-Import
+        self.importCsvButton = QPushButton("Koordinaten aus CSV laden", self)
+        self.importCsvButton.clicked.connect(self.importCoordsFromCSV)
+
+        # Koordinatentabelle
+        self.coordTable = QTableWidget(self)
+        self.coordTable.setColumnCount(2)
+        self.coordTable.setHorizontalHeaderLabels(["X-Koordinate", "Y-Koordinate"])
 
         # Hinzufügen von Widgets zum Formularlayout
         formLayout.addRow("GeoJSON-Straßen-Layer:", self.createFileInputLayout(self.fileInput, self.fileButton))
         formLayout.addRow("Datei Gebäudestandorte:", self.createFileInputLayout(self.dataInput, self.dataCsvButton))
         formLayout.addRow("Modus für Erzeugerstandort:", self.locationModeComboBox)
-        formLayout.addRow("X-Koordinate Erzeugerstandort:", self.xCoordInput)
-        formLayout.addRow("Y-Koordinate Erzeugerstandort:", self.yCoordInput)
-        formLayout.addRow("Land:", self.countryInput)
-        formLayout.addRow("Bundesland:", self.stateInput)
-        formLayout.addRow("Stadt:", self.cityInput)
-        formLayout.addRow("Straße:", self.streetInput)
+        formLayout.addRow("Koordinaten eingeben:", self.coordInput)
+        formLayout.addRow(self.addCoordButton)
+        formLayout.addRow("Adresse für Geocoding:", self.addressInput)
         formLayout.addRow(self.geocodeButton)
-        #formLayout.addRow("CSV mit Koordinaten:", self.createFileInputLayout(self.coordsCsvInput, self.coordsCsvButton))
-        #formLayout.addRow(self.loadCoordsButton)
+        formLayout.addRow(self.importCsvButton)
+        formLayout.addRow("Koordinatentabelle:", self.coordTable)
 
         layout.addLayout(formLayout)
 
@@ -312,43 +305,15 @@ class LayerGenerationDialog(QDialog):
         layout.addWidget(self.okButton)
         layout.addWidget(self.cancelButton)
 
+        self.toggleLocationInputMode(0)
         self.setLayout(layout)
 
     def toggleLocationInputMode(self, index):
-        self.xCoordInput.setEnabled(index == 0)
-        self.yCoordInput.setEnabled(index == 0)
-        self.countryInput.setEnabled(index == 1)
-        self.stateInput.setEnabled(index == 1)
-        self.cityInput.setEnabled(index == 1)
-        self.streetInput.setEnabled(index == 1)
-        #self.coordsCsvInput.setEnabled(index == 2)
-        #self.coordsCsvButton.setEnabled(index == 2)
+        self.coordInput.setEnabled(index == 0)
+        self.addCoordButton.setEnabled(index == 0)
+        self.addressInput.setEnabled(index == 1)
         self.geocodeButton.setEnabled(index == 1)
-        #self.loadCoordsButton.setEnabled(index == 2)
-
-    def geocodeAddress(self):
-        # Zusammensetzen der vollständigen Adresse aus den einzelnen Feldern
-        address = f"{self.streetInput.text()}, {self.cityInput.text()}, {self.stateInput.text()}, {self.countryInput.text()}"
-        if address.strip(", ").replace(" ", ""):
-            utm_x, utm_y = get_coordinates(address)
-            if utm_x and utm_y:
-                self.xCoordInput.setText(str(utm_x))
-                self.yCoordInput.setText(str(utm_y))
-            else:
-                QMessageBox.warning(self, "Warnung", "Adresse konnte nicht geocodiert werden.")
-        else:
-            QMessageBox.warning(self, "Warnung", "Bitte geben Sie eine vollständige Adresse ein.")
-
-    def loadCoordsFromCSV(self):
-        csv_file_path = self.coordsCsvInput.text()
-        if csv_file_path:
-            try:
-                process_data(csv_file_path, "temporary_output.csv")
-                QMessageBox.information(self, "Info", "Koordinaten wurden geladen und in 'temporary_output.csv' gespeichert.")
-            except Exception as e:
-                QMessageBox.critical(self, "Fehler", f"Ein Fehler ist aufgetreten: {e}")
-        else:
-            QMessageBox.warning(self, "Warnung", "Bitte wählen Sie eine CSV-Datei aus.")
+        self.importCsvButton.setEnabled(index == 2)
 
     def createFileInputLayout(self, lineEdit, button):
         layout = QHBoxLayout()
@@ -363,16 +328,48 @@ class LayerGenerationDialog(QDialog):
         return lineEdit, button
     
     def openFileDialog(self, lineEdit):
-        filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", "", "All Files (*)")
+        filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", f"{self.base_path}", "All Files (*)")
         if filename:
             lineEdit.setText(filename)
+
+    def addCoordFromInput(self):
+        coords = self.coordInput.text().split(',')
+        if len(coords) == 2:
+            x, y = coords
+            self.insertRowInTable(x.strip(), y.strip())
+
+    def geocodeAndAdd(self):
+        address = self.addressInput.text()
+        if address:
+            x, y = get_coordinates(address)  # Implementierung der Geocoding-Funktion nötig
+            if x and y:
+                self.insertRowInTable(str(x), str(y))
+
+    def importCoordsFromCSV(self):
+        filename, _ = QFileDialog.getOpenFileName(self, "CSV-Datei auswählen", f"{self.base_path}", "CSV Files (*.csv)")
+        if filename:
+            data = pd.read_csv(filename, delimiter=';', usecols=['UTM_X', 'UTM_Y'])
+            for _, row in data.iterrows():
+                self.insertRowInTable(str(row['UTM_X']), str(row['UTM_Y']))
+
+    def insertRowInTable(self, x, y):
+        row_count = self.coordTable.rowCount()
+        self.coordTable.insertRow(row_count)
+        self.coordTable.setItem(row_count, 0, QTableWidgetItem(x))
+        self.coordTable.setItem(row_count, 1, QTableWidgetItem(y))
     
     def getInputs(self):
+        coordinates = []
+        for row in range(self.coordTable.rowCount()):
+            x = self.coordTable.item(row, 0).text()
+            y = self.coordTable.item(row, 1).text()
+            if x and y:  # Stellen Sie sicher, dass beide Felder ausgefüllt sind
+                coordinates.append((float(x), float(y)))
+
         return {
             "streetLayer": self.fileInput.text(),
             "dataCsv": self.dataInput.text(),
-            "xCoord": self.xCoordInput.text(),
-            "yCoord": self.yCoordInput.text()
+            "coordinates": coordinates
         }
 
 class DownloadOSMDataDialog(QDialog):

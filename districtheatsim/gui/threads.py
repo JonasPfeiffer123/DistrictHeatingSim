@@ -35,9 +35,10 @@ class NetInitializationThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(str)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, mass_flow_secondary_producers=0.1, **kwargs):
         super().__init__()
         self.args = args
+        self.mass_flow_secondary_producers = mass_flow_secondary_producers
         self.kwargs = kwargs
 
     def run(self):
@@ -54,7 +55,7 @@ class NetInitializationThread(QThread):
                                                                              self.erzeugeranlagen, self.calc_method, self.building_type, \
                                                                              self.return_temperature, self.supply_temperature, \
                                                                              self.flow_pressure_pump, self.lift_pressure_pump, \
-                                                                             self.netconfiguration, self.pipetype, self.dT_RL)
+                                                                             self.netconfiguration, self.pipetype, self.dT_RL, mass_flow_secondary_producers=self.mass_flow_secondary_producers)
             
             elif self.kwargs.get("import_type") == "Stanet":
                 self.stanet_csv, self.return_temperature, self.supply_temperature, self.flow_pressure_pump, self.lift_pressure_pump = self.args
@@ -64,7 +65,9 @@ class NetInitializationThread(QThread):
 
             # Common steps for both import types
             if self.DiameterOpt_ckecked == True:
+                print("Here")
                 self.net = net_optimization(self.net, self.v_max_pipe, self.v_max_heat_exchanger, self.material_filter, self.insulation_filter)
+                print("Here")
             
             self.calculation_done.emit((self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.return_temperature, self.supply_temperature_buildings, \
                                         self.return_temperature_buildings, self.supply_temperature_building_curve, self.return_temperature_building_curve))
@@ -180,7 +183,7 @@ class NetGenerationThread(QThread):
 
     def run(self):
         try:
-            generate_and_export_layers(self.inputs["streetLayer"], self.inputs["dataCsv"], float(self.inputs["xCoord"]), float(self.inputs["yCoord"]), self.base_path)
+            generate_and_export_layers(self.inputs["streetLayer"], self.inputs["dataCsv"], self.inputs["coordinates"], self.base_path)
 
             self.calculation_done.emit(())
         except Exception as e:
@@ -268,13 +271,31 @@ class CalculateMixThread(QThread):
 
     def run(self):
         try:
-            time_steps, qext_kW, waerme_ges_W, flow_temp_circ_pump, return_temp_circ_pump, mass_flow_circ_pump, deltap_circ_pump, return_pressure_circ_pump, flow_pressure_circ_pump = import_results_csv(self.filename)
+            time_steps, waerme_ges_W, pump_results = import_results_csv(self.filename)
+            ### hier erstmal Vereinfachung, Temperaturen, Drücke der Hauptzenztrale, Leistungen addieren
+            
+            qext_values = []  # Diese Liste wird alle qext_kW Arrays speichern
+            for pump_type, pumps in pump_results.items():
+                for idx, pump_data in pumps.items():
+                    if 'qext_kW' in pump_data:
+                        qext_values.append(pump_data['qext_kW'])  # Nehmen wir an, dass dies numpy Arrays sind
+                    else:
+                        print(f"Keine qext_kW Daten für {pump_type} Pumpe {idx}")
+
+                    if pump_type == "Heizentrale Haupteinspeisung":
+                        flow_temp_circ_pump = pump_data['flow_temp']
+                        return_temp_circ_pump = pump_data['return_temp']
+
+            # Überprüfen, ob die Liste nicht leer ist
+            if qext_values:
+                # Summieren aller Arrays in der Liste zu einem Summenarray
+                qext_kW = np.sum(np.array(qext_values), axis=0)
+            else:
+                qext_kW = np.array([])  # oder eine andere Form der Initialisierung, die in Ihrem Kontext sinnvoll ist
+            
             calc1, calc2 = 0, len(time_steps)
-
             qext_kW *= self.load_scale_factor
-
             initial_data = time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump
-
             TRY = import_TRY(self.try_filename)
             COP_data = np.genfromtxt(self.cop_filename, delimiter=';')
 

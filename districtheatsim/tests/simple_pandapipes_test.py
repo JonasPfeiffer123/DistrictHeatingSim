@@ -12,7 +12,7 @@ from pandapipes.control.run_control import run_control
 from net_simulation_pandapipes.config_plot import config_plot
 
 from districtheatsim.net_simulation_pandapipes.pp_net_initialisation_geojson import *
-from districtheatsim.net_simulation_pandapipes.pp_net_time_series_simulation import generate_profiles_from_geojson
+from districtheatsim.net_simulation_pandapipes.utilities import *
 
 def initialize_test_net(qext_w=np.array([50000, 100000]), return_temperature=60, supply_temperature=85, flow_pressure_pump=4, lift_pressure_pump=1.5, 
                         pipetype="KMR 100/250-2v",  pipe_creation_mode="type", v_max_m_s=1.5):

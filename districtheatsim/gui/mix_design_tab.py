@@ -694,6 +694,7 @@ class MixDesignTab(QWidget):
 
         # Hinzufügen von Last_L als Linienplot
         ax1 = self.figure1.gca()  # Get current axis
+        print(Last)
         ax1.plot(t, Last, color='blue')  # Zeichnen der Last_L Linie
 
     def plotPieChart(self, figure, Anteile, labels, colors):

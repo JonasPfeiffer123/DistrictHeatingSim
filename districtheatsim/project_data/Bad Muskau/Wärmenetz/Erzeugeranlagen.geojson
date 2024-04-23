@@ -2,6 +2,7 @@
 "type": "FeatureCollection",
 "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::25833" } },
 "features": [
-{ "type": "Feature", "properties": { "Land": null, "Bundesland": null, "Stadt": null, "Adresse": null, "Wärmebedarf": null, "Gebäudetyp": null, "WW_Anteil": null, "Typ_Heizflächen": null, "VLT_max": null, "Steigung_Heizkurve": null, "RLT_max": null }, "geometry": { "type": "LineString", "coordinates": [ [ 480160.834488331864122, 5711304.550561875104904 ], [ 480161.834488331864122, 5711304.550561875104904 ] ] } }
+{ "type": "Feature", "properties": { "Land": null, "Bundesland": null, "Stadt": null, "Adresse": null, "Wärmebedarf": null, "Gebäudetyp": null, "WW_Anteil": null, "Typ_Heizflächen": null, "VLT_max": null, "Steigung_Heizkurve": null, "RLT_max": null }, "geometry": { "type": "LineString", "coordinates": [ [ 480198.964657270291355, 5711044.345913198776543 ], [ 480199.964657270291355, 5711044.345913198776543 ] ] } },
+{ "type": "Feature", "properties": { "Land": null, "Bundesland": null, "Stadt": null, "Adresse": null, "Wärmebedarf": null, "Gebäudetyp": null, "WW_Anteil": null, "Typ_Heizflächen": null, "VLT_max": null, "Steigung_Heizkurve": null, "RLT_max": null }, "geometry": { "type": "LineString", "coordinates": [ [ 480273.486814852920361, 5711275.690019076690078 ], [ 480274.486814852920361, 5711275.690019076690078 ] ] } }
 ]
 }

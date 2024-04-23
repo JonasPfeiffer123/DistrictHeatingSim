@@ -296,37 +296,40 @@ class CalculationTab(QWidget):
     def on_simulation_done(self, results):
         self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
         self.time_steps, self.net, self.net_results, self.waerme_ges_W, self.strom_wp_kW = results
-        self.mass_flow_circ_pump, self.deltap_circ_pump, self.return_temp_circ_pump, self.flow_temp_circ_pump, \
-            self.return_pressure_circ_pump, self.flow_pressure_circ_pump, self.qext_kW, self.pressure_junctions = calculate_results(self.net, self.net_results)
 
+        # Berechung Wärme und Strom
         self.waerme_ges_W = (np.sum(self.waerme_ges_W, axis=0)/1000)[self.calc1:self.calc2]
         
         if self.strom_wp_kW is not None:
             self.strom_wp_kW = (np.sum(self.strom_wp_kW, axis=0)/1000)[self.calc1:self.calc2]
 
-        plot_data =  self.time_steps, self.qext_kW, self.waerme_ges_W, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, \
-            self.return_pressure_circ_pump, self.flow_pressure_circ_pump
+        # Verarbeitung der Zeitreihen-Ergebnisse
+        self.pump_results = calculate_results(self.net, self.net_results)
+
+        # Definition der plot-Daten
+        self.plot_data =  self.time_steps, self.waerme_ges_W, self.pump_results
         
-        self.plot_data_func(plot_data)
+        self.plot_data_func(self.plot_data)
         self.plot2()
 
-        save_results_csv(self.time_steps, self.qext_kW, self.waerme_ges_W, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, \
-                         self.return_pressure_circ_pump, self.flow_pressure_circ_pump, self.output_filename)
+        save_results_csv(self.time_steps, self.waerme_ges_W, self.pump_results, self.output_filename)
 
     def plot_data_func(self, plot_data):
-        self.time_steps, self.qext_kW, self.waerme_ges_W, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, \
-        self.return_pressure_circ_pump, self.flow_pressure_circ_pump = plot_data
+        self.time_steps, self.waerme_ges_W, pump_results = plot_data
         
         self.plot_data = {
-            "Einspeiseleistung Heizzentrale": {"data": self.qext_kW, "label": "Leistung in kW", "axis": "left"},
-            "Gesamtwärmebedarf Wärmeübertrager": {"data": self.waerme_ges_W, "label": "Wärmebedarf in kW", "axis": "left"},
-            "Rücklauftemperatur Heizzentrale": {"data": self.return_temp_circ_pump, "label": "Temperatur in °C", "axis": "right"},
-            "Vorlauftemperatur Heizzentrale": {"data": self.flow_temp_circ_pump, "label": "Temperatur in °C", "axis": "right"},
-            "Massenstrom Heizzentrale": {"data": self.mass_flow_circ_pump, "label": "Massenstrom in kg/s", "axis": "right"},
-            "Delta p Heizzentrale": {"data": self.deltap_circ_pump, "label": "Druck in bar", "axis": "right"},
-            "Rücklaufdruck Heizzentrale": {"data": self.return_pressure_circ_pump, "label": "Druck in bar", "axis": "right"},
-            "Vorlaufdruck Heizzentrale": {"data": self.flow_pressure_circ_pump, "label": "Druck in bar", "axis": "right"}
+            "Gesamtwärmebedarf Wärmeübertrager": {"data": self.waerme_ges_W, "label": "Wärmebedarf in kW", "axis": "left"}
         }
+         # Fügen Sie für jede Pumpe Einträge hinzu
+        for pump_type, pumps in pump_results.items():
+            for idx, pump_data in pumps.items():
+                self.plot_data[f"Wärmeerzeugung {pump_type} {idx+1}"] = {"data": pump_data['qext_kW'], "label": "Leistung in kW", "axis": "left"}
+                self.plot_data[f"Massenstrom {pump_type} {idx+1}"] = {"data": pump_data['mass_flow'], "label": "Massenstrom in kg/s", "axis": "right"}
+                self.plot_data[f"Delta p {pump_type} {idx+1}"] = {"data": pump_data['deltap'], "label": "Druckdifferenz in bar", "axis": "right"}
+                self.plot_data[f"Vorlauftemperatur {pump_type} {idx+1}"] = {"data": pump_data['flow_temp'], "label": "Temperatur in °C", "axis": "right"}
+                self.plot_data[f"Rücklauftemperatur {pump_type} {idx+1}"] = {"data": pump_data['return_temp'], "label": "Temperatur in °C", "axis": "right"}
+                self.plot_data[f"Vorlaufdruck {pump_type} {idx+1}"] = {"data": pump_data['flow_pressure'], "label": "Druck in bar", "axis": "right"}
+                self.plot_data[f"Rücklaufdruck {pump_type} {idx+1}"] = {"data": pump_data['return_pressure'], "label": "Druck in bar", "axis": "right"}
 
     def on_simulation_error(self, error_message):
         QMessageBox.critical(self, "Berechnungsfehler", error_message)
@@ -481,7 +484,7 @@ class CalculationTab(QWidget):
     def load_net_results(self):
         results_csv_filepath = f"{self.base_path}\Lastgang\Lastgang.csv"
         plot_data = import_results_csv(results_csv_filepath)
-        self.time_steps, self.qext_kW, self.waerme_ges_W, self.flow_temp_circ_pump, self.return_temp_circ_pump, self.mass_flow_circ_pump, self.deltap_circ_pump, self.return_pressure_circ_pump, self.flow_pressure_circ_pump = plot_data
+        self.time_steps, self.waerme_ges_W, self.pump_results = plot_data
         self.plot_data_func(plot_data)
         self.plot2()
     

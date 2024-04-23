@@ -6,7 +6,7 @@ from heat_requirement import heat_requirement_VDI4655, heat_requirement_BDEW
 from net_simulation_pandapipes.utilities import create_controllers, correct_flow_directions, COP_WP
 
 def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temperature, \
-                       supply_temperature, flow_pressure_pump, lift_pressure_pump, netconfiguration, pipetype, dT_RL):
+                       supply_temperature, flow_pressure_pump, lift_pressure_pump, netconfiguration, pipetype, dT_RL, mass_flow_secondary_producers=0.5):
         
     vorlauf = gpd.read_file(vorlauf, driver='GeoJSON')
     ruecklauf = gpd.read_file(ruecklauf, driver='GeoJSON')
@@ -58,7 +58,7 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, b
         max_waerme_hast_ges_W = max_waerme_gebaeude_ges_W
 
     net = create_network(vorlauf, ruecklauf, hast, erzeugeranlagen, max_waerme_hast_ges_W, return_temperature, \
-                            supply_temperature, flow_pressure_pump, lift_pressure_pump, pipetype)
+                            supply_temperature, flow_pressure_pump, lift_pressure_pump, pipetype, mass_flow_secondary_producers=mass_flow_secondary_producers)
     
     return net, yearly_time_steps, waerme_hast_ges_W, return_temperature, supply_temperature_buildings, return_temperature_buildings, \
         supply_temperature_building_curve, return_temperature_building_curve 
@@ -169,7 +169,7 @@ def get_all_point_coords_from_line_cords(all_line_coords):
     return unique_point_coords
 
 def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_producer, qext_w, return_temperature=60, supply_temperature=85, 
-                   flow_pressure_pump=4, lift_pressure_pump=1.5, pipetype="KMR 100/250-2v",  pipe_creation_mode="type", v_max_m_s=1.5):
+                   flow_pressure_pump=4, lift_pressure_pump=1.5, pipetype="KMR 100/250-2v",  pipe_creation_mode="type", v_max_m_s=1.5, main_producer_location_index=0, mass_flow_secondary_producers=0.5):
     net = pp.create_empty_network(fluid="water")
 
     # List and filter standard types for pipes
@@ -229,10 +229,14 @@ def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_
             
     def create_circulation_pump_mass_flow(net_i, all_coords, junction_dict, name_prefix):
         for i, coords in enumerate(all_coords, start=0):
-            pp.create_circ_pump_const_mass_flow(net_i, junction_dict[coords[1]], junction_dict[coords[0]],
-                                               p_flow_bar=flow_pressure_pump, mdot_flow_kg_per_s=0.1,
+            mid_coord = ((coords[0][0] + coords[1][0]) / 2, (coords[0][1] + coords[1][1]) / 2)
+            mid_junction_idx = pp.create_junction(net_i, pn_bar=1.05, tfluid_k=293.15, name=f"Junction {name_prefix}", geodata=mid_coord)
+
+            pp.create_circ_pump_const_mass_flow(net_i, junction_dict[coords[1]], mid_junction_idx,
+                                               p_flow_bar=flow_pressure_pump, mdot_flow_kg_per_s=mass_flow_secondary_producers,
                                                t_flow_k=273.15 + supply_temperature, type="auto",
                                                name=f"{name_prefix} {i}")
+            pp.create_flow_control(net, mid_junction_idx, junction_dict[coords[0]], controlled_mdot_kg_per_s=mass_flow_secondary_producers, diameter_m=0.1)
 
     # creates the junction dictonaries for the forward an return line
     junction_dict_vl = create_junctions_from_coords(net, get_all_point_coords_from_line_cords(
@@ -247,13 +251,17 @@ def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_
     # creates the heat exchangers
     create_heat_exchangers(net, get_line_coords_and_lengths(gdf_heat_exchanger)[0], {**junction_dict_vl, **junction_dict_rl}, "heat exchanger")
     
-    # creates the circulation pump pressure for the first heat producer location // might implement some functionality to choose which one is main producer
-    create_circulation_pump_pressure(net, get_line_coords_and_lengths(gdf_heat_producer)[0], {**junction_dict_vl, **junction_dict_rl}, "heat source")
+    # heat producer preprocessing for multiple pumps
+    all_heat_producer_coords, all_heat_producer_lengths = get_line_coords_and_lengths(gdf_heat_producer)
+    # Sicherstellen, dass mindestens ein Koordinatenpaar vorhanden ist
+    if all_heat_producer_coords:
+        # creates the circulation pump const pressure for the first heat producer location // might implement some functionality to choose which one is main producer
+        create_circulation_pump_pressure(net, [all_heat_producer_coords[main_producer_location_index]], {**junction_dict_vl, **junction_dict_rl}, "heat source")
 
-    # creates circulation pump mass flow for the remaining producer locations
-    # count_heat_producer = 2
-    # if count_heat_producer > 1:
-    # create_circulation_pump_mass_flow(net, get_line_coords_and_lengths(gdf_heat_producer)[0], {**junction_dict_vl, **junction_dict_rl}, "heat source slave")
+        # creates circulation pump const mass flow for the remaining producer locations
+        for i in range(len(all_heat_producer_coords)):
+            if i != main_producer_location_index:
+                create_circulation_pump_mass_flow(net, [all_heat_producer_coords[i]], {**junction_dict_vl, **junction_dict_rl}, "heat source slave")
 
     net = create_controllers(net, qext_w, return_temperature)
     net = correct_flow_directions(net)

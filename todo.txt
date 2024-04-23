@@ -16,11 +16,11 @@
 2. Wärmenetzberechnung
 2.1 Funktionalitäten
 - Optimierung Regelung Simulation
-- Implementation von mehreren Erzeugerstandorten
-
-2.2 Visualisierung
+- Eingaben für sekundäre Erzeuger --> Welche Regelungen?
+- Vorlauftemperaturregelung muss noch für die Sekundärerzeuger implementiert werden
 
 3. Erzeugerauslegung und Wirtschaftlichkeitsrechnung:
+- Bei Import von Erzeugungslastgang mögliche mehrere Erzeuger berücksichtigen (zunächst einfach Summieren, aber eigentlich weiter ausweisen)
 3.1 Überarbeitung Erzeugerauslegung
 - BHKW, WP, Biomasse, etc sollen optionalen Speicher erhalten zur Verlängerung von Volllaststunden (einfache Regelung), Teillastbereich muss definiert werden --> Ziel Reduktion Gaseinsatz Gaskessel
 - Neue Technologien implementieren: PVT, Großwärmespeicher, AquvaHeat, Wasserstoff, Power-to-heat, Geothermie mit Sondenregeneration???
@@ -65,5 +65,5 @@ Auswertungsoption neben Berechnen:
 - Diagramme
 - Sensivitätsuntersuchung Energiepreise --> WGK mit verschiedenen Preisen berechen ... 3-dim darstellen?
 
-Bei Optimierungsfunktion Auswahlmöglichkeit was optimiert werden soll, ggf. sogar mit Grenzen
+Bei Optimierungsfunktion Auswahlmöglichkeit was optimiert werden soll mit Grenzen
 
