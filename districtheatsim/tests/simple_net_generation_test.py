@@ -11,18 +11,21 @@ from net_generation.import_and_create_layers import generate_and_export_layers
 ### Project-specific inputs ###
 
 # geojson with OSM street data needed
-osm_street_layer_geojson_file_name = "tests\data\osm_street_data.geojson"
+osm_street_layer_geojson_file_name = "project_data\Bad Muskau\Straßen.geojson"
     
 # data points csv file path
-data_csv_input_file_name = "tests\data\data_input.csv"
-data_csv_output_file_name = "tests\data\data_output.csv"
+#data_csv_input_file_name = "tests\data\data_input.csv"
+data_csv_output_file_name = "project_data\Bad Muskau\data_output_ETRS89.csv"
 
-process_data(data_csv_input_file_name, data_csv_output_file_name)
-print("Geocoding complete.")
+#process_data(data_csv_input_file_name, data_csv_output_file_name)
+#print("Geocoding complete.")
     
 # coordinates for the heat supply
-x_coord = 486267.306999999971595  # Longitude
-y_coord = 5637294.910000000149012  # Latitude
+x_coord = 480198.58  # Longitude
+y_coord = 5711044.00  # Latitude
 
-generate_and_export_layers(osm_street_layer_geojson_file_name, data_csv_output_file_name, x_coord, y_coord)
+coordinates = (480198.58, 5711044.00)
+
+
+generate_and_export_layers(osm_street_layer_geojson_file_name, data_csv_output_file_name, coordinates, "project_data\Bad Muskau")
 print("Wärmenetz-Layer erfolgreich erstellt.")
