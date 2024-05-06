@@ -2,6 +2,6 @@
 "type": "FeatureCollection",
 "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::25833" } },
 "features": [
-{ "type": "Feature", "properties": { "Land": null, "Bundesland": null, "Stadt": null, "Adresse": null, "Wärmebedarf": null, "Gebäudetyp": null, "WW_Anteil": null, "Typ_Heizflächen": null, "VLT_max": null, "Steigung_Heizkurve": null, "RLT_max": null }, "geometry": { "type": "LineString", "coordinates": [ [ 499888.960454905638471, 5666315.274356909096241 ], [ 499889.960454905638471, 5666315.274356909096241 ] ] } }
+{ "type": "Feature", "properties": { "Land": null, "Bundesland": null, "Stadt": null, "Adresse": null, "Wärmebedarf": null, "Gebäudetyp": null, "WW_Anteil": null, "Typ_Heizflächen": null, "VLT_max": null, "Steigung_Heizkurve": null, "RLT_max": null }, "geometry": { "type": "LineString", "coordinates": [ [ 480198.580000000016298, 5711044.0 ], [ 480199.580000000016298, 5711044.0 ] ] } }
 ]
 }

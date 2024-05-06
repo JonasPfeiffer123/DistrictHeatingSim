@@ -4,6 +4,9 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+import geopandas as gpd
+import matplotlib.pyplot as plt
+
 from geocoding.geocodingETRS89 import process_data
 from net_generation.import_and_create_layers import generate_and_export_layers
 
@@ -11,11 +14,12 @@ from net_generation.import_and_create_layers import generate_and_export_layers
 ### Project-specific inputs ###
 
 # geojson with OSM street data needed
-osm_street_layer_geojson_file_name = "project_data\Bad Muskau\Straßen.geojson"
+osm_street_layer_geojson_file_name = "C:/Users/username\DistrictHeatSim\districtheatsim\project_data\Bad Muskau\Raumanalyse\Straßen.geojson"
     
 # data points csv file path
 #data_csv_input_file_name = "tests\data\data_input.csv"
-data_csv_output_file_name = "project_data\Bad Muskau\data_output_ETRS89.csv"
+#data_csv_output_file_name = "C:/Users/username\DistrictHeatSim\districtheatsim\project_data\Bad Muskau\Gebäudedaten\data_output_ETRS89.csv"
+data_csv_output_file_name = "C:/Users/username\DistrictHeatSim\districtheatsim\project_data\Bad Muskau\Gebäudedaten\data_output_LOD2.csv"
 
 #process_data(data_csv_input_file_name, data_csv_output_file_name)
 #print("Geocoding complete.")
@@ -24,8 +28,24 @@ data_csv_output_file_name = "project_data\Bad Muskau\data_output_ETRS89.csv"
 x_coord = 480198.58  # Longitude
 y_coord = 5711044.00  # Latitude
 
-coordinates = (480198.58, 5711044.00)
+coordinates = [(480198.58, 5711044.00)]
 
+mode = "A*STAR"
+#mode = "MST"
 
-generate_and_export_layers(osm_street_layer_geojson_file_name, data_csv_output_file_name, coordinates, "project_data\Bad Muskau")
+generate_and_export_layers(osm_street_layer_geojson_file_name, data_csv_output_file_name, coordinates, "C:/Users/username\DistrictHeatSim\districtheatsim\project_data\Bad Muskau", algorithm=mode)
 print("Wärmenetz-Layer erfolgreich erstellt.")
+
+hast = gpd.read_file("C:/Users/username\DistrictHeatSim\districtheatsim\project_data\Bad Muskau\Wärmenetz\HAST.geojson", driver="GeoJSON")
+rücklauf = gpd.read_file("C:/Users/username\DistrictHeatSim\districtheatsim\project_data\Bad Muskau\Wärmenetz\Rücklauf.geojson", driver="GeoJSON")
+vorlauf = gpd.read_file("C:/Users/username\DistrictHeatSim\districtheatsim\project_data\Bad Muskau\Wärmenetz\Vorlauf.geojson", driver="GeoJSON")
+erzeuger = gpd.read_file("C:/Users/username\DistrictHeatSim\districtheatsim\project_data\Bad Muskau\Wärmenetz\Erzeugeranlagen.geojson", driver="GeoJSON")
+
+# Plotten der geographischen Daten
+fig, ax = plt.subplots(figsize=(10, 10))  # Größe des Plots anpassen
+hast.plot(ax=ax, color='green')  # Farbe und weitere Parameter anpassen
+rücklauf.plot(ax=ax, color='blue')  # Farbe und weitere Parameter anpassen
+vorlauf.plot(ax=ax, color='red')  # Farbe und weitere Parameter anpassen
+erzeuger.plot(ax=ax, color='black')  # Farbe und weitere Parameter anpassen
+plt.title('Wärmenetz')
+plt.show()

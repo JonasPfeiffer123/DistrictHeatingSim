@@ -3,6 +3,9 @@ import geopandas as gpd
 import math
 import networkx as nx
 from shapely.geometry import LineString, Point
+from scipy.spatial import KDTree
+import numpy as np
+import time
 
 # help function
 def create_offset_points(point, distance, angle_degrees):
@@ -45,20 +48,7 @@ def generate_return_lines(layer, distance, angle_degrees, layer_lines):
             street_end_points.add(Point(street_end_point))
     return street_end_points
 
-# MST network generation
-def generate_mst(points):
-    g = nx.Graph()
-    for i, point1 in points.iterrows():
-        for j, point2 in points.iterrows():
-            if i != j:
-                distance = point1.geometry.distance(point2.geometry)
-                g.add_edge(i, j, weight=distance)
-    mst = nx.minimum_spanning_tree(g)
-    lines = [LineString([points.geometry[edge[0]], points.geometry[edge[1]]]) for edge in mst.edges()]
-    mst_gdf = gpd.GeoDataFrame(geometry=lines)
-    return mst_gdf
-
-def generate_network_fl(layer_points_fl, layer_wea, layer_lines):
+def generate_network_fl(layer_points_fl, layer_wea, layer_lines, algorithm="MST"):
     perpendicular_lines = []
     
     # Creating the offset points and vertical lines for the flow lines from layer_points_fl
@@ -81,26 +71,25 @@ def generate_network_fl(layer_points_fl, layer_wea, layer_lines):
     all_end_points = points_end_points.union(wea_end_points)
     all_end_points_gdf = gpd.GeoDataFrame(geometry=list(all_end_points))
 
-    #mode = "MST"
-    mode = "A*STAR"
-    if mode == "MST":
+    #algorithm = "MST"
+    #algorithm = "A*STAR"
+    if algorithm == "MST":
         # Creating the MST network from the endpoints
         mst_gdf = generate_mst(all_end_points_gdf)
         # Adding the vertical lines to the MST GeoDataFrame
         final_gdf = gpd.GeoDataFrame(pd.concat([mst_gdf, gpd.GeoDataFrame(geometry=perpendicular_lines)], ignore_index=True))
 
-    if mode == "A*STAR":
+    if algorithm == "A*STAR":
         road_graph = create_road_graph(layer_lines)  # Wird einmal erstellt und kann wiederverwendet werden
         a_star_gdf = generate_a_star_network(road_graph, all_end_points_gdf)
         final_gdf = gpd.GeoDataFrame(pd.concat([a_star_gdf, gpd.GeoDataFrame(geometry=perpendicular_lines)], ignore_index=True))
-        check_connectivity(final_gdf)
+        #check_connectivity(final_gdf)
         final_gdf = connect_components(final_gdf, all_end_points_gdf)
-        check_connectivity(final_gdf)
+        #check_connectivity(final_gdf)
 
     return final_gdf
 
-
-def generate_network_rl(layer_points_rl, layer_wea, fixed_distance_rl, fixed_angle_rl, layer_lines):
+def generate_network_rl(layer_points_rl, layer_wea, fixed_distance_rl, fixed_angle_rl, layer_lines, algorithm="MST"):
     perpendicular_lines = []
     
     # Creating the offset points and vertical lines for the return lines from layer_points_rl
@@ -125,25 +114,38 @@ def generate_network_rl(layer_points_rl, layer_wea, fixed_distance_rl, fixed_ang
     all_end_points = points_end_points.union(wea_end_points)
     all_end_points_gdf = gpd.GeoDataFrame(geometry=list(all_end_points))
 
-    #mode = "MST"
-    mode = "A*STAR"
-    if mode == "MST":
+    #algorithm = "MST"
+    #algorithm = "A*STAR"
+    if algorithm == "MST":
         # Creating the MST network from the endpoints
         mst_gdf = generate_mst(all_end_points_gdf)
         # Adding the vertical lines to the MST GeoDataFrame
         final_gdf = gpd.GeoDataFrame(pd.concat([mst_gdf, gpd.GeoDataFrame(geometry=perpendicular_lines)], ignore_index=True))
 
-    if mode == "A*STAR":
+    if algorithm == "A*STAR":
         road_graph = create_road_graph(layer_lines)  # Wird einmal erstellt und kann wiederverwendet werden
         a_star_gdf = generate_a_star_network(road_graph, all_end_points_gdf)
         final_gdf = gpd.GeoDataFrame(pd.concat([a_star_gdf, gpd.GeoDataFrame(geometry=perpendicular_lines)], ignore_index=True))
-        check_connectivity(final_gdf)
+        #check_connectivity(final_gdf)
         final_gdf = connect_components(final_gdf, all_end_points_gdf)
-        check_connectivity(final_gdf)
+        #check_connectivity(final_gdf)
 
     return final_gdf
 
-def find_nearest_node(graph, point, threshold=200):
+# MST network generation
+def generate_mst(points):
+    g = nx.Graph()
+    for i, point1 in points.iterrows():
+        for j, point2 in points.iterrows():
+            if i != j:
+                distance = point1.geometry.distance(point2.geometry)
+                g.add_edge(i, j, weight=distance)
+    mst = nx.minimum_spanning_tree(g)
+    lines = [LineString([points.geometry[edge[0]], points.geometry[edge[1]]]) for edge in mst.edges()]
+    mst_gdf = gpd.GeoDataFrame(geometry=lines)
+    return mst_gdf
+
+"""def find_nearest_node(graph, point, threshold=200):
     nearest_nodes = []
     node_distances = []
     for node in graph.nodes:
@@ -195,12 +197,12 @@ def generate_a_star_network(G, points_gdf):
                         print(f"Pfad zwischen Punkt {i} und Punkt {j} ist zu kurz für eine LineString.")
                 except (nx.NetworkXNoPath, ValueError) as e:
                     print(f"Kein Pfad gefunden oder Fehler aufgetreten zwischen Punkt {i} und Punkt {j}: {e}")
-    return gpd.GeoDataFrame(geometry=path_lines)
+    return gpd.GeoDataFrame(geometry=path_lines)"""
 
 def euclidean_distance(a, b):
     return Point(a).distance(Point(b))
 
-def check_connectivity(gdf):
+"""def check_connectivity(gdf):
     G = nx.Graph()
     for line in gdf.geometry:
         nodes = list(line.coords)
@@ -212,7 +214,7 @@ def check_connectivity(gdf):
         print("Das Netzwerk ist nicht vollständig verbunden.")
         # Hier könnten weitere Schritte folgen, um das Netzwerk zu verbinden
     else:
-        print("Das Netzwerk ist vollständig verbunden.")
+        print("Das Netzwerk ist vollständig verbunden.")"""
 
 def connect_components(gdf, points_gdf):
     G = nx.Graph()
@@ -261,3 +263,56 @@ def connect_components(gdf, points_gdf):
     new_lines_gdf = gpd.GeoDataFrame(geometry=new_lines)
     updated_gdf = gpd.GeoDataFrame(pd.concat([gdf, new_lines_gdf], ignore_index=True))
     return updated_gdf
+
+### neue Implementierung ###
+# Funktion zur Erstellung des KD-Baums aus den Knoten des Graphen
+def create_kd_tree(G):
+    coords = [(G.nodes[node]['pos'].x, G.nodes[node]['pos'].y) for node in G]
+    kd_tree = KDTree(coords)
+    return kd_tree, list(G.nodes)
+
+# Erweitere create_road_graph um Koordinaten zu speichern
+def create_road_graph(road_layer):
+    G = nx.Graph()
+    for idx, row in road_layer.iterrows():
+        line = row.geometry
+        nodes = list(line.coords)
+        for start, end in zip(nodes[:-1], nodes[1:]):
+            # Stelle sicher, dass die Knoten beim Erstellen die 'pos' Eigenschaft erhalten
+            if start not in G:
+                G.add_node(start, pos=Point(start))  # Hinzufügen der 'pos' Eigenschaft beim Knoten
+            if end not in G:
+                G.add_node(end, pos=Point(end))  # Hinzufügen der 'pos' Eigenschaft beim Knoten
+            G.add_edge(start, end, weight=LineString([start, end]).length)
+    return G
+
+def find_nearest_node_kdtree(kd_tree, nodes, point):
+    point_np = np.array([point.x, point.y])
+    dist, idx = kd_tree.query([point_np], k=1)
+    nearest_node = nodes[idx[0]]
+    return nearest_node
+
+def a_star_with_timeout(G, start, goal, timeout=10):
+    start_time = time.time()
+    try:
+        path = nx.astar_path(G, start, goal, heuristic=euclidean_distance)
+    except nx.NetworkXNoPath:
+        return None
+    if time.time() - start_time > timeout:
+        print("A* search timed out")
+        return None
+    return path
+
+def generate_a_star_network(G, points_gdf):
+    kd_tree, nodes = create_kd_tree(G)
+    path_lines = []
+    for i, point1 in points_gdf.iterrows():
+        start = find_nearest_node_kdtree(kd_tree, nodes, Point(point1.geometry.coords[0]))
+        for j, point2 in points_gdf.iterrows():
+            if i != j:
+                goal = find_nearest_node_kdtree(kd_tree, nodes, Point(point2.geometry.coords[0]))
+                path = a_star_with_timeout(G, start, goal)
+                if path and len(path) > 1:
+                    path_line = LineString(path)
+                    path_lines.append(path_line)
+    return gpd.GeoDataFrame(geometry=path_lines)

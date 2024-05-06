@@ -82,13 +82,16 @@ def load_layers(osm_street_layer_geojson_file, data_csv_file_name, coordinates):
         print(f"Fehler beim Laden der Layer: {e}")
         return None, None, None, None
 
-def generate_and_export_layers(osm_street_layer_geojson_file_name, data_csv_file_name, coordinates, base_path, fixed_angle=0, fixed_distance=1):
+def generate_and_export_layers(osm_street_layer_geojson_file_name, data_csv_file_name, coordinates, base_path, fixed_angle=0, fixed_distance=1, algorithm="MST"):
+    print(osm_street_layer_geojson_file_name)
+    print(data_csv_file_name)
+    print(coordinates)
     street_layer, layer_points, layer_WEA, df = load_layers(osm_street_layer_geojson_file_name, data_csv_file_name, coordinates)
     
     # Use the custom functions to generate the lines
     vl_heat_exchanger = generate_lines(layer_points, fixed_distance, fixed_angle, df)
-    vl_return_lines = generate_network_rl(layer_points, layer_WEA, fixed_distance, fixed_angle, street_layer)
-    vl_flow_lines = generate_network_fl(layer_points, layer_WEA, street_layer)
+    vl_return_lines = generate_network_rl(layer_points, layer_WEA, fixed_distance, fixed_angle, street_layer, algorithm=algorithm)
+    vl_flow_lines = generate_network_fl(layer_points, layer_WEA, street_layer, algorithm=algorithm)
     vl_heat_producer = generate_lines(layer_WEA, fixed_distance, fixed_angle)
 
     # Setting the CRS to EPSG:25833
