@@ -3,13 +3,10 @@
 - Einschätzung der Einsparung von Wärmeverbrauch und Absenkung der Vorlauftemperatur für eine Amortisation und Wirtschaftlichkeitsberechnung
     - wie werden diese Informationen/Daten gehalten?
 
-1.2 Netzgenerierung
-- Verbesserung des Algorithmus zur Netzgenerierung
-
-1.3 Datenhaltung
+1.2 Datenhaltung
 - eine geoJSON für alle Netzbestandteile?
 
-1.4 Variantengenerierung
+1.3 Variantengenerierung
 - Implementierung von Varianten durch prozentuale Reduktion oder spezifische Anpassung des Wärmebedarfs
 - Erstellung alternativer CSV-Dateien für neue Netzgenerierungen und Variantenordner für verschiedene Projekte
 

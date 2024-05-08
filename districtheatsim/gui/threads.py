@@ -183,7 +183,7 @@ class NetGenerationThread(QThread):
 
     def run(self):
         try:
-            generate_and_export_layers(self.inputs["streetLayer"], self.inputs["dataCsv"], self.inputs["coordinates"], self.base_path)
+            generate_and_export_layers(self.inputs["streetLayer"], self.inputs["dataCsv"], self.inputs["coordinates"], self.base_path, algorithm=self.inputs["generation_mode"])
 
             self.calculation_done.emit(())
         except Exception as e:

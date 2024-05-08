@@ -283,6 +283,11 @@ class LayerGenerationDialog(QDialog):
         self.coordTable.setColumnCount(2)
         self.coordTable.setHorizontalHeaderLabels(["X-Koordinate", "Y-Koordinate"])
 
+        # Auswahlmodus für Erzeugerstandort
+        self.generationModeComboBox = QComboBox(self)
+        self.generationModeComboBox.addItems(["Advanced MST", "MST"])#, "Koordinaten aus CSV laden"])
+        self.generationModeComboBox.currentIndexChanged.connect(self.toggleLocationInputMode)
+
         # Hinzufügen von Widgets zum Formularlayout
         formLayout.addRow("GeoJSON-Straßen-Layer:", self.createFileInputLayout(self.fileInput, self.fileButton))
         formLayout.addRow("Datei Gebäudestandorte:", self.createFileInputLayout(self.dataInput, self.dataCsvButton))
@@ -293,6 +298,7 @@ class LayerGenerationDialog(QDialog):
         formLayout.addRow(self.geocodeButton)
         formLayout.addRow(self.importCsvButton)
         formLayout.addRow("Koordinatentabelle:", self.coordTable)
+        formLayout.addRow("Netzgenerierungsmodus:", self.generationModeComboBox)
 
         layout.addLayout(formLayout)
 
@@ -369,7 +375,8 @@ class LayerGenerationDialog(QDialog):
         return {
             "streetLayer": self.fileInput.text(),
             "dataCsv": self.dataInput.text(),
-            "coordinates": coordinates
+            "coordinates": coordinates,
+            "generation_mode": self.generationModeComboBox.currentText()
         }
 
 class DownloadOSMDataDialog(QDialog):
