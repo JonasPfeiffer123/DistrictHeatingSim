@@ -15,6 +15,7 @@ from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QDialog, QComboBox, QPushBut
     QFormLayout, QHBoxLayout, QFileDialog, QProgressBar, QMessageBox, QLabel, QWidget, \
     QTableWidget, QTableWidgetItem
 from PyQt5.QtGui import QFont
+from PyQt5.QtCore import Qt, pyqtSignal
 
 from gui.threads import GeocodingThread
 from geocoding.geocodingETRS89 import get_coordinates, process_data
@@ -236,10 +237,23 @@ class CSVEditorDialog(QDialog):
         else:
             return None, None
    
+from PyQt5.QtWidgets import (
+    QDialog, QVBoxLayout, QFormLayout, QComboBox, QLineEdit, QPushButton,
+    QTableWidget, QTableWidgetItem, QFileDialog, QHBoxLayout, QLabel
+)
+from PyQt5.QtCore import Qt, pyqtSignal
+import pandas as pd
+from pyproj import Transformer
+
+
 class LayerGenerationDialog(QDialog):
+    accepted_inputs = pyqtSignal(dict)
+
     def __init__(self, base_path, parent=None):
         super().__init__(parent)
         self.base_path = base_path
+        self.visualization_tab = None  # Placeholder for the reference to VisualizationTab
+        self.setWindowFlags(Qt.Tool | Qt.WindowTitleHint | Qt.CustomizeWindowHint)  # Setzt das Fenster im Vordergrund, ohne es modal zu machen
         self.initUI()
 
     def initUI(self):
@@ -248,63 +262,61 @@ class LayerGenerationDialog(QDialog):
 
         layout = QVBoxLayout(self)
 
-        # Formularlayout für Eingaben
         formLayout = QFormLayout()
 
         self.fileInput, self.fileButton = self.createFileInput(f"{self.base_path}\Raumanalyse\Straßen.geojson")
-        # Eingabefelder für Dateipfade und Koordinaten
         self.dataInput, self.dataCsvButton = self.createFileInput(f"{self.base_path}\Gebäudedaten\data_output_ETRS89.csv")
 
-        # Auswahlmodus für Erzeugerstandort
         self.locationModeComboBox = QComboBox(self)
-        self.locationModeComboBox.addItems(["Koordinaten direkt eingeben", "Adresse eingeben", "Koordinaten aus csv laden"])#, "Koordinaten aus CSV laden"])
+        self.locationModeComboBox.addItems(["Koordinaten direkt eingeben", "Adresse eingeben", "Koordinaten aus csv laden"])
         self.locationModeComboBox.currentIndexChanged.connect(self.toggleLocationInputMode)
 
-        # Koordinaten direkt eingeben
+        self.coordSystemComboBox = QComboBox(self)
+        self.coordSystemComboBox.addItems(["EPSG:25833", "WGS84"])
+
         self.coordInput = QLineEdit(self)
         self.coordInput.setText("480198.58,5711044.00")
-        self.coordInput.setToolTip("Eingabe in folgender Form: 'X-Koordinate, Y-Koordinate' CRS: ESPG:25833")
+        self.coordInput.setToolTip("Eingabe in folgender Form: 'X-Koordinate, Y-Koordinate'")
         self.addCoordButton = QPushButton("Koordinate hinzufügen", self)
         self.addCoordButton.clicked.connect(self.addCoordFromInput)
 
-        # Adress-Eingabe
         self.addressInput = QLineEdit(self)
         self.addressInput.setText("Deutschland,Sachsen,Bad Muskau,Gablenzer Straße 4")
         self.addressInput.setToolTip("Eingabe in folgender Form: 'Land,Bundesland,Stadt,Adresse'")
         self.geocodeButton = QPushButton("Adresse geocodieren", self)
         self.geocodeButton.clicked.connect(self.geocodeAndAdd)
 
-        # CSV-Import
         self.importCsvButton = QPushButton("Koordinaten aus CSV laden", self)
         self.importCsvButton.clicked.connect(self.importCoordsFromCSV)
 
-        # Koordinatentabelle
+        self.deleteCoordButton = QPushButton("Ausgewählte Koordinate löschen", self)
+        self.deleteCoordButton.clicked.connect(self.deleteSelectedRow)
+
         self.coordTable = QTableWidget(self)
         self.coordTable.setColumnCount(2)
         self.coordTable.setHorizontalHeaderLabels(["X-Koordinate", "Y-Koordinate"])
 
-        # Auswahlmodus für Erzeugerstandort
         self.generationModeComboBox = QComboBox(self)
-        self.generationModeComboBox.addItems(["Advanced MST", "MST"])#, "Koordinaten aus CSV laden"])
+        self.generationModeComboBox.addItems(["Advanced MST", "MST"])
         self.generationModeComboBox.currentIndexChanged.connect(self.toggleLocationInputMode)
 
-        # Hinzufügen von Widgets zum Formularlayout
         formLayout.addRow("GeoJSON-Straßen-Layer:", self.createFileInputLayout(self.fileInput, self.fileButton))
         formLayout.addRow("Datei Gebäudestandorte:", self.createFileInputLayout(self.dataInput, self.dataCsvButton))
         formLayout.addRow("Modus für Erzeugerstandort:", self.locationModeComboBox)
+        formLayout.addRow("Koordinatensystem:", self.coordSystemComboBox)
         formLayout.addRow("Koordinaten eingeben:", self.coordInput)
         formLayout.addRow(self.addCoordButton)
         formLayout.addRow("Adresse für Geocoding:", self.addressInput)
         formLayout.addRow(self.geocodeButton)
         formLayout.addRow(self.importCsvButton)
         formLayout.addRow("Koordinatentabelle:", self.coordTable)
+        formLayout.addRow(self.deleteCoordButton)
         formLayout.addRow("Netzgenerierungsmodus:", self.generationModeComboBox)
 
         layout.addLayout(formLayout)
 
-        # OK und Abbrechen Buttons
         self.okButton = QPushButton("OK", self)
-        self.okButton.clicked.connect(self.accept)
+        self.okButton.clicked.connect(self.onAccept)
         self.cancelButton = QPushButton("Abbrechen", self)
         self.cancelButton.clicked.connect(self.reject)
 
@@ -314,7 +326,11 @@ class LayerGenerationDialog(QDialog):
         self.toggleLocationInputMode(0)
         self.setLayout(layout)
 
+    def setVisualizationTab(self, visualization_tab):
+        self.visualization_tab = visualization_tab
+
     def toggleLocationInputMode(self, index):
+        self.coordSystemComboBox.setEnabled(index == 0)
         self.coordInput.setEnabled(index == 0)
         self.addCoordButton.setEnabled(index == 0)
         self.addressInput.setEnabled(index == 1)
@@ -326,13 +342,13 @@ class LayerGenerationDialog(QDialog):
         layout.addWidget(lineEdit)
         layout.addWidget(button)
         return layout
-    
+
     def createFileInput(self, default_path):
         lineEdit = QLineEdit(default_path)
         button = QPushButton("Durchsuchen")
         button.clicked.connect(lambda: self.openFileDialog(lineEdit))
         return lineEdit, button
-    
+
     def openFileDialog(self, lineEdit):
         filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", f"{self.base_path}", "All Files (*)")
         if filename:
@@ -341,8 +357,10 @@ class LayerGenerationDialog(QDialog):
     def addCoordFromInput(self):
         coords = self.coordInput.text().split(',')
         if len(coords) == 2:
-            x, y = coords
-            self.insertRowInTable(x.strip(), y.strip())
+            x, y = map(str.strip, coords)
+            source_crs = self.coordSystemComboBox.currentText()
+            x_transformed, y_transformed = self.transform_coordinates(float(x), float(y), source_crs)
+            self.insertRowInTable(x_transformed, y_transformed)
 
     def geocodeAndAdd(self):
         address = self.addressInput.text()
@@ -358,18 +376,31 @@ class LayerGenerationDialog(QDialog):
             for _, row in data.iterrows():
                 self.insertRowInTable(str(row['UTM_X']), str(row['UTM_Y']))
 
+    def transform_coordinates(self, x, y, source_crs):
+        if source_crs == "WGS84":
+            transformer = Transformer.from_crs("EPSG:4326", "EPSG:25833", always_xy=True)
+        else:
+            transformer = Transformer.from_crs("EPSG:25833", "EPSG:25833", always_xy=True)
+        x_transformed, y_transformed = transformer.transform(x, y)
+        return x_transformed, y_transformed
+
     def insertRowInTable(self, x, y):
         row_count = self.coordTable.rowCount()
         self.coordTable.insertRow(row_count)
-        self.coordTable.setItem(row_count, 0, QTableWidgetItem(x))
-        self.coordTable.setItem(row_count, 1, QTableWidgetItem(y))
-    
+        self.coordTable.setItem(row_count, 0, QTableWidgetItem(str(x)))
+        self.coordTable.setItem(row_count, 1, QTableWidgetItem(str(y)))
+
+    def deleteSelectedRow(self):
+        selected_row = self.coordTable.currentRow()
+        if selected_row >= 0:
+            self.coordTable.removeRow(selected_row)
+
     def getInputs(self):
         coordinates = []
         for row in range(self.coordTable.rowCount()):
             x = self.coordTable.item(row, 0).text()
             y = self.coordTable.item(row, 1).text()
-            if x and y:  # Stellen Sie sicher, dass beide Felder ausgefüllt sind
+            if x and y:
                 coordinates.append((float(x), float(y)))
 
         return {
@@ -378,6 +409,11 @@ class LayerGenerationDialog(QDialog):
             "coordinates": coordinates,
             "generation_mode": self.generationModeComboBox.currentText()
         }
+
+    def onAccept(self):
+        inputs = self.getInputs()
+        self.accepted_inputs.emit(inputs)
+        self.accept()
 
 class DownloadOSMDataDialog(QDialog):
     def __init__(self, base_path, parent=None):
