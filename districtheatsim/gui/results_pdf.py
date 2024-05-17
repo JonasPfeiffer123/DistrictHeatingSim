@@ -65,7 +65,7 @@ def create_pdf(self, filename):
     # Tabelle erstellen
     # Hole die aktuellen Infrastruktur-Objekte aus dem Dialog
     values = self.netInfrastructureDialog.getValues()
-    infraObjects = self.getCurrentInfraObjects()
+    infraObjects = self.netInfrastructureDialog.getCurrentInfraObjects()
     columns = ['Beschreibung', 'Kosten', 'Technische Nutzungsdauer', 'f_Inst', 'f_W_Insp', 'Bedienaufwand', 'Gesamtannuität']
     
     infra_data = []
