@@ -4,7 +4,6 @@ import os
 import geopandas as gpd
 import pandas as pd
 import numpy as np
-import json
 import csv
 from math import radians, sin, cos, sqrt, atan2
 from shapely.geometry import box, Point
@@ -17,8 +16,10 @@ from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QDialog, QComboBox, QPushBut
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt, pyqtSignal
 
+from pyproj import Transformer
+
 from gui.threads import GeocodingThread
-from geocoding.geocodingETRS89 import get_coordinates, process_data
+from geocoding.geocodingETRS89 import get_coordinates
 from osm.import_osm_data_geojson import build_query, download_data, save_to_file
 from osm.Wärmeversorgungsgebiete import clustering_quartiere_hdbscan, postprocessing_hdbscan, allocate_overlapping_area
 from lod2.scripts.filter_LOD2 import spatial_filter_with_polygon, process_lod2, calculate_centroid_and_geocode
@@ -35,217 +36,7 @@ def get_resource_path(relative_path):
         base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     return os.path.join(base_path, relative_path)
-
-class CSVEditorDialog(QDialog):
-    def __init__(self, base_path, parent=None):
-        super().__init__(parent)
-        self.base_path = base_path
-        self.current_file_path = ''  # Variable für den aktuellen Dateipfad
-        self.initUI()
-    
-    def initUI(self):
-        #create dialog
-        self.setWindowTitle('CSV-Editor')
-        self.setGeometry(300, 300, 600, 400)
-
-        layout = QVBoxLayout(self)
-        layout.setSpacing(10)  # spacing between widgets
-        layout.setContentsMargins(10, 10, 10, 10)  # Border of the layout
-
-        # QTableWidget for CSV content
-        self.csvTable = QTableWidget()
-        layout.addWidget(self.csvTable)
-
-        # Buttons to create, open and save CSV filesn
-        createButton = QPushButton("neue Gebäude-CSV erstellen")
-        createButton.clicked.connect(self.createCSV)
-        layout.addWidget(createButton)
-
-        createCSVfromgeojsonButton = QPushButton("Gebäude-CSV aus OSM-geojson erstellen")
-        createCSVfromgeojsonButton.clicked.connect(self.createCsvFromGeoJson)
-        layout.addWidget(createCSVfromgeojsonButton)
-
-        # Zeilen hinzufügen / löschen
-        addButton = QPushButton("Zeile hinzufügen")
-        addButton.clicked.connect(self.addRow)
-        layout.addWidget(addButton)
-
-        delButton = QPushButton("Zeile löschen")
-        delButton.clicked.connect(self.delRow)
-        layout.addWidget(delButton)
-
-        openButton = QPushButton("CSV öffnen")
-        openButton.clicked.connect(self.openCSV)
-        layout.addWidget(openButton)
-
-        saveButton = QPushButton("CSV speichern")
-        saveButton.clicked.connect(self.saveCSV)
-        layout.addWidget(saveButton)
-
-        # OK und Abbrechen Buttons
-        self.okButton = QPushButton("OK", self)
-        self.okButton.clicked.connect(self.accept)
-        self.cancelButton = QPushButton("Abbrechen", self)
-        self.cancelButton.clicked.connect(self.reject)
-
-        layout.addWidget(self.okButton)
-        layout.addWidget(self.cancelButton)
-
-        # show dialog
-        self.setLayout(layout)
-
-    def createCSV(self):
-        # Definieren der vordefinierten Kopfzeile
-        headers = ['Land', 'Bundesland', 'Stadt', 'Adresse', 'Wärmebedarf', 'Gebäudetyp', 'WW_Anteil', 'Typ_Heizflächen', 'VLT_max', 'Steigung_Heizkurve', 'RLT_max']
-        default_data = ['']*len(headers)
-
-        # Öffnen des Dialogs zum Speichern der Datei
-        fname, _ = QFileDialog.getSaveFileName(self, 'Gebäude-CSV erstellen', self.base_path, 'CSV Files (*.csv);;All Files (*)')
-
-        if fname:
-            self.current_file_path = fname  # Speichern des Dateipfads
-            with open(fname, 'w', newline='', encoding='utf-8') as file:
-                writer = csv.writer(file, delimiter=';')
-                writer.writerow(headers)
-                writer.writerows(default_data)  # Hinzufügen einer leeren Datenzeile
-
-            # Öffnen der gerade erstellten CSV-Datei im Editor
-            self.openCSV(fname)
-
-    def openCSV(self, fname=None):
-        if fname is False:
-            fname, _ = QFileDialog.getOpenFileName(self, 'CSV öffnen', self.base_path, 'CSV Files (*.csv);;All Files (*)')
-        if fname:
-            self.current_file_path = fname  # Speichern des Dateipfads
-            with open(fname, 'r', encoding='utf-8') as file:
-                reader = csv.reader(file, delimiter=';')
-                headers = next(reader)
-                self.csvTable.setRowCount(0)
-                self.csvTable.setColumnCount(len(headers))
-                self.csvTable.setHorizontalHeaderLabels(headers)
-
-                for row_data in reader:
-                    row = self.csvTable.rowCount()
-                    self.csvTable.insertRow(row)
-                    for column, data in enumerate(row_data):
-                        item = QTableWidgetItem(data)
-                        self.csvTable.setItem(row, column, item)
-
-    def addRow(self):
-        rowCount = self.csvTable.rowCount()
-        self.csvTable.insertRow(rowCount)
-
-    def delRow(self):
-        currentRow = self.csvTable.currentRow()
-        if currentRow > -1:  # Stellen Sie sicher, dass eine Zeile ausgewählt ist
-            self.csvTable.removeRow(currentRow)
-        else:
-            QMessageBox.warning(self, "Warnung", "Bitte wählen Sie eine Zeile zum Löschen aus.", QMessageBox.Ok)
-                        
-    def saveCSV(self):
-        if self.current_file_path:
-            with open(self.current_file_path, 'w', newline='', encoding='utf-8') as file:
-                writer = csv.writer(file, delimiter=';')
-                headers = [self.csvTable.horizontalHeaderItem(i).text() for i in range(self.csvTable.columnCount())]
-                writer.writerow(headers)
-
-                for row in range(self.csvTable.rowCount()):
-                    row_data = [self.csvTable.item(row, column).text() if self.csvTable.item(row, column) else '' for column in range(self.csvTable.columnCount())]
-                    if any(row_data):  # Überprüfen, ob die Zeile nicht leer ist
-                        writer.writerow(row_data)
-        else:
-            QMessageBox.warning(self, "Warnung", "Es wurde keine Datei zum Speichern ausgewählt oder erstellt.", QMessageBox.Ok)
-
-    def createCsvFromGeoJson(self):
-        try:
-            geojson_file, _ = QFileDialog.getOpenFileName(self, "geoJSON auswählen", "", "All Files (*)")
-            csv_file = f"{self.base_path}\Gebäudedaten\generated_building_data.csv"
-            with open(geojson_file, 'r') as geojson_file:
-                data = json.load(geojson_file)
-            
-            with open(csv_file, 'w', encoding='utf-8', newline='') as csvfile:
-                fieldnames = ["Land", "Bundesland", "Stadt", "Adresse", "Wärmebedarf", "Gebäudetyp", "WW_Anteil", "Typ_Heizflächen", 
-                              "VLT_max", "Steigung_Heizkurve", "RLT_max", "UTM_X", "UTM_Y"]
-                writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter=";")
-                writer.writeheader()
-
-                for feature in data['features']:
-                    if feature['geometry']['type'] == 'MultiPolygon':
-                        for polygon_coords in feature['geometry']['coordinates']:
-                            centroid = self.calculateCentroid(polygon_coords)
-                            writer.writerow({
-                                "Land": "",
-                                "Bundesland": "",
-                                "Stadt": "",
-                                "Adresse": "",
-                                "Wärmebedarf": 30000,
-                                "Gebäudetyp": "HMF",
-                                "WW_Anteil": 0.2,
-                                "Typ_Heizflächen": "HK",
-                                "VLT_max": 70,
-                                "Steigung_Heizkurve": 1.5,
-                                "RLT_max": 55,
-                                "UTM_X": centroid[0],
-                                "UTM_Y": centroid[1]
-                            })
-                    elif feature['geometry']['type'] == 'Polygon':
-                        centroid = self.calculateCentroid(feature['geometry']['coordinates'])
-                        writer.writerow({
-                                "Land": "",
-                                "Bundesland": "",
-                                "Stadt": "",
-                                "Adresse": "",
-                                "Wärmebedarf": 30000,
-                                "Gebäudetyp": "HMF",
-                                "WW_Anteil": 0.2,
-                                "Typ_Heizflächen": "HK",
-                                "VLT_max": 70,
-                                "Steigung_Heizkurve": 1.5,
-                                "RLT_max": 55,
-                                "UTM_X": centroid[0],
-                                "UTM_Y": centroid[1]
-                            })
-
-            # Öffnen der gerade erstellten CSV-Datei im Editor
-            self.openCSV(csv_file)
-
-            QMessageBox.information(self, "Info", f"CSV-Datei wurde erfolgreich erstellt und unter {self.base_path}/Gebäudedaten/generated_building_data.csv gespeichert")
-        except Exception as e:
-            QMessageBox.critical(self, "Fehler", f"Ein Fehler ist aufgetreten: {str(e)}")
-    
-    def calculateCentroid(self, coordinates):
-        x_sum = 0
-        y_sum = 0
-        total_points = 0
-
-        if isinstance(coordinates[0], float):
-            x_sum += coordinates[0]
-            y_sum += coordinates[1]
-            total_points += 1
-        else:
-            for item in coordinates:
-                x, y = self.calculateCentroid(item)
-                if x is not None and y is not None:
-                    x_sum += x
-                    y_sum += y
-                    total_points += 1
-
-        if total_points > 0:
-            centroid_x = x_sum / total_points
-            centroid_y = y_sum / total_points
-            return centroid_x, centroid_y
-        else:
-            return None, None
    
-from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QFormLayout, QComboBox, QLineEdit, QPushButton,
-    QTableWidget, QTableWidgetItem, QFileDialog, QHBoxLayout, QLabel
-)
-from PyQt5.QtCore import Qt, pyqtSignal
-import pandas as pd
-from pyproj import Transformer
-
-
 class LayerGenerationDialog(QDialog):
     accepted_inputs = pyqtSignal(dict)
 

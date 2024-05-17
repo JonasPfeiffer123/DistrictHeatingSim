@@ -5,7 +5,6 @@ import geopandas as gpd
 import pandas as pd
 from shapely.geometry import Point
 
-from PyQt5.QtWebChannel import QWebChannel
 from PyQt5.QtCore import pyqtSignal, QUrl
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QMenuBar, QAction, QFileDialog, \
     QHBoxLayout, QListWidget, QDialog, QProgressBar, QColorDialog, QListWidgetItem, QMessageBox
@@ -14,7 +13,7 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 import folium
 
-from gui.visualization_dialogs import CSVEditorDialog, LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog, SpatialAnalysisDialog, GeocodeAddressesDialog, ProcessLOD2DataDialog
+from gui.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog, SpatialAnalysisDialog, GeocodeAddressesDialog, ProcessLOD2DataDialog
 from gui.threads import NetGenerationThread, FileImportThread
 
 # Tab class
@@ -40,10 +39,6 @@ class VisualizationTab(QWidget):
         self.menuBar = QMenuBar(self)
         self.menuBar.setFixedHeight(30)
         fileMenu = self.menuBar.addMenu('Datei')
-
-        csvEditAction = QAction('CSV erstellen/bearbeiten', self)
-        csvEditAction.triggered.connect(self.openCsvEditorDialog)
-        fileMenu.addAction(csvEditAction)
 
         downloadAction = QAction('Adressdaten geocodieren', self)
         downloadAction.triggered.connect(self.openGeocodeAdressesDialog)
@@ -107,11 +102,6 @@ class VisualizationTab(QWidget):
 
     def connect_signals(self, calculation_tab):
         calculation_tab.data_added.connect(self.loadNetData)
-
-    def openCsvEditorDialog(self):
-        dialog = CSVEditorDialog(self.base_path, self)
-        if dialog.exec_() == QDialog.Accepted:
-            pass
     
     def openGeocodeAdressesDialog(self):
         dialog = GeocodeAddressesDialog(self.base_path, self)
