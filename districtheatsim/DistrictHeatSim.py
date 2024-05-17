@@ -5,6 +5,7 @@ from PyQt5.QtCore import QObject, pyqtSignal
 from gui.visualization_tab import VisualizationTab
 from gui.calculation_tab import CalculationTab
 from gui.mix_design_tab import MixDesignTab
+from gui.project_tab import ProjectTab
 
 # defines the map path
 def get_resource_path(relative_path):
@@ -17,33 +18,6 @@ def get_resource_path(relative_path):
         base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'DistrictHeatSim')
 
     return os.path.join(base_path, relative_path)
-
-class StartDialog(QDialog):
-    def __init__(self, parent=None):
-        super(StartDialog, self).__init__(parent)
-        self.parent = parent
-
-        self.setWindowTitle("Projekt Auswahl")
-        self.setGeometry(100, 100, 300, 100)
-        layout = QVBoxLayout()
-
-        self.openProjectBtn = QPushButton("Projekt öffnen")
-        self.newProjectBtn = QPushButton("Neues Projekt erstellen")
-        layout.addWidget(self.openProjectBtn)
-        layout.addWidget(self.newProjectBtn)
-
-        self.setLayout(layout)
-
-        self.openProjectBtn.clicked.connect(self.openProject)
-        self.newProjectBtn.clicked.connect(self.newProject)
-
-    def openProject(self):
-        self.parent.openExistingProject()
-        self.accept()
-
-    def newProject(self):
-        self.parent.createNewProject()
-        self.accept()
 
 class CentralDataManager(QObject):
     project_folder_changed = pyqtSignal(str)  # definition of the signal
@@ -71,12 +45,11 @@ class HeatSystemDesignGUI(QWidget):
         self.projectFolderPath = None  # Initialisierung des Projektordnerpfads
 
         self.initUI()
-
-        self.data_manager.project_folder_changed.connect(self.calcTab.updateDefaultPath)
+        
+        self.data_manager.project_folder_changed.connect(self.projectTab.updateDefaultPath)
         self.data_manager.project_folder_changed.connect(self.visTab.updateDefaultPath)
+        self.data_manager.project_folder_changed.connect(self.calcTab.updateDefaultPath)
         self.data_manager.project_folder_changed.connect(self.mixDesignTab.updateDefaultPath)
-
-        self.showStartDialog()
 
     def createNewProject(self):
         folder_path = QFileDialog.getExistingDirectory(self, "Speicherort für neues Projekt wählen")
@@ -103,17 +76,6 @@ class HeatSystemDesignGUI(QWidget):
         self.data_manager.set_project_folder(path)
         self.folderLabel.setText(f"Ausgewählter Projektordner: {path}")
 
-    def showStartDialog(self):
-        if self.projectFolderPath is None:
-            self.projectFolderPath = self.data_manager.project_folder  # Verwenden Sie den Standardordner, wenn kein Projektordner ausgewählt wurde
-        self.startDialog = StartDialog(self)
-        if self.startDialog.exec_() == QDialog.Accepted:
-            if self.projectFolderPath:
-                self.data_manager.set_project_folder(self.projectFolderPath)
-                self.folderLabel.setText(f"Ausgewählter Projektordner: {self.projectFolderPath}")
-            else:
-                self.folderLabel.setText("Kein Ordner ausgewählt")
-
     def initUI(self):
         self.setWindowTitle("DistrictHeatSim")
         self.setGeometry(100, 100, 800, 600)  # Optional, standard size before full-screen
@@ -125,11 +87,13 @@ class HeatSystemDesignGUI(QWidget):
         tabWidget = QTabWidget()
         self.layout1.addWidget(tabWidget)
 
+        self.projectTab = ProjectTab(self.data_manager)
         self.visTab = VisualizationTab(self.data_manager)
         self.calcTab = CalculationTab(self.data_manager)
         self.mixDesignTab = MixDesignTab(self.data_manager)
 
         # Adding tabs to the tab widget
+        tabWidget.addTab(self.projectTab, "Projektdefinition")
         tabWidget.addTab(self.visTab, "Räumliche Analyse")
         tabWidget.addTab(self.calcTab, "Wärmenetzberechnung")
         tabWidget.addTab(self.mixDesignTab, "Erzeugerauslegung und Wirtschftlichkeitrechnung")
