@@ -1,6 +1,6 @@
 import sys
 import os
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTabWidget, QMenuBar, QAction, QFileDialog, QLabel, QDialog, QPushButton, QMessageBox, QInputDialog
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTabWidget, QMenuBar, QAction, QFileDialog, QLabel, QMessageBox, QInputDialog
 from PyQt5.QtCore import QObject, pyqtSignal
 from gui.visualization_tab import VisualizationTab
 from gui.calculation_tab import CalculationTab

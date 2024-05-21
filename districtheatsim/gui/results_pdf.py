@@ -87,14 +87,14 @@ def create_pdf(self, filename):
                 f_Inst = float(values.get(f"{obj}_f_inst", 0))
                 f_W_Insp = float(values.get(f"{obj}_f_w_insp", 0))
                 Bedienaufwand = float(values.get(f"{obj}_bedienaufwand", 0))
-                annuität = self.calc_annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand)
+                annuität = self.costTab.calc_annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand)
     
         row_data.append("{:.0f}".format(annuität))
 
         infra_data.append(row_data)
 
     # Summenzeile hinzufügen
-    summen_row = ["Summe Infrastruktur", "{:.0f}".format(self.summe_investitionskosten), "", "", "", "", "{:.0f}".format(self.summe_annuität)]
+    summen_row = ["Summe Infrastruktur", "{:.0f}".format(self.costTab.summe_investitionskosten), "", "", "", "", "{:.0f}".format(self.costTab.summe_annuität)]
     infra_data.append(summen_row)
 
     # Tabelle formatieren
@@ -139,8 +139,8 @@ def create_pdf(self, filename):
         ("Stromerzeugung (MWh)", f"{self.results['Strommenge']:.0f}"),
         ("Strombedarf (MWh)", f"{self.results['Strombedarf']:.0f}"),
         ("Wärmegestehungskosten Erzeugeranlagen (€/MWh)", f"{self.results['WGK_Gesamt']:.2f}"),
-        ("Wärmegestehungskosten Netzinfrastruktur (€/MWh)", f"{self.WGK_Infra:.2f}"),
-        ("Wärmegestehungskosten Gesamt (€/MWh)", f"{self.WGK_Gesamt:.2f}")
+        ("Wärmegestehungskosten Netzinfrastruktur (€/MWh)", f"{self.resultTab.WGK_Infra:.2f}"),
+        ("Wärmegestehungskosten Gesamt (€/MWh)", f"{self.resultTab.WGK_Gesamt:.2f}")
     ]
 
     # Tabelle für die zusätzlichen Informationen erstellen
@@ -160,7 +160,7 @@ def create_pdf(self, filename):
     story.append(Spacer(1, 12))
 
     # Diagramme als Bilder hinzufügen
-    for figure in [self.figure1, self.figure2]:
+    for figure in [self.resultTab.figure1]:
         img_buffer = BytesIO()
         figure.savefig(img_buffer, format='png', bbox_inches='tight', dpi=300)
         img_buffer.seek(0)
