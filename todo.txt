@@ -85,8 +85,6 @@
 
     Verbesserung der Usability
         Optimierung der Benutzeroberfläche zur besseren Bedienbarkeit und Benutzerfreundlichkeit.
-    Auswahl von Koordinaten aus der Karte
-        Implementierung einer Funktion zur Auswahl von Koordinaten direkt aus einer Karte.
 
 5.2 Präsentation auf GitHub
 
@@ -122,3 +120,6 @@
         Implementierung einer PV-Klasse zur Berechnung der Stromerzeugung.
         Option zur Auslesung von Fläche, Orientierung und Neigung der Solarthermie- und PV-Anlagen aus LOD2-Daten.
 
+Eränzung CO2-Faktoren 
+
+komlpettes Redesign UI Wirtschaftlichkeitsberechnung

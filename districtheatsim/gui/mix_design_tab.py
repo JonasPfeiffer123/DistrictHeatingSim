@@ -1,11 +1,9 @@
 import itertools
 import pandas as pd
-
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QLineEdit, QListWidget, QDialog, QProgressBar, \
-    QMessageBox, QFileDialog, QMenuBar, QScrollArea, QAction, QAbstractItemView, QTableWidget, QTableWidgetItem, QHeaderView)
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QLineEdit, QListWidget, QDialog, QProgressBar,
+                             QMessageBox, QFileDialog, QMenuBar, QScrollArea, QAction, QAbstractItemView, QTableWidget, QTableWidgetItem, QHeaderView)
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QFont
 
@@ -78,11 +76,12 @@ class MixDesignTab(QWidget):
         mainLayout.addWidget(self.progressBar)
 
         mainScrollArea.setWidget(mainWidget)
-        
+
         tabLayout = QVBoxLayout(self)
-        tabLayout.addWidget(mainScrollArea)
+        tabLayout.addWidget(self.menuBar)  # Menüleiste zuerst hinzufügen
+        tabLayout.addWidget(mainScrollArea)  # Scrollbereich darunter hinzufügen
         self.setLayout(tabLayout)
-    
+
     def setupMenu(self):
         # Erstellen der Menüleiste
         self.menuBar = QMenuBar(self)
@@ -117,8 +116,8 @@ class MixDesignTab(QWidget):
         addHeatGeneratorMenu = self.menuBar.addMenu('Wärmeerzeuger hinzufügen')
 
         # Liste der verfügbaren Wärmeerzeuger
-        heatGenerators = ["Solarthermie", "BHKW", "Holzgas-BHKW", "Geothermie", "Abwärme", \
-                          "Flusswasser", "Biomassekessel", "Gaskessel"]
+        heatGenerators = ["Solarthermie", "BHKW", "Holzgas-BHKW", "Geothermie", "Abwärme", 
+                        "Flusswasser", "Biomassekessel", "Gaskessel"]
         # Aktionen für jeden Wärmeerzeuger erstellen
         for generator in heatGenerators:
             action = QAction(generator, self)
@@ -430,7 +429,13 @@ class MixDesignTab(QWidget):
 
         self.resultLabel = QLabel('Übersicht Erzeugung')
         self.mainLayout.addWidget(self.resultLabel)
+
+        # Hier die neue HBox für die ResultsTable und das Diagramm hinzufügen
+        self.resultsAndPieChartLayout = QHBoxLayout()
+        self.mainLayout.addLayout(self.resultsAndPieChartLayout)
+        
         self.setupResultsTable()
+        self.setupPieChart()
 
         self.resultLabel = QLabel('Ergebnisse Wirtschaftlichkeit')
         self.mainLayout.addWidget(self.resultLabel)
@@ -442,7 +447,7 @@ class MixDesignTab(QWidget):
         self.techDataTable.setColumnCount(4)  # Anpassen an die Anzahl der benötigten Spalten
         self.techDataTable.setHorizontalHeaderLabels(['Name', 'Dimensionen', 'Kosten', 'Gesamtkosten'])
         self.mainLayout.addWidget(self.techDataTable)
-    
+
     def updateTechDataTable(self, tech_objects):
         self.techDataTable.setRowCount(len(tech_objects))
 
@@ -507,7 +512,7 @@ class MixDesignTab(QWidget):
         self.resultsTable.setColumnCount(4)  # Anzahl der Spalten
         self.resultsTable.setHorizontalHeaderLabels(['Technologie', 'Wärmemenge (MWh)', 'Kosten (€/MWh)', 'Anteil (%)'])
         self.resultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)  # Spaltenbreite anpassen
-        self.mainLayout.addWidget(self.resultsTable)
+        self.resultsAndPieChartLayout.addWidget(self.resultsTable)
 
     def showResultsInTable(self, results):
         self.resultsTable.setRowCount(len(results['techs']))  # Zeilenanzahl basierend auf der Anzahl der Technologien
@@ -568,7 +573,7 @@ class MixDesignTab(QWidget):
     ### Setup Diagramm-Plots ###
     def setupDiagrams(self, mainLayout):
         diagramScrollArea, diagramWidget, diagramLayout = self.setupDiagramScrollArea()
-        self.setupFigures(diagramLayout)
+        self.figure1, self.canvas1 = self.addFigure(diagramLayout)
         diagramScrollArea.setWidget(diagramWidget)
         mainLayout.addWidget(diagramScrollArea)
 
@@ -581,17 +586,20 @@ class MixDesignTab(QWidget):
         diagramLayout = QVBoxLayout(diagramWidget)
 
         return diagramScrollArea, diagramWidget, diagramLayout
-    
-    def setupFigures(self, diagramLayout):
-        self.figure1, self.canvas1 = self.addFigure(diagramLayout)
-        self.figure2, self.canvas2 = self.addFigure(diagramLayout)
 
     def addFigure(self, layout):
         figure = Figure(figsize=(8, 6))  # Breite und Höhe in Zoll einstellen
         canvas = FigureCanvas(figure)
-        canvas.setMinimumSize(800, 600)  # Größe in Pixel
+        canvas.setMinimumSize(400, 400)  # Größe in Pixel
         layout.addWidget(canvas)
         return figure, canvas
+    
+    def setupPieChart(self):
+        # Kreisdiagramm erstellen
+        self.pieChartFigure = Figure(figsize=(6, 6))
+        self.pieChartCanvas = FigureCanvas(self.pieChartFigure)
+        self.pieChartCanvas.setMinimumSize(800, 600)  # Größe in Pixel
+        self.resultsAndPieChartLayout.addWidget(self.pieChartCanvas)
         
     ### Berechnungsfunktionen ###
     def optimize(self):
@@ -676,12 +684,10 @@ class MixDesignTab(QWidget):
             self.createPlotControlDropdown()
 
         self.figure1.clear()
-        self.figure2.clear()
-
         self.plotStackPlot(self.figure1, results['time_steps'], results['Wärmeleistung_L'], results['techs'], results['colors'], results['Last_L'])
-        self.plotPieChart(self.figure2, results['Anteile'], results['techs'], results['colors'])
         self.canvas1.draw()
-        self.canvas2.draw()
+
+        self.updatePieChart()
 
     def plotStackPlot(self, figure, t, data, labels, colors, Last):
         ax = figure.add_subplot(111)
@@ -696,21 +702,6 @@ class MixDesignTab(QWidget):
         ax1 = self.figure1.gca()  # Get current axis
         print(Last)
         ax1.plot(t, Last, color='blue')  # Zeichnen der Last_L Linie
-
-    def plotPieChart(self, figure, Anteile, labels, colors):
-        ax = figure.add_subplot(111)
-
-        # Überprüfen, ob die Summe der Anteile weniger als 1 (100 %) beträgt
-        summe = sum(Anteile)
-        if summe < 1:
-            # Fügen Sie den fehlenden Anteil hinzu, um die Lücke darzustellen
-            Anteile.append(1 - summe)
-            labels.append("ungedeckter Bedarf")  # Oder einen anderen passenden Text für den leeren Bereich
-
-        ax.pie(Anteile, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90)
-        ax.set_title("Anteile Wärmeerzeugung")
-        ax.legend(loc='lower left')
-        ax.axis("equal")  # Stellt sicher, dass der Pie-Chart kreisförmig bleibt
 
     def updatePlot(self):
         self.figure1.clear()
@@ -735,6 +726,26 @@ class MixDesignTab(QWidget):
         ax.legend(loc='upper left')
         ax.grid()
         self.canvas1.draw()
+
+    def updatePieChart(self):
+        # Daten für das Kreisdiagramm
+        Anteile = self.results['Anteile']
+        labels = self.results['techs']
+        colors = self.results['colors']
+        summe = sum(Anteile)
+        if summe < 1:
+            # Fügen Sie den fehlenden Anteil hinzu, um die Lücke darzustellen
+            Anteile.append(1 - summe)
+            labels.append("ungedeckter Bedarf")  # Oder einen anderen passenden Text für den leeren Bereich
+
+        self.pieChartFigure.clear()
+        ax = self.pieChartFigure.add_subplot(111)
+        ax.pie(Anteile, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90)
+        ax.set_title("Anteile Wärmeerzeugung")
+        ax.legend(loc='lower left')
+        ax.axis("equal")  # Stellt sicher, dass der Pie-Chart kreisförmig bleibt
+
+        self.pieChartCanvas.draw()
 
     ### Dropdown Diagramm ###
     def createPlotControlDropdown(self):
