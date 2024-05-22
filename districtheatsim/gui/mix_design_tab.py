@@ -128,6 +128,7 @@ class MixDesignTab(QWidget):
         self.kapitalzins = values['Kapitalzins in %']
         self.preissteigerungsrate = values['Preissteigerungsrate in %']
         self.betrachtungszeitraum = values['Betrachtungszeitraum in a']
+        self.stundensatz = values['Stundensatz in €/h']
 
     def updateTemperatureData(self):
         TRY = self.temperatureDataDialog.getValues()
@@ -184,7 +185,7 @@ class MixDesignTab(QWidget):
             self.calculationThread = CalculateMixThread(
                 filename, load_scale_factor, self.try_filename, self.cop_filename, self.gaspreis, 
                 self.strompreis, self.holzpreis, self.BEW, self.techTab.tech_objects, optimize, 
-                self.kapitalzins, self.preissteigerungsrate, self.betrachtungszeitraum)
+                self.kapitalzins, self.preissteigerungsrate, self.betrachtungszeitraum, self.stundensatz)
             
             self.calculationThread.calculation_done.connect(self.on_calculation_done)
             self.calculationThread.calculation_error.connect(self.on_calculation_error)

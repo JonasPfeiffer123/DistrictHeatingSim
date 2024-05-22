@@ -432,6 +432,11 @@ class EconomicParametersDialog(QDialog):
         self.leftLayout.addWidget(self.betrachtungszeitraumLabel)
         self.leftLayout.addWidget(self.betrachtungszeitraumInput)
 
+        self.stundensatzLabel = QLabel("Stundensatz Wartung und Instandhaltung (€/h):", self)
+        self.stundensatzInput = QLineEdit(self)
+        self.leftLayout.addWidget(self.stundensatzLabel)
+        self.leftLayout.addWidget(self.stundensatzInput)
+
         self.BEWLabel = QLabel("Berücksichtigung BEW-Förderung?:", self)
         self.BEWComboBox = QComboBox(self)
         self.BEWComboBox.addItems(["Nein", "Ja"])
@@ -463,6 +468,7 @@ class EconomicParametersDialog(QDialog):
         self.kapitalzinsInput.setText("5")
         self.preissteigerungsrateInput.setText("3")
         self.betrachtungszeitraumInput.setText("20")
+        self.stundensatzInput.setText("45")
         self.BEWComboBox.setCurrentIndex(0)  # Setzt die Auswahl auf "Nein"
 
     def connectSignals(self):
@@ -479,6 +485,7 @@ class EconomicParametersDialog(QDialog):
         kapitalzins = self.kapitalzinsInput.text()
         preissteigerungsrate = self.preissteigerungsrateInput.text()
         betrachtungszeitraum = self.betrachtungszeitraumInput.text()
+        stundensatz = self.stundensatzInput.text()
 
         if not (gas_price and strom_price and holz_price and kapitalzins and preissteigerungsrate and betrachtungszeitraum):
             self.showErrorMessage("Alle Felder müssen ausgefüllt sein.")
@@ -491,6 +498,7 @@ class EconomicParametersDialog(QDialog):
             float(kapitalzins)
             float(preissteigerungsrate)
             int(betrachtungszeitraum)
+            float(stundensatz)
         except ValueError:
             self.showErrorMessage("Ungültige Eingabe. Bitte geben Sie numerische Werte ein.")
             return
@@ -536,6 +544,7 @@ class EconomicParametersDialog(QDialog):
             'Kapitalzins in %': float(self.kapitalzinsInput.text()),
             'Preissteigerungsrate in %': float(self.preissteigerungsrateInput.text()),
             'Betrachtungszeitraum in a': int(self.betrachtungszeitraumInput.text()),
+            'Stundensatz in €/h': float(self.stundensatzInput.text())
         }
 
 class KostenBerechnungDialog(QDialog):

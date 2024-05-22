@@ -123,7 +123,8 @@ class CostTab(QWidget):
         q = 1 + (self.parent.kapitalzins / 100)
         r = 1 + (self.parent.preissteigerungsrate / 100)
         t = int(self.parent.betrachtungszeitraum)
-        return annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand, q=q, r=r, T=t)
+        stundensatz = self.parent.stundensatz
+        return annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand, q=q, r=r, T=t, stundensatz=stundensatz)
     
     ### Setup der Berechnungsergebnistabellen ###
     def setupCalculationOptimization(self):

@@ -253,7 +253,7 @@ class CalculateMixThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(Exception)
 
-    def __init__(self, filename, load_scale_factor, try_filename, cop_filename, gas_price, electricity_price, wood_price, BEW, tech_objects, optimize, interest_on_capital, price_increase_rate, period):
+    def __init__(self, filename, load_scale_factor, try_filename, cop_filename, gas_price, electricity_price, wood_price, BEW, tech_objects, optimize, interest_on_capital, price_increase_rate, period, wage):
         super().__init__()
         self.filename = filename
         self.load_scale_factor = load_scale_factor
@@ -268,6 +268,7 @@ class CalculateMixThread(QThread):
         self.interest_on_capital = interest_on_capital
         self.price_increase_rate = price_increase_rate
         self.period = period
+        self.wage = wage
 
     def run(self):
         try:
@@ -301,10 +302,10 @@ class CalculateMixThread(QThread):
 
             if self.optimize:
                 self.tech_objects = optimize_mix(self.tech_objects, initial_data, calc1, calc2, TRY, COP_data, self.gas_price, self.electricity_price, self.wood_price, self.BEW, \
-                                            kapitalzins=self.interest_on_capital, preissteigerungsrate=self.price_increase_rate, betrachtungszeitraum=self.period )
+                                            kapitalzins=self.interest_on_capital, preissteigerungsrate=self.price_increase_rate, betrachtungszeitraum=self.period, stundensatz=self.wage)
 
             result = Berechnung_Erzeugermix(self.tech_objects, initial_data, calc1, calc2, TRY, COP_data, self.gas_price, self.electricity_price, self.wood_price, self.BEW, \
-                                            kapitalzins=self.interest_on_capital, preissteigerungsrate=self.price_increase_rate, betrachtungszeitraum=self.period )
+                                            kapitalzins=self.interest_on_capital, preissteigerungsrate=self.price_increase_rate, betrachtungszeitraum=self.period, stundensatz=self.wage)
 
             self.calculation_done.emit(result)
         except Exception as e:

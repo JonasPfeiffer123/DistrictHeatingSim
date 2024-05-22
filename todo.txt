@@ -121,5 +121,3 @@
         Option zur Auslesung von Fläche, Orientierung und Neigung der Solarthermie- und PV-Anlagen aus LOD2-Daten.
 
 Eränzung CO2-Faktoren 
-
-komlpettes Redesign UI Wirtschaftlichkeitsberechnung
