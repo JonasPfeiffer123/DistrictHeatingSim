@@ -1,4 +1,6 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QScrollArea, QTableWidget, QTableWidgetItem
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QScrollArea, QTableWidget, QTableWidgetItem, QHeaderView)
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtGui import QFont
 
@@ -12,58 +14,66 @@ class CostTab(QWidget):
         self.data_manager = data_manager
         self.parent = parent
         self.results = {}
+        self.tech_objects = []
+        self.summe_tech_kosten = 0  # Initialisieren der Variable
+
         # Connect to the data manager signal
         self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
         self.updateDefaultPath(self.data_manager.project_folder)
-        self.tech_objects = []
+        
         self.initUI()
 
     def updateDefaultPath(self, new_base_path):
         self.base_path = new_base_path
 
     def initUI(self):
-        mainScrollArea = QScrollArea(self)
-        mainScrollArea.setWidgetResizable(True)
-
-        mainWidget = QWidget()
-        mainLayout = QVBoxLayout(mainWidget)
-
-        self.mainLayout = mainLayout
-        self.setupInfrastructureCostsTable(mainLayout)
+        self.createMainScrollArea()
+        self.setupInfrastructureCostsTable()
         self.setupCalculationOptimization()
+        self.setupCostCompositionChart()
+        self.setLayout(self.createMainLayout())
+        
+        # Erstellen des Summenlabels
+        self.totalCostLabel = QLabel()
+        self.mainLayout.addWidget(self.totalCostLabel)
 
-        mainScrollArea.setWidget(mainWidget)
+    def createMainScrollArea(self):
+        self.mainScrollArea = QScrollArea(self)
+        self.mainScrollArea.setWidgetResizable(True)
+        self.mainWidget = QWidget()
+        self.mainLayout = QVBoxLayout(self.mainWidget)
+        self.mainScrollArea.setWidget(self.mainWidget)
 
-        tabLayout = QVBoxLayout(self)
-        tabLayout.addWidget(mainScrollArea)  # Scrollbereich darunter hinzufügen
-        self.setLayout(tabLayout)
+    def createMainLayout(self):
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.mainScrollArea)
+        return layout
 
-    def addLabel(self, layout, text):
+    def addLabel(self, text):
         label = QLabel(text)
-        layout.addWidget(label)
+        self.mainLayout.addWidget(label)
     
     ### Infrastrukturtabellen ###
-    def setupInfrastructureCostsTable(self, mainLayout):
-        self.addLabel(mainLayout, 'Wärmenetzinfrastruktur')
-        self.infrastructure_costs = self.parent.netInfrastructureDialog.getValues()
+    def setupInfrastructureCostsTable(self):
+        self.addLabel('Wärmenetzinfrastruktur')
         self.infrastructureCostsTable = QTableWidget()
         self.infrastructureCostsTable.setColumnCount(7)  # Eine zusätzliche Spalte für Annuität
         self.infrastructureCostsTable.setHorizontalHeaderLabels(['Beschreibung', 'Kosten', 'Technische Nutzungsdauer', 'f_Inst', 'f_W_Insp', 'Bedienaufwand', 'Annuität'])
-        mainLayout.addWidget(self.infrastructureCostsTable)
-        self.updateInfrastructureTable(self.infrastructure_costs)  # Tabelle mit Standardwerten füllen
+        self.infrastructureCostsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.mainLayout.addWidget(self.infrastructureCostsTable)
 
-    def updateInfrastructureTable(self, values):
-        # Hole die aktuellen Infrastruktur-Objekte aus dem Dialog
+    def updateInfrastructureTable(self):
+        values = self.parent.netInfrastructureDialog.getValues()
         infraObjects = self.parent.netInfrastructureDialog.getCurrentInfraObjects()
         columns = ['Beschreibung', 'Kosten', 'Technische Nutzungsdauer', 'f_Inst', 'f_W_Insp', 'Bedienaufwand', 'Gesamtannuität']
 
         self.infrastructureCostsTable.setRowCount(len(infraObjects))
-        self.infrastructureCostsTable.setColumnCount(len(columns))  # Hier 7 Spalten setzen
+        self.infrastructureCostsTable.setColumnCount(len(columns))
         self.infrastructureCostsTable.setHorizontalHeaderLabels(columns)
 
-        # Summen initialisieren
         self.summe_investitionskosten = 0
         self.summe_annuität = 0
+        self.individual_costs = []
 
         for i, obj in enumerate(infraObjects):
             self.infrastructureCostsTable.setItem(i, 0, QTableWidgetItem(obj.capitalize()))
@@ -72,37 +82,36 @@ class CostTab(QWidget):
                 value = values.get(key, "")
                 self.infrastructureCostsTable.setItem(i, j, QTableWidgetItem(str(value)))
 
-            # Annuität berechnen und hinzufügen
             A0 = float(values.get(f"{obj}_kosten", 0))
             TN = int(values.get(f"{obj}_technische nutzungsdauer", 0))
             f_Inst = float(values.get(f"{obj}_f_inst", 0))
             f_W_Insp = float(values.get(f"{obj}_f_w_insp", 0))
             Bedienaufwand = float(values.get(f"{obj}_bedienaufwand", 0))
             annuität = self.calc_annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand)
-            self.infrastructureCostsTable.setItem(i, 6, QTableWidgetItem("{:.1f}".format(annuität)))
-            # Summen berechnen
-            self.summe_investitionskosten += float(values.get(f"{obj}_kosten", 0))
+            self.infrastructureCostsTable.setItem(i, 6, QTableWidgetItem(f"{annuität:.1f}"))
+            
+            self.summe_investitionskosten += A0
             self.summe_annuität += annuität
+            self.individual_costs.append((obj.capitalize(), A0))
 
-        # Neue Zeile für Summen hinzufügen
+        self.addSummaryRow()
+
+    def addSummaryRow(self):
         summen_row_index = self.infrastructureCostsTable.rowCount()
         self.infrastructureCostsTable.insertRow(summen_row_index)
 
-        # Fettgedruckten Font erstellen
         boldFont = QFont()
         boldFont.setBold(True)
 
-        # Summenzellen hinzufügen und formatieren
         summen_beschreibung_item = QTableWidgetItem("Summe Infrastruktur")
         summen_beschreibung_item.setFont(boldFont)
         self.infrastructureCostsTable.setItem(summen_row_index, 0, summen_beschreibung_item)
 
-        # Formatieren der Zahlen auf eine Dezimalstelle
-        summen_kosten_item = QTableWidgetItem("{:.0f}".format(self.summe_investitionskosten))
+        summen_kosten_item = QTableWidgetItem(f"{self.summe_investitionskosten:.0f}")
         summen_kosten_item.setFont(boldFont)
         self.infrastructureCostsTable.setItem(summen_row_index, 1, summen_kosten_item)
 
-        summen_annuität_item = QTableWidgetItem("{:.0f}".format(self.summe_annuität))
+        summen_annuität_item = QTableWidgetItem(f"{self.summe_annuität:.0f}")
         summen_annuität_item.setFont(boldFont)
         self.infrastructureCostsTable.setItem(summen_row_index, 6, summen_annuität_item)
 
@@ -113,25 +122,24 @@ class CostTab(QWidget):
         q = 1 + (self.parent.kapitalzins / 100)
         r = 1 + (self.parent.preissteigerungsrate / 100)
         t = int(self.parent.betrachtungszeitraum)
-
-        a = annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand, q=q, r=r, T=t)
-        return a
+        return annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand, q=q, r=r, T=t)
     
     ### Setup der Berechnungsergebnistabellen ###
     def setupCalculationOptimization(self):
-        self.resultLabel = QLabel('Kosten Erzeuger')
-        self.mainLayout.addWidget(self.resultLabel)
+        self.addLabel('Kosten Erzeuger')
         self.setupTechDataTable()
 
-    ### Tech Data Table ###
     def setupTechDataTable(self):
         self.techDataTable = QTableWidget()
-        self.techDataTable.setColumnCount(4)  # Anpassen an die Anzahl der benötigten Spalten
+        self.techDataTable.setColumnCount(4)
         self.techDataTable.setHorizontalHeaderLabels(['Name', 'Dimensionen', 'Kosten', 'Gesamtkosten'])
+        self.techDataTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.mainLayout.addWidget(self.techDataTable)
 
     def updateTechDataTable(self, tech_objects):
         self.techDataTable.setRowCount(len(tech_objects))
+
+        self.summe_tech_kosten = 0
 
         for i, tech in enumerate(tech_objects):
             name, dimensions, costs, full_costs = self.extractTechData(tech)
@@ -139,26 +147,50 @@ class CostTab(QWidget):
             self.techDataTable.setItem(i, 1, QTableWidgetItem(dimensions))
             self.techDataTable.setItem(i, 2, QTableWidgetItem(costs))
             self.techDataTable.setItem(i, 3, QTableWidgetItem(full_costs))
+            self.summe_tech_kosten += float(full_costs)
+            self.individual_costs.append((name, float(full_costs)))
+
+        self.techDataTable.resizeColumnsToContents()
+        self.adjustTableSize(self.techDataTable)
+        self.addSummaryTechCosts()
+
+    def addSummaryTechCosts(self):
+        summen_row_index = self.techDataTable.rowCount()
+        self.techDataTable.insertRow(summen_row_index)
+
+        boldFont = QFont()
+        boldFont.setBold(True)
+
+        summen_beschreibung_item = QTableWidgetItem("Summe Erzeugerkosten")
+        summen_beschreibung_item.setFont(boldFont)
+        self.techDataTable.setItem(summen_row_index, 0, summen_beschreibung_item)
+
+        summen_kosten_item = QTableWidgetItem(f"{self.summe_tech_kosten:.0f}")
+        summen_kosten_item.setFont(boldFont)
+        self.techDataTable.setItem(summen_row_index, 3, summen_kosten_item)
 
         self.techDataTable.resizeColumnsToContents()
         self.adjustTableSize(self.techDataTable)
 
-    ### Extraktion Ergebnisse Berechnung ###
+    def updateSumLabel(self):
+        # Aktualisieren des Summenlabels
+        self.totalCostLabel.setText(f"Gesamtkosten: {self.summe_investitionskosten + self.summe_tech_kosten:.0f} €")
+
     def extractTechData(self, tech):
         if isinstance(tech, RiverHeatPump):
             dimensions = f"th. Leistung: {tech.Wärmeleistung_FW_WP} kW"
-            costs = f"Investitionskosten Flusswärmenutzung: {tech.spez_Investitionskosten_Flusswasser*tech.Wärmeleistung_FW_WP:.1f}, Investitionskosten Wärmepumpe: {tech.spezifische_Investitionskosten_WP*tech.Wärmeleistung_FW_WP:.1f}"
-            full_costs = f"{tech.spez_Investitionskosten_Flusswasser*tech.Wärmeleistung_FW_WP + tech.spezifische_Investitionskosten_WP*tech.Wärmeleistung_FW_WP:.1f}"
+            costs = f"Investitionskosten Flusswärmenutzung: {tech.spez_Investitionskosten_Flusswasser * tech.Wärmeleistung_FW_WP:.1f}, Investitionskosten Wärmepumpe: {tech.spezifische_Investitionskosten_WP * tech.Wärmeleistung_FW_WP:.1f}"
+            full_costs = f"{tech.spez_Investitionskosten_Flusswasser * tech.Wärmeleistung_FW_WP + tech.spezifische_Investitionskosten_WP * tech.Wärmeleistung_FW_WP:.1f}"
 
         elif isinstance(tech, WasteHeatPump):
             dimensions = f"Kühlleistung Abwärme: {tech.Kühlleistung_Abwärme} kW, Temperatur Abwärme: {tech.Temperatur_Abwärme} °C, th. Leistung: {tech.max_Wärmeleistung} kW"
-            costs = f"Investitionskosten Abwärmenutzung: {tech.spez_Investitionskosten_Abwärme*tech.max_Wärmeleistung:.1f}, Investitionskosten Wärmepumpe: {tech.spezifische_Investitionskosten_WP*tech.max_Wärmeleistung:.1f}"
-            full_costs = f"{tech.spez_Investitionskosten_Abwärme*tech.max_Wärmeleistung + tech.spezifische_Investitionskosten_WP*tech.max_Wärmeleistung:.1f}"
+            costs = f"Investitionskosten Abwärmenutzung: {tech.spez_Investitionskosten_Abwärme * tech.max_Wärmeleistung:.1f}, Investitionskosten Wärmepumpe: {tech.spezifische_Investitionskosten_WP * tech.max_Wärmeleistung:.1f}"
+            full_costs = f"{tech.spez_Investitionskosten_Abwärme * tech.max_Wärmeleistung + tech.spezifische_Investitionskosten_WP * tech.max_Wärmeleistung:.1f}"
 
         elif isinstance(tech, Geothermal):
             dimensions = f"Fläche: {tech.Fläche} m², Bohrtiefe: {tech.Bohrtiefe} m, Temperatur Geothermie: {tech.Temperatur_Geothermie} °C, Entzugsleistung: {tech.spez_Entzugsleistung} W/m, th. Leistung: {tech.max_Wärmeleistung} kW"
-            costs = f"Investitionskosten Sondenfeld: {tech.Investitionskosten_Sonden:.1f}, Investitionskosten Wärmepumpe: {tech.spezifische_Investitionskosten_WP*tech.max_Wärmeleistung:.1f}"
-            full_costs = f"{tech.Investitionskosten_Sonden + tech.spezifische_Investitionskosten_WP*tech.max_Wärmeleistung:.1f}"
+            costs = f"Investitionskosten Sondenfeld: {tech.Investitionskosten_Sonden:.1f}, Investitionskosten Wärmepumpe: {tech.spezifische_Investitionskosten_WP * tech.max_Wärmeleistung:.1f}"
+            full_costs = f"{tech.Investitionskosten_Sonden + tech.spezifische_Investitionskosten_WP * tech.max_Wärmeleistung:.1f}"
 
         elif isinstance(tech, CHP):
             dimensions = f"th. Leistung: {tech.th_Leistung_BHKW} kW, el. Leistung: {tech.el_Leistung_Soll} kW"
@@ -176,7 +208,7 @@ class CostTab(QWidget):
             full_costs = f"{tech.Investitionskosten:.1f}"
             
         elif isinstance(tech, SolarThermal):
-            dimensions = f"Bruttokollekttorfläche: {tech.bruttofläche_STA} m², Speichervolumen: {tech.vs} m³; Kollektortyp: {tech.Typ}"
+            dimensions = f"Bruttokollektorfläche: {tech.bruttofläche_STA} m², Speichervolumen: {tech.vs} m³, Kollektortyp: {tech.Typ}"
             costs = f"Investitionskosten Speicher: {tech.Investitionskosten_Speicher:.1f} €, Investitionskosten STA: {tech.Investitionskosten_STA:.1f} €"
             full_costs = f"{tech.Investitionskosten:.1f}"
 
@@ -187,11 +219,33 @@ class CostTab(QWidget):
 
         return tech.name, dimensions, costs, full_costs
     
-    ### Table size adjustment function ###
+    ### Setup der Kostenzusammensetzung ###
+    def setupCostCompositionChart(self):
+        self.addLabel('Kostenzusammensetzung')
+        self.figure, self.canvas = self.addFigure()
+        self.mainLayout.addWidget(self.canvas)
+
+    def addFigure(self):
+        figure = Figure(figsize=(8, 6))
+        canvas = FigureCanvas(figure)
+        return figure, canvas
+
+    def plotCostComposition(self):
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+        
+        labels = [cost[0] for cost in self.individual_costs]
+        sizes = [cost[1] for cost in self.individual_costs]
+        colors = ['#ff9999','#66b3ff','#99ff99','#ffcc99','#ff66b3','#c2c2f0','#ffb3e6']
+
+        ax.barh(labels, sizes, color=colors)
+        ax.set_title('Kostenzusammensetzung')
+        ax.set_xlabel('Kosten (€)')
+        ax.set_ylabel('Komponenten')
+
+        self.canvas.draw()
+
     def adjustTableSize(self, table):
-        # header row height
         header_height = table.horizontalHeader().height()
-        # hight of all rows
         rows_height = sum([table.rowHeight(i) for i in range(table.rowCount())])
-        # configuring table height
         table.setFixedHeight(header_height + rows_height)
