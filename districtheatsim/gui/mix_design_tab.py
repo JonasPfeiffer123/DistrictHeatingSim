@@ -10,6 +10,7 @@ from gui.results_pdf import create_pdf
 from gui.technology_tab import TechnologyTab
 from gui.cost_tab import CostTab
 from gui.results_tab import ResultsTab
+from gui.sensitivity_tab import SensitivityTab
 
 class MixDesignTab(QWidget):
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
@@ -98,9 +99,11 @@ class MixDesignTab(QWidget):
         self.techTab = TechnologyTab(self.data_manager, self)
         self.costTab = CostTab(self.data_manager, self)
         self.resultTab = ResultsTab(self.data_manager, self)
+        self.sensitivityTab = SensitivityTab(self.data_manager, self)
         self.tabWidget.addTab(self.techTab, "Erzeugerdefinition")
         self.tabWidget.addTab(self.costTab, "Kostenübersicht")
         self.tabWidget.addTab(self.resultTab, "Ergebnisse")
+        self.tabWidget.addTab(self.sensitivityTab, "Sensivitätsuntersuchung")
         self.mainLayout.addWidget(self.tabWidget)
 
     def createProgressBar(self):
