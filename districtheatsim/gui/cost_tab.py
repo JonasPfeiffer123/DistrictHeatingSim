@@ -15,6 +15,7 @@ class CostTab(QWidget):
         self.parent = parent
         self.results = {}
         self.tech_objects = []
+        self.individual_costs = []
         self.summe_tech_kosten = 0  # Initialisieren der Variable
 
         # Connect to the data manager signal

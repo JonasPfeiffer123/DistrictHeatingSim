@@ -141,9 +141,9 @@ class MixDesignTab(QWidget):
     def openEconomicParametersDialog(self):
         if self.economicParametersDialog.exec_():
             self.updateEconomicParameters()
-            self.costTab.updateInfrastructureTable()
-            self.costTab.plotCostComposition()
-            self.costTab.updateSumLabel()
+            #self.costTab.updateInfrastructureTable()
+            #self.costTab.plotCostComposition()
+            #self.costTab.updateSumLabel()
 
     def openInfrastructureCostsDialog(self):
         if self.netInfrastructureDialog.exec_():
@@ -197,8 +197,9 @@ class MixDesignTab(QWidget):
         self.progressBar.setRange(0, 1)
         self.results = result
         self.techTab.updateTechList()
-        self.costTab.updateTechDataTable(self.techTab.tech_objects)
-        self.costTab.updateSumLabel()
+        self.costTab.updateInfrastructureTable()  # Hier sicherstellen, dass zuerst die Infrastrukturtabelle aktualisiert wird
+        self.costTab.updateTechDataTable(self.techTab.tech_objects)  # Danach die Tech-Tabelle aktualisieren
+        self.costTab.updateSumLabel()  # Danach das Summenlabel aktualisieren
         self.costTab.plotCostComposition()
         self.resultTab.showResultsInTable(result)
         self.resultTab.showAdditionalResultsTable(result)
