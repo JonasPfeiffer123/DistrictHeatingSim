@@ -1,7 +1,9 @@
 import pandas as pd
 import geopandas as gpd
-from shapely.geometry import Polygon, MultiPolygon
+from shapely.geometry import Polygon, MultiPolygon, Point
 from geopy.geocoders import Nominatim
+from shapely.ops import unary_union
+from shapely.validation import make_valid
 
 import numpy as np
 
@@ -30,6 +32,40 @@ def filter_LOD2_with_OSM_and_adress(csv_file_path, osm_geojson_path, lod_shapefi
     filtered_lod_gdf = lod_gdf[lod_gdf.index.isin(matching_ids)]
 
     # Gefilterte Daten in einer neuen geoJSON speichern
+    filtered_lod_gdf.to_file(output_geojson_path, driver='GeoJSON')
+
+def filter_LOD2_with_coordinates(lod_geojson_path, csv_file_path, output_geojson_path):
+    # CSV mit Adressen einlesen und eine Liste der Zieladressen erstellen
+    df = pd.read_csv(csv_file_path, delimiter=';')
+
+    # LOD-Daten laden
+    lod_gdf = gpd.read_file(lod_geojson_path)
+
+    # Ungültige Geometrien reparieren
+    lod_gdf['geometry'] = lod_gdf['geometry'].apply(lambda geom: make_valid(geom) if not geom.is_valid else geom)
+
+    # Nur Polygone und Multi-Polygone behalten
+    lod_gdf = lod_gdf[lod_gdf['geometry'].apply(lambda geom: isinstance(geom, (Polygon, MultiPolygon)))]
+
+    # Erstellen einer Geopandas GeoDataFrame aus den CSV-Koordinaten
+    geometry = [Point(xy) for xy in zip(df.UTM_X, df.UTM_Y)]
+    csv_gdf = gpd.GeoDataFrame(df, geometry=geometry)
+    csv_gdf.set_crs(lod_gdf.crs, inplace=True)
+
+    # Filtern der LOD2-Daten basierend auf den Koordinaten in der CSV-Datei und "Ground" Geometrien
+    parent_ids = set()
+    ground_geometries = lod_gdf[lod_gdf['Geometr_3D'] == 'Ground']
+
+    for point in csv_gdf.geometry:
+        for idx, ground_row in ground_geometries.iterrows():
+            if point.within(ground_row['geometry']):
+                parent_ids.add(ground_row['ID'])
+                break
+
+    # Alle Parent- und zugehörigen Child-Objekte übernehmen
+    filtered_lod_gdf = lod_gdf[lod_gdf['ID'].isin(parent_ids) | lod_gdf['Obj_Parent'].isin(parent_ids)]
+
+    # Gefilterte Daten in einer neuen GeoJSON-Datei speichern
     filtered_lod_gdf.to_file(output_geojson_path, driver='GeoJSON')
 
 def spatial_filter_with_polygon(lod_geojson_path, polygon_shapefile_path, output_geojson_path):

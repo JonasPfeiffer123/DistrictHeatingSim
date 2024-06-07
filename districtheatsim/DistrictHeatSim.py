@@ -2,10 +2,12 @@ import sys
 import os
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTabWidget, QMenuBar, QAction, QFileDialog, QLabel, QMessageBox, QInputDialog
 from PyQt5.QtCore import QObject, pyqtSignal
+
+from gui.project_tab import ProjectTab
 from gui.visualization_tab import VisualizationTab
+from gui.building_tab import BuildingTab
 from gui.calculation_tab import CalculationTab
 from gui.mix_design_tab import MixDesignTab
-from gui.project_tab import ProjectTab
 
 # defines the map path
 def get_resource_path(relative_path):
@@ -89,12 +91,14 @@ class HeatSystemDesignGUI(QWidget):
 
         self.projectTab = ProjectTab(self.data_manager)
         self.visTab = VisualizationTab(self.data_manager)
+        self.buildingTab = BuildingTab(self.data_manager, self.visTab)
         self.calcTab = CalculationTab(self.data_manager)
         self.mixDesignTab = MixDesignTab(self.data_manager)
 
         # Adding tabs to the tab widget
         tabWidget.addTab(self.projectTab, "Projektdefinition")
         tabWidget.addTab(self.visTab, "Räumliche Analyse")
+        tabWidget.addTab(self.buildingTab, "Gebäudedefinition")
         tabWidget.addTab(self.calcTab, "Wärmenetzberechnung")
         tabWidget.addTab(self.mixDesignTab, "Erzeugerauslegung und Wirtschftlichkeitrechnung")
 

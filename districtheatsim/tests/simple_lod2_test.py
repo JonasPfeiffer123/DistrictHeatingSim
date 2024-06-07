@@ -4,7 +4,7 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lod2.scripts.filter_LOD2 import filter_LOD2_with_OSM_and_adress, spatial_filter_with_polygon, process_lod2
+from lod2.scripts.filter_LOD2 import filter_LOD2_with_OSM_and_adress, spatial_filter_with_polygon, process_lod2, filter_LOD2_with_coordinates
 from lod2.scripts.heat_requirement_DIN_EN_12831 import calculate_heat_demand_for_lod2_area, Building
 
 ### aktuell sind die Pfade noch nicht enthalten ###
@@ -79,7 +79,17 @@ def test_lod2_building_caclulation():
     calculate_heat_demand_for_lod2_area(lod_geojson_path, polygon_shapefile_path, output_geojson_path, output_csv_path)
     print("Berechnung der Wärmebedarfe der Gebäude auf Basis der LOD2-Daten erfolgreich")
 
-test_lod2_adress_filter()
-test_lod2_shape_filter()
-test_building_calculation()
-test_lod2_building_caclulation()
+def test_lod2_coordinate_filter():
+    csv_file_path = 'tests\\data\\data_output_ETRS89.csv'
+    lod_geojson_path = 'tests\\data\\lod2\\lod2_data.geojson'
+    output_geojson_path = 'tests\\data\\lod2\\adress_coordinates_filtered_lod2.geojson'
+
+    filter_LOD2_with_coordinates(lod_geojson_path, csv_file_path, output_geojson_path)
+    print("LOD2-Daten erfolgreich mit Koordinaten der Adressen gefiltert.")
+
+#test_lod2_adress_filter()
+#test_lod2_shape_filter()
+#test_building_calculation()
+#test_lod2_building_caclulation()
+
+test_lod2_coordinate_filter()
