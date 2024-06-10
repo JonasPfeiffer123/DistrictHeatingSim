@@ -63,23 +63,23 @@ class Building:
         }
 
         self.total_heat_loss_per_K = sum(heat_loss_per_K.values())
-        print(f"Transmission heat loss per K: {self.total_heat_loss_per_K:.2f} W/K")
+        #print(f"Transmission heat loss per K: {self.total_heat_loss_per_K:.2f} W/K")
 
         # Calculate the maximum temperature difference
         self.dT_max_K = self.u_values["room_temp"] - self.u_values["min_air_temp"]
-        print(f"Maximum temperature difference: {self.dT_max_K} K")
+        #print(f"Maximum temperature difference: {self.dT_max_K} K")
 
         # Calculate transmission heat loss
         self.transmission_heat_loss = self.total_heat_loss_per_K * self.dT_max_K
-        print(f"Transmission heat loss: {self.transmission_heat_loss/1000:.2f} kW")
+        #print(f"Transmission heat loss: {self.transmission_heat_loss/1000:.2f} kW")
 
         # Calculate ventilation heat loss
         self.ventilation_heat_loss = 0.34 * self.u_values["air_change_rate"] * self.building_volume * self.dT_max_K
-        print(f"Ventilation heat loss: {self.ventilation_heat_loss/1000:.2f} kW")
+        #print(f"Ventilation heat loss: {self.ventilation_heat_loss/1000:.2f} kW")
 
         # Total maximum heating demand
         self.max_heating_demand = self.transmission_heat_loss + self.ventilation_heat_loss
-        print(f"Total heat loss: {self.max_heating_demand/1000:.2f} kW")
+        #print(f"Total heat loss: {self.max_heating_demand/1000:.2f} kW")
 
     def calc_yearly_heating_demand(self):
         # Load temperature data
@@ -92,12 +92,12 @@ class Building:
         # Calculate heating demand for each hour and sum if temperature is below max_air_temp_heating
         self.yearly_heating_demand = sum(max(m * temp + b, 0) for temp in self.temperature if temp < self.u_values["max_air_temp_heating"]) / 1000
 
-        print(f"Annual heating demand: {self.yearly_heating_demand:.2f} kWh")
+        #print(f"Annual heating demand: {self.yearly_heating_demand:.2f} kWh")
 
     def calc_yearly_warm_water_demand(self):
         # Calculate the annual warm water demand based on area and demand per square meter
         self.yearly_warm_water_demand = self.u_values["ww_demand_Wh_per_m2"] * self.ground_area * self.u_values["floors"] / 1000
-        print(f"Annual warm water demand: {self.yearly_warm_water_demand:.2f} kWh")
+        #print(f"Annual warm water demand: {self.yearly_warm_water_demand:.2f} kWh")
 
     def calc_yearly_heat_demand(self):
         self.calc_heat_demand()
@@ -106,7 +106,7 @@ class Building:
         self.calc_yearly_warm_water_demand()
         # Sum to get the total annual heat demand
         self.yearly_heat_demand = self.yearly_heating_demand + self.yearly_warm_water_demand
-        print(f"Total annual heat demand: {self.yearly_heat_demand:.2f} kWh")
+        #print(f"Total annual heat demand: {self.yearly_heat_demand:.2f} kWh")
 
     def load_u_values(self, u_type, building_state):                
         # Angenommen, die CSV-Datei heißt 'u_values.csv' und befindet sich im gleichen Verzeichnis

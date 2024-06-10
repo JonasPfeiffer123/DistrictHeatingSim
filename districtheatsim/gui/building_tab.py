@@ -2,6 +2,7 @@ import sys
 import os
 import csv
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
@@ -35,6 +36,7 @@ class BuildingTab(QWidget):
         self.vis_tab = vis_tab
 
         self.loaded_data = []
+        self.loaded_filenames = []
 
         # Connect to the data manager signal
         self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
@@ -216,14 +218,19 @@ class BuildingTab(QWidget):
         }
         # Annahme: Die process_lod2 Funktion wurde entsprechend erweitert, um Adressinformationen zu liefern
         self.outputLOD2geojsonfilename = self.outputLOD2geojsonLineEdit.text()
-        building_info = calculate_centroid_and_geocode(process_lod2(self.outputLOD2geojsonfilename))
+        building_info = process_lod2(self.outputLOD2geojsonfilename)
+
+        # Überprüfen, ob die Adressinformationen fehlen und falls ja, die Berechnung durchführen
+        address_missing = any(info['Adresse'] is None for info in building_info.values())
+        if address_missing:
+            building_info = calculate_centroid_and_geocode(building_info)
 
         self.tableWidget.setRowCount(len(building_info))  # Setze die Anzahl der Zeilen basierend auf den Daten
 
         for row, (parent_id, info) in enumerate(building_info.items()):
             self.tableWidget.setItem(row, 0, QTableWidgetItem(str(f"{info['Adresse']}, {info['Stadt']}, {info['Bundesland']}, {info['Land']}")))
-            self.tableWidget.setItem(row, 1, QTableWidgetItem(str((info['Koordinaten'][0]))))
-            self.tableWidget.setItem(row, 2, QTableWidgetItem(str((info['Koordinaten'][1]))))
+            self.tableWidget.setItem(row, 1, QTableWidgetItem(str((info['Koordinate_X']))))
+            self.tableWidget.setItem(row, 2, QTableWidgetItem(str((info['Koordinate_Y']))))
             self.tableWidget.setItem(row, 3, QTableWidgetItem(str(round(info['Ground_Area'],1))))
             self.tableWidget.setItem(row, 4, QTableWidgetItem(str(round(info['Wall_Area'],1))))
             self.tableWidget.setItem(row, 5, QTableWidgetItem(str(round(info['Roof_Area'],1))))
@@ -238,7 +245,7 @@ class BuildingTab(QWidget):
             self.tableWidget.setItem(row, 17, QTableWidgetItem(str(STANDARD_VALUES['max_air_temp_heating'])))
 
             comboBoxTypes = QComboBox()
-            comboBoxTypes.addItems(["HMF", "HEF", "GHD", "GBD"])  # Dropdown-Optionen
+            comboBoxTypes.addItems(["HMF", "HEF", "GHD", "GBD"])  # Dropdown-Optionen, hier muss noch erweitert werden und Möglichkeit geschaffen werden aus Datei zu laden
             self.tableWidget.setCellWidget(row, 7, comboBoxTypes)  # Korrigiere die Position für Nutzungstypen
 
             comboBoxBuildingTypes = QComboBox()
@@ -368,11 +375,13 @@ class BuildingTab(QWidget):
         if path:
             df = pd.read_csv(path, delimiter=';')
             self.loaded_data.append(df)
+            self.loaded_filenames.append(os.path.basename(path))  # Speichern des Dateinamens
             self.updatePlot()
 
     def removeDataset(self):
         if self.loaded_data:
             self.loaded_data.pop()
+            self.loaded_filenames.pop()  # Entfernen des zugehörigen Dateinamens
             self.updatePlot()
 
     def updatePlot(self):
@@ -382,14 +391,34 @@ class BuildingTab(QWidget):
         self.figure.clear()
         ax = self.figure.add_subplot(111)
 
-        all_data = pd.concat(self.loaded_data)
-        all_data_grouped = all_data.groupby('Adresse')['Wärmebedarf'].agg(list).reset_index()
+        # Kombiniere alle geladenen Datensätze
+        all_data = pd.concat(self.loaded_data, keys=self.loaded_filenames, names=['Filename', 'Index'])
+        
+        # Gruppiere die Daten nach Adresse und sammle die Wärmebedarfe
+        all_data_grouped = all_data.groupby(['Adresse', 'Filename'])['Wärmebedarf'].sum().unstack('Filename').fillna(0)
+        
+        # Anzahl der Datensätze und Adressen
+        num_datasets = len(self.loaded_data)
+        num_addresses = len(all_data_grouped)
+        
+        # Balkenbreite und Positionen festlegen
+        bar_width = 0.8 / num_datasets
+        indices = np.arange(num_addresses)
+        
+        # Farben für die verschiedenen Datensätze
+        colors = plt.cm.tab20.colors[:num_datasets]
+        
+        # Balken zeichnen
+        for i, (filename, color) in enumerate(zip(all_data_grouped.columns, colors)):
+            ax.barh(indices + i * bar_width, all_data_grouped[filename], bar_width, label=filename, color=color)
 
-        for index, row in all_data_grouped.iterrows():
-            ax.barh([row['Adresse']] * len(row['Wärmebedarf']), row['Wärmebedarf'])
-
+        # Achsenbeschriftungen und Legende
+        ax.set_yticks(indices + bar_width * (num_datasets - 1) / 2)
+        ax.set_yticklabels(all_data_grouped.index)
         ax.set_ylabel('Adresse')
         ax.set_xlabel('Wärmebedarf')
+        ax.legend()
+        
         self.canvas.draw()
 
 if __name__ == "__main__":
