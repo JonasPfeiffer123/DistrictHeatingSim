@@ -105,4 +105,8 @@
 
 Eränzung CO2-Faktoren
 
-Stromprofile aus Wärmepumpen und 
+Stromprofile aus Wärmepumpen und PV-Anlagen
+
+LOD2-Daten laden --> Exception-Handling bei timeout Nominatim geocoding
+Gebäudetyp (HMF, HEF, etc) und Adresse optional schon in LOD2-Daten einfügen um weitere Geocodierung zu vermeiden
+

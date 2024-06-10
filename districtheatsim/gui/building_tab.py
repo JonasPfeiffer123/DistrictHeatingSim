@@ -2,11 +2,14 @@ import sys
 import os
 import csv
 import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QComboBox, QPushButton, QGroupBox, \
-    QHBoxLayout, QFileDialog, QProgressBar, QLabel, QWidget, QTableWidget, QTableWidgetItem, QHeaderView
+    QHBoxLayout, QFileDialog, QProgressBar, QLabel, QWidget, QTableWidget, QTableWidgetItem, \
+    QHeaderView, QScrollArea, QSizePolicy
 from PyQt5.QtGui import QFont
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, Qt
 
 from lod2.scripts.filter_LOD2 import spatial_filter_with_polygon, filter_LOD2_with_coordinates, process_lod2, calculate_centroid_and_geocode
 from lod2.scripts.heat_requirement_DIN_EN_12831 import Building
@@ -31,6 +34,8 @@ class BuildingTab(QWidget):
         self.data_manager = data_manager
         self.vis_tab = vis_tab
 
+        self.loaded_data = []
+
         # Connect to the data manager signal
         self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
         # Update the base path immediately with the current project folder
@@ -43,8 +48,19 @@ class BuildingTab(QWidget):
     def initUI(self):
         self.setWindowTitle("Verarbeitung LOD2-Daten")
         self.setGeometry(200, 200, 1200, 1000)  # Anpassung der Fenstergröße
+
+        main_layout = QVBoxLayout(self)
         
-        layout = QVBoxLayout(self)
+        # Create a scroll area
+        scroll_area = QScrollArea(self)
+        scroll_area.setWidgetResizable(True)
+        main_layout.addWidget(scroll_area)
+
+        # Create a widget for scroll area contents
+        scroll_content = QWidget()
+        scroll_area.setWidget(scroll_content)
+
+        layout = QVBoxLayout(scroll_content)
         layout.setSpacing(10)  # Abstand zwischen den Widgets
         layout.setContentsMargins(10, 10, 10, 10)  # Rand des Layouts
 
@@ -120,6 +136,20 @@ class BuildingTab(QWidget):
         self.progressBar = QProgressBar(self)
         self.progressBar.setFont(font)
         layout.addWidget(self.progressBar)
+
+        # Buttons for dataset management
+        self.addDatasetButton = QPushButton("Datensatz hinzufügen", self)
+        self.addDatasetButton.clicked.connect(self.addDataset)
+        layout.addWidget(self.addDatasetButton)
+
+        self.removeDatasetButton = QPushButton("Datensatz entfernen", self)
+        self.removeDatasetButton.clicked.connect(self.removeDataset)
+        layout.addWidget(self.removeDatasetButton)
+
+        # Matplotlib Figure
+        self.figure = plt.figure()
+        self.canvas = FigureCanvas(self.figure)
+        layout.addWidget(self.canvas)
 
         # Initial visibility setting
         self.updateFilterInputVisibility()
@@ -332,3 +362,39 @@ class BuildingTab(QWidget):
                     # Schreibe die Zeile in die CSV-Datei
                     writer.writerow(row_data)
                 print(f"Daten wurden gespeichert: {path}")
+
+    def addDataset(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Öffnen", "", "CSV-Dateien (*.csv)")
+        if path:
+            df = pd.read_csv(path, delimiter=';')
+            self.loaded_data.append(df)
+            self.updatePlot()
+
+    def removeDataset(self):
+        if self.loaded_data:
+            self.loaded_data.pop()
+            self.updatePlot()
+
+    def updatePlot(self):
+        if not self.loaded_data:
+            return
+
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+
+        all_data = pd.concat(self.loaded_data)
+        all_data_grouped = all_data.groupby('Adresse')['Wärmebedarf'].agg(list).reset_index()
+
+        for index, row in all_data_grouped.iterrows():
+            ax.barh([row['Adresse']] * len(row['Wärmebedarf']), row['Wärmebedarf'])
+
+        ax.set_ylabel('Adresse')
+        ax.set_xlabel('Wärmebedarf')
+        self.canvas.draw()
+
+if __name__ == "__main__":
+    from PyQt5.QtWidgets import QApplication
+    app = QApplication(sys.argv)
+    window = BuildingTab(None, None)
+    window.show()
+    sys.exit(app.exec_())

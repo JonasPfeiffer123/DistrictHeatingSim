@@ -42,10 +42,10 @@ def filter_LOD2_with_coordinates(lod_geojson_path, csv_file_path, output_geojson
     lod_gdf = gpd.read_file(lod_geojson_path)
 
     # Ungültige Geometrien reparieren
-    lod_gdf['geometry'] = lod_gdf['geometry'].apply(lambda geom: make_valid(geom) if not geom.is_valid else geom)
+    #lod_gdf['geometry'] = lod_gdf['geometry'].apply(lambda geom: make_valid(geom) if not geom.is_valid else geom)
 
     # Nur Polygone und Multi-Polygone behalten
-    lod_gdf = lod_gdf[lod_gdf['geometry'].apply(lambda geom: isinstance(geom, (Polygon, MultiPolygon)))]
+    #lod_gdf = lod_gdf[lod_gdf['geometry'].apply(lambda geom: isinstance(geom, (Polygon, MultiPolygon)))]
 
     # Erstellen einer Geopandas GeoDataFrame aus den CSV-Koordinaten
     geometry = [Point(xy) for xy in zip(df.UTM_X, df.UTM_Y)]
