@@ -3,14 +3,14 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMe
 from PyQt5.QtCore import pyqtSignal
 
 from heat_generators.heat_generator_classes import *
-from gui.mix_design_dialogs import EconomicParametersDialog, NetInfrastructureDialog, TemperatureDataDialog, HeatPumpDataDialog
+from gui.MixDesignTab.mix_design_dialogs import EconomicParametersDialog, NetInfrastructureDialog, TemperatureDataDialog, HeatPumpDataDialog
 from gui.threads import CalculateMixThread
 from gui.results_pdf import create_pdf
 
-from gui.technology_tab import TechnologyTab
-from gui.cost_tab import CostTab
-from gui.results_tab import ResultsTab
-from gui.sensitivity_tab import SensitivityTab
+from gui.MixDesignTab.technology_tab import TechnologyTab
+from gui.MixDesignTab.cost_tab import CostTab
+from gui.MixDesignTab.results_tab import ResultsTab
+from gui.MixDesignTab.sensitivity_tab import SensitivityTab
 
 class MixDesignTab(QWidget):
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt

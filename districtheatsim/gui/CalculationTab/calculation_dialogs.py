@@ -11,7 +11,6 @@ from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QComboBox, 
     QTableWidget, QPushButton, QTableWidgetItem, QHBoxLayout, QFileDialog, QCheckBox, QMessageBox, QGroupBox
 
 from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
@@ -26,7 +25,7 @@ def get_resource_path(relative_path):
         base_path = sys._MEIPASS
     else:
         # Wenn die Anwendung nicht eingefroren ist, ist der Basispfad der Ordner, in dem die Hauptdatei liegt
-        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     return os.path.join(base_path, relative_path)
 

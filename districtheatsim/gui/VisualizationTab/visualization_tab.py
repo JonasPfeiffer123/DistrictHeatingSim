@@ -13,7 +13,7 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 import folium
 
-from gui.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog, SpatialAnalysisDialog, GeocodeAddressesDialog, ProcessLOD2DataDialog
+from gui.VisualizationTab.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog, SpatialAnalysisDialog, GeocodeAddressesDialog
 from gui.threads import NetGenerationThread, FileImportThread
 
 # Tab class
@@ -56,21 +56,17 @@ class VisualizationTab(QWidget):
         osmBuildingAction.triggered.connect(self.openOSMBuildingQueryDialog)
         fileMenu.addAction(osmBuildingAction)
 
-        spatialAnalysisAction = QAction('Raumanalyse', self)
+        spatialAnalysisAction = QAction('Clustering Quartiere', self)
         spatialAnalysisAction.triggered.connect(self.openspatialAnalysisDialog)
         fileMenu.addAction(spatialAnalysisAction)
-
-        processLOD2Action = QAction('Process LOD2', self)
-        processLOD2Action.triggered.connect(self.openprocessLOD2Dialog)
-        fileMenu.addAction(processLOD2Action)
-
-        downloadAction = QAction('Wärmenetz aus Daten generieren', self)
-        downloadAction.triggered.connect(self.openLayerGenerationDialog)
-        fileMenu.addAction(downloadAction)
 
         importAction = QAction('Import geojson-Datei', self)
         importAction.triggered.connect(self.importNetData)
         fileMenu.addAction(importAction)
+
+        downloadAction = QAction('Wärmenetz aus Daten generieren', self)
+        downloadAction.triggered.connect(self.openLayerGenerationDialog)
+        fileMenu.addAction(downloadAction)
 
         layout.addWidget(self.menuBar)
 
@@ -133,11 +129,6 @@ class VisualizationTab(QWidget):
         dialog.activateWindow()
         self.raise_()
         self.activateWindow()
-
-    def openprocessLOD2Dialog(self):
-        dialog = ProcessLOD2DataDialog(self.base_path, self)
-        if dialog.exec_() == QDialog.Accepted:
-            pass
 
     def generateAndImportLayers(self, inputs):
         if hasattr(self, 'netgenerationThread') and self.netgenerationThread.isRunning():
@@ -219,7 +210,6 @@ class VisualizationTab(QWidget):
         map_obj.save(map_file)
 
         mapView.load(QUrl.fromLocalFile(map_file))
-
 
     def loadNetData(self, filenames, color="#{:06x}".format(random.randint(0, 0xFFFFFF))):
         if not isinstance(filenames, list):

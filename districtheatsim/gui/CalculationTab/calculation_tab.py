@@ -19,7 +19,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QMes
 
 from net_simulation_pandapipes.pp_net_time_series_simulation import calculate_results, save_results_csv, import_results_csv
 
-from gui.calculation_dialogs import HeatDemandEditDialog, NetGenerationDialog, ZeitreihenrechnungDialog
+from gui.CalculationTab.calculation_dialogs import HeatDemandEditDialog, NetGenerationDialog, ZeitreihenrechnungDialog
 from gui.threads import NetInitializationThread, NetCalculationThread
 from net_simulation_pandapipes.config_plot import config_plot
 from gui.checkable_combobox import CheckableComboBox

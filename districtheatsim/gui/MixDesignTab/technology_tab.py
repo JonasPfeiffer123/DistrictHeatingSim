@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 from heat_generators.heat_generator_classes import *
-from gui.mix_design_dialogs import TechInputDialog
+from gui.MixDesignTab.mix_design_dialogs import TechInputDialog
 
 class CustomListWidget(QListWidget):
     def __init__(self, parent=None):

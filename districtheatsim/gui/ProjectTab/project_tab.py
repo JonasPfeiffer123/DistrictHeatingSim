@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QMenuBar, QAction, QProgressBa
     QLabel, QTableWidget, QHBoxLayout, QPushButton, QFileDialog, QTableWidgetItem, QMessageBox, \
     QFileSystemModel, QTreeView, QSplitter, QDialog
 
-from gui.project_dialogs import GeocodeAddressesDialog
+from gui.ProjectTab.project_dialogs import GeocodeAddressesDialog
 
 # Tab class
 class ProjectTab(QWidget):

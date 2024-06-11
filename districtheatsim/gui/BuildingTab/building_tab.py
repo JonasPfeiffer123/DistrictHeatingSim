@@ -8,9 +8,9 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QComboBox, QPushButton, QGroupBox, \
     QHBoxLayout, QFileDialog, QProgressBar, QLabel, QWidget, QTableWidget, QTableWidgetItem, \
-    QHeaderView, QScrollArea, QSizePolicy
+    QHeaderView, QScrollArea
 from PyQt5.QtGui import QFont
-from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtCore import pyqtSignal
 
 from lod2.scripts.filter_LOD2 import spatial_filter_with_polygon, filter_LOD2_with_coordinates, process_lod2, calculate_centroid_and_geocode
 from lod2.scripts.heat_requirement_DIN_EN_12831 import Building
@@ -23,7 +23,7 @@ def get_resource_path(relative_path):
         base_path = sys._MEIPASS
     else:
         # Wenn die Anwendung nicht eingefroren ist, ist der Basispfad der Ordner, in dem die Hauptdatei liegt
-        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     return os.path.join(base_path, relative_path)
 
