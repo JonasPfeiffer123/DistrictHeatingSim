@@ -190,14 +190,18 @@ class ProjectTab(QWidget):
 
     def createCsvFromGeoJson(self):
         try:
-            geojson_file, _ = QFileDialog.getOpenFileName(self, "geoJSON auswählen", "", "All Files (*)")
+            geojson_file_path, _ = QFileDialog.getOpenFileName(self, "geoJSON auswählen", "", "All Files (*)")
+            if not geojson_file_path:
+                return  # Nichts tun, wenn keine Datei ausgewählt wurde
+            
             csv_file = f"{self.base_path}\Gebäudedaten\generated_building_data.csv"
-            with open(geojson_file, 'r') as geojson_file:
+            
+            with open(geojson_file_path, 'r') as geojson_file:
                 data = json.load(geojson_file)
             
             with open(csv_file, 'w', encoding='utf-8', newline='') as csvfile:
                 fieldnames = ["Land", "Bundesland", "Stadt", "Adresse", "Wärmebedarf", "Gebäudetyp", "WW_Anteil", "Typ_Heizflächen", 
-                              "VLT_max", "Steigung_Heizkurve", "RLT_max", "UTM_X", "UTM_Y"]
+                            "VLT_max", "Steigung_Heizkurve", "RLT_max", "UTM_X", "UTM_Y"]
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter=";")
                 writer.writeheader()
 

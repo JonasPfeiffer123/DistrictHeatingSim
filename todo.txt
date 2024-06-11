@@ -41,10 +41,10 @@
 2.3 Erzeugerauslegung
 
     Berücksichtigung mehrerer Erzeuger beim Import von Erzeugungslastgängen
-        Zunächst einfache Summierung der Erzeugungslastgänge.
+        (Zunächst einfache Summierung der Erzeugungslastgänge.)
         Entwicklung einer Methode zur differenzierten Ausweisung mehrerer Erzeuger.
     Optionaler Speicher für BHKW, WP, Biomasse
-        Implementierung eines einfachen Regelungssystems zur Verlängerung der Volllaststunden durch optionale Speicher.
+        Implementierung eines einfachen Regelungssystems zur Verlängerung der Volllaststunden durch optionale Speicher. -> als Ergänzung zum bisherigen System -> quasi als Optimierungsmethode
         Definition des Teillastbereichs zur Reduktion des Gaseinsatzes im Gaskessel.
     Implementierung neuer Technologien
         Einbindung von PVT, Großwärmespeicher, AquvaHeat, Wasserstoff, Power-to-heat und Geothermie mit Sondenregeneration in die Erzeugerauslegung.
@@ -108,5 +108,5 @@ Eränzung CO2-Faktoren
 Stromprofile aus Wärmepumpen und PV-Anlagen
 
 LOD2-Daten laden --> Exception-Handling bei timeout Nominatim geocoding
-Gebäudetyp (HMF, HEF, etc) und Adresse optional schon in LOD2-Daten einfügen um weitere Geocodierung zu vermeiden
 
+Sensitivitätsuntersuchungen als extra Berechnungsvariante. Wärmegestehungskosten werden für verschiedene Preise berechnet. Zu variiende Preise werden in Tab definiert

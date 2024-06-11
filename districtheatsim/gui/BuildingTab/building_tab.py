@@ -15,7 +15,7 @@ from PyQt5.QtCore import pyqtSignal
 from lod2.scripts.filter_LOD2 import spatial_filter_with_polygon, filter_LOD2_with_coordinates, process_lod2, calculate_centroid_and_geocode
 from lod2.scripts.heat_requirement_DIN_EN_12831 import Building
 
-# defines the map path
+# defines the base path
 def get_resource_path(relative_path):
     """ Get the absolute path to the resource, works for dev and for PyInstaller """
     if getattr(sys, 'frozen', False):
@@ -114,6 +114,7 @@ class BuildingTab(QWidget):
                                                     'room_temp', 'max_air_temp_heating', 'Jährlicher Wärmebedarf in kWh'])
         self.tableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.tableWidget.setSortingEnabled(True)  # Enable sorting
+        self.tableWidget.setMinimumSize(800, 400)  # Set minimum size for the table
         layout.addWidget(self.tableWidget)
 
         # Save and load buttons
@@ -134,11 +135,6 @@ class BuildingTab(QWidget):
         self.buildingCSVButton.clicked.connect(self.createBuildingCSV)
         layout.addWidget(self.buildingCSVButton)
 
-        # Verbesserte Fortschrittsanzeige
-        self.progressBar = QProgressBar(self)
-        self.progressBar.setFont(font)
-        layout.addWidget(self.progressBar)
-
         # Buttons for dataset management
         self.addDatasetButton = QPushButton("Datensatz hinzufügen", self)
         self.addDatasetButton.clicked.connect(self.addDataset)
@@ -151,10 +147,17 @@ class BuildingTab(QWidget):
         # Matplotlib Figure
         self.figure = plt.figure()
         self.canvas = FigureCanvas(self.figure)
+        self.canvas.setMinimumSize(800, 400)  # Set minimum size for the canvas
         layout.addWidget(self.canvas)
+
+        # Verbesserte Fortschrittsanzeige
+        self.progressBar = QProgressBar(self)
+        self.progressBar.setFont(font)
+        layout.addWidget(self.progressBar)
 
         # Initial visibility setting
         self.updateFilterInputVisibility()
+
 
     def updateDefaultPath(self, new_base_path):
         self.base_path = new_base_path
@@ -294,7 +297,7 @@ class BuildingTab(QWidget):
 
     def createComboBox(self, columnIndex):
         if columnIndex == 7:
-            comboBoxItems = ["HMF", "HEF", "GHD", "GBD"]
+            comboBoxItems = ["HMF", "HEF", "GKO", "GHA", "GMK", "GBD", "GBH", "GWA", "GGA", "GBA", "GGB", "GPD", "GMF", "GHD"]
         elif columnIndex == 8:
             comboBoxItems = self.comboBoxBuildingTypesItems
         else:  # columnIndex == 9
@@ -416,7 +419,7 @@ class BuildingTab(QWidget):
         ax.set_yticks(indices + bar_width * (num_datasets - 1) / 2)
         ax.set_yticklabels(all_data_grouped.index)
         ax.set_ylabel('Adresse')
-        ax.set_xlabel('Wärmebedarf')
+        ax.set_xlabel('Wärmebedarf in kWh')
         ax.legend()
         
         self.canvas.draw()
