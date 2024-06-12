@@ -109,4 +109,4 @@ Stromprofile aus Wärmepumpen und PV-Anlagen
 
 LOD2-Daten laden --> Exception-Handling bei timeout Nominatim geocoding
 
-Sensitivitätsuntersuchungen als extra Berechnungsvariante. Wärmegestehungskosten werden für verschiedene Preise berechnet. Zu variiende Preise werden in Tab definiert
+Implementing the new pandapipes version (heat exchangers)
