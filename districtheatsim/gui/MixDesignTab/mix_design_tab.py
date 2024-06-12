@@ -1,6 +1,6 @@
 import pandas as pd
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMessageBox, QFileDialog, QMenuBar, QScrollArea, QAction)
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMessageBox, QFileDialog, QMenuBar, QScrollArea, QAction
+from PyQt5.QtCore import pyqtSignal, QEventLoop
 
 from heat_generators.heat_generator_classes import *
 from gui.MixDesignTab.mix_design_dialogs import EconomicParametersDialog, NetInfrastructureDialog, TemperatureDataDialog, HeatPumpDataDialog
@@ -82,6 +82,7 @@ class MixDesignTab(QWidget):
         calculationsMenu = self.menuBar.addMenu('Berechnungen')
         calculationsMenu.addAction(self.createAction('Berechnen', self.start_calculation))
         calculationsMenu.addAction(self.createAction('Optimieren', self.optimize))
+        #calculationsMenu.addAction(self.createAction('Sensivitätsuntersuchung', self.sensitivity))
 
         # 'weitere Ergebnisse Anzeigen'-Menü
         showAdditionalResultsMenu = self.menuBar.addMenu('weitere Ergebnisse Anzeigen')
@@ -164,9 +165,6 @@ class MixDesignTab(QWidget):
             self.updateHeatPumpData()
 
     ### Berechnungsfunktionen ###
-    def optimize(self):
-        self.start_calculation(True)
-
     def validateInputs(self):
         try:
             load_scale_factor = float(self.techTab.load_scale_factorInput.text())
@@ -235,6 +233,75 @@ class MixDesignTab(QWidget):
             print(self.tech_objects)
         else:
             QMessageBox.information(self, "Keine Berechnungsergebnisse", "Es sind keine Berechnungsergebnisse verfügbar. Führen Sie zunächst eine Berechnung durch.")
+
+    def optimize(self):
+        self.start_calculation(True)
+
+    ### NEU !!! ###
+    def sensitivity(self, gas_range, electricity_range, wood_range):
+        if not self.validateInputs():
+            return
+
+        if not self.techTab.tech_objects:
+            QMessageBox.information(self, "Keine Erzeugeranlagen", "Es wurden keine Erzeugeranlagen definiert. Keine Berechnung möglich.")
+            return
+
+        filename = self.techTab.FilenameInput.text()
+        load_scale_factor = float(self.techTab.load_scale_factorInput.text())
+
+        results = []
+        for gas_price in self.generate_values(gas_range):
+            for electricity_price in self.generate_values(electricity_range):
+                for wood_price in self.generate_values(wood_range):
+                    result = self.calculate_mix(filename, load_scale_factor, gas_price, electricity_price, wood_price)
+                    if result is not None:
+                        results.append({
+                            'gas_price': gas_price,
+                            'electricity_price': electricity_price,
+                            'wood_price': wood_price,
+                            'WGK_Gesamt': result['WGK_Gesamt']
+                        })
+
+        self.sensitivityTab.plotSensitivity(results)
+        self.sensitivityTab.plotSensitivitySurface(results)
+
+    def generate_values(self, price_range):
+        lower, upper, num_points = price_range
+        step = (upper - lower) / (num_points - 1)
+        return [lower + i * step for i in range(num_points)]
+
+    def calculate_mix(self, filename, load_scale_factor, gas_price, electricity_price, wood_price):
+        result = None
+        calculation_done_event = QEventLoop()
+        
+        def calculation_done(result_data):
+            self.progressBar.setRange(0, 1)
+            nonlocal result
+            result = result_data
+            calculation_done_event.quit()
+
+        def calculation_error(error_message):
+            self.progressBar.setRange(0, 1)
+            QMessageBox.critical(self, "Berechnungsfehler", str(error_message))
+            calculation_done_event.quit()
+
+        self.calculationThread = CalculateMixThread(
+            filename, load_scale_factor, self.try_filename, self.cop_filename, gas_price, 
+            electricity_price, wood_price, self.BEW, self.techTab.tech_objects, False, 
+            self.kapitalzins, self.preissteigerungsrate, self.betrachtungszeitraum, self.stundensatz)
+        
+        self.calculationThread.calculation_done.connect(calculation_done)
+        self.calculationThread.calculation_error.connect(calculation_error)
+        self.calculationThread.start()
+        self.progressBar.setRange(0, 0)
+        calculation_done_event.exec_()  # Wait for the thread to finish
+
+        # Ensure the thread has finished before returning
+        self.calculationThread.wait()
+
+        return result
+    
+    ### ###
 
     ### Speicherung der Berechnungsergebnisse der Erzeugerauslegung als csv ###
     def save_results_to_csv(self, results):
