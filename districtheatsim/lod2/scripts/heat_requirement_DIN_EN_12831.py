@@ -3,9 +3,23 @@
 # along with the weather data from a Test Reference Year (TRY) dataset, to estimate the annual heating and warm water needs. 
 # The example demonstrates the usage for three buildings with specific dimensions and U-values, outputting their volumes and calculated heat demands.
 
+import os
+import sys
+
 import pandas as pd
 
 from lod2.scripts.filter_LOD2 import spatial_filter_with_polygon, process_lod2, calculate_centroid_and_geocode
+
+def get_resource_path(relative_path):
+    """ Get the absolute path to the resource, works for dev and for PyInstaller """
+    if getattr(sys, 'frozen', False):
+        # Wenn die Anwendung eingefroren ist, ist der Basispfad der Temp-Ordner, wo PyInstaller alles extrahiert
+        base_path = sys._MEIPASS
+    else:
+        # Wenn die Anwendung nicht eingefroren ist, ist der Basispfad der Ordner, in dem die Hauptdatei liegt
+        base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+    return os.path.join(base_path, relative_path)
 
 class Building:
     STANDARD_U_VALUES = {
@@ -13,7 +27,7 @@ class Building:
         'window_u': 1.3, 'door_u': 1.3, 'air_change_rate': 0.5,
         'floors': 4, 'fracture_windows': 0.10, 'fracture_doors': 0.01,
         'min_air_temp': -15, 'room_temp': 20, 'max_air_temp_heating': 15,
-        'ww_demand_Wh_per_m2': 12800, "filename_TRY": "lod2/data/TRY2015_511676144222_Jahr.dat"
+        'ww_demand_Wh_per_m2': 12800, "filename_TRY": get_resource_path("data\\TRY2015_511676144222_Jahr.dat")
     }
 
     def __init__(self, ground_area, wall_area, roof_area, building_volume, u_type=None, building_state=None):
@@ -49,23 +63,23 @@ class Building:
         }
 
         self.total_heat_loss_per_K = sum(heat_loss_per_K.values())
-        print(f"Transmission heat loss per K: {self.total_heat_loss_per_K:.2f} W/K")
+        #print(f"Transmission heat loss per K: {self.total_heat_loss_per_K:.2f} W/K")
 
         # Calculate the maximum temperature difference
         self.dT_max_K = self.u_values["room_temp"] - self.u_values["min_air_temp"]
-        print(f"Maximum temperature difference: {self.dT_max_K} K")
+        #print(f"Maximum temperature difference: {self.dT_max_K} K")
 
         # Calculate transmission heat loss
         self.transmission_heat_loss = self.total_heat_loss_per_K * self.dT_max_K
-        print(f"Transmission heat loss: {self.transmission_heat_loss/1000:.2f} kW")
+        #print(f"Transmission heat loss: {self.transmission_heat_loss/1000:.2f} kW")
 
         # Calculate ventilation heat loss
         self.ventilation_heat_loss = 0.34 * self.u_values["air_change_rate"] * self.building_volume * self.dT_max_K
-        print(f"Ventilation heat loss: {self.ventilation_heat_loss/1000:.2f} kW")
+        #print(f"Ventilation heat loss: {self.ventilation_heat_loss/1000:.2f} kW")
 
         # Total maximum heating demand
         self.max_heating_demand = self.transmission_heat_loss + self.ventilation_heat_loss
-        print(f"Total heat loss: {self.max_heating_demand/1000:.2f} kW")
+        #print(f"Total heat loss: {self.max_heating_demand/1000:.2f} kW")
 
     def calc_yearly_heating_demand(self):
         # Load temperature data
@@ -78,12 +92,12 @@ class Building:
         # Calculate heating demand for each hour and sum if temperature is below max_air_temp_heating
         self.yearly_heating_demand = sum(max(m * temp + b, 0) for temp in self.temperature if temp < self.u_values["max_air_temp_heating"]) / 1000
 
-        print(f"Annual heating demand: {self.yearly_heating_demand:.2f} kWh")
+        #print(f"Annual heating demand: {self.yearly_heating_demand:.2f} kWh")
 
     def calc_yearly_warm_water_demand(self):
         # Calculate the annual warm water demand based on area and demand per square meter
         self.yearly_warm_water_demand = self.u_values["ww_demand_Wh_per_m2"] * self.ground_area * self.u_values["floors"] / 1000
-        print(f"Annual warm water demand: {self.yearly_warm_water_demand:.2f} kWh")
+        #print(f"Annual warm water demand: {self.yearly_warm_water_demand:.2f} kWh")
 
     def calc_yearly_heat_demand(self):
         self.calc_heat_demand()
@@ -92,11 +106,11 @@ class Building:
         self.calc_yearly_warm_water_demand()
         # Sum to get the total annual heat demand
         self.yearly_heat_demand = self.yearly_heating_demand + self.yearly_warm_water_demand
-        print(f"Total annual heat demand: {self.yearly_heat_demand:.2f} kWh")
+        #print(f"Total annual heat demand: {self.yearly_heat_demand:.2f} kWh")
 
     def load_u_values(self, u_type, building_state):                
         # Angenommen, die CSV-Datei heißt 'u_values.csv' und befindet sich im gleichen Verzeichnis
-        df = pd.read_csv('lod2/data/standard_u_values_TABULA.csv', sep=";")
+        df = pd.read_csv(get_resource_path('data\\standard_u_values_TABULA.csv'), sep=";")
         u_values_row = df[(df['Typ'] == u_type) & (df['building_state'] == building_state)]
         
         if not u_values_row.empty:

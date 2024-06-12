@@ -1,16 +1,20 @@
 import numpy as np
 import geopandas as gpd
-from scipy.interpolate import RegularGridInterpolator
 import traceback
 
 from PyQt5.QtCore import QThread, pyqtSignal
 
 from utilities.test_reference_year import import_TRY
+
 from net_generation.import_and_create_layers import generate_and_export_layers
-from net_simulation_pandapipes.net_simulation_calculation import *
-from net_simulation_pandapipes.net_simulation import generate_profiles_from_geojson, thermohydraulic_time_series_net, import_results_csv, init_timeseries_opt
+
+from net_simulation_pandapipes.pp_net_initialisation_geojson import initialize_geojson
+from net_simulation_pandapipes.pp_net_time_series_simulation import thermohydraulic_time_series_net, import_results_csv
 from net_simulation_pandapipes.stanet_import_pandapipes import create_net_from_stanet_csv
+from net_simulation_pandapipes.utilities import net_optimization, COP_WP
+
 from heat_generators.heat_generator_classes import Berechnung_Erzeugermix, optimize_mix
+
 from geocoding.geocodingETRS89 import process_data
 
 import os
@@ -27,139 +31,53 @@ def get_resource_path(relative_path):
 
     return os.path.join(base_path, relative_path)
 
-
-def COP_WP(VLT_L, QT):
-    # Interpolation formula for the COP
-    values = np.genfromtxt(get_resource_path('heat_generators\Kennlinien WP.csv'), delimiter=';')
-    row_header = values[0, 1:]  # Vorlauftemperaturen
-    col_header = values[1:, 0]  # Quelltemperaturen
-    values = values[1:, 1:]
-    f = RegularGridInterpolator((col_header, row_header), values, method='linear')
-
-    # Technical limit of the heat pump is a temperature range of 75 °C
-    VLT_L = np.minimum(VLT_L, 75+QT)
-    VLT_L = np.maximum(VLT_L, 35)
-
-    # Check whether QT is a number or an array
-    if np.isscalar(QT):
-        # If QT is a number, we create an array with that number
-        QT_array = np.full_like(VLT_L, QT)
-    else:
-        # If QT is already an array, we check if it has the same length as VLT_L
-        if len(QT) != len(VLT_L):
-            raise ValueError("QT muss entweder eine einzelne Zahl oder ein Array mit der gleichen Länge wie VLT_L sein.")
-        QT_array = QT
-
-    # Calculation of COP_L
-    COP_L = f(np.column_stack((QT_array, VLT_L)))
-
-    return COP_L, VLT_L
-
 class NetInitializationThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(str)
 
-    def __init__(self, *args, dT_RL=5, pipe_creation_mode="type", **kwargs):
+    def __init__(self, *args, mass_flow_secondary_producers=0.1, **kwargs):
         super().__init__()
         self.args = args
-        self.dT_RL = dT_RL
-        self.pipe_creation_mode = pipe_creation_mode
+        self.mass_flow_secondary_producers = mass_flow_secondary_producers
         self.kwargs = kwargs
 
     def run(self):
         try:
             if self.kwargs.get("import_type") == "GeoJSON":
-                self.initialize_geojson()
+                self.vorlauf, self.ruecklauf, self.hast, self.erzeugeranlagen, self.calc_method, self.building_type, \
+                self.return_temperature, self.supply_temperature, self.flow_pressure_pump, self.lift_pressure_pump, \
+                self.netconfiguration, self.pipetype, self.v_max_pipe, self.material_filter, self.insulation_filter, \
+                self.base_path, self.dT_RL, self.v_max_heat_exchanger, self.DiameterOpt_ckecked = self.args
+
+                self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.return_temperature, \
+                self.supply_temperature_buildings, self.return_temperature_buildings, self.supply_temperature_building_curve, \
+                self.return_temperature_building_curve  = initialize_geojson(self.vorlauf, self.ruecklauf, self.hast, \
+                                                                             self.erzeugeranlagen, self.calc_method, self.building_type, \
+                                                                             self.return_temperature, self.supply_temperature, \
+                                                                             self.flow_pressure_pump, self.lift_pressure_pump, \
+                                                                             self.netconfiguration, self.pipetype, self.dT_RL, mass_flow_secondary_producers=self.mass_flow_secondary_producers)
+            
             elif self.kwargs.get("import_type") == "Stanet":
+                self.stanet_csv, self.return_temperature, self.supply_temperature, self.flow_pressure_pump, self.lift_pressure_pump = self.args
                 self.initialize_stanet()
             else:
                 raise ValueError("Unbekannter Importtyp")
 
             # Common steps for both import types
-            self.net = self.common_net_initialization(self.net, self.max_waerme_hast_ges_W)
+            if self.DiameterOpt_ckecked == True:
+                print("Here")
+                self.net = net_optimization(self.net, self.v_max_pipe, self.v_max_heat_exchanger, self.material_filter, self.insulation_filter)
+                print("Here")
+            
             self.calculation_done.emit((self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.return_temperature, self.supply_temperature_buildings, \
                                         self.return_temperature_buildings, self.supply_temperature_building_curve, self.return_temperature_building_curve))
 
         except Exception as e:
             self.calculation_error.emit(str(e) + "\n" + traceback.format_exc())
 
-    def initialize_geojson(self):
-        self.vorlauf, self.ruecklauf, self.hast, self.erzeugeranlagen, self.calc_method, self.building_type, self.return_temperature, self.supply_temperature, \
-            self.flow_pressure_pump, self.lift_pressure_pump, self.netconfiguration, self.pipetype, self.v_max_pipe, self.material_filter, self.insulation_filter, self.base_path = self.args
-
-        self.vorlauf = gpd.read_file(self.vorlauf, driver='GeoJSON')
-        self.ruecklauf = gpd.read_file(self.ruecklauf, driver='GeoJSON')
-        self.hast = gpd.read_file(self.hast, driver='GeoJSON')
-        self.erzeugeranlagen = gpd.read_file(self.erzeugeranlagen, driver='GeoJSON')
-        print(f"Vorlauftemperatur Netz: {self.supply_temperature} °C")
-
-        self.supply_temperature_buildings = self.hast["VLT_max"].values.astype(float)
-        print(f"Vorlauftemperatur Gebäude: {self.supply_temperature_buildings} °C")
-
-        self.return_temperature_buildings = self.hast["RLT_max"].values.astype(float)
-        print(f"Rücklauftemperatur Gebäude: {self.return_temperature_buildings} °C")
-
-        if self.return_temperature == None:
-            self.return_temperature = self.return_temperature_buildings + self.dT_RL
-            print(f"Rücklauftemperatur HAST: {self.return_temperature} °C")
-        else:
-            self.return_temperature = np.full_like(self.return_temperature_buildings, self.return_temperature)
-            print(f"Rücklauftemperatur HAST: {self.return_temperature} °C")
-
-        if np.any(self.return_temperature >= self.supply_temperature):
-            raise ValueError("Rücklauftemperatur darf nicht höher als die Vorlauftemperatur sein. Bitte überprüfen sie die Eingaben.")
-
-        self.yearly_time_steps, self.waerme_gebaeude_ges_W, self.max_waerme_gebaeude_ges_W, self.supply_temperature_building_curve, \
-            self.return_temperature_building_curve = generate_profiles_from_geojson(self.hast, self.building_type, self.calc_method, \
-                                                                                    self.supply_temperature_buildings, self.return_temperature_buildings)
-
-        self.waerme_hast_ges_W = []
-        self.max_waerme_hast_ges_W = []
-        if self.netconfiguration == "kaltes Netz":
-            self.COP, _ = COP_WP(self.supply_temperature_buildings, self.return_temperature)
-            print(f"COP dezentrale Wärmepumpen Gebäude: {self.COP}")
-
-            for waerme_gebaeude, leistung_gebaeude, cop in zip(self.waerme_gebaeude_ges_W, self.max_waerme_gebaeude_ges_W, self.COP):
-                self.strom_wp = waerme_gebaeude/cop
-                self.waerme_hast = waerme_gebaeude - self.strom_wp
-                self.waerme_hast_ges_W.append(self.waerme_hast)
-
-                self.stromleistung_wp = leistung_gebaeude/cop
-                self.waerme_leistung_hast = leistung_gebaeude - self.stromleistung_wp
-                self.max_waerme_hast_ges_W.append(self.waerme_leistung_hast)
-
-            self.waerme_hast_ges_W = np.array(self.waerme_hast_ges_W)
-            self.max_waerme_hast_ges_W = np.array(self.max_waerme_hast_ges_W)
-
-        else:
-            self.waerme_hast_ges_W = self.waerme_gebaeude_ges_W
-            self.max_waerme_hast_ges_W = self.max_waerme_gebaeude_ges_W
-
-        self.net = create_network(self.vorlauf, self.ruecklauf, self.hast, self.erzeugeranlagen, self.max_waerme_hast_ges_W, self.return_temperature, \
-                                  self.supply_temperature, self.flow_pressure_pump, self.lift_pressure_pump, self.pipetype)
-
     def initialize_stanet(self):
-        self.stanet_csv, self.return_temperature, self.supply_temperature, self.flow_pressure_pump, self.lift_pressure_pump = self.args
         self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.max_waerme_hast_ges_W = create_net_from_stanet_csv(self.stanet_csv, self.supply_temperature, \
                                                                                                                           self.flow_pressure_pump, self.lift_pressure_pump)
-
-    def common_net_initialization(self, net, max_waerme_ges_W):
-        # Common steps after network initialization
-        net = create_controllers(net, max_waerme_ges_W, self.return_temperature)
-        net = correct_flow_directions(net)
-        net = init_timeseries_opt(net, max_waerme_ges_W, return_temperature=self.return_temperature)
-
-        if self.kwargs.get("import_type") == "GeoJSON":
-            if self.pipe_creation_mode == "diameter":
-                net = optimize_diameter_parameters(net, element="pipe", v_max=1)
-
-            if self.pipe_creation_mode == "type":
-                net = optimize_diameter_types(net, v_max=self.v_max_pipe, material_filter=self.material_filter, insulation_filter=self.insulation_filter)
-
-        net = optimize_diameter_parameters(net, element="heat_exchanger", v_max=1.5)
-        net = optimize_diameter_parameters(net, element="flow_control", v_max=1.5)
-        
-        return net
     
     def stop(self):
         if self.isRunning():
@@ -265,7 +183,7 @@ class NetGenerationThread(QThread):
 
     def run(self):
         try:
-            generate_and_export_layers(self.inputs["streetLayer"], self.inputs["dataCsv"], float(self.inputs["xCoord"]), float(self.inputs["yCoord"]), self.base_path)
+            generate_and_export_layers(self.inputs["streetLayer"], self.inputs["dataCsv"], self.inputs["coordinates"], self.base_path, algorithm=self.inputs["generation_mode"])
 
             self.calculation_done.emit(())
         except Exception as e:
@@ -335,7 +253,7 @@ class CalculateMixThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(Exception)
 
-    def __init__(self, filename, load_scale_factor, try_filename, cop_filename, gas_price, electricity_price, wood_price, BEW, tech_objects, optimize, interest_on_capital, price_increase_rate, period):
+    def __init__(self, filename, load_scale_factor, try_filename, cop_filename, gas_price, electricity_price, wood_price, BEW, tech_objects, optimize, interest_on_capital, price_increase_rate, period, wage):
         super().__init__()
         self.filename = filename
         self.load_scale_factor = load_scale_factor
@@ -350,25 +268,44 @@ class CalculateMixThread(QThread):
         self.interest_on_capital = interest_on_capital
         self.price_increase_rate = price_increase_rate
         self.period = period
+        self.wage = wage
 
     def run(self):
         try:
-            time_steps, qext_kW, waerme_ges_W, flow_temp_circ_pump, return_temp_circ_pump, mass_flow_circ_pump, deltap_circ_pump, return_pressure_circ_pump, flow_pressure_circ_pump = import_results_csv(self.filename)
+            time_steps, waerme_ges_W, pump_results = import_results_csv(self.filename)
+            ### hier erstmal Vereinfachung, Temperaturen, Drücke der Hauptzenztrale, Leistungen addieren
+            
+            qext_values = []  # Diese Liste wird alle qext_kW Arrays speichern
+            for pump_type, pumps in pump_results.items():
+                for idx, pump_data in pumps.items():
+                    if 'qext_kW' in pump_data:
+                        qext_values.append(pump_data['qext_kW'])  # Nehmen wir an, dass dies numpy Arrays sind
+                    else:
+                        print(f"Keine qext_kW Daten für {pump_type} Pumpe {idx}")
+
+                    if pump_type == "Heizentrale Haupteinspeisung":
+                        flow_temp_circ_pump = pump_data['flow_temp']
+                        return_temp_circ_pump = pump_data['return_temp']
+
+            # Überprüfen, ob die Liste nicht leer ist
+            if qext_values:
+                # Summieren aller Arrays in der Liste zu einem Summenarray
+                qext_kW = np.sum(np.array(qext_values), axis=0)
+            else:
+                qext_kW = np.array([])  # oder eine andere Form der Initialisierung, die in Ihrem Kontext sinnvoll ist
+            
             calc1, calc2 = 0, len(time_steps)
-
             qext_kW *= self.load_scale_factor
-
             initial_data = time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump
-
             TRY = import_TRY(self.try_filename)
             COP_data = np.genfromtxt(self.cop_filename, delimiter=';')
 
             if self.optimize:
                 self.tech_objects = optimize_mix(self.tech_objects, initial_data, calc1, calc2, TRY, COP_data, self.gas_price, self.electricity_price, self.wood_price, self.BEW, \
-                                            kapitalzins=self.interest_on_capital, preissteigerungsrate=self.price_increase_rate, betrachtungszeitraum=self.period )
+                                            kapitalzins=self.interest_on_capital, preissteigerungsrate=self.price_increase_rate, betrachtungszeitraum=self.period, stundensatz=self.wage)
 
             result = Berechnung_Erzeugermix(self.tech_objects, initial_data, calc1, calc2, TRY, COP_data, self.gas_price, self.electricity_price, self.wood_price, self.BEW, \
-                                            kapitalzins=self.interest_on_capital, preissteigerungsrate=self.price_increase_rate, betrachtungszeitraum=self.period )
+                                            kapitalzins=self.interest_on_capital, preissteigerungsrate=self.price_increase_rate, betrachtungszeitraum=self.period, stundensatz=self.wage)
 
             self.calculation_done.emit(result)
         except Exception as e:

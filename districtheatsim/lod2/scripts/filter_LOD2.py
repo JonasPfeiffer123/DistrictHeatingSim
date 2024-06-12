@@ -1,9 +1,10 @@
+import numpy as np
 import pandas as pd
 import geopandas as gpd
-from shapely.geometry import Polygon, MultiPolygon
-from geopy.geocoders import Nominatim
 
-import numpy as np
+from shapely.geometry import Polygon, MultiPolygon, Point
+
+from geopy.geocoders import Nominatim
 
 def filter_LOD2_with_OSM_and_adress(csv_file_path, osm_geojson_path, lod_shapefile_path, output_geojson_path):
     # OSM-Gebäudedaten laden und nach Adressen filtern
@@ -30,6 +31,46 @@ def filter_LOD2_with_OSM_and_adress(csv_file_path, osm_geojson_path, lod_shapefi
     filtered_lod_gdf = lod_gdf[lod_gdf.index.isin(matching_ids)]
 
     # Gefilterte Daten in einer neuen geoJSON speichern
+    filtered_lod_gdf.to_file(output_geojson_path, driver='GeoJSON')
+
+
+def filter_LOD2_with_coordinates(lod_geojson_path, csv_file_path, output_geojson_path):
+    # CSV mit Adressen einlesen und eine Liste der Zieladressen erstellen
+    df = pd.read_csv(csv_file_path, delimiter=';')
+
+    # LOD-Daten laden
+    lod_gdf = gpd.read_file(lod_geojson_path)
+
+    # Erstellen einer Geopandas GeoDataFrame aus den CSV-Koordinaten
+    geometry = [Point(xy) for xy in zip(df.UTM_X, df.UTM_Y)]
+    csv_gdf = gpd.GeoDataFrame(df, geometry=geometry)
+    csv_gdf.set_crs(lod_gdf.crs, inplace=True)
+
+    # Filtern der LOD2-Daten basierend auf den Koordinaten in der CSV-Datei und "Ground" Geometrien
+    parent_ids = set()
+    ground_geometries = lod_gdf[lod_gdf['Geometr_3D'] == 'Ground']
+    csv_gdf['parent_id'] = None
+
+    for idx, csv_row in csv_gdf.iterrows():
+        point = csv_row.geometry
+        for ground_idx, ground_row in ground_geometries.iterrows():
+            if point.within(ground_row['geometry']):
+                parent_id = ground_row['ID']
+                parent_ids.add(parent_id)
+                csv_gdf.at[idx, 'parent_id'] = parent_id
+                break
+
+    # Alle Parent- und zugehörigen Child-Objekte übernehmen
+    filtered_lod_gdf = lod_gdf[lod_gdf['ID'].isin(parent_ids) | lod_gdf['Obj_Parent'].isin(parent_ids)]
+
+    # Koordinaten als separate Spalten hinzufügen
+    csv_gdf['Koordinate_X'] = csv_gdf.geometry.x
+    csv_gdf['Koordinate_Y'] = csv_gdf.geometry.y
+
+    # Informationen aus der CSV zu den gefilterten LOD2-Daten hinzufügen
+    filtered_lod_gdf = filtered_lod_gdf.merge(csv_gdf.drop(columns='geometry'), how='left', left_on='ID', right_on='parent_id')
+
+    # Gefilterte Daten in einer neuen GeoJSON-Datei speichern
     filtered_lod_gdf.to_file(output_geojson_path, driver='GeoJSON')
 
 def spatial_filter_with_polygon(lod_geojson_path, polygon_shapefile_path, output_geojson_path):
@@ -111,7 +152,8 @@ def process_lod2(file_path):
         parent_id = row['Obj_Parent'] if row['Obj_Parent'] is not None else row['ID']
         
         if parent_id not in building_info:
-            building_info[parent_id] = {'Ground': [], 'Wall': [], 'Roof': [], 'H_Traufe': None, 'H_Boden': None}
+            building_info[parent_id] = {'Ground': [], 'Wall': [], 'Roof': [], 'H_Traufe': None, 'H_Boden': None,
+                                        'Adresse': None, 'Stadt': None, 'Bundesland': None, 'Land': None, 'Koordinate_X': None, 'Koordinate_Y': None}
 
         # Extrahiere und speichere Geometrien und Höheninformationen
         if row['Geometr_3D'] in ['Ground', 'Wall', 'Roof']:
@@ -123,6 +165,15 @@ def process_lod2(file_path):
         if 'H_Boden' in row and (building_info[parent_id]['H_Boden'] is None or building_info[parent_id]['H_Boden'] != row['H_Boden']):
             building_info[parent_id]['H_Boden'] = row['H_Boden']
 
+        # Überprüfe, ob Adressinformationen vorhanden sind
+        if 'Adresse' in row and pd.notna(row['Adresse']):
+            building_info[parent_id]['Adresse'] = row['Adresse']
+            building_info[parent_id]['Stadt'] = row['Stadt']
+            building_info[parent_id]['Bundesland'] = row['Bundesland']
+            building_info[parent_id]['Land'] = row['Land']
+            building_info[parent_id]['Koordinate_X'] = row['Koordinate_X']
+            building_info[parent_id]['Koordinate_Y'] = row['Koordinate_Y']
+
     # Berechne die Flächen und Volumina für jedes Gebäude
     for parent_id, info in building_info.items():
         info['Ground_Area'] = sum(calculate_area_3d_for_feature(geom) for geom in info['Ground'])
@@ -131,8 +182,6 @@ def process_lod2(file_path):
         h_traufe = info['H_Traufe']
         h_boden = info['H_Boden']
         info['Volume'] = (h_traufe - h_boden) * info['Ground_Area'] if h_traufe and h_boden else None
-
-        print(f"Parent ID: {parent_id}, Ground Area: {info['Ground_Area']:.1f} m², Wall Area: {info['Wall_Area']:.1f} m², Roof Area: {info['Roof_Area']:.1f} m², Volume: {info['Volume']:.1f} m³")
 
     return building_info
 
@@ -151,7 +200,8 @@ def calculate_centroid_and_geocode(building_info):
             # Erstellen eines GeoDataFrame für die Umrechnung
             gdf = gpd.GeoDataFrame([{'geometry': centroid}], crs="EPSG:25833")
             # Ergänzung der Koordinaten im building_info Dictionary
-            info['Koordinaten'] = (gdf.geometry.iloc[0].x, gdf.geometry.iloc[0].y)
+            info['Koordinate_X'] = gdf.geometry.iloc[0].x
+            info['Koordinate_Y'] = gdf.geometry.iloc[0].y
 
             # Umrechnung von EPSG:25833 nach EPSG:4326
             gdf = gdf.to_crs(epsg=4326)

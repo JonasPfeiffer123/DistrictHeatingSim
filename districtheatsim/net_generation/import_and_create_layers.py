@@ -62,18 +62,19 @@ def generate_lines(layer, distance, angle_degrees, df=None):
     lines_gdf = gpd.GeoDataFrame(attributes, geometry=lines)
     return lines_gdf
 
-def load_layers(osm_street_layer_geojson_file, data_csv_file_name, x_coord, y_coord):
+def load_layers(osm_street_layer_geojson_file, data_csv_file_name, coordinates):
     try:
         # Laden des Straßen-Layers als GeoDataFrame
         street_layer = gpd.read_file(osm_street_layer_geojson_file)
-
         # Load the road layer as a GeoDataFrame
         data_df = pd.read_csv(data_csv_file_name, sep=';')
         # UConversion of the DataFrame into GeoDataFrame
         data_layer = gpd.GeoDataFrame(data_df, geometry=gpd.points_from_xy(data_df.UTM_X, data_df.UTM_Y))
 
         # Creation of the producer location as a GeoDataFrame
-        producer_location = gpd.GeoDataFrame(geometry=[Point(x_coord, y_coord)], crs="EPSG:4326")
+        # Erstellen von Point-Objekten für jede Koordinate in der Liste
+        points = [Point(x, y) for x, y in coordinates]
+        producer_location = gpd.GeoDataFrame(geometry=points, crs="EPSG:4326")
 
         return street_layer, data_layer, producer_location, data_df
     
@@ -81,13 +82,16 @@ def load_layers(osm_street_layer_geojson_file, data_csv_file_name, x_coord, y_co
         print(f"Fehler beim Laden der Layer: {e}")
         return None, None, None, None
 
-def generate_and_export_layers(osm_street_layer_geojson_file_name, data_csv_file_name, x_coord, y_coord, base_path, fixed_angle=0, fixed_distance=1):
-    street_layer, layer_points, layer_WEA, df = load_layers(osm_street_layer_geojson_file_name, data_csv_file_name, x_coord, y_coord)
+def generate_and_export_layers(osm_street_layer_geojson_file_name, data_csv_file_name, coordinates, base_path, fixed_angle=0, fixed_distance=1, algorithm="MST"):
+    print(osm_street_layer_geojson_file_name)
+    print(data_csv_file_name)
+    print(coordinates)
+    street_layer, layer_points, layer_WEA, df = load_layers(osm_street_layer_geojson_file_name, data_csv_file_name, coordinates)
     
     # Use the custom functions to generate the lines
     vl_heat_exchanger = generate_lines(layer_points, fixed_distance, fixed_angle, df)
-    vl_return_lines = generate_network_rl(layer_points, layer_WEA, fixed_distance, fixed_angle, street_layer)
-    vl_flow_lines = generate_network_fl(layer_points, layer_WEA, street_layer)
+    vl_return_lines = generate_network_rl(layer_points, layer_WEA, fixed_distance, fixed_angle, street_layer, algorithm=algorithm)
+    vl_flow_lines = generate_network_fl(layer_points, layer_WEA, street_layer, algorithm=algorithm)
     vl_heat_producer = generate_lines(layer_WEA, fixed_distance, fixed_angle)
 
     # Setting the CRS to EPSG:25833

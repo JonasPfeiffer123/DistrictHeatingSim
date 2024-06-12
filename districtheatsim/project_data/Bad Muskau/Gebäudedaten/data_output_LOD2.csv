@@ -1,67 +1,17 @@
 Land;Bundesland;Stadt;Adresse;Wärmebedarf;Gebäudetyp;WW_Anteil;Typ_Heizflächen;VLT_max;Steigung_Heizkurve;RLT_max;UTM_X;UTM_Y
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;103408.92;HMF;0.2;HK;70;1.5;55;479963.53574299073;5711407.376633226
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;26985.31;HMF;0.2;HK;70;1.5;55;479974.6896371835;5711425.326668163
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;55756.57;HMF;0.2;HK;70;1.5;55;479956.2481548629;5711418.049266658
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;570027.46;HMF;0.2;HK;70;1.5;55;480009.56670881854;5711422.521022932
-Sachsen;Bad Muskau;Bad Muskau - Mužakow;Berliner Straße 47;442199.66;HMF;0.2;HK;70;1.5;55;480257.5441328001;5711072.760226025
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Jahnstraße;34071.55;HMF;0.2;HK;70;1.5;55;480286.8247593704;5711275.44163698
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;118887.34;HMF;0.2;HK;70;1.5;55;480155.9685138567;5711276.02795817
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Jahnstraße;96924.74;HMF;0.2;HK;70;1.5;55;480289.6775354503;5711315.789223251
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;94349.69;HMF;0.2;HK;70;1.5;55;480088.24462701695;5711395.599247035
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Berliner Straße;238135.93;HMF;0.2;HK;70;1.5;55;480283.195502038;5711040.345166725
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;36752.92;HMF;0.2;HK;70;1.5;55;480150.8099371497;5711283.778812347
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Jahnstraße;99270.39;HMF;0.2;HK;70;1.5;55;480353.0105220945;5711303.388324202
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;296751.58;HMF;0.2;HK;70;1.5;55;480075.25250902335;5711395.773526927
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;168156.53;HMF;0.2;HK;70;1.5;55;480146.13735369203;5711294.869107258
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Gablenzer Straße;51989.85;HMF;0.2;HK;70;1.5;55;480270.2383156442;5711051.441009524
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Berliner Chaussee;67231.00;HMF;0.2;HK;70;1.5;55;480096.7278542147;5711218.567962578
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;102057.05;HMF;0.2;HK;70;1.5;55;480182.73588022677;5711275.910788741
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;261171.20;HMF;0.2;HK;70;1.5;55;480206.3104278389;5711133.824444299
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Jahnstraße;105042.07;HMF;0.2;HK;70;1.5;55;480275.245145123;5711294.579253837
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Berliner Straße;293070.67;HMF;0.2;HK;70;1.5;55;480275.67191250453;5711093.679284992
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Gablenzer Straße;94463.72;HMF;0.2;HK;70;1.5;55;480260.7816106371;5711040.450472642
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;226033.42;HMF;0.2;HK;70;1.5;55;480182.8803013154;5711225.352510524
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;41454.34;HMF;0.2;HK;70;1.5;55;480074.39300588967;5711419.277877043
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;299175.94;HMF;0.2;HK;70;1.5;55;480167.99726925854;5711308.109217256
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Berliner Straße;119562.98;HMF;0.2;HK;70;1.5;55;480290.98799896287;5711076.7014673175
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Berliner Chaussee;78007.23;HMF;0.2;HK;70;1.5;55;480163.90392786544;5711170.468195453
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;45705.52;HMF;0.2;HK;70;1.5;55;480057.3802888364;5711418.700820205
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Berliner Chaussee;301412.60;HMF;0.2;HK;70;1.5;55;480015.53218328254;5711237.393933156
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Jahnstraße;64041.75;HMF;0.2;HK;70;1.5;55;480232.16196316766;5711270.9368481105
-Sachsen;Bad Muskau;Bad Muskau - Mužakow;Köbelner Straße 4;653747.47;HMF;0.2;HK;70;1.5;55;480252.76154252223;5711193.610073503
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Jahnstraße;47774.21;HMF;0.2;HK;70;1.5;55;480203.53173118806;5711211.958049847
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Jahnstraße;88212.67;HMF;0.2;HK;70;1.5;55;480261.87467198295;5711251.2070408715
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Uferweg;106462.72;HMF;0.2;HK;70;1.5;55;480327.9131462141;5711263.31620297
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Uferweg;199608.91;HMF;0.2;HK;70;1.5;55;480351.90481526137;5711261.436647736
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Jahnstraße;56804.07;HMF;0.2;HK;70;1.5;55;480223.4725000001;5711211.2955
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Berliner Straße;66744.23;HMF;0.2;HK;70;1.5;55;480273.52947044955;5711134.723162733
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Berliner Straße;90767.62;HMF;0.2;HK;70;1.5;55;480301.1087638424;5711091.788504638
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Jahnstraße;65937.56;HMF;0.2;HK;70;1.5;55;480192.08400000003;5711248.4065000005
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Berliner Straße;253339.72;HMF;0.2;HK;70;1.5;55;480300.04227460636;5711115.8995782975
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Jahnstraße;68310.74;HMF;0.2;HK;70;1.5;55;480240.99936559115;5711296.381722651
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Jahnstraße;113041.93;HMF;0.2;HK;70;1.5;55;480317.8136961911;5711331.948114356
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;191311.64;HMF;0.2;HK;70;1.5;55;480168.3179876465;5711192.30082957
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Jahnstraße;72277.75;HMF;0.2;HK;70;1.5;55;480336.99758980144;5711291.171257713
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Jahnstraße;40315.40;HMF;0.2;HK;70;1.5;55;480290.386016256;5711328.245473733
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Jahnstraße;68178.46;HMF;0.2;HK;70;1.5;55;480218.5222918239;5711198.804555248
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;93684.01;HMF;0.2;HK;70;1.5;55;480108.9639841293;5711348.051529046
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;180888.76;HMF;0.2;HK;70;1.5;55;480114.78344756056;5711210.401113388
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Jahnstraße;113221.26;HMF;0.2;HK;70;1.5;55;480208.53498008824;5711215.513212735
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Jahnstraße;82161.94;HMF;0.2;HK;70;1.5;55;480260.9021782277;5711305.555874963
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Jahnstraße;159889.48;HMF;0.2;HK;70;1.5;55;480222.3417766332;5711251.574327881
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Berliner Straße;36057.82;HMF;0.2;HK;70;1.5;55;480282.32;5711154.414999999
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;91040.32;HMF;0.2;HK;70;1.5;55;480153.9480716185;5711348.722418765
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;309330.10;HMF;0.2;HK;70;1.5;55;480129.7864183039;5711361.328857879
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Berliner Chaussee;124412.64;HMF;0.2;HK;70;1.5;55;480085.1812162061;5711200.865563367
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;704850.46;HMF;0.2;HK;70;1.5;55;480119.24037267535;5711260.070758436
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;554008.54;HMF;0.2;HK;70;1.5;55;480083.82496979926;5711324.070763105
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Berliner Chaussee;97496.33;HMF;0.2;HK;70;1.5;55;480153.01732875797;5711164.411721707
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;176679.40;HMF;0.2;HK;70;1.5;55;480193.1481817658;5711201.637401206
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Jahnstraße;148445.45;HMF;0.2;HK;70;1.5;55;480206.68754113704;5711239.243001643
-Sachsen;Bad Muskau;Bad Muskau - Mužakow;Berliner Chaussee 18;805960.57;HMF;0.2;HK;70;1.5;55;480040.8882437647;5711261.217415743
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Jahnstraße;49833.72;HMF;0.2;HK;70;1.5;55;480311.42505757685;5711306.498661736
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;52599.69;HMF;0.2;HK;70;1.5;55;480160.6556016156;5711290.550562064
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Jahnstraße;194466.91;HMF;0.2;HK;70;1.5;55;480317.1714903774;5711281.801714299
-Deutschland;Sachsen;Görlitz;Bad Muskau Bad Muskau - Mužakow;238218.06;HMF;0.2;HK;70;1.5;55;480091.49796584743;5711226.652404705
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;210185.66;HMF;0.2;HK;70;1.5;55;480171.9915875045;5711241.349284871
-02953;Görlitz;Bad Muskau;Bad Muskau - Mužakow Köbelner Straße;536600.61;HMF;0.2;HK;70;1.5;55;480048.4946567443;5711373.617430029
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 13;17858.52;HMF;0.2;HK;70;1.5;55;480918.115;5710060.447
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 19;22609.95;HMF;0.2;HK;70;1.5;55;480893.5315;5710103.441
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 21;18634.34;HMF;0.2;HK;70;1.5;55;480885.9865;5710105.526
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 20;29609.26;HMF;0.2;HK;70;1.5;55;480857.4302;5710152.884
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 12;36143.04;HMF;0.2;HK;70;1.5;55;480910.1405;5710111.063
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 6;47807.33;HMF;0.2;HK;70;1.5;55;480936.2765;5710062.13
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 17;31812.44;HMF;0.2;HK;70;1.5;55;480899.1982;5710092.759
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 2;14202.14;HMF;0.2;HK;70;1.5;55;480942.909;5710034.83
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 10;43246.59;HMF;0.2;HK;70;1.5;55;480919.5284;5710099.784
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 16;104786.60;HMF;0.2;HK;70;1.5;55;480885.8951;5710134.282
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 8;19965.72;HMF;0.2;HK;70;1.5;55;480929.6075;5710080.511
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 4;62355.46;HMF;0.2;HK;70;1.5;55;480940.5163;5710048.468
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 15;34959.79;HMF;0.2;HK;70;1.5;55;480905.6682;5710077.365
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 14;17575.05;HMF;0.2;HK;70;1.5;55;480901.1448;5710125.544
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 18;28637.74;HMF;0.2;HK;70;1.5;55;480871.3748;5710137.856
+Deutschland;Sachsen;Bad Muskau;Schmelzstraße 11;42450.29;HMF;0.2;HK;70;1.5;55;480919.2067;5710047.447

@@ -3,9 +3,6 @@ import pandapipes as pp
 import numpy as np
 from pyproj import Transformer
 
-import sys
-sys.path.append('C:/Users/username/heating_network_generation')
-
 from heat_requirement import heat_requirement_BDEW
 
 # Read the CSV file with the specified delimiter and ignore bad lines

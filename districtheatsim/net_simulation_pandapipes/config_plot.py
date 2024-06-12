@@ -83,7 +83,7 @@ def config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_control
             data_annotations.append(ann)
 
     pp_plot.simple_plot(net, junction_size=0.01, heat_exchanger_size=0.1, pump_size=0.1, 
-                        pump_color='green', pipe_color='black', heat_exchanger_color='blue', ax=ax, show_plot=show_plot)
+                        pump_color='green', pipe_color='black', heat_exchanger_color='blue', ax=ax, show_plot=False)
 
     # Event-Handling für die Interaktivität
     def on_move(event):

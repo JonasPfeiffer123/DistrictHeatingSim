@@ -25,7 +25,7 @@
             <meta name="viewport" content="width=device-width,
                 initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
             <style>
-                #map_7982335b40ba1708e78a8370b9cb5c48 {
+                #map_54b381646aa2b3be55f152a2f02198ae {
                     position: relative;
                     width: 100.0%;
                     height: 100.0%;
@@ -39,14 +39,14 @@
 <body>
     
     
-            <div class="folium-map" id="map_7982335b40ba1708e78a8370b9cb5c48" ></div>
+            <div class="folium-map" id="map_54b381646aa2b3be55f152a2f02198ae" ></div>
         
 </body>
 <script>
     
     
-            var map_7982335b40ba1708e78a8370b9cb5c48 = L.map(
-                "map_7982335b40ba1708e78a8370b9cb5c48",
+            var map_54b381646aa2b3be55f152a2f02198ae = L.map(
+                "map_54b381646aa2b3be55f152a2f02198ae",
                 {
                     center: [51.1657, 10.4515],
                     crs: L.CRS.EPSG3857,
@@ -60,13 +60,24 @@
 
         
     
-            var tile_layer_fc8e4bac227996b8e766e08ac6938e1d = L.tileLayer(
+            var tile_layer_4eec2993a93bec7612e1e6fd12a2d95b = L.tileLayer(
                 "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                 {"attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors", "detectRetina": false, "maxNativeZoom": 19, "maxZoom": 19, "minZoom": 0, "noWrap": false, "opacity": 1, "subdomains": "abc", "tms": false}
             );
         
     
-            tile_layer_fc8e4bac227996b8e766e08ac6938e1d.addTo(map_7982335b40ba1708e78a8370b9cb5c48);
+            tile_layer_4eec2993a93bec7612e1e6fd12a2d95b.addTo(map_54b381646aa2b3be55f152a2f02198ae);
         
+    
+                function newMarker(e){
+                    var new_mark = L.marker().setLatLng(e.latlng).addTo(map_54b381646aa2b3be55f152a2f02198ae);
+                    new_mark.dragging.enable();
+                    new_mark.on('dblclick', function(e){ map_54b381646aa2b3be55f152a2f02198ae.removeLayer(e.target)})
+                    var lat = e.latlng.lat.toFixed(4),
+                       lng = e.latlng.lng.toFixed(4);
+                    new_mark.bindPopup("Latitude: " + lat + "<br>Longitude: " + lng );
+                    };
+                map_54b381646aa2b3be55f152a2f02198ae.on('click', newMarker);
+            
 </script>
 </html>
