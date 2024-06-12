@@ -1,67 +1,137 @@
+
 # DistrictHeatSim
 
-This project, led by Dipl.-Ing. (FH) Jonas Pfeiffer for the SMWK-NEUES TG-70 project "Entwicklung und Erprobung von Methoden und Werkzeugen zur Konzeptionierung nachhaltiger Wärmenetze" (Development and testing of methods and tools for designing sustainable heating networks) at Hochschule Zittau/Görlitz, aims to develop and test tools for creating sustainable heating networks using geospatial data, GIS functionalities.
+## Introduction
 
-# Usage
-Install all required libraries with pip install -r requirements.txt.
+Welcome to the DistrictHeatSim project, a comprehensive tool for planning and optimizing sustainable district heating networks. This README provides an overview of the project's functionality, installation instructions, and usage guidelines. 
 
-In the tests-folder you can find different tests, which show the functionalities of the tool.
+DistrictHeatSim is developed as part of the SMWK-NEUES TG70 project, which focuses on the development and testing of methods and tools for the conceptualization of sustainable heating networks. The software integrates technical and economic simulations to support the design and evaluation of district heating systems.
 
-In the districtheatsim-folder you can find the tool, which can be run with "DistrictHeatSim.py".
+## Table of Contents
+1. [Features](#features)
+2. [Installation](#installation)
+3. [Usage](#usage)
+    - [Spatial Analysis](#spatial-analysis)
+    - [Heat Network Calculation](#heat-network-calculation)
+    - [Generator Sizing and Economic Analysis](#generator-sizing-and-economic-analysis)
+4. [Requirements](#requirements)
+5. [Project Structure](#project-structure)
+6. [Contribution Guidelines](#contribution-guidelines)
+7. [License](#license)
+8. [Contact Information](#contact-information)
 
-# Data
-For the developement and testing of the algorithms and functions, geodata is required. In this case data examples from the city of Bad Muskau were choosed and geocoded. Also some synthetic datapoints were added. This example-datasets are saved in the project_data-folder. The district heating network were generated for these datapoints.
+## Features
 
-# Heat System Design GUI
+### User Interface
+- **Geocoding**: Convert addresses to coordinates and visualize them on a map.
+- **OSM Data Integration**: Download and process OpenStreetMap data for streets and buildings.
+- **LOD2 Data Processing**: Work with detailed 3D building data to analyze heating demands.
+- **Spatial Clustering**: Cluster buildings into supply areas based on heat demand.
+- **Automatic Heat Network Generation**: Generate heating networks based on building and generator locations.
+- **GIS Data Handling**: Uniformly manage and store GIS data in the GeoJSON format.
+- **Thermohydraulic Network Calculation**: Simulate the generated heat networks with Pandapipes.
+- **Cost Calculation**: Calculate heat generation costs based on VDI 2067 methodology.
+- **PDF Report Generation**: Create detailed PDF reports with economic and technical results.
 
-This Python script implements a graphical user interface (GUI) for designing and analyzing heat systems, using PyQt5 for the interface and matplotlib for plotting. It allows users to input various parameters like gas, electricity, and wood prices. Users can add different heating technologies, such as solar thermal systems, biomass boilers, and gas boilers, using a customizable dialog window. The GUI provides functionality to calculate and optimize heat generation costs and visualize results with pie charts and stack plots.
-Features
-  - GUI for heat system design.
-  - Map-feature allows the import and visualisation of GIS-data
-  - pandapipes-powered thermohydraulic net calculation simulates heating demand
-  - Customizable inputs for prices and technologies.
-  - Visual representation of heating system performance.
-  - Options to calculate and optimize heat generation mix.
+### Technical Capabilities
+- **Heat Requirement Calculation**: Calculate heat demands based on different profiles and weather data.
+- **Economic Scenario Analysis**: Evaluate the economic feasibility of various heating scenarios.
+- **Optimization Algorithms**: Optimize heating network configurations for cost efficiency.
+- **Integration of New Technologies**: Support for solar thermal, biomass, geothermal, and other renewable sources.
 
-This script is designed to be interactive and user-friendly, making it easier for users to experiment with different heating system configurations and understand their impact on overall system performance and cost.
+## Installation
 
-# To Do
+To install DistrictHeatSim, ensure you have Python installed on your system. Follow the steps below:
 
-- Error Handling
-- Introduce Project Files
-    - Save and Load Features
-    - Make Information Available Across Tabs
-    - Ability to Work on Multiple Projects Simultaneously
+1. **Clone the repository**:
+    ```sh
+    git clone https://github.com/JonasPfeiffer123/DistrictHeatSim.git
+    ```
 
-Visualization and Import of GIS Data:
-  - Expand Query Requests for Downloading OSM Data
-  - Import of Generator Locations via CSV --> Multiple Entries Possible
-  - Convert Stanet Network to GeoJSON and Enable Import into Map
-  - Error Handling
+2. **Navigate to the project directory**:
+    ```sh
+    cd DistrictHeatSim
+    ```
 
-Network Calculation:
-  - Revise Calculation Parameters (Return Line Temperature, Profiles)
-  - Add Profile Subtypes
-  - Multiple Generators --> Determine Which One Uses Circulation Pump, Others Set as Fixed Injection (or Controlled by Main Generator Location)
+3. **Install the required packages**:
+    ```sh
+    pip install -r requirements.txt
+    ```
 
-Design of Generator Mix
-  - Parameter Variation for Pricing
-  - When Optimizing, a Copy of the Current Tab Should be Created and the Optimal Composition Displayed in a New Variant
-  - Add CO2 Emission Factors for Fuels --> Calculate Emissions for Heat Supply --> CO2 Emissions as Another Optimization Metric
-  - Further Customize PDF Export
-  - Create Standard Components
+## Usage
 
-- Evaluating integration with advanced simulation tools like SIM-VICUS, flixOpt, GHEtool and EnSySim.
-  
-# Contributing
+### Spatial Analysis
 
-Contributions and ideas are welcome, with standard coding practices and pull request submissions.
+1. **Load Project**: Start the application and select or create a new project.
+2. **Geocoding**: Use the built-in tool to convert address data in CSV format to coordinates.
+3. **OSM Data**: Download and integrate street and building data from OpenStreetMap.
+4. **LOD2 Data**: Process detailed 3D building data for heat demand analysis.
+5. **Clustering**: Cluster buildings into supply areas based on heat demand density.
+6. **Heat Network Generation**: Automatically generate a heat network based on building and generator locations.
 
-# License
-Current version of software written and maintained by Jonas Pfeiffer (HSZG)
-MIT license
+### Heat Network Calculation
 
+1. **Load Data**: Import the generated heat network data into Pandapipes.
+2. **Simulation**: Perform thermohydraulic calculations to simulate the heat network.
+3. **Optimization**: Optimize the network for cost efficiency and operational performance.
+4. **Results**: Visualize the results, including flow rates, pressures, and temperatures.
 
-# Contact
-  - Dipl.-Ing. (FH) Jonas Pfeiffer, Hochschule Zittau/Görlitz
-  - Contact via GitHub or LinkedIn for collaboration or queries.
+### Generator Sizing and Economic Analysis
+
+1. **Define Parameters**: Set up economic parameters and cost factors.
+2. **Generator Configuration**: Configure different types of heat generators and their capacities.
+3. **Simulation**: Simulate the performance and cost of different heating scenarios.
+4. **Report Generation**: Generate a PDF report with the simulation results, economic analysis, and recommendations.
+
+## Requirements
+
+- Python 3.8 or higher
+- Required Python packages listed in `requirements.txt`:
+    ```text
+    PyQt5
+    geopandas
+    PyQtWebEngine
+    folium
+    scipy
+    matplotlib
+    pandapipes
+    geopy
+    overpy
+    geojson
+    scikit-learn
+    hdbscan
+    PyPDF2
+    reportlab
+    ```
+
+## Project Structure
+
+- **src/**: Source code for DistrictHeatSim
+- **data/**: Sample data and GeoJSON files
+- **docs/**: Documentation and technical reports
+- **requirements.txt**: List of dependencies
+- **README.md**: This README file
+
+## Contribution Guidelines
+
+We welcome contributions from the community. To contribute:
+
+1. Fork the repository.
+2. Create a new branch for your feature or bug fix.
+3. Make your changes and commit them with descriptive messages.
+4. Push your changes to your forked repository.
+5. Open a pull request to the main repository.
+
+Please ensure that your contributions align with the project's coding standards and add tests for new functionalities.
+
+## License
+
+DistrictHeatSim is licensed under the MIT License. See the `LICENSE` file for more details.
+
+## Contact Information
+
+For further information, questions, or feedback, please contact the project maintainer:
+
+Jonas Pfeiffer  
+[GitHub Profile](https://github.com/JonasPfeiffer123)  
+Email: jonas.pfeiffer@example.com
