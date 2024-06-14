@@ -262,13 +262,15 @@ def initialize_net_geojson():
     run_control(net, mode="all")
 
     net = optimize_diameter_types(net, v_max=v_max_pipe)
-    net = optimize_diameter_parameters(net, element="heat_exchanger", v_max=v_max_heat_exchanger)
-    net = optimize_diameter_parameters(net, element="flow_control", v_max=v_max_heat_exchanger)
+    #net = optimize_diameter_parameters(net, element="heat_exchanger", v_max=v_max_heat_exchanger)
+    #net = optimize_diameter_parameters(net, element="flow_control", v_max=v_max_heat_exchanger)
+    net = optimize_diameter_parameters(net, element="heat_consumer", v_max=v_max_heat_exchanger)
 
     run_control(net, mode="all")
 
     fig, ax = plt.subplots()  # Erstelle eine Figure und eine Achse
-    config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_controls=True, show_heat_exchangers=True, show_pump=True, show_plot=True)
+    # heat_consumer doesnt work at this point
+    config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_controls=False, show_heat_exchangers=False, show_heat_consumers=True, show_pump=True, show_plot=True)
 
     return net
 

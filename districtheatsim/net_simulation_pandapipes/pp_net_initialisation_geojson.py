@@ -215,10 +215,13 @@ def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_
             mid_coord = ((coords[0][0] + coords[1][0]) / 2, (coords[0][1] + coords[1][1]) / 2)
             mid_junction_idx = pp.create_junction(net_i, pn_bar=1.05, tfluid_k=293.15, name=f"Junction {name_prefix}", geodata=mid_coord)
 
-            pp.create_flow_control(net_i, from_junction=junction_dict[coords[0]], to_junction=mid_junction_idx, controlled_mdot_kg_per_s=m, diameter_m=d)
+            #pp.create_flow_control(net_i, from_junction=junction_dict[coords[0]], to_junction=mid_junction_idx, controlled_mdot_kg_per_s=m, diameter_m=d)
 
-            pp.create_heat_exchanger(net_i, from_junction=mid_junction_idx, to_junction=junction_dict[coords[1]], diameter_m=d, loss_coefficient=0,
-                                     qext_w=q, name=f"{name_prefix} {i}")
+            #pp.create_heat_exchanger(net_i, from_junction=mid_junction_idx, to_junction=junction_dict[coords[1]], diameter_m=d, loss_coefficient=0,
+            #                         qext_w=q, name=f"{name_prefix} {i}")
+            pp.create_heat_consumer(net_i, from_junction=junction_dict[coords[0]], to_junction=junction_dict[coords[1]], controlled_mdot_kg_per_s=m, diameter_m=d, 
+                                    loss_coefficient=0, qext_w=q)
+
 
     def create_circulation_pump_pressure(net_i, all_coords, junction_dict, name_prefix):
         for i, coords in enumerate(all_coords, start=0):

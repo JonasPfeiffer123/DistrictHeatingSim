@@ -12,8 +12,8 @@ from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QComboBox, QPushButton, QGro
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import pyqtSignal
 
-from lod2.scripts.filter_LOD2 import spatial_filter_with_polygon, filter_LOD2_with_coordinates, process_lod2, calculate_centroid_and_geocode
-from lod2.scripts.heat_requirement_DIN_EN_12831 import Building
+from lod2.filter_LOD2 import spatial_filter_with_polygon, filter_LOD2_with_coordinates, process_lod2, calculate_centroid_and_geocode
+from lod2.heat_requirement_DIN_EN_12831 import Building
 
 # defines the base path
 def get_resource_path(relative_path):

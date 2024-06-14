@@ -8,7 +8,7 @@ import sys
 
 import pandas as pd
 
-from lod2.scripts.filter_LOD2 import spatial_filter_with_polygon, process_lod2, calculate_centroid_and_geocode
+from lod2.filter_LOD2 import spatial_filter_with_polygon, process_lod2, calculate_centroid_and_geocode
 
 def get_resource_path(relative_path):
     """ Get the absolute path to the resource, works for dev and for PyInstaller """

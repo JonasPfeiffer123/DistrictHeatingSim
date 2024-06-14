@@ -83,9 +83,6 @@ def load_layers(osm_street_layer_geojson_file, data_csv_file_name, coordinates):
         return None, None, None, None
 
 def generate_and_export_layers(osm_street_layer_geojson_file_name, data_csv_file_name, coordinates, base_path, fixed_angle=0, fixed_distance=1, algorithm="MST"):
-    print(osm_street_layer_geojson_file_name)
-    print(data_csv_file_name)
-    print(coordinates)
     street_layer, layer_points, layer_WEA, df = load_layers(osm_street_layer_geojson_file_name, data_csv_file_name, coordinates)
     
     # Use the custom functions to generate the lines

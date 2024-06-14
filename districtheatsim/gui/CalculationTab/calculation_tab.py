@@ -269,7 +269,7 @@ class CalculationTab(QWidget):
 
         self.figure5.clear()
         ax = self.figure5.add_subplot(111)
-        config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_controls=False, show_heat_exchangers=True)
+        config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_controls=False, show_heat_exchangers=False, show_heat_consumers=True)
         self.canvas5.draw()
 
     ### Zeitreihensimulation ###

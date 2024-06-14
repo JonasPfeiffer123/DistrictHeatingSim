@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandapipes.plotting as pp_plot
 
-def config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_controls=True, show_heat_exchangers=True, show_pump=True, show_plot=False):
+def config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_controls=True, show_heat_exchangers=True, show_heat_consumers=True, show_pump=True, show_plot=False):
     ax.clear()  # Vorherige Plots bereinigen
 
     data_annotations = []  # Zum Speichern der Annotations-Referenzen und Daten
@@ -72,6 +72,17 @@ def config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_control
             ann = make_annotation(text, x, y, "heat_exchanger", hx)
             data_annotations.append(ann)
 
+    if show_heat_consumers:
+        print("here")
+        for hx in net.heat_consumer.index:
+            x, y = net.junction_geodata.loc[net.heat_consumer.at[hx, 'from_junction'], ['x', 'y']]
+            mdot = net.res_heat_consumer.loc[hx, 'mdot_from_kg_per_s']
+            v = net.res_heat_consumer.loc[hx, 'v_mean_m_per_s']
+            qext = net.heat_consumer.loc[hx, 'qext_w']
+            text = f"Heat Consumer\nMdot: {mdot:.2f} kg/s\nV: {v:.2f} m/s\nQext: {qext:.2f} W"
+            ann = make_annotation(text, x, y, "heat_consumer", hx)
+            data_annotations.append(ann)
+
     if show_pump:
         for pump in net.circ_pump_pressure.index:
             x, y = net.junction_geodata.loc[net.circ_pump_pressure.at[pump, 'return_junction'], ['x', 'y']]
@@ -83,7 +94,7 @@ def config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_control
             data_annotations.append(ann)
 
     pp_plot.simple_plot(net, junction_size=0.01, heat_exchanger_size=0.1, pump_size=0.1, 
-                        pump_color='green', pipe_color='black', heat_exchanger_color='blue', ax=ax, show_plot=False)
+                        pump_color='green', pipe_color='black', heat_exchanger_color='blue', heat_consumer_color="blue", ax=ax, show_plot=False)
 
     # Event-Handling für die Interaktivität
     def on_move(event):

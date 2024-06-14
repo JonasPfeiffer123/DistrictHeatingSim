@@ -57,8 +57,9 @@ def net_optimization(net, v_max_pipe, v_max_heat_exchanger, material_filter, ins
     run_control(net, mode="all")
 
     net = optimize_diameter_types(net, v_max=v_max_pipe, material_filter=material_filter, insulation_filter=insulation_filter)
-    net = optimize_diameter_parameters(net, element="heat_exchanger", v_max=v_max_heat_exchanger)
-    net = optimize_diameter_parameters(net, element="flow_control", v_max=v_max_heat_exchanger)
+    #net = optimize_diameter_parameters(net, element="heat_exchanger", v_max=v_max_heat_exchanger)
+    #net = optimize_diameter_parameters(net, element="flow_control", v_max=v_max_heat_exchanger)
+    net = optimize_diameter_parameters(net, element="heat_consumer", v_max=v_max_heat_exchanger)
 
     run_control(net, mode="all")
 
@@ -69,12 +70,14 @@ def create_controllers(net, qext_w, return_temperature):
         raise ValueError("Die Längen von qext_w und return_temperature müssen gleich sein.")
 
     # Creates controllers for the network
-    for i in range(len(net.heat_exchanger)):
+    #for i in range(len(net.heat_exchanger)):
+    for i in range(len(net.heat_consumer)):
         # Create a simple DFData object for qext_w with the specific value for this pass
         placeholder_df = pd.DataFrame({f'qext_w_{i}': [qext_w[i]]})
         placeholder_data_source = DFData(placeholder_df)
 
-        ConstControl(net, element='heat_exchanger', variable='qext_w', element_index=i, data_source=placeholder_data_source, profile_name=f'qext_w_{i}')
+        #ConstControl(net, element='heat_exchanger', variable='qext_w', element_index=i, data_source=placeholder_data_source, profile_name=f'qext_w_{i}')
+        ConstControl(net, element='heat_consumer', variable='qext_w', element_index=i, data_source=placeholder_data_source, profile_name=f'qext_w_{i}')
         
         # Adjustment for using return_temperature as an array
         T_controller = ReturnTemperatureController(net, heat_exchanger_idx=i, target_temperature=return_temperature[i])
@@ -218,7 +221,8 @@ def calculate_worst_point(net):
     
     dp = []
 
-    for idx, p_from, p_to in zip(net.heat_exchanger.index, net.res_flow_control["p_from_bar"], net.res_heat_exchanger["p_to_bar"]):
+    #for idx, p_from, p_to in zip(net.heat_exchanger.index, net.res_flow_control["p_from_bar"], net.res_heat_exchanger["p_to_bar"]):
+    for idx, p_from, p_to in zip(net.heat_consumer.index, net.res_heat_consumer["p_from_bar"], net.res_heat_consumer["p_to_bar"]):
         dp_diff = p_from - p_to
         dp_diff = p_from - p_to
         dp.append((dp_diff, idx))
@@ -275,6 +279,26 @@ def export_net_geojson(net, filename):
                 'name': "HAST",
                 'diameter_mm': f"{heat_exchanger['diameter_m']*1000:.1f}",
                 'qext_W': f"{heat_exchanger['qext_w']:.0f}",
+                'geometry': [line]
+            }, crs="EPSG:25833") # set crs to EPSG:25833
+            
+            features.append(gdf_component)
+
+    if 'heat_consumer' in net and not net.heat_consumer.empty:
+        # Iterate through each pair of heat_exchanger and flow_control
+        for idx, heat_consumer in net.heat_consumer.iterrows():
+            # Get the coordinates for flow_control's start and heat_exchanger's end coordinates
+            start_coords = net.junction_geodata.loc[heat_consumer['from_junction']]
+            end_coords = net.junction_geodata.loc[heat_consumer['to_junction']]
+
+            # Create a line between these points
+            line = LineString([(start_coords['x'], start_coords['y']), (end_coords['x'], end_coords['y'])])
+            
+            # Create a GeoDataFrame for this combined component
+            gdf_component = gpd.GeoDataFrame({
+                'name': "HAST",
+                'diameter_mm': f"{heat_consumer['diameter_m']*1000:.1f}",
+                'qext_W': f"{heat_consumer['qext_w']:.0f}",
                 'geometry': [line]
             }, crs="EPSG:25833") # set crs to EPSG:25833
             

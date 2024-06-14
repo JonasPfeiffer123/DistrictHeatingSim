@@ -20,7 +20,7 @@ from pyproj import Transformer
 from gui.threads import GeocodingThread
 from geocoding.geocodingETRS89 import get_coordinates
 from osm.import_osm_data_geojson import build_query, download_data, save_to_file
-from osm.Wärmeversorgungsgebiete import clustering_quartiere_hdbscan, postprocessing_hdbscan, allocate_overlapping_area
+from osm.Wärmeversorgungsgebiete import clustering_districts_hdbscan, postprocessing_hdbscan, allocate_overlapping_area
 
 # defines the map path
 def get_resource_path(relative_path):
@@ -706,7 +706,7 @@ class SpatialAnalysisDialog(QDialog):
 
         gdf = self.calculate_building_data(gdf, geojson_file_buildings)
         
-        quartiere = clustering_quartiere_hdbscan(gdf)
+        quartiere = clustering_districts_hdbscan(gdf)
         quartiere = postprocessing_hdbscan(quartiere)
         quartiere = allocate_overlapping_area(quartiere)
         quartiere.to_file(geojson_file_areas, driver='GeoJSON')
