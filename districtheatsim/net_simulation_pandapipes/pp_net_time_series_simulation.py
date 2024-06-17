@@ -51,11 +51,6 @@ def create_log_variables(net):
     log_variables = [
         ('res_junction', 'p_bar'), 
         ('res_junction', 't_k'),
-        #('heat_exchanger', 'qext_w'),
-        #('res_heat_exchanger', 'v_mean_m_per_s'),
-        #('res_heat_exchanger', 't_from_k'),
-        #('res_heat_exchanger', 't_to_k'),
-        #('res_heat_exchanger', 'mdot_from_kg_per_s'),
         ('heat_consumer', 'qext_w'),
         ('res_heat_consumer', 'v_mean_m_per_s'),
         ('res_heat_consumer', 't_from_k'),

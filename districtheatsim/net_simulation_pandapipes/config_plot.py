@@ -51,27 +51,6 @@ def config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_control
             ann = make_annotation(text, mid_x, mid_y, "pipe", pipe, [(from_x, from_y), (to_x, to_y)])
             data_annotations.append(ann)
 
-    # Flow Controls
-    if show_flow_controls:
-        for fc in net.flow_control.index:
-            x, y = net.junction_geodata.loc[net.flow_control.at[fc, 'from_junction'], ['x', 'y']]
-            mdot = net.res_flow_control.loc[fc, 'mdot_from_kg_per_s']
-            v = net.res_flow_control.loc[fc, 'v_mean_m_per_s']
-            text = f"Flow Control\nMdot: {mdot:.2f} kg/s\nV: {v:.2f} m/s"
-            ann = make_annotation(text, x, y, "flow_control", fc)
-            data_annotations.append(ann)
-
-    # Heat Exchangers
-    if show_heat_exchangers:
-        for hx in net.heat_exchanger.index:
-            x, y = net.junction_geodata.loc[net.heat_exchanger.at[hx, 'from_junction'], ['x', 'y']]
-            mdot = net.res_heat_exchanger.loc[hx, 'mdot_from_kg_per_s']
-            v = net.res_heat_exchanger.loc[hx, 'v_mean_m_per_s']
-            qext = net.heat_exchanger.loc[hx, 'qext_w']
-            text = f"Heat Exchanger\nMdot: {mdot:.2f} kg/s\nV: {v:.2f} m/s\nQext: {qext:.2f} W"
-            ann = make_annotation(text, x, y, "heat_exchanger", hx)
-            data_annotations.append(ann)
-
     if show_heat_consumers:
         print("here")
         for hx in net.heat_consumer.index:
@@ -86,15 +65,12 @@ def config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_control
     if show_pump:
         for pump in net.circ_pump_pressure.index:
             x, y = net.junction_geodata.loc[net.circ_pump_pressure.at[pump, 'return_junction'], ['x', 'y']]
-            #mdot = net.res_heat_exchanger.loc[hx, 'mdot_from_kg_per_s']
-            #v = net.res_heat_exchanger.loc[hx, 'v_mean_m_per_s']
-            #qext = net.heat_exchanger.loc[hx, 'qext_w']
-            text = f"Circulation Pump Pressure"#\nMdot: {mdot:.2f} kg/s\nV: {v:.2f} m/s\nQext: {qext:.2f} W"
+            text = f"Circulation Pump Pressure"
             ann = make_annotation(text, x, y, "pump", pump)
             data_annotations.append(ann)
 
-    pp_plot.simple_plot(net, junction_size=0.01, heat_exchanger_size=0.1, pump_size=0.1, 
-                        pump_color='green', pipe_color='black', heat_exchanger_color='blue', heat_consumer_color="blue", ax=ax, show_plot=False)
+    pp_plot.simple_plot(net, junction_size=0.01, heat_consumer_size=0.1, pump_size=0.1, 
+                        pump_color='green', pipe_color='black', heat_consumer_color="blue", ax=ax, show_plot=False)
 
     # Event-Handling für die Interaktivität
     def on_move(event):

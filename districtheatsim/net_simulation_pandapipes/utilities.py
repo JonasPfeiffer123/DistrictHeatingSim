@@ -57,8 +57,6 @@ def net_optimization(net, v_max_pipe, v_max_heat_exchanger, material_filter, ins
     run_control(net, mode="all")
 
     net = optimize_diameter_types(net, v_max=v_max_pipe, material_filter=material_filter, insulation_filter=insulation_filter)
-    #net = optimize_diameter_parameters(net, element="heat_exchanger", v_max=v_max_heat_exchanger)
-    #net = optimize_diameter_parameters(net, element="flow_control", v_max=v_max_heat_exchanger)
     net = optimize_diameter_parameters(net, element="heat_consumer", v_max=v_max_heat_exchanger)
 
     run_control(net, mode="all")
@@ -76,7 +74,6 @@ def create_controllers(net, qext_w, return_temperature):
         placeholder_df = pd.DataFrame({f'qext_w_{i}': [qext_w[i]]})
         placeholder_data_source = DFData(placeholder_df)
 
-        #ConstControl(net, element='heat_exchanger', variable='qext_w', element_index=i, data_source=placeholder_data_source, profile_name=f'qext_w_{i}')
         ConstControl(net, element='heat_consumer', variable='qext_w', element_index=i, data_source=placeholder_data_source, profile_name=f'qext_w_{i}')
         
         # Adjustment for using return_temperature as an array
@@ -221,7 +218,6 @@ def calculate_worst_point(net):
     
     dp = []
 
-    #for idx, p_from, p_to in zip(net.heat_exchanger.index, net.res_flow_control["p_from_bar"], net.res_heat_exchanger["p_to_bar"]):
     for idx, p_from, p_to in zip(net.heat_consumer.index, net.res_heat_consumer["p_from_bar"], net.res_heat_consumer["p_to_bar"]):
         dp_diff = p_from - p_to
         dp_diff = p_from - p_to
