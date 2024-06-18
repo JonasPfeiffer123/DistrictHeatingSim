@@ -110,3 +110,13 @@ Stromprofile aus Wärmepumpen und PV-Anlagen
 LOD2-Daten laden --> Exception-Handling bei timeout Nominatim geocoding
 
 Implementing the new pandapipes version (heat exchangers)
+
+
+
+Speicherimplementierung BHKW:
+- Darstellung im Diagramm Summe BHKW + Speicher, nur BHKW, BHKW + Speicher einzeln?
+
+- Anzahl Starts, Betriebsstunden und Betriebsstunden/Start ausgeben
+
+Speicherimplementierung Biomassekessel:
+- nochmal der gleiche Spaß
