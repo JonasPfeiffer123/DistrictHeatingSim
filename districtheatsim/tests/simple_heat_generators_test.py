@@ -180,9 +180,9 @@ def test_chp():
 
     ax2 = axs[1].twinx()
     axs[1].stackplot(range(1, 8761), [chp.Wärmeleistung_BHKW_Speicher], labels=["Wärmeleistung BHKW"])
-    axs[1].plot(range(1, 8761), chp.Wärmeleistung_Speicher, label="Wärmeleistung Speicher BHKW", color="orange", linewidth=0.5)
+    axs[1].plot(range(1, 8761), chp.Wärmeleistung_Speicher_BHKW, label="Wärmeleistung Speicher BHKW", color="orange", linewidth=0.5)
     axs[1].plot(range(1, 8761), Last_L, label="Last", color="red", linewidth=0.5)
-    ax2.plot(range(1, 8761), chp.speicher_fuellstand, label="Speicherfüllstand", color="green")
+    ax2.plot(range(1, 8761), chp.speicher_fuellstand_BHKW, label="Speicherfüllstand", color="green")
 
     axs[1].set_title("Jahresdauerlinie mit Speicher")
     axs[1].set_xlabel("Jahresstunden")

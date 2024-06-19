@@ -403,6 +403,9 @@ class BiomassBoilerDialog(QDialog):
 
         self.setLayout(layout)
 
+        # Initiale Sichtbarkeit der Speicher Eingaben einstellen
+        self.toggleSpeicherInputs()
+
     def toggleSpeicherInputs(self):
         self.speicherInputs.setVisible(self.speicherAktivCheckbox.isChecked())
 
@@ -444,17 +447,28 @@ class GasBoilerDialog(QDialog):
         self.setWindowTitle("Eingabe für Gaskessel")
         layout = QVBoxLayout()
 
-        layout.addWidget(QLabel("aktuell keine Dimensionierungseingaben, Leistung wird anhand der Gesamtlast berechnet"))
+        self.PowerFactorGKInput = QLineEdit(self)
+        self.PowerFactorGKInput.setText(str(self.tech_data.get('Faktor_Dimensionierung', "1")))
+        layout.addWidget(QLabel("Auslegungsfaktor Gaskessel (Anteil an Maximallast)"))
+        layout.addWidget(self.PowerFactorGKInput)
+
         self.spezcostGKInput = QLineEdit(self)
         self.spezcostGKInput.setText(str(self.tech_data.get('spez_Investitionskosten', "30")))
         layout.addWidget(QLabel("spez. Investitionskosten in €/kW"))
         layout.addWidget(self.spezcostGKInput)
 
+        self.effGKInput = QLineEdit(self)
+        self.effGKInput.setText(str(self.tech_data.get('Nutzungsgrad', "0.9")))
+        layout.addWidget(QLabel("Nutzungsgrad Gaskessel"))
+        layout.addWidget(self.effGKInput)
+
         self.setLayout(layout)
 
     def getInputs(self):
         inputs = {
-            'spez_Investitionskosten': float(self.spezcostGKInput.text())
+            'Faktor_Dimensionierung': float(self.PowerFactorGKInput.text()),
+            'spez_Investitionskosten': float(self.spezcostGKInput.text()),
+            'Nutzungsgrad': float(self.effGKInput.text())
         }
         return inputs
     
