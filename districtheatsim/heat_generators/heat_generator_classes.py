@@ -55,6 +55,10 @@ class HeatPump:
     def __init__(self, name, spezifische_Investitionskosten_WP=1000):
         self.name = name
         self.spezifische_Investitionskosten_WP = spezifische_Investitionskosten_WP
+        self.Nutzungsdauer_WP = 20
+        self.f_Inst_WP, self.f_W_Insp_WP, self.Bedienaufwand_WP = 1, 1.5, 0
+        self.f_Inst_WQ, self.f_W_Insp_WQ, self.Bedienaufwand_WQ = 0.5, 0.5, 0
+        self.Nutzungsdauer_WQ_dict = {"Abwärme": 20, "Abwasserwärme": 20, "Flusswasser": 20, "Geothermie": 30}
 
     def COP_WP(self, VLT_L, QT, COP_data):
         # Interpolationsformel für den COP
@@ -88,22 +92,14 @@ class HeatPump:
         # Kosten Wärmepumpe: Viessmann Vitocal 350 HT-Pro: 140.000 €, 350 kW Nennleistung; 120 kW bei 10/85
         # Annahme Kosten Wärmepumpe: 1000 €/kW; Vereinfachung
         spezifische_Investitionskosten_WP = self.spezifische_Investitionskosten_WP
-        Nutzungsdauer_WP = 20
-        f_Inst_WP, f_W_Insp_WP, Bedienaufwand_WP = 1, 1.5, 0
-        f_Inst_WQ, f_W_Insp_WQ, Bedienaufwand_WQ = 0.5, 0.5, 0
-
         Investitionskosten_WP = spezifische_Investitionskosten_WP * round(Wärmeleistung, 0)
-
-        E1_WP = annuität(Investitionskosten_WP, Nutzungsdauer_WP, f_Inst_WP, f_W_Insp_WP, Bedienaufwand_WP, q, r, T,
+        E1_WP = annuität(Investitionskosten_WP, self.Nutzungsdauer_WP, self.f_Inst_WP, self.f_W_Insp_WP, self.Bedienaufwand_WP, q, r, T,
                             Strombedarf, Strompreis, stundensatz=stundensatz)
         WGK_WP_a = E1_WP/Wärmemenge
 
-        Nutzungsdauer_WQ_dict = {"Abwärme": 20, "Abwasserwärme": 20, "Flusswasser": 20, "Geothermie": 30}
-
         Investitionskosten_WQ = spez_Investitionskosten_WQ * Wärmeleistung
-
-        E1_WQ = annuität(Investitionskosten_WQ, Nutzungsdauer_WQ_dict[self.name], f_Inst_WQ, f_W_Insp_WQ,
-                            Bedienaufwand_WQ, q, r, T, stundensatz=stundensatz)
+        E1_WQ = annuität(Investitionskosten_WQ, self.Nutzungsdauer_WQ_dict[self.name], self.f_Inst_WQ, self.f_W_Insp_WQ,
+                            self.Bedienaufwand_WQ, q, r, T, stundensatz=stundensatz)
         WGK_WQ_a = E1_WQ / Wärmemenge
 
         WGK_Gesamt_a = WGK_WP_a + WGK_WQ_a
