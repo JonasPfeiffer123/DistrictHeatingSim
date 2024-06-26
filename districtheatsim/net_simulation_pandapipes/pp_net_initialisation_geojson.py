@@ -3,10 +3,11 @@ import geopandas as gpd
 import pandapipes as pp
 
 from heat_requirement import heat_requirement_VDI4655, heat_requirement_BDEW
-from net_simulation_pandapipes.utilities import create_controllers, correct_flow_directions, COP_WP
+from net_simulation_pandapipes.utilities import create_controllers, correct_flow_directions, COP_WP, init_diameter_types
 
 def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temperature, \
-                       supply_temperature, flow_pressure_pump, lift_pressure_pump, netconfiguration, pipetype, dT_RL, mass_flow_secondary_producers=0.5):
+                       supply_temperature, flow_pressure_pump, lift_pressure_pump, netconfiguration, pipetype, dT_RL, \
+                       v_max_pipe, material_filter, insulation_filter, mass_flow_secondary_producers=0.5):
         
     vorlauf = gpd.read_file(vorlauf, driver='GeoJSON')
     ruecklauf = gpd.read_file(ruecklauf, driver='GeoJSON')
@@ -58,7 +59,8 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, b
         max_waerme_hast_ges_W = max_waerme_gebaeude_ges_W
 
     net = create_network(vorlauf, ruecklauf, hast, erzeugeranlagen, max_waerme_hast_ges_W, return_temperature, \
-                            supply_temperature, flow_pressure_pump, lift_pressure_pump, pipetype, mass_flow_secondary_producers=mass_flow_secondary_producers)
+                            supply_temperature, flow_pressure_pump, lift_pressure_pump, pipetype, \
+                            v_max_pipe, material_filter, insulation_filter, mass_flow_secondary_producers=mass_flow_secondary_producers)
     
     return net, yearly_time_steps, waerme_hast_ges_W, return_temperature, supply_temperature_buildings, return_temperature_buildings, \
         supply_temperature_building_curve, return_temperature_building_curve 
@@ -169,7 +171,8 @@ def get_all_point_coords_from_line_cords(all_line_coords):
     return unique_point_coords
 
 def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_producer, qext_w, return_temperature=60, supply_temperature=85, 
-                   flow_pressure_pump=4, lift_pressure_pump=1.5, pipetype="KMR 100/250-2v",  pipe_creation_mode="type", v_max_m_s=1.5, main_producer_location_index=0, mass_flow_secondary_producers=0.5):
+                   flow_pressure_pump=4, lift_pressure_pump=1.5, pipetype="KMR 100/250-2v", v_max_pipe=1, material_filter="KMR", insulation_filter="2v", 
+                   pipe_creation_mode="type", v_max_m_s=1.5, main_producer_location_index=0, mass_flow_secondary_producers=0.5):
     net = pp.create_empty_network(fluid="water")
 
     # List and filter standard types for pipes
@@ -210,9 +213,9 @@ def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_
 
 
     def create_heat_exchangers(net_i, all_coords, junction_dict, name_prefix):
-        for i, (coords, q, m, d) in enumerate(zip(all_coords, qext_w, initial_mdot_guess_kg_s, initial_dimension_guess_m)):
+        for i, (coords, q, t, m, d) in enumerate(zip(all_coords, qext_w, return_temperature, initial_mdot_guess_kg_s, initial_dimension_guess_m)):
             pp.create_heat_consumer(net_i, from_junction=junction_dict[coords[0]], to_junction=junction_dict[coords[1]], controlled_mdot_kg_per_s=m, diameter_m=d, 
-                                    loss_coefficient=0, qext_w=q)
+                                    loss_coefficient=0, qext_w=q, name=f"{name_prefix} {i}") # treturn_k=t when implemented in function
 
 
     def create_circulation_pump_pressure(net_i, all_coords, junction_dict, name_prefix):
@@ -260,5 +263,6 @@ def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_
 
     net = create_controllers(net, qext_w, return_temperature)
     net = correct_flow_directions(net)
+    net = init_diameter_types(net, v_max_pipe=v_max_pipe, material_filter=material_filter, insulation_filter=insulation_filter)
 
     return net

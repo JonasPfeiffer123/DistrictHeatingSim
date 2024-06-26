@@ -1,3 +1,5 @@
+import time
+import logging
 import sys
 import os
 
@@ -14,6 +16,9 @@ from pandapower.timeseries import DFData
 from pandapower.control.controller.const_control import ConstControl
 
 from net_simulation_pandapipes.controllers import ReturnTemperatureController, WorstPointPressureController
+
+# Initialize logging
+logging.basicConfig(level=logging.INFO)
 
 def get_resource_path(relative_path):
     """ Get the absolute path to the resource, works for dev and for PyInstaller """
@@ -144,68 +149,137 @@ def optimize_diameter_parameters(net, element="pipe", v_max=2, dx=0.001):
 
     return net
 
-def optimize_diameter_types(net, v_max=1.0, material_filter="KMR", insulation_filter="2v"):
+def init_diameter_types(net, v_max_pipe=1.0, material_filter="KMR", insulation_filter="2v"):
+    start_time_total = time.time()
     pp.pipeflow(net, mode="all")
+    logging.info(f"Initial pipeflow calculation took {time.time() - start_time_total:.2f} seconds")
 
-    # List and filter standard types for pipes
     pipe_std_types = pp.std_types.available_std_types(net, "pipe")
     filtered_by_material = pipe_std_types[pipe_std_types['material'] == material_filter]
     filtered_by_material_and_insulation = filtered_by_material[filtered_by_material['insulation'] == insulation_filter]
 
-    # Dictionary for pipe type positions
     type_position_dict = {type_name: i for i, type_name in enumerate(filtered_by_material_and_insulation.index)}
 
+    # Initial diameter adjustment
+    for pipe_idx, velocity in enumerate(net.res_pipe.v_mean_m_per_s):
+        current_diameter = net.pipe.at[pipe_idx, 'diameter_m']
+        required_diameter = current_diameter * (velocity / v_max_pipe)**0.5
+        # Find the closest available standard type
+        closest_type = min(filtered_by_material_and_insulation.index, key=lambda x: abs(filtered_by_material_and_insulation.loc[x, 'inner_diameter_mm'] / 1000 - required_diameter))
+        net.pipe.std_type.at[pipe_idx] = closest_type
+        properties = filtered_by_material_and_insulation.loc[closest_type]
+        net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
+        net.pipe.at[pipe_idx, 'k_mm'] = properties['RAU']
+        net.pipe.at[pipe_idx, 'alpha_w_per_m2k'] = properties['WDZAHL']
+
+    pp.pipeflow(net, mode="all")
+    logging.info(f"Post-initial diameter adjustment pipeflow calculation took {time.time() - start_time_total:.2f} seconds")
+
+    return net
+
+def optimize_diameter_types(net, v_max=1.0, material_filter="KMR", insulation_filter="2v"):
+    start_time_total = time.time()
+    pp.pipeflow(net, mode="all")
+    logging.info(f"Initial pipeflow calculation took {time.time() - start_time_total:.2f} seconds")
+
+    pipe_std_types = pp.std_types.available_std_types(net, "pipe")
+    filtered_by_material = pipe_std_types[pipe_std_types['material'] == material_filter]
+    filtered_by_material_and_insulation = filtered_by_material[filtered_by_material['insulation'] == insulation_filter]
+
+    type_position_dict = {type_name: i for i, type_name in enumerate(filtered_by_material_and_insulation.index)}
+
+    # Initial diameter adjustment
+    for pipe_idx, velocity in enumerate(net.res_pipe.v_mean_m_per_s):
+        current_diameter = net.pipe.at[pipe_idx, 'diameter_m']
+        required_diameter = current_diameter * (velocity / v_max)**0.5
+        # Find the closest available standard type
+        closest_type = min(filtered_by_material_and_insulation.index, key=lambda x: abs(filtered_by_material_and_insulation.loc[x, 'inner_diameter_mm'] / 1000 - required_diameter))
+        net.pipe.std_type.at[pipe_idx] = closest_type
+        properties = filtered_by_material_and_insulation.loc[closest_type]
+        net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
+        net.pipe.at[pipe_idx, 'k_mm'] = properties['RAU']
+        net.pipe.at[pipe_idx, 'alpha_w_per_m2k'] = properties['WDZAHL']
+
+    pp.pipeflow(net, mode="all")
+    logging.info(f"Post-initial diameter adjustment pipeflow calculation took {time.time() - start_time_total:.2f} seconds")
+
+    # Add a column to track if a pipe is optimized
+    net.pipe['optimized'] = False
+
     change_made = True
+    iteration_count = 0
+
     while change_made:
+        iteration_start_time = time.time()
         change_made = False
 
+        # Track the number of pipes within and outside the desired velocity range
+        pipes_within_target = 0
+        pipes_outside_target = 0
+
         for pipe_idx, velocity in enumerate(net.res_pipe.v_mean_m_per_s):
+            if net.pipe.at[pipe_idx, 'optimized'] and velocity <= v_max:
+                pipes_within_target += 1
+                continue
+
+            #if velocity > v_max:
+            #    logging.info(f"Velocity at {pipe_idx} at start is {velocity} m/s")
+
             current_type = net.pipe.std_type.at[pipe_idx]
             current_type_position = type_position_dict[current_type]
 
-
             if velocity > v_max and current_type_position < len(filtered_by_material_and_insulation) - 1:
-                 # enlarge diameter
                 new_type = filtered_by_material_and_insulation.index[current_type_position + 1]
-
-                # Temporarily apply the new type
                 net.pipe.std_type.at[pipe_idx] = new_type
                 properties = filtered_by_material_and_insulation.loc[new_type]
                 net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
                 net.pipe.at[pipe_idx, 'k_mm'] = properties['RAU']
                 net.pipe.at[pipe_idx, 'alpha_w_per_m2k'] = properties['WDZAHL']
-
                 change_made = True
+                pipes_outside_target += 1
 
-            elif velocity < v_max and current_type_position > 0:
-                # shrink diameter, but check if this shrink makes the velocity exceed v_max
+            elif velocity <= v_max and current_type_position > 0:
                 new_type = filtered_by_material_and_insulation.index[current_type_position - 1]
-
-                # Temporarily apply the new type
                 net.pipe.std_type.at[pipe_idx] = new_type
                 properties = filtered_by_material_and_insulation.loc[new_type]
                 net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
                 net.pipe.at[pipe_idx, 'k_mm'] = properties['RAU']
                 net.pipe.at[pipe_idx, 'alpha_w_per_m2k'] = properties['WDZAHL']
 
-                # Recalculate to check new velocity
                 pp.pipeflow(net, mode="all")
                 new_velocity = net.res_pipe.v_mean_m_per_s[pipe_idx]
+
+                #logging.info(f"Adjusted velocity for pipe {pipe_idx}: {new_velocity} m/s with new type {new_type}")
 
                 if new_velocity <= v_max:
                     change_made = True
                 else:
-                    # Revert to original type if velocity exceeds v_max
+                    #logging.info(f"Reverting pipe {pipe_idx} to original type {current_type} as new velocity is {new_velocity} m/s")
                     net.pipe.std_type.at[pipe_idx] = current_type
                     properties = filtered_by_material_and_insulation.loc[current_type]
                     net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
                     net.pipe.at[pipe_idx, 'k_mm'] = properties['RAU']
                     net.pipe.at[pipe_idx, 'alpha_w_per_m2k'] = properties['WDZAHL']
-            
-        if change_made:
-            # Recalculate the pipe flow after all changes
-            pp.pipeflow(net, mode="all")
+                    
+                    net.pipe.at[pipe_idx, 'optimized'] = True
+                    pipes_within_target += 1
+            else:
+                net.pipe.at[pipe_idx, 'optimized'] = True
+                pipes_within_target += 1
 
+            #if velocity > v_max:
+            #    logging.info(f"Velocity at {pipe_idx} at end is {velocity} m/s")
+
+        iteration_count += 1
+        if change_made:
+            iteration_pipeflow_start = time.time()
+            pp.pipeflow(net, mode="all")
+            #logging.info(f"Iteration {iteration_count}: pipeflow calculation took {time.time() - iteration_pipeflow_start:.2f} seconds")
+        
+        logging.info(f"Iteration {iteration_count}: {pipes_within_target} pipes within target velocity, {pipes_outside_target} pipes outside target velocity")
+        logging.info(f"Iteration {iteration_count} took {time.time() - iteration_start_time:.2f} seconds")
+
+    logging.info(f"Total optimization time: {time.time() - start_time_total:.2f} seconds")
     return net
 
 def calculate_worst_point(net):

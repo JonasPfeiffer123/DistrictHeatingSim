@@ -1,5 +1,6 @@
 # Erstellt von Jonas Pfeiffer
-
+import time
+import logging
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -8,11 +9,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandapipes as pp
 from pandapipes.control.run_control import run_control
+from pandapower.control.run_control import ControllerNotConverged
 
 from net_simulation_pandapipes.config_plot import config_plot
 
 from net_simulation_pandapipes.pp_net_initialisation_geojson import *
 from net_simulation_pandapipes.utilities import *
+
+# Initialize logging
+logging.basicConfig(level=logging.INFO)
 
 def initialize_test_net(qext_w=np.array([50000, 100000]), return_temperature=60, supply_temperature=85, flow_pressure_pump=4, lift_pressure_pump=1.5, 
                         pipetype="KMR 100/250-2v",  pipe_creation_mode="type", v_max_m_s=1.5):
@@ -234,35 +239,57 @@ def get_test_net_2():
     fig, ax = plt.subplots()  # Erstelle eine Figure und eine Achse
     config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_controls=True, show_heat_exchangers=True, show_pump=True, show_plot=True)
 
+def check_controllers(net):
+    for controller in net.controller.index:
+        ctrl = net.controller.at[controller, 'object']
+        if hasattr(ctrl, 'is_converged'):
+            converged = ctrl.is_converged(net)
+            logging.info(f"Controller {controller}: {ctrl}, Converged: {converged}")
+            if not converged:
+                logging.info(f"Controller {controller} details: {ctrl}")
+        else:
+            logging.info(f"Controller {controller}: {ctrl}, Converged attribute not found")
+
 ### hier noch weitere Tests mit der geojson-basierten Erstellungsmethode ###
 # Example
 def initialize_net_geojson():
     base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    gdf_flow_line = gpd.read_file(f"{base_path}\project_data\Bad Muskau\Wärmenetz\Vorlauf.geojson", driver='GeoJSON')
-    gdf_return_line = gpd.read_file(f"{base_path}\project_data\Bad Muskau\Wärmenetz\Rücklauf.geojson", driver='GeoJSON')
-    gdf_heat_exchanger = gpd.read_file(f"{base_path}\project_data\Bad Muskau\Wärmenetz\HAST.geojson", driver='GeoJSON')
-    gdf_heat_producer = gpd.read_file(f"{base_path}\project_data\Bad Muskau\Wärmenetz\Erzeugeranlagen.geojson", driver='GeoJSON')
+    #gdf_flow_line = gpd.read_file(f"{base_path}\project_data\Bad Muskau\Wärmenetz\Vorlauf.geojson", driver='GeoJSON')
+    #gdf_return_line = gpd.read_file(f"{base_path}\project_data\Bad Muskau\Wärmenetz\Rücklauf.geojson", driver='GeoJSON')
+    #gdf_heat_exchanger = gpd.read_file(f"{base_path}\project_data\Bad Muskau\Wärmenetz\HAST.geojson", driver='GeoJSON')
+    #gdf_heat_producer = gpd.read_file(f"{base_path}\project_data\Bad Muskau\Wärmenetz\Erzeugeranlagen.geojson", driver='GeoJSON')
 
-    #yearly_time_steps, waerme_gebaeude_ges_W, max_waerme_gebaeude_ges_W, supply_temperature_building_curve, return_temperature_building_curve = generate_profiles_from_geojson(gdf_heat_exchanger)
+    gdf_flow_line = gpd.read_file(f"H:/Arbeit/01_SMWK-NEUES Bearbeitung/04_Projekt Bad Muskau/03_Bearbeitung/Projektordner/Bad Muskau Quartier 3\Wärmenetz\Vorlauf.geojson", driver='GeoJSON')
+    gdf_return_line = gpd.read_file(f"H:/Arbeit/01_SMWK-NEUES Bearbeitung/04_Projekt Bad Muskau/03_Bearbeitung/Projektordner/Bad Muskau Quartier 3\Wärmenetz\Rücklauf.geojson", driver='GeoJSON')
+    gdf_heat_exchanger = gpd.read_file(f"H:/Arbeit/01_SMWK-NEUES Bearbeitung/04_Projekt Bad Muskau/03_Bearbeitung/Projektordner/Bad Muskau Quartier 3\Wärmenetz\HAST.geojson", driver='GeoJSON')
+    gdf_heat_producer = gpd.read_file(f"H:/Arbeit/01_SMWK-NEUES Bearbeitung/04_Projekt Bad Muskau/03_Bearbeitung/Projektordner/Bad Muskau Quartier 3\Wärmenetz\Erzeugeranlagen.geojson", driver='GeoJSON')
 
-    #qext_w = max_waerme_gebaeude_ges_W
+    
+    # Set a fixed random seed for reproducibility
+    np.random.seed(42)
+
     #return_temperature = return_temperature_building_curve
-    qext_w = np.random.randint(30000, 40000, size=len(gdf_heat_exchanger))
+    qext_w = np.random.randint(500, 40000, size=len(gdf_heat_exchanger))
     return_temperature = np.random.randint(30, 60, size=len(gdf_heat_exchanger))
-    print(qext_w)
-    print(return_temperature)
 
     v_max_pipe = 1
     v_max_heat_exchanger = 2
     
     # net generation from gis data
-    net = create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_producer, qext_w, return_temperature, supply_temperature=85, flow_pressure_pump=4, lift_pressure_pump=1.5, 
-                        pipetype="KMR 100/250-2v",  pipe_creation_mode="type", v_max_m_s=1.5)
+    net = create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_producer, qext_w, return_temperature, supply_temperature=85, flow_pressure_pump=4, lift_pressure_pump=2, 
+                        pipetype="KMR 100/250-2v",  pipe_creation_mode="type", v_max_m_s=v_max_heat_exchanger, v_max_pipe=v_max_pipe, material_filter="KMR", insulation_filter="2v")
     
     run_control(net, mode="all")
 
-    net = optimize_diameter_types(net, v_max=v_max_pipe)
+    logging.info("Starting pipe optimization")
+    start_time = time.time()
+    net = optimize_diameter_types(net, v_max=v_max_pipe, material_filter="KMR", insulation_filter="2v")
+    logging.info(f"Pipe optimization finished in {time.time() - start_time:.2f} seconds")
+
+    logging.info("Starting heat consumer optimization")
+    start_time = time.time()
     net = optimize_diameter_parameters(net, element="heat_consumer", v_max=v_max_heat_exchanger)
+    logging.info(f"Heat consumer optimization finished in {time.time() - start_time:.2f} seconds")
 
     run_control(net, mode="all")
 

@@ -55,7 +55,9 @@ class NetInitializationThread(QThread):
                                                                              self.erzeugeranlagen, self.calc_method, self.building_type, \
                                                                              self.return_temperature, self.supply_temperature, \
                                                                              self.flow_pressure_pump, self.lift_pressure_pump, \
-                                                                             self.netconfiguration, self.pipetype, self.dT_RL, mass_flow_secondary_producers=self.mass_flow_secondary_producers)
+                                                                             self.netconfiguration, self.pipetype, self.dT_RL, \
+                                                                             self.v_max_pipe, self.material_filter, self.insulation_filter, \
+                                                                             mass_flow_secondary_producers=self.mass_flow_secondary_producers)
             
             elif self.kwargs.get("import_type") == "Stanet":
                 self.stanet_csv, self.return_temperature, self.supply_temperature, self.flow_pressure_pump, self.lift_pressure_pump = self.args
@@ -65,9 +67,7 @@ class NetInitializationThread(QThread):
 
             # Common steps for both import types
             if self.DiameterOpt_ckecked == True:
-                print("Here")
                 self.net = net_optimization(self.net, self.v_max_pipe, self.v_max_heat_exchanger, self.material_filter, self.insulation_filter)
-                print("Here")
             
             self.calculation_done.emit((self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.return_temperature, self.supply_temperature_buildings, \
                                         self.return_temperature_buildings, self.supply_temperature_building_curve, self.return_temperature_building_curve))

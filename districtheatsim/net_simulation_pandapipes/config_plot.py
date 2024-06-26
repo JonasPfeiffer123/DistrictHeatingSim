@@ -52,7 +52,6 @@ def config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_control
             data_annotations.append(ann)
 
     if show_heat_consumers:
-        print("here")
         for hx in net.heat_consumer.index:
             x, y = net.junction_geodata.loc[net.heat_consumer.at[hx, 'from_junction'], ['x', 'y']]
             mdot = net.res_heat_consumer.loc[hx, 'mdot_from_kg_per_s']
