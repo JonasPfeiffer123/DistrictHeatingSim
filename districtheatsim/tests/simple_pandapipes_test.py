@@ -254,22 +254,22 @@ def check_controllers(net):
 # Example
 def initialize_net_geojson():
     base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    #gdf_flow_line = gpd.read_file(f"{base_path}\project_data\Bad Muskau\Wärmenetz\Vorlauf.geojson", driver='GeoJSON')
-    #gdf_return_line = gpd.read_file(f"{base_path}\project_data\Bad Muskau\Wärmenetz\Rücklauf.geojson", driver='GeoJSON')
-    #gdf_heat_exchanger = gpd.read_file(f"{base_path}\project_data\Bad Muskau\Wärmenetz\HAST.geojson", driver='GeoJSON')
-    #gdf_heat_producer = gpd.read_file(f"{base_path}\project_data\Bad Muskau\Wärmenetz\Erzeugeranlagen.geojson", driver='GeoJSON')
+    gdf_flow_line = gpd.read_file(f"{base_path}\project_data\Bad Muskau\Wärmenetz\Vorlauf.geojson", driver='GeoJSON')
+    gdf_return_line = gpd.read_file(f"{base_path}\project_data\Bad Muskau\Wärmenetz\Rücklauf.geojson", driver='GeoJSON')
+    gdf_heat_exchanger = gpd.read_file(f"{base_path}\project_data\Bad Muskau\Wärmenetz\HAST.geojson", driver='GeoJSON')
+    gdf_heat_producer = gpd.read_file(f"{base_path}\project_data\Bad Muskau\Wärmenetz\Erzeugeranlagen.geojson", driver='GeoJSON')
 
-    gdf_flow_line = gpd.read_file(f"H:/Arbeit/01_SMWK-NEUES Bearbeitung/04_Projekt Bad Muskau/03_Bearbeitung/Projektordner/Bad Muskau Quartier 3\Wärmenetz\Vorlauf.geojson", driver='GeoJSON')
-    gdf_return_line = gpd.read_file(f"H:/Arbeit/01_SMWK-NEUES Bearbeitung/04_Projekt Bad Muskau/03_Bearbeitung/Projektordner/Bad Muskau Quartier 3\Wärmenetz\Rücklauf.geojson", driver='GeoJSON')
-    gdf_heat_exchanger = gpd.read_file(f"H:/Arbeit/01_SMWK-NEUES Bearbeitung/04_Projekt Bad Muskau/03_Bearbeitung/Projektordner/Bad Muskau Quartier 3\Wärmenetz\HAST.geojson", driver='GeoJSON')
-    gdf_heat_producer = gpd.read_file(f"H:/Arbeit/01_SMWK-NEUES Bearbeitung/04_Projekt Bad Muskau/03_Bearbeitung/Projektordner/Bad Muskau Quartier 3\Wärmenetz\Erzeugeranlagen.geojson", driver='GeoJSON')
+    #gdf_flow_line = gpd.read_file(f"H:/Arbeit/01_SMWK-NEUES Bearbeitung/04_Projekt Bad Muskau/03_Bearbeitung/Projektordner/Bad Muskau Quartier 3\Wärmenetz\Vorlauf.geojson", driver='GeoJSON')
+    #gdf_return_line = gpd.read_file(f"H:/Arbeit/01_SMWK-NEUES Bearbeitung/04_Projekt Bad Muskau/03_Bearbeitung/Projektordner/Bad Muskau Quartier 3\Wärmenetz\Rücklauf.geojson", driver='GeoJSON')
+    #gdf_heat_exchanger = gpd.read_file(f"H:/Arbeit/01_SMWK-NEUES Bearbeitung/04_Projekt Bad Muskau/03_Bearbeitung/Projektordner/Bad Muskau Quartier 3\Wärmenetz\HAST.geojson", driver='GeoJSON')
+    #gdf_heat_producer = gpd.read_file(f"H:/Arbeit/01_SMWK-NEUES Bearbeitung/04_Projekt Bad Muskau/03_Bearbeitung/Projektordner/Bad Muskau Quartier 3\Wärmenetz\Erzeugeranlagen.geojson", driver='GeoJSON')
 
     
     # Set a fixed random seed for reproducibility
     np.random.seed(42)
 
     #return_temperature = return_temperature_building_curve
-    qext_w = np.random.randint(500, 40000, size=len(gdf_heat_exchanger))
+    qext_w = np.random.randint(500, 1000000, size=len(gdf_heat_exchanger))
     return_temperature = np.random.randint(30, 60, size=len(gdf_heat_exchanger))
 
     v_max_pipe = 1

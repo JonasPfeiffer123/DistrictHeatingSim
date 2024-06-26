@@ -172,7 +172,7 @@ def get_all_point_coords_from_line_cords(all_line_coords):
 
 def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_producer, qext_w, return_temperature=60, supply_temperature=85, 
                    flow_pressure_pump=4, lift_pressure_pump=1.5, pipetype="KMR 100/250-2v", v_max_pipe=1, material_filter="KMR", insulation_filter="2v", 
-                   pipe_creation_mode="type", v_max_m_s=1.5, main_producer_location_index=0, mass_flow_secondary_producers=0.5):
+                   pipe_creation_mode="type", v_max_m_s=2, main_producer_location_index=0, mass_flow_secondary_producers=0.5):
     net = pp.create_empty_network(fluid="water")
 
     # List and filter standard types for pipes
@@ -185,7 +185,7 @@ def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_
 
     initial_mdot_guess_kg_s = qext_w / (4170*(supply_temperature-return_temperature))
     initial_Vdot_guess_m3_s = initial_mdot_guess_kg_s/1000
-    area_m2 = initial_Vdot_guess_m3_s/v_max_m_s
+    area_m2 = initial_Vdot_guess_m3_s/(v_max_m_s*(1/1.1))       # Safety factor of 1.1
     initial_dimension_guess_m = np.round(np.sqrt(area_m2 *(4/np.pi)), 3)
 
     def create_junctions_from_coords(net_i, all_coords):
