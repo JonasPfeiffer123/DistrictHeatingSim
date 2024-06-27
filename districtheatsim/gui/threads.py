@@ -227,7 +227,7 @@ class CalculateMixThread(QThread):
 
     def run(self):
         try:
-            time_steps, waerme_ges_W, pump_results = import_results_csv(self.filename)
+            time_steps, waerme_ges_kW, strom_wp_kW, pump_results = import_results_csv(self.filename)
             ### hier erstmal Vereinfachung, Temperaturen, Drücke der Hauptzenztrale, Leistungen addieren
             
             qext_values = []  # Diese Liste wird alle qext_kW Arrays speichern
@@ -258,11 +258,9 @@ class CalculateMixThread(QThread):
             if self.optimize:
                 self.tech_objects = optimize_mix(self.tech_objects, initial_data, calc1, calc2, TRY, COP_data, self.gas_price, self.electricity_price, self.wood_price, self.BEW, \
                                             kapitalzins=self.interest_on_capital, preissteigerungsrate=self.price_increase_rate, betrachtungszeitraum=self.period, stundensatz=self.wage)
-                
-            print(self.tech_objects)
 
             result = Berechnung_Erzeugermix(self.tech_objects, initial_data, calc1, calc2, TRY, COP_data, self.gas_price, self.electricity_price, self.wood_price, self.BEW, \
-                                            kapitalzins=self.interest_on_capital, preissteigerungsrate=self.price_increase_rate, betrachtungszeitraum=self.period, stundensatz=self.wage)
+                                            kapitalzins=self.interest_on_capital, preissteigerungsrate=self.price_increase_rate, betrachtungszeitraum=self.period, stundensatz=self.wage), waerme_ges_kW, strom_wp_kW
 
             self.calculation_done.emit(result)
         except Exception as e:

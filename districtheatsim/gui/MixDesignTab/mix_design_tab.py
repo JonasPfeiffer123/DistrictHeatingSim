@@ -197,16 +197,16 @@ class MixDesignTab(QWidget):
 
     def on_calculation_done(self, result):
         self.progressBar.setRange(0, 1)
-        self.results = result
+        self.results, waerme_ges_kW, strom_wp_kW = result
         self.techTab.updateTechList()
         self.costTab.updateInfrastructureTable()  # Hier sicherstellen, dass zuerst die Infrastrukturtabelle aktualisiert wird
         self.costTab.updateTechDataTable(self.techTab.tech_objects)  # Danach die Tech-Tabelle aktualisieren
         self.costTab.updateSumLabel()  # Danach das Summenlabel aktualisieren
         self.costTab.plotCostComposition()
-        self.resultTab.showResultsInTable(result)
-        self.resultTab.showAdditionalResultsTable(result)
-        self.resultTab.plotResults(result)
-        self.save_results_to_csv(result)
+        self.resultTab.showResultsInTable(self.results)
+        self.resultTab.showAdditionalResultsTable(self.results, waerme_ges_kW, strom_wp_kW)
+        self.resultTab.plotResults(self.results)
+        self.save_results_to_csv(self.results)
         self.showConfirmationDialog()
 
     def on_calculation_error(self, error_message):
@@ -253,13 +253,18 @@ class MixDesignTab(QWidget):
         for gas_price in self.generate_values(gas_range):
             for electricity_price in self.generate_values(electricity_range):
                 for wood_price in self.generate_values(wood_range):
-                    result = self.calculate_mix(filename, load_scale_factor, gas_price, electricity_price, wood_price)
+                    result, waerme_ges_kW, strom_wp_kW = self.calculate_mix(filename, load_scale_factor, gas_price, electricity_price, wood_price)
+                    waerme_ges_kW, strom_wp_kW = np.sum(waerme_ges_kW), np.sum(strom_wp_kW)
+                    wgk_heat_pump_electricity = ((strom_wp_kW/1000) * electricity_price) / ((strom_wp_kW+waerme_ges_kW)/1000)
                     if result is not None:
                         results.append({
                             'gas_price': gas_price,
                             'electricity_price': electricity_price,
                             'wood_price': wood_price,
-                            'WGK_Gesamt': result['WGK_Gesamt']
+                            'WGK_Gesamt': result['WGK_Gesamt'],
+                            'waerme_ges_kW': waerme_ges_kW,
+                            'strom_wp_kW': strom_wp_kW,
+                            'wgk_heat_pump_electricity': wgk_heat_pump_electricity
                         })
 
         self.sensitivityTab.plotSensitivity(results)

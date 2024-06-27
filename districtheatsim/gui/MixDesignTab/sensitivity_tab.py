@@ -106,7 +106,7 @@ class SensitivityTab(QWidget):
         gas_prices = [res['gas_price'] for res in results]
         electricity_prices = [res['electricity_price'] for res in results]
         wood_prices = [res['wood_price'] for res in results]
-        wgk = [res['WGK_Gesamt'] for res in results]
+        wgk = [res['WGK_Gesamt'] + res['wgk_heat_pump_electricity'] for res in results]
 
         sc = ax.scatter(gas_prices, electricity_prices, wood_prices, c=wgk, cmap='viridis', marker='o')
         ax.set_xlabel('Gaspreis (€/MWh)')
@@ -133,7 +133,7 @@ class SensitivityTab(QWidget):
             subset_results = [res for res in results if res['wood_price'] == wood_price]
             gas_prices = np.array([res['gas_price'] for res in subset_results])
             electricity_prices = np.array([res['electricity_price'] for res in subset_results])
-            wgk = np.array([res['WGK_Gesamt'] for res in subset_results])
+            wgk = np.array([res['WGK_Gesamt'] + res['wgk_heat_pump_electricity'] for res in subset_results])
 
             # Create a grid for surface plot
             grid_x, grid_y = np.meshgrid(
