@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandapipes.plotting as pp_plot
 
-def config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_controls=True, show_heat_exchangers=True, show_heat_consumers=True, show_pump=True, show_plot=False):
+def config_plot(net, ax, show_junctions=True, show_pipes=True, show_heat_consumers=True, show_pump=True, show_plot=False):
     ax.clear()  # Vorherige Plots bereinigen
 
     data_annotations = []  # Zum Speichern der Annotations-Referenzen und Daten
@@ -10,7 +10,7 @@ def config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_control
     # Funktion zum Erstellen einer Annotation
     def make_annotation(text, x, y, obj_type, obj_id=None, line_points=None, visible=False):
         # Anpassung des Abstands basierend auf dem Typ
-        if obj_type in ["flow_control", "heat_exchanger", "pump"]:
+        if obj_type in ["heat_consumer", "pump"]:
             xytext = (50, 50)  # Erhöhen Sie den Abstand für bessere Sichtbarkeit
         else:
             xytext = (10, 10)
@@ -30,7 +30,7 @@ def config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_control
             name = net.junction.loc[junction, 'name']
             pressure = net.res_junction.loc[junction, 'p_bar']
             temperature = net.res_junction.loc[junction, 't_k']
-            text = f"{name}\nP: {pressure:.2f} bar\nT: {temperature - 273.15:.2f} °C"
+            text = f"{name}\nPressure: {pressure:.2f} bar\nTemperature: {temperature - 273.15:.2f} °C"
             ann = make_annotation(text, x, y, "junction", junction)
             data_annotations.append(ann)
 
@@ -41,31 +41,42 @@ def config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_control
             to_junction = net.pipe.at[pipe, 'to_junction']
             from_x, from_y = net.junction_geodata.loc[from_junction, ['x', 'y']]
             to_x, to_y = net.junction_geodata.loc[to_junction, ['x', 'y']]
+            name = net.pipe.loc[pipe, 'name']
             mid_x = (from_x + to_x) / 2
             mid_y = (from_y + to_y) / 2
             pipe_type = net.pipe.loc[pipe, 'std_type']
             pipe_length_km = net.pipe.loc[pipe, 'length_km']
             mdot = net.res_pipe.loc[pipe, 'mdot_from_kg_per_s']
             v = net.res_pipe.loc[pipe, 'v_mean_m_per_s']
-            text = f"Pipe: {pipe_type}\nLength: {pipe_length_km:.2f} km\nMdot: {mdot:.2f} kg/s\nV: {v:.2f} m/s"
+            text = f"{name}: {pipe_type}\nLength: {pipe_length_km:.2f} km\nMass flow: {mdot:.2f} kg/s\nVelocity: {v:.2f} m/s"
             ann = make_annotation(text, mid_x, mid_y, "pipe", pipe, [(from_x, from_y), (to_x, to_y)])
             data_annotations.append(ann)
 
     if show_heat_consumers:
-        for hx in net.heat_consumer.index:
-            x, y = net.junction_geodata.loc[net.heat_consumer.at[hx, 'from_junction'], ['x', 'y']]
-            mdot = net.res_heat_consumer.loc[hx, 'mdot_from_kg_per_s']
-            v = net.res_heat_consumer.loc[hx, 'v_mean_m_per_s']
-            qext = net.heat_consumer.loc[hx, 'qext_w']
-            text = f"Heat Consumer\nMdot: {mdot:.2f} kg/s\nV: {v:.2f} m/s\nQext: {qext:.2f} W"
-            ann = make_annotation(text, x, y, "heat_consumer", hx)
+        for hc in net.heat_consumer.index:
+            from_x, from_y = net.junction_geodata.loc[net.heat_consumer.at[hc, 'from_junction'], ['x', 'y']]
+            to_x, to_y = net.junction_geodata.loc[net.heat_consumer.at[hc, 'to_junction'], ['x', 'y']]
+            mid_x = (from_x + to_x) / 2
+            mid_y = (from_y + to_y) / 2
+            name = net.heat_consumer.loc[hc, 'name']
+            qext = net.heat_consumer.loc[hc, 'qext_w']
+            mdot = net.res_heat_consumer.loc[hc, 'mdot_from_kg_per_s']
+            v = net.res_heat_consumer.loc[hc, 'v_mean_m_per_s']
+            text = f"{name}\nHeat demand: {qext:.2f} W\nMass flow: {mdot:.2f} kg/s\nVelocity: {v:.2f} m/s\n"
+            ann = make_annotation(text, mid_x, mid_y, "heat_consumer", hc)
             data_annotations.append(ann)
 
     if show_pump:
         for pump in net.circ_pump_pressure.index:
-            x, y = net.junction_geodata.loc[net.circ_pump_pressure.at[pump, 'return_junction'], ['x', 'y']]
-            text = f"Circulation Pump Pressure"
-            ann = make_annotation(text, x, y, "pump", pump)
+            from_x, from_y = net.junction_geodata.loc[net.circ_pump_pressure.at[pump, 'return_junction'], ['x', 'y']]
+            to_x, to_y = net.junction_geodata.loc[net.circ_pump_pressure.at[pump, 'flow_junction'], ['x', 'y']]
+            mid_x = (from_x + to_x) / 2
+            mid_y = (from_y + to_y) / 2
+            name = net.circ_pump_pressure.loc[pump, 'name']
+            deltap = net.res_circ_pump_pressure.loc[pump, 'deltap_bar']
+            mdot_flow = net.res_circ_pump_pressure.loc[pump, 'mdot_flow_kg_per_s']
+            text = f"Circulation Pump Pressure: {pump}\nPressure lift: {deltap:.2f} bar\nMass flow: {mdot_flow:.2f} kg/s"
+            ann = make_annotation(text, mid_x, mid_y, "pump", pump)
             data_annotations.append(ann)
 
     pp_plot.simple_plot(net, junction_size=0.01, heat_consumer_size=0.1, pump_size=0.1, 
@@ -93,37 +104,7 @@ def config_plot(net, ax, show_junctions=True, show_pipes=True, show_flow_control
                 ann_data['annotation'].set_visible(False)
         ax.figure.canvas.draw_idle()
 
-    def on_scroll(event):
-        base_scale = 1.5
-        # get the current x and y limits
-        cur_xlim = ax.get_xlim()
-        cur_ylim = ax.get_ylim()
-        cur_xrange = (cur_xlim[1] - cur_xlim[0]) * .5
-        cur_yrange = (cur_ylim[1] - cur_ylim[0]) * .5
-        xdata = event.xdata  # get event x location
-        ydata = event.ydata  # get event y location
-
-        if event.button == 'up':
-            # deal with zoom in
-            scale_factor = 1 / base_scale
-        elif event.button == 'down':
-            # deal with zoom out
-            scale_factor = base_scale
-        else:
-            # deal with something that should never happen
-            scale_factor = 1
-            print(event.button)
-
-        # set new limits
-        ax.set_xlim([xdata - cur_xrange * scale_factor,
-                    xdata + cur_xrange * scale_factor])
-        ax.set_ylim([ydata - cur_yrange * scale_factor,
-                    ydata + cur_yrange * scale_factor])
-        plt.draw()  # redraw the figure
-
-
     ax.figure.canvas.mpl_connect('motion_notify_event', on_move)
-    ax.figure.canvas.mpl_connect('scroll_event', on_scroll)
 
     if show_plot:
         plt.show()

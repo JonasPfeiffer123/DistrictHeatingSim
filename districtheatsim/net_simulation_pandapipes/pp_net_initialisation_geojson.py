@@ -203,13 +203,13 @@ def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_
                 pp.create_pipe_from_parameters(net_i, from_junction=junction_dict[coords[0]],
                                             to_junction=junction_dict[coords[1]], length_km=length_m/1000,
                                             diameter_m=diameter_mm/1000, k_mm=k, alpha_w_per_m2k=alpha, 
-                                            name=pipe_name, geodata=coords, sections=5, text_k=283)
+                                            name=f"{pipe_name} {i}", geodata=coords, sections=5, text_k=283)
             elif pipe_mode == "type":
                 pipetype = pipe_type_or_diameter
                 pipe_name = line_type
                 pp.create_pipe(net_i, from_junction=junction_dict[coords[0]], to_junction=junction_dict[coords[1]],
                             std_type=pipetype, length_km=length_m/1000, k_mm=k, alpha_w_per_m2k=alpha,
-                            name=pipe_name, geodata=coords, sections=5, text_k=283)
+                            name=f"{pipe_name} {i}", geodata=coords, sections=5, text_k=283)
 
 
     def create_heat_exchangers(net_i, all_coords, junction_dict, name_prefix):
