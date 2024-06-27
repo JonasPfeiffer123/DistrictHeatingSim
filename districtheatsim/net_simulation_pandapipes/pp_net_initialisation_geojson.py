@@ -185,7 +185,7 @@ def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_
 
     initial_mdot_guess_kg_s = qext_w / (4170*(supply_temperature-return_temperature))
     initial_Vdot_guess_m3_s = initial_mdot_guess_kg_s/1000
-    area_m2 = initial_Vdot_guess_m3_s/(v_max_m_s*(1/1.1))       # Safety factor of 1.1
+    area_m2 = initial_Vdot_guess_m3_s/(v_max_m_s*(1/1.5))       # Safety factor of 1.1
     initial_dimension_guess_m = np.round(np.sqrt(area_m2 *(4/np.pi)), 3)
 
     def create_junctions_from_coords(net_i, all_coords):

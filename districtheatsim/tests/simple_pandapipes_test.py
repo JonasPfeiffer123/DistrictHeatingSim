@@ -291,6 +291,9 @@ def initialize_net_geojson():
     net = optimize_diameter_parameters(net, element="heat_consumer", v_max=v_max_heat_exchanger)
     logging.info(f"Heat consumer optimization finished in {time.time() - start_time:.2f} seconds")
 
+    # recalculate maximum and minimum mass flows in the controller
+    net = recalculate_all_mass_flow_limits(net)
+
     run_control(net, mode="all")
 
     fig, ax = plt.subplots()  # Erstelle eine Figure und eine Achse

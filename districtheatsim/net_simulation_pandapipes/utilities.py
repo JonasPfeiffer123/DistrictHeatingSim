@@ -64,6 +64,9 @@ def net_optimization(net, v_max_pipe, v_max_heat_exchanger, material_filter, ins
     net = optimize_diameter_types(net, v_max=v_max_pipe, material_filter=material_filter, insulation_filter=insulation_filter)
     net = optimize_diameter_parameters(net, element="heat_consumer", v_max=v_max_heat_exchanger)
 
+    # recalculate maximum and minimum mass flows in the controller
+    net = recalculate_all_mass_flow_limits(net)
+    
     run_control(net, mode="all")
 
     return net
@@ -91,6 +94,13 @@ def create_controllers(net, qext_w, return_temperature):
 
     return net
 
+def recalculate_all_mass_flow_limits(net):
+    for idx, controller in net.controller.iterrows():
+        if isinstance(controller['object'], ReturnTemperatureController):
+            controller['object'].calculate_mass_flow_limits(net)
+
+    return net
+
 def correct_flow_directions(net):
     # Initial pipeflow calculation
     pp.pipeflow(net, mode="all")
@@ -111,6 +121,7 @@ def correct_flow_directions(net):
     return net
 
 def optimize_diameter_parameters(net, element="pipe", v_max=2, dx=0.001):
+    v_max /= 1.5
     pp.pipeflow(net, mode="all")
     element_df = getattr(net, element)  # Access the element's DataFrame
     res_df = getattr(net, f"res_{element}")  # Access the result DataFrame
