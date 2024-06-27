@@ -382,10 +382,10 @@ class NetGenerationDialog(QDialog):
         row_layout.addWidget(self.v_max_pipeInput)
         layout.addLayout(row_layout)
 
-        self.v_max_heat_exchangerLabel = QLabel("Maximale Strömungsgeschwindigkeit HAST:")
-        self.v_max_heat_exchangerInput = QLineEdit("1.5")
-        row_layout.addWidget(self.v_max_heat_exchangerLabel)
-        row_layout.addWidget(self.v_max_heat_exchangerInput)
+        self.v_max_heat_consumerLabel = QLabel("Maximale Strömungsgeschwindigkeit HAST:")
+        self.v_max_heat_consumerInput = QLineEdit("1.5")
+        row_layout.addWidget(self.v_max_heat_consumerLabel)
+        row_layout.addWidget(self.v_max_heat_consumerInput)
         layout.addLayout(row_layout)
 
         self.material_filterInput = QComboBox(self)
@@ -493,8 +493,8 @@ class NetGenerationDialog(QDialog):
         self.v_max_pipelabel.setVisible(self.DiameterOpt_ckecked)
         self.v_max_pipeInput.setVisible(self.DiameterOpt_ckecked)
 
-        self.v_max_heat_exchangerLabel.setVisible(self.DiameterOpt_ckecked)
-        self.v_max_heat_exchangerInput.setVisible(self.DiameterOpt_ckecked)
+        self.v_max_heat_consumerLabel.setVisible(self.DiameterOpt_ckecked)
+        self.v_max_heat_consumerInput.setVisible(self.DiameterOpt_ckecked)
 
         self.material_filterInput.setVisible(self.DiameterOpt_ckecked)
         self.insulation_filterInput.setVisible(self.DiameterOpt_ckecked)
@@ -539,7 +539,7 @@ class NetGenerationDialog(QDialog):
             max_air_temperature = float(self.parameter_rows[3].itemAt(1).widget().text())
             min_air_temperature = float(self.parameter_rows[4].itemAt(1).widget().text())
 
-
+            # Hardcoded, needs to be replaced
             air_temperature_data = import_TRY(get_resource_path("heat_requirement\TRY_511676144222\TRY2015_511676144222_Jahr.dat"))
 
             # Berechnung der Temperaturkurve basierend auf den ausgewählten Einstellungen
@@ -642,7 +642,7 @@ class NetGenerationDialog(QDialog):
             building_type = self.buildingTypeInput.currentText() if self.calcMethodInput.currentText() != "Datensatz" else "HMF"
 
             dT_RL = float(self.parameter_rows[8].itemAt(1).widget().text())
-            v_max_heat_exchanger  = float(self.v_max_heat_exchangerInput.text())
+            v_max_heat_consumer  = float(self.v_max_heat_consumerInput.text())
             pipetype = self.initialpipetypeInput.currentText()
 
             v_max_pipe = float(self.v_max_pipeInput.text())
@@ -652,7 +652,7 @@ class NetGenerationDialog(QDialog):
             # Führen Sie die Netzgenerierung für GeoJSON durch
             if self.generate_callback:
                 self.generate_callback(vorlauf_path, ruecklauf_path, hast_path, erzeugeranlagen_path, calc_method, building_type, rl_temp, 
-                                       supply_temperature, flow_pressure_pump, lift_pressure_pump, self.netconfiguration, dT_RL, v_max_heat_exchanger,
+                                       supply_temperature, flow_pressure_pump, lift_pressure_pump, self.netconfiguration, dT_RL, v_max_heat_consumer,
                                        self.building_temp_checked, pipetype, v_max_pipe, material_filter, insulation_filter, self.DiameterOpt_ckecked, import_type)
 
         elif import_type == "Stanet":

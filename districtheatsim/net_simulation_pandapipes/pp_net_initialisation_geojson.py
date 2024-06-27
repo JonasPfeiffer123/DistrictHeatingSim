@@ -5,16 +5,16 @@ import pandapipes as pp
 from heat_requirement import heat_requirement_VDI4655, heat_requirement_BDEW
 from net_simulation_pandapipes.utilities import create_controllers, correct_flow_directions, COP_WP, init_diameter_types
 
-def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temperature, \
-                       supply_temperature, flow_pressure_pump, lift_pressure_pump, netconfiguration, pipetype, dT_RL, \
-                       v_max_pipe, material_filter, insulation_filter, mass_flow_secondary_producers=0.5):
+def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temperature_net, \
+                       supply_temperature_net, flow_pressure_pump, lift_pressure_pump, netconfiguration, pipetype, dT_RL, \
+                       v_max_pipe, material_filter, insulation_filter, v_max_heat_consumer, mass_flow_secondary_producers=0.5):
         
     vorlauf = gpd.read_file(vorlauf, driver='GeoJSON')
     ruecklauf = gpd.read_file(ruecklauf, driver='GeoJSON')
     hast = gpd.read_file(hast, driver='GeoJSON')
     erzeugeranlagen = gpd.read_file(erzeugeranlagen, driver='GeoJSON')
 
-    print(f"Vorlauftemperatur Netz: {supply_temperature} °C")
+    print(f"Vorlauftemperatur Netz: {supply_temperature_net} °C")
 
     supply_temperature_buildings = hast["VLT_max"].values.astype(float)
     print(f"Vorlauftemperatur Gebäude: {supply_temperature_buildings} °C")
@@ -22,14 +22,14 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, b
     return_temperature_buildings = hast["RLT_max"].values.astype(float)
     print(f"Rücklauftemperatur Gebäude: {return_temperature_buildings} °C")
 
-    if return_temperature == None:
-        return_temperature = return_temperature_buildings + dT_RL
-        print(f"Rücklauftemperatur HAST: {return_temperature} °C")
+    if return_temperature_net == None:
+        return_temperature_net = return_temperature_buildings + dT_RL
+        print(f"Rücklauftemperatur HAST: {return_temperature_net} °C")
     else:
-        return_temperature = np.full_like(return_temperature_buildings, return_temperature)
-        print(f"Rücklauftemperatur HAST: {return_temperature} °C")
+        return_temperature_net = np.full_like(return_temperature_buildings, return_temperature_net)
+        print(f"Rücklauftemperatur HAST: {return_temperature_net} °C")
 
-    if np.any(return_temperature >= supply_temperature):
+    if np.any(return_temperature_net >= supply_temperature_net):
         raise ValueError("Rücklauftemperatur darf nicht höher als die Vorlauftemperatur sein. Bitte überprüfen sie die Eingaben.")
 
     yearly_time_steps, waerme_gebaeude_ges_W, max_waerme_gebaeude_ges_W, supply_temperature_building_curve, \
@@ -38,32 +38,40 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, b
 
     waerme_hast_ges_W = []
     max_waerme_hast_ges_W = []
+    strombedarf_hast_ges_W = []
+    max_el_leistung_hast_ges_W = []
     if netconfiguration == "kaltes Netz":
-        COP, _ = COP_WP(supply_temperature_buildings, return_temperature)
+        COP, _ = COP_WP(supply_temperature_buildings, return_temperature_net)
         print(f"COP dezentrale Wärmepumpen Gebäude: {COP}")
 
         for waerme_gebaeude, leistung_gebaeude, cop in zip(waerme_gebaeude_ges_W, max_waerme_gebaeude_ges_W, COP):
-            strom_wp = waerme_gebaeude/cop
-            waerme_hast = waerme_gebaeude - strom_wp
+            strombedarf_wp = waerme_gebaeude/cop
+            waerme_hast = waerme_gebaeude - strombedarf_wp
             waerme_hast_ges_W.append(waerme_hast)
+            strombedarf_hast_ges_W.append(strombedarf_wp)
 
-            stromleistung_wp = leistung_gebaeude/cop
-            waerme_leistung_hast = leistung_gebaeude - stromleistung_wp
+            el_leistung_wp = leistung_gebaeude/cop
+            waerme_leistung_hast = leistung_gebaeude - el_leistung_wp
             max_waerme_hast_ges_W.append(waerme_leistung_hast)
+            max_el_leistung_hast_ges_W.append(el_leistung_wp)
 
         waerme_hast_ges_W = np.array(waerme_hast_ges_W)
         max_waerme_hast_ges_W = np.array(max_waerme_hast_ges_W)
+        strombedarf_hast_ges_W = np.array(strombedarf_hast_ges_W)
+        max_el_leistung_hast_ges_W = np.array(max_el_leistung_hast_ges_W)
 
     else:
         waerme_hast_ges_W = waerme_gebaeude_ges_W
         max_waerme_hast_ges_W = max_waerme_gebaeude_ges_W
+        strombedarf_hast_ges_W = np.zeros_like(waerme_gebaeude_ges_W)
+        max_el_leistung_hast_ges_W = np.zeros_like(max_waerme_gebaeude_ges_W)
 
-    net = create_network(vorlauf, ruecklauf, hast, erzeugeranlagen, max_waerme_hast_ges_W, return_temperature, \
-                            supply_temperature, flow_pressure_pump, lift_pressure_pump, pipetype, \
-                            v_max_pipe, material_filter, insulation_filter, mass_flow_secondary_producers=mass_flow_secondary_producers)
+    net = create_network(vorlauf, ruecklauf, hast, erzeugeranlagen, max_waerme_hast_ges_W, return_temperature_net, \
+                            supply_temperature_net, flow_pressure_pump, lift_pressure_pump, pipetype, \
+                            v_max_pipe, material_filter, insulation_filter, v_max_heat_consumer=v_max_heat_consumer, mass_flow_secondary_producers=mass_flow_secondary_producers)
     
-    return net, yearly_time_steps, waerme_hast_ges_W, return_temperature, supply_temperature_buildings, return_temperature_buildings, \
-        supply_temperature_building_curve, return_temperature_building_curve 
+    return net, yearly_time_steps, waerme_hast_ges_W, return_temperature_net, supply_temperature_buildings, return_temperature_buildings, \
+        supply_temperature_building_curve, return_temperature_building_curve, strombedarf_hast_ges_W, max_el_leistung_hast_ges_W
         
 def generate_profiles_from_geojson(gdf_heat_exchanger, building_type="HMF", calc_method="BDEW", max_supply_temperature=70, max_return_temperature=55):
     ### define the heat requirement ###
@@ -172,7 +180,7 @@ def get_all_point_coords_from_line_cords(all_line_coords):
 
 def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_producer, qext_w, return_temperature=60, supply_temperature=85, 
                    flow_pressure_pump=4, lift_pressure_pump=1.5, pipetype="KMR 100/250-2v", v_max_pipe=1, material_filter="KMR", insulation_filter="2v", 
-                   pipe_creation_mode="type", v_max_m_s=2, main_producer_location_index=0, mass_flow_secondary_producers=0.5):
+                   pipe_creation_mode="type", v_max_heat_consumer=2, main_producer_location_index=0, mass_flow_secondary_producers=0.5):
     net = pp.create_empty_network(fluid="water")
 
     # List and filter standard types for pipes
@@ -185,7 +193,7 @@ def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_
 
     initial_mdot_guess_kg_s = qext_w / (4170*(supply_temperature-return_temperature))
     initial_Vdot_guess_m3_s = initial_mdot_guess_kg_s/1000
-    area_m2 = initial_Vdot_guess_m3_s/(v_max_m_s*(1/1.5))       # Safety factor of 1.1
+    area_m2 = initial_Vdot_guess_m3_s/(v_max_heat_consumer*(1/1.2))       # Safety factor of 1.1
     initial_dimension_guess_m = np.round(np.sqrt(area_m2 *(4/np.pi)), 3)
 
     def create_junctions_from_coords(net_i, all_coords):
