@@ -464,20 +464,24 @@ class CalculationTab(QWidget):
             # Laden der Daten aus der CSV-Datei
             with open(csv_file_path, newline='') as csvfile:
                 reader = csv.reader(csvfile, delimiter=';')
-                next(reader)  # Überspringe die Kopfzeile
-                
+                headers = next(reader)  # Kopfzeile einlesen
+                num_waerme_cols = len([h for h in headers if h.startswith('waerme_ges_W')])
+                num_strom_cols = len([h for h in headers if h.startswith('strombedarf_hast_ges_W')])
+
                 formatted_time_steps = []
                 waerme_ges_W_data = []
                 strombedarf_hast_ges_W_data = []
                 
                 for row in reader:
                     formatted_time_steps.append(np.datetime64(row[0]))
-                    waerme_ges_W_data.append([float(value) for value in row[1:self.waerme_ges_W.shape[0] + 1]])
-                    strombedarf_hast_ges_W_data.append([float(value) for value in row[self.waerme_ges_W.shape[0] + 1:]])
+                    waerme_ges_W_data.append([float(value) for value in row[1:num_waerme_cols + 1]])
+                    strombedarf_hast_ges_W_data.append([float(value) for value in row[num_waerme_cols + 1:num_waerme_cols + num_strom_cols + 1]])
                 
                 self.yearly_time_steps = np.array(formatted_time_steps)
                 self.waerme_ges_W = np.array(waerme_ges_W_data).transpose()
                 self.strombedarf_hast_ges_W = np.array(strombedarf_hast_ges_W_data).transpose()
+
+
                 
             # Laden der zusätzlichen Daten aus der JSON-Datei
             with open(json_file_path, 'r') as json_file:

@@ -2,121 +2,114 @@
 
 1.1 Ausbau Möglichkeiten Dateninput
 
-    Einschätzung der Einsparung von Wärmeverbrauch und Absenkung der Vorlauftemperatur für eine Amortisation und Wirtschaftlichkeitsberechnung
-        Entwickeln eines theoretischen Modells zur Einschätzung der Einsparpotenziale.
-        Analyse und Anpassung der aktuellen Datenformate, um die neuen Informationen zu integrieren.
-        Entscheidung darüber, wie diese Informationen und Daten gehalten und verarbeitet werden sollen.
+    - Einschätzung der Einsparung von Wärmeverbrauch und Absenkung der Vorlauftemperatur für eine Amortisation und Wirtschaftlichkeitsberechnung
+        - Entwickeln eines theoretischen Modells zur Einschätzung der Einsparpotenziale.
+        - Analyse und Anpassung der aktuellen Datenformate, um die neuen Informationen zu integrieren.
+        - Entscheidung darüber, wie diese Informationen und Daten gehalten und verarbeitet werden sollen.
 
 1.2 Datenhaltung
 
-    GeoJSON für Netzbestandteile
-        Festlegen, ob eine geoJSON-Datei für die Speicherung aller Netzbestandteile genutzt werden soll.
-        Implementierung der Datenhaltung in geoJSON-Format, falls entschieden.
+    - GeoJSON für Netzbestandteile
+        - Festlegen, ob eine geoJSON-Datei für die Speicherung aller Netzbestandteile genutzt werden soll.
+        - Implementierung der Datenhaltung in geoJSON-Format, falls entschieden.
 
 1.3 LOD2-Datenverarbeitung
 
-    Umgang mit nan-Werten
-        Implementierung einer Funktion, die nan-Werte in LOD2-Daten erkennt und eine Meldung ausgibt.
-        Automatisches Entfernen von nan-Werten aus dem Datensatz.
+    - Umgang mit nan-Werten
+        - Implementierung einer Funktion, die nan-Werte in LOD2-Daten erkennt und eine Meldung ausgibt.
+        - Automatisches Entfernen von nan-Werten aus dem Datensatz.
 
 2. Basisfunktionalitäten und Optimierung
 
 2.1 Variantengenerierung
 
-    Implementierung von Varianten durch prozentuale Reduktion oder spezifische Anpassung des Wärmebedarfs
-        Entwickeln und Implementieren einer Methode zur Erstellung von Varianten basierend auf prozentualer Reduktion des Wärmebedarfs oder spezifischen Anpassungen.
-    Erstellung alternativer CSV-Dateien für neue Netzgenerierungen und Variantenordner für verschiedene Projekte
-        Automatisches Erstellen und Verwalten alternativer CSV-Dateien zur Netzgenerierung.
-        Organisation der Dateien in Variantenordnern für verschiedene Projekte.
+    - Implementierung von Varianten durch prozentuale Reduktion oder spezifische Anpassung des Wärmebedarfs
+        - Entwickeln und Implementieren einer Methode zur Erstellung von Varianten basierend auf prozentualer Reduktion des Wärmebedarfs oder spezifischen Anpassungen.
+    - Erstellung alternativer CSV-Dateien für neue Netzgenerierungen und Variantenordner für verschiedene Projekte
+        - Automatisches Erstellen und Verwalten alternativer CSV-Dateien zur Netzgenerierung.
+        - Organisation der Dateien in Variantenordnern für verschiedene Projekte.
 
 2.2 Wärmenetzberechnung
 
-    Optimierung der Regelungssimulation
-        Implementierung von Optimierungsalgorithmen zur Verbesserung der Regelungssimulation des Wärmenetzes.
-    Eingaben für sekundäre Erzeuger
-        Festlegen und Implementieren der Eingaben und Regelungen für sekundäre Erzeuger im Wärmenetz.
-    Vorlauftemperaturregelung für Sekundärerzeuger
-        Implementierung der Vorlauftemperaturregelung für sekundäre Erzeuger.
+    - Optimierung der Regelungssimulation
+        - Implementierung von Optimierungsalgorithmen zur Verbesserung der Regelungssimulation des Wärmenetzes.
+    - Eingaben für sekundäre Erzeuger
+        - Festlegen und Implementieren der Eingaben und Regelungen für sekundäre Erzeuger im Wärmenetz.
+    - Vorlauftemperaturregelung für Sekundärerzeuger
+        - Implementierung der Vorlauftemperaturregelung für sekundäre Erzeuger.
 
 2.3 Erzeugerauslegung
 
-    Berücksichtigung mehrerer Erzeuger beim Import von Erzeugungslastgängen
-        (Zunächst einfache Summierung der Erzeugungslastgänge.)
-        Entwicklung einer Methode zur differenzierten Ausweisung mehrerer Erzeuger.
-    Optionaler Speicher für BHKW, WP, Biomasse
-        Implementierung eines einfachen Regelungssystems zur Verlängerung der Volllaststunden durch optionale Speicher. -> als Ergänzung zum bisherigen System -> quasi als Optimierungsmethode
-        Definition des Teillastbereichs zur Reduktion des Gaseinsatzes im Gaskessel.
-    Implementierung neuer Technologien
-        Einbindung von PVT, Großwärmespeicher, AquvaHeat, Wasserstoff, Power-to-heat und Geothermie mit Sondenregeneration in die Erzeugerauslegung.
+    - Berücksichtigung mehrerer Erzeuger beim Import von Erzeugungslastgängen
+        - (Zunächst einfache Summierung der Erzeugungslastgänge.)
+        - Entwicklung einer Methode zur differenzierten Ausweisung mehrerer Erzeuger.
+    - Optionaler Speicher für BHKW, WP, Biomasse
+        - Implementierung eines einfachen Regelungssystems zur Verlängerung der Volllaststunden durch optionale Speicher. -> als Ergänzung zum bisherigen System -> quasi als Optimierungsmethode
+        - Definition des Teillastbereichs zur Reduktion des Gaseinsatzes im Gaskessel.
+    - Implementierung neuer Technologien
+        - Einbindung von PVT, Großwärmespeicher, AquvaHeat, Wasserstoff, Power-to-heat und Geothermie mit Sondenregeneration in die Erzeugerauslegung.
 
 3. Wirtschaftlichkeitsrechnung und Szenarienentwicklung
 
 3.1 Wirtschaftlichkeit
 
-    Preisentwicklungsszenarien für Erzeugerauslegung
-        Entwicklung eigener Preisentwicklungsszenarien und Betrachtung alternativer Brennstoffpreisentwicklungen.
-    Szenarien für schrittweisen Umbau von Bestandssystemen
-        Entwicklung von Szenarien zur schrittweisen Umgestaltung bestehender Systeme und Bewertung ihrer Wirtschaftlichkeit.
-        Untersuchung der Automatisierbarkeit dieser Szenarien.
-    Darstellung der Preisentwicklung
-        Darstellung der kapitalgebundenen, bedarfsgebundenen und betriebsgebundenen Kosten der einzelnen Technologien über einen definierten Zeitraum in Balkendiagrammen.
+    - Preisentwicklungsszenarien für Erzeugerauslegung
+        - Entwicklung eigener Preisentwicklungsszenarien und Betrachtung alternativer Brennstoffpreisentwicklungen.
+    - Szenarien für schrittweisen Umbau von Bestandssystemen
+        - Entwicklung von Szenarien zur schrittweisen Umgestaltung bestehender Systeme und Bewertung ihrer Wirtschaftlichkeit.
+        - Untersuchung der Automatisierbarkeit dieser Szenarien.
+    - Darstellung der Preisentwicklung
+        - Darstellung der kapitalgebundenen, bedarfsgebundenen und betriebsgebundenen Kosten der einzelnen Technologien über einen definierten Zeitraum in Balkendiagrammen.
 
 4. Erweiterung der Funktionalitäten und Visualisierung
 
 4.1 Erweiterung der PDF-Ausgabe
 
-    Projektspezifische Ergebnis-PDF
-        Entwicklung einer PDF-Ausgabe, die neben wirtschaftlichen Ergebnissen auch den Dateninput, Eingaben zur Netzkonfiguration, Netz und bisher umgesetzte Erzeugerkonfiguration sowie die Wirtschaftlichkeit darstellt.
+    - Projektspezifische Ergebnis-PDF
+        - Entwicklung einer PDF-Ausgabe, die neben wirtschaftlichen Ergebnissen auch den Dateninput, Eingaben zur Netzkonfiguration, Netz und bisher umgesetzte Erzeugerkonfiguration sowie die Wirtschaftlichkeit darstellt.
 
 4.2 Variantenvergleich
 
-    Auswahl und Vergleich von Projekten
-        Entwicklung einer Funktion zur Auswahl von Projekten, die miteinander verglichen werden sollen.
-        Tabellarischer und visueller Vergleich von Daten wie Wärmebedarfen, Temperaturen, Netzdimensionen, Erzeugern und Kosten.
+    - Auswahl und Vergleich von Projekten
+        - Entwicklung einer Funktion zur Auswahl von Projekten, die miteinander verglichen werden sollen.
+        - Tabellarischer und visueller Vergleich von Daten wie Wärmebedarfen, Temperaturen, Netzdimensionen, Erzeugern und Kosten.
 
 5. Benutzeroberfläche und Projektpräsentation
 
 5.1 Präsentation auf GitHub
 
-    Optimierte Präsentation des Projekts
-        Gestaltung einer optimalen Präsentation des Projekts auf GitHub, inklusive Dokumentation und Beispielen.
+    - Optimierte Präsentation des Projekts
+        - Gestaltung einer optimalen Präsentation des Projekts auf GitHub, inklusive Dokumentation und Beispielen.
 
 5.2 Implementierung von Auswertungsoptionen und Auswahlmöglichkeiten
 
-    Auswertungsoptionen neben Berechnung
-        Entwicklung von zusätzlichen Auswertungsoptionen wie Diagrammen und Sensitivitätsuntersuchungen der Energiepreise (3-dimensionale Darstellung).
-    Optimierungsfunktion
-        Implementierung einer Auswahlmöglichkeit zur Festlegung der Optimierungsziele und -grenzen.
+    - Auswertungsoptionen neben Berechnung
+        - Entwicklung von zusätzlichen Auswertungsoptionen wie Diagrammen und Sensitivitätsuntersuchungen der Energiepreise (3-dimensionale Darstellung).
+    - Optimierungsfunktion
+        - Implementierung einer Auswahlmöglichkeit zur Festlegung der Optimierungsziele und -grenzen.
 
 6. Diverses
 
-    Kostenindikation für Pumpenstrom
-        Implementierung einer Funktion zur Berechnung der Kosten für Pumpenstrom basierend auf Massenstrom und Druckverlust (dp).
-    Einzelversorgungslösung
-        Berechnung und Auslegung von Einzelversorgungslösungen nach DIN/VDI.
-        Umgang mit Datenqualitätsproblemen bei der Einzelversorgungslösung.
-    Stromprofile zur Sektorkopplung
-        Implementierung von Stromprofilen sowohl auf Verbraucher- als auch auf Erzeugerseite zur Unterstützung der Sektorkopplung.
-    Zentrales Datenmanagement für Temperatur- und COP-Daten
-        Entwicklung eines zentralen Datenmanagementsystems für Temperatur- und COP-Daten.
-    PV-Klasse für Stromerzeugung
-        Implementierung einer PV-Klasse zur Berechnung der Stromerzeugung.
-        Option zur Auslesung von Fläche, Orientierung und Neigung der Solarthermie- und PV-Anlagen aus LOD2-Daten.
+    - Kostenindikation für Pumpenstrom
+        - Implementierung einer Funktion zur Berechnung der Kosten für Pumpenstrom basierend auf Massenstrom und Druckverlust (dp).
+    
+    - Einzelversorgungslösung
+        - Berechnung und Auslegung von Einzelversorgungslösungen nach DIN/VDI.
+        - Umgang mit Datenqualitätsproblemen bei der Einzelversorgungslösung.
+    
+    - Stromprofile zur Sektorkopplung
+        - Implementierung von Stromprofilen sowohl auf Verbraucher- als auch auf Erzeugerseite zur Unterstützung der Sektorkopplung.
+    
+    - Zentrales Datenmanagement für Temperatur- und COP-Daten
+        - Entwicklung eines zentralen Datenmanagementsystems für Temperatur- und COP-Daten.
+    
+    - PV-Klasse für Stromerzeugung
+        - Implementierung einer PV-Klasse zur Berechnung der Stromerzeugung.
+        - Option zur Auslesung von Fläche, Orientierung und Neigung der Solarthermie- und PV-Anlagen aus LOD2-Daten.
+        - Stromprofile PV-Anlagen
+    
+    - Eränzung CO2-Faktoren
 
-Eränzung CO2-Faktoren
+    - LOD2-Daten laden --> Exception-Handling bei timeout Nominatim geocoding
 
-Stromprofile aus Wärmepumpen und PV-Anlagen
-
-LOD2-Daten laden --> Exception-Handling bei timeout Nominatim geocoding
-
-Implementing the new pandapipes version (heat exchangers)
-
-
-
-Speicherimplementierung BHKW:
-- Darstellung im Diagramm Summe BHKW + Speicher, nur BHKW, BHKW + Speicher einzeln?
-
-- Anzahl Starts, Betriebsstunden und Betriebsstunden/Start ausgeben
-
-Speicherimplementierung Biomassekessel:
-- nochmal der gleiche Spaß
+    - Anzahl Starts, Betriebsstunden und Betriebsstunden/Start im GUI ausgeben

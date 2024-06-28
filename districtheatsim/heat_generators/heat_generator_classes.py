@@ -485,6 +485,9 @@ class CHP:
             'color': "yellow"
         }
 
+        if self.speicher_aktiv:
+            results['Wärmeleistung_Speicher_L'] = self.Wärmeleistung_Speicher_BHKW
+
         return results
 
 class BiomassBoiler:
@@ -628,6 +631,9 @@ class BiomassBoiler:
             'spec_co2_total': self.spec_co2_total,
             'color': "green"
         }
+
+        if self.speicher_aktiv:
+            results['Wärmeleistung_Speicher_L'] = self.Wärmeleistung_Speicher_BMK
 
         return results
     
@@ -875,6 +881,13 @@ def Berechnung_Erzeugermix(tech_order, initial_data, start, end, TRY, COP_data, 
                 general_results['Strombedarf'] += tech_results["Strombedarf"]
                 general_results['el_Leistungsbedarf_L'] += tech_results["el_Leistung_L"]
                 general_results['el_Leistung_ges_L'] -= tech_results['el_Leistung_L']
+
+            print(tech_results.keys())
+            if "Wärmeleistung_Speicher_L" in tech_results.keys():
+                print("Here")
+                # general_results['Wärmeleistung_L'].append(tech_results['Wärmeleistung_Speicher_L']) führt bestimmt nur zu Problemen
+                # general_results['Wärmemengen'].append(tech_results['Wärmemenge_Speicher_L']) eigentlich nicht oder?
+                general_results['Restlast_L'] -= tech_results['Wärmeleistung_Speicher_L']
 
         else:
             tech_order.remove(tech)

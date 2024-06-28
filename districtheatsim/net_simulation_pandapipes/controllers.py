@@ -294,6 +294,7 @@ class ReturnTemperatureController(BasicCtrl):
         if current_T_in == self.target_temperature:
             self.target_temperature += 0.1  # Adjust target slightly to avoid division by zero
 
+        # necessary
         if current_T_in < self.target_temperature + 15:
             self.target_temperature = current_T_in - 15
 
