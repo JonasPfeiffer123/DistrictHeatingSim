@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMes
 from PyQt5.QtCore import pyqtSignal, QEventLoop
 
 from heat_generators.heat_generator_classes import *
-from gui.MixDesignTab.mix_design_dialogs import EconomicParametersDialog, NetInfrastructureDialog, TemperatureDataDialog, HeatPumpDataDialog
+from gui.MixDesignTab.mix_design_dialogs import EconomicParametersDialog, NetInfrastructureDialog
 from gui.threads import CalculateMixThread
 from gui.results_pdf import create_pdf
 
@@ -12,12 +12,15 @@ from gui.MixDesignTab.cost_tab import CostTab
 from gui.MixDesignTab.results_tab import ResultsTab
 from gui.MixDesignTab.sensitivity_tab import SensitivityTab
 
+from utilities.test_reference_year import import_TRY
+
 class MixDesignTab(QWidget):
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
     
     def __init__(self, data_manager, parent=None):
         super().__init__(parent)
         self.data_manager = data_manager
+        self.parent = parent
         self.results = {}
         self.tech_objects = []
         
@@ -32,8 +35,6 @@ class MixDesignTab(QWidget):
     def initDialogs(self):
         self.economicParametersDialog = EconomicParametersDialog(self)
         self.netInfrastructureDialog = NetInfrastructureDialog(self)
-        self.temperatureDataDialog = TemperatureDataDialog(self)
-        self.heatPumpDataDialog = HeatPumpDataDialog(self)
 
     def updateDefaultPath(self, new_base_path):
         self.base_path = new_base_path
@@ -67,8 +68,6 @@ class MixDesignTab(QWidget):
         settingsMenu = self.menuBar.addMenu('Einstellungen')
         settingsMenu.addAction(self.createAction('Wirtschaftliche Parameter...', self.openEconomicParametersDialog))
         settingsMenu.addAction(self.createAction('Infrastrukturkosten...', self.openInfrastructureCostsDialog))
-        settingsMenu.addAction(self.createAction('Temperaturdaten...', self.opentemperatureDataDialog))
-        settingsMenu.addAction(self.createAction('COP-Kennfeld Wärmepumpe...', self.openheatPumpDataDialog))
 
         addHeatGeneratorMenu = self.menuBar.addMenu('Wärmeerzeuger hinzufügen')
 
@@ -120,8 +119,6 @@ class MixDesignTab(QWidget):
     ### Eingabe wirtschaftliche Randbedingungen ###
     def setupParameters(self):
         self.updateEconomicParameters()
-        self.updateTemperatureData()
-        self.updateHeatPumpData()
 
     def updateEconomicParameters(self):
         values = self.economicParametersDialog.getValues()
@@ -133,14 +130,6 @@ class MixDesignTab(QWidget):
         self.preissteigerungsrate = values['Preissteigerungsrate in %']
         self.betrachtungszeitraum = values['Betrachtungszeitraum in a']
         self.stundensatz = values['Stundensatz in €/h']
-
-    def updateTemperatureData(self):
-        TRY = self.temperatureDataDialog.getValues()
-        self.try_filename = TRY['TRY-filename']
-
-    def updateHeatPumpData(self):
-        COP = self.heatPumpDataDialog.getValues()
-        self.cop_filename = COP['COP-filename']
 
     ### Dialoge ###
     def openEconomicParametersDialog(self):
@@ -155,14 +144,6 @@ class MixDesignTab(QWidget):
             self.costTab.updateInfrastructureTable()
             self.costTab.plotCostComposition()
             self.costTab.updateSumLabel()
-
-    def opentemperatureDataDialog(self):
-        if self.temperatureDataDialog.exec_():
-            self.updateTemperatureData()
-
-    def openheatPumpDataDialog(self):
-        if self.heatPumpDataDialog.exec_():
-            self.updateHeatPumpData()
 
     ### Berechnungsfunktionen ###
     def validateInputs(self):
@@ -180,11 +161,13 @@ class MixDesignTab(QWidget):
             return
 
         if self.techTab.tech_objects:
-            filename = self.techTab.FilenameInput.text()
-            load_scale_factor = float(self.techTab.load_scale_factorInput.text())
+            self.filename = self.techTab.FilenameInput.text()
+            self.load_scale_factor = float(self.techTab.load_scale_factorInput.text())
+            self.TRY_data = import_TRY(self.parent.try_filename)
+            self.COP_data = np.genfromtxt(self.parent.cop_filename, delimiter=';')
 
             self.calculationThread = CalculateMixThread(
-                filename, load_scale_factor, self.try_filename, self.cop_filename, self.gaspreis, 
+                self.filename, self.load_scale_factor, self.TRY_data, self.COP_data, self.gaspreis, 
                 self.strompreis, self.holzpreis, self.BEW, self.techTab.tech_objects, optimize, 
                 self.kapitalzins, self.preissteigerungsrate, self.betrachtungszeitraum, self.stundensatz)
             
@@ -246,14 +229,17 @@ class MixDesignTab(QWidget):
             QMessageBox.information(self, "Keine Erzeugeranlagen", "Es wurden keine Erzeugeranlagen definiert. Keine Berechnung möglich.")
             return
 
-        filename = self.techTab.FilenameInput.text()
-        load_scale_factor = float(self.techTab.load_scale_factorInput.text())
+        self.filename = self.techTab.FilenameInput.text()
+        self.load_scale_factor = float(self.techTab.load_scale_factorInput.text())
+
+        self.TRY_data = import_TRY(self.parent.try_filename)
+        self.COP_data = np.genfromtxt(self.parent.cop_filename, delimiter=';')
 
         results = []
         for gas_price in self.generate_values(gas_range):
             for electricity_price in self.generate_values(electricity_range):
                 for wood_price in self.generate_values(wood_range):
-                    result, waerme_ges_kW, strom_wp_kW = self.calculate_mix(filename, load_scale_factor, gas_price, electricity_price, wood_price)
+                    result, waerme_ges_kW, strom_wp_kW = self.calculate_mix(gas_price, electricity_price, wood_price)
                     waerme_ges_kW, strom_wp_kW = np.sum(waerme_ges_kW), np.sum(strom_wp_kW)
                     wgk_heat_pump_electricity = ((strom_wp_kW/1000) * electricity_price) / ((strom_wp_kW+waerme_ges_kW)/1000)
                     if result is not None:
@@ -275,7 +261,7 @@ class MixDesignTab(QWidget):
         step = (upper - lower) / (num_points - 1)
         return [lower + i * step for i in range(num_points)]
 
-    def calculate_mix(self, filename, load_scale_factor, gas_price, electricity_price, wood_price):
+    def calculate_mix(self, gas_price, electricity_price, wood_price):
         result = None
         calculation_done_event = QEventLoop()
         
@@ -291,7 +277,7 @@ class MixDesignTab(QWidget):
             calculation_done_event.quit()
 
         self.calculationThread = CalculateMixThread(
-            filename, load_scale_factor, self.try_filename, self.cop_filename, gas_price, 
+            self.filename, self.load_scale_factor, self.TRY_data, self.COP_data, gas_price, 
             electricity_price, wood_price, self.BEW, self.techTab.tech_objects, False, 
             self.kapitalzins, self.preissteigerungsrate, self.betrachtungszeitraum, self.stundensatz)
         

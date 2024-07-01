@@ -204,7 +204,7 @@ class ReturnTemperatureController(BasicCtrl):
 """
 
 class ReturnTemperatureController(BasicCtrl):
-    def __init__(self, net, heat_consumer_idx, target_temperature, kp=1, ki=0.0, kd=0.0, tolerance=2, min_velocity=0.01, max_velocity=2, max_iterations=100, debug=False, **kwargs):
+    def __init__(self, net, heat_consumer_idx, target_temperature, kp=0.9, ki=0.0, kd=0.0, tolerance=2, min_velocity=0.01, max_velocity=2, max_iterations=100, debug=False, **kwargs):
         super(ReturnTemperatureController, self).__init__(net, **kwargs)
         self.heat_consumer_idx = heat_consumer_idx
         self.target_temperature = target_temperature

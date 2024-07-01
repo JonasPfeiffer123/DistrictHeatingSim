@@ -31,9 +31,7 @@ def get_resource_path(relative_path):
 
     return os.path.join(base_path, relative_path)
 
-def COP_WP(VLT_L, QT):
-    # Interpolation formula for the COP
-    values = np.genfromtxt(get_resource_path('heat_generators\Kennlinien WP.csv'), delimiter=';')
+def COP_WP(VLT_L, QT, values=np.genfromtxt(get_resource_path('heat_generators\Kennlinien WP.csv'), delimiter=';')):
     row_header = values[0, 1:]  # Vorlauftemperaturen
     col_header = values[1:, 0]  # Quelltemperaturen
     values = values[1:, 1:]

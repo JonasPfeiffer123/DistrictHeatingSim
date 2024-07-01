@@ -679,7 +679,7 @@ class ZeitreihenrechnungDialog(QDialog):
         self.StartTimeStepLabel = QLabel("Zeitschritt Simulationsstart (min 0):", self)
         self.StartTimeStepInput = QLineEdit("0", self)
         self.EndTimeStepLabel = QLabel("Zeitschritt Simulationsende (max 8760):", self)
-        self.EndTimeStepInput = QLineEdit("96", self)
+        self.EndTimeStepInput = QLineEdit("8760", self)
 
         self.layout.addWidget(self.StartTimeStepLabel)
         self.layout.addWidget(self.StartTimeStepInput)

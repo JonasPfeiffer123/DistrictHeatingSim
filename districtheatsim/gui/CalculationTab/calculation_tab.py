@@ -32,6 +32,7 @@ class CalculationTab(QWidget):
     def __init__(self, data_manager, parent=None):
         super().__init__(parent)
         self.data_manager = data_manager
+        self.parent = parent
         self.calc_method = "Datensatz"
         # Connect to the data manager signal
         self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
@@ -217,7 +218,9 @@ class CalculationTab(QWidget):
         self.v_max_heat_consumer = v_max_heat_consumer
         self.building_temp_checked = building_temp_checked
         self.DiameterOpt_ckecked = DiameterOpt_ckecked
-        args = (vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump, \
+        self.TRY_filename = self.parent.try_filename
+        self.COP_filename = self.parent.cop_filename
+        args = (vorlauf, ruecklauf, hast, erzeugeranlagen, self.TRY_filename, self.COP_filename, calc_method, building_type, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump, \
                 netconfiguration, pipetype, v_max_pipe, material_filter, insulation_filter, self.base_path, self.dT_RL, self.v_max_heat_consumer, self.DiameterOpt_ckecked)
         kwargs = {"import_type": "GeoJSON"}
         self.initializationThread = NetInitializationThread(*args, **kwargs)
@@ -246,7 +249,8 @@ class CalculationTab(QWidget):
             self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.strombedarf_hast_ges_W, self.max_el_leistung_hast_ges_W = results
         
         self.net_data = self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature, self.return_temperature, self.supply_temperature_buildings, self.return_temperature_buildings, \
-            self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.netconfiguration, self.dT_RL, self.building_temp_checked, self.strombedarf_hast_ges_W, self.max_el_leistung_hast_ges_W
+            self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.netconfiguration, self.dT_RL, self.building_temp_checked, self.strombedarf_hast_ges_W, \
+            self.max_el_leistung_hast_ges_W, self.TRY_filename, self.COP_filename
 
         self.waerme_ges_kW = np.where(self.waerme_ges_W == 0, 0, self.waerme_ges_W / 1000)
         self.strombedarf_hast_ges_kW = np.where(self.strombedarf_hast_ges_W == 0, 0, self.strombedarf_hast_ges_W / 1000)
@@ -288,12 +292,12 @@ class CalculationTab(QWidget):
         
         self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature, self.return_temperature, self.supply_temperature_buildings, self.return_temperature_buildings, \
             self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.netconfiguration, self.dT_RL, self.building_temp_checked, self.strombedarf_hast_ges_W, \
-                self.max_el_leistung_hast_ges_W = self.net_data
+                self.max_el_leistung_hast_ges_W, self.TRY_filename, self.COP_filename = self.net_data
 
         try:
             self.calculationThread = NetCalculationThread(self.net, self.yearly_time_steps, self.waerme_ges_W, self.calc1, self.calc2, self.supply_temperature, self.return_temperature, \
                                                           self.supply_temperature_buildings, self.return_temperature_buildings, self.supply_temperature_buildings_curve, \
-                                                            self.return_temperature_buildings_curve, self.dT_RL, self.netconfiguration, self.building_temp_checked)
+                                                            self.return_temperature_buildings_curve, self.dT_RL, self.netconfiguration, self.building_temp_checked, self.TRY_filename, self.COP_filename)
             self.calculationThread.calculation_done.connect(self.on_simulation_done)
             self.calculationThread.calculation_error.connect(self.on_simulation_error)
             self.calculationThread.start()
@@ -408,7 +412,7 @@ class CalculationTab(QWidget):
             try:
                 self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature, self.return_temperature, self.supply_temperature_buildings, self.return_temperature_buildings, \
                 self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.netconfiguration, self.dT_RL, self.building_temp_checked, self.strombedarf_hast_ges_W, \
-                    self.max_el_leistung_hast_ges_W = self.net_data
+                    self.max_el_leistung_hast_ges_W, self.TRY_filename, self.COP_filename = self.net_data
 
                 # Pandapipes-Netz als pickle speichern
                 pp.to_pickle(self.net, pickle_file_path)
@@ -439,7 +443,9 @@ class CalculationTab(QWidget):
                     'netconfiguration': self.netconfiguration,
                     'dT_RL': self.dT_RL,
                     'building_temp_checked': self.building_temp_checked,
-                    'max_el_leistung_hast_ges_W': self.max_el_leistung_hast_ges_W.tolist()
+                    'max_el_leistung_hast_ges_W': self.max_el_leistung_hast_ges_W.tolist(),
+                    'TRY_filename': self.TRY_filename, 
+                    'COP_filename': self.COP_filename
                 }
                 
                 # Speichern der zusätzlichen Daten als JSON
@@ -498,11 +504,13 @@ class CalculationTab(QWidget):
             self.dT_RL = additional_data['dT_RL']
             self.building_temp_checked = additional_data['building_temp_checked']
             self.max_el_leistung_hast_ges_W = np.array(additional_data['max_el_leistung_hast_ges_W'])
+            self.TRY_filename =  additional_data['TRY_filename']
+            self.COP_filename =  additional_data['COP_filename']
             
             # Aktualisierung der net_data Eigenschaft mit den geladenen Daten
             self.net_data = self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature, self.return_temperature, self.supply_temperature_buildings, self.return_temperature_buildings, \
                             self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.netconfiguration, self.dT_RL, self.building_temp_checked, self.strombedarf_hast_ges_W, \
-                            self.max_el_leistung_hast_ges_W
+                            self.max_el_leistung_hast_ges_W, self.TRY_filename, self.COP_filename
             
             # Weiterverarbeitung oder Anzeigen der geladenen Daten
             self.waerme_ges_kW = np.where(self.waerme_ges_W == 0, 0, self.waerme_ges_W / 1000)

@@ -4,14 +4,12 @@ import traceback
 
 from PyQt5.QtCore import QThread, pyqtSignal
 
-from utilities.test_reference_year import import_TRY
-
 from net_generation.import_and_create_layers import generate_and_export_layers
 
 from net_simulation_pandapipes.pp_net_initialisation_geojson import initialize_geojson
 from net_simulation_pandapipes.pp_net_time_series_simulation import thermohydraulic_time_series_net, import_results_csv, time_series_preprocessing
 from net_simulation_pandapipes.stanet_import_pandapipes import create_net_from_stanet_csv
-from net_simulation_pandapipes.utilities import net_optimization, COP_WP
+from net_simulation_pandapipes.utilities import net_optimization
 
 from heat_generators.heat_generator_classes import Berechnung_Erzeugermix, optimize_mix
 
@@ -44,7 +42,7 @@ class NetInitializationThread(QThread):
     def run(self):
         try:
             if self.kwargs.get("import_type") == "GeoJSON":
-                self.vorlauf, self.ruecklauf, self.hast, self.erzeugeranlagen, self.calc_method, self.building_type, \
+                self.vorlauf, self.ruecklauf, self.hast, self.erzeugeranlagen, self.TRY_filename, self.COP_filename, self.calc_method, self.building_type, \
                 self.return_temperature, self.supply_temperature, self.flow_pressure_pump, self.lift_pressure_pump, \
                 self.netconfiguration, self.pipetype, self.v_max_pipe, self.material_filter, self.insulation_filter, \
                 self.base_path, self.dT_RL, self.v_max_heat_consumer, self.DiameterOpt_ckecked = self.args
@@ -52,7 +50,7 @@ class NetInitializationThread(QThread):
                 self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.return_temperature, \
                 self.supply_temperature_buildings, self.return_temperature_buildings, self.supply_temperature_building_curve, \
                 self.return_temperature_building_curve, strombedarf_hast_ges_W, max_el_leistung_hast_ges_W  = initialize_geojson(self.vorlauf, self.ruecklauf, self.hast, \
-                                                                             self.erzeugeranlagen, self.calc_method, self.building_type, \
+                                                                             self.erzeugeranlagen, self.TRY_filename, self.COP_filename, self.calc_method, self.building_type, \
                                                                              self.return_temperature, self.supply_temperature, \
                                                                              self.flow_pressure_pump, self.lift_pressure_pump, \
                                                                              self.netconfiguration, self.pipetype, self.dT_RL, \
@@ -90,7 +88,7 @@ class NetCalculationThread(QThread):
     calculation_error = pyqtSignal(str)
 
     def __init__(self, net, yearly_time_steps, total_heat_W, calc1, calc2, supply_temperature, return_temperature, supply_temperature_buildings, \
-                 return_temperature_buildings, supply_temperature_buildings_curve, return_temperature_buildings_curve, dT_RL=5, netconfiguration=None, building_temp_checked=False):
+                 return_temperature_buildings, supply_temperature_buildings_curve, return_temperature_buildings_curve, dT_RL=5, netconfiguration=None, building_temp_checked=False, TRY_filename=None, COP_filename=None):
         
         super().__init__()
         self.net = net
@@ -107,13 +105,15 @@ class NetCalculationThread(QThread):
         self.dT_RL = dT_RL
         self.netconfiguration = netconfiguration
         self.building_temp_checked = building_temp_checked
+        self.TRY_filename = TRY_filename
+        self.COP_filename = COP_filename
     
     def run(self):
         try:
             self.waerme_hast_ges_W, self.strom_hast_ges_W, self.return_temperature  = time_series_preprocessing(self.supply_temperature, self.return_temperature, self.supply_temperature_buildings, \
                                                                                                                 self.return_temperature_buildings, self.building_temp_checked, self.netconfiguration, \
                                                                                                                 self.total_heat_W, self.return_temperature_buildings_curve, self.dT_RL, 
-                                                                                                                self.supply_temperature_buildings_curve)
+                                                                                                                self.supply_temperature_buildings_curve, self.COP_filename)
 
             self.time_steps, self.net, self.net_results = thermohydraulic_time_series_net(self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.calc1, \
                                                                                           self.calc2, self.supply_temperature, self.return_temperature)
@@ -208,12 +208,12 @@ class CalculateMixThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(Exception)
 
-    def __init__(self, filename, load_scale_factor, try_filename, cop_filename, gas_price, electricity_price, wood_price, BEW, tech_objects, optimize, interest_on_capital, price_increase_rate, period, wage):
+    def __init__(self, filename, load_scale_factor, TRY_data, COP_data, gas_price, electricity_price, wood_price, BEW, tech_objects, optimize, interest_on_capital, price_increase_rate, period, wage):
         super().__init__()
         self.filename = filename
         self.load_scale_factor = load_scale_factor
-        self.try_filename = try_filename
-        self.cop_filename = cop_filename
+        self.TRY_data = TRY_data
+        self.COP_data = COP_data
         self.gas_price = gas_price
         self.electricity_price = electricity_price
         self.wood_price = wood_price
@@ -252,14 +252,12 @@ class CalculateMixThread(QThread):
             calc1, calc2 = 0, len(time_steps)
             qext_kW *= self.load_scale_factor
             initial_data = time_steps, qext_kW, flow_temp_circ_pump, return_temp_circ_pump
-            TRY = import_TRY(self.try_filename)
-            COP_data = np.genfromtxt(self.cop_filename, delimiter=';')
 
             if self.optimize:
-                self.tech_objects = optimize_mix(self.tech_objects, initial_data, calc1, calc2, TRY, COP_data, self.gas_price, self.electricity_price, self.wood_price, self.BEW, \
+                self.tech_objects = optimize_mix(self.tech_objects, initial_data, calc1, calc2, self.TRY_data, self.COP_data, self.gas_price, self.electricity_price, self.wood_price, self.BEW, \
                                             kapitalzins=self.interest_on_capital, preissteigerungsrate=self.price_increase_rate, betrachtungszeitraum=self.period, stundensatz=self.wage)
 
-            result = Berechnung_Erzeugermix(self.tech_objects, initial_data, calc1, calc2, TRY, COP_data, self.gas_price, self.electricity_price, self.wood_price, self.BEW, \
+            result = Berechnung_Erzeugermix(self.tech_objects, initial_data, calc1, calc2, self.TRY_data, self.COP_data, self.gas_price, self.electricity_price, self.wood_price, self.BEW, \
                                             kapitalzins=self.interest_on_capital, preissteigerungsrate=self.price_increase_rate, betrachtungszeitraum=self.period, stundensatz=self.wage), waerme_ges_kW, strom_wp_kW
 
             self.calculation_done.emit(result)

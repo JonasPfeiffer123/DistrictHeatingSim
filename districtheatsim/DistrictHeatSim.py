@@ -1,5 +1,6 @@
 import sys
 import os
+
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTabWidget, QMenuBar, QAction, QFileDialog, QLabel, QMessageBox, QInputDialog
 from PyQt5.QtCore import QObject, pyqtSignal
 
@@ -8,6 +9,8 @@ from gui.VisualizationTab.visualization_tab import VisualizationTab
 from gui.BuildingTab.building_tab import BuildingTab
 from gui.CalculationTab.calculation_tab import CalculationTab
 from gui.MixDesignTab.mix_design_tab import MixDesignTab
+
+from gui.Dialogs import TemperatureDataDialog, HeatPumpDataDialog
 
 # defines the map path
 def get_resource_path(relative_path):
@@ -46,37 +49,18 @@ class HeatSystemDesignGUI(QWidget):
         self.data_manager = CentralDataManager()
         self.projectFolderPath = None  # Initialisierung des Projektordnerpfads
 
+        self.temperatureDataDialog = TemperatureDataDialog(self)
+        self.heatPumpDataDialog = HeatPumpDataDialog(self)
+
+        self.updateTemperatureData()
+        self.updateHeatPumpData()
+
         self.initUI()
         
         self.data_manager.project_folder_changed.connect(self.projectTab.updateDefaultPath)
         self.data_manager.project_folder_changed.connect(self.visTab.updateDefaultPath)
         self.data_manager.project_folder_changed.connect(self.calcTab.updateDefaultPath)
         self.data_manager.project_folder_changed.connect(self.mixDesignTab.updateDefaultPath)
-
-    def createNewProject(self):
-        folder_path = QFileDialog.getExistingDirectory(self, "Speicherort für neues Projekt wählen")
-        if folder_path:
-            projectName, ok = QInputDialog.getText(self, 'Neues Projekt', 'Projektnamen eingeben:')
-            if ok and projectName:
-                try:
-                    full_path = os.path.join(folder_path, projectName)
-                    os.makedirs(full_path)
-                    for subdir in ["Gebäudedaten", "Lastgang", "Raumanalyse", "Wärmenetz", "results"]:
-                        os.makedirs(os.path.join(full_path, subdir))
-                    QMessageBox.information(self, "Projekt erstellt", f"Projekt '{projectName}' wurde erfolgreich erstellt.")
-                    self.setProjectFolderPath(full_path)
-                except Exception as e:
-                    QMessageBox.critical(self, "Fehler", f"Ein Fehler ist aufgetreten: {e}")
-
-    def openExistingProject(self):
-        folder_path = QFileDialog.getExistingDirectory(self, "Projektordner auswählen")
-        if folder_path:
-            self.setProjectFolderPath(folder_path)
-
-    def setProjectFolderPath(self, path):
-        self.projectFolderPath = path
-        self.data_manager.set_project_folder(path)
-        self.folderLabel.setText(f"Ausgewählter Projektordner: {path}")
 
     def initUI(self):
         self.setWindowTitle("DistrictHeatSim")
@@ -91,9 +75,9 @@ class HeatSystemDesignGUI(QWidget):
 
         self.projectTab = ProjectTab(self.data_manager)
         self.visTab = VisualizationTab(self.data_manager)
-        self.buildingTab = BuildingTab(self.data_manager, self.visTab)
-        self.calcTab = CalculationTab(self.data_manager)
-        self.mixDesignTab = MixDesignTab(self.data_manager)
+        self.buildingTab = BuildingTab(self.data_manager, self.visTab, self)
+        self.calcTab = CalculationTab(self.data_manager, self)
+        self.mixDesignTab = MixDesignTab(self.data_manager, self)
 
         # Adding tabs to the tab widget
         tabWidget.addTab(self.projectTab, "Projektdefinition")
@@ -126,11 +110,61 @@ class HeatSystemDesignGUI(QWidget):
         fileMenu.addAction(chooseProjectFolderAction)
         fileMenu.addAction(createNewProjectFolderAction)
 
+        dataMenu = self.menubar.addMenu('Datenbasis')
+        chooseTemperatureDataAction = QAction('Temperaturdaten festlegen', self)
+        createCOPDataAction = QAction('COP-Kennfeld festlegen', self)
+        dataMenu.addAction(chooseTemperatureDataAction)
+        dataMenu.addAction(createCOPDataAction)
+
         self.layout1.addWidget(self.menubar)
 
         # connection to function
         chooseProjectFolderAction.triggered.connect(self.openExistingProject)
         createNewProjectFolderAction.triggered.connect(self.createNewProject)
+        
+        chooseTemperatureDataAction.triggered.connect(self.openTemperatureDataSelection)
+        createCOPDataAction.triggered.connect(self.openCOPDataSelection)
+
+    def createNewProject(self):
+        folder_path = QFileDialog.getExistingDirectory(self, "Speicherort für neues Projekt wählen")
+        if folder_path:
+            projectName, ok = QInputDialog.getText(self, 'Neues Projekt', 'Projektnamen eingeben:')
+            if ok and projectName:
+                try:
+                    full_path = os.path.join(folder_path, projectName)
+                    os.makedirs(full_path)
+                    for subdir in ["Gebäudedaten", "Lastgang", "Raumanalyse", "Wärmenetz", "results"]:
+                        os.makedirs(os.path.join(full_path, subdir))
+                    QMessageBox.information(self, "Projekt erstellt", f"Projekt '{projectName}' wurde erfolgreich erstellt.")
+                    self.setProjectFolderPath(full_path)
+                except Exception as e:
+                    QMessageBox.critical(self, "Fehler", f"Ein Fehler ist aufgetreten: {e}")
+
+    def openExistingProject(self):
+        folder_path = QFileDialog.getExistingDirectory(self, "Projektordner auswählen")
+        if folder_path:
+            self.setProjectFolderPath(folder_path)
+
+    def setProjectFolderPath(self, path):
+        self.projectFolderPath = path
+        self.data_manager.set_project_folder(path)
+        self.folderLabel.setText(f"Ausgewählter Projektordner: {path}")
+
+    def openTemperatureDataSelection(self):
+        if self.temperatureDataDialog.exec_():
+            self.updateTemperatureData()
+
+    def openCOPDataSelection(self):
+        if self.heatPumpDataDialog.exec_():
+            self.updateHeatPumpData()
+
+    def updateTemperatureData(self):
+        TRY = self.temperatureDataDialog.getValues()
+        self.try_filename = TRY['TRY-filename']
+
+    def updateHeatPumpData(self):
+        COP = self.heatPumpDataDialog.getValues()
+        self.cop_filename = COP['COP-filename']
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

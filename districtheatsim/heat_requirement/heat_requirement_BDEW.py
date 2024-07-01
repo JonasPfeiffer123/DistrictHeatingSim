@@ -168,7 +168,7 @@ def calculation_load_profile(TRY, JWB_kWh, profiletype, subtype, holidays, year)
 
     return hourly_intervals, hourly_heat_demand_normed.astype(float), hourly_temperature
 
-def calculate(JWB_kWh=10000, profiletype="HMF", subtyp="03", year=2021):
+def calculate(JWB_kWh=10000, profiletype="HMF", subtyp="03", year=2021, TRY=get_resource_path('heat_requirement\TRY_511676144222\TRY2015_511676144222_Jahr.dat')):
     # holidays
     Neujahr = "2021-01-01"
     Karfreitag = "2021-04-02"
@@ -185,8 +185,6 @@ def calculate(JWB_kWh=10000, profiletype="HMF", subtyp="03", year=2021):
     Feiertage = np.array([Neujahr, Karfreitag, Ostermontag, Maifeiertag, Pfingstmontag, 
                 Christi_Himmelfahrt, Fronleichnam, Tag_der_deutschen_Einheit, 
                 Allerheiligen, Weihnachtsfeiertag1, Weihnachtsfeiertag2]).astype('datetime64[D]')
-
-    TRY = get_resource_path('heat_requirement\TRY_511676144222\TRY2015_511676144222_Jahr.dat')
 
     hourly_intervals, hourly_heat_demand, hourly_temperature = calculation_load_profile(TRY, JWB_kWh, profiletype, subtyp, Feiertage, year)
 

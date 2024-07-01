@@ -27,14 +27,15 @@ class Building:
         'window_u': 1.3, 'door_u': 1.3, 'air_change_rate': 0.5,
         'floors': 4, 'fracture_windows': 0.10, 'fracture_doors': 0.01,
         'min_air_temp': -15, 'room_temp': 20, 'max_air_temp_heating': 15,
-        'ww_demand_Wh_per_m2': 12800, "filename_TRY": get_resource_path("data\\TRY2015_511676144222_Jahr.dat")
+        'ww_demand_Wh_per_m2': 12800
     }
 
-    def __init__(self, ground_area, wall_area, roof_area, building_volume, u_type=None, building_state=None):
+    def __init__(self, ground_area, wall_area, roof_area, building_volume, filename_TRY=get_resource_path("data\\TRY2015_511676144222_Jahr.dat"), u_type=None, building_state=None):
         self.ground_area = ground_area
         self.wall_area = wall_area
         self.roof_area = roof_area
         self.building_volume = building_volume
+        self.filename_TRY = filename_TRY
         self.u_values = self.STANDARD_U_VALUES.copy()
         
         if u_type:
@@ -44,7 +45,7 @@ class Building:
         # Import TRY data for weather conditions
         col_widths = [8, 8, 3, 3, 3, 6, 5, 4, 5, 2, 5, 4, 5, 5, 4, 5, 3]  # Column widths for the data file
         col_names = ["RW", "HW", "MM", "DD", "HH", "t", "p", "WR", "WG", "N", "x", "RF", "B", "D", "A", "E", "IL"]  # Column names
-        data = pd.read_fwf(self.u_values["filename_TRY"], widths=col_widths, names=col_names, skiprows=34)  # Read the file
+        data = pd.read_fwf(self.filename_TRY, widths=col_widths, names=col_names, skiprows=34)  # Read the file
         self.temperature = data['t'].values  # Store temperature data as numpy array
     
     def calc_heat_demand(self):

@@ -34,6 +34,7 @@ class BuildingTab(QMainWindow):
         super().__init__(parent)
         self.data_manager = data_manager
         self.vis_tab = vis_tab
+        self.parent = parent
 
         self.loaded_data = []
         self.loaded_filenames = []
@@ -318,6 +319,7 @@ class BuildingTab(QMainWindow):
         return comboBox
     
     def calculateHeatDemand(self):
+
         for row in range(self.tableWidget.rowCount()):
             ground_area = float(self.tableWidget.item(row, 3).text())
             wall_area = float(self.tableWidget.item(row, 4).text())
@@ -326,7 +328,7 @@ class BuildingTab(QMainWindow):
             u_type = self.tableWidget.cellWidget(row, 8).currentText()  # Typ
             building_state = self.tableWidget.cellWidget(row, 9).currentText()  # Gebäudezustand
 
-            building = Building(ground_area, wall_area, roof_area, volume, u_type=u_type, building_state=building_state)
+            building = Building(ground_area, wall_area, roof_area, volume, u_type=u_type, building_state=building_state, filename_TRY=self.parent.try_filename)
             building.calc_yearly_heat_demand()
             
             print(building.yearly_heat_demand)

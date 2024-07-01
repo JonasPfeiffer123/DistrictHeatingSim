@@ -5,7 +5,7 @@ import pandapipes as pp
 from heat_requirement import heat_requirement_VDI4655, heat_requirement_BDEW
 from net_simulation_pandapipes.utilities import create_controllers, correct_flow_directions, COP_WP, init_diameter_types
 
-def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temperature_net, \
+def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, TRY_filename, COP_filename, calc_method, building_type, return_temperature_net, \
                        supply_temperature_net, flow_pressure_pump, lift_pressure_pump, netconfiguration, pipetype, dT_RL, \
                        v_max_pipe, material_filter, insulation_filter, v_max_heat_consumer, mass_flow_secondary_producers=0.5):
         
@@ -33,7 +33,7 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, b
         raise ValueError("Rücklauftemperatur darf nicht höher als die Vorlauftemperatur sein. Bitte überprüfen sie die Eingaben.")
 
     yearly_time_steps, waerme_gebaeude_ges_W, max_waerme_gebaeude_ges_W, supply_temperature_building_curve, \
-    return_temperature_building_curve = generate_profiles_from_geojson(hast, building_type, calc_method, \
+    return_temperature_building_curve = generate_profiles_from_geojson(hast, TRY_filename, building_type, calc_method, \
                                                                             supply_temperature_buildings, return_temperature_buildings)
 
     waerme_hast_ges_W = []
@@ -41,7 +41,8 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, b
     strombedarf_hast_ges_W = []
     max_el_leistung_hast_ges_W = []
     if netconfiguration == "kaltes Netz":
-        COP, _ = COP_WP(supply_temperature_buildings, return_temperature_net)
+        COP_file_values = np.genfromtxt(COP_filename, delimiter=';')
+        COP, _ = COP_WP(supply_temperature_buildings, return_temperature_net, COP_file_values)
         print(f"COP dezentrale Wärmepumpen Gebäude: {COP}")
 
         for waerme_gebaeude, leistung_gebaeude, cop in zip(waerme_gebaeude_ges_W, max_waerme_gebaeude_ges_W, COP):
@@ -73,7 +74,7 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, b
     return net, yearly_time_steps, waerme_hast_ges_W, return_temperature_net, supply_temperature_buildings, return_temperature_buildings, \
         supply_temperature_building_curve, return_temperature_building_curve, strombedarf_hast_ges_W, max_el_leistung_hast_ges_W
         
-def generate_profiles_from_geojson(gdf_heat_exchanger, building_type="HMF", calc_method="BDEW", max_supply_temperature=70, max_return_temperature=55):
+def generate_profiles_from_geojson(gdf_heat_exchanger, TRY, building_type="HMF", calc_method="BDEW", max_supply_temperature=70, max_return_temperature=55):
     ### define the heat requirement ###
     try:
         YEU_total_heat_kWh = gdf_heat_exchanger["Wärmebedarf"].values.astype(float)
@@ -121,10 +122,10 @@ def generate_profiles_from_geojson(gdf_heat_exchanger, building_type="HMF", calc
         if current_calc_method == "VDI4655":
             YEU_heating_kWh, YEU_hot_water_kWh = YEU_total_heat_kWh * 0.8, YEU_total_heat_kWh * 0.2
             heating, hot_water = YEU_heating_kWh[idx], YEU_hot_water_kWh[idx]
-            yearly_time_steps, electricity_kW, heating_kW, hot_water_kW, total_heat_kW, hourly_temperatures = heat_requirement_VDI4655.calculate(heating, hot_water, building_type=current_building_type)
+            yearly_time_steps, electricity_kW, heating_kW, hot_water_kW, total_heat_kW, hourly_temperatures = heat_requirement_VDI4655.calculate(heating, hot_water, building_type=current_building_type, TRY=TRY)
 
         elif current_calc_method == "BDEW":
-            yearly_time_steps, total_heat_kW, hourly_temperatures  = heat_requirement_BDEW.calculate(YEU, current_building_type, subtyp="03")
+            yearly_time_steps, total_heat_kW, hourly_temperatures  = heat_requirement_BDEW.calculate(YEU, current_building_type, subtyp="03", TRY=TRY)
 
         total_heat_kW = np.where(total_heat_kW<0, 0, total_heat_kW)
         total_heat_W.append(total_heat_kW * 1000)

@@ -69,7 +69,7 @@ def create_log_variables(net):
 
 def time_series_preprocessing(supply_temperature, return_temperature, supply_temperature_buildings, return_temperature_buildings, \
                               building_temp_checked, netconfiguration, total_heat_W, return_temperature_buildings_curve, dT_RL, \
-                              supply_temperature_buildings_curve):
+                              supply_temperature_buildings_curve, COP_filename):
     print(f"Vorlauftemperatur Netz: {supply_temperature} °C")
     print(f"Rücklauftemperatur HAST: {return_temperature} °C")
     print(f"Vorlauftemperatur Gebäude: {supply_temperature_buildings} °C")
@@ -78,6 +78,8 @@ def time_series_preprocessing(supply_temperature, return_temperature, supply_tem
     waerme_hast_ges_W = []
     strom_hast_ges_W = []
     
+    COP_file_values = np.genfromtxt(COP_filename, delimiter=';')
+
     # Building temperatures are not time varying, so return_temperature from initialization is used, no COP calculation is done
     if building_temp_checked == False and netconfiguration != "kaltes Netz":
         waerme_hast_ges_W = total_heat_W
@@ -85,7 +87,7 @@ def time_series_preprocessing(supply_temperature, return_temperature, supply_tem
 
     # Building temperatures are not time-varying, so return_temperature from initialization is used, a COP calculation is made with non-time-varying building temperatures
     elif building_temp_checked == False and netconfiguration == "kaltes Netz":
-        COP, _ = COP_WP(supply_temperature_buildings, return_temperature)
+        COP, _ = COP_WP(supply_temperature_buildings, return_temperature, COP_file_values)
         print(f"COP dezentrale Wärmepumpen Gebäude: {COP}")
 
         for waerme_gebaeude, cop in zip(total_heat_W, COP):
@@ -107,7 +109,7 @@ def time_series_preprocessing(supply_temperature, return_temperature, supply_tem
     # Building temperatures are time-varying, so return_temperature is determined from the building temperatures, a COP calculation is made with time-varying building temperatures
     elif building_temp_checked == True and netconfiguration == "kaltes Netz":
         for st, rt, waerme_gebaeude in zip(supply_temperature_buildings_curve, return_temperature, total_heat_W):
-            cop, _ = COP_WP(st, rt)
+            cop, _ = COP_WP(st, rt, COP_file_values)
 
             strom_wp = waerme_gebaeude/cop
             waerme_hast = waerme_gebaeude - strom_wp
