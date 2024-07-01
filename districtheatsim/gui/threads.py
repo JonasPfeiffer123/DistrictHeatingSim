@@ -258,8 +258,10 @@ class CalculateMixThread(QThread):
                                             kapitalzins=self.interest_on_capital, preissteigerungsrate=self.price_increase_rate, betrachtungszeitraum=self.period, stundensatz=self.wage)
 
             result = Berechnung_Erzeugermix(self.tech_objects, initial_data, calc1, calc2, self.TRY_data, self.COP_data, self.gas_price, self.electricity_price, self.wood_price, self.BEW, \
-                                            kapitalzins=self.interest_on_capital, preissteigerungsrate=self.price_increase_rate, betrachtungszeitraum=self.period, stundensatz=self.wage), waerme_ges_kW, strom_wp_kW
-
+                                            kapitalzins=self.interest_on_capital, preissteigerungsrate=self.price_increase_rate, betrachtungszeitraum=self.period, stundensatz=self.wage)
+            result["waerme_ges_kW"] = waerme_ges_kW
+            result["strom_wp_kW"] = strom_wp_kW
+            
             self.calculation_done.emit(result)
         except Exception as e:
             tb = traceback.format_exc()  # Gibt den kompletten Traceback als String zurück

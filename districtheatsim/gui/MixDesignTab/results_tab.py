@@ -168,9 +168,9 @@ class ResultsTab(QWidget):
         self.additionalResultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.scrollLayout.addWidget(self.additionalResultsTable)
 
-    def showAdditionalResultsTable(self, result, waerme_ges_kW, strom_wp_kW):
+    def showAdditionalResultsTable(self, result):
         self.results = result
-        self.waerme_ges_kW, self.strom_wp_kW = np.sum(waerme_ges_kW), np.sum(strom_wp_kW)
+        self.waerme_ges_kW, self.strom_wp_kW = np.sum(self.results["waerme_ges_kW"]), np.sum(self.results["strom_wp_kW"])
         self.WGK_Infra = self.parent.costTab.summe_annuität / self.results['Jahreswärmebedarf']
         self.wgk_heat_pump_electricity = ((self.strom_wp_kW/1000) * self.parent.strompreis) / ((self.strom_wp_kW+self.waerme_ges_kW)/1000)
         self.WGK_Gesamt = self.results['WGK_Gesamt'] + self.WGK_Infra + self.wgk_heat_pump_electricity

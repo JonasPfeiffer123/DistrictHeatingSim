@@ -1,4 +1,6 @@
+import json
 import pandas as pd
+
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMessageBox, QFileDialog, QMenuBar, QScrollArea, QAction
 from PyQt5.QtCore import pyqtSignal, QEventLoop
 
@@ -14,6 +16,22 @@ from gui.MixDesignTab.sensitivity_tab import SensitivityTab
 
 from utilities.test_reference_year import import_TRY
 
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        try:
+            if isinstance(obj, np.ndarray):
+                return obj.tolist()
+            if isinstance(obj, np.integer):
+                return int(obj)
+            if isinstance(obj, np.floating):
+                return float(obj)
+            if isinstance(obj, (CHP, RiverHeatPump, WasteHeatPump, Geothermal, BiomassBoiler, GasBoiler, SolarThermal)):
+                return obj.to_dict()
+            return super().default(obj)
+        except TypeError as e:
+            print(f"Failed to encode {obj} of type {type(obj)}")
+            raise e
+        
 class MixDesignTab(QWidget):
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
     
@@ -60,6 +78,14 @@ class MixDesignTab(QWidget):
 
         # 'Datei'-Menü
         fileMenu = self.menuBar.addMenu('Datei')
+        saveJSONAction = QAction('Ergebnisse als JSON speichern', self)
+        saveJSONAction.triggered.connect(self.save_results_JSON)
+        fileMenu.addAction(saveJSONAction)
+
+        loadJSONAction = QAction('Ergebnisse aus JSON laden', self)
+        loadJSONAction.triggered.connect(self.load_results_JSON)
+        fileMenu.addAction(loadJSONAction)
+
         pdfAction = QAction('Ergebnisse als PDF speichern', self)
         pdfAction.triggered.connect(self.on_export_pdf_clicked)
         fileMenu.addAction(pdfAction)
@@ -180,16 +206,16 @@ class MixDesignTab(QWidget):
 
     def on_calculation_done(self, result):
         self.progressBar.setRange(0, 1)
-        self.results, waerme_ges_kW, strom_wp_kW = result
+        self.results = result
         self.techTab.updateTechList()
         self.costTab.updateInfrastructureTable()  # Hier sicherstellen, dass zuerst die Infrastrukturtabelle aktualisiert wird
         self.costTab.updateTechDataTable(self.techTab.tech_objects)  # Danach die Tech-Tabelle aktualisieren
         self.costTab.updateSumLabel()  # Danach das Summenlabel aktualisieren
         self.costTab.plotCostComposition()
         self.resultTab.showResultsInTable(self.results)
-        self.resultTab.showAdditionalResultsTable(self.results, waerme_ges_kW, strom_wp_kW)
+        self.resultTab.showAdditionalResultsTable(self.results)
         self.resultTab.plotResults(self.results)
-        self.save_results_to_csv(self.results)
+        self.save_heat_generation_results_to_csv(self.results)
         self.showConfirmationDialog()
 
     def on_calculation_error(self, error_message):
@@ -293,9 +319,8 @@ class MixDesignTab(QWidget):
         return result
     
     ### ###
-
     ### Speicherung der Berechnungsergebnisse der Erzeugerauslegung als csv ###
-    def save_results_to_csv(self, results):
+    def save_heat_generation_results_to_csv(self, results):
         # Initialisiere den DataFrame mit den Zeitstempeln
         df = pd.DataFrame({'time_steps': results['time_steps']})
         
@@ -312,9 +337,115 @@ class MixDesignTab(QWidget):
         df['el_Leistung_ges_L'] = results['el_Leistung_ges_L']
         
         # Speichere den DataFrame als CSV-Datei
-        csv_filename = f"{self.base_path}\Lastgang\\results.csv"
+        csv_filename = f"{self.base_path}\Lastgang\\calculated_heat_generation.csv"
         df.to_csv(csv_filename, index=False, sep=";")
         print(f"Ergebnisse wurden in '{csv_filename}' gespeichert.")
+
+    def save_results_JSON(self):
+        if not self.results and not self.techTab.tech_objects:
+            QMessageBox.warning(self, "Keine Daten vorhanden", "Es sind keine Berechnungsergebnisse oder technischen Objekte vorhanden, die gespeichert werden könnten.")
+            return
+        
+        filename, _ = QFileDialog.getSaveFileName(self, 'JSON speichern als...', filter='JSON Files (*.json)')
+        if filename:
+            # Erstelle eine Kopie der Ergebnisse und tech_objects
+            data_to_save = {
+                'results': self.results.copy() if self.results else {},
+                'tech_objects': [obj.to_dict() for obj in self.techTab.tech_objects]
+            }
+
+            try:
+                # Speichern in einer JSON-Datei mit benutzerdefiniertem Encoder
+                with open(filename, 'w') as json_file:
+                    json.dump(data_to_save, json_file, indent=4, cls=CustomJSONEncoder)
+                
+                QMessageBox.information(self, "Erfolgreich gespeichert", f"Die Ergebnisse wurden erfolgreich unter {filename} gespeichert.")
+            except TypeError as e:
+                QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der JSON-Datei: {e}")
+                raise e
+
+
+    def load_results_JSON(self):
+        filename, _ = QFileDialog.getOpenFileName(self, 'JSON Datei laden...', filter='JSON Files (*.json)')
+        if filename:
+            try:
+                # Lade die JSON-Datei
+                with open(filename, 'r') as json_file:
+                    data_loaded = json.load(json_file)
+                
+                results_loaded = data_loaded.get('results', {})
+                tech_objects_loaded = data_loaded.get('tech_objects', [])
+                tech_classes = []
+
+                # Konvertiere Listen zurück zu numpy arrays und Dictionaries zurück zu Objekten
+                for key, value in results_loaded.items():
+                    if isinstance(value, list):
+                        if key == "tech_classes":  # Konvertiere Dictionaries zurück zu Objekten
+                            for v in value:
+                                if v['name'] == 'BHKW' or v['name'] == 'Holzgas-BHKW':
+                                    tech_classes.append(CHP.from_dict(v))
+                                    results_loaded[key] = tech_classes
+                                elif v['name'] == 'Flusswasser':
+                                    tech_classes.append(RiverHeatPump.from_dict(v))
+                                    results_loaded[key] = tech_classes
+                                elif v['name'] == 'Abwärme':
+                                    tech_classes.append(WasteHeatPump.from_dict(v))
+                                    results_loaded[key] = tech_classes
+                                elif v['name'] == 'Geothermie':
+                                    tech_classes.append(Geothermal.from_dict(v))
+                                    results_loaded[key] = tech_classes
+                                elif v['name'] == 'Biomassekessel':
+                                    tech_classes.append(BiomassBoiler.from_dict(v))
+                                    results_loaded[key] = tech_classes
+                                elif v['name'] == 'Gaskessel':
+                                    tech_classes.append(GasBoiler.from_dict(v))
+                                    results_loaded[key] = tech_classes
+                                elif v['name'] == 'Solarthermie':
+                                    tech_classes.append(SolarThermal.from_dict(v))
+                                    results_loaded[key] = tech_classes
+                        elif all(isinstance(i, list) for i in value):  # Prüfe, ob die Liste eine Liste von Listen ist
+                            results_loaded[key] = [np.array(v) for v in value]
+                        else:
+                            results_loaded[key] = np.array(value)
+                
+                # Laden der tech_objects
+                tech_objects = []
+                for obj in tech_objects_loaded:
+                    if obj['name'] == 'BHKW' or obj['name'] == 'Holzgas-BHKW':
+                        tech_objects.append(CHP.from_dict(obj))
+                    elif obj['name'] == 'Flusswasser':
+                        tech_objects.append(RiverHeatPump.from_dict(obj))
+                    elif obj['name'] == 'Abwärme':
+                        tech_objects.append(WasteHeatPump.from_dict(obj))
+                    elif obj['name'] == 'Geothermie':
+                        tech_objects.append(Geothermal.from_dict(obj))
+                    elif obj['name'] == 'Biomassekessel':
+                        tech_objects.append(BiomassBoiler.from_dict(obj))
+                    elif obj['name'] == 'Gaskessel':
+                        tech_objects.append(GasBoiler.from_dict(obj))
+                    elif obj['name'] == 'Solarthermie':
+                        tech_objects.append(SolarThermal.from_dict(obj))
+
+                self.results = results_loaded
+                self.techTab.tech_objects = tech_objects
+
+                # Aktualisiere die Tabs mit den geladenen Daten
+                if self.techTab.tech_objects != []:
+                    self.techTab.updateTechList()
+
+                if self.results != {}:
+                    self.costTab.updateInfrastructureTable()  # Hier sicherstellen, dass zuerst die Infrastrukturtabelle aktualisiert wird
+                    self.costTab.updateTechDataTable(self.techTab.tech_objects)  # Danach die Tech-Tabelle aktualisieren
+                    self.costTab.updateSumLabel()  # Danach das Summenlabel aktualisieren
+                    self.costTab.plotCostComposition()
+                    self.resultTab.showResultsInTable(self.results)
+                    self.resultTab.showAdditionalResultsTable(self.results)
+                    self.resultTab.plotResults(self.results)
+                
+                QMessageBox.information(self, "Erfolgreich geladen", f"Die Ergebnisse wurden erfolgreich aus {filename} geladen.")
+            except Exception as e:
+                QMessageBox.critical(self, "Ladefehler", f"Fehler beim Laden der JSON-Datei: {e}")
+                raise e
 
     def on_export_pdf_clicked(self):
         filename, _ = QFileDialog.getSaveFileName(self, 'PDF speichern als...', filter='PDF Files (*.pdf)')

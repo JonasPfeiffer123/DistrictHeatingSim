@@ -165,6 +165,15 @@ class RiverHeatPump(HeatPump):
         }
 
         return results
+
+    def to_dict(self):
+        return self.__dict__
+    
+    @staticmethod
+    def from_dict(data):
+        obj = RiverHeatPump.__new__(RiverHeatPump)
+        obj.__dict__.update(data)
+        return obj
     
 class WasteHeatPump(HeatPump):
     def __init__(self, name, Kühlleistung_Abwärme, Temperatur_Abwärme, spez_Investitionskosten_Abwärme=500, spezifische_Investitionskosten_WP=1000, min_Teillast=0.2):
@@ -218,6 +227,15 @@ class WasteHeatPump(HeatPump):
         }
 
         return results
+    
+    def to_dict(self):
+        return self.__dict__
+
+    @staticmethod
+    def from_dict(data):
+        obj = WasteHeatPump.__new__(WasteHeatPump)
+        obj.__dict__.update(data)
+        return obj
 
 class Geothermal(HeatPump):
     def __init__(self, name, Fläche, Bohrtiefe, Temperatur_Geothermie, spez_Bohrkosten=100, spez_Entzugsleistung=50,
@@ -307,6 +325,15 @@ class Geothermal(HeatPump):
         }
 
         return results
+
+    def to_dict(self):
+        return self.__dict__
+    
+    @staticmethod
+    def from_dict(data):
+        obj = Geothermal.__new__(Geothermal)
+        obj.__dict__.update(data)
+        return obj
 
 class CHP:
     def __init__(self, name, th_Leistung_BHKW, spez_Investitionskosten_GBHKW=1500, spez_Investitionskosten_HBHKW=1850, el_Wirkungsgrad=0.33, KWK_Wirkungsgrad=0.9, 
@@ -490,6 +517,15 @@ class CHP:
 
         return results
 
+    def to_dict(self):
+        return self.__dict__
+
+    @staticmethod
+    def from_dict(data):
+        obj = CHP.__new__(CHP)
+        obj.__dict__.update(data)
+        return obj
+
 class BiomassBoiler:
     def __init__(self, name, P_BMK, Größe_Holzlager=40, spez_Investitionskosten=200, spez_Investitionskosten_Holzlager=400, Nutzungsgrad_BMK=0.8, min_Teillast=0.3,
                  speicher_aktiv=False, Speicher_Volumen=20, T_vorlauf=90, T_ruecklauf=60, initial_fill=0.0, min_fill=0.2, max_fill=0.8, 
@@ -636,6 +672,15 @@ class BiomassBoiler:
             results['Wärmeleistung_Speicher_L'] = self.Wärmeleistung_Speicher_BMK
 
         return results
+
+    def to_dict(self):
+        return self.__dict__
+
+    @staticmethod
+    def from_dict(data):
+        valid_keys = BiomassBoiler.__init__.__code__.co_varnames[:BiomassBoiler.__init__.__code__.co_argcount]
+        filtered_data = {k: v for k, v in data.items() if k in valid_keys}
+        return BiomassBoiler(**filtered_data)
     
 class GasBoiler:
     def __init__(self, name, spez_Investitionskosten=30, Nutzungsgrad=0.9, Faktor_Dimensionierung=1):
@@ -682,6 +727,15 @@ class GasBoiler:
         }
 
         return results
+    
+    def to_dict(self):
+        return self.__dict__
+
+    @staticmethod
+    def from_dict(data):
+        obj = GasBoiler.__new__(GasBoiler)
+        obj.__dict__.update(data)
+        return obj
 
 class SolarThermal:
     def __init__(self, name, bruttofläche_STA, vs, Typ, kosten_speicher_spez=750, kosten_fk_spez=430, kosten_vrk_spez=590, Tsmax=90, Longitude=-14.4222, 
@@ -776,6 +830,15 @@ class SolarThermal:
         }
 
         return results
+
+    def to_dict(self):
+        return self.__dict__
+
+    @staticmethod
+    def from_dict(data):
+        obj = SolarThermal.__new__(SolarThermal)
+        obj.__dict__.update(data)
+        return obj
 
 def calculate_factors(Kapitalzins, Preissteigerungsrate, Betrachtungszeitraum):
     q = 1 + Kapitalzins / 100
@@ -1000,7 +1063,6 @@ def optimize_mix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, 
     else:
         print("Optimierung nicht erfolgreich")
         print(result.message)
-
 
 # Diese Klasse ist nocht fertig implementiert und die Nutzung auch noch nicht durchdacht, Wie muss dass ganze bilanziert werden?
 class Photovoltaics:
