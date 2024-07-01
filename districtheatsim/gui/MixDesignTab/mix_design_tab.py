@@ -265,8 +265,8 @@ class MixDesignTab(QWidget):
         for gas_price in self.generate_values(gas_range):
             for electricity_price in self.generate_values(electricity_range):
                 for wood_price in self.generate_values(wood_range):
-                    result, waerme_ges_kW, strom_wp_kW = self.calculate_mix(gas_price, electricity_price, wood_price)
-                    waerme_ges_kW, strom_wp_kW = np.sum(waerme_ges_kW), np.sum(strom_wp_kW)
+                    result = self.calculate_mix(gas_price, electricity_price, wood_price)
+                    waerme_ges_kW, strom_wp_kW = np.sum(result["waerme_ges_kW"]), np.sum(result["strom_wp_kW"])
                     wgk_heat_pump_electricity = ((strom_wp_kW/1000) * electricity_price) / ((strom_wp_kW+waerme_ges_kW)/1000)
                     if result is not None:
                         results.append({
@@ -450,4 +450,11 @@ class MixDesignTab(QWidget):
     def on_export_pdf_clicked(self):
         filename, _ = QFileDialog.getSaveFileName(self, 'PDF speichern als...', filter='PDF Files (*.pdf)')
         if filename:
-            create_pdf(self, filename)
+            try:
+                create_pdf(self, filename)
+                
+                QMessageBox.information(self, "PDF erfolgreich erstellt.", f"Die Ergebnisse wurden erfolgreich in {filename} gespeichert.")
+            
+            except Exception as e:
+                QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern als PDF: {e}")
+                raise e

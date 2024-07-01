@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLay
 from PyQt5.QtCore import pyqtSignal
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 from heat_generators.heat_generator_classes import *
@@ -203,8 +204,9 @@ class TechnologyTab(QWidget):
         if self.plotCanvas:
             self.plotLayout.removeWidget(self.plotCanvas)
             self.plotCanvas.deleteLater()
-        self.plotFigure = plt.figure()
+        self.plotFigure = Figure(figsize=(6, 6))
         self.plotCanvas = FigureCanvas(self.plotFigure)
+        self.plotCanvas.setMinimumSize(500, 500)  # Setze eine Mindestgröße für die Canvas
         self.plotLayout.addWidget(self.plotCanvas)
 
     def loadFileAndPlot(self):

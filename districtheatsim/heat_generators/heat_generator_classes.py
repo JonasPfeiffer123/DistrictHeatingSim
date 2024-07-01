@@ -678,10 +678,10 @@ class BiomassBoiler:
 
     @staticmethod
     def from_dict(data):
-        valid_keys = BiomassBoiler.__init__.__code__.co_varnames[:BiomassBoiler.__init__.__code__.co_argcount]
-        filtered_data = {k: v for k, v in data.items() if k in valid_keys}
-        return BiomassBoiler(**filtered_data)
-    
+        obj = BiomassBoiler.__new__(BiomassBoiler)
+        obj.__dict__.update(data)
+        return obj
+
 class GasBoiler:
     def __init__(self, name, spez_Investitionskosten=30, Nutzungsgrad=0.9, Faktor_Dimensionierung=1):
         self.name = name

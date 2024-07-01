@@ -253,7 +253,7 @@ class NetInfrastructureDialog(QDialog):
         self.infraObjects = ['Wärmenetz', 'Hausanschlussstationen', 'Druckhaltung', 'Hydraulik', 'Elektroinstallation', 'Planungskosten']
         self.table.setRowCount(len(self.infraObjects))
         self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(['Kosten', 'Techn. Nutzungsdauer', 'F_inst', 'F_w_insp', 'Bedienaufwand'])
+        self.table.setHorizontalHeaderLabels(['Kosten', 'T_N', 'F_inst', 'F_w_insp', 'Bedienaufwand'])
         self.table.setVerticalHeaderLabels(self.infraObjects)
         self.layout.addWidget(self.table)
 
@@ -324,16 +324,16 @@ class NetInfrastructureDialog(QDialog):
     def initDefaultValues(self):
         # Standardwerte wie zuvor definiert
         defaultValues = {
-            'Wärmenetz': {'kosten': "2000000", 'technische nutzungsdauer': "40", 'f_inst': "1", 'f_w_insp': "0", 'bedienaufwand': "5"},
-            'Hausanschlussstationen': {'kosten': "100000", 'technische nutzungsdauer': "20", 'f_inst': "1", 'f_w_insp': "1", 'bedienaufwand': "2"},
-            'Druckhaltung': {'kosten': "20000", 'technische nutzungsdauer': "20", 'f_inst': "1", 'f_w_insp': "1", 'bedienaufwand': "2"},
-            'Hydraulik': {'kosten': "40000", 'technische nutzungsdauer': "40", 'f_inst': "1", 'f_w_insp': "0", 'bedienaufwand': "0"},
-            'Elektroinstallation': {'kosten': "15000", 'technische nutzungsdauer': "15", 'f_inst': "1", 'f_w_insp': "1", 'bedienaufwand': "5"},
-            'Planungskosten': {'kosten': "500000", 'technische nutzungsdauer': "20", 'f_inst': "0", 'f_w_insp': "0", 'bedienaufwand': "0"}
+            'Wärmenetz': {'kosten': "2000000", 't_n': "40", 'f_inst': "1", 'f_w_insp': "0", 'bedienaufwand': "5"},
+            'Hausanschlussstationen': {'kosten': "100000", 't_n': "20", 'f_inst': "1", 'f_w_insp': "1", 'bedienaufwand': "2"},
+            'Druckhaltung': {'kosten': "20000", 't_n': "20", 'f_inst': "1", 'f_w_insp': "1", 'bedienaufwand': "2"},
+            'Hydraulik': {'kosten': "40000", 't_n': "40", 'f_inst': "1", 'f_w_insp': "0", 'bedienaufwand': "0"},
+            'Elektroinstallation': {'kosten': "15000", 't_n': "15", 'f_inst': "1", 'f_w_insp': "1", 'bedienaufwand': "5"},
+            'Planungskosten': {'kosten': "500000", 't_n': "20", 'f_inst': "0", 'f_w_insp': "0", 'bedienaufwand': "0"}
         }
 
         for i, obj in enumerate(self.infraObjects):
-            for j, field in enumerate(['kosten', 'technische nutzungsdauer', 'f_inst', 'f_w_insp', 'bedienaufwand']):
+            for j, field in enumerate(['kosten', 't_n', 'f_inst', 'f_w_insp', 'bedienaufwand']):
                 self.table.setItem(i, j, QTableWidgetItem(str(defaultValues[obj][field])))
 
     def updateTableValue(self, row, column, value):
@@ -370,7 +370,7 @@ class NetInfrastructureDialog(QDialog):
     def getValues(self):
         values = {}
         for i, obj in enumerate(self.infraObjects):
-            for j, field in enumerate(['kosten', 'technische nutzungsdauer', 'f_inst', 'f_w_insp', 'bedienaufwand']):
+            for j, field in enumerate(['kosten', 't_n', 'f_inst', 'f_w_insp', 'bedienaufwand']):
                 key = f"{obj}_{field}"
                 item = self.table.item(i, j)
                 # Überprüfen Sie, ob das Element vorhanden ist
