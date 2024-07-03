@@ -28,7 +28,7 @@ def versorgungsgebiet_bestimmen(area_specific_heat_requirement, threshold_heat_n
     else:
         return 'Einzelversorgungslösung'
 
-def clustering_quartiere_hdbscan(gdf, buffer_size=10, min_cluster_size=30, min_samples=1, threshold_heat_network=90, threshold_hydrogen=60):
+def clustering_districts_hdbscan(gdf, buffer_size=10, min_cluster_size=30, min_samples=1, threshold_heat_network=90, threshold_hydrogen=60):
     # Add buffer zone around each building
     gdf['buffered_geometry'] = gdf.geometry.buffer(buffer_size)
 

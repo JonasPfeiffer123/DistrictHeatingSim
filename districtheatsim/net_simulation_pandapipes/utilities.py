@@ -1,3 +1,5 @@
+import time
+import logging
 import sys
 import os
 
@@ -15,6 +17,9 @@ from pandapower.control.controller.const_control import ConstControl
 
 from net_simulation_pandapipes.controllers import ReturnTemperatureController, WorstPointPressureController
 
+# Initialize logging
+logging.basicConfig(level=logging.INFO)
+
 def get_resource_path(relative_path):
     """ Get the absolute path to the resource, works for dev and for PyInstaller """
     if getattr(sys, 'frozen', False):
@@ -26,9 +31,7 @@ def get_resource_path(relative_path):
 
     return os.path.join(base_path, relative_path)
 
-def COP_WP(VLT_L, QT):
-    # Interpolation formula for the COP
-    values = np.genfromtxt(get_resource_path('heat_generators\Kennlinien WP.csv'), delimiter=';')
+def COP_WP(VLT_L, QT, values=np.genfromtxt(get_resource_path('heat_generators\Kennlinien WP.csv'), delimiter=';')):
     row_header = values[0, 1:]  # Vorlauftemperaturen
     col_header = values[1:, 0]  # Quelltemperaturen
     values = values[1:, 1:]
@@ -57,32 +60,42 @@ def net_optimization(net, v_max_pipe, v_max_heat_exchanger, material_filter, ins
     run_control(net, mode="all")
 
     net = optimize_diameter_types(net, v_max=v_max_pipe, material_filter=material_filter, insulation_filter=insulation_filter)
-    net = optimize_diameter_parameters(net, element="heat_exchanger", v_max=v_max_heat_exchanger)
-    net = optimize_diameter_parameters(net, element="flow_control", v_max=v_max_heat_exchanger)
+    net = optimize_diameter_parameters(net, element="heat_consumer", v_max=v_max_heat_exchanger)
 
+    # recalculate maximum and minimum mass flows in the controller
+    net = recalculate_all_mass_flow_limits(net)
+    
     run_control(net, mode="all")
 
     return net
 
-def create_controllers(net, qext_w, return_temperature):
-    if len(qext_w) != len(return_temperature):
+def create_controllers(net, qext_w, return_temperature_heat_consumer, supply_temperature_heat_consumer):
+    if len(qext_w) != len(return_temperature_heat_consumer):
         raise ValueError("Die Längen von qext_w und return_temperature müssen gleich sein.")
 
     # Creates controllers for the network
-    for i in range(len(net.heat_exchanger)):
+    #for i in range(len(net.heat_exchanger)):
+    for i in range(len(net.heat_consumer)):
         # Create a simple DFData object for qext_w with the specific value for this pass
         placeholder_df = pd.DataFrame({f'qext_w_{i}': [qext_w[i]]})
         placeholder_data_source = DFData(placeholder_df)
 
-        ConstControl(net, element='heat_exchanger', variable='qext_w', element_index=i, data_source=placeholder_data_source, profile_name=f'qext_w_{i}')
+        ConstControl(net, element='heat_consumer', variable='qext_w', element_index=i, data_source=placeholder_data_source, profile_name=f'qext_w_{i}')
         
         # Adjustment for using return_temperature as an array
-        T_controller = ReturnTemperatureController(net, heat_exchanger_idx=i, target_temperature=return_temperature[i])
+        T_controller = ReturnTemperatureController(net, heat_consumer_idx=i, target_return_temperature=return_temperature_heat_consumer[i], min_supply_temperature=supply_temperature_heat_consumer[i])
         net.controller.loc[len(net.controller)] = [T_controller, True, -1, -1, False, False]
 
     dp_min, idx_dp_min = calculate_worst_point(net)  # This function must be defined
     dp_controller = WorstPointPressureController(net, idx_dp_min)  # This class must be defined
     net.controller.loc[len(net.controller)] = [dp_controller, True, -1, -1, False, False]
+
+    return net
+
+def recalculate_all_mass_flow_limits(net):
+    for idx, controller in net.controller.iterrows():
+        if isinstance(controller['object'], ReturnTemperatureController):
+            controller['object'].calculate_mass_flow_limits(net)
 
     return net
 
@@ -106,6 +119,7 @@ def correct_flow_directions(net):
     return net
 
 def optimize_diameter_parameters(net, element="pipe", v_max=2, dx=0.001):
+    v_max /= 1.5
     pp.pipeflow(net, mode="all")
     element_df = getattr(net, element)  # Access the element's DataFrame
     res_df = getattr(net, f"res_{element}")  # Access the result DataFrame
@@ -144,68 +158,137 @@ def optimize_diameter_parameters(net, element="pipe", v_max=2, dx=0.001):
 
     return net
 
-def optimize_diameter_types(net, v_max=1.0, material_filter="KMR", insulation_filter="2v"):
+def init_diameter_types(net, v_max_pipe=1.0, material_filter="KMR", insulation_filter="2v"):
+    start_time_total = time.time()
     pp.pipeflow(net, mode="all")
+    logging.info(f"Initial pipeflow calculation took {time.time() - start_time_total:.2f} seconds")
 
-    # List and filter standard types for pipes
     pipe_std_types = pp.std_types.available_std_types(net, "pipe")
     filtered_by_material = pipe_std_types[pipe_std_types['material'] == material_filter]
     filtered_by_material_and_insulation = filtered_by_material[filtered_by_material['insulation'] == insulation_filter]
 
-    # Dictionary for pipe type positions
     type_position_dict = {type_name: i for i, type_name in enumerate(filtered_by_material_and_insulation.index)}
 
+    # Initial diameter adjustment
+    for pipe_idx, velocity in enumerate(net.res_pipe.v_mean_m_per_s):
+        current_diameter = net.pipe.at[pipe_idx, 'diameter_m']
+        required_diameter = current_diameter * (velocity / v_max_pipe)**0.5
+        # Find the closest available standard type
+        closest_type = min(filtered_by_material_and_insulation.index, key=lambda x: abs(filtered_by_material_and_insulation.loc[x, 'inner_diameter_mm'] / 1000 - required_diameter))
+        net.pipe.std_type.at[pipe_idx] = closest_type
+        properties = filtered_by_material_and_insulation.loc[closest_type]
+        net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
+        net.pipe.at[pipe_idx, 'k_mm'] = properties['RAU']
+        net.pipe.at[pipe_idx, 'alpha_w_per_m2k'] = properties['WDZAHL']
+
+    pp.pipeflow(net, mode="all")
+    logging.info(f"Post-initial diameter adjustment pipeflow calculation took {time.time() - start_time_total:.2f} seconds")
+
+    return net
+
+def optimize_diameter_types(net, v_max=1.0, material_filter="KMR", insulation_filter="2v"):
+    start_time_total = time.time()
+    pp.pipeflow(net, mode="all")
+    logging.info(f"Initial pipeflow calculation took {time.time() - start_time_total:.2f} seconds")
+
+    pipe_std_types = pp.std_types.available_std_types(net, "pipe")
+    filtered_by_material = pipe_std_types[pipe_std_types['material'] == material_filter]
+    filtered_by_material_and_insulation = filtered_by_material[filtered_by_material['insulation'] == insulation_filter]
+
+    type_position_dict = {type_name: i for i, type_name in enumerate(filtered_by_material_and_insulation.index)}
+
+    # Initial diameter adjustment
+    for pipe_idx, velocity in enumerate(net.res_pipe.v_mean_m_per_s):
+        current_diameter = net.pipe.at[pipe_idx, 'diameter_m']
+        required_diameter = current_diameter * (velocity / v_max)**0.5
+        # Find the closest available standard type
+        closest_type = min(filtered_by_material_and_insulation.index, key=lambda x: abs(filtered_by_material_and_insulation.loc[x, 'inner_diameter_mm'] / 1000 - required_diameter))
+        net.pipe.std_type.at[pipe_idx] = closest_type
+        properties = filtered_by_material_and_insulation.loc[closest_type]
+        net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
+        net.pipe.at[pipe_idx, 'k_mm'] = properties['RAU']
+        net.pipe.at[pipe_idx, 'alpha_w_per_m2k'] = properties['WDZAHL']
+
+    pp.pipeflow(net, mode="all")
+    logging.info(f"Post-initial diameter adjustment pipeflow calculation took {time.time() - start_time_total:.2f} seconds")
+
+    # Add a column to track if a pipe is optimized
+    net.pipe['optimized'] = False
+
     change_made = True
+    iteration_count = 0
+
     while change_made:
+        iteration_start_time = time.time()
         change_made = False
 
+        # Track the number of pipes within and outside the desired velocity range
+        pipes_within_target = 0
+        pipes_outside_target = 0
+
         for pipe_idx, velocity in enumerate(net.res_pipe.v_mean_m_per_s):
+            if net.pipe.at[pipe_idx, 'optimized'] and velocity <= v_max:
+                pipes_within_target += 1
+                continue
+
+            #if velocity > v_max:
+            #    logging.info(f"Velocity at {pipe_idx} at start is {velocity} m/s")
+
             current_type = net.pipe.std_type.at[pipe_idx]
             current_type_position = type_position_dict[current_type]
 
-
             if velocity > v_max and current_type_position < len(filtered_by_material_and_insulation) - 1:
-                 # enlarge diameter
                 new_type = filtered_by_material_and_insulation.index[current_type_position + 1]
-
-                # Temporarily apply the new type
                 net.pipe.std_type.at[pipe_idx] = new_type
                 properties = filtered_by_material_and_insulation.loc[new_type]
                 net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
                 net.pipe.at[pipe_idx, 'k_mm'] = properties['RAU']
                 net.pipe.at[pipe_idx, 'alpha_w_per_m2k'] = properties['WDZAHL']
-
                 change_made = True
+                pipes_outside_target += 1
 
-            elif velocity < v_max and current_type_position > 0:
-                # shrink diameter, but check if this shrink makes the velocity exceed v_max
+            elif velocity <= v_max and current_type_position > 0:
                 new_type = filtered_by_material_and_insulation.index[current_type_position - 1]
-
-                # Temporarily apply the new type
                 net.pipe.std_type.at[pipe_idx] = new_type
                 properties = filtered_by_material_and_insulation.loc[new_type]
                 net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
                 net.pipe.at[pipe_idx, 'k_mm'] = properties['RAU']
                 net.pipe.at[pipe_idx, 'alpha_w_per_m2k'] = properties['WDZAHL']
 
-                # Recalculate to check new velocity
                 pp.pipeflow(net, mode="all")
                 new_velocity = net.res_pipe.v_mean_m_per_s[pipe_idx]
+
+                #logging.info(f"Adjusted velocity for pipe {pipe_idx}: {new_velocity} m/s with new type {new_type}")
 
                 if new_velocity <= v_max:
                     change_made = True
                 else:
-                    # Revert to original type if velocity exceeds v_max
+                    #logging.info(f"Reverting pipe {pipe_idx} to original type {current_type} as new velocity is {new_velocity} m/s")
                     net.pipe.std_type.at[pipe_idx] = current_type
                     properties = filtered_by_material_and_insulation.loc[current_type]
                     net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
                     net.pipe.at[pipe_idx, 'k_mm'] = properties['RAU']
                     net.pipe.at[pipe_idx, 'alpha_w_per_m2k'] = properties['WDZAHL']
-            
-        if change_made:
-            # Recalculate the pipe flow after all changes
-            pp.pipeflow(net, mode="all")
+                    
+                    net.pipe.at[pipe_idx, 'optimized'] = True
+                    pipes_within_target += 1
+            else:
+                net.pipe.at[pipe_idx, 'optimized'] = True
+                pipes_within_target += 1
 
+            #if velocity > v_max:
+            #    logging.info(f"Velocity at {pipe_idx} at end is {velocity} m/s")
+
+        iteration_count += 1
+        if change_made:
+            iteration_pipeflow_start = time.time()
+            pp.pipeflow(net, mode="all")
+            #logging.info(f"Iteration {iteration_count}: pipeflow calculation took {time.time() - iteration_pipeflow_start:.2f} seconds")
+        
+        logging.info(f"Iteration {iteration_count}: {pipes_within_target} pipes within target velocity, {pipes_outside_target} pipes outside target velocity")
+        logging.info(f"Iteration {iteration_count} took {time.time() - iteration_start_time:.2f} seconds")
+
+    logging.info(f"Total optimization time: {time.time() - start_time_total:.2f} seconds")
     return net
 
 def calculate_worst_point(net):
@@ -218,7 +301,7 @@ def calculate_worst_point(net):
     
     dp = []
 
-    for idx, p_from, p_to in zip(net.heat_exchanger.index, net.res_flow_control["p_from_bar"], net.res_heat_exchanger["p_to_bar"]):
+    for idx, p_from, p_to in zip(net.heat_consumer.index, net.res_heat_consumer["p_from_bar"], net.res_heat_consumer["p_to_bar"]):
         dp_diff = p_from - p_to
         dp_diff = p_from - p_to
         dp.append((dp_diff, idx))
@@ -275,6 +358,26 @@ def export_net_geojson(net, filename):
                 'name': "HAST",
                 'diameter_mm': f"{heat_exchanger['diameter_m']*1000:.1f}",
                 'qext_W': f"{heat_exchanger['qext_w']:.0f}",
+                'geometry': [line]
+            }, crs="EPSG:25833") # set crs to EPSG:25833
+            
+            features.append(gdf_component)
+
+    if 'heat_consumer' in net and not net.heat_consumer.empty:
+        # Iterate through each pair of heat_exchanger and flow_control
+        for idx, heat_consumer in net.heat_consumer.iterrows():
+            # Get the coordinates for flow_control's start and heat_exchanger's end coordinates
+            start_coords = net.junction_geodata.loc[heat_consumer['from_junction']]
+            end_coords = net.junction_geodata.loc[heat_consumer['to_junction']]
+
+            # Create a line between these points
+            line = LineString([(start_coords['x'], start_coords['y']), (end_coords['x'], end_coords['y'])])
+            
+            # Create a GeoDataFrame for this combined component
+            gdf_component = gpd.GeoDataFrame({
+                'name': "HAST",
+                'diameter_mm': f"{heat_consumer['diameter_m']*1000:.1f}",
+                'qext_W': f"{heat_consumer['qext_w']:.0f}",
                 'geometry': [line]
             }, crs="EPSG:25833") # set crs to EPSG:25833
             

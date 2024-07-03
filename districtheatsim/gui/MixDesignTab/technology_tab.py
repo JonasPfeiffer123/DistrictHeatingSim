@@ -2,10 +2,11 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLay
 from PyQt5.QtCore import pyqtSignal
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 from heat_generators.heat_generator_classes import *
-from gui.MixDesignTab.mix_design_dialogs import TechInputDialog
+from gui.MixDesignTab.heat_generator_dialogs import TechInputDialog
 
 class CustomListWidget(QListWidget):
     def __init__(self, parent=None):
@@ -176,7 +177,7 @@ class TechnologyTab(QWidget):
         elif isinstance(tech, Geothermal):
             display_text += f"Fläche Sondenfeld: {tech.Fläche} m², Bohrtiefe: {tech.Bohrtiefe} m, Quelltemperatur Erdreich: {tech.Temperatur_Geothermie} °C, spez. Bohrkosten: {tech.spez_Bohrkosten} €/m, spez. Entzugsleistung: {tech.spez_Entzugsleistung} W/m, Vollbenutzungsstunden: {tech.Vollbenutzungsstunden} h, Abstand Sonden: {tech.Abstand_Sonden} m, spez. Investitionskosten Wärmepumpe: {tech.spezifische_Investitionskosten_WP} €/kW"
         elif isinstance(tech, CHP):
-            display_text += f"th. Leistung: {tech.th_Leistung_BHKW} kW, spez. Investitionskosten Erdgas-BHKW: {tech.spez_Investitionskosten_GBHKW} €/BHKW, spez. Investitionskosten Holzgas-BHKW: {tech.spez_Investitionskosten_HBHKW} €/kW"
+            display_text += f"th. Leistung: {tech.th_Leistung_BHKW} kW, spez. Investitionskosten Erdgas-BHKW: {tech.spez_Investitionskosten_GBHKW} €/kW, spez. Investitionskosten Holzgas-BHKW: {tech.spez_Investitionskosten_HBHKW} €/kW"
         elif isinstance(tech, BiomassBoiler):
             display_text += f"th. Leistung: {tech.P_BMK}, Größe Holzlager: {tech.Größe_Holzlager} t, spez. Investitionskosten Kessel: {tech.spez_Investitionskosten} €/kW, spez. Investitionskosten Holzlager: {tech.spez_Investitionskosten_Holzlager} €/t"
         elif isinstance(tech, GasBoiler):
@@ -203,8 +204,9 @@ class TechnologyTab(QWidget):
         if self.plotCanvas:
             self.plotLayout.removeWidget(self.plotCanvas)
             self.plotCanvas.deleteLater()
-        self.plotFigure = plt.figure()
+        self.plotFigure = Figure(figsize=(6, 6))
         self.plotCanvas = FigureCanvas(self.plotFigure)
+        self.plotCanvas.setMinimumSize(500, 500)  # Setze eine Mindestgröße für die Canvas
         self.plotLayout.addWidget(self.plotCanvas)
 
     def loadFileAndPlot(self):

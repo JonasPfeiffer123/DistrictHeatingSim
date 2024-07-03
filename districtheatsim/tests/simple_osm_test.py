@@ -8,7 +8,7 @@ import numpy as np
 import geopandas as gpd
 
 from osm.import_osm_data_geojson import build_query, download_data, save_to_file
-from osm.Wärmeversorgungsgebiete import clustering_quartiere_hdbscan, postprocessing_hdbscan, allocate_overlapping_area
+from osm.Wärmeversorgungsgebiete import clustering_districts_hdbscan, postprocessing_hdbscan, allocate_overlapping_area
 
 ### OSM-Download von Straßendaten ###
 def osm_street_query():
@@ -59,7 +59,7 @@ def osm_clustering():
     gdf = calculate_building_data(gdf, 'tests\data\osm_building_data_calculated.geojson')
     print("Berechnung der Gebäudedaten erfolgreich abgeschlossen.")
 
-    quarters = clustering_quartiere_hdbscan(gdf)
+    quarters = clustering_districts_hdbscan(gdf)
     #Export result as GeoJSON file
     quarters.to_file('tests\data\quartiere_hdbscan.geojson', driver='GeoJSON')
     print("Clustering der Quartiere mit hdbscan erfolgreich abgeschlossen.")

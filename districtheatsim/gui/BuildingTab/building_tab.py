@@ -8,12 +8,12 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QComboBox, QPushButton, QGroupBox, \
     QHBoxLayout, QFileDialog, QProgressBar, QLabel, QWidget, QTableWidget, QTableWidgetItem, \
-    QHeaderView, QScrollArea
+    QHeaderView, QScrollArea, QAction, QMainWindow
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import pyqtSignal
 
-from lod2.scripts.filter_LOD2 import spatial_filter_with_polygon, filter_LOD2_with_coordinates, process_lod2, calculate_centroid_and_geocode
-from lod2.scripts.heat_requirement_DIN_EN_12831 import Building
+from lod2.filter_LOD2 import spatial_filter_with_polygon, filter_LOD2_with_coordinates, process_lod2, calculate_centroid_and_geocode
+from lod2.heat_requirement_DIN_EN_12831 import Building
 
 # defines the base path
 def get_resource_path(relative_path):
@@ -27,13 +27,14 @@ def get_resource_path(relative_path):
 
     return os.path.join(base_path, relative_path)
 
-class BuildingTab(QWidget):
+class BuildingTab(QMainWindow):
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
 
     def __init__(self, data_manager, vis_tab, parent=None):
         super().__init__(parent)
         self.data_manager = data_manager
         self.vis_tab = vis_tab
+        self.parent = parent
 
         self.loaded_data = []
         self.loaded_filenames = []
@@ -51,8 +52,10 @@ class BuildingTab(QWidget):
         self.setWindowTitle("Verarbeitung LOD2-Daten")
         self.setGeometry(200, 200, 1200, 1000)  # Anpassung der Fenstergröße
 
-        main_layout = QVBoxLayout(self)
-        
+        central_widget = QWidget(self)
+        self.setCentralWidget(central_widget)
+        main_layout = QVBoxLayout(central_widget)
+
         # Create a scroll area
         scroll_area = QScrollArea(self)
         scroll_area.setWidgetResizable(True)
@@ -97,15 +100,6 @@ class BuildingTab(QWidget):
         self.filterMethodComboBox.currentIndexChanged.connect(self.updateFilterInputVisibility)
         layout.addWidget(self.filterMethodComboBox)
 
-        # Buttons for processing data
-        self.loadDataButton = QPushButton("LOD2-Daten filtern und in Karte laden", self)
-        self.loadDataButton.clicked.connect(self.processData)
-        layout.addWidget(self.loadDataButton)
-
-        self.loadDataButton = QPushButton("gefilterte Daten laden und anzeigen", self)
-        self.loadDataButton.clicked.connect(self.loadData)
-        layout.addWidget(self.loadDataButton)
-
         # Improved Table Widget
         self.tableWidget = QTableWidget(self)
         self.tableWidget.setColumnCount(19)
@@ -116,33 +110,6 @@ class BuildingTab(QWidget):
         self.tableWidget.setSortingEnabled(True)  # Enable sorting
         self.tableWidget.setMinimumSize(800, 400)  # Set minimum size for the table
         layout.addWidget(self.tableWidget)
-
-        # Save and load buttons
-        self.saveDataButton = QPushButton("Daten speichern", self)
-        self.saveDataButton.clicked.connect(self.saveData)
-        layout.addWidget(self.saveDataButton)
-
-        self.loadDataButton = QPushButton("Daten laden", self)
-        self.loadDataButton.clicked.connect(self.loadDataFromFile)
-        layout.addWidget(self.loadDataButton)
-
-        # Calculation and CSV creation buttons
-        self.heatCalcButton = QPushButton("Wärmebedarf berechnen", self)
-        self.heatCalcButton.clicked.connect(self.calculateHeatDemand)
-        layout.addWidget(self.heatCalcButton)
-
-        self.buildingCSVButton = QPushButton("Gebäude-csv für Netzgenerierung erstellen", self)
-        self.buildingCSVButton.clicked.connect(self.createBuildingCSV)
-        layout.addWidget(self.buildingCSVButton)
-
-        # Buttons for dataset management
-        self.addDatasetButton = QPushButton("Datensatz hinzufügen", self)
-        self.addDatasetButton.clicked.connect(self.addDataset)
-        layout.addWidget(self.addDatasetButton)
-
-        self.removeDatasetButton = QPushButton("Datensatz entfernen", self)
-        self.removeDatasetButton.clicked.connect(self.removeDataset)
-        layout.addWidget(self.removeDatasetButton)
 
         # Matplotlib Figure
         self.figure = plt.figure()
@@ -158,6 +125,51 @@ class BuildingTab(QWidget):
         # Initial visibility setting
         self.updateFilterInputVisibility()
 
+        # Create menu bar
+        self.createMenuBar()
+
+    def createMenuBar(self):
+        menubar = self.menuBar()
+
+        file_menu = menubar.addMenu("File")
+        process_menu = menubar.addMenu("Process")
+        dataset_menu = menubar.addMenu("Dataset")
+
+        open_action = QAction("Open", self)
+        open_action.triggered.connect(self.loadDataFromFile)
+        file_menu.addAction(open_action)
+
+        save_action = QAction("Save", self)
+        save_action.triggered.connect(self.saveData)
+        file_menu.addAction(save_action)
+
+        exit_action = QAction("Exit", self)
+        exit_action.triggered.connect(self.close)
+        file_menu.addAction(exit_action)
+
+        process_filter_action = QAction("LOD2-Daten filtern und in Karte laden", self)
+        process_filter_action.triggered.connect(self.processData)
+        process_menu.addAction(process_filter_action)
+
+        load_filtered_action = QAction("gefilterte Daten laden und anzeigen", self)
+        load_filtered_action.triggered.connect(self.loadData)
+        process_menu.addAction(load_filtered_action)
+
+        calculate_heat_demand_action = QAction("Wärmebedarf berechnen", self)
+        calculate_heat_demand_action.triggered.connect(self.calculateHeatDemand)
+        process_menu.addAction(calculate_heat_demand_action)
+
+        create_csv_action = QAction("Gebäude-csv für Netzgenerierung erstellen", self)
+        create_csv_action.triggered.connect(self.createBuildingCSV)
+        process_menu.addAction(create_csv_action)
+
+        add_dataset_action = QAction("Datensatz hinzufügen", self)
+        add_dataset_action.triggered.connect(self.addDataset)
+        dataset_menu.addAction(add_dataset_action)
+
+        remove_dataset_action = QAction("Datensatz entfernen", self)
+        remove_dataset_action.triggered.connect(self.removeDataset)
+        dataset_menu.addAction(remove_dataset_action)
 
     def updateDefaultPath(self, new_base_path):
         self.base_path = new_base_path
@@ -307,6 +319,7 @@ class BuildingTab(QWidget):
         return comboBox
     
     def calculateHeatDemand(self):
+
         for row in range(self.tableWidget.rowCount()):
             ground_area = float(self.tableWidget.item(row, 3).text())
             wall_area = float(self.tableWidget.item(row, 4).text())
@@ -315,7 +328,7 @@ class BuildingTab(QWidget):
             u_type = self.tableWidget.cellWidget(row, 8).currentText()  # Typ
             building_state = self.tableWidget.cellWidget(row, 9).currentText()  # Gebäudezustand
 
-            building = Building(ground_area, wall_area, roof_area, volume, u_type=u_type, building_state=building_state)
+            building = Building(ground_area, wall_area, roof_area, volume, u_type=u_type, building_state=building_state, filename_TRY=self.parent.try_filename)
             building.calc_yearly_heat_demand()
             
             print(building.yearly_heat_demand)
@@ -424,9 +437,3 @@ class BuildingTab(QWidget):
         
         self.canvas.draw()
 
-if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
-    app = QApplication(sys.argv)
-    window = BuildingTab(None, None)
-    window.show()
-    sys.exit(app.exec_())

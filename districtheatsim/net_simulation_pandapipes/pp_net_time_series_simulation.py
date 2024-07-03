@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 
 from net_simulation_pandapipes.controllers import ReturnTemperatureController
+from net_simulation_pandapipes.utilities import COP_WP
 
 def update_const_controls(net, qext_w_profiles, time_steps, start, end):
     for i, qext_w_profile in enumerate(qext_w_profiles):
@@ -16,12 +17,15 @@ def update_const_controls(net, qext_w_profiles, time_steps, start, end):
             if isinstance(ctrl, ConstControl) and ctrl.element_index == i and ctrl.variable == 'qext_w':
                 ctrl.data_source = data_source
 
-def update_return_temperature_controller(net, return_temperature, time_steps, start, end):
+def update_return_temperature_controller(net, supply_temperature_heat_consumer, return_temperature_heat_consumer, time_steps, start, end):
     controller_count = 0
     for ctrl in net.controller.object.values:
-        if isinstance(ctrl, ReturnTemperatureController) :
+        if isinstance(ctrl, ReturnTemperatureController):
             # Create the DataFrame for the return temperature
-            df_return_temp = pd.DataFrame(index=time_steps, data={'return_temperature': return_temperature[controller_count][start:end]})
+            df_return_temp = pd.DataFrame(index=time_steps, data={
+                'return_temperature': return_temperature_heat_consumer[controller_count][start:end],
+                'min_supply_temperature': supply_temperature_heat_consumer[controller_count][start:end]
+            })
             data_source_return_temp = DFData(df_return_temp)
 
             ctrl.data_source = data_source_return_temp
@@ -51,11 +55,11 @@ def create_log_variables(net):
     log_variables = [
         ('res_junction', 'p_bar'), 
         ('res_junction', 't_k'),
-        ('heat_exchanger', 'qext_w'),
-        ('res_heat_exchanger', 'v_mean_m_per_s'),
-        ('res_heat_exchanger', 't_from_k'),
-        ('res_heat_exchanger', 't_to_k'),
-        ('res_heat_exchanger', 'mdot_from_kg_per_s'),
+        ('heat_consumer', 'qext_w'),
+        ('res_heat_consumer', 'v_mean_m_per_s'),
+        ('res_heat_consumer', 't_from_k'),
+        ('res_heat_consumer', 't_to_k'),
+        ('res_heat_consumer', 'mdot_from_kg_per_s'),
         ('res_circ_pump_pressure', 'mdot_flow_kg_per_s'),
         ('res_circ_pump_pressure', 'deltap_bar')
     ]
@@ -66,7 +70,69 @@ def create_log_variables(net):
 
     return log_variables
 
-def thermohydraulic_time_series_net(net, yearly_time_steps, qext_w_profiles, start, end, supply_temperature=None, return_temperature=60):
+def time_series_preprocessing(supply_temperature, supply_temperature_heat_consumer, return_temperature_heat_consumer, \
+                              supply_temperature_buildings, return_temperature_buildings, building_temp_checked, \
+                                netconfiguration, total_heat_W, return_temperature_buildings_curve, dT_RL, 
+                                supply_temperature_buildings_curve, COP_filename):
+    print(f"Vorlauftemperatur Netz: {supply_temperature} °C")
+    print(f"Mindestvorlauftemperatur HAST: {supply_temperature_heat_consumer} °C")
+    print(f"Rücklauftemperatur HAST: {return_temperature_heat_consumer} °C")
+    print(f"Vorlauftemperatur Gebäude: {supply_temperature_buildings} °C")
+    print(f"Rücklauftemperatur Gebäude: {return_temperature_buildings} °C")
+
+    waerme_hast_ges_W = []
+    strom_hast_ges_W = []
+    
+    COP_file_values = np.genfromtxt(COP_filename, delimiter=';')
+
+    # Building temperatures are not time varying, so return_temperature from initialization is used, no COP calculation is done
+    if building_temp_checked == False and netconfiguration != "kaltes Netz":
+        waerme_hast_ges_W = total_heat_W
+        strom_hast_ges_W = np.zeros_like(waerme_hast_ges_W)
+
+    # Building temperatures are not time-varying, so return_temperature from initialization is used, a COP calculation is made with non-time-varying building temperatures
+    elif building_temp_checked == False and netconfiguration == "kaltes Netz":
+        supply_temperature_heat_consumer = return_temperature_heat_consumer + dT_RL
+        COP, _ = COP_WP(supply_temperature_buildings, return_temperature_heat_consumer, COP_file_values)
+        print(f"COP dezentrale Wärmepumpen Gebäude: {COP}")
+
+        for waerme_gebaeude, cop in zip(total_heat_W, COP):
+            strom_wp = waerme_gebaeude/cop
+            waerme_hast = waerme_gebaeude - strom_wp
+
+            waerme_hast_ges_W.append(waerme_hast)
+            strom_hast_ges_W.append(strom_wp)
+
+        waerme_hast_ges_W = np.array(waerme_hast_ges_W)
+        strom_hast_ges_W = np.array(strom_hast_ges_W)
+    
+    # Building temperatures are time-varying, so return_temperature is determined from the building temperatures, there is no COP calculation
+    if building_temp_checked == True and netconfiguration != "kaltes Netz":
+        supply_temperature_heat_consumer = supply_temperature_buildings_curve + dT_RL
+        return_temperature_heat_consumer = return_temperature_buildings_curve + dT_RL
+        waerme_hast_ges_W = total_heat_W
+        strom_hast_ges_W = np.zeros_like(waerme_hast_ges_W)
+
+    # Building temperatures are time-varying, so return_temperature is determined from the building temperatures, a COP calculation is made with time-varying building temperatures
+    elif building_temp_checked == True and netconfiguration == "kaltes Netz":
+        supply_temperature_heat_consumer = return_temperature_heat_consumer + dT_RL
+        for st, rt, waerme_gebaeude in zip(supply_temperature_buildings_curve, return_temperature_heat_consumer, total_heat_W):
+            cop, _ = COP_WP(st, rt, COP_file_values)
+
+            strom_wp = waerme_gebaeude/cop
+            waerme_hast = waerme_gebaeude - strom_wp
+
+            waerme_hast_ges_W.append(waerme_hast)
+            strom_hast_ges_W.append(strom_wp)
+
+        waerme_hast_ges_W = np.array(waerme_hast_ges_W)
+        strom_hast_ges_W = np.array(strom_hast_ges_W)
+
+        print(f"Rücklauftemperatur HAST: {return_temperature_heat_consumer} °C")
+
+    return waerme_hast_ges_W, strom_hast_ges_W, supply_temperature_heat_consumer, return_temperature_heat_consumer 
+    
+def thermohydraulic_time_series_net(net, yearly_time_steps, qext_w_profiles, start, end, supply_temperature=85, supply_temperature_heat_consumer=75, return_temperature_heat_consumer=60):
     # Prepare time series calculation
     yearly_time_steps = yearly_time_steps[start:end]
 
@@ -75,8 +141,9 @@ def thermohydraulic_time_series_net(net, yearly_time_steps, qext_w_profiles, sta
     update_const_controls(net, qext_w_profiles, time_steps, start, end)
 
     # If return_temperature data exists, update corresponding ReturnTemperatureController
-    if return_temperature is not None and isinstance(return_temperature, np.ndarray) and return_temperature.ndim == 2:
-        update_return_temperature_controller(net, return_temperature, time_steps, start, end)
+    if return_temperature_heat_consumer is not None and isinstance(return_temperature_heat_consumer, np.ndarray) and return_temperature_heat_consumer.ndim == 2 and \
+       supply_temperature_heat_consumer is not None and isinstance(supply_temperature_heat_consumer, np.ndarray) and supply_temperature_heat_consumer.ndim == 2:
+        update_return_temperature_controller(net, supply_temperature_heat_consumer, return_temperature_heat_consumer, time_steps, start, end)
 
     # If supply_temperature data exists, update corresponding ReturnTemperatureController
     if supply_temperature is not None and isinstance(supply_temperature, np.ndarray):
@@ -124,11 +191,13 @@ def calculate_results(net, net_results, cp_kJ_kgK=4.2):
 
     return pump_results
 
-def save_results_csv(time_steps, total_heat_KW, pump_results, filename):
+def save_results_csv(time_steps, total_heat_KW, strom_wp_kW, pump_results, filename):
 
     # Converting the arrays into a Pandas DataFrame
     df = pd.DataFrame({'Zeit': time_steps,
                        'Gesamtwärmebedarf_Gebäude_kW': total_heat_KW,
+                       'Gesamtheizlast_Gebäude_kW': total_heat_KW+strom_wp_kW,
+                       'Gesamtstrombedarf_Wärmepumpen_Gebäude_kW': strom_wp_kW
     })
 
     # Schleife durch alle Pumpentypen und ihre Ergebnisse
@@ -153,6 +222,7 @@ def import_results_csv(filename):
     # Extrahieren der allgemeinen Zeitreihen- und Wärmedaten
     time_steps = data["Zeit"].values.astype('datetime64')
     total_heat_KW = data["Gesamtwärmebedarf_Gebäude_kW"].values.astype('float64')
+    strom_wp_kW = data["Gesamtstrombedarf_Wärmepumpen_Gebäude_kW"].values.astype('float64')
 
     # Erstellen eines Dictionarys, um die Pumpendaten zu speichern
     pump_results = {}
@@ -188,4 +258,4 @@ def import_results_csv(filename):
             else:
                 print(f"Warnung: Spaltenname '{column}' hat ein unerwartetes Format und wird ignoriert.")
 
-    return time_steps, total_heat_KW, pump_results
+    return time_steps, total_heat_KW, strom_wp_kW, pump_results

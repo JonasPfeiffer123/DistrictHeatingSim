@@ -1,0 +1,46 @@
+{
+    "results": {},
+    "tech_objects": [
+        {
+            "name": "BHKW",
+            "th_Leistung_BHKW": 1000.0,
+            "spez_Investitionskosten_GBHKW": 1500.0,
+            "spez_Investitionskosten_HBHKW": 1850,
+            "el_Wirkungsgrad": 0.33,
+            "KWK_Wirkungsgrad": 0.9,
+            "min_Teillast": 0.7,
+            "speicher_aktiv": false,
+            "Speicher_Volumen_BHKW": 20,
+            "T_vorlauf": 90,
+            "T_ruecklauf": 60,
+            "initial_fill": 0.0,
+            "min_fill": 0.2,
+            "max_fill": 0.8,
+            "spez_Investitionskosten_Speicher": 750,
+            "BHKW_an": true,
+            "opt_BHKW_min": 0.0,
+            "opt_BHKW_max": 1000.0,
+            "opt_BHKW_Speicher_min": 0,
+            "opt_BHKW_Speicher_max": 100,
+            "thermischer_Wirkungsgrad": 0.5700000000000001,
+            "el_Leistung_Soll": 578.9473684210526,
+            "Nutzungsdauer": 15,
+            "f_Inst": 6,
+            "f_W_Insp": 2,
+            "Bedienaufwand": 0,
+            "co2_factor_fuel": 0.201,
+            "co2_factor_electricity": 0.4
+        },
+        {
+            "name": "Gaskessel",
+            "spez_Investitionskosten": 30.0,
+            "Nutzungsgrad": 0.9,
+            "Faktor_Dimensionierung": 1.0,
+            "Nutzungsdauer": 20,
+            "f_Inst": 1,
+            "f_W_Insp": 2,
+            "Bedienaufwand": 0,
+            "co2_factor_fuel": 0.201
+        }
+    ]
+}

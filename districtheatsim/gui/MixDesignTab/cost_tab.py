@@ -59,14 +59,14 @@ class CostTab(QWidget):
         self.addLabel('Wärmenetzinfrastruktur')
         self.infrastructureCostsTable = QTableWidget()
         self.infrastructureCostsTable.setColumnCount(7)  # Eine zusätzliche Spalte für Annuität
-        self.infrastructureCostsTable.setHorizontalHeaderLabels(['Beschreibung', 'Kosten', 'Technische Nutzungsdauer', 'f_Inst', 'f_W_Insp', 'Bedienaufwand', 'Annuität'])
+        self.infrastructureCostsTable.setHorizontalHeaderLabels(['Beschreibung', 'Kosten', 'T_N', 'f_Inst', 'f_W_Insp', 'Bedienaufwand', 'Annuität'])
         self.infrastructureCostsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.mainLayout.addWidget(self.infrastructureCostsTable)
 
     def updateInfrastructureTable(self):
         values = self.parent.netInfrastructureDialog.getValues()
         infraObjects = self.parent.netInfrastructureDialog.getCurrentInfraObjects()
-        columns = ['Beschreibung', 'Kosten', 'Technische Nutzungsdauer', 'f_Inst', 'f_W_Insp', 'Bedienaufwand', 'Gesamtannuität']
+        columns = ['Beschreibung', 'Kosten', 'T_N', 'f_Inst', 'f_W_Insp', 'Bedienaufwand', 'Gesamtannuität']
 
         self.infrastructureCostsTable.setRowCount(len(infraObjects))
         self.infrastructureCostsTable.setColumnCount(len(columns))
@@ -84,7 +84,7 @@ class CostTab(QWidget):
                 self.infrastructureCostsTable.setItem(i, j, QTableWidgetItem(str(value)))
 
             A0 = float(values.get(f"{obj}_kosten", 0))
-            TN = int(values.get(f"{obj}_technische nutzungsdauer", 0))
+            TN = int(values.get(f"{obj}_t_n", 0))
             f_Inst = float(values.get(f"{obj}_f_inst", 0))
             f_W_Insp = float(values.get(f"{obj}_f_w_insp", 0))
             Bedienaufwand = float(values.get(f"{obj}_bedienaufwand", 0))

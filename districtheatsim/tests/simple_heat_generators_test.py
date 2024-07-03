@@ -11,6 +11,18 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
+# defines the map path
+def get_resource_path(relative_path):
+    """ Get the absolute path to the resource, works for dev and for PyInstaller """
+    if getattr(sys, 'frozen', False):
+        # Wenn die Anwendung eingefroren ist, ist der Basispfad der Temp-Ordner, wo PyInstaller alles extrahiert
+        base_path = sys._MEIPASS
+    else:
+        # Wenn die Anwendung nicht eingefroren ist, ist der Basispfad der Ordner, in dem die Hauptdatei liegt
+        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    return os.path.join(base_path, relative_path)
+
 # Test Annuitätsberechnung
 def test_annuität():
     # Investition in €
@@ -77,8 +89,9 @@ def test_gas_boiler():
     r = 1.03
     T = 20
     BEW = "Nein"
+    Stundensatz = 45
 
-    WGK = gBoiler.WGK(P_max, Wärmemenge, Brennstoffbedarf, Brennstoffkosten, q, r, T, BEW)
+    WGK = gBoiler.WGK(P_max, Wärmemenge, Brennstoffbedarf, Brennstoffkosten, q, r, T, BEW, Stundensatz)
     print(f"Wärmegestehungskosten Gaskessel: {WGK:.2f} €/MWh")
 
 def test_biomass_boiler():
@@ -105,15 +118,15 @@ def test_biomass_boiler():
     r = 1.03
     T = 20
     BEW = "Nein"
+    Stundensatz = 45
 
-    WGK = bBoiler.WGK(Wärmemenge_BMK, Brennstoffbedarf_BMK, Holzpreis, q, r, T, BEW)
+    WGK = bBoiler.WGK(Wärmemenge_BMK, Brennstoffbedarf_BMK, Holzpreis, q, r, T, BEW, Stundensatz)
     print(f"Wärmegestehungskosten Biomassekessel: {WGK:.2f} €/MWh")
 
 def test_chp():
-    chp = heat_generator_classes.CHP(name="BHKW", th_Leistung_BHKW=100, spez_Investitionskosten_GBHKW=1500, spez_Investitionskosten_HBHKW=1850)
+    chp = heat_generator_classes.CHP(name="BHKW", th_Leistung_BHKW=100, spez_Investitionskosten_GBHKW=1500, spez_Investitionskosten_HBHKW=1850, el_Wirkungsgrad=0.33, KWK_Wirkungsgrad=0.9, min_Teillast=0.8)
 
     # Lastgang, z.B. in kW, muss derzeitig für korrekte wirtschaftliche Betrachtung Länge von 8760 haben
-    min_last = 50
     min_last = 50
     max_last = 400
     Last_L = np.random.randint(min_last, max_last, 8760)
@@ -121,12 +134,7 @@ def test_chp():
     # Dauer Zeitschritte 1 h
     duration = 1
 
-    el_Wirkungsgrad = 0.33
-    KWK_Wirkungsgrad = 0.9
-
-    Wärmeleistung_BHKW_L, el_Leistung_BHKW_L, Wärmemenge_BHKW, Strommenge_BHKW, Brennstoffbedarf_BHKW = chp.BHKW(Last_L, duration, el_Wirkungsgrad, KWK_Wirkungsgrad)
-    print(f"Wärmeleistung BHkW: {Wärmeleistung_BHKW_L} kW, elektrische Leistung BHKW: {el_Leistung_BHKW_L} kW, Wärmemenge BHKW: {Wärmemenge_BHKW:.2f} MWh, Strommenge BHKW: {Strommenge_BHKW:.2f} MWh, Brennstoffbedarf BHKW: {Brennstoffbedarf_BHKW:.2f} MWh")
-
+    # Wirtschaftliche Randbedingungen
     Strompreis = 150 # €/MWh
     Gaspreis = 70 # €/MWh
     Holzpreis = 60 # €/MWh
@@ -140,9 +148,53 @@ def test_chp():
     r = 1.03
     T = 20
     BEW = "Nein"
+    Stundensatz = 45
 
-    WGK= chp.WGK(Wärmemenge_BHKW, Strommenge_BHKW, Brennstoffbedarf_BHKW, Brennstoffpreis, Strompreis, q, r, T, BEW)
-    print(f"Wärmegestehungskosten BHKW: {WGK:.2f} €/MWh")
+    chp.BHKW(Last_L, duration)
+    print(f"""Wärmeleistung BHKW: {chp.Wärmeleistung_BHKW_L} kW, elektrische Leistung BHKW: {chp.el_Leistung_BHKW_L} kW,
+          Wärmemenge BHKW: {chp.Wärmemenge_BHKW:.2f} MWh, Strommenge BHKW: {chp.Strommenge_BHKW:.2f} MWh,
+          Brennstoffbedarf BHKW: {chp.Brennstoffbedarf_BHKW:.2f} MWh, Anzahl Starts BHKW: {chp.Anzahl_Starts}, 
+          Betriebsstunden BHKW: {chp.Betriebsstunden_gesamt} h, Betriebsstunden pro Start: {chp.Betriebsstunden_pro_Start:.2f}""")
+    
+    WGK = chp.WGK(chp.Wärmemenge_BHKW, chp.Strommenge_BHKW, chp.Brennstoffbedarf_BHKW, Brennstoffpreis, Strompreis, q, r, T, BEW, Stundensatz)
+    print(f"Wärmegestehungskosten BHKW ohne Speicher: {WGK:.2f} €/MWh")
+    
+    chp.storage(Last_L, duration)
+    print(f"""Wärmeleistung BHKW mit Speicher: {chp.Wärmeleistung_BHKW_Speicher} kW, elektrische Leistung BHKW: {chp.el_Leistung_BHKW_Speicher} kW,
+          Wärmemenge BHKW: {chp.Wärmemenge_BHKW_Speicher:.2f} MWh, Strommenge BHKW: {chp.Strommenge_BHKW_Speicher:.2f} MWh,
+          Brennstoffbedarf BHKW: {chp.Brennstoffbedarf_BHKW_Speicher:.2f} MWh, Anzahl Starts BHKW: {chp.Anzahl_Starts_Speicher}, 
+          Betriebsstunden BHKW: {chp.Betriebsstunden_gesamt_Speicher} h, Betriebsstunden pro Start: {chp.Betriebsstunden_pro_Start_Speicher:.2f}""")
+    
+    WGK = chp.WGK(chp.Wärmemenge_BHKW_Speicher, chp.Strommenge_BHKW_Speicher, chp.Brennstoffbedarf_BHKW_Speicher, Brennstoffpreis, Strompreis, q, r, T, BEW, Stundensatz)
+    print(f"Wärmegestehungskosten BHKW mit Speicher: {WGK:.2f} €/MWh")
+    
+    fig, axs = plt.subplots(2, 1, figsize=(15, 10))
+
+    axs[0].stackplot(range(1, 8761), chp.Wärmeleistung_BHKW_L, labels=["Wärmeleistung BHKW"])
+    axs[0].plot(range(1, 8761), Last_L, label="Last", color="red", linewidth=0.5)
+    axs[0].set_title("Jahresdauerlinie ohne Speicher")
+    axs[0].set_xlabel("Jahresstunden")
+    axs[0].set_ylabel("thermische Leistung in kW")
+    axs[0].legend()
+    axs[0].grid()
+
+    ax2 = axs[1].twinx()
+    axs[1].stackplot(range(1, 8761), [chp.Wärmeleistung_BHKW_Speicher], labels=["Wärmeleistung BHKW"])
+    axs[1].plot(range(1, 8761), chp.Wärmeleistung_Speicher_BHKW, label="Wärmeleistung Speicher BHKW", color="orange", linewidth=0.5)
+    axs[1].plot(range(1, 8761), Last_L, label="Last", color="red", linewidth=0.5)
+    ax2.plot(range(1, 8761), chp.speicher_fuellstand_BHKW, label="Speicherfüllstand", color="green")
+
+    axs[1].set_title("Jahresdauerlinie mit Speicher")
+    axs[1].set_xlabel("Jahresstunden")
+    axs[1].set_ylabel("thermische Leistung in kW")
+    ax2.set_ylabel("Speicherfüllstand in %")
+
+    axs[1].legend(loc="upper left")
+    ax2.legend(loc="upper right")
+
+    axs[1].grid()
+    plt.tight_layout()
+    plt.show()
 
 def test_solar_thermal():
     solarThermal = heat_generator_classes.SolarThermal(name="STA", bruttofläche_STA=200, vs=20, Typ="Vakuumröhrenkollektor", kosten_speicher_spez=750, kosten_fk_spez=430, kosten_vrk_spez=590, Tsmax=90, Longitude=-14.4222, 
@@ -158,7 +210,7 @@ def test_solar_thermal():
     VLT_L, RLT_L = np.full(8760, 80), np.full(8760, 55)
 
     # Dateiname Testreferenzjahr für Wetterdaten, Dateiname muss ggf. angepasst werden
-    TRY = import_TRY("C:/Users/username/heating_network_generation/heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat")
+    TRY = import_TRY(get_resource_path("heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat"))
 
     # Angaben zum zu betrchtende Zeitraum
     # Erstelle ein Array mit stündlichen Zeitwerten für ein Jahr
@@ -184,8 +236,9 @@ def test_solar_thermal():
     r = 1.03
     T = 20
     BEW = "Nein"
+    Stundensatz = 45
 
-    WGK = solarThermal.calc_WGK(Wärmemenge, q, r, T, BEW)
+    WGK = solarThermal.calc_WGK(Wärmemenge, q, r, T, BEW, Stundensatz)
     print(f"Wärmegestehungskosten Solarthermie: {WGK:.2f} €/MWh")
 
 def test_waste_heat_pump():
@@ -201,7 +254,7 @@ def test_waste_heat_pump():
     VLT_L = np.full(8760, 80)
 
     # Laden des COP-Kennfeldes
-    COP_data = np.genfromtxt('C:/Users/username/heating_network_generation/heat_generators/Kennlinien WP.csv', delimiter=';')
+    COP_data = np.genfromtxt(get_resource_path("heat_generators/Kennlinien WP.csv"), delimiter=';')
 
     duration = 1
 
@@ -213,8 +266,9 @@ def test_waste_heat_pump():
     r = 1.03
     T = 20
     BEW = "Nein"
+    Stundensatz = 45
 
-    WGK = wasteHeatPump.WGK(wasteHeatPump.max_Wärmeleistung, Wärmemenge, Strombedarf_Abwärme, wasteHeatPump.spez_Investitionskosten_Abwärme, Strompreis, q, r, T, BEW)
+    WGK = wasteHeatPump.WGK(wasteHeatPump.max_Wärmeleistung, Wärmemenge, Strombedarf_Abwärme, wasteHeatPump.spez_Investitionskosten_Abwärme, Strompreis, q, r, T, BEW, Stundensatz)
     print(f"Wärmegestehungskosten Abwärme: {WGK:.2f} €/MWh")
 
 def test_river_heat_pump():
@@ -230,7 +284,7 @@ def test_river_heat_pump():
     VLT_L = np.full(8760, 80)
 
     # Laden des COP-Kennfeldes
-    COP_data = np.genfromtxt('C:/Users/username/heating_network_generation/heat_generators/Kennlinien WP.csv', delimiter=';')
+    COP_data = np.genfromtxt(get_resource_path("heat_generators/Kennlinien WP.csv"), delimiter=';')
 
     duration = 1
 
@@ -242,8 +296,9 @@ def test_river_heat_pump():
     r = 1.03
     T = 20
     BEW = "Nein"
+    Stundensatz = 45
 
-    WGK= riverHeatPump.WGK(riverHeatPump.Wärmeleistung_FW_WP, Wärmemenge, Strombedarf_FW_WP, riverHeatPump.spez_Investitionskosten_Flusswasser, Strompreis, q, r, T, BEW)
+    WGK= riverHeatPump.WGK(riverHeatPump.Wärmeleistung_FW_WP, Wärmemenge, Strombedarf_FW_WP, riverHeatPump.spez_Investitionskosten_Flusswasser, Strompreis, q, r, T, BEW, Stundensatz)
     print(f"Wärmegestehungskosten Flusswasserwärme: {WGK:.2f} €/MWh")
 
 def test_geothermal_heat_pump():
@@ -260,7 +315,7 @@ def test_geothermal_heat_pump():
     VLT_L = np.full(8760, 80)
 
     # Laden des COP-Kennfeldes
-    COP_data = np.genfromtxt('C:/Users/username/heating_network_generation/heat_generators/Kennlinien WP.csv', delimiter=';')
+    COP_data = np.genfromtxt(get_resource_path("heat_generators/Kennlinien WP.csv"), delimiter=';')
 
     duration = 1
 
@@ -272,9 +327,10 @@ def test_geothermal_heat_pump():
     r = 1.03
     T = 20
     BEW = "Nein"
+    Stundensatz = 45
 
     geothermalHeatPump.spez_Investitionskosten_Erdsonden = geothermalHeatPump.Investitionskosten_Sonden / geothermalHeatPump.max_Wärmeleistung
-    WGK = geothermalHeatPump.WGK(geothermalHeatPump.max_Wärmeleistung, Wärmemenge, Strombedarf, geothermalHeatPump.spez_Investitionskosten_Erdsonden, Strompreis, q, r, T, BEW)
+    WGK = geothermalHeatPump.WGK(geothermalHeatPump.max_Wärmeleistung, Wärmemenge, Strombedarf, geothermalHeatPump.spez_Investitionskosten_Erdsonden, Strompreis, q, r, T, BEW, Stundensatz)
     print(f"Wärmegestehungskosten Geothermie: {WGK:.2f} €/MWh")
 
 def test_berechnung_erzeugermix(optimize=False, plot=True):
@@ -316,16 +372,17 @@ def test_berechnung_erzeugermix(optimize=False, plot=True):
     end = 8760
 
     # Dateiname Testreferenzjahr für Wetterdaten, Dateiname muss ggf. angepasstw werden
-    TRY = import_TRY("C:/Users/username/heating_network_generation/heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat")
+    TRY = import_TRY(get_resource_path("heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat"))
 
     # Laden des COP-Kennfeldes
-    COP_data = np.genfromtxt('C:/Users/username/heating_network_generation/heat_generators/Kennlinien WP.csv', delimiter=';')
+    COP_data = np.genfromtxt(get_resource_path("heat_generators/Kennlinien WP.csv"), delimiter=';')
 
     Strompreis = 150 # €/MWh
     Gaspreis = 70 # €/MWh
     Holzpreis = 60 # €/MWh
 
     BEW = "Nein"
+    stundensatz = 45
 
     kapitalzins = 5 # %
     preissteigerungsrate = 3 # %
@@ -333,7 +390,7 @@ def test_berechnung_erzeugermix(optimize=False, plot=True):
 
     if optimize == True:
         tech_order = heat_generator_classes.optimize_mix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, \
-                                            kapitalzins=kapitalzins, preissteigerungsrate=preissteigerungsrate, betrachtungszeitraum=betrachtungszeitraum)
+                                            kapitalzins=kapitalzins, preissteigerungsrate=preissteigerungsrate, betrachtungszeitraum=betrachtungszeitraum, stundensatz=stundensatz)
         
     general_results = heat_generator_classes.Berechnung_Erzeugermix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, kapitalzins=kapitalzins, preissteigerungsrate=preissteigerungsrate, betrachtungszeitraum=betrachtungszeitraum)
     print(general_results)
@@ -375,13 +432,13 @@ def plotPieChart(figure, Anteile, labels):
     ax.legend(loc='lower left')
     ax.axis("equal")  # Stellt sicher, dass der Pie-Chart kreisförmig bleibt
 
-test_annuität()
-test_biomass_boiler()
-test_gas_boiler()
+#test_annuität()
+#test_biomass_boiler()
+#test_gas_boiler()
 test_chp()
-test_solar_thermal()
-test_waste_heat_pump()
-test_river_heat_pump()
-test_geothermal_heat_pump()
-test_berechnung_erzeugermix(optimize=False, plot=True)
-test_berechnung_erzeugermix(optimize=True, plot=True)
+#test_solar_thermal()
+#test_waste_heat_pump()
+#test_river_heat_pump()
+#test_geothermal_heat_pump()
+#test_berechnung_erzeugermix(optimize=False, plot=True)
+#test_berechnung_erzeugermix(optimize=True, plot=True)

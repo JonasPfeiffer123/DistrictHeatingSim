@@ -55,6 +55,10 @@ class HeatPump:
     def __init__(self, name, spezifische_Investitionskosten_WP=1000):
         self.name = name
         self.spezifische_Investitionskosten_WP = spezifische_Investitionskosten_WP
+        self.Nutzungsdauer_WP = 20
+        self.f_Inst_WP, self.f_W_Insp_WP, self.Bedienaufwand_WP = 1, 1.5, 0
+        self.f_Inst_WQ, self.f_W_Insp_WQ, self.Bedienaufwand_WQ = 0.5, 0.5, 0
+        self.Nutzungsdauer_WQ_dict = {"Abwärme": 20, "Abwasserwärme": 20, "Flusswasser": 20, "Geothermie": 30}
 
     def COP_WP(self, VLT_L, QT, COP_data):
         # Interpolationsformel für den COP
@@ -88,22 +92,14 @@ class HeatPump:
         # Kosten Wärmepumpe: Viessmann Vitocal 350 HT-Pro: 140.000 €, 350 kW Nennleistung; 120 kW bei 10/85
         # Annahme Kosten Wärmepumpe: 1000 €/kW; Vereinfachung
         spezifische_Investitionskosten_WP = self.spezifische_Investitionskosten_WP
-        Nutzungsdauer_WP = 20
-        f_Inst_WP, f_W_Insp_WP, Bedienaufwand_WP = 1, 1.5, 0
-        f_Inst_WQ, f_W_Insp_WQ, Bedienaufwand_WQ = 0.5, 0.5, 0
-
         Investitionskosten_WP = spezifische_Investitionskosten_WP * round(Wärmeleistung, 0)
-
-        E1_WP = annuität(Investitionskosten_WP, Nutzungsdauer_WP, f_Inst_WP, f_W_Insp_WP, Bedienaufwand_WP, q, r, T,
+        E1_WP = annuität(Investitionskosten_WP, self.Nutzungsdauer_WP, self.f_Inst_WP, self.f_W_Insp_WP, self.Bedienaufwand_WP, q, r, T,
                             Strombedarf, Strompreis, stundensatz=stundensatz)
         WGK_WP_a = E1_WP/Wärmemenge
 
-        Nutzungsdauer_WQ_dict = {"Abwärme": 20, "Abwasserwärme": 20, "Flusswasser": 20, "Geothermie": 30}
-
         Investitionskosten_WQ = spez_Investitionskosten_WQ * Wärmeleistung
-
-        E1_WQ = annuität(Investitionskosten_WQ, Nutzungsdauer_WQ_dict[self.name], f_Inst_WQ, f_W_Insp_WQ,
-                            Bedienaufwand_WQ, q, r, T, stundensatz=stundensatz)
+        E1_WQ = annuität(Investitionskosten_WQ, self.Nutzungsdauer_WQ_dict[self.name], self.f_Inst_WQ, self.f_W_Insp_WQ,
+                            self.Bedienaufwand_WQ, q, r, T, stundensatz=stundensatz)
         WGK_WQ_a = E1_WQ / Wärmemenge
 
         WGK_Gesamt_a = WGK_WP_a + WGK_WQ_a
@@ -111,12 +107,13 @@ class HeatPump:
         return WGK_Gesamt_a
 
 class RiverHeatPump(HeatPump):
-    def __init__(self, name, Wärmeleistung_FW_WP, Temperatur_FW_WP, dT=0, spez_Investitionskosten_Flusswasser=1000, spezifische_Investitionskosten_WP=1000):
+    def __init__(self, name, Wärmeleistung_FW_WP, Temperatur_FW_WP, dT=0, spez_Investitionskosten_Flusswasser=1000, spezifische_Investitionskosten_WP=1000, min_Teillast=0.2):
         super().__init__(name, spezifische_Investitionskosten_WP=spezifische_Investitionskosten_WP)
         self.Wärmeleistung_FW_WP = Wärmeleistung_FW_WP
         self.Temperatur_FW_WP = Temperatur_FW_WP
         self.dT = dT
         self.spez_Investitionskosten_Flusswasser = spez_Investitionskosten_Flusswasser
+        self.min_Teillast = min_Teillast
 
     def Berechnung_WP(self, Wärmeleistung_L, VLT_L, COP_data):
         COP_L, VLT_L_WP = self.COP_WP(VLT_L, self.Temperatur_FW_WP, COP_data)
@@ -129,44 +126,62 @@ class RiverHeatPump(HeatPump):
         if self.Wärmeleistung_FW_WP == 0:
             return 0, 0, np.zeros_like(Last_L), np.zeros_like(VLT_L), 0, np.zeros_like(VLT_L)
 
-        Wärmeleistung_L = np.where(Last_L >= self.Wärmeleistung_FW_WP, self.Wärmeleistung_FW_WP, Last_L)
+        Wärmeleistung_tat_L = np.zeros_like(Last_L)
+        Kühlleistung_tat_L = np.zeros_like(Last_L)
+        el_Leistung_tat_L = np.zeros_like(Last_L)
+        VLT_L_WP = np.zeros_like(VLT_L)
 
-        Kühlleistung_L, el_Leistung_L, VLT_L_WP = self.Berechnung_WP(Wärmeleistung_L, VLT_L, COP_data)
+        # Fälle, in denen die Wärmepumpe betrieben werden kann
+        betrieb_mask = Last_L >= self.Wärmeleistung_FW_WP * self.min_Teillast
+        Wärmeleistung_tat_L[betrieb_mask] = np.minimum(Last_L[betrieb_mask], self.Wärmeleistung_FW_WP)
+
+        Kühlleistung_tat_L[betrieb_mask], el_Leistung_tat_L[betrieb_mask], VLT_L_WP[betrieb_mask] = self.Berechnung_WP(Wärmeleistung_tat_L[betrieb_mask], VLT_L[betrieb_mask], COP_data)
 
         # Wärmepumpe soll nur in Betrieb sein, wenn Sie die Vorlauftemperatur erreichen kann
-        Wärmeleistung_L = np.where(VLT_L_WP < VLT_L-self.dT, 0, Wärmeleistung_L)
-        Kühlleistung_L = np.where(VLT_L_WP < VLT_L-self.dT, 0, Kühlleistung_L)
-        el_Leistung_L = np.where(VLT_L_WP < VLT_L-self.dT, 0, el_Leistung_L)
-        
-        Wärmemenge = np.sum(Wärmeleistung_L / 1000)*duration
-        Kühlmenge = np.sum(Kühlleistung_L / 1000)*duration
-        Strombedarf = np.sum(el_Leistung_L / 1000)*duration
+        betrieb_mask_vlt = VLT_L_WP >= VLT_L - self.dT
+        Wärmeleistung_tat_L[~betrieb_mask_vlt] = 0
+        Kühlleistung_tat_L[~betrieb_mask_vlt] = 0
+        el_Leistung_tat_L[~betrieb_mask_vlt] = 0
 
-        return Wärmemenge, Strombedarf, Wärmeleistung_L, el_Leistung_L, Kühlmenge, Kühlleistung_L
+        Wärmemenge = np.sum(Wärmeleistung_tat_L / 1000) * duration
+        Kühlmenge = np.sum(Kühlleistung_tat_L / 1000) * duration
+        Strombedarf = np.sum(el_Leistung_tat_L / 1000) * duration
+
+        return Wärmemenge, Strombedarf, Wärmeleistung_tat_L, el_Leistung_tat_L, Kühlmenge, Kühlleistung_tat_L
     
     def calculate(self,VLT_L, COP_data, Strompreis, q, r, T, BEW, stundensatz, duration, general_results):
         
-        Wärmemenge, Strombedarf_FW_WP, Wärmeleistung_L, el_Leistung_L, Kühlmenge, Kühlleistung_L = self.abwärme(general_results["Restlast_L"], VLT_L, COP_data, duration)
+        self.Wärmemenge_Flusswärme, self.Strombedarf_Flusswärme, self.Wärmeleistung_Flusswärme_L, self.el_Leistung_Flusswärme_L, self.Kühlmenge_Flusswärme, self.Kühlleistung_Flusswärme_L = self.abwärme(general_results["Restlast_L"], VLT_L, COP_data, duration)
 
-        WGK_Abwärme = self.WGK(self.Wärmeleistung_FW_WP, Wärmemenge, Strombedarf_FW_WP, self.spez_Investitionskosten_Flusswasser, Strompreis, q, r, T, BEW, stundensatz)
+        WGK_Abwärme = self.WGK(self.Wärmeleistung_FW_WP, self.Wärmemenge_Flusswärme, self.Strombedarf_Flusswärme, self.spez_Investitionskosten_Flusswasser, Strompreis, q, r, T, BEW, stundensatz)
 
         results = {
-            'Wärmemenge': Wärmemenge,
-            'Wärmeleistung_L': Wärmeleistung_L,
-            'Strombedarf': Strombedarf_FW_WP,
-            'el_Leistung_L': el_Leistung_L,
+            'Wärmemenge': self.Wärmemenge_Flusswärme,
+            'Wärmeleistung_L': self.Wärmeleistung_Flusswärme_L,
+            'Strombedarf': self.Strombedarf_Flusswärme,
+            'el_Leistung_L': self.el_Leistung_Flusswärme_L,
             'WGK': WGK_Abwärme,
             'color': "blue"
         }
 
         return results
+
+    def to_dict(self):
+        return self.__dict__
+    
+    @staticmethod
+    def from_dict(data):
+        obj = RiverHeatPump.__new__(RiverHeatPump)
+        obj.__dict__.update(data)
+        return obj
     
 class WasteHeatPump(HeatPump):
-    def __init__(self, name, Kühlleistung_Abwärme, Temperatur_Abwärme, spez_Investitionskosten_Abwärme=500, spezifische_Investitionskosten_WP=1000):
+    def __init__(self, name, Kühlleistung_Abwärme, Temperatur_Abwärme, spez_Investitionskosten_Abwärme=500, spezifische_Investitionskosten_WP=1000, min_Teillast=0.2):
         super().__init__(name, spezifische_Investitionskosten_WP=spezifische_Investitionskosten_WP)
         self.Kühlleistung_Abwärme = Kühlleistung_Abwärme
         self.Temperatur_Abwärme = Temperatur_Abwärme
         self.spez_Investitionskosten_Abwärme = spez_Investitionskosten_Abwärme
+        self.min_Teillast = min_Teillast
 
     def Berechnung_WP(self, VLT_L, COP_data):
         COP_L, VLT_L = self.COP_WP(VLT_L, self.Temperatur_Abwärme, COP_data)
@@ -181,36 +196,50 @@ class WasteHeatPump(HeatPump):
 
         Wärmeleistung_L, el_Leistung_L = self.Berechnung_WP(VLT_L, COP_data)
 
-        Wärmeleistung_L = np.where(Last_L >= Wärmeleistung_L, Wärmeleistung_L, Last_L)
-        el_Leistung_L = np.where(Last_L >= Wärmeleistung_L, el_Leistung_L, el_Leistung_L * (Last_L / Wärmeleistung_L))
+        Wärmeleistung_tat_L = np.zeros_like(Last_L)
+        el_Leistung_tat_L = np.zeros_like(Last_L)
 
-        Wärmemenge = np.sum(Wärmeleistung_L / 1000)*duration
-        Strombedarf = np.sum(el_Leistung_L / 1000)*duration
+        # Fälle, in denen die Wärmepumpe betrieben werden kann
+        betrieb_mask = Last_L >= Wärmeleistung_L * self.min_Teillast
+        Wärmeleistung_tat_L[betrieb_mask] = np.minimum(Last_L[betrieb_mask], Wärmeleistung_L[betrieb_mask])
+        el_Leistung_tat_L[betrieb_mask] = Wärmeleistung_tat_L[betrieb_mask] - (Wärmeleistung_tat_L[betrieb_mask] / Wärmeleistung_L[betrieb_mask]) * el_Leistung_L[betrieb_mask]
 
-        self.max_Wärmeleistung = np.max(Wärmeleistung_L)
+        Wärmemenge = np.sum(Wärmeleistung_tat_L / 1000) * duration
+        Strombedarf = np.sum(el_Leistung_tat_L / 1000) * duration
 
-        return Wärmemenge, Strombedarf, Wärmeleistung_L, el_Leistung_L
+        self.max_Wärmeleistung = np.max(Wärmeleistung_tat_L)
+
+        return Wärmemenge, Strombedarf, Wärmeleistung_tat_L, el_Leistung_tat_L
     
     def calculate(self, VLT_L, COP_data, Strompreis, q, r, T, BEW, stundensatz, duration, general_results):
         
-        Wärmemenge, Strombedarf_Abwärme, Wärmeleistung_L, el_Leistung_L= self.abwärme(general_results['Restlast_L'], VLT_L, COP_data, duration)
+        self.Wärmemenge_Abwärme, self.Strombedarf_Abwärme, self.Wärmeleistung_Abwärme_L, self.el_Leistung_Abwärme_L= self.abwärme(general_results['Restlast_L'], VLT_L, COP_data, duration)
 
-        WGK_Abwärme = self.WGK(self.max_Wärmeleistung, Wärmemenge, Strombedarf_Abwärme, self.spez_Investitionskosten_Abwärme, Strompreis, q, r, T, BEW, stundensatz)
+        WGK_Abwärme = self.WGK(self.max_Wärmeleistung, self.Wärmemenge_Abwärme, self.Strombedarf_Abwärme, self.spez_Investitionskosten_Abwärme, Strompreis, q, r, T, BEW, stundensatz)
 
         results = {
-            'Wärmemenge': Wärmemenge,
-            'Wärmeleistung_L': Wärmeleistung_L,
-            'Strombedarf': Strombedarf_Abwärme,
-            'el_Leistung_L': el_Leistung_L,
+            'Wärmemenge': self.Wärmemenge_Abwärme,
+            'Wärmeleistung_L': self.Wärmeleistung_Abwärme_L,
+            'Strombedarf': self.Strombedarf_Abwärme,
+            'el_Leistung_L': self.el_Leistung_Abwärme_L,
             'WGK': WGK_Abwärme,
             'color': "grey"
         }
 
         return results
+    
+    def to_dict(self):
+        return self.__dict__
+
+    @staticmethod
+    def from_dict(data):
+        obj = WasteHeatPump.__new__(WasteHeatPump)
+        obj.__dict__.update(data)
+        return obj
 
 class Geothermal(HeatPump):
     def __init__(self, name, Fläche, Bohrtiefe, Temperatur_Geothermie, spez_Bohrkosten=100, spez_Entzugsleistung=50,
-                 Vollbenutzungsstunden=2400, Abstand_Sonden=10, spezifische_Investitionskosten_WP=1000):
+                 Vollbenutzungsstunden=2400, Abstand_Sonden=10, spezifische_Investitionskosten_WP=1000, min_Teillast=0.2):
         super().__init__(name, spezifische_Investitionskosten_WP=spezifische_Investitionskosten_WP)
         self.Fläche = Fläche
         self.Bohrtiefe = Bohrtiefe
@@ -219,6 +248,7 @@ class Geothermal(HeatPump):
         self.spez_Entzugsleistung = spez_Entzugsleistung
         self.Vollbenutzungsstunden = Vollbenutzungsstunden
         self.Abstand_Sonden = Abstand_Sonden
+        self.min_Teillast = min_Teillast
 
     def Geothermie(self, Last_L, VLT_L, COP_data, duration):
         if self.Fläche == 0 or self.Bohrtiefe == 0:
@@ -247,9 +277,16 @@ class Geothermal(HeatPump):
             el_Leistung_L = Wärmeleistung_L - Entzugsleistung
 
             # Berechnen der tatsächlichen Werte
-            Wärmeleistung_tat_L = Wärmeleistung_L * np.minimum(1, Last_L / Wärmeleistung_L)
-            el_Leistung_tat_L = el_Leistung_L * np.minimum(1, Last_L / Wärmeleistung_L)
-            Entzugsleistung_tat_L = Wärmeleistung_tat_L - el_Leistung_tat_L
+            Wärmeleistung_tat_L = np.zeros_like(Last_L)
+            el_Leistung_tat_L = np.zeros_like(Last_L)
+            Entzugsleistung_tat_L = np.zeros_like(Last_L)
+
+            # Fälle, in denen die Wärmepumpe betrieben werden kann
+            betrieb_mask = Last_L >= Wärmeleistung_L * self.min_Teillast
+            Wärmeleistung_tat_L[betrieb_mask] = np.minimum(Last_L[betrieb_mask], Wärmeleistung_L[betrieb_mask])
+            el_Leistung_tat_L[betrieb_mask] = Wärmeleistung_tat_L[betrieb_mask] - (Entzugsleistung * np.ones_like(Last_L))[betrieb_mask]
+            Entzugsleistung_tat_L[betrieb_mask] = Wärmeleistung_tat_L[betrieb_mask] - el_Leistung_tat_L[betrieb_mask]
+
             Entzugswärme = np.sum(Entzugsleistung_tat_L) / 1000
             Wärmemenge = np.sum(Wärmeleistung_tat_L) / 1000
             Strombedarf = np.sum(el_Leistung_tat_L) / 1000
@@ -273,53 +310,136 @@ class Geothermal(HeatPump):
     
     def calculate(self, VLT_L, COP_data, Strompreis, q, r, T, BEW, stundensatz, duration, general_results):
         # Hier fügen Sie die spezifische Logik für die Geothermie-Berechnung ein
-        Wärmemenge, Strombedarf, Wärmeleistung_L, el_Leistung_Geothermie_L = self.Geothermie(general_results['Restlast_L'], VLT_L, COP_data, duration)
+        self.Wärmemenge_Geothermie, self.Strombedarf_Geothermie, self.Wärmeleistung_Geothermie_L, self.el_Leistung_Geothermie_L = self.Geothermie(general_results['Restlast_L'], VLT_L, COP_data, duration)
 
         self.spez_Investitionskosten_Erdsonden = self.Investitionskosten_Sonden / self.max_Wärmeleistung
-        WGK_Geothermie = self.WGK(self.max_Wärmeleistung, Wärmemenge, Strombedarf, self.spez_Investitionskosten_Erdsonden, Strompreis, q, r, T, BEW, stundensatz)
+        WGK_Geothermie = self.WGK(self.max_Wärmeleistung, self.Wärmemenge_Geothermie, self.Strombedarf_Geothermie, self.spez_Investitionskosten_Erdsonden, Strompreis, q, r, T, BEW, stundensatz)
 
         results = {
-            'Wärmemenge': Wärmemenge,
-            'Wärmeleistung_L': Wärmeleistung_L,
-            'Strombedarf': Strombedarf,
-            'el_Leistung_L': el_Leistung_Geothermie_L,
+            'Wärmemenge': self.Wärmemenge_Geothermie,
+            'Wärmeleistung_L': self.Wärmeleistung_Geothermie_L,
+            'Strombedarf': self.Strombedarf_Geothermie,
+            'el_Leistung_L': self.el_Leistung_Geothermie_L,
             'WGK': WGK_Geothermie,
             'color': "darkorange"
         }
 
         return results
 
+    def to_dict(self):
+        return self.__dict__
+    
+    @staticmethod
+    def from_dict(data):
+        obj = Geothermal.__new__(Geothermal)
+        obj.__dict__.update(data)
+        return obj
+
 class CHP:
-    def __init__(self, name, th_Leistung_BHKW, spez_Investitionskosten_GBHKW=1500, spez_Investitionskosten_HBHKW=1850):
+    def __init__(self, name, th_Leistung_BHKW, spez_Investitionskosten_GBHKW=1500, spez_Investitionskosten_HBHKW=1850, el_Wirkungsgrad=0.33, KWK_Wirkungsgrad=0.9, 
+                 min_Teillast=0.7, speicher_aktiv=False, Speicher_Volumen_BHKW=20, T_vorlauf=90, T_ruecklauf=60, initial_fill=0.0, min_fill=0.2, max_fill=0.8, 
+                 spez_Investitionskosten_Speicher=750, BHKW_an=True, opt_BHKW_min=0, opt_BHKW_max=1000, opt_BHKW_Speicher_min=0, opt_BHKW_Speicher_max=100):
         self.name = name
         self.th_Leistung_BHKW = th_Leistung_BHKW
         self.spez_Investitionskosten_GBHKW = spez_Investitionskosten_GBHKW
         self.spez_Investitionskosten_HBHKW = spez_Investitionskosten_HBHKW
+        self.el_Wirkungsgrad = el_Wirkungsgrad
+        self.KWK_Wirkungsgrad = KWK_Wirkungsgrad
+        self.min_Teillast = min_Teillast
+        self.speicher_aktiv = speicher_aktiv
+        self.Speicher_Volumen_BHKW = Speicher_Volumen_BHKW
+        self.T_vorlauf = T_vorlauf
+        self.T_ruecklauf = T_ruecklauf
+        self.initial_fill = initial_fill
+        self.min_fill = min_fill
+        self.max_fill = max_fill
+        self.spez_Investitionskosten_Speicher = spez_Investitionskosten_Speicher
+        self.BHKW_an = BHKW_an
+        self.opt_BHKW_min = opt_BHKW_min
+        self.opt_BHKW_max = opt_BHKW_max
+        self.opt_BHKW_Speicher_min = opt_BHKW_Speicher_min
+        self.opt_BHKW_Speicher_max = opt_BHKW_Speicher_max
+        self.thermischer_Wirkungsgrad = self.KWK_Wirkungsgrad - self.el_Wirkungsgrad
+        self.el_Leistung_Soll = self.th_Leistung_BHKW / self.thermischer_Wirkungsgrad * self.el_Wirkungsgrad
+        self.Nutzungsdauer = 15
+        self.f_Inst, self.f_W_Insp, self.Bedienaufwand = 6, 2, 0
+        if self.name == "BHKW":
+            self.co2_factor_fuel = 0.201 # tCO2/MWh gas
+        elif self.name == "Holzgas-BHKW":
+            self.co2_factor_fuel = 0.036 # tCO2/MWh pellets
+        self.co2_factor_electricity = 0.4 # tCO2/MWh electricity 
 
-    def BHKW(self, Last_L, duration, el_Wirkungsgrad=0.33, KWK_Wirkungsgrad=0.9):
-        # Berechnen der thermischen Effizienz
-        thermischer_Wirkungsgrad = KWK_Wirkungsgrad - el_Wirkungsgrad
-
-        # Berechnen der Wärmeleistung des BHKW
-        self.el_Leistung_Soll = self.th_Leistung_BHKW / thermischer_Wirkungsgrad * el_Wirkungsgrad
-
+    def BHKW(self, Last_L, duration):
         # Berechnen der Strom- und Wärmemenge des BHKW
-        if self.th_Leistung_BHKW > 0:
-            Wärmeleistung_BHKW_L = np.where(Last_L >= self.th_Leistung_BHKW, self.th_Leistung_BHKW, Last_L)
-            el_Leistung_BHKW_L = np.where(Last_L >= self.th_Leistung_BHKW, self.el_Leistung_Soll,
-                                        self.el_Leistung_Soll * (Last_L / self.th_Leistung_BHKW))
-        else:
-            Wärmeleistung_BHKW_L, el_Leistung_BHKW_L = np.zeros_like(Last_L), np.zeros_like(Last_L)
+        self.Wärmeleistung_BHKW_L = np.zeros_like(Last_L)
+        self.el_Leistung_BHKW_L = np.zeros_like(Last_L)
 
-        Wärmemenge_BHKW = np.sum(Wärmeleistung_BHKW_L / 1000)*duration
-        Strommenge_BHKW = np.sum(el_Leistung_BHKW_L / 1000)*duration
+        # Fälle, in denen das BHKW betrieben werden kann
+        betrieb_mask = Last_L >= self.th_Leistung_BHKW * self.min_Teillast
+        self.Wärmeleistung_BHKW_L[betrieb_mask] = np.minimum(Last_L[betrieb_mask], self.th_Leistung_BHKW)
+        self.el_Leistung_BHKW_L[betrieb_mask] = self.Wärmeleistung_BHKW_L[betrieb_mask] / self.thermischer_Wirkungsgrad * self.el_Wirkungsgrad
+
+        self.Wärmemenge_BHKW = np.sum(self.Wärmeleistung_BHKW_L / 1000)*duration
+        self.Strommenge_BHKW = np.sum(self.el_Leistung_BHKW_L / 1000)*duration
 
         # Berechnen des Brennstoffbedarfs
-        Brennstoffbedarf_BHKW = (Wärmemenge_BHKW + Strommenge_BHKW) / KWK_Wirkungsgrad
+        self.Brennstoffbedarf_BHKW = (self.Wärmemenge_BHKW + self.Strommenge_BHKW) / self.KWK_Wirkungsgrad
 
-        # Rückgabe der berechneten Werte
-        return Wärmeleistung_BHKW_L, el_Leistung_BHKW_L, Wärmemenge_BHKW, Strommenge_BHKW, \
-            Brennstoffbedarf_BHKW
+        # Anzahl Starts und Betriebsstunden pro Start berechnen
+        starts = np.diff(betrieb_mask.astype(int)) > 0
+        self.Anzahl_Starts = np.sum(starts)
+        self.Betriebsstunden_gesamt = np.sum(betrieb_mask) * duration
+        self.Betriebsstunden_pro_Start = self.Betriebsstunden_gesamt / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
+
+    def storage(self, Last_L, duration):
+        # Speicherparameter
+        speicher_kapazitaet = self.Speicher_Volumen_BHKW * 4186 * (self.T_vorlauf - self.T_ruecklauf) / 3600  # kWh
+        speicher_fill = self.initial_fill * speicher_kapazitaet
+        min_speicher_fill = self.min_fill * speicher_kapazitaet
+        max_speicher_fill = self.max_fill * speicher_kapazitaet
+
+        self.Wärmeleistung_BHKW_Speicher = np.zeros_like(Last_L)
+        self.Wärmeleistung_Speicher_BHKW = np.zeros_like(Last_L)
+        self.el_Leistung_BHKW_Speicher = np.zeros_like(Last_L)
+        self.speicher_fuellstand_BHKW = np.zeros_like(Last_L)
+
+        for i in range(len(Last_L)):
+            if self.BHKW_an:
+                if speicher_fill >= max_speicher_fill:
+                    self.BHKW_an = False
+                else:
+                    self.Wärmeleistung_BHKW_Speicher[i] = self.th_Leistung_BHKW
+                    if Last_L[i] < self.th_Leistung_BHKW:
+                        self.Wärmeleistung_Speicher_BHKW[i] = Last_L[i] - self.th_Leistung_BHKW
+                        speicher_fill += (self.th_Leistung_BHKW - Last_L[i]) * duration
+                        speicher_fill = float(min(speicher_fill, speicher_kapazitaet))
+                    else:
+                        self.Wärmeleistung_Speicher_BHKW[i] = 0
+            else:
+                if speicher_fill <= min_speicher_fill:
+                    self.BHKW_an = True
+            
+            if not self.BHKW_an:
+                self.Wärmeleistung_BHKW_Speicher[i] = 0
+                self.Wärmeleistung_Speicher_BHKW[i] = Last_L[i]
+                speicher_fill -= Last_L[i] * duration
+                speicher_fill = float(max(speicher_fill, 0))
+
+            self.el_Leistung_BHKW_Speicher[i] = self.Wärmeleistung_BHKW_Speicher[i] / self.thermischer_Wirkungsgrad * self.el_Wirkungsgrad
+            self.speicher_fuellstand_BHKW[i] = speicher_fill / speicher_kapazitaet * 100  # %
+
+        self.Wärmemenge_BHKW_Speicher = np.sum(self.Wärmeleistung_BHKW_Speicher / 1000) * duration
+        self.Strommenge_BHKW_Speicher = np.sum(self.el_Leistung_BHKW_Speicher / 1000) * duration
+
+        # Berechnen des Brennstoffbedarfs
+        self.Brennstoffbedarf_BHKW_Speicher = (self.Wärmemenge_BHKW_Speicher + self.Strommenge_BHKW_Speicher) / self.KWK_Wirkungsgrad
+
+        # Anzahl Starts und Betriebsstunden pro Start berechnen
+        betrieb_mask = self.Wärmeleistung_BHKW_Speicher > 0
+        starts = np.diff(betrieb_mask.astype(int)) > 0
+        self.Anzahl_Starts_Speicher = np.sum(starts)
+        self.Betriebsstunden_gesamt_Speicher = np.sum(betrieb_mask) * duration
+        self.Betriebsstunden_pro_Start_Speicher = self.Betriebsstunden_gesamt_Speicher / self.Anzahl_Starts_Speicher if self.Anzahl_Starts_Speicher > 0 else 0
     
     def WGK(self, Wärmemenge, Strommenge, Brennstoffbedarf, Brennstoffkosten, Strompreis, q, r, T, BEW, stundensatz):
         if Wärmemenge == 0:
@@ -327,139 +447,300 @@ class CHP:
         # Holzvergaser-BHKW: 130 kW: 240.000 -> 1850 €/kW
         # (Erd-)Gas-BHKW: 100 kW: 150.000 € -> 1500 €/kW
         if self.name == "BHKW":
-            spez_Investitionskosten = self.spez_Investitionskosten_GBHKW  # €/kW
+            spez_Investitionskosten_BHKW = self.spez_Investitionskosten_GBHKW  # €/kW
         elif self.name == "Holzgas-BHKW":
-            spez_Investitionskosten = self.spez_Investitionskosten_HBHKW  # €/kW
+            spez_Investitionskosten_BHKW = self.spez_Investitionskosten_HBHKW  # €/kW
 
-        self.Investitionskosten = spez_Investitionskosten * self.th_Leistung_BHKW
-        Nutzungsdauer = 15
-        f_Inst, f_W_Insp, Bedienaufwand = 6, 2, 0
+        self.Investitionskosten_BHKW = spez_Investitionskosten_BHKW * self.th_Leistung_BHKW
+        self.Investitionskosten_Speicher = self.spez_Investitionskosten_Speicher * self.Speicher_Volumen_BHKW
+        self.Investitionskosten = self.Investitionskosten_BHKW + self.Investitionskosten_Speicher
 
-        Stromeinnahmen = Strommenge * Strompreis
+        self.Stromeinnahmen = Strommenge * Strompreis
 
-        A_N = annuität(self.Investitionskosten, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T,
-                            Brennstoffbedarf, Brennstoffkosten, Stromeinnahmen, stundensatz)
-        WGK_a = A_N / Wärmemenge
-
-        return WGK_a
+        self.A_N = annuität(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, q, r, T, Brennstoffbedarf, Brennstoffkosten, self.Stromeinnahmen, stundensatz)
+        self.WGK_BHKW = self.A_N / Wärmemenge
 
     def calculate(self, Gaspreis, Holzpreis, Strompreis, q, r, T, BEW, stundensatz, duration, general_results):
-        
-        Wärmeleistung_BHKW_L, el_Leistung_BHKW_L, Wärmemenge, Strommenge_BHKW, Brennstoffbedarf_BHKW = self.BHKW(general_results["Restlast_L"], duration)
-        
-        if self.name == "BHKW":
-            Brennstoffpreis = Gaspreis
-        elif self.name == "Holzgas-BHKW":
-            Brennstoffpreis = Holzpreis
+        if self.speicher_aktiv:
+            self.storage(general_results["Restlast_L"], duration)
+            Wärmemenge = self.Wärmemenge_BHKW_Speicher
+            Strommenge = self.Strommenge_BHKW_Speicher
+            Brennstoffbedarf = self.Brennstoffbedarf_BHKW_Speicher
+            Wärmeleistung_BHKW = self.Wärmeleistung_BHKW_Speicher
+            el_Leistung_BHKW = self.el_Leistung_BHKW_Speicher
+            Anzahl_Starts = self.Anzahl_Starts_Speicher
+            Betriebsstunden = self.Betriebsstunden_gesamt_Speicher
+            Betriebsstunden_pro_Start= self.Betriebsstunden_pro_Start_Speicher
+        else:
+            self.BHKW(general_results["Restlast_L"], duration)
+            Wärmemenge = self.Wärmemenge_BHKW
+            Strommenge = self.Strommenge_BHKW
+            Brennstoffbedarf = self.Brennstoffbedarf_BHKW
+            Wärmeleistung_BHKW = self.Wärmeleistung_BHKW_L
+            el_Leistung_BHKW = self.el_Leistung_BHKW_L
+            Anzahl_Starts = self.Anzahl_Starts
+            Betriebsstunden = self.Betriebsstunden_gesamt
+            Betriebsstunden_pro_Start= self.Betriebsstunden_pro_Start
 
-        wgk_BHKW = self.WGK(Wärmemenge, Strommenge_BHKW, Brennstoffbedarf_BHKW, Brennstoffpreis, Strompreis, q, r, T, BEW, stundensatz)
+        if self.name == "BHKW":
+            self.Brennstoffpreis = Gaspreis
+        elif self.name == "Holzgas-BHKW":
+            self.Brennstoffpreis = Holzpreis
+
+        self.WGK(Wärmemenge, Strommenge, Brennstoffbedarf, self.Brennstoffpreis, Strompreis, q, r, T, BEW, stundensatz)
+
+        # CO2 emissions due to fuel usage
+        self.co2_emissions = Brennstoffbedarf * self.co2_factor_fuel # tCO2
+        # CO2 savings due to electricity generation
+        self.co2_savings = Strommenge * self.co2_factor_electricity # tCO2
+        # total co2
+        self.co2_total = self.co2_emissions - self.co2_savings # tCO2
+        # specific emissions heat
+        self.spec_co2_total = self.co2_total / Wärmemenge if Wärmemenge > 0 else 0 # tCO2/MWh_heat
 
         results = {
             'Wärmemenge': Wärmemenge,
-            'Wärmeleistung_L': Wärmeleistung_BHKW_L,
-            'Brennstoffbedarf': Brennstoffbedarf_BHKW,
-            'WGK': wgk_BHKW,
-            'Strommenge': Strommenge_BHKW,
-            'el_Leistung_L': el_Leistung_BHKW_L,
+            'Wärmeleistung_L': Wärmeleistung_BHKW,
+            'Brennstoffbedarf': Brennstoffbedarf,
+            'WGK': self.WGK_BHKW,
+            'Strommenge': Strommenge,
+            'el_Leistung_L': el_Leistung_BHKW,
+            'Anzahl_Starts': Anzahl_Starts,
+            'Betriebsstunden': Betriebsstunden,
+            'Betriebsstunden_pro_Start': Betriebsstunden_pro_Start,
+            'spec_co2_total': self.spec_co2_total,
             'color': "yellow"
         }
 
+        if self.speicher_aktiv:
+            results['Wärmeleistung_Speicher_L'] = self.Wärmeleistung_Speicher_BHKW
 
         return results
 
+    def to_dict(self):
+        return self.__dict__
+
+    @staticmethod
+    def from_dict(data):
+        obj = CHP.__new__(CHP)
+        obj.__dict__.update(data)
+        return obj
+
 class BiomassBoiler:
-    def __init__(self, name, P_BMK, Größe_Holzlager=40, spez_Investitionskosten=200, spez_Investitionskosten_Holzlager=400):
+    def __init__(self, name, P_BMK, Größe_Holzlager=40, spez_Investitionskosten=200, spez_Investitionskosten_Holzlager=400, Nutzungsgrad_BMK=0.8, min_Teillast=0.3,
+                 speicher_aktiv=False, Speicher_Volumen=20, T_vorlauf=90, T_ruecklauf=60, initial_fill=0.0, min_fill=0.2, max_fill=0.8, 
+                 spez_Investitionskosten_Speicher=750, BMK_an=True, opt_BMK_min=0, opt_BMK_max=1000, opt_BMK_Speicher_min=0, opt_BMK_Speicher_max=100):
         self.name = name
         self.P_BMK = P_BMK
         self.Größe_Holzlager = Größe_Holzlager
         self.spez_Investitionskosten = spez_Investitionskosten
         self.spez_Investitionskosten_Holzlager = spez_Investitionskosten_Holzlager
+        self.Nutzungsgrad_BMK = Nutzungsgrad_BMK
+        self.min_Teillast = min_Teillast
+        self.speicher_aktiv = speicher_aktiv
+        self.Speicher_Volumen = Speicher_Volumen
+        self.T_vorlauf = T_vorlauf
+        self.T_ruecklauf = T_ruecklauf
+        self.initial_fill = initial_fill
+        self.min_fill = min_fill
+        self.max_fill = max_fill
+        self.spez_Investitionskosten_Speicher = spez_Investitionskosten_Speicher
+        self.BMK_an = BMK_an
+        self.opt_BMK_min = opt_BMK_min
+        self.opt_BMK_max = opt_BMK_max
+        self.opt_BMK_Speicher_min = opt_BMK_Speicher_min
+        self.opt_BMK_Speicher_max = opt_BMK_Speicher_max
+        self.Nutzungsdauer = 15
+        self.f_Inst, self.f_W_Insp, self.Bedienaufwand = 3, 3, 0
+        self.co2_factor_fuel = 0.036 # tCO2/MWh pellets
 
     def Biomassekessel(self, Last_L, duration):
-        Wärmeleistung_BMK_L = np.where(Last_L >= self.P_BMK, self.P_BMK, Last_L)
-        Wärmemenge_BMK = np.sum(Wärmeleistung_BMK_L / 1000)*duration
+        self.Wärmeleistung_Biomassekessel = np.zeros_like(Last_L)
 
-        return Wärmeleistung_BMK_L, Wärmemenge_BMK
+        # Fälle, in denen der Biomassekessel betrieben werden kann
+        betrieb_mask = Last_L >= self.P_BMK * self.min_Teillast
+        self.Wärmeleistung_Biomassekessel[betrieb_mask] = np.minimum(Last_L[betrieb_mask], self.P_BMK)
+
+        self.Wärmemenge_BMK = np.sum(self.Wärmeleistung_Biomassekessel / 1000)*duration
+        self.Brennstoffbedarf_BMK = self.Wärmemenge_BMK / self.Nutzungsgrad_BMK
+
+        # Anzahl Starts und Betriebsstunden pro Start berechnen
+        starts = np.diff(betrieb_mask.astype(int)) > 0
+        self.Anzahl_Starts = np.sum(starts)
+        self.Betriebsstunden_gesamt = np.sum(betrieb_mask) * duration
+        self.Betriebsstunden_pro_Start = self.Betriebsstunden_gesamt / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
+
+    def storage(self, Last_L, duration):
+        # Speicherparameter
+        speicher_kapazitaet = self.Speicher_Volumen * 4186 * (self.T_vorlauf - self.T_ruecklauf) / 3600  # kWh
+        speicher_fill = self.initial_fill * speicher_kapazitaet
+        min_speicher_fill = self.min_fill * speicher_kapazitaet
+        max_speicher_fill = self.max_fill * speicher_kapazitaet
+
+        self.Wärmeleistung_Biomassekessel_Speicher = np.zeros_like(Last_L)
+        self.Wärmeleistung_Speicher_BMK = np.zeros_like(Last_L)
+        self.speicher_fuellstand_BMK = np.zeros_like(Last_L)
+
+        for i in range(len(Last_L)):
+            if self.BMK_an:
+                if speicher_fill >= max_speicher_fill:
+                    self.BMK_an = False
+                else:
+                    self.Wärmeleistung_Biomassekessel_Speicher[i] = self.P_BMK
+                    if Last_L[i] < self.P_BMK:
+                        self.Wärmeleistung_Speicher_BMK[i] = Last_L[i] - self.P_BMK
+                        speicher_fill += (self.P_BMK - Last_L[i]) * duration
+                        speicher_fill = float(min(speicher_fill, speicher_kapazitaet))
+                    else:
+                        self.Wärmeleistung_Speicher_BMK[i] = 0
+            else:
+                if speicher_fill <= min_speicher_fill:
+                    self.BMK_an = True
+            
+            if not self.BMK_an:
+                self.Wärmeleistung_Biomassekessel_Speicher[i] = 0
+                self.Wärmeleistung_Speicher_BMK[i] = Last_L[i]
+                speicher_fill -= Last_L[i] * duration
+                speicher_fill = float(max(speicher_fill, 0))
+
+            self.speicher_fuellstand_BMK[i] = speicher_fill / speicher_kapazitaet * 100  # %
+
+        self.Wärmemenge_Biomassekessel_Speicher = np.sum(self.Wärmeleistung_Biomassekessel_Speicher / 1000) * duration
+
+        # Berechnen des Brennstoffbedarfs
+        self.Brennstoffbedarf_BMK_Speicher = self.Wärmemenge_Biomassekessel_Speicher / self.Nutzungsgrad_BMK
+
+        # Anzahl Starts und Betriebsstunden pro Start berechnen
+        betrieb_mask = self.Wärmeleistung_Biomassekessel_Speicher > 0
+        starts = np.diff(betrieb_mask.astype(int)) > 0
+        self.Anzahl_Starts_Speicher = np.sum(starts)
+        self.Betriebsstunden_gesamt_Speicher = np.sum(betrieb_mask) * duration
+        self.Betriebsstunden_pro_Start_Speicher = self.Betriebsstunden_gesamt_Speicher / self.Anzahl_Starts_Speicher if self.Anzahl_Starts_Speicher > 0 else 0
 
     def WGK(self, Wärmemenge, Brennstoffbedarf, Brennstoffkosten, q, r, T, BEW, stundensatz):
         if Wärmemenge == 0:
             return 0
         
-        Nutzungsdauer = 15
         self.Investitionskosten_Kessel = self.spez_Investitionskosten * self.P_BMK
         self.Investitionskosten_Holzlager = self.spez_Investitionskosten_Holzlager * self.Größe_Holzlager
-        self.Investitionskosten =  self.Investitionskosten_Kessel + self.Investitionskosten_Holzlager
-        f_Inst, f_W_Insp, Bedienaufwand = 3, 3, 0
+        self.Investitionskosten_Speicher = self.spez_Investitionskosten_Speicher * self.Speicher_Volumen
+        self.Investitionskosten = self.Investitionskosten_Kessel + self.Investitionskosten_Holzlager + self.Investitionskosten_Speicher
 
-        self.A_N = annuität(self.Investitionskosten, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T, Brennstoffbedarf,
+        self.A_N = annuität(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, q, r, T, Brennstoffbedarf,
                             Brennstoffkosten, stundensatz=stundensatz)
-        WGK_a = self.A_N / Wärmemenge
-
-        return WGK_a
+        
+        self.WGK_BMK = self.A_N / Wärmemenge
 
     def calculate(self, Holzpreis, q, r, T, BEW, stundensatz, duration, general_results):
-        # Hier fügen Sie die spezifische Logik für die Biomassekessel-Berechnung ein
-        Wärmeleistung_BMK_L, Wärmemenge = self.Biomassekessel(general_results["Restlast_L"], duration)
+        if self.speicher_aktiv:
+            self.storage(general_results["Restlast_L"], duration)
+            Wärmemenge = self.Wärmemenge_Biomassekessel_Speicher
+            Brennstoffbedarf = self.Brennstoffbedarf_BMK_Speicher
+            Wärmeleistung = self.Wärmeleistung_Biomassekessel_Speicher
+            Anzahl_Starts = self.Anzahl_Starts_Speicher
+            Betriebsstunden = self.Betriebsstunden_gesamt_Speicher
+            Betriebsstunden_pro_Start= self.Betriebsstunden_pro_Start_Speicher
+        else:
+            self.Biomassekessel(general_results["Restlast_L"], duration)
+            Wärmemenge = self.Wärmemenge_BMK
+            Brennstoffbedarf = self.Brennstoffbedarf_BMK
+            Wärmeleistung = self.Wärmeleistung_Biomassekessel
+            Anzahl_Starts = self.Anzahl_Starts
+            Betriebsstunden = self.Betriebsstunden_gesamt
+            Betriebsstunden_pro_Start= self.Betriebsstunden_pro_Start
 
-        Nutzungsgrad_BMK = 0.8
-        Brennstoffbedarf_BMK = Wärmemenge/Nutzungsgrad_BMK
-        WGK_BMK = self.WGK(Wärmemenge, Brennstoffbedarf_BMK, Holzpreis, q, r, T, BEW, stundensatz)
+        self.WGK(Wärmemenge, Brennstoffbedarf, Holzpreis, q, r, T, BEW, stundensatz)
+
+        # CO2 emissions due to fuel usage
+        self.co2_emissions = Brennstoffbedarf * self.co2_factor_fuel # tCO2
+        # specific emissions heat
+        self.spec_co2_total = self.co2_emissions / Wärmemenge if Wärmemenge > 0 else 0 # tCO2/MWh_heat
         
         results = {
             'Wärmemenge': Wärmemenge,
-            'Wärmeleistung_L': Wärmeleistung_BMK_L,
-            'Brennstoffbedarf': Brennstoffbedarf_BMK,
-            'WGK': WGK_BMK,
+            'Wärmeleistung_L': Wärmeleistung,
+            'Brennstoffbedarf': Brennstoffbedarf,
+            'WGK': self.WGK_BMK,
+            'Anzahl_Starts': Anzahl_Starts,
+            'Betriebsstunden': Betriebsstunden,
+            'Betriebsstunden_pro_Start': Betriebsstunden_pro_Start,
+            'spec_co2_total': self.spec_co2_total,
             'color': "green"
         }
 
+        if self.speicher_aktiv:
+            results['Wärmeleistung_Speicher_L'] = self.Wärmeleistung_Speicher_BMK
+
         return results
-    
+
+    def to_dict(self):
+        return self.__dict__
+
+    @staticmethod
+    def from_dict(data):
+        obj = BiomassBoiler.__new__(BiomassBoiler)
+        obj.__dict__.update(data)
+        return obj
+
 class GasBoiler:
-    def __init__(self, name, spez_Investitionskosten=30):
+    def __init__(self, name, spez_Investitionskosten=30, Nutzungsgrad=0.9, Faktor_Dimensionierung=1):
         self.name = name
         self.spez_Investitionskosten = spez_Investitionskosten
+        self.Nutzungsgrad = Nutzungsgrad
+        self.Faktor_Dimensionierung = Faktor_Dimensionierung
+        self.Nutzungsdauer = 20
+        self.f_Inst, self.f_W_Insp, self.Bedienaufwand = 1, 2, 0
+        self.co2_factor_fuel = 0.201 # tCO2/MWh gas
 
-    def Gaskessel(self, Last_L, duration, Nutzungsgrad=0.9):
-        Erzeugung_L = np.maximum(Last_L, 0)
-        Wärmemenge = np.sum(Erzeugung_L/1000)*duration
-        Brennstoffbedarf = Wärmemenge / Nutzungsgrad
+    def Gaskessel(self, Last_L, duration):
+        self.Wärmeleistung_GK = np.maximum(Last_L, 0)
+        self.Wärmemenge_Gaskessel = np.sum(self.Wärmeleistung_GK/1000)*duration
+        self.Gasbedarf = self.Wärmemenge_Gaskessel / self.Nutzungsgrad
+        self.P_max = max(Last_L) * self.Faktor_Dimensionierung
 
-        return Wärmemenge, Erzeugung_L, Brennstoffbedarf
-
-    def WGK(self, P_max, Wärmemenge, Brennstoffbedarf, Brennstoffkosten, q, r, T, BEW, stundensatz):
-        if Wärmemenge == 0:
+    def WGK(self, Brennstoffkosten, q, r, T, BEW, stundensatz):
+        if self.Wärmemenge_Gaskessel == 0:
             return 0
         
-        self.Investitionskosten = self.spez_Investitionskosten * P_max
-        Nutzungsdauer = 20
-        f_Inst, f_W_Insp, Bedienaufwand = 1, 2, 0
+        self.Investitionskosten = self.spez_Investitionskosten * self.P_max
 
-        A_N = annuität(self.Investitionskosten, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T,
-                            Brennstoffbedarf, Brennstoffkosten, stundensatz=stundensatz)
-        WGK_a = A_N / Wärmemenge
-
-        return WGK_a
+        self.A_N = annuität(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, q, r, T,
+                            self.Gasbedarf, Brennstoffkosten, stundensatz=stundensatz)
+        self.WGK_GK = self.A_N / self.Wärmemenge_Gaskessel
 
     def calculate(self, Gaspreis, q, r, T, BEW, stundensatz, duration, Last_L, general_results):
-        # Hier fügen Sie die spezifische Logik für die Gaskessel-Berechnung ein
-        Wärmemenge, Wärmeleistung_GK_L, Gasbedarf = self.Gaskessel(general_results['Restlast_L'], duration)
-        self.P_max = max(Last_L) * 1
-        WGK_GK = self.WGK(self.P_max, Wärmemenge, Gasbedarf, Gaspreis, q, r, T, BEW, stundensatz)
+        self.Gaskessel(general_results['Restlast_L'], duration)
+        self.WGK(Gaspreis, q, r, T, BEW, stundensatz)
+
+        # CO2 emissions due to fuel usage
+        self.co2_emissions = self.Gasbedarf * self.co2_factor_fuel # tCO2
+        # specific emissions heat
+        self.spec_co2_total = self.co2_emissions / self.Wärmemenge_Gaskessel if self.Wärmemenge_Gaskessel > 0 else 0 # tCO2/MWh_heat
 
         results = {
-            'Wärmemenge': Wärmemenge,
-            'Wärmeleistung_L': Wärmeleistung_GK_L,
-            'Brennstoffbedarf': Gasbedarf,
-            'WGK': WGK_GK,
+            'Wärmemenge': self.Wärmemenge_Gaskessel,
+            'Wärmeleistung_L': self.Wärmeleistung_GK,
+            'Brennstoffbedarf': self.Gasbedarf,
+            'WGK': self.WGK_GK,
+            'spec_co2_total': self.spec_co2_total,
             "color": "saddlebrown"
         }
 
         return results
+    
+    def to_dict(self):
+        return self.__dict__
+
+    @staticmethod
+    def from_dict(data):
+        obj = GasBoiler.__new__(GasBoiler)
+        obj.__dict__.update(data)
+        return obj
 
 class SolarThermal:
     def __init__(self, name, bruttofläche_STA, vs, Typ, kosten_speicher_spez=750, kosten_fk_spez=430, kosten_vrk_spez=590, Tsmax=90, Longitude=-14.4222, 
-                 STD_Longitude=-15, Latitude=51.1676, East_West_collector_azimuth_angle=0, Collector_tilt_angle=36, Tm_rl=60, Qsa=0, Vorwärmung_K=8, DT_WT_Solar_K=5, DT_WT_Netz_K=5):
+                 STD_Longitude=-15, Latitude=51.1676, East_West_collector_azimuth_angle=0, Collector_tilt_angle=36, Tm_rl=60, Qsa=0, Vorwärmung_K=8, 
+                 DT_WT_Solar_K=5, DT_WT_Netz_K=5, opt_volume_min=0, opt_volume_max=200, opt_area_min=0, opt_area_max=2000):
         self.name = name
         self.bruttofläche_STA = bruttofläche_STA
         self.vs = vs
@@ -478,12 +759,12 @@ class SolarThermal:
         self.Vorwärmung_K = Vorwärmung_K
         self.DT_WT_Solar_K = DT_WT_Solar_K
         self.DT_WT_Netz_K = DT_WT_Netz_K
+        self.opt_volume_min = opt_volume_min
+        self.opt_volume_max = opt_volume_max
+        self.opt_area_min = opt_area_min
+        self.opt_area_max = opt_area_max
 
-    def calc_WGK(self, Wärmemenge, q, r, T, BEW, stundensatz):
-        if Wärmemenge == 0:
-            return 0
-
-        kosten_pro_typ = {
+        self.kosten_pro_typ = {
             # Viessmann Flachkollektor Vitosol 200-FM, 2,56 m²: 697,9 € (brutto); 586,5 € (netto) -> 229 €/m²
             # + 200 €/m² Installation/Zubehör
             "Flachkollektor": self.kosten_fk_spez,
@@ -492,48 +773,72 @@ class SolarThermal:
             "Vakuumröhrenkollektor": self.kosten_vrk_spez
         }
 
-        self.Kosten_STA_spez = kosten_pro_typ[self.Typ]  # €/m^2
-        Nutzungsdauer = 20
-        f_Inst, f_W_Insp, Bedienaufwand = 0.5, 1, 0
+        self.Kosten_STA_spez = self.kosten_pro_typ[self.Typ]  # €/m^2
+        self.Nutzungsdauer = 20 # Jahre
+        self.f_Inst, self.f_W_Insp, self.Bedienaufwand = 0.5, 1, 0
+        self.Anteil_Förderung_BEW = 0.4
+        self.Betriebskostenförderung_BEW = 10 # €/MWh 10 Jahre
+        self.co2_factor_solar = 0.0 # tCO2/MWh heat is 0 ?
+
+    def calc_WGK(self, q, r, T, BEW, stundensatz):
+        if self.Wärmemenge_Solarthermie == 0:
+            return 0
 
         self.Investitionskosten_Speicher = self.vs * self.kosten_speicher_spez
         self.Investitionskosten_STA = self.bruttofläche_STA * self.Kosten_STA_spez
         self.Investitionskosten = self.Investitionskosten_Speicher + self.Investitionskosten_STA
 
-        self.A_N = annuität(self.Investitionskosten, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T, stundensatz=stundensatz)
-        self.WGK = self.A_N / Wärmemenge
+        self.A_N = annuität(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, q, r, T, stundensatz=stundensatz)
+        self.WGK = self.A_N / self.Wärmemenge_Solarthermie
 
-        Anteil_Förderung_BEW = 0.4
-        Eigenanteil = 1 - Anteil_Förderung_BEW
-        Investitionskosten_Gesamt_BEW = self.Investitionskosten * Eigenanteil
-        Annuität_BEW = annuität(Investitionskosten_Gesamt_BEW, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T, stundensatz=stundensatz)
-        self.WGK_BEW = Annuität_BEW / Wärmemenge
+        self.Eigenanteil = 1 - self.Anteil_Förderung_BEW
+        self.Investitionskosten_Gesamt_BEW = self.Investitionskosten * self.Eigenanteil
+        self.Annuität_BEW = annuität(self.Investitionskosten_Gesamt_BEW, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, q, r, T, stundensatz=stundensatz)
+        self.WGK_BEW = self.Annuität_BEW / self.Wärmemenge_Solarthermie
 
-        self.WGK_BEW_BKF = self.WGK_BEW - 10  # €/MWh 10 Jahre
+        self.WGK_BEW_BKF = self.WGK_BEW - self.Betriebskostenförderung_BEW
 
         if BEW == "Nein":
             return self.WGK
         elif BEW == "Ja":
             return self.WGK_BEW_BKF
         
-        #tech_results = tech.calculate(VLT_L, RLT_L, TRY, time_steps, calc1, calc2, q, r, T, BEW, duration, general_results)
     def calculate(self, VLT_L, RLT_L, TRY, time_steps, calc1, calc2, q, r, T, BEW, stundensatz, duration, general_results):
-        # Hier fügen Sie die spezifische Logik für die Solarthermie-Berechnung ein
-        Wärmemenge, Wärmeleistung_Solarthermie_L, Speicherladung_L, Speicherfüllstand_L = Berechnung_STA(self.bruttofläche_STA, self.vs, self.Typ, general_results['Restlast_L'], VLT_L, RLT_L, 
+        # Berechnung der Solarthermieanlage
+        self.Wärmemenge_Solarthermie, self.Wärmeleistung_Solarthermie, self.Speicherladung_Solarthermie, self.Speicherfüllstand_Solarthermie = Berechnung_STA(self.bruttofläche_STA, 
+                                                                                                        self.vs, self.Typ, general_results['Restlast_L'], VLT_L, RLT_L, 
                                                                                                         TRY, time_steps, calc1, calc2, duration, self.Tsmax, self.Longitude, self.STD_Longitude, 
                                                                                                         self.Latitude, self.East_West_collector_azimuth_angle, self.Collector_tilt_angle, self.Tm_rl, 
                                                                                                         self.Qsa, self.Vorwärmung_K, self.DT_WT_Solar_K, self.DT_WT_Netz_K)
+        # Berechnung der Wärmegestehungskosten
+        self.WGK_Solarthermie = self.calc_WGK(q, r, T, BEW, stundensatz)
 
-        WGK_Solarthermie = self.calc_WGK(Wärmemenge, q, r, T, BEW, stundensatz)
+        # Berechnung der Emissionen
+        self.co2_emissions = self.Wärmemenge_Solarthermie * self.co2_factor_solar # tCO2
+        # specific emissions heat
+        self.spec_co2_total = self.co2_emissions / self.Wärmemenge_Solarthermie if self.Wärmemenge_Solarthermie > 0 else 0 # tCO2/MWh_heat
+
 
         results = { 
-            'Wärmemenge': Wärmemenge,
-            'Wärmeleistung_L': Wärmeleistung_Solarthermie_L,
-            'WGK': WGK_Solarthermie,
+            'Wärmemenge': self.Wärmemenge_Solarthermie,
+            'Wärmeleistung_L': self.Wärmeleistung_Solarthermie,
+            'WGK': self.WGK_Solarthermie,
+            'spec_co2_total': self.spec_co2_total,
+            'Speicherladung_L': self.Speicherladung_Solarthermie,
+            'Speicherfüllstand_L': self.Speicherfüllstand_Solarthermie,
             'color': "red"
         }
 
         return results
+
+    def to_dict(self):
+        return self.__dict__
+
+    @staticmethod
+    def from_dict(data):
+        obj = SolarThermal.__new__(SolarThermal)
+        obj.__dict__.update(data)
+        return obj
 
 def calculate_factors(Kapitalzins, Preissteigerungsrate, Betrachtungszeitraum):
     q = 1 + Kapitalzins / 100
@@ -569,24 +874,29 @@ def Berechnung_Erzeugermix(tech_order, initial_data, start, end, TRY, COP_data, 
         'el_Leistung_L': np.zeros_like(Last_L),
         'el_Leistung_ges_L': np.zeros_like(Last_L),
         'specific_emissions': 1,
-        'techs': []
+        'techs': [],
+        'tech_classes': []
     }
 
     # zunächst Berechnung der Erzeugung
-    for tech in tech_order.copy():
+    for idx, tech in enumerate(tech_order.copy()):
         if len(variables) > 0:
             if tech.name == "Solarthermie":
-                tech.bruttofläche_STA, tech.vs = variables[variables_order.index("bruttofläche_STA")], variables[variables_order.index("vs")]
-            elif tech.name == "Abwärme" or tech == "Abwasserwärme":
-                tech.Kühlleistung_Abwärme = variables[variables_order.index("Kühlleistung_Abwärme")]
+                tech.bruttofläche_STA = variables[variables_order.index(f"bruttofläche_STA_{idx}")]
+                tech.vs = variables[variables_order.index(f"vs_{idx}")]
+            elif tech.name == "Abwärme" or tech.name == "Abwasserwärme":
+                tech.Kühlleistung_Abwärme = variables[variables_order.index(f"Kühlleistung_Abwärme_{idx}")]
             elif tech.name == "Flusswasser":
-                tech.Wärmeleistung_FW_WP = variables[variables_order.index("Wärmeleistung_FW_WP")]
+                tech.Wärmeleistung_FW_WP = variables[variables_order.index(f"Wärmeleistung_FW_WP_{idx}")]
             elif tech.name == "Geothermie":
-                tech.Fläche, tech.Bohrtiefe = variables[variables_order.index("Fläche")], variables[variables_order.index("Bohrtiefe")]
+                tech.Fläche = variables[variables_order.index(f"Fläche_{idx}")]
+                tech.Bohrtiefe = variables[variables_order.index(f"Bohrtiefe_{idx}")]
             elif tech.name == "BHKW" or tech.name == "Holzgas-BHKW":
-                tech.th_Leistung_BHKW = variables[variables_order.index("th_Leistung_BHKW")]
+                tech.th_Leistung_BHKW = variables[variables_order.index(f"th_Leistung_BHKW_{idx}")]
+                if tech.speicher_aktiv == True:
+                    tech.Speicher_Volumen_BHKW = variables[variables_order.index(f"Speicher_Volumen_BHKW_{idx}")]
             elif tech.name == "Biomassekessel":
-                tech.P_BMK = variables[variables_order.index("P_BMK")]
+                tech.P_BMK = variables[variables_order.index(f"P_BMK_{idx}")]
 
         if tech.name == "Solarthermie":
             tech_results = tech.calculate(VLT_L, RLT_L, TRY, time_steps, start, end, q, r, T, BEW, stundensatz, duration, general_results)
@@ -635,50 +945,81 @@ def Berechnung_Erzeugermix(tech_order, initial_data, start, end, TRY, COP_data, 
                 general_results['el_Leistungsbedarf_L'] += tech_results["el_Leistung_L"]
                 general_results['el_Leistung_ges_L'] -= tech_results['el_Leistung_L']
 
+            if "Wärmeleistung_Speicher_L" in tech_results.keys():
+                # general_results['Wärmeleistung_L'].append(tech_results['Wärmeleistung_Speicher_L']) führt bestimmt nur zu Problemen
+                # general_results['Wärmemengen'].append(tech_results['Wärmemenge_Speicher_L']) eigentlich nicht oder?
+                general_results['Restlast_L'] -= tech_results['Wärmeleistung_Speicher_L']
+
         else:
             tech_order.remove(tech)
+            print(f"{tech.name} wurde durch die Optimierung entfernt.")
 
     for tech in tech_order:
         general_results['techs'].append(tech.name)
+        general_results['tech_classes'].append(tech)
 
     return general_results
 
 def optimize_mix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, kapitalzins, preissteigerungsrate, betrachtungszeitraum, stundensatz):
-    # solar Fläche, Speichervolumen solar, Leistung Biomasse, Leistung BHKW
     initial_values = []
     variables_order = []
     bounds = []
-    for tech in tech_order:
+    for idx, tech in enumerate(tech_order):
         if isinstance(tech, SolarThermal):
             initial_values.append(tech.bruttofläche_STA)
-            variables_order.append("bruttofläche_STA")
-            bounds.append((0, 1000))
+            variables_order.append(f"bruttofläche_STA_{idx}")
+            bounds.append((tech.opt_area_min, tech.opt_area_max))
+
             initial_values.append(tech.vs)
-            variables_order.append("vs")
-            bounds.append((0, 100))
+            variables_order.append(f"vs_{idx}")
+            bounds.append((tech.opt_volume_min, tech.opt_volume_max))
+
         elif isinstance(tech, CHP):
             initial_values.append(tech.th_Leistung_BHKW)
-            variables_order.append("th_Leistung_BHKW")
-            bounds.append((0, 500))
+            variables_order.append(f"th_Leistung_BHKW_{idx}")
+            bounds.append((tech.opt_BHKW_min, tech.opt_BHKW_max))
+
+            if tech.speicher_aktiv == True:
+                initial_values.append(tech.Speicher_Volumen_BHKW)
+                variables_order.append(f"Speicher_Volumen_BHKW_{idx}")
+                bounds.append((tech.opt_BHKW_Speicher_min, tech.opt_BHKW_Speicher_max))
+
         elif isinstance(tech, BiomassBoiler):
             initial_values.append(tech.P_BMK)
-            variables_order.append("P_BMK")
-            bounds.append((0, 500))
+            variables_order.append(f"P_BMK_{idx}")
+            bounds.append((tech.opt_BMK_min, tech.opt_BMK_max))
+
+            if tech.speicher_aktiv == True:
+                initial_values.append(tech.Speicher_Volumen)
+                variables_order.append(f"Speicher_Volumen_{idx}")
+                bounds.append((tech.opt_BMK_Speicher_min, tech.opt_BMK_Speicher_max))
+
         elif isinstance(tech, Geothermal):
             initial_values.append(tech.Fläche)
-            variables_order.append("Fläche")
-            bounds.append((0, 5000))
+            variables_order.append(f"Fläche_{idx}")
+            min_area_geothermal = 0
+            max_area_geothermal = 5000
+            bounds.append((min_area_geothermal, max_area_geothermal))
+
             initial_values.append(tech.Bohrtiefe)
-            variables_order.append("Bohrtiefe")
-            bounds.append((0, 400))
+            variables_order.append(f"Bohrtiefe_{idx}")
+            min_area_depth = 0
+            max_area_depth = 400
+            bounds.append((min_area_depth, max_area_depth))
+
         elif isinstance(tech, WasteHeatPump):
             initial_values.append(tech.Kühlleistung_Abwärme)
-            variables_order.append("Kühlleistung_Abwärme")
-            bounds.append((0, 500))
+            variables_order.append(f"Kühlleistung_Abwärme_{idx}")
+            min_cooling = 0
+            max_cooling = 500
+            bounds.append((min_cooling, max_cooling))
+
         elif isinstance(tech, RiverHeatPump):
             initial_values.append(tech.Wärmeleistung_FW_WP)
-            variables_order.append("Wärmeleistung_FW_WP")
-            bounds.append((0, 1000))
+            variables_order.append(f"Wärmeleistung_FW_WP_{idx}")
+            min_power_river = 0
+            max_power_river = 1000
+            bounds.append((min_power_river, max_power_river))
 
 
     def objective(variables):
@@ -686,6 +1027,12 @@ def optimize_mix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, 
                                             kapitalzins=kapitalzins, preissteigerungsrate=preissteigerungsrate, betrachtungszeitraum=betrachtungszeitraum, stundensatz=stundensatz)
         
         return general_results["WGK_Gesamt"]
+    
+    #def objective2(variables):
+    #    general_results = Berechnung_Erzeugermix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, variables, variables_order, \
+    #                                        kapitalzins=kapitalzins, preissteigerungsrate=preissteigerungsrate, betrachtungszeitraum=betrachtungszeitraum, stundensatz=stundensatz)
+    #    
+    #   return general_results["spec_co2_emissions"]
 
     # optimization
     result = minimize(objective, initial_values, method='SLSQP', bounds=bounds, options={'maxiter': 100})
@@ -696,26 +1043,26 @@ def optimize_mix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, 
         print(f"Optimierte Werte: {optimized_values}")
         print(f"Minimale Wärmegestehungskosten: {optimized_WGK_Gesamt:.2f} €/MWh")
 
-        for tech in tech_order:
+        for idx, tech in enumerate(tech_order):
             if isinstance(tech, SolarThermal):
-                tech.bruttofläche_STA, tech.vs = optimized_values[variables_order.index("bruttofläche_STA")], optimized_values[variables_order.index("vs")]
+                tech.bruttofläche_STA = optimized_values[variables_order.index(f"bruttofläche_STA_{idx}")]
+                tech.vs = optimized_values[variables_order.index(f"vs_{idx}")]
             elif isinstance(tech, BiomassBoiler):
-                tech.P_BMK = optimized_values[variables_order.index("P_BMK")]
+                tech.P_BMK = optimized_values[variables_order.index(f"P_BMK_{idx}")]
             elif isinstance(tech, CHP):
-                tech.th_Leistung_BHKW = optimized_values[variables_order.index("th_Leistung_BHKW")]
+                tech.th_Leistung_BHKW = optimized_values[variables_order.index(f"th_Leistung_BHKW_{idx}")]
             elif isinstance(tech, Geothermal):
-                tech.Fläche, tech.Bohrtiefe = optimized_values[variables_order.index("Fläche")], optimized_values[variables_order.index("Bohrtiefe")]
+                tech.Fläche = optimized_values[variables_order.index(f"Fläche_{idx}")]
+                tech.Bohrtiefe = optimized_values[variables_order.index(f"Bohrtiefe_{idx}")]
             elif isinstance(tech, WasteHeatPump):
-                tech.Kühlleistung_Abwärme = optimized_values[variables_order.index("Kühlleistung_Abwärme")]
+                tech.Kühlleistung_Abwärme = optimized_values[variables_order.index(f"Kühlleistung_Abwärme_{idx}")]
             elif isinstance(tech, RiverHeatPump):
-                tech.Wärmeleistung_FW_WP = optimized_values[variables_order.index("Wärmeleistung_FW_WP")]
+                tech.Wärmeleistung_FW_WP = optimized_values[variables_order.index(f"Wärmeleistung_FW_WP_{idx}")]
 
         return tech_order
     else:
         print("Optimierung nicht erfolgreich")
         print(result.message)
-
-
 
 # Diese Klasse ist nocht fertig implementiert und die Nutzung auch noch nicht durchdacht, Wie muss dass ganze bilanziert werden?
 class Photovoltaics:

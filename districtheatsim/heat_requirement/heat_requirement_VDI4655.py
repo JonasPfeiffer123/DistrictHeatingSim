@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 
 import os
 import sys
@@ -205,7 +204,7 @@ def calculation_load_profile(TRY, factors, building_type, number_people_househol
     return quarter_hourly_intervals, electricity_corrected, heating_corrected, hot_water_corrected, temperature
 
 # YEU - yearly energy usage
-def calculate(YEU_heating_kWh, YEU_hot_water_kWh, YEU_electricity_kWh=1, building_type="MFH", number_people_household=2, year=2019, climate_zone="9"):
+def calculate(YEU_heating_kWh, YEU_hot_water_kWh, YEU_electricity_kWh=1, building_type="MFH", number_people_household=2, year=2019, climate_zone="9", TRY=get_resource_path('heat_requirement\TRY_511676144222\TRY2015_511676144222_Jahr.dat')):
     # holidays
     Neujahr = "2019-01-01"
     Karfreitag = "2019-04-19"
@@ -223,7 +222,6 @@ def calculate(YEU_heating_kWh, YEU_hot_water_kWh, YEU_electricity_kWh=1, buildin
                 Christi_Himmelfahrt, Fronleichnam, Tag_der_deutschen_Einheit, 
                 Allerheiligen, Weihnachtsfeiertag1, Weihnachtsfeiertag2]).astype('datetime64[D]')
     
-    TRY = get_resource_path('heat_requirement\TRY_511676144222\TRY2015_511676144222_Jahr.dat')
     factors = get_resource_path('heat_requirement\VDI 4655 data\Faktoren.csv')
 
     time_15min, electricity_kWh_15min, heating_kWh_15min, hot_water_kWh_15min, temperature = calculation_load_profile(TRY, factors, building_type, number_people_household, \
