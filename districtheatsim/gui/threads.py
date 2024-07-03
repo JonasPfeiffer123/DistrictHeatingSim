@@ -43,22 +43,22 @@ class NetInitializationThread(QThread):
         try:
             if self.kwargs.get("import_type") == "GeoJSON":
                 self.vorlauf, self.ruecklauf, self.hast, self.erzeugeranlagen, self.TRY_filename, self.COP_filename, self.calc_method, self.building_type, \
-                self.return_temperature, self.supply_temperature, self.flow_pressure_pump, self.lift_pressure_pump, \
+                self.supply_temperature_heat_consumer, self.return_temperature_heat_consumer, self.supply_temperature, self.flow_pressure_pump, self.lift_pressure_pump, \
                 self.netconfiguration, self.pipetype, self.v_max_pipe, self.material_filter, self.insulation_filter, \
                 self.base_path, self.dT_RL, self.v_max_heat_consumer, self.DiameterOpt_ckecked = self.args
 
-                self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.return_temperature, \
+                self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.return_temperature_heat_consumer, \
                 self.supply_temperature_buildings, self.return_temperature_buildings, self.supply_temperature_building_curve, \
                 self.return_temperature_building_curve, strombedarf_hast_ges_W, max_el_leistung_hast_ges_W  = initialize_geojson(self.vorlauf, self.ruecklauf, self.hast, \
                                                                              self.erzeugeranlagen, self.TRY_filename, self.COP_filename, self.calc_method, self.building_type, \
-                                                                             self.return_temperature, self.supply_temperature, \
+                                                                             self.supply_temperature_heat_consumer, self.return_temperature_heat_consumer, self.supply_temperature, \
                                                                              self.flow_pressure_pump, self.lift_pressure_pump, \
                                                                              self.netconfiguration, self.pipetype, self.dT_RL, \
                                                                              self.v_max_pipe, self.material_filter, self.insulation_filter, \
                                                                              self.v_max_heat_consumer, self.mass_flow_secondary_producers)
             
             elif self.kwargs.get("import_type") == "Stanet":
-                self.stanet_csv, self.return_temperature, self.supply_temperature, self.flow_pressure_pump, self.lift_pressure_pump = self.args
+                self.stanet_csv, self.return_temperature_heat_consumer, self.supply_temperature, self.flow_pressure_pump, self.lift_pressure_pump = self.args
                 self.initialize_stanet()
             else:
                 raise ValueError("Unbekannter Importtyp")
@@ -67,8 +67,8 @@ class NetInitializationThread(QThread):
             if self.DiameterOpt_ckecked == True:
                 self.net = net_optimization(self.net, self.v_max_pipe, self.v_max_heat_consumer, self.material_filter, self.insulation_filter)
             
-            self.calculation_done.emit((self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.return_temperature, self.supply_temperature_buildings, \
-                                        self.return_temperature_buildings, self.supply_temperature_building_curve, self.return_temperature_building_curve, \
+            self.calculation_done.emit((self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.supply_temperature_heat_consumer, self.return_temperature_heat_consumer, \
+                                        self.supply_temperature_buildings, self.return_temperature_buildings, self.supply_temperature_building_curve, self.return_temperature_building_curve, \
                                         strombedarf_hast_ges_W, max_el_leistung_hast_ges_W))
 
         except Exception as e:
@@ -87,8 +87,9 @@ class NetCalculationThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(str)
 
-    def __init__(self, net, yearly_time_steps, total_heat_W, calc1, calc2, supply_temperature, return_temperature, supply_temperature_buildings, \
-                 return_temperature_buildings, supply_temperature_buildings_curve, return_temperature_buildings_curve, dT_RL=5, netconfiguration=None, building_temp_checked=False, TRY_filename=None, COP_filename=None):
+    def __init__(self, net, yearly_time_steps, total_heat_W, calc1, calc2, supply_temperature, supply_temperature_heat_consumer, return_temperature_heat_consumer, supply_temperature_buildings, \
+                 return_temperature_buildings, supply_temperature_buildings_curve, return_temperature_buildings_curve, dT_RL=5, netconfiguration=None, building_temp_checked=False, \
+                    TRY_filename=None, COP_filename=None):
         
         super().__init__()
         self.net = net
@@ -97,7 +98,8 @@ class NetCalculationThread(QThread):
         self.calc1 = calc1
         self.calc2 = calc2
         self.supply_temperature = supply_temperature
-        self.return_temperature = return_temperature
+        self.supply_temperature_heat_consumer = supply_temperature_heat_consumer
+        self.return_temperature_heat_consumer = return_temperature_heat_consumer
         self.supply_temperature_buildings = supply_temperature_buildings
         self.return_temperature_buildings = return_temperature_buildings
         self.supply_temperature_buildings_curve = supply_temperature_buildings_curve
@@ -110,13 +112,15 @@ class NetCalculationThread(QThread):
     
     def run(self):
         try:
-            self.waerme_hast_ges_W, self.strom_hast_ges_W, self.return_temperature  = time_series_preprocessing(self.supply_temperature, self.return_temperature, self.supply_temperature_buildings, \
-                                                                                                                self.return_temperature_buildings, self.building_temp_checked, self.netconfiguration, \
-                                                                                                                self.total_heat_W, self.return_temperature_buildings_curve, self.dT_RL, 
-                                                                                                                self.supply_temperature_buildings_curve, self.COP_filename)
+            self.waerme_hast_ges_W, self.strom_hast_ges_W, self.supply_temperature_heat_consumer, self.return_temperature_heat_consumer  = time_series_preprocessing(self.supply_temperature, self.supply_temperature_heat_consumer, \
+                                                                                                                              self.return_temperature_heat_consumer, self.supply_temperature_buildings, \
+                                                                                                                                self.return_temperature_buildings, self.building_temp_checked, \
+                                                                                                                                self.netconfiguration, self.total_heat_W, \
+                                                                                                                                self.return_temperature_buildings_curve, self.dT_RL, \
+                                                                                                                                self.supply_temperature_buildings_curve, self.COP_filename)
 
             self.time_steps, self.net, self.net_results = thermohydraulic_time_series_net(self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.calc1, \
-                                                                                          self.calc2, self.supply_temperature, self.return_temperature)
+                                                                                          self.calc2, self.supply_temperature, self.supply_temperature_heat_consumer, self.return_temperature_heat_consumer)
 
             self.calculation_done.emit((self.time_steps, self.net, self.net_results, self.waerme_hast_ges_W, self.strom_hast_ges_W))
         except Exception as e:

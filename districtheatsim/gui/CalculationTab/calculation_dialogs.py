@@ -107,9 +107,11 @@ class NetGenerationDialog(QDialog):
         netConfigLayout = QVBoxLayout()
         netConfigLayout.addLayout(self.createNetconfigurationControlInput())
         netConfigLayout.addLayout(self.createTemperatureControlInput())
-        netConfigLayout.addLayout(self.createBuildingTemperatureCheckbox())
+        netConfigLayout.addLayout(self.createNetParameterInputs())
+        netConfigLayout.addLayout(self.createSupplyTemperatureCheckbox())
         netConfigLayout.addLayout(self.createReturnTemperatureCheckbox())
-        netConfigLayout.addLayout(self.createParameterInputs())
+        netConfigLayout.addLayout(self.createHeatConsumerParameterInputs())
+        netConfigLayout.addLayout(self.createBuildingTemperatureCheckbox())
         netConfigLayout.addLayout(self.createinitialpipetypeInput())
         netConfigGroup.setLayout(netConfigLayout)
         mainLayout1.addWidget(netConfigGroup)
@@ -245,7 +247,7 @@ class NetGenerationDialog(QDialog):
         layout = QVBoxLayout()
         layout.addWidget(QLabel("Netzkonfiguration:"))
         self.netconfigurationControlInput = QComboBox(self)
-        self.netconfigurationControlInput.addItems(["Niedertemperaturnetz", "wechselwarmes Netz", "kaltes Netz"])
+        self.netconfigurationControlInput.addItems(["Niedertemperaturnetz", "kaltes Netz"])#, "wechselwarmes Netz"])
         layout.addWidget(self.netconfigurationControlInput)
         self.netconfigurationControlInput.currentIndexChanged.connect(self.updateInputFieldsVisibility)
         return layout
@@ -259,75 +261,103 @@ class NetGenerationDialog(QDialog):
         self.temperatureControlInput.currentIndexChanged.connect(self.updateInputFieldsVisibility)
         return layout
     
-    def createBuildingTemperatureCheckbox(self):
+    def createSupplyTemperatureCheckbox(self):
         layout = QVBoxLayout()
-        self.buildingTempCheckbox = QCheckBox("Gebäudeheizungstemperaturen im zeitlichen Verlauf berücksichtigen.")
-        layout.addWidget(self.buildingTempCheckbox)
+        
+        layout.addWidget(QLabel("Temperaturregelung HAST:"))
+
+        self.supplyTempCheckbox = QCheckBox("Mindestvorlauftemperatur für die Gebäude berücksichtigen.")
+        self.supplyTempCheckbox.setToolTip("""Aktivieren Sie diese Option, um eine Mindestvorlauftemperatur für alle Gebäude festzulegen.\nDas können beispielsweise 60 °C sein um die Warmwasserbereitung zu gewährleisten.\nÜber die Temperaturdifferenz zwischen HAST und Netz ergibt sich dann eine Mindestvorlauftemperatur welche in der Simulation erreicht werden muss.\nWenn nicht definiert, wird keine Mindesttemperatur berücksichtigt.""")  # Tooltip hinzufügen
+        layout.addWidget(self.supplyTempCheckbox)
 
         # Verbinde das stateChanged Signal der Checkbox mit der update-Methode
-        self.buildingTempCheckbox.stateChanged.connect(self.updateInputFieldsVisibility)
+        self.supplyTempCheckbox.stateChanged.connect(self.updateInputFieldsVisibility)
         
         return layout
-    
+
     def createReturnTemperatureCheckbox(self):
         layout = QVBoxLayout()
+
         self.returnTempCheckbox = QCheckBox("Rücklauftemperatur für alle HA-Stationen festlegen.")
+        self.returnTempCheckbox.setToolTip("""Aktivieren Sie diese Option, um die Rücklauftemperatur für alle HA-Stationen zentral festzulegen.\nStandardmäßig erfolgt die Berechung der Rücklauftemperaturen der HA-Station aus den Rücklauftemperaturen der Gebäude sowie der vorgegebenen Temperaturdifferenz zwischen Netz und HAST.""")  # Tooltip hinzufügen
         layout.addWidget(self.returnTempCheckbox)
 
         # Verbinde das stateChanged Signal der Checkbox mit der update-Methode
         self.returnTempCheckbox.stateChanged.connect(self.updateInputFieldsVisibility)
         
         return layout
-
-    def createParameterInputs(self):
+    
+    def createBuildingTemperatureCheckbox(self):
         layout = QVBoxLayout()
-        layout.addWidget(QLabel("Parameter:"))
+        self.buildingTempCheckbox = QCheckBox("Gebäudeheizungstemperaturen im zeitlichen Verlauf berücksichtigen.")
+        self.buildingTempCheckbox.setToolTip("""Aktivieren Sie diese Option, um die Vor- und Rücklauftemperaturen in den Gebäuden mittels Temperaturregelung entsprechend der definierten Temperaturen und der Steigung in Abhängigkeit der Außentemperatur zu berechnen.\nIst eine Mindestvorlauftemperatur vorgegeben wird diese berücksichtigt.\nDie vorgabe einer zentralen Rücklauftemperatur ergibt nur bei einem kalten Netz Sinn.""")  # Tooltip hinzufügen
+        layout.addWidget(self.buildingTempCheckbox)
 
-        self.parameter_rows = []
+        # Verbinde das stateChanged Signal der Checkbox mit der update-Methode
+        self.buildingTempCheckbox.stateChanged.connect(self.updateInputFieldsVisibility)
+        
+        return layout
+
+    def createNetParameterInputs(self):
+        layout = QVBoxLayout()
+        self.parameter_rows_net = []
 
         # Parameterzeile für Vorlauftemperatur
-        self.supply_temp_row = self.createParameterRow("Vorlauftemperatur:", "85")
-        self.parameter_rows.append(self.supply_temp_row)
+        self.supply_temp_row = self.createParameterRow("Vorlauftemperatur Heizzentrale:", "85")
+        self.parameter_rows_net.append(self.supply_temp_row)
         layout.addLayout(self.supply_temp_row)
 
         # Parameterzeile für Maximale Vorlauftemperatur
-        self.max_supply_temp_row = self.createParameterRow("Maximale Vorlauftemperatur:", "85")
-        self.parameter_rows.append(self.max_supply_temp_row)
+        self.max_supply_temp_row = self.createParameterRow("Maximale Vorlauftemperatur Heizzentrale:", "85")
+        self.parameter_rows_net.append(self.max_supply_temp_row)
         layout.addLayout(self.max_supply_temp_row)
 
         # Parameterzeile für Minimale Vorlauftemperatur
-        self.min_supply_temp_row = self.createParameterRow("Minimale Vorlauftemperatur:", "70")
-        self.parameter_rows.append(self.min_supply_temp_row)
+        self.min_supply_temp_row = self.createParameterRow("Minimale Vorlauftemperatur Heizzentrale:", "70")
+        self.parameter_rows_net.append(self.min_supply_temp_row)
         layout.addLayout(self.min_supply_temp_row)
 
         # Parameterzeile für Obere Grenze der Lufttemperatur
         self.max_air_temp_row = self.createParameterRow("Obere Grenze der Lufttemperatur:", "15")
-        self.parameter_rows.append(self.max_air_temp_row)
+        self.parameter_rows_net.append(self.max_air_temp_row)
         layout.addLayout(self.max_air_temp_row)
 
         # Parameterzeile für Untere Grenze der Lufttemperatur
         self.min_air_temp_row = self.createParameterRow("Untere Grenze der Lufttemperatur:", "-10")
-        self.parameter_rows.append(self.min_air_temp_row)
+        self.parameter_rows_net.append(self.min_air_temp_row)
         layout.addLayout(self.min_air_temp_row)
 
-        # Parameterzeile für Rücklauftemperatur
-        self.return_temp_row = self.createParameterRow("Rücklauftemperatur:", "60")
-        self.parameter_rows.append(self.return_temp_row)
-        layout.addLayout(self.return_temp_row)
+        layout.addWidget(QLabel("Druckregelung Heizzentrale:"))
 
         # Parameterzeile für Vorlaufdruck
         self.flow_pressure_row = self.createParameterRow("Vorlaufdruck:", "4")
-        self.parameter_rows.append(self.flow_pressure_row)
+        self.parameter_rows_net.append(self.flow_pressure_row)
         layout.addLayout(self.flow_pressure_row)
 
         # Parameterzeile für Druckdifferenz Vorlauf/Rücklauf
         lift_pressure_row = self.createParameterRow("Druckdifferenz Vorlauf/Rücklauf:", "1.5")
-        self.parameter_rows.append(lift_pressure_row)
+        self.parameter_rows_net.append(lift_pressure_row)
         layout.addLayout(lift_pressure_row)
+
+        return layout
+    
+    def createHeatConsumerParameterInputs(self):
+        layout = QVBoxLayout()
+        self.parameter_rows_heat_consumer = []
+
+        # Parameterzeile für Rücklauftemperatur
+        self.supply_temperature_heat_consumer_row = self.createParameterRow("Minimale Vorlauftemperatur Gebäude:", "60")
+        self.parameter_rows_heat_consumer.append(self.supply_temperature_heat_consumer_row)
+        layout.addLayout(self.supply_temperature_heat_consumer_row)
+
+        # Parameterzeile für Rücklauftemperatur
+        self.return_temp_row = self.createParameterRow("Soll-Rücklauftemperatur HAST:", "50")
+        self.parameter_rows_heat_consumer.append(self.return_temp_row)
+        layout.addLayout(self.return_temp_row)
 
         # Parameterzeile für Temperaturdifferenz Netz/HAST
         dT_RL = self.createParameterRow("Temperaturdifferenz Netz/HAST:", "5")
-        self.parameter_rows.append(dT_RL)
+        self.parameter_rows_heat_consumer.append(dT_RL)
         layout.addLayout(dT_RL)
 
         return layout
@@ -431,7 +461,7 @@ class NetGenerationDialog(QDialog):
 
         self.netconfiguration = self.netconfigurationControlInput.currentText()
         is_low_temp_net = self.netconfigurationControlInput.currentText() == "Niedertemperaturnetz"
-        is_changing_temp_net = self.netconfigurationControlInput.currentText() == "wechselwarmes Netz"
+        #is_changing_temp_net = self.netconfigurationControlInput.currentText() == "wechselwarmes Netz"
         is_cold_temp_net = self.netconfigurationControlInput.currentText() == "kaltes Netz"
 
         if is_low_temp_net:
@@ -440,12 +470,7 @@ class NetGenerationDialog(QDialog):
             self.set_default_value(self.max_supply_temp_row, "85")
             self.set_default_value(self.min_supply_temp_row, "70")
             self.set_default_value(self.return_temp_row, "60")
-        elif is_changing_temp_net:
-            # Setze neue Standardwerte für das wechselwarme Netz
-            self.set_default_value(self.supply_temp_row, "45")
-            self.set_default_value(self.max_supply_temp_row, "45")
-            self.set_default_value(self.min_supply_temp_row, "30")
-            self.set_default_value(self.return_temp_row, "20")
+
         elif is_cold_temp_net:
             # Setze neue Standardwerte für das kalte Netz
             self.set_default_value(self.supply_temp_row, "10")
@@ -453,20 +478,26 @@ class NetGenerationDialog(QDialog):
             self.set_default_value(self.min_supply_temp_row, "5")
             self.set_default_value(self.return_temp_row, "3")
 
+        """elif is_changing_temp_net:
+            # Setze neue Standardwerte für das wechselwarme Netz
+            self.set_default_value(self.supply_temp_row, "45")
+            self.set_default_value(self.max_supply_temp_row, "45")
+            self.set_default_value(self.min_supply_temp_row, "30")
+            self.set_default_value(self.return_temp_row, "20")"""
 
         is_control_mode_static = self.temperatureControlInput.currentText() == "Statisch"
         is_control_mode_dynamic = self.temperatureControlInput.currentText() == "Gleitend"
 
         if is_control_mode_static:
             # Zeige die Widgets für Vorlauftemperatur (Index 0)
-            for i in range(self.parameter_rows[0].count()):
-                widget = self.parameter_rows[0].itemAt(i).widget()
+            for i in range(self.parameter_rows_net[0].count()):
+                widget = self.parameter_rows_net[0].itemAt(i).widget()
                 if widget:
                     widget.setVisible(True)
             
             # Blende die Widgets für Maximale Vorlauftemperatur, Minimale Vorlauftemperatur,
             # Obere Grenze der Lufttemperatur und Untere Grenze der Lufttemperatur (Index 1 bis 4) aus
-            for parameter_row in self.parameter_rows[1:5]:
+            for parameter_row in self.parameter_rows_net[1:5]:
                 for i in range(parameter_row.count()):
                     widget = parameter_row.itemAt(i).widget()
                     if widget:
@@ -474,14 +505,14 @@ class NetGenerationDialog(QDialog):
 
         elif is_control_mode_dynamic:
             # Blende die Widgets für Vorlauftemperatur (Index 0) aus
-            for i in range(self.parameter_rows[0].count()):
-                widget = self.parameter_rows[0].itemAt(i).widget()
+            for i in range(self.parameter_rows_net[0].count()):
+                widget = self.parameter_rows_net[0].itemAt(i).widget()
                 if widget:
                     widget.setVisible(False)
 
             # Zeige die Widgets für Maximale Vorlauftemperatur, Minimale Vorlauftemperatur,
             # Obere Grenze der Lufttemperatur und Untere Grenze der Lufttemperatur (Index 1 bis 4)
-            for parameter_row in self.parameter_rows[1:5]:
+            for parameter_row in self.parameter_rows_net[1:5]:
                 for i in range(parameter_row.count()):
                     widget = parameter_row.itemAt(i).widget()
                     if widget:
@@ -501,10 +532,13 @@ class NetGenerationDialog(QDialog):
 
         self.insulation_filterInput.currentIndexChanged.connect(self.updateInputFieldsVisibility)
 
-        self.building_temp_checked =  self.buildingTempCheckbox.isChecked()
+        self.supply_temperature_heat_consumer_checked = self.supplyTempCheckbox.isChecked()
+        self.set_layout_visibility(self.supply_temperature_heat_consumer_row, self.supply_temperature_heat_consumer_checked)
 
         self.return_temp_checked = self.returnTempCheckbox.isChecked()
         self.set_layout_visibility(self.return_temp_row, self.return_temp_checked)
+
+        self.building_temp_checked =  self.buildingTempCheckbox.isChecked()
 
     def selectFilename(self, line_edit):
         fname, _ = QFileDialog.getOpenFileName(self, 'Datei auswählen', '', 'All Files (*);;CSV Files (*.csv);;GeoJSON Files (*.geojson)')
@@ -532,14 +566,15 @@ class NetGenerationDialog(QDialog):
     def calculateTemperatureCurve(self):
         control_mode = self.temperatureControlInput.currentText()
         if control_mode == "Statisch":
-            return float(self.parameter_rows[0].itemAt(1).widget().text())
+            return float(self.parameter_rows_net[0].itemAt(1).widget().text())
         elif control_mode == "Gleitend":
-            max_supply_temperature = float(self.parameter_rows[1].itemAt(1).widget().text())
-            min_supply_temperature = float(self.parameter_rows[2].itemAt(1).widget().text())
-            max_air_temperature = float(self.parameter_rows[3].itemAt(1).widget().text())
-            min_air_temperature = float(self.parameter_rows[4].itemAt(1).widget().text())
+            max_supply_temperature = float(self.parameter_rows_net[1].itemAt(1).widget().text())
+            min_supply_temperature = float(self.parameter_rows_net[2].itemAt(1).widget().text())
+            max_air_temperature = float(self.parameter_rows_net[3].itemAt(1).widget().text())
+            min_air_temperature = float(self.parameter_rows_net[4].itemAt(1).widget().text())
 
             # Hardcoded, needs to be replaced
+            ### ahhhhhh
             air_temperature_data = import_TRY(get_resource_path("heat_requirement\TRY_511676144222\TRY2015_511676144222_Jahr.dat"))
 
             # Berechnung der Temperaturkurve basierend auf den ausgewählten Einstellungen
@@ -622,14 +657,6 @@ class NetGenerationDialog(QDialog):
 
         
     def generateNetwork(self):
-        if self.return_temp_checked == True:
-            rl_temp = float(self.parameter_rows[5].itemAt(1).widget().text())
-        else:
-            rl_temp = None
-        supply_temperature = self.calculateTemperatureCurve()
-        flow_pressure_pump = float(self.parameter_rows[6].itemAt(1).widget().text())
-        lift_pressure_pump = float(self.parameter_rows[7].itemAt(1).widget().text())
-        
         import_type = self.importTypeComboBox.currentText()
         if import_type == "GeoJSON":
             # Extrahiere GeoJSON-spezifische Daten
@@ -641,7 +668,6 @@ class NetGenerationDialog(QDialog):
             calc_method = self.calcMethodInput.currentText()
             building_type = self.buildingTypeInput.currentText() if self.calcMethodInput.currentText() != "Datensatz" else "HMF"
 
-            dT_RL = float(self.parameter_rows[8].itemAt(1).widget().text())
             v_max_heat_consumer  = float(self.v_max_heat_consumerInput.text())
             pipetype = self.initialpipetypeInput.currentText()
 
@@ -649,17 +675,35 @@ class NetGenerationDialog(QDialog):
             material_filter = self.material_filterInput.currentText()
             insulation_filter = self.insulation_filterInput.currentText()
 
-            # Führen Sie die Netzgenerierung für GeoJSON durch
-            if self.generate_callback:
-                self.generate_callback(vorlauf_path, ruecklauf_path, hast_path, erzeugeranlagen_path, calc_method, building_type, rl_temp, 
-                                       supply_temperature, flow_pressure_pump, lift_pressure_pump, self.netconfiguration, dT_RL, v_max_heat_consumer,
-                                       self.building_temp_checked, pipetype, v_max_pipe, material_filter, insulation_filter, self.DiameterOpt_ckecked, import_type)
-
         elif import_type == "Stanet":
             # Sammeln Sie den Dateipfad für Stanet und rufen Sie generate_callback auf
             stanet_csv = self.stanetInputs[0].itemAt(1).widget().text()
             # Hier können Sie Standardwerte oder vom Benutzer eingegebene Werte verwenden
-            self.generate_callback(stanet_csv, rl_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump, import_type)
+            self.generate_callback(stanet_csv, rl_temp_heat_consumer, supply_temperature_net, flow_pressure_pump, lift_pressure_pump, import_type)
+
+        supply_temperature_net = self.calculateTemperatureCurve()
+        flow_pressure_pump = float(self.parameter_rows_net[5].itemAt(1).widget().text())
+        lift_pressure_pump = float(self.parameter_rows_net[6].itemAt(1).widget().text())
+
+        print(self.supply_temperature_heat_consumer_checked)
+        if self.supply_temperature_heat_consumer_checked == True:
+            supply_temperature_heat_consumer = float(self.parameter_rows_heat_consumer[0].itemAt(1).widget().text())
+        else:
+            supply_temperature_heat_consumer = None  
+              
+        if self.return_temp_checked == True:
+            rl_temp_heat_consumer = float(self.parameter_rows_heat_consumer[1].itemAt(1).widget().text())
+        else:
+            rl_temp_heat_consumer = None
+
+        dT_RL = float(self.parameter_rows_heat_consumer[2].itemAt(1).widget().text())
+        
+        # Führen Sie die Netzgenerierung für GeoJSON durch
+        if self.generate_callback:
+            self.generate_callback(vorlauf_path, ruecklauf_path, hast_path, erzeugeranlagen_path, calc_method, building_type, rl_temp_heat_consumer, 
+                                   supply_temperature_heat_consumer, supply_temperature_net, flow_pressure_pump, lift_pressure_pump, self.netconfiguration, 
+                                   dT_RL, v_max_heat_consumer, self.building_temp_checked, pipetype, v_max_pipe, material_filter, insulation_filter, 
+                                   self.DiameterOpt_ckecked, import_type)
 
         self.accept()
 

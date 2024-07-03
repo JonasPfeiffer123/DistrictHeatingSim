@@ -69,8 +69,8 @@ def net_optimization(net, v_max_pipe, v_max_heat_exchanger, material_filter, ins
 
     return net
 
-def create_controllers(net, qext_w, return_temperature):
-    if len(qext_w) != len(return_temperature):
+def create_controllers(net, qext_w, return_temperature_heat_consumer, supply_temperature_heat_consumer):
+    if len(qext_w) != len(return_temperature_heat_consumer):
         raise ValueError("Die Längen von qext_w und return_temperature müssen gleich sein.")
 
     # Creates controllers for the network
@@ -83,7 +83,7 @@ def create_controllers(net, qext_w, return_temperature):
         ConstControl(net, element='heat_consumer', variable='qext_w', element_index=i, data_source=placeholder_data_source, profile_name=f'qext_w_{i}')
         
         # Adjustment for using return_temperature as an array
-        T_controller = ReturnTemperatureController(net, heat_consumer_idx=i, target_temperature=return_temperature[i])
+        T_controller = ReturnTemperatureController(net, heat_consumer_idx=i, target_return_temperature=return_temperature_heat_consumer[i], min_supply_temperature=supply_temperature_heat_consumer[i])
         net.controller.loc[len(net.controller)] = [T_controller, True, -1, -1, False, False]
 
     dp_min, idx_dp_min = calculate_worst_point(net)  # This function must be defined

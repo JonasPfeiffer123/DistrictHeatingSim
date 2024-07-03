@@ -204,10 +204,11 @@ class ReturnTemperatureController(BasicCtrl):
 """
 
 class ReturnTemperatureController(BasicCtrl):
-    def __init__(self, net, heat_consumer_idx, target_temperature, kp=0.9, ki=0.0, kd=0.0, tolerance=2, min_velocity=0.01, max_velocity=2, max_iterations=100, debug=False, **kwargs):
+    def __init__(self, net, heat_consumer_idx, target_return_temperature, min_supply_temperature=65, kp=0.95, ki=0.0, kd=0.0, tolerance=2, min_velocity=0.01, max_velocity=2, max_iterations=100, temperature_adjustment_step=1, debug=False, **kwargs):
         super(ReturnTemperatureController, self).__init__(net, **kwargs)
         self.heat_consumer_idx = heat_consumer_idx
-        self.target_temperature = target_temperature
+        self.target_return_temperature = target_return_temperature
+        self.min_supply_temperature = min_supply_temperature
         self.kp = kp
         self.ki = ki
         self.kd = kd
@@ -220,8 +221,8 @@ class ReturnTemperatureController(BasicCtrl):
         self.max_iterations = max_iterations
 
         self.iteration = 0  # Add iteration counter
-        self.previous_temperatures = {}
-        self.original_target_temperature = self.target_temperature
+        self.previous_temperatures = []  # Use a list to store previous temperatures
+        self.original_target_return_temperature = self.target_return_temperature
 
         self.data_source = None
         self.debug = debug
@@ -229,13 +230,14 @@ class ReturnTemperatureController(BasicCtrl):
         self.calculate_mass_flow_limits(net)
         self.at_min_mass_flow_limit = False
         self.at_max_mass_flow_limit = False
+        self.temperature_adjustment_step = temperature_adjustment_step  # Step to adjust the target return temperature
 
     def time_step(self, net, time_step):
         self.iteration = 0  # reset iteration counter
-        self.previous_temperatures = {}
+        self.previous_temperatures = []  # Reset to an empty list
         self.integral = 0
         self.last_error = None
-        self.target_temperature = self.original_target_temperature
+        self.target_return_temperature = self.original_target_return_temperature
 
         if self.at_min_mass_flow_limit:
             net.heat_consumer["controlled_mdot_kg_per_s"].at[self.heat_consumer_idx] = self.min_mass_flow * 1.05
@@ -244,7 +246,8 @@ class ReturnTemperatureController(BasicCtrl):
 
         # Check if a data source exists and get the target temperature for the current time step
         if self.data_source is not None:
-            self.target_temperature = self.data_source.df.at[time_step, 'return_temperature']
+            self.target_return_temperature = self.data_source.df.at[time_step, 'return_temperature']
+            self.min_supply_temperature = self.data_source.df.at[time_step, 'min_supply_temperature']
         
         return time_step
     
@@ -257,7 +260,7 @@ class ReturnTemperatureController(BasicCtrl):
 
     def calculate_error(self, net):
         current_T_out = net.res_heat_consumer["t_to_k"].at[self.heat_consumer_idx] - 273.15
-        error = self.target_temperature - current_T_out
+        error = self.target_return_temperature - current_T_out
         return error
 
     def update_integral(self, error):
@@ -271,32 +274,52 @@ class ReturnTemperatureController(BasicCtrl):
         self.last_error = error
         return derivative
 
+    def get_weighted_average_temperature(self):
+        if len(self.previous_temperatures) == 0:
+            return None
+        weights = np.arange(1, len(self.previous_temperatures) + 1)
+        weighted_avg = np.dot(self.previous_temperatures, weights) / weights.sum()
+        return weighted_avg
+
     def control_step(self, net):
-        # Incrementation iteration counter
+        # Increment iteration counter
         self.iteration += 1
 
         qext_w = net.heat_consumer["qext_w"].at[self.heat_consumer_idx]
         # not converging under that value
-        if qext_w <= 500:
+        if qext_w <= 500:  # Increase this threshold to avoid issues with very low heat demand
             net.heat_consumer["controlled_mdot_kg_per_s"].at[self.heat_consumer_idx] = self.min_mass_flow
             return super(ReturnTemperatureController, self).control_step(net)
 
         # Calculate new mass flow
         current_T_out = net.res_heat_consumer["t_to_k"].at[self.heat_consumer_idx] - 273.15
         current_T_in = net.res_heat_consumer["t_from_k"].at[self.heat_consumer_idx] - 273.15
+
+        weighted_avg_T_in = self.get_weighted_average_temperature()
+        if weighted_avg_T_in is not None:
+            current_T_in = weighted_avg_T_in
+
         current_mass_flow = net.heat_consumer["controlled_mdot_kg_per_s"].at[self.heat_consumer_idx]
-        #calculated_cp = qext_w / (current_mass_flow * (current_T_in-current_T_out))
+
+        # Ensure the supply temperature does not fall below the minimum supply temperature
+        if current_T_in < self.min_supply_temperature:
+            error = self.min_supply_temperature - current_T_in
+            pid_output = (self.kp * error) + (self.ki * self.integral) + (self.kd * self.calculate_derivative(error))
+            new_mass_flow = current_mass_flow + pid_output * self.cp * (self.min_supply_temperature - current_T_out)
+            new_mass_flow = np.clip(new_mass_flow, self.min_mass_flow, self.max_mass_flow)
+            
+            net.heat_consumer["controlled_mdot_kg_per_s"].at[self.heat_consumer_idx] = new_mass_flow
+            
+            if self.debug:
+                print(f"Minimum supply temperature not met. Adjusted mass flow to {new_mass_flow} kg/s.")
+            return super(ReturnTemperatureController, self).control_step(net)
 
         if self.debug:
-            print(f"heat_consumer_idx: {self.heat_consumer_idx}, Iteration: {self.iteration}, qext_w: {qext_w}, current_T_in: {current_T_in},  target_T_out: {self.target_temperature}, current_T_out: {current_T_out}, current_mass_flow: {current_mass_flow}")
+            print(f"heat_consumer_idx: {self.heat_consumer_idx}, Iteration: {self.iteration}, qext_w: {qext_w}, current_T_in: {current_T_in},  target_T_out: {self.target_return_temperature}, current_T_out: {current_T_out}, current_mass_flow: {current_mass_flow}")
         
         # Ensure not to divide by zero
-        if current_T_in == self.target_temperature:
-            self.target_temperature += 0.1  # Adjust target slightly to avoid division by zero
-
-        # necessary
-        if current_T_in < self.target_temperature + 15:
-            self.target_temperature = current_T_in - 15
+        if current_T_in == self.target_return_temperature:
+            self.target_return_temperature += 0.1  # Adjust target slightly to avoid division by zero
 
         error = self.calculate_error(net)
         self.update_integral(error)
@@ -311,8 +334,7 @@ class ReturnTemperatureController(BasicCtrl):
         if delta_T == 0:
             delta_T = 0.1  # Adjust slightly to avoid division by zero
 
-        # adjusted_delta_T = current_T_in - current_T_out + pid_output # pid = target-out 
-        adjusted_delta_T = current_T_in - (current_T_out + pid_output) # pid = target-out 
+        adjusted_delta_T = current_T_in - (current_T_out + pid_output)  # pid = target-out 
         if adjusted_delta_T == 0:
             adjusted_delta_T = 0.1  # Adjust slightly to avoid division by zero
         
@@ -331,6 +353,10 @@ class ReturnTemperatureController(BasicCtrl):
             if new_mass_flow >= self.max_mass_flow:
                 print(f"heat_consumer_idx: {self.heat_consumer_idx}, Max mass flow of {self.max_mass_flow} reached with new mass flow of {new_mass_flow}")
 
+                # Adjust target return temperature if max mass flow limit is reached
+                self.target_return_temperature -= self.temperature_adjustment_step
+                print(f"Adjusted target return temperature to {self.target_return_temperature} °C due to max mass flow limit.")
+
         # Apply physical limits
         new_mass_flow = np.clip(new_mass_flow, self.min_mass_flow, self.max_mass_flow)  # Clipped to avoid too low or too high mass flow
 
@@ -344,23 +370,25 @@ class ReturnTemperatureController(BasicCtrl):
     def is_converged(self, net):
         qext_w = net.heat_consumer["qext_w"].at[self.heat_consumer_idx]
         # not converging under that value
-        if qext_w <= 500:
+        if qext_w <= 500:  # Increase this threshold to avoid issues with very low heat demand
             return True
         
         # Check whether the temperatures have changed within the specified tolerance
-        current_T_in = net.res_heat_consumer["t_from_k"].at[self.heat_consumer_idx]
-        previous_T_in = self.previous_temperatures.get(self.heat_consumer_idx)
+        current_T_in = net.res_heat_consumer["t_from_k"].at[self.heat_consumer_idx] - 273.15
+        previous_T_in = self.previous_temperatures[-1] if self.previous_temperatures else None
 
         # Testing for convergence
         temperature_change = abs(current_T_in - previous_T_in) if previous_T_in is not None else float('inf')
         converged_T_in = temperature_change < self.tolerance
 
         current_T_out = net.res_heat_consumer["t_to_k"].at[self.heat_consumer_idx] - 273.15
-        temperature_diff = abs(current_T_out - self.target_temperature)
+        temperature_diff = abs(current_T_out - self.target_return_temperature)
         converged_T_out = temperature_diff < self.tolerance
 
-        # Update temperature for next run
-        self.previous_temperatures[self.heat_consumer_idx] = current_T_in
+        # Update the list of previous temperatures
+        self.previous_temperatures.append(current_T_in)
+        if len(self.previous_temperatures) > 2:  # Keep the last two temperatures
+            self.previous_temperatures.pop(0)
 
         current_mass_flow = net.heat_consumer["controlled_mdot_kg_per_s"].at[self.heat_consumer_idx]
 
@@ -370,23 +398,34 @@ class ReturnTemperatureController(BasicCtrl):
 
         if self.at_min_mass_flow_limit and self.iteration > 10:
             if self.debug:
-                print(f"Min mass flow limit reached for heat_consumer_idx: {self.heat_consumer_idx}, current_temperature: {current_T_in-273.15}, target_T_out: {self.target_temperature}, to_temperature: {current_T_out}, current_mass_flow: {current_mass_flow}")
+                print(f"Min mass flow limit reached for heat_consumer_idx: {self.heat_consumer_idx}, current_temperature: {current_T_in}, target_T_out: {self.target_return_temperature}, to_temperature: {current_T_out}, current_mass_flow: {current_mass_flow}")
             return True
         
         if self.at_max_mass_flow_limit and self.iteration > 10:
             if self.debug:
-                print(f"Max mass flow limit reached for heat_consumer_idx: {self.heat_consumer_idx}, current_temperature: {current_T_in-273.15}, target_T_out: {self.target_temperature}, to_temperature: {current_T_out}, current_mass_flow: {current_mass_flow}")
+                print(f"Max mass flow limit reached for heat_consumer_idx: {self.heat_consumer_idx}, current_temperature: {current_T_in}, target_T_out: {self.target_return_temperature}, to_temperature: {current_T_out}, current_mass_flow: {current_mass_flow}")
+
+                # Adjust target return temperature if max mass flow limit is reached
+                self.target_return_temperature -= self.temperature_adjustment_step
+                print(f"Adjusted target return temperature to {self.target_return_temperature} °C due to max mass flow limit.")
+                
             return True
+        
+        # Convergence based on the minimum supply temperature
+        if current_T_in < self.min_supply_temperature:
+            if self.debug:
+                print(f"Supply temperature not met for heat_consumer_idx: {self.heat_consumer_idx}.")
+            return False
         
         if converged_T_in and converged_T_out:
             if self.debug:
-                print(f'Regler konvergiert: heat_consumer_idx: {self.heat_consumer_idx}, current_temperature: {current_T_in-273.15}, target_T_out: {self.target_temperature}, to_temperature: {current_T_out}, current_mass_flow: {current_mass_flow}')
+                print(f'Regler konvergiert: heat_consumer_idx: {self.heat_consumer_idx}, current_temperature: {current_T_in}, target_T_out: {self.target_return_temperature}, to_temperature: {current_T_out}, current_mass_flow: {current_mass_flow}')
             return True
 
         # Check if the maximum number of iterations has been reached
         if self.iteration >= self.max_iterations:
             if self.debug:
                 print(f"Max iterations reached for heat_consumer_idx: {self.heat_consumer_idx}")
-            #return True
+            return True
 
         return False

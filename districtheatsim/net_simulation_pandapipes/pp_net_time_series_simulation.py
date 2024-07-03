@@ -17,12 +17,15 @@ def update_const_controls(net, qext_w_profiles, time_steps, start, end):
             if isinstance(ctrl, ConstControl) and ctrl.element_index == i and ctrl.variable == 'qext_w':
                 ctrl.data_source = data_source
 
-def update_return_temperature_controller(net, return_temperature, time_steps, start, end):
+def update_return_temperature_controller(net, supply_temperature_heat_consumer, return_temperature_heat_consumer, time_steps, start, end):
     controller_count = 0
     for ctrl in net.controller.object.values:
-        if isinstance(ctrl, ReturnTemperatureController) :
+        if isinstance(ctrl, ReturnTemperatureController):
             # Create the DataFrame for the return temperature
-            df_return_temp = pd.DataFrame(index=time_steps, data={'return_temperature': return_temperature[controller_count][start:end]})
+            df_return_temp = pd.DataFrame(index=time_steps, data={
+                'return_temperature': return_temperature_heat_consumer[controller_count][start:end],
+                'min_supply_temperature': supply_temperature_heat_consumer[controller_count][start:end]
+            })
             data_source_return_temp = DFData(df_return_temp)
 
             ctrl.data_source = data_source_return_temp
@@ -67,11 +70,13 @@ def create_log_variables(net):
 
     return log_variables
 
-def time_series_preprocessing(supply_temperature, return_temperature, supply_temperature_buildings, return_temperature_buildings, \
-                              building_temp_checked, netconfiguration, total_heat_W, return_temperature_buildings_curve, dT_RL, \
-                              supply_temperature_buildings_curve, COP_filename):
+def time_series_preprocessing(supply_temperature, supply_temperature_heat_consumer, return_temperature_heat_consumer, \
+                              supply_temperature_buildings, return_temperature_buildings, building_temp_checked, \
+                                netconfiguration, total_heat_W, return_temperature_buildings_curve, dT_RL, 
+                                supply_temperature_buildings_curve, COP_filename):
     print(f"Vorlauftemperatur Netz: {supply_temperature} °C")
-    print(f"Rücklauftemperatur HAST: {return_temperature} °C")
+    print(f"Mindestvorlauftemperatur HAST: {supply_temperature_heat_consumer} °C")
+    print(f"Rücklauftemperatur HAST: {return_temperature_heat_consumer} °C")
     print(f"Vorlauftemperatur Gebäude: {supply_temperature_buildings} °C")
     print(f"Rücklauftemperatur Gebäude: {return_temperature_buildings} °C")
 
@@ -87,7 +92,8 @@ def time_series_preprocessing(supply_temperature, return_temperature, supply_tem
 
     # Building temperatures are not time-varying, so return_temperature from initialization is used, a COP calculation is made with non-time-varying building temperatures
     elif building_temp_checked == False and netconfiguration == "kaltes Netz":
-        COP, _ = COP_WP(supply_temperature_buildings, return_temperature, COP_file_values)
+        supply_temperature_heat_consumer = return_temperature_heat_consumer + dT_RL
+        COP, _ = COP_WP(supply_temperature_buildings, return_temperature_heat_consumer, COP_file_values)
         print(f"COP dezentrale Wärmepumpen Gebäude: {COP}")
 
         for waerme_gebaeude, cop in zip(total_heat_W, COP):
@@ -102,13 +108,15 @@ def time_series_preprocessing(supply_temperature, return_temperature, supply_tem
     
     # Building temperatures are time-varying, so return_temperature is determined from the building temperatures, there is no COP calculation
     if building_temp_checked == True and netconfiguration != "kaltes Netz":
-        return_temperature = return_temperature_buildings_curve + dT_RL
+        supply_temperature_heat_consumer = supply_temperature_buildings_curve + dT_RL
+        return_temperature_heat_consumer = return_temperature_buildings_curve + dT_RL
         waerme_hast_ges_W = total_heat_W
         strom_hast_ges_W = np.zeros_like(waerme_hast_ges_W)
 
     # Building temperatures are time-varying, so return_temperature is determined from the building temperatures, a COP calculation is made with time-varying building temperatures
     elif building_temp_checked == True and netconfiguration == "kaltes Netz":
-        for st, rt, waerme_gebaeude in zip(supply_temperature_buildings_curve, return_temperature, total_heat_W):
+        supply_temperature_heat_consumer = return_temperature_heat_consumer + dT_RL
+        for st, rt, waerme_gebaeude in zip(supply_temperature_buildings_curve, return_temperature_heat_consumer, total_heat_W):
             cop, _ = COP_WP(st, rt, COP_file_values)
 
             strom_wp = waerme_gebaeude/cop
@@ -120,11 +128,11 @@ def time_series_preprocessing(supply_temperature, return_temperature, supply_tem
         waerme_hast_ges_W = np.array(waerme_hast_ges_W)
         strom_hast_ges_W = np.array(strom_hast_ges_W)
 
-        print(f"Rücklauftemperatur HAST: {return_temperature} °C")
+        print(f"Rücklauftemperatur HAST: {return_temperature_heat_consumer} °C")
 
-    return waerme_hast_ges_W, strom_hast_ges_W, return_temperature 
+    return waerme_hast_ges_W, strom_hast_ges_W, supply_temperature_heat_consumer, return_temperature_heat_consumer 
     
-def thermohydraulic_time_series_net(net, yearly_time_steps, qext_w_profiles, start, end, supply_temperature=None, return_temperature=60):
+def thermohydraulic_time_series_net(net, yearly_time_steps, qext_w_profiles, start, end, supply_temperature=85, supply_temperature_heat_consumer=75, return_temperature_heat_consumer=60):
     # Prepare time series calculation
     yearly_time_steps = yearly_time_steps[start:end]
 
@@ -133,8 +141,9 @@ def thermohydraulic_time_series_net(net, yearly_time_steps, qext_w_profiles, sta
     update_const_controls(net, qext_w_profiles, time_steps, start, end)
 
     # If return_temperature data exists, update corresponding ReturnTemperatureController
-    if return_temperature is not None and isinstance(return_temperature, np.ndarray) and return_temperature.ndim == 2:
-        update_return_temperature_controller(net, return_temperature, time_steps, start, end)
+    if return_temperature_heat_consumer is not None and isinstance(return_temperature_heat_consumer, np.ndarray) and return_temperature_heat_consumer.ndim == 2 and \
+       supply_temperature_heat_consumer is not None and isinstance(supply_temperature_heat_consumer, np.ndarray) and supply_temperature_heat_consumer.ndim == 2:
+        update_return_temperature_controller(net, supply_temperature_heat_consumer, return_temperature_heat_consumer, time_steps, start, end)
 
     # If supply_temperature data exists, update corresponding ReturnTemperatureController
     if supply_temperature is not None and isinstance(supply_temperature, np.ndarray):

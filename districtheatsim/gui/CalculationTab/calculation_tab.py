@@ -207,12 +207,12 @@ class CalculationTab(QWidget):
             self.output_filename = netCalcInputs["results_filename"]
             self.simulate_net()
       
-    def create_and_initialize_net_geojson(self, vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temp, supply_temperature, \
+    def create_and_initialize_net_geojson(self, vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, supply_temperature_heat_consumer, return_temperature_heat_consumer, supply_temperature, \
                                           flow_pressure_pump, lift_pressure_pump, netconfiguration, dT_RL, v_max_heat_consumer, building_temp_checked, \
                                           pipetype, v_max_pipe, material_filter, insulation_filter, DiameterOpt_ckecked):
-        self.return_temperature = return_temp
+        self.supply_temperature_heat_consumer = supply_temperature_heat_consumer
+        self.return_temperature_heat_consumer = return_temperature_heat_consumer
         self.supply_temperature = supply_temperature
-        supply_temperature = np.max(supply_temperature)
         self.netconfiguration = netconfiguration
         self.dT_RL = dT_RL
         self.v_max_heat_consumer = v_max_heat_consumer
@@ -220,14 +220,14 @@ class CalculationTab(QWidget):
         self.DiameterOpt_ckecked = DiameterOpt_ckecked
         self.TRY_filename = self.parent.try_filename
         self.COP_filename = self.parent.cop_filename
-        args = (vorlauf, ruecklauf, hast, erzeugeranlagen, self.TRY_filename, self.COP_filename, calc_method, building_type, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump, \
+        args = (vorlauf, ruecklauf, hast, erzeugeranlagen, self.TRY_filename, self.COP_filename, calc_method, building_type, return_temperature_heat_consumer, supply_temperature_heat_consumer, supply_temperature, flow_pressure_pump, lift_pressure_pump, \
                 netconfiguration, pipetype, v_max_pipe, material_filter, insulation_filter, self.base_path, self.dT_RL, self.v_max_heat_consumer, self.DiameterOpt_ckecked)
         kwargs = {"import_type": "GeoJSON"}
         self.initializationThread = NetInitializationThread(*args, **kwargs)
         self.common_thread_initialization()
 
     def create_and_initialize_net_stanet(self, stanet_csv, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump):
-        self.return_temperature = return_temp
+        self.return_temperature_heat_consumer = return_temp
         self.supply_temperature = supply_temperature
         supply_temperature = np.max(supply_temperature)
         args = (stanet_csv, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump)
@@ -245,10 +245,10 @@ class CalculationTab(QWidget):
         self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
 
         # Datenhaltung optimieren
-        self.net, self.yearly_time_steps, self.waerme_ges_W, self.return_temperature, self.supply_temperature_buildings, self.return_temperature_buildings, \
+        self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature_heat_consumer, self.return_temperature_heat_consumer, self.supply_temperature_buildings, self.return_temperature_buildings, \
             self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.strombedarf_hast_ges_W, self.max_el_leistung_hast_ges_W = results
         
-        self.net_data = self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature, self.return_temperature, self.supply_temperature_buildings, self.return_temperature_buildings, \
+        self.net_data = self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature_heat_consumer, self.supply_temperature, self.return_temperature_heat_consumer, self.supply_temperature_buildings, self.return_temperature_buildings, \
             self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.netconfiguration, self.dT_RL, self.building_temp_checked, self.strombedarf_hast_ges_W, \
             self.max_el_leistung_hast_ges_W, self.TRY_filename, self.COP_filename
 
@@ -293,13 +293,13 @@ class CalculationTab(QWidget):
             QMessageBox.warning(self, "Keine Netzdaten", "Bitte generieren Sie zuerst ein Netz.")
             return
         
-        self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature, self.return_temperature, self.supply_temperature_buildings, self.return_temperature_buildings, \
-            self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.netconfiguration, self.dT_RL, self.building_temp_checked, self.strombedarf_hast_ges_W, \
-                self.max_el_leistung_hast_ges_W, self.TRY_filename, self.COP_filename = self.net_data
+        self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature_heat_consumer, self.supply_temperature, self.return_temperature_heat_consumer, self.supply_temperature_buildings, \
+            self.return_temperature_buildings, self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.netconfiguration, self.dT_RL, self.building_temp_checked, \
+                self.strombedarf_hast_ges_W, self.max_el_leistung_hast_ges_W, self.TRY_filename, self.COP_filename = self.net_data
 
         try:
-            self.calculationThread = NetCalculationThread(self.net, self.yearly_time_steps, self.waerme_ges_W, self.calc1, self.calc2, self.supply_temperature, self.return_temperature, \
-                                                          self.supply_temperature_buildings, self.return_temperature_buildings, self.supply_temperature_buildings_curve, \
+            self.calculationThread = NetCalculationThread(self.net, self.yearly_time_steps, self.waerme_ges_W, self.calc1, self.calc2, self.supply_temperature, self.supply_temperature_heat_consumer, \
+                                                          self.return_temperature_heat_consumer, self.supply_temperature_buildings, self.return_temperature_buildings, self.supply_temperature_buildings_curve, \
                                                             self.return_temperature_buildings_curve, self.dT_RL, self.netconfiguration, self.building_temp_checked, self.TRY_filename, self.COP_filename)
             self.calculationThread.calculation_done.connect(self.on_simulation_done)
             self.calculationThread.calculation_error.connect(self.on_simulation_error)
@@ -413,7 +413,7 @@ class CalculationTab(QWidget):
         
         if self.net_data:  # Überprüfe, ob das Netzwerk vorhanden ist
             try:
-                self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature, self.return_temperature, self.supply_temperature_buildings, self.return_temperature_buildings, \
+                self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature_heat_consumer, self.supply_temperature, self.return_temperature_heat_consumer, self.supply_temperature_buildings, self.return_temperature_buildings, \
                 self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.netconfiguration, self.dT_RL, self.building_temp_checked, self.strombedarf_hast_ges_W, \
                     self.max_el_leistung_hast_ges_W, self.TRY_filename, self.COP_filename = self.net_data
 
@@ -438,7 +438,8 @@ class CalculationTab(QWidget):
                 # Vorbereiten der zusätzlichen Daten für JSON
                 additional_data = {
                     'supply_temperature': self.supply_temperature.tolist(),
-                    'return_temperature': self.return_temperature.tolist(),
+                    'supply_temperature_heat_consumers': self.supply_temperature_heat_consumer,
+                    'return_temperature': self.return_temperature_heat_consumer.tolist(),
                     'supply_temperature_buildings': self.supply_temperature_buildings.tolist(),
                     'return_temperature_buildings': self.return_temperature_buildings.tolist(),
                     'supply_temperature_buildings_curve': self.supply_temperature_buildings_curve.tolist(),
@@ -498,7 +499,8 @@ class CalculationTab(QWidget):
                 
             # Rekonstruktion der zusätzlichen Daten
             self.supply_temperature = np.array(additional_data['supply_temperature'])
-            self.return_temperature = np.array(additional_data['return_temperature'])
+            self.supply_temperature_heat_consumer = float(additional_data['supply_temperature_heat_consumers'])
+            self.return_temperature_heat_consumer = np.array(additional_data['return_temperature'])
             self.supply_temperature_buildings = np.array(additional_data['supply_temperature_buildings'])
             self.return_temperature_buildings = np.array(additional_data['return_temperature_buildings'])
             self.supply_temperature_buildings_curve = np.array(additional_data['supply_temperature_buildings_curve'])
@@ -511,7 +513,7 @@ class CalculationTab(QWidget):
             self.COP_filename =  additional_data['COP_filename']
             
             # Aktualisierung der net_data Eigenschaft mit den geladenen Daten
-            self.net_data = self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature, self.return_temperature, self.supply_temperature_buildings, self.return_temperature_buildings, \
+            self.net_data = self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature_heat_consumer, self.supply_temperature, self.return_temperature_heat_consumer, self.supply_temperature_buildings, self.return_temperature_buildings, \
                             self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.netconfiguration, self.dT_RL, self.building_temp_checked, self.strombedarf_hast_ges_W, \
                             self.max_el_leistung_hast_ges_W, self.TRY_filename, self.COP_filename
             
