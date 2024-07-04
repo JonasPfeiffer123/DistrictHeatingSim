@@ -15,7 +15,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
 from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction, QActionGroup
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction, QActionGroup, QPlainTextEdit
 
 from net_simulation_pandapipes.pp_net_time_series_simulation import calculate_results, save_results_csv, import_results_csv
 
@@ -61,8 +61,20 @@ class CalculationTab(QWidget):
         self.setupPlotLayout()
 
         # Hauptlayout für das Tab
-        self.main_layout = QVBoxLayout(self)
+        self.main_layout = QHBoxLayout(self)
         self.main_layout.addWidget(scroll_area)
+
+        # Vertikales Layout für Berechnungsergebnisse
+        self.results_layout = QVBoxLayout()
+        self.results_display = QPlainTextEdit()
+        self.results_display.setReadOnly(True)
+        self.results_display.setFixedWidth(400)  # Setze eine feste Breite für das Ergebnisfeld
+        self.results_layout.addWidget(self.results_display)
+
+
+        # Füge das vertikale Layout zum Hauptlayout hinzu
+        self.main_layout.addLayout(self.results_layout)
+
         self.setLayout(self.main_layout)
 
         self.progressBar = QProgressBar(self)
@@ -94,7 +106,7 @@ class CalculationTab(QWidget):
         calculateNetAction = QAction('Zeitreihenberechnung', self)
         calcMenu.addAction(calculateNetAction)
 
-       # Kartenaktionen erstellen
+        # Kartenaktionen erstellen
         OSMAction = QAction('OpenStreetMap laden', self)
         SatelliteMapAction = QAction('Satellitenbild Laden', self)
         TopologyMapAction = QAction('Topologiekarte laden', self)
@@ -283,21 +295,69 @@ class CalculationTab(QWidget):
         self.waerme_ges_kW = np.where(self.waerme_ges_W == 0, 0, self.waerme_ges_W / 1000)
         self.strombedarf_hast_ges_kW = np.where(self.strombedarf_hast_ges_W == 0, 0, self.strombedarf_hast_ges_W / 1000)
         self.max_el_leistung_hast_ges_W = self.max_el_leistung_hast_ges_W
+
+        self.waerme_ges_kW = np.sum(self.waerme_ges_kW, axis=0)
+        self.strombedarf_hast_ges_kW = np.sum(self.strombedarf_hast_ges_kW, axis=0)
+
         self.plot(self.yearly_time_steps, self.waerme_ges_kW, self.strombedarf_hast_ges_kW)
+        self.display_results()
+
+    def display_results(self):
+        Anzahl_Gebäude = len(self.net.heat_consumer)
+        
+        # Überprüfen, ob 'circ_pump_mass' im Netz vorhanden ist
+        if hasattr(self.net, 'circ_pump_mass'):
+            Anzahal_Heizzentralen = len(self.net.circ_pump_pressure) + len(self.net.circ_pump_mass)
+        else:
+            Anzahal_Heizzentralen = len(self.net.circ_pump_pressure)
+
+        # Beispielberechnungen
+        Gesamtwärmebedarf_Gebäude_MWh = np.sum(self.waerme_ges_kW) / 1000
+        Gesamtheizlast_Gebäude_kW = np.max(self.waerme_ges_kW)
+        
+        # Berechnung der Trassenlänge aus dem pandapipes-Netz
+        Trassenlänge_m = self.net.pipe.length_km.sum() * 1000 / 2 # Länge in Metern Trassenlänge ist nur halb so groß wie die von Vor- und Rücklauf zusammen
+        
+        Wärmebedarfsdichte_MWh_a_m = Gesamtwärmebedarf_Gebäude_MWh / Trassenlänge_m
+        Anschlussdichte_kW_m = Gesamtheizlast_Gebäude_kW / Trassenlänge_m
+
+        Jahreswärmeerzeugung_MWh = 0
+        for pump_type, pumps in self.pump_results.items():
+            for idx, pump_data in pumps.items():
+                Jahreswärmeerzeugung_MWh += np.sum(pump_data['qext_kW']) / 1000
+
+        Verteilverluste_kW = Jahreswärmeerzeugung_MWh - Gesamtwärmebedarf_Gebäude_MWh
+        rel_Verteilverluste_percent = (Verteilverluste_kW / Jahreswärmeerzeugung_MWh) * 100
+
+        #strombedarf_pumpen_kW = 
+
+        # Formatierter Text
+        self.result_text = (
+            f"Anzahl angeschlossene Gebäude: {Anzahl_Gebäude}\n"
+            f"Anzahl Heizzentralen: {Anzahal_Heizzentralen}\n\n"
+            f"Jahresgesamtwärmebedarf Gebäude: {Gesamtwärmebedarf_Gebäude_MWh:.2f} MWh/a\n"
+            f"max. Heizlast Gebäude: {Gesamtheizlast_Gebäude_kW:.2f} kW\n"
+            f"Trassenlänge Wärmenetz: {Trassenlänge_m:.2f} m\n\n"
+            f"Wärmebedarfsdichte: {Wärmebedarfsdichte_MWh_a_m:.2f} MWh/(a*m)\n"
+            f"Anschlussdichte: {Anschlussdichte_kW_m:.2f} kW/m\n\n"
+            f"Jahreswärmeerzeugung: {Jahreswärmeerzeugung_MWh:.2f} MWh\n"
+            f"Verteilverluste: {Verteilverluste_kW:.2f} MWh\n"
+            f"rel. Verteilverluste: {rel_Verteilverluste_percent:.2f} %\n"
+        )
+        
+        self.results_display.setPlainText(self.result_text)  # Setze den Text in das Ergebnisfeld
 
     def plot(self, time_steps, qext_kW, strom_kW):
         # Clear previous figure
         self.figure4.clear()
         ax1 = self.figure4.add_subplot(111)
 
-        qext_gesamt_kW = np.sum(qext_kW, axis=0)
-        strom_gesamt_kW = np.sum(strom_kW, axis=0)
-        if np.sum(strom_gesamt_kW) == 0:
-            ax1.plot(time_steps, qext_gesamt_kW, 'b-', label=f"Gesamtheizlast Gebäude in kW")
+        if np.sum(strom_kW) == 0:
+            ax1.plot(time_steps, qext_kW, 'b-', label=f"Gesamtheizlast Gebäude in kW")
 
-        if np.sum(strom_gesamt_kW) > 0:
-            ax1.plot(time_steps, qext_gesamt_kW+strom_gesamt_kW, 'b-', label=f"Gesamtheizlast Gebäude in kW")
-            ax1.plot(time_steps, strom_gesamt_kW, 'g-', label=f"Gesamtstrombedarf Wärmepumpen Gebäude in kW")
+        if np.sum(strom_kW) > 0:
+            ax1.plot(time_steps, qext_kW+strom_kW, 'b-', label=f"Gesamtheizlast Gebäude in kW")
+            ax1.plot(time_steps, strom_kW, 'g-', label=f"Gesamtstrombedarf Wärmepumpen Gebäude in kW")
 
         ax1.set_xlabel("Zeit")
         ax1.set_ylabel("Leistung in kW", color='b')
@@ -368,7 +428,7 @@ class CalculationTab(QWidget):
         self.plot_data =  self.time_steps, self.waerme_ges_kW, self.strom_wp_kW, self.pump_results
         self.plot_data_func(self.plot_data)
         self.plot2()
-
+        self.display_results()
         save_results_csv(self.time_steps, self.waerme_ges_kW, self.strom_wp_kW, self.pump_results, self.output_filename)
 
     def plot_data_func(self, plot_data):
@@ -564,8 +624,13 @@ class CalculationTab(QWidget):
             # Weiterverarbeitung oder Anzeigen der geladenen Daten
             self.waerme_ges_kW = np.where(self.waerme_ges_W == 0, 0, self.waerme_ges_W / 1000)
             self.strombedarf_hast_ges_kW = np.where(self.strombedarf_hast_ges_W == 0, 0, self.strombedarf_hast_ges_W / 1000)
-            self.plot(self.yearly_time_steps, self.waerme_ges_kW, self.strombedarf_hast_ges_kW)
             
+            self.waerme_ges_kW = np.sum(self.waerme_ges_kW, axis=0)
+            self.strombedarf_hast_ges_kW = np.sum(self.strombedarf_hast_ges_kW, axis=0)
+
+            self.plot(self.yearly_time_steps, self.waerme_ges_kW, self.strombedarf_hast_ges_kW)
+            self.display_results()
+
             QMessageBox.information(self, "Laden erfolgreich", "Daten erfolgreich geladen aus: {}, {} und {}.".format(csv_file_path, pickle_file_path, json_file_path))
         except Exception as e:
             QMessageBox.critical(self, "Laden fehlgeschlagen", "Fehler beim Laden der Daten: {}".format(e))
@@ -577,6 +642,7 @@ class CalculationTab(QWidget):
         self.time_steps, self.waerme_ges_kW, self.strom_wp_kW, self.pump_results = plot_data
         self.plot_data_func(plot_data)
         self.plot2()
+        self.display_results()
     
     def exportNetGeoJSON(self):
         geoJSON_filepath = f"{self.base_path}\Wärmenetz\dimensioniertes Wärmenetz.geojson"
