@@ -15,7 +15,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
 from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction, QActionGroup
 
 from net_simulation_pandapipes.pp_net_time_series_simulation import calculate_results, save_results_csv, import_results_csv
 
@@ -38,6 +38,8 @@ class CalculationTab(QWidget):
         self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
         # Update the base path immediately with the current project folder
         self.updateDefaultPath(self.data_manager.project_folder)
+        self.show_map = False
+        self.map_type = None
         self.initUI()
         self.net_data = None  # Variable zum Speichern der Netzdaten
         self.supply_temperature = None # Variable Vorlauftemperatur
@@ -74,6 +76,7 @@ class CalculationTab(QWidget):
         fileMenu = self.menubar.addMenu('Datei')
         networkMenu = self.menubar.addMenu('Wärmenetz generieren')
         calcMenu = self.menubar.addMenu('Zeitreihenberechnung durchführen')
+        mapMenu = self.menubar.addMenu('Hintergrundkarte laden')
 
         # Unterpunkte für geojson und Stanet
         saveppnetAction = QAction('Pandapipes Netz speichern', self)
@@ -91,6 +94,28 @@ class CalculationTab(QWidget):
         calculateNetAction = QAction('Zeitreihenberechnung', self)
         calcMenu.addAction(calculateNetAction)
 
+       # Kartenaktionen erstellen
+        OSMAction = QAction('OpenStreetMap laden', self)
+        SatelliteMapAction = QAction('Satellitenbild Laden', self)
+        TopologyMapAction = QAction('Topologiekarte laden', self)
+
+        # Aktionen auf checkable setzen
+        OSMAction.setCheckable(True)
+        SatelliteMapAction.setCheckable(True)
+        TopologyMapAction.setCheckable(True)
+
+        # QActionGroup für exklusive Auswahl erstellen
+        mapActionGroup = QActionGroup(self)
+        mapActionGroup.setExclusive(True)
+        mapActionGroup.addAction(OSMAction)
+        mapActionGroup.addAction(SatelliteMapAction)
+        mapActionGroup.addAction(TopologyMapAction)
+
+        # Aktionen dem Menü hinzufügen
+        mapMenu.addAction(OSMAction)
+        mapMenu.addAction(SatelliteMapAction)
+        mapMenu.addAction(TopologyMapAction)
+
         # Fügen Sie die Menüleiste dem Layout von tab1 hinzu
         self.container_layout.addWidget(self.menubar)
 
@@ -101,6 +126,9 @@ class CalculationTab(QWidget):
         loadresultsppAction.triggered.connect(self.load_net_results)
         exportppnetGeoJSONAction.triggered.connect(self.exportNetGeoJSON)
         calculateNetAction.triggered.connect(self.opencalculateNetDialog)
+        OSMAction.triggered.connect(lambda: self.loadMap("OSM", OSMAction))
+        SatelliteMapAction.triggered.connect(lambda: self.loadMap("Satellite", SatelliteMapAction))
+        TopologyMapAction.triggered.connect(lambda: self.loadMap("Topology", TopologyMapAction))
 
     def setupPlotLayout(self):
         self.scrollArea = QScrollArea(self)  # Erstelle ein ScrollArea-Widget
@@ -255,9 +283,9 @@ class CalculationTab(QWidget):
         self.waerme_ges_kW = np.where(self.waerme_ges_W == 0, 0, self.waerme_ges_W / 1000)
         self.strombedarf_hast_ges_kW = np.where(self.strombedarf_hast_ges_W == 0, 0, self.strombedarf_hast_ges_W / 1000)
         self.max_el_leistung_hast_ges_W = self.max_el_leistung_hast_ges_W
-        self.plot(self.net, self.yearly_time_steps, self.waerme_ges_kW, self.strombedarf_hast_ges_kW)
+        self.plot(self.yearly_time_steps, self.waerme_ges_kW, self.strombedarf_hast_ges_kW)
 
-    def plot(self, net, time_steps, qext_kW, strom_kW):
+    def plot(self, time_steps, qext_kW, strom_kW):
         # Clear previous figure
         self.figure4.clear()
         ax1 = self.figure4.add_subplot(111)
@@ -279,13 +307,29 @@ class CalculationTab(QWidget):
         ax1.grid()
         self.canvas4.draw()
 
+        self.plotNet()
+
+    def plotNet(self):
         self.figure5.clear()
         ax = self.figure5.add_subplot(111)
-        config_plot(net, ax, show_junctions=True, show_pipes=True, show_heat_consumers=True)
-
-        self.figure5.savefig("figure5_test.png", format='png', bbox_inches='tight', dpi=300)
-        
+        config_plot(self.net, ax, show_junctions=True, show_pipes=True, show_heat_consumers=True, show_basemap=self.show_map, map_type=self.map_type)
         self.canvas5.draw()
+
+    def loadMap(self, map_type, action):
+        if action.isChecked():
+            self.show_map = True
+            self.map_type = map_type
+            # Deaktivieren Sie die anderen Aktionen
+            for act in action.parent().actions():
+                if act != action:
+                    act.setChecked(False)
+        else:
+            self.show_map = False
+            self.map_type = None
+
+        # Aktualisieren Sie den Plot hier
+        #if self.net:
+        #    self.plotNet()
 
     ### Zeitreihensimulation ###
     def simulate_net(self):
@@ -520,7 +564,7 @@ class CalculationTab(QWidget):
             # Weiterverarbeitung oder Anzeigen der geladenen Daten
             self.waerme_ges_kW = np.where(self.waerme_ges_W == 0, 0, self.waerme_ges_W / 1000)
             self.strombedarf_hast_ges_kW = np.where(self.strombedarf_hast_ges_W == 0, 0, self.strombedarf_hast_ges_W / 1000)
-            self.plot(self.net, self.yearly_time_steps, self.waerme_ges_kW, self.strombedarf_hast_ges_kW)
+            self.plot(self.yearly_time_steps, self.waerme_ges_kW, self.strombedarf_hast_ges_kW)
             
             QMessageBox.information(self, "Laden erfolgreich", "Daten erfolgreich geladen aus: {}, {} und {}.".format(csv_file_path, pickle_file_path, json_file_path))
         except Exception as e:

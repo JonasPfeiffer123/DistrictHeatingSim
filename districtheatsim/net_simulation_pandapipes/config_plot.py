@@ -1,8 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandapipes.plotting as pp_plot
+import contextily as cx
+import geopandas as gpd
+from shapely.geometry import Point
 
-def config_plot(net, ax, show_junctions=True, show_pipes=True, show_heat_consumers=True, show_pump=True, show_plot=False):
+def config_plot(net, ax, show_junctions=True, show_pipes=True, show_heat_consumers=True, show_pump=True, show_plot=False, show_basemap=True, map_type="OSM"):
     ax.clear()  # Vorherige Plots bereinigen
 
     data_annotations = []  # Zum Speichern der Annotations-Referenzen und Daten
@@ -79,8 +82,37 @@ def config_plot(net, ax, show_junctions=True, show_pipes=True, show_heat_consume
             ann = make_annotation(text, mid_x, mid_y, "pump", pump)
             data_annotations.append(ann)
 
+    # Hintergrundkarte hinzufügen, wenn aktiviert
+    if show_basemap:
+        # Umwandeln der junction_geodata in ein GeoDataFrame
+        gdf = gpd.GeoDataFrame(
+            net.junction_geodata,
+            geometry=[Point(xy) for xy in zip(net.junction_geodata['x'], net.junction_geodata['y'])],
+            crs="EPSG:25833"  # Passen Sie dies an Ihr tatsächliches Koordinatensystem an
+        )
+
+        gdf = gdf.to_crs(epsg=25833)
+
+        xmin, ymin, xmax, ymax = gdf.total_bounds
+        ax.set_xlim(xmin - 10, xmax + 10)
+        ax.set_ylim(ymin - 10, ymax + 10)
+
+        if map_type == "OSM":
+            # Kontextkarte hinzufügen
+            cx.add_basemap(ax, source=cx.providers.OpenStreetMap.Mapnik, crs=gdf.crs)
+
+        elif map_type == "Satellite":
+            # Satellitenbild hinzufügen
+            cx.add_basemap(ax, source=cx.providers.Esri.WorldImagery, crs=gdf.crs)
+
+        elif map_type == "Topology":
+            # Topologiekarte hinzufügen
+            cx.add_basemap(ax, source=cx.providers.OpenTopoMap, crs=gdf.crs)
+
+    # Netzplot hinzufügen
     pp_plot.simple_plot(net, junction_size=0.01, heat_consumer_size=0.1, pump_size=0.1, 
-                        pump_color='green', pipe_color='black', heat_consumer_color="blue", ax=ax, show_plot=False)
+                        pump_color='green', pipe_color='black', heat_consumer_color="blue", ax=ax, show_plot=False, 
+                        junction_geodata=net.junction_geodata)
 
     # Event-Handling für die Interaktivität
     def on_move(event):

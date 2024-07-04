@@ -90,3 +90,5 @@
     - LOD2-Daten laden --> Exception-Handling bei timeout Nominatim geocoding
 
     - Anzahl Starts, Betriebsstunden und Betriebsstunden/Start im GUI ausgeben
+
+    - Netzlänge, Anschlussdichte, Wärmebedarfsdichte in Berechnungsfenster ausgeben
