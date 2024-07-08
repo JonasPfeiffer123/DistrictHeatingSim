@@ -106,9 +106,6 @@ To install DistrictHeatSim, ensure you have Python installed on your system. Fol
 
 ## Project Structure
 
-- **src/**: Source code for DistrictHeatSim
-- **data/**: Sample data and GeoJSON files
-- **docs/**: Documentation and technical reports
 - **requirements.txt**: List of dependencies
 - **README.md**: This README file
 
@@ -134,4 +131,3 @@ For further information, questions, or feedback, please contact the project main
 
 Jonas Pfeiffer  
 [GitHub Profile](https://github.com/JonasPfeiffer123)  
-Email: jonas.pfeiffer@example.com
