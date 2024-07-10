@@ -889,6 +889,73 @@ class SolarThermal:
         obj = SolarThermal.__new__(SolarThermal)
         obj.__dict__.update(data)
         return obj
+    
+# Diese Klasse ist nocht fertig implementiert und die Nutzung auch noch nicht durchdacht, Wie muss dass ganze bilanziert werden?
+class Photovoltaics:
+    def __init__(self, name, TRY_data, Gross_area, Longitude, STD_Longitude, Latitude, East_West_collector_azimuth_angle=0, Collector_tilt_angle=36, Albedo=0.2, Kosten_STA_spez=300):
+        self.name = name
+        self.TRY_data = TRY_data
+        self.Gross_area = Gross_area
+        self.Longitude = Longitude
+        self.STD_Longitude = STD_Longitude
+        self.Latitude = Latitude
+        self.East_West_collector_azimuth_angle = East_West_collector_azimuth_angle
+        self.Collector_tilt_angle = Collector_tilt_angle
+        self.Albedo = Albedo
+        self.Kosten_STA_spez = Kosten_STA_spez
+        self.Nutzungsdauer = 20 # Jahre
+        self.f_Inst, self.f_W_Insp, self.Bedienaufwand = 0.5, 1, 0
+        self.Anteil_Förderung_BEW = 0.4
+        self.Betriebskostenförderung_BEW = 10 # €/MWh 10 Jahre
+        self.co2_factor_solar = 0.0 # tCO2/MWh heat is 0 ?
+        self.primärenergiefaktor = 0.0
+
+    def calc_WGK(self, q=1.05, r=1.03, T=20, BEW="Nein"):
+        if self.strommenge_MWh == 0:
+            return 0
+
+        self.Kosten_STA_spez = 100 # €/m²
+
+        self.Investitionskosten = self.Gross_area * self.Kosten_STA_spez
+
+        self.A_N = annuität(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, q, r, T)
+        self.WGK = self.A_N / self.strommenge_MWh
+
+        self.Eigenanteil = 1 - self.Anteil_Förderung_BEW
+        self.Investitionskosten_Gesamt_BEW = self.Investitionskosten * self.Eigenanteil
+        self.Annuität_BEW = annuität(self.Investitionskosten_Gesamt_BEW, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, q, r, T)
+        self.WGK_BEW = self.Annuität_BEW / self.strommenge_MWh
+
+        self.WGK_BEW_BKF = self.WGK_BEW - 10  # €/MWh 10 Jahre
+
+        if BEW == "Nein":
+            return self.WGK
+        elif BEW == "Ja":
+            return self.WGK_BEW_BKF
+        
+    def calculate(self, q, r, T, BEW):
+        # Hier fügen Sie die spezifische Logik für die PV-Berechnung ein
+        self.strommenge_kWh, self.P_max, self.P_L = Calculate_PV(self.TRY_data, self.Gross_area, self.Longitude, self.STD_Longitude, self.Latitude, self.Albedo, self.East_West_collector_azimuth_angle, self.Collector_tilt_angle)
+        self.strommenge_MWh = self.strommenge_kWh / 1000
+        self.WGK_PV = self.calc_WGK(q, r, T, BEW)
+
+        # Berechnung der Emissionen
+        self.co2_emissions = self.strommenge_MWh * self.co2_factor_solar # tCO2
+        # specific emissions heat
+        self.spec_co2_total = self.co2_emissions / self.strommenge_MWh if self.strommenge_MWh > 0 else 0 # tCO2/MWh_heat
+
+        self.primärenergie_Solarthermie = self.strommenge_MWh * self.primärenergiefaktor
+
+        results = { 
+            'Strommenge': self.strommenge_kWh,
+            'el_Leistung_L': self.P_L,
+            'WGK': self.WGK_PV,
+            'spec_co2_total': self.spec_co2_total,
+            'primärenergie': self.primärenergie_Solarthermie,
+            'color': "yellow"
+        }
+
+        return results
 
 def calculate_factors(Kapitalzins, Preissteigerungsrate, Betrachtungszeitraum):
     q = 1 + Kapitalzins / 100
@@ -1125,60 +1192,6 @@ def optimize_mix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, 
     else:
         print("Optimierung nicht erfolgreich")
         print(result.message)
-
-# Diese Klasse ist nocht fertig implementiert und die Nutzung auch noch nicht durchdacht, Wie muss dass ganze bilanziert werden?
-class Photovoltaics:
-    def __init__(self, name, TRY_data, Gross_area, Longitude, STD_Longitude, Latitude, East_West_collector_azimuth_angle=0, Collector_tilt_angle=36, Albedo=0.2):
-        self.name = name
-        self.TRY_data = TRY_data
-        self.Gross_area = Gross_area
-        self.Longitude = Longitude
-        self.STD_Longitude = STD_Longitude
-        self.Latitude = Latitude
-        self.East_West_collector_azimuth_angle = East_West_collector_azimuth_angle
-        self.Collector_tilt_angle = Collector_tilt_angle
-        self.Albedo = Albedo
-
-    def calc_WGK(self, Strommenge, q=1.05, r=1.03, T=20, BEW="Nein"):
-        if Strommenge == 0:
-            return 0
-
-        self.Kosten_STA_spez = 100 # €/m²
-        Nutzungsdauer = 20
-        f_Inst, f_W_Insp, Bedienaufwand = 0.5, 1, 0
-
-        self.Investitionskosten = self.Gross_area * self.Kosten_STA_spez
-
-        self.A_N = annuität(self.Investitionskosten, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T)
-        self.WGK = self.A_N / Strommenge
-
-        Anteil_Förderung_BEW = 0.4
-        Eigenanteil = 1 - Anteil_Förderung_BEW
-        Investitionskosten_Gesamt_BEW = self.Investitionskosten * Eigenanteil
-        Annuität_BEW = annuität(Investitionskosten_Gesamt_BEW, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T)
-        self.WGK_BEW = Annuität_BEW / Strommenge
-
-        self.WGK_BEW_BKF = self.WGK_BEW - 10  # €/MWh 10 Jahre
-
-        if BEW == "Nein":
-            return self.WGK
-        elif BEW == "Ja":
-            return self.WGK_BEW_BKF
-        
-    def calculate(self, q, r, T, BEW):
-        # Hier fügen Sie die spezifische Logik für die PV-Berechnung ein
-        yield_kWh, P_max, P_L = Calculate_PV(self.TRY_data, self.Gross_area, self.Longitude, self.STD_Longitude, self.Latitude, self.Albedo, self.East_West_collector_azimuth_angle, self.Collector_tilt_angle)
-
-        WGK_PV = self.calc_WGK(yield_kWh/1000, q, r, T, BEW)
-
-        results = { 
-            'Strommenge': yield_kWh,
-            'el_Leistung_L': P_L,
-            'WGK': WGK_PV,
-            'color': "red"
-        }
-
-        return results
 
 # Idee Photovoltaisch-Thermische-Anlagen (PVT) mit zu simulieren
 class PVT:

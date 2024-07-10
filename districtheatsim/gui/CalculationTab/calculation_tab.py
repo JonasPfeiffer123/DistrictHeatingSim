@@ -322,10 +322,11 @@ class CalculationTab(QWidget):
         Anschlussdichte_kW_m = Gesamtheizlast_Gebäude_kW / Trassenlänge_m
 
         Jahreswärmeerzeugung_MWh = 0
+        Pumpenstrombedarf_MWh = 0
         for pump_type, pumps in self.pump_results.items():
             for idx, pump_data in pumps.items():
                 Jahreswärmeerzeugung_MWh += np.sum(pump_data['qext_kW']) / 1000
-
+                Pumpenstrombedarf_MWh += np.sum((pump_data['mass_flow']/1000)*(pump_data['deltap']*100)) / 1000 # kg/s * bar-> m³/s * kPa = kW 
         Verteilverluste_kW = Jahreswärmeerzeugung_MWh - Gesamtwärmebedarf_Gebäude_MWh
         rel_Verteilverluste_percent = (Verteilverluste_kW / Jahreswärmeerzeugung_MWh) * 100
 
@@ -342,7 +343,8 @@ class CalculationTab(QWidget):
             f"Anschlussdichte: {Anschlussdichte_kW_m:.2f} kW/m\n\n"
             f"Jahreswärmeerzeugung: {Jahreswärmeerzeugung_MWh:.2f} MWh\n"
             f"Verteilverluste: {Verteilverluste_kW:.2f} MWh\n"
-            f"rel. Verteilverluste: {rel_Verteilverluste_percent:.2f} %\n"
+            f"rel. Verteilverluste: {rel_Verteilverluste_percent:.2f} %\n\n"
+            f"Pumpenstrom: {Pumpenstrombedarf_MWh:.2f} MWh\n"
         )
         
         self.results_display.setPlainText(self.result_text)  # Setze den Text in das Ergebnisfeld

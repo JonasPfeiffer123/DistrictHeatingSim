@@ -17,7 +17,7 @@ def get_resource_path(relative_path):
         base_path = sys._MEIPASS
     else:
         # Wenn die Anwendung nicht eingefroren ist, ist der Basispfad der Ordner, in dem die Hauptdatei liegt
-        base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     return os.path.join(base_path, relative_path)
 
@@ -111,7 +111,7 @@ class Building:
 
     def load_u_values(self, u_type, building_state):                
         # Angenommen, die CSV-Datei heißt 'u_values.csv' und befindet sich im gleichen Verzeichnis
-        df = pd.read_csv(get_resource_path('data\\standard_u_values_TABULA.csv'), sep=";")
+        df = pd.read_csv(get_resource_path('lod2\\data\\standard_u_values_TABULA.csv'), sep=";")
         u_values_row = df[(df['Typ'] == u_type) & (df['building_state'] == building_state)]
         
         if not u_values_row.empty:
