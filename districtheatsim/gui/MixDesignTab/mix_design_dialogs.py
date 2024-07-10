@@ -6,7 +6,7 @@ import geopandas as gpd
 
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, \
     QComboBox, QTableWidget, QPushButton, QTableWidgetItem, \
-    QHBoxLayout, QMessageBox, QMenu, QInputDialog
+    QHBoxLayout, QMessageBox, QMenu, QInputDialog, QFormLayout, QDialogButtonBox
 from PyQt5.QtCore import Qt
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -380,3 +380,55 @@ class NetInfrastructureDialog(QDialog):
                     # Standardwert oder eine geeignete Behandlung, wenn das Element nicht vorhanden ist
                     values[key] = 0.0  # oder ein anderer angemessener Standardwert
         return values
+    
+class WeightDialog(QDialog):
+    def __init__(self):
+        super().__init__()
+        
+        self.setWindowTitle("Gewichte für Optimierung festlegen")
+        
+        self.wgk_input = QLineEdit("1.0", self)
+        self.wgk_input.setToolTip("Geben Sie das Gewicht für die Wärmegestehungskosten ein (z.B. 1.0 für höchste Priorität oder 0.0 für keine Berücksichtigung).")
+
+        self.co2_input = QLineEdit("0.0", self)
+        self.co2_input.setToolTip("Geben Sie das Gewicht für die spezifischen CO2-Emissionen ein (z.B. 1.0 für höchste Priorität oder 0.0 für keine Berücksichtigung).")
+
+        self.pe_input = QLineEdit("0.0", self)
+        self.pe_input.setToolTip("Geben Sie das Gewicht für den Primärenergiefaktor ein (z.B. 1.0 für höchste Priorität oder 0.0 für keine Berücksichtigung).")
+
+        form_layout = QFormLayout()
+        form_layout.addRow("Wärmegestehungskosten", self.wgk_input)
+        form_layout.addRow("Spezifische Emissionen", self.co2_input)
+        form_layout.addRow("Primärenergiefaktor", self.pe_input)
+
+        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
+
+        layout = QVBoxLayout()
+        layout.addLayout(form_layout)
+        layout.addWidget(self.button_box)
+        
+        self.setLayout(layout)
+    
+    def get_weights(self):
+        try:
+            wgk_weight = float(self.wgk_input.text())
+        except ValueError:
+            wgk_weight = 0.0
+
+        try:
+            co2_weight = float(self.co2_input.text())
+        except ValueError:
+            co2_weight = 0.0
+        
+        try:
+            pe_weight = float(self.pe_input.text())
+        except ValueError:
+            pe_weight = 0.0
+
+        return {
+            'WGK_Gesamt': wgk_weight,
+            'specific_emissions_Gesamt': co2_weight,
+            'primärenergiefaktor_Gesamt': pe_weight
+        }

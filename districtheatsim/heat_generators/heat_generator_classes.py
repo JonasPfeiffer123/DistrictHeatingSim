@@ -59,6 +59,7 @@ class HeatPump:
         self.f_Inst_WP, self.f_W_Insp_WP, self.Bedienaufwand_WP = 1, 1.5, 0
         self.f_Inst_WQ, self.f_W_Insp_WQ, self.Bedienaufwand_WQ = 0.5, 0.5, 0
         self.Nutzungsdauer_WQ_dict = {"Abwärme": 20, "Abwasserwärme": 20, "Flusswasser": 20, "Geothermie": 30}
+        self.co2_factor_electricity = 2.4 # tCO2/MWh electricity
 
     def COP_WP(self, VLT_L, QT, COP_data):
         # Interpolationsformel für den COP
@@ -114,6 +115,8 @@ class RiverHeatPump(HeatPump):
         self.dT = dT
         self.spez_Investitionskosten_Flusswasser = spez_Investitionskosten_Flusswasser
         self.min_Teillast = min_Teillast
+        self.co2_factor_electricity = 0.4 # tCO2/MWh electricity
+        self.primärenergiefaktor = 2.4
 
     def Berechnung_WP(self, Wärmeleistung_L, VLT_L, COP_data):
         COP_L, VLT_L_WP = self.COP_WP(VLT_L, self.Temperatur_FW_WP, COP_data)
@@ -155,12 +158,20 @@ class RiverHeatPump(HeatPump):
 
         WGK_Abwärme = self.WGK(self.Wärmeleistung_FW_WP, self.Wärmemenge_Flusswärme, self.Strombedarf_Flusswärme, self.spez_Investitionskosten_Flusswasser, Strompreis, q, r, T, BEW, stundensatz)
 
+        # CO2 emissions due to fuel usage
+        self.co2_emissions = self.Strombedarf_Flusswärme * self.co2_factor_electricity # tCO2
+        # specific emissions heat
+        self.spec_co2_total = self.co2_emissions / self.Wärmemenge_Flusswärme if self.Wärmemenge_Flusswärme > 0 else 0 # tCO2/MWh_heat
+
+        self.primärenergie = self.Strombedarf_Flusswärme * self.primärenergiefaktor
+
         results = {
             'Wärmemenge': self.Wärmemenge_Flusswärme,
             'Wärmeleistung_L': self.Wärmeleistung_Flusswärme_L,
             'Strombedarf': self.Strombedarf_Flusswärme,
             'el_Leistung_L': self.el_Leistung_Flusswärme_L,
             'WGK': WGK_Abwärme,
+            'spec_co2_total': self.spec_co2_total,
             'color': "blue"
         }
 
@@ -182,6 +193,8 @@ class WasteHeatPump(HeatPump):
         self.Temperatur_Abwärme = Temperatur_Abwärme
         self.spez_Investitionskosten_Abwärme = spez_Investitionskosten_Abwärme
         self.min_Teillast = min_Teillast
+        self.co2_factor_electricity = 0.4 # tCO2/MWh electricity
+        self.primärenergiefaktor = 2.4
 
     def Berechnung_WP(self, VLT_L, COP_data):
         COP_L, VLT_L = self.COP_WP(VLT_L, self.Temperatur_Abwärme, COP_data)
@@ -217,12 +230,21 @@ class WasteHeatPump(HeatPump):
 
         WGK_Abwärme = self.WGK(self.max_Wärmeleistung, self.Wärmemenge_Abwärme, self.Strombedarf_Abwärme, self.spez_Investitionskosten_Abwärme, Strompreis, q, r, T, BEW, stundensatz)
 
+        # CO2 emissions due to fuel usage
+        self.co2_emissions = self.Strombedarf_Abwärme * self.co2_factor_electricity # tCO2
+        # specific emissions heat
+        self.spec_co2_total = self.co2_emissions / self.Wärmemenge_Abwärme if self.Wärmemenge_Abwärme > 0 else 0 # tCO2/MWh_heat
+
+        self.primärenergie = self.Strombedarf_Abwärme * self.primärenergiefaktor
+
         results = {
             'Wärmemenge': self.Wärmemenge_Abwärme,
             'Wärmeleistung_L': self.Wärmeleistung_Abwärme_L,
             'Strombedarf': self.Strombedarf_Abwärme,
             'el_Leistung_L': self.el_Leistung_Abwärme_L,
             'WGK': WGK_Abwärme,
+            'spec_co2_total': self.spec_co2_total,
+            'primärenergie': self.primärenergie,
             'color': "grey"
         }
 
@@ -249,6 +271,8 @@ class Geothermal(HeatPump):
         self.Vollbenutzungsstunden = Vollbenutzungsstunden
         self.Abstand_Sonden = Abstand_Sonden
         self.min_Teillast = min_Teillast
+        self.co2_factor_electricity = 0.4 # tCO2/MWh electricity
+        self.primärenergiefaktor = 2.4
 
     def Geothermie(self, Last_L, VLT_L, COP_data, duration):
         if self.Fläche == 0 or self.Bohrtiefe == 0:
@@ -315,12 +339,21 @@ class Geothermal(HeatPump):
         self.spez_Investitionskosten_Erdsonden = self.Investitionskosten_Sonden / self.max_Wärmeleistung
         WGK_Geothermie = self.WGK(self.max_Wärmeleistung, self.Wärmemenge_Geothermie, self.Strombedarf_Geothermie, self.spez_Investitionskosten_Erdsonden, Strompreis, q, r, T, BEW, stundensatz)
 
+        # CO2 emissions due to fuel usage
+        self.co2_emissions = self.Strombedarf_Geothermie * self.co2_factor_electricity # tCO2
+        # specific emissions heat
+        self.spec_co2_total = self.co2_emissions / self.Wärmemenge_Geothermie if self.Wärmemenge_Geothermie > 0 else 0 # tCO2/MWh_heat
+
+        self.primärenergie = self.Strombedarf_Geothermie * self.primärenergiefaktor
+
         results = {
             'Wärmemenge': self.Wärmemenge_Geothermie,
             'Wärmeleistung_L': self.Wärmeleistung_Geothermie_L,
             'Strombedarf': self.Strombedarf_Geothermie,
             'el_Leistung_L': self.el_Leistung_Geothermie_L,
             'WGK': WGK_Geothermie,
+            'spec_co2_total': self.spec_co2_total,
+            'primärenergie': self.primärenergie,
             'color': "darkorange"
         }
 
@@ -365,9 +398,11 @@ class CHP:
         self.f_Inst, self.f_W_Insp, self.Bedienaufwand = 6, 2, 0
         if self.name == "BHKW":
             self.co2_factor_fuel = 0.201 # tCO2/MWh gas
+            self.primärenergiefaktor = 1.1 # Gas
         elif self.name == "Holzgas-BHKW":
             self.co2_factor_fuel = 0.036 # tCO2/MWh pellets
-        self.co2_factor_electricity = 0.4 # tCO2/MWh electricity 
+            self.primärenergiefaktor = 0.2 # Pellets
+        self.co2_factor_electricity = 0.4 # tCO2/MWh electricity
 
     def BHKW(self, Last_L, duration):
         # Berechnen der Strom- und Wärmemenge des BHKW
@@ -498,6 +533,8 @@ class CHP:
         # specific emissions heat
         self.spec_co2_total = self.co2_total / Wärmemenge if Wärmemenge > 0 else 0 # tCO2/MWh_heat
 
+        self.primärenergie = Brennstoffbedarf * self.primärenergiefaktor
+
         results = {
             'Wärmemenge': Wärmemenge,
             'Wärmeleistung_L': Wärmeleistung_BHKW,
@@ -509,6 +546,7 @@ class CHP:
             'Betriebsstunden': Betriebsstunden,
             'Betriebsstunden_pro_Start': Betriebsstunden_pro_Start,
             'spec_co2_total': self.spec_co2_total,
+            'primärenergie': self.primärenergie,
             'color': "yellow"
         }
 
@@ -553,6 +591,7 @@ class BiomassBoiler:
         self.Nutzungsdauer = 15
         self.f_Inst, self.f_W_Insp, self.Bedienaufwand = 3, 3, 0
         self.co2_factor_fuel = 0.036 # tCO2/MWh pellets
+        self.primärenergiefaktor = 0.2 # Pellets
 
     def Biomassekessel(self, Last_L, duration):
         self.Wärmeleistung_Biomassekessel = np.zeros_like(Last_L)
@@ -655,6 +694,8 @@ class BiomassBoiler:
         self.co2_emissions = Brennstoffbedarf * self.co2_factor_fuel # tCO2
         # specific emissions heat
         self.spec_co2_total = self.co2_emissions / Wärmemenge if Wärmemenge > 0 else 0 # tCO2/MWh_heat
+
+        self.primärenergie = Brennstoffbedarf * self.primärenergiefaktor
         
         results = {
             'Wärmemenge': Wärmemenge,
@@ -665,6 +706,7 @@ class BiomassBoiler:
             'Betriebsstunden': Betriebsstunden,
             'Betriebsstunden_pro_Start': Betriebsstunden_pro_Start,
             'spec_co2_total': self.spec_co2_total,
+            'primärenergie': self.primärenergie,
             'color': "green"
         }
 
@@ -691,6 +733,7 @@ class GasBoiler:
         self.Nutzungsdauer = 20
         self.f_Inst, self.f_W_Insp, self.Bedienaufwand = 1, 2, 0
         self.co2_factor_fuel = 0.201 # tCO2/MWh gas
+        self.primärenergiefaktor = 1.1
 
     def Gaskessel(self, Last_L, duration):
         self.Wärmeleistung_GK = np.maximum(Last_L, 0)
@@ -717,12 +760,15 @@ class GasBoiler:
         # specific emissions heat
         self.spec_co2_total = self.co2_emissions / self.Wärmemenge_Gaskessel if self.Wärmemenge_Gaskessel > 0 else 0 # tCO2/MWh_heat
 
+        self.primärenergie = self.Gasbedarf * self.primärenergiefaktor
+
         results = {
             'Wärmemenge': self.Wärmemenge_Gaskessel,
             'Wärmeleistung_L': self.Wärmeleistung_GK,
             'Brennstoffbedarf': self.Gasbedarf,
             'WGK': self.WGK_GK,
             'spec_co2_total': self.spec_co2_total,
+            'primärenergie': self.primärenergie,
             "color": "saddlebrown"
         }
 
@@ -779,6 +825,7 @@ class SolarThermal:
         self.Anteil_Förderung_BEW = 0.4
         self.Betriebskostenförderung_BEW = 10 # €/MWh 10 Jahre
         self.co2_factor_solar = 0.0 # tCO2/MWh heat is 0 ?
+        self.primärenergiefaktor = 0.0
 
     def calc_WGK(self, q, r, T, BEW, stundensatz):
         if self.Wärmemenge_Solarthermie == 0:
@@ -818,12 +865,15 @@ class SolarThermal:
         # specific emissions heat
         self.spec_co2_total = self.co2_emissions / self.Wärmemenge_Solarthermie if self.Wärmemenge_Solarthermie > 0 else 0 # tCO2/MWh_heat
 
+        self.primärenergie_Solarthermie = self.Wärmemenge_Solarthermie * self.primärenergiefaktor
+
 
         results = { 
             'Wärmemenge': self.Wärmemenge_Solarthermie,
             'Wärmeleistung_L': self.Wärmeleistung_Solarthermie,
             'WGK': self.WGK_Solarthermie,
             'spec_co2_total': self.spec_co2_total,
+            'primärenergie': self.primärenergie_Solarthermie,
             'Speicherladung_L': self.Speicherladung_Solarthermie,
             'Speicherfüllstand_L': self.Speicherfüllstand_Solarthermie,
             'color': "red"
@@ -873,7 +923,10 @@ def Berechnung_Erzeugermix(tech_order, initial_data, start, end, TRY, COP_data, 
         'el_Leistungsbedarf_L': np.zeros_like(Last_L),
         'el_Leistung_L': np.zeros_like(Last_L),
         'el_Leistung_ges_L': np.zeros_like(Last_L),
-        'specific_emissions': 1,
+        'specific_emissions_L': [],
+        'primärenergie_L': [],
+        'specific_emissions_Gesamt': 0,
+        'primärenergiefaktor_Gesamt': 0,
         'techs': [],
         'tech_classes': []
     }
@@ -929,11 +982,17 @@ def Berechnung_Erzeugermix(tech_order, initial_data, start, end, TRY, COP_data, 
             general_results['Anteile'].append(tech_results['Wärmemenge']/general_results['Jahreswärmebedarf'])
             general_results['WGK'].append(tech_results['WGK'])
 
+            general_results['specific_emissions_L'].append(tech_results['spec_co2_total'])
+            general_results['primärenergie_L'].append(tech_results['primärenergie'])
+
             general_results['colors'].append(tech_results['color'])
 
             general_results['Restlast_L'] -= tech_results['Wärmeleistung_L']
             general_results['Restwärmebedarf'] -= tech_results['Wärmemenge']
             general_results['WGK_Gesamt'] += (tech_results['Wärmemenge']*tech_results['WGK'])/general_results['Jahreswärmebedarf']
+            
+            general_results['specific_emissions_Gesamt'] += (tech_results['Wärmemenge']*tech_results['spec_co2_total'])/general_results['Jahreswärmebedarf']
+            general_results['primärenergiefaktor_Gesamt'] += tech_results['primärenergie']/general_results['Jahreswärmebedarf']
 
             if tech.name == "BHKW" or tech.name == "Holzgas-BHKW":
                 general_results['Strommenge'] += tech_results["Strommenge"]
@@ -960,7 +1019,7 @@ def Berechnung_Erzeugermix(tech_order, initial_data, start, end, TRY, COP_data, 
 
     return general_results
 
-def optimize_mix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, kapitalzins, preissteigerungsrate, betrachtungszeitraum, stundensatz):
+def optimize_mix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, kapitalzins, preissteigerungsrate, betrachtungszeitraum, stundensatz, weights):
     initial_values = []
     variables_order = []
     bounds = []
@@ -1026,22 +1085,25 @@ def optimize_mix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, 
         general_results = Berechnung_Erzeugermix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, variables, variables_order, \
                                             kapitalzins=kapitalzins, preissteigerungsrate=preissteigerungsrate, betrachtungszeitraum=betrachtungszeitraum, stundensatz=stundensatz)
         
-        return general_results["WGK_Gesamt"]
-    
-    #def objective2(variables):
-    #    general_results = Berechnung_Erzeugermix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, variables, variables_order, \
-    #                                        kapitalzins=kapitalzins, preissteigerungsrate=preissteigerungsrate, betrachtungszeitraum=betrachtungszeitraum, stundensatz=stundensatz)
-    #    
-    #   return general_results["spec_co2_emissions"]
+        # Skalierung der Zielgrößen basierend auf ihren erwarteten Bereichen
+        wgk_scale = 1.0  # Annahme: Wärmegestehungskosten liegen im Bereich von 0 bis 300 €/MWh
+        co2_scale = 1000  # Annahme: Spezifische Emissionen liegen im Bereich von 0 bis 1 tCO2/MWh
+        primary_energy_scale = 100.0  # Annahme: Primärenergiefaktor liegt im Bereich von 0 bis 3
 
+        weighted_sum = (weights['WGK_Gesamt'] * general_results['WGK_Gesamt'] * wgk_scale +
+                        weights['specific_emissions_Gesamt'] * general_results['specific_emissions_Gesamt'] * co2_scale +
+                        weights['primärenergiefaktor_Gesamt'] * general_results['primärenergiefaktor_Gesamt'] * primary_energy_scale)
+        
+        return weighted_sum
+    
     # optimization
     result = minimize(objective, initial_values, method='SLSQP', bounds=bounds, options={'maxiter': 100})
 
     if result.success:
         optimized_values = result.x
-        optimized_WGK_Gesamt = objective(optimized_values)
+        optimized_objective = objective(optimized_values)
         print(f"Optimierte Werte: {optimized_values}")
-        print(f"Minimale Wärmegestehungskosten: {optimized_WGK_Gesamt:.2f} €/MWh")
+        print(f"Minimierte gewichtete Summe: {optimized_objective:.2f}")
 
         for idx, tech in enumerate(tech_order):
             if isinstance(tech, SolarThermal):

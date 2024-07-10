@@ -143,19 +143,21 @@ class ResultsTab(QWidget):
     ### Results Table ###
     def setupResultsTable(self):
         self.resultsTable = QTableWidget()
-        self.resultsTable.setColumnCount(4)
-        self.resultsTable.setHorizontalHeaderLabels(['Technologie', 'Wärmemenge (MWh)', 'Kosten (€/MWh)', 'Anteil (%)'])
+        self.resultsTable.setColumnCount(6)
+        self.resultsTable.setHorizontalHeaderLabels(['Technologie', 'Wärmemenge (MWh)', 'Kosten (€/MWh)', 'Anteil (%)', 'spez. CO2-Emissionen (t_CO2/MWh_th)', 'Primärenergiefaktor'])
         self.resultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.resultsAndPieChartLayout.addWidget(self.resultsTable)
 
     def showResultsInTable(self, results):
         self.resultsTable.setRowCount(len(results['techs']))
 
-        for i, (tech, wärmemenge, wgk, anteil) in enumerate(zip(results['techs'], results['Wärmemengen'], results['WGK'], results['Anteile'])):
+        for i, (tech, wärmemenge, wgk, anteil, spec_emission, primary_energy) in enumerate(zip(results['techs'], results['Wärmemengen'], results['WGK'], results['Anteile'], results['specific_emissions_L'], results['primärenergie_L'])):
             self.resultsTable.setItem(i, 0, QTableWidgetItem(tech))
             self.resultsTable.setItem(i, 1, QTableWidgetItem(f"{wärmemenge:.2f}"))
             self.resultsTable.setItem(i, 2, QTableWidgetItem(f"{wgk:.2f}"))
-            self.resultsTable.setItem(i, 3, QTableWidgetItem(f"{anteil*100:.2f}%"))
+            self.resultsTable.setItem(i, 3, QTableWidgetItem(f"{anteil*100:.2f}"))
+            self.resultsTable.setItem(i, 4, QTableWidgetItem(f"{spec_emission:.4f}"))
+            self.resultsTable.setItem(i, 5, QTableWidgetItem(f"{primary_energy/wärmemenge:.4f}"))
 
         self.resultsTable.resizeColumnsToContents()
         self.adjustTableSize(self.resultsTable)
@@ -182,7 +184,10 @@ class ResultsTab(QWidget):
             ("Wärmegestehungskosten Erzeugeranlagen", round(self.results['WGK_Gesamt'], 2), "€/MWh"),
             ("Wärmegestehungskosten Netzinfrastruktur", round(self.WGK_Infra, 2), "€/MWh"),
             ("Wärmegestehungskosten dezentrale Wärmepumpen", round(self.wgk_heat_pump_electricity, 2), "€/MWh"),
-            ("Wärmegestehungskosten Gesamt", round(self.WGK_Gesamt, 2), "€/MWh")
+            ("Wärmegestehungskosten Gesamt", round(self.WGK_Gesamt, 2), "€/MWh"),
+            ("spez. CO2-Emissionen Wärme", round(self.results["specific_emissions_Gesamt"], 4), "t_CO2/MWh_th"),
+            ("CO2-Emissionen Wärme", round(self.results["specific_emissions_Gesamt"]*self.results['Jahreswärmebedarf'], 2), "t_CO2"),
+            ("Primärenergiefaktor", round(self.results["primärenergiefaktor_Gesamt"], 4), "-")
         ]
 
         self.additionalResultsTable.setRowCount(len(data))

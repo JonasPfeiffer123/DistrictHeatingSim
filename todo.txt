@@ -65,9 +65,6 @@
         - Gestaltung einer optimalen Präsentation des Projekts auf GitHub, inklusive Dokumentation und Beispielen.
 
 6. Diverses
-    - Optimierungsfunktion
-        - Implementierung einer Auswahlmöglichkeit zur Festlegung der Optimierungsziele und -grenzen.
-
     - Kostenindikation für Pumpenstrom
         - Implementierung einer Funktion zur Berechnung der Kosten für Pumpenstrom basierend auf Massenstrom und Druckverlust (dp).
             --> eigentlich über VDI2067 abgedeckt
@@ -84,11 +81,7 @@
         - Implementierung einer PV-Klasse zur Berechnung der Stromerzeugung.
         - Option zur Auslesung von Fläche, Orientierung und Neigung der Solarthermie- und PV-Anlagen aus LOD2-Daten.
         - Stromprofile PV-Anlagen
-    
-    - Eränzung CO2-Faktoren bei allen Erzeugern und Zentrale Ausgabe
 
     - LOD2-Daten laden --> Exception-Handling bei timeout Nominatim geocoding
 
     - Anzahl Starts, Betriebsstunden und Betriebsstunden/Start im GUI ausgeben
-
-    - Netzlänge, Anschlussdichte, Wärmebedarfsdichte in Berechnungsfenster ausgeben

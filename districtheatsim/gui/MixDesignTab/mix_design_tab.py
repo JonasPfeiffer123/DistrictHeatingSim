@@ -1,11 +1,13 @@
 import json
 import pandas as pd
 
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMessageBox, QFileDialog, QMenuBar, QScrollArea, QAction
+import traceback
+
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMessageBox, QFileDialog, QMenuBar, QScrollArea, QAction, QDialog
 from PyQt5.QtCore import pyqtSignal, QEventLoop
 
 from heat_generators.heat_generator_classes import *
-from gui.MixDesignTab.mix_design_dialogs import EconomicParametersDialog, NetInfrastructureDialog
+from gui.MixDesignTab.mix_design_dialogs import EconomicParametersDialog, NetInfrastructureDialog, WeightDialog
 from gui.threads import CalculateMixThread
 from gui.results_pdf import create_pdf
 
@@ -182,7 +184,7 @@ class MixDesignTab(QWidget):
             return False
         return True
 
-    def start_calculation(self, optimize=False):
+    def start_calculation(self, optimize=False, weights=None):
         if not self.validateInputs():
             return
 
@@ -195,7 +197,7 @@ class MixDesignTab(QWidget):
             self.calculationThread = CalculateMixThread(
                 self.filename, self.load_scale_factor, self.TRY_data, self.COP_data, self.gaspreis, 
                 self.strompreis, self.holzpreis, self.BEW, self.techTab.tech_objects, optimize, 
-                self.kapitalzins, self.preissteigerungsrate, self.betrachtungszeitraum, self.stundensatz)
+                self.kapitalzins, self.preissteigerungsrate, self.betrachtungszeitraum, self.stundensatz, weights)
             
             self.calculationThread.calculation_done.connect(self.on_calculation_done)
             self.calculationThread.calculation_error.connect(self.on_calculation_error)
@@ -244,7 +246,10 @@ class MixDesignTab(QWidget):
             QMessageBox.information(self, "Keine Berechnungsergebnisse", "Es sind keine Berechnungsergebnisse verfügbar. Führen Sie zunächst eine Berechnung durch.")
 
     def optimize(self):
-        self.start_calculation(True)
+        dialog = WeightDialog()
+        if dialog.exec_() == QDialog.Accepted:
+            weights = dialog.get_weights()
+            self.start_calculation(True, weights)
 
     ### NEU !!! ###
     def sensitivity(self, gas_range, electricity_range, wood_range):
@@ -456,5 +461,6 @@ class MixDesignTab(QWidget):
                 QMessageBox.information(self, "PDF erfolgreich erstellt.", f"Die Ergebnisse wurden erfolgreich in {filename} gespeichert.")
             
             except Exception as e:
-                QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern als PDF: {e}")
+                error_message = traceback.format_exc()
+                QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern als PDF:\n{error_message}")
                 raise e

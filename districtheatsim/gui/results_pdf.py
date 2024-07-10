@@ -219,10 +219,11 @@ def create_pdf(MixDesignTab, filename):
         story.append(Spacer(1, 12))
 
     # Ergebnisse in Tabelle umwandeln
-    results_data = [("Technologie", "Wärmemenge (MWh)", "Kosten (€/MWh)", "Anteil (%)")]
+    results_data = [("Technologie", "Wärmemenge (MWh)", "Kosten (€/MWh)", "Anteil (%)", "spez. CO2-Emissionen (t_CO2/MWh_th)", "Primärenergiefaktor")]
     results_data.extend([
-        (tech, f"{wärmemenge:.2f}", f"{wgk:.2f}", f"{anteil*100:.2f}%")
-        for tech, wärmemenge, wgk, anteil in zip(MixDesignTab.results['techs'], MixDesignTab.results['Wärmemengen'], MixDesignTab.results['WGK'], MixDesignTab.results['Anteile'])
+        (tech, f"{wärmemenge:.2f}", f"{wgk:.2f}", f"{anteil*100:.2f}", f"{spec_emission}", f"{primary_energy/wärmemenge}")
+        for tech, wärmemenge, wgk, anteil, spec_emission, primary_energy in zip(MixDesignTab.results['techs'], MixDesignTab.results['Wärmemengen'], MixDesignTab.results['WGK'], 
+                                                 MixDesignTab.results['Anteile'], MixDesignTab.results['specific_emissions_L'], MixDesignTab.results['primärenergie_L'])
     ])
     results_table = Table(results_data)
     results_table.setStyle(get_standard_table_style())
@@ -238,7 +239,10 @@ def create_pdf(MixDesignTab, filename):
         ("Wärmegestehungskosten Erzeugeranlagen (€/MWh)", f"{MixDesignTab.results['WGK_Gesamt']:.2f}"),
         ("Wärmegestehungskosten Netzinfrastruktur (€/MWh)", f"{MixDesignTab.resultTab.WGK_Infra:.2f}"),
         ("Wärmegestehungskosten dezentrale Wärmepumpen (€/MWh)", f"{MixDesignTab.resultTab.wgk_heat_pump_electricity:.2f}"),
-        ("Wärmegestehungskosten Gesamt (€/MWh)", f"{MixDesignTab.resultTab.WGK_Gesamt:.2f}")
+        ("Wärmegestehungskosten Gesamt (€/MWh)", f"{MixDesignTab.resultTab.WGK_Gesamt:.2f}"),
+        ("spez. CO2-Emissionen Wärme (tCO2/MWh_th)", f"{MixDesignTab.results['specific_emissions_Gesamt']:.4f}"),
+        ("CO2-Emissionen Wärme (tCO2)", f"{MixDesignTab.results['specific_emissions_Gesamt']*MixDesignTab.results['Jahreswärmebedarf']:.2f}"),
+        ("Primärenergiefaktor", f"{MixDesignTab.results['primärenergiefaktor_Gesamt']:.4f}")
     ]
 
     # Tabelle für die zusätzlichen Informationen erstellen
