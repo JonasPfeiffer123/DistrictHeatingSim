@@ -252,7 +252,7 @@ class MixDesignTab(QWidget):
             self.start_calculation(True, weights)
 
     ### NEU !!! ###
-    def sensitivity(self, gas_range, electricity_range, wood_range):
+    def sensitivity(self, gas_range, electricity_range, wood_range, weights=None):
         if not self.validateInputs():
             return
 
@@ -270,7 +270,7 @@ class MixDesignTab(QWidget):
         for gas_price in self.generate_values(gas_range):
             for electricity_price in self.generate_values(electricity_range):
                 for wood_price in self.generate_values(wood_range):
-                    result = self.calculate_mix(gas_price, electricity_price, wood_price)
+                    result = self.calculate_mix(gas_price, electricity_price, wood_price, weights)
                     waerme_ges_kW, strom_wp_kW = np.sum(result["waerme_ges_kW"]), np.sum(result["strom_wp_kW"])
                     wgk_heat_pump_electricity = ((strom_wp_kW/1000) * electricity_price) / ((strom_wp_kW+waerme_ges_kW)/1000)
                     if result is not None:
@@ -292,7 +292,7 @@ class MixDesignTab(QWidget):
         step = (upper - lower) / (num_points - 1)
         return [lower + i * step for i in range(num_points)]
 
-    def calculate_mix(self, gas_price, electricity_price, wood_price):
+    def calculate_mix(self, gas_price, electricity_price, wood_price, weights):
         result = None
         calculation_done_event = QEventLoop()
         
@@ -310,7 +310,7 @@ class MixDesignTab(QWidget):
         self.calculationThread = CalculateMixThread(
             self.filename, self.load_scale_factor, self.TRY_data, self.COP_data, gas_price, 
             electricity_price, wood_price, self.BEW, self.techTab.tech_objects, False, 
-            self.kapitalzins, self.preissteigerungsrate, self.betrachtungszeitraum, self.stundensatz)
+            self.kapitalzins, self.preissteigerungsrate, self.betrachtungszeitraum, self.stundensatz, weights)
         
         self.calculationThread.calculation_done.connect(calculation_done)
         self.calculationThread.calculation_error.connect(calculation_error)

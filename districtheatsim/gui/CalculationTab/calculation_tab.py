@@ -303,50 +303,98 @@ class CalculationTab(QWidget):
         self.display_results()
 
     def display_results(self):
-        Anzahl_Gebäude = len(self.net.heat_consumer)
-        
-        # Überprüfen, ob 'circ_pump_mass' im Netz vorhanden ist
-        if hasattr(self.net, 'circ_pump_mass'):
-            Anzahal_Heizzentralen = len(self.net.circ_pump_pressure) + len(self.net.circ_pump_mass)
+        # Überprüfen, ob self.net vorhanden ist
+        if not hasattr(self, 'net'):
+            self.result_text = "Netzdaten nicht verfügbar."
+            self.results_display.setPlainText(self.result_text)
+            return
+
+        # Überprüfen, ob die notwendigen Daten vorhanden sind
+        Anzahl_Gebäude = len(self.net.heat_consumer) if hasattr(self.net, 'heat_consumer') else None
+
+        if hasattr(self.net, 'circ_pump_pressure'):
+            if hasattr(self.net, 'circ_pump_mass'):
+                Anzahl_Heizzentralen = len(self.net.circ_pump_pressure) + len(self.net.circ_pump_mass)
+            else:
+                Anzahl_Heizzentralen = len(self.net.circ_pump_pressure)
         else:
-            Anzahal_Heizzentralen = len(self.net.circ_pump_pressure)
+            Anzahl_Heizzentralen = None
 
         # Beispielberechnungen
-        Gesamtwärmebedarf_Gebäude_MWh = np.sum(self.waerme_ges_kW) / 1000
-        Gesamtheizlast_Gebäude_kW = np.max(self.waerme_ges_kW)
-        
+        Gesamtwärmebedarf_Gebäude_MWh = np.sum(self.waerme_ges_kW) / 1000 if hasattr(self, 'waerme_ges_kW') else None
+        Gesamtheizlast_Gebäude_kW = np.max(self.waerme_ges_kW) if hasattr(self, 'waerme_ges_kW') else None
+
         # Berechnung der Trassenlänge aus dem pandapipes-Netz
-        Trassenlänge_m = self.net.pipe.length_km.sum() * 1000 / 2 # Länge in Metern Trassenlänge ist nur halb so groß wie die von Vor- und Rücklauf zusammen
-        
-        Wärmebedarfsdichte_MWh_a_m = Gesamtwärmebedarf_Gebäude_MWh / Trassenlänge_m
-        Anschlussdichte_kW_m = Gesamtheizlast_Gebäude_kW / Trassenlänge_m
+        if hasattr(self.net.pipe, 'length_km'):
+            Trassenlänge_m = self.net.pipe.length_km.sum() * 1000 / 2 # Länge in Metern Trassenlänge ist nur halb so groß wie die von Vor- und Rücklauf zusammen
+        else:
+            Trassenlänge_m = None
+
+        Wärmebedarfsdichte_MWh_a_m = Gesamtwärmebedarf_Gebäude_MWh / Trassenlänge_m if Gesamtwärmebedarf_Gebäude_MWh is not None and Trassenlänge_m is not None else None
+        Anschlussdichte_kW_m = Gesamtheizlast_Gebäude_kW / Trassenlänge_m if Gesamtheizlast_Gebäude_kW is not None and Trassenlänge_m is not None else None
 
         Jahreswärmeerzeugung_MWh = 0
         Pumpenstrombedarf_MWh = 0
-        for pump_type, pumps in self.pump_results.items():
-            for idx, pump_data in pumps.items():
-                Jahreswärmeerzeugung_MWh += np.sum(pump_data['qext_kW']) / 1000
-                Pumpenstrombedarf_MWh += np.sum((pump_data['mass_flow']/1000)*(pump_data['deltap']*100)) / 1000 # kg/s * bar-> m³/s * kPa = kW 
-        Verteilverluste_kW = Jahreswärmeerzeugung_MWh - Gesamtwärmebedarf_Gebäude_MWh
-        rel_Verteilverluste_percent = (Verteilverluste_kW / Jahreswärmeerzeugung_MWh) * 100
+        if hasattr(self, 'pump_results'):
+            for pump_type, pumps in self.pump_results.items():
+                for idx, pump_data in pumps.items():
+                    Jahreswärmeerzeugung_MWh += np.sum(pump_data['qext_kW']) / 1000
+                    Pumpenstrombedarf_MWh += np.sum((pump_data['mass_flow']/1000)*(pump_data['deltap']*100)) / 1000 # kg/s * bar-> m³/s * kPa = kW 
 
-        #strombedarf_pumpen_kW = 
+        # Berechnung der Verteilverluste und des relativen Verteilverlustes nur, wenn die notwendigen Daten vorhanden sind
+        Verteilverluste_kW = Jahreswärmeerzeugung_MWh - Gesamtwärmebedarf_Gebäude_MWh if Gesamtwärmebedarf_Gebäude_MWh is not None and Jahreswärmeerzeugung_MWh is not None and Jahreswärmeerzeugung_MWh != 0 else None
+        rel_Verteilverluste_percent = (Verteilverluste_kW / Jahreswärmeerzeugung_MWh) * 100 if Verteilverluste_kW is not None and Jahreswärmeerzeugung_MWh is not None and Jahreswärmeerzeugung_MWh != 0 else None
 
         # Formatierter Text
-        self.result_text = (
-            f"Anzahl angeschlossene Gebäude: {Anzahl_Gebäude}\n"
-            f"Anzahl Heizzentralen: {Anzahal_Heizzentralen}\n\n"
-            f"Jahresgesamtwärmebedarf Gebäude: {Gesamtwärmebedarf_Gebäude_MWh:.2f} MWh/a\n"
-            f"max. Heizlast Gebäude: {Gesamtheizlast_Gebäude_kW:.2f} kW\n"
-            f"Trassenlänge Wärmenetz: {Trassenlänge_m:.2f} m\n\n"
-            f"Wärmebedarfsdichte: {Wärmebedarfsdichte_MWh_a_m:.2f} MWh/(a*m)\n"
-            f"Anschlussdichte: {Anschlussdichte_kW_m:.2f} kW/m\n\n"
-            f"Jahreswärmeerzeugung: {Jahreswärmeerzeugung_MWh:.2f} MWh\n"
-            f"Verteilverluste: {Verteilverluste_kW:.2f} MWh\n"
-            f"rel. Verteilverluste: {rel_Verteilverluste_percent:.2f} %\n\n"
-            f"Pumpenstrom: {Pumpenstrombedarf_MWh:.2f} MWh\n"
-        )
-        
+        result_text_parts = [
+            f"Anzahl angeschlossene Gebäude: {Anzahl_Gebäude if Anzahl_Gebäude is not None else 'N/A'}\n",
+            f"Anzahl Heizzentralen: {Anzahl_Heizzentralen if Anzahl_Heizzentralen is not None else 'N/A'}\n\n"
+        ]
+
+        if Gesamtwärmebedarf_Gebäude_MWh is not None:
+            result_text_parts.append(f"Jahresgesamtwärmebedarf Gebäude: {Gesamtwärmebedarf_Gebäude_MWh:.2f} MWh/a\n")
+        else:
+            result_text_parts.append("Jahresgesamtwärmebedarf Gebäude: N/A\n")
+
+        if Gesamtheizlast_Gebäude_kW is not None:
+            result_text_parts.append(f"max. Heizlast Gebäude: {Gesamtheizlast_Gebäude_kW:.2f} kW\n")
+        else:
+            result_text_parts.append("max. Heizlast Gebäude: N/A\n")
+
+        if Trassenlänge_m is not None:
+            result_text_parts.append(f"Trassenlänge Wärmenetz: {Trassenlänge_m:.2f} m\n\n")
+        else:
+            result_text_parts.append("Trassenlänge Wärmenetz: N/A\n\n")
+
+        if Wärmebedarfsdichte_MWh_a_m is not None:
+            result_text_parts.append(f"Wärmebedarfsdichte: {Wärmebedarfsdichte_MWh_a_m:.2f} MWh/(a*m)\n")
+        else:
+            result_text_parts.append("Wärmebedarfsdichte: N/A\n")
+
+        if Anschlussdichte_kW_m is not None:
+            result_text_parts.append(f"Anschlussdichte: {Anschlussdichte_kW_m:.2f} kW/m\n\n")
+        else:
+            result_text_parts.append("Anschlussdichte: N/A\n\n")
+
+        if Jahreswärmeerzeugung_MWh is not None and Jahreswärmeerzeugung_MWh != 0:
+            result_text_parts.append(f"Jahreswärmeerzeugung: {Jahreswärmeerzeugung_MWh:.2f} MWh\n")
+        else:
+            result_text_parts.append("Jahreswärmeerzeugung: N/A\n")
+
+        if Verteilverluste_kW is not None:
+            result_text_parts.append(f"Verteilverluste: {Verteilverluste_kW:.2f} MWh\n")
+        else:
+            result_text_parts.append("Verteilverluste: N/A\n")
+
+        if rel_Verteilverluste_percent is not None:
+            result_text_parts.append(f"rel. Verteilverluste: {rel_Verteilverluste_percent:.2f} %\n\n")
+        else:
+            result_text_parts.append("rel. Verteilverluste: N/A\n\n")
+
+        result_text_parts.append(f"Pumpenstrom: {Pumpenstrombedarf_MWh:.2f} MWh\n")
+
+        self.result_text = ''.join(result_text_parts)
+
         self.results_display.setPlainText(self.result_text)  # Setze den Text in das Ergebnisfeld
 
     def plot(self, time_steps, qext_kW, strom_kW):

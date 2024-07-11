@@ -890,7 +890,7 @@ class SolarThermal:
         obj.__dict__.update(data)
         return obj
     
-# Diese Klasse ist nocht fertig implementiert und die Nutzung auch noch nicht durchdacht, Wie muss dass ganze bilanziert werden?
+# Diese Klasse ist noch nicht fertig implementiert und die Nutzung auch noch nicht durchdacht, Wie muss dass ganze bilanziert werden?
 class Photovoltaics:
     def __init__(self, name, TRY_data, Gross_area, Longitude, STD_Longitude, Latitude, East_West_collector_azimuth_angle=0, Collector_tilt_angle=36, Albedo=0.2, Kosten_STA_spez=300):
         self.name = name
@@ -926,7 +926,7 @@ class Photovoltaics:
         self.Annuität_BEW = annuität(self.Investitionskosten_Gesamt_BEW, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, q, r, T)
         self.WGK_BEW = self.Annuität_BEW / self.strommenge_MWh
 
-        self.WGK_BEW_BKF = self.WGK_BEW - 10  # €/MWh 10 Jahre
+        self.WGK_BEW_BKF = self.WGK_BEW - self.Betriebskostenförderung_BEW  # €/MWh 10 Jahre
 
         if BEW == "Nein":
             return self.WGK
@@ -1195,6 +1195,13 @@ def optimize_mix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, 
 
 # Idee Photovoltaisch-Thermische-Anlagen (PVT) mit zu simulieren
 class PVT:
+    def __init__(self, area):
+        self.area = area
+
+    def calculate(self):
+        pass
+
+class AqvaHeat(HeatPump):
     def __init__(self, area):
         self.area = area
 

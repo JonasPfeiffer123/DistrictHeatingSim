@@ -5,6 +5,8 @@ import pandas as pd
 import networkx as nx
 from collections import defaultdict
 import numpy as np
+import matplotlib.pyplot as plt
+import os
 
 def add_intermediate_points(points_gdf, street_layer, max_distance=200, point_interval=10):
     new_points = []
@@ -39,37 +41,78 @@ def add_intermediate_points(points_gdf, street_layer, max_distance=200, point_in
     new_points_gdf = gpd.GeoDataFrame(geometry=new_points)
     return pd.concat([points_gdf, new_points_gdf], ignore_index=True)
 
-def adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf, threshold=10):
-    # Iterativer Anpassungsprozess
+def adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf, threshold=5, output_dir="iterations"):
     iteration = 0
     changes_made = True
+
+    # Erstellen Sie das Ausgabe-Verzeichnis, wenn es nicht existiert
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
     while changes_made:
         print(f"Iteration {iteration}")
 
         adjusted_lines = []
-        changes_made = False  # Flag, um zu verfolgen, ob Änderungen vorgenommen wurden
+        changes_made = False
 
         for line in mst_gdf.geometry:
-            midpoint = line.interpolate(0.5, normalized=True)  # Mittelpunkt des Segments
-            nearest_line = street_layer.distance(midpoint).idxmin()  # Index des nächstgelegenen Straßensegments
+            if not line.is_valid:
+                print(f"Invalid line geometry: {line}")
+                continue
+
+            midpoint = line.interpolate(0.5, normalized=True)
+            nearest_line = street_layer.distance(midpoint).idxmin()
             nearest_street = street_layer.iloc[nearest_line].geometry
-            point_on_street = nearest_points(midpoint, nearest_street)[1]  # Nächster Punkt auf der Straße
+            point_on_street = nearest_points(midpoint, nearest_street)[1]
 
             distance_to_street = midpoint.distance(point_on_street)
+            print(f"Distance to nearest street: {distance_to_street}")
 
             if distance_to_street > threshold:
-                # Segment aufteilen oder neu ausrichten
+                if point_on_street.equals(Point(line.coords[0])) or point_on_street.equals(Point(line.coords[1])):
+                    print(f"Skipping adjustment due to identical points: {point_on_street}")
+                    adjusted_lines.append(line)
+                    continue
+                
                 new_line1 = LineString([line.coords[0], point_on_street.coords[0]])
                 new_line2 = LineString([point_on_street.coords[0], line.coords[1]])
-                adjusted_lines.extend([new_line1, new_line2])
+                
+                if new_line1.is_valid and not new_line1.is_empty:
+                    adjusted_lines.append(new_line1)
+                else:
+                    print(f"Invalid new_line1: {new_line1}")
+                
+                if new_line2.is_valid and not new_line2.is_empty:
+                    adjusted_lines.append(new_line2)
+                else:
+                    print(f"Invalid new_line2: {new_line2}")
+                
                 changes_made = True
+                print("Adjusting line segment")
             else:
                 adjusted_lines.append(line)
+
+        if not changes_made:
+            print("No changes made, breaking out of the loop.")
+            break
 
         mst_gdf = gpd.GeoDataFrame(geometry=adjusted_lines)
     
         iteration += 1
+        if iteration > 1000:
+            print("Reached iteration limit, breaking out of the loop.")
+            break
+
+        # Speichern Sie den Zwischenstand nach jeder Iteration
+        #output_path = os.path.join(output_dir, f"mst_gdf_iteration_{iteration}.geojson")
+        #mst_gdf.to_file(output_path, driver="GeoJSON")
+        #print(f"Saved intermediate network to {output_path}")
+
+        # Plotten Sie das aktuelle Netzwerk
+        #fig, ax = plt.subplots(figsize=(10, 10))
+        #mst_gdf.plot(ax=ax, color='blue')
+        #plt.title(f'Network at Iteration {iteration}')
+        #plt.show()
 
     mst_gdf = simplify_network(mst_gdf)
     mst_gdf = extract_unique_points_and_create_mst(mst_gdf, all_end_points_gdf)

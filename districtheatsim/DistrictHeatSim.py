@@ -9,6 +9,7 @@ from gui.VisualizationTab.visualization_tab import VisualizationTab
 from gui.BuildingTab.building_tab import BuildingTab
 from gui.CalculationTab.calculation_tab import CalculationTab
 from gui.MixDesignTab.mix_design_tab import MixDesignTab
+from gui.ComparisonTab.comparison_tab import ComparisonTab
 
 from gui.Dialogs import TemperatureDataDialog, HeatPumpDataDialog
 
@@ -78,6 +79,7 @@ class HeatSystemDesignGUI(QWidget):
         self.buildingTab = BuildingTab(self.data_manager, self.visTab, self)
         self.calcTab = CalculationTab(self.data_manager, self)
         self.mixDesignTab = MixDesignTab(self.data_manager, self)
+        self.comparisonTab = ComparisonTab(self.data_manager, self)
 
         # Adding tabs to the tab widget
         tabWidget.addTab(self.projectTab, "Projektdefinition")
@@ -85,6 +87,7 @@ class HeatSystemDesignGUI(QWidget):
         tabWidget.addTab(self.buildingTab, "Gebäudedefinition")
         tabWidget.addTab(self.calcTab, "Wärmenetzberechnung")
         tabWidget.addTab(self.mixDesignTab, "Erzeugerauslegung und Wirtschftlichkeitrechnung")
+        tabWidget.addTab(self.comparisonTab, "Variantenvergleich")
 
         # folder path Label
         if self.data_manager.project_folder != "" or self.data_manager.project_folder != None:
