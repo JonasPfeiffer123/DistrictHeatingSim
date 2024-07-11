@@ -1,17 +1,17 @@
-Adresse;UTM_X;UTM_Y;Grundfläche;Wandfläche;Dachfläche;Volumen;Nutzungstyp;Typ;Gebäudezustand;ww_demand_Wh_per_m2;air_change_rate;floors;fracture_windows;fracture_doors;min_air_temp;room_temp;max_air_temp_heating;Jährlicher Wärmebedarf in kWh
-Schmelzstraße 13, Bad Muskau, Sachsen, Deutschland;480918.115;5710060.447;71.2;310.9;118.9;575.8;HMF;DE.N.SFH.01.GEN;Advanced_Refurbishment;12800;0.5;4;0.1;0.01;-15;20;15;17858.52
-Schmelzstraße 19, Bad Muskau, Sachsen, Deutschland;480893.5315;5710103.441;94.2;335.3;116.3;806.5;HMF;DE.N.SFH.01.GEN;Advanced_Refurbishment;12800;0.5;4;0.1;0.01;-15;20;15;22609.95
-Schmelzstraße 21, Bad Muskau, Sachsen, Deutschland;480885.9865;5710105.526;106.6;359.1;125.4;368.2;HMF;DE.N.SFH.01.GEN;Advanced_Refurbishment;12800;0.5;4;0.1;0.01;-15;20;15;18634.34
-Schmelzstraße 20, Bad Muskau, Sachsen, Deutschland;480857.4302;5710152.884;174.8;311.5;224.8;856.5;HMF;DE.N.SFH.01.GEN;Advanced_Refurbishment;12800;0.5;4;0.1;0.01;-15;20;15;29609.26
-Schmelzstraße 12, Bad Muskau, Sachsen, Deutschland;480910.1405;5710111.063;177.9;493.9;188.7;1180.5;HMF;DE.N.SFH.01.GEN;Advanced_Refurbishment;12800;0.5;4;0.1;0.01;-15;20;15;36143.04
-Schmelzstraße 6, Bad Muskau, Sachsen, Deutschland;480936.2765;5710062.13;234.1;552.3;299.8;1653.5;HMF;DE.N.SFH.01.GEN;Advanced_Refurbishment;12800;0.5;4;0.1;0.01;-15;20;15;47807.33
-Schmelzstraße 17, Bad Muskau, Sachsen, Deutschland;480899.1982;5710092.759;152.9;388.4;197.1;1092.9;HMF;DE.N.SFH.01.GEN;Advanced_Refurbishment;12800;0.5;4;0.1;0.01;-15;20;15;31812.44
-Schmelzstraße 2, Bad Muskau, Sachsen, Deutschland;480942.909;5710034.83;52.6;246.5;61.0;509.9;HMF;DE.N.SFH.01.GEN;Advanced_Refurbishment;12800;0.5;4;0.1;0.01;-15;20;15;14202.14
-Schmelzstraße 10, Bad Muskau, Sachsen, Deutschland;480919.5284;5710099.784;194.6;485.7;273.9;1610.9;HMF;DE.N.SFH.01.GEN;Advanced_Refurbishment;12800;0.5;4;0.1;0.01;-15;20;15;43246.59
-Schmelzstraße 16, Bad Muskau, Sachsen, Deutschland;480885.8951;5710134.282;320.4;1223.1;347.4;4985.8;HMF;DE.N.SFH.01.GEN;Advanced_Refurbishment;12800;0.5;4;0.1;0.01;-15;20;15;104786.60
-Schmelzstraße 8, Bad Muskau, Sachsen, Deutschland;480929.6075;5710080.511;116.4;243.9;145.1;549.1;HMF;DE.N.SFH.01.GEN;Advanced_Refurbishment;12800;0.5;4;0.1;0.01;-15;20;15;19965.72
-Schmelzstraße 4, Bad Muskau, Sachsen, Deutschland;480940.5163;5710048.468;186.9;1126.7;207.8;2489.1;HMF;DE.N.SFH.01.GEN;Advanced_Refurbishment;12800;0.5;4;0.1;0.01;-15;20;15;62355.46
-Schmelzstraße 15, Bad Muskau, Sachsen, Deutschland;480905.6682;5710077.365;178.8;509.7;180.6;1064.3;HMF;DE.N.SFH.01.GEN;Advanced_Refurbishment;12800;0.5;4;0.1;0.01;-15;20;15;34959.79
-Schmelzstraße 14, Bad Muskau, Sachsen, Deutschland;480901.1448;5710125.544;50.1;319.6;50.1;721.0;HMF;DE.N.SFH.01.GEN;Advanced_Refurbishment;12800;0.5;4;0.1;0.01;-15;20;15;17575.05
-Schmelzstraße 18, Bad Muskau, Sachsen, Deutschland;480871.3748;5710137.856;171.2;562.3;213.7;492.6;HMF;DE.N.SFH.01.GEN;Advanced_Refurbishment;12800;0.5;4;0.1;0.01;-15;20;15;28637.74
-Schmelzstraße 11, Bad Muskau, Sachsen, Deutschland;480919.2067;5710047.447;146.8;587.6;134.8;1810.5;HMF;DE.N.SFH.01.GEN;Advanced_Refurbishment;12800;0.5;4;0.1;0.01;-15;20;15;42450.29
+Adresse;UTM_X;UTM_Y;Grundfläche;Wandfläche;Dachfläche;Volumen;Nutzungstyp;Typ;Gebäudezustand;ww_demand_Wh_per_m2;air_change_rate;floors;fracture_windows;fracture_doors;min_air_temp;room_temp;max_air_temp_heating;Wärmebedarf
+Schmelzstraße 13, Bad Muskau, Sachsen, Deutschland;480918.115;5710060.447;71.2;310.9;118.9;575.8;HMF;DE.N.SFH.01.GEN;Existing_state;12800;0.5;4;0.1;0.01;-15;20;15;93487.32
+Schmelzstraße 19, Bad Muskau, Sachsen, Deutschland;480893.5315;5710103.441;94.2;335.3;116.3;806.5;HMF;DE.N.SFH.01.GEN;Existing_state;12800;0.5;4;0.1;0.01;-15;20;15;105343.57
+Schmelzstraße 21, Bad Muskau, Sachsen, Deutschland;480885.9865;5710105.526;106.6;359.1;125.4;368.2;HMF;DE.N.SFH.01.GEN;Existing_state;12800;0.5;4;0.1;0.01;-15;20;15;108456.97
+Schmelzstraße 20, Bad Muskau, Sachsen, Deutschland;480857.4302;5710152.884;174.8;311.5;224.8;856.5;HMF;DE.N.SFH.01.GEN;Existing_state;12800;0.5;4;0.1;0.01;-15;20;15;143222.54
+Schmelzstraße 12, Bad Muskau, Sachsen, Deutschland;480910.1405;5710111.063;177.9;493.9;188.7;1180.5;HMF;DE.N.SFH.01.GEN;Existing_state;12800;0.5;4;0.1;0.01;-15;20;15;168373.82
+Schmelzstraße 6, Bad Muskau, Sachsen, Deutschland;480936.2765;5710062.13;234.1;552.3;299.8;1653.5;HMF;DE.N.SFH.01.GEN;Existing_state;12800;0.5;4;0.1;0.01;-15;20;15;217783.89
+Schmelzstraße 17, Bad Muskau, Sachsen, Deutschland;480899.1982;5710092.759;152.9;388.4;197.1;1092.9;HMF;DE.N.SFH.01.GEN;Existing_state;12800;0.5;4;0.1;0.01;-15;20;15;146750.85
+Schmelzstraße 2, Bad Muskau, Sachsen, Deutschland;480942.909;5710034.83;52.6;246.5;61.0;509.9;HMF;DE.N.SFH.01.GEN;Existing_state;12800;0.5;4;0.1;0.01;-15;20;15;67624.01
+Schmelzstraße 10, Bad Muskau, Sachsen, Deutschland;480919.5284;5710099.784;194.6;485.7;273.9;1610.9;HMF;DE.N.SFH.01.GEN;Existing_state;12800;0.5;4;0.1;0.01;-15;20;15;192411.75
+Schmelzstraße 16, Bad Muskau, Sachsen, Deutschland;480885.8951;5710134.282;320.4;1223.1;347.4;4985.8;HMF;DE.N.SFH.01.GEN;Existing_state;12800;0.5;4;0.1;0.01;-15;20;15;388794.82
+Schmelzstraße 8, Bad Muskau, Sachsen, Deutschland;480929.6075;5710080.511;116.4;243.9;145.1;549.1;HMF;DE.N.SFH.01.GEN;Existing_state;12800;0.5;4;0.1;0.01;-15;20;15;99686.78
+Schmelzstraße 4, Bad Muskau, Sachsen, Deutschland;480940.5163;5710048.468;186.9;1126.7;207.8;2489.1;HMF;DE.N.SFH.01.GEN;Existing_state;12800;0.5;4;0.1;0.01;-15;20;15;284100.09
+Schmelzstraße 15, Bad Muskau, Sachsen, Deutschland;480905.6682;5710077.365;178.8;509.7;180.6;1064.3;HMF;DE.N.SFH.01.GEN;Existing_state;12800;0.5;4;0.1;0.01;-15;20;15;168051.36
+Schmelzstraße 14, Bad Muskau, Sachsen, Deutschland;480901.1448;5710125.544;50.1;319.6;50.1;721.0;HMF;DE.N.SFH.01.GEN;Existing_state;12800;0.5;4;0.1;0.01;-15;20;15;78382.40
+Schmelzstraße 18, Bad Muskau, Sachsen, Deutschland;480871.3748;5710137.856;171.2;562.3;213.7;492.6;HMF;DE.N.SFH.01.GEN;Existing_state;12800;0.5;4;0.1;0.01;-15;20;15;173121.58
+Schmelzstraße 11, Bad Muskau, Sachsen, Deutschland;480919.2067;5710047.447;146.8;587.6;134.8;1810.5;HMF;DE.N.SFH.01.GEN;Existing_state;12800;0.5;4;0.1;0.01;-15;20;15;171944.84

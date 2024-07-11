@@ -1,19 +1,19 @@
 import sys
 import os
 import csv
+import json
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
-from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QComboBox, QPushButton, QGroupBox, \
-    QHBoxLayout, QFileDialog, QProgressBar, QLabel, QWidget, QTableWidget, QTableWidgetItem, \
-    QHeaderView, QScrollArea, QAction, QMainWindow
-from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import QVBoxLayout, QComboBox, QFileDialog, QProgressBar, QWidget, QTableWidget, QTableWidgetItem, \
+    QHeaderView, QAction, QMainWindow, QTabWidget, QDialog, QMessageBox
 from PyQt5.QtCore import pyqtSignal
 
 from lod2.filter_LOD2 import spatial_filter_with_polygon, filter_LOD2_with_coordinates, process_lod2, calculate_centroid_and_geocode
 from lod2.heat_requirement_DIN_EN_12831 import Building
+from gui.BuildingTab.building_dialogs import FilterDialog, LoadLOD2Dialog
 
 # defines the base path
 def get_resource_path(relative_path):
@@ -50,109 +50,77 @@ class BuildingTab(QMainWindow):
 
     def initUI(self):
         self.setWindowTitle("Verarbeitung LOD2-Daten")
-        self.setGeometry(200, 200, 1200, 1000)  # Anpassung der Fenstergröße
+        self.setGeometry(200, 200, 1200, 1000)
 
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
 
-        # Create a scroll area
-        scroll_area = QScrollArea(self)
-        scroll_area.setWidgetResizable(True)
-        main_layout.addWidget(scroll_area)
+        # Create tabs
+        tabs = QTabWidget(self)
+        main_layout.addWidget(tabs)
 
-        # Create a widget for scroll area contents
-        scroll_content = QWidget()
-        scroll_area.setWidget(scroll_content)
+        # Data table tab
+        data_table_tab = QWidget()
+        tabs.addTab(data_table_tab, "Tabelle LOD2-Daten")
 
-        layout = QVBoxLayout(scroll_content)
-        layout.setSpacing(10)  # Abstand zwischen den Widgets
-        layout.setContentsMargins(10, 10, 10, 10)  # Rand des Layouts
+        table_layout = QVBoxLayout(data_table_tab)
 
-        font = QFont()
-        font.setPointSize(10)  # Größere Schrift für bessere Lesbarkeit
-        
-        # Group box for file inputs
-        fileInputGroupBox = QGroupBox("File Inputs")
-        fileInputLayout = QVBoxLayout(fileInputGroupBox)
-        
-        # Eingabefeld für die Eingabe-LOD2-geojson
-        self.inputLOD2geojsonLineEdit, self.inputLOD2geojsonButton = self.createFileInput(f"{self.base_path}\\Gebäudedaten\\lod2_data\\lod2_data.geojson", font)
-        fileInputLayout.addLayout(self.createFileInputLayout("Eingabe-LOD2-geojson:", self.inputLOD2geojsonLineEdit, self.inputLOD2geojsonButton, font))
-
-        # Eingabefeld für die Eingabe-Filter-Polygon-shapefile
-        self.inputfilterPolygonLineEdit, self.inputfilterPolygonButton = self.createFileInput(f"{self.base_path}\\Gebäudedaten\\lod2_data\\quartier_1.geojson", font)
-        fileInputLayout.addLayout(self.createFileInputLayout("Eingabe-Filter-Polygon-shapefile:", self.inputfilterPolygonLineEdit, self.inputfilterPolygonButton, font))
-
-        # Eingabefeld für die Eingabe-Filter-Gebäude-csv
-        self.inputfilterBuildingDataLineEdit, self.inputfilterBuildingDataButton = self.createFileInput(f"{self.base_path}\\Gebäudedaten\\data_output_ETRS89.csv", font)
-        fileInputLayout.addLayout(self.createFileInputLayout("Eingabe-Filter-Gebäude-csv:", self.inputfilterBuildingDataLineEdit, self.inputfilterBuildingDataButton, font))
-
-        # Eingabefeld für die Ausgabe-LOD2-geojson
-        self.outputLOD2geojsonLineEdit, self.outputLOD2geojsonButton = self.createFileInput(f"{self.base_path}\\Gebäudedaten\\lod2_data\\filtered_LOD_quartier_1.geojson", font)
-        fileInputLayout.addLayout(self.createFileInputLayout("Ausgabe-LOD2-geojson:", self.outputLOD2geojsonLineEdit, self.outputLOD2geojsonButton, font))
-        
-        layout.addWidget(fileInputGroupBox)
-        
-        # ComboBox for selecting filter method
-        self.filterMethodComboBox = QComboBox(self)
-        self.filterMethodComboBox.addItems(["Filter by Polygon", "Filter by Building Data CSV"])
-        self.filterMethodComboBox.currentIndexChanged.connect(self.updateFilterInputVisibility)
-        layout.addWidget(self.filterMethodComboBox)
-
-        # Improved Table Widget
         self.tableWidget = QTableWidget(self)
         self.tableWidget.setColumnCount(19)
         self.tableWidget.setHorizontalHeaderLabels(['Adresse', 'UTM_X', 'UTM_Y', 'Grundfläche', 'Wandfläche', 'Dachfläche', 'Volumen', 'Nutzungstyp', 'Typ', 'Gebäudezustand', 
                                                     'ww_demand_Wh_per_m2', 'air_change_rate', 'floors', 'fracture_windows', 'fracture_doors', 'min_air_temp', 
-                                                    'room_temp', 'max_air_temp_heating', 'Jährlicher Wärmebedarf in kWh'])
+                                                    'room_temp', 'max_air_temp_heating', 'Wärmebedarf'])
         self.tableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.tableWidget.setSortingEnabled(True)  # Enable sorting
-        self.tableWidget.setMinimumSize(800, 400)  # Set minimum size for the table
-        layout.addWidget(self.tableWidget)
+        self.tableWidget.setSortingEnabled(True)
+        self.tableWidget.setMinimumSize(800, 400)
+        table_layout.addWidget(self.tableWidget)
 
-        # Matplotlib Figure
+        # 3D Visualization tab
+        vis_3d_tab = QWidget()
+        tabs.addTab(vis_3d_tab, "3D-Visualisierung LOD2-Daten")
+
+        vis_3d_layout = QVBoxLayout(vis_3d_tab)
+        self.figure_3d = plt.figure()
+        self.canvas_3d = FigureCanvas(self.figure_3d)
+        self.canvas_3d.setMinimumSize(800, 400)
+        vis_3d_layout.addWidget(self.canvas_3d)
+
+        # Visualization tab
+        vis_tab = QWidget()
+        tabs.addTab(vis_tab, "Balkendiagramm Wärmebedarf")
+
+        vis_layout = QVBoxLayout(vis_tab)
         self.figure = plt.figure()
         self.canvas = FigureCanvas(self.figure)
-        self.canvas.setMinimumSize(800, 400)  # Set minimum size for the canvas
-        layout.addWidget(self.canvas)
+        self.canvas.setMinimumSize(800, 400)
+        vis_layout.addWidget(self.canvas)
 
-        # Verbesserte Fortschrittsanzeige
         self.progressBar = QProgressBar(self)
-        self.progressBar.setFont(font)
-        layout.addWidget(self.progressBar)
+        main_layout.addWidget(self.progressBar)
 
-        # Initial visibility setting
-        self.updateFilterInputVisibility()
-
-        # Create menu bar
         self.createMenuBar()
 
     def createMenuBar(self):
         menubar = self.menuBar()
+        file_menu = menubar.addMenu("Datei")
+        process_menu = menubar.addMenu("Datenverarbeitung")
+        dataset_menu = menubar.addMenu("Datenvergleich")
 
-        file_menu = menubar.addMenu("File")
-        process_menu = menubar.addMenu("Process")
-        dataset_menu = menubar.addMenu("Dataset")
-
-        open_action = QAction("Open", self)
+        open_action = QAction("Öffnen", self)
         open_action.triggered.connect(self.loadDataFromFile)
         file_menu.addAction(open_action)
 
-        save_action = QAction("Save", self)
-        save_action.triggered.connect(self.saveData)
+        save_action = QAction("Speichern", self)
+        save_action.triggered.connect(self.saveDataAsGeoJSON)
         file_menu.addAction(save_action)
 
-        exit_action = QAction("Exit", self)
-        exit_action.triggered.connect(self.close)
-        file_menu.addAction(exit_action)
-
-        process_filter_action = QAction("LOD2-Daten filtern und in Karte laden", self)
-        process_filter_action.triggered.connect(self.processData)
+        process_filter_action = QAction("LOD2-Daten filtern laden", self)
+        process_filter_action.triggered.connect(self.showFilterDialog)
         process_menu.addAction(process_filter_action)
 
-        load_filtered_action = QAction("gefilterte Daten laden und anzeigen", self)
-        load_filtered_action.triggered.connect(self.loadData)
+        load_filtered_action = QAction("LOD2-Daten laden", self)
+        load_filtered_action.triggered.connect(self.showLoadLOD2Dialog)
         process_menu.addAction(load_filtered_action)
 
         calculate_heat_demand_action = QAction("Wärmebedarf berechnen", self)
@@ -174,199 +142,290 @@ class BuildingTab(QMainWindow):
     def updateDefaultPath(self, new_base_path):
         self.base_path = new_base_path
 
-    def createFileInput(self, default_path, font):
-        lineEdit = QLineEdit(default_path)
-        lineEdit.setFont(font)
-        button = QPushButton("Durchsuchen")
-        button.setFont(font)
-        button.clicked.connect(lambda: self.selectFile(lineEdit))
-        return lineEdit, button
+    def showFilterDialog(self):
+        dialog = FilterDialog(self.base_path, self)
+        if dialog.exec_() == QDialog.Accepted:
+            self.inputLOD2geojsonfilename = dialog.inputLOD2geojsonLineEdit.text()
+            self.inputfilterPolygonfilename = dialog.inputfilterPolygonLineEdit.text()
+            self.inputfilterBuildingDatafilename = dialog.inputfilterBuildingDataLineEdit.text()
+            self.outputLOD2geojsonfilename = dialog.outputLOD2geojsonLineEdit.text()
+            self.filterMethod = dialog.filterMethodComboBox.currentText()
 
-    def createFileInputLayout(self, label_text, lineEdit, button, font):
-        layout = QHBoxLayout()
-        label = QLabel(label_text)
-        label.setFont(font)
-        layout.addWidget(label)
-        layout.addWidget(lineEdit)
-        layout.addWidget(button)
-        return layout
+            if self.filterMethod == "Filter by Polygon":
+                spatial_filter_with_polygon(self.inputLOD2geojsonfilename, self.inputfilterPolygonfilename, self.outputLOD2geojsonfilename)
+            elif self.filterMethod == "Filter by Building Data CSV":
+                filter_LOD2_with_coordinates(self.inputLOD2geojsonfilename, self.inputfilterBuildingDatafilename, self.outputLOD2geojsonfilename)
 
-    def selectFile(self, lineEdit):
-        filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", "", "All Files (*)")
-        if filename:
-            lineEdit.setText(filename)
+            self.loadDataFromGeoJSON()
 
-    def updateFilterInputVisibility(self):
-        filter_method = self.filterMethodComboBox.currentText()
-        if filter_method == "Filter by Polygon":
-            self.inputfilterPolygonLineEdit.show()
-            self.inputfilterBuildingDataLineEdit.hide()
-            self.inputfilterPolygonButton.show()
-            self.inputfilterBuildingDataButton.hide()
-        elif filter_method == "Filter by Building Data CSV":
-            self.inputfilterPolygonLineEdit.hide()
-            self.inputfilterBuildingDataLineEdit.show()
-            self.inputfilterPolygonButton.hide()
-            self.inputfilterBuildingDataButton.show()
+    def showLoadLOD2Dialog(self):
+        dialog = LoadLOD2Dialog(self.base_path, self)
+        if dialog.exec_() == QDialog.Accepted:
+            self.outputLOD2geojsonfilename = dialog.outputLOD2geojsonLineEdit.text()
 
-    def processData(self):
-        filter_method = self.filterMethodComboBox.currentText()
-        if filter_method == "Filter by Polygon":
-            self.inputLOD2geojsonfilename = self.inputLOD2geojsonLineEdit.text()
-            self.inputfilterPolygonfilename = self.inputfilterPolygonLineEdit.text()
-            self.outputLOD2geojsonfilename = self.outputLOD2geojsonLineEdit.text()
-            self.outputcsvfilename = f'{self.base_path}\\Gebäudedaten\\building_data.csv' # self.outputcsvLineEdit.text()
-            spatial_filter_with_polygon(self.inputLOD2geojsonfilename, self.inputfilterPolygonfilename, self.outputLOD2geojsonfilename)
-        elif filter_method == "Filter by Building Data CSV":
-            self.inputLOD2geojsonfilename = self.inputLOD2geojsonLineEdit.text()
-            self.inputfilterBuildingDatafilename = self.inputfilterBuildingDataLineEdit.text()
-            self.outputLOD2geojsonfilename = self.outputLOD2geojsonLineEdit.text()
-            self.outputcsvfilename = f'{self.base_path}\\Gebäudedaten\\building_data.csv' # self.outputcsvLineEdit.text()
-            filter_LOD2_with_coordinates(self.inputLOD2geojsonfilename, self.inputfilterBuildingDatafilename, self.outputLOD2geojsonfilename)
-        # Rufen Sie die loadNetData-Methode des Haupt-Tabs auf
+            self.loadDataFromGeoJSON()
+
+    def loadDataFromGeoJSON(self):
+        STANDARD_VALUES = {
+            'ww_demand_Wh_per_m2': 12800, 'air_change_rate': 0.5, 'floors': 4, 'fracture_windows': 0.10, 
+            'fracture_doors': 0.01, 'min_air_temp': -15, 'room_temp': 20, 'max_air_temp_heating': 15
+        }
+
         self.vis_tab.loadNetData(self.outputLOD2geojsonfilename)
 
-    def loadData(self):
-        STANDARD_VALUES = {
-        'air_change_rate': 0.5, 'floors': 4, 'fracture_windows': 0.10, 'fracture_doors': 0.01,
-        'min_air_temp': -15, 'room_temp': 20, 'max_air_temp_heating': 15, 'ww_demand_Wh_per_m2': 12800
-        }
-        # Annahme: Die process_lod2 Funktion wurde entsprechend erweitert, um Adressinformationen zu liefern
-        self.outputLOD2geojsonfilename = self.outputLOD2geojsonLineEdit.text()
-        building_info = process_lod2(self.outputLOD2geojsonfilename)
+        self.building_info = process_lod2(self.outputLOD2geojsonfilename)
 
-        # Überprüfen, ob die Adressinformationen fehlen und falls ja, die Berechnung durchführen
-        address_missing = any(info['Adresse'] is None for info in building_info.values())
+        address_missing = any(info['Adresse'] is None for info in self.building_info.values())
         if address_missing:
-            building_info = calculate_centroid_and_geocode(building_info)
+            self.building_info = calculate_centroid_and_geocode(self.building_info)
 
-        self.tableWidget.setRowCount(len(building_info))  # Setze die Anzahl der Zeilen basierend auf den Daten
+        self.tableWidget.setRowCount(len(self.building_info))
 
-        for row, (parent_id, info) in enumerate(building_info.items()):
+        for row, (parent_id, info) in enumerate(self.building_info.items()):
             self.tableWidget.setItem(row, 0, QTableWidgetItem(str(f"{info['Adresse']}, {info['Stadt']}, {info['Bundesland']}, {info['Land']}")))
             self.tableWidget.setItem(row, 1, QTableWidgetItem(str((info['Koordinate_X']))))
             self.tableWidget.setItem(row, 2, QTableWidgetItem(str((info['Koordinate_Y']))))
-            self.tableWidget.setItem(row, 3, QTableWidgetItem(str(round(info['Ground_Area'],1))))
-            self.tableWidget.setItem(row, 4, QTableWidgetItem(str(round(info['Wall_Area'],1))))
-            self.tableWidget.setItem(row, 5, QTableWidgetItem(str(round(info['Roof_Area'],1))))
-            self.tableWidget.setItem(row, 6, QTableWidgetItem(str(round(info['Volume'],1))))
-            self.tableWidget.setItem(row, 10, QTableWidgetItem(str(STANDARD_VALUES['ww_demand_Wh_per_m2'])))
-            self.tableWidget.setItem(row, 11, QTableWidgetItem(str(STANDARD_VALUES['air_change_rate'])))
-            self.tableWidget.setItem(row, 12, QTableWidgetItem(str(STANDARD_VALUES['floors'])))
-            self.tableWidget.setItem(row, 13, QTableWidgetItem(str(STANDARD_VALUES['fracture_windows'])))
-            self.tableWidget.setItem(row, 14, QTableWidgetItem(str(STANDARD_VALUES['fracture_doors'])))
-            self.tableWidget.setItem(row, 15, QTableWidgetItem(str(STANDARD_VALUES['min_air_temp'])))
-            self.tableWidget.setItem(row, 16, QTableWidgetItem(str(STANDARD_VALUES['room_temp'])))
-            self.tableWidget.setItem(row, 17, QTableWidgetItem(str(STANDARD_VALUES['max_air_temp_heating'])))
+            self.tableWidget.setItem(row, 3, QTableWidgetItem(str(round(info['Ground_Area'], 1))))
+            self.tableWidget.setItem(row, 4, QTableWidgetItem(str(round(info['Wall_Area'], 1))))
+            self.tableWidget.setItem(row, 5, QTableWidgetItem(str(round(info['Roof_Area'], 1))))
+            self.tableWidget.setItem(row, 6, QTableWidgetItem(str(round(info['Volume'], 1))))
 
+            # Nutzungstyp ComboBox
             comboBoxTypes = QComboBox()
-            comboBoxTypes.addItems(["HMF", "HEF", "GHD", "GBD"])  # Dropdown-Optionen, hier muss noch erweitert werden und Möglichkeit geschaffen werden aus Datei zu laden
-            self.tableWidget.setCellWidget(row, 7, comboBoxTypes)  # Korrigiere die Position für Nutzungstypen
+            comboBoxTypes.addItems(["HMF", "HEF", "GKO", "GHA", "GMK", "GBD", "GBH", "GWA", "GGA", "GBA", "GGB", "GPD", "GMF", "GHD"])
+            if info.get('Nutzungstyp') and info['Nutzungstyp'] in [comboBoxTypes.itemText(i) for i in range(comboBoxTypes.count())]:
+                comboBoxTypes.setCurrentText(info['Nutzungstyp'])
+            self.tableWidget.setCellWidget(row, 7, comboBoxTypes)
 
+            # Gebäude Typ ComboBox
             comboBoxBuildingTypes = QComboBox()
-            comboBoxBuildingTypes.addItems(self.comboBoxBuildingTypesItems)  # Dropdown-Optionen
-            self.tableWidget.setCellWidget(row, 8, comboBoxBuildingTypes)  # Korrigiere die Position für Nutzungstypen
+            comboBoxBuildingTypes.addItems(self.comboBoxBuildingTypesItems)
+            if info.get('Typ') and info['Typ'] in [comboBoxBuildingTypes.itemText(i) for i in range(comboBoxBuildingTypes.count())]:
+                comboBoxBuildingTypes.setCurrentText(info['Typ'])
+            self.tableWidget.setCellWidget(row, 8, comboBoxBuildingTypes)
 
+            # Gebäude Zustand ComboBox
             comboBoxBuildingState = QComboBox()
-            comboBoxBuildingState.addItems(["Existing_state", "Usual_Refurbishment", "Advanced_Refurbishment"])  # Dropdown-Optionen
-            self.tableWidget.setCellWidget(row, 9, comboBoxBuildingState)  # Korrigiere die Position für Nutzungstypen
+            comboBoxBuildingState.addItems(["Existing_state", "Usual_Refurbishment", "Advanced_Refurbishment"])
+            if info.get('Gebäudezustand') and info['Gebäudezustand'] in [comboBoxBuildingState.itemText(i) for i in range(comboBoxBuildingState.count())]:
+                comboBoxBuildingState.setCurrentText(info['Gebäudezustand'])
+            self.tableWidget.setCellWidget(row, 9, comboBoxBuildingState)
 
-    def saveData(self):
-        path, _ = QFileDialog.getSaveFileName(self, "Speichern unter", "", "CSV-Dateien (*.csv)")
-        if path:
-            with open(path, 'w', newline='', encoding='utf-8') as file:
-                writer = csv.writer(file, delimiter=";")
-                headers = [self.tableWidget.horizontalHeaderItem(i).text() for i in range(self.tableWidget.columnCount())]
-                writer.writerow(headers)
-                for row in range(self.tableWidget.rowCount()):
-                    rowData = []
-                    for column in range(self.tableWidget.columnCount()):
-                        if column in [7, 8, 9]:  # Spalten mit QComboBox
-                            comboBox = self.tableWidget.cellWidget(row, column)
-                            rowData.append(comboBox.currentText())
-                        else:
-                            item = self.tableWidget.item(row, column)
-                            rowData.append(item.text() if item else '')
-                    writer.writerow(rowData)
+            # Weitere Werte setzen, falls vorhanden, ansonsten Standardwerte verwenden
+            self.tableWidget.setItem(row, 10, QTableWidgetItem(str(info.get('ww_demand_Wh_per_m2', STANDARD_VALUES['ww_demand_Wh_per_m2']))))
+            self.tableWidget.setItem(row, 11, QTableWidgetItem(str(info.get('air_change_rate', STANDARD_VALUES['air_change_rate']))))
+            self.tableWidget.setItem(row, 12, QTableWidgetItem(str(info.get('floors', STANDARD_VALUES['floors']))))
+            self.tableWidget.setItem(row, 13, QTableWidgetItem(str(info.get('fracture_windows', STANDARD_VALUES['fracture_windows']))))
+            self.tableWidget.setItem(row, 14, QTableWidgetItem(str(info.get('fracture_doors', STANDARD_VALUES['fracture_doors']))))
+            self.tableWidget.setItem(row, 15, QTableWidgetItem(str(info.get('min_air_temp', STANDARD_VALUES['min_air_temp']))))
+            self.tableWidget.setItem(row, 16, QTableWidgetItem(str(info.get('room_temp', STANDARD_VALUES['room_temp']))))
+            self.tableWidget.setItem(row, 17, QTableWidgetItem(str(info.get('max_air_temp_heating', STANDARD_VALUES['max_air_temp_heating']))))
 
-    def loadDataFromFile(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Öffnen", "", "CSV-Dateien (*.csv)")
-        if path:
-            with open(path, 'r', encoding='utf-8') as file:
-                self.tableWidget.setRowCount(0)
-                reader = csv.reader(file, delimiter=";")
-                for rowIndex, row in enumerate(reader):
-                    if rowIndex == 0:  # Überspringe die Kopfzeile
-                        continue
-                    self.tableWidget.insertRow(rowIndex - 1)
-                    for columnIndex, value in enumerate(row):
-                        if columnIndex in [7, 8, 9]:  # Spalten mit QComboBox
-                            comboBox = self.createComboBox(columnIndex)
-                            comboBox.setCurrentText(value)
-                            self.tableWidget.setCellWidget(rowIndex - 1, columnIndex, comboBox)
-                        else:
-                            self.tableWidget.setItem(rowIndex - 1, columnIndex, QTableWidgetItem(value))
+            # Laden des Wärmebedarfs, wenn vorhanden
+            waermebedarf = info.get('Wärmebedarf', None)
+            if waermebedarf is not None:
+                self.tableWidget.setItem(row, 18, QTableWidgetItem(str(waermebedarf)))
+
+        # Load 3D Visualization
+        self.load3DVisualization(self.building_info)
 
     def createComboBox(self, columnIndex):
         if columnIndex == 7:
             comboBoxItems = ["HMF", "HEF", "GKO", "GHA", "GMK", "GBD", "GBH", "GWA", "GGA", "GBA", "GGB", "GPD", "GMF", "GHD"]
         elif columnIndex == 8:
             comboBoxItems = self.comboBoxBuildingTypesItems
-        else:  # columnIndex == 9
+        else:
             comboBoxItems = ["Existing_state", "Usual_Refurbishment", "Advanced_Refurbishment"]
         comboBox = QComboBox()
         comboBox.addItems(comboBoxItems)
         return comboBox
     
+    ### calculate Heat Demand based on geometry and u-valuess ###
     def calculateHeatDemand(self):
+        building_info = process_lod2(self.outputLOD2geojsonfilename)
 
         for row in range(self.tableWidget.rowCount()):
             ground_area = float(self.tableWidget.item(row, 3).text())
             wall_area = float(self.tableWidget.item(row, 4).text())
             roof_area = float(self.tableWidget.item(row, 5).text())
             volume = float(self.tableWidget.item(row, 6).text())
-            u_type = self.tableWidget.cellWidget(row, 8).currentText()  # Typ
-            building_state = self.tableWidget.cellWidget(row, 9).currentText()  # Gebäudezustand
+            u_type = self.tableWidget.cellWidget(row, 8).currentText()
+            building_state = self.tableWidget.cellWidget(row, 9).currentText()
 
             building = Building(ground_area, wall_area, roof_area, volume, u_type=u_type, building_state=building_state, filename_TRY=self.parent.try_filename)
             building.calc_yearly_heat_demand()
-            
-            print(building.yearly_heat_demand)
-            self.tableWidget.setHorizontalHeaderLabels(['Adresse', 'UTM_X', 'UTM_Y','Grundfläche', 'Wandfläche', 'Dachfläche', 'Volumen', 'Nutzungstyp', 'Typ', 'Gebäudezustand', 
-                                                    'ww_demand_Wh_per_m2', 'air_change_rate', 'floors', 'fracture_windows', 'fracture_doors', 'min_air_temp', 
-                                                    'room_temp', 'max_air_temp_heating', 'Jährlicher Wärmebedarf in kWh'])
-            self.tableWidget.setItem(row, 18, QTableWidgetItem(f"{building.yearly_heat_demand:.2f}"))  # Füge eine neue Spalte für die Ergebnisse hinzu
 
+            # Aktualisieren der GeoJSON-Datenstruktur mit den berechneten Daten
+            parent_id = list(building_info.keys())[row]
+            building_info[parent_id]['Wärmebedarf'] = building.yearly_heat_demand
+
+            self.tableWidget.setItem(row, 18, QTableWidgetItem(f"{building.yearly_heat_demand:.2f}"))
+
+        # Speichern der aktualisierten GeoJSON-Datenstruktur
+        self.updated_building_info = building_info
+
+    ### Plotting Data Comparison Heat Demands ###
+    def addDataset(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Öffnen", "", "CSV-Dateien (*.csv)")
+        if path:
+            df = pd.read_csv(path, delimiter=';')
+            self.loaded_data.append(df)
+            self.loaded_filenames.append(os.path.basename(path))
+            self.updatePlot()
+
+    def removeDataset(self):
+        if self.loaded_data:
+            self.loaded_data.pop()
+            self.loaded_filenames.pop()
+            self.updatePlot()
+
+    def updatePlot(self):
+        if not self.loaded_data:
+            return
+
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+
+        all_data = pd.concat(self.loaded_data, keys=self.loaded_filenames, names=['Filename', 'Index'])
+        all_data_grouped = all_data.groupby(['Adresse', 'Filename'])['Wärmebedarf'].sum().unstack('Filename').fillna(0)
+        
+        num_datasets = len(self.loaded_data)
+        num_addresses = len(all_data_grouped)
+        
+        bar_width = 0.8 / num_datasets
+        indices = np.arange(num_addresses)
+        
+        colors = plt.cm.tab20.colors[:num_datasets]
+        
+        for i, (filename, color) in enumerate(zip(all_data_grouped.columns, colors)):
+            ax.barh(indices + i * bar_width, all_data_grouped[filename], bar_width, label=filename, color=color)
+
+        ax.set_yticks(indices + bar_width * (num_datasets - 1) / 2)
+        ax.set_yticklabels(all_data_grouped.index)
+        ax.set_ylabel('Adresse')
+        ax.set_xlabel('Wärmebedarf in kWh')
+        ax.legend()
+        
+        self.canvas.draw()
+
+    ### LOD2Visualization ###
+    def load3DVisualization(self, building_info):
+        self.figure_3d.clear()
+        ax = self.figure_3d.add_subplot(111, projection='3d')
+
+        for info in building_info.values():
+            x = info['Koordinate_X']
+            y = info['Koordinate_Y']
+            z = 0
+            dx = dy = dz = 1  # Adjust based on actual building dimensions if available
+            ax.bar3d(x, y, z, dx, dy, info['Volume'], shade=True)
+        
+        ax.set_xlabel('UTM_X')
+        ax.set_ylabel('UTM_Y')
+        ax.set_zlabel('Höhe (Volume)')
+        ax.set_title('3D-Visualisierung der LOD2-Daten')
+
+        self.canvas_3d.draw()
+
+    ### save an load geojsons ###
+    def saveDataAsGeoJSON(self):
+        try:
+            # Öffnen des Dateiauswahldialogs
+            path, _ = QFileDialog.getSaveFileName(self, "Speichern unter", "", "GeoJSON-Dateien (*.geojson)")
+
+            # Überprüfen, ob ein Pfad ausgewählt wurde
+            if not path:
+                print("Kein Pfad ausgewählt. Speichern abgebrochen.")
+                return
+
+            # Laden der ursprünglichen GeoJSON-Datei
+            with open(self.outputLOD2geojsonfilename, 'r', encoding='utf-8') as file:
+                geojson_data = json.load(file)
+
+            for row in range(self.tableWidget.rowCount()):
+                for feature in geojson_data['features']:
+                    properties = feature['properties']
+                    parent_id = properties.get('parent_id')  # Annahme, dass parent_id eindeutig ist
+
+                    if parent_id == list(self.building_info.keys())[row]:
+                        properties['Adresse'] = self.tableWidget.item(row, 0).text().split(", ")[0]
+                        properties['Stadt'] = self.tableWidget.item(row, 0).text().split(", ")[1]
+                        properties['Bundesland'] = self.tableWidget.item(row, 0).text().split(", ")[2]
+                        properties['Land'] = self.tableWidget.item(row, 0).text().split(", ")[3]
+                        properties['Koordinate_X'] = float(self.tableWidget.item(row, 1).text())
+                        properties['Koordinate_Y'] = float(self.tableWidget.item(row, 2).text())
+                        properties['Ground_Area'] = float(self.tableWidget.item(row, 3).text())
+                        properties['Wall_Area'] = float(self.tableWidget.item(row, 4).text())
+                        properties['Roof_Area'] = float(self.tableWidget.item(row, 5).text())
+                        properties['Volume'] = float(self.tableWidget.item(row, 6).text())
+                        properties['Nutzungstyp'] = self.tableWidget.cellWidget(row, 7).currentText()
+                        properties['Typ'] = self.tableWidget.cellWidget(row, 8).currentText()
+                        properties['Gebäudezustand'] = self.tableWidget.cellWidget(row, 9).currentText()
+                        properties['ww_demand_Wh_per_m2'] = float(self.tableWidget.item(row, 10).text()) if self.tableWidget.item(row, 10) else None
+                        properties['air_change_rate'] = float(self.tableWidget.item(row, 11).text()) if self.tableWidget.item(row, 11) else None
+                        properties['floors'] = int(self.tableWidget.item(row, 12).text()) if self.tableWidget.item(row, 12) else None
+                        properties['fracture_windows'] = float(self.tableWidget.item(row, 13).text()) if self.tableWidget.item(row, 13) else None
+                        properties['fracture_doors'] = float(self.tableWidget.item(row, 14).text()) if self.tableWidget.item(row, 14) else None
+                        properties['min_air_temp'] = float(self.tableWidget.item(row, 15).text()) if self.tableWidget.item(row, 15) else None
+                        properties['room_temp'] = float(self.tableWidget.item(row, 16).text()) if self.tableWidget.item(row, 16) else None
+                        properties['max_air_temp_heating'] = float(self.tableWidget.item(row, 17).text()) if self.tableWidget.item(row, 17) else None
+                        properties['Wärmebedarf'] = float(self.tableWidget.item(row, 18).text()) if self.tableWidget.item(row, 18) else None
+
+            # Schreiben der aktualisierten GeoJSON-Datei
+            with open(path, 'w', encoding='utf-8') as file:
+                json.dump(geojson_data, file, ensure_ascii=False, indent=2)
+
+            # Erfolgreiche Speicherung bestätigen
+            QMessageBox.information(self, "Speichern erfolgreich", f"Daten wurden erfolgreich gespeichert unter: {path}")
+
+        except Exception as e:
+            print(f"Fehler beim Speichern: {e}")
+            QMessageBox.critical(self, "Fehler beim Speichern", f"Ein Fehler ist beim Speichern aufgetreten: {str(e)}")
+
+    def loadDataFromFile(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Öffnen", "", "GeoJSON-Dateien (*.geojson)")
+        if path:
+            with open(path, 'r', encoding='utf-8') as file:
+                geojson_data = json.load(file)
+
+            building_info = {}
+            for feature in geojson_data['features']:
+                properties = feature['properties']
+                parent_id = properties.get('parent_id')  # Annahme, dass parent_id eindeutig ist
+                building_info[parent_id] = properties
+
+            self.outputLOD2geojsonfilename = path
+            self.updated_building_info = building_info
+            self.vis_tab.loadNetData(self.outputLOD2geojsonfilename)
+            self.loadDataFromGeoJSON()
+    
+    ### creating building csv for net generation ###
     def createBuildingCSV(self):
-        # Standardwerte für die neuen Spalten
         standard_values = {
-            'WW_Anteil': 0.2,  # Beispielwert, ersetze durch tatsächlichen Standardwert
-            'Typ_Heizflächen': 'HK',  # Beispielwert
-            'VLT_max': 70,  # Beispielwert
-            'Steigung_Heizkurve': 1.5,  # Beispielwert
-            'RLT_max': 55  # Beispielwert
+            'WW_Anteil': 0.2,
+            'Typ_Heizflächen': 'HK',
+            'VLT_max': 70,
+            'Steigung_Heizkurve': 1.5,
+            'RLT_max': 55
         }
 
         path, _ = QFileDialog.getSaveFileName(self, "Speichern unter", "", "CSV-Dateien (*.csv)")
         if path:
             with open(path, 'w', newline='', encoding='utf-8') as file:
                 writer = csv.writer(file, delimiter=';')
-                # Schreibe die Kopfzeile
                 headers = ['Land', 'Bundesland', 'Stadt', 'Adresse', 'Wärmebedarf', 'Gebäudetyp', 'WW_Anteil', 'Typ_Heizflächen', 'VLT_max', 'Steigung_Heizkurve', 'RLT_max', 'UTM_X', 'UTM_Y']
                 writer.writerow(headers)
 
-                # Durchlaufe jede Zeile der Tabelle und extrahiere die benötigten Werte
                 for row in range(self.tableWidget.rowCount()):
                     land = self.tableWidget.item(row, 0).text().split(", ")[3]
                     bundesland = self.tableWidget.item(row, 0).text().split(", ")[2]
                     stadt = self.tableWidget.item(row, 0).text().split(", ")[1]
                     address = self.tableWidget.item(row, 0).text().split(", ")[0]
-                    heat_demand = self.tableWidget.item(row, 18).text() if self.tableWidget.item(row, 18) else '0'  # Beispiel, wie du auf den Wärmebedarf zugreifst
-                    building_type = self.tableWidget.cellWidget(row, 7).currentText()  # Zugriff auf den Wert der ComboBox
+                    heat_demand = self.tableWidget.item(row, 18).text() if self.tableWidget.item(row, 18) else '0'
+                    building_type = self.tableWidget.cellWidget(row, 7).currentText()
                     utm_x = self.tableWidget.item(row, 1).text()
                     utm_y = self.tableWidget.item(row, 2).text()
 
-                    # Erstelle eine Zeile mit den extrahierten und Standardwerten
                     row_data = [
                         land,
                         bundesland,
@@ -382,58 +441,5 @@ class BuildingTab(QMainWindow):
                         utm_x,
                         utm_y
                     ]
-                    # Schreibe die Zeile in die CSV-Datei
                     writer.writerow(row_data)
                 print(f"Daten wurden gespeichert: {path}")
-
-    def addDataset(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Öffnen", "", "CSV-Dateien (*.csv)")
-        if path:
-            df = pd.read_csv(path, delimiter=';')
-            self.loaded_data.append(df)
-            self.loaded_filenames.append(os.path.basename(path))  # Speichern des Dateinamens
-            self.updatePlot()
-
-    def removeDataset(self):
-        if self.loaded_data:
-            self.loaded_data.pop()
-            self.loaded_filenames.pop()  # Entfernen des zugehörigen Dateinamens
-            self.updatePlot()
-
-    def updatePlot(self):
-        if not self.loaded_data:
-            return
-
-        self.figure.clear()
-        ax = self.figure.add_subplot(111)
-
-        # Kombiniere alle geladenen Datensätze
-        all_data = pd.concat(self.loaded_data, keys=self.loaded_filenames, names=['Filename', 'Index'])
-        
-        # Gruppiere die Daten nach Adresse und sammle die Wärmebedarfe
-        all_data_grouped = all_data.groupby(['Adresse', 'Filename'])['Wärmebedarf'].sum().unstack('Filename').fillna(0)
-        
-        # Anzahl der Datensätze und Adressen
-        num_datasets = len(self.loaded_data)
-        num_addresses = len(all_data_grouped)
-        
-        # Balkenbreite und Positionen festlegen
-        bar_width = 0.8 / num_datasets
-        indices = np.arange(num_addresses)
-        
-        # Farben für die verschiedenen Datensätze
-        colors = plt.cm.tab20.colors[:num_datasets]
-        
-        # Balken zeichnen
-        for i, (filename, color) in enumerate(zip(all_data_grouped.columns, colors)):
-            ax.barh(indices + i * bar_width, all_data_grouped[filename], bar_width, label=filename, color=color)
-
-        # Achsenbeschriftungen und Legende
-        ax.set_yticks(indices + bar_width * (num_datasets - 1) / 2)
-        ax.set_yticklabels(all_data_grouped.index)
-        ax.set_ylabel('Adresse')
-        ax.set_xlabel('Wärmebedarf in kWh')
-        ax.legend()
-        
-        self.canvas.draw()
-

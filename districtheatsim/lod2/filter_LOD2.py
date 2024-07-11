@@ -148,24 +148,25 @@ def process_lod2(file_path):
     building_info = {}
 
     for _, row in gdf.iterrows():
-        # Benutze 'ID' als Fallback, wenn 'Obj_Parent' None ist
         parent_id = row['Obj_Parent'] if row['Obj_Parent'] is not None else row['ID']
         
         if parent_id not in building_info:
-            building_info[parent_id] = {'Ground': [], 'Wall': [], 'Roof': [], 'H_Traufe': None, 'H_Boden': None,
-                                        'Adresse': None, 'Stadt': None, 'Bundesland': None, 'Land': None, 'Koordinate_X': None, 'Koordinate_Y': None}
+            building_info[parent_id] = {
+                'Ground': [], 'Wall': [], 'Roof': [], 'H_Traufe': None, 'H_Boden': None,
+                'Adresse': None, 'Stadt': None, 'Bundesland': None, 'Land': None, 'Koordinate_X': None, 'Koordinate_Y': None,
+                'Nutzungstyp': None, 'Typ': None, 'Gebäudezustand': None, 'ww_demand_Wh_per_m2': None, 
+                'air_change_rate': None, 'floors': None, 'fracture_windows': None, 'fracture_doors': None, 
+                'min_air_temp': None, 'room_temp': None, 'max_air_temp_heating': None, 'Wärmebedarf': None
+            }
 
-        # Extrahiere und speichere Geometrien und Höheninformationen
         if row['Geometr_3D'] in ['Ground', 'Wall', 'Roof']:
             building_info[parent_id][row['Geometr_3D']].append(row['geometry'])
         
-        # Setze Höhen, falls noch nicht gesetzt oder aktualisiere, falls unterschiedlich (sollte theoretisch nicht passieren)
         if 'H_Traufe' in row and (building_info[parent_id]['H_Traufe'] is None or building_info[parent_id]['H_Traufe'] != row['H_Traufe']):
             building_info[parent_id]['H_Traufe'] = row['H_Traufe']
         if 'H_Boden' in row and (building_info[parent_id]['H_Boden'] is None or building_info[parent_id]['H_Boden'] != row['H_Boden']):
             building_info[parent_id]['H_Boden'] = row['H_Boden']
 
-        # Überprüfe, ob Adressinformationen vorhanden sind
         if 'Adresse' in row and pd.notna(row['Adresse']):
             building_info[parent_id]['Adresse'] = row['Adresse']
             building_info[parent_id]['Stadt'] = row['Stadt']
@@ -173,8 +174,34 @@ def process_lod2(file_path):
             building_info[parent_id]['Land'] = row['Land']
             building_info[parent_id]['Koordinate_X'] = row['Koordinate_X']
             building_info[parent_id]['Koordinate_Y'] = row['Koordinate_Y']
+        
+        # Check for additional fields
+        if 'Nutzungstyp' in row and pd.notna(row['Nutzungstyp']):
+            building_info[parent_id]['Nutzungstyp'] = row['Nutzungstyp']
+        if 'Typ' in row and pd.notna(row['Typ']):
+            building_info[parent_id]['Typ'] = row['Typ']
+        if 'Gebäudezustand' in row and pd.notna(row['Gebäudezustand']):
+            building_info[parent_id]['Gebäudezustand'] = row['Gebäudezustand']
+        if 'ww_demand_Wh_per_m2' in row and pd.notna(row['ww_demand_Wh_per_m2']):
+            building_info[parent_id]['ww_demand_Wh_per_m2'] = row['ww_demand_Wh_per_m2']
+        if 'air_change_rate' in row and pd.notna(row['air_change_rate']):
+            print(f"Air change rate {row['air_change_rate']}")
+            building_info[parent_id]['air_change_rate'] = row['air_change_rate']
+        if 'floors' in row and pd.notna(row['floors']):
+            building_info[parent_id]['floors'] = row['floors']
+        if 'fracture_windows' in row and pd.notna(row['fracture_windows']):
+            building_info[parent_id]['fracture_windows'] = row['fracture_windows']
+        if 'fracture_doors' in row and pd.notna(row['fracture_doors']):
+            building_info[parent_id]['fracture_doors'] = row['fracture_doors']
+        if 'min_air_temp' in row and pd.notna(row['min_air_temp']):
+            building_info[parent_id]['min_air_temp'] = row['min_air_temp']
+        if 'room_temp' in row and pd.notna(row['room_temp']):
+            building_info[parent_id]['room_temp'] = row['room_temp']
+        if 'max_air_temp_heating' in row and pd.notna(row['max_air_temp_heating']):
+            building_info[parent_id]['max_air_temp_heating'] = row['max_air_temp_heating']
+        if 'Wärmebedarf' in row and pd.notna(row['Wärmebedarf']):
+            building_info[parent_id]['Wärmebedarf'] = row['Wärmebedarf']
 
-    # Berechne die Flächen und Volumina für jedes Gebäude
     for parent_id, info in building_info.items():
         info['Ground_Area'] = sum(calculate_area_3d_for_feature(geom) for geom in info['Ground'])
         info['Wall_Area'] = sum(calculate_area_3d_for_feature(geom) for geom in info['Wall'])
