@@ -1,0 +1,35 @@
+QWidget {
+    background-color: #121212;
+    color: #ffffff;
+    font-family: "Segoe UI";
+    font-size: 11pt;
+}
+
+QTabWidget::pane {
+    border-top: 2px solid #bb86fc;
+    background: #1e1e1e;
+}
+
+QTabBar::tab {
+    background: #2c2c2c;
+    border: 1px solid #3c3c3c;
+    padding: 10px;
+    margin-right: 2px;
+}
+
+QTabBar::tab:selected {
+    background: #121212;
+    border-bottom-color: #121212;
+}
+
+QMenuBar {
+    background-color: #1e1e1e;
+}
+
+QMenuBar::item {
+    background: transparent;
+}
+
+QMenuBar::item:selected {
+    background: #3c3c3c;
+}

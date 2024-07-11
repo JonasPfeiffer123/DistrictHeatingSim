@@ -1,6 +1,5 @@
 import sys
 import os
-
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTabWidget, QMenuBar, QAction, QFileDialog, QLabel, QMessageBox, QInputDialog
 from PyQt5.QtCore import QObject, pyqtSignal
 
@@ -13,42 +12,37 @@ from gui.ComparisonTab.comparison_tab import ComparisonTab
 
 from gui.Dialogs import TemperatureDataDialog, HeatPumpDataDialog
 
-# defines the map path
 def get_resource_path(relative_path):
-    """ Get the absolute path to the resource, works for dev and for PyInstaller """
     if getattr(sys, 'frozen', False):
-        # Wenn die Anwendung eingefroren ist, ist der Basispfad der Temp-Ordner, wo PyInstaller alles extrahiert
         base_path = sys._MEIPASS
     else:
-        # Wenn die Anwendung nicht eingefroren ist, ist der Basispfad der Ordner, in dem die Hauptdatei liegt
         base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'DistrictHeatSim')
-
     return os.path.join(base_path, relative_path)
 
 class CentralDataManager(QObject):
-    project_folder_changed = pyqtSignal(str)  # definition of the signal
+    project_folder_changed = pyqtSignal(str)
 
     def __init__(self):
-        super(CentralDataManager, self).__init__()  # calling QObject constructor
+        super(CentralDataManager, self).__init__()
         self.map_data = []
-        self.project_folder = get_resource_path("project_data\Bad Muskau")  # variable project folder path
+        self.project_folder = get_resource_path("project_data\\Bad Muskau")
         print(self.project_folder)
+
     def add_data(self, data):
         self.map_data.append(data)
-        # Trigger any updates needed for the map
 
     def get_map_data(self):
         return self.map_data
 
     def set_project_folder(self, path):
         self.project_folder = path
-        self.project_folder_changed.emit(path)  # emit signal if path got changed
+        self.project_folder_changed.emit(path)
 
 class HeatSystemDesignGUI(QWidget):
     def __init__(self):
         super().__init__()
         self.data_manager = CentralDataManager()
-        self.projectFolderPath = None  # Initialisierung des Projektordnerpfads
+        self.projectFolderPath = None
 
         self.temperatureDataDialog = TemperatureDataDialog(self)
         self.heatPumpDataDialog = HeatPumpDataDialog(self)
@@ -65,7 +59,7 @@ class HeatSystemDesignGUI(QWidget):
 
     def initUI(self):
         self.setWindowTitle("DistrictHeatSim")
-        self.setGeometry(100, 100, 800, 600)  # Optional, standard size before full-screen
+        self.setGeometry(100, 100, 800, 600)
 
         self.layout1 = QVBoxLayout(self)
 
@@ -79,9 +73,8 @@ class HeatSystemDesignGUI(QWidget):
         self.buildingTab = BuildingTab(self.data_manager, self.visTab, self)
         self.calcTab = CalculationTab(self.data_manager, self)
         self.mixDesignTab = MixDesignTab(self.data_manager, self)
-        self.comparisonTab = ComparisonTab(self.data_manager, self)
+        self.comparisonTab = ComparisonTab(self.data_manager)
 
-        # Adding tabs to the tab widget
         tabWidget.addTab(self.projectTab, "Projektdefinition")
         tabWidget.addTab(self.visTab, "Verarbeitung Geodaten")
         tabWidget.addTab(self.buildingTab, "Gebäudedefinition")
@@ -89,17 +82,13 @@ class HeatSystemDesignGUI(QWidget):
         tabWidget.addTab(self.mixDesignTab, "Erzeugerauslegung und Wirtschftlichkeitrechnung")
         tabWidget.addTab(self.comparisonTab, "Variantenvergleich")
 
-        # folder path Label
-        if self.data_manager.project_folder != "" or self.data_manager.project_folder != None:
+        if self.data_manager.project_folder:
             self.folderLabel = QLabel(f"Standard-Projektordner: {self.data_manager.project_folder}")
         else:
             self.folderLabel = QLabel("Kein Ordner ausgewählt")
         self.layout1.addWidget(self.folderLabel)
 
-        # Set the layout
         self.setLayout(self.layout1)
-
-        # Maximize the main window to the screen size
         self.showMaximized()
 
     def initMenuBar(self):
@@ -119,14 +108,38 @@ class HeatSystemDesignGUI(QWidget):
         dataMenu.addAction(chooseTemperatureDataAction)
         dataMenu.addAction(createCOPDataAction)
 
+        themeMenu = self.menubar.addMenu('Thema')
+        lightThemeAction = QAction('Lichtmodus', self)
+        darkThemeAction = QAction('Dunkelmodus', self)
+        themeMenu.addAction(lightThemeAction)
+        themeMenu.addAction(darkThemeAction)
+
         self.layout1.addWidget(self.menubar)
 
-        # connection to function
         chooseProjectFolderAction.triggered.connect(self.openExistingProject)
         createNewProjectFolderAction.triggered.connect(self.createNewProject)
-        
         chooseTemperatureDataAction.triggered.connect(self.openTemperatureDataSelection)
         createCOPDataAction.triggered.connect(self.openCOPDataSelection)
+        lightThemeAction.triggered.connect(self.setLightTheme)
+        darkThemeAction.triggered.connect(self.setDarkTheme)
+
+    def setLightTheme(self):
+        qss_path = get_resource_path('win11_light.qss')
+        if os.path.exists(qss_path):
+            with open(qss_path, 'r') as file:
+                self.setStyleSheet(file.read())
+            print(f"Light theme applied from {qss_path}")
+        else:
+            print(f"Stylesheet {qss_path} not found.")
+
+    def setDarkTheme(self):
+        qss_path = get_resource_path('dark_mode.qss')
+        if os.path.exists(qss_path):
+            with open(qss_path, 'r') as file:
+                self.setStyleSheet(file.read())
+            print(f"Dark theme applied from {qss_path}")
+        else:
+            print(f"Stylesheet {qss_path} not found.")
 
     def createNewProject(self):
         folder_path = QFileDialog.getExistingDirectory(self, "Speicherort für neues Projekt wählen")
@@ -171,6 +184,7 @@ class HeatSystemDesignGUI(QWidget):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+    app.setStyle('Fusion')
     ex = HeatSystemDesignGUI()
     ex.show()
     sys.exit(app.exec_())
