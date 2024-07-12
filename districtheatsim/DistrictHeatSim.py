@@ -51,7 +51,7 @@ class HeatSystemDesignGUI(QWidget):
         self.updateHeatPumpData()
 
         self.initUI()
-        
+
         self.data_manager.project_folder_changed.connect(self.projectTab.updateDefaultPath)
         self.data_manager.project_folder_changed.connect(self.visTab.updateDefaultPath)
         self.data_manager.project_folder_changed.connect(self.calcTab.updateDefaultPath)
@@ -79,7 +79,7 @@ class HeatSystemDesignGUI(QWidget):
         tabWidget.addTab(self.visTab, "Verarbeitung Geodaten")
         tabWidget.addTab(self.buildingTab, "Gebäudedefinition")
         tabWidget.addTab(self.calcTab, "Wärmenetzberechnung")
-        tabWidget.addTab(self.mixDesignTab, "Erzeugerauslegung und Wirtschftlichkeitrechnung")
+        tabWidget.addTab(self.mixDesignTab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
         tabWidget.addTab(self.comparisonTab, "Variantenvergleich")
 
         if self.data_manager.project_folder:
@@ -89,7 +89,6 @@ class HeatSystemDesignGUI(QWidget):
         self.layout1.addWidget(self.folderLabel)
 
         self.setLayout(self.layout1)
-        self.showMaximized()
 
     def initMenuBar(self):
         self.menubar = QMenuBar(self)
@@ -120,11 +119,11 @@ class HeatSystemDesignGUI(QWidget):
         createNewProjectFolderAction.triggered.connect(self.createNewProject)
         chooseTemperatureDataAction.triggered.connect(self.openTemperatureDataSelection)
         createCOPDataAction.triggered.connect(self.openCOPDataSelection)
-        lightThemeAction.triggered.connect(self.setLightTheme)
-        darkThemeAction.triggered.connect(self.setDarkTheme)
+        lightThemeAction.triggered.connect(self.applyLightTheme)
+        darkThemeAction.triggered.connect(self.applyDarkTheme)
 
-    def setLightTheme(self):
-        qss_path = get_resource_path('win11_light.qss')
+    def applyLightTheme(self):
+        qss_path = get_resource_path('styles/win11_light.qss')
         if os.path.exists(qss_path):
             with open(qss_path, 'r') as file:
                 self.setStyleSheet(file.read())
@@ -132,8 +131,8 @@ class HeatSystemDesignGUI(QWidget):
         else:
             print(f"Stylesheet {qss_path} not found.")
 
-    def setDarkTheme(self):
-        qss_path = get_resource_path('dark_mode.qss')
+    def applyDarkTheme(self):
+        qss_path = get_resource_path('styles/dark_mode.qss')
         if os.path.exists(qss_path):
             with open(qss_path, 'r') as file:
                 self.setStyleSheet(file.read())
@@ -185,6 +184,17 @@ class HeatSystemDesignGUI(QWidget):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
+
+    # Set Light Theme
+    qss_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'styles', 'win11_light.qss')
+    if os.path.exists(qss_path):
+        with open(qss_path, 'r') as file:
+            app.setStyleSheet(file.read())
+        print(f"Light theme applied from {qss_path}")
+    else:
+        print(f"Stylesheet {qss_path} not found.")
+
     ex = HeatSystemDesignGUI()
+    ex.showMaximized()
     ex.show()
     sys.exit(app.exec_())
