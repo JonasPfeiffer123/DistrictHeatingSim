@@ -144,6 +144,12 @@ def process_lod2(file_path):
     # Lade die GeoJSON-Datei
     gdf = gpd.read_file(file_path)
 
+    # Standardwerte definieren
+    STANDARD_VALUES = {
+        'ww_demand_Wh_per_m2': 12800, 'air_change_rate': 0.5, 'floors': 4, 'fracture_windows': 0.10, 
+        'fracture_doors': 0.01, 'min_air_temp': -15, 'room_temp': 20, 'max_air_temp_heating': 15
+    }
+
     # Initialisiere ein Dictionary, um die Ergebnisse für jedes Gebäude zu speichern
     building_info = {}
 
@@ -185,7 +191,6 @@ def process_lod2(file_path):
         if 'ww_demand_Wh_per_m2' in row and pd.notna(row['ww_demand_Wh_per_m2']):
             building_info[parent_id]['ww_demand_Wh_per_m2'] = row['ww_demand_Wh_per_m2']
         if 'air_change_rate' in row and pd.notna(row['air_change_rate']):
-            print(f"Air change rate {row['air_change_rate']}")
             building_info[parent_id]['air_change_rate'] = row['air_change_rate']
         if 'floors' in row and pd.notna(row['floors']):
             building_info[parent_id]['floors'] = row['floors']
@@ -209,6 +214,11 @@ def process_lod2(file_path):
         h_traufe = info['H_Traufe']
         h_boden = info['H_Boden']
         info['Volume'] = (h_traufe - h_boden) * info['Ground_Area'] if h_traufe and h_boden else None
+
+        # Setze Standardwerte, falls None
+        for key, value in STANDARD_VALUES.items():
+            if info[key] is None:
+                info[key] = value
 
     return building_info
 

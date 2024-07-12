@@ -186,11 +186,11 @@ if __name__ == '__main__':
     app.setStyle('Fusion')
 
     # Set Light Theme
-    qss_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'styles', 'win11_light.qss')
+    qss_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'styles', 'dark_mode.qss')
     if os.path.exists(qss_path):
         with open(qss_path, 'r') as file:
             app.setStyleSheet(file.read())
-        print(f"Light theme applied from {qss_path}")
+        print(f"Dark theme applied from {qss_path}")
     else:
         print(f"Stylesheet {qss_path} not found.")
 

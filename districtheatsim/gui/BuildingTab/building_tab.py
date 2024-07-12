@@ -4,16 +4,23 @@ import csv
 import json
 import pandas as pd
 import numpy as np
+import geopandas as gpd
+from shapely.geometry import Polygon, Point, MultiPolygon
+
 import matplotlib.pyplot as plt
+from matplotlib.patches import FancyBboxPatch
+from matplotlib.backend_bases import MouseButton
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+
 from PyQt5.QtWidgets import QVBoxLayout, QComboBox, QFileDialog, QProgressBar, QWidget, QTableWidget, QTableWidgetItem, \
-    QHeaderView, QAction, QMainWindow, QTabWidget, QDialog, QMessageBox
-from PyQt5.QtCore import pyqtSignal
+    QHeaderView, QAction, QMainWindow, QTabWidget, QDialog, QMessageBox, QHBoxLayout
+from PyQt5.QtCore import pyqtSignal, Qt
 
 from lod2.filter_LOD2 import spatial_filter_with_polygon, filter_LOD2_with_coordinates, process_lod2, calculate_centroid_and_geocode
 from lod2.heat_requirement_DIN_EN_12831 import Building
-from gui.BuildingTab.building_dialogs import FilterDialog, LoadLOD2Dialog
+from gui.BuildingTab.building_dialogs import FilterDialog
 
 # defines the base path
 def get_resource_path(relative_path):
@@ -44,9 +51,12 @@ class BuildingTab(QMainWindow):
         # Update the base path immediately with the current project folder
         self.updateDefaultPath(self.data_manager.project_folder)
 
-        self.comboBoxBuildingTypesItems = pd.read_csv(get_resource_path('lod2\data\standard_u_values_TABULA.csv'), sep=";")['Typ'].unique().tolist()
+        self.comboBoxBuildingTypesItems = pd.read_csv(get_resource_path('lod2/data/standard_u_values_TABULA.csv'), sep=";")['Typ'].unique().tolist()
 
         self.initUI()
+
+        self.annotation = None
+        self.selected_building = None
 
     def initUI(self):
         self.setWindowTitle("Verarbeitung LOD2-Daten")
@@ -78,9 +88,14 @@ class BuildingTab(QMainWindow):
 
         # 3D Visualization tab
         vis_3d_tab = QWidget()
-        tabs.addTab(vis_3d_tab, "3D-Visualisierung LOD2-Daten")
+        tabs.addTab(vis_3d_tab, "Visualisierung LOD2-Daten")
 
-        vis_3d_layout = QVBoxLayout(vis_3d_tab)
+        vis_3d_layout = QHBoxLayout(vis_3d_tab)
+        self.figure_2d = plt.figure()
+        self.canvas_2d = FigureCanvas(self.figure_2d)
+        self.canvas_2d.setMinimumSize(800, 400)
+        vis_3d_layout.addWidget(self.canvas_2d)
+
         self.figure_3d = plt.figure()
         self.canvas_3d = FigureCanvas(self.figure_3d)
         self.canvas_3d.setMinimumSize(800, 400)
@@ -101,6 +116,9 @@ class BuildingTab(QMainWindow):
 
         self.createMenuBar()
 
+        # Connect to the canvas click event
+        self.canvas_2d.mpl_connect('button_press_event', self.on_click_2d)
+
     def createMenuBar(self):
         menubar = self.menuBar()
         file_menu = menubar.addMenu("Datei")
@@ -118,10 +136,6 @@ class BuildingTab(QMainWindow):
         process_filter_action = QAction("LOD2-Daten filtern laden", self)
         process_filter_action.triggered.connect(self.showFilterDialog)
         process_menu.addAction(process_filter_action)
-
-        load_filtered_action = QAction("LOD2-Daten laden", self)
-        load_filtered_action.triggered.connect(self.showLoadLOD2Dialog)
-        process_menu.addAction(load_filtered_action)
 
         calculate_heat_demand_action = QAction("Wärmebedarf berechnen", self)
         calculate_heat_demand_action.triggered.connect(self.calculateHeatDemand)
@@ -158,19 +172,7 @@ class BuildingTab(QMainWindow):
 
             self.loadDataFromGeoJSON()
 
-    def showLoadLOD2Dialog(self):
-        dialog = LoadLOD2Dialog(self.base_path, self)
-        if dialog.exec_() == QDialog.Accepted:
-            self.outputLOD2geojsonfilename = dialog.outputLOD2geojsonLineEdit.text()
-
-            self.loadDataFromGeoJSON()
-
     def loadDataFromGeoJSON(self):
-        STANDARD_VALUES = {
-            'ww_demand_Wh_per_m2': 12800, 'air_change_rate': 0.5, 'floors': 4, 'fracture_windows': 0.10, 
-            'fracture_doors': 0.01, 'min_air_temp': -15, 'room_temp': 20, 'max_air_temp_heating': 15
-        }
-
         self.vis_tab.loadNetData(self.outputLOD2geojsonfilename)
 
         self.building_info = process_lod2(self.outputLOD2geojsonfilename)
@@ -212,22 +214,23 @@ class BuildingTab(QMainWindow):
             self.tableWidget.setCellWidget(row, 9, comboBoxBuildingState)
 
             # Weitere Werte setzen, falls vorhanden, ansonsten Standardwerte verwenden
-            self.tableWidget.setItem(row, 10, QTableWidgetItem(str(info.get('ww_demand_Wh_per_m2', STANDARD_VALUES['ww_demand_Wh_per_m2']))))
-            self.tableWidget.setItem(row, 11, QTableWidgetItem(str(info.get('air_change_rate', STANDARD_VALUES['air_change_rate']))))
-            self.tableWidget.setItem(row, 12, QTableWidgetItem(str(info.get('floors', STANDARD_VALUES['floors']))))
-            self.tableWidget.setItem(row, 13, QTableWidgetItem(str(info.get('fracture_windows', STANDARD_VALUES['fracture_windows']))))
-            self.tableWidget.setItem(row, 14, QTableWidgetItem(str(info.get('fracture_doors', STANDARD_VALUES['fracture_doors']))))
-            self.tableWidget.setItem(row, 15, QTableWidgetItem(str(info.get('min_air_temp', STANDARD_VALUES['min_air_temp']))))
-            self.tableWidget.setItem(row, 16, QTableWidgetItem(str(info.get('room_temp', STANDARD_VALUES['room_temp']))))
-            self.tableWidget.setItem(row, 17, QTableWidgetItem(str(info.get('max_air_temp_heating', STANDARD_VALUES['max_air_temp_heating']))))
+            self.tableWidget.setItem(row, 10, QTableWidgetItem(str(info['ww_demand_Wh_per_m2'])))
+            self.tableWidget.setItem(row, 11, QTableWidgetItem(str(info['air_change_rate'])))
+            self.tableWidget.setItem(row, 12, QTableWidgetItem(str(info['floors'])))
+            self.tableWidget.setItem(row, 13, QTableWidgetItem(str(info['fracture_windows'])))
+            self.tableWidget.setItem(row, 14, QTableWidgetItem(str(info['fracture_doors'])))
+            self.tableWidget.setItem(row, 15, QTableWidgetItem(str(info['min_air_temp'])))
+            self.tableWidget.setItem(row, 16, QTableWidgetItem(str(info['room_temp'])))
+            self.tableWidget.setItem(row, 17, QTableWidgetItem(str(info['max_air_temp_heating'])))
 
             # Laden des Wärmebedarfs, wenn vorhanden
             waermebedarf = info.get('Wärmebedarf', None)
             if waermebedarf is not None:
                 self.tableWidget.setItem(row, 18, QTableWidgetItem(str(waermebedarf)))
 
-        # Load 3D Visualization
-        self.load3DVisualization(self.building_info)
+        # Load 2D and 3D Visualization
+        self.load2DVisualization()
+        self.load3DVisualization()
 
     def createComboBox(self, columnIndex):
         if columnIndex == 7:
@@ -242,7 +245,7 @@ class BuildingTab(QMainWindow):
     
     ### calculate Heat Demand based on geometry and u-valuess ###
     def calculateHeatDemand(self):
-        building_info = process_lod2(self.outputLOD2geojsonfilename)
+        self.building_info = process_lod2(self.outputLOD2geojsonfilename)
 
         for row in range(self.tableWidget.rowCount()):
             ground_area = float(self.tableWidget.item(row, 3).text())
@@ -256,13 +259,13 @@ class BuildingTab(QMainWindow):
             building.calc_yearly_heat_demand()
 
             # Aktualisieren der GeoJSON-Datenstruktur mit den berechneten Daten
-            parent_id = list(building_info.keys())[row]
-            building_info[parent_id]['Wärmebedarf'] = building.yearly_heat_demand
+            parent_id = list(self.building_info.keys())[row]
+            self.building_info[parent_id]['Wärmebedarf'] = building.yearly_heat_demand
 
             self.tableWidget.setItem(row, 18, QTableWidgetItem(f"{building.yearly_heat_demand:.2f}"))
 
         # Speichern der aktualisierten GeoJSON-Datenstruktur
-        self.updated_building_info = building_info
+        self.updated_building_info = self.building_info
 
     ### Plotting Data Comparison Heat Demands ###
     def addDataset(self):
@@ -308,21 +311,216 @@ class BuildingTab(QMainWindow):
         
         self.canvas.draw()
 
-    ### LOD2Visualization ###
-    def load3DVisualization(self, building_info):
+    ### LOD2 Visualization ###
+    def on_click_2d(self, event):
+        if event.inaxes:
+            x, y = event.xdata, event.ydata
+            print(f"Mouse click at: x={x}, y={y}")
+            if x is None or y is None:
+                print("Invalid click location.")
+                return
+
+            clicked_point = Point(x, y)
+            closest_building = None
+            closest_distance = float('inf')
+            threshold_distance = 5.0  # Schwellenwert für die Entfernung in den gleichen Einheiten wie die Koordinaten
+
+            for parent_id, info in self.building_info.items():
+                print(f"Checking building ID: {parent_id}")
+                for geom in info['Ground']:
+                    if geom is not None:
+                        for poly in geom.geoms if isinstance(geom, MultiPolygon) else [geom]:
+                            if poly.contains(clicked_point):
+                                distance = 0  # Punkt liegt innerhalb des Polygons
+                            else:
+                                distance = poly.exterior.distance(clicked_point)
+
+                            if distance < closest_distance:
+                                closest_building = (parent_id, info, poly)
+                                closest_distance = distance
+                                print(f"New closest building: {parent_id} with distance: {distance}")
+
+            if closest_building and closest_distance < threshold_distance:
+                print(f"Selected building ID: {closest_building[0]}")
+                self.selected_building = closest_building
+                self.highlight_building_2d(closest_building[2])
+                self.highlight_building_3d(closest_building[1])
+            else:
+                print("No building selected.")
+
+    def highlight_building_2d(self, geom):
+        self.figure_2d.clear()
+        ax = self.figure_2d.add_subplot(111)
+        self.plot_ground_geometries(ax, self.building_info)
+        self.plot_polygon_2d(ax, geom, 'red')
+        self.canvas_2d.draw()
+
+    def plot_ground_geometries(self, ax, building_info):
+        for parent_id, info in building_info.items():
+            for ground_geom in info['Ground']:
+                self.plot_polygon_2d(ax, ground_geom, 'green')
+
+    def plot_polygon_2d(self, ax, geom, color):
+        if geom.geom_type == 'Polygon':
+            x, y = geom.exterior.xy
+            ax.plot(x, y, color=color)
+        elif geom.geom_type == 'MultiPolygon':
+            for poly in geom.geoms:
+                x, y = poly.exterior.xy
+                ax.plot(x, y, color=color)
+        else:
+            print(f"Unsupported geometry type: {geom.geom_type}")
+
+    def highlight_building_3d(self, info):
+        self.load3DVisualization()  # Setze die vorherige Hervorhebung zurück
+        ax = self.figure_3d.axes[0]  # Erhalte die aktuelle Achse, um das erneute Zeichnen zu vermeiden
+        self.plot_polygon_3d(ax, info['Ground'], 'yellow')
+        self.plot_polygon_3d(ax, info['Wall'], 'yellow')
+        self.plot_polygon_3d(ax, info['Roof'], 'yellow')
+        self.add_annotation_3d(ax, info)
+        self.canvas_3d.draw()
+
+    def add_annotation_3d(self, ax, building_info):
+        if hasattr(self, 'annotation') and self.annotation:
+            self.annotation.remove()  # Entferne vorherige Annotation, falls vorhanden
+
+        annotation_text = (f"ID: {building_info.get('parent_id', 'N/A')}\n"
+                        f"Adresse: {building_info.get('Adresse', 'N/A')}\n"
+                        f"Stadt: {building_info.get('Stadt', 'N/A')}\n"
+                        f"Wärmebedarf: {building_info.get('Wärmebedarf', 'N/A')} kWh\n"
+                        f"Nutzungstyp: {building_info.get('Nutzungstyp', 'N/A')}\n"
+                        f"Typ: {building_info.get('Typ', 'N/A')}\n"
+                        f"Gebäudezustand: {building_info.get('Gebäudezustand', 'N/A')}")
+
+        centroid = self.get_building_centroid(building_info)
+        x, y, z = centroid
+
+        # Hinzufügen eines Offsets zur Annotation, um sie von der Mitte des Gebäudes zu verschieben
+        offset = 50
+        x_offset = x + offset
+        y_offset = y + offset
+        z_offset = z + offset
+
+        self.annotation = ax.text(
+            x_offset, y_offset, z_offset, annotation_text,
+            bbox=dict(boxstyle="round,pad=0.3", edgecolor="black", facecolor="yellow", alpha=0.7),
+            ha='center', va='bottom', fontsize=10, zorder=10  # Anpassen der vertikalen Ausrichtung
+        )
+
+    def get_building_centroid(self, building_info):
+        ground_geoms = building_info.get('Ground', [])
+        if ground_geoms:
+            for geom in ground_geoms:
+                if geom and geom.geom_type in ['Polygon', 'MultiPolygon']:
+                    centroid = geom.centroid
+                    z = 0
+                    if geom.geom_type == 'Polygon':
+                        z = sum(pt[2] for pt in geom.exterior.coords) / len(geom.exterior.coords)
+                    elif geom.geom_type == 'MultiPolygon':
+                        for poly in geom.geoms:
+                            z = sum(pt[2] for pt in poly.exterior.coords) / len(poly.exterior.coords)
+                    return centroid.x, centroid.y, z
+        return 0, 0, 0  # Default if no valid geometry found
+
+    def load2DVisualization(self):
+        self.figure_2d.clear()
+        ax = self.figure_2d.add_subplot(111)
+        self.plot_ground_geometries(ax, self.building_info)
+        ax.set_xlabel('UTM_X')
+        ax.set_ylabel('UTM_Y')
+        ax.set_title('2D-Visualisierung der Grundflächen')
+        self.canvas_2d.draw()
+
+    def plot_polygon_3d(self, ax, geoms, color):
+        if isinstance(geoms, (Polygon, MultiPolygon)):
+            geoms = [geoms]  # Konvertiere einzelne Polygon oder MultiPolygon in eine Liste
+
+        for geom in geoms:
+            if geom is not None:
+                if geom.geom_type == 'Polygon':
+                    x, y, z = zip(*geom.exterior.coords)
+                    verts = [list(zip(x, y, z))]
+                    poly_collection = Poly3DCollection(verts, facecolors=color, alpha=0.5)
+                    ax.add_collection3d(poly_collection)
+                    print(f"Plotted Polygon with {len(x)} points.")
+                elif geom.geom_type == 'MultiPolygon':
+                    for poly in geom.geoms:
+                        x, y, z = zip(*poly.exterior.coords)
+                        verts = [list(zip(x, y, z))]
+                        poly_collection = Poly3DCollection(verts, facecolors=color, alpha=0.5)
+                        ax.add_collection3d(poly_collection)
+                        print(f"Plotted MultiPolygon with {len(x)} points in one of its polygons.")
+                else:
+                    print(f"Unsupported geometry type: {geom.geom_type}")
+
+    def load3DVisualization(self):
         self.figure_3d.clear()
         ax = self.figure_3d.add_subplot(111, projection='3d')
 
-        for info in building_info.values():
-            x = info['Koordinate_X']
-            y = info['Koordinate_Y']
-            z = 0
-            dx = dy = dz = 1  # Adjust based on actual building dimensions if available
-            ax.bar3d(x, y, z, dx, dy, info['Volume'], shade=True)
-        
+        min_x, min_y, min_z = float('inf'), float('inf'), float('inf')
+        max_x, max_y, max_z = float('-inf'), float('-inf'), float('-inf')
+
+        for parent_id, info in self.building_info.items():
+            print(f"Processing building ID: {parent_id}")
+            # Ground Geometries
+            for ground_geom in info['Ground']:
+                if ground_geom is not None:
+                    self.plot_polygon_3d(ax, ground_geom, 'green')  # Ground level
+                    if ground_geom.geom_type == 'Polygon':
+                        x, y = ground_geom.exterior.xy
+                        z = [pt[2] for pt in ground_geom.exterior.coords]
+                    elif ground_geom.geom_type == 'MultiPolygon':
+                        for poly in ground_geom.geoms:
+                            x, y = poly.exterior.xy
+                            z = [pt[2] for pt in poly.exterior.coords]
+                    min_x, min_y, min_z = min(min_x, min(x)), min(min_y, min(y)), min(min_z, min(z))
+                    max_x, max_y, max_z = max(max_x, max(x)), max(max_y, max(y)), max(max_z, max(z))
+                else:
+                    print("Ground geometry is None.")
+
+            # Wall Geometries
+            for wall_geom in info['Wall']:
+                if wall_geom is not None:
+                    self.plot_polygon_3d(ax, wall_geom, 'blue')  # Wall level
+                    if wall_geom.geom_type == 'Polygon':
+                        x, y = wall_geom.exterior.xy
+                        z = [pt[2] for pt in wall_geom.exterior.coords]
+                    elif wall_geom.geom_type == 'MultiPolygon':
+                        for poly in wall_geom.geoms:
+                            x, y = poly.exterior.xy
+                            z = [pt[2] for pt in poly.exterior.coords]
+                    min_x, min_y, min_z = min(min_x, min(x)), min(min_y, min(y)), min(min_z, min(z))
+                    max_x, max_y, max_z = max(max_x, max(x)), max(max_y, max(y)), max(max_z, max(z))
+                else:
+                    print("Wall geometry is None.")
+
+            # Roof Geometries
+            for roof_geom in info['Roof']:
+                if roof_geom is not None:
+                    self.plot_polygon_3d(ax, roof_geom, 'red')  # Roof level
+                    if roof_geom.geom_type == 'Polygon':
+                        x, y = roof_geom.exterior.xy
+                        z = [pt[2] for pt in roof_geom.exterior.coords]
+                    elif ground_geom.geom_type == 'MultiPolygon':
+                        for poly in roof_geom.geoms:
+                            x, y = poly.exterior.xy
+                            z = [pt[2] for pt in poly.exterior.coords]
+                    min_x, min_y, min_z = min(min_x, min(x)), min(min_y, min(y)), min(min_z, min(z))
+                    max_x, max_y, max_z = max(max_x, max(x)), max(max_y, max(y)), max(max_z, max(z))
+                else:
+                    print("Roof geometry is None.")
+
+        ax.set_xlim(min_x, max_x)
+        ax.set_ylim(min_y, max_y)
+        ax.set_zlim(min_z, max_z)
+
+        # Ensure equal scaling in all directions
+        max_range = max(max_x - min_x, max_y - min_y, max_z - min_z)
+        ax.set_box_aspect([max_x - min_x, max_y - min_y, max_z - min_z])  # Aspect ratio is 1:1:1
+
         ax.set_xlabel('UTM_X')
         ax.set_ylabel('UTM_Y')
-        ax.set_zlabel('Höhe (Volume)')
+        ax.set_zlabel('Höhe')
         ax.set_title('3D-Visualisierung der LOD2-Daten')
 
         self.canvas_3d.draw()
