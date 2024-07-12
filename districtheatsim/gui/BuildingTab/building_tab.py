@@ -70,11 +70,11 @@ class BuildingTab(QMainWindow):
         tabs = QTabWidget(self)
         main_layout.addWidget(tabs)
 
-        # Data table tab
-        data_table_tab = QWidget()
-        tabs.addTab(data_table_tab, "Tabelle LOD2-Daten")
+        # Data table and 3D Visualization tab
+        data_vis_tab = QWidget()
+        tabs.addTab(data_vis_tab, "Tabelle und Visualisierung LOD2-Daten")
 
-        table_layout = QVBoxLayout(data_table_tab)
+        data_vis_layout = QHBoxLayout(data_vis_tab)
 
         self.tableWidget = QTableWidget(self)
         self.tableWidget.setColumnCount(19)
@@ -84,22 +84,12 @@ class BuildingTab(QMainWindow):
         self.tableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.tableWidget.setSortingEnabled(True)
         self.tableWidget.setMinimumSize(800, 400)
-        table_layout.addWidget(self.tableWidget)
-
-        # 3D Visualization tab
-        vis_3d_tab = QWidget()
-        tabs.addTab(vis_3d_tab, "Visualisierung LOD2-Daten")
-
-        vis_3d_layout = QHBoxLayout(vis_3d_tab)
-        self.figure_2d = plt.figure()
-        self.canvas_2d = FigureCanvas(self.figure_2d)
-        self.canvas_2d.setMinimumSize(800, 400)
-        vis_3d_layout.addWidget(self.canvas_2d)
+        data_vis_layout.addWidget(self.tableWidget)
 
         self.figure_3d = plt.figure()
         self.canvas_3d = FigureCanvas(self.figure_3d)
-        self.canvas_3d.setMinimumSize(800, 400)
-        vis_3d_layout.addWidget(self.canvas_3d)
+        self.canvas_3d.setMinimumSize(400, 400)
+        data_vis_layout.addWidget(self.canvas_3d)
 
         # Visualization tab
         vis_tab = QWidget()
@@ -116,8 +106,8 @@ class BuildingTab(QMainWindow):
 
         self.createMenuBar()
 
-        # Connect to the canvas click event
-        self.canvas_2d.mpl_connect('button_press_event', self.on_click_2d)
+        # Connect to table row selection event
+        self.tableWidget.itemSelectionChanged.connect(self.on_table_row_select)
 
     def createMenuBar(self):
         menubar = self.menuBar()
@@ -229,7 +219,6 @@ class BuildingTab(QMainWindow):
                 self.tableWidget.setItem(row, 18, QTableWidgetItem(str(waermebedarf)))
 
         # Load 2D and 3D Visualization
-        self.load2DVisualization()
         self.load3DVisualization()
 
     def createComboBox(self, columnIndex):
@@ -243,7 +232,7 @@ class BuildingTab(QMainWindow):
         comboBox.addItems(comboBoxItems)
         return comboBox
     
-    ### calculate Heat Demand based on geometry and u-valuess ###
+    ### calculate Heat Demand based on geometry and u-values ###
     def calculateHeatDemand(self):
         self.building_info = process_lod2(self.outputLOD2geojsonfilename)
 
@@ -312,72 +301,21 @@ class BuildingTab(QMainWindow):
         self.canvas.draw()
 
     ### LOD2 Visualization ###
-    def on_click_2d(self, event):
-        if event.inaxes:
-            x, y = event.xdata, event.ydata
-            print(f"Mouse click at: x={x}, y={y}")
-            if x is None or y is None:
-                print("Invalid click location.")
-                return
-
-            clicked_point = Point(x, y)
-            closest_building = None
-            closest_distance = float('inf')
-            threshold_distance = 5.0  # Schwellenwert für die Entfernung in den gleichen Einheiten wie die Koordinaten
-
-            for parent_id, info in self.building_info.items():
-                print(f"Checking building ID: {parent_id}")
-                for geom in info['Ground']:
-                    if geom is not None:
-                        for poly in geom.geoms if isinstance(geom, MultiPolygon) else [geom]:
-                            if poly.contains(clicked_point):
-                                distance = 0  # Punkt liegt innerhalb des Polygons
-                            else:
-                                distance = poly.exterior.distance(clicked_point)
-
-                            if distance < closest_distance:
-                                closest_building = (parent_id, info, poly)
-                                closest_distance = distance
-                                print(f"New closest building: {parent_id} with distance: {distance}")
-
-            if closest_building and closest_distance < threshold_distance:
-                print(f"Selected building ID: {closest_building[0]}")
-                self.selected_building = closest_building
-                self.highlight_building_2d(closest_building[2])
-                self.highlight_building_3d(closest_building[1])
-            else:
-                print("No building selected.")
-
-    def highlight_building_2d(self, geom):
-        self.figure_2d.clear()
-        ax = self.figure_2d.add_subplot(111)
-        self.plot_ground_geometries(ax, self.building_info)
-        self.plot_polygon_2d(ax, geom, 'red')
-        self.canvas_2d.draw()
-
-    def plot_ground_geometries(self, ax, building_info):
-        for parent_id, info in building_info.items():
-            for ground_geom in info['Ground']:
-                self.plot_polygon_2d(ax, ground_geom, 'green')
-
-    def plot_polygon_2d(self, ax, geom, color):
-        if geom.geom_type == 'Polygon':
-            x, y = geom.exterior.xy
-            ax.plot(x, y, color=color)
-        elif geom.geom_type == 'MultiPolygon':
-            for poly in geom.geoms:
-                x, y = poly.exterior.xy
-                ax.plot(x, y, color=color)
-        else:
-            print(f"Unsupported geometry type: {geom.geom_type}")
+    def on_table_row_select(self):
+        selected_rows = self.tableWidget.selectionModel().selectedRows()
+        if selected_rows:
+            row = selected_rows[0].row()
+            parent_id = list(self.building_info.keys())[row]
+            info = self.building_info[parent_id]
+            self.highlight_building_3d(info)
 
     def highlight_building_3d(self, info):
         self.load3DVisualization()  # Setze die vorherige Hervorhebung zurück
         ax = self.figure_3d.axes[0]  # Erhalte die aktuelle Achse, um das erneute Zeichnen zu vermeiden
-        self.plot_polygon_3d(ax, info['Ground'], 'yellow')
-        self.plot_polygon_3d(ax, info['Wall'], 'yellow')
-        self.plot_polygon_3d(ax, info['Roof'], 'yellow')
-        self.add_annotation_3d(ax, info)
+        self.plot_polygon_3d(ax, info['Ground'], 'red')
+        self.plot_polygon_3d(ax, info['Wall'], 'red')
+        self.plot_polygon_3d(ax, info['Roof'], 'red')
+        #self.add_annotation_3d(ax, info)
         self.canvas_3d.draw()
 
     def add_annotation_3d(self, ax, building_info):
@@ -422,15 +360,6 @@ class BuildingTab(QMainWindow):
                     return centroid.x, centroid.y, z
         return 0, 0, 0  # Default if no valid geometry found
 
-    def load2DVisualization(self):
-        self.figure_2d.clear()
-        ax = self.figure_2d.add_subplot(111)
-        self.plot_ground_geometries(ax, self.building_info)
-        ax.set_xlabel('UTM_X')
-        ax.set_ylabel('UTM_Y')
-        ax.set_title('2D-Visualisierung der Grundflächen')
-        self.canvas_2d.draw()
-
     def plot_polygon_3d(self, ax, geoms, color):
         if isinstance(geoms, (Polygon, MultiPolygon)):
             geoms = [geoms]  # Konvertiere einzelne Polygon oder MultiPolygon in eine Liste
@@ -442,14 +371,14 @@ class BuildingTab(QMainWindow):
                     verts = [list(zip(x, y, z))]
                     poly_collection = Poly3DCollection(verts, facecolors=color, alpha=0.5)
                     ax.add_collection3d(poly_collection)
-                    print(f"Plotted Polygon with {len(x)} points.")
+                    #print(f"Plotted Polygon with {len(x)} points.")
                 elif geom.geom_type == 'MultiPolygon':
                     for poly in geom.geoms:
                         x, y, z = zip(*poly.exterior.coords)
                         verts = [list(zip(x, y, z))]
                         poly_collection = Poly3DCollection(verts, facecolors=color, alpha=0.5)
                         ax.add_collection3d(poly_collection)
-                        print(f"Plotted MultiPolygon with {len(x)} points in one of its polygons.")
+                        #print(f"Plotted MultiPolygon with {len(x)} points in one of its polygons.")
                 else:
                     print(f"Unsupported geometry type: {geom.geom_type}")
 
@@ -497,7 +426,7 @@ class BuildingTab(QMainWindow):
             # Roof Geometries
             for roof_geom in info['Roof']:
                 if roof_geom is not None:
-                    self.plot_polygon_3d(ax, roof_geom, 'red')  # Roof level
+                    self.plot_polygon_3d(ax, roof_geom, 'brown')  # Roof level
                     if roof_geom.geom_type == 'Polygon':
                         x, y = roof_geom.exterior.xy
                         z = [pt[2] for pt in roof_geom.exterior.coords]
