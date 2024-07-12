@@ -1,5 +1,5 @@
 QWidget {
-    background-color: #121212;
+    background-color: #1e1e1e;
     color: #ffffff;
     font-family: "Segoe UI";
     font-size: 11pt;
@@ -7,29 +7,73 @@ QWidget {
 
 QTabWidget::pane {
     border-top: 2px solid #bb86fc;
-    background: #1e1e1e;
+    background: #2d2d2d;
 }
 
 QTabBar::tab {
-    background: #2c2c2c;
-    border: 1px solid #3c3c3c;
+    background: #3c3c3c;
+    border: 1px solid #444444;
     padding: 10px;
     margin-right: 2px;
+    border-radius: 5px;
 }
 
 QTabBar::tab:selected {
-    background: #121212;
-    border-bottom-color: #121212;
+    background: #1e1e1e;
+    border: 1px solid #bb86fc;
+    border-bottom-color: #1e1e1e;
 }
 
 QMenuBar {
-    background-color: #1e1e1e;
+    background-color: #2d2d2d;
+    border-bottom: 1px solid #444444;
 }
 
 QMenuBar::item {
     background: transparent;
+    padding: 5px 10px;
+    margin: 0;
 }
 
 QMenuBar::item:selected {
     background: #3c3c3c;
+    border-radius: 5px;
+}
+
+QMenu {
+    background-color: #2d2d2d;
+    border: 1px solid #444444;
+}
+
+QMenu::item {
+    background: transparent;
+    padding: 5px 10px;
+    margin: 0;
+}
+
+QMenu::item:selected {
+    background: #3c3c3c;
+    border-radius: 5px;
+}
+
+QPushButton {
+    background-color: #bb86fc;
+    color: #1e1e1e;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+}
+
+QPushButton:hover {
+    background-color: #9b67c1;
+}
+
+QPushButton:pressed {
+    background-color: #7c4e9f;
+}
+
+QLabel, QLineEdit {
+    border: 1px solid #444444;
+    padding: 5px;
+    border-radius: 5px;
 }
