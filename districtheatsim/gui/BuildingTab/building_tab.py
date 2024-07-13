@@ -15,7 +15,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 from PyQt5.QtWidgets import QVBoxLayout, QComboBox, QFileDialog, QProgressBar, QWidget, QTableWidget, QTableWidgetItem, \
-    QHeaderView, QAction, QMainWindow, QTabWidget, QDialog, QMessageBox, QHBoxLayout
+    QHeaderView, QAction, QMainWindow, QTabWidget, QDialog, QMessageBox, QHBoxLayout, QMenuBar, QScrollArea
 from PyQt5.QtCore import pyqtSignal, Qt
 
 from lod2.filter_LOD2 import spatial_filter_with_polygon, filter_LOD2_with_coordinates, process_lod2, calculate_centroid_and_geocode
@@ -34,7 +34,7 @@ def get_resource_path(relative_path):
 
     return os.path.join(base_path, relative_path)
 
-class BuildingTab(QMainWindow):
+class BuildingTab(QWidget):
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
 
     def __init__(self, data_manager, vis_tab, parent=None):
@@ -59,12 +59,46 @@ class BuildingTab(QMainWindow):
         self.selected_building = None
 
     def initUI(self):
-        self.setWindowTitle("Verarbeitung LOD2-Daten")
-        self.setGeometry(200, 200, 1200, 1000)
+        main_layout = QVBoxLayout(self)
 
-        central_widget = QWidget(self)
-        self.setCentralWidget(central_widget)
-        main_layout = QVBoxLayout(central_widget)
+        # Menüleiste für CSV-Editor und Geocoding
+        self.menuBar = QMenuBar(self)
+        self.menuBar.setFixedHeight(30)
+        fileMenu = self.menuBar.addMenu('Datei')
+
+        open_action = QAction('Öffnen', self)
+        open_action.triggered.connect(self.loadDataFromFile)
+        fileMenu.addAction(open_action)
+
+        save_action = QAction('Speichern', self)
+        save_action.triggered.connect(self.saveDataAsGeoJSON)
+        fileMenu.addAction(save_action)
+
+        process_menu = self.menuBar.addMenu('Datenverarbeitung')
+
+        process_filter_action = QAction('LOD2-Daten filtern laden', self)
+        process_filter_action.triggered.connect(self.showFilterDialog)
+        process_menu.addAction(process_filter_action)
+
+        calculate_heat_demand_action = QAction('Wärmebedarf berechnen', self)
+        calculate_heat_demand_action.triggered.connect(self.calculateHeatDemand)
+        process_menu.addAction(calculate_heat_demand_action)
+
+        create_csv_action = QAction('Gebäude-csv für Netzgenerierung erstellen', self)
+        create_csv_action.triggered.connect(self.createBuildingCSV)
+        process_menu.addAction(create_csv_action)
+
+        dataset_menu = self.menuBar.addMenu('Datenvergleich')
+
+        add_dataset_action = QAction('Datensatz hinzufügen', self)
+        add_dataset_action.triggered.connect(self.addDataset)
+        dataset_menu.addAction(add_dataset_action)
+
+        remove_dataset_action = QAction('Datensatz entfernen', self)
+        remove_dataset_action.triggered.connect(self.removeDataset)
+        dataset_menu.addAction(remove_dataset_action)
+
+        main_layout.addWidget(self.menuBar)
 
         # Create tabs
         tabs = QTabWidget(self)
@@ -76,15 +110,23 @@ class BuildingTab(QMainWindow):
 
         data_vis_layout = QHBoxLayout(data_vis_tab)
 
+        scroll_area = QScrollArea(self)
+        scroll_area.setWidgetResizable(True)
+        data_vis_layout.addWidget(scroll_area)
+
+        scroll_content = QWidget(scroll_area)
+        scroll_area.setWidget(scroll_content)
+        scroll_layout = QVBoxLayout(scroll_content)
+
         self.tableWidget = QTableWidget(self)
         self.tableWidget.setColumnCount(19)
-        self.tableWidget.setHorizontalHeaderLabels(['Adresse', 'UTM_X', 'UTM_Y', 'Grundfläche', 'Wandfläche', 'Dachfläche', 'Volumen', 'Nutzungstyp', 'Typ', 'Gebäudezustand', 
-                                                    'ww_demand_Wh_per_m2', 'air_change_rate', 'floors', 'fracture_windows', 'fracture_doors', 'min_air_temp', 
+        self.tableWidget.setHorizontalHeaderLabels(['Adresse', 'UTM_X', 'UTM_Y', 'Grundfläche', 'Wandfläche', 'Dachfläche', 'Volumen', 'Stockwerke', 'Nutzungstyp', 'Typ', 'Gebäudezustand', 
+                                                    'ww_demand_Wh_per_m2', 'air_change_rate', 'fracture_windows', 'fracture_doors', 'min_air_temp', 
                                                     'room_temp', 'max_air_temp_heating', 'Wärmebedarf'])
-        self.tableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.tableWidget.setSortingEnabled(True)
         self.tableWidget.setMinimumSize(800, 400)
-        data_vis_layout.addWidget(self.tableWidget)
+        scroll_layout.addWidget(self.tableWidget)
 
         self.figure_3d = plt.figure()
         self.canvas_3d = FigureCanvas(self.figure_3d)
@@ -104,45 +146,9 @@ class BuildingTab(QMainWindow):
         self.progressBar = QProgressBar(self)
         main_layout.addWidget(self.progressBar)
 
-        self.createMenuBar()
-
         # Connect to table row selection event
         self.tableWidget.itemSelectionChanged.connect(self.on_table_row_select)
-
-    def createMenuBar(self):
-        menubar = self.menuBar()
-        file_menu = menubar.addMenu("Datei")
-        process_menu = menubar.addMenu("Datenverarbeitung")
-        dataset_menu = menubar.addMenu("Datenvergleich")
-
-        open_action = QAction("Öffnen", self)
-        open_action.triggered.connect(self.loadDataFromFile)
-        file_menu.addAction(open_action)
-
-        save_action = QAction("Speichern", self)
-        save_action.triggered.connect(self.saveDataAsGeoJSON)
-        file_menu.addAction(save_action)
-
-        process_filter_action = QAction("LOD2-Daten filtern laden", self)
-        process_filter_action.triggered.connect(self.showFilterDialog)
-        process_menu.addAction(process_filter_action)
-
-        calculate_heat_demand_action = QAction("Wärmebedarf berechnen", self)
-        calculate_heat_demand_action.triggered.connect(self.calculateHeatDemand)
-        process_menu.addAction(calculate_heat_demand_action)
-
-        create_csv_action = QAction("Gebäude-csv für Netzgenerierung erstellen", self)
-        create_csv_action.triggered.connect(self.createBuildingCSV)
-        process_menu.addAction(create_csv_action)
-
-        add_dataset_action = QAction("Datensatz hinzufügen", self)
-        add_dataset_action.triggered.connect(self.addDataset)
-        dataset_menu.addAction(add_dataset_action)
-
-        remove_dataset_action = QAction("Datensatz entfernen", self)
-        remove_dataset_action.triggered.connect(self.removeDataset)
-        dataset_menu.addAction(remove_dataset_action)
-
+        
     def updateDefaultPath(self, new_base_path):
         self.base_path = new_base_path
 
@@ -181,32 +187,32 @@ class BuildingTab(QMainWindow):
             self.tableWidget.setItem(row, 4, QTableWidgetItem(str(round(info['Wall_Area'], 1))))
             self.tableWidget.setItem(row, 5, QTableWidgetItem(str(round(info['Roof_Area'], 1))))
             self.tableWidget.setItem(row, 6, QTableWidgetItem(str(round(info['Volume'], 1))))
+            self.tableWidget.setItem(row, 7, QTableWidgetItem(str(info['Stockwerke'])))
 
             # Nutzungstyp ComboBox
             comboBoxTypes = QComboBox()
             comboBoxTypes.addItems(["HMF", "HEF", "GKO", "GHA", "GMK", "GBD", "GBH", "GWA", "GGA", "GBA", "GGB", "GPD", "GMF", "GHD"])
             if info.get('Nutzungstyp') and info['Nutzungstyp'] in [comboBoxTypes.itemText(i) for i in range(comboBoxTypes.count())]:
                 comboBoxTypes.setCurrentText(info['Nutzungstyp'])
-            self.tableWidget.setCellWidget(row, 7, comboBoxTypes)
+            self.tableWidget.setCellWidget(row, 8, comboBoxTypes)
 
             # Gebäude Typ ComboBox
             comboBoxBuildingTypes = QComboBox()
             comboBoxBuildingTypes.addItems(self.comboBoxBuildingTypesItems)
             if info.get('Typ') and info['Typ'] in [comboBoxBuildingTypes.itemText(i) for i in range(comboBoxBuildingTypes.count())]:
                 comboBoxBuildingTypes.setCurrentText(info['Typ'])
-            self.tableWidget.setCellWidget(row, 8, comboBoxBuildingTypes)
+            self.tableWidget.setCellWidget(row, 9, comboBoxBuildingTypes)
 
             # Gebäude Zustand ComboBox
             comboBoxBuildingState = QComboBox()
             comboBoxBuildingState.addItems(["Existing_state", "Usual_Refurbishment", "Advanced_Refurbishment"])
             if info.get('Gebäudezustand') and info['Gebäudezustand'] in [comboBoxBuildingState.itemText(i) for i in range(comboBoxBuildingState.count())]:
                 comboBoxBuildingState.setCurrentText(info['Gebäudezustand'])
-            self.tableWidget.setCellWidget(row, 9, comboBoxBuildingState)
+            self.tableWidget.setCellWidget(row, 10, comboBoxBuildingState)
 
             # Weitere Werte setzen, falls vorhanden, ansonsten Standardwerte verwenden
-            self.tableWidget.setItem(row, 10, QTableWidgetItem(str(info['ww_demand_Wh_per_m2'])))
-            self.tableWidget.setItem(row, 11, QTableWidgetItem(str(info['air_change_rate'])))
-            self.tableWidget.setItem(row, 12, QTableWidgetItem(str(info['floors'])))
+            self.tableWidget.setItem(row, 11, QTableWidgetItem(str(info['ww_demand_Wh_per_m2'])))
+            self.tableWidget.setItem(row, 12, QTableWidgetItem(str(info['air_change_rate'])))
             self.tableWidget.setItem(row, 13, QTableWidgetItem(str(info['fracture_windows'])))
             self.tableWidget.setItem(row, 14, QTableWidgetItem(str(info['fracture_doors'])))
             self.tableWidget.setItem(row, 15, QTableWidgetItem(str(info['min_air_temp'])))
@@ -241,8 +247,8 @@ class BuildingTab(QMainWindow):
             wall_area = float(self.tableWidget.item(row, 4).text())
             roof_area = float(self.tableWidget.item(row, 5).text())
             volume = float(self.tableWidget.item(row, 6).text())
-            u_type = self.tableWidget.cellWidget(row, 8).currentText()
-            building_state = self.tableWidget.cellWidget(row, 9).currentText()
+            u_type = self.tableWidget.cellWidget(row, 9).currentText()
+            building_state = self.tableWidget.cellWidget(row, 10).currentText()
 
             building = Building(ground_area, wall_area, roof_area, volume, u_type=u_type, building_state=building_state, filename_TRY=self.parent.try_filename)
             building.calc_yearly_heat_demand()
@@ -485,12 +491,12 @@ class BuildingTab(QMainWindow):
                         properties['Wall_Area'] = float(self.tableWidget.item(row, 4).text())
                         properties['Roof_Area'] = float(self.tableWidget.item(row, 5).text())
                         properties['Volume'] = float(self.tableWidget.item(row, 6).text())
-                        properties['Nutzungstyp'] = self.tableWidget.cellWidget(row, 7).currentText()
-                        properties['Typ'] = self.tableWidget.cellWidget(row, 8).currentText()
-                        properties['Gebäudezustand'] = self.tableWidget.cellWidget(row, 9).currentText()
-                        properties['ww_demand_Wh_per_m2'] = float(self.tableWidget.item(row, 10).text()) if self.tableWidget.item(row, 10) else None
-                        properties['air_change_rate'] = float(self.tableWidget.item(row, 11).text()) if self.tableWidget.item(row, 11) else None
-                        properties['floors'] = int(self.tableWidget.item(row, 12).text()) if self.tableWidget.item(row, 12) else None
+                        properties['Stockwerke'] = int(self.tableWidget.item(row, 7).text()) if self.tableWidget.item(row, 7) else None
+                        properties['Nutzungstyp'] = self.tableWidget.cellWidget(row, 8).currentText()
+                        properties['Typ'] = self.tableWidget.cellWidget(row, 9).currentText()
+                        properties['Gebäudezustand'] = self.tableWidget.cellWidget(row, 10).currentText()
+                        properties['ww_demand_Wh_per_m2'] = float(self.tableWidget.item(row, 11).text()) if self.tableWidget.item(row, 11) else None
+                        properties['air_change_rate'] = float(self.tableWidget.item(row, 12).text()) if self.tableWidget.item(row, 12) else None
                         properties['fracture_windows'] = float(self.tableWidget.item(row, 13).text()) if self.tableWidget.item(row, 13) else None
                         properties['fracture_doors'] = float(self.tableWidget.item(row, 14).text()) if self.tableWidget.item(row, 14) else None
                         properties['min_air_temp'] = float(self.tableWidget.item(row, 15).text()) if self.tableWidget.item(row, 15) else None
@@ -549,7 +555,7 @@ class BuildingTab(QMainWindow):
                     stadt = self.tableWidget.item(row, 0).text().split(", ")[1]
                     address = self.tableWidget.item(row, 0).text().split(", ")[0]
                     heat_demand = self.tableWidget.item(row, 18).text() if self.tableWidget.item(row, 18) else '0'
-                    building_type = self.tableWidget.cellWidget(row, 7).currentText()
+                    building_type = self.tableWidget.cellWidget(row, 8).currentText()
                     utm_x = self.tableWidget.item(row, 1).text()
                     utm_y = self.tableWidget.item(row, 2).text()
 

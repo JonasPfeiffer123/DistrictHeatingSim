@@ -303,29 +303,30 @@ def initialize_net_geojson():
 
 def initialize_net_geojson2():
     base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    #vorlauf = f"{base_path}\project_data\Bad Muskau\Wärmenetz\Vorlauf.geojson"
-    #ruecklauf = f"{base_path}\project_data\Bad Muskau\Wärmenetz\Rücklauf.geojson"
-    #hast = f"{base_path}\project_data\Bad Muskau\Wärmenetz\HAST.geojson"
-    #erzeugeranlagen = f"{base_path}\project_data\Bad Muskau\Wärmenetz\Erzeugeranlagen.geojson"
+    vorlauf = f"{base_path}\project_data\Bad Muskau\Wärmenetz\Vorlauf.geojson"
+    ruecklauf = f"{base_path}\project_data\Bad Muskau\Wärmenetz\Rücklauf.geojson"
+    hast = f"{base_path}\project_data\Bad Muskau\Wärmenetz\HAST.geojson"
+    erzeugeranlagen = f"{base_path}\project_data\Bad Muskau\Wärmenetz\Erzeugeranlagen.geojson"
 
-    vorlauf = f"H:/Arbeit/01_SMWK-NEUES Bearbeitung/04_Projekt Bad Muskau/03_Bearbeitung/Projektordner/Bad Muskau Quartier 3\Wärmenetz\Vorlauf.geojson"
-    ruecklauf = f"H:/Arbeit/01_SMWK-NEUES Bearbeitung/04_Projekt Bad Muskau/03_Bearbeitung/Projektordner/Bad Muskau Quartier 3\Wärmenetz\Rücklauf.geojson"
-    hast = f"H:/Arbeit/01_SMWK-NEUES Bearbeitung/04_Projekt Bad Muskau/03_Bearbeitung/Projektordner/Bad Muskau Quartier 3\Wärmenetz\HAST.geojson"
-    erzeugeranlagen = f"H:/Arbeit/01_SMWK-NEUES Bearbeitung/04_Projekt Bad Muskau/03_Bearbeitung/Projektordner/Bad Muskau Quartier 3\Wärmenetz\Erzeugeranlagen.geojson"
+    #vorlauf = f"H:/Arbeit/01_SMWK-NEUES Bearbeitung/04_Projekt Bad Muskau/03_Bearbeitung/Projektordner/Bad Muskau Quartier 3\Wärmenetz\Vorlauf.geojson"
+    #ruecklauf = f"H:/Arbeit/01_SMWK-NEUES Bearbeitung/04_Projekt Bad Muskau/03_Bearbeitung/Projektordner/Bad Muskau Quartier 3\Wärmenetz\Rücklauf.geojson"
+    #hast = f"H:/Arbeit/01_SMWK-NEUES Bearbeitung/04_Projekt Bad Muskau/03_Bearbeitung/Projektordner/Bad Muskau Quartier 3\Wärmenetz\HAST.geojson"
+    #erzeugeranlagen = f"H:/Arbeit/01_SMWK-NEUES Bearbeitung/04_Projekt Bad Muskau/03_Bearbeitung/Projektordner/Bad Muskau Quartier 3\Wärmenetz\Erzeugeranlagen.geojson"
 
     calc_method = "Datensatz" 
     #calc_method = "BDEW"
     #calc_method = "VDI4655"
     building_type = None
-    return_temperature = None # 60, Erklärung
-    return_temperature = 10 # 60, Erklärung
-    supply_temperature = 20 # alternative ist Gleitende Temperatur
+    #return_temperature_heat_consumer = None # 60, Erklärung
+    return_temperature_heat_consumer = 55 # 60, Erklärung
+    supply_temperature_net = 85 # alternative ist Gleitende Temperatur
     #supply_temperature = np.array([...]) # alternative ist Gleitende Temperatur
+    min_supply_temperature_building = 65
     flow_pressure_pump = 4
     lift_pressure_pump = 1.5
     netconfiguration = "Niedertemperaturnetz"
     #netconfiguration = "wechselwarmes Netz"
-    netconfiguration = "kaltes Netz"
+    #netconfiguration = "kaltes Netz"
     pipetype = "KMR 100/250-2v"
     dT_RL = 5
     v_max_pipe = 1
@@ -333,11 +334,17 @@ def initialize_net_geojson2():
     insulation_filter = "2v"
     v_max_heat_consumer = 1.5
     mass_flow_secondary_producers = 0.1 #placeholder
+    TRY_filename = f"{base_path}\heat_requirement\TRY_511676144222\TRY2015_511676144222_Jahr.dat"
+    COP_filename = f"{base_path}\heat_generators\Kennlinien WP.csv"
 
-    net, yearly_time_steps, waerme_hast_ges_W, return_temperature, supply_temperature_buildings, return_temperature_buildings, \
-        supply_temperature_building_curve, return_temperature_building_curve = initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, return_temperature, \
-                                                                                                    supply_temperature, flow_pressure_pump, lift_pressure_pump, netconfiguration, pipetype, dT_RL, \
-                                                                                                    v_max_pipe, material_filter, insulation_filter, v_max_heat_consumer, mass_flow_secondary_producers)
+    net, yearly_time_steps, waerme_hast_ges_W, return_temperature_heat_consumer, supply_temperature_buildings, return_temperature_buildings, \
+        supply_temperature_building_curve, return_temperature_building_curve, strombedarf_hast_ges_W, max_el_leistung_hast_ges_W = initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, \
+                                                                                TRY_filename, COP_filename, calc_method, building_type, \
+                                                                                min_supply_temperature_building, return_temperature_heat_consumer, \
+                                                                                supply_temperature_net, flow_pressure_pump, lift_pressure_pump, \
+                                                                                netconfiguration, pipetype, dT_RL, v_max_pipe, material_filter, \
+                                                                                insulation_filter, v_max_heat_consumer, mass_flow_secondary_producers)
+    
     net = net_optimization(net, v_max_pipe, v_max_heat_consumer, material_filter, insulation_filter)
 
     fig, ax = plt.subplots()  # Erstelle eine Figure und eine Achse

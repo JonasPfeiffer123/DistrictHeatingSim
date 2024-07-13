@@ -146,7 +146,7 @@ def process_lod2(file_path):
 
     # Standardwerte definieren
     STANDARD_VALUES = {
-        'ww_demand_Wh_per_m2': 12800, 'air_change_rate': 0.5, 'floors': 4, 'fracture_windows': 0.10, 
+        'Stockwerke': 4, 'ww_demand_Wh_per_m2': 12800, 'air_change_rate': 0.5, 'fracture_windows': 0.10, 
         'fracture_doors': 0.01, 'min_air_temp': -15, 'room_temp': 20, 'max_air_temp_heating': 15
     }
 
@@ -161,7 +161,7 @@ def process_lod2(file_path):
                 'Ground': [], 'Wall': [], 'Roof': [], 'H_Traufe': None, 'H_Boden': None,
                 'Adresse': None, 'Stadt': None, 'Bundesland': None, 'Land': None, 'Koordinate_X': None, 'Koordinate_Y': None,
                 'Nutzungstyp': None, 'Typ': None, 'Gebäudezustand': None, 'ww_demand_Wh_per_m2': None, 
-                'air_change_rate': None, 'floors': None, 'fracture_windows': None, 'fracture_doors': None, 
+                'air_change_rate': None, 'Stockwerke': None, 'fracture_windows': None, 'fracture_doors': None, 
                 'min_air_temp': None, 'room_temp': None, 'max_air_temp_heating': None, 'Wärmebedarf': None
             }
 
@@ -182,6 +182,8 @@ def process_lod2(file_path):
             building_info[parent_id]['Koordinate_Y'] = row['Koordinate_Y']
         
         # Check for additional fields
+        if 'Stockwerke' in row and pd.notna(row['Stockwerke']):
+            building_info[parent_id]['Stockwerke'] = row['Stockwerke']
         if 'Nutzungstyp' in row and pd.notna(row['Nutzungstyp']):
             building_info[parent_id]['Nutzungstyp'] = row['Nutzungstyp']
         if 'Typ' in row and pd.notna(row['Typ']):
@@ -192,8 +194,6 @@ def process_lod2(file_path):
             building_info[parent_id]['ww_demand_Wh_per_m2'] = row['ww_demand_Wh_per_m2']
         if 'air_change_rate' in row and pd.notna(row['air_change_rate']):
             building_info[parent_id]['air_change_rate'] = row['air_change_rate']
-        if 'floors' in row and pd.notna(row['floors']):
-            building_info[parent_id]['floors'] = row['floors']
         if 'fracture_windows' in row and pd.notna(row['fracture_windows']):
             building_info[parent_id]['fracture_windows'] = row['fracture_windows']
         if 'fracture_doors' in row and pd.notna(row['fracture_doors']):

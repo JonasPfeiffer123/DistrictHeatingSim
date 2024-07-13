@@ -1,6 +1,6 @@
 import sys
 import os
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTabWidget, QMenuBar, QAction, QFileDialog, QLabel, QMessageBox, QInputDialog
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QTabWidget, QMenuBar, QAction, QFileDialog, QLabel, QMessageBox, QInputDialog
 from PyQt5.QtCore import QObject, pyqtSignal
 
 from gui.ProjectTab.project_tab import ProjectTab
@@ -38,7 +38,7 @@ class CentralDataManager(QObject):
         self.project_folder = path
         self.project_folder_changed.emit(path)
 
-class HeatSystemDesignGUI(QWidget):
+class HeatSystemDesignGUI(QMainWindow):
     def __init__(self):
         super().__init__()
         self.data_manager = CentralDataManager()
@@ -61,7 +61,10 @@ class HeatSystemDesignGUI(QWidget):
         self.setWindowTitle("DistrictHeatSim")
         self.setGeometry(100, 100, 800, 600)
 
-        self.layout1 = QVBoxLayout(self)
+        central_widget = QWidget(self)
+        self.setCentralWidget(central_widget)
+
+        self.layout1 = QVBoxLayout(central_widget)
 
         self.initMenuBar()
 
@@ -186,11 +189,11 @@ if __name__ == '__main__':
     app.setStyle('Fusion')
 
     # Set Light Theme
-    qss_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'styles', 'dark_mode.qss')
+    qss_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'styles', 'win11_light.qss')
     if os.path.exists(qss_path):
         with open(qss_path, 'r') as file:
             app.setStyleSheet(file.read())
-        print(f"Dark theme applied from {qss_path}")
+        print(f"Light theme applied from {qss_path}")
     else:
         print(f"Stylesheet {qss_path} not found.")
 
