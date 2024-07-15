@@ -25,7 +25,7 @@ class CentralDataManager(QObject):
     def __init__(self):
         super(CentralDataManager, self).__init__()
         self.map_data = []
-        self.project_folder = get_resource_path("project_data\\Bad Muskau")
+        self.project_folder = get_resource_path("project_data\\Beispiel")
         print(self.project_folder)
 
     def add_data(self, data):

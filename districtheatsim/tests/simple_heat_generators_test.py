@@ -151,7 +151,7 @@ def test_chp():
     Stundensatz = 45
 
     chp.BHKW(Last_L, duration)
-    print(f"""Wärmeleistung BHKW: {chp.Wärmeleistung_BHKW_L} kW, elektrische Leistung BHKW: {chp.el_Leistung_BHKW_L} kW,
+    print(f"""Wärmeleistung BHKW: {chp.Wärmeleistung_kW} kW, elektrische Leistung BHKW: {chp.el_Leistung_kW} kW,
           Wärmemenge BHKW: {chp.Wärmemenge_BHKW:.2f} MWh, Strommenge BHKW: {chp.Strommenge_BHKW:.2f} MWh,
           Brennstoffbedarf BHKW: {chp.Brennstoffbedarf_BHKW:.2f} MWh, Anzahl Starts BHKW: {chp.Anzahl_Starts}, 
           Betriebsstunden BHKW: {chp.Betriebsstunden_gesamt} h, Betriebsstunden pro Start: {chp.Betriebsstunden_pro_Start:.2f}""")
@@ -160,7 +160,7 @@ def test_chp():
     print(f"Wärmegestehungskosten BHKW ohne Speicher: {WGK:.2f} €/MWh")
     
     chp.storage(Last_L, duration)
-    print(f"""Wärmeleistung BHKW mit Speicher: {chp.Wärmeleistung_BHKW_Speicher} kW, elektrische Leistung BHKW: {chp.el_Leistung_BHKW_Speicher} kW,
+    print(f"""Wärmeleistung BHKW mit Speicher: {chp.Wärmeleistung_kW} kW, elektrische Leistung BHKW: {chp.el_Leistung_BHKW_kW} kW,
           Wärmemenge BHKW: {chp.Wärmemenge_BHKW_Speicher:.2f} MWh, Strommenge BHKW: {chp.Strommenge_BHKW_Speicher:.2f} MWh,
           Brennstoffbedarf BHKW: {chp.Brennstoffbedarf_BHKW_Speicher:.2f} MWh, Anzahl Starts BHKW: {chp.Anzahl_Starts_Speicher}, 
           Betriebsstunden BHKW: {chp.Betriebsstunden_gesamt_Speicher} h, Betriebsstunden pro Start: {chp.Betriebsstunden_pro_Start_Speicher:.2f}""")
@@ -170,7 +170,7 @@ def test_chp():
     
     fig, axs = plt.subplots(2, 1, figsize=(15, 10))
 
-    axs[0].stackplot(range(1, 8761), chp.Wärmeleistung_BHKW_L, labels=["Wärmeleistung BHKW"])
+    axs[0].stackplot(range(1, 8761), chp.Wärmeleistung_kW, labels=["Wärmeleistung BHKW"])
     axs[0].plot(range(1, 8761), Last_L, label="Last", color="red", linewidth=0.5)
     axs[0].set_title("Jahresdauerlinie ohne Speicher")
     axs[0].set_xlabel("Jahresstunden")
@@ -179,8 +179,8 @@ def test_chp():
     axs[0].grid()
 
     ax2 = axs[1].twinx()
-    axs[1].stackplot(range(1, 8761), [chp.Wärmeleistung_BHKW_Speicher], labels=["Wärmeleistung BHKW"])
-    axs[1].plot(range(1, 8761), chp.Wärmeleistung_Speicher_BHKW, label="Wärmeleistung Speicher BHKW", color="orange", linewidth=0.5)
+    axs[1].stackplot(range(1, 8761), [chp.Wärmeleistung_kW], labels=["Wärmeleistung BHKW"])
+    axs[1].plot(range(1, 8761), chp.Wärmeleistung_Speicher_kW, label="Wärmeleistung Speicher BHKW", color="orange", linewidth=0.5)
     axs[1].plot(range(1, 8761), Last_L, label="Last", color="red", linewidth=0.5)
     ax2.plot(range(1, 8761), chp.speicher_fuellstand_BHKW, label="Speicherfüllstand", color="green")
 

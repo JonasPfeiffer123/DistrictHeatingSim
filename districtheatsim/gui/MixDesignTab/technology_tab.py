@@ -118,14 +118,19 @@ class TechnologyTab(QWidget):
             "Biomassekessel": BiomassBoiler,
             "Gaskessel": GasBoiler
         }
-        tech_class = tech_classes.get(tech_type)
+
+        # Extrahieren des Basistyps (z. B. "Biomassekessel" aus "Biomassekessel_1")
+        base_tech_type = tech_type.split('_')[0]
+
+        tech_class = tech_classes.get(base_tech_type)
         if not tech_class:
             raise ValueError(f"Unbekannter Technologietyp: {tech_type}")
 
-        tech_count = sum(1 for tech in self.tech_objects if tech.name.startswith(tech_type))
-        unique_name = f"{tech_type}_{tech_count + 1}"
+        tech_count = sum(1 for tech in self.tech_objects if tech.name.startswith(base_tech_type))
+        unique_name = f"{base_tech_type}_{tech_count + 1}"
 
         return tech_class(name=unique_name, **inputs)
+
         
     def addTech(self, tech_type, tech_data):
         dialog = TechInputDialog(tech_type, tech_data)
@@ -142,7 +147,9 @@ class TechnologyTab(QWidget):
         dialog = TechInputDialog(selected_tech.name, tech_data)
         if dialog.exec_() == QDialog.Accepted:
             updated_inputs = dialog.getInputs()
-            self.tech_objects[selected_tech_index] = self.createTechnology(selected_tech.name, updated_inputs)
+            updated_tech = self.createTechnology(selected_tech.name.split('_')[0], updated_inputs)
+            updated_tech.name = selected_tech.name  # Beibehalten des bestehenden Namens
+            self.tech_objects[selected_tech_index] = updated_tech
             self.updateTechList()
 
     def removeSelectedTech(self):

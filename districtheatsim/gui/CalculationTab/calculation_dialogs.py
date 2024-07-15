@@ -75,6 +75,7 @@ class NetGenerationDialog(QDialog):
         self.generate_callback = generate_callback
         self.edit_hast_callback = edit_hast_callback
         self.base_path = base_path
+        self.parent = parent
         self.initUI()
 
     def initUI(self):
@@ -584,9 +585,7 @@ class NetGenerationDialog(QDialog):
             max_air_temperature = float(self.parameter_rows_net[3].itemAt(1).widget().text())
             min_air_temperature = float(self.parameter_rows_net[4].itemAt(1).widget().text())
 
-            # Hardcoded, needs to be replaced
-            ### ahhhhhh
-            air_temperature_data = import_TRY(get_resource_path("heat_requirement\TRY_511676144222\TRY2015_511676144222_Jahr.dat"))
+            air_temperature_data = import_TRY(self.parent.parent.try_filename)
 
             # Berechnung der Temperaturkurve basierend auf den ausgewählten Einstellungen
             temperature_curve = []

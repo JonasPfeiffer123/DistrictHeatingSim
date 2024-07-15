@@ -1,0 +1,7 @@
+Adresse;UTM_X;UTM_Y;Grundfläche;Wandfläche;Dachfläche;Volumen;Nutzungstyp;Typ;Gebäudezustand;ww_demand_Wh_per_m2;air_change_rate;floors;fracture_windows;fracture_doors;min_air_temp;room_temp;max_air_temp_heating;Jährlicher Wärmebedarf in kWh
+Furtstraße 1, Görlitz, Sachsen, Deutschland;499921.9832542793;5666360.6036334;1167.1;2869.8;1052.8;14960.5;Öffentliches Gebäude;DE.N.MFH.02.GEN;Usual_Refurbishment;0;0.5;4;0.1;0.01;-15;20;15;396707.68
+Furtstraße 1, Görlitz, Sachsen, Deutschland;499829.40898480115;5666400.076543265;550.3;1681.4;668.4;9537.9;Öffentliches Gebäude;DE.N.MFH.02.GEN;Usual_Refurbishment;0;0.5;4;0.1;0.01;-15;20;15;233685.23
+Am Stadtpark 1, Görlitz, Sachsen, Deutschland;499913.2675410785;5666572.274341127;2870.2;6588.9;2972.4;71709.3;Öffentliches Gebäude;DE.N.MFH.02.GEN;Advanced_Refurbishment;0;0.5;4;0.1;0.01;-15;20;15;1188041.29
+Furtstraße 1a, Görlitz, Sachsen, Deutschland;499898.20800363127;5666394.658301276;137.0;962.0;141.7;479.5;Öffentliches Gebäude;DE.N.MFH.11.GEN;Usual_Refurbishment;12800;0.5;4;0.1;0.01;-15;20;15;29502.35
+Furtstraße 1a, Görlitz, Sachsen, Deutschland;499905.6671807862;5666406.886669669;706.4;1613.4;708.1;7858.5;Öffentliches Gebäude;DE.N.MFH.11.GEN;Usual_Refurbishment;12800;0.5;4;0.1;0.01;-15;20;15;168616.67
+Furtstraße 1, Görlitz, Sachsen, Deutschland;499866.5710517182;5666429.488231414;946.9;3162.9;993.3;3181.4;Öffentliches Gebäude;DE.N.MFH.11.GEN;Usual_Refurbishment;0;0.5;4;0.1;0.01;-15;20;15;151927.19

@@ -36,21 +36,21 @@ class TechInputDialog(QDialog):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        if self.tech_type == "Solarthermie":
+        if self.tech_type.startswith("Solarthermie"):
             self.dialog = SolarThermalDialog(self.tech_data)
-        elif self.tech_type == "Biomassekessel":
+        elif self.tech_type.startswith("Biomassekessel"):
             self.dialog = BiomassBoilerDialog(self.tech_data)
-        elif self.tech_type == "Gaskessel":
+        elif self.tech_type.startswith("Gaskessel"):
             self.dialog = GasBoilerDialog(self.tech_data)
-        elif self.tech_type == "BHKW":
+        elif self.tech_type.startswith("BHKW"):
             self.dialog = CHPDialog(self.tech_data)
-        elif self.tech_type == "Holzgas-BHKW":
+        elif self.tech_type.startswith("Holzgas-BHKW"):
             self.dialog = HolzgasCHPDialog(self.tech_data)
-        elif self.tech_type == "Geothermie":
+        elif self.tech_type.startswith("Geothermie"):
             self.dialog = GeothermalDialog(self.tech_data)
-        elif self.tech_type == "Abwärme":
+        elif self.tech_type.startswith("Abwärme"):
             self.dialog = WasteHeatPumpDialog(self.tech_data)
-        elif self.tech_type == "Flusswasser":
+        elif self.tech_type.startswith("Flusswasser"):
             self.dialog = RiverHeatPumpDialog(self.tech_data)
         else:
             raise ValueError(f"Unbekannter Technologietyp: {self.tech_type}")
@@ -316,7 +316,7 @@ class BiomassBoilerDialog(QDialog):
         bm_layout = QFormLayout()
 
         self.PBMKInput = QLineEdit(self)
-        self.PBMKInput.setText(str(self.tech_data.get('P_BMK', "50")))
+        self.PBMKInput.setText(str(self.tech_data.get('P_BMK', "240")))
         bm_layout.addRow(QLabel("th. Leistung in kW"), self.PBMKInput)
 
         self.HLsizeInput = QLineEdit(self)
@@ -347,7 +347,7 @@ class BiomassBoilerDialog(QDialog):
         bm_layout.addRow(QLabel("Untere Grenze th. Leistung Optimierung"), self.minPoptInput)
 
         self.maxPoptInput = QLineEdit(self)
-        self.maxPoptInput.setText(str(self.tech_data.get('opt_BMK_max', "1000")))
+        self.maxPoptInput.setText(str(self.tech_data.get('opt_BMK_max', "5000")))
         bm_layout.addRow(QLabel("Obere Grenze th. Leistung Optimierung"), self.maxPoptInput)
 
         # Checkbox für Speicher aktiv
