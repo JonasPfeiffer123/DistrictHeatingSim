@@ -71,7 +71,14 @@ QPushButton:pressed {
     background-color: #7c4e9f;
 }
 
-QLabel, QLineEdit {
+QLabel {
+    border: 1px solid #444444;
+    padding: 5px;
+    border-radius: 5px;
+    background-color: #2d2d2d;  /* Hintergrundfarbe für bessere Abgrenzung */
+}
+
+QLineEdit {
     border: 1px solid #444444;
     padding: 5px;
     border-radius: 5px;

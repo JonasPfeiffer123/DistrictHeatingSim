@@ -396,10 +396,10 @@ class CHP:
         self.el_Leistung_Soll = self.th_Leistung_BHKW / self.thermischer_Wirkungsgrad * self.el_Wirkungsgrad
         self.Nutzungsdauer = 15
         self.f_Inst, self.f_W_Insp, self.Bedienaufwand = 6, 2, 0
-        if self.name == "BHKW":
+        if self.name.startswith("BHKW"):
             self.co2_factor_fuel = 0.201 # tCO2/MWh gas
             self.primärenergiefaktor = 1.1 # Gas
-        elif self.name == "Holzgas-BHKW":
+        elif self.name.startswith("Holzgas-BHKW"):
             self.co2_factor_fuel = 0.036 # tCO2/MWh pellets
             self.primärenergiefaktor = 0.2 # Pellets
         self.co2_factor_electricity = 0.4 # tCO2/MWh electricity
@@ -481,9 +481,9 @@ class CHP:
             return 0
         # Holzvergaser-BHKW: 130 kW: 240.000 -> 1850 €/kW
         # (Erd-)Gas-BHKW: 100 kW: 150.000 € -> 1500 €/kW
-        if self.name == "BHKW":
+        if self.name.startswith("BHKW"):
             spez_Investitionskosten_BHKW = self.spez_Investitionskosten_GBHKW  # €/kW
-        elif self.name == "Holzgas-BHKW":
+        elif self.name.startswith("Holzgas-BHKW"):
             spez_Investitionskosten_BHKW = self.spez_Investitionskosten_HBHKW  # €/kW
 
         self.Investitionskosten_BHKW = spez_Investitionskosten_BHKW * self.th_Leistung_BHKW
@@ -517,9 +517,9 @@ class CHP:
             Betriebsstunden = self.Betriebsstunden_gesamt
             Betriebsstunden_pro_Start= self.Betriebsstunden_pro_Start
 
-        if self.name == "BHKW":
+        if self.name.startswith("BHKW"):
             self.Brennstoffpreis = Gaspreis
-        elif self.name == "Holzgas-BHKW":
+        elif self.name.startswith("Holzgas-BHKW"):
             self.Brennstoffpreis = Holzpreis
 
         self.WGK(Wärmemenge, Strommenge, Brennstoffbedarf, self.Brennstoffpreis, Strompreis, q, r, T, BEW, stundensatz)
@@ -964,7 +964,6 @@ def calculate_factors(Kapitalzins, Preissteigerungsrate, Betrachtungszeitraum):
     return q, r, T
 
 def Berechnung_Erzeugermix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, variables=[], variables_order=[], kapitalzins=5, preissteigerungsrate=3, betrachtungszeitraum=20, stundensatz=45):
-    # Kapitalzins und Preissteigerungsrate in % -> Umrechung in Zinsfaktor und Preissteigerungsfaktor
     q, r, T = calculate_factors(kapitalzins, preissteigerungsrate, betrachtungszeitraum)
     time_steps, Last_L, VLT_L, RLT_L = initial_data
 
@@ -998,47 +997,39 @@ def Berechnung_Erzeugermix(tech_order, initial_data, start, end, TRY, COP_data, 
         'tech_classes': []
     }
 
-    # zunächst Berechnung der Erzeugung
     for idx, tech in enumerate(tech_order.copy()):
         if len(variables) > 0:
-            if tech.name == "Solarthermie":
+            if tech.name.startswith("Solarthermie"):
                 tech.bruttofläche_STA = variables[variables_order.index(f"bruttofläche_STA_{idx}")]
                 tech.vs = variables[variables_order.index(f"vs_{idx}")]
-            elif tech.name == "Abwärme" or tech.name == "Abwasserwärme":
+            elif tech.name.startswith("Abwärme") or tech.name.startswith("Abwasserwärme"):
                 tech.Kühlleistung_Abwärme = variables[variables_order.index(f"Kühlleistung_Abwärme_{idx}")]
-            elif tech.name == "Flusswasser":
+            elif tech.name.startswith("Flusswasser"):
                 tech.Wärmeleistung_FW_WP = variables[variables_order.index(f"Wärmeleistung_FW_WP_{idx}")]
-            elif tech.name == "Geothermie":
+            elif tech.name.startswith("Geothermie"):
                 tech.Fläche = variables[variables_order.index(f"Fläche_{idx}")]
                 tech.Bohrtiefe = variables[variables_order.index(f"Bohrtiefe_{idx}")]
-            elif tech.name == "BHKW" or tech.name == "Holzgas-BHKW":
+            elif tech.name.startswith("BHKW") or tech.name.startswith("Holzgas-BHKW"):
                 tech.th_Leistung_BHKW = variables[variables_order.index(f"th_Leistung_BHKW_{idx}")]
-                if tech.speicher_aktiv == True:
+                if tech.speicher_aktiv:
                     tech.Speicher_Volumen_BHKW = variables[variables_order.index(f"Speicher_Volumen_BHKW_{idx}")]
-            elif tech.name == "Biomassekessel":
+            elif tech.name.startswith("Biomassekessel"):
                 tech.P_BMK = variables[variables_order.index(f"P_BMK_{idx}")]
 
-        if tech.name == "Solarthermie":
+        if tech.name.startswith("Solarthermie"):
             tech_results = tech.calculate(VLT_L, RLT_L, TRY, time_steps, start, end, q, r, T, BEW, stundensatz, duration, general_results)
-
-        elif tech.name == "Abwärme" or tech.name == "Abwasserwärme":
+        elif tech.name.startswith("Abwärme") or tech.name.startswith("Abwasserwärme"):
             tech_results = tech.calculate(VLT_L, COP_data, Strompreis, q, r, T, BEW, stundensatz, duration, general_results)
-        
-        elif tech.name == "Flusswasser":
+        elif tech.name.startswith("Flusswasser"):
             tech_results = tech.calculate(VLT_L, COP_data, Strompreis, q, r, T, BEW, stundensatz, duration, general_results)
-
-        elif tech.name == "Geothermie":
+        elif tech.name.startswith("Geothermie"):
             tech_results = tech.calculate(VLT_L, COP_data, Strompreis, q, r, T, BEW, stundensatz, duration, general_results)
-            
-        elif tech.name == "BHKW" or tech.name == "Holzgas-BHKW":
+        elif tech.name.startswith("BHKW") or tech.name.startswith("Holzgas-BHKW"):
             tech_results = tech.calculate(Gaspreis, Holzpreis, Strompreis, q, r, T, BEW, stundensatz, duration, general_results)
-            
-        elif tech.name == "Biomassekessel":
+        elif tech.name.startswith("Biomassekessel"):
             tech_results = tech.calculate(Holzpreis, q, r, T, BEW, stundensatz, duration, general_results)
-            
-        elif tech.name == "Gaskessel":
+        elif tech.name.startswith("Gaskessel"):
             tech_results = tech.calculate(Gaspreis, q, r, T, BEW, stundensatz, duration, Last_L, general_results)
-            
         else:
             tech_order.remove(tech)
             print(f"{tech.name} ist kein gültiger Erzeugertyp und wird daher nicht betrachtet.")
@@ -1048,32 +1039,26 @@ def Berechnung_Erzeugermix(tech_order, initial_data, start, end, TRY, COP_data, 
             general_results['Wärmemengen'].append(tech_results['Wärmemenge'])
             general_results['Anteile'].append(tech_results['Wärmemenge']/general_results['Jahreswärmebedarf'])
             general_results['WGK'].append(tech_results['WGK'])
-
             general_results['specific_emissions_L'].append(tech_results['spec_co2_total'])
             general_results['primärenergie_L'].append(tech_results['primärenergie'])
-
             general_results['colors'].append(tech_results['color'])
-
             general_results['Restlast_L'] -= tech_results['Wärmeleistung_L']
             general_results['Restwärmebedarf'] -= tech_results['Wärmemenge']
             general_results['WGK_Gesamt'] += (tech_results['Wärmemenge']*tech_results['WGK'])/general_results['Jahreswärmebedarf']
-            
             general_results['specific_emissions_Gesamt'] += (tech_results['Wärmemenge']*tech_results['spec_co2_total'])/general_results['Jahreswärmebedarf']
             general_results['primärenergiefaktor_Gesamt'] += tech_results['primärenergie']/general_results['Jahreswärmebedarf']
 
-            if tech.name == "BHKW" or tech.name == "Holzgas-BHKW":
+            if tech.name.startswith("BHKW") or tech.name.startswith("Holzgas-BHKW"):
                 general_results['Strommenge'] += tech_results["Strommenge"]
                 general_results['el_Leistung_L'] += tech_results["el_Leistung_L"]
                 general_results['el_Leistung_ges_L'] += tech_results["el_Leistung_L"]
 
-            if tech.name in ["Abwärme", "Abwasserwärme", "Flusswasser", "Geothermie"]:
+            if tech.name.startswith("Abwärme") or tech.name.startswith("Abwasserwärme") or tech.name.startswith("Flusswasser") or tech.name.startswith("Geothermie"):
                 general_results['Strombedarf'] += tech_results["Strombedarf"]
                 general_results['el_Leistungsbedarf_L'] += tech_results["el_Leistung_L"]
                 general_results['el_Leistung_ges_L'] -= tech_results['el_Leistung_L']
 
             if "Wärmeleistung_Speicher_L" in tech_results.keys():
-                # general_results['Wärmeleistung_L'].append(tech_results['Wärmeleistung_Speicher_L']) führt bestimmt nur zu Problemen
-                # general_results['Wärmemengen'].append(tech_results['Wärmemenge_Speicher_L']) eigentlich nicht oder?
                 general_results['Restlast_L'] -= tech_results['Wärmeleistung_Speicher_L']
 
         else:

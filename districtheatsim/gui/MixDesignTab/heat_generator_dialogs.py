@@ -1,7 +1,7 @@
 import sys
 import os
 
-from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QComboBox, QCheckBox, \
+from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QComboBox, QCheckBox, QGroupBox, \
     QDialogButtonBox, QHBoxLayout, QFormLayout, QPushButton, QFileDialog, QMessageBox, QWidget
 from PyQt5.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -82,17 +82,20 @@ class SolarThermalDialog(QWidget):
         self.initUI()
 
     def initUI(self):
-        main_layout = QVBoxLayout()
-        top_layout = QHBoxLayout()
-        form_layout = QFormLayout()
+        main_layout = QHBoxLayout()  # Hauptlayout als QHBoxLayout
+        input_layout = QVBoxLayout()  # Layout für die Eingaben
+
+        # Technische Daten GroupBox
+        tech_groupbox = QGroupBox("Technische Daten")
+        tech_layout = QFormLayout()
 
         self.areaSInput = QLineEdit(self)
         self.areaSInput.setText(str(self.tech_data.get('bruttofläche_STA', "200")))
-        form_layout.addRow(QLabel("Kollektorbruttofläche in m²"), self.areaSInput)
+        tech_layout.addRow(QLabel("Kollektorbruttofläche in m²"), self.areaSInput)
 
         self.vsInput = QLineEdit(self)
         self.vsInput.setText(str(self.tech_data.get('vs', "20")))
-        form_layout.addRow(QLabel("Solarspeichervolumen in m³"), self.vsInput)
+        tech_layout.addRow(QLabel("Solarspeichervolumen in m³"), self.vsInput)
 
         self.typeInput = QComboBox(self)
         self.techOptions = ["Vakuumröhrenkollektor", "Flachkollektor"]
@@ -100,97 +103,114 @@ class SolarThermalDialog(QWidget):
         if 'Typ' in self.tech_data:
             current_type_index = self.techOptions.index(self.tech_data['Typ'])
             self.typeInput.setCurrentIndex(current_type_index)
-        form_layout.addRow(QLabel("Kollektortyp"), self.typeInput)
+        tech_layout.addRow(QLabel("Kollektortyp"), self.typeInput)
 
         self.TsmaxInput = QLineEdit(self)
         self.TsmaxInput.setText(str(self.tech_data.get('Tsmax', "90")))
-        form_layout.addRow(QLabel("Maximale Speichertemperatur in °C"), self.TsmaxInput)
+        tech_layout.addRow(QLabel("Maximale Speichertemperatur in °C"), self.TsmaxInput)
 
         self.LongitudeInput = QLineEdit(self)
         self.LongitudeInput.setText(str(self.tech_data.get('Longitude', "-14.4222")))
-        form_layout.addRow(QLabel("Longitude des Erzeugerstandortes"), self.LongitudeInput)
+        tech_layout.addRow(QLabel("Longitude des Erzeugerstandortes"), self.LongitudeInput)
 
         self.STD_LongitudeInput = QLineEdit(self)
         self.STD_LongitudeInput.setText(str(self.tech_data.get('STD_Longitude', "15")))
-        form_layout.addRow(QLabel("STD_Longitude des Erzeugerstandortes"), self.STD_LongitudeInput)
+        tech_layout.addRow(QLabel("STD_Longitude des Erzeugerstandortes"), self.STD_LongitudeInput)
 
         self.LatitudeInput = QLineEdit(self)
         self.LatitudeInput.setText(str(self.tech_data.get('Latitude', "51.1676")))
-        form_layout.addRow(QLabel("Latitude des Erzeugerstandortes"), self.LatitudeInput)
+        tech_layout.addRow(QLabel("Latitude des Erzeugerstandortes"), self.LatitudeInput)
 
         self.East_West_collector_azimuth_angleInput = QLineEdit(self)
         self.East_West_collector_azimuth_angleInput.setText(str(self.tech_data.get('East_West_collector_azimuth_angle', "0")))
-        form_layout.addRow(QLabel("Azimuth-Ausrichtung des Kollektors in °"), self.East_West_collector_azimuth_angleInput)
+        tech_layout.addRow(QLabel("Azimuth-Ausrichtung des Kollektors in °"), self.East_West_collector_azimuth_angleInput)
 
         self.Collector_tilt_angleInput = QLineEdit(self)
         self.Collector_tilt_angleInput.setText(str(self.tech_data.get('Collector_tilt_angle', "36")))
-        form_layout.addRow(QLabel("Neigungswinkel des Kollektors in ° (0-90)"), self.Collector_tilt_angleInput)
+        tech_layout.addRow(QLabel("Neigungswinkel des Kollektors in ° (0-90)"), self.Collector_tilt_angleInput)
 
         self.Tm_rlInput = QLineEdit(self)
         self.Tm_rlInput.setText(str(self.tech_data.get('Tm_rl', "60")))
-        form_layout.addRow(QLabel("Startwert Rücklauftemperatur in Speicher in °C"), self.Tm_rlInput)
+        tech_layout.addRow(QLabel("Startwert Rücklauftemperatur in Speicher in °C"), self.Tm_rlInput)
 
         self.QsaInput = QLineEdit(self)
         self.QsaInput.setText(str(self.tech_data.get('Qsa', "0")))
-        form_layout.addRow(QLabel("Startwert Speicherfüllstand"), self.QsaInput)
+        tech_layout.addRow(QLabel("Startwert Speicherfüllstand"), self.QsaInput)
 
         self.Vorwärmung_KInput = QLineEdit(self)
         self.Vorwärmung_KInput.setText(str(self.tech_data.get('Vorwärmung_K', "8")))
-        form_layout.addRow(QLabel("Mögliche Abweichung von Solltemperatur bei Vorwärmung"), self.Vorwärmung_KInput)
+        tech_layout.addRow(QLabel("Mögliche Abweichung von Solltemperatur bei Vorwärmung"), self.Vorwärmung_KInput)
 
         self.DT_WT_Solar_KInput = QLineEdit(self)
         self.DT_WT_Solar_KInput.setText(str(self.tech_data.get('DT_WT_Solar_K', "5")))
-        form_layout.addRow(QLabel("Grädigkeit Wärmeübertrager Kollektor/Speicher"), self.DT_WT_Solar_KInput)
+        tech_layout.addRow(QLabel("Grädigkeit Wärmeübertrager Kollektor/Speicher"), self.DT_WT_Solar_KInput)
 
         self.DT_WT_Netz_KInput = QLineEdit(self)
         self.DT_WT_Netz_KInput.setText(str(self.tech_data.get('DT_WT_Netz_K', "5")))
-        form_layout.addRow(QLabel("Grädigkeit Wärmeübertrager Speicher/Netz"), self.DT_WT_Netz_KInput)
+        tech_layout.addRow(QLabel("Grädigkeit Wärmeübertrager Speicher/Netz"), self.DT_WT_Netz_KInput)
+
+        tech_groupbox.setLayout(tech_layout)
+        input_layout.addWidget(tech_groupbox)
+
+        # Kosten GroupBox
+        cost_groupbox = QGroupBox("Kosten")
+        cost_layout = QFormLayout()
 
         self.vscostInput = QLineEdit(self)
         self.vscostInput.setText(str(self.tech_data.get('kosten_speicher_spez', "750")))
-        form_layout.addRow(QLabel("spez. Kosten Solarspeicher in €/m³"), self.vscostInput)
+        cost_layout.addRow(QLabel("spez. Kosten Solarspeicher in €/m³"), self.vscostInput)
 
         self.areaScostfkInput = QLineEdit(self)
         self.areaScostfkInput.setText(str(self.tech_data.get('kosten_fk_spez', "430")))
-        form_layout.addRow(QLabel("spez. Kosten Flachkollektor in €/m²"), self.areaScostfkInput)
+        cost_layout.addRow(QLabel("spez. Kosten Flachkollektor in €/m²"), self.areaScostfkInput)
 
         self.areaScostvrkInput = QLineEdit(self)
         self.areaScostvrkInput.setText(str(self.tech_data.get('kosten_vrk_spez', "590")))
-        form_layout.addRow(QLabel("spez. Kosten Vakuumröhrenkollektor in €/m²"), self.areaScostvrkInput)
+        cost_layout.addRow(QLabel("spez. Kosten Vakuumröhrenkollektor in €/m²"), self.areaScostvrkInput)
 
-        # Optimizaton inputs
+        cost_groupbox.setLayout(cost_layout)
+        input_layout.addWidget(cost_groupbox)
+
+        # Optimierungsparameter GroupBox
+        opt_groupbox = QGroupBox("Optimierungsparameter")
+        opt_layout = QFormLayout()
+
         self.minVolumeInput = QLineEdit(self)
         self.minVolumeInput.setText(str(self.tech_data.get('opt_volume_min', "1")))
-        form_layout.addRow(QLabel("Untere Grenze Speichervolumen Optimierung"), self.minVolumeInput)
+        opt_layout.addRow(QLabel("Untere Grenze Speichervolumen Optimierung"), self.minVolumeInput)
 
         self.maxVolumeInput = QLineEdit(self)
         self.maxVolumeInput.setText(str(self.tech_data.get('opt_volume_max', "200")))
-        form_layout.addRow(QLabel("Obere Grenze Speichervolumen Optimierung³"), self.maxVolumeInput)
+        opt_layout.addRow(QLabel("Obere Grenze Speichervolumen Optimierung³"), self.maxVolumeInput)
 
         self.minAreaInput = QLineEdit(self)
         self.minAreaInput.setText(str(self.tech_data.get('opt_area_min', "1")))
-        form_layout.addRow(QLabel("Untere Grenze Kollektorfläche Optimierung²"), self.minAreaInput)
+        opt_layout.addRow(QLabel("Untere Grenze Kollektorfläche Optimierung²"), self.minAreaInput)
 
         self.maxAreaInput = QLineEdit(self)
         self.maxAreaInput.setText(str(self.tech_data.get('opt_area_max', "2000")))
-        form_layout.addRow(QLabel("Obere Grenze Kollektorfläche Optimierung²"), self.maxAreaInput)
+        opt_layout.addRow(QLabel("Obere Grenze Kollektorfläche Optimierung²"), self.maxAreaInput)
 
-        top_layout.addLayout(form_layout)
+        opt_groupbox.setLayout(opt_layout)
+        input_layout.addWidget(opt_groupbox)
+
+        main_layout.addLayout(input_layout)  # Eingabelayout zum Hauptlayout hinzufügen
 
         # Visualization
+        vis_layout = QVBoxLayout()
         self.figure = plt.figure()
         self.ax = self.figure.add_subplot(111, projection='3d')
         self.canvas = FigureCanvas(self.figure)
-        top_layout.addWidget(self.canvas)
+        vis_layout.addWidget(self.canvas)
 
-        main_layout.addLayout(top_layout)
+        main_layout.addLayout(vis_layout)  # Visualisierungslayout zum Hauptlayout hinzufügen
+
+        self.setLayout(main_layout)
+        self.updateVisualization()
 
         # Connect input changes to the visualization update
         self.East_West_collector_azimuth_angleInput.textChanged.connect(self.updateVisualization)
         self.Collector_tilt_angleInput.textChanged.connect(self.updateVisualization)
-
-        self.setLayout(main_layout)
-        self.updateVisualization()
 
     def updateVisualization(self):
         try:
@@ -290,120 +310,107 @@ class BiomassBoilerDialog(QDialog):
 
     def initUI(self):
         self.setWindowTitle("Eingabe für Biomassekessel")
-        layout = QVBoxLayout()
+        main_layout = QHBoxLayout()
+
+        # Linke Seite: Biomassekessel-Einstellungen
+        bm_layout = QFormLayout()
 
         self.PBMKInput = QLineEdit(self)
         self.PBMKInput.setText(str(self.tech_data.get('P_BMK', "50")))
-        layout.addWidget(QLabel("th. Leistung in kW"))
-        layout.addWidget(self.PBMKInput)
+        bm_layout.addRow(QLabel("th. Leistung in kW"), self.PBMKInput)
 
         self.HLsizeInput = QLineEdit(self)
         self.HLsizeInput.setText(str(self.tech_data.get('Größe_Holzlager', "40")))
-        layout.addWidget(QLabel("Größe Holzlager in t"))
-        layout.addWidget(self.HLsizeInput)
+        bm_layout.addRow(QLabel("Größe Holzlager in t"), self.HLsizeInput)
 
         self.BMKcostInput = QLineEdit(self)
         self.BMKcostInput.setText(str(self.tech_data.get('spez_Investitionskosten', "200")))
-        layout.addWidget(QLabel("spez. Investitionskosten Kessel in €/kW"))
-        layout.addWidget(self.BMKcostInput)
+        bm_layout.addRow(QLabel("spez. Investitionskosten Kessel in €/kW"), self.BMKcostInput)
 
         self.HLcostInput = QLineEdit(self)
         self.HLcostInput.setText(str(self.tech_data.get('spez_Investitionskosten_Holzlager', "400")))
-        layout.addWidget(QLabel("spez. Investitionskosten Holzlager in €/t"))
-        layout.addWidget(self.HLcostInput)
+        bm_layout.addRow(QLabel("spez. Investitionskosten Holzlager in €/t"), self.HLcostInput)
 
         # Eingabe Nutzungsgrad Biomassekessel
         self.BMKeffInput = QLineEdit(self)
         self.BMKeffInput.setText(str(self.tech_data.get('Nutzungsgrad_BMK', "0.8")))
-        layout.addWidget(QLabel("Nutzungsgrad Biomassekessel"))
-        layout.addWidget(self.BMKeffInput)
+        bm_layout.addRow(QLabel("Nutzungsgrad Biomassekessel"), self.BMKeffInput)
 
         # Eingabe für minimale Teillast
         self.minLoadInput = QLineEdit(self)
         self.minLoadInput.setText(str(self.tech_data.get('min_Teillast', "0.3")))
-        layout.addWidget(QLabel("minimale Teillast"))
-        layout.addWidget(self.minLoadInput)
+        bm_layout.addRow(QLabel("minimale Teillast"), self.minLoadInput)
 
-        # Optimierung BHKW
+        # Optimierung Biomassekessel
         self.minPoptInput = QLineEdit(self)
         self.minPoptInput.setText(str(self.tech_data.get('opt_BMK_min', "0")))
-        layout.addWidget(QLabel("Untere Grenze th. Leistung Optimierung"))
-        layout.addWidget(self.minPoptInput)
+        bm_layout.addRow(QLabel("Untere Grenze th. Leistung Optimierung"), self.minPoptInput)
 
         self.maxPoptInput = QLineEdit(self)
         self.maxPoptInput.setText(str(self.tech_data.get('opt_BMK_max', "1000")))
-        layout.addWidget(QLabel("Obere Grenze th. Leistung Optimierung"))
-        layout.addWidget(self.maxPoptInput)
+        bm_layout.addRow(QLabel("Obere Grenze th. Leistung Optimierung"), self.maxPoptInput)
 
         # Checkbox für Speicher aktiv
         self.speicherAktivCheckbox = QCheckBox("Speicher aktiv", self)
         self.speicherAktivCheckbox.setChecked(self.tech_data.get('speicher_aktiv', False))
         self.speicherAktivCheckbox.stateChanged.connect(self.toggleSpeicherInputs)
-        layout.addWidget(self.speicherAktivCheckbox)
+        bm_layout.addRow(self.speicherAktivCheckbox)
 
-        # Speicher Eingaben
+        main_layout.addLayout(bm_layout)
+
+        # Rechte Seite: Speicher-Einstellungen
         self.speicherInputs = QWidget()
-        speicherLayout = QVBoxLayout()
+        speicher_layout = QFormLayout(self.speicherInputs)
 
         # Eingabe für Speicher Volumen
         self.speicherVolInput = QLineEdit(self.speicherInputs)
         self.speicherVolInput.setText(str(self.tech_data.get('Speicher_Volumen', "20")))
-        speicherLayout.addWidget(QLabel("Speicher Volumen"))
-        speicherLayout.addWidget(self.speicherVolInput)
+        speicher_layout.addRow(QLabel("Speicher Volumen"), self.speicherVolInput)
 
         # Eingabe für Vorlauftemperatur
         self.vorlaufTempInput = QLineEdit(self.speicherInputs)
         self.vorlaufTempInput.setText(str(self.tech_data.get('T_vorlauf', "90")))
-        speicherLayout.addWidget(QLabel("Vorlauftemperatur"))
-        speicherLayout.addWidget(self.vorlaufTempInput)
+        speicher_layout.addRow(QLabel("Vorlauftemperatur"), self.vorlaufTempInput)
 
         # Eingabe für Rücklauftemperatur
         self.ruecklaufTempInput = QLineEdit(self.speicherInputs)
         self.ruecklaufTempInput.setText(str(self.tech_data.get('T_ruecklauf', "60")))
-        speicherLayout.addWidget(QLabel("Rücklauftemperatur"))
-        speicherLayout.addWidget(self.ruecklaufTempInput)
+        speicher_layout.addRow(QLabel("Rücklauftemperatur"), self.ruecklaufTempInput)
 
         # Eingabe für initiale Füllung
         self.initialFillInput = QLineEdit(self.speicherInputs)
         self.initialFillInput.setText(str(self.tech_data.get('initial_fill', "0.0")))
-        speicherLayout.addWidget(QLabel("initiale Füllung"))
-        speicherLayout.addWidget(self.initialFillInput)
+        speicher_layout.addRow(QLabel("initiale Füllung"), self.initialFillInput)
 
         # Eingabe für minimale Füllung
         self.minFillInput = QLineEdit(self.speicherInputs)
         self.minFillInput.setText(str(self.tech_data.get('min_fill', "0.2")))
-        speicherLayout.addWidget(QLabel("minimale Füllung"))
-        speicherLayout.addWidget(self.minFillInput)
+        speicher_layout.addRow(QLabel("minimale Füllung"), self.minFillInput)
 
         # Eingabe für maximale Füllung
         self.maxFillInput = QLineEdit(self.speicherInputs)
         self.maxFillInput.setText(str(self.tech_data.get('max_fill', "0.8")))
-        speicherLayout.addWidget(QLabel("maximale Füllung"))
-        speicherLayout.addWidget(self.maxFillInput)
+        speicher_layout.addRow(QLabel("maximale Füllung"), self.maxFillInput)
 
         # Eingabe für Speicherkosten
         self.spezCostStorageInput = QLineEdit(self.speicherInputs)
         self.spezCostStorageInput.setText(str(self.tech_data.get('spez_Investitionskosten_Speicher', "750")))
-        speicherLayout.addWidget(QLabel("spez. Investitionskosten Speicher in €/m³"))
-        speicherLayout.addWidget(self.spezCostStorageInput)
+        speicher_layout.addRow(QLabel("spez. Investitionskosten Speicher in €/m³"), self.spezCostStorageInput)
 
         # Optimierung Speicher
         self.minVolumeoptInput = QLineEdit(self.speicherInputs)
         self.minVolumeoptInput.setText(str(self.tech_data.get('opt_Speicher_min', "0")))
-        speicherLayout.addWidget(QLabel("Untere Grenze Speichervolumen Optimierung"))
-        speicherLayout.addWidget(self.minVolumeoptInput)
+        speicher_layout.addRow(QLabel("Untere Grenze Speichervolumen Optimierung"), self.minVolumeoptInput)
 
         self.maxVolumeoptInput = QLineEdit(self.speicherInputs)
         self.maxVolumeoptInput.setText(str(self.tech_data.get('opt_Speicher_max', "100")))
-        speicherLayout.addWidget(QLabel("Obere Grenze Speichervolumen Optimierung"))
-        speicherLayout.addWidget(self.maxVolumeoptInput)
-                                 
-        self.speicherInputs.setLayout(speicherLayout)
-        layout.addWidget(self.speicherInputs)
+        speicher_layout.addRow(QLabel("Obere Grenze Speichervolumen Optimierung"), self.maxVolumeoptInput)
 
-        self.setLayout(layout)
+        main_layout.addWidget(self.speicherInputs)
 
-        # Initiale Sichtbarkeit der Speicher Eingaben einstellen
+        self.setLayout(main_layout)
+
+        # Initiale Sichtbarkeit der Speicher-Eingaben einstellen
         self.toggleSpeicherInputs()
 
     def toggleSpeicherInputs(self):
@@ -431,8 +438,8 @@ class BiomassBoilerDialog(QDialog):
                 'min_fill': float(self.minFillInput.text()),
                 'max_fill': float(self.maxFillInput.text()),
                 'spez_Investitionskosten_Speicher': float(self.spezCostStorageInput.text()),
-                'opt_BMK_Speicher_min': float(self.minVolumeoptInput.text()),
-                'opt_BMK_Speicher_max': float(self.maxVolumeoptInput.text())
+                'opt_Speicher_min': float(self.minVolumeoptInput.text()),
+                'opt_Speicher_max': float(self.maxVolumeoptInput.text())
             })
 
         return inputs
@@ -445,24 +452,24 @@ class GasBoilerDialog(QDialog):
 
     def initUI(self):
         self.setWindowTitle("Eingabe für Gaskessel")
-        layout = QVBoxLayout()
+        main_layout = QVBoxLayout()
+        g_layout = QFormLayout()
 
         self.PowerFactorGKInput = QLineEdit(self)
         self.PowerFactorGKInput.setText(str(self.tech_data.get('Faktor_Dimensionierung', "1")))
-        layout.addWidget(QLabel("Auslegungsfaktor Gaskessel (Anteil an Maximallast)"))
-        layout.addWidget(self.PowerFactorGKInput)
-
-        self.spezcostGKInput = QLineEdit(self)
-        self.spezcostGKInput.setText(str(self.tech_data.get('spez_Investitionskosten', "30")))
-        layout.addWidget(QLabel("spez. Investitionskosten in €/kW"))
-        layout.addWidget(self.spezcostGKInput)
+        g_layout.addRow(QLabel("Auslegungsfaktor Gaskessel (Anteil an Maximallast)"), self.PowerFactorGKInput)
 
         self.effGKInput = QLineEdit(self)
         self.effGKInput.setText(str(self.tech_data.get('Nutzungsgrad', "0.9")))
-        layout.addWidget(QLabel("Nutzungsgrad Gaskessel"))
-        layout.addWidget(self.effGKInput)
+        g_layout.addRow(QLabel("Nutzungsgrad Gaskessel"), self.effGKInput)
 
-        self.setLayout(layout)
+        self.spezcostGKInput = QLineEdit(self)
+        self.spezcostGKInput.setText(str(self.tech_data.get('spez_Investitionskosten', "30")))
+        g_layout.addRow(QLabel("spez. Investitionskosten in €/kW"), self.spezcostGKInput)
+        
+        main_layout.addLayout(g_layout)
+
+        self.setLayout(main_layout)
 
     def getInputs(self):
         inputs = {
@@ -479,118 +486,105 @@ class CHPDialog(QDialog):
         self.initUI()
 
     def initUI(self):
-        layout = QVBoxLayout()
+        main_layout = QHBoxLayout()
+        # Linke Seite: BHKW-Einstellungen
+        bhkw_layout = QFormLayout()
 
         # Eingabe für thermische Leistung
         self.PBHKWInput = QLineEdit(self)
         self.PBHKWInput.setText(str(self.tech_data.get('th_Leistung_BHKW', "100")))
-        layout.addWidget(QLabel("thermische Leistung"))
-        layout.addWidget(self.PBHKWInput)
+        bhkw_layout.addRow(QLabel("thermische Leistung"), self.PBHKWInput)
 
         # Eingabe für elektrischen Wirkungsgrad BHKW
         self.BHKWeleffInput = QLineEdit(self)
         self.BHKWeleffInput.setText(str(self.tech_data.get('el_Wirkungsgrad', "0.33")))
-        layout.addWidget(QLabel("elektrischer Wirkungsgrad BHKW"))
-        layout.addWidget(self.BHKWeleffInput)
+        bhkw_layout.addRow(QLabel("elektrischer Wirkungsgrad BHKW"), self.BHKWeleffInput)
 
         # Eingabe für KWK Wirkungsgrad
         self.KWKeffInput = QLineEdit(self)
         self.KWKeffInput.setText(str(self.tech_data.get('KWK_Wirkungsgrad', "0.9")))
-        layout.addWidget(QLabel("KWK Wirkungsgrad"))
-        layout.addWidget(self.KWKeffInput)
+        bhkw_layout.addRow(QLabel("KWK Wirkungsgrad"), self.KWKeffInput)
 
         # Eingabe für minimale Teillast
         self.minLoadInput = QLineEdit(self)
         self.minLoadInput.setText(str(self.tech_data.get('min_Teillast', "0.7")))
-        layout.addWidget(QLabel("minimale Teillast"))
-        layout.addWidget(self.minLoadInput)
+        bhkw_layout.addRow(QLabel("minimale Teillast"), self.minLoadInput)
 
         # Eingabe für spez. Investitionskosten BHKW
         self.BHKWcostInput = QLineEdit(self)
         self.BHKWcostInput.setText(str(self.tech_data.get('spez_Investitionskosten_GBHKW', "1500")))
-        layout.addWidget(QLabel("spez. Investitionskosten BHKW"))
-        layout.addWidget(self.BHKWcostInput)
+        bhkw_layout.addRow(QLabel("spez. Investitionskosten BHKW"), self.BHKWcostInput)
 
         # Optimierung BHKW
         self.minPoptInput = QLineEdit(self)
         self.minPoptInput.setText(str(self.tech_data.get('opt_BHKW_min', "0")))
-        layout.addWidget(QLabel("Untere Grenze th. Leistung Optimierung"))
-        layout.addWidget(self.minPoptInput)
+        bhkw_layout.addRow(QLabel("Untere Grenze th. Leistung Optimierung"), self.minPoptInput)
 
         self.maxPoptInput = QLineEdit(self)
         self.maxPoptInput.setText(str(self.tech_data.get('opt_BHKW_max', "1000")))
-        layout.addWidget(QLabel("Obere Grenze th. Leistung Optimierung"))
-        layout.addWidget(self.maxPoptInput)
+        bhkw_layout.addRow(QLabel("Obere Grenze th. Leistung Optimierung"), self.maxPoptInput)
 
         # Checkbox für Speicher aktiv
         self.speicherAktivCheckbox = QCheckBox("Speicher aktiv", self)
         self.speicherAktivCheckbox.setChecked(self.tech_data.get('speicher_aktiv', False))
         self.speicherAktivCheckbox.stateChanged.connect(self.toggleSpeicherInputs)
-        layout.addWidget(self.speicherAktivCheckbox)
+        bhkw_layout.addRow(self.speicherAktivCheckbox)
 
-        # Speicher Eingaben
+        main_layout.addLayout(bhkw_layout)
+
+        # Rechte Seite: Speicher-Einstellungen
         self.speicherInputs = QWidget()
-        speicherLayout = QVBoxLayout()
+        speicher_layout = QFormLayout(self.speicherInputs)
 
         # Eingabe für Speicher Volumen
         self.speicherVolInput = QLineEdit(self.speicherInputs)
         self.speicherVolInput.setText(str(self.tech_data.get('Speicher_Volumen_BHKW', "20")))
-        speicherLayout.addWidget(QLabel("Speicher Volumen"))
-        speicherLayout.addWidget(self.speicherVolInput)
+        speicher_layout.addRow(QLabel("Speicher Volumen"), self.speicherVolInput)
 
         # Eingabe für Vorlauftemperatur
         self.vorlaufTempInput = QLineEdit(self.speicherInputs)
         self.vorlaufTempInput.setText(str(self.tech_data.get('T_vorlauf', "90")))
-        speicherLayout.addWidget(QLabel("Vorlauftemperatur"))
-        speicherLayout.addWidget(self.vorlaufTempInput)
+        speicher_layout.addRow(QLabel("Vorlauftemperatur"), self.vorlaufTempInput)
 
         # Eingabe für Rücklauftemperatur
         self.ruecklaufTempInput = QLineEdit(self.speicherInputs)
         self.ruecklaufTempInput.setText(str(self.tech_data.get('T_ruecklauf', "60")))
-        speicherLayout.addWidget(QLabel("Rücklauftemperatur"))
-        speicherLayout.addWidget(self.ruecklaufTempInput)
+        speicher_layout.addRow(QLabel("Rücklauftemperatur"), self.ruecklaufTempInput)
 
         # Eingabe für initiale Füllung
         self.initialFillInput = QLineEdit(self.speicherInputs)
         self.initialFillInput.setText(str(self.tech_data.get('initial_fill', "0.0")))
-        speicherLayout.addWidget(QLabel("initiale Füllung"))
-        speicherLayout.addWidget(self.initialFillInput)
+        speicher_layout.addRow(QLabel("initiale Füllung"), self.initialFillInput)
 
         # Eingabe für minimale Füllung
         self.minFillInput = QLineEdit(self.speicherInputs)
         self.minFillInput.setText(str(self.tech_data.get('min_fill', "0.2")))
-        speicherLayout.addWidget(QLabel("minimale Füllung"))
-        speicherLayout.addWidget(self.minFillInput)
+        speicher_layout.addRow(QLabel("minimale Füllung"), self.minFillInput)
 
         # Eingabe für maximale Füllung
         self.maxFillInput = QLineEdit(self.speicherInputs)
         self.maxFillInput.setText(str(self.tech_data.get('max_fill', "0.8")))
-        speicherLayout.addWidget(QLabel("maximale Füllung"))
-        speicherLayout.addWidget(self.maxFillInput)
+        speicher_layout.addRow(QLabel("maximale Füllung"), self.maxFillInput)
 
         # Eingabe für Speicherkosten
         self.spezCostStorageInput = QLineEdit(self.speicherInputs)
         self.spezCostStorageInput.setText(str(self.tech_data.get('spez_Investitionskosten_Speicher', "0.8")))
-        speicherLayout.addWidget(QLabel("spez. Investitionskosten Speicher in €/m³"))
-        speicherLayout.addWidget(self.spezCostStorageInput)
+        speicher_layout.addRow(QLabel("spez. Investitionskosten Speicher in €/m³"), self.spezCostStorageInput)
 
         # Optimierung Speicher
         self.minVolumeoptInput = QLineEdit(self.speicherInputs)
         self.minVolumeoptInput.setText(str(self.tech_data.get('opt_BHKW_Speicher_min', "0")))
-        speicherLayout.addWidget(QLabel("Untere Grenze Speichervolumen Optimierung"))
-        speicherLayout.addWidget(self.minVolumeoptInput)
+        speicher_layout.addRow(QLabel("Untere Grenze Speichervolumen Optimierung"), self.minVolumeoptInput)
 
         self.maxVolumeoptInput = QLineEdit(self.speicherInputs)
         self.maxVolumeoptInput.setText(str(self.tech_data.get('opt_BHKW_Speicher_max', "100")))
-        speicherLayout.addWidget(QLabel("Obere Grenze Speichervolumen Optimierung"))
-        speicherLayout.addWidget(self.maxVolumeoptInput)
-                                 
-        self.speicherInputs.setLayout(speicherLayout)
-        layout.addWidget(self.speicherInputs)
+        speicher_layout.addRow(QLabel("Obere Grenze Speichervolumen Optimierung"), self.maxVolumeoptInput)
 
-        self.setLayout(layout)
+        main_layout.addWidget(self.speicherInputs)
 
-        # Initiale Sichtbarkeit der Speicher Eingaben einstellen
+        self.setLayout(main_layout)
+
+        # Initiale Sichtbarkeit der Speicher-Eingaben einstellen
         self.toggleSpeicherInputs()
 
     def toggleSpeicherInputs(self):
@@ -630,116 +624,104 @@ class HolzgasCHPDialog(QDialog):
         self.initUI()
 
     def initUI(self):
-        layout = QVBoxLayout()
+        main_layout = QHBoxLayout()
+
+        # Linke Seite: Holzgas-BHKW-Einstellungen
+        chp_layout = QFormLayout()
 
         self.PBHKWInput = QLineEdit(self)
         self.PBHKWInput.setText(str(self.tech_data.get('th_Leistung_BHKW', "100")))
-        layout.addWidget(QLabel("thermische Leistung"))
-        layout.addWidget(self.PBHKWInput)
+        chp_layout.addRow(QLabel("thermische Leistung"), self.PBHKWInput)
 
         # Eingabe für elektrischen Wirkungsgrad BHKW
         self.BHKWeleffInput = QLineEdit(self)
         self.BHKWeleffInput.setText(str(self.tech_data.get('el_Wirkungsgrad', "0.33")))
-        layout.addWidget(QLabel("elektrischer Wirkungsgrad BHKW"))
-        layout.addWidget(self.BHKWeleffInput)
+        chp_layout.addRow(QLabel("elektrischer Wirkungsgrad BHKW"), self.BHKWeleffInput)
 
         # Eingabe für KWK Wirkungsgrad
         self.KWKeffInput = QLineEdit(self)
         self.KWKeffInput.setText(str(self.tech_data.get('KWK_Wirkungsgrad', "0.9")))
-        layout.addWidget(QLabel("KWK Wirkungsgrad"))
-        layout.addWidget(self.KWKeffInput)
+        chp_layout.addRow(QLabel("KWK Wirkungsgrad"), self.KWKeffInput)
 
         # Eingabe für minimale Teillast
         self.minLoadInput = QLineEdit(self)
         self.minLoadInput.setText(str(self.tech_data.get('min_Teillast', "0.7")))
-        layout.addWidget(QLabel("minimale Teillast"))
-        layout.addWidget(self.minLoadInput)
+        chp_layout.addRow(QLabel("minimale Teillast"), self.minLoadInput)
 
         self.BHKWcostInput = QLineEdit(self)
         self.BHKWcostInput.setText(str(self.tech_data.get('spez_Investitionskosten_HBHKW', "1850")))
-        layout.addWidget(QLabel("spez. Investitionskosten BHKW"))
-        layout.addWidget(self.BHKWcostInput)
+        chp_layout.addRow(QLabel("spez. Investitionskosten BHKW"), self.BHKWcostInput)
 
         # Optimierung BHKW
         self.minPoptInput = QLineEdit(self)
         self.minPoptInput.setText(str(self.tech_data.get('opt_BHKW_min', "0")))
-        layout.addWidget(QLabel("Untere Grenze th. Leistung Optimierung"))
-        layout.addWidget(self.minPoptInput)
+        chp_layout.addRow(QLabel("Untere Grenze th. Leistung Optimierung"), self.minPoptInput)
 
         self.maxPoptInput = QLineEdit(self)
         self.maxPoptInput.setText(str(self.tech_data.get('opt_BHKW_max', "1000")))
-        layout.addWidget(QLabel("Obere Grenze th. Leistung Optimierung"))
-        layout.addWidget(self.maxPoptInput)
+        chp_layout.addRow(QLabel("Obere Grenze th. Leistung Optimierung"), self.maxPoptInput)
 
         # Checkbox für Speicher aktiv
         self.speicherAktivCheckbox = QCheckBox("Speicher aktiv", self)
         self.speicherAktivCheckbox.setChecked(self.tech_data.get('speicher_aktiv', False))
         self.speicherAktivCheckbox.stateChanged.connect(self.toggleSpeicherInputs)
-        layout.addWidget(self.speicherAktivCheckbox)
+        chp_layout.addRow(self.speicherAktivCheckbox)
 
-        # Speicher Eingaben
+        main_layout.addLayout(chp_layout)
+
+        # Rechte Seite: Speicher-Einstellungen
         self.speicherInputs = QWidget()
-        speicherLayout = QVBoxLayout()
+        speicher_layout = QFormLayout(self.speicherInputs)
 
         # Eingabe für Speicher Volumen
         self.speicherVolInput = QLineEdit(self.speicherInputs)
         self.speicherVolInput.setText(str(self.tech_data.get('Speicher_Volumen_BHKW', "20")))
-        speicherLayout.addWidget(QLabel("Speicher Volumen"))
-        speicherLayout.addWidget(self.speicherVolInput)
+        speicher_layout.addRow(QLabel("Speicher Volumen"), self.speicherVolInput)
 
         # Eingabe für Vorlauftemperatur
         self.vorlaufTempInput = QLineEdit(self.speicherInputs)
         self.vorlaufTempInput.setText(str(self.tech_data.get('T_vorlauf', "90")))
-        speicherLayout.addWidget(QLabel("Vorlauftemperatur"))
-        speicherLayout.addWidget(self.vorlaufTempInput)
+        speicher_layout.addRow(QLabel("Vorlauftemperatur"), self.vorlaufTempInput)
 
         # Eingabe für Rücklauftemperatur
         self.ruecklaufTempInput = QLineEdit(self.speicherInputs)
         self.ruecklaufTempInput.setText(str(self.tech_data.get('T_ruecklauf', "60")))
-        speicherLayout.addWidget(QLabel("Rücklauftemperatur"))
-        speicherLayout.addWidget(self.ruecklaufTempInput)
+        speicher_layout.addRow(QLabel("Rücklauftemperatur"), self.ruecklaufTempInput)
 
         # Eingabe für initiale Füllung
         self.initialFillInput = QLineEdit(self.speicherInputs)
         self.initialFillInput.setText(str(self.tech_data.get('initial_fill', "0.0")))
-        speicherLayout.addWidget(QLabel("initiale Füllung"))
-        speicherLayout.addWidget(self.initialFillInput)
+        speicher_layout.addRow(QLabel("initiale Füllung"), self.initialFillInput)
 
         # Eingabe für minimale Füllung
         self.minFillInput = QLineEdit(self.speicherInputs)
         self.minFillInput.setText(str(self.tech_data.get('min_fill', "0.2")))
-        speicherLayout.addWidget(QLabel("minimale Füllung"))
-        speicherLayout.addWidget(self.minFillInput)
+        speicher_layout.addRow(QLabel("minimale Füllung"), self.minFillInput)
 
         # Eingabe für maximale Füllung
         self.maxFillInput = QLineEdit(self.speicherInputs)
         self.maxFillInput.setText(str(self.tech_data.get('max_fill', "0.8")))
-        speicherLayout.addWidget(QLabel("maximale Füllung"))
-        speicherLayout.addWidget(self.maxFillInput)
+        speicher_layout.addRow(QLabel("maximale Füllung"), self.maxFillInput)
 
         # Eingabe für Speicherkosten
         self.spezCostStorageInput = QLineEdit(self.speicherInputs)
         self.spezCostStorageInput.setText(str(self.tech_data.get('spez_Investitionskosten_Speicher', "0.8")))
-        speicherLayout.addWidget(QLabel("spez. Investitionskosten Speicher in €/m³"))
-        speicherLayout.addWidget(self.spezCostStorageInput)
+        speicher_layout.addRow(QLabel("spez. Investitionskosten Speicher in €/m³"), self.spezCostStorageInput)
 
         # Optimierung Speicher
         self.minVolumeoptInput = QLineEdit(self.speicherInputs)
         self.minVolumeoptInput.setText(str(self.tech_data.get('opt_BHKW_Speicher_min', "0")))
-        speicherLayout.addWidget(QLabel("Untere Grenze Speichervolumen Optimierung"))
-        speicherLayout.addWidget(self.minVolumeoptInput)
+        speicher_layout.addRow(QLabel("Untere Grenze Speichervolumen Optimierung"), self.minVolumeoptInput)
 
         self.maxVolumeoptInput = QLineEdit(self.speicherInputs)
         self.maxVolumeoptInput.setText(str(self.tech_data.get('opt_BHKW_Speicher_max', "100")))
-        speicherLayout.addWidget(QLabel("Obere Grenze Speichervolumen Optimierung"))
-        speicherLayout.addWidget(self.maxVolumeoptInput)
+        speicher_layout.addRow(QLabel("Obere Grenze Speichervolumen Optimierung"), self.maxVolumeoptInput)
 
-        self.speicherInputs.setLayout(speicherLayout)
-        layout.addWidget(self.speicherInputs)
+        main_layout.addWidget(self.speicherInputs)
 
-        self.setLayout(layout)
+        self.setLayout(main_layout)
 
-        # Initiale Sichtbarkeit der Speicher Eingaben einstellen
+        # Initiale Sichtbarkeit der Speicher-Eingaben einstellen
         self.toggleSpeicherInputs()
 
     def toggleSpeicherInputs(self):
@@ -749,7 +731,7 @@ class HolzgasCHPDialog(QDialog):
         inputs = {
             'th_Leistung_BHKW': float(self.PBHKWInput.text()),
             'el_Wirkungsgrad': float(self.BHKWeleffInput.text()),
-            'spez_Investitionskosten_GBHKW': float(self.BHKWcostInput.text()),
+            'spez_Investitionskosten_HBHKW': float(self.BHKWcostInput.text()),
             'KWK_Wirkungsgrad': float(self.KWKeffInput.text()),
             'min_Teillast': float(self.minLoadInput.text()),
             'speicher_aktiv': self.speicherAktivCheckbox.isChecked(),
@@ -889,29 +871,27 @@ class WasteHeatPumpDialog(QDialog):
         self.initUI()
 
     def initUI(self):
-        layout = QVBoxLayout()
+        main_layout = QVBoxLayout()
+        whp_layout = QFormLayout()
 
         self.PWHInput = QLineEdit(self)
         self.PWHInput.setText(str(self.tech_data.get('Kühlleistung_Abwärme', "30")))
-        layout.addWidget(QLabel("Kühlleistung Abwärme in kW"))
-        layout.addWidget(self.PWHInput)
+        whp_layout.addRow(QLabel("Kühlleistung Abwärme in kW"),self.PWHInput)
 
         self.TWHInput = QLineEdit(self)
         self.TWHInput.setText(str(self.tech_data.get('Temperatur_Abwärme', "30")))
-        layout.addWidget(QLabel("Temperatur Abwärme in °C"))
-        layout.addWidget(self.TWHInput)
+        whp_layout.addRow(QLabel("Temperatur Abwärme in °C"), self.TWHInput)
 
         self.WHcostInput = QLineEdit(self)
         self.WHcostInput.setText(str(self.tech_data.get('spez_Investitionskosten_Abwärme', "500")))
-        layout.addWidget(QLabel("spez. Investitionskosten Abwärmenutzung in €/kW"))
-        layout.addWidget(self.WHcostInput)
+        whp_layout.addRow(QLabel("spez. Investitionskosten Abwärmenutzung in €/kW"), self.WHcostInput)
 
         self.WPWHcostInput = QLineEdit(self)
         self.WPWHcostInput.setText(str(self.tech_data.get('spezifische_Investitionskosten_WP', "1000")))
-        layout.addWidget(QLabel("spez. Invstitionskosten Wärmepumpe"))
-        layout.addWidget(self.WPWHcostInput)
+        whp_layout.addRow(QLabel("spez. Invstitionskosten Wärmepumpe"), self.WPWHcostInput)
 
-        self.setLayout(layout)
+        main_layout.addLayout(whp_layout)
+        self.setLayout(main_layout)
 
     def getInputs(self):
         inputs = {
@@ -929,39 +909,37 @@ class RiverHeatPumpDialog(QDialog):
         self.initUI()
 
     def initUI(self):
-        layout = QVBoxLayout()
+        main_layout = QVBoxLayout()
+        rhp_layout = QFormLayout()
 
         self.PFWInput = QLineEdit(self)
         self.PFWInput.setText(str(self.tech_data.get('Wärmeleistung_FW_WP', "200")))
-        layout.addWidget(QLabel("th. Leistung Wärmepumpe in kW"))
-        layout.addWidget(self.PFWInput)
+        rhp_layout.addRow(QLabel("th. Leistung Wärmepumpe in kW"), self.PFWInput)
 
         self.TFWInput = QLineEdit(self)
         if isinstance(self.tech_data.get('Temperatur_FW_WP'), (float, int)) or self.tech_data == {}:
             self.TFWInput.setText(str(self.tech_data.get('Temperatur_FW_WP', "10")))
-        layout.addWidget(QLabel("Flusstemperatur in °C"))
-        layout.addWidget(self.TFWInput)
+        rhp_layout.addRow(QLabel("Flusstemperatur in °C"), self.TFWInput)
 
         self.csvButton = QPushButton("CSV für Flusstemperatur wählen", self)
         self.csvButton.clicked.connect(self.openCSV)
-        layout.addWidget(self.csvButton)
+        rhp_layout.addRow(self.csvButton)
 
         self.DTFWInput = QLineEdit(self)
         self.DTFWInput.setText(str(self.tech_data.get('dT', "0")))
-        layout.addWidget(QLabel("Zulässige Abweichung Vorlauftemperatur Wärmepumpe von Netzvorlauftemperatur"))
-        layout.addWidget(self.DTFWInput)
+        rhp_layout.addRow(QLabel("Zulässige Abweichung Vorlauftemperatur Wärmepumpe von Netzvorlauftemperatur"), self.DTFWInput)
+
 
         self.RHcostInput = QLineEdit(self)
         self.RHcostInput.setText(str(self.tech_data.get('spez_Investitionskosten_Flusswasser', "1000")))
-        layout.addWidget(QLabel("spez. Invstitionskosten Flusswärmenutzung"))
-        layout.addWidget(self.RHcostInput)
+        rhp_layout.addRow(QLabel("spez. Invstitionskosten Flusswärmenutzung"), self.RHcostInput)
 
         self.WPRHcostInput = QLineEdit(self)
         self.WPRHcostInput.setText(str(self.tech_data.get('spezifische_Investitionskosten_WP', "1000")))
-        layout.addWidget(QLabel("spez. Invstitionskosten Wärmepumpe"))
-        layout.addWidget(self.WPRHcostInput)
+        rhp_layout.addRow(QLabel("spez. Invstitionskosten Wärmepumpe"), self.WPRHcostInput)
 
-        self.setLayout(layout)
+        main_layout.addLayout(rhp_layout)
+        self.setLayout(main_layout)
 
     def openCSV(self):
         filename, _ = QFileDialog.getOpenFileName(self, "Open CSV", "", "CSV Files (*.csv)")

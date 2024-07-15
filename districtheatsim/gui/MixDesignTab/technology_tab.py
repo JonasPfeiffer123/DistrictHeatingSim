@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QLineEdit, QListWidget, QDialog, QFileDialog, QMenuBar, QScrollArea, QAction, QAbstractItemView, QMessageBox)
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QLineEdit, QListWidget, QDialog, QFileDialog, QScrollArea, QCheckBox, QFormLayout, QDialogButtonBox, QAbstractItemView, QMessageBox)
+from PyQt5.QtCore import pyqtSignal, Qt
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
@@ -11,10 +11,12 @@ from gui.MixDesignTab.heat_generator_dialogs import TechInputDialog
 class CustomListWidget(QListWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.parent_tab = parent
 
     def dropEvent(self, event):
         super().dropEvent(event)
-        self.parent().updateTechObjectsOrder()
+        if self.parent_tab:
+            self.parent_tab.updateTechObjectsOrder()
 
 class TechnologyTab(QWidget):
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
@@ -59,19 +61,16 @@ class TechnologyTab(QWidget):
         self.mainScrollArea.setWidget(self.mainWidget)
 
     def setupFileInputs(self):
-        self.addLabel('Eingabe csv-Datei berechneter Lastgang Wärmenetz')
-        self.addFileInputLayout(self.FilenameInput, self.selectFileButton)
+        layout = QHBoxLayout()
+        layout.addWidget(QLabel('Eingabe csv-Datei berechneter Lastgang Wärmenetz'))
+        layout.addWidget(self.FilenameInput)
+        layout.addWidget(self.selectFileButton)
+        self.mainLayout.addLayout(layout)
         self.FilenameInput.textChanged.connect(self.loadFileAndPlot)
 
     def addLabel(self, text):
         label = QLabel(text)
         self.mainLayout.addWidget(label)
-
-    def addFileInputLayout(self, lineEdit, button):
-        layout = QHBoxLayout()
-        layout.addWidget(lineEdit)
-        layout.addWidget(button)
-        self.mainLayout.addLayout(layout)
 
     def on_selectFileButton_clicked(self):
         filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen")
@@ -122,7 +121,11 @@ class TechnologyTab(QWidget):
         tech_class = tech_classes.get(tech_type)
         if not tech_class:
             raise ValueError(f"Unbekannter Technologietyp: {tech_type}")
-        return tech_class(name=tech_type, **inputs)
+
+        tech_count = sum(1 for tech in self.tech_objects if tech.name.startswith(tech_type))
+        unique_name = f"{tech_type}_{tech_count + 1}"
+
+        return tech_class(name=unique_name, **inputs)
         
     def addTech(self, tech_type, tech_data):
         dialog = TechInputDialog(tech_type, tech_data)

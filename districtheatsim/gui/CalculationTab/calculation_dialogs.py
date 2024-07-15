@@ -7,7 +7,7 @@ import geopandas as gpd
 
 from shapely import Point
 
-from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QComboBox, \
+from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QComboBox, QWidget, QScrollArea, \
     QTableWidget, QPushButton, QTableWidgetItem, QHBoxLayout, QFileDialog, QCheckBox, QMessageBox, QGroupBox
 
 from matplotlib.figure import Figure
@@ -79,9 +79,20 @@ class NetGenerationDialog(QDialog):
 
     def initUI(self):
         self.setWindowTitle("Netz generieren")
-        self.resize(800, 800)
-        mainMainLayout = QHBoxLayout(self) 
-        mainLayout1 = QVBoxLayout()
+        self.resize(1400, 1000)
+
+        main_layout = QVBoxLayout(self)
+
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_content = QWidget()
+        scroll_layout = QHBoxLayout(scroll_content)
+
+        scroll_area.setWidget(scroll_content)
+        main_layout.addWidget(scroll_area)
+
+        # Erste Layout-Spalte
+        left_layout = QVBoxLayout()
 
         # Import-Bereich
         importGroup = QGroupBox("Import Netzdaten und Definition Wärmebedarfsrechnung")
@@ -99,7 +110,7 @@ class NetGenerationDialog(QDialog):
         for input_layout in self.geojsonInputs + self.stanetInputs:
             importLayout.addLayout(input_layout)
         importGroup.setLayout(importLayout)
-        mainLayout1.addWidget(importGroup)
+        left_layout.addWidget(importGroup)
 
         # Netzkonfiguration und Temperatursteuerung
         netConfigGroup = QGroupBox("Netzkonfiguration und Temperatursteuerung")
@@ -114,16 +125,15 @@ class NetGenerationDialog(QDialog):
         netConfigLayout.addLayout(self.createBuildingTemperatureCheckbox())
         netConfigLayout.addLayout(self.createinitialpipetypeInput())
         netConfigGroup.setLayout(netConfigLayout)
-        mainLayout1.addWidget(netConfigGroup)
+        left_layout.addWidget(netConfigGroup)
 
         # Netz generieren Button
         self.generateButton = QPushButton("Netz generieren")
         self.generateButton.clicked.connect(self.generateNetwork)
-        mainLayout1.addWidget(self.generateButton)
+        left_layout.addWidget(self.generateButton)
 
-        mainMainLayout.addLayout(mainLayout1)
-
-        mainLayout2 = QVBoxLayout()
+        # Zweite Layout-Spalte
+        right_layout = QVBoxLayout()
 
         # Einstellungen Durchmesseroptimierung
         OptDiameterGroup = QGroupBox("Durchmesseroptimierung im Netz")
@@ -132,7 +142,7 @@ class NetGenerationDialog(QDialog):
         OptDiameterLayout.addLayout(self.createDiameterOptCheckbox())
         OptDiameterLayout.addLayout(self.createDiameterOptInput())
         OptDiameterGroup.setLayout(OptDiameterLayout)
-        mainLayout2.addWidget(OptDiameterGroup)
+        right_layout.addWidget(OptDiameterGroup)
 
         DiagramsGroup = QGroupBox("Vorschau Netz und zeitlicher Verlauf")
         DiagramsGroup.setStyleSheet("QGroupBox { font-size: 11pt; font-weight: bold; }")  # Setzt die Schriftgröße und macht den Text fett
@@ -154,9 +164,11 @@ class NetGenerationDialog(QDialog):
         DiagramsLayout.addWidget(self.toolbar2)
 
         DiagramsGroup.setLayout(DiagramsLayout)
-        mainLayout2.addWidget(DiagramsGroup)
+        right_layout.addWidget(DiagramsGroup)
 
-        mainMainLayout.addLayout(mainLayout2)
+        # Hauptlayout anpassen
+        scroll_layout.addLayout(left_layout)
+        scroll_layout.addLayout(right_layout)
 
         # Update der Sichtbarkeit
         self.updateInputFieldsVisibility()
@@ -383,7 +395,6 @@ class NetGenerationDialog(QDialog):
 
         return layout
 
-    
     def createinitialpipetypeInput(self):
         layout = QVBoxLayout()
         layout.addWidget(QLabel("Rohrtyp zur Initialisierung des Netzes:"))
@@ -629,6 +640,9 @@ class NetGenerationDialog(QDialog):
 
             # Event-Handler definieren
             def on_move(event):
+                if event.xdata is None or event.ydata is None:
+                    return
+
                 visibility_changed = False
                 for point, annotation in annotations:
                     should_be_visible = (point.distance(Point(event.xdata, event.ydata)) < 5)
@@ -655,7 +669,6 @@ class NetGenerationDialog(QDialog):
             msg.setWindowTitle("Fehler")
             msg.exec_()
 
-        
     def generateNetwork(self):
         import_type = self.importTypeComboBox.currentText()
         if import_type == "GeoJSON":

@@ -208,35 +208,36 @@ class ResultsTab(QWidget):
 
     def plotResults(self, results):
         self.results = results
-        time_steps = results['time_steps']  # Array with length of 8760
+        time_steps = results['time_steps']  # Array mit Länge 8760
 
-        # Extract all variables with the same length as time_steps
+        # Extrahiere alle Variablen mit derselben Länge wie time_steps
         self.extracted_data = {}
         for tech_class in self.results['tech_classes']:
             for var_name in dir(tech_class):
                 var_value = getattr(tech_class, var_name)
                 if isinstance(var_value, (list, np.ndarray)) and len(var_value) == len(time_steps):
-                    self.extracted_data[var_name] = var_value
+                    unique_var_name = f"{tech_class.name}_{var_name}"
+                    self.extracted_data[unique_var_name] = var_value
 
-        # Clear combo box from previous call
+        # ComboBox für Variablen leeren
         self.variableComboBox.clear()
-        # Populate the combo box with all variables
+        # ComboBox mit allen Variablen füllen
         self.variableComboBox.addItems(self.extracted_data.keys())
         self.variableComboBox.addItem("Last_L")
-        # Initial plot of variables that start with "Wärmeleistung"
-        initial_vars = [var_name for var_name in self.extracted_data.keys() if var_name.startswith("Wärmeleistung")]
+        # Initiale Variablen, die mit "Wärmeleistung" beginnen, plotten
+        initial_vars = [var_name for var_name in self.extracted_data.keys() if "_Wärmeleistung" in var_name]
 
-        # Add "Last_L" to the initial variables
+        # "Last_L" zu den initialen Variablen hinzufügen
         initial_vars.append("Last_L")
 
-        # Set initial selections
+        # Initiale Auswahl setzen
         for var in initial_vars:
             self.variableComboBox.setItemChecked(var, True)
 
-        # Update selected variables
+        # Ausgewählte Variablen aktualisieren
         self.selected_variables = self.variableComboBox.checkedItems()
 
-        # Initial plot
+        # Initialer Plot
         self.figure1.clear()
         self.plotVariables(self.figure1, time_steps, self.selected_variables)
         self.canvas1.draw()
@@ -245,7 +246,7 @@ class ResultsTab(QWidget):
 
     def plotVariables(self, figure, time_steps, selected_vars):
         ax1 = figure.add_subplot(111)
-        stackplot_vars = [var for var in selected_vars if var.startswith("Wärmeleistung")]
+        stackplot_vars = [var for var in selected_vars if "_Wärmeleistung" in var]
         other_vars = [var for var in selected_vars if var not in stackplot_vars and var != "Last_L"]
 
         # Plot stackplot variables
