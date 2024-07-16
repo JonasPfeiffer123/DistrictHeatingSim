@@ -17,14 +17,7 @@
             --> echt keine Ahnung mehr was hier das Problem war
 
 2. Basisfunktionalitäten und Optimierung
-2.1 Variantengenerierung
-    - Implementierung von Varianten durch prozentuale Reduktion oder spezifische Anpassung des Wärmebedarfs
-        - Entwickeln und Implementieren einer Methode zur Erstellung von Varianten basierend auf prozentualer Reduktion des Wärmebedarfs oder spezifischen Anpassungen.
-    - Erstellung alternativer CSV-Dateien für neue Netzgenerierungen und Variantenordner für verschiedene Projekte
-        - Automatisches Erstellen und Verwalten alternativer CSV-Dateien zur Netzgenerierung.
-        - Organisation der Dateien in Variantenordnern für verschiedene Projekte.
-
-2.2 Wärmenetzberechnung
+2.1 Wärmenetzberechnung
     - Optimierung der Regelungssimulation
         - Implementierung von Optimierungsalgorithmen zur Verbesserung der Regelungssimulation des Wärmenetzes.
     - Eingaben für sekundäre Erzeuger
@@ -32,7 +25,7 @@
     - Vorlauftemperaturregelung für Sekundärerzeuger
         - Implementierung der Vorlauftemperaturregelung für sekundäre Erzeuger.
 
-2.3 Erzeugerauslegung
+2.2 Erzeugerauslegung
     - Berücksichtigung mehrerer Erzeuger beim Import von Erzeugungslastgängen
         - (Zunächst einfache Summierung der Erzeugungslastgänge.)
         - Entwicklung einer Methode zur differenzierten Ausweisung mehrerer Erzeuger.
@@ -65,11 +58,6 @@
         - Gestaltung einer optimalen Präsentation des Projekts auf GitHub, inklusive Dokumentation und Beispielen.
 
 6. Diverses
-    - Kostenindikation für Pumpenstrom
-        - Implementierung einer Funktion zur Berechnung der Kosten für Pumpenstrom basierend auf Massenstrom und Druckverlust (dp).
-            --> eigentlich über VDI2067 abgedeckt
-            --> aber als Indikator bestimmt interessant
-    
     - Einzelversorgungslösung
         - Berechnung und Auslegung von Einzelversorgungslösungen nach ?
         - Umgang mit Datenqualitätsproblemen bei der Einzelversorgungslösung.
