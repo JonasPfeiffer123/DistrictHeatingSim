@@ -6,6 +6,7 @@ from PyQt5.QtCore import QObject, pyqtSignal
 from gui.ProjectTab.project_tab import ProjectTab
 from gui.VisualizationTab.visualization_tab import VisualizationTab
 from gui.BuildingTab.building_tab import BuildingTab
+from gui.RenovationTab.RenovationTab import RenovationTab
 from gui.CalculationTab.calculation_tab import CalculationTab
 from gui.MixDesignTab.mix_design_tab import MixDesignTab
 from gui.ComparisonTab.comparison_tab import ComparisonTab
@@ -74,6 +75,7 @@ class HeatSystemDesignGUI(QMainWindow):
         self.projectTab = ProjectTab(self.data_manager)
         self.visTab = VisualizationTab(self.data_manager)
         self.buildingTab = BuildingTab(self.data_manager, self.visTab, self)
+        self.renovationTab = RenovationTab()
         self.calcTab = CalculationTab(self.data_manager, self)
         self.mixDesignTab = MixDesignTab(self.data_manager, self)
         self.comparisonTab = ComparisonTab(self.data_manager)
@@ -81,6 +83,7 @@ class HeatSystemDesignGUI(QMainWindow):
         tabWidget.addTab(self.projectTab, "Projektdefinition")
         tabWidget.addTab(self.visTab, "Verarbeitung Geodaten")
         tabWidget.addTab(self.buildingTab, "Gebäudedefinition")
+        tabWidget.addTab(self.renovationTab, "Gebäudesanierung")
         tabWidget.addTab(self.calcTab, "Wärmenetzberechnung")
         tabWidget.addTab(self.mixDesignTab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
         tabWidget.addTab(self.comparisonTab, "Variantenvergleich")
@@ -90,8 +93,6 @@ class HeatSystemDesignGUI(QMainWindow):
         else:
             self.folderLabel = QLabel("Kein Ordner ausgewählt")
         self.layout1.addWidget(self.folderLabel)
-
-        self.setLayout(self.layout1)
 
     def initMenuBar(self):
         self.menubar = QMenuBar(self)

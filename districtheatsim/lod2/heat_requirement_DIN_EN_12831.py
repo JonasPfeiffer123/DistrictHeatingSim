@@ -26,7 +26,7 @@ class Building:
         'ground_u': 0.31, 'wall_u': 0.23, 'roof_u': 0.19,
         'window_u': 1.3, 'door_u': 1.3, 'air_change_rate': 0.5,
         'floors': 4, 'fracture_windows': 0.10, 'fracture_doors': 0.01,
-        'min_air_temp': -15, 'room_temp': 20, 'max_air_temp_heating': 15,
+        'min_air_temp': -12, 'room_temp': 20, 'max_air_temp_heating': 15,
         'ww_demand_Wh_per_m2': 12800
     }
 

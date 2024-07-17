@@ -117,6 +117,11 @@ energiepreis = 0.10  # Euro/kWh
 diskontierungsrate = 0.03  # 3%
 jahre = 20  # Betrachtungszeitraum
 
+# Kaltmiete in €/m² und Gesamtwohnfläche
+kaltmiete_pro_m2 = 5  # Euro/m²
+wohnflaeche = ground_area * anzahl_stockwerke  # Gesamtwohnfläche in m²
+gesamt_kaltmiete = kaltmiete_pro_m2 * wohnflaeche
+
 # Referenz-U-Werte
 ref_u_values = {
     'ground_u': u_wert_ground,
@@ -128,7 +133,7 @@ ref_u_values = {
     'floors': 4,
     'fracture_windows': fracture_windows,
     'fracture_doors': fracture_doors,
-    'min_air_temp': -15,
+    'min_air_temp': -12,
     'room_temp': 20,
     'max_air_temp_heating': 15,
     'ww_demand_Wh_per_m2': warmwasserbedarf
@@ -183,9 +188,9 @@ investitionskosten = {
 restwert = {
     'ground_u': investitionskosten['ground_u'] * 0.30,  # 30 % der Investitionskosten
     'wall_u': investitionskosten['wall_u'] * 0.30,  # 30 % der Investitionskosten
-    'roof_u': investitionskosten['roof_u'] * 0.50,  # 50 % der Investitionskosten
-    'window_u': investitionskosten['window_u'] * 0.20,  # 20 % der Investitionskosten
-    'door_u': investitionskosten['door_u'] * 0.10  # 10 % der Investitionskosten
+    'roof_u': investitionskosten['roof_u'] * 0.30,  # 50 % der Investitionskosten
+    'window_u': investitionskosten['window_u'] * 0.30,  # 20 % der Investitionskosten
+    'door_u': investitionskosten['door_u'] * 0.30  # 10 % der Investitionskosten
 }
 
 # Temperaturdaten importieren (hier ein Beispiel-Array)
@@ -247,12 +252,21 @@ for komponente in varianten:
     print(f"Neuer Wärmebedarf: {neuer_waermebedarf:.2f} kWh/Jahr")
     print(f"Kosteneinsparung: {ergebnisse[komponente]['Kosteneinsparung']:.2f} Euro/Jahr")
 
+# Berechnung der neuen Kaltmiete pro m²
+for komponente in varianten:
+    investition = sum(investitionskosten.values()) if komponente == 'Komplettsanierung' else investitionskosten[komponente]
+    neue_kaltmiete_pro_m2 = kaltmiete_pro_m2 + investition / (amortisationszeit * 12 * wohnflaeche)
+    ergebnisse[komponente]['Neue Kaltmiete pro m²'] = neue_kaltmiete_pro_m2
+
 # Diagramme erstellen
-fig, axs = plt.subplots(3, 2, figsize=(14, 15))
+n_diagrams = 7  # Anzahl der Diagramme
+n_rows = (n_diagrams + 1) // 2  # Berechne die Anzahl der benötigten Zeilen
+
+fig, axs = plt.subplots(n_rows, 2, figsize=(14, 5 * n_rows))
 fig.suptitle('Sanierungsergebnisse mit 50% Förderung')
 
 komponenten = ['Boden', 'Wand', 'Dach', 'Fenster', 'Tür', 'Komplett']
-labels = ['Amortisationszeit', 'NPV', 'LCCA', 'Kosteneinsparung', 'Energieeinsparung', 'Gesamtenergiebedarf']
+labels = ['Amortisationszeit', 'NPV', 'LCCA', 'Kosteneinsparung', 'Energieeinsparung', 'Gesamtenergiebedarf', 'Neue Kaltmiete pro m²']
 
 # Mapping of labels to more descriptive titles
 title_mapping = {
@@ -261,7 +275,8 @@ title_mapping = {
     'LCCA': 'Lebenszykluskostenanalyse (Euro)',
     'Kosteneinsparung': 'Kosteneinsparung (Euro/Jahr)',
     'Energieeinsparung': 'Energieeinsparung (kWh/Jahr)',
-    'Gesamtenergiebedarf': 'Gesamtenergiebedarf (kWh/Jahr)'
+    'Gesamtenergiebedarf': 'Gesamtenergiebedarf (kWh/Jahr)',
+    'Neue Kaltmiete pro m²': 'Neue Kaltmiete pro m² (Euro)'
 }
 
 # Berechne Energieeinsparung und Gesamtenergiebedarf
@@ -270,22 +285,22 @@ gesamtenergiebedarf = [ref_building.yearly_heat_demand] + [ergebnisse[komponente
 gesamtkomponenten = ['Referenz'] + komponenten
 
 for i, ax in enumerate(axs.flat):
-    if i < 4:
+    if i < len(labels):
         label = labels[i]
-        values = [ergebnisse[komponente][label] for komponente in ['ground_u', 'wall_u', 'roof_u', 'window_u', 'door_u', 'Komplettsanierung']]
-        ax.bar(komponenten, values)
-    elif i == 4:
-        label = labels[i]
-        values = energieeinsparung
-        ax.bar(komponenten, values)
+        if label in ['Energieeinsparung']:
+            values = energieeinsparung
+            ax.bar(komponenten, values)
+        elif label in ['Gesamtenergiebedarf']:
+            values = gesamtenergiebedarf
+            ax.bar(gesamtkomponenten, values)
+        else:
+            values = [ergebnisse[komponente][label] for komponente in ['ground_u', 'wall_u', 'roof_u', 'window_u', 'door_u', 'Komplettsanierung']]
+            ax.bar(komponenten, values)
+        ax.set_title(title_mapping[label])
+        ax.set_ylabel('Wert')
+        ax.set_xlabel('Komponente')
     else:
-        label = labels[i]
-        values = gesamtenergiebedarf
-        ax.bar(gesamtkomponenten, values)
-
-    ax.set_title(title_mapping[label])
-    ax.set_ylabel('Wert')
-    ax.set_xlabel('Komponente')
+        fig.delaxes(ax)  # Entferne überflüssige Subplots
 
 # Diagramm für die Ergebnisse in Abhängigkeit des Förderungssatzes
 foerderquoten = np.linspace(0, 1, 11)
