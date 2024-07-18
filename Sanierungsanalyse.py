@@ -9,7 +9,7 @@ class Building:
         'window_u': 1.3, 'door_u': 1.3, 'air_change_rate': 0.5,
         'floors': 4, 'fracture_windows': 0.10, 'fracture_doors': 0.01,
         'min_air_temp': -15, 'room_temp': 20, 'max_air_temp_heating': 15,
-        'ww_demand_Wh_per_m2': 12800
+        'ww_demand_kWh_per_m2': 12.8
     }
 
     def __init__(self, ground_area, wall_area, roof_area, building_volume, u_values=None):
@@ -44,7 +44,7 @@ class Building:
         self.yearly_heating_demand = sum(max(m * temp + b, 0) for temp in temperature_data if temp < self.u_values["max_air_temp_heating"]) / 1000
 
     def calc_yearly_warm_water_demand(self):
-        self.yearly_warm_water_demand = self.u_values["ww_demand_Wh_per_m2"] * self.ground_area * self.u_values["floors"] / 1000
+        self.yearly_warm_water_demand = self.u_values["ww_demand_kWh_per_m2"] * self.ground_area * self.u_values["floors"]
 
     def calc_yearly_heat_demand(self, temperature_data):
         self.calc_heat_demand()
@@ -112,7 +112,7 @@ u_wert_fassade = 1.0  # W/m²K
 u_wert_dach = 0.51  # W/m²K
 u_wert_fenster = 3.0  # W/m²K
 u_wert_tuer = 4  # W/m²K
-warmwasserbedarf = 12800 # Wh/m²
+warmwasserbedarf = 12.80 # kWh/m²
 energiepreis = 0.10  # Euro/kWh
 diskontierungsrate = 0.03  # 3%
 jahre = 20  # Betrachtungszeitraum
@@ -136,7 +136,7 @@ ref_u_values = {
     'min_air_temp': -12,
     'room_temp': 20,
     'max_air_temp_heating': 15,
-    'ww_demand_Wh_per_m2': warmwasserbedarf
+    'ww_demand_kWh_per_m2': warmwasserbedarf
 }
 
 # Erstellen eines Building-Objekts für den Referenzzustand

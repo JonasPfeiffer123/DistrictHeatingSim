@@ -27,10 +27,10 @@ class Building:
         'window_u': 1.3, 'door_u': 1.3, 'air_change_rate': 0.5,
         'floors': 4, 'fracture_windows': 0.10, 'fracture_doors': 0.01,
         'min_air_temp': -12, 'room_temp': 20, 'max_air_temp_heating': 15,
-        'ww_demand_Wh_per_m2': 12800
+        'ww_demand_kWh_per_m2': 12.8
     }
 
-    def __init__(self, ground_area, wall_area, roof_area, building_volume, filename_TRY=get_resource_path("data\\TRY2015_511676144222_Jahr.dat"), u_type=None, building_state=None):
+    def __init__(self, ground_area, wall_area, roof_area, building_volume, filename_TRY=get_resource_path("data\\TRY2015_511676144222_Jahr.dat"), u_type=None, building_state=None, u_values=None):
         self.ground_area = ground_area
         self.wall_area = wall_area
         self.roof_area = roof_area
@@ -38,8 +38,11 @@ class Building:
         self.filename_TRY = filename_TRY
         self.u_values = self.STANDARD_U_VALUES.copy()
         
-        if u_type:
+        if u_values:
+            self.u_values.update(u_values)
+        elif u_type and building_state:
             self.u_values.update(self.load_u_values(u_type, building_state))
+
 
     def import_TRY(self):
         # Import TRY data for weather conditions
@@ -97,7 +100,7 @@ class Building:
 
     def calc_yearly_warm_water_demand(self):
         # Calculate the annual warm water demand based on area and demand per square meter
-        self.yearly_warm_water_demand = self.u_values["ww_demand_Wh_per_m2"] * self.ground_area * self.u_values["floors"] / 1000
+        self.yearly_warm_water_demand = self.u_values["ww_demand_kWh_per_m2"] * self.ground_area * self.u_values["floors"]
         #print(f"Annual warm water demand: {self.yearly_warm_water_demand:.2f} kWh")
 
     def calc_yearly_heat_demand(self):
@@ -107,6 +110,8 @@ class Building:
         self.calc_yearly_warm_water_demand()
         # Sum to get the total annual heat demand
         self.yearly_heat_demand = self.yearly_heating_demand + self.yearly_warm_water_demand
+        # Calculate warm water share
+        self.warm_water_share = (self.yearly_warm_water_demand / self.yearly_heat_demand) * 100
         #print(f"Total annual heat demand: {self.yearly_heat_demand:.2f} kWh")
 
     def load_u_values(self, u_type, building_state):                

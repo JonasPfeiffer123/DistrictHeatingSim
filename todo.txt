@@ -10,12 +10,6 @@
         - Festlegen, ob eine geoJSON-Datei für die Speicherung aller Netzbestandteile genutzt werden soll.
         - Implementierung der Datenhaltung in geoJSON-Format, falls entschieden.
 
-1.3 LOD2-Datenverarbeitung
-    - Umgang mit nan-Werten
-        - Implementierung einer Funktion, die nan-Werte in LOD2-Daten erkennt und eine Meldung ausgibt.
-        - Automatisches Entfernen von nan-Werten aus dem Datensatz.
-            --> echt keine Ahnung mehr was hier das Problem war
-
 2. Basisfunktionalitäten und Optimierung
 2.1 Wärmenetzberechnung
     - Optimierung der Regelungssimulation

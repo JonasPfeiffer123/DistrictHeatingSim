@@ -124,7 +124,14 @@ def calculate_triangle_area_3d(p1, p2, p3):
     b = calculate_distance_3d(p2, p3)
     c = calculate_distance_3d(p3, p1)
     s = (a + b + c) / 2  # Semiperimeter
-    return np.sqrt(s * (s - a) * (s - b) * (s - c))  # Heron-Formel
+
+    # Überprüfen, ob die Seitenlängen ein gültiges Dreieck bilden
+    if s * (s - a) * (s - b) * (s - c) < 0:
+        print(f"Ungültige Dreiecksseitenlängen: a={a}, b={b}, c={c}")
+        return 0.0
+
+    return np.sqrt(max(s * (s - a) * (s - b) * (s - c), 0))  # Heron-Formel
+
 
 def calculate_distance_3d(point1, point2):
     """Berechnet die Distanz zwischen zwei Punkten im 3D-Raum."""
@@ -140,15 +147,29 @@ def calculate_area_3d_for_feature(geometry):
             total_area += calculate_polygon_area_3d(polygon)
     return total_area
 
-def process_lod2(file_path):
+def calculate_area_from_wall_coordinates(wall_geometries):
+    """Berechnet die Grundfläche aus den Koordinaten der Wände."""
+    if not wall_geometries:
+        return 0
+
+    all_points = []
+    for geom in wall_geometries:
+        if isinstance(geom, Polygon):
+            all_points.extend(list(geom.exterior.coords))
+        elif isinstance(geom, MultiPolygon):
+            for poly in geom.geoms:
+                all_points.extend(list(poly.exterior.coords))
+
+    if len(all_points) < 3:
+        return 0
+
+    # Verwende Shapely, um ein Polygon aus den Punkten zu erstellen und die Fläche zu berechnen
+    ground_polygon = Polygon([(p[0], p[1]) for p in all_points])
+    return ground_polygon.area
+
+def process_lod2(file_path, STANDARD_VALUES):
     # Lade die GeoJSON-Datei
     gdf = gpd.read_file(file_path)
-
-    # Standardwerte definieren
-    STANDARD_VALUES = {
-        'Stockwerke': 4, 'ww_demand_Wh_per_m2': 12800, 'air_change_rate': 0.5, 'fracture_windows': 0.10, 
-        'fracture_doors': 0.01, 'min_air_temp': -15, 'room_temp': 20, 'max_air_temp_heating': 15
-    }
 
     # Initialisiere ein Dictionary, um die Ergebnisse für jedes Gebäude zu speichern
     building_info = {}
@@ -160,9 +181,10 @@ def process_lod2(file_path):
             building_info[parent_id] = {
                 'Ground': [], 'Wall': [], 'Roof': [], 'H_Traufe': None, 'H_Boden': None,
                 'Adresse': None, 'Stadt': None, 'Bundesland': None, 'Land': None, 'Koordinate_X': None, 'Koordinate_Y': None,
-                'Nutzungstyp': None, 'Typ': None, 'Gebäudezustand': None, 'ww_demand_Wh_per_m2': None, 
+                'Nutzungstyp': None, 'Typ': None, 'Gebäudezustand': None, 'ww_demand_kWh_per_m2': None, 
                 'air_change_rate': None, 'Stockwerke': None, 'fracture_windows': None, 'fracture_doors': None, 
-                'min_air_temp': None, 'room_temp': None, 'max_air_temp_heating': None, 'Wärmebedarf': None
+                'min_air_temp': None, 'room_temp': None, 'max_air_temp_heating': None, 'Wärmebedarf': None, 'Warmwasseranteil': None,
+                'Typ_Heizflächen': None, 'VLT_max': None, 'Steigung_Heizkurve': None, 'RLT_max': None
             }
 
         if row['Geometr_3D'] in ['Ground', 'Wall', 'Roof']:
@@ -184,14 +206,14 @@ def process_lod2(file_path):
         # Check for additional fields
         if 'Stockwerke' in row and pd.notna(row['Stockwerke']):
             building_info[parent_id]['Stockwerke'] = row['Stockwerke']
-        if 'Nutzungstyp' in row and pd.notna(row['Nutzungstyp']):
-            building_info[parent_id]['Nutzungstyp'] = row['Nutzungstyp']
+        if 'Gebäudetyp' in row and pd.notna(row['Gebäudetyp']):
+            building_info[parent_id]['Gebäudetyp'] = row['Gebäudetyp']
         if 'Typ' in row and pd.notna(row['Typ']):
             building_info[parent_id]['Typ'] = row['Typ']
         if 'Gebäudezustand' in row and pd.notna(row['Gebäudezustand']):
             building_info[parent_id]['Gebäudezustand'] = row['Gebäudezustand']
-        if 'ww_demand_Wh_per_m2' in row and pd.notna(row['ww_demand_Wh_per_m2']):
-            building_info[parent_id]['ww_demand_Wh_per_m2'] = row['ww_demand_Wh_per_m2']
+        if 'ww_demand_kWh_per_m2' in row and pd.notna(row['ww_demand_kWh_per_m2']):
+            building_info[parent_id]['ww_demand_kWh_per_m2'] = row['ww_demand_kWh_per_m2']
         if 'air_change_rate' in row and pd.notna(row['air_change_rate']):
             building_info[parent_id]['air_change_rate'] = row['air_change_rate']
         if 'fracture_windows' in row and pd.notna(row['fracture_windows']):
@@ -206,14 +228,39 @@ def process_lod2(file_path):
             building_info[parent_id]['max_air_temp_heating'] = row['max_air_temp_heating']
         if 'Wärmebedarf' in row and pd.notna(row['Wärmebedarf']):
             building_info[parent_id]['Wärmebedarf'] = row['Wärmebedarf']
+        if 'Warmwasseranteil' in row and pd.notna(row['Warmwasseranteil']):
+            building_info[parent_id]['Warmwasseranteil'] = row['Warmwasseranteil']
+
+        # New fields
+        if 'Typ_Heizflächen' in row and pd.notna(row['Typ_Heizflächen']):
+            building_info[parent_id]['Typ_Heizflächen'] = row['Typ_Heizflächen']
+        if 'VLT_max' in row and pd.notna(row['VLT_max']):
+            building_info[parent_id]['VLT_max'] = row['VLT_max']
+        if 'Steigung_Heizkurve' in row and pd.notna(row['Steigung_Heizkurve']):
+            building_info[parent_id]['Steigung_Heizkurve'] = row['Steigung_Heizkurve']
+        if 'RLT_max' in row and pd.notna(row['RLT_max']):
+            building_info[parent_id]['RLT_max'] = row['RLT_max']
 
     for parent_id, info in building_info.items():
         info['Ground_Area'] = sum(calculate_area_3d_for_feature(geom) for geom in info['Ground'])
         info['Wall_Area'] = sum(calculate_area_3d_for_feature(geom) for geom in info['Wall'])
         info['Roof_Area'] = sum(calculate_area_3d_for_feature(geom) for geom in info['Roof'])
+
+        # Alternativberechnung für fehlende Grundfläche
+        if not info['Ground_Area'] or np.isnan(info['Ground_Area']):
+            info['Ground_Area'] = calculate_area_from_wall_coordinates(info['Wall'])
+
         h_traufe = info['H_Traufe']
         h_boden = info['H_Boden']
-        info['Volume'] = (h_traufe - h_boden) * info['Ground_Area'] if h_traufe and h_boden else None
+        if h_traufe and h_boden:
+            info['Volume'] = (h_traufe - h_boden) * info['Ground_Area']
+        else:
+            # Alternativberechnung für fehlendes Volumen
+            if info['Stockwerke'] and info['Ground_Area']:
+                durchschnittliche_stockwerkshoehe = 3.0  # Beispielwert für durchschnittliche Stockwerkshöhe in Metern
+                info['Volume'] = info['Stockwerke'] * durchschnittliche_stockwerkshoehe * info['Ground_Area']
+            else:
+                info['Volume'] = None
 
         # Setze Standardwerte, falls None
         for key, value in STANDARD_VALUES.items():

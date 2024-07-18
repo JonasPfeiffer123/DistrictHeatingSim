@@ -4,19 +4,16 @@ import csv
 import json
 import pandas as pd
 import numpy as np
-import geopandas as gpd
-from shapely.geometry import Polygon, Point, MultiPolygon
+from shapely.geometry import Polygon, MultiPolygon
 
 import matplotlib.pyplot as plt
-from matplotlib.patches import FancyBboxPatch
-from matplotlib.backend_bases import MouseButton
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 from PyQt5.QtWidgets import QVBoxLayout, QComboBox, QFileDialog, QProgressBar, QWidget, QTableWidget, QTableWidgetItem, \
-    QHeaderView, QAction, QMainWindow, QTabWidget, QDialog, QMessageBox, QHBoxLayout, QMenuBar, QScrollArea
-from PyQt5.QtCore import pyqtSignal, Qt
+    QHeaderView, QAction, QTabWidget, QDialog, QMessageBox, QHBoxLayout, QMenuBar, QScrollArea
+from PyQt5.QtCore import pyqtSignal, QCoreApplication
 
 from lod2.filter_LOD2 import spatial_filter_with_polygon, filter_LOD2_with_coordinates, process_lod2, calculate_centroid_and_geocode
 from lod2.heat_requirement_DIN_EN_12831 import Building
@@ -57,6 +54,9 @@ class BuildingTab(QWidget):
 
         self.annotation = None
         self.selected_building = None
+
+        # U-Werte Datensatz laden
+        self.u_values_df = pd.read_csv(get_resource_path('lod2/data/standard_u_values_TABULA.csv'), sep=";")
 
     def initUI(self):
         main_layout = QVBoxLayout(self)
@@ -119,12 +119,14 @@ class BuildingTab(QWidget):
         scroll_layout = QVBoxLayout(scroll_content)
 
         self.tableWidget = QTableWidget(self)
-        self.tableWidget.setColumnCount(19)
-        self.tableWidget.setHorizontalHeaderLabels(['Adresse', 'UTM_X', 'UTM_Y', 'Grundfläche', 'Wandfläche', 'Dachfläche', 'Volumen', 'Stockwerke', 'Nutzungstyp', 'Typ', 'Gebäudezustand', 
-                                                    'ww_demand_Wh_per_m2', 'air_change_rate', 'fracture_windows', 'fracture_doors', 'min_air_temp', 
-                                                    'room_temp', 'max_air_temp_heating', 'Wärmebedarf'])
+        self.tableWidget.setRowCount(29)  # Anzahl der Eigenschaften
+        self.tableWidget.setColumnCount(0)  # Starten ohne Spalten, da diese dynamisch hinzugefügt werden
+        self.tableWidget.setVerticalHeaderLabels(['Adresse', 'UTM_X (m)', 'UTM_Y (m)', 'Grundfläche (m²)', 'Wandfläche (m²)', 'Dachfläche (m²)', 'Volumen (m³)', 'Stockwerke', 'Nutzungstyp', 'Gebäudetyp', 
+                                          'Gebäudezustand', 'WW-Bedarf (kWh/m²)', 'Luftwechselrate (1/h)', 'Fensteranteil (%)', 'Türanteil (%)', 'Mindest-Außentemperatur (°C)', 'Raumtemperatur (°C)', 
+                                          'Max. Heiz-Außentemperatur (°C)', 'U-Wert Wand (W/m²K)', 'U-Wert Dach (W/m²K)', 'U-Wert Fenster (W/m²K)', 'U-Wert Tür (W/m²K)', 'U-Wert Boden (W/m²K)', 
+                                          'Typ_Heizflächen', 'VLT_max (°C)', 'Steigung_Heizkurve', 'RLT_max (°C)', 'Wärmebedarf (kWh)', 'Warmwasseranteil (%)'])
         self.tableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
-        self.tableWidget.setSortingEnabled(True)
+        self.tableWidget.setSortingEnabled(False)  # Deaktiviert das Sortieren der Tabelle
         self.tableWidget.setMinimumSize(800, 400)
         scroll_layout.addWidget(self.tableWidget)
 
@@ -146,9 +148,9 @@ class BuildingTab(QWidget):
         self.progressBar = QProgressBar(self)
         main_layout.addWidget(self.progressBar)
 
-        # Connect to table row selection event
-        self.tableWidget.itemSelectionChanged.connect(self.on_table_row_select)
-        
+        # Connect to table column selection event
+        self.tableWidget.itemSelectionChanged.connect(self.on_table_column_select)
+
     def updateDefaultPath(self, new_base_path):
         self.base_path = new_base_path
 
@@ -167,97 +169,144 @@ class BuildingTab(QWidget):
                 filter_LOD2_with_coordinates(self.inputLOD2geojsonfilename, self.inputfilterBuildingDatafilename, self.outputLOD2geojsonfilename)
 
             self.loadDataFromGeoJSON()
+            self.saveDataAsGeoJSON(self.outputLOD2geojsonfilename)  # Direkte Speicherung der GeoJSON nach dem Laden
 
     def loadDataFromGeoJSON(self):
         self.vis_tab.loadNetData(self.outputLOD2geojsonfilename)
 
-        self.building_info = process_lod2(self.outputLOD2geojsonfilename)
+        # Standardwerte definieren
+        self.STANDARD_VALUES = {
+            'Stockwerke': 4, 'ww_demand_kWh_per_m2': 12.8, 'air_change_rate': 0.5, 'fracture_windows': 0.10, 
+            'fracture_doors': 0.01, 'min_air_temp': -12, 'room_temp': 20, 'max_air_temp_heating': 15,
+            'Typ_Heizflächen': 'HK', 'VLT_max': 70, 'Steigung_Heizkurve': 1.5, 'RLT_max': 55
+        }
+
+        self.building_info = process_lod2(self.outputLOD2geojsonfilename, self.STANDARD_VALUES)
 
         address_missing = any(info['Adresse'] is None for info in self.building_info.values())
         if address_missing:
             self.building_info = calculate_centroid_and_geocode(self.building_info)
 
-        self.tableWidget.setRowCount(len(self.building_info))
+        self.tableWidget.setColumnCount(len(self.building_info))
+        self.tableWidget.setHorizontalHeaderLabels([str(i + 1) for i in range(len(self.building_info))])
 
-        for row, (parent_id, info) in enumerate(self.building_info.items()):
-            self.tableWidget.setItem(row, 0, QTableWidgetItem(str(f"{info['Adresse']}, {info['Stadt']}, {info['Bundesland']}, {info['Land']}")))
-            self.tableWidget.setItem(row, 1, QTableWidgetItem(str((info['Koordinate_X']))))
-            self.tableWidget.setItem(row, 2, QTableWidgetItem(str((info['Koordinate_Y']))))
-            self.tableWidget.setItem(row, 3, QTableWidgetItem(str(round(info['Ground_Area'], 1))))
-            self.tableWidget.setItem(row, 4, QTableWidgetItem(str(round(info['Wall_Area'], 1))))
-            self.tableWidget.setItem(row, 5, QTableWidgetItem(str(round(info['Roof_Area'], 1))))
-            self.tableWidget.setItem(row, 6, QTableWidgetItem(str(round(info['Volume'], 1))))
-            self.tableWidget.setItem(row, 7, QTableWidgetItem(str(info['Stockwerke'])))
+        for col, (parent_id, info) in enumerate(self.building_info.items()):
+            self.tableWidget.setItem(0, col, QTableWidgetItem(str(f"{info['Adresse']}, {info['Stadt']}, {info['Bundesland']}, {info['Land']}")))
+            self.tableWidget.setItem(1, col, QTableWidgetItem(str((info['Koordinate_X']))))
+            self.tableWidget.setItem(2, col, QTableWidgetItem(str((info['Koordinate_Y']))))
+            self.tableWidget.setItem(3, col, QTableWidgetItem(str(round(info['Ground_Area'], 1))))
+            self.tableWidget.setItem(4, col, QTableWidgetItem(str(round(info['Wall_Area'], 1))))
+            self.tableWidget.setItem(5, col, QTableWidgetItem(str(round(info['Roof_Area'], 1))))
+            self.tableWidget.setItem(6, col, QTableWidgetItem(str(round(info['Volume'], 1))))
+            self.tableWidget.setItem(7, col, QTableWidgetItem(str(info['Stockwerke'])))
 
-            # Nutzungstyp ComboBox
+            # SLP-Gebäudetyp ComboBox
             comboBoxTypes = QComboBox()
             comboBoxTypes.addItems(["HMF", "HEF", "GKO", "GHA", "GMK", "GBD", "GBH", "GWA", "GGA", "GBA", "GGB", "GPD", "GMF", "GHD"])
-            if info.get('Nutzungstyp') and info['Nutzungstyp'] in [comboBoxTypes.itemText(i) for i in range(comboBoxTypes.count())]:
-                comboBoxTypes.setCurrentText(info['Nutzungstyp'])
-            self.tableWidget.setCellWidget(row, 8, comboBoxTypes)
+            if info.get('Gebäudetyp') and info['Gebäudetyp'] in [comboBoxTypes.itemText(i) for i in range(comboBoxTypes.count())]:
+                comboBoxTypes.setCurrentText(info['Gebäudetyp'])
+            self.tableWidget.setCellWidget(8, col, comboBoxTypes)
 
-            # Gebäude Typ ComboBox
+            # TABULA-Gebäudeyp  ComboBox
             comboBoxBuildingTypes = QComboBox()
             comboBoxBuildingTypes.addItems(self.comboBoxBuildingTypesItems)
+            comboBoxBuildingTypes.currentIndexChanged.connect(lambda idx, col=col: self.update_u_values(col))
             if info.get('Typ') and info['Typ'] in [comboBoxBuildingTypes.itemText(i) for i in range(comboBoxBuildingTypes.count())]:
                 comboBoxBuildingTypes.setCurrentText(info['Typ'])
-            self.tableWidget.setCellWidget(row, 9, comboBoxBuildingTypes)
+            self.tableWidget.setCellWidget(9, col, comboBoxBuildingTypes)
 
             # Gebäude Zustand ComboBox
             comboBoxBuildingState = QComboBox()
-            comboBoxBuildingState.addItems(["Existing_state", "Usual_Refurbishment", "Advanced_Refurbishment"])
+            comboBoxBuildingState.addItems(["Existing_state", "Usual_Refurbishment", "Advanced_Refurbishment", "Individuell"])
+            comboBoxBuildingState.currentIndexChanged.connect(lambda idx, col=col: self.update_u_values(col))
             if info.get('Gebäudezustand') and info['Gebäudezustand'] in [comboBoxBuildingState.itemText(i) for i in range(comboBoxBuildingState.count())]:
                 comboBoxBuildingState.setCurrentText(info['Gebäudezustand'])
-            self.tableWidget.setCellWidget(row, 10, comboBoxBuildingState)
+            self.tableWidget.setCellWidget(10, col, comboBoxBuildingState)
 
             # Weitere Werte setzen, falls vorhanden, ansonsten Standardwerte verwenden
-            self.tableWidget.setItem(row, 11, QTableWidgetItem(str(info['ww_demand_Wh_per_m2'])))
-            self.tableWidget.setItem(row, 12, QTableWidgetItem(str(info['air_change_rate'])))
-            self.tableWidget.setItem(row, 13, QTableWidgetItem(str(info['fracture_windows'])))
-            self.tableWidget.setItem(row, 14, QTableWidgetItem(str(info['fracture_doors'])))
-            self.tableWidget.setItem(row, 15, QTableWidgetItem(str(info['min_air_temp'])))
-            self.tableWidget.setItem(row, 16, QTableWidgetItem(str(info['room_temp'])))
-            self.tableWidget.setItem(row, 17, QTableWidgetItem(str(info['max_air_temp_heating'])))
+            self.tableWidget.setItem(11, col, QTableWidgetItem(str(info['ww_demand_kWh_per_m2'])))
+            self.tableWidget.setItem(12, col, QTableWidgetItem(str(info['air_change_rate'])))
+            self.tableWidget.setItem(13, col, QTableWidgetItem(str(info['fracture_windows'])))
+            self.tableWidget.setItem(14, col, QTableWidgetItem(str(info['fracture_doors'])))
+            self.tableWidget.setItem(15, col, QTableWidgetItem(str(info['min_air_temp'])))
+            self.tableWidget.setItem(16, col, QTableWidgetItem(str(info['room_temp'])))
+            self.tableWidget.setItem(17, col, QTableWidgetItem(str(info['max_air_temp_heating'])))
+
+            # U-Werte hinzufügen und aktualisieren
+            self.update_u_values(col)
+
+            # Neue Felder hinzufügen
+            self.tableWidget.setItem(23, col, QTableWidgetItem(str(info['Typ_Heizflächen'])))
+            self.tableWidget.setItem(24, col, QTableWidgetItem(str(info['VLT_max'])))
+            self.tableWidget.setItem(25, col, QTableWidgetItem(str(info['Steigung_Heizkurve'])))
+            self.tableWidget.setItem(26, col, QTableWidgetItem(str(info['RLT_max'])))
 
             # Laden des Wärmebedarfs, wenn vorhanden
             waermebedarf = info.get('Wärmebedarf', None)
             if waermebedarf is not None:
-                self.tableWidget.setItem(row, 18, QTableWidgetItem(str(waermebedarf)))
+                self.tableWidget.setItem(27, col, QTableWidgetItem(str(waermebedarf)))
 
-        # Load 2D and 3D Visualization
-        self.load3DVisualization()
+            # Laden des Warmwasseranteils, wenn vorhanden
+            Warmwasseranteil = info.get('Warmwasseranteil', None)
+            if Warmwasseranteil is not None:
+                self.tableWidget.setItem(28, col, QTableWidgetItem(str(Warmwasseranteil)))  # Initial leer, wird später berechnet
 
-    def createComboBox(self, columnIndex):
-        if columnIndex == 7:
-            comboBoxItems = ["HMF", "HEF", "GKO", "GHA", "GMK", "GBD", "GBH", "GWA", "GGA", "GBA", "GGB", "GPD", "GMF", "GHD"]
-        elif columnIndex == 8:
-            comboBoxItems = self.comboBoxBuildingTypesItems
+            # Load 2D and 3D Visualization
+            self.load3DVisualization()
+
+    def update_u_values(self, col):
+        building_type = self.tableWidget.cellWidget(9, col).currentText()
+        building_state = self.tableWidget.cellWidget(10, col).currentText()
+
+        if building_state != "Individuell":
+            u_values = self.u_values_df[(self.u_values_df['Typ'] == building_type) & (self.u_values_df['building_state'] == building_state)]
+            if not u_values.empty:
+                u_values = u_values.iloc[0].to_dict()
+                self.tableWidget.setItem(18, col, QTableWidgetItem(str(u_values['wall_u'])))
+                self.tableWidget.setItem(19, col, QTableWidgetItem(str(u_values['roof_u'])))
+                self.tableWidget.setItem(20, col, QTableWidgetItem(str(u_values['window_u'])))
+                self.tableWidget.setItem(21, col, QTableWidgetItem(str(u_values['door_u'])))
+                self.tableWidget.setItem(22, col, QTableWidgetItem(str(u_values['ground_u'])))
         else:
-            comboBoxItems = ["Existing_state", "Usual_Refurbishment", "Advanced_Refurbishment"]
-        comboBox = QComboBox()
-        comboBox.addItems(comboBoxItems)
-        return comboBox
-    
-    ### calculate Heat Demand based on geometry and u-values ###
+            self.tableWidget.setItem(18, col, QTableWidgetItem(''))
+            self.tableWidget.setItem(19, col, QTableWidgetItem(''))
+            self.tableWidget.setItem(20, col, QTableWidgetItem(''))
+            self.tableWidget.setItem(21, col, QTableWidgetItem(''))
+            self.tableWidget.setItem(22, col, QTableWidgetItem(''))
+
     def calculateHeatDemand(self):
-        self.building_info = process_lod2(self.outputLOD2geojsonfilename)
+        self.building_info = process_lod2(self.outputLOD2geojsonfilename, self.STANDARD_VALUES)
 
-        for row in range(self.tableWidget.rowCount()):
-            ground_area = float(self.tableWidget.item(row, 3).text())
-            wall_area = float(self.tableWidget.item(row, 4).text())
-            roof_area = float(self.tableWidget.item(row, 5).text())
-            volume = float(self.tableWidget.item(row, 6).text())
-            u_type = self.tableWidget.cellWidget(row, 9).currentText()
-            building_state = self.tableWidget.cellWidget(row, 10).currentText()
+        for col in range(self.tableWidget.columnCount()):
+            try:
+                ground_area = float(self.tableWidget.item(3, col).text())
+                wall_area = float(self.tableWidget.item(4, col).text())
+                roof_area = float(self.tableWidget.item(5, col).text())
+                volume = float(self.tableWidget.item(6, col).text())
+                u_type = self.tableWidget.cellWidget(9, col).currentText()
+                building_state = self.tableWidget.cellWidget(10, col).currentText()
+                ww_demand_kWh_per_m2 = float(self.tableWidget.item(11, col).text())
 
-            building = Building(ground_area, wall_area, roof_area, volume, u_type=u_type, building_state=building_state, filename_TRY=self.parent.try_filename)
-            building.calc_yearly_heat_demand()
+                u_values = {
+                    'wall_u': float(self.tableWidget.item(18, col).text()),
+                    'roof_u': float(self.tableWidget.item(19, col).text()),
+                    'window_u': float(self.tableWidget.item(20, col).text()),
+                    'door_u': float(self.tableWidget.item(21, col).text()),
+                    'ground_u': float(self.tableWidget.item(22, col).text())
+                }
 
-            # Aktualisieren der GeoJSON-Datenstruktur mit den berechneten Daten
-            parent_id = list(self.building_info.keys())[row]
-            self.building_info[parent_id]['Wärmebedarf'] = building.yearly_heat_demand
+                building = Building(ground_area, wall_area, roof_area, volume, u_type=u_type, building_state=building_state, filename_TRY=self.parent.try_filename, u_values=u_values)
+                building.calc_yearly_heat_demand()
 
-            self.tableWidget.setItem(row, 18, QTableWidgetItem(f"{building.yearly_heat_demand:.2f}"))
+                # Aktualisieren der GeoJSON-Datenstruktur mit den berechneten Daten
+                parent_id = list(self.building_info.keys())[col]
+                self.building_info[parent_id]['Wärmebedarf'] = building.yearly_heat_demand
+
+                self.tableWidget.setItem(27, col, QTableWidgetItem(f"{building.yearly_heat_demand:.2f}"))
+                self.tableWidget.setItem(28, col, QTableWidgetItem(f"{building.warm_water_share:.2f}"))
+            except ValueError:
+                QMessageBox.critical(self, "Fehler", f"Alle Felder müssen ausgefüllt sein (Spalte {col + 1}).")
+                return
 
         # Speichern der aktualisierten GeoJSON-Datenstruktur
         self.updated_building_info = self.building_info
@@ -307,11 +356,11 @@ class BuildingTab(QWidget):
         self.canvas.draw()
 
     ### LOD2 Visualization ###
-    def on_table_row_select(self):
-        selected_rows = self.tableWidget.selectionModel().selectedRows()
-        if selected_rows:
-            row = selected_rows[0].row()
-            parent_id = list(self.building_info.keys())[row]
+    def on_table_column_select(self):
+        selected_columns = self.tableWidget.selectionModel().selectedColumns()
+        if selected_columns:
+            col = selected_columns[0].column()
+            parent_id = list(self.building_info.keys())[col]
             info = self.building_info[parent_id]
             self.highlight_building_3d(info)
 
@@ -396,7 +445,7 @@ class BuildingTab(QWidget):
         max_x, max_y, max_z = float('-inf'), float('-inf'), float('-inf')
 
         for parent_id, info in self.building_info.items():
-            print(f"Processing building ID: {parent_id}")
+            #print(f"Processing building ID: {parent_id}")
             # Ground Geometries
             for ground_geom in info['Ground']:
                 if ground_geom is not None:
@@ -461,48 +510,56 @@ class BuildingTab(QWidget):
         self.canvas_3d.draw()
 
     ### save an load geojsons ###
-    def saveDataAsGeoJSON(self):
+    def saveDataAsGeoJSON(self, filename=False):
         try:
-            # Öffnen des Dateiauswahldialogs
-            path, _ = QFileDialog.getSaveFileName(self, "Speichern unter", "", "GeoJSON-Dateien (*.geojson)")
-
-            # Überprüfen, ob ein Pfad ausgewählt wurde
-            if not path:
-                print("Kein Pfad ausgewählt. Speichern abgebrochen.")
-                return
+            print(filename)
+            # Überprüfen, ob ein Dateiname übergeben wurde
+            if filename is False:
+                print("HERE")
+                path, _ = QFileDialog.getSaveFileName(self, "Speichern unter", "", "GeoJSON-Dateien (*.geojson)")
+                if not path:
+                    print("Kein Pfad ausgewählt. Speichern abgebrochen.")
+                    return
+            else:
+                path = filename
 
             # Laden der ursprünglichen GeoJSON-Datei
             with open(self.outputLOD2geojsonfilename, 'r', encoding='utf-8') as file:
                 geojson_data = json.load(file)
 
-            for row in range(self.tableWidget.rowCount()):
+            for col in range(self.tableWidget.columnCount()):
                 for feature in geojson_data['features']:
                     properties = feature['properties']
                     parent_id = properties.get('parent_id')  # Annahme, dass parent_id eindeutig ist
 
-                    if parent_id == list(self.building_info.keys())[row]:
-                        properties['Adresse'] = self.tableWidget.item(row, 0).text().split(", ")[0]
-                        properties['Stadt'] = self.tableWidget.item(row, 0).text().split(", ")[1]
-                        properties['Bundesland'] = self.tableWidget.item(row, 0).text().split(", ")[2]
-                        properties['Land'] = self.tableWidget.item(row, 0).text().split(", ")[3]
-                        properties['Koordinate_X'] = float(self.tableWidget.item(row, 1).text())
-                        properties['Koordinate_Y'] = float(self.tableWidget.item(row, 2).text())
-                        properties['Ground_Area'] = float(self.tableWidget.item(row, 3).text())
-                        properties['Wall_Area'] = float(self.tableWidget.item(row, 4).text())
-                        properties['Roof_Area'] = float(self.tableWidget.item(row, 5).text())
-                        properties['Volume'] = float(self.tableWidget.item(row, 6).text())
-                        properties['Stockwerke'] = int(self.tableWidget.item(row, 7).text()) if self.tableWidget.item(row, 7) else None
-                        properties['Nutzungstyp'] = self.tableWidget.cellWidget(row, 8).currentText()
-                        properties['Typ'] = self.tableWidget.cellWidget(row, 9).currentText()
-                        properties['Gebäudezustand'] = self.tableWidget.cellWidget(row, 10).currentText()
-                        properties['ww_demand_Wh_per_m2'] = float(self.tableWidget.item(row, 11).text()) if self.tableWidget.item(row, 11) else None
-                        properties['air_change_rate'] = float(self.tableWidget.item(row, 12).text()) if self.tableWidget.item(row, 12) else None
-                        properties['fracture_windows'] = float(self.tableWidget.item(row, 13).text()) if self.tableWidget.item(row, 13) else None
-                        properties['fracture_doors'] = float(self.tableWidget.item(row, 14).text()) if self.tableWidget.item(row, 14) else None
-                        properties['min_air_temp'] = float(self.tableWidget.item(row, 15).text()) if self.tableWidget.item(row, 15) else None
-                        properties['room_temp'] = float(self.tableWidget.item(row, 16).text()) if self.tableWidget.item(row, 16) else None
-                        properties['max_air_temp_heating'] = float(self.tableWidget.item(row, 17).text()) if self.tableWidget.item(row, 17) else None
-                        properties['Wärmebedarf'] = float(self.tableWidget.item(row, 18).text()) if self.tableWidget.item(row, 18) else None
+                    if parent_id == list(self.building_info.keys())[col]:
+                        properties['Adresse'] = self.tableWidget.item(0, col).text().split(", ")[0]
+                        properties['Stadt'] = self.tableWidget.item(0, col).text().split(", ")[1]
+                        properties['Bundesland'] = self.tableWidget.item(0, col).text().split(", ")[2]
+                        properties['Land'] = self.tableWidget.item(0, col).text().split(", ")[3]
+                        properties['Koordinate_X'] = float(self.tableWidget.item(1, col).text())
+                        properties['Koordinate_Y'] = float(self.tableWidget.item(2, col).text())
+                        properties['Ground_Area'] = float(self.tableWidget.item(3, col).text())
+                        properties['Wall_Area'] = float(self.tableWidget.item(4, col).text())
+                        properties['Roof_Area'] = float(self.tableWidget.item(5, col).text())
+                        properties['Volume'] = float(self.tableWidget.item(6, col).text())
+                        properties['Stockwerke'] = int(self.tableWidget.item(7, col).text()) if self.tableWidget.item(7, col) else None
+                        properties['Nutzungstyp'] = self.tableWidget.cellWidget(8, col).currentText()
+                        properties['Typ'] = self.tableWidget.cellWidget(9, col).currentText()
+                        properties['Gebäudezustand'] = self.tableWidget.cellWidget(10, col).currentText()
+                        properties['ww_demand_kWh_per_m2'] = float(self.tableWidget.item(11, col).text()) if self.tableWidget.item(11, col) else None
+                        properties['air_change_rate'] = float(self.tableWidget.item(12, col).text()) if self.tableWidget.item(12, col) else None
+                        properties['fracture_windows'] = float(self.tableWidget.item(13, col).text()) if self.tableWidget.item(13, col) else None
+                        properties['fracture_doors'] = float(self.tableWidget.item(14, col).text()) if self.tableWidget.item(14, col) else None
+                        properties['min_air_temp'] = float(self.tableWidget.item(15, col).text()) if self.tableWidget.item(15, col) else None
+                        properties['room_temp'] = float(self.tableWidget.item(16, col).text()) if self.tableWidget.item(16, col) else None
+                        properties['max_air_temp_heating'] = float(self.tableWidget.item(17, col).text()) if self.tableWidget.item(17, col) else None
+                        properties['Typ_Heizflächen'] = self.tableWidget.item(23, col).text() if self.tableWidget.item(23, col) else None
+                        properties['VLT_max'] = float(self.tableWidget.item(24, col).text()) if self.tableWidget.item(24, col) else None
+                        properties['Steigung_Heizkurve'] = float(self.tableWidget.item(25, col).text()) if self.tableWidget.item(25, col) else None
+                        properties['RLT_max'] = float(self.tableWidget.item(26, col).text()) if self.tableWidget.item(26, col) else None
+                        properties['Wärmebedarf'] = float(self.tableWidget.item(27, col).text()) if self.tableWidget.item(27, col) else None
+                        properties['Warmwasseranteil'] = float(self.tableWidget.item(28, col).text()) if self.tableWidget.item(28, col) else None
 
             # Schreiben der aktualisierten GeoJSON-Datei
             with open(path, 'w', encoding='utf-8') as file:
@@ -518,46 +575,49 @@ class BuildingTab(QWidget):
     def loadDataFromFile(self):
         path, _ = QFileDialog.getOpenFileName(self, "Öffnen", "", "GeoJSON-Dateien (*.geojson)")
         if path:
-            with open(path, 'r', encoding='utf-8') as file:
-                geojson_data = json.load(file)
+            try:
+                with open(path, 'r', encoding='utf-8') as file:
+                    geojson_data = json.load(file)
 
-            building_info = {}
-            for feature in geojson_data['features']:
-                properties = feature['properties']
-                parent_id = properties.get('parent_id')  # Annahme, dass parent_id eindeutig ist
-                building_info[parent_id] = properties
+                building_info = {}
+                for feature in geojson_data['features']:
+                    properties = feature['properties']
+                    parent_id = properties.get('parent_id')  # Annahme, dass parent_id eindeutig ist
+                    building_info[parent_id] = properties
 
-            self.outputLOD2geojsonfilename = path
-            self.updated_building_info = building_info
-            self.vis_tab.loadNetData(self.outputLOD2geojsonfilename)
-            self.loadDataFromGeoJSON()
-    
+                self.outputLOD2geojsonfilename = path
+                self.updated_building_info = building_info
+                self.vis_tab.loadNetData(self.outputLOD2geojsonfilename)
+                self.loadDataFromGeoJSON()
+            except Exception as e:
+                QMessageBox.critical(self, "Fehler", f"Ein Fehler ist beim Öffnen der Datei aufgetreten: {str(e)}")
+
+        QCoreApplication.processEvents()
+
     ### creating building csv for net generation ###
     def createBuildingCSV(self):
-        standard_values = {
-            'WW_Anteil': 0.2,
-            'Typ_Heizflächen': 'HK',
-            'VLT_max': 70,
-            'Steigung_Heizkurve': 1.5,
-            'RLT_max': 55
-        }
-
         path, _ = QFileDialog.getSaveFileName(self, "Speichern unter", "", "CSV-Dateien (*.csv)")
         if path:
             with open(path, 'w', newline='', encoding='utf-8') as file:
                 writer = csv.writer(file, delimiter=';')
-                headers = ['Land', 'Bundesland', 'Stadt', 'Adresse', 'Wärmebedarf', 'Gebäudetyp', 'WW_Anteil', 'Typ_Heizflächen', 'VLT_max', 'Steigung_Heizkurve', 'RLT_max', 'UTM_X', 'UTM_Y']
+                headers = ['Land', 'Bundesland', 'Stadt', 'Adresse', 'Wärmebedarf', 'Gebäudetyp', 'WW_Anteil (%)', 'Typ_Heizflächen', 'VLT_max', 'Steigung_Heizkurve', 'RLT_max', 'UTM_X', 'UTM_Y']
                 writer.writerow(headers)
 
-                for row in range(self.tableWidget.rowCount()):
-                    land = self.tableWidget.item(row, 0).text().split(", ")[3]
-                    bundesland = self.tableWidget.item(row, 0).text().split(", ")[2]
-                    stadt = self.tableWidget.item(row, 0).text().split(", ")[1]
-                    address = self.tableWidget.item(row, 0).text().split(", ")[0]
-                    heat_demand = self.tableWidget.item(row, 18).text() if self.tableWidget.item(row, 18) else '0'
-                    building_type = self.tableWidget.cellWidget(row, 8).currentText()
-                    utm_x = self.tableWidget.item(row, 1).text()
-                    utm_y = self.tableWidget.item(row, 2).text()
+                for col in range(self.tableWidget.columnCount()):
+                    land = self.tableWidget.item(0, col).text().split(", ")[3]
+                    bundesland = self.tableWidget.item(0, col).text().split(", ")[2]
+                    stadt = self.tableWidget.item(0, col).text().split(", ")[1]
+                    address = self.tableWidget.item(0, col).text().split(", ")[0]
+                    heat_demand = self.tableWidget.item(27, col).text() if self.tableWidget.item(27, col) else '0'
+                    building_type = self.tableWidget.cellWidget(8, col).currentText()
+                    ww_share = self.tableWidget.item(28, col).text() if self.tableWidget.item(28, col) else '0'
+                    utm_x = self.tableWidget.item(1, col).text()
+                    utm_y = self.tableWidget.item(2, col).text()
+
+                    typ_heizflaechen = self.tableWidget.item(23, col).text() if self.tableWidget.item(23, col) else ""
+                    vlt_max = self.tableWidget.item(24, col).text() if self.tableWidget.item(24, col) else ""
+                    steigung_heizkurve = self.tableWidget.item(25, col).text() if self.tableWidget.item(25, col) else ""
+                    rlt_max = self.tableWidget.item(26, col).text() if self.tableWidget.item(26, col) else ""
 
                     row_data = [
                         land,
@@ -566,13 +626,14 @@ class BuildingTab(QWidget):
                         address,
                         heat_demand,
                         building_type,
-                        standard_values['WW_Anteil'],
-                        standard_values['Typ_Heizflächen'],
-                        standard_values['VLT_max'],
-                        standard_values['Steigung_Heizkurve'],
-                        standard_values['RLT_max'],
+                        ww_share,
+                        typ_heizflaechen,
+                        vlt_max,
+                        steigung_heizkurve,
+                        rlt_max,
                         utm_x,
                         utm_y
                     ]
                     writer.writerow(row_data)
                 print(f"Daten wurden gespeichert: {path}")
+
