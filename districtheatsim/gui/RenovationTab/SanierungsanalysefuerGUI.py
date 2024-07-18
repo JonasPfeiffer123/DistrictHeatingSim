@@ -9,7 +9,7 @@ class Building:
         'window_u': 1.3, 'door_u': 1.3, 'air_change_rate': 0.5,
         'floors': 4, 'fracture_windows': 0.10, 'fracture_doors': 0.01,
         'min_air_temp': -15, 'room_temp': 20, 'max_air_temp_heating': 15,
-        'ww_demand_Wh_per_m2': 12.8
+        'ww_demand_kWh_per_m2': 12.8
     }
 
     def __init__(self, ground_area, wall_area, roof_area, building_volume, u_values=None):
@@ -51,19 +51,17 @@ class Building:
         self.calc_yearly_heating_demand(temperature_data)
         self.calc_yearly_warm_water_demand()
         self.yearly_heat_demand = self.yearly_heating_demand + self.yearly_warm_water_demand
-
+    
 class SanierungsAnalyse:
-    def __init__(self, ref_building, san_building, energiepreis, diskontierungsrate, jahre):
-        self.ref_building = ref_building
-        self.san_building = san_building
+    def __init__(self, ref_heat_demand, san_heat_demand, energiepreis, diskontierungsrate, jahre):
+        self.ref_heat_demand = ref_heat_demand
+        self.san_heat_demand = san_heat_demand
         self.energiepreis = energiepreis
         self.diskontierungsrate = diskontierungsrate
         self.jahre = jahre
 
     def berechne_kosteneinsparungen(self):
-        alter_waermebedarf = self.ref_building.yearly_heat_demand
-        neuer_waermebedarf = self.san_building.yearly_heat_demand
-        einsparung = alter_waermebedarf - neuer_waermebedarf
+        einsparung = self.ref_heat_demand - self.san_heat_demand
         return einsparung * self.energiepreis
 
     def berechne_amortisationszeit(self, investitionskosten, foerderquote=0):
@@ -123,6 +121,7 @@ def calculate_all_results(length, width, floors, floor_height, u_ground, u_wall,
 
     ref_building = Building(ground_area, wall_area, roof_area, building_volume, ref_u_values)
     ref_building.calc_yearly_heat_demand(temperature_data)
+    alter_waermebedarf = ref_building.yearly_heat_demand
 
     ziel_u_wert = {
         'ground_u': target_u_ground,
@@ -182,8 +181,7 @@ def calculate_all_results(length, width, floors, floor_height, u_ground, u_wall,
 
         san_building.calc_yearly_heat_demand(temperature_data)
         neuer_waermebedarf = san_building.yearly_heat_demand
-
-        analyse = SanierungsAnalyse(ref_building, san_building, energy_price, discount_rate, years)
+        analyse = SanierungsAnalyse(alter_waermebedarf, neuer_waermebedarf, energy_price, discount_rate, years)
 
         if komponente == 'Komplettsanierung':
             investitionskosten_komponente = sum(investitionskosten.values())
@@ -206,7 +204,7 @@ def calculate_all_results(length, width, floors, floor_height, u_ground, u_wall,
         roi = analyse.berechne_roi(investitionskosten_komponente, foerderquote)
 
         neue_kaltmiete_pro_m2 = cold_rent + investitionskosten_komponente / (amortisationszeit * 12 * wohnflaeche) if amortisationszeit != 0 else 0
-        neue_warmmiete_pro_m2 = neue_kaltmiete_pro_m2 + (neuer_waermebedarf * energy_price) / wohnflaeche
+        neue_warmmiete_pro_m2 = neue_kaltmiete_pro_m2 + ((neuer_waermebedarf / 12) * wohnflaeche) * energy_price
 
         kaltmieten_pro_m2[komponente] = neue_kaltmiete_pro_m2
         warmmieten_pro_m2[komponente] = neue_warmmiete_pro_m2
