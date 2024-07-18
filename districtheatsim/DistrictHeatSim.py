@@ -1,5 +1,8 @@
 import sys
 import os
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QTabWidget, QMenuBar, QAction, QFileDialog, QLabel, QMessageBox, QInputDialog
 from PyQt5.QtCore import QObject, pyqtSignal
 
@@ -194,7 +197,6 @@ if __name__ == '__main__':
     if os.path.exists(qss_path):
         with open(qss_path, 'r') as file:
             app.setStyleSheet(file.read())
-        print(f"Light theme applied from {qss_path}")
     else:
         print(f"Stylesheet {qss_path} not found.")
 

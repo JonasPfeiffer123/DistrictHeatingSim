@@ -184,7 +184,8 @@ def process_lod2(file_path, STANDARD_VALUES):
                 'Nutzungstyp': None, 'Typ': None, 'Gebäudezustand': None, 'ww_demand_kWh_per_m2': None, 
                 'air_change_rate': None, 'Stockwerke': None, 'fracture_windows': None, 'fracture_doors': None, 
                 'min_air_temp': None, 'room_temp': None, 'max_air_temp_heating': None, 'Wärmebedarf': None, 'Warmwasseranteil': None,
-                'Typ_Heizflächen': None, 'VLT_max': None, 'Steigung_Heizkurve': None, 'RLT_max': None
+                'Typ_Heizflächen': None, 'VLT_max': None, 'Steigung_Heizkurve': None, 'RLT_max': None,
+                'wall_u': None, 'roof_u': None, 'window_u': None, 'door_u': None, 'ground_u': None
             }
 
         if row['Geometr_3D'] in ['Ground', 'Wall', 'Roof']:
@@ -240,6 +241,18 @@ def process_lod2(file_path, STANDARD_VALUES):
             building_info[parent_id]['Steigung_Heizkurve'] = row['Steigung_Heizkurve']
         if 'RLT_max' in row and pd.notna(row['RLT_max']):
             building_info[parent_id]['RLT_max'] = row['RLT_max']
+
+        # U-Werte
+        if 'wall_u' in row and pd.notna(row['wall_u']):
+            building_info[parent_id]['wall_u'] = row['wall_u']
+        if 'roof_u' in row and pd.notna(row['roof_u']):
+            building_info[parent_id]['roof_u'] = row['roof_u']
+        if 'window_u' in row and pd.notna(row['window_u']):
+            building_info[parent_id]['window_u'] = row['window_u']
+        if 'door_u' in row and pd.notna(row['door_u']):
+            building_info[parent_id]['door_u'] = row['door_u']
+        if 'ground_u' in row and pd.notna(row['ground_u']):
+            building_info[parent_id]['ground_u'] = row['ground_u']
 
     for parent_id, info in building_info.items():
         info['Ground_Area'] = sum(calculate_area_3d_for_feature(geom) for geom in info['Ground'])

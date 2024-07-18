@@ -233,7 +233,7 @@ class BuildingTab(QWidget):
             self.tableWidget.setItem(17, col, QTableWidgetItem(str(info['max_air_temp_heating'])))
 
             # U-Werte hinzufügen und aktualisieren
-            self.update_u_values(col)
+            self.update_u_values(col, self.building_info)
 
             # Neue Felder hinzufügen
             self.tableWidget.setItem(23, col, QTableWidgetItem(str(info['Typ_Heizflächen'])))
@@ -254,25 +254,62 @@ class BuildingTab(QWidget):
             # Load 2D and 3D Visualization
             self.load3DVisualization()
 
-    def update_u_values(self, col):
+    def update_u_values(self, col, building_info=None):
+        if building_info is None:
+            building_info = self.building_info
+
+        parent_id = list(building_info.keys())[col]
+        info = building_info[parent_id]
+
         building_type = self.tableWidget.cellWidget(9, col).currentText()
         building_state = self.tableWidget.cellWidget(10, col).currentText()
 
-        if building_state != "Individuell":
+        # U-Werte aus building_info priorisieren, falls vorhanden
+        if info.get('wall_u') is not None:
+            wall_u = info['wall_u']
+        elif building_state != "Individuell":
             u_values = self.u_values_df[(self.u_values_df['Typ'] == building_type) & (self.u_values_df['building_state'] == building_state)]
-            if not u_values.empty:
-                u_values = u_values.iloc[0].to_dict()
-                self.tableWidget.setItem(18, col, QTableWidgetItem(str(u_values['wall_u'])))
-                self.tableWidget.setItem(19, col, QTableWidgetItem(str(u_values['roof_u'])))
-                self.tableWidget.setItem(20, col, QTableWidgetItem(str(u_values['window_u'])))
-                self.tableWidget.setItem(21, col, QTableWidgetItem(str(u_values['door_u'])))
-                self.tableWidget.setItem(22, col, QTableWidgetItem(str(u_values['ground_u'])))
+            wall_u = u_values.iloc[0]['wall_u'] if not u_values.empty else ''
         else:
-            self.tableWidget.setItem(18, col, QTableWidgetItem(''))
-            self.tableWidget.setItem(19, col, QTableWidgetItem(''))
-            self.tableWidget.setItem(20, col, QTableWidgetItem(''))
-            self.tableWidget.setItem(21, col, QTableWidgetItem(''))
-            self.tableWidget.setItem(22, col, QTableWidgetItem(''))
+            wall_u = ''
+
+        if info.get('roof_u') is not None:
+            roof_u = info['roof_u']
+        elif building_state != "Individuell":
+            u_values = self.u_values_df[(self.u_values_df['Typ'] == building_type) & (self.u_values_df['building_state'] == building_state)]
+            roof_u = u_values.iloc[0]['roof_u'] if not u_values.empty else ''
+        else:
+            roof_u = ''
+
+        if info.get('window_u') is not None:
+            window_u = info['window_u']
+        elif building_state != "Individuell":
+            u_values = self.u_values_df[(self.u_values_df['Typ'] == building_type) & (self.u_values_df['building_state'] == building_state)]
+            window_u = u_values.iloc[0]['window_u'] if not u_values.empty else ''
+        else:
+            window_u = ''
+
+        if info.get('door_u') is not None:
+            door_u = info['door_u']
+        elif building_state != "Individuell":
+            u_values = self.u_values_df[(self.u_values_df['Typ'] == building_type) & (self.u_values_df['building_state'] == building_state)]
+            door_u = u_values.iloc[0]['door_u'] if not u_values.empty else ''
+        else:
+            door_u = ''
+
+        if info.get('ground_u') is not None:
+            ground_u = info['ground_u']
+        elif building_state != "Individuell":
+            u_values = self.u_values_df[(self.u_values_df['Typ'] == building_type) & (self.u_values_df['building_state'] == building_state)]
+            ground_u = u_values.iloc[0]['ground_u'] if not u_values.empty else ''
+        else:
+            ground_u = ''
+
+        self.tableWidget.setItem(18, col, QTableWidgetItem(str(wall_u)))
+        self.tableWidget.setItem(19, col, QTableWidgetItem(str(roof_u)))
+        self.tableWidget.setItem(20, col, QTableWidgetItem(str(window_u)))
+        self.tableWidget.setItem(21, col, QTableWidgetItem(str(door_u)))
+        self.tableWidget.setItem(22, col, QTableWidgetItem(str(ground_u)))
 
     def calculateHeatDemand(self):
         self.building_info = process_lod2(self.outputLOD2geojsonfilename, self.STANDARD_VALUES)
@@ -512,10 +549,8 @@ class BuildingTab(QWidget):
     ### save an load geojsons ###
     def saveDataAsGeoJSON(self, filename=False):
         try:
-            print(filename)
             # Überprüfen, ob ein Dateiname übergeben wurde
             if filename is False:
-                print("HERE")
                 path, _ = QFileDialog.getSaveFileName(self, "Speichern unter", "", "GeoJSON-Dateien (*.geojson)")
                 if not path:
                     print("Kein Pfad ausgewählt. Speichern abgebrochen.")
@@ -560,6 +595,11 @@ class BuildingTab(QWidget):
                         properties['RLT_max'] = float(self.tableWidget.item(26, col).text()) if self.tableWidget.item(26, col) else None
                         properties['Wärmebedarf'] = float(self.tableWidget.item(27, col).text()) if self.tableWidget.item(27, col) else None
                         properties['Warmwasseranteil'] = float(self.tableWidget.item(28, col).text()) if self.tableWidget.item(28, col) else None
+                        properties['wall_u'] = float(self.tableWidget.item(18, col).text()) if self.tableWidget.item(18, col) else None
+                        properties['roof_u'] = float(self.tableWidget.item(19, col).text()) if self.tableWidget.item(19, col) else None
+                        properties['window_u'] = float(self.tableWidget.item(20, col).text()) if self.tableWidget.item(20, col) else None
+                        properties['door_u'] = float(self.tableWidget.item(21, col).text()) if self.tableWidget.item(21, col) else None
+                        properties['ground_u'] = float(self.tableWidget.item(22, col).text()) if self.tableWidget.item(22, col) else None
 
             # Schreiben der aktualisierten GeoJSON-Datei
             with open(path, 'w', encoding='utf-8') as file:
@@ -571,6 +611,9 @@ class BuildingTab(QWidget):
         except Exception as e:
             print(f"Fehler beim Speichern: {e}")
             QMessageBox.critical(self, "Fehler beim Speichern", f"Ein Fehler ist beim Speichern aufgetreten: {str(e)}")
+
+        # Sicherstellen, dass alle Events verarbeitet werden
+        QCoreApplication.processEvents()
 
     def loadDataFromFile(self):
         path, _ = QFileDialog.getOpenFileName(self, "Öffnen", "", "GeoJSON-Dateien (*.geojson)")
@@ -589,10 +632,13 @@ class BuildingTab(QWidget):
                 self.updated_building_info = building_info
                 self.vis_tab.loadNetData(self.outputLOD2geojsonfilename)
                 self.loadDataFromGeoJSON()
+
             except Exception as e:
                 QMessageBox.critical(self, "Fehler", f"Ein Fehler ist beim Öffnen der Datei aufgetreten: {str(e)}")
 
+        # Sicherstellen, dass alle Events verarbeitet werden
         QCoreApplication.processEvents()
+        print("")
 
     ### creating building csv for net generation ###
     def createBuildingCSV(self):
