@@ -10,7 +10,6 @@ from gui.ProjectTab.project_tab import ProjectTab
 from gui.VisualizationTab.visualization_tab import VisualizationTab
 from gui.BuildingTab.building_tab import BuildingTab
 from gui.RenovationTab.RenovationTab import RenovationTab
-from gui.RenovationTab.RenovationTab2 import RenovationTab2
 from gui.CalculationTab.calculation_tab import CalculationTab
 from gui.MixDesignTab.mix_design_tab import MixDesignTab
 from gui.ComparisonTab.comparison_tab import ComparisonTab
@@ -79,8 +78,7 @@ class HeatSystemDesignGUI(QMainWindow):
         self.projectTab = ProjectTab(self.data_manager)
         self.visTab = VisualizationTab(self.data_manager)
         self.buildingTab = BuildingTab(self.data_manager, self.visTab, self)
-        self.renovationTab = RenovationTab()
-        self.renovationTab2 = RenovationTab2()
+        self.renovationTab = RenovationTab(self.data_manager)
         self.calcTab = CalculationTab(self.data_manager, self)
         self.mixDesignTab = MixDesignTab(self.data_manager, self)
         self.comparisonTab = ComparisonTab(self.data_manager)
@@ -89,7 +87,6 @@ class HeatSystemDesignGUI(QMainWindow):
         tabWidget.addTab(self.visTab, "Verarbeitung Geodaten")
         tabWidget.addTab(self.buildingTab, "Gebäudedefinition")
         tabWidget.addTab(self.renovationTab, "Gebäudesanierung")
-        tabWidget.addTab(self.renovationTab2, "Gebäudesanierung2")
         tabWidget.addTab(self.calcTab, "Wärmenetzberechnung")
         tabWidget.addTab(self.mixDesignTab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
         tabWidget.addTab(self.comparisonTab, "Variantenvergleich")

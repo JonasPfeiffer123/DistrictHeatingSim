@@ -1,6 +1,4 @@
-import numpy as np
 import numpy_financial as npf
-import matplotlib.pyplot as plt
 from utilities.test_reference_year import import_TRY
 
 class Building:
@@ -169,7 +167,7 @@ def calculate_all_results(length, width, floors, floor_height, u_ground, u_wall,
     kaltmieten_pro_m2 = {}
     warmmieten_pro_m2 = {}
 
-    ref_warmmiete_pro_m2 = cold_rent + (ref_building.yearly_heat_demand * energy_price) / wohnflaeche
+    ref_warmmiete_pro_m2 = cold_rent + ((ref_building.yearly_heat_demand / 12) / wohnflaeche) * energy_price
 
     for komponente in varianten:
         san_building = Building(ground_area, wall_area, roof_area, building_volume, u_values=ref_building.u_values.copy())
@@ -204,7 +202,7 @@ def calculate_all_results(length, width, floors, floor_height, u_ground, u_wall,
         roi = analyse.berechne_roi(investitionskosten_komponente, foerderquote)
 
         neue_kaltmiete_pro_m2 = cold_rent + investitionskosten_komponente / (amortisationszeit * 12 * wohnflaeche) if amortisationszeit != 0 else 0
-        neue_warmmiete_pro_m2 = neue_kaltmiete_pro_m2 + ((neuer_waermebedarf / 12) * wohnflaeche) * energy_price
+        neue_warmmiete_pro_m2 = neue_kaltmiete_pro_m2 + ((neuer_waermebedarf / 12) / wohnflaeche) * energy_price
 
         kaltmieten_pro_m2[komponente] = neue_kaltmiete_pro_m2
         warmmieten_pro_m2[komponente] = neue_warmmiete_pro_m2
