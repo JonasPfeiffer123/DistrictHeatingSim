@@ -1,3 +1,10 @@
+"""
+Filename: comparison_tab.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains the ComparisonTab.
+"""
+
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout,  QLabel)
 from PyQt5.QtCore import pyqtSignal
 

@@ -1,3 +1,10 @@
+"""
+Filename: heat_requirement_VDI4655.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains functions to calculate heat demand profiles with the VDI 4655 methods
+"""
+
 import pandas as pd
 import numpy as np
 

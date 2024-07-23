@@ -1,3 +1,10 @@
+"""
+Filename: threads.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains the threaded functionality functions
+"""
+
 import numpy as np
 import geopandas as gpd
 import traceback

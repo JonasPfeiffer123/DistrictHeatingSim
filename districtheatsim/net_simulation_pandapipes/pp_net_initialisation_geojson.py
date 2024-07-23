@@ -1,3 +1,11 @@
+"""
+Filename: pp_net_initialisation_geojson.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Script for the net initialisation of geojson based net data.
+
+"""
+
 import numpy as np
 import geopandas as gpd
 import pandapipes as pp

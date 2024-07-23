@@ -1,10 +1,23 @@
-# Created by Jonas Pfeiffer
-# Calculation of solar irradiation according to Scenocalc District Heating 2.0 and PV according to eupvgis
+"""
+Filename: Photovoltaik.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Calculation of solar irradiation according to Scenocalc District Heating 2.0 and PV according to eupvgis.
+
+"""
 
 import numpy as np
 import pandas as pd
 
 def import_TRY(filename):
+    """_summary_
+
+    Args:
+        filename (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     # Import TRY
     # Define column widths
     col_widths = [8, 8, 3, 3, 3, 6, 5, 4, 5, 2, 5, 4, 5, 5, 4, 5, 3]
@@ -32,6 +45,22 @@ def deg_to_rad(deg):
 
 def Calculate_Solar_Radiation(Irradiance_hori_L, D_L, Day_of_Year_L, Longitude, STD_Longitude, Latitude, Albedo,
                               East_West_collector_azimuth_angle, Collector_tilt_angle):
+    """_summary_
+
+    Args:
+        Irradiance_hori_L (_type_): _description_
+        D_L (_type_): _description_
+        Day_of_Year_L (_type_): _description_
+        Longitude (_type_): _description_
+        STD_Longitude (_type_): _description_
+        Latitude (_type_): _description_
+        Albedo (_type_): _description_
+        East_West_collector_azimuth_angle (_type_): _description_
+        Collector_tilt_angle (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     # Creating an array from 1 to 24 h for 365 days
     Hour_L = np.tile(np.arange(1, 25), 365)
 
@@ -98,6 +127,21 @@ def Calculate_Solar_Radiation(Irradiance_hori_L, D_L, Day_of_Year_L, Longitude, 
 
 def Calculate_PV(TRY_data, Gross_area, Longitude, STD_Longitude, Latitude, Albedo,
                  East_West_collector_azimuth_angle, Collector_tilt_angle):
+    """_summary_
+
+    Args:
+        TRY_data (_type_): _description_
+        Gross_area (_type_): _description_
+        Longitude (_type_): _description_
+        STD_Longitude (_type_): _description_
+        Latitude (_type_): _description_
+        Albedo (_type_): _description_
+        East_West_collector_azimuth_angle (_type_): _description_
+        Collector_tilt_angle (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     # Import TRY
     Ta_L, W_L, D_L, G_L = import_TRY(TRY_data)
 

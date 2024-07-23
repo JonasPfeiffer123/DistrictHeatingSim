@@ -1,5 +1,9 @@
-import sys
-import os
+"""
+Filename: calculation_tab.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains the CalculationTab.
+"""
 
 import logging
 import numpy as np

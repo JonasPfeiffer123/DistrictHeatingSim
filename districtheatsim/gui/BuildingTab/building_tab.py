@@ -1,3 +1,10 @@
+"""
+Filename: building_tab.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains the BuildingTab.
+"""
+
 import sys
 import os
 import csv

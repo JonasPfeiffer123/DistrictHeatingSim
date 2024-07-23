@@ -1,4 +1,10 @@
-# Erstellt von Jonas Pfeiffer
+"""
+Filename: simple_heat_requirement_test.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Script for testing the heat requirement calculation.
+
+"""
 
 import sys
 import os

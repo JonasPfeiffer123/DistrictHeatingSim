@@ -1,8 +1,23 @@
+"""
+Filename: geocodingETRS89.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains the geocoding functions necessary to geocode adresses.
+"""
+
 from geopy.geocoders import Nominatim
 from pyproj import Transformer
 import csv
 
 def get_coordinates(address):
+    """_summary_
+
+    Args:
+        address (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     # Initialize the Geolocator
     geolocator = Nominatim(user_agent="district_heating")
 
@@ -25,6 +40,12 @@ def get_coordinates(address):
         return (None, None)
 
 def process_data(input_csv, output_csv):
+    """_summary_
+
+    Args:
+        input_csv (_type_): _description_
+        output_csv (_type_): _description_
+    """
     with open(input_csv, mode='r', encoding='utf-8') as infile, \
         open(output_csv, mode='w', newline='', encoding='utf-8') as outfile:
         reader = csv.reader(infile, delimiter=';')

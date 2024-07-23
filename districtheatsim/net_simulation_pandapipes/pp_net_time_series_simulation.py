@@ -1,3 +1,11 @@
+"""
+Filename: pp_net_time_series_simulation.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Script with functions for the implemented time series calculation.
+
+"""
+
 from pandapipes.timeseries import run_time_series
 from pandapower.control.controller.const_control import ConstControl
 from pandapower.timeseries import OutputWriter

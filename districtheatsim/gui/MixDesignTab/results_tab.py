@@ -1,12 +1,17 @@
+"""
+Filename: results_tab.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains the ResultsTab.
+"""
+
 import sys
-import itertools
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QHBoxLayout, QTableWidget, QTableWidgetItem, 
                              QHeaderView, QScrollArea, QCheckBox, QComboBox, QApplication)
 from PyQt5.QtCore import Qt, pyqtSignal
 import numpy as np
-import matplotlib.pyplot as plt
 
 class CheckableComboBox(QComboBox):
     def __init__(self, parent=None):

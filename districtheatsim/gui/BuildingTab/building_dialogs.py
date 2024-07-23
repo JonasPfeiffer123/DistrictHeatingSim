@@ -1,3 +1,10 @@
+"""
+Filename: building_dialogs.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains the Dialogs for the BuildingTab.
+"""
+
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QFileDialog
 from PyQt5.QtGui import QFont
 

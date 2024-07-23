@@ -1,3 +1,13 @@
+"""
+Filename: A_Star_algorithm_net_generation.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains functions for generating an A-Star based network
+
+Additional Information: Currently not working.
+
+"""
+
 import pandas as pd
 import geopandas as gpd
 import networkx as nx
@@ -7,9 +17,27 @@ import numpy as np
 import time
 
 def euclidean_distance(a, b):
+    """_summary_
+
+    Args:
+        a (_type_): _description_
+        b (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     return Point(a).distance(Point(b))
 
 def connect_components(gdf, points_gdf):
+    """_summary_
+
+    Args:
+        gdf (_type_): _description_
+        points_gdf (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     G = nx.Graph()
     # Füge alle Linien als Kanten in den Graphen ein
     for line in gdf.geometry:
@@ -60,12 +88,28 @@ def connect_components(gdf, points_gdf):
 ### neue Implementierung ###
 # Funktion zur Erstellung des KD-Baums aus den Knoten des Graphen
 def create_kd_tree(G):
+    """_summary_
+
+    Args:
+        G (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     coords = [(G.nodes[node]['pos'].x, G.nodes[node]['pos'].y) for node in G]
     kd_tree = KDTree(coords)
     return kd_tree, list(G.nodes)
 
 # Erweitere create_road_graph um Koordinaten zu speichern
 def create_road_graph(road_layer):
+    """_summary_
+
+    Args:
+        road_layer (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     G = nx.Graph()
     for idx, row in road_layer.iterrows():
         line = row.geometry
@@ -80,12 +124,33 @@ def create_road_graph(road_layer):
     return G
 
 def find_nearest_node_kdtree(kd_tree, nodes, point):
+    """_summary_
+
+    Args:
+        kd_tree (_type_): _description_
+        nodes (_type_): _description_
+        point (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     point_np = np.array([point.x, point.y])
     dist, idx = kd_tree.query([point_np], k=1)
     nearest_node = nodes[idx[0]]
     return nearest_node
 
 def a_star_with_timeout(G, start, goal, timeout=10):
+    """_summary_
+
+    Args:
+        G (_type_): _description_
+        start (_type_): _description_
+        goal (_type_): _description_
+        timeout (int, optional): _description_. Defaults to 10.
+
+    Returns:
+        _type_: _description_
+    """
     start_time = time.time()
     try:
         path = nx.astar_path(G, start, goal, heuristic=euclidean_distance)
@@ -97,6 +162,15 @@ def a_star_with_timeout(G, start, goal, timeout=10):
     return path
 
 def generate_a_star_network(G, points_gdf):
+    """_summary_
+
+    Args:
+        G (_type_): _description_
+        points_gdf (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     kd_tree, nodes = create_kd_tree(G)
     path_lines = []
     for i, point1 in points_gdf.iterrows():
@@ -111,6 +185,16 @@ def generate_a_star_network(G, points_gdf):
     return gpd.GeoDataFrame(geometry=path_lines)
 
 def remove_unnecessary_nodes(gdf, points_fl, points_wea):
+    """_summary_
+
+    Args:
+        gdf (_type_): _description_
+        points_fl (_type_): _description_
+        points_wea (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     G = nx.Graph()
     # Erstelle den Graphen aus den GeoDataFrame Linien
     for line in gdf.geometry:
@@ -140,6 +224,17 @@ def remove_unnecessary_nodes(gdf, points_fl, points_wea):
     return gpd.GeoDataFrame(geometry=new_lines)
 
 def are_collinear(p1, p2, p3, tolerance=np.pi/180 * 10):  # Toleranz von 10 Grad
+    """_summary_
+
+    Args:
+        p1 (_type_): _description_
+        p2 (_type_): _description_
+        p3 (_type_): _description_
+        tolerance (_type_, optional): _description_. Defaults to np.pi/180*10.
+
+    Returns:
+        _type_: _description_
+    """
     # Berechne die Winkel zwischen den Punkten
     angle1 = np.arctan2(p2[1] - p1[1], p2[0] - p1[0])
     angle2 = np.arctan2(p3[1] - p2[1], p3[0] - p2[0])
@@ -147,6 +242,14 @@ def are_collinear(p1, p2, p3, tolerance=np.pi/180 * 10):  # Toleranz von 10 Grad
     return abs(angle1 - angle2) < tolerance
 
 def simplify_network(gdf):
+    """_summary_
+
+    Args:
+        gdf (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     G = nx.Graph()
     # Füge Linien als Kanten in den Graphen ein, Knoten sind Endpunkte
     for line in gdf.geometry:

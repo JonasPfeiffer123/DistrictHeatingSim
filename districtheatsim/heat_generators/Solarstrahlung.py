@@ -1,6 +1,11 @@
-# Erstellt von Dipl.-Ing.(FH) Jonas
-# Ertragsberechnungsprogramm Solarstrahlung (Berechnungsgrundlage: ScenoCalc Fernwärme 2.0
-# https://www.scfw.de/)
+"""
+Filename: Solarstrahlung.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Calculates the solar irradiation input based on Test Reference Year data.
+
+Additional Information: Ertragsberechnungsprogramm Solarstrahlung (Berechnungsgrundlage: ScenoCalc Fernwärme 2.0 https://www.scfw.de/)
+"""
 
 # Import Bibliotheken
 import numpy as np

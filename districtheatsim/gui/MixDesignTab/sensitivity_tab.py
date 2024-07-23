@@ -1,10 +1,16 @@
+"""
+Filename: sensitivity_tab.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains the SensitivityTab.
+"""
+
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QPushButton, QLineEdit, QMessageBox
 from PyQt5.QtCore import pyqtSignal
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.colors import Normalize
 from scipy.interpolate import griddata
 
 class SensitivityTab(QWidget):

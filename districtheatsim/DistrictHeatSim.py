@@ -1,3 +1,11 @@
+"""
+Filename: DistrictHeatSim.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Main GUI file of the DistrictHeatSim-Tool.
+
+"""
+
 import sys
 import os
 import warnings

@@ -1,4 +1,13 @@
-# Ertragsberechnungsprogramm Solarthermie in Wärmenetz von Dipl.-Ing. (FH) Jonas Pfeiffer (Berechnungsgrundlage: ScenoCalc Fernwärme 2.0)
+"""
+Filename: Solarthermie.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: This script calculates heat generation of a thermal solar heat generator.
+
+Additional Information: Ertragsberechnungsprogramm Solarthermie in Wärmenetz (Berechnungsgrundlage: ScenoCalc Fernwärme 2.0) https://www.scfw.de/)
+"""
+
+# Ertragsberechnungsprogramm Solarthermie in Wärmenetz von Dipl.-Ing. (FH) Jonas PfeifferDipl.-Ing. (FH) Jonas Pfeiffer (Berechnungsgrundlage: ScenoCalc Fernwärme 2.0)
 # https://www.scfw.de/)
 
 # Import Bibliotheken

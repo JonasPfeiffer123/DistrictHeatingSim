@@ -1,3 +1,10 @@
+"""
+Filename: technology_tab.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains the TechnologyTab.
+"""
+
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QLineEdit, QListWidget, QDialog, QFileDialog, QScrollArea, QCheckBox, QFormLayout, QDialogButtonBox, QAbstractItemView, QMessageBox)
 from PyQt5.QtCore import pyqtSignal, Qt
 import pandas as pd

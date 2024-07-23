@@ -1,3 +1,11 @@
+"""
+Filename: Wärmeversorgungsgebiete.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Script with functionality to process OSM data and cluster buildings.
+
+"""
+
 import numpy as np
 import geopandas as gpd
 #from sklearn.cluster import DBSCAN # pip install scikit-learn

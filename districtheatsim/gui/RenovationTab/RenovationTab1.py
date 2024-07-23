@@ -1,3 +1,10 @@
+"""
+Filename: RenovationTab1.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains the RenovationTab1, the Tab for LOD2 data based renovation cost analysis.
+"""
+
 import sys
 import traceback
 

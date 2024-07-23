@@ -1,3 +1,11 @@
+"""
+Filename: download_lod2.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Script for downloading and unzipping the lod2 data.
+
+"""
+
 import requests
 import os
 import zipfile

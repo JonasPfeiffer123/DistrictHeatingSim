@@ -1,4 +1,10 @@
-# Erstellt von Jonas Pfeiffer
+"""
+Filename: simple_osm_test.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Script for testing the OSM functions.
+
+"""
 
 import sys
 import os

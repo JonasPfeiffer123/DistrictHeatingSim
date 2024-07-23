@@ -1,3 +1,10 @@
+"""
+Filename: project_tab.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains the ProjectTab.
+"""
+
 import csv
 import json
 import shutil

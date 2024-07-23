@@ -1,3 +1,10 @@
+"""
+Filename: checkable_comboboxes.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains a custom Class for chackable comboboxes.
+"""
+
 from PyQt5.QtWidgets import QComboBox, QListView
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from PyQt5.QtCore import Qt, pyqtSignal

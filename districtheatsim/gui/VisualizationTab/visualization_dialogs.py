@@ -1,3 +1,10 @@
+"""
+Filename: visualiztion_dialogs.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains the Dialogs for the VisualizationTab.
+"""
+
 import sys
 import os
 

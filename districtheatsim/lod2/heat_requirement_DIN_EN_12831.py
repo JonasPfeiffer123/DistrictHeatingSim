@@ -1,7 +1,13 @@
-# This code defines a `Building` class to calculate the heating demand and warm water demand for buildings. 
-# It uses the building's physical dimensions, U-values for various components, and air change rate, 
-# along with the weather data from a Test Reference Year (TRY) dataset, to estimate the annual heating and warm water needs. 
-# The example demonstrates the usage for three buildings with specific dimensions and U-values, outputting their volumes and calculated heat demands.
+"""
+Filename: heat_requirement_DIN_EN_12831.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: This code defines a `Building` class to calculate the heating demand and warm water demand for buildings. 
+                It uses the building's physical dimensions, U-values for various components, and air change rate, 
+                along with the weather data from a Test Reference Year (TRY) dataset, to estimate the annual heating and warm water needs. 
+                The example demonstrates the usage for three buildings with specific dimensions and U-values, outputting their volumes and calculated heat demands.
+
+"""
 
 import os
 import sys

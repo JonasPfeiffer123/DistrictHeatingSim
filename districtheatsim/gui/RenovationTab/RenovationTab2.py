@@ -1,3 +1,10 @@
+"""
+Filename: RenovationTab2.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains the RenovationTab2, the Tab for individual renovation cost analysis.
+"""
+
 import sys
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas

@@ -1,4 +1,10 @@
-# Erstellt von Jonas Pfeiffer
+"""
+Filename: test_reference_year.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Import function for the Test Reference Year files.
+
+"""
 
 import sys
 import os
@@ -7,6 +13,14 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import pandas as pd
 
 def import_TRY(dateiname):
+    """_summary_
+
+    Args:
+        dateiname (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     # Import TRY
     # Spaltenbreiten definieren
     col_widths = [8, 8, 3, 3, 3, 6, 5, 4, 5, 2, 5, 4, 5, 5, 4, 5, 3]

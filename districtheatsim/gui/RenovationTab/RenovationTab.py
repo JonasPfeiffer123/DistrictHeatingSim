@@ -1,3 +1,10 @@
+"""
+Filename: RenovationTab.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains the main RenovationTab, container of RenovationTab1 and RenovationTab2
+"""
+
 from PyQt5.QtWidgets import QVBoxLayout, QProgressBar, QWidget, QTabWidget
 from PyQt5.QtCore import pyqtSignal
 

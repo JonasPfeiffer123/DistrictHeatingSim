@@ -1,3 +1,10 @@
+"""
+Filename: heat_generator_dialogs.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains the heat generator Dialogs for the MixDesignTab.
+"""
+
 import sys
 import os
 

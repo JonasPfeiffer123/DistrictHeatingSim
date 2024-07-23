@@ -1,3 +1,11 @@
+"""
+Filename: import_and_create_layers.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Imports the spatial data and processes them into layers.
+
+"""
+
 import geopandas as gpd
 import pandas as pd
 from shapely.geometry import LineString, Point
@@ -5,6 +13,14 @@ from shapely.geometry import LineString, Point
 from net_generation.simple_MST import generate_network_fl, generate_network_rl, create_offset_points
 
 def import_osm_street_layer(osm_street_layer_geojson_file):
+    """_summary_
+
+    Args:
+        osm_street_layer_geojson_file (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     try:
         layer = gpd.read_file(osm_street_layer_geojson_file)
         print("Layer erfolgreich geladen.")
@@ -14,6 +30,17 @@ def import_osm_street_layer(osm_street_layer_geojson_file):
         return None
 
 def generate_lines(layer, distance, angle_degrees, df=None):
+    """_summary_
+
+    Args:
+        layer (_type_): _description_
+        distance (_type_): _description_
+        angle_degrees (_type_): _description_
+        df (_type_, optional): _description_. Defaults to None.
+
+    Returns:
+        _type_: _description_
+    """
     lines = []
     attributes = []
 
@@ -63,6 +90,16 @@ def generate_lines(layer, distance, angle_degrees, df=None):
     return lines_gdf
 
 def load_layers(osm_street_layer_geojson_file, data_csv_file_name, coordinates):
+    """_summary_
+
+    Args:
+        osm_street_layer_geojson_file (_type_): _description_
+        data_csv_file_name (_type_): _description_
+        coordinates (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     try:
         # Laden des Straßen-Layers als GeoDataFrame
         street_layer = gpd.read_file(osm_street_layer_geojson_file)
@@ -83,6 +120,17 @@ def load_layers(osm_street_layer_geojson_file, data_csv_file_name, coordinates):
         return None, None, None, None
 
 def generate_and_export_layers(osm_street_layer_geojson_file_name, data_csv_file_name, coordinates, base_path, fixed_angle=0, fixed_distance=1, algorithm="MST"):
+    """_summary_
+
+    Args:
+        osm_street_layer_geojson_file_name (_type_): _description_
+        data_csv_file_name (_type_): _description_
+        coordinates (_type_): _description_
+        base_path (_type_): _description_
+        fixed_angle (int, optional): _description_. Defaults to 0.
+        fixed_distance (int, optional): _description_. Defaults to 1.
+        algorithm (str, optional): _description_. Defaults to "MST".
+    """
     street_layer, layer_points, layer_WEA, df = load_layers(osm_street_layer_geojson_file_name, data_csv_file_name, coordinates)
     
     # Use the custom functions to generate the lines

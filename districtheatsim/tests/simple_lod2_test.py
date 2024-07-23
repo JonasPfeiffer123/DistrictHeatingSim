@@ -1,4 +1,10 @@
-# Erstellt von Jonas Pfeiffer
+"""
+Filename: simple_lod2_test.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Script for processing LOD2 data.
+
+"""
 
 import sys
 import os

@@ -1,3 +1,11 @@
+"""
+Filename: utilities.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Script with different functionalities used in the pandapipes functions.
+
+"""
+
 import time
 import logging
 import sys

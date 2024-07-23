@@ -1,4 +1,11 @@
-# Erstellt von Jonas Pfeiffer
+"""
+Filename: simple_pandapipes_test.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Script for testing the pandapipes net simulation functions.
+
+"""
+
 import time
 import logging
 import sys

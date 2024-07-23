@@ -1,4 +1,10 @@
-### Erstellt von Jonas Pfeiffer ###
+"""
+Filename: results_pdf.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Script for generating the results PDF of the calculation results.
+"""
+
 from io import BytesIO
 
 import PyPDF2

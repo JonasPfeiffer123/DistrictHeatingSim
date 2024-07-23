@@ -1,3 +1,11 @@
+"""
+Filename: MST_processing.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains the functions needed to post-process the MST-results
+
+"""
+
 import geopandas as gpd
 from shapely.geometry import LineString, Point
 from shapely.ops import nearest_points
@@ -9,6 +17,17 @@ import matplotlib.pyplot as plt
 import os
 
 def add_intermediate_points(points_gdf, street_layer, max_distance=200, point_interval=10):
+    """_summary_
+
+    Args:
+        points_gdf (_type_): _description_
+        street_layer (_type_): _description_
+        max_distance (int, optional): _description_. Defaults to 200.
+        point_interval (int, optional): _description_. Defaults to 10.
+
+    Returns:
+        _type_: _description_
+    """
     new_points = []
     for point in points_gdf.geometry:
         # Sicherstellen, dass der Punkt eine valide Geometrie ist
@@ -42,6 +61,18 @@ def add_intermediate_points(points_gdf, street_layer, max_distance=200, point_in
     return pd.concat([points_gdf, new_points_gdf], ignore_index=True)
 
 def adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf, threshold=5, output_dir="iterations"):
+    """_summary_
+
+    Args:
+        mst_gdf (_type_): _description_
+        street_layer (_type_): _description_
+        all_end_points_gdf (_type_): _description_
+        threshold (int, optional): _description_. Defaults to 5.
+        output_dir (str, optional): _description_. Defaults to "iterations".
+
+    Returns:
+        _type_: _description_
+    """
     iteration = 0
     changes_made = True
 
@@ -103,23 +134,21 @@ def adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf, threshol
             print("Reached iteration limit, breaking out of the loop.")
             break
 
-        # Speichern Sie den Zwischenstand nach jeder Iteration
-        #output_path = os.path.join(output_dir, f"mst_gdf_iteration_{iteration}.geojson")
-        #mst_gdf.to_file(output_path, driver="GeoJSON")
-        #print(f"Saved intermediate network to {output_path}")
-
-        # Plotten Sie das aktuelle Netzwerk
-        #fig, ax = plt.subplots(figsize=(10, 10))
-        #mst_gdf.plot(ax=ax, color='blue')
-        #plt.title(f'Network at Iteration {iteration}')
-        #plt.show()
-
     mst_gdf = simplify_network(mst_gdf)
     mst_gdf = extract_unique_points_and_create_mst(mst_gdf, all_end_points_gdf)
 
     return mst_gdf
 
 def simplify_network(gdf, threshold=10):
+    """_summary_
+
+    Args:
+        gdf (_type_): _description_
+        threshold (int, optional): _description_. Defaults to 10.
+
+    Returns:
+        _type_: _description_
+    """
     points = defaultdict(list)  # Dictionary zur Speicherung von Punkten und den zugehörigen Linienindices
     simplified_lines = []
 
@@ -154,6 +183,15 @@ def simplify_network(gdf, threshold=10):
     return gpd.GeoDataFrame(geometry=simplified_lines)
 
 def extract_unique_points_and_create_mst(gdf, all_end_points_gdf):
+    """_summary_
+
+    Args:
+        gdf (_type_): _description_
+        all_end_points_gdf (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     # Extrahiere eindeutige Punkte aus den Liniengeometrien
     all_points = []
     for line in gdf.geometry:
@@ -178,6 +216,14 @@ def extract_unique_points_and_create_mst(gdf, all_end_points_gdf):
 
 # MST network generation
 def generate_mst(points):
+    """_summary_
+
+    Args:
+        points (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     g = nx.Graph()
     for i, point1 in points.iterrows():
         for j, point2 in points.iterrows():

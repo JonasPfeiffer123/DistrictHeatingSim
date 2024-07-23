@@ -1,3 +1,10 @@
+"""
+Filename: heat_requirement_BDEW.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains functions to calculate heat demand profiles with the BDEW SLP methods
+"""
+
 import pandas as pd
 import numpy as np
 

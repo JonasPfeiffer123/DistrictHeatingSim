@@ -1,3 +1,11 @@
+"""
+Filename: heat_generator_classes.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains the heat generator classes as well as the calculation and optimization functions for the heating system.
+
+"""
+
 import numpy as np
 from math import pi, sqrt
 
@@ -9,6 +17,11 @@ from heat_generators.Photovoltaik import Calculate_PV
 
 # Wirtschaftlichkeitsberechnung für technische Anlagen nach VDI 2067
 def annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand=0, q=1.05, r=1.03, T=20, Energiebedarf=0, Energiekosten=0, E1=0, stundensatz=45):
+    """_summary_
+
+    Returns:
+        _type_: _description_
+    """
     if T > TN:
         n = T // TN
     else:
@@ -52,6 +65,8 @@ def annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand=0, q=1.05, r=1.03, T=20, E
     return -A_N
 
 class HeatPump:
+    """_summary_
+    """
     def __init__(self, name, spezifische_Investitionskosten_WP=1000):
         self.name = name
         self.spezifische_Investitionskosten_WP = spezifische_Investitionskosten_WP
@@ -115,6 +130,11 @@ class HeatPump:
         return WGK_Gesamt_a
 
 class RiverHeatPump(HeatPump):
+    """_summary_
+
+    Args:
+        HeatPump (_type_): _description_
+    """
     def __init__(self, name, Wärmeleistung_FW_WP, Temperatur_FW_WP, dT=0, spez_Investitionskosten_Flusswasser=1000, spezifische_Investitionskosten_WP=1000, min_Teillast=0.2):
         super().__init__(name, spezifische_Investitionskosten_WP=spezifische_Investitionskosten_WP)
         self.Wärmeleistung_FW_WP = Wärmeleistung_FW_WP
@@ -966,12 +986,45 @@ class Photovoltaics:
         return results
 
 def calculate_factors(Kapitalzins, Preissteigerungsrate, Betrachtungszeitraum):
+    """_summary_
+
+    Args:
+        Kapitalzins (_type_): _description_
+        Preissteigerungsrate (_type_): _description_
+        Betrachtungszeitraum (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     q = 1 + Kapitalzins / 100
     r = 1 + Preissteigerungsrate / 100
     T = Betrachtungszeitraum
     return q, r, T
 
 def Berechnung_Erzeugermix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, variables=[], variables_order=[], kapitalzins=5, preissteigerungsrate=3, betrachtungszeitraum=20, stundensatz=45):
+    """_summary_
+
+    Args:
+        tech_order (_type_): _description_
+        initial_data (_type_): _description_
+        start (_type_): _description_
+        end (_type_): _description_
+        TRY (_type_): _description_
+        COP_data (_type_): _description_
+        Gaspreis (_type_): _description_
+        Strompreis (_type_): _description_
+        Holzpreis (_type_): _description_
+        BEW (_type_): _description_
+        variables (list, optional): _description_. Defaults to [].
+        variables_order (list, optional): _description_. Defaults to [].
+        kapitalzins (int, optional): _description_. Defaults to 5.
+        preissteigerungsrate (int, optional): _description_. Defaults to 3.
+        betrachtungszeitraum (int, optional): _description_. Defaults to 20.
+        stundensatz (int, optional): _description_. Defaults to 45.
+
+    Returns:
+        _type_: _description_
+    """
     q, r, T = calculate_factors(kapitalzins, preissteigerungsrate, betrachtungszeitraum)
     time_steps, Last_L, VLT_L, RLT_L = initial_data
 
@@ -1080,6 +1133,28 @@ def Berechnung_Erzeugermix(tech_order, initial_data, start, end, TRY, COP_data, 
     return general_results
 
 def optimize_mix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, kapitalzins, preissteigerungsrate, betrachtungszeitraum, stundensatz, weights):
+    """_summary_
+
+    Args:
+        tech_order (_type_): _description_
+        initial_data (_type_): _description_
+        start (_type_): _description_
+        end (_type_): _description_
+        TRY (_type_): _description_
+        COP_data (_type_): _description_
+        Gaspreis (_type_): _description_
+        Strompreis (_type_): _description_
+        Holzpreis (_type_): _description_
+        BEW (_type_): _description_
+        kapitalzins (_type_): _description_
+        preissteigerungsrate (_type_): _description_
+        betrachtungszeitraum (_type_): _description_
+        stundensatz (_type_): _description_
+        weights (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     initial_values = []
     variables_order = []
     bounds = []

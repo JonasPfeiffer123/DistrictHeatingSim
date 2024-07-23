@@ -1,3 +1,11 @@
+"""
+Filename: roof_area.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains functions to calculate the roof area of LOD2 data
+
+"""
+
 import os
 import sys
 import geopandas as gpd

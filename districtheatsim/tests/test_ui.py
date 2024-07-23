@@ -1,5 +1,12 @@
-from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QGroupBox, QHBoxLayout,
-                             QPushButton, QLabel, QComboBox, QLineEdit, QTextEdit)
+"""
+Filename: test_ui.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Test PyQt5 GUI.
+
+"""
+
+from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QGroupBox, QPushButton, QComboBox, QLineEdit, QTextEdit)
 
 class ExampleDialog(QDialog):
     def __init__(self):

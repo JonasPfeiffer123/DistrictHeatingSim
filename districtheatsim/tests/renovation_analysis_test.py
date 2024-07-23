@@ -1,3 +1,11 @@
+"""
+Filename: renovation_analysis_test.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Script for testing the calculation of renovation costs of buildings with TABULA data.
+
+"""
+
 import numpy as np
 import numpy_financial as npf
 import matplotlib.pyplot as plt

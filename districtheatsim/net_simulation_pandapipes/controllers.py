@@ -1,3 +1,11 @@
+"""
+Filename: controllers.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains two custom pandapipes Controllers for the net simulation.
+
+"""
+
 from pandapower.control.basic_controller import BasicCtrl
 from math import pi
 import numpy as np

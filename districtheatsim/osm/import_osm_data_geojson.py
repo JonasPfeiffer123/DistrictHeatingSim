@@ -1,3 +1,11 @@
+"""
+Filename: import_osm_data_geojson.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Script with OSM download functionality.
+
+"""
+
 import overpy
 import json
 from decimal import Decimal

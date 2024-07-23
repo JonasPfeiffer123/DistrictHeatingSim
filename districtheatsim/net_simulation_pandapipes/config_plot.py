@@ -1,3 +1,11 @@
+"""
+Filename: config_plot.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains the config_plot function for plotting the results of the initialised pandapipes net.
+
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import pandapipes.plotting as pp_plot
@@ -6,6 +14,22 @@ import geopandas as gpd
 from shapely.geometry import Point
 
 def config_plot(net, ax, show_junctions=True, show_pipes=True, show_heat_consumers=True, show_pump=True, show_plot=False, show_basemap=True, map_type="OSM"):
+    """_summary_
+
+    Args:
+        net (_type_): pandapipes net
+        ax (_type_): _description_
+        show_junctions (bool, optional): _description_. Defaults to True.
+        show_pipes (bool, optional): _description_. Defaults to True.
+        show_heat_consumers (bool, optional): _description_. Defaults to True.
+        show_pump (bool, optional): _description_. Defaults to True.
+        show_plot (bool, optional): _description_. Defaults to False.
+        show_basemap (bool, optional): _description_. Defaults to True.
+        map_type (str, optional): _description_. Defaults to "OSM".
+
+    Returns:
+        _type_: _description_
+    """
     ax.clear()  # Vorherige Plots bereinigen
 
     data_annotations = []  # Zum Speichern der Annotations-Referenzen und Daten

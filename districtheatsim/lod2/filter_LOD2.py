@@ -1,3 +1,11 @@
+"""
+Filename: filter_LOD2.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-23
+Description: Contains functions to filter LOD2 data
+
+"""
+
 import numpy as np
 import pandas as pd
 import geopandas as gpd
