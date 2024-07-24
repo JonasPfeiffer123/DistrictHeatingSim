@@ -86,17 +86,17 @@ class HeatSystemDesignGUI(QMainWindow):
         self.projectTab = ProjectTab(self.data_manager)
         self.visTab = VisualizationTab(self.data_manager)
         self.buildingTab = BuildingTab(self.data_manager, self.visTab, self)
-        self.renovationTab = RenovationTab(self.data_manager)
         self.calcTab = CalculationTab(self.data_manager, self)
         self.mixDesignTab = MixDesignTab(self.data_manager, self)
+        self.renovationTab = RenovationTab(self.data_manager)
         self.comparisonTab = ComparisonTab(self.data_manager)
 
         tabWidget.addTab(self.projectTab, "Projektdefinition")
         tabWidget.addTab(self.visTab, "Verarbeitung Geodaten")
         tabWidget.addTab(self.buildingTab, "Gebäudedefinition")
-        tabWidget.addTab(self.renovationTab, "Gebäudesanierung")
         tabWidget.addTab(self.calcTab, "Wärmenetzberechnung")
         tabWidget.addTab(self.mixDesignTab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
+        tabWidget.addTab(self.renovationTab, "Gebäudesanierung")
         tabWidget.addTab(self.comparisonTab, "Variantenvergleich")
 
         if self.data_manager.project_folder:
@@ -142,7 +142,6 @@ class HeatSystemDesignGUI(QMainWindow):
         if os.path.exists(qss_path):
             with open(qss_path, 'r') as file:
                 self.setStyleSheet(file.read())
-            print(f"Light theme applied from {qss_path}")
         else:
             print(f"Stylesheet {qss_path} not found.")
 
@@ -151,7 +150,6 @@ class HeatSystemDesignGUI(QMainWindow):
         if os.path.exists(qss_path):
             with open(qss_path, 'r') as file:
                 self.setStyleSheet(file.read())
-            print(f"Dark theme applied from {qss_path}")
         else:
             print(f"Stylesheet {qss_path} not found.")
 
