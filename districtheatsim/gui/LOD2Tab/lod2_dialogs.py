@@ -1,8 +1,8 @@
 """
-Filename: building_dialogs.py
+Filename: lod2_dialogs.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-07-23
-Description: Contains the Dialogs for the BuildingTab.
+Description: Contains the Dialogs for the LOD2Tab.
 """
 
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QFileDialog

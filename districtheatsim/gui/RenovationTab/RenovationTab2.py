@@ -37,7 +37,15 @@ class RenovationTab2(QWidget):
     def __init__(self, data_manager, parent=None):
         super().__init__(parent)
         self.data_manager = data_manager
-        
+
+        # Connect to the data manager signal
+        self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
+        # Update the base path immediately with the current project folder
+        self.updateDefaultPath(self.data_manager.project_folder)
+
+        self.initUI()
+    
+    def initUI(self):
         self.setWindowTitle("Sanierungsanalyse")
         self.setGeometry(100, 100, 1200, 800)
         
@@ -134,6 +142,9 @@ class RenovationTab2(QWidget):
         main_layout.addLayout(right_layout)
         layout.addLayout(main_layout)
 
+    def updateDefaultPath(self, new_base_path):
+        self.base_path = new_base_path
+        
     @pyqtSlot()
     def run_analysis(self):
         try:

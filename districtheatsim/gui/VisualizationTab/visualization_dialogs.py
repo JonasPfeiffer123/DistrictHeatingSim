@@ -222,7 +222,8 @@ class DownloadOSMDataDialog(QDialog):
             {"highway": "secondary"},
             {"highway": "tertiary"},
             {"highway": "residential"},
-            {"highway": "living_street"}
+            {"highway": "living_street"},
+            {"highway": "service"},
         ]
 
         self.initUI()
@@ -752,10 +753,6 @@ class GeocodeAddressesDialog(QDialog):
         self.inputfilenameLineEdit, inputFileButton = self.createFileInput(f"{self.base_path}\Gebäudedaten\data_input.csv", font)
         layout.addLayout(self.createFileInputLayout("Eingabedatei:", self.inputfilenameLineEdit, inputFileButton, font))
         
-        # Eingabefeld für die Ausgabedatei
-        self.outputfilenameLineEdit, outputFileButton = self.createFileInput(f"{self.base_path}\Gebäudedaten\data_output_ETRS89.csv", font)
-        layout.addLayout(self.createFileInputLayout("Ausgabedatei:", self.outputfilenameLineEdit, outputFileButton, font))
-        
         # Buttons für OK und Abbrechen in einem horizontalen Layout
         buttonLayout = QHBoxLayout()
         self.okButton = QPushButton("OK", self)
@@ -798,18 +795,17 @@ class GeocodeAddressesDialog(QDialog):
     def onAccept(self):
         # Daten sammeln
         self.inputfilename = self.inputfilenameLineEdit.text()
-        self.outputfilename = self.outputfilenameLineEdit.text()
         
         # Abfrage erstellen und Daten herunterladen
-        self.geocodeAdresses(self.inputfilename, self.outputfilename)
+        self.geocodeAdresses(self.inputfilename)
 
     # Die Methode des Dialogs, die die anderen Funktionen aufruft
-    def geocodeAdresses(self, inputfilename, outputfilename):
+    def geocodeAdresses(self, inputfilename):
         # Stellen Sie sicher, dass der vorherige Thread beendet wird
         if hasattr(self, 'geocodingThread') and self.geocodingThread.isRunning():
             self.geocodingThread.terminate()
             self.geocodingThread.wait()
-        self.geocodingThread = GeocodingThread(inputfilename, outputfilename)
+        self.geocodingThread = GeocodingThread(inputfilename)
         self.geocodingThread.calculation_done.connect(self.on_generation_done)
         self.geocodingThread.calculation_error.connect(self.on_generation_error)
         self.geocodingThread.start()

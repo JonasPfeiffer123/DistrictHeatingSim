@@ -358,7 +358,7 @@ class MixDesignTab(QWidget):
             QMessageBox.warning(self, "Keine Daten vorhanden", "Es sind keine Berechnungsergebnisse oder technischen Objekte vorhanden, die gespeichert werden könnten.")
             return
         
-        filename, _ = QFileDialog.getSaveFileName(self, 'JSON speichern als...', filter='JSON Files (*.json)')
+        filename, _ = QFileDialog.getSaveFileName(self, 'JSON speichern als...', self.base_path, filter='JSON Files (*.json)')
         if filename:
             # Erstelle eine Kopie der Ergebnisse und tech_objects
             data_to_save = {
@@ -378,7 +378,7 @@ class MixDesignTab(QWidget):
 
 
     def load_results_JSON(self):
-        filename, _ = QFileDialog.getOpenFileName(self, 'JSON Datei laden...', filter='JSON Files (*.json)')
+        filename, _ = QFileDialog.getOpenFileName(self, 'JSON Datei laden...', self.base_path, filter='JSON Files (*.json)')
         if filename:
             try:
                 # Lade die JSON-Datei
@@ -460,7 +460,7 @@ class MixDesignTab(QWidget):
                 raise e
 
     def on_export_pdf_clicked(self):
-        filename, _ = QFileDialog.getSaveFileName(self, 'PDF speichern als...', filter='PDF Files (*.pdf)')
+        filename, _ = QFileDialog.getSaveFileName(self, 'PDF speichern als...', self.base_path, filter='PDF Files (*.pdf)')
         if filename:
             try:
                 create_pdf(self, filename)

@@ -9,13 +9,26 @@ import csv
 import json
 import shutil
 import os
+import sys
 
 from PyQt5.QtCore import pyqtSignal, QDir
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QMenuBar, QAction, QProgressBar, \
     QLabel, QTableWidget, QHBoxLayout, QPushButton, QFileDialog, QTableWidgetItem, QMessageBox, \
     QFileSystemModel, QTreeView, QSplitter, QDialog
 
-from gui.ProjectTab.project_dialogs import GeocodeAddressesDialog
+from gui.threads import GeocodingThread
+
+# defines the map path
+def get_resource_path(relative_path):
+    """ Get the absolute path to the resource, works for dev and for PyInstaller """
+    if getattr(sys, 'frozen', False):
+        # Wenn die Anwendung eingefroren ist, ist der Basispfad der Temp-Ordner, wo PyInstaller alles extrahiert
+        base_path = sys._MEIPASS
+    else:
+        # Wenn die Anwendung nicht eingefroren ist, ist der Basispfad der Ordner, in dem die Hauptdatei liegt
+        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    return os.path.join(base_path, relative_path)
 
 # Tab class
 class ProjectTab(QWidget):
@@ -197,7 +210,7 @@ class ProjectTab(QWidget):
 
     def createCsvFromGeoJson(self):
         try:
-            geojson_file_path, _ = QFileDialog.getOpenFileName(self, "geoJSON auswählen", "", "All Files (*)")
+            geojson_file_path, _ = QFileDialog.getOpenFileName(self, "geoJSON auswählen", self.base_path, "All Files (*)")
             if not geojson_file_path:
                 return  # Nichts tun, wenn keine Datei ausgewählt wurde
             
@@ -306,6 +319,26 @@ class ProjectTab(QWidget):
         self.updateDefaultPath(path)
 
     def openGeocodeAdressesDialog(self):
-        dialog = GeocodeAddressesDialog(self.base_path, self)
-        if dialog.exec_() == QDialog.Accepted:
-            pass
+        fname, _ = QFileDialog.getOpenFileName(self, 'CSV-Koordinaten laden', self.base_path, 'CSV Files (*.csv);;All Files (*)')
+        if fname:
+            # Abfrage erstellen und Daten herunterladen
+            self.geocodeAdresses(fname)
+
+    # Die Methode des Dialogs, die die anderen Funktionen aufruft
+    def geocodeAdresses(self, inputfilename):
+        # Stellen Sie sicher, dass der vorherige Thread beendet wird
+        if hasattr(self, 'geocodingThread') and self.geocodingThread.isRunning():
+            self.geocodingThread.terminate()
+            self.geocodingThread.wait()
+        self.geocodingThread = GeocodingThread(inputfilename)
+        self.geocodingThread.calculation_done.connect(self.on_generation_done_geocode_Adress)
+        self.geocodingThread.calculation_error.connect(self.on_generation_error_geocode_Adress)
+        self.geocodingThread.start()
+        self.progressBar.setRange(0, 0)  # Aktiviert den indeterministischen Modus
+
+    def on_generation_done_geocode_Adress(self, fname):
+        self.progressBar.setRange(0, 1)
+
+    def on_generation_error_geocode_Adress(self, error_message):
+        QMessageBox.critical(self, "Fehler beim Geocoding", str(error_message))
+        self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus

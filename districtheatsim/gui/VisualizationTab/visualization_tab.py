@@ -21,7 +21,7 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView
 import folium
 
 from gui.VisualizationTab.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog, SpatialAnalysisDialog, GeocodeAddressesDialog
-from gui.threads import NetGenerationThread, FileImportThread
+from gui.threads import NetGenerationThread, FileImportThread, GeocodingThread
 
 # Tab class
 class VisualizationTab(QWidget):
@@ -107,9 +107,30 @@ class VisualizationTab(QWidget):
         calculation_tab.data_added.connect(self.loadNetData)
     
     def openGeocodeAdressesDialog(self):
-        dialog = GeocodeAddressesDialog(self.base_path, self)
-        if dialog.exec_() == QDialog.Accepted:
-            pass
+        fname, _ = QFileDialog.getOpenFileName(self, 'CSV-Koordinaten laden', self.base_path, 'CSV Files (*.csv);;All Files (*)')
+        if fname:
+            # Abfrage erstellen und Daten herunterladen
+            self.geocodeAdresses(fname)
+
+    # Die Methode des Dialogs, die die anderen Funktionen aufruft
+    def geocodeAdresses(self, inputfilename):
+        # Stellen Sie sicher, dass der vorherige Thread beendet wird
+        if hasattr(self, 'geocodingThread') and self.geocodingThread.isRunning():
+            self.geocodingThread.terminate()
+            self.geocodingThread.wait()
+        self.geocodingThread = GeocodingThread(inputfilename)
+        self.geocodingThread.calculation_done.connect(self.on_generation_done_geocode_Adress)
+        self.geocodingThread.calculation_error.connect(self.on_generation_error_geocode_Adress)
+        self.geocodingThread.start()
+        self.progressBar.setRange(0, 0)  # Aktiviert den indeterministischen Modus
+
+    def on_generation_done_geocode_Adress(self, fname):
+        self.progressBar.setRange(0, 1)
+        self.loadCsvCoordinates(fname)
+
+    def on_generation_error_geocode_Adress(self, error_message):
+        QMessageBox.critical(self, "Fehler beim Geocoding", str(error_message))
+        self.progressBar.setRange(0, 1)  # Deaktiviert den indeterministischen Modus
 
     def openDownloadOSMDataDialog(self):
         dialog = DownloadOSMDataDialog(self.base_path, self)
@@ -167,7 +188,7 @@ class VisualizationTab(QWidget):
         self.progressBar.setRange(0, 1)
 
     def importNetData(self):
-        fnames, _ = QFileDialog.getOpenFileNames(self, 'Netzdaten importieren', '', 'GeoJSON Files (*.geojson);;All Files (*)')
+        fnames, _ = QFileDialog.getOpenFileNames(self, 'Netzdaten importieren', self.base_path, 'GeoJSON Files (*.geojson);;All Files (*)')
         if fnames:
             self.loadNetData(fnames)
     
@@ -310,11 +331,14 @@ class VisualizationTab(QWidget):
         )
 
         gdf.to_file(geojson_file_path, driver='GeoJSON')
-        print(f"GeoJSON-Datei erfolgreich erstellt: {geojson_file_path}")
 
-    def loadCsvCoordinates(self):
-        fname, _ = QFileDialog.getOpenFileName(self, 'CSV-Koordinaten laden', '', 'CSV Files (*.csv);;All Files (*)')
+    def loadCsvCoordinates(self, fname=None):
+        if not fname:
+            fname, _ = QFileDialog.getOpenFileName(self, 'CSV-Koordinaten laden', self.base_path, 'CSV Files (*.csv);;All Files (*)')
         if fname:
-            geojson_path = f"{self.base_path}\Gebäudedaten\Koordinaten.geojson"
+            # Extract the base name of the selected file and change the extension to .geojson
+            base_name = os.path.splitext(os.path.basename(fname))[0]
+            geojson_path = os.path.join(self.base_path, 'Gebäudedaten', f"{base_name}.geojson")
+            
             self.createGeoJsonFromCsv(fname, geojson_path)
             self.addGeoJsonLayer(self.m, [geojson_path], color=None)

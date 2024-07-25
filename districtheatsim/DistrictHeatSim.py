@@ -12,10 +12,11 @@ import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QTabWidget, QMenuBar, QAction, QFileDialog, QLabel, QMessageBox, QInputDialog
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal, QTimer
 
 from gui.ProjectTab.project_tab import ProjectTab
 from gui.VisualizationTab.visualization_tab import VisualizationTab
+from gui.LOD2Tab.lod2_tab import LOD2Tab
 from gui.BuildingTab.building_tab import BuildingTab
 from gui.RenovationTab.RenovationTab import RenovationTab
 from gui.CalculationTab.calculation_tab import CalculationTab
@@ -30,6 +31,41 @@ def get_resource_path(relative_path):
     else:
         base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'DistrictHeatSim')
     return os.path.join(base_path, relative_path)
+
+import json
+
+def get_config_path():
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+
+def load_config():
+    config_path = get_config_path()
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as file:
+            return json.load(file)
+    return {}
+
+def save_config(config):
+    config_path = get_config_path()
+    with open(config_path, 'w') as file:
+        json.dump(config, file, indent=4)
+
+def get_last_project():
+    config = load_config()
+    return config.get('last_project', '')
+
+def set_last_project(path):
+    config = load_config()
+    config['last_project'] = path
+    if 'recent_projects' not in config:
+        config['recent_projects'] = []
+    if path not in config['recent_projects']:
+        config['recent_projects'].insert(0, path)
+        config['recent_projects'] = config['recent_projects'][:5]  # Save only the last 5 projects
+    save_config(config)
+
+def get_recent_projects():
+    config = load_config()
+    return config.get('recent_projects', [])
 
 class CentralDataManager(QObject):
     project_folder_changed = pyqtSignal(str)
@@ -69,6 +105,12 @@ class HeatSystemDesignGUI(QMainWindow):
         self.data_manager.project_folder_changed.connect(self.calcTab.updateDefaultPath)
         self.data_manager.project_folder_changed.connect(self.mixDesignTab.updateDefaultPath)
 
+        # Ensure the window is maximized after all initializations
+        self.showMaximized()
+
+        # Load the last opened project after a short delay
+        QTimer.singleShot(100, self.load_last_project)
+
     def initUI(self):
         self.setWindowTitle("DistrictHeatSim")
         self.setGeometry(100, 100, 800, 600)
@@ -85,7 +127,8 @@ class HeatSystemDesignGUI(QMainWindow):
 
         self.projectTab = ProjectTab(self.data_manager)
         self.visTab = VisualizationTab(self.data_manager)
-        self.buildingTab = BuildingTab(self.data_manager, self.visTab, self)
+        self.lod2Tab = LOD2Tab(self.data_manager, self.visTab, self)
+        #self.buildingTab = BuildingTab(self.data_manager, self)
         self.calcTab = CalculationTab(self.data_manager, self)
         self.mixDesignTab = MixDesignTab(self.data_manager, self)
         self.renovationTab = RenovationTab(self.data_manager)
@@ -93,7 +136,8 @@ class HeatSystemDesignGUI(QMainWindow):
 
         tabWidget.addTab(self.projectTab, "Projektdefinition")
         tabWidget.addTab(self.visTab, "Verarbeitung Geodaten")
-        tabWidget.addTab(self.buildingTab, "Gebäudedefinition")
+        tabWidget.addTab(self.lod2Tab, "Verarbeitung LOD2-Daten")
+        #tabWidget.addTab(self.buildingTab, "Wärmebedarf Gebäude")
         tabWidget.addTab(self.calcTab, "Wärmenetzberechnung")
         tabWidget.addTab(self.mixDesignTab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
         tabWidget.addTab(self.renovationTab, "Gebäudesanierung")
@@ -111,10 +155,25 @@ class HeatSystemDesignGUI(QMainWindow):
 
         fileMenu = self.menubar.addMenu('Datei')
 
-        chooseProjectFolderAction = QAction('Projektordner festlegen', self)
-        createNewProjectFolderAction = QAction('Neues Projekt erstellen', self)
-        fileMenu.addAction(chooseProjectFolderAction)
-        fileMenu.addAction(createNewProjectFolderAction)
+        createNewProjectAction = QAction('Neues Projekt erstellen', self)
+        chooseProjectAction = QAction('Projekt öffnen', self)
+        saveProjectAction = QAction('Projekt speichern', self)
+        fileMenu.addAction(createNewProjectAction)
+        fileMenu.addAction(chooseProjectAction)
+        fileMenu.addAction(saveProjectAction)
+
+        # Always add the recent projects menu
+        recentMenu = fileMenu.addMenu('Zuletzt geöffnet')
+        recent_projects = get_recent_projects()
+        if recent_projects:
+            for project in recent_projects:
+                action = QAction(project, self)
+                action.triggered.connect(lambda checked, p=project: self.setProjectFolderPath(p))
+                recentMenu.addAction(action)
+        else:
+            no_recent_action = QAction('Keine kürzlich geöffneten Projekte', self)
+            no_recent_action.setEnabled(False)
+            recentMenu.addAction(no_recent_action)
 
         dataMenu = self.menubar.addMenu('Datenbasis')
         chooseTemperatureDataAction = QAction('Temperaturdaten festlegen', self)
@@ -130,8 +189,10 @@ class HeatSystemDesignGUI(QMainWindow):
 
         self.layout1.addWidget(self.menubar)
 
-        chooseProjectFolderAction.triggered.connect(self.openExistingProject)
-        createNewProjectFolderAction.triggered.connect(self.createNewProject)
+        createNewProjectAction.triggered.connect(self.createNewProject)
+        chooseProjectAction.triggered.connect(self.openExistingProject)
+        saveProjectAction.triggered.connect(self.saveExistingProject)
+
         chooseTemperatureDataAction.triggered.connect(self.openTemperatureDataSelection)
         createCOPDataAction.triggered.connect(self.openCOPDataSelection)
         lightThemeAction.triggered.connect(self.applyLightTheme)
@@ -173,10 +234,47 @@ class HeatSystemDesignGUI(QMainWindow):
         if folder_path:
             self.setProjectFolderPath(folder_path)
 
+        # Projektergebnisse laden
+        # die einzelnen Ladefunktionen der Projekttabs nacheinander aufrufen
+        # Netz in Karte laden
+        # Koordinaten in Karte laden
+        #self.visTab.loadNetData()
+        
+        # Pandapipes Netz laden
+        self.calcTab.loadNet()
+
+        # Pandapipes Berechnungsergebnisse Zeitreihe laden
+        self.calcTab.load_net_results()
+
+        # Erzeugerrechnung Ergebnisse laden
+        self.mixDesignTab.load_results_JSON()
+
+        # ...
+
+
+    def saveExistingProject(self):
+        # Projektergebnisse speichern ...
+        # die einzelnen Speicherfunktionen der Projekttabs nacheinander aufrufen, wenn vorhanden
+
+        # Pandapipes Netz speichern
+        self.calcTab.saveNet()
+
+        # dimensioniertes geoJSON Netz speichern
+        self.calcTab.exportNetGeoJSON()
+
+        # Erzeugerrechnung Ergebnisse speichern
+        self.mixDesignTab.save_results_JSON()
+
+    def load_last_project(self):
+        last_project = get_last_project()
+        if last_project and os.path.exists(last_project):
+            self.setProjectFolderPath(last_project)
+
     def setProjectFolderPath(self, path):
         self.projectFolderPath = path
         self.data_manager.set_project_folder(path)
         self.folderLabel.setText(f"Ausgewählter Projektordner: {path}")
+        set_last_project(path)  # Save the last opened project
 
     def openTemperatureDataSelection(self):
         if self.temperatureDataDialog.exec_():

@@ -52,6 +52,14 @@ class RenovationTab1(QWidget):
         super().__init__(parent)
         self.data_manager = data_manager
 
+        # Connect to the data manager signal
+        self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
+        # Update the base path immediately with the current project folder
+        self.updateDefaultPath(self.data_manager.project_folder)
+
+        self.initUI()
+    
+    def initUI(self):
         self.setWindowTitle("Sanierungsanalyse")
         self.setGeometry(100, 100, 1200, 800)
 
@@ -163,8 +171,11 @@ class RenovationTab1(QWidget):
         main_layout.addLayout(right_layout)
         layout.addLayout(main_layout)
 
+    def updateDefaultPath(self, new_base_path):
+        self.base_path = new_base_path
+        
     def load_ist_geojson(self):
-        path, _ = QFileDialog.getOpenFileName(self, "IST-Stand GeoJSON laden", "", "GeoJSON-Dateien (*.geojson)")
+        path, _ = QFileDialog.getOpenFileName(self, "IST-Stand GeoJSON laden", self.base_path, "GeoJSON-Dateien (*.geojson)")
         if path:
             try:
                 self.ist_geojson = gpd.read_file(path)
@@ -180,7 +191,7 @@ class RenovationTab1(QWidget):
                 QMessageBox.critical(self, "Fehler", f"Fehler beim Laden der IST-Stand GeoJSON:\n{''.join(tb_str)}")
 
     def load_saniert_geojson(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Sanierten Stand GeoJSON laden", "", "GeoJSON-Dateien (*.geojson)")
+        path, _ = QFileDialog.getOpenFileName(self, "Sanierten Stand GeoJSON laden", self.base_path, "GeoJSON-Dateien (*.geojson)")
         if path:
             try:
                 self.saniert_geojson = gpd.read_file(path)

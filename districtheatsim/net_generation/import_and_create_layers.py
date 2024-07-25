@@ -56,7 +56,7 @@ def generate_lines(layer, distance, angle_degrees, df=None):
             'Adresse': None,
             'Wärmebedarf': None,
             'Gebäudetyp': None,
-            'WW_Anteil': None,
+            'WW_Anteil (%)': None,
             'Typ_Heizflächen': None,
             'VLT_max': None,
             'Steigung_Heizkurve': None,
@@ -73,7 +73,7 @@ def generate_lines(layer, distance, angle_degrees, df=None):
                 attr['Adresse'] = match['Adresse'].iloc[0]
                 attr['Wärmebedarf'] = match['Wärmebedarf'].iloc[0]
                 attr['Gebäudetyp'] = match['Gebäudetyp'].iloc[0]
-                attr['WW_Anteil'] = match['WW_Anteil'].iloc[0]
+                attr['WW_Anteil (%)'] = match['WW_Anteil (%)'].iloc[0]
                 attr['Typ_Heizflächen'] = match['Typ_Heizflächen'].iloc[0]
                 attr['VLT_max'] = match['VLT_max'].iloc[0]
                 attr['Steigung_Heizkurve'] = match['Steigung_Heizkurve'].iloc[0]

@@ -5,18 +5,22 @@ Date: 2024-07-23
 Description: Contains the geocoding functions necessary to geocode adresses.
 """
 
+import os
+import csv
+import tempfile
+import shutil
+
 from geopy.geocoders import Nominatim
 from pyproj import Transformer
-import csv
 
 def get_coordinates(address):
-    """_summary_
+    """Geocoding the Adress to coordinates and transforming them from EPSG:4326 to EPSG:25833 for higher accuracy
 
     Args:
-        address (_type_): _description_
+        address (str): Adress of the Building that is being geocoded
 
     Returns:
-        _type_: _description_
+        tuple: (UTM_X, UMT_Y) Koordinates
     """
     # Initialize the Geolocator
     geolocator = Nominatim(user_agent="district_heating")
@@ -39,36 +43,67 @@ def get_coordinates(address):
         print(f"An error occurred: {e}")
         return (None, None)
 
-def process_data(input_csv, output_csv):
-    """_summary_
+
+def process_data(input_csv):
+    """Processes the CSV file to add or update UTM_X and UTM_Y columns.
 
     Args:
-        input_csv (_type_): _description_
-        output_csv (_type_): _description_
+        input_csv (str): Path to the input CSV file.
     """
-    with open(input_csv, mode='r', encoding='utf-8') as infile, \
-        open(output_csv, mode='w', newline='', encoding='utf-8') as outfile:
-        reader = csv.reader(infile, delimiter=';')
-        writer = csv.writer(outfile, delimiter=';')
+    temp_fd, temp_path = tempfile.mkstemp()
+    os.close(temp_fd)
 
-        # Write the header
-        headers = next(reader)
-        # Adding UTM_X and UTM_Y columns to the header
-        writer.writerow(headers + ["UTM_X", "UTM_Y"])
+    try:
+        with open(input_csv, mode='r', encoding='utf-8') as infile, \
+            open(temp_path, mode='w', newline='', encoding='utf-8') as outfile:
+            reader = csv.reader(infile, delimiter=';')
+            writer = csv.writer(outfile, delimiter=';')
 
-        for row in reader:
-            # Extracting relevant data from the row
-            country, state, city, address, _, _, _, _, _, _, _ = row
-            full_address = f"{address}, {city}, {state}, {country}"
-            utm_x, utm_y = get_coordinates(full_address)
+            headers = next(reader)
 
-            # Writing the original data along with the transformed coordinates
-            writer.writerow(row + [utm_x, utm_y])
-    print("Processing completed.")
+            # Check if UTM_X and UTM_Y columns are already in the headers
+            if "UTM_X" in headers and "UTM_Y" in headers:
+                utm_x_index = headers.index("UTM_X")
+                utm_y_index = headers.index("UTM_Y")
+                headers_written = True
+                writer.writerow(headers)
+            else:
+                utm_x_index = len(headers)
+                utm_y_index = len(headers) + 1
+                headers_written = False
+                writer.writerow(headers + ["UTM_X", "UTM_Y"])
+
+            for row in reader:
+                country, state, city, address = row[0], row[1], row[2], row[3]
+                full_address = f"{address}, {city}, {state}, {country}"
+                utm_x, utm_y = get_coordinates(full_address)
+
+                if headers_written:
+                    # Ensure the row has enough columns before assignment
+                    if len(row) > utm_x_index:
+                        row[utm_x_index] = utm_x
+                    else:
+                        row.extend([utm_x])
+                    if len(row) > utm_y_index:
+                        row[utm_y_index] = utm_y
+                    else:
+                        row.extend([utm_y])
+                else:
+                    row.extend([utm_x, utm_y])
+
+                writer.writerow(row)
+
+        # Replace the original file with the updated temporary file using shutil.move
+        shutil.move(temp_path, input_csv)
+        print("Processing completed.")
+    finally:
+        try:
+            os.remove(temp_path)
+        except OSError:
+            pass
 
 
 #input_csv = "data_input.csv"
-#output_csv = "data_output_ETRS89.csv"
 
 # Calling the process_data function to read from input_csv and write to output_csv
-#process_data(input_csv, output_csv)
+#process_data(input_csv)

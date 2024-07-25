@@ -198,17 +198,18 @@ class GeocodingThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(Exception)
 
-    def __init__(self, inputfilename, outputfilename):
+    def __init__(self, inputfilename):
         super().__init__()
         self.inputfilename = inputfilename
-        self.outputfilename = outputfilename
 
     def run(self):
         try:
-            process_data(self.inputfilename, self.outputfilename)
-            self.calculation_done.emit(())
+            process_data(self.inputfilename)
+            self.calculation_done.emit((self.inputfilename))
         except Exception as e:
-            self.calculation_error.emit(e)
+            tb = traceback.format_exc()  # Gibt den kompletten Traceback als String zurück
+            error_message = f"Ein Fehler ist aufgetreten: {e}\n{tb}"
+            self.calculation_error.emit(Exception(error_message))
 
     def stop(self):
         if self.isRunning():
