@@ -416,7 +416,7 @@ class CalculationTab(QWidget):
         ax1.set_xlabel("Zeit")
         ax1.set_ylabel("Leistung in kW", color='b')
         ax1.tick_params('y', colors='b')
-        ax1.legend(loc='upper left')
+        ax1.legend(loc='upper center')
         ax1.plot
         ax1.grid()
         self.canvas4.draw()
@@ -559,7 +559,7 @@ class CalculationTab(QWidget):
         lines_left, labels_left = ax_left.get_legend_handles_labels()
         lines_right, labels_right = ax_right.get_legend_handles_labels()
         by_label = dict(zip(labels_left + labels_right, lines_left + lines_right))
-        ax_left.legend(by_label.values(), by_label.keys(), loc='upper left')
+        ax_left.legend(by_label.values(), by_label.keys(), loc='upper center')
 
         ax_left.grid()
         self.canvas3.draw()
