@@ -8,6 +8,7 @@ Description: Contains the BuildingTab.
 import json
 import numpy as np
 import pandas as pd
+from datetime import datetime
 
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -28,10 +29,16 @@ def convert_to_serializable(obj):
         return float(obj)
     elif isinstance(obj, np.ndarray):
         return obj.tolist()
+    elif isinstance(obj, pd.Timestamp):
+        return obj.isoformat()
     elif isinstance(obj, pd.DataFrame):
         return obj.to_dict()
     elif isinstance(obj, pd.Series):
         return obj.to_dict()
+    elif isinstance(obj, np.datetime64):
+        return str(obj)
+    elif isinstance(obj, datetime):
+        return obj.isoformat()
     else:
         return obj
 
@@ -238,7 +245,7 @@ class BuildingTab(QWidget):
                 return
 
             self.results[building_id] = {
-                #"zeitschritte": yearly_time_steps.tolist(),
+                "zeitschritte": [convert_to_serializable(ts) for ts in yearly_time_steps],
                 "außentemperatur": hourly_air_temperatures.tolist(),
                 "lastgang_wärme": total_heat_W[idx].tolist(),
                 "heating_wärme": heating_heat_W[idx].tolist(),

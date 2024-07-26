@@ -1,7 +1,7 @@
 """
 Filename: calculation_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-07-26
 Description: Contains the CalculationTab.
 """
 
@@ -23,7 +23,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QMes
 
 from net_simulation_pandapipes.pp_net_time_series_simulation import calculate_results, save_results_csv, import_results_csv
 
-from gui.CalculationTab.calculation_dialogs import HeatDemandEditDialog, NetGenerationDialog, ZeitreihenrechnungDialog
+from gui.CalculationTab.calculation_dialogs import NetGenerationDialog, ZeitreihenrechnungDialog
 from gui.threads import NetInitializationThread, NetCalculationThread
 from net_simulation_pandapipes.config_plot import config_plot
 from gui.checkable_combobox import CheckableComboBox
@@ -208,7 +208,6 @@ class CalculationTab(QWidget):
         try:
             dialog = NetGenerationDialog(
                 self.generateNetworkCallback,
-                self.editHeatDemandData,
                 self.base_path,
                 self
             )
@@ -225,19 +224,6 @@ class CalculationTab(QWidget):
             print(*args)
             # Übergeben Sie alle Argumente außer dem letzten (import_type)
             self.create_and_initialize_net_geojson(*args[:-1])
-    
-    ### Das kann weg ###
-    def editHeatDemandData(self, hastInput):
-        try:
-            self.gdf_HAST = gpd.read_file(hastInput)
-            if "Gebäudetyp" not in self.gdf_HAST.columns:
-                self.gdf_HAST["Gebäudetyp"] = "HMF"
-
-            self.dialog = HeatDemandEditDialog(self.gdf_HAST, hastInput, self)
-            self.dialog.exec_()  # Öffnet den Dialog als Modal
-        except Exception as e:
-            logging.error(f"Fehler beim Laden der HAST-Daten: {e}")
-            QMessageBox.critical(self, "Fehler", "Fehler beim Laden der HAST-Daten.")
 
     def opencalculateNetDialog(self):
         dialog = ZeitreihenrechnungDialog(self.base_path, self)
@@ -248,7 +234,7 @@ class CalculationTab(QWidget):
             self.output_filename = netCalcInputs["results_filename"]
             self.simulate_net()
       
-    def create_and_initialize_net_geojson(self, vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, calc_method, building_type, supply_temperature_heat_consumer, return_temperature_heat_consumer, supply_temperature, \
+    def create_and_initialize_net_geojson(self, vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, supply_temperature_heat_consumer, return_temperature_heat_consumer, supply_temperature, \
                                           flow_pressure_pump, lift_pressure_pump, netconfiguration, dT_RL, v_max_heat_consumer, building_temp_checked, \
                                           pipetype, v_max_pipe, material_filter, insulation_filter, DiameterOpt_ckecked):
         self.supply_temperature_heat_consumer = supply_temperature_heat_consumer
@@ -261,7 +247,7 @@ class CalculationTab(QWidget):
         self.DiameterOpt_ckecked = DiameterOpt_ckecked
         self.TRY_filename = self.parent.try_filename
         self.COP_filename = self.parent.cop_filename
-        args = (vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, self.TRY_filename, self.COP_filename, calc_method, building_type, return_temperature_heat_consumer, supply_temperature_heat_consumer, supply_temperature, flow_pressure_pump, lift_pressure_pump, \
+        args = (vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, self.COP_filename, return_temperature_heat_consumer, supply_temperature_heat_consumer, supply_temperature, flow_pressure_pump, lift_pressure_pump, \
                 netconfiguration, pipetype, v_max_pipe, material_filter, insulation_filter, self.base_path, self.dT_RL, self.v_max_heat_consumer, self.DiameterOpt_ckecked)
         kwargs = {"import_type": "GeoJSON"}
         self.initializationThread = NetInitializationThread(*args, **kwargs)

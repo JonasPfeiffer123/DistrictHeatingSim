@@ -1,7 +1,7 @@
 """
 Filename: pp_net_initialisation_geojson.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-07-26
 Description: Script for the net initialisation of geojson based net data.
 
 """
@@ -12,17 +12,18 @@ import pandapipes as pp
 import json
 import pandas as pd
 
-from heat_requirement import heat_requirement_VDI4655, heat_requirement_BDEW
 from net_simulation_pandapipes.utilities import create_controllers, correct_flow_directions, COP_WP, init_diameter_types
 
-def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, TRY_filename, COP_filename, calc_method, building_type, min_supply_temperature_building, \
+def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, COP_filename, min_supply_temperature_building, \
                        return_temperature_heat_consumer, supply_temperature_net, flow_pressure_pump, lift_pressure_pump, netconfiguration, pipetype, dT_RL, \
                        v_max_pipe, material_filter, insulation_filter, v_max_heat_consumer, mass_flow_secondary_producers=0.5):
-        
     vorlauf = gpd.read_file(vorlauf, driver='GeoJSON')
     ruecklauf = gpd.read_file(ruecklauf, driver='GeoJSON')
     hast = gpd.read_file(hast, driver='GeoJSON')
     erzeugeranlagen = gpd.read_file(erzeugeranlagen, driver='GeoJSON')
+
+    supply_temperature_net = np.max(supply_temperature_net)
+    print(f"Vorlauftemperatur Netz: {supply_temperature_net} °C")
     
     with open(json_path, 'r', encoding='utf-8') as f:
         loaded_data = json.load(f)
@@ -33,27 +34,17 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, TRY
         # Process the loaded data to form a DataFrame
         df = pd.DataFrame.from_dict({k: v for k, v in loaded_data.items() if k.isdigit()}, orient='index')
 
-    print(results["zeitschritte"])
-    print(results["lastgang_wärme"])
-    print(results["heizlast"])
-    print(results["vorlauftemperatur"])
-    print(results["rücklauftemperatur"])
-    
-    """
-    yearly_time_steps = results["zeitschritte"]
-    waerme_gebaeude_ges_W = results["lastgang_wärme"]
-    max_waerme_gebaeude_ges_W = results["heizlast"]
-    heizwaerme_gebaeude_ges_W = results["heating_wärme"]
-    ww_waerme_gebaeude_ges_W = results["warmwater_wärme"]
-    supply_temperature_building_curve = results["vorlauftemperatur"]
-    return_temperature_building_curve = results["rücklauftemperatur"]"""
+    supply_temperature_buildings = df["VLT_max"].values.astype(float)
+    return_temperature_buildings = df["RLT_max"].values.astype(float)
 
-    supply_temperature_net = np.max(supply_temperature_net)
-    print(f"Vorlauftemperatur Netz: {supply_temperature_net} °C")
-    supply_temperature_buildings = hast["VLT_max"].values.astype(float) # das kann dann entfernt werden
-    print(f"Vorlauftemperatur Gebäude: {supply_temperature_buildings} °C") # das kann dann entfernt werden
-    return_temperature_buildings = hast["RLT_max"].values.astype(float) # das kann dann entfernt werden
-    print(f"Rücklauftemperatur Gebäude: {return_temperature_buildings} °C") # das kann dann entfernt werden
+    # Extract data arrays
+    yearly_time_steps = np.array(df["zeitschritte"].values[0]).astype(np.datetime64)
+    waerme_gebaeude_ges_W = np.array([results[str(i)]["lastgang_wärme"] for i in range(len(results))])
+    heizwaerme_gebaeude_ges_W = np.array([results[str(i)]["heating_wärme"] for i in range(len(results))])
+    ww_waerme_gebaeude_ges_W = np.array([results[str(i)]["warmwater_wärme"] for i in range(len(results))])
+    supply_temperature_building_curve = np.array([results[str(i)]["vorlauftemperatur"] for i in range(len(results))])
+    return_temperature_building_curve = np.array([results[str(i)]["rücklauftemperatur"] for i in range(len(results))])
+    max_waerme_gebaeude_ges_W = results["0"]["heizlast"]
 
     ### Definition Soll-Rücklauftemperatur ### 
     if return_temperature_heat_consumer == None:
@@ -80,10 +71,6 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, TRY
 
     if np.any(min_supply_temperature_heat_consumer >= supply_temperature_net):
         raise ValueError("Vorlauflauftemperatur an HAST kann nicht höher als die Vorlauftemperatur am Einspeisepunkt sein. Bitte überprüfen sie die Eingaben.")
-
-    yearly_time_steps, waerme_gebaeude_ges_W, max_waerme_gebaeude_ges_W, supply_temperature_building_curve, \
-    return_temperature_building_curve = generate_profiles_from_geojson(hast, TRY_filename, building_type, calc_method, supply_temperature_buildings, return_temperature_buildings, 
-                                                                       min_supply_temperature_building)
 
     waerme_hast_ges_W = []
     max_waerme_hast_ges_W = []
@@ -122,91 +109,6 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, TRY
     
     return net, yearly_time_steps, waerme_hast_ges_W, return_temperature_heat_consumer, supply_temperature_buildings, return_temperature_buildings, \
         supply_temperature_building_curve, return_temperature_building_curve, strombedarf_hast_ges_W, max_el_leistung_hast_ges_W
-        
-def generate_profiles_from_geojson(gdf_heat_exchanger, TRY, building_type="HMF", calc_method="BDEW", max_supply_temperature=70, max_return_temperature=55, min_supply_temperature_building=60):
-    ### define the heat requirement ###
-    try:
-        YEU_total_heat_kWh = gdf_heat_exchanger["Wärmebedarf"].values.astype(float)
-    except KeyError:
-        print("Herauslesen des Wärmebedarfs aus geojson nicht möglich.")
-        return None
-
-    total_heat_W = []
-    max_heat_requirement_W = []
-    yearly_time_steps = None
-
-    # Assignment of building types to calculation methods
-    building_type_to_method = {
-        "EFH": "VDI4655",
-        "MFH": "VDI4655",
-        "HEF": "BDEW",
-        "HMF": "BDEW",
-        "GKO": "BDEW",
-        "GHA": "BDEW",
-        "GMK": "BDEW",
-        "GBD": "BDEW",
-        "GBH": "BDEW",
-        "GWA": "BDEW",
-        "GGA": "BDEW",
-        "GBA": "BDEW",
-        "GGB": "BDEW",
-        "GPD": "BDEW",
-        "GMF": "BDEW",
-        "GHD": "BDEW",
-    }
-
-    for idx, YEU in enumerate(YEU_total_heat_kWh):
-        if calc_method == "Datensatz":
-            try:
-                current_building_type = gdf_heat_exchanger.at[idx, "Gebäudetyp"]
-                current_calc_method = building_type_to_method.get(current_building_type, "StandardMethode")
-            except KeyError:
-                print("Gebäudetyp-Spalte nicht in gdf_HAST gefunden.")
-                current_calc_method = "StandardMethode"
-        else:
-            current_building_type = building_type
-            current_calc_method = calc_method
-
-        # Heat demand calculation based on building type and calculation method
-        if current_calc_method == "VDI4655":
-            YEU_heating_kWh, YEU_hot_water_kWh = YEU_total_heat_kWh * 0.8, YEU_total_heat_kWh * 0.2
-            heating, hot_water = YEU_heating_kWh[idx], YEU_hot_water_kWh[idx]
-            yearly_time_steps, electricity_kW, heating_kW, hot_water_kW, hourly_heat_demand_total_kW, hourly_air_temperatures = heat_requirement_VDI4655.calculate(heating, hot_water, building_type=current_building_type, TRY=TRY)
-
-        elif current_calc_method == "BDEW":
-            yearly_time_steps, hourly_heat_demand_total_kW, hourly_heat_demand_heating_kW, hourly_heat_demand_warmwater_kW, hourly_air_temperatures  = heat_requirement_BDEW.calculate(YEU, current_building_type, subtyp="03", TRY=TRY)
-
-        hourly_heat_demand_total_kW = np.where(hourly_heat_demand_total_kW<0, 0, hourly_heat_demand_total_kW)
-        total_heat_W.append(hourly_heat_demand_total_kW * 1000)
-        max_heat_requirement_W.append(np.max(hourly_heat_demand_total_kW * 1000))
-
-    total_heat_W = np.array(total_heat_W)
-    max_heat_requirement_W = np.array(max_heat_requirement_W)
-
-    # Calculation of the temperature curve based on the selected settings
-    supply_temperature_curve = []
-    return_temperature_curve = []
-
-    # get slope of heat exchanger
-    slope = -gdf_heat_exchanger["Steigung_Heizkurve"].values.astype(float)
-
-    min_air_temperature = -12 # aka design temperature
-
-    dT =  np.expand_dims(max_supply_temperature - max_return_temperature, axis=1)
-    min_supply_temperature_building = np.expand_dims(min_supply_temperature_building, axis=1)
-
-    for st, s in zip(max_supply_temperature, slope):
-        # Calculation of the temperature curves for flow and return
-        st_curve = np.where(hourly_air_temperatures <= min_air_temperature, st, st + (s * (hourly_air_temperatures - min_air_temperature)))
-        
-        supply_temperature_curve.append(st_curve)
-
-    supply_temperature_curve = np.array(supply_temperature_curve)
-    supply_temperature_curve = np.where(min_supply_temperature_building > supply_temperature_curve, min_supply_temperature_building, supply_temperature_curve)
-    
-    return_temperature_curve = supply_temperature_curve - dT
-
-    return yearly_time_steps, total_heat_W, max_heat_requirement_W, supply_temperature_curve, return_temperature_curve
 
 def get_line_coords_and_lengths(gdf):
     all_line_coords, all_line_lengths = [], []

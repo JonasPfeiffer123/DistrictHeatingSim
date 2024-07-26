@@ -1,7 +1,7 @@
 """
 Filename: threads.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-07-26
 Description: Contains the threaded functionality functions
 """
 
@@ -48,16 +48,16 @@ class NetInitializationThread(QThread):
     def run(self):
         try:
             if self.kwargs.get("import_type") == "GeoJSON":
-                self.vorlauf, self.ruecklauf, self.hast, self.erzeugeranlagen, self.json_path, self.TRY_filename, self.COP_filename, self.calc_method, self.building_type, \
-                self.supply_temperature_heat_consumer, self.return_temperature_heat_consumer, self.supply_temperature, self.flow_pressure_pump, self.lift_pressure_pump, \
+                self.vorlauf, self.ruecklauf, self.hast, self.erzeugeranlagen, self.json_path, self.COP_filename, self.supply_temperature_heat_consumer, \
+                self.return_temperature_heat_consumer, self.supply_temperature, self.flow_pressure_pump, self.lift_pressure_pump, \
                 self.netconfiguration, self.pipetype, self.v_max_pipe, self.material_filter, self.insulation_filter, \
                 self.base_path, self.dT_RL, self.v_max_heat_consumer, self.DiameterOpt_ckecked = self.args
 
                 self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.return_temperature_heat_consumer, \
                 self.supply_temperature_buildings, self.return_temperature_buildings, self.supply_temperature_building_curve, \
                 self.return_temperature_building_curve, strombedarf_hast_ges_W, max_el_leistung_hast_ges_W  = initialize_geojson(self.vorlauf, self.ruecklauf, self.hast, \
-                                                                             self.erzeugeranlagen, self.json_path, self.TRY_filename, self.COP_filename, self.calc_method, self.building_type, \
-                                                                             self.supply_temperature_heat_consumer, self.return_temperature_heat_consumer, self.supply_temperature, \
+                                                                             self.erzeugeranlagen, self.json_path, self.COP_filename, self.supply_temperature_heat_consumer, \
+                                                                             self.return_temperature_heat_consumer, self.supply_temperature, \
                                                                              self.flow_pressure_pump, self.lift_pressure_pump, \
                                                                              self.netconfiguration, self.pipetype, self.dT_RL, \
                                                                              self.v_max_pipe, self.material_filter, self.insulation_filter, \
