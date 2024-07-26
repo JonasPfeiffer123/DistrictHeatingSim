@@ -1,7 +1,7 @@
 """
 Filename: heat_requirement_BDEW.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-07-26
 Description: Contains functions to calculate heat demand profiles with the BDEW SLP methods
 """
 
@@ -85,6 +85,7 @@ def calculate_hourly_intervals(year):
 # function for getting the coefficients
 def get_coefficients(profiletype, subtype, daily_data):
     profile = profiletype + subtype
+
     row = daily_data[daily_data['Standardlastprofil'] == profile].iloc[0]
     return float(row['A']), float(row['B']), float(row['C']), float(row['D']), float(row['mH']), float(row['bH']), float(row['mW']), float(row['bW'])
 
@@ -100,7 +101,7 @@ def get_weekday_factor(daily_weekdays, profiletype, subtype, daily_data):
 
     return weekday_factors
 
-def calculation_load_profile(TRY, JWB_kWh, profiletype, subtype, holidays, year):
+def calculation_load_profile(TRY, JWB_kWh, profiletype, subtype, holidays, year, real_ww_share=None):
     days_of_year, months, days, daily_weekdays = generate_year_months_days_weekdays(year)
 
     # import weather data
@@ -108,38 +109,47 @@ def calculation_load_profile(TRY, JWB_kWh, profiletype, subtype, holidays, year)
 
     # process temperature data
     daily_avg_temperature = np.round(calculate_daily_averages(hourly_temperature), 1)
-    daily_reference_temperature = np.round((daily_avg_temperature+2.5)*2, -1)/2-2.5
+    daily_reference_temperature = np.round((daily_avg_temperature + 2.5) * 2, -1) / 2 - 2.5
 
-    daily_data = pd.read_csv(get_resource_path('heat_requirement\BDEW factors\daily_coefficients.csv'), delimiter=';')
+    daily_data = pd.read_csv(get_resource_path('heat_requirement/BDEW factors/daily_coefficients.csv'), delimiter=';')
 
     # calculate daily factors
     h_A, h_B, h_C, h_D, mH, bH, mW, bW = get_coefficients(profiletype, subtype, daily_data)
-    lin = mH + bH + mW + bW
-    h_T = h_A/(1+(h_B/(daily_avg_temperature-40))**h_C)+h_D+lin
+    lin_H = np.nan_to_num(mH * daily_avg_temperature + bH) if mH != 0 or bH != 0 else 0
+    lin_W = np.nan_to_num(mW * daily_avg_temperature + bW) if mW != 0 or bW != 0 else 0
 
-    # calculate weekday factors
+    # Heating demand calculation
+    h_T_heating = h_A / (1 + (h_B / (daily_avg_temperature - 40)) ** h_C) + lin_H
     F_D = get_weekday_factor(daily_weekdays, profiletype, subtype, daily_data)
-    h_T_F_D = h_T * F_D
-    sum_h_T_F_D = np.sum(h_T_F_D)
-    KW_kWh = JWB_kWh/sum_h_T_F_D
-    daily_heat_demand = h_T_F_D * KW_kWh
+    h_T_F_D_heating = h_T_heating * F_D
+    sum_h_T_F_D_heating = np.sum(h_T_F_D_heating)
+    KW_kWh_heating = JWB_kWh / sum_h_T_F_D_heating if sum_h_T_F_D_heating != 0 else 0
+    daily_heat_demand_heating = h_T_F_D_heating * KW_kWh_heating
 
-    # calculate hourly data
-    hourly_reference_temperature = np.round((hourly_temperature+2.5)*2, -1)/2-2.5
-    hourly_reference_temperature_2 = np.where(hourly_reference_temperature>hourly_temperature, hourly_reference_temperature-5, \
-                                              np.where(hourly_reference_temperature>27.5, 27.5, hourly_reference_temperature+5))
-    
-    upper_limit = np.where(hourly_reference_temperature_2>hourly_reference_temperature, hourly_reference_temperature_2, hourly_reference_temperature)
-    lower_limit = np.where(hourly_reference_temperature_2>hourly_reference_temperature, hourly_reference_temperature, hourly_reference_temperature_2)
+    # Warmwater demand calculation
+    h_T_warmwater = lin_W + h_D
+    h_T_F_D_warmwater = h_T_warmwater * F_D
+    sum_h_T_F_D_warmwater = np.sum(h_T_F_D_warmwater)
+    KW_kWh_warmwater = JWB_kWh / sum_h_T_F_D_warmwater if sum_h_T_F_D_warmwater != 0 else 0
+    daily_heat_demand_warmwater = h_T_F_D_warmwater * KW_kWh_warmwater
+
+    # Calculate hourly data
+    hourly_reference_temperature = np.round((hourly_temperature + 2.5) * 2, -1) / 2 - 2.5
+    hourly_reference_temperature_2 = np.where(hourly_reference_temperature > hourly_temperature, hourly_reference_temperature - 5,
+                                              np.where(hourly_reference_temperature > 27.5, 27.5, hourly_reference_temperature + 5))
+
+    upper_limit = np.where(hourly_reference_temperature_2 > hourly_reference_temperature, hourly_reference_temperature_2, hourly_reference_temperature)
+    lower_limit = np.where(hourly_reference_temperature_2 > hourly_reference_temperature, hourly_reference_temperature, hourly_reference_temperature_2)
 
     daily_hours = np.tile(np.arange(24), len(days_of_year))
     hourly_weekdays = np.repeat(daily_weekdays, 24)
-    hourly_daily_heat_demand = np.repeat(daily_heat_demand, 24)
-    
-    hourly_data = pd.read_csv(get_resource_path('heat_requirement\BDEW factors\hourly_coefficients.csv'), delimiter=';')
-    filtered_hourly_data = hourly_data[hourly_data["Typ"]==profiletype]
+    hourly_daily_heat_demand_heating = np.repeat(daily_heat_demand_heating, 24)
+    hourly_daily_heat_demand_warmwater = np.repeat(daily_heat_demand_warmwater, 24)
 
-    # create dataframe
+    hourly_data = pd.read_csv(get_resource_path('heat_requirement/BDEW factors/hourly_coefficients.csv'), delimiter=';')
+    filtered_hourly_data = hourly_data[hourly_data["Typ"] == profiletype]
+
+    # Create dataframe
     hourly_conditions = pd.DataFrame({
         'Wochentag': hourly_weekdays,
         'TemperaturLower': lower_limit,
@@ -147,7 +157,7 @@ def calculation_load_profile(TRY, JWB_kWh, profiletype, subtype, holidays, year)
         'Stunde': daily_hours
     })
 
-    # merging data
+    # Merging data
     merged_data_T1 = pd.merge(
         hourly_conditions,
         filtered_hourly_data,
@@ -167,15 +177,53 @@ def calculation_load_profile(TRY, JWB_kWh, profiletype, subtype, holidays, year)
     hour_factor_T1 = merged_data_T1["Stundenfaktor"].values.astype(float)
     hour_factor_T2 = merged_data_T2["Stundenfaktor"].values.astype(float)
 
-    # final calculation
-    hour_factor_interpolation = hour_factor_T2+(hour_factor_T1-hour_factor_T2)*((hourly_temperature-upper_limit)/(5))
-    hourly_heat_demand = np.nan_to_num((hourly_daily_heat_demand*hour_factor_interpolation)/100).astype(float)
-    hourly_heat_demand_normed = (hourly_heat_demand / np.sum(hourly_heat_demand)) * JWB_kWh
+    # Final calculation
+    hour_factor_interpolation = hour_factor_T2 + (hour_factor_T1 - hour_factor_T2) * ((hourly_temperature - upper_limit) / 5)
+    hourly_heat_demand_heating = np.nan_to_num((hourly_daily_heat_demand_heating * hour_factor_interpolation) / 100).astype(float)
+    hourly_heat_demand_warmwater = np.nan_to_num((hourly_daily_heat_demand_warmwater * hour_factor_interpolation) / 100).astype(float)
+
+    hourly_heat_demand_heating_normed = np.nan_to_num((hourly_heat_demand_heating / np.sum(hourly_heat_demand_heating)) * JWB_kWh)
+    hourly_heat_demand_warmwater_normed = np.nan_to_num((hourly_heat_demand_warmwater / np.sum(hourly_heat_demand_warmwater)) * JWB_kWh)
+
+    # Calculate initial shares
+    initial_ww_share = np.sum(hourly_heat_demand_warmwater_normed) / (np.sum(hourly_heat_demand_heating_normed) + np.sum(hourly_heat_demand_warmwater_normed))
+
+    if real_ww_share is not None:
+        # Calculate correction factor
+        ww_correction_factor = real_ww_share / initial_ww_share
+        heating_correction_factor = (1 - real_ww_share) / (1 - initial_ww_share)
+
+        # Adjust demands
+        hourly_heat_demand_warmwater_normed *= ww_correction_factor
+        hourly_heat_demand_heating_normed *= heating_correction_factor
+
+        # Ensure total demand remains unchanged
+        total_demand = hourly_heat_demand_heating_normed + hourly_heat_demand_warmwater_normed
+        scale_factor = JWB_kWh / np.sum(total_demand)
+        hourly_heat_demand_heating_normed *= scale_factor
+        hourly_heat_demand_warmwater_normed *= scale_factor
+
+    hourly_heat_demand_total_normed = hourly_heat_demand_heating_normed + hourly_heat_demand_warmwater_normed
     hourly_intervals = calculate_hourly_intervals(year)
 
-    return hourly_intervals, hourly_heat_demand_normed.astype(float), hourly_temperature
+    hourly_intervals = calculate_hourly_intervals(year)
 
-def calculate(JWB_kWh=10000, profiletype="HMF", subtyp="03", year=2021, TRY=get_resource_path('heat_requirement\TRY_511676144222\TRY2015_511676144222_Jahr.dat')):
+    return hourly_intervals, hourly_heat_demand_total_normed, hourly_heat_demand_heating_normed.astype(float), hourly_heat_demand_warmwater_normed.astype(float), hourly_temperature
+
+def calculate(YEU_kWh=10000, building_type="HMF", subtyp="03", TRY=get_resource_path('heat_requirement\TRY_511676144222\TRY2015_511676144222_Jahr.dat'), year=2021, real_ww_share=None):
+    """_summary_
+
+    Args:
+        YEU_kWh (int, optional): _description_. Defaults to 10000.
+        building_type (str, optional): _description_. Defaults to "HMF".
+        subtyp (str, optional): _description_. Defaults to "03".
+        TRY (_type_, optional): _description_. Defaults to get_resource_path('heat_requirement\TRY_511676144222\TRY2015_511676144222_Jahr.dat').
+        year (int, optional): _description_. Defaults to 2021.
+
+    Returns:
+        _type_: _description_
+    """
+
     # holidays
     Neujahr = "2021-01-01"
     Karfreitag = "2021-04-02"
@@ -193,6 +241,6 @@ def calculate(JWB_kWh=10000, profiletype="HMF", subtyp="03", year=2021, TRY=get_
                 Christi_Himmelfahrt, Fronleichnam, Tag_der_deutschen_Einheit, 
                 Allerheiligen, Weihnachtsfeiertag1, Weihnachtsfeiertag2]).astype('datetime64[D]')
 
-    hourly_intervals, hourly_heat_demand, hourly_temperature = calculation_load_profile(TRY, JWB_kWh, profiletype, subtyp, Feiertage, year)
+    hourly_intervals, hourly_heat_demand_total, hourly_heat_demand_heating, hourly_heat_demand_warmwater, hourly_temperature = calculation_load_profile(TRY, YEU_kWh, building_type, subtyp, Feiertage, year, real_ww_share)
 
-    return hourly_intervals, hourly_heat_demand, hourly_temperature
+    return hourly_intervals, hourly_heat_demand_total, hourly_heat_demand_heating, hourly_heat_demand_warmwater, hourly_temperature

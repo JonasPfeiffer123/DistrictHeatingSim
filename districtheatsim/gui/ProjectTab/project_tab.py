@@ -1,7 +1,7 @@
 """
 Filename: project_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-07-26
 Description: Contains the ProjectTab.
 """
 
@@ -14,7 +14,7 @@ import sys
 from PyQt5.QtCore import pyqtSignal, QDir
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QMenuBar, QAction, QProgressBar, \
     QLabel, QTableWidget, QHBoxLayout, QPushButton, QFileDialog, QTableWidgetItem, QMessageBox, \
-    QFileSystemModel, QTreeView, QSplitter, QDialog
+    QFileSystemModel, QTreeView, QSplitter
 
 from gui.threads import GeocodingThread
 
@@ -195,7 +195,7 @@ class ProjectTab(QWidget):
             QMessageBox.warning(self, "Warnung", "Es wurde keine Datei zum Speichern ausgewählt oder erstellt.", QMessageBox.Ok)
 
     def createCSV(self):
-        headers = ['Land', 'Bundesland', 'Stadt', 'Adresse', 'Wärmebedarf', 'Gebäudetyp', 'WW_Anteil', 'Typ_Heizflächen', 'VLT_max', 'Steigung_Heizkurve', 'RLT_max']
+        headers = ['Land', 'Bundesland', 'Stadt', 'Adresse', 'Wärmebedarf', 'Gebäudetyp', "Subtyp", 'WW_Anteil', 'Typ_Heizflächen', 'VLT_max', 'Steigung_Heizkurve', 'RLT_max', "Normaußentemperatur"]
         default_data = ['']*len(headers)
 
         fname, _ = QFileDialog.getSaveFileName(self, 'Gebäude-CSV erstellen', self.base_path, 'CSV Files (*.csv);;All Files (*)')
@@ -220,8 +220,8 @@ class ProjectTab(QWidget):
                 data = json.load(geojson_file)
             
             with open(csv_file, 'w', encoding='utf-8', newline='') as csvfile:
-                fieldnames = ["Land", "Bundesland", "Stadt", "Adresse", "Wärmebedarf", "Gebäudetyp", "WW_Anteil", "Typ_Heizflächen", 
-                            "VLT_max", "Steigung_Heizkurve", "RLT_max", "UTM_X", "UTM_Y"]
+                fieldnames = ["Land", "Bundesland", "Stadt", "Adresse", "Wärmebedarf", "Gebäudetyp", "Subtyp", "WW_Anteil", "Typ_Heizflächen", 
+                            "VLT_max", "Steigung_Heizkurve", "RLT_max", "Normaußentemperatur", "UTM_X", "UTM_Y"]
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter=";")
                 writer.writeheader()
 
@@ -236,11 +236,13 @@ class ProjectTab(QWidget):
                                 "Adresse": "",
                                 "Wärmebedarf": 30000,
                                 "Gebäudetyp": "HMF",
+                                "Subtyp": "05",
                                 "WW_Anteil": 0.2,
                                 "Typ_Heizflächen": "HK",
                                 "VLT_max": 70,
                                 "Steigung_Heizkurve": 1.5,
                                 "RLT_max": 55,
+                                "Normaußentemperatur": -15,
                                 "UTM_X": centroid[0],
                                 "UTM_Y": centroid[1]
                             })
@@ -253,11 +255,13 @@ class ProjectTab(QWidget):
                                 "Adresse": "",
                                 "Wärmebedarf": 30000,
                                 "Gebäudetyp": "HMF",
+                                "Subtyp": "05",
                                 "WW_Anteil": 0.2,
                                 "Typ_Heizflächen": "HK",
                                 "VLT_max": 70,
                                 "Steigung_Heizkurve": 1.5,
                                 "RLT_max": 55,
+                                "Normaußentemperatur": -15,
                                 "UTM_X": centroid[0],
                                 "UTM_Y": centroid[1]
                             })

@@ -225,11 +225,8 @@ class CalculationTab(QWidget):
             print(*args)
             # Übergeben Sie alle Argumente außer dem letzten (import_type)
             self.create_and_initialize_net_geojson(*args[:-1])
-        elif import_type == "Stanet":
-            print(*args)
-            # Übergeben Sie alle Argumente außer dem letzten (import_type)
-            self.create_and_initialize_net_stanet(*args[:-1])
     
+    ### Das kann weg ###
     def editHeatDemandData(self, hastInput):
         try:
             self.gdf_HAST = gpd.read_file(hastInput)
@@ -251,7 +248,7 @@ class CalculationTab(QWidget):
             self.output_filename = netCalcInputs["results_filename"]
             self.simulate_net()
       
-    def create_and_initialize_net_geojson(self, vorlauf, ruecklauf, hast, erzeugeranlagen, calc_method, building_type, supply_temperature_heat_consumer, return_temperature_heat_consumer, supply_temperature, \
+    def create_and_initialize_net_geojson(self, vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, calc_method, building_type, supply_temperature_heat_consumer, return_temperature_heat_consumer, supply_temperature, \
                                           flow_pressure_pump, lift_pressure_pump, netconfiguration, dT_RL, v_max_heat_consumer, building_temp_checked, \
                                           pipetype, v_max_pipe, material_filter, insulation_filter, DiameterOpt_ckecked):
         self.supply_temperature_heat_consumer = supply_temperature_heat_consumer
@@ -264,18 +261,9 @@ class CalculationTab(QWidget):
         self.DiameterOpt_ckecked = DiameterOpt_ckecked
         self.TRY_filename = self.parent.try_filename
         self.COP_filename = self.parent.cop_filename
-        args = (vorlauf, ruecklauf, hast, erzeugeranlagen, self.TRY_filename, self.COP_filename, calc_method, building_type, return_temperature_heat_consumer, supply_temperature_heat_consumer, supply_temperature, flow_pressure_pump, lift_pressure_pump, \
+        args = (vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, self.TRY_filename, self.COP_filename, calc_method, building_type, return_temperature_heat_consumer, supply_temperature_heat_consumer, supply_temperature, flow_pressure_pump, lift_pressure_pump, \
                 netconfiguration, pipetype, v_max_pipe, material_filter, insulation_filter, self.base_path, self.dT_RL, self.v_max_heat_consumer, self.DiameterOpt_ckecked)
         kwargs = {"import_type": "GeoJSON"}
-        self.initializationThread = NetInitializationThread(*args, **kwargs)
-        self.common_thread_initialization()
-
-    def create_and_initialize_net_stanet(self, stanet_csv, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump):
-        self.return_temperature_heat_consumer = return_temp
-        self.supply_temperature = supply_temperature
-        supply_temperature = np.max(supply_temperature)
-        args = (stanet_csv, return_temp, supply_temperature, flow_pressure_pump, lift_pressure_pump)
-        kwargs = {"import_type": "Stanet"}
         self.initializationThread = NetInitializationThread(*args, **kwargs)
         self.common_thread_initialization()
 
@@ -407,6 +395,8 @@ class CalculationTab(QWidget):
         ax1 = self.figure4.add_subplot(111)
 
         if np.sum(strom_kW) == 0:
+            print(time_steps)
+            print(qext_kW)
             ax1.plot(time_steps, qext_kW, 'b-', label=f"Gesamtheizlast Gebäude in kW")
 
         if np.sum(strom_kW) > 0:

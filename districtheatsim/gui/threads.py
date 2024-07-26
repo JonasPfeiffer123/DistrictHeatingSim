@@ -15,7 +15,6 @@ from net_generation.import_and_create_layers import generate_and_export_layers
 
 from net_simulation_pandapipes.pp_net_initialisation_geojson import initialize_geojson
 from net_simulation_pandapipes.pp_net_time_series_simulation import thermohydraulic_time_series_net, import_results_csv, time_series_preprocessing
-from net_simulation_pandapipes.stanet_import_pandapipes import create_net_from_stanet_csv
 from net_simulation_pandapipes.utilities import net_optimization
 
 from heat_generators.heat_generator_classes import Berechnung_Erzeugermix, optimize_mix
@@ -49,7 +48,7 @@ class NetInitializationThread(QThread):
     def run(self):
         try:
             if self.kwargs.get("import_type") == "GeoJSON":
-                self.vorlauf, self.ruecklauf, self.hast, self.erzeugeranlagen, self.TRY_filename, self.COP_filename, self.calc_method, self.building_type, \
+                self.vorlauf, self.ruecklauf, self.hast, self.erzeugeranlagen, self.json_path, self.TRY_filename, self.COP_filename, self.calc_method, self.building_type, \
                 self.supply_temperature_heat_consumer, self.return_temperature_heat_consumer, self.supply_temperature, self.flow_pressure_pump, self.lift_pressure_pump, \
                 self.netconfiguration, self.pipetype, self.v_max_pipe, self.material_filter, self.insulation_filter, \
                 self.base_path, self.dT_RL, self.v_max_heat_consumer, self.DiameterOpt_ckecked = self.args
@@ -57,16 +56,12 @@ class NetInitializationThread(QThread):
                 self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.return_temperature_heat_consumer, \
                 self.supply_temperature_buildings, self.return_temperature_buildings, self.supply_temperature_building_curve, \
                 self.return_temperature_building_curve, strombedarf_hast_ges_W, max_el_leistung_hast_ges_W  = initialize_geojson(self.vorlauf, self.ruecklauf, self.hast, \
-                                                                             self.erzeugeranlagen, self.TRY_filename, self.COP_filename, self.calc_method, self.building_type, \
+                                                                             self.erzeugeranlagen, self.json_path, self.TRY_filename, self.COP_filename, self.calc_method, self.building_type, \
                                                                              self.supply_temperature_heat_consumer, self.return_temperature_heat_consumer, self.supply_temperature, \
                                                                              self.flow_pressure_pump, self.lift_pressure_pump, \
                                                                              self.netconfiguration, self.pipetype, self.dT_RL, \
                                                                              self.v_max_pipe, self.material_filter, self.insulation_filter, \
                                                                              self.v_max_heat_consumer, self.mass_flow_secondary_producers)
-            
-            elif self.kwargs.get("import_type") == "Stanet":
-                self.stanet_csv, self.return_temperature_heat_consumer, self.supply_temperature, self.flow_pressure_pump, self.lift_pressure_pump = self.args
-                self.initialize_stanet()
             else:
                 raise ValueError("Unbekannter Importtyp")
 
@@ -80,10 +75,6 @@ class NetInitializationThread(QThread):
 
         except Exception as e:
             self.calculation_error.emit(str(e) + "\n" + traceback.format_exc())
-
-    def initialize_stanet(self):
-        self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.max_waerme_hast_ges_W = create_net_from_stanet_csv(self.stanet_csv, self.supply_temperature, \
-                                                                                                                          self.flow_pressure_pump, self.lift_pressure_pump)
     
     def stop(self):
         if self.isRunning():

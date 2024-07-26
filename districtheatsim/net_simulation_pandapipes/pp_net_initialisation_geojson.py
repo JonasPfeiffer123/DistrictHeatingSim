@@ -9,11 +9,13 @@ Description: Script for the net initialisation of geojson based net data.
 import numpy as np
 import geopandas as gpd
 import pandapipes as pp
+import json
+import pandas as pd
 
 from heat_requirement import heat_requirement_VDI4655, heat_requirement_BDEW
 from net_simulation_pandapipes.utilities import create_controllers, correct_flow_directions, COP_WP, init_diameter_types
 
-def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, TRY_filename, COP_filename, calc_method, building_type, min_supply_temperature_building, \
+def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, TRY_filename, COP_filename, calc_method, building_type, min_supply_temperature_building, \
                        return_temperature_heat_consumer, supply_temperature_net, flow_pressure_pump, lift_pressure_pump, netconfiguration, pipetype, dT_RL, \
                        v_max_pipe, material_filter, insulation_filter, v_max_heat_consumer, mass_flow_secondary_producers=0.5):
         
@@ -21,13 +23,37 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, TRY_filename, 
     ruecklauf = gpd.read_file(ruecklauf, driver='GeoJSON')
     hast = gpd.read_file(hast, driver='GeoJSON')
     erzeugeranlagen = gpd.read_file(erzeugeranlagen, driver='GeoJSON')
+    
+    with open(json_path, 'r', encoding='utf-8') as f:
+        loaded_data = json.load(f)
+
+        # Ensure results contain the necessary keys
+        results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and 'lastgang_wärme' in v}
+
+        # Process the loaded data to form a DataFrame
+        df = pd.DataFrame.from_dict({k: v for k, v in loaded_data.items() if k.isdigit()}, orient='index')
+
+    print(results["zeitschritte"])
+    print(results["lastgang_wärme"])
+    print(results["heizlast"])
+    print(results["vorlauftemperatur"])
+    print(results["rücklauftemperatur"])
+    
+    """
+    yearly_time_steps = results["zeitschritte"]
+    waerme_gebaeude_ges_W = results["lastgang_wärme"]
+    max_waerme_gebaeude_ges_W = results["heizlast"]
+    heizwaerme_gebaeude_ges_W = results["heating_wärme"]
+    ww_waerme_gebaeude_ges_W = results["warmwater_wärme"]
+    supply_temperature_building_curve = results["vorlauftemperatur"]
+    return_temperature_building_curve = results["rücklauftemperatur"]"""
 
     supply_temperature_net = np.max(supply_temperature_net)
     print(f"Vorlauftemperatur Netz: {supply_temperature_net} °C")
-    supply_temperature_buildings = hast["VLT_max"].values.astype(float)
-    print(f"Vorlauftemperatur Gebäude: {supply_temperature_buildings} °C")
-    return_temperature_buildings = hast["RLT_max"].values.astype(float)
-    print(f"Rücklauftemperatur Gebäude: {return_temperature_buildings} °C")
+    supply_temperature_buildings = hast["VLT_max"].values.astype(float) # das kann dann entfernt werden
+    print(f"Vorlauftemperatur Gebäude: {supply_temperature_buildings} °C") # das kann dann entfernt werden
+    return_temperature_buildings = hast["RLT_max"].values.astype(float) # das kann dann entfernt werden
+    print(f"Rücklauftemperatur Gebäude: {return_temperature_buildings} °C") # das kann dann entfernt werden
 
     ### Definition Soll-Rücklauftemperatur ### 
     if return_temperature_heat_consumer == None:
@@ -145,14 +171,14 @@ def generate_profiles_from_geojson(gdf_heat_exchanger, TRY, building_type="HMF",
         if current_calc_method == "VDI4655":
             YEU_heating_kWh, YEU_hot_water_kWh = YEU_total_heat_kWh * 0.8, YEU_total_heat_kWh * 0.2
             heating, hot_water = YEU_heating_kWh[idx], YEU_hot_water_kWh[idx]
-            yearly_time_steps, electricity_kW, heating_kW, hot_water_kW, total_heat_kW, hourly_temperatures = heat_requirement_VDI4655.calculate(heating, hot_water, building_type=current_building_type, TRY=TRY)
+            yearly_time_steps, electricity_kW, heating_kW, hot_water_kW, hourly_heat_demand_total_kW, hourly_air_temperatures = heat_requirement_VDI4655.calculate(heating, hot_water, building_type=current_building_type, TRY=TRY)
 
         elif current_calc_method == "BDEW":
-            yearly_time_steps, total_heat_kW, hourly_temperatures  = heat_requirement_BDEW.calculate(YEU, current_building_type, subtyp="03", TRY=TRY)
+            yearly_time_steps, hourly_heat_demand_total_kW, hourly_heat_demand_heating_kW, hourly_heat_demand_warmwater_kW, hourly_air_temperatures  = heat_requirement_BDEW.calculate(YEU, current_building_type, subtyp="03", TRY=TRY)
 
-        total_heat_kW = np.where(total_heat_kW<0, 0, total_heat_kW)
-        total_heat_W.append(total_heat_kW * 1000)
-        max_heat_requirement_W.append(np.max(total_heat_kW * 1000))
+        hourly_heat_demand_total_kW = np.where(hourly_heat_demand_total_kW<0, 0, hourly_heat_demand_total_kW)
+        total_heat_W.append(hourly_heat_demand_total_kW * 1000)
+        max_heat_requirement_W.append(np.max(hourly_heat_demand_total_kW * 1000))
 
     total_heat_W = np.array(total_heat_W)
     max_heat_requirement_W = np.array(max_heat_requirement_W)
@@ -171,7 +197,7 @@ def generate_profiles_from_geojson(gdf_heat_exchanger, TRY, building_type="HMF",
 
     for st, s in zip(max_supply_temperature, slope):
         # Calculation of the temperature curves for flow and return
-        st_curve = np.where(hourly_temperatures <= min_air_temperature, st, st + (s * (hourly_temperatures - min_air_temperature)))
+        st_curve = np.where(hourly_air_temperatures <= min_air_temperature, st, st + (s * (hourly_air_temperatures - min_air_temperature)))
         
         supply_temperature_curve.append(st_curve)
 

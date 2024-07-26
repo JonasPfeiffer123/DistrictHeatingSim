@@ -1,7 +1,7 @@
 """
 Filename: calculation_dialogs.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-07-26
 Description: Contains the Dialogs for the CalculationTab.
 """
 
@@ -103,20 +103,31 @@ class NetGenerationDialog(QDialog):
         left_layout = QVBoxLayout()
 
         # Import-Bereich
-        importGroup = QGroupBox("Import Netzdaten und Definition Wärmebedarfsrechnung")
+        importGroup = QGroupBox("Import Netzdaten und Wärmebedarfsrechnung")
         importGroup.setStyleSheet("QGroupBox { font-size: 11pt; font-weight: bold; }")  # Setzt die Schriftgröße und macht den Text fett
         importLayout = QVBoxLayout()
-        importLayout.addWidget(QLabel("Importtyp:"))
+        importLayout.addWidget(QLabel("Importtyp Netz:"))
         self.importTypeComboBox = QComboBox()
-        self.importTypeComboBox.addItems(["GeoJSON"])#, "Stanet"])
+        self.importTypeComboBox.addItems(["GeoJSON"])
         importLayout.addWidget(self.importTypeComboBox)
         self.importTypeComboBox.currentIndexChanged.connect(self.updateInputFieldsVisibility)
 
         # Dynamische Eingabefelder hinzufügen
         self.geojsonInputs = self.createGeojsonInputs()
-        self.stanetInputs = self.createStanetInputs()
-        for input_layout in self.geojsonInputs + self.stanetInputs:
+        for input_layout in self.geojsonInputs:
             importLayout.addLayout(input_layout)
+
+        # JSON Eingabe
+        jsonImportLayout = QHBoxLayout()
+        jsonLabel = QLabel("JSON mit Daten:")
+        jsonImportLayout.addWidget(jsonLabel)
+        self.jsonLineEdit = QLineEdit(f"{self.base_path}/Lastgang/Gebäude Lastgang.json")
+        jsonImportLayout.addWidget(self.jsonLineEdit)
+        jsonBrowseButton = QPushButton("Datei auswählen")
+        jsonBrowseButton.clicked.connect(self.browseJsonFile)
+        jsonImportLayout.addWidget(jsonBrowseButton)
+        importLayout.addLayout(jsonImportLayout)
+
         importGroup.setLayout(importLayout)
         left_layout.addWidget(importGroup)
 
@@ -203,15 +214,6 @@ class NetGenerationDialog(QDialog):
         ]
         return inputs
 
-    def createStanetInputs(self):
-        default_path = f'{self.base_path}\Wärmenetz\Beleg_1.CSV'
-
-        self.stanetinput = self.createFileInput("Stanet CSV:", default_path)
-        inputs = [
-           self.stanetinput
-        ]
-        return inputs
-    
     def createFileInputsGeoJSON(self, default_paths):
         layout = QVBoxLayout()
         self.vorlaufInput = self.createFileInput("Vorlauf GeoJSON:", default_paths['Vorlauf'])
@@ -239,6 +241,12 @@ class NetGenerationDialog(QDialog):
         layout.addWidget(button)
         return layout
     
+    def browseJsonFile(self):
+        fname, _ = QFileDialog.getOpenFileName(self, 'Select JSON File', f"{self.base_path}/Lastgang", 'JSON Files (*.json);;All Files (*)')
+        if fname:
+            self.jsonLineEdit.setText(fname)
+    
+    ### das kann weg ###
     def createCalculationMethodInput(self):
         layout = QVBoxLayout()
         self.calcMethodInput = QComboBox(self)
@@ -247,6 +255,7 @@ class NetGenerationDialog(QDialog):
         layout.addWidget(self.calcMethodInput)
         return layout
 
+    ### das kann weg ###
     def createBuildingTypeInput(self):
         layout = QVBoxLayout()
         layout.addWidget(QLabel("Gebäudetyp:"))
@@ -256,6 +265,7 @@ class NetGenerationDialog(QDialog):
         self.calcMethodInput.currentIndexChanged.connect(self.updateBuildingType)
         return layout
 
+    ### Das kann weg ###
     def createEditHASTButton(self):
         layout = QVBoxLayout()
         self.editHASTButton = QPushButton("Hausanschlussstationen bearbeiten", self)
@@ -474,10 +484,6 @@ class NetGenerationDialog(QDialog):
         for input_layout in self.geojsonInputs:
             self.set_layout_visibility(input_layout, is_geojson)
 
-        # Stanet-spezifische Eingabefelder
-        for input_layout in self.stanetInputs:
-            self.set_layout_visibility(input_layout, is_stanet)
-
         self.netconfiguration = self.netconfigurationControlInput.currentText()
         is_low_temp_net = self.netconfigurationControlInput.currentText() == "Niedertemperaturnetz"
         #is_changing_temp_net = self.netconfigurationControlInput.currentText() == "wechselwarmes Netz"
@@ -565,6 +571,7 @@ class NetGenerationDialog(QDialog):
             line_edit.setText(fname)
             self.update_plot()
 
+    ### Das kommt weg ###
     def updateBuildingType(self):
         self.buildingTypeInput.clear()
         if self.calcMethodInput.currentText() == "VDI4655":
@@ -576,6 +583,7 @@ class NetGenerationDialog(QDialog):
         else:
             self.buildingTypeInput.setDisabled(True)
 
+    ### Das kommt weg ###
     def editHAST(self):
         hast_path = self.hastInput.itemAt(1).widget().text()  # Annahme: QLineEdit ist das zweite Widget im Layout
         if self.edit_hast_callback:
@@ -684,6 +692,8 @@ class NetGenerationDialog(QDialog):
             hast_path = self.hastInput.itemAt(1).widget().text()
             erzeugeranlagen_path = self.erzeugeranlagenInput.itemAt(1).widget().text()
 
+            json_path = self.jsonLineEdit.text()
+
             calc_method = self.calcMethodInput.currentText()
             building_type = self.buildingTypeInput.currentText() if self.calcMethodInput.currentText() != "Datensatz" else "HMF"
 
@@ -694,17 +704,10 @@ class NetGenerationDialog(QDialog):
             material_filter = self.material_filterInput.currentText()
             insulation_filter = self.insulation_filterInput.currentText()
 
-        elif import_type == "Stanet":
-            # Sammeln Sie den Dateipfad für Stanet und rufen Sie generate_callback auf
-            stanet_csv = self.stanetInputs[0].itemAt(1).widget().text()
-            # Hier können Sie Standardwerte oder vom Benutzer eingegebene Werte verwenden
-            self.generate_callback(stanet_csv, rl_temp_heat_consumer, supply_temperature_net, flow_pressure_pump, lift_pressure_pump, import_type)
-
         supply_temperature_net = self.calculateTemperatureCurve()
         flow_pressure_pump = float(self.parameter_rows_net[5].itemAt(1).widget().text())
         lift_pressure_pump = float(self.parameter_rows_net[6].itemAt(1).widget().text())
 
-        print(self.supply_temperature_heat_consumer_checked)
         if self.supply_temperature_heat_consumer_checked == True:
             supply_temperature_heat_consumer = float(self.parameter_rows_heat_consumer[0].itemAt(1).widget().text())
         else:
@@ -717,9 +720,10 @@ class NetGenerationDialog(QDialog):
 
         dT_RL = float(self.parameter_rows_heat_consumer[2].itemAt(1).widget().text())
         
+        ### hier muss der path für die JSON mit den Lastgängen ergänzt werden ###
         # Führen Sie die Netzgenerierung für GeoJSON durch
         if self.generate_callback:
-            self.generate_callback(vorlauf_path, ruecklauf_path, hast_path, erzeugeranlagen_path, calc_method, building_type, rl_temp_heat_consumer, 
+            self.generate_callback(vorlauf_path, ruecklauf_path, hast_path, erzeugeranlagen_path, json_path, calc_method, building_type, rl_temp_heat_consumer, 
                                    supply_temperature_heat_consumer, supply_temperature_net, flow_pressure_pump, lift_pressure_pump, self.netconfiguration, 
                                    dT_RL, v_max_heat_consumer, self.building_temp_checked, pipetype, v_max_pipe, material_filter, insulation_filter, 
                                    self.DiameterOpt_ckecked, import_type)

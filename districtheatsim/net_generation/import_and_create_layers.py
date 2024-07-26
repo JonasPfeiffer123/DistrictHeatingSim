@@ -1,7 +1,7 @@
 """
 Filename: import_and_create_layers.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-07-26
 Description: Imports the spatial data and processes them into layers.
 
 """
@@ -56,11 +56,13 @@ def generate_lines(layer, distance, angle_degrees, df=None):
             'Adresse': None,
             'Wärmebedarf': None,
             'Gebäudetyp': None,
-            'WW_Anteil (%)': None,
+            'Subtyp': None,
+            'WW_Anteil': None,
             'Typ_Heizflächen': None,
             'VLT_max': None,
             'Steigung_Heizkurve': None,
-            'RLT_max': None
+            'RLT_max': None,
+            'Normaußentemperatur': None
         }
 
         if df is not None:
@@ -73,11 +75,13 @@ def generate_lines(layer, distance, angle_degrees, df=None):
                 attr['Adresse'] = match['Adresse'].iloc[0]
                 attr['Wärmebedarf'] = match['Wärmebedarf'].iloc[0]
                 attr['Gebäudetyp'] = match['Gebäudetyp'].iloc[0]
-                attr['WW_Anteil (%)'] = match['WW_Anteil (%)'].iloc[0]
+                attr['Subtyp'] = match['Subtyp'].iloc[0]
+                attr['WW_Anteil'] = match['WW_Anteil'].iloc[0]
                 attr['Typ_Heizflächen'] = match['Typ_Heizflächen'].iloc[0]
                 attr['VLT_max'] = match['VLT_max'].iloc[0]
                 attr['Steigung_Heizkurve'] = match['Steigung_Heizkurve'].iloc[0]
                 attr['RLT_max'] = match['RLT_max'].iloc[0]
+                attr['Normaußentemperatur'] = match['Normaußentemperatur'].iloc[0]
 
         offset_point = create_offset_points(point, distance, angle_degrees)
         line = LineString([point, offset_point])

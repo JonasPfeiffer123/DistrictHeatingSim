@@ -237,4 +237,4 @@ def calculate(YEU_heating_kWh, YEU_hot_water_kWh, YEU_electricity_kWh=1, buildin
     total_heat_kWh_15min = heating_kWh_15min + hot_water_kWh_15min
     electricity_kW, heating_kW, hot_water_kW, total_heat_kW = electricity_kWh_15min * 4, heating_kWh_15min * 4, hot_water_kWh_15min * 4, total_heat_kWh_15min * 4
 
-    return time_15min, electricity_kW, heating_kW, hot_water_kW, total_heat_kW, temperature
+    return time_15min, total_heat_kW, heating_kW, hot_water_kW, temperature, electricity_kW
