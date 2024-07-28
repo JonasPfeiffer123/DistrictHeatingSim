@@ -37,6 +37,7 @@ class RenovationTab2(QWidget):
     def __init__(self, data_manager, parent=None):
         super().__init__(parent)
         self.data_manager = data_manager
+        self.parent = parent
 
         # Connect to the data manager signal
         self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
@@ -71,7 +72,7 @@ class RenovationTab2(QWidget):
 
         self.combo_box = QComboBox()
         self.combo_box.addItems(["Investitionskosten in €", "Gesamtenergiebedarf in kWh/a", "Energieeinsparung in kWh/a", "Kosteneinsparung in €/a", 
-                                 "Kaltmieten in €/m²", "Warmmieten in €/m²", "Amortisationszeit in a", "NPV in €", "LCCA in €", "ROI"])
+                                "Kaltmieten in €/m²", "Warmmieten in €/m²", "Amortisationszeit in a", "NPV in €", "LCCA in €", "ROI"])
         self.combo_box.currentIndexChanged.connect(self.update_plot)
         result_layout.addWidget(self.combo_box)
 
@@ -98,30 +99,30 @@ class RenovationTab2(QWidget):
                         ("U-Wert Dach (W/m²K)", "0.51"), ("U-Wert Fenster (W/m²K)", "3.0"), 
                         ("U-Wert Tür (W/m²K)", "4")],
             "Ziel-U-Werte": [("Ziel-U-Wert Boden (W/m²K)", "0.15"), ("Ziel-U-Wert Fassade (W/m²K)", "0.15"), 
-                             ("Ziel-U-Wert Dach (W/m²K)", "0.15"), ("Ziel-U-Wert Fenster (W/m²K)", "0.8"), 
-                             ("Ziel-U-Wert Tür (W/m²K)", "0.8")],
+                            ("Ziel-U-Wert Dach (W/m²K)", "0.15"), ("Ziel-U-Wert Fenster (W/m²K)", "0.8"), 
+                            ("Ziel-U-Wert Tür (W/m²K)", "0.8")],
             "Kosten": [("Kosten Boden (€/m²)", "100"), ("Kosten Fassade (€/m²)", "100"), 
-                       ("Kosten Dach (€/m²)", "150"), ("Kosten Fenster (€/m²)", "200"), 
-                       ("Kosten Tür (€/m²)", "250")],
-            "Sonstiges": [("Energiepreis (€/kWh)", "0.10"), ("Diskontierungsrate (%)", "3"), 
-                          ("Jahre", "20"), ("Kaltmiete (€/m²)", "5"), 
-                          ("Anteil Türflächen an Fensterfläche", "0.10"), ("Anteil Türflächen an Fassadenfläche", "0.01"), 
-                          ("Luftwechselrate", "0.5"), ("Auslegungsaußentemperatur (°C)", "-12"), 
-                          ("Normrauminnentemperatur (°C)", "20"), ("Heizgrenztemperatur (°C)", "15"), 
-                          ("Warmwasserbedarf Wh/(m²*a)", "12.8")],
+                    ("Kosten Dach (€/m²)", "150"), ("Kosten Fenster (€/m²)", "200"), 
+                    ("Kosten Tür (€/m²)", "250")],
+            "Sonstiges": [("Energiepreis IST (€/kWh)", "0.10"), ("Energiepreis Saniert (€/kWh)", "0.08"), ("Diskontierungsrate (%)", "3"), 
+                        ("Jahre", "20"), ("Kaltmiete (€/m²)", "5"), 
+                        ("Anteil Türflächen an Fensterfläche", "0.10"), ("Anteil Türflächen an Fassadenfläche", "0.01"), 
+                        ("Luftwechselrate", "0.5"), ("Normaußentemperatur (°C)", "-12"), 
+                        ("Normrauminnentemperatur (°C)", "20"), ("Heizgrenztemperatur (°C)", "15"), 
+                        ("Warmwasserbedarf Wh/(m²*a)", "12.8")],
             "Betriebskosten": [("Betriebskosten Boden (€/Jahr)", "50"),
-                               ("Betriebskosten Fassade (€/Jahr)", "100"), 
-                               ("Betriebskosten Dach (€/Jahr)", "125"), 
-                               ("Betriebskosten Fenster (€/Jahr)", "120"), 
-                               ("Betriebskosten Tür (€/Jahr)", "40")],
+                            ("Betriebskosten Fassade (€/Jahr)", "100"), 
+                            ("Betriebskosten Dach (€/Jahr)", "125"), 
+                            ("Betriebskosten Fenster (€/Jahr)", "120"), 
+                            ("Betriebskosten Tür (€/Jahr)", "40")],
             "Instandhaltungskosten": [("Instandhaltungskosten Boden (€/Jahr)", "25"), 
-                                      ("Instandhaltungskosten Fassade (€/Jahr)", "50"), 
-                                      ("Instandhaltungskosten Dach (€/Jahr)", "75"), 
-                                      ("Instandhaltungskosten Fenster (€/Jahr)", "60"),
-                                      ("Instandhaltungskosten Tür (€/Jahr)", "25")],                                        
+                                    ("Instandhaltungskosten Fassade (€/Jahr)", "50"), 
+                                    ("Instandhaltungskosten Dach (€/Jahr)", "75"), 
+                                    ("Instandhaltungskosten Fenster (€/Jahr)", "60"),
+                                    ("Instandhaltungskosten Tür (€/Jahr)", "25")],                                        
             "Restwertanteil": [("Restwert-Anteil Boden", "0.30"), ("Restwert-Anteil Fassade", "0.30"), 
-                               ("Restwert-Anteil Dach", "0.50"), ("Restwert-Anteil Fenster", "0.20"), 
-                               ("Restwert-Anteil Tür", "0.10")],
+                            ("Restwert-Anteil Dach", "0.50"), ("Restwert-Anteil Fenster", "0.20"), 
+                            ("Restwert-Anteil Tür", "0.10")],
             "Förderung": [("Förderquote", "0.5")]
         }
 
@@ -158,7 +159,8 @@ class RenovationTab2(QWidget):
             u_roof = float(self.input_fields["U-Wert Dach (W/m²K)"].text())
             u_window = float(self.input_fields["U-Wert Fenster (W/m²K)"].text())
             u_door = float(self.input_fields["U-Wert Tür (W/m²K)"].text())
-            energy_price = float(self.input_fields["Energiepreis (€/kWh)"].text())
+            energy_price_ist = float(self.input_fields["Energiepreis IST (€/kWh)"].text())
+            energy_price_saniert = float(self.input_fields["Energiepreis Saniert (€/kWh)"].text())
             discount_rate = float(self.input_fields["Diskontierungsrate (%)"].text()) / 100
             years = int(self.input_fields["Jahre"].text())
             cold_rent = float(self.input_fields["Kaltmiete (€/m²)"].text())
@@ -175,7 +177,7 @@ class RenovationTab2(QWidget):
             fracture_windows = float(self.input_fields["Anteil Türflächen an Fensterfläche"].text())
             fracture_doors = float(self.input_fields["Anteil Türflächen an Fassadenfläche"].text())
             air_change_rate = float(self.input_fields["Luftwechselrate"].text())
-            min_air_temp = float(self.input_fields["Auslegungsaußentemperatur (°C)"].text())
+            min_air_temp = float(self.input_fields["Normaußentemperatur (°C)"].text())
             room_temp = float(self.input_fields["Normrauminnentemperatur (°C)"].text())
             max_air_temp_heating = float(self.input_fields["Heizgrenztemperatur (°C)"].text())
             warmwasserbedarf = float(self.input_fields["Warmwasserbedarf Wh/(m²*a)"].text())
@@ -208,11 +210,11 @@ class RenovationTab2(QWidget):
 
             self.results = calculate_all_results(
                 length, width, floors, floor_height, u_ground, u_wall, u_roof, u_window, u_door,
-                energy_price, discount_rate, years, cold_rent, target_u_ground,
+                energy_price_ist, energy_price_saniert, discount_rate, years, cold_rent, target_u_ground,
                 target_u_wall, target_u_roof, target_u_window, target_u_door,
                 cost_ground, cost_wall, cost_roof, cost_window, cost_door,
                 fracture_windows, fracture_doors, air_change_rate, min_air_temp, room_temp, max_air_temp_heating,
-                warmwasserbedarf, betriebskosten, instandhaltungskosten, restwert_anteile, foerderquote
+                warmwasserbedarf, betriebskosten, instandhaltungskosten, restwert_anteile, foerderquote, self.parent.try_filename
             )
 
             self.result_label.setText("Analyse abgeschlossen. Wählen Sie ein Diagramm aus der Liste.")

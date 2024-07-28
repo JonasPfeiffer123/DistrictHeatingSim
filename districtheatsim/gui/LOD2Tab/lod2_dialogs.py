@@ -65,7 +65,7 @@ class FilterDialog(QDialog):
         return layout
 
     def selectFile(self, lineEdit):
-        filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", "", "All Files (*)")
+        filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", f"{self.base_path}/Gebäudedaten", "All Files (*)")
         if filename:
             lineEdit.setText(filename)
 

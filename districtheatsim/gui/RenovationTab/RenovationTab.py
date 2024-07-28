@@ -34,7 +34,7 @@ class RenovationTab(QWidget):
         main_layout.addWidget(tabs)
 
         self.RenovationTab1 = RenovationTab1(self.data_manager)
-        self.RenovationTab2 = RenovationTab2(self.data_manager)
+        self.RenovationTab2 = RenovationTab2(self.data_manager, self.parent)
 
         tabs.addTab(self.RenovationTab1, "Wirtschaftlichkeitsrechnung Sanierung Quartier")
         tabs.addTab(self.RenovationTab2, "Wirtschaftlichkeitsrechnung Sanierung Einzelgebäude")

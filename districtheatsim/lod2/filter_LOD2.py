@@ -189,9 +189,9 @@ def process_lod2(file_path, STANDARD_VALUES):
             building_info[parent_id] = {
                 'Ground': [], 'Wall': [], 'Roof': [], 'H_Traufe': None, 'H_Boden': None,
                 'Adresse': None, 'Stadt': None, 'Bundesland': None, 'Land': None, 'Koordinate_X': None, 'Koordinate_Y': None,
-                'Nutzungstyp': None, 'Typ': None, 'Gebäudezustand': None, 'ww_demand_kWh_per_m2': None, 
+                'Gebäudetyp': None, 'Subtyp': None, 'Typ': None, 'Gebäudezustand': None, 'ww_demand_kWh_per_m2': None, 
                 'air_change_rate': None, 'Stockwerke': None, 'fracture_windows': None, 'fracture_doors': None, 
-                'min_air_temp': None, 'room_temp': None, 'max_air_temp_heating': None, 'Wärmebedarf': None, 'Warmwasseranteil': None,
+                'Normaußentemperatur': None, 'room_temp': None, 'max_air_temp_heating': None, 'Wärmebedarf': None, 'Warmwasseranteil': None,
                 'Typ_Heizflächen': None, 'VLT_max': None, 'Steigung_Heizkurve': None, 'RLT_max': None,
                 'wall_u': None, 'roof_u': None, 'window_u': None, 'door_u': None, 'ground_u': None
             }
@@ -217,6 +217,8 @@ def process_lod2(file_path, STANDARD_VALUES):
             building_info[parent_id]['Stockwerke'] = row['Stockwerke']
         if 'Gebäudetyp' in row and pd.notna(row['Gebäudetyp']):
             building_info[parent_id]['Gebäudetyp'] = row['Gebäudetyp']
+        if 'Subtyp' in row and pd.notna(row['Subtyp']):
+            building_info[parent_id]['Subtyp'] = row['Subtyp']
         if 'Typ' in row and pd.notna(row['Typ']):
             building_info[parent_id]['Typ'] = row['Typ']
         if 'Gebäudezustand' in row and pd.notna(row['Gebäudezustand']):
@@ -229,8 +231,8 @@ def process_lod2(file_path, STANDARD_VALUES):
             building_info[parent_id]['fracture_windows'] = row['fracture_windows']
         if 'fracture_doors' in row and pd.notna(row['fracture_doors']):
             building_info[parent_id]['fracture_doors'] = row['fracture_doors']
-        if 'min_air_temp' in row and pd.notna(row['min_air_temp']):
-            building_info[parent_id]['min_air_temp'] = row['min_air_temp']
+        if 'Normaußentemperatur' in row and pd.notna(row['Normaußentemperatur']):
+            building_info[parent_id]['Normaußentemperatur'] = row['Normaußentemperatur']
         if 'room_temp' in row and pd.notna(row['room_temp']):
             building_info[parent_id]['room_temp'] = row['room_temp']
         if 'max_air_temp_heating' in row and pd.notna(row['max_air_temp_heating']):

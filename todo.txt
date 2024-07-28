@@ -28,12 +28,8 @@ Wärmenetzgenerierung:
     --> Ausbauszenarien?
 
 Wärmenetzberechnung:
-- Berechnungsverfahren überprüfen, Profilberechnung, Termperaturberechnung
-- Auslagerung der Gebäudelastberechnung in extra Berechnungsschritt / -tab 
-    --> Gebäudelastgänge werden zunächst individuell gespeichert
-    --> Grundlage für Einzelversorgungsrechnung
-    --> Nebeneffekt: Bei definierter Gebäudestruktur müssen die Lastgänge nicht jedes mal wieder neu berechnet werden. Dies spart Rechenzeit.
-- Bei sehr viel langeweile könnte man auch das manuelle Erstellen von Netzen anfangen. Mhm naja kp ob das jetzt wirklich notwendig ist.
+- Bei sehr viel langeweile könnte man auch das manuelle Erstellen von Netzen anfangen. 
+    Mhm naja kp ob das jetzt wirklich notwendig ist.
 - Sekundäre Erzeuger hinzufügen
 
 Wirtschaftlichkeitsberechnung:
@@ -53,8 +49,7 @@ Erzeugerauslegung:
 - Ergebnisausgabe: Anzahl Starts, Betriebsstunden und Betriebsstunden/Start im GUI ausgeben
 
 Gebäudesanierung:
-- Anpassung der Eingabe und der Berechnung, dass für den Sanierungsstand ein anderer Wärmepreis vorgegeben werden kann.
-    --> Wichtig für genaue Abbildung der Versorgungsvariante. Wirtschaftlichkeitsberechnung Gebäude daher auch erst nach Definition Versorgungsvariante sinnvoll.
+- UI Optimierung
 
 Ergebnispräsentation:
 - PDF-Ausgabe aus dem Tab für Wirtschaftlichkeit in den Haupttab holen.

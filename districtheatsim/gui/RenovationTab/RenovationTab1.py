@@ -118,11 +118,11 @@ class RenovationTab1(QWidget):
         # Liste der relevanten Felder
         self.RELEVANT_FIELDS = [
             'ID', 'Land', 'Bundesland', 'Stadt', 'Adresse', 'Wärmebedarf',
-            'Gebäudetyp', 'Warmwasseranteil', 'Typ_Heizflächen', 'VLT_max', 
+            'Gebäudetyp', 'Subtyp', 'Warmwasseranteil', 'Typ_Heizflächen', 'VLT_max', 
             'Steigung_Heizkurve', 'RLT_max', 'UTM_X', 'UTM_Y', 'Ground_Area', 
             'Wall_Area', 'Roof_Area', 'Volume', 'Nutzungstyp', 'Typ', 
             'Gebäudezustand', 'ww_demand_kWh_per_m2', 'air_change_rate', 
-            'fracture_windows', 'fracture_doors', 'min_air_temp', 'room_temp', 
+            'fracture_windows', 'fracture_doors', 'Normaußentemperatur', 'room_temp', 
             'max_air_temp_heating', 'wall_u', 'roof_u', 'window_u', 'door_u', 
             'ground_u'
         ]
@@ -134,23 +134,25 @@ class RenovationTab1(QWidget):
 
         groups = {
             "Kosten": [("Kosten Boden (€/m²)", "100"), ("Kosten Fassade (€/m²)", "100"), 
-                       ("Kosten Dach (€/m²)", "150"), ("Kosten Fenster (€/m²)", "200"), 
-                       ("Kosten Tür (€/m²)", "250")],
-            "Sonstiges": [("Energiepreis (€/kWh)", "0.10"), ("Diskontierungsrate (%)", "3"), 
-                          ("Jahre", "20"), ("Kaltmiete (€/m²)", "5")],
+                        ("Kosten Dach (€/m²)", "150"), ("Kosten Fenster (€/m²)", "200"), 
+                        ("Kosten Tür (€/m²)", "250")],
+            "Sonstiges": [("Energiepreis vor Sanierung (€/kWh)", "0.10"), 
+                        ("Energiepreis nach Sanierung (€/kWh)", "0.08"),
+                        ("Diskontierungsrate (%)", "3"), 
+                        ("Jahre", "20"), ("Kaltmiete (€/m²)", "5")],
             "Betriebskosten": [("Betriebskosten Boden (€/Jahr)", "50"),
-                               ("Betriebskosten Fassade (€/Jahr)", "100"), 
-                               ("Betriebskosten Dach (€/Jahr)", "125"), 
-                               ("Betriebskosten Fenster (€/Jahr)", "120"), 
-                               ("Betriebskosten Tür (€/Jahr)", "40")],
+                                ("Betriebskosten Fassade (€/Jahr)", "100"), 
+                                ("Betriebskosten Dach (€/Jahr)", "125"), 
+                                ("Betriebskosten Fenster (€/Jahr)", "120"), 
+                                ("Betriebskosten Tür (€/Jahr)", "40")],
             "Instandhaltungskosten": [("Instandhaltungskosten Boden (€/Jahr)", "25"), 
-                                      ("Instandhaltungskosten Fassade (€/Jahr)", "50"), 
-                                      ("Instandhaltungskosten Dach (€/Jahr)", "75"), 
-                                      ("Instandhaltungskosten Fenster (€/Jahr)", "60"),
-                                      ("Instandhaltungskosten Tür (€/Jahr)", "25")],                                        
+                                    ("Instandhaltungskosten Fassade (€/Jahr)", "50"), 
+                                    ("Instandhaltungskosten Dach (€/Jahr)", "75"), 
+                                    ("Instandhaltungskosten Fenster (€/Jahr)", "60"),
+                                    ("Instandhaltungskosten Tür (€/Jahr)", "25")],                                        
             "Restwertanteil": [("Restwert-Anteil Boden", "0.30"), ("Restwert-Anteil Fassade", "0.30"), 
-                               ("Restwert-Anteil Dach", "0.50"), ("Restwert-Anteil Fenster", "0.20"), 
-                               ("Restwert-Anteil Tür", "0.10")],
+                                ("Restwert-Anteil Dach", "0.50"), ("Restwert-Anteil Fenster", "0.20"), 
+                                ("Restwert-Anteil Tür", "0.10")],
             "Förderung": [("Förderquote", "0.5")]
         }
 
@@ -170,6 +172,7 @@ class RenovationTab1(QWidget):
         main_layout.addLayout(left_layout)
         main_layout.addLayout(right_layout)
         layout.addLayout(main_layout)
+
 
     def updateDefaultPath(self, new_base_path):
         self.base_path = new_base_path
@@ -259,7 +262,8 @@ class RenovationTab1(QWidget):
             ist_buildings = self.extract_building_info(self.ist_geojson)
             saniert_buildings = self.extract_building_info(self.saniert_geojson)
 
-            energy_price = float(self.input_fields["Energiepreis (€/kWh)"].text())
+            energy_price_ist = float(self.input_fields["Energiepreis vor Sanierung (€/kWh)"].text())
+            energy_price_saniert = float(self.input_fields["Energiepreis nach Sanierung (€/kWh)"].text())
             discount_rate = float(self.input_fields["Diskontierungsrate (%)"].text()) / 100
             years = int(self.input_fields["Jahre"].text())
             cold_rent = float(self.input_fields["Kaltmiete (€/m²)"].text())
@@ -301,7 +305,7 @@ class RenovationTab1(QWidget):
                 ist_heat_demand = ist_building['Wärmebedarf']
                 saniert_heat_demand = saniert_building['Wärmebedarf']
 
-                analyse = SanierungsAnalyse(ist_heat_demand, saniert_heat_demand, energy_price, discount_rate, years)
+                analyse = SanierungsAnalyse(ist_heat_demand, saniert_heat_demand, energy_price_ist, energy_price_saniert, discount_rate, years)
                 kosteneinsparung = analyse.berechne_kosteneinsparungen()
                 investitionskosten = {
                     'ground_u': cost_ground * ist_building["ground_area"],
@@ -321,7 +325,7 @@ class RenovationTab1(QWidget):
                 roi = analyse.berechne_roi(gesamt_investitionskosten, foerderquote)
 
                 neue_kaltmiete_pro_m2 = cold_rent + effektive_investitionskosten / (amortisationszeit * 12 * ist_building['ground_area']) if amortisationszeit != 0 else 0
-                neue_warmmiete_pro_m2 = neue_kaltmiete_pro_m2 + ((saniert_heat_demand / 12) / ist_building['ground_area']) * energy_price
+                neue_warmmiete_pro_m2 = neue_kaltmiete_pro_m2 + ((saniert_heat_demand / 12) / ist_building['ground_area']) * energy_price_saniert
 
                 adresse = f"{ist_building['Adresse']}"
 
@@ -333,7 +337,7 @@ class RenovationTab1(QWidget):
                     'Kosteneinsparung in €/a': kosteneinsparung,
                     'Kaltmieten in €/m² (IST)': cold_rent,
                     'Kaltmieten in €/m² (Saniert)': neue_kaltmiete_pro_m2,
-                    'Warmmieten in €/m² (IST)': cold_rent + ((ist_heat_demand / 12) / ist_building['ground_area']) * energy_price,
+                    'Warmmieten in €/m² (IST)': cold_rent + ((ist_heat_demand / 12) / ist_building['ground_area']) * energy_price_ist,
                     'Warmmieten in €/m² (Saniert)': neue_warmmiete_pro_m2,
                     'Amortisationszeit in a': amortisationszeit,
                     'NPV in €': npv,

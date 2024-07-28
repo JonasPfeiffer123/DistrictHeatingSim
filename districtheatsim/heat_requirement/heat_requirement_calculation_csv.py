@@ -51,8 +51,8 @@ def generate_profiles_from_csv(data, TRY, calc_method="Datensatz", ww_demand=0.2
     for idx, YEU in enumerate(YEU_total_heat_kWh):
         if calc_method == "Datensatz":
             try:
-                current_building_type = data.at[idx, "Gebäudetyp"]
-                current_subtype = data.at[idx, "Subtyp"]
+                current_building_type = str(data.at[idx, "Gebäudetyp"])
+                current_subtype = str(data.at[idx, "Subtyp"])
                 current_ww_demand = data.at[idx, "WW_Anteil"]
                 current_calc_method = building_type_to_method.get(current_building_type, "StandardMethode")
             except KeyError:
