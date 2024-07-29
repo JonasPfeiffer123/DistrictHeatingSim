@@ -1,7 +1,7 @@
 """
 Filename: visualiztion_dialogs.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-07-29
 Description: Contains the Dialogs for the VisualizationTab.
 """
 
@@ -58,9 +58,10 @@ class LayerGenerationDialog(QDialog):
         layout = QVBoxLayout(self)
 
         formLayout = QFormLayout()
+        formLayout.setSpacing(10)  # Set spacing between form elements
 
         self.fileInput, self.fileButton = self.createFileInput(f"{self.base_path}\Raumanalyse\Straßen.geojson")
-        self.dataInput, self.dataCsvButton = self.createFileInput(f"{self.base_path}\Gebäudedaten\data_output_ETRS89.csv")
+        self.dataInput, self.dataCsvButton = self.createFileInput(f"{self.base_path}\Gebäudedaten\data_input.csv")
 
         self.locationModeComboBox = QComboBox(self)
         self.locationModeComboBox.addItems(["Koordinaten direkt eingeben", "Adresse eingeben", "Koordinaten aus csv laden"])
@@ -100,12 +101,12 @@ class LayerGenerationDialog(QDialog):
         formLayout.addRow("Modus für Erzeugerstandort:", self.locationModeComboBox)
         formLayout.addRow("Koordinatensystem:", self.coordSystemComboBox)
         formLayout.addRow("Koordinaten eingeben:", self.coordInput)
-        formLayout.addRow(self.addCoordButton)
+        formLayout.addRow("", self.addCoordButton)
         formLayout.addRow("Adresse für Geocoding:", self.addressInput)
-        formLayout.addRow(self.geocodeButton)
-        formLayout.addRow(self.importCsvButton)
+        formLayout.addRow("", self.geocodeButton)
+        formLayout.addRow("", self.importCsvButton)
         formLayout.addRow("Koordinatentabelle:", self.coordTable)
-        formLayout.addRow(self.deleteCoordButton)
+        formLayout.addRow("", self.deleteCoordButton)
         formLayout.addRow("Netzgenerierungsmodus:", self.generationModeComboBox)
 
         layout.addLayout(formLayout)
@@ -115,8 +116,19 @@ class LayerGenerationDialog(QDialog):
         self.cancelButton = QPushButton("Abbrechen", self)
         self.cancelButton.clicked.connect(self.reject)
 
-        layout.addWidget(self.okButton)
-        layout.addWidget(self.cancelButton)
+        buttonLayout = QHBoxLayout()
+        buttonLayout.addStretch(1)
+        buttonLayout.addWidget(self.okButton)
+        buttonLayout.addWidget(self.cancelButton)
+        
+        layout.addLayout(buttonLayout)
+
+        self.setStyleSheet("""
+            QPushButton:disabled, QLineEdit:disabled, QComboBox:disabled {
+                background-color: #f0f0f0;
+                color: #a0a0a0;
+            }
+        """)
 
         self.toggleLocationInputMode(0)
         self.setLayout(layout)
