@@ -1,13 +1,12 @@
 """
 Filename: project_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-26
+Date: 2024-07-29
 Description: Contains the ProjectTab.
 """
 
 import csv
 import json
-import shutil
 import os
 import sys
 
@@ -94,10 +93,6 @@ class ProjectTab(QWidget):
         downloadAction = QAction('Adressdaten geocodieren', self)
         downloadAction.triggered.connect(self.openGeocodeAdressesDialog)
         fileMenu.addAction(downloadAction)
-
-        createVariantAction = QAction('Variante erstellen', self)
-        createVariantAction.triggered.connect(self.createProjectVariant)
-        fileMenu.addAction(createVariantAction)
 
         rightLayout.addWidget(self.menuBar)
 
@@ -295,28 +290,6 @@ class ProjectTab(QWidget):
             return centroid_x, centroid_y
         else:
             return None, None
-
-    def createProjectVariant(self):
-        if not self.base_path:
-            QMessageBox.warning(self, "Warnung", "Kein Projektordner ausgewählt.", QMessageBox.Ok)
-            return
-
-        base_dir = os.path.dirname(self.base_path)
-        base_name = os.path.basename(self.base_path)
-        variant_num = 1
-
-        while True:
-            new_project_path = os.path.join(base_dir, f"{base_name} Variante {variant_num}")
-            if not os.path.exists(new_project_path):
-                break
-            variant_num += 1
-
-        try:
-            shutil.copytree(self.base_path, new_project_path)
-            QMessageBox.information(self, "Info", f"Projektvariante wurde erfolgreich erstellt: {new_project_path}")
-            self.setProjectFolderPath(new_project_path)
-        except Exception as e:
-            QMessageBox.critical(self, "Fehler", f"Ein Fehler ist aufgetreten: {str(e)}")
 
     def setProjectFolderPath(self, path):
         self.base_path = path

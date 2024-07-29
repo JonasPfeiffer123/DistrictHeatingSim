@@ -1,10 +1,10 @@
-Land;Bundesland;Stadt;Adresse;Wärmebedarf;Gebäudetyp;WW_Anteil (%);Typ_Heizflächen;VLT_max;Steigung_Heizkurve;RLT_max;UTM_X;UTM_Y
-Deutschland;Sachsen;Görlitz;Heynestraße 7;249602.17;HMF;9.09;HK;70.0;1.5;55.0;499888.9605;5666315.274
-Deutschland;Sachsen;Görlitz;Brückenstraße 10;340610.46;GBD;12.3;HK;70.0;1.5;55.0;499828.49;5666163.93
-Deutschland;Sachsen;Görlitz;Parkstraße 3;186938.4;HMF;6.43;HK;70.0;1.5;55.0;499755.8195;5666460.737
-Deutschland;Sachsen;Görlitz;Am Stadtpark 1;1882378.22;GBD;7.81;HK;70.0;1.5;55.0;499915.268;5666561.652
-Deutschland;Sachsen;Görlitz;Dr.-Kahlbaum-Allee 31;710593.34;GBD;8.08;HK;70.0;1.5;55.0;499555.706;5666496.192
-Deutschland;Sachsen;Görlitz;Am Stadtpark 6;235626.55;HMF;6.36;HK;70.0;1.5;55.0;499725.378;5666483.403
-Deutschland;Sachsen;Görlitz;Brückenstraße 3;269160.16;HMF;6.82;HK;70.0;1.5;55.0;499824.89;5666358.4
-Deutschland;Sachsen;Görlitz;Furtstraße 3;205041.46;GBD;10.5;HK;70.0;1.5;55.0;499965.7974;5666443.628
-Deutschland;Sachsen;Görlitz;Furtstraße 1;1100000.0;GBD;40.0;HK;70.0;1.5;55.0;499882.86;5666431.99
+Land;Bundesland;Stadt;Adresse;Wärmebedarf;Gebäudetyp;Subtyp;WW_Anteil;Typ_Heizflächen;VLT_max;Steigung_Heizkurve;RLT_max;Normaußentemperatur;UTM_X;UTM_Y
+Deutschland;Sachsen;Görlitz;Heynestraße 7;473059.42;HMF;03;4.80;HK;70.0;1.5;55.0;-15.0;499888.9605;5666315.274
+Deutschland;Sachsen;Görlitz;Brückenstraße 10;690010.81;GBD;03;6.07;HK;70.0;1.5;55.0;-15.0;499828.49;5666163.93
+Deutschland;Sachsen;Görlitz;Parkstraße 3;337747.55;HMF;03;3.56;HK;70.0;1.5;55.0;-15.0;499755.8195;5666460.737
+Deutschland;Sachsen;Görlitz;Am Stadtpark 1;3182256.84;GBD;03;4.62;HK;70.0;1.5;55.0;-15.0;499915.268;5666561.652
+Deutschland;Sachsen;Görlitz;Dr.-Kahlbaum-Allee 31;1283790.57;GBD;03;4.47;HK;70.0;1.5;55.0;-15.0;499555.706;5666496.192
+Deutschland;Sachsen;Görlitz;Am Stadtpark 6;432068.56;HMF;03;3.47;HK;70.0;1.5;55.0;-15.0;499725.378;5666483.403
+Deutschland;Sachsen;Görlitz;Brückenstraße 3;486448.65;HMF;03;3.77;HK;70.0;1.5;55.0;-15.0;499824.89;5666358.4
+Deutschland;Sachsen;Görlitz;Furtstraße 3;397375.11;GBD;03;5.42;HK;70.0;1.5;55.0;-15.0;499965.7974;5666443.628
+Deutschland;Sachsen;Görlitz;Furtstraße 1;324711.67;GBD;03;4.82;HK;70.0;1.5;55.0;-15.0;499882.86;5666431.99

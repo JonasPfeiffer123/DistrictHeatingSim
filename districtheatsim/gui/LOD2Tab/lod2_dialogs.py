@@ -1,7 +1,7 @@
 """
 Filename: lod2_dialogs.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-07-29
 Description: Contains the Dialogs for the LOD2Tab.
 """
 
@@ -19,16 +19,16 @@ class FilterDialog(QDialog):
         font = QFont()
         font.setPointSize(10)
 
-        self.inputLOD2geojsonLineEdit, self.inputLOD2geojsonButton = self.createFileInput(f"{self.base_path}\\Gebäudedaten\\lod2_data\\lod2_data.geojson", font)
+        self.inputLOD2geojsonLineEdit, self.inputLOD2geojsonButton = self.createFileInput(f"{self.base_path}\\Gebäudedaten\\lod2_data.geojson", font)
         layout.addLayout(self.createFileInputLayout("Eingabe-LOD2-geojson:", self.inputLOD2geojsonLineEdit, self.inputLOD2geojsonButton, font))
 
-        self.inputfilterPolygonLineEdit, self.inputfilterPolygonButton = self.createFileInput(f"{self.base_path}\\Gebäudedaten\\lod2_data\\quartier_1.geojson", font)
+        self.inputfilterPolygonLineEdit, self.inputfilterPolygonButton = self.createFileInput(f"{self.base_path}\\Gebäudedaten\\Quartierabgrenzung.geojson", font)
         layout.addLayout(self.createFileInputLayout("Eingabe-Filter-Polygon-shapefile:", self.inputfilterPolygonLineEdit, self.inputfilterPolygonButton, font))
 
-        self.inputfilterBuildingDataLineEdit, self.inputfilterBuildingDataButton = self.createFileInput(f"{self.base_path}\\Gebäudedaten\\data_output_ETRS89.csv", font)
+        self.inputfilterBuildingDataLineEdit, self.inputfilterBuildingDataButton = self.createFileInput(f"{self.base_path}\\Gebäudedaten\\data_input.csv", font)
         layout.addLayout(self.createFileInputLayout("Eingabe-Filter-Gebäude-csv:", self.inputfilterBuildingDataLineEdit, self.inputfilterBuildingDataButton, font))
 
-        self.outputLOD2geojsonLineEdit, self.outputLOD2geojsonButton = self.createFileInput(f"{self.base_path}\\Gebäudedaten\\lod2_data\\filtered_LOD_quartier_1.geojson", font)
+        self.outputLOD2geojsonLineEdit, self.outputLOD2geojsonButton = self.createFileInput(f"{self.base_path}\\Gebäudedaten\\Quartier LOD2.geojson", font)
         layout.addLayout(self.createFileInputLayout("Ausgabe-LOD2-geojson:", self.outputLOD2geojsonLineEdit, self.outputLOD2geojsonButton, font))
 
         self.filterMethodComboBox = QComboBox(self)

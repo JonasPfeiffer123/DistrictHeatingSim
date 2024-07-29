@@ -1,7 +1,7 @@
 """
 Filename: lod2_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-07-29
 Description: Contains the LOD2Tab.
 """
 
@@ -130,7 +130,7 @@ class LOD2Tab(QWidget):
         scroll_layout = QVBoxLayout(scroll_content)
 
         self.tableWidget = QTableWidget(self)
-        self.tableWidget.setRowCount(29)  # Anzahl der Eigenschaften
+        self.tableWidget.setRowCount(30)  # Anzahl der Eigenschaften
         self.tableWidget.setColumnCount(0)  # Starten ohne Spalten, da diese dynamisch hinzugefügt werden
         self.tableWidget.setVerticalHeaderLabels(['Adresse', 'UTM_X (m)', 'UTM_Y (m)', 'Grundfläche (m²)', 'Wandfläche (m²)', 'Dachfläche (m²)', 'Volumen (m³)', 'Stockwerke', 'Gebäudetyp SLP', 'Subtyp SLP', 'Gebäudetyp TABULA', 
                                           'Gebäudezustand TABULA', 'WW-Bedarf (kWh/m²)', 'Luftwechselrate (1/h)', 'Fensteranteil (%)', 'Türanteil (%)', 'Normaußentemperatur (°C)', 'Raumtemperatur (°C)', 
@@ -223,7 +223,7 @@ class LOD2Tab(QWidget):
             current_building_type = comboBoxTypes.currentText()
             subtypes = self.building_subtypes.get(current_building_type, [])
             comboBoxSubtypes.addItems(subtypes)
-            comboBoxSubtypes.setCurrentText(info['Subtyp'])
+            comboBoxSubtypes.setCurrentText(str(info['Subtyp']))
             self.tableWidget.setCellWidget(9, col, comboBoxSubtypes)
 
             # TABULA-Gebäudetyp ComboBox

@@ -1,7 +1,7 @@
 """
 Filename: mix_design_dialogs.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-07-29
 Description: Contains the Dialogs for the MixDesignTab.
 """
 
@@ -224,19 +224,25 @@ class KostenBerechnungDialog(QDialog):
         self.layout.addWidget(cancelButton)
 
     def onAccept(self):
+        # Lesen der GeoDataFrame-Datei
         gdf_net = gpd.read_file(self.filename)
-        gdf_net_filtered = gdf_net[gdf_net["name"]==self.type]
 
-        if self.type == "flow line":
+        # Filtern basierend auf dem Typ (selbst .str.startswith anwenden, um Filter zu machen)
+        gdf_net_filtered = gdf_net[gdf_net["name"].str.startswith(self.type)]
+
+        # Berechnungen für "flow line"
+        if self.type.startswith("flow line"):
             self.length_values = gdf_net_filtered["length_m"].values.astype(float)
             self.cost_lines = self.length_values * float(self.specCostInput.text())
-            self.total_cost = round(np.sum(self.cost_lines),0)
+            self.total_cost = round(np.sum(self.cost_lines), 0)
 
-        if self.type == "HAST":
-            self.qext_values = gdf_net_filtered["qext_W"].values.astype(float)/1000
+        # Berechnungen für "HAST"
+        elif self.type == "HAST":
+            self.qext_values = gdf_net_filtered["qext_W"].values.astype(float) / 1000
             self.cost_lines = self.qext_values * float(self.specCostInput.text())
-            self.total_cost = round(np.sum(self.cost_lines),0)
+            self.total_cost = round(np.sum(self.cost_lines), 0)
 
+        # Akzeptieren der Änderungen
         self.accept()
 
 class NetInfrastructureDialog(QDialog):

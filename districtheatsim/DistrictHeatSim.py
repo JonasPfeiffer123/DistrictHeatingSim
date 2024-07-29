@@ -1,13 +1,14 @@
 """
 Filename: DistrictHeatSim.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-07-29
 Description: Main GUI file of the DistrictHeatSim-Tool.
 
 """
 
 import sys
 import os
+import shutil
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -175,6 +176,10 @@ class HeatSystemDesignGUI(QMainWindow):
             no_recent_action.setEnabled(False)
             recentMenu.addAction(no_recent_action)
 
+        createCopyAction = QAction('Projektkopie erstellen', self)
+        createCopyAction.triggered.connect(self.createProjectVariant)
+        fileMenu.addAction(createCopyAction)
+
         dataMenu = self.menubar.addMenu('Datenbasis')
         chooseTemperatureDataAction = QAction('Temperaturdaten festlegen', self)
         createCOPDataAction = QAction('COP-Kennfeld festlegen', self)
@@ -241,15 +246,16 @@ class HeatSystemDesignGUI(QMainWindow):
         #self.visTab.loadNetData()
         
         # Pandapipes Netz laden
-        self.calcTab.loadNet()
+        #self.calcTab.loadNet()
 
         # Pandapipes Berechnungsergebnisse Zeitreihe laden
-        self.calcTab.load_net_results()
+        #self.calcTab.load_net_results()
 
         # Erzeugerrechnung Ergebnisse laden
-        self.mixDesignTab.load_results_JSON()
+        #self.mixDesignTab.load_results_JSON()
 
         # ...
+        pass
 
 
     def saveExistingProject(self):
@@ -257,13 +263,36 @@ class HeatSystemDesignGUI(QMainWindow):
         # die einzelnen Speicherfunktionen der Projekttabs nacheinander aufrufen, wenn vorhanden
 
         # Pandapipes Netz speichern
-        self.calcTab.saveNet()
+        #self.calcTab.saveNet()
 
         # dimensioniertes geoJSON Netz speichern
-        self.calcTab.exportNetGeoJSON()
+        #self.calcTab.exportNetGeoJSON()
 
         # Erzeugerrechnung Ergebnisse speichern
-        self.mixDesignTab.save_results_JSON()
+        #self.mixDesignTab.save_results_JSON()
+        pass
+
+    def createProjectVariant(self):
+        if not self.projectFolderPath:
+            QMessageBox.warning(self, "Warnung", "Kein Projektordner ausgewählt.", QMessageBox.Ok)
+            return
+
+        base_dir = os.path.dirname(self.projectFolderPath)
+        base_name = os.path.basename(self.projectFolderPath)
+        variant_num = 1
+
+        while True:
+            new_project_path = os.path.join(base_dir, f"{base_name} Variante {variant_num}")
+            if not os.path.exists(new_project_path):
+                break
+            variant_num += 1
+
+        try:
+            shutil.copytree(self.projectFolderPath, new_project_path)
+            QMessageBox.information(self, "Info", f"Projektvariante wurde erfolgreich erstellt: {new_project_path}")
+            self.setProjectFolderPath(new_project_path)
+        except Exception as e:
+            QMessageBox.critical(self, "Fehler", f"Ein Fehler ist aufgetreten: {str(e)}")
 
     def load_last_project(self):
         last_project = get_last_project()
