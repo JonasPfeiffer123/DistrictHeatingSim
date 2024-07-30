@@ -1,21 +1,20 @@
 """
 Filename: calculation_dialogs.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-26
+Date: 2024-07-30
 Description: Contains the Dialogs for the CalculationTab.
 """
 
 import os
 import sys
 
-import pandas as pd
 import numpy as np
 import geopandas as gpd
 
 from shapely import Point
 
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QComboBox, QWidget, QScrollArea, \
-    QTableWidget, QPushButton, QTableWidgetItem, QHBoxLayout, QFileDialog, QCheckBox, QMessageBox, QGroupBox
+    QPushButton, QHBoxLayout, QFileDialog, QCheckBox, QMessageBox, QGroupBox
 
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
