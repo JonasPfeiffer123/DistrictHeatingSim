@@ -5,6 +5,10 @@ Date: 2024-07-23
 Description: Contains a custom class for checkable comboboxes.
 """
 
+import pandas as pd
+import numpy as np
+from datetime import datetime
+
 from PyQt5.QtWidgets import QComboBox, QListView
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from PyQt5.QtCore import Qt, pyqtSignal
@@ -71,3 +75,46 @@ class CheckableComboBox(QComboBox):
         item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
         item.setData(Qt.Unchecked, Qt.CheckStateRole)
         self.model().appendRow(item)
+
+    def checkedItems(self):
+        """
+        Returns a list of checked items.
+
+        Returns:
+            list: List of checked items.
+        """
+        checked_items = []
+        for index in range(self.count()):
+            item = self.model().item(index)
+            if item.checkState() == Qt.Checked:
+                checked_items.append(item.text())
+        return checked_items
+
+def convert_to_serializable(obj):
+    """
+    Converts an object to a serializable format.
+    
+    Args:
+        obj: The object to convert.
+    
+    Returns:
+        The serializable format of the object.
+    """
+    if isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, pd.Timestamp):
+        return obj.isoformat()
+    elif isinstance(obj, pd.DataFrame):
+        return obj.to_dict()
+    elif isinstance(obj, pd.Series):
+        return obj.to_dict()
+    elif isinstance(obj, np.datetime64):
+        return str(obj)
+    elif isinstance(obj, datetime):
+        return obj.isoformat()
+    else:
+        return obj

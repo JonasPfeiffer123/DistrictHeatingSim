@@ -1,16 +1,14 @@
 """
 Filename: building_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-26
+Date: 2024-07-31
 Description: Contains the BuildingTab.
 """
 
 import os
 import sys
 import json
-import numpy as np
 import pandas as pd
-from datetime import datetime
 
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -18,82 +16,43 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QFileDialog, QLabel, QMessageBox, QApplication, 
                              QMainWindow, QTableWidget, QTableWidgetItem, QHeaderView, QComboBox, QScrollArea,
-                             QMenuBar, QAction, QLineEdit, QStyledItemDelegate)
+                             QMenuBar, QAction, QLineEdit)
 from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtGui import QStandardItemModel
 
 from heat_requirement.heat_requirement_calculation_csv import generate_profiles_from_csv
+from districtheatsim.gui.utilities import CheckableComboBox, convert_to_serializable
 
 def get_resource_path(relative_path):
-    """ Get the absolute path to the resource, works for dev and for PyInstaller """
+    """
+    Get the absolute path to the resource, works for dev and for PyInstaller.
+    
+    Args:
+        relative_path (str): The relative path to the resource.
+    
+    Returns:
+        str: The absolute path to the resource.
+    """
     if getattr(sys, 'frozen', False):
         base_path = sys._MEIPASS
     else:
         base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     return os.path.join(base_path, relative_path)
 
-class ComboBoxDelegate(QStyledItemDelegate):
-    def __init__(self, parent, items):
-        super().__init__(parent)
-        self.items = items
-
-    def createEditor(self, parent, option, index):
-        comboBox = QComboBox(parent)
-        comboBox.addItems(self.items)
-        return comboBox
-
-    def setEditorData(self, editor, index):
-        value = index.model().data(index, Qt.EditRole)
-        editor.setCurrentText(value)
-
-    def setModelData(self, editor, model, index):
-        model.setData(index, editor.currentText(), Qt.EditRole)
-
-def convert_to_serializable(obj):
-    if isinstance(obj, np.integer):
-        return int(obj)
-    elif isinstance(obj, np.floating):
-        return float(obj)
-    elif isinstance(obj, np.ndarray):
-        return obj.tolist()
-    elif isinstance(obj, pd.Timestamp):
-        return obj.isoformat()
-    elif isinstance(obj, pd.DataFrame):
-        return obj.to_dict()
-    elif isinstance(obj, pd.Series):
-        return obj.to_dict()
-    elif isinstance(obj, np.datetime64):
-        return str(obj)
-    elif isinstance(obj, datetime):
-        return obj.isoformat()
-    else:
-        return obj
-
-class CheckableComboBox(QComboBox):
-    def __init__(self, parent=None):
-        super(CheckableComboBox, self).__init__(parent)
-        self.view().pressed.connect(self.handleItemPressed)
-        self.setModel(QStandardItemModel(self))
-
-    def handleItemPressed(self, index):
-        item = self.model().itemFromIndex(index)
-        if item.checkState() == Qt.Checked:
-            item.setCheckState(Qt.Unchecked)
-        else:
-            item.setCheckState(Qt.Checked)
-
-    def checkedItems(self):
-        checked_items = []
-        for index in range(self.count()):
-            item = self.model().item(index)
-            if item.checkState() == Qt.Checked:
-                checked_items.append(item.text())
-        return checked_items
-
 class BuildingTab(QWidget):
+    """
+    The BuildingTab widget for managing building data and displaying results.
+    """
+    
     data_added = pyqtSignal(object)
 
     def __init__(self, data_manager=None, parent=None):
+        """
+        Initializes the BuildingTab.
+        
+        Args:
+            data_manager: The data manager.
+            parent: The parent widget.
+        """
         super().__init__(parent)
         self.data_manager = data_manager
         self.parent = parent
@@ -105,6 +64,9 @@ class BuildingTab(QWidget):
             self.updateDefaultPath(self.data_manager.project_folder)
 
     def initUI(self):
+        """
+        Initializes the UI elements of the BuildingTab.
+        """
         scroll_area = QScrollArea(self)
         scroll_area.setWidgetResizable(True)
 
@@ -163,6 +125,9 @@ class BuildingTab(QWidget):
         self.building_combobox.view().pressed.connect(self.plot)
 
     def initMenuBar(self):
+        """
+        Initializes the menu bar of the BuildingTab.
+        """
         self.menubar = QMenuBar(self)
         self.menubar.setFixedHeight(30)
 
@@ -186,15 +151,27 @@ class BuildingTab(QWidget):
         self.main_layout.setMenuBar(self.menubar)
 
     def updateDefaultPath(self, path):
+        """
+        Updates the default path for saving files.
+        
+        Args:
+            path (str): The new default path.
+        """
         self.base_path = path
         self.output_path_edit.setText(f"{self.base_path}/Lastgang/Gebäude Lastgang.json")
 
     def browseOutputFile(self):
+        """
+        Opens a file dialog to select the output JSON file.
+        """
         fname, _ = QFileDialog.getSaveFileName(self, 'Save JSON File As', f"{self.base_path}/Lastgang", 'JSON Files (*.json);;All Files (*)')
         if fname:
             self.output_path_edit.setText(fname)
 
     def loadCsvFile(self):
+        """
+        Opens a file dialog to load a CSV file.
+        """
         fname, _ = QFileDialog.getOpenFileName(self, 'Select CSV File', f"{self.base_path}/Gebäudedaten", 'CSV Files (*.csv);;All Files (*)')
         if fname:
             try:
@@ -205,6 +182,9 @@ class BuildingTab(QWidget):
                 QMessageBox.critical(self, "Fehler", f"Fehler beim Laden der CSV-Datei: {e}")
 
     def saveCsvFile(self):
+        """
+        Opens a file dialog to save the CSV file.
+        """
         fname, _ = QFileDialog.getSaveFileName(self, 'Save CSV File As', f"{self.base_path}/Gebäudedaten", 'CSV Files (*.csv);;All Files (*)')
         if fname:
             try:
@@ -214,6 +194,9 @@ class BuildingTab(QWidget):
                 QMessageBox.critical(self, "Fehler", f"Fehler beim Speichern der CSV-Datei: {e}")
 
     def loadJsonFile(self):
+        """
+        Opens a file dialog to load a JSON file.
+        """
         fname, _ = QFileDialog.getOpenFileName(self, 'Select JSON File', f"{self.base_path}/Lastgang", 'JSON Files (*.json);;All Files (*)')
         if fname:
             try:
@@ -240,6 +223,9 @@ class BuildingTab(QWidget):
                 QMessageBox.critical(self, "Fehler", f"Fehler beim Laden der JSON-Datei: {e}")
 
     def calculateHeatDemand(self):
+        """
+        Calculates the heat demand profiles and saves the results to a JSON file.
+        """
         json_path = self.output_path_edit.text()
         if not json_path:
             QMessageBox.warning(self, "Fehler", "Bitte wählen Sie einen Speicherort für die Ergebnisse aus.")
@@ -299,6 +285,9 @@ class BuildingTab(QWidget):
         self.plot()
 
     def showCSVTable(self):
+        """
+        Displays the loaded CSV data in the table widget.
+        """
         self.table_widget.setColumnCount(len(self.data.columns))
         self.table_widget.setRowCount(len(self.data.index))
         self.table_widget.setHorizontalHeaderLabels(self.data.columns)
@@ -316,7 +305,7 @@ class BuildingTab(QWidget):
                         if current_building_type:
                             subtypes = self.building_subtypes.get(current_building_type[:3], [])
                             combobox.addItems(subtypes)
-                            print(f"Row {i}, Building Type {current_building_type[:3]}: Subtypes {subtypes}")
+                            #print(f"Row {i}, Building Type {current_building_type[:3]}: Subtypes {subtypes}")
                         else:
                             print(f"Error: Gebäudetyp for row {i} is None")
                         combobox.setCurrentText(str(self.data.iat[i, j]))
@@ -330,6 +319,12 @@ class BuildingTab(QWidget):
         self.table_widget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
     def getTableData(self):
+        """
+        Retrieves the data from the table widget.
+        
+        Returns:
+            pd.DataFrame: The data from the table widget.
+        """
         rows = self.table_widget.rowCount()
         columns = self.table_widget.columnCount()
         data = []
@@ -364,6 +359,9 @@ class BuildingTab(QWidget):
         return df
 
     def populateComboBoxes(self):
+        """
+        Populates the building type and subtype combo boxes.
+        """
         df = pd.read_csv(get_resource_path('data\\BDEW profiles\\daily_coefficients.csv'), delimiter=';', dtype=str)
         building_types = df['Standardlastprofil'].str[:3].unique()
         self.building_types = sorted(building_types)
@@ -373,6 +371,9 @@ class BuildingTab(QWidget):
             self.building_subtypes[building_type] = sorted(subtypes)
 
     def plot(self):
+        """
+        Plots the selected data types for the selected buildings.
+        """
         self.figure.clear()
         ax1 = self.figure.add_subplot(111)
         ax2 = ax1.twinx()

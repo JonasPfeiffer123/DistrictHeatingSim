@@ -128,10 +128,13 @@ To install DistrictHeatSim, ensure you have Python installed on your system. Fol
 
 ## Project Structure
 
-- **districtheatsim**: Source code for DistrictHeatSim
+- **src/districtheatsim**: Source code for DistrictHeatSim
+- **docs**: Documentation for DistrictHeatSim
 - **flow_chart**: Shows two flow charts describing data processing in DistrictHeatSim
 - **requirements.txt**: List of dependencies
 - **README.md**: This README file
+
+- **currently_not_used**: Contains multiple python files with various functionality which are currently not integrated in DistrictHeatSim
 
 ## Contribution Guidelines
 

@@ -26,7 +26,7 @@ from net_simulation_pandapipes.pp_net_time_series_simulation import calculate_re
 from gui.CalculationTab.calculation_dialogs import NetGenerationDialog, ZeitreihenrechnungDialog
 from gui.threads import NetInitializationThread, NetCalculationThread
 from net_simulation_pandapipes.config_plot import config_plot
-from gui.checkable_combobox import CheckableComboBox
+from gui.utilities import CheckableComboBox
 
 from net_simulation_pandapipes.utilities import export_net_geojson
 
