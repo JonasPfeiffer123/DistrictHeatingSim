@@ -4,15 +4,14 @@ districtheatsim
 .. toctree::
    :maxdepth: 4
 
-   DistrictHeatSim
-   currently_not_used
-   geocoding
-   gui
-   heat_generators
-   heat_requirement
-   lod2
-   net_generation
-   net_simulation_pandapipes
-   osm
-   tests
-   utilities
+   districtheatsim
+   districtheatsim.geocoding
+   districtheatsim.gui
+   districtheatsim.heat_generators
+   districtheatsim.heat_requirement
+   districtheatsim.lod2
+   districtheatsim.net_generation
+   districtheatsim.net_simulation_pandapipes
+   districtheatsim.osm
+   districtheatsim.utilities
+

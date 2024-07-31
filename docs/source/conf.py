@@ -5,7 +5,7 @@
 
 import os
 import sys
-sys.path.insert(0, os.path.abspath('..'))
+sys.path.insert(0, os.path.abspath('../../src'))
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.abspath('..'))
 project = 'DistrictHeatSim'
 copyright = '2024, Dipl.-Ing. (FH) Jonas Pfeiffer'
 author = 'Dipl.-Ing. (FH) Jonas Pfeiffer'
-release = 'Version 0.2'
+release = '0.0.1'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

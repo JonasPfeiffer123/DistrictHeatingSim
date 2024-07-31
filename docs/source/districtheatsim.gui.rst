@@ -7,10 +7,14 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
-   districtheatsim.gui.CalculationTab
-   districtheatsim.gui.LOD2Tab
    districtheatsim.gui.ProjectTab
+   districtheatsim.gui.BuildingTab
+   districtheatsim.gui.VisualizationTab
+   districtheatsim.gui.LOD2Tab
+   districtheatsim.gui.CalculationTab
+   districtheatsim.gui.MixDesignTab
    districtheatsim.gui.RenovationTab
+   districtheatsim.gui.ComparisonTab
 
 Submodules
 ----------
