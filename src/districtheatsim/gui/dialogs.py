@@ -135,7 +135,7 @@ class HeatPumpDataDialog(QDialog):
         dataLayout = QVBoxLayout()
         self.heatPumpDataFileLabel = QLabel("csv-Datei mit Wärmepumpenkennfeld:")
         self.heatPumpDataFileInput = QLineEdit()
-        self.heatPumpDataFileInput.setText(get_resource_path("COP/Kennlinien WP.csv"))
+        self.heatPumpDataFileInput.setText(get_resource_path("data/COP/Kennlinien WP.csv"))
         self.selectCOPFileButton = QPushButton('csv-Datei auswählen')
         self.selectCOPFileButton.clicked.connect(lambda: self.selectFilename(self.heatPumpDataFileInput))
         

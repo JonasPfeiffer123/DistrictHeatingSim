@@ -148,7 +148,7 @@ def calculation_load_profile(TRY, JWB_kWh, profiletype, subtype, holidays, year,
     daily_avg_temperature = np.round(calculate_daily_averages(hourly_temperature), 1)
     daily_reference_temperature = np.round((daily_avg_temperature + 2.5) * 2, -1) / 2 - 2.5
 
-    daily_data = pd.read_csv(get_resource_path('heat_requirement/BDEW factors/daily_coefficients.csv'), delimiter=';')
+    daily_data = pd.read_csv(get_resource_path('data/BDEW profiles/daily_coefficients.csv'), delimiter=';')
     h_A, h_B, h_C, h_D, mH, bH, mW, bW = get_coefficients(profiletype, subtype, daily_data)
     lin_H = np.nan_to_num(mH * daily_avg_temperature + bH) if mH != 0 or bH != 0 else 0
     lin_W = np.nan_to_num(mW * daily_avg_temperature + bW) if mW != 0 or bW != 0 else 0
@@ -178,7 +178,7 @@ def calculation_load_profile(TRY, JWB_kWh, profiletype, subtype, holidays, year,
     hourly_daily_heat_demand_heating = np.repeat(daily_heat_demand_heating, 24)
     hourly_daily_heat_demand_warmwater = np.repeat(daily_heat_demand_warmwater, 24)
 
-    hourly_data = pd.read_csv(get_resource_path('heat_requirement/BDEW factors/hourly_coefficients.csv'), delimiter=';')
+    hourly_data = pd.read_csv(get_resource_path('data/BDEW profiles/hourly_coefficients.csv'), delimiter=';')
     filtered_hourly_data = hourly_data[hourly_data["Typ"] == profiletype]
 
     hourly_conditions = pd.DataFrame({
@@ -231,7 +231,7 @@ def calculation_load_profile(TRY, JWB_kWh, profiletype, subtype, holidays, year,
 
     return hourly_intervals, hourly_heat_demand_total_normed, hourly_heat_demand_heating_normed.astype(float), hourly_heat_demand_warmwater_normed.astype(float), hourly_temperature
 
-def calculate(YEU_kWh=10000, building_type="HMF", subtyp="03", TRY=get_resource_path('heat_requirement\\TRY_511676144222\\TRY2015_511676144222_Jahr.dat'), year=2021, real_ww_share=None):
+def calculate(YEU_kWh=10000, building_type="HMF", subtyp="03", TRY=get_resource_path('data\\TRY\\TRY_511676144222\\TRY2015_511676144222_Jahr.dat'), year=2021, real_ww_share=None):
     """
     Calculate heat demand profiles using BDEW SLP methods.
 
@@ -239,7 +239,7 @@ def calculate(YEU_kWh=10000, building_type="HMF", subtyp="03", TRY=get_resource_
         YEU_kWh (int, optional): Yearly energy usage in kWh. Defaults to 10000.
         building_type (str, optional): Type of building. Defaults to "HMF".
         subtyp (str, optional): Subtype of building. Defaults to "03".
-        TRY (str, optional): Path to the TRY data file. Defaults to get_resource_path('heat_requirement\\TRY_511676144222\\TRY2015_511676144222_Jahr.dat').
+        TRY (str, optional): Path to the TRY data file. Defaults to get_resource_path('data\\TRY\\TRY_511676144222\\TRY2015_511676144222_Jahr.dat').
         year (int, optional): Year for the calculation. Defaults to 2021.
         real_ww_share (float, optional): Real warm water share. Defaults to None.
 

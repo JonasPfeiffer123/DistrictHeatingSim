@@ -55,7 +55,7 @@ class Building:
         'ww_demand_kWh_per_m2': 12.8
     }
 
-    def __init__(self, ground_area, wall_area, roof_area, building_volume, filename_TRY=get_resource_path("data\\TRY2015_511676144222_Jahr.dat"), u_type=None, building_state=None, u_values=None):
+    def __init__(self, ground_area, wall_area, roof_area, building_volume, filename_TRY=get_resource_path("data\\TRY\\TRY_511676144222\\TRY2015_511676144222_Jahr.dat"), u_type=None, building_state=None, u_values=None):
         """
         Initializes the Building object.
 
@@ -167,7 +167,7 @@ class Building:
             dict: U-values for the building components.
         """
         # Assuming the CSV file is named 'u_values.csv' and located in the same directory
-        df = pd.read_csv(get_resource_path('lod2\\data\\standard_u_values_TABULA.csv'), sep=";")
+        df = pd.read_csv(get_resource_path('data\\TABULA\\standard_u_values_TABULA.csv'), sep=";")
         u_values_row = df[(df['Typ'] == u_type) & (df['building_state'] == building_state)]
         
         if not u_values_row.empty:

@@ -128,7 +128,7 @@ def standardized_quarter_hourly_profile(year, building_type, days_of_year, type_
     quarterly_type_days = type_days[indices % len(type_days)]
     
     all_type_days = np.unique(quarterly_type_days)
-    all_data = {f"{building_type}{type_day}": pd.read_csv(get_resource_path(f'heat_requirement\\VDI 4655 load profiles\\{building_type}{type_day}.csv'), sep=';') for type_day in all_type_days}
+    all_data = {f"{building_type}{type_day}": pd.read_csv(get_resource_path(f'data\\VDI 4655 profiles\\VDI 4655 load profiles\\{building_type}{type_day}.csv'), sep=';') for type_day in all_type_days}
     
     profile_days = np.char.add(building_type, quarterly_type_days)
     times_str = np.datetime_as_string(quarter_hourly_intervals, unit='m')
@@ -200,7 +200,7 @@ def calculation_load_profile(TRY, factors, building_type, number_people_househol
 
     return quarter_hourly_intervals, electricity_corrected, heating_corrected, hot_water_corrected, temperature
 
-def calculate(YEU_heating_kWh, YEU_hot_water_kWh, YEU_electricity_kWh=1, building_type="MFH", number_people_household=2, year=2019, climate_zone="9", TRY=get_resource_path('heat_requirement\\TRY_511676144222\\TRY2015_511676144222_Jahr.dat')):
+def calculate(YEU_heating_kWh, YEU_hot_water_kWh, YEU_electricity_kWh=1, building_type="MFH", number_people_household=2, year=2019, climate_zone="9", TRY=get_resource_path('data\\TRY\\TRY_511676144222\\TRY2015_511676144222_Jahr.dat')):
     """
     Calculate heat demand profiles using VDI 4655 methods.
 
@@ -212,7 +212,7 @@ def calculate(YEU_heating_kWh, YEU_hot_water_kWh, YEU_electricity_kWh=1, buildin
         number_people_household (int, optional): Number of people in the household. Defaults to 2.
         year (int, optional): Year for the calculation. Defaults to 2019.
         climate_zone (str, optional): Climate zone. Defaults to "9".
-        TRY (str, optional): Path to the TRY data file. Defaults to get_resource_path('heat_requirement\\TRY_511676144222\\TRY2015_511676144222_Jahr.dat').
+        TRY (str, optional): Path to the TRY data file. Defaults to get_resource_path('data\\TRY\\TRY_511676144222\\TRY2015_511676144222_Jahr.dat').
 
     Returns:
         tuple: Arrays of quarter-hourly intervals, total heat demand, heating demand, hot water demand, temperature, and electricity demand.
@@ -220,7 +220,7 @@ def calculate(YEU_heating_kWh, YEU_hot_water_kWh, YEU_electricity_kWh=1, buildin
     holidays = np.array(["2019-01-01", "2019-04-19", "2019-04-22", "2019-05-01", "2019-05-30", 
                          "2019-06-10", "2019-06-20", "2019-10-03", "2019-11-01", "2019-12-25", "2019-12-26"]).astype('datetime64[D]')
     
-    factors = get_resource_path('heat_requirement\\VDI 4655 data\\Faktoren.csv')
+    factors = get_resource_path('data\\VDI 4655 profiles\\VDI 4655 data\\Faktoren.csv')
 
     time_15min, electricity_kWh_15min, heating_kWh_15min, hot_water_kWh_15min, temperature = calculation_load_profile(TRY, factors, building_type, number_people_household, 
                                                                                                   YEU_electricity_kWh, YEU_heating_kWh, YEU_hot_water_kWh, 
