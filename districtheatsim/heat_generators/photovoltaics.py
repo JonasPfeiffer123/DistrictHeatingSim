@@ -1,7 +1,7 @@
 """
-Filename: Photovoltaik.py
+Filename: photovoltaics.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-07-31
 Description: Calculation of solar irradiation according to Scenocalc District Heating 2.0 and PV according to eupvgis.
 
 """
@@ -10,23 +10,21 @@ import numpy as np
 import pandas as pd
 
 def import_TRY(filename):
-    """_summary_
+    """
+    Imports Test Reference Year (TRY) data for temperature, windspeed, direct and global radiation.
 
     Args:
-        filename (_type_): _description_
+        filename (str): Path to the TRY file.
 
     Returns:
-        _type_: _description_
+        tuple: Arrays containing temperature, windspeed, direct radiation, and global radiation.
     """
-    # Import TRY
-    # Define column widths
+    # Define column widths and names
     col_widths = [8, 8, 3, 3, 3, 6, 5, 4, 5, 2, 5, 4, 5, 5, 4, 5, 3]
-    # Define column names
     col_names = ["RW", "HW", "MM", "DD", "HH", "t", "p", "WR", "WG", "N", "x", "RF", "B", "D", "A", "E", "IL"]
 
     # Read the file
-    data = pd.read_fwf(filename, widths=col_widths, names=col_names,
-                       skiprows=34)
+    data = pd.read_fwf(filename, widths=col_widths, names=col_names, skiprows=34)
 
     # Store the columns as numpy arrays
     temperature = data['t'].values
@@ -41,25 +39,35 @@ def import_TRY(filename):
 DEG_TO_RAD = np.pi / 180
 
 def deg_to_rad(deg):
+    """
+    Converts degrees to radians.
+
+    Args:
+        deg (float or np.ndarray): Angle in degrees.
+
+    Returns:
+        float or np.ndarray: Angle in radians.
+    """
     return deg * DEG_TO_RAD
 
 def Calculate_Solar_Radiation(Irradiance_hori_L, D_L, Day_of_Year_L, Longitude, STD_Longitude, Latitude, Albedo,
                               East_West_collector_azimuth_angle, Collector_tilt_angle):
-    """_summary_
+    """
+    Calculates the solar radiation on a tilted surface.
 
     Args:
-        Irradiance_hori_L (_type_): _description_
-        D_L (_type_): _description_
-        Day_of_Year_L (_type_): _description_
-        Longitude (_type_): _description_
-        STD_Longitude (_type_): _description_
-        Latitude (_type_): _description_
-        Albedo (_type_): _description_
-        East_West_collector_azimuth_angle (_type_): _description_
-        Collector_tilt_angle (_type_): _description_
+        Irradiance_hori_L (np.ndarray): Horizontal irradiance.
+        D_L (np.ndarray): Direct irradiance.
+        Day_of_Year_L (np.ndarray): Day of the year.
+        Longitude (float): Longitude of the location.
+        STD_Longitude (float): Standard longitude for the time zone.
+        Latitude (float): Latitude of the location.
+        Albedo (float): Albedo value.
+        East_West_collector_azimuth_angle (float): East-West collector azimuth angle.
+        Collector_tilt_angle (float): Collector tilt angle.
 
     Returns:
-        _type_: _description_
+        np.ndarray: Total irradiance on the tilted surface.
     """
     # Creating an array from 1 to 24 h for 365 days
     Hour_L = np.tile(np.arange(1, 25), 365)
@@ -127,20 +135,21 @@ def Calculate_Solar_Radiation(Irradiance_hori_L, D_L, Day_of_Year_L, Longitude, 
 
 def Calculate_PV(TRY_data, Gross_area, Longitude, STD_Longitude, Latitude, Albedo,
                  East_West_collector_azimuth_angle, Collector_tilt_angle):
-    """_summary_
+    """
+    Calculates the photovoltaic power output based on TRY data and system specifications.
 
     Args:
-        TRY_data (_type_): _description_
-        Gross_area (_type_): _description_
-        Longitude (_type_): _description_
-        STD_Longitude (_type_): _description_
-        Latitude (_type_): _description_
-        Albedo (_type_): _description_
-        East_West_collector_azimuth_angle (_type_): _description_
-        Collector_tilt_angle (_type_): _description_
+        TRY_data (str): Path to the TRY data file.
+        Gross_area (float): Gross area of the photovoltaic system.
+        Longitude (float): Longitude of the location.
+        STD_Longitude (float): Standard longitude for the time zone.
+        Latitude (float): Latitude of the location.
+        Albedo (float): Albedo value.
+        East_West_collector_azimuth_angle (float): East-West collector azimuth angle.
+        Collector_tilt_angle (float): Collector tilt angle.
 
     Returns:
-        _type_: _description_
+        tuple: Annual PV yield (kWh), maximum power (kW), and power output array (W).
     """
     # Import TRY
     Ta_L, W_L, D_L, G_L = import_TRY(TRY_data)
@@ -190,6 +199,15 @@ def Calculate_PV(TRY_data, Gross_area, Longitude, STD_Longitude, Latitude, Albed
     return yield_kWh, P_max, P_L
 
 def azimuth_angle(direction):
+    """
+    Converts direction to azimuth angle.
+
+    Args:
+        direction (str): Cardinal direction (e.g., 'N', 'W', 'S', 'E').
+
+    Returns:
+        float: Azimuth angle in degrees.
+    """
     azimuths = {
         'N': 180,
         'W': 90,
@@ -203,6 +221,14 @@ def azimuth_angle(direction):
     return azimuths.get(direction.upper(), None)
 
 def calculate_building(TRY_data, building_data, output_filename):
+    """
+    Calculates the photovoltaic yield for buildings based on their specifications.
+
+    Args:
+        TRY_data (str): Path to the TRY data file.
+        building_data (str): Path to the CSV file containing building data.
+        output_filename (str): Path to save the output CSV file.
+    """
     # Load data from CSV file
     gdata = np.genfromtxt(building_data, delimiter=";", skip_header=1, dtype=None, encoding='utf-8')
 
@@ -212,17 +238,15 @@ def calculate_building(TRY_data, building_data, output_filename):
     Latitude = 51.1676
 
     Albedo = 0.2
-
     Collector_tilt_angle = 36
-
     Annual_hours = np.arange(1, 8761)
 
     # Result file
     df = pd.DataFrame()
-
-    print("works")
-    
     df['Annual Hours'] = Annual_hours
+
+    print("Calculating PV yield for buildings...")
+
     for idx, (building, area, direction) in enumerate(gdata):
         azimuth_angle = azimuth_angle(direction)
 
@@ -240,12 +264,10 @@ def calculate_building(TRY_data, building_data, output_filename):
                                                      azimuth_angle, Collector_tilt_angle)
 
                 suffix = hr if direction == "OW" else ""
-                print(f"PV yield {building}{suffix}: {yield} MWh")
+                print(f"PV yield {building}{suffix}: {yield_kWh} MWh")
                 print(f"Maximum PV power {building}{suffix}: {max_power} kW")
 
                 df[f'{building} {suffix} {area} m^2 [kW]'] = P_L
 
     # Save the DataFrame after completing the loop
     df.to_csv(output_filename, index=False, sep=';')
-
-# calculate_building("heating_network_generation/heat_requirement/TRY_511676144222/TRY2015_511676144222_Jahr.dat", "building_data_pv.csv", 'pv_data_results.csv')

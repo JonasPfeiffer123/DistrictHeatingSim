@@ -1,7 +1,7 @@
 """
 Filename: Dialogs.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-07-31
 Description: Contains the Dialogs of the main GUI
 """
 

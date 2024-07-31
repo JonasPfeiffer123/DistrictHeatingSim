@@ -5,7 +5,6 @@ Date: 2024-07-23
 Description: Contains functions for generating an A-Star based network
 
 Additional Information: Currently not working.
-
 """
 
 import pandas as pd
@@ -17,56 +16,58 @@ import numpy as np
 import time
 
 def euclidean_distance(a, b):
-    """_summary_
+    """
+    Calculates the Euclidean distance between two points.
 
     Args:
-        a (_type_): _description_
-        b (_type_): _description_
+        a (tuple): Coordinates of the first point.
+        b (tuple): Coordinates of the second point.
 
     Returns:
-        _type_: _description_
+        float: Euclidean distance between the points.
     """
     return Point(a).distance(Point(b))
 
 def connect_components(gdf, points_gdf):
-    """_summary_
+    """
+    Connects disjoint components in the graph represented by the GeoDataFrame.
 
     Args:
-        gdf (_type_): _description_
-        points_gdf (_type_): _description_
+        gdf (geopandas.GeoDataFrame): GeoDataFrame containing line geometries.
+        points_gdf (geopandas.GeoDataFrame): GeoDataFrame containing point geometries.
 
     Returns:
-        _type_: _description_
+        geopandas.GeoDataFrame: Updated GeoDataFrame with connected components.
     """
     G = nx.Graph()
-    # Füge alle Linien als Kanten in den Graphen ein
+    # Add all lines as edges in the graph
     for line in gdf.geometry:
         nodes = list(line.coords)
         for start, end in zip(nodes[:-1], nodes[1:]):
             G.add_edge(start, end)
 
-    # Markiere relevante Punkte in `points_gdf`
+    # Mark relevant points in `points_gdf`
     relevant_points = {tuple(point.coords[0]): True for point in points_gdf.geometry}
 
-    # Identifiziere Komponenten
+    # Identify components
     components = list(nx.connected_components(G))
     if len(components) <= 1:
-        print("Das Netzwerk ist bereits vollständig verbunden.")
+        print("The network is already fully connected.")
         return gdf
 
-    # Bestimme die größte Komponente
+    # Determine the largest component
     largest_component = max(components, key=len)
 
-    # Verbinde kleinere Komponenten, die relevante Punkte enthalten, mit der größten Komponente
+    # Connect smaller components containing relevant points to the largest component
     new_lines = []
     for component in components:
         if component != largest_component:
-            # Prüfe, ob die Komponente relevante Punkte enthält
+            # Check if the component contains relevant points
             relevant_component = any(node in relevant_points for node in component)
             if relevant_component:
-                # Verbinde jeden relevanten Punkt der kleineren Komponente mit der größten Komponente
+                # Connect each relevant point of the smaller component to the largest component
                 for node in component:
-                    if node in relevant_points:  # Nur relevante Punkte verbinden
+                    if node in relevant_points:  # Only connect relevant points
                         closest_node = None
                         min_distance = float('inf')
                         node_point = Point(node)
@@ -80,59 +81,60 @@ def connect_components(gdf, points_gdf):
                             new_line = LineString([node, closest_node])
                             new_lines.append(new_line)
 
-    # Füge die neuen Linien zum GeoDataFrame hinzu
+    # Add the new lines to the GeoDataFrame
     new_lines_gdf = gpd.GeoDataFrame(geometry=new_lines)
     updated_gdf = gpd.GeoDataFrame(pd.concat([gdf, new_lines_gdf], ignore_index=True))
     return updated_gdf
 
-### neue Implementierung ###
-# Funktion zur Erstellung des KD-Baums aus den Knoten des Graphen
+### New Implementation ###
 def create_kd_tree(G):
-    """_summary_
+    """
+    Creates a KDTree from the nodes of the graph.
 
     Args:
-        G (_type_): _description_
+        G (networkx.Graph): The input graph.
 
     Returns:
-        _type_: _description_
+        tuple: KDTree of node coordinates and list of nodes.
     """
     coords = [(G.nodes[node]['pos'].x, G.nodes[node]['pos'].y) for node in G]
     kd_tree = KDTree(coords)
     return kd_tree, list(G.nodes)
 
-# Erweitere create_road_graph um Koordinaten zu speichern
 def create_road_graph(road_layer):
-    """_summary_
+    """
+    Creates a graph from the road layer.
 
     Args:
-        road_layer (_type_): _description_
+        road_layer (geopandas.GeoDataFrame): GeoDataFrame containing the road layer.
 
     Returns:
-        _type_: _description_
+        networkx.Graph: Graph representation of the road layer.
     """
     G = nx.Graph()
     for idx, row in road_layer.iterrows():
         line = row.geometry
         nodes = list(line.coords)
         for start, end in zip(nodes[:-1], nodes[1:]):
-            # Stelle sicher, dass die Knoten beim Erstellen die 'pos' Eigenschaft erhalten
+            # Ensure nodes have 'pos' attribute when created
             if start not in G:
-                G.add_node(start, pos=Point(start))  # Hinzufügen der 'pos' Eigenschaft beim Knoten
+                G.add_node(start, pos=Point(start))  # Add 'pos' attribute to the node
             if end not in G:
-                G.add_node(end, pos=Point(end))  # Hinzufügen der 'pos' Eigenschaft beim Knoten
+                G.add_node(end, pos=Point(end))  # Add 'pos' attribute to the node
             G.add_edge(start, end, weight=LineString([start, end]).length)
     return G
 
 def find_nearest_node_kdtree(kd_tree, nodes, point):
-    """_summary_
+    """
+    Finds the nearest node in the graph to the given point using KDTree.
 
     Args:
-        kd_tree (_type_): _description_
-        nodes (_type_): _description_
-        point (_type_): _description_
+        kd_tree (scipy.spatial.KDTree): KDTree of node coordinates.
+        nodes (list): List of nodes in the graph.
+        point (shapely.geometry.Point): The point to find the nearest node to.
 
     Returns:
-        _type_: _description_
+        tuple: Coordinates of the nearest node.
     """
     point_np = np.array([point.x, point.y])
     dist, idx = kd_tree.query([point_np], k=1)
@@ -140,16 +142,17 @@ def find_nearest_node_kdtree(kd_tree, nodes, point):
     return nearest_node
 
 def a_star_with_timeout(G, start, goal, timeout=10):
-    """_summary_
+    """
+    Executes the A* search algorithm with a timeout.
 
     Args:
-        G (_type_): _description_
-        start (_type_): _description_
-        goal (_type_): _description_
-        timeout (int, optional): _description_. Defaults to 10.
+        G (networkx.Graph): The input graph.
+        start (tuple): Coordinates of the start node.
+        goal (tuple): Coordinates of the goal node.
+        timeout (int, optional): Timeout in seconds. Defaults to 10.
 
     Returns:
-        _type_: _description_
+        list: Path found by the A* algorithm, or None if no path found or timeout occurred.
     """
     start_time = time.time()
     try:
@@ -162,14 +165,15 @@ def a_star_with_timeout(G, start, goal, timeout=10):
     return path
 
 def generate_a_star_network(G, points_gdf):
-    """_summary_
+    """
+    Generates a network using the A* algorithm.
 
     Args:
-        G (_type_): _description_
-        points_gdf (_type_): _description_
+        G (networkx.Graph): The input graph.
+        points_gdf (geopandas.GeoDataFrame): GeoDataFrame containing the points to connect.
 
     Returns:
-        _type_: _description_
+        geopandas.GeoDataFrame: GeoDataFrame with the generated network lines.
     """
     kd_tree, nodes = create_kd_tree(G)
     path_lines = []
@@ -185,97 +189,100 @@ def generate_a_star_network(G, points_gdf):
     return gpd.GeoDataFrame(geometry=path_lines)
 
 def remove_unnecessary_nodes(gdf, points_fl, points_wea):
-    """_summary_
+    """
+    Removes unnecessary nodes from the network.
 
     Args:
-        gdf (_type_): _description_
-        points_fl (_type_): _description_
-        points_wea (_type_): _description_
+        gdf (geopandas.GeoDataFrame): GeoDataFrame containing the network lines.
+        points_fl (geopandas.GeoDataFrame): GeoDataFrame containing the flow points.
+        points_wea (geopandas.GeoDataFrame): GeoDataFrame containing the weather points.
 
     Returns:
-        _type_: _description_
+        geopandas.GeoDataFrame: GeoDataFrame with the simplified network.
     """
     G = nx.Graph()
-    # Erstelle den Graphen aus den GeoDataFrame Linien
+    # Create the graph from the GeoDataFrame lines
     for line in gdf.geometry:
         if isinstance(line, LineString):
             start, end = list(line.coords)[0], list(line.coords)[-1]
             G.add_edge(start, end)
 
-    # Identifiziere alle Ein-Grad-Knoten
+    # Identify all degree-one nodes
     to_remove = [node for node, degree in G.degree() if degree == 1]
 
-    # Erstelle einen Satz der Punktkoordinaten, die nicht entfernt werden sollen
+    # Create a set of point coordinates that should not be removed
     protected_points = set()
     for point in points_fl.geometry:
         protected_points.add(tuple(point.coords[0]))
     for point in points_wea.geometry:
         protected_points.add(tuple(point.coords[0]))
 
-    # Überprüfe, ob diese Knoten auf dem Graphen liegen und entferne sie, wenn sie nicht geschützt sind
+    # Check if these nodes lie on the graph and remove them if they are not protected
     new_lines = []
     for line in gdf.geometry:
         start, end = tuple(list(line.coords)[0]), tuple(list(line.coords)[-1])
         if (start in to_remove and start not in protected_points) or (end in to_remove and end not in protected_points):
-            continue  # Ignoriere die Linie, wenn der Start- oder Endknoten entfernt werden soll und nicht geschützt ist
-        new_lines.append(line)  # Behalte die Linie im Graphen
+            continue  # Ignore the line if the start or end node should be removed and is not protected
+        new_lines.append(line)  # Keep the line in the graph
 
-    # Erstelle einen neuen GeoDataFrame mit den übrig gebliebenen Linien
+    # Create a new GeoDataFrame with the remaining lines
     return gpd.GeoDataFrame(geometry=new_lines)
 
-def are_collinear(p1, p2, p3, tolerance=np.pi/180 * 10):  # Toleranz von 10 Grad
-    """_summary_
+def are_collinear(p1, p2, p3, tolerance=np.pi/180 * 10):  # Tolerance of 10 degrees
+    """
+    Checks if three points are collinear within a specified tolerance.
 
     Args:
-        p1 (_type_): _description_
-        p2 (_type_): _description_
-        p3 (_type_): _description_
-        tolerance (_type_, optional): _description_. Defaults to np.pi/180*10.
+        p1 (tuple): Coordinates of the first point.
+        p2 (tuple): Coordinates of the second point.
+        p3 (tuple): Coordinates of the third point.
+        tolerance (float, optional): Tolerance in radians. Defaults to np.pi/180*10.
 
     Returns:
-        _type_: _description_
+        bool: True if the points are collinear within the tolerance, False otherwise.
     """
-    # Berechne die Winkel zwischen den Punkten
+    # Calculate the angles between the points
     angle1 = np.arctan2(p2[1] - p1[1], p2[0] - p1[0])
     angle2 = np.arctan2(p3[1] - p2[1], p3[0] - p2[0])
-    # Prüfe, ob die Winkel innerhalb der Toleranz sind
+    # Check if the angles are within the tolerance
     return abs(angle1 - angle2) < tolerance
 
 def simplify_network(gdf):
-    """_summary_
+    """
+    Simplifies the network by combining collinear segments.
 
     Args:
-        gdf (_type_): _description_
+        gdf (geopandas.GeoDataFrame): GeoDataFrame containing the network lines.
 
     Returns:
-        _type_: _description_
+        geopandas.GeoDataFrame: GeoDataFrame with the simplified network.
     """
     G = nx.Graph()
-    # Füge Linien als Kanten in den Graphen ein, Knoten sind Endpunkte
+    # Add lines as edges in the graph, nodes are endpoints
     for line in gdf.geometry:
         if isinstance(line, LineString):
             start, end = tuple(line.coords[0]), tuple(line.coords[-1])
             G.add_edge(start, end, object=line)
 
-    # Versuche, kollineare Segmente zu kombinieren
+    # Try to combine collinear segments
     to_remove = []
     to_add = []
     for node in G.nodes:
         neighbors = list(G.neighbors(node))
         if len(neighbors) == 2:
-            # Überprüfe, ob die Segmente mit diesem Knoten als Zwischenpunkt kollinear sind
+            # Check if the segments with this node as an intermediate point are collinear
             if are_collinear(neighbors[0], node, neighbors[1]):
-                # Erstelle eine neue Linie, die die beiden Segmente kombiniert
+                # Create a new line combining the two segments
                 new_line = LineString([neighbors[0], node, neighbors[1]])
                 to_add.append((neighbors[0], neighbors[1], new_line))
                 to_remove.extend([(neighbors[0], node), (node, neighbors[1])])
 
-    # Update den Graphen
+    # Update the graph
     for start, end in to_remove:
         G.remove_edge(start, end)
     for start, end, line in to_add:
         G.add_edge(start, end, object=line)
 
-    # Erstelle ein neues GeoDataFrame aus den kombinierten Linien
+    # Create a new GeoDataFrame from the combined lines
     new_lines = [data['object'] for u, v, data in G.edges(data=True)]
     return gpd.GeoDataFrame(geometry=new_lines)

@@ -1,7 +1,7 @@
 """
 Filename: results_pdf.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-07-31
 Description: Script for generating the results PDF of the calculation results.
 """
 
@@ -10,7 +10,7 @@ from io import BytesIO
 import PyPDF2
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, KeepTogether
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.lib import colors
 

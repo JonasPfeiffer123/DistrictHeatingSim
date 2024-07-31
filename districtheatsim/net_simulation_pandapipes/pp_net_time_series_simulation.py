@@ -1,9 +1,8 @@
 """
 Filename: pp_net_time_series_simulation.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-07-31
 Description: Script with functions for the implemented time series calculation.
-
 """
 
 from pandapipes.timeseries import run_time_series
@@ -18,6 +17,15 @@ from net_simulation_pandapipes.controllers import ReturnTemperatureController
 from net_simulation_pandapipes.utilities import COP_WP
 
 def update_const_controls(net, qext_w_profiles, time_steps, start, end):
+    """Update constant controls with new data sources for time series simulation.
+
+    Args:
+        net (pandapipesNet): The pandapipes network.
+        qext_w_profiles (list of arrays): List of external heat profiles.
+        time_steps (range): Range of time steps for the simulation.
+        start (int): Start index for slicing the profiles.
+        end (int): End index for slicing the profiles.
+    """
     for i, qext_w_profile in enumerate(qext_w_profiles):
         df = pd.DataFrame(index=time_steps, data={f'qext_w_{i}': qext_w_profile[start:end]})
         data_source = DFData(df)
@@ -26,6 +34,16 @@ def update_const_controls(net, qext_w_profiles, time_steps, start, end):
                 ctrl.data_source = data_source
 
 def update_return_temperature_controller(net, supply_temperature_heat_consumer, return_temperature_heat_consumer, time_steps, start, end):
+    """Update return temperature controllers with new data sources for time series simulation.
+
+    Args:
+        net (pandapipesNet): The pandapipes network.
+        supply_temperature_heat_consumer (array): Supply temperature profiles for heat consumers.
+        return_temperature_heat_consumer (array): Return temperature profiles for heat consumers.
+        time_steps (range): Range of time steps for the simulation.
+        start (int): Start index for slicing the profiles.
+        end (int): End index for slicing the profiles.
+    """
     controller_count = 0
     for ctrl in net.controller.object.values:
         if isinstance(ctrl, ReturnTemperatureController):
@@ -40,6 +58,15 @@ def update_return_temperature_controller(net, supply_temperature_heat_consumer, 
             controller_count += 1
 
 def update_supply_temperature_controls(net, supply_temperature, time_steps, start, end):
+    """Update supply temperature controls with new data sources for time series simulation.
+
+    Args:
+        net (pandapipesNet): The pandapipes network.
+        supply_temperature (array): Supply temperature profile.
+        time_steps (range): Range of time steps for the simulation.
+        start (int): Start index for slicing the profile.
+        end (int): End index for slicing the profile.
+    """
     # Create the DataFrame for the supply temperature
     df_supply_temp = pd.DataFrame(index=time_steps, data={'supply_temperature': supply_temperature[start:end] + 273.15})
     data_source_supply_temp = DFData(df_supply_temp)
@@ -60,6 +87,14 @@ def update_supply_temperature_controls(net, supply_temperature, time_steps, star
                      data_source=data_source_supply_temp, profile_name='supply_temperature')
 
 def create_log_variables(net):
+    """Create a list of variables to log during the time series simulation.
+
+    Args:
+        net (pandapipesNet): The pandapipes network.
+
+    Returns:
+        list: List of tuples representing the variables to log.
+    """
     log_variables = [
         ('res_junction', 'p_bar'), 
         ('res_junction', 't_k'),
@@ -80,8 +115,27 @@ def create_log_variables(net):
 
 def time_series_preprocessing(supply_temperature, supply_temperature_heat_consumer, return_temperature_heat_consumer, \
                               supply_temperature_buildings, return_temperature_buildings, building_temp_checked, \
-                                netconfiguration, total_heat_W, return_temperature_buildings_curve, dT_RL, 
-                                supply_temperature_buildings_curve, COP_filename):
+                              netconfiguration, total_heat_W, return_temperature_buildings_curve, dT_RL, 
+                              supply_temperature_buildings_curve, COP_filename):
+    """Preprocess time series data for the thermal and hydraulic network simulation.
+
+    Args:
+        supply_temperature (float): Supply temperature of the network.
+        supply_temperature_heat_consumer (float): Minimum supply temperature for heat consumers.
+        return_temperature_heat_consumer (float): Return temperature for heat consumers.
+        supply_temperature_buildings (float): Supply temperature for buildings.
+        return_temperature_buildings (float): Return temperature for buildings.
+        building_temp_checked (bool): Flag indicating if building temperatures are time-varying.
+        netconfiguration (str): Network configuration type.
+        total_heat_W (array): Total heat demand.
+        return_temperature_buildings_curve (array): Time-varying return temperature for buildings.
+        dT_RL (float): Temperature difference for the return line.
+        supply_temperature_buildings_curve (array): Time-varying supply temperature for buildings.
+        COP_filename (str): Path to the COP data file.
+
+    Returns:
+        tuple: Preprocessed heat demand, power consumption, supply temperature, and return temperature.
+    """
     print(f"Vorlauftemperatur Netz: {supply_temperature} °C")
     print(f"Mindestvorlauftemperatur HAST: {supply_temperature_heat_consumer} °C")
     print(f"Rücklauftemperatur HAST: {return_temperature_heat_consumer} °C")
@@ -93,12 +147,10 @@ def time_series_preprocessing(supply_temperature, supply_temperature_heat_consum
     
     COP_file_values = np.genfromtxt(COP_filename, delimiter=';')
 
-    # Building temperatures are not time varying, so return_temperature from initialization is used, no COP calculation is done
     if building_temp_checked == False and netconfiguration != "kaltes Netz":
         waerme_hast_ges_W = total_heat_W
         strom_hast_ges_W = np.zeros_like(waerme_hast_ges_W)
 
-    # Building temperatures are not time-varying, so return_temperature from initialization is used, a COP calculation is made with non-time-varying building temperatures
     elif building_temp_checked == False and netconfiguration == "kaltes Netz":
         supply_temperature_heat_consumer = return_temperature_heat_consumer + dT_RL
         COP, _ = COP_WP(supply_temperature_buildings, return_temperature_heat_consumer, COP_file_values)
@@ -114,14 +166,12 @@ def time_series_preprocessing(supply_temperature, supply_temperature_heat_consum
         waerme_hast_ges_W = np.array(waerme_hast_ges_W)
         strom_hast_ges_W = np.array(strom_hast_ges_W)
     
-    # Building temperatures are time-varying, so return_temperature is determined from the building temperatures, there is no COP calculation
     if building_temp_checked == True and netconfiguration != "kaltes Netz":
         supply_temperature_heat_consumer = supply_temperature_buildings_curve + dT_RL
         return_temperature_heat_consumer = return_temperature_buildings_curve + dT_RL
         waerme_hast_ges_W = total_heat_W
         strom_hast_ges_W = np.zeros_like(waerme_hast_ges_W)
 
-    # Building temperatures are time-varying, so return_temperature is determined from the building temperatures, a COP calculation is made with time-varying building temperatures
     elif building_temp_checked == True and netconfiguration == "kaltes Netz":
         supply_temperature_heat_consumer = return_temperature_heat_consumer + dT_RL
         for st, rt, waerme_gebaeude in zip(supply_temperature_buildings_curve, return_temperature_heat_consumer, total_heat_W):
@@ -141,6 +191,21 @@ def time_series_preprocessing(supply_temperature, supply_temperature_heat_consum
     return waerme_hast_ges_W, strom_hast_ges_W, supply_temperature_heat_consumer, return_temperature_heat_consumer 
     
 def thermohydraulic_time_series_net(net, yearly_time_steps, qext_w_profiles, start, end, supply_temperature=85, supply_temperature_heat_consumer=75, return_temperature_heat_consumer=60):
+    """Run a thermohydraulic time series simulation for the network.
+
+    Args:
+        net (pandapipesNet): The pandapipes network.
+        yearly_time_steps (array): Array of yearly time steps.
+        qext_w_profiles (list of arrays): List of external heat profiles.
+        start (int): Start index for the simulation.
+        end (int): End index for the simulation.
+        supply_temperature (float, optional): Supply temperature. Defaults to 85.
+        supply_temperature_heat_consumer (float, optional): Minimum supply temperature for heat consumers. Defaults to 75.
+        return_temperature_heat_consumer (float, optional): Return temperature for heat consumers. Defaults to 60.
+
+    Returns:
+        tuple: Updated yearly time steps, network, and results.
+    """
     # Prepare time series calculation
     yearly_time_steps = yearly_time_steps[start:end]
 
@@ -164,14 +229,24 @@ def thermohydraulic_time_series_net(net, yearly_time_steps, qext_w_profiles, sta
 
     return yearly_time_steps, net, ow.np_results
 
-def calculate_results(net, net_results, cp_kJ_kgK=4.2):    
-    # Datenstruktur vorbereiten
+def calculate_results(net, net_results, cp_kJ_kgK=4.2):
+    """Calculate and structure the simulation results.
+
+    Args:
+        net (pandapipesNet): The pandapipes network.
+        net_results (dict): Results of the time series simulation.
+        cp_kJ_kgK (float, optional): Specific heat capacity of water in kJ/kg*K. Defaults to 4.2.
+
+    Returns:
+        dict: Structured results for the simulation.
+    """
+    # Prepare data structure
     pump_results = {
         "Heizentrale Haupteinspeisung": {},
         "weitere Einspeisung": {}
     }
 
-    # Ergebnisse für die Pressure Pump hinzufügen
+    # Add results for the Pressure Pump
     if 'circ_pump_pressure' in net:
         for idx, row in net.circ_pump_pressure.iterrows():
             pump_results["Heizentrale Haupteinspeisung"][idx] = {
@@ -184,7 +259,7 @@ def calculate_results(net, net_results, cp_kJ_kgK=4.2):
                 "qext_kW": net_results["res_circ_pump_pressure.mdot_flow_kg_per_s"][:, idx] * cp_kJ_kgK * (net_results["res_junction.t_k"][:, net.circ_pump_pressure["flow_junction"][0]] - net_results["res_junction.t_k"][:, net.circ_pump_pressure["return_junction"][0]])
             }
 
-    # Ergebnisse für die Mass Pumps hinzufügen
+    # Add results for the Mass Pumps
     if 'circ_pump_mass' in net:
         for idx, row in net.circ_pump_mass.iterrows():
             pump_results["weitere Einspeisung"][idx] = {
@@ -200,15 +275,26 @@ def calculate_results(net, net_results, cp_kJ_kgK=4.2):
     return pump_results
 
 def save_results_csv(time_steps, total_heat_KW, strom_wp_kW, pump_results, filename):
+    """Save the simulation results to a CSV file.
 
+    Args:
+        time_steps (array): Array of time steps.
+        total_heat_KW (array): Total heat demand in kW.
+        strom_wp_kW (array): Power consumption of heat pumps in kW.
+        pump_results (dict): Structured results for the simulation.
+        filename (str): Path to the output CSV file.
+
+    Returns:
+        None
+    """
     # Converting the arrays into a Pandas DataFrame
     df = pd.DataFrame({'Zeit': time_steps,
                        'Gesamtwärmebedarf_Gebäude_kW': total_heat_KW,
-                       'Gesamtheizlast_Gebäude_kW': total_heat_KW+strom_wp_kW,
+                       'Gesamtheizlast_Gebäude_kW': total_heat_KW + strom_wp_kW,
                        'Gesamtstrombedarf_Wärmepumpen_Gebäude_kW': strom_wp_kW
     })
 
-    # Schleife durch alle Pumpentypen und ihre Ergebnisse
+    # Loop through all pump types and their results
     for pump_type, pumps in pump_results.items():
         for idx, pump_data in pumps.items():
             df[f"Wärmeerzeugung_{pump_type}_{idx+1}_kW"] = pump_data['qext_kW']
@@ -219,20 +305,27 @@ def save_results_csv(time_steps, total_heat_KW, strom_wp_kW, pump_results, filen
             df[f"Vorlaufdruck_{pump_type}_{idx+1}_bar"] = pump_data['flow_pressure']
             df[f"Rücklaufdruck_{pump_type}_{idx+1}_bar"] = pump_data['return_pressure']
 
-
     # Save the DataFrame as CSV
     df.to_csv(filename, sep=';', date_format='%Y-%m-%d %H:%M:%S', index=False)
 
 def import_results_csv(filename):
-    # Daten aus der CSV-Datei laden
+    """Import the simulation results from a CSV file.
+
+    Args:
+        filename (str): Path to the input CSV file.
+
+    Returns:
+        tuple: Imported time steps, total heat demand, power consumption, and pump results.
+    """
+    # Load data from the CSV file
     data = pd.read_csv(filename, sep=';', parse_dates=['Zeit'])
 
-    # Extrahieren der allgemeinen Zeitreihen- und Wärmedaten
+    # Extract general time series and heat data
     time_steps = data["Zeit"].values.astype('datetime64')
     total_heat_KW = data["Gesamtwärmebedarf_Gebäude_kW"].values.astype('float64')
     strom_wp_kW = data["Gesamtstrombedarf_Wärmepumpen_Gebäude_kW"].values.astype('float64')
 
-    # Erstellen eines Dictionarys, um die Pumpendaten zu speichern
+    # Create a dictionary to store the pump data
     pump_results = {}
 
     pump_data = {
@@ -245,25 +338,25 @@ def import_results_csv(filename):
         'Rücklaufdruck': 'return_pressure'
     }
 
-    # Iteration über alle Spalten, um relevante Pumpendaten zu identifizieren
+    # Iterate over all columns to identify relevant pump data
     for column in data.columns:
         if any(prefix in column for prefix in ['Wärmeerzeugung', 'Massenstrom', 'Delta p', 'Vorlauftemperatur', 'Rücklauftemperatur', 'Vorlaufdruck', 'Rücklaufdruck']):
             parts = column.split('_')
             if len(parts) >= 4:
-                # Generelle Struktur erwartet: [Kennung, Pumpentyp, Index, Parameter]
+                # General structure expected: [prefix, pump type, index, parameter]
                 prefix, pump_type, idx, parameter = parts[0], parts[1], int(parts[2])-1, "_".join(parts[3:])
 
                 value = pump_data[prefix]
 
-                # Sicherstellen, dass Pumpentyp und Index korrekt initialisiert sind
+                # Ensure pump type and index are properly initialized
                 if pump_type not in pump_results:
                     pump_results[pump_type] = {}
                 if idx not in pump_results[pump_type]:
                     pump_results[pump_type][idx] = {}
 
-                # Parameter zu den entsprechenden Pumpen hinzufügen
+                # Add parameters to the corresponding pumps
                 pump_results[pump_type][idx][value] = data[column].values.astype('float64')
             else:
-                print(f"Warnung: Spaltenname '{column}' hat ein unerwartetes Format und wird ignoriert.")
+                print(f"Warning: Column name '{column}' has an unexpected format and is ignored.")
 
     return time_steps, total_heat_KW, strom_wp_kW, pump_results

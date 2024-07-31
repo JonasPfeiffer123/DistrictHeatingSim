@@ -1,7 +1,7 @@
 """
 Filename: DistrictHeatSim.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-30
+Date: 2024-07-31
 Description: Main GUI file of the DistrictHeatSim-Tool.
 
 This script initializes and runs the main graphical user interface (GUI) for the DistrictHeatSim tool. 
@@ -43,7 +43,7 @@ from gui.CalculationTab.calculation_tab import CalculationTab
 from gui.MixDesignTab.mix_design_tab import MixDesignTab
 from gui.ComparisonTab.comparison_tab import ComparisonTab
 
-from gui.Dialogs import TemperatureDataDialog, HeatPumpDataDialog
+from gui.dialogs import TemperatureDataDialog, HeatPumpDataDialog
 
 def get_resource_path(relative_path):
     """

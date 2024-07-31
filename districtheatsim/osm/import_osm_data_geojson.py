@@ -1,9 +1,8 @@
 """
 Filename: import_osm_data_geojson.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-07-31
 Description: Script with OSM download functionality.
-
 """
 
 import overpy
@@ -12,6 +11,16 @@ from decimal import Decimal
 import geojson
 
 def build_query(city_name, tags, element_type="way"):
+    """Build an Overpass API query to download OSM data for a specific city and element type.
+
+    Args:
+        city_name (str): Name of the city for which to download OSM data.
+        tags (list of tuples): List of (key, value) tuples to filter OSM elements.
+        element_type (str): Type of OSM element to query (default is "way").
+
+    Returns:
+        str: The Overpass API query string.
+    """
     query = f"""
     [out:json][timeout:25];
     area[name="{city_name}"]->.searchArea;
@@ -34,6 +43,15 @@ def build_query(city_name, tags, element_type="way"):
     return query
 
 def download_data(query, element_type):
+    """Download OSM data using the Overpass API and convert it to GeoJSON format.
+
+    Args:
+        query (str): The Overpass API query string.
+        element_type (str): Type of OSM element to process ("way" or "building").
+
+    Returns:
+        geojson.FeatureCollection: A GeoJSON FeatureCollection containing the downloaded OSM data.
+    """
     api = overpy.Overpass()
     result = api.query(query)
 
@@ -47,7 +65,7 @@ def download_data(query, element_type):
             feature = geojson.Feature(geometry=linestring, properties=properties)
             features.append(feature)
     
-    elif element_type == "building":  # fro buildings
+    elif element_type == "building":  # for buildings
         for relation in result.relations:
             multipolygon = []
             for member in relation.members:
@@ -75,11 +93,30 @@ def download_data(query, element_type):
     return geojson.FeatureCollection(features)
 
 def json_serial(obj):
-    """JSON serializer für Objekte, die nicht serienmäßig serialisierbar sind."""
+    """JSON serializer for objects not serializable by default.
+
+    Args:
+        obj (any): The object to serialize.
+
+    Returns:
+        float: The serialized float representation of the object if it's a Decimal.
+
+    Raises:
+        TypeError: If the object type is not serializable.
+    """
     if isinstance(obj, Decimal):
         return float(obj)
-    raise TypeError(f"Objekt vom Typ {type(obj).__name__} ist nicht JSON serialisierbar")
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
 def save_to_file(geojson_data, filename):
+    """Save GeoJSON data to a file.
+
+    Args:
+        geojson_data (geojson.FeatureCollection): The GeoJSON data to save.
+        filename (str): The file path where the GeoJSON data will be saved.
+
+    Returns:
+        None
+    """
     with open(filename, 'w') as outfile:
         json.dump(geojson_data, outfile, indent=2, default=json_serial)

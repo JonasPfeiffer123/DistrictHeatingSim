@@ -1,7 +1,7 @@
 """
 Filename: lod2_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-29
+Date: 2024-07-31
 Description: Contains the LOD2Tab.
 """
 
@@ -23,7 +23,7 @@ from PyQt5.QtWidgets import QVBoxLayout, QComboBox, QFileDialog, QProgressBar, Q
 from PyQt5.QtCore import pyqtSignal, QCoreApplication
 
 from lod2.filter_LOD2 import spatial_filter_with_polygon, filter_LOD2_with_coordinates, process_lod2, calculate_centroid_and_geocode
-from lod2.heat_requirement_DIN_EN_12831 import Building
+from lod2.heat_requirement_LOD2 import Building
 from gui.LOD2Tab.lod2_dialogs import FilterDialog
 
 # defines the base path
@@ -414,7 +414,9 @@ class LOD2Tab(QWidget):
         bar_width = 0.8 / num_datasets
         indices = np.arange(num_addresses)
         
-        colors = plt.cm.tab20.colors[:num_datasets]
+        #colors = plt.cm.tab20.colors[:num_datasets]
+        colors = plt.cm.Set1.colors[:num_datasets]
+
         
         for i, (filename, color) in enumerate(zip(all_data_grouped.columns, colors)):
             ax.barh(indices + i * bar_width, all_data_grouped[filename], bar_width, label=filename, color=color)

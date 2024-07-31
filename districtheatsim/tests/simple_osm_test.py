@@ -14,7 +14,7 @@ import numpy as np
 import geopandas as gpd
 
 from osm.import_osm_data_geojson import build_query, download_data, save_to_file
-from osm.Wärmeversorgungsgebiete import clustering_districts_hdbscan, postprocessing_hdbscan, allocate_overlapping_area
+from osm.heat_supply_areas import clustering_districts_hdbscan, postprocessing_hdbscan, allocate_overlapping_area
 
 ### OSM-Download von Straßendaten ###
 def osm_street_query():

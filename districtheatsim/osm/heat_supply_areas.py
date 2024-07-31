@@ -1,34 +1,37 @@
 """
-Filename: Wärmeversorgungsgebiete.py
+Filename: heat_supply_areas.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-07-31
 Description: Script with functionality to process OSM data and cluster buildings.
-
 """
 
 import numpy as np
 import geopandas as gpd
-#from sklearn.cluster import DBSCAN # pip install scikit-learn
 import hdbscan
 """To install hdbscan: 
-Besuchen Sie die Webseite für die Microsoft C++ Build Tools.
+Visit the website for Microsoft C++ Build Tools.
 
-Laden Sie den Installer herunter und führen Sie ihn aus.
+Download and run the installer.
 
-Wählen Sie im Installer die Option "C++ build tools" aus, stellen Sie sicher, dass die neueste Version von MSVC v142 - VS 2019 C++ x64/x86 build tools (oder höher) ausgewählt ist, sowie die Windows 10 SDK.
+Select the "C++ build tools" option in the installer, ensure the latest version of MSVC v142 - VS 2019 C++ x64/x86 build tools (or higher) is selected, as well as the Windows 10 SDK.
 
-Schließen Sie die Installation ab und starten Sie Ihren Computer neu, wenn dazu aufgefordert wird.
+Complete the installation and restart your computer if prompted.
 
-Installieren sie hdbscan mit pip install hdbscan"""
+Install hdbscan with pip install hdbscan."""
 
 from shapely.geometry import Polygon, shape
 
-# Set thresholds for deciding on the supply method
-# Buildings with a heat requirement above the heating network threshold receive a heating network supply,
-# Buildings above the hydrogen threshold receive a hydrogen supply,
-# all others receive a single supply solution.
+def determine_supply_area(area_specific_heat_requirement, threshold_heat_network, threshold_hydrogen):
+    """Determine the supply area based on the area-specific heat requirement.
 
-def versorgungsgebiet_bestimmen(area_specific_heat_requirement, threshold_heat_network, threshold_hydrogen):
+    Args:
+        area_specific_heat_requirement (float): The area-specific heat requirement.
+        threshold_heat_network (float): The threshold for heating network supply.
+        threshold_hydrogen (float): The threshold for hydrogen supply.
+
+    Returns:
+        str: The type of supply area.
+    """
     if area_specific_heat_requirement > threshold_heat_network:
         return 'Wärmenetzversorgung'
     elif area_specific_heat_requirement > threshold_hydrogen:
@@ -37,6 +40,19 @@ def versorgungsgebiet_bestimmen(area_specific_heat_requirement, threshold_heat_n
         return 'Einzelversorgungslösung'
 
 def clustering_districts_hdbscan(gdf, buffer_size=10, min_cluster_size=30, min_samples=1, threshold_heat_network=90, threshold_hydrogen=60):
+    """Cluster buildings into districts using the HDBSCAN algorithm and determine supply areas based on heat requirements.
+
+    Args:
+        gdf (geopandas.GeoDataFrame): GeoDataFrame containing building geometries and heat requirements.
+        buffer_size (int): Buffer size around each building for clustering. Defaults to 10.
+        min_cluster_size (int): Minimum size of clusters for HDBSCAN. Defaults to 30.
+        min_samples (int): Minimum samples for HDBSCAN. Defaults to 1.
+        threshold_heat_network (float): Threshold for heating network supply. Defaults to 90.
+        threshold_hydrogen (float): Threshold for hydrogen supply. Defaults to 60.
+
+    Returns:
+        geopandas.GeoDataFrame: GeoDataFrame with clustered districts and assigned supply areas.
+    """
     # Add buffer zone around each building
     gdf['buffered_geometry'] = gdf.geometry.buffer(buffer_size)
 
@@ -54,12 +70,9 @@ def clustering_districts_hdbscan(gdf, buffer_size=10, min_cluster_size=30, min_s
     gdf = gdf[gdf['quartier_label'] != -1]
 
     # Grouping the buildings into clusters and creating polygons for each cluster
-    # Use a custom aggregation function on the geometry data
     for index, row in gdf.iterrows():
         geom = shape(row['geometry'])
         if not geom.is_valid:
-            # If the geometry is invalid, you can repair or remove it
-            # Here we use `buffer(0)` to debug to remove invalid geometries
             gdf.at[index, 'geometry'] = geom.buffer(0)
     quarters = gdf.dissolve(by='quartier_label', aggfunc={'buffered_geometry': lambda x: x.unary_union.convex_hull})
 
@@ -72,7 +85,7 @@ def clustering_districts_hdbscan(gdf, buffer_size=10, min_cluster_size=30, min_s
     quarters['flaechenspezifischer_waermebedarf'] = quarters['gesamtwaermebedarf'] / quarters['flaeche']
 
     # Assign supply area based on area-specific heat requirements
-    quarters['Versorgungsgebiet'] = quarters.apply(lambda row: versorgungsgebiet_bestimmen(row['flaechenspezifischer_waermebedarf'], threshold_heat_network, threshold_hydrogen), axis=1)
+    quarters['Versorgungsgebiet'] = quarters.apply(lambda row: determine_supply_area(row['flaechenspezifischer_waermebedarf'], threshold_heat_network, threshold_hydrogen), axis=1)
 
     # Delete all unnecessary columns, keeping only the relevant ones
     quarters = quarters[['geometry', 'gesamtwaermebedarf', 'flaeche', 'flaechenspezifischer_waermebedarf', 'Versorgungsgebiet']]
@@ -81,6 +94,14 @@ def clustering_districts_hdbscan(gdf, buffer_size=10, min_cluster_size=30, min_s
     return quarters
 
 def postprocessing_hdbscan(quarters):
+    """Post-process clustered districts to resolve overlaps and unify clusters with the same supply area type.
+
+    Args:
+        quarters (geopandas.GeoDataFrame): GeoDataFrame with clustered districts.
+
+    Returns:
+        geopandas.GeoDataFrame: Post-processed GeoDataFrame with resolved overlaps.
+    """
     # Load the original cluster data
     quarters['geometry'] = quarters['geometry'].buffer(0)  # This can help fix some geometry problems
 
@@ -131,6 +152,14 @@ def postprocessing_hdbscan(quarters):
     return quarters_postprocessed
 
 def allocate_overlapping_area(quarters):
+    """Allocate overlapping areas between districts to the appropriate district based on total heat demand.
+
+    Args:
+        quarters (geopandas.GeoDataFrame): GeoDataFrame with post-processed districts.
+
+    Returns:
+        geopandas.GeoDataFrame: GeoDataFrame with allocated overlapping areas.
+    """
     # Spatial join for intersecting polygons
     overlapping = gpd.sjoin(quarters, quarters, how='inner', predicate='intersects')
 

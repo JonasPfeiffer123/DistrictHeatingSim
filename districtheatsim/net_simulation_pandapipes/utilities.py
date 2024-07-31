@@ -1,9 +1,8 @@
 """
 Filename: utilities.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-07-31
 Description: Script with different functionalities used in the pandapipes functions.
-
 """
 
 import time
@@ -29,24 +28,41 @@ from net_simulation_pandapipes.controllers import ReturnTemperatureController, W
 logging.basicConfig(level=logging.INFO)
 
 def get_resource_path(relative_path):
-    """ Get the absolute path to the resource, works for dev and for PyInstaller """
+    """Get the absolute path to the resource, works for dev and for PyInstaller.
+
+    Args:
+        relative_path (str): The relative path to the resource.
+
+    Returns:
+        str: The absolute path to the resource.
+    """
     if getattr(sys, 'frozen', False):
-        # Wenn die Anwendung eingefroren ist, ist der Basispfad der Temp-Ordner, wo PyInstaller alles extrahiert
+        # When the application is frozen, the base path is the temp folder where PyInstaller extracts everything
         base_path = sys._MEIPASS
     else:
-        # Wenn die Anwendung nicht eingefroren ist, ist der Basispfad der Ordner, in dem die Hauptdatei liegt
+        # When the application is not frozen, the base path is the directory of the main file
         base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     return os.path.join(base_path, relative_path)
 
 def COP_WP(VLT_L, QT, values=np.genfromtxt(get_resource_path('heat_generators\Kennlinien WP.csv'), delimiter=';')):
-    row_header = values[0, 1:]  # Vorlauftemperaturen
-    col_header = values[1:, 0]  # Quelltemperaturen
+    """Calculate the Coefficient of Performance (COP) for a heat pump based on supply and source temperatures.
+
+    Args:
+        VLT_L (array-like): Array of supply temperatures.
+        QT (float or array-like): Source temperature or array of source temperatures.
+        values (np.ndarray): COP values loaded from a CSV file. Defaults to loading from 'heat_generators\Kennlinien WP.csv'.
+
+    Returns:
+        tuple: COP values and possibly adjusted supply temperatures.
+    """
+    row_header = values[0, 1:]  # Supply temperatures
+    col_header = values[1:, 0]  # Source temperatures
     values = values[1:, 1:]
     f = RegularGridInterpolator((col_header, row_header), values, method='linear')
 
     # Technical limit of the heat pump is a temperature range of 75 °C
-    VLT_L = np.minimum(VLT_L, 75+QT)
+    VLT_L = np.minimum(VLT_L, 75 + QT)
     VLT_L = np.maximum(VLT_L, 35)
 
     # Check whether QT is a number or an array
@@ -56,7 +72,7 @@ def COP_WP(VLT_L, QT, values=np.genfromtxt(get_resource_path('heat_generators\Ke
     else:
         # If QT is already an array, we check if it has the same length as VLT_L
         if len(QT) != len(VLT_L):
-            raise ValueError("QT muss entweder eine einzelne Zahl oder ein Array mit der gleichen Länge wie VLT_L sein.")
+            raise ValueError("QT must either be a single number or an array with the same length as VLT_L.")
         QT_array = QT
 
     # Calculation of COP_L
@@ -65,12 +81,24 @@ def COP_WP(VLT_L, QT, values=np.genfromtxt(get_resource_path('heat_generators\Ke
     return COP_L, VLT_L
 
 def net_optimization(net, v_max_pipe, v_max_heat_exchanger, material_filter, insulation_filter):
+    """Optimize the network by adjusting diameters and materials to meet specified velocity constraints.
+
+    Args:
+        net (pandapipesNet): The pandapipes network to optimize.
+        v_max_pipe (float): Maximum allowed velocity in pipes.
+        v_max_heat_exchanger (float): Maximum allowed velocity in heat exchangers.
+        material_filter (str): Material filter for pipe optimization.
+        insulation_filter (str): Insulation filter for pipe optimization.
+
+    Returns:
+        pandapipesNet: The optimized pandapipes network.
+    """
     run_control(net, mode="all")
 
     net = optimize_diameter_types(net, v_max=v_max_pipe, material_filter=material_filter, insulation_filter=insulation_filter)
     net = optimize_diameter_parameters(net, element="heat_consumer", v_max=v_max_heat_exchanger)
 
-    # recalculate maximum and minimum mass flows in the controller
+    # Recalculate maximum and minimum mass flows in the controller
     net = recalculate_all_mass_flow_limits(net)
     
     run_control(net, mode="all")
@@ -78,11 +106,21 @@ def net_optimization(net, v_max_pipe, v_max_heat_exchanger, material_filter, ins
     return net
 
 def create_controllers(net, qext_w, return_temperature_heat_consumer, supply_temperature_heat_consumer):
+    """Create controllers for the network to manage heat consumers.
+
+    Args:
+        net (pandapipesNet): The pandapipes network.
+        qext_w (array-like): External heat values for heat consumers.
+        return_temperature_heat_consumer (array-like): Target return temperatures for heat consumers.
+        supply_temperature_heat_consumer (array-like): Minimum supply temperatures for heat consumers.
+
+    Returns:
+        pandapipesNet: The pandapipes network with controllers added.
+    """
     if len(qext_w) != len(return_temperature_heat_consumer):
-        raise ValueError("Die Längen von qext_w und return_temperature müssen gleich sein.")
+        raise ValueError("The lengths of qext_w and return_temperature_heat_consumer must be the same.")
 
     # Creates controllers for the network
-    #for i in range(len(net.heat_exchanger)):
     for i in range(len(net.heat_consumer)):
         # Create a simple DFData object for qext_w with the specific value for this pass
         placeholder_df = pd.DataFrame({f'qext_w_{i}': [qext_w[i]]})
@@ -101,6 +139,14 @@ def create_controllers(net, qext_w, return_temperature_heat_consumer, supply_tem
     return net
 
 def recalculate_all_mass_flow_limits(net):
+    """Recalculate all mass flow limits for the return temperature controllers in the network.
+
+    Args:
+        net (pandapipesNet): The pandapipes network.
+
+    Returns:
+        pandapipesNet: The pandapipes network with recalculated mass flow limits.
+    """
     for idx, controller in net.controller.iterrows():
         if isinstance(controller['object'], ReturnTemperatureController):
             controller['object'].calculate_mass_flow_limits(net)
@@ -108,6 +154,14 @@ def recalculate_all_mass_flow_limits(net):
     return net
 
 def correct_flow_directions(net):
+    """Correct the flow directions in the network by swapping junctions if necessary.
+
+    Args:
+        net (pandapipesNet): The pandapipes network.
+
+    Returns:
+        pandapipesNet: The pandapipes network with corrected flow directions.
+    """
     # Initial pipeflow calculation
     pp.pipeflow(net, mode="all")
 
@@ -127,6 +181,17 @@ def correct_flow_directions(net):
     return net
 
 def optimize_diameter_parameters(net, element="pipe", v_max=2, dx=0.001):
+    """Optimize the diameters of the network elements to meet the specified maximum velocity.
+
+    Args:
+        net (pandapipesNet): The pandapipes network.
+        element (str): The element type to optimize (default is "pipe").
+        v_max (float): Maximum allowed velocity in the elements (default is 2 m/s).
+        dx (float): Step size for diameter adjustments (default is 0.001 m).
+
+    Returns:
+        pandapipesNet: The optimized pandapipes network.
+    """
     v_max /= 1.5
     pp.pipeflow(net, mode="all")
     element_df = getattr(net, element)  # Access the element's DataFrame
@@ -140,12 +205,12 @@ def optimize_diameter_parameters(net, element="pipe", v_max=2, dx=0.001):
             current_velocity = res_df.v_mean_m_per_s[idx]
             current_diameter = element_df.at[idx, 'diameter_m']
             
-            # enlarge if speed > v_max
+            # Enlarge if speed > v_max
             if current_velocity > v_max:
                 element_df.at[idx, 'diameter_m'] += dx
                 change_made = True
 
-           # shrink as long as speed < v_max and check
+           # Shrink as long as speed < v_max and check
             elif current_velocity < v_max:
                 element_df.at[idx, 'diameter_m'] -= dx
                 pp.pipeflow(net, mode="all")
@@ -167,6 +232,17 @@ def optimize_diameter_parameters(net, element="pipe", v_max=2, dx=0.001):
     return net
 
 def init_diameter_types(net, v_max_pipe=1.0, material_filter="KMR", insulation_filter="2v"):
+    """Initialize the diameters and types of pipes in the network based on the specified velocity and filters.
+
+    Args:
+        net (pandapipesNet): The pandapipes network.
+        v_max_pipe (float): Maximum allowed velocity in pipes.
+        material_filter (str): Material filter for pipe initialization.
+        insulation_filter (str): Insulation filter for pipe initialization.
+
+    Returns:
+        pandapipesNet: The pandapipes network with initialized diameters and types.
+    """
     start_time_total = time.time()
     pp.pipeflow(net, mode="all")
     logging.info(f"Initial pipeflow calculation took {time.time() - start_time_total:.2f} seconds")
@@ -195,6 +271,17 @@ def init_diameter_types(net, v_max_pipe=1.0, material_filter="KMR", insulation_f
     return net
 
 def optimize_diameter_types(net, v_max=1.0, material_filter="KMR", insulation_filter="2v"):
+    """Optimize the diameters and types of pipes in the network based on the specified velocity and filters.
+
+    Args:
+        net (pandapipesNet): The pandapipes network.
+        v_max (float): Maximum allowed velocity in pipes.
+        material_filter (str): Material filter for pipe optimization.
+        insulation_filter (str): Insulation filter for pipe optimization.
+
+    Returns:
+        pandapipesNet: The optimized pandapipes network.
+    """
     start_time_total = time.time()
     pp.pipeflow(net, mode="all")
     logging.info(f"Initial pipeflow calculation took {time.time() - start_time_total:.2f} seconds")
@@ -239,9 +326,6 @@ def optimize_diameter_types(net, v_max=1.0, material_filter="KMR", insulation_fi
                 pipes_within_target += 1
                 continue
 
-            #if velocity > v_max:
-            #    logging.info(f"Velocity at {pipe_idx} at start is {velocity} m/s")
-
             current_type = net.pipe.std_type.at[pipe_idx]
             current_type_position = type_position_dict[current_type]
 
@@ -266,12 +350,9 @@ def optimize_diameter_types(net, v_max=1.0, material_filter="KMR", insulation_fi
                 pp.pipeflow(net, mode="all")
                 new_velocity = net.res_pipe.v_mean_m_per_s[pipe_idx]
 
-                #logging.info(f"Adjusted velocity for pipe {pipe_idx}: {new_velocity} m/s with new type {new_type}")
-
                 if new_velocity <= v_max:
                     change_made = True
                 else:
-                    #logging.info(f"Reverting pipe {pipe_idx} to original type {current_type} as new velocity is {new_velocity} m/s")
                     net.pipe.std_type.at[pipe_idx] = current_type
                     properties = filtered_by_material_and_insulation.loc[current_type]
                     net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
@@ -284,14 +365,10 @@ def optimize_diameter_types(net, v_max=1.0, material_filter="KMR", insulation_fi
                 net.pipe.at[pipe_idx, 'optimized'] = True
                 pipes_within_target += 1
 
-            #if velocity > v_max:
-            #    logging.info(f"Velocity at {pipe_idx} at end is {velocity} m/s")
-
         iteration_count += 1
         if change_made:
             iteration_pipeflow_start = time.time()
             pp.pipeflow(net, mode="all")
-            #logging.info(f"Iteration {iteration_count}: pipeflow calculation took {time.time() - iteration_pipeflow_start:.2f} seconds")
         
         logging.info(f"Iteration {iteration_count}: {pipes_within_target} pipes within target velocity, {pipes_outside_target} pipes outside target velocity")
         logging.info(f"Iteration {iteration_count} took {time.time() - iteration_start_time:.2f} seconds")
@@ -300,10 +377,14 @@ def optimize_diameter_types(net, v_max=1.0, material_filter="KMR", insulation_fi
     return net
 
 def calculate_worst_point(net):
-    # with this function, the worst point in the heating network is being calculated
-    # specificially the worst point is defined as the heat exchanger with the lowest pressure difference between the forward and the return line, resulting in a lower mass flow
-    # after finding the worst point a differential pressure control for the circulation pump could be implemented
+    """Calculate the worst point in the heating network, defined as the heat exchanger with the lowest pressure difference.
 
+    Args:
+        net (pandapipesNet): The pandapipes network.
+
+    Returns:
+        tuple: The minimum pressure difference and the index of the worst point.
+    """
     # Initial pipeflow calculation
     pp.pipeflow(net, mode="all")
     
@@ -311,22 +392,30 @@ def calculate_worst_point(net):
 
     for idx, p_from, p_to in zip(net.heat_consumer.index, net.res_heat_consumer["p_from_bar"], net.res_heat_consumer["p_to_bar"]):
         dp_diff = p_from - p_to
-        dp_diff = p_from - p_to
         dp.append((dp_diff, idx))
 
-    # find the minimum delta p
+    # Find the minimum delta p
     dp_min, idx_min = min(dp, key=lambda x: x[0])
 
     return dp_min, idx_min
 
 def export_net_geojson(net, filename):
+    """Export the network data to a GeoJSON file.
+
+    Args:
+        net (pandapipesNet): The pandapipes network.
+        filename (str): The file path where the GeoJSON data will be saved.
+
+    Returns:
+        None
+    """
     features = []  # List to collect GeoDataFrames of all components
     
     # Process lines
     if 'pipe_geodata' in net and not net.pipe_geodata.empty:
         geometry_lines = [LineString(coords) for coords in net.pipe_geodata['coords']]
         gdf_lines = gpd.GeoDataFrame(net.pipe_geodata, geometry=geometry_lines)
-        del gdf_lines['coords'] # Remove the 'coords' column
+        del gdf_lines['coords']  # Remove the 'coords' column
         # Add attributes
         gdf_lines['name'] = net.pipe['name']
         gdf_lines['diameter_mm'] = net.pipe['diameter_m'] * 1000
@@ -367,7 +456,7 @@ def export_net_geojson(net, filename):
                 'diameter_mm': f"{heat_exchanger['diameter_m']*1000:.1f}",
                 'qext_W': f"{heat_exchanger['qext_w']:.0f}",
                 'geometry': [line]
-            }, crs="EPSG:25833") # set crs to EPSG:25833
+            }, crs="EPSG:25833")  # Set crs to EPSG:25833
             
             features.append(gdf_component)
 
@@ -387,7 +476,7 @@ def export_net_geojson(net, filename):
                 'diameter_mm': f"{heat_consumer['diameter_m']*1000:.1f}",
                 'qext_W': f"{heat_consumer['qext_w']:.0f}",
                 'geometry': [line]
-            }, crs="EPSG:25833") # set crs to EPSG:25833
+            }, crs="EPSG:25833")  # Set crs to EPSG:25833
             
             features.append(gdf_component)
 
@@ -398,7 +487,7 @@ def export_net_geojson(net, filename):
     # Combine all GeoDataFrames into a FeatureCollection
     gdf_all = gpd.GeoDataFrame(pd.concat(features, ignore_index=True), crs="EPSG:25833")
 
-    # export as GeoJSON
+    # Export as GeoJSON
     if not gdf_all.empty:
         gdf_all.to_file(filename, driver='GeoJSON')
     else:

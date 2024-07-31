@@ -1,9 +1,8 @@
 """
 Filename: config_plot.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-07-31
 Description: Contains the config_plot function for plotting the results of the initialised pandapipes net.
-
 """
 
 import numpy as np
@@ -14,31 +13,32 @@ import geopandas as gpd
 from shapely.geometry import Point
 
 def config_plot(net, ax, show_junctions=True, show_pipes=True, show_heat_consumers=True, show_pump=True, show_plot=False, show_basemap=True, map_type="OSM"):
-    """_summary_
+    """
+    Configures and plots the pandapipes network on a given matplotlib axis.
 
     Args:
-        net (_type_): pandapipes net
-        ax (_type_): _description_
-        show_junctions (bool, optional): _description_. Defaults to True.
-        show_pipes (bool, optional): _description_. Defaults to True.
-        show_heat_consumers (bool, optional): _description_. Defaults to True.
-        show_pump (bool, optional): _description_. Defaults to True.
-        show_plot (bool, optional): _description_. Defaults to False.
-        show_basemap (bool, optional): _description_. Defaults to True.
-        map_type (str, optional): _description_. Defaults to "OSM".
+        net (pandapipesNet): The pandapipes network to plot.
+        ax (matplotlib.axes.Axes): The axis to plot on.
+        show_junctions (bool, optional): Whether to show junctions. Defaults to True.
+        show_pipes (bool, optional): Whether to show pipes. Defaults to True.
+        show_heat_consumers (bool, optional): Whether to show heat consumers. Defaults to True.
+        show_pump (bool, optional): Whether to show pumps. Defaults to True.
+        show_plot (bool, optional): Whether to show the plot. Defaults to False.
+        show_basemap (bool, optional): Whether to show a basemap. Defaults to True.
+        map_type (str, optional): Type of basemap to show ("OSM", "Satellite", "Topology"). Defaults to "OSM".
 
     Returns:
-        _type_: _description_
+        None
     """
-    ax.clear()  # Vorherige Plots bereinigen
+    ax.clear()  # Clear previous plots
 
-    data_annotations = []  # Zum Speichern der Annotations-Referenzen und Daten
+    data_annotations = []  # To store annotation references and data
 
-    # Funktion zum Erstellen einer Annotation
+    # Function to create an annotation
     def make_annotation(text, x, y, obj_type, obj_id=None, line_points=None, visible=False):
-        # Anpassung des Abstands basierend auf dem Typ
+        # Adjust distance based on type
         if obj_type in ["heat_consumer", "pump"]:
-            xytext = (50, 50)  # Erhöhen Sie den Abstand für bessere Sichtbarkeit
+            xytext = (50, 50)  # Increase distance for better visibility
         else:
             xytext = (10, 10)
             
@@ -49,7 +49,7 @@ def config_plot(net, ax, show_junctions=True, show_pipes=True, show_heat_consume
                         arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0'))
         return {"annotation": ann, "x": x, "y": y, "obj_type": obj_type, "obj_id": obj_id, "line_points": line_points}
 
-    # Hinzufügen der Objekte mit entsprechenden Anpassungen
+    # Add objects with appropriate customizations
     # Junctions
     if show_junctions:
         for junction in net.junction.index:
@@ -106,13 +106,13 @@ def config_plot(net, ax, show_junctions=True, show_pipes=True, show_heat_consume
             ann = make_annotation(text, mid_x, mid_y, "pump", pump)
             data_annotations.append(ann)
 
-    # Hintergrundkarte hinzufügen, wenn aktiviert
+    # Add basemap if enabled
     if show_basemap:
-        # Umwandeln der junction_geodata in ein GeoDataFrame
+        # Convert junction_geodata to a GeoDataFrame
         gdf = gpd.GeoDataFrame(
             net.junction_geodata,
             geometry=[Point(xy) for xy in zip(net.junction_geodata['x'], net.junction_geodata['y'])],
-            crs="EPSG:25833"  # Passen Sie dies an Ihr tatsächliches Koordinatensystem an
+            crs="EPSG:25833"  # Adjust to your actual coordinate system
         )
 
         gdf = gdf.to_crs(epsg=25833)
@@ -122,39 +122,39 @@ def config_plot(net, ax, show_junctions=True, show_pipes=True, show_heat_consume
         ax.set_ylim(ymin - 10, ymax + 10)
 
         if map_type == "OSM":
-            # Kontextkarte hinzufügen
+            # Add context map
             cx.add_basemap(ax, source=cx.providers.OpenStreetMap.Mapnik, crs=gdf.crs)
 
         elif map_type == "Satellite":
-            # Satellitenbild hinzufügen
+            # Add satellite image
             cx.add_basemap(ax, source=cx.providers.Esri.WorldImagery, crs=gdf.crs)
 
         elif map_type == "Topology":
-            # Topologiekarte hinzufügen
+            # Add topology map
             cx.add_basemap(ax, source=cx.providers.OpenTopoMap, crs=gdf.crs)
 
-    # Netzplot hinzufügen
+    # Add network plot
     pp_plot.simple_plot(net, junction_size=0.01, heat_consumer_size=0.1, pump_size=0.1, 
                         pump_color='green', pipe_color='black', heat_consumer_color="blue", ax=ax, show_plot=False, 
                         junction_geodata=net.junction_geodata)
 
-    # Event-Handling für die Interaktivität
+    # Event handling for interactivity
     def on_move(event):
         if event.inaxes != ax:
             return
         for ann_data in data_annotations:
             if ann_data['obj_type'] == 'pipe':
-                # Berechnen Sie den Abstand zur Linie
+                # Calculate distance to line
                 p1 = np.array(ann_data['line_points'][0])
                 p2 = np.array(ann_data['line_points'][1])
                 p3 = np.array([event.xdata, event.ydata])
                 dist = np.abs(np.cross(p2-p1, p1-p3)) / np.linalg.norm(p2-p1)
             else:
-                # Berechnen Sie den direkten Abstand zum Punkt
+                # Calculate direct distance to point
                 dist = np.hypot(event.xdata - ann_data['x'], event.ydata - ann_data['y'])
 
-            # Sichtbarkeit basierend auf dem Abstand anpassen
-            if dist < 0.5:  # Abstandsschwelle
+            # Adjust visibility based on distance
+            if dist < 0.5:  # Distance threshold
                 ann_data['annotation'].set_visible(True)
             else:
                 ann_data['annotation'].set_visible(False)

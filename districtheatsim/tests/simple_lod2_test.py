@@ -1,7 +1,7 @@
 """
 Filename: simple_lod2_test.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-07-31
 Description: Script for processing LOD2 data.
 
 """
@@ -11,7 +11,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from lod2.filter_LOD2 import filter_LOD2_with_OSM_and_adress, spatial_filter_with_polygon, process_lod2, filter_LOD2_with_coordinates
-from lod2.heat_requirement_DIN_EN_12831 import calculate_heat_demand_for_lod2_area, Building
+from lod2.heat_requirement_LOD2 import calculate_heat_demand_for_lod2_area, Building
 
 ### aktuell sind die Pfade noch nicht enthalten ###
 def test_lod2_adress_filter():

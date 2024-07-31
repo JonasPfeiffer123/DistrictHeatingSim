@@ -3,7 +3,6 @@ Filename: import_and_create_layers.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-07-26
 Description: Imports the spatial data and processes them into layers.
-
 """
 
 import geopandas as gpd
@@ -13,33 +12,35 @@ from shapely.geometry import LineString, Point
 from net_generation.simple_MST import generate_network_fl, generate_network_rl, create_offset_points
 
 def import_osm_street_layer(osm_street_layer_geojson_file):
-    """_summary_
+    """
+    Imports the OSM street layer from a GeoJSON file.
 
     Args:
-        osm_street_layer_geojson_file (_type_): _description_
+        osm_street_layer_geojson_file (str): Path to the GeoJSON file containing the OSM street layer.
 
     Returns:
-        _type_: _description_
+        geopandas.GeoDataFrame: The imported street layer as a GeoDataFrame.
     """
     try:
         layer = gpd.read_file(osm_street_layer_geojson_file)
-        print("Layer erfolgreich geladen.")
+        print("Layer successfully loaded.")
         return layer
     except Exception as e:
-        print(f"Fehler beim Laden des Layers: {e}")
+        print(f"Error loading the layer: {e}")
         return None
 
 def generate_lines(layer, distance, angle_degrees, df=None):
-    """_summary_
+    """
+    Generates lines offset from the given points by a specified distance and angle.
 
     Args:
-        layer (_type_): _description_
-        distance (_type_): _description_
-        angle_degrees (_type_): _description_
-        df (_type_, optional): _description_. Defaults to None.
+        layer (geopandas.GeoDataFrame): GeoDataFrame containing the points to offset.
+        distance (float): Distance to offset the points.
+        angle_degrees (float): Angle in degrees to offset the points.
+        df (pandas.DataFrame, optional): DataFrame containing additional attributes for the points. Defaults to None.
 
     Returns:
-        _type_: _description_
+        geopandas.GeoDataFrame: GeoDataFrame with the generated lines and attributes.
     """
     lines = []
     attributes = []
@@ -48,7 +49,7 @@ def generate_lines(layer, distance, angle_degrees, df=None):
         # Converting Shapely geometry to coordinates
         original_point = (point.x, point.y)
 
-        # Initialize all attributes with default values ​​or None
+        # Initialize all attributes with default values or None
         attr = {
             'Land': None,
             'Bundesland': None,
@@ -66,7 +67,7 @@ def generate_lines(layer, distance, angle_degrees, df=None):
         }
 
         if df is not None:
-            # Determination of attributes based on coordinate
+            # Determine attributes based on coordinates
             match = df[(df['UTM_X'] == original_point[0]) & (df['UTM_Y'] == original_point[1])]
             if not match.empty:
                 attr['Land'] = match['Land'].iloc[0]
@@ -94,46 +95,47 @@ def generate_lines(layer, distance, angle_degrees, df=None):
     return lines_gdf
 
 def load_layers(osm_street_layer_geojson_file, data_csv_file_name, coordinates):
-    """_summary_
+    """
+    Loads the street layer, data layer, and producer location from files.
 
     Args:
-        osm_street_layer_geojson_file (_type_): _description_
-        data_csv_file_name (_type_): _description_
-        coordinates (_type_): _description_
+        osm_street_layer_geojson_file (str): Path to the GeoJSON file containing the OSM street layer.
+        data_csv_file_name (str): Path to the CSV file containing data.
+        coordinates (list of tuples): List of tuples containing the coordinates of the producer locations.
 
     Returns:
-        _type_: _description_
+        tuple: Tuple containing the street layer, data layer, producer location, and data DataFrame.
     """
     try:
-        # Laden des Straßen-Layers als GeoDataFrame
+        # Load the street layer as a GeoDataFrame
         street_layer = gpd.read_file(osm_street_layer_geojson_file)
-        # Load the road layer as a GeoDataFrame
+        # Load the data as a DataFrame
         data_df = pd.read_csv(data_csv_file_name, sep=';')
-        # UConversion of the DataFrame into GeoDataFrame
+        # Convert the DataFrame into a GeoDataFrame
         data_layer = gpd.GeoDataFrame(data_df, geometry=gpd.points_from_xy(data_df.UTM_X, data_df.UTM_Y))
 
-        # Creation of the producer location as a GeoDataFrame
-        # Erstellen von Point-Objekten für jede Koordinate in der Liste
+        # Create the producer location as a GeoDataFrame
         points = [Point(x, y) for x, y in coordinates]
         producer_location = gpd.GeoDataFrame(geometry=points, crs="EPSG:4326")
 
         return street_layer, data_layer, producer_location, data_df
     
     except Exception as e:
-        print(f"Fehler beim Laden der Layer: {e}")
+        print(f"Error loading the layers: {e}")
         return None, None, None, None
 
 def generate_and_export_layers(osm_street_layer_geojson_file_name, data_csv_file_name, coordinates, base_path, fixed_angle=0, fixed_distance=1, algorithm="MST"):
-    """_summary_
+    """
+    Generates the layers for the network and exports them as GeoJSON files.
 
     Args:
-        osm_street_layer_geojson_file_name (_type_): _description_
-        data_csv_file_name (_type_): _description_
-        coordinates (_type_): _description_
-        base_path (_type_): _description_
-        fixed_angle (int, optional): _description_. Defaults to 0.
-        fixed_distance (int, optional): _description_. Defaults to 1.
-        algorithm (str, optional): _description_. Defaults to "MST".
+        osm_street_layer_geojson_file_name (str): Path to the GeoJSON file containing the OSM street layer.
+        data_csv_file_name (str): Path to the CSV file containing data.
+        coordinates (list of tuples): List of tuples containing the coordinates of the producer locations.
+        base_path (str): Base path for exporting the generated layers.
+        fixed_angle (int, optional): Angle in degrees to offset the points. Defaults to 0.
+        fixed_distance (int, optional): Distance to offset the points. Defaults to 1.
+        algorithm (str, optional): Algorithm to use for generating the network. Defaults to "MST".
     """
     street_layer, layer_points, layer_WEA, df = load_layers(osm_street_layer_geojson_file_name, data_csv_file_name, coordinates)
     
@@ -154,4 +156,3 @@ def generate_and_export_layers(osm_street_layer_geojson_file_name, data_csv_file
     vl_return_lines.to_file(f"{base_path}/Wärmenetz/Rücklauf.geojson", driver="GeoJSON")
     vl_flow_lines.to_file(f"{base_path}/Wärmenetz/Vorlauf.geojson", driver="GeoJSON")
     vl_heat_producer.to_file(f"{base_path}/Wärmenetz/Erzeugeranlagen.geojson", driver="GeoJSON")
-

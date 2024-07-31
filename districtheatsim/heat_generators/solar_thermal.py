@@ -1,24 +1,51 @@
 """
-Filename: Solarthermie.py
+Filename: solar_thermal.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
-Description: This script calculates heat generation of a thermal solar heat generator.
+Date: 2024-07-31
+Description: This script calculates the heat generation of a thermal solar heat generator.
 
-Additional Information: Ertragsberechnungsprogramm Solarthermie in Wärmenetz (Berechnungsgrundlage: ScenoCalc Fernwärme 2.0) https://www.scfw.de/)
+Additional Information: Yield calculation program for solar thermal energy in heating networks (calculation basis: ScenoCalc District Heating 2.0) https://www.scfw.de/)
 """
-
-# Ertragsberechnungsprogramm Solarthermie in Wärmenetz von Dipl.-Ing. (FH) Jonas PfeifferDipl.-Ing. (FH) Jonas Pfeiffer (Berechnungsgrundlage: ScenoCalc Fernwärme 2.0)
-# https://www.scfw.de/)
 
 # Import Bibliotheken
 from math import pi, exp, log, sqrt
 import numpy as np
 from datetime import datetime, timezone
 
-from heat_generators.Solarstrahlung import Berechnung_Solarstrahlung
-    
+from heat_generators.solar_radiation import Berechnung_Solarstrahlung
+
 def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY, time_steps, calc1, calc2, duration, Tsmax=90, Longitude=-14.4222, STD_Longitude=-15, Latitude=51.1676,
                    East_West_collector_azimuth_angle=0, Collector_tilt_angle=36, Tm_rl=60, Qsa=0, Vorwärmung_K=8, DT_WT_Solar_K=5, DT_WT_Netz_K=5):
+    """
+    Berechnung der thermischen Solaranlage (STA) zur Wärmegewinnung.
+
+    Args:
+        Bruttofläche_STA (float): Bruttofläche der Solaranlage.
+        VS (float): Speichervolumen der Solaranlage.
+        Typ (str): Typ der Solaranlage ("Flachkollektor" oder "Vakuumröhrenkollektor").
+        Last_L (array): Lastprofil.
+        VLT_L (array): Vorlauftemperaturprofil.
+        RLT_L (array): Rücklauftemperaturprofil.
+        TRY (tuple): TRY-Daten (Temperatur, Windgeschwindigkeit, Direktstrahlung, Globalstrahlung).
+        time_steps (array): Zeitstempel.
+        calc1 (int): Startindex für die Berechnung.
+        calc2 (int): Endindex für die Berechnung.
+        duration (float): Zeitdauer der Berechnung.
+        Tsmax (float, optional): Maximale Speichertemperatur. Defaults to 90.
+        Longitude (float, optional): Längengrad des Standorts. Defaults to -14.4222.
+        STD_Longitude (float, optional): Standardlängengrad. Defaults to -15.
+        Latitude (float, optional): Breitengrad des Standorts. Defaults to 51.1676.
+        East_West_collector_azimuth_angle (float, optional): Azimutwinkel des Kollektors. Defaults to 0.
+        Collector_tilt_angle (float, optional): Neigungswinkel des Kollektors. Defaults to 36.
+        Tm_rl (float, optional): Mittlere Rücklauftemperatur. Defaults to 60.
+        Qsa (float, optional): Anfangswärmemenge im Speicher. Defaults to 0.
+        Vorwärmung_K (float, optional): Vorwärmung in Kelvin. Defaults to 8.
+        DT_WT_Solar_K (float, optional): Temperaturdifferenz Wärmetauscher Solar in Kelvin. Defaults to 5.
+        DT_WT_Netz_K (float, optional): Temperaturdifferenz Wärmetauscher Netz in Kelvin. Defaults to 5.
+
+    Returns:
+        tuple: Gesamtwärmemenge, Wärmeoutput, Speicherladung und Speicherfüllstand.
+    """
     Temperatur_L, Windgeschwindigkeit_L, Direktstrahlung_L, Globalstrahlung_L = TRY[0], TRY[1], TRY[2], TRY[3]
 
     # Bestimmen Sie das kleinste Zeitintervall in time_steps

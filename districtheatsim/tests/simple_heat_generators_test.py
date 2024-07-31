@@ -10,7 +10,8 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from heat_generators import Solarthermie, heat_generator_classes
+from heat_generators import solar_thermal
+from heat_generators import heat_generator_classes
 from utilities.test_reference_year import import_TRY
 
 import numpy as np
@@ -231,7 +232,7 @@ def test_solar_thermal():
     duration = 1
 
     # Die Berechnung der Solarthermie erfolgt niht in der Klasse sondern in einer externen Funktion
-    Wärmemenge, Wärmeleistung_Solarthermie_L, Speicherladung_L, Speicherfüllstand_L = Solarthermie.Berechnung_STA(solarThermal.bruttofläche_STA, solarThermal.vs, solarThermal.Typ, Last_L, VLT_L, RLT_L, 
+    Wärmemenge, Wärmeleistung_Solarthermie_L, Speicherladung_L, Speicherfüllstand_L = solar_thermal.Berechnung_STA(solarThermal.bruttofläche_STA, solarThermal.vs, solarThermal.Typ, Last_L, VLT_L, RLT_L, 
                                                                                                         TRY, time_steps, calc1, calc2, duration, solarThermal.Tsmax, solarThermal.Longitude, solarThermal.STD_Longitude, 
                                                                                                         solarThermal.Latitude, solarThermal.East_West_collector_azimuth_angle, solarThermal.Collector_tilt_angle, solarThermal.Tm_rl, 
                                                                                                         solarThermal.Qsa, solarThermal.Vorwärmung_K, solarThermal.DT_WT_Solar_K, solarThermal.DT_WT_Netz_K)

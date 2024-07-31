@@ -1,10 +1,10 @@
 """
-Filename: Solarstrahlung.py
+Filename: solar_radiation.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-07-31
 Description: Calculates the solar irradiation input based on Test Reference Year data.
 
-Additional Information: Ertragsberechnungsprogramm Solarstrahlung (Berechnungsgrundlage: ScenoCalc Fernwärme 2.0 https://www.scfw.de/)
+Additional Information: Yield calculation program for solar thermal energy in heating networks (calculation basis: ScenoCalc District Heating 2.0) https://www.scfw.de/)
 """
 
 # Import Bibliotheken
@@ -15,36 +15,38 @@ DEG_TO_RAD = np.pi / 180
 
 def deg_to_rad(deg):
     """
-    Funktion zur Konvertierung von Grad in Radian.
+    Converts degrees to radians.
 
-    :param deg: Winkel in Grad
-    :return: Winkel in Radian
+    Args:
+        deg (float or np.ndarray): Angle in degrees.
+
+    Returns:
+        float or np.ndarray: Angle in radians.
     """
     return deg * DEG_TO_RAD
 
 def Berechnung_Solarstrahlung(Globalstrahlung_L, D_L, Tag_des_Jahres_L, time_steps, Longitude, STD_Longitude, Latitude, Albedo, IAM_W, IAM_N,
-                              EWCaa, CTA):
+                              EWCaa, CTA):    
     """
-    Diese Funktion berechnet die Solarstrahlung auf einer schrägen Oberfläche, einschließlich des direkten und diffusen Beitrags,
-    sowie den Einfallswinkel der Sonnenstrahlung auf den Kollektor. Sie verwendet die geografische Position, den Tag des Jahres,
-    die Globalstrahlung und weitere Parameter als Eingabe.
+    Calculates solar radiation based on Test Reference Year data.
 
-    :param Globalstrahlung_L: Globalstrahlung auf horizontaler Oberfläche (W/m²)
-    :param D_L: Direktstrahlung auf horizontaler Oberfläche (W/m²)
-    :param Tag_des_Jahres_L: Tag des Jahres
-    :param time_steps: Liste von Zeitstempeln, die den Zeitverlauf der Berechnungen darstellen
-    :param Longitude: Geografische Länge (°)
-    :param STD_Longitude: Zeitzone (°)
-    :param Latitude: Geografische Breite (°)
-    :param Albedo: Albedo der Oberfläche (Reflexionskoeffizient)
-    :param IAM_W: Dictionary mit Einstrahlungs-Winkelabhängigkeitsdaten für die EW-Richtung
-    :param IAM_N: Dictionary mit Einstrahlungs-Winkelabhängigkeitsdaten für die NS-Richtung
-    :param EWCaa: Azimutwinkel des Kollektors (°)
-    :param CTA: Neigungswinkel des Kollektors (°)
-    :return: Gesamtstrahlung auf der schrägen Oberfläche, Einstrahlungsfaktor, Direkte Strahlung auf der schrägen Oberfläche,
-    Diffuse Strahlung auf der schrägen Oberfläche
+    Args:
+        Globalstrahlung_L (np.ndarray): Global radiation data.
+        D_L (np.ndarray): Direct radiation data.
+        Tag_des_Jahres_L (np.ndarray): Day of the year data.
+        time_steps (np.ndarray): Array of time steps.
+        Longitude (float): Longitude of the location.
+        STD_Longitude (float): Standard longitude for the time zone.
+        Latitude (float): Latitude of the location.
+        Albedo (float): Albedo value.
+        IAM_W (dict): Incidence Angle Modifier for EW orientation.
+        IAM_N (dict): Incidence Angle Modifier for NS orientation.
+        EWCaa (float): East-West collector azimuth angle.
+        CTA (float): Collector tilt angle.
+
+    Returns:
+        tuple: Contains arrays for total radiation on the inclined surface, beam radiation, diffuse radiation, and modified beam radiation.
     """
-    
     Stunde_L = (time_steps - time_steps.astype('datetime64[D]')).astype('timedelta64[m]').astype(float) / 60
 
     # Berechnet den Tag des Jahres als Winkel

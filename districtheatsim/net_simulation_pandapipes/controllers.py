@@ -1,9 +1,8 @@
 """
 Filename: controllers.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-07-31
 Description: Contains two custom pandapipes Controllers for the net simulation.
-
 """
 
 from pandapower.control.basic_controller import BasicCtrl
@@ -11,7 +10,19 @@ from math import pi
 import numpy as np
 
 class WorstPointPressureController(BasicCtrl):
-    def __init__(self, net, worst_point_idx, circ_pump_pressure_idx=0, target_dp_min_bar=1, tolerance=0.2, proportional_gain=0.2,**kwargs):
+    """
+    A controller for maintaining the pressure difference at the worst point in the network.
+    
+    Args:
+        net (pandapipesNet): The pandapipes network.
+        worst_point_idx (int): Index of the worst point in the network.
+        circ_pump_pressure_idx (int, optional): Index of the circulation pump. Defaults to 0.
+        target_dp_min_bar (float, optional): Target minimum pressure difference in bar. Defaults to 1.
+        tolerance (float, optional): Tolerance for pressure difference. Defaults to 0.2.
+        proportional_gain (float, optional): Proportional gain for the controller. Defaults to 0.2.
+        **kwargs: Additional keyword arguments.
+    """
+    def __init__(self, net, worst_point_idx, circ_pump_pressure_idx=0, target_dp_min_bar=1, tolerance=0.2, proportional_gain=0.2, **kwargs):
         super(WorstPointPressureController, self).__init__(net, **kwargs)
         self.heat_exchanger_idx = worst_point_idx
         self.flow_control_idx = worst_point_idx
@@ -23,25 +34,46 @@ class WorstPointPressureController(BasicCtrl):
 
         self.iteration = 0  # Add iteration counter
 
-
     def time_step(self, net, time_step):
+        """Reset the iteration counter at the start of each time step.
+
+        Args:
+            net (pandapipesNet): The pandapipes network.
+            time_step (int): The current time step.
+
+        Returns:
+            int: The current time step.
+        """
         self.iteration = 0  # reset iteration counter
         return time_step
 
     def is_converged(self, net):
+        """Check if the controller has converged.
+
+        Args:
+            net (pandapipesNet): The pandapipes network.
+
+        Returns:
+            bool: True if converged, False otherwise.
+        """
         qext_w = net.heat_consumer["qext_w"].at[self.heat_consumer_idx]
         if qext_w <= 400:
             return True
         current_dp_bar = net.res_heat_consumer["p_from_bar"].at[self.heat_consumer_idx] - net.res_heat_consumer["p_to_bar"].at[self.heat_consumer_idx]
 
-        # check, if the temperature converged
+        # Check if the pressure difference is within tolerance
         dp_within_tolerance = abs(current_dp_bar - self.target_dp_min_bar) < self.tolerance
 
         if dp_within_tolerance == True:
             return dp_within_tolerance
-    
+
     def control_step(self, net):
-        # incrementation iteration counter
+        """Adjust the pump pressure to maintain the target pressure difference.
+
+        Args:
+            net (pandapipesNet): The pandapipes network.
+        """
+        # Increment iteration counter
         self.iteration += 1
 
         # Check whether the heat flow in the heat exchanger is zero
@@ -66,152 +98,26 @@ class WorstPointPressureController(BasicCtrl):
 
         return super(WorstPointPressureController, self).control_step(net)
 
-"""
 class ReturnTemperatureController(BasicCtrl):
-    def __init__(self, net, heat_exchanger_idx, target_temperature, debug=False, tolerance=2, min_velocity=0.01, max_velocity=2, **kwargs):
-        super(ReturnTemperatureController, self).__init__(net, **kwargs)
-        self.heat_exchanger_idx = heat_exchanger_idx
-        self.flow_control_idx = heat_exchanger_idx
-        self.heat_consumer_idx = heat_exchanger_idx
-        self.target_temperature = target_temperature
-        self.initial_target_temperature = target_temperature
-        self.debug = debug
-        self.tolerance = tolerance
-        self.min_velocity = min_velocity
-        self.max_velocity = max_velocity
-
-        self.iteration = 0  # Add iteration counter
-        self.calculate_mass_flow_limits(net)
-        self.previous_temperatures = {}
-
-        self.at_min_mass_flow_limit = False
-        self.at_max_mass_flow_limit = False
-
-        self.data_source = None
-        self.cp = 4190 # Specific heat capacity in J/(kg K)
-
-    def time_step(self, net, time_step):
-        self.iteration = 0  # reset iteration counter
-        self.previous_temperatures = {}
-        if self.at_min_mass_flow_limit:
-            net.heat_consumer["controlled_mdot_kg_per_s"].at[self.heat_consumer_idx] = self.min_mass_flow * 1.05
-        if self.at_max_mass_flow_limit:
-            net.heat_consumer["controlled_mdot_kg_per_s"].at[self.heat_consumer_idx] = self.max_mass_flow * 0.95
-
-        # Check if a data source exists and get the target temperature for the current time step
-        if self.data_source is not None:
-            self.target_temperature = self.data_source.df.at[time_step, 'return_temperature']
-        
-        return time_step
-
-    def update_state(self, net):
-        # Update the state variable with the current inlet temperatures
-        self.previous_temperatures[self.heat_consumer_idx] = net.res_heat_consumer["t_from_k"].at[self.heat_consumer_idx]
-
-    def calculate_mass_flow_limits(self, net):
-        diameter = net.heat_consumer["diameter_m"].at[self.heat_consumer_idx]
-        area = (pi / 4) * (diameter ** 2)
-
-        self.min_mass_flow = self.min_velocity * area * 1000
-        self.max_mass_flow = self.max_velocity * area * 1000
-
-    def is_converged(self, net):
-        qext_w = net.heat_consumer["qext_w"].at[self.heat_consumer_idx]
-        if qext_w <= 400:
-            return True
-
-        # Check whether the temperatures have changed within the specified tolerance
-        current_T_in = net.res_heat_consumer["t_from_k"].at[self.heat_consumer_idx]
-        previous_T_in = self.previous_temperatures.get(self.heat_consumer_idx)
-
-        # Testing for convergence
-        temperature_change = abs(current_T_in - previous_T_in) if previous_T_in is not None else float('inf')
-        converged_T_in = temperature_change < self.tolerance
-
-        current_T_out = net.res_heat_consumer["t_to_k"].at[self.heat_consumer_idx] - 273.15
-        temperature_diff = abs(current_T_out - self.target_temperature)
-        converged_T_out = temperature_diff < self.tolerance
-
-        # Update temperature for next run
-        self.previous_temperatures[self.heat_consumer_idx] = current_T_in
-
-        current_mass_flow = net.heat_consumer["controlled_mdot_kg_per_s"].at[self.heat_consumer_idx]
-
-        # Check whether the mass flow limits have been reached
-        self.at_min_mass_flow_limit = current_mass_flow <= self.min_mass_flow
-        self.at_max_mass_flow_limit = current_mass_flow >= self.max_mass_flow
-
-        if self.at_min_mass_flow_limit and self.iteration > 10:
-            return True
-        
-        if self.at_max_mass_flow_limit and self.iteration > 10:
-            return True
-        
-        if converged_T_in and converged_T_out:
-            if self.debug == True:# and self.heat_consumer_idx == 3:
-                print(f'Regler konvergiert: heat_consumer_idx: {self.heat_consumer_idx}, qext_w: {qext_w}, current_temperature: {current_T_in}, previous_temperature: {previous_T_in}, to_temperature: {current_T_out}, current_mass_flow: {current_mass_flow}')
-            return True
-        
-    def control_step(self, net):
-        # incrementation iteration counter
-        self.iteration += 1
-        self.calculate_mass_flow_limits(net)
-
-        # Heat output of the heat exchanger
-        qext_w = net.heat_consumer["qext_w"].at[self.heat_consumer_idx]
-
-        # Check if the heat output is low enough to not make an adjustment
-        if qext_w <= 400:
-            net.heat_consumer["controlled_mdot_kg_per_s"].at[self.heat_consumer_idx] = 0
-            return super(ReturnTemperatureController, self).control_step(net)
-
-        # Current outlet temperature of the fluid
-        current_T_out = net.res_heat_consumer["t_to_k"].at[self.heat_consumer_idx] - 273.15
-        current_T_in = net.res_heat_consumer["t_from_k"].at[self.heat_consumer_idx] - 273.15 # Inlet temperature in °C
-
-        current_mass_flow = net.heat_consumer["controlled_mdot_kg_per_s"].at[self.heat_consumer_idx]
-        
-        if self.debug == True:# and self.heat_consumer_idx == 3:
-            print(f"min mass flow: {self.min_mass_flow}, Max mass flow: {self.max_mass_flow}")
-            print(f'ReturnTemperatureController vor control_step: Iteration: {self.iteration}, Heat Consumer ID: {self.heat_consumer_idx}, current_massflow={current_mass_flow}, qext_w={qext_w}, target_temperature_out={self.target_temperature}, current_temperature_out={current_T_out}, current_temperature_in={current_T_in}')
-        
-        # Make sure the target temperature is not the same as the inlet temperature to avoid division by zero
-        if abs(self.target_temperature-current_T_in) >= 0.1 and abs(current_T_out - current_T_in) >= 0.1:
-            calculated_current_mass_flow = (qext_w / self.cp) * (1 / (current_T_in - current_T_out))
-            # required mass flow is defined by qext, cp in W and the dT between current_T_in and current_T_out
-            calculated_required_mass_flow = (qext_w / self.cp) * (1 / (current_T_in - self.target_temperature))
-
-            mass_flow_corr_factor = calculated_current_mass_flow / calculated_required_mass_flow
-            required_mass_flow = current_mass_flow / mass_flow_corr_factor
-
-            if self.debug == True:# and self.heat_consumer_idx == 3:
-                print(f"Calculated cp: {qext_w / (current_mass_flow * (current_T_in - current_T_out))}")
-                print(f"Calculated current mass flow: {calculated_current_mass_flow}")
-                print(f"calculated required mass flow: {calculated_required_mass_flow}")
-                print(f"required mass flow: {required_mass_flow}")
-        
-        else:
-            # If the target temperature has already been reached, the mass flow does not need to be adjusted
-            required_mass_flow = current_mass_flow
-
-        # Add damping factor (e.g. 0.5)
-        damping_factor = 0.5
-
-        # Calculated mass flow taking damping into account, is required to prevent big flow rate changes in the network
-        new_mass_flow = (damping_factor * current_mass_flow) + ((1 - damping_factor) * required_mass_flow)
-        #new_mass_flow = required_mass_flow
-
-        # Check mass flow limits and update mass flow in network model
-        new_mass_flow = max(min(new_mass_flow, self.max_mass_flow), self.min_mass_flow)
-        net.heat_consumer["controlled_mdot_kg_per_s"].at[self.heat_consumer_idx] = new_mass_flow
-        
-        if self.debug == True:# and self.heat_consumer_idx == 3:
-            print(f'ReturnTemperatureController nach control_step: Iteration: {self.iteration}, Heat Consumer ID: {self.heat_consumer_idx}, new_mass_flow={new_mass_flow}')
-
-        return super(ReturnTemperatureController, self).control_step(net)
-"""
-
-class ReturnTemperatureController(BasicCtrl):
+    """
+    A controller for maintaining the return temperature in the network.
+    
+    Args:
+        net (pandapipesNet): The pandapipes network.
+        heat_consumer_idx (int): Index of the heat consumer.
+        target_return_temperature (float): Target return temperature.
+        min_supply_temperature (float, optional): Minimum supply temperature. Defaults to 65.
+        kp (float, optional): Proportional gain. Defaults to 0.95.
+        ki (float, optional): Integral gain. Defaults to 0.0.
+        kd (float, optional): Derivative gain. Defaults to 0.0.
+        tolerance (float, optional): Tolerance for temperature difference. Defaults to 2.
+        min_velocity (float, optional): Minimum velocity in m/s. Defaults to 0.01.
+        max_velocity (float, optional): Maximum velocity in m/s. Defaults to 2.
+        max_iterations (int, optional): Maximum number of iterations. Defaults to 100.
+        temperature_adjustment_step (float, optional): Step to adjust the target return temperature. Defaults to 1.
+        debug (bool, optional): Flag to enable debug output. Defaults to False.
+        **kwargs: Additional keyword arguments.
+    """
     def __init__(self, net, heat_consumer_idx, target_return_temperature, min_supply_temperature=65, kp=0.95, ki=0.0, kd=0.0, tolerance=2, min_velocity=0.01, max_velocity=2, max_iterations=100, temperature_adjustment_step=1, debug=False, **kwargs):
         super(ReturnTemperatureController, self).__init__(net, **kwargs)
         self.heat_consumer_idx = heat_consumer_idx
@@ -241,6 +147,15 @@ class ReturnTemperatureController(BasicCtrl):
         self.temperature_adjustment_step = temperature_adjustment_step  # Step to adjust the target return temperature
 
     def time_step(self, net, time_step):
+        """Reset the controller parameters at the start of each time step.
+
+        Args:
+            net (pandapipesNet): The pandapipes network.
+            time_step (int): The current time step.
+
+        Returns:
+            int: The current time step.
+        """
         self.iteration = 0  # reset iteration counter
         self.previous_temperatures = []  # Reset to an empty list
         self.integral = 0
@@ -260,6 +175,11 @@ class ReturnTemperatureController(BasicCtrl):
         return time_step
     
     def calculate_mass_flow_limits(self, net):
+        """Calculate the minimum and maximum mass flow limits.
+
+        Args:
+            net (pandapipesNet): The pandapipes network.
+        """
         diameter = net.heat_consumer["diameter_m"].at[self.heat_consumer_idx]
         area = (pi / 4) * (diameter ** 2)
 
@@ -267,14 +187,35 @@ class ReturnTemperatureController(BasicCtrl):
         self.max_mass_flow = self.max_velocity * area * 1000
 
     def calculate_error(self, net):
+        """Calculate the temperature error.
+
+        Args:
+            net (pandapipesNet): The pandapipes network.
+
+        Returns:
+            float: The temperature error.
+        """
         current_T_out = net.res_heat_consumer["t_to_k"].at[self.heat_consumer_idx] - 273.15
         error = self.target_return_temperature - current_T_out
         return error
 
     def update_integral(self, error):
+        """Update the integral component of the PID controller.
+
+        Args:
+            error (float): The current error.
+        """
         self.integral += error
 
     def calculate_derivative(self, error):
+        """Calculate the derivative component of the PID controller.
+
+        Args:
+            error (float): The current error.
+
+        Returns:
+            float: The derivative of the error.
+        """
         if self.last_error is None:
             derivative = 0
         else:
@@ -283,6 +224,11 @@ class ReturnTemperatureController(BasicCtrl):
         return derivative
 
     def get_weighted_average_temperature(self):
+        """Calculate the weighted average of the previous temperatures.
+
+        Returns:
+            float: The weighted average temperature.
+        """
         if len(self.previous_temperatures) == 0:
             return None
         weights = np.arange(1, len(self.previous_temperatures) + 1)
@@ -290,11 +236,16 @@ class ReturnTemperatureController(BasicCtrl):
         return weighted_avg
 
     def control_step(self, net):
+        """Adjust the mass flow to maintain the target return temperature.
+
+        Args:
+            net (pandapipesNet): The pandapipes network.
+        """
         # Increment iteration counter
         self.iteration += 1
 
         qext_w = net.heat_consumer["qext_w"].at[self.heat_consumer_idx]
-        # not converging under that value
+        # Not converging under that value
         if qext_w <= 500:  # Increase this threshold to avoid issues with very low heat demand
             net.heat_consumer["controlled_mdot_kg_per_s"].at[self.heat_consumer_idx] = self.min_mass_flow
             return super(ReturnTemperatureController, self).control_step(net)
@@ -323,7 +274,7 @@ class ReturnTemperatureController(BasicCtrl):
             return super(ReturnTemperatureController, self).control_step(net)
 
         if self.debug:
-            print(f"heat_consumer_idx: {self.heat_consumer_idx}, Iteration: {self.iteration}, qext_w: {qext_w}, current_T_in: {current_T_in},  target_T_out: {self.target_return_temperature}, current_T_out: {current_T_out}, current_mass_flow: {current_mass_flow}")
+            print(f"heat_consumer_idx: {self.heat_consumer_idx}, Iteration: {self.iteration}, qext_w: {qext_w}, current_T_in: {current_T_in}, target_T_out: {self.target_return_temperature}, current_T_out: {current_T_out}, current_mass_flow: {current_mass_flow}")
         
         # Ensure not to divide by zero
         if current_T_in == self.target_return_temperature:
@@ -346,7 +297,7 @@ class ReturnTemperatureController(BasicCtrl):
         if adjusted_delta_T == 0:
             adjusted_delta_T = 0.1  # Adjust slightly to avoid division by zero
         
-        # at the first Iteration the massflow from the previous is taken, which leads to problems when correcting the mass flow
+        # At the first iteration the mass flow from the previous is taken, which leads to problems when correcting the mass flow
         if self.iteration == 1:
             mass_flow_correction = 0
             new_mass_flow = qext_w / (self.cp * adjusted_delta_T)
@@ -376,8 +327,16 @@ class ReturnTemperatureController(BasicCtrl):
         return super(ReturnTemperatureController, self).control_step(net)
 
     def is_converged(self, net):
+        """Check if the controller has converged.
+
+        Args:
+            net (pandapipesNet): The pandapipes network.
+
+        Returns:
+            bool: True if converged, False otherwise.
+        """
         qext_w = net.heat_consumer["qext_w"].at[self.heat_consumer_idx]
-        # not converging under that value
+        # Not converging under that value
         if qext_w <= 500:  # Increase this threshold to avoid issues with very low heat demand
             return True
         
