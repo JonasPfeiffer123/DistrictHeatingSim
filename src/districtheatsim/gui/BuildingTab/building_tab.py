@@ -364,7 +364,7 @@ class BuildingTab(QWidget):
         return df
 
     def populateComboBoxes(self):
-        df = pd.read_csv(get_resource_path('heat_requirement/BDEW factors/daily_coefficients.csv'), delimiter=';', dtype=str)
+        df = pd.read_csv(get_resource_path('data\\BDEW profiles\\daily_coefficients.csv'), delimiter=';', dtype=str)
         building_types = df['Standardlastprofil'].str[:3].unique()
         self.building_types = sorted(building_types)
         self.building_subtypes = {}

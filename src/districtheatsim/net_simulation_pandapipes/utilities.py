@@ -45,7 +45,7 @@ def get_resource_path(relative_path):
 
     return os.path.join(base_path, relative_path)
 
-def COP_WP(VLT_L, QT, values=np.genfromtxt(get_resource_path('heat_generators\Kennlinien WP.csv'), delimiter=';')):
+def COP_WP(VLT_L, QT, values=np.genfromtxt(get_resource_path('data/COP/Kennlinien WP.csv'), delimiter=';')):
     """Calculate the Coefficient of Performance (COP) for a heat pump based on supply and source temperatures.
 
     Args:

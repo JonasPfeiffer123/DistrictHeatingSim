@@ -55,10 +55,10 @@ class LOD2Tab(QWidget):
         # Update the base path immediately with the current project folder
         self.updateDefaultPath(self.data_manager.project_folder)
 
-        self.comboBoxBuildingTypesItems = pd.read_csv(get_resource_path('lod2/data/standard_u_values_TABULA.csv'), sep=";")['Typ'].unique().tolist()
+        self.comboBoxBuildingTypesItems = pd.read_csv(get_resource_path('data\\TABULA\\standard_u_values_TABULA.csv'), sep=";")['Typ'].unique().tolist()
 
         # Lade die SLP Datenbank
-        self.slp_df = pd.read_csv(get_resource_path('heat_requirement/BDEW factors/daily_coefficients.csv'), delimiter=';', dtype=str)
+        self.slp_df = pd.read_csv(get_resource_path('data\\BDEW profiles\\daily_coefficients.csv'), delimiter=';', dtype=str)
         self.populateComboBoxes()
 
         self.initUI()
@@ -67,7 +67,7 @@ class LOD2Tab(QWidget):
         self.selected_building = None
 
         # U-Werte Datensatz laden
-        self.u_values_df = pd.read_csv(get_resource_path('lod2/data/standard_u_values_TABULA.csv'), sep=";")
+        self.u_values_df = pd.read_csv(get_resource_path('data\\TABULA\\standard_u_values_TABULA.csv'), sep=";")
 
     def initUI(self):
         main_layout = QVBoxLayout(self)
