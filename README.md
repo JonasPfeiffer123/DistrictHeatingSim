@@ -175,8 +175,11 @@ DistrictHeatSim is licensed under the MIT License. See the `LICENSE` file for mo
 
 For further information, questions, or feedback, please contact the project maintainer:
 
-Jonas Pfeiffer  
+Dipl.-Ing. (FH) Jonas Pfeiffer
+
 [GitHub Profile](https://github.com/JonasPfeiffer123)  
+
 Email: jonas.pfeiffer(at)hszg.de
 
 [LinkedIn](https://de.linkedin.com/in/jonas-pfeiffer-0357691a2)
+
