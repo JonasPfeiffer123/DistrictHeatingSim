@@ -1,7 +1,7 @@
 """
 Filename: RenovationTab1.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-08-01
 Description: Contains the RenovationTab1, the Tab for LOD2 data based renovation cost analysis.
 """
 
@@ -16,16 +16,38 @@ from matplotlib.figure import Figure
 from PyQt5.QtWidgets import QApplication, QVBoxLayout, QWidget, QPushButton, QLabel, QLineEdit, QComboBox, QGroupBox, QFormLayout, QHBoxLayout, QScrollArea, QFileDialog, QMessageBox, QTableWidget, QTableWidgetItem
 from PyQt5.QtCore import pyqtSlot, pyqtSignal 
 
-from gui.RenovationTab.SanierungsanalysefuerGUI import SanierungsAnalyse
+from utilities.SanierungsanalysefuerGUI import SanierungsAnalyse
 
 class PlotCanvas(FigureCanvas):
+    """
+    Custom QWidget for rendering Matplotlib plots in a PyQt5 application.
+    """
     def __init__(self, parent=None, width=5, height=4, dpi=100):
+        """
+        Initializes the PlotCanvas.
+
+        Args:
+            parent (QWidget, optional): The parent widget. Defaults to None.
+            width (int, optional): The width of the canvas. Defaults to 5.
+            height (int, optional): The height of the canvas. Defaults to 4.
+            dpi (int, optional): The resolution of the canvas. Defaults to 100.
+        """
         fig = Figure(figsize=(width, height), dpi=dpi)
         self.axes = fig.add_subplot(111)
         super().__init__(fig)
         self.setParent(parent)
 
     def plot(self, data_ist, data_saniert, title, xlabel, ylabel):
+        """
+        Plots bar charts for the given data.
+
+        Args:
+            data_ist (dict): Data for the IST state.
+            data_saniert (dict): Data for the saniert state.
+            title (str): The title of the plot.
+            xlabel (str): The label for the x-axis.
+            ylabel (str): The label for the y-axis.
+        """
         self.axes.clear()
         width = 0.35  # the width of the bars
 
@@ -46,9 +68,29 @@ class PlotCanvas(FigureCanvas):
 
 
 class RenovationTab1(QWidget):
+    """
+    The RenovationTab1 class, responsible for the LOD2 data based renovation cost analysis.
+
+    Attributes:
+        data_added (pyqtSignal): Signal that emits data as an object.
+        data_manager (object): The data manager object.
+        base_path (str): The base path for the project.
+        ist_geojson (GeoDataFrame): GeoDataFrame containing IST state data.
+        saniert_geojson (GeoDataFrame): GeoDataFrame containing saniert state data.
+        results (dict): Dictionary to store analysis results.
+        input_fields (dict): Dictionary to store input fields.
+        RELEVANT_FIELDS (list): List of relevant fields to extract from GeoJSON.
+    """
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
 
     def __init__(self, data_manager, parent=None):
+        """
+        Initializes the RenovationTab1.
+
+        Args:
+            data_manager (object): The data manager.
+            parent (QWidget, optional): The parent widget. Defaults to None.
+        """
         super().__init__(parent)
         self.data_manager = data_manager
 
@@ -60,6 +102,9 @@ class RenovationTab1(QWidget):
         self.initUI()
     
     def initUI(self):
+        """
+        Initializes the UI components of the RenovationTab1.
+        """
         self.setWindowTitle("Sanierungsanalyse")
         self.setGeometry(100, 100, 1200, 800)
 
@@ -128,6 +173,12 @@ class RenovationTab1(QWidget):
         ]
 
     def create_input_groups(self, layout):
+        """
+        Creates input groups for the various input parameters and adds them to the given layout.
+
+        Args:
+            layout (QVBoxLayout): The layout to add the input groups to.
+        """
         left_layout = QVBoxLayout()
         right_layout = QVBoxLayout()
         main_layout = QHBoxLayout()
@@ -173,11 +224,19 @@ class RenovationTab1(QWidget):
         main_layout.addLayout(right_layout)
         layout.addLayout(main_layout)
 
-
     def updateDefaultPath(self, new_base_path):
+        """
+        Updates the default path for the project.
+
+        Args:
+            new_base_path (str): The new base path for the project.
+        """
         self.base_path = new_base_path
         
     def load_ist_geojson(self):
+        """
+        Loads the IST state GeoJSON file and populates the IST table with its data.
+        """
         path, _ = QFileDialog.getOpenFileName(self, "IST-Stand GeoJSON laden", self.base_path, "GeoJSON-Dateien (*.geojson)")
         if path:
             try:
@@ -194,6 +253,9 @@ class RenovationTab1(QWidget):
                 QMessageBox.critical(self, "Fehler", f"Fehler beim Laden der IST-Stand GeoJSON:\n{''.join(tb_str)}")
 
     def load_saniert_geojson(self):
+        """
+        Loads the saniert state GeoJSON file and populates the saniert table with its data.
+        """
         path, _ = QFileDialog.getOpenFileName(self, "Sanierten Stand GeoJSON laden", self.base_path, "GeoJSON-Dateien (*.geojson)")
         if path:
             try:
@@ -210,6 +272,13 @@ class RenovationTab1(QWidget):
                 QMessageBox.critical(self, "Fehler", f"Fehler beim Laden der sanierten Stand GeoJSON:\n{''.join(tb_str)}")
 
     def populate_table(self, gdf, table_widget):
+        """
+        Populates the given table widget with data from the GeoDataFrame.
+
+        Args:
+            gdf (GeoDataFrame): The GeoDataFrame containing the data.
+            table_widget (QTableWidget): The table widget to populate.
+        """
         try:
             properties_list = gdf.drop(columns='geometry').to_dict(orient='records')
             if not properties_list:
@@ -235,6 +304,15 @@ class RenovationTab1(QWidget):
             QMessageBox.critical(self, "Fehler", f"Ein Fehler ist beim Befüllen der Tabelle aufgetreten:\n{''.join(tb_str)}")
 
     def extract_building_info(self, gdf):
+        """
+        Extracts building information from the given GeoDataFrame.
+
+        Args:
+            gdf (GeoDataFrame): The GeoDataFrame containing the data.
+
+        Returns:
+            list: A list of dictionaries containing building information.
+        """
         buildings = []
         for _, properties in gdf.drop(columns='geometry').iterrows():
             building = {
@@ -254,6 +332,9 @@ class RenovationTab1(QWidget):
 
     @pyqtSlot()
     def run_analysis(self):
+        """
+        Runs the renovation analysis using the loaded GeoJSON data and input parameters.
+        """
         try:
             if self.ist_geojson is None or self.saniert_geojson is None:
                 QMessageBox.critical(self, "Fehler", "Beide GeoJSON-Dateien müssen geladen werden.")
@@ -355,6 +436,9 @@ class RenovationTab1(QWidget):
 
     @pyqtSlot()
     def update_plot(self):
+        """
+        Updates the plot based on the selected item in the combo box.
+        """
         if not self.results:
             return
 

@@ -1,7 +1,7 @@
 """
 Filename: results_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-08-01
 Description: Contains the ResultsTab.
 """
 
@@ -14,13 +14,29 @@ from PyQt5.QtCore import Qt, pyqtSignal
 import numpy as np
 
 class CheckableComboBox(QComboBox):
+    """
+    A QComboBox subclass that allows multiple items to be checked.
+    """
+
     def __init__(self, parent=None):
+        """
+        Initializes the CheckableComboBox.
+
+        Args:
+            parent (QWidget, optional): The parent widget. Defaults to None.
+        """
         super(CheckableComboBox, self).__init__(parent)
         self.view().pressed.connect(self.handleItemPressed)
         self.setModelColumn(0)
         self.checked_items = []
 
     def handleItemPressed(self, index):
+        """
+        Handles the item pressed event to toggle the check state.
+
+        Args:
+            index (QModelIndex): The index of the pressed item.
+        """
         item = self.model().itemFromIndex(index)
         if item.checkState() == Qt.Checked:
             item.setCheckState(Qt.Unchecked)
@@ -31,22 +47,44 @@ class CheckableComboBox(QComboBox):
         self.updateText()
 
     def updateText(self):
+        """
+        Updates the displayed text to show the checked items.
+        """
         if self.checked_items:
             self.setEditText(', '.join(self.checked_items))
         else:
             self.setEditText('')
 
     def addItem(self, text, data=None):
+        """
+        Adds an item to the combo box.
+
+        Args:
+            text (str): The text of the item.
+            data (Any, optional): The data associated with the item. Defaults to None.
+        """
         super(CheckableComboBox, self).addItem(text, data)
         item = self.model().item(self.count() - 1)
         item.setCheckState(Qt.Unchecked)
-        #print(f"Added item: {text} with state Unchecked")
 
     def addItems(self, texts):
+        """
+        Adds multiple items to the combo box.
+
+        Args:
+            texts (list): The list of item texts to add.
+        """
         for text in texts:
             self.addItem(text)
 
     def setItemChecked(self, text, checked=True):
+        """
+        Sets the check state of an item.
+
+        Args:
+            text (str): The text of the item.
+            checked (bool, optional): The check state. Defaults to True.
+        """
         index = self.findText(text)
         if index != -1:
             item = self.model().item(index)
@@ -60,52 +98,80 @@ class CheckableComboBox(QComboBox):
             self.updateText()
 
     def clear(self):
+        """
+        Clears all items from the combo box.
+        """
         super(CheckableComboBox, self).clear()
         self.checked_items = []
 
     def checkedItems(self):
+        """
+        Gets the list of checked items.
+
+        Returns:
+            list: The list of checked items.
+        """
         return self.checked_items
 
 class ResultsTab(QWidget):
+    """
+    A QWidget subclass representing the ResultsTab.
+
+    Attributes:
+        data_added (pyqtSignal): A signal that emits data as an object.
+        data_manager (DataManager): An instance of the DataManager class for managing data.
+        parent (QWidget): The parent widget.
+        results (dict): A dictionary to store results.
+        selected_variables (list): A list of selected variables for plotting.
+    """
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
-    
+
     def __init__(self, data_manager, parent=None):
+        """
+        Initializes the ResultsTab.
+
+        Args:
+            data_manager (DataManager): The data manager.
+            parent (QWidget, optional): The parent widget. Defaults to None.
+        """
         super().__init__(parent)
         self.data_manager = data_manager
         self.parent = parent
         self.results = {}
         self.selected_variables = []
 
-        # Connect to the data manager signal
         self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
         self.updateDefaultPath(self.data_manager.project_folder)
         
         self.initUI()
 
     def updateDefaultPath(self, new_base_path):
+        """
+        Updates the default base path.
+
+        Args:
+            new_base_path (str): The new base path.
+        """
         self.base_path = new_base_path
 
     def initUI(self):
+        """
+        Initializes the UI components of the ResultsTab.
+        """
         self.mainLayout = QVBoxLayout(self)
 
-        # Dropdown menu for variable selection
         self.variableSelectionLayout = QHBoxLayout()
         self.variableComboBox = CheckableComboBox()
         self.variableComboBox.view().pressed.connect(self.updateSelectedVariables)
-        
-        #self.stackPlotCheckBox = QCheckBox("Stackplot")
-        #self.stackPlotCheckBox.stateChanged.connect(self.updateSelectedVariables)
-        
+
         self.secondYAxisCheckBox = QCheckBox("Second y-Axis")
         self.secondYAxisCheckBox.stateChanged.connect(self.updateSelectedVariables)
 
         self.variableSelectionLayout.addWidget(self.variableComboBox)
-        #self.variableSelectionLayout.addWidget(self.stackPlotCheckBox)
         self.variableSelectionLayout.addWidget(self.secondYAxisCheckBox)
 
         self.mainLayout.addLayout(self.variableSelectionLayout)
 
-        # Diagramme und Tabellen in ScrollArea packen
         self.scrollArea = QScrollArea()
         self.scrollArea.setWidgetResizable(True)
         self.scrollWidget = QWidget()
@@ -117,8 +183,11 @@ class ResultsTab(QWidget):
         self.scrollArea.setWidget(self.scrollWidget)
         self.mainLayout.addWidget(self.scrollArea)
         self.setLayout(self.mainLayout)
-        
+
     def setupDiagrams(self):
+        """
+        Sets up the diagrams for the ResultsTab.
+        """
         self.figure1 = Figure(figsize=(8, 6))
         self.canvas1 = FigureCanvas(self.figure1)
         self.canvas1.setMinimumSize(500, 500)
@@ -130,9 +199,11 @@ class ResultsTab(QWidget):
         self.scrollLayout.addWidget(self.pieChartCanvas)
 
     def setupCalculationOptimization(self):
+        """
+        Sets up the calculation optimization section.
+        """
         self.addLabel('Übersicht Erzeugung')
 
-        # Layout für Ergebnisse und Kreisdiagramm
         self.resultsAndPieChartLayout = QHBoxLayout()
         self.scrollLayout.addLayout(self.resultsAndPieChartLayout)
         
@@ -142,11 +213,19 @@ class ResultsTab(QWidget):
         self.setupAdditionalResultsTable()
 
     def addLabel(self, text):
+        """
+        Adds a label to the layout.
+
+        Args:
+            text (str): The text for the label.
+        """
         label = QLabel(text)
         self.scrollLayout.addWidget(label)
 
-    ### Results Table ###
     def setupResultsTable(self):
+        """
+        Sets up the results table.
+        """
         self.resultsTable = QTableWidget()
         self.resultsTable.setColumnCount(6)
         self.resultsTable.setHorizontalHeaderLabels(['Technologie', 'Wärmemenge (MWh)', 'Kosten (€/MWh)', 'Anteil (%)', 'spez. CO2-Emissionen (t_CO2/MWh_th)', 'Primärenergiefaktor'])
@@ -154,6 +233,12 @@ class ResultsTab(QWidget):
         self.resultsAndPieChartLayout.addWidget(self.resultsTable)
 
     def showResultsInTable(self, results):
+        """
+        Displays the results in the results table.
+
+        Args:
+            results (dict): The results to display.
+        """
         self.resultsTable.setRowCount(len(results['techs']))
 
         for i, (tech, wärmemenge, wgk, anteil, spec_emission, primary_energy) in enumerate(zip(results['techs'], results['Wärmemengen'], results['WGK'], results['Anteile'], results['specific_emissions_L'], results['primärenergie_L'])):
@@ -167,8 +252,10 @@ class ResultsTab(QWidget):
         self.resultsTable.resizeColumnsToContents()
         self.adjustTableSize(self.resultsTable)
 
-    ### Additional Results Table ###
     def setupAdditionalResultsTable(self):
+        """
+        Sets up the additional results table.
+        """
         self.additionalResultsTable = QTableWidget()
         self.additionalResultsTable.setColumnCount(3)
         self.additionalResultsTable.setHorizontalHeaderLabels(['Ergebnis', 'Wert', 'Einheit'])
@@ -176,6 +263,12 @@ class ResultsTab(QWidget):
         self.scrollLayout.addWidget(self.additionalResultsTable)
 
     def showAdditionalResultsTable(self, result):
+        """
+        Displays the additional results in the additional results table.
+
+        Args:
+            result (dict): The results to display.
+        """
         self.results = result
         self.waerme_ges_kW, self.strom_wp_kW = np.sum(self.results["waerme_ges_kW"]), np.sum(self.results["strom_wp_kW"])
         self.WGK_Infra = self.parent.costTab.summe_annuität / self.results['Jahreswärmebedarf']
@@ -205,17 +298,27 @@ class ResultsTab(QWidget):
         self.additionalResultsTable.resizeColumnsToContents()
         self.adjustTableSize(self.additionalResultsTable)
 
-    ### Table size adjustment function ###
     def adjustTableSize(self, table):
+        """
+        Adjusts the size of the table to fit its contents.
+
+        Args:
+            table (QTableWidget): The table to adjust.
+        """
         header_height = table.horizontalHeader().height()
         rows_height = sum([table.rowHeight(i) for i in range(table.rowCount())])
         table.setFixedHeight(header_height + rows_height)
 
     def plotResults(self, results):
-        self.results = results
-        time_steps = results['time_steps']  # Array mit Länge 8760
+        """
+        Plots the results in the diagrams.
 
-        # Extrahiere alle Variablen mit derselben Länge wie time_steps
+        Args:
+            results (dict): The results to plot.
+        """
+        self.results = results
+        time_steps = results['time_steps']
+
         self.extracted_data = {}
         for tech_class in self.results['tech_classes']:
             for var_name in dir(tech_class):
@@ -224,25 +327,18 @@ class ResultsTab(QWidget):
                     unique_var_name = f"{tech_class.name}_{var_name}"
                     self.extracted_data[unique_var_name] = var_value
 
-        # ComboBox für Variablen leeren
         self.variableComboBox.clear()
-        # ComboBox mit allen Variablen füllen
         self.variableComboBox.addItems(self.extracted_data.keys())
         self.variableComboBox.addItem("Last_L")
-        # Initiale Variablen, die mit "Wärmeleistung" beginnen, plotten
-        initial_vars = [var_name for var_name in self.extracted_data.keys() if "_Wärmeleistung" in var_name]
 
-        # "Last_L" zu den initialen Variablen hinzufügen
+        initial_vars = [var_name for var_name in self.extracted_data.keys() if "_Wärmeleistung" in var_name]
         initial_vars.append("Last_L")
 
-        # Initiale Auswahl setzen
         for var in initial_vars:
             self.variableComboBox.setItemChecked(var, True)
 
-        # Ausgewählte Variablen aktualisieren
         self.selected_variables = self.variableComboBox.checkedItems()
 
-        # Initialer Plot
         self.figure1.clear()
         self.plotVariables(self.figure1, time_steps, self.selected_variables)
         self.canvas1.draw()
@@ -250,20 +346,25 @@ class ResultsTab(QWidget):
         self.plotPieChart()
 
     def plotVariables(self, figure, time_steps, selected_vars):
+        """
+        Plots the selected variables in the diagram.
+
+        Args:
+            figure (Figure): The figure to plot on.
+            time_steps (list): The list of time steps.
+            selected_vars (list): The list of selected variables.
+        """
         ax1 = figure.add_subplot(111)
         stackplot_vars = [var for var in selected_vars if "_Wärmeleistung" in var]
         other_vars = [var for var in selected_vars if var not in stackplot_vars and var != "Last_L"]
 
-        # Plot stackplot variables
         stackplot_data = [self.extracted_data[var] for var in stackplot_vars if var in self.extracted_data]
-        if stackplot_data:  # Ensure stackplot_data is not empty
+        if stackplot_data:
             ax1.stackplot(time_steps, stackplot_data, labels=stackplot_vars)
 
-        # Plot Last_L
         if "Last_L" in selected_vars:
             ax1.plot(time_steps, self.results["Last_L"], color='blue', label='Last', linewidth=0.5)
 
-        # Plot other selected variables
         ax2 = ax1.twinx() if self.secondYAxisCheckBox.isChecked() else None
         for var_name in other_vars:
             if var_name in self.extracted_data:
@@ -276,7 +377,6 @@ class ResultsTab(QWidget):
         ax1.set_ylabel("thermische Leistung in kW")
         ax1.grid()
 
-        # Set legends
         if ax2:
             ax1.legend(loc='upper left')
             ax2.legend(loc='upper right')
@@ -284,13 +384,18 @@ class ResultsTab(QWidget):
             ax1.legend(loc='upper center')
 
     def updateSelectedVariables(self):
-        # Update selected variables to only include those that still exist in extracted_data
+        """
+        Updates the selected variables and re-plots the diagram.
+        """
         self.selected_variables = self.variableComboBox.checkedItems()
         self.figure1.clear()
         self.plotVariables(self.figure1, self.results['time_steps'], self.selected_variables)
         self.canvas1.draw()
 
     def plotPieChart(self):
+        """
+        Plots the pie chart for the energy shares.
+        """
         Anteile = self.results['Anteile']
         labels = self.results['techs']
         colors = self.results['colors']
@@ -306,7 +411,6 @@ class ResultsTab(QWidget):
             Anteile, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90, pctdistance=0.85
         )
 
-        # Linienführung aktivieren
         for text in texts:
             text.set_fontsize(10)
         for autotext in autotexts:

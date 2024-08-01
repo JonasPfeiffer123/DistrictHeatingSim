@@ -20,7 +20,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QFileDialog, QLa
 from PyQt5.QtCore import pyqtSignal, Qt
 
 from heat_requirement.heat_requirement_calculation_csv import generate_profiles_from_csv
-from districtheatsim.gui.utilities import CheckableComboBox, convert_to_serializable
+from gui.utilities import CheckableComboBox, convert_to_serializable
 
 def get_resource_path(relative_path):
     """

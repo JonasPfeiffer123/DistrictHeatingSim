@@ -1,7 +1,7 @@
 """
 Filename: mix_design_dialogs.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-29
+Date: 2024-08-01
 Description: Contains the Dialogs for the MixDesignTab.
 """
 
@@ -23,16 +23,39 @@ import matplotlib.pyplot as plt
 def get_resource_path(relative_path):
     """ Get the absolute path to the resource, works for dev and for PyInstaller """
     if getattr(sys, 'frozen', False):
-        # Wenn die Anwendung eingefroren ist, ist der Basispfad der Temp-Ordner, wo PyInstaller alles extrahiert
+        # When the application is frozen, the base path is the temp folder where PyInstaller extracts everything
         base_path = sys._MEIPASS
     else:
-        # Wenn die Anwendung nicht eingefroren ist, ist der Basispfad der Ordner, in dem die Hauptdatei liegt
+        # When the application is not frozen, the base path is the folder where the main script is located
         base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     return os.path.join(base_path, relative_path)
 
 class EconomicParametersDialog(QDialog):
+    """
+    A QDialog subclass for inputting economic parameters.
+
+    Attributes:
+        gaspreisInput (QLineEdit): Input field for gas price.
+        strompreisInput (QLineEdit): Input field for electricity price.
+        holzpreisInput (QLineEdit): Input field for wood price.
+        kapitalzinsInput (QLineEdit): Input field for capital interest rate.
+        preissteigerungsrateInput (QLineEdit): Input field for price increase rate.
+        betrachtungszeitraumInput (QLineEdit): Input field for evaluation period.
+        stundensatzInput (QLineEdit): Input field for hourly wage rate for maintenance.
+        BEWComboBox (QComboBox): ComboBox for considering BEW funding.
+        fig (Figure): Matplotlib figure for plotting.
+        ax (Axes): Matplotlib axes for plotting.
+        canvas (FigureCanvas): Canvas to display the Matplotlib figure.
+    """
+
     def __init__(self, parent=None):
+        """
+        Initializes the EconomicParametersDialog.
+
+        Args:
+            parent (QWidget, optional): The parent widget. Defaults to None.
+        """
         super().__init__(parent)
         self.initUI()
         self.initDefaultValues()
@@ -40,7 +63,10 @@ class EconomicParametersDialog(QDialog):
         self.connectSignals()
 
     def initUI(self):
-        self.setWindowTitle(f"Eingabe wirtschaftliche Parameter")
+        """
+        Initializes the user interface components.
+        """
+        self.setWindowTitle("Eingabe wirtschaftliche Parameter")
 
         self.mainLayout = QHBoxLayout(self)
 
@@ -107,6 +133,9 @@ class EconomicParametersDialog(QDialog):
         self.mainLayout.addWidget(self.canvas)
 
     def initDefaultValues(self):
+        """
+        Initializes the input fields with default values.
+        """
         self.gaspreisInput.setText("70")
         self.strompreisInput.setText("150")
         self.holzpreisInput.setText("50")
@@ -114,16 +143,21 @@ class EconomicParametersDialog(QDialog):
         self.preissteigerungsrateInput.setText("3")
         self.betrachtungszeitraumInput.setText("20")
         self.stundensatzInput.setText("45")
-        self.BEWComboBox.setCurrentIndex(0)  # Setzt die Auswahl auf "Nein"
+        self.BEWComboBox.setCurrentIndex(0)  # Sets the selection to "Nein"
 
     def connectSignals(self):
-        # Connect signals of QLineEdit widgets to plotPriceDevelopment method
+        """
+        Connects the signals of the input fields to the validation method.
+        """
         self.gaspreisInput.textChanged.connect(self.validateInput)
         self.strompreisInput.textChanged.connect(self.validateInput)
         self.holzpreisInput.textChanged.connect(self.validateInput)
         self.preissteigerungsrateInput.textChanged.connect(self.validateInput)
 
     def validateInput(self):
+        """
+        Validates the input fields and updates the plot if valid.
+        """
         gas_price = self.gaspreisInput.text()
         strom_price = self.strompreisInput.text()
         holz_price = self.holzpreisInput.text()
@@ -151,6 +185,12 @@ class EconomicParametersDialog(QDialog):
         self.plotPriceDevelopment()
 
     def showErrorMessage(self, message):
+        """
+        Shows an error message dialog.
+
+        Args:
+            message (str): The message to display.
+        """
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Warning)
         msgBox.setText(message)
@@ -158,7 +198,9 @@ class EconomicParametersDialog(QDialog):
         msgBox.exec_()
 
     def plotPriceDevelopment(self):
-        # Clear existing lines from the plot
+        """
+        Plots the price development of energy carriers over time.
+        """
         self.ax.clear()
 
         years = range(1, int(self.betrachtungszeitraumInput.text()) + 1)
@@ -170,8 +212,8 @@ class EconomicParametersDialog(QDialog):
         self.ax.plot(years, strom_prices, label='Strompreis')
         self.ax.plot(years, holz_prices, label='Holzpreis')
 
-        self.ax.set_xticks(years[::1])  # Setze X-Achsen-Ticks auf jede zweite Position
-        self.ax.set_xticklabels(years[::1])  # Setze die Beschriftungen der X-Achse mit einer Drehung von 45 Grad
+        self.ax.set_xticks(years[::1])
+        self.ax.set_xticklabels(years[::1])
         self.ax.set_xlabel('Jahr')
         self.ax.set_ylabel('Preis (€/MWh)')
         self.ax.set_title('Preisentwicklung der Energieträger')
@@ -181,6 +223,12 @@ class EconomicParametersDialog(QDialog):
         self.canvas.draw()
 
     def getValues(self):
+        """
+        Gets the values from the input fields.
+
+        Returns:
+            dict: A dictionary containing the input values.
+        """
         return {
             'Gaspreis in €/MWh': float(self.gaspreisInput.text()),
             'Strompreis in €/MWh': float(self.strompreisInput.text()),
@@ -193,7 +241,28 @@ class EconomicParametersDialog(QDialog):
         }
 
 class KostenBerechnungDialog(QDialog):
+    """
+    A QDialog subclass for calculating costs based on a geoJSON file.
+
+    Attributes:
+        base_path (str): The base path for loading the geoJSON file.
+        filename (str): The filename of the geoJSON file.
+        label (str): The label for the specific cost input field.
+        value (str): The default value for the specific cost input field.
+        type (str): The type of cost calculation.
+        total_cost (float): The total calculated cost.
+    """
+
     def __init__(self, parent=None, label=None, value=None, type=None):
+        """
+        Initializes the KostenBerechnungDialog.
+
+        Args:
+            parent (QWidget, optional): The parent widget. Defaults to None.
+            label (str, optional): The label for the specific cost input field. Defaults to None.
+            value (str, optional): The default value for the specific cost input field. Defaults to None.
+            type (str, optional): The type of cost calculation. Defaults to None.
+        """
         super().__init__(parent)
         self.base_path = parent.base_path
         self.filename = f"{self.base_path}\Wärmenetz\dimensioniertes Wärmenetz.geojson"
@@ -204,6 +273,9 @@ class KostenBerechnungDialog(QDialog):
         self.initUI()
 
     def initUI(self):
+        """
+        Initializes the user interface components.
+        """
         self.layout = QVBoxLayout(self)
 
         self.specCostLabel = QLabel(self.label)
@@ -224,44 +296,63 @@ class KostenBerechnungDialog(QDialog):
         self.layout.addWidget(cancelButton)
 
     def onAccept(self):
-        # Lesen der GeoDataFrame-Datei
+        """
+        Reads the geoJSON file and calculates the total cost based on the input values.
+        """
         gdf_net = gpd.read_file(self.filename)
 
-        # Filtern basierend auf dem Typ (selbst .str.startswith anwenden, um Filter zu machen)
         gdf_net_filtered = gdf_net[gdf_net["name"].str.startswith(self.type)]
 
-        # Berechnungen für "flow line"
         if self.type.startswith("flow line"):
             self.length_values = gdf_net_filtered["length_m"].values.astype(float)
             self.cost_lines = self.length_values * float(self.specCostInput.text())
             self.total_cost = round(np.sum(self.cost_lines), 0)
 
-        # Berechnungen für "HAST"
         elif self.type == "HAST":
             self.qext_values = gdf_net_filtered["qext_W"].values.astype(float) / 1000
             self.cost_lines = self.qext_values * float(self.specCostInput.text())
             self.total_cost = round(np.sum(self.cost_lines), 0)
 
-        # Akzeptieren der Änderungen
         self.accept()
 
 class NetInfrastructureDialog(QDialog):
+    """
+    A QDialog subclass for managing network infrastructure.
+
+    Attributes:
+        base_path (str): The base path for loading and saving data.
+        infraObjects (list): A list of infrastructure objects.
+        table (QTableWidget): The table widget for displaying infrastructure data.
+        layout (QVBoxLayout): The main layout of the dialog.
+        addButton (QPushButton): Button to add a new row.
+        removeButton (QPushButton): Button to remove the selected row.
+        berechneWärmenetzKostenButton (QPushButton): Button to calculate the cost of the heating network.
+        berechneHausanschlussKostenButton (QPushButton): Button to calculate the cost of house connection stations.
+    """
+    
     def __init__(self, parent=None):
+        """
+        Initializes the NetInfrastructureDialog.
+
+        Args:
+            parent (QWidget, optional): The parent widget. Defaults to None.
+        """
         super().__init__(parent)
         self.base_path = None
         self.initUI()
         self.initDefaultValues()
-         # Kontextmenü für vertikale Kopfzeilen
         self.table.verticalHeader().setContextMenuPolicy(Qt.CustomContextMenu)
         self.table.verticalHeader().customContextMenuRequested.connect(self.openHeaderContextMenu)
 
     def initUI(self):
+        """
+        Initializes the user interface components.
+        """
         self.setWindowTitle("Netzinfrastruktur-Verwaltung")
-        self.resize(800, 600)  # Größeres und anpassbares Fenster
+        self.resize(800, 600)
 
         self.layout = QVBoxLayout(self)
 
-        # Erstellen der Tabelle mit verbesserter Nutzerinteraktion
         self.table = QTableWidget(self)
         self.infraObjects = ['Wärmenetz', 'Hausanschlussstationen', 'Druckhaltung', 'Hydraulik', 'Elektroinstallation', 'Planungskosten']
         self.table.setRowCount(len(self.infraObjects))
@@ -270,32 +361,26 @@ class NetInfrastructureDialog(QDialog):
         self.table.setVerticalHeaderLabels(self.infraObjects)
         self.layout.addWidget(self.table)
 
-        # Kontextmenü für vertikale Kopfzeilen hinzugefügt
         self.table.verticalHeader().setContextMenuPolicy(Qt.CustomContextMenu)
         self.table.verticalHeader().customContextMenuRequested.connect(self.openHeaderContextMenu)
 
-        # Buttons für spezifische Funktionen hinzugefügt
         self.addButton = QPushButton("Zeile hinzufügen", self)
         self.removeButton = QPushButton("Zeile entfernen", self)
         self.addButton.clicked.connect(self.addRow)
         self.removeButton.clicked.connect(self.removeRow)
 
-        # Button für die Kostenberechnung des Wärmenetzes hinzufügen
         self.berechneWärmenetzKostenButton = QPushButton("Kosten Wärmenetz aus geoJSON berechnen", self)
         self.berechneWärmenetzKostenButton.clicked.connect(self.berechneWaermenetzKosten)
         self.layout.addWidget(self.berechneWärmenetzKostenButton)
 
-        # Button für die Kostenberechnung der Hausanschlussstationen hinzufügen
         self.berechneHausanschlussKostenButton = QPushButton("Kosten Hausanschlusstationen aus geoJSON berechnen", self)
         self.berechneHausanschlussKostenButton.clicked.connect(self.berechneHausanschlussKosten)
         self.layout.addWidget(self.berechneHausanschlussKostenButton)
 
-        # Button-Leiste mit klar definierten Aktionen
         buttonLayout = QHBoxLayout()
         buttonLayout.addWidget(self.addButton)
         buttonLayout.addWidget(self.removeButton)
 
-        # Standard OK und Abbrechen Buttons
         okButton = QPushButton("OK", self)
         cancelButton = QPushButton("Abbrechen", self)
         okButton.clicked.connect(self.accept)
@@ -306,6 +391,12 @@ class NetInfrastructureDialog(QDialog):
         self.layout.addLayout(buttonLayout)
 
     def openHeaderContextMenu(self, position):
+        """
+        Opens the context menu for the vertical header.
+
+        Args:
+            position (QPoint): The position where the context menu should be opened.
+        """
         menu = QMenu()
         renameAction = menu.addAction("Umbenennen")
         action = menu.exec_(self.table.verticalHeader().mapToGlobal(position))
@@ -316,12 +407,21 @@ class NetInfrastructureDialog(QDialog):
                 self.renameHeader(row)
 
     def renameHeader(self, row):
+        """
+        Renames the header item at the specified row.
+
+        Args:
+            row (int): The row index of the header item to rename.
+        """
         newName, okPressed = QInputDialog.getText(self, "Name ändern", "Neuer Name:", QLineEdit.Normal, "")
         if okPressed and newName:
             self.table.verticalHeaderItem(row).setText(newName)
             self.infraObjects[row] = newName
 
     def addRow(self):
+        """
+        Adds a new row to the table.
+        """
         row_count = self.table.rowCount()
         self.table.insertRow(row_count)
         new_row_name = "Neues Objekt {}".format(row_count + 1)
@@ -329,13 +429,18 @@ class NetInfrastructureDialog(QDialog):
         self.infraObjects.append(new_row_name)
 
     def removeRow(self):
+        """
+        Removes the selected row from the table.
+        """
         current_row = self.table.currentRow()
         if current_row != -1:
             del self.infraObjects[current_row]
             self.table.removeRow(current_row)
 
     def initDefaultValues(self):
-        # Standardwerte wie zuvor definiert
+        """
+        Initializes the table with default values.
+        """
         defaultValues = {
             'Wärmenetz': {'kosten': "2000000", 't_n': "40", 'f_inst': "1", 'f_w_insp': "0", 'bedienaufwand': "5"},
             'Hausanschlussstationen': {'kosten': "100000", 't_n': "20", 'f_inst': "1", 'f_w_insp': "1", 'bedienaufwand': "2"},
@@ -351,19 +456,22 @@ class NetInfrastructureDialog(QDialog):
 
     def updateTableValue(self, row, column, value):
         """
-        Aktualisiert den Wert in der Tabelle.
+        Updates the value in the specified table cell.
 
-        :param row: Zeilenindex der Tabelle, beginnend bei 0.
-        :param column: Spaltenindex der Tabelle, beginnend bei 0.
-        :param value: Der neue Wert, der in die Zelle eingetragen werden soll.
+        Args:
+            row (int): The row index.
+            column (int): The column index.
+            value (Any): The value to set.
         """
-        # Überprüfung, ob der angegebene Zeilen- und Spaltenindex gültig ist
         if 0 <= row < self.table.rowCount() and 0 <= column < self.table.columnCount():
             self.table.setItem(row, column, QTableWidgetItem(str(value)))
         else:
             print("Fehler: Ungültiger Zeilen- oder Spaltenindex.")
 
     def berechneWaermenetzKosten(self):
+        """
+        Opens the dialog to calculate the cost of the heating network and updates the table.
+        """
         dialog = KostenBerechnungDialog(self, label="spez. Kosten Wärmenetz pro m_Trasse (inkl. Tiefbau) in €/m", value="1000", type="flow line")
         dialog.setWindowTitle("Kosten Wärmenetz berechnen")
         if dialog.exec_():
@@ -371,6 +479,9 @@ class NetInfrastructureDialog(QDialog):
             self.updateTableValue(row=0, column=0, value=cost_net)
 
     def berechneHausanschlussKosten(self):
+        """
+        Opens the dialog to calculate the cost of house connection stations and updates the table.
+        """
         dialog = KostenBerechnungDialog(self, label="spez. Kosten Hausanschlussstationen pro kW max. Wärmebedarf in €/kW", value="250", type="HAST")
         dialog.setWindowTitle("Kosten Hausanschlussstationen berechnen")
         if dialog.exec_():
@@ -378,24 +489,47 @@ class NetInfrastructureDialog(QDialog):
             self.updateTableValue(row=1, column=0, value=cost_net)
 
     def getCurrentInfraObjects(self):
+        """
+        Gets the current list of infrastructure objects.
+
+        Returns:
+            list: The list of infrastructure objects.
+        """
         return self.infraObjects
-    
+
     def getValues(self):
+        """
+        Gets the values from the table.
+
+        Returns:
+            dict: A dictionary of values with keys in the format {object_field}.
+        """
         values = {}
         for i, obj in enumerate(self.infraObjects):
             for j, field in enumerate(['kosten', 't_n', 'f_inst', 'f_w_insp', 'bedienaufwand']):
                 key = f"{obj}_{field}"
                 item = self.table.item(i, j)
-                # Überprüfen Sie, ob das Element vorhanden ist
                 if item is not None:
                     values[key] = float(item.text())
                 else:
-                    # Standardwert oder eine geeignete Behandlung, wenn das Element nicht vorhanden ist
-                    values[key] = 0.0  # oder ein anderer angemessener Standardwert
+                    values[key] = 0.0
         return values
     
 class WeightDialog(QDialog):
+    """
+    A QDialog subclass for setting weights for optimization.
+
+    Attributes:
+        wgk_input (QLineEdit): Input field for the weight of heat generation costs.
+        co2_input (QLineEdit): Input field for the weight of specific CO2 emissions.
+        pe_input (QLineEdit): Input field for the weight of the primary energy factor.
+        button_box (QDialogButtonBox): Dialog button box for OK and Cancel buttons.
+    """
+    
     def __init__(self):
+        """
+        Initializes the WeightDialog.
+        """
         super().__init__()
         
         self.setWindowTitle("Gewichte für Optimierung festlegen")
@@ -425,6 +559,12 @@ class WeightDialog(QDialog):
         self.setLayout(layout)
     
     def get_weights(self):
+        """
+        Gets the weights from the input fields.
+
+        Returns:
+            dict: A dictionary with weights for heat generation costs, CO2 emissions, and primary energy factor.
+        """
         try:
             wgk_weight = float(self.wgk_input.text())
         except ValueError:

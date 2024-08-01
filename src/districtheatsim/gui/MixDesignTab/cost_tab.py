@@ -1,7 +1,7 @@
 """
 Filename: cost_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-08-01
 Description: Contains the CostTab.
 """
 
@@ -14,16 +14,40 @@ from PyQt5.QtGui import QFont
 from heat_generators.heat_generator_classes import *
 
 class CostTab(QWidget):
-    data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
+    """
+    The CostTab class represents the tab responsible for displaying and managing cost-related data 
+    for the different components in a heat generation project.
+
+    Attributes:
+        data_added (pyqtSignal): Signal emitted when new data is added.
+        data_manager (object): Reference to the data manager instance.
+        parent (QWidget): Reference to the parent widget.
+        results (dict): Stores results data.
+        tech_objects (list): List of technology objects.
+        individual_costs (list): List of individual costs for each component.
+        summe_tech_kosten (float): Sum of the technology costs.
+        base_path (str): Base path for the project.
+        summe_investitionskosten (float): Sum of the investment costs.
+        summe_annuität (float): Sum of the annuities.
+        totalCostLabel (QLabel): Label to display total costs.
+    """
+    data_added = pyqtSignal(object)  # Signal that transfers data as an object
     
     def __init__(self, data_manager, parent=None):
+        """
+        Initializes the CostTab instance.
+
+        Args:
+            data_manager (object): Reference to the data manager instance.
+            parent (QWidget, optional): Reference to the parent widget. Defaults to None.
+        """
         super().__init__(parent)
         self.data_manager = data_manager
         self.parent = parent
         self.results = {}
         self.tech_objects = []
         self.individual_costs = []
-        self.summe_tech_kosten = 0  # Initialisieren der Variable
+        self.summe_tech_kosten = 0  # Initialize the variable
 
         # Connect to the data manager signal
         self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
@@ -32,20 +56,32 @@ class CostTab(QWidget):
         self.initUI()
 
     def updateDefaultPath(self, new_base_path):
+        """
+        Updates the default path for the project.
+
+        Args:
+            new_base_path (str): The new base path for the project.
+        """
         self.base_path = new_base_path
 
     def initUI(self):
+        """
+        Initializes the user interface components for the CostTab.
+        """
         self.createMainScrollArea()
         self.setupInfrastructureCostsTable()
         self.setupCalculationOptimization()
         self.setupCostCompositionChart()
         self.setLayout(self.createMainLayout())
         
-        # Erstellen des Summenlabels
+        # Create the total cost label
         self.totalCostLabel = QLabel()
         self.mainLayout.addWidget(self.totalCostLabel)
 
     def createMainScrollArea(self):
+        """
+        Creates the main scroll area for the tab.
+        """
         self.mainScrollArea = QScrollArea(self)
         self.mainScrollArea.setWidgetResizable(True)
         self.mainWidget = QWidget()
@@ -53,24 +89,42 @@ class CostTab(QWidget):
         self.mainScrollArea.setWidget(self.mainWidget)
 
     def createMainLayout(self):
+        """
+        Creates the main layout for the tab.
+
+        Returns:
+            QVBoxLayout: The main layout for the tab.
+        """
         layout = QVBoxLayout(self)
         layout.addWidget(self.mainScrollArea)
         return layout
 
     def addLabel(self, text):
+        """
+        Adds a label to the main layout.
+
+        Args:
+            text (str): The text for the label.
+        """
         label = QLabel(text)
         self.mainLayout.addWidget(label)
     
-    ### Infrastrukturtabellen ###
+    ### Infrastructure Tables ###
     def setupInfrastructureCostsTable(self):
+        """
+        Sets up the infrastructure costs table.
+        """
         self.addLabel('Wärmenetzinfrastruktur')
         self.infrastructureCostsTable = QTableWidget()
-        self.infrastructureCostsTable.setColumnCount(7)  # Eine zusätzliche Spalte für Annuität
+        self.infrastructureCostsTable.setColumnCount(7)  # An additional column for annuity
         self.infrastructureCostsTable.setHorizontalHeaderLabels(['Beschreibung', 'Kosten', 'T_N', 'f_Inst', 'f_W_Insp', 'Bedienaufwand', 'Annuität'])
         self.infrastructureCostsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.mainLayout.addWidget(self.infrastructureCostsTable)
 
     def updateInfrastructureTable(self):
+        """
+        Updates the infrastructure costs table with data from the parent dialog.
+        """
         values = self.parent.netInfrastructureDialog.getValues()
         infraObjects = self.parent.netInfrastructureDialog.getCurrentInfraObjects()
         columns = ['Beschreibung', 'Kosten', 'T_N', 'f_Inst', 'f_W_Insp', 'Bedienaufwand', 'Gesamtannuität']
@@ -105,6 +159,9 @@ class CostTab(QWidget):
         self.addSummaryRow()
 
     def addSummaryRow(self):
+        """
+        Adds a summary row to the infrastructure costs table.
+        """
         summen_row_index = self.infrastructureCostsTable.rowCount()
         self.infrastructureCostsTable.insertRow(summen_row_index)
 
@@ -127,18 +184,37 @@ class CostTab(QWidget):
         self.adjustTableSize(self.infrastructureCostsTable)
 
     def calc_annuität(self, A0, TN, f_Inst, f_W_Insp, Bedienaufwand):
+        """
+        Calculates the annuity for a given set of parameters.
+
+        Args:
+            A0 (float): Initial investment cost.
+            TN (int): Lifetime of the investment.
+            f_Inst (float): Installation factor.
+            f_W_Insp (float): Maintenance and inspection factor.
+            Bedienaufwand (float): Operating effort.
+
+        Returns:
+            float: The calculated annuity.
+        """
         q = 1 + (self.parent.kapitalzins / 100)
         r = 1 + (self.parent.preissteigerungsrate / 100)
         t = int(self.parent.betrachtungszeitraum)
         stundensatz = self.parent.stundensatz
         return annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand, q=q, r=r, T=t, stundensatz=stundensatz)
     
-    ### Setup der Berechnungsergebnistabellen ###
+    ### Setup of Calculation Result Tables ###
     def setupCalculationOptimization(self):
+        """
+        Sets up the calculation optimization table.
+        """
         self.addLabel('Kosten Erzeuger')
         self.setupTechDataTable()
 
     def setupTechDataTable(self):
+        """
+        Sets up the technology data table.
+        """
         self.techDataTable = QTableWidget()
         self.techDataTable.setColumnCount(4)
         self.techDataTable.setHorizontalHeaderLabels(['Name', 'Dimensionen', 'Kosten', 'Gesamtkosten'])
@@ -146,6 +222,12 @@ class CostTab(QWidget):
         self.mainLayout.addWidget(self.techDataTable)
 
     def updateTechDataTable(self, tech_objects):
+        """
+        Updates the technology data table with the given technology objects.
+
+        Args:
+            tech_objects (list): List of technology objects.
+        """
         self.techDataTable.setRowCount(len(tech_objects))
 
         self.summe_tech_kosten = 0
@@ -164,6 +246,9 @@ class CostTab(QWidget):
         self.addSummaryTechCosts()
 
     def addSummaryTechCosts(self):
+        """
+        Adds a summary row for the technology costs.
+        """
         summen_row_index = self.techDataTable.rowCount()
         self.techDataTable.insertRow(summen_row_index)
 
@@ -182,10 +267,21 @@ class CostTab(QWidget):
         self.adjustTableSize(self.techDataTable)
 
     def updateSumLabel(self):
-        # Aktualisieren des Summenlabels
+        """
+        Updates the label displaying the total costs.
+        """
         self.totalCostLabel.setText(f"Gesamtkosten: {self.summe_investitionskosten + self.summe_tech_kosten:.0f} €")
 
     def extractTechData(self, tech):
+        """
+        Extracts the data for a given technology object.
+
+        Args:
+            tech (object): The technology object.
+
+        Returns:
+            tuple: The extracted data (name, dimensions, costs, full costs).
+        """
         if isinstance(tech, RiverHeatPump):
             dimensions = f"th. Leistung: {tech.Wärmeleistung_FW_WP} kW"
             costs = f"Investitionskosten Flusswärmenutzung: {tech.spez_Investitionskosten_Flusswasser * tech.Wärmeleistung_FW_WP:.1f}, Investitionskosten Wärmepumpe: {tech.spezifische_Investitionskosten_WP * tech.Wärmeleistung_FW_WP:.1f}"
@@ -228,18 +324,30 @@ class CostTab(QWidget):
 
         return tech.name, dimensions, costs, full_costs
     
-    ### Setup der Kostenzusammensetzung ###
+    ### Setup of Cost Composition Chart ###
     def setupCostCompositionChart(self):
+        """
+        Sets up the cost composition chart.
+        """
         self.addLabel('Kostenzusammensetzung')
         self.figure, self.canvas = self.addFigure()
         self.mainLayout.addWidget(self.canvas)
 
     def addFigure(self):
+        """
+        Adds a figure to the canvas.
+
+        Returns:
+            tuple: The figure and canvas.
+        """
         figure = Figure(figsize=(8, 6))
         canvas = FigureCanvas(figure)
         return figure, canvas
 
     def plotCostComposition(self):
+        """
+        Plots the cost composition chart.
+        """
         self.figure.clear()
         ax = self.figure.add_subplot(111)
         
@@ -255,6 +363,12 @@ class CostTab(QWidget):
         self.canvas.draw()
 
     def adjustTableSize(self, table):
+        """
+        Adjusts the size of the table to fit its contents.
+
+        Args:
+            table (QTableWidget): The table to adjust.
+        """
         header_height = table.horizontalHeader().height()
         rows_height = sum([table.rowHeight(i) for i in range(table.rowCount())])
         table.setFixedHeight(header_height + rows_height)

@@ -1,7 +1,7 @@
 """
 Filename: heat_generator_dialogs.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2024-08-01
 Description: Contains the heat generator Dialogs for the MixDesignTab.
 """
 
@@ -10,27 +10,50 @@ import os
 
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QComboBox, QCheckBox, QGroupBox, \
     QDialogButtonBox, QHBoxLayout, QFormLayout, QPushButton, QFileDialog, QMessageBox, QWidget
-from PyQt5.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D, art3d
+from mpl_toolkits.mplot3d import art3d
 
-# defines the map path
+# Defines the map path
 def get_resource_path(relative_path):
-    """ Get the absolute path to the resource, works for dev and for PyInstaller """
+    """ 
+    Get the absolute path to the resource, works for development and for PyInstaller.
+
+    Args:
+        relative_path (str): The relative path to the resource.
+
+    Returns:
+        str: The absolute path to the resource.
+    """
     if getattr(sys, 'frozen', False):
-        # Wenn die Anwendung eingefroren ist, ist der Basispfad der Temp-Ordner, wo PyInstaller alles extrahiert
+        # If the application is frozen, the base path is the temp folder where PyInstaller extracts everything
         base_path = sys._MEIPASS
     else:
-        # Wenn die Anwendung nicht eingefroren ist, ist der Basispfad der Ordner, in dem die Hauptdatei liegt
+        # If the application is not frozen, the base path is the directory where the main file is located
         base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     return os.path.join(base_path, relative_path)
 
 class TechInputDialog(QDialog):
+    """
+    A dialog for inputting technology-specific data based on the technology type.
+
+    Attributes:
+        tech_type (str): The type of technology.
+        tech_data (dict): The data for the technology.
+        dialog (QWidget): The specific dialog for the technology type.
+    """
+
     def __init__(self, tech_type, tech_data=None):
+        """
+        Initializes the TechInputDialog with the given technology type and data.
+
+        Args:
+            tech_type (str): The type of technology.
+            tech_data (dict, optional): The data for the technology. Defaults to None.
+        """
         super().__init__()
 
         self.tech_type = tech_type
@@ -40,6 +63,9 @@ class TechInputDialog(QDialog):
         self.initUI()
 
     def initUI(self):
+        """
+        Initializes the user interface for the dialog.
+        """
         layout = QVBoxLayout()
         self.setLayout(layout)
 
@@ -72,27 +98,51 @@ class TechInputDialog(QDialog):
         layout.addWidget(buttons)
 
         self.setWindowTitle(f"Eingabe für {self.tech_type}")
-        #self.resize(400, 300)
 
     def accept(self):
+        """
+        Accepts the dialog and retrieves the input data from the specific technology dialog.
+        """
         if self.dialog:
             self.tech_data = self.dialog.getInputs()
         super().accept()
 
     def getInputs(self):
+        """
+        Retrieves the input data from the dialog.
+
+        Returns:
+            dict: The input data.
+        """
         return self.tech_data
 
 class SolarThermalDialog(QWidget):
+    """
+    A dialog for inputting data specific to solar thermal technology.
+
+    Attributes:
+        tech_data (dict): The data for the solar thermal technology.
+    """
+
     def __init__(self, tech_data=None):
+        """
+        Initializes the SolarThermalDialog with the given data.
+
+        Args:
+            tech_data (dict, optional): The data for the solar thermal technology. Defaults to None.
+        """
         super(SolarThermalDialog, self).__init__()
         self.tech_data = tech_data if tech_data is not None else {}
         self.initUI()
 
     def initUI(self):
-        main_layout = QHBoxLayout()  # Hauptlayout als QHBoxLayout
-        input_layout = QVBoxLayout()  # Layout für die Eingaben
+        """
+        Initializes the user interface for the dialog.
+        """
+        main_layout = QHBoxLayout()  # Main layout as QHBoxLayout
+        input_layout = QVBoxLayout()  # Layout for inputs
 
-        # Technische Daten GroupBox
+        # Technical Data GroupBox
         tech_groupbox = QGroupBox("Technische Daten")
         tech_layout = QFormLayout()
 
@@ -159,7 +209,7 @@ class SolarThermalDialog(QWidget):
         tech_groupbox.setLayout(tech_layout)
         input_layout.addWidget(tech_groupbox)
 
-        # Kosten GroupBox
+        # Cost GroupBox
         cost_groupbox = QGroupBox("Kosten")
         cost_layout = QFormLayout()
 
@@ -178,7 +228,7 @@ class SolarThermalDialog(QWidget):
         cost_groupbox.setLayout(cost_layout)
         input_layout.addWidget(cost_groupbox)
 
-        # Optimierungsparameter GroupBox
+        # Optimization Parameters GroupBox
         opt_groupbox = QGroupBox("Optimierungsparameter")
         opt_layout = QFormLayout()
 
@@ -188,20 +238,20 @@ class SolarThermalDialog(QWidget):
 
         self.maxVolumeInput = QLineEdit(self)
         self.maxVolumeInput.setText(str(self.tech_data.get('opt_volume_max', "200")))
-        opt_layout.addRow(QLabel("Obere Grenze Speichervolumen Optimierung³"), self.maxVolumeInput)
+        opt_layout.addRow(QLabel("Obere Grenze Speichervolumen Optimierung"), self.maxVolumeInput)
 
         self.minAreaInput = QLineEdit(self)
         self.minAreaInput.setText(str(self.tech_data.get('opt_area_min', "1")))
-        opt_layout.addRow(QLabel("Untere Grenze Kollektorfläche Optimierung²"), self.minAreaInput)
+        opt_layout.addRow(QLabel("Untere Grenze Kollektorfläche Optimierung"), self.minAreaInput)
 
         self.maxAreaInput = QLineEdit(self)
         self.maxAreaInput.setText(str(self.tech_data.get('opt_area_max', "2000")))
-        opt_layout.addRow(QLabel("Obere Grenze Kollektorfläche Optimierung²"), self.maxAreaInput)
+        opt_layout.addRow(QLabel("Obere Grenze Kollektorfläche Optimierung"), self.maxAreaInput)
 
         opt_groupbox.setLayout(opt_layout)
         input_layout.addWidget(opt_groupbox)
 
-        main_layout.addLayout(input_layout)  # Eingabelayout zum Hauptlayout hinzufügen
+        main_layout.addLayout(input_layout)  # Add input layout to main layout
 
         # Visualization
         vis_layout = QVBoxLayout()
@@ -210,7 +260,7 @@ class SolarThermalDialog(QWidget):
         self.canvas = FigureCanvas(self.figure)
         vis_layout.addWidget(self.canvas)
 
-        main_layout.addLayout(vis_layout)  # Visualisierungslayout zum Hauptlayout hinzufügen
+        main_layout.addLayout(vis_layout)  # Add visualization layout to main layout
 
         self.setLayout(main_layout)
         self.updateVisualization()
@@ -220,6 +270,9 @@ class SolarThermalDialog(QWidget):
         self.Collector_tilt_angleInput.textChanged.connect(self.updateVisualization)
 
     def updateVisualization(self):
+        """
+        Updates the visualization of the collector orientation.
+        """
         try:
             azimuth = float(self.East_West_collector_azimuth_angleInput.text())
             tilt = float(self.Collector_tilt_angleInput.text())
@@ -284,6 +337,12 @@ class SolarThermalDialog(QWidget):
         self.canvas.draw()
 
     def getInputs(self):
+        """
+        Retrieves the input data from the dialog.
+
+        Returns:
+            dict: The input data.
+        """
         inputs = {
             'bruttofläche_STA': float(self.areaSInput.text()),
             'vs': float(self.vsInput.text()),
@@ -308,18 +367,34 @@ class SolarThermalDialog(QWidget):
             'opt_area_max': float(self.maxAreaInput.text())
         }
         return inputs
-  
+
 class BiomassBoilerDialog(QDialog):
+    """
+    A dialog for inputting data specific to biomass boiler technology.
+
+    Attributes:
+        tech_data (dict): The data for the biomass boiler technology.
+    """
+
     def __init__(self, tech_data=None):
+        """
+        Initializes the BiomassBoilerDialog with the given data.
+
+        Args:
+            tech_data (dict, optional): The data for the biomass boiler technology. Defaults to None.
+        """
         super(BiomassBoilerDialog, self).__init__()
         self.tech_data = tech_data if tech_data is not None else {}
         self.initUI()
 
     def initUI(self):
+        """
+        Initializes the user interface for the dialog.
+        """
         self.setWindowTitle("Eingabe für Biomassekessel")
         main_layout = QHBoxLayout()
 
-        # Linke Seite: Biomassekessel-Einstellungen
+        # Left side: Biomass boiler settings
         bm_layout = QFormLayout()
 
         self.PBMKInput = QLineEdit(self)
@@ -338,17 +413,17 @@ class BiomassBoilerDialog(QDialog):
         self.HLcostInput.setText(str(self.tech_data.get('spez_Investitionskosten_Holzlager', "400")))
         bm_layout.addRow(QLabel("spez. Investitionskosten Holzlager in €/t"), self.HLcostInput)
 
-        # Eingabe Nutzungsgrad Biomassekessel
+        # Input for biomass boiler efficiency
         self.BMKeffInput = QLineEdit(self)
         self.BMKeffInput.setText(str(self.tech_data.get('Nutzungsgrad_BMK', "0.8")))
         bm_layout.addRow(QLabel("Nutzungsgrad Biomassekessel"), self.BMKeffInput)
 
-        # Eingabe für minimale Teillast
+        # Input for minimum part load
         self.minLoadInput = QLineEdit(self)
         self.minLoadInput.setText(str(self.tech_data.get('min_Teillast', "0.3")))
         bm_layout.addRow(QLabel("minimale Teillast"), self.minLoadInput)
 
-        # Optimierung Biomassekessel
+        # Optimization of biomass boiler
         self.minPoptInput = QLineEdit(self)
         self.minPoptInput.setText(str(self.tech_data.get('opt_BMK_min', "0")))
         bm_layout.addRow(QLabel("Untere Grenze th. Leistung Optimierung"), self.minPoptInput)
@@ -357,7 +432,7 @@ class BiomassBoilerDialog(QDialog):
         self.maxPoptInput.setText(str(self.tech_data.get('opt_BMK_max', "5000")))
         bm_layout.addRow(QLabel("Obere Grenze th. Leistung Optimierung"), self.maxPoptInput)
 
-        # Checkbox für Speicher aktiv
+        # Checkbox for storage active
         self.speicherAktivCheckbox = QCheckBox("Speicher aktiv", self)
         self.speicherAktivCheckbox.setChecked(self.tech_data.get('speicher_aktiv', False))
         self.speicherAktivCheckbox.stateChanged.connect(self.toggleSpeicherInputs)
@@ -365,46 +440,46 @@ class BiomassBoilerDialog(QDialog):
 
         main_layout.addLayout(bm_layout)
 
-        # Rechte Seite: Speicher-Einstellungen
+        # Right side: Storage settings
         self.speicherInputs = QWidget()
         speicher_layout = QFormLayout(self.speicherInputs)
 
-        # Eingabe für Speicher Volumen
+        # Input for storage volume
         self.speicherVolInput = QLineEdit(self.speicherInputs)
         self.speicherVolInput.setText(str(self.tech_data.get('Speicher_Volumen', "20")))
         speicher_layout.addRow(QLabel("Speicher Volumen"), self.speicherVolInput)
 
-        # Eingabe für Vorlauftemperatur
+        # Input for flow temperature
         self.vorlaufTempInput = QLineEdit(self.speicherInputs)
         self.vorlaufTempInput.setText(str(self.tech_data.get('T_vorlauf', "90")))
         speicher_layout.addRow(QLabel("Vorlauftemperatur"), self.vorlaufTempInput)
 
-        # Eingabe für Rücklauftemperatur
+        # Input for return temperature
         self.ruecklaufTempInput = QLineEdit(self.speicherInputs)
         self.ruecklaufTempInput.setText(str(self.tech_data.get('T_ruecklauf', "60")))
         speicher_layout.addRow(QLabel("Rücklauftemperatur"), self.ruecklaufTempInput)
 
-        # Eingabe für initiale Füllung
+        # Input for initial fill
         self.initialFillInput = QLineEdit(self.speicherInputs)
         self.initialFillInput.setText(str(self.tech_data.get('initial_fill', "0.0")))
         speicher_layout.addRow(QLabel("initiale Füllung"), self.initialFillInput)
 
-        # Eingabe für minimale Füllung
+        # Input for minimum fill
         self.minFillInput = QLineEdit(self.speicherInputs)
         self.minFillInput.setText(str(self.tech_data.get('min_fill', "0.2")))
         speicher_layout.addRow(QLabel("minimale Füllung"), self.minFillInput)
 
-        # Eingabe für maximale Füllung
+        # Input for maximum fill
         self.maxFillInput = QLineEdit(self.speicherInputs)
         self.maxFillInput.setText(str(self.tech_data.get('max_fill', "0.8")))
         speicher_layout.addRow(QLabel("maximale Füllung"), self.maxFillInput)
 
-        # Eingabe für Speicherkosten
+        # Input for storage costs
         self.spezCostStorageInput = QLineEdit(self.speicherInputs)
         self.spezCostStorageInput.setText(str(self.tech_data.get('spez_Investitionskosten_Speicher', "750")))
         speicher_layout.addRow(QLabel("spez. Investitionskosten Speicher in €/m³"), self.spezCostStorageInput)
 
-        # Optimierung Speicher
+        # Optimization of storage
         self.minVolumeoptInput = QLineEdit(self.speicherInputs)
         self.minVolumeoptInput.setText(str(self.tech_data.get('opt_Speicher_min', "0")))
         speicher_layout.addRow(QLabel("Untere Grenze Speichervolumen Optimierung"), self.minVolumeoptInput)
@@ -417,13 +492,22 @@ class BiomassBoilerDialog(QDialog):
 
         self.setLayout(main_layout)
 
-        # Initiale Sichtbarkeit der Speicher-Eingaben einstellen
+        # Set initial visibility of storage inputs
         self.toggleSpeicherInputs()
 
     def toggleSpeicherInputs(self):
+        """
+        Toggles the visibility of the storage input fields based on the state of the storage active checkbox.
+        """
         self.speicherInputs.setVisible(self.speicherAktivCheckbox.isChecked())
 
     def getInputs(self):
+        """
+        Retrieves the input data from the dialog.
+
+        Returns:
+            dict: The input data.
+        """
         inputs = {
             'P_BMK': float(self.PBMKInput.text()),
             'Größe_Holzlager': float(self.HLsizeInput.text()),
@@ -452,12 +536,31 @@ class BiomassBoilerDialog(QDialog):
         return inputs
     
 class GasBoilerDialog(QDialog):
+    """
+    A QDialog subclass for configuring gas boiler parameters.
+
+    Attributes:
+        tech_data (dict): Dictionary containing initial values for the gas boiler parameters.
+        PowerFactorGKInput (QLineEdit): Input field for the dimensioning factor of the gas boiler.
+        effGKInput (QLineEdit): Input field for the efficiency of the gas boiler.
+        spezcostGKInput (QLineEdit): Input field for the specific investment costs.
+    """
+
     def __init__(self, tech_data=None):
+        """
+        Initializes the GasBoilerDialog.
+
+        Args:
+            tech_data (dict, optional): Dictionary containing initial values for the gas boiler parameters. Defaults to None.
+        """
         super(GasBoilerDialog, self).__init__()
         self.tech_data = tech_data if tech_data is not None else {}
         self.initUI()
 
     def initUI(self):
+        """
+        Initializes the user interface components.
+        """
         self.setWindowTitle("Eingabe für Gaskessel")
         main_layout = QVBoxLayout()
         g_layout = QFormLayout()
@@ -475,24 +578,46 @@ class GasBoilerDialog(QDialog):
         g_layout.addRow(QLabel("spez. Investitionskosten in €/kW"), self.spezcostGKInput)
         
         main_layout.addLayout(g_layout)
-
         self.setLayout(main_layout)
 
     def getInputs(self):
+        """
+        Retrieves the input values from the user interface.
+
+        Returns:
+            dict: A dictionary containing the input values.
+        """
         inputs = {
             'Faktor_Dimensionierung': float(self.PowerFactorGKInput.text()),
             'spez_Investitionskosten': float(self.spezcostGKInput.text()),
             'Nutzungsgrad': float(self.effGKInput.text())
         }
         return inputs
-    
+
 class CHPDialog(QDialog):
+    """
+    A QDialog subclass for configuring combined heat and power (CHP) parameters.
+
+    Attributes:
+        tech_data (dict): Dictionary containing initial values for the CHP parameters.
+        Various QLineEdit and QCheckBox widgets for different CHP parameters.
+    """
+
     def __init__(self, tech_data=None):
+        """
+        Initializes the CHPDialog.
+
+        Args:
+            tech_data (dict, optional): Dictionary containing initial values for the CHP parameters. Defaults to None.
+        """
         super(CHPDialog, self).__init__()
         self.tech_data = tech_data if tech_data is not None else {}
         self.initUI()
 
     def initUI(self):
+        """
+        Initializes the user interface components.
+        """
         main_layout = QHBoxLayout()
         # Linke Seite: BHKW-Einstellungen
         bhkw_layout = QFormLayout()
@@ -588,16 +713,24 @@ class CHPDialog(QDialog):
         speicher_layout.addRow(QLabel("Obere Grenze Speichervolumen Optimierung"), self.maxVolumeoptInput)
 
         main_layout.addWidget(self.speicherInputs)
-
         self.setLayout(main_layout)
 
         # Initiale Sichtbarkeit der Speicher-Eingaben einstellen
         self.toggleSpeicherInputs()
 
     def toggleSpeicherInputs(self):
+        """
+        Toggles the visibility of the storage inputs based on the state of the storage active checkbox.
+        """
         self.speicherInputs.setVisible(self.speicherAktivCheckbox.isChecked())
 
     def getInputs(self):
+        """
+        Retrieves the input values from the user interface.
+
+        Returns:
+            dict: A dictionary containing the input values.
+        """
         inputs = {
             'th_Leistung_BHKW': float(self.PBHKWInput.text()),
             'el_Wirkungsgrad': float(self.BHKWeleffInput.text()),
@@ -625,12 +758,29 @@ class CHPDialog(QDialog):
         return inputs
     
 class HolzgasCHPDialog(QDialog):
+    """
+    A QDialog subclass for configuring Holzgas-CHP (combined heat and power) parameters.
+
+    Attributes:
+        tech_data (dict): Dictionary containing initial values for the Holzgas-CHP parameters.
+        Various QLineEdit and QCheckBox widgets for different Holzgas-CHP parameters.
+    """
+
     def __init__(self, tech_data=None):
+        """
+        Initializes the HolzgasCHPDialog.
+
+        Args:
+            tech_data (dict, optional): Dictionary containing initial values for the Holzgas-CHP parameters. Defaults to None.
+        """
         super(HolzgasCHPDialog, self).__init__()
         self.tech_data = tech_data if tech_data is not None else {}
         self.initUI()
 
     def initUI(self):
+        """
+        Initializes the user interface components.
+        """
         main_layout = QHBoxLayout()
 
         # Linke Seite: Holzgas-BHKW-Einstellungen
@@ -725,16 +875,24 @@ class HolzgasCHPDialog(QDialog):
         speicher_layout.addRow(QLabel("Obere Grenze Speichervolumen Optimierung"), self.maxVolumeoptInput)
 
         main_layout.addWidget(self.speicherInputs)
-
         self.setLayout(main_layout)
 
         # Initiale Sichtbarkeit der Speicher-Eingaben einstellen
         self.toggleSpeicherInputs()
 
     def toggleSpeicherInputs(self):
+        """
+        Toggles the visibility of the storage inputs based on the state of the storage active checkbox.
+        """
         self.speicherInputs.setVisible(self.speicherAktivCheckbox.isChecked())
 
     def getInputs(self):
+        """
+        Retrieves the input values from the user interface.
+
+        Returns:
+            dict: A dictionary containing the input values.
+        """
         inputs = {
             'th_Leistung_BHKW': float(self.PBHKWInput.text()),
             'el_Wirkungsgrad': float(self.BHKWeleffInput.text()),
@@ -762,12 +920,39 @@ class HolzgasCHPDialog(QDialog):
         return inputs
     
 class GeothermalDialog(QWidget):
+    """
+    A QWidget subclass for configuring geothermal parameters.
+
+    Attributes:
+        tech_data (dict): Dictionary containing initial values for the geothermal parameters.
+        areaGInput (QLineEdit): Input field for the area of the borehole field.
+        depthInput (QLineEdit): Input field for the depth of the boreholes.
+        tempGInput (QLineEdit): Input field for the source temperature.
+        distholeInput (QLineEdit): Input field for the distance between boreholes.
+        costdethInput (QLineEdit): Input field for the specific drilling costs.
+        spezPInput (QLineEdit): Input field for the specific extraction performance.
+        VBHInput (QLineEdit): Input field for the full load hours of the borehole field.
+        WPGcostInput (QLineEdit): Input field for the specific investment costs of the heat pump.
+        figure (Figure): Matplotlib figure for plotting the borehole configuration.
+        ax (Axes): Matplotlib axes for plotting.
+        canvas (FigureCanvas): Canvas to display the Matplotlib figure.
+    """
+
     def __init__(self, tech_data=None):
+        """
+        Initializes the GeothermalDialog.
+
+        Args:
+            tech_data (dict, optional): Dictionary containing initial values for the geothermal parameters. Defaults to None.
+        """
         super(GeothermalDialog, self).__init__()
         self.tech_data = tech_data if tech_data is not None else {}
         self.initUI()
 
     def initUI(self):
+        """
+        Initializes the user interface components.
+        """
         main_layout = QVBoxLayout()
         top_layout = QHBoxLayout()
         form_layout = QFormLayout()
@@ -823,6 +1008,9 @@ class GeothermalDialog(QWidget):
         self.updateVisualization()
 
     def updateVisualization(self):
+        """
+        Updates the 3D visualization of the borehole configuration.
+        """
         try:
             area = float(self.areaGInput.text())
             depth = float(self.depthInput.text())
@@ -859,6 +1047,12 @@ class GeothermalDialog(QWidget):
         self.canvas.draw()
 
     def getInputs(self):
+        """
+        Retrieves the input values from the user interface.
+
+        Returns:
+            dict: A dictionary containing the input values.
+        """
         inputs = {
             'Fläche': float(self.areaGInput.text()),
             'Bohrtiefe': float(self.depthInput.text()),
@@ -870,20 +1064,40 @@ class GeothermalDialog(QWidget):
             'spezifische_Investitionskosten_WP': float(self.WPGcostInput.text())
         }
         return inputs
-    
+
 class WasteHeatPumpDialog(QDialog):
+    """
+    A QDialog subclass for configuring waste heat pump parameters.
+
+    Attributes:
+        tech_data (dict): Dictionary containing initial values for the waste heat pump parameters.
+        PWHInput (QLineEdit): Input field for the cooling capacity of waste heat.
+        TWHInput (QLineEdit): Input field for the temperature of waste heat.
+        WHcostInput (QLineEdit): Input field for the specific investment costs of waste heat utilization.
+        WPWHcostInput (QLineEdit): Input field for the specific investment costs of the heat pump.
+    """
+
     def __init__(self, tech_data=None):
+        """
+        Initializes the WasteHeatPumpDialog.
+
+        Args:
+            tech_data (dict, optional): Dictionary containing initial values for the waste heat pump parameters. Defaults to None.
+        """
         super(WasteHeatPumpDialog, self).__init__()
         self.tech_data = tech_data if tech_data is not None else {}
         self.initUI()
 
     def initUI(self):
+        """
+        Initializes the user interface components.
+        """
         main_layout = QVBoxLayout()
         whp_layout = QFormLayout()
 
         self.PWHInput = QLineEdit(self)
         self.PWHInput.setText(str(self.tech_data.get('Kühlleistung_Abwärme', "30")))
-        whp_layout.addRow(QLabel("Kühlleistung Abwärme in kW"),self.PWHInput)
+        whp_layout.addRow(QLabel("Kühlleistung Abwärme in kW"), self.PWHInput)
 
         self.TWHInput = QLineEdit(self)
         self.TWHInput.setText(str(self.tech_data.get('Temperatur_Abwärme', "30")))
@@ -895,12 +1109,18 @@ class WasteHeatPumpDialog(QDialog):
 
         self.WPWHcostInput = QLineEdit(self)
         self.WPWHcostInput.setText(str(self.tech_data.get('spezifische_Investitionskosten_WP', "1000")))
-        whp_layout.addRow(QLabel("spez. Invstitionskosten Wärmepumpe"), self.WPWHcostInput)
+        whp_layout.addRow(QLabel("spez. Investitionskosten Wärmepumpe"), self.WPWHcostInput)
 
         main_layout.addLayout(whp_layout)
         self.setLayout(main_layout)
 
     def getInputs(self):
+        """
+        Retrieves the input values from the user interface.
+
+        Returns:
+            dict: A dictionary containing the input values.
+        """
         inputs = {
             'Kühlleistung_Abwärme': float(self.PWHInput.text()),
             'Temperatur_Abwärme': float(self.TWHInput.text()),
@@ -908,14 +1128,37 @@ class WasteHeatPumpDialog(QDialog):
             'spezifische_Investitionskosten_WP': float(self.WPWHcostInput.text())
         }
         return inputs
-    
+
 class RiverHeatPumpDialog(QDialog):
+    """
+    A QDialog subclass for configuring river heat pump parameters.
+
+    Attributes:
+        tech_data (dict): Dictionary containing initial values for the river heat pump parameters.
+        PFWInput (QLineEdit): Input field for the thermal capacity of the heat pump.
+        TFWInput (QLineEdit): Input field for the river temperature.
+        DTFWInput (QLineEdit): Input field for the permissible deviation of the heat pump's supply temperature from the network supply temperature.
+        RHcostInput (QLineEdit): Input field for the specific investment costs of river heat utilization.
+        WPRHcostInput (QLineEdit): Input field for the specific investment costs of the heat pump.
+        csvButton (QPushButton): Button to open and load a CSV file containing river temperatures.
+        canvas (FigureCanvas): Canvas to display the Matplotlib figure.
+    """
+
     def __init__(self, tech_data=None):
+        """
+        Initializes the RiverHeatPumpDialog.
+
+        Args:
+            tech_data (dict, optional): Dictionary containing initial values for the river heat pump parameters. Defaults to None.
+        """
         super(RiverHeatPumpDialog, self).__init__()
         self.tech_data = tech_data if tech_data is not None else {}
         self.initUI()
 
     def initUI(self):
+        """
+        Initializes the user interface components.
+        """
         main_layout = QVBoxLayout()
         rhp_layout = QFormLayout()
 
@@ -936,29 +1179,43 @@ class RiverHeatPumpDialog(QDialog):
         self.DTFWInput.setText(str(self.tech_data.get('dT', "0")))
         rhp_layout.addRow(QLabel("Zulässige Abweichung Vorlauftemperatur Wärmepumpe von Netzvorlauftemperatur"), self.DTFWInput)
 
-
         self.RHcostInput = QLineEdit(self)
         self.RHcostInput.setText(str(self.tech_data.get('spez_Investitionskosten_Flusswasser', "1000")))
-        rhp_layout.addRow(QLabel("spez. Invstitionskosten Flusswärmenutzung"), self.RHcostInput)
+        rhp_layout.addRow(QLabel("spez. Investitionskosten Flusswärmenutzung"), self.RHcostInput)
 
         self.WPRHcostInput = QLineEdit(self)
         self.WPRHcostInput.setText(str(self.tech_data.get('spezifische_Investitionskosten_WP', "1000")))
-        rhp_layout.addRow(QLabel("spez. Invstitionskosten Wärmepumpe"), self.WPRHcostInput)
+        rhp_layout.addRow(QLabel("spez. Investitionskosten Wärmepumpe"), self.WPRHcostInput)
 
         main_layout.addLayout(rhp_layout)
         self.setLayout(main_layout)
 
     def openCSV(self):
+        """
+        Opens a file dialog to select a CSV file and loads its content.
+        """
         filename, _ = QFileDialog.getOpenFileName(self, "Open CSV", "", "CSV Files (*.csv)")
         if filename:
             self.loadCSV(filename)
 
     def loadCSV(self, filename):
+        """
+        Loads temperature data from a CSV file.
+
+        Args:
+            filename (str): The path to the CSV file.
+        """
         data = np.loadtxt(filename, delimiter=';', skiprows=1, usecols=1).astype(float)
         self.csvData = data
         QMessageBox.information(self, "CSV geladen", f"CSV-Datei {filename} erfolgreich geladen.")
 
     def getInputs(self):
+        """
+        Retrieves the input values from the user interface.
+
+        Returns:
+            dict: A dictionary containing the input values.
+        """
         inputs = {
             'Wärmeleistung_FW_WP': float(self.PFWInput.text()),
             'dT': float(self.DTFWInput.text()),

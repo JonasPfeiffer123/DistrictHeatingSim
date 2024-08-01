@@ -1,8 +1,8 @@
 """
 Filename: comparison_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
-Description: Contains the ComparisonTab.
+Date: 2024-08-01
+Description: Contains the ComparisonTab. Currently no content.
 """
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout,  QLabel)

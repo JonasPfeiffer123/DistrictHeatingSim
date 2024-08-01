@@ -1,7 +1,7 @@
 """
 Filename: calculation_dialogs.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-30
+Date: 2024-08-01
 Description: Contains the Dialogs for the CalculationTab.
 """
 
@@ -36,6 +36,15 @@ def get_resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 class NetGenerationDialog(QDialog):
+    """
+    Dialog for generating a network based on user inputs.
+    
+    Attributes:
+        generate_callback (function): Callback function to generate the network.
+        base_path (str): Base path for file dialogs.
+        parent (QWidget): Parent widget.
+    """
+
     def __init__(self, generate_callback, base_path, parent=None):
         super().__init__(parent)
         self.generate_callback = generate_callback
@@ -44,6 +53,9 @@ class NetGenerationDialog(QDialog):
         self.initUI()
 
     def initUI(self):
+        """
+        Initializes the user interface for the dialog.
+        """
         self.setWindowTitle("Netz generieren")
         self.resize(1400, 1000)
 
@@ -152,6 +164,12 @@ class NetGenerationDialog(QDialog):
         self.update_plot()
 
     def createGeojsonInputs(self):
+        """
+        Creates input fields for GeoJSON file selection.
+
+        Returns:
+            list: List of QVBoxLayout containing file input fields.
+        """
         default_paths = {
             'Erzeugeranlagen': f'{self.base_path}\Wärmenetz\Erzeugeranlagen.geojson',
             'HAST': f'{self.base_path}\Wärmenetz\HAST.geojson',
@@ -167,6 +185,15 @@ class NetGenerationDialog(QDialog):
         return inputs
 
     def createFileInputsGeoJSON(self, default_paths):
+        """
+        Creates file input fields for GeoJSON files.
+
+        Args:
+            default_paths (dict): Default paths for the GeoJSON files.
+
+        Returns:
+            QVBoxLayout: Layout containing the file input fields.
+        """
         layout = QVBoxLayout()
         self.vorlaufInput = self.createFileInput("Vorlauf GeoJSON:", default_paths['Vorlauf'])
         layout.addLayout(self.vorlaufInput)
@@ -183,6 +210,16 @@ class NetGenerationDialog(QDialog):
         return layout
     
     def createFileInput(self, label_text, default_text):
+        """
+        Creates a single file input field with a label, line edit, and browse button.
+
+        Args:
+            label_text (str): Text for the label.
+            default_text (str): Default text for the line edit.
+
+        Returns:
+            QHBoxLayout: Layout containing the file input field.
+        """
         layout = QHBoxLayout()
         label = QLabel(label_text)
         line_edit = QLineEdit(default_text)
@@ -194,11 +231,20 @@ class NetGenerationDialog(QDialog):
         return layout
     
     def browseJsonFile(self):
+        """
+        Opens a file dialog to select a JSON file.
+        """
         fname, _ = QFileDialog.getOpenFileName(self, 'Select JSON File', f"{self.base_path}/Lastgang", 'JSON Files (*.json);;All Files (*)')
         if fname:
             self.jsonLineEdit.setText(fname)
     
     def createNetconfigurationControlInput(self):
+        """
+        Creates input for network configuration control.
+
+        Returns:
+            QVBoxLayout: Layout containing the network configuration control input.
+        """
         layout = QVBoxLayout()
         layout.addWidget(QLabel("Netzkonfiguration:"))
         self.netconfigurationControlInput = QComboBox(self)
@@ -208,6 +254,12 @@ class NetGenerationDialog(QDialog):
         return layout
     
     def createTemperatureControlInput(self):
+        """
+        Creates input for temperature control.
+
+        Returns:
+            QVBoxLayout: Layout containing the temperature control input.
+        """
         layout = QVBoxLayout()
         self.temperatureControlInput = QComboBox(self)
         self.temperatureControlInput.addItems(["Gleitend", "Statisch"])
@@ -217,6 +269,12 @@ class NetGenerationDialog(QDialog):
         return layout
     
     def createSupplyTemperatureCheckbox(self):
+        """
+        Creates checkbox for supply temperature control.
+
+        Returns:
+            QVBoxLayout: Layout containing the supply temperature control checkbox.
+        """
         layout = QVBoxLayout()
         
         layout.addWidget(QLabel("Temperaturregelung HAST:"))
@@ -231,6 +289,12 @@ class NetGenerationDialog(QDialog):
         return layout
 
     def createReturnTemperatureCheckbox(self):
+        """
+        Creates checkbox for return temperature control.
+
+        Returns:
+            QVBoxLayout: Layout containing the return temperature control checkbox.
+        """
         layout = QVBoxLayout()
 
         self.returnTempCheckbox = QCheckBox("Rücklauftemperatur für alle HA-Stationen festlegen.")
@@ -243,6 +307,12 @@ class NetGenerationDialog(QDialog):
         return layout
     
     def createBuildingTemperatureCheckbox(self):
+        """
+        Creates checkbox for building heating temperature control.
+
+        Returns:
+            QVBoxLayout: Layout containing the building heating temperature control checkbox.
+        """
         layout = QVBoxLayout()
         self.buildingTempCheckbox = QCheckBox("Gebäudeheizungstemperaturen im zeitlichen Verlauf berücksichtigen.")
         self.buildingTempCheckbox.setToolTip("""Aktivieren Sie diese Option, um die Vor- und Rücklauftemperaturen in den Gebäuden mittels Temperaturregelung entsprechend der definierten Temperaturen und der Steigung in Abhängigkeit der Außentemperatur zu berechnen.\nIst eine Mindestvorlauftemperatur vorgegeben wird diese berücksichtigt.\nDie vorgabe einer zentralen Rücklauftemperatur ergibt nur bei einem kalten Netz Sinn.""")  # Tooltip hinzufügen
@@ -254,6 +324,12 @@ class NetGenerationDialog(QDialog):
         return layout
 
     def createNetParameterInputs(self):
+        """
+        Creates input fields for network parameters.
+
+        Returns:
+            QVBoxLayout: Layout containing the network parameter input fields.
+        """
         layout = QVBoxLayout()
         self.parameter_rows_net = []
 
@@ -297,6 +373,12 @@ class NetGenerationDialog(QDialog):
         return layout
     
     def createHeatConsumerParameterInputs(self):
+        """
+        Creates input fields for heat consumer parameters.
+
+        Returns:
+            QVBoxLayout: Layout containing the heat consumer parameter input fields.
+        """
         layout = QVBoxLayout()
         self.parameter_rows_heat_consumer = []
 
@@ -318,6 +400,16 @@ class NetGenerationDialog(QDialog):
         return layout
 
     def createParameterRow(self, label_text, default_text):
+        """
+        Creates a single parameter row with a label and line edit.
+
+        Args:
+            label_text (str): Text for the label.
+            default_text (str): Default text for the line edit.
+
+        Returns:
+            QHBoxLayout: Layout containing the parameter row.
+        """
         row_layout = QHBoxLayout()
         label = QLabel(label_text)
         line_edit = QLineEdit(default_text)
@@ -326,6 +418,12 @@ class NetGenerationDialog(QDialog):
         return row_layout
     
     def createDiameterOptCheckbox(self):
+        """
+        Creates checkbox for diameter optimization.
+
+        Returns:
+            QVBoxLayout: Layout containing the diameter optimization checkbox.
+        """
         layout = QVBoxLayout()
         self.DiameterOptCheckbox = QCheckBox("Durchmesser optimieren.")
         layout.addWidget(self.DiameterOptCheckbox)
@@ -339,6 +437,12 @@ class NetGenerationDialog(QDialog):
         return layout
 
     def createinitialpipetypeInput(self):
+        """
+        Creates input field for initial pipe type selection.
+
+        Returns:
+            QVBoxLayout: Layout containing the initial pipe type input field.
+        """
         layout = QVBoxLayout()
         layout.addWidget(QLabel("Rohrtyp zur Initialisierung des Netzes:"))
         self.initialpipetypeInput = QComboBox(self)
@@ -356,6 +460,12 @@ class NetGenerationDialog(QDialog):
         return layout
     
     def createDiameterOptInput(self):
+        """
+        Creates input fields for diameter optimization parameters.
+
+        Returns:
+            QVBoxLayout: Layout containing the diameter optimization input fields.
+        """
         layout = QVBoxLayout()
         layout.addWidget(QLabel("Eingaben zur Durchmesseroptimierung der Rohrleitungen:"))
 
@@ -385,6 +495,13 @@ class NetGenerationDialog(QDialog):
         return layout
 
     def set_layout_visibility(self, layout, visible):
+        """
+        Sets the visibility of all widgets in a layout.
+
+        Args:
+            layout (QLayout): The layout to update.
+            visible (bool): Whether the widgets should be visible.
+        """
         for i in range(layout.count()):
             item = layout.itemAt(i)
             widget = item.widget()
@@ -394,6 +511,13 @@ class NetGenerationDialog(QDialog):
                 self.set_layout_visibility(item.layout(), visible)
 
     def set_default_value(self, parameter_row, value):
+        """
+        Sets the default value for a parameter row.
+
+        Args:
+            parameter_row (QHBoxLayout): The parameter row layout.
+            value (str): The default value to set.
+        """
         # Zugriff auf das QLineEdit Widget in der Parameterzeile und Aktualisieren des Textes
         for i in range(parameter_row.count()):
             widget = parameter_row.itemAt(i).widget()
@@ -402,6 +526,9 @@ class NetGenerationDialog(QDialog):
                 break  # Beendet die Schleife, sobald das QLineEdit gefunden und aktualisiert wurde
 
     def updateInputFieldsVisibility(self):
+        """
+        Updates the visibility of input fields based on the selected options.
+        """
         is_geojson = self.importTypeComboBox.currentText() == "GeoJSON"
 
         # GeoJSON-spezifische Eingabefelder
@@ -490,6 +617,12 @@ class NetGenerationDialog(QDialog):
         self.building_temp_checked =  self.buildingTempCheckbox.isChecked()
 
     def selectFilename(self, line_edit):
+        """
+        Opens a file dialog to select a file and updates the line edit with the selected file path.
+
+        Args:
+            line_edit (QLineEdit): The line edit to update with the selected file path.
+        """
         fname, _ = QFileDialog.getOpenFileName(self, 'Datei auswählen', '', 'All Files (*);;CSV Files (*.csv);;GeoJSON Files (*.geojson)')
         if fname:
             line_edit.setText(fname)
@@ -497,6 +630,12 @@ class NetGenerationDialog(QDialog):
 
     ### Hier vielleicht noch Funktionalitäten auslagern
     def calculateTemperatureCurve(self):
+        """
+        Calculates the temperature curve based on the selected control mode.
+
+        Returns:
+            float or np.ndarray: The calculated temperature curve.
+        """
         control_mode = self.temperatureControlInput.currentText()
         if control_mode == "Statisch":
             return float(self.parameter_rows_net[0].itemAt(1).widget().text())
@@ -527,6 +666,9 @@ class NetGenerationDialog(QDialog):
             return np.array(temperature_curve)
 
     def update_plot(self):
+        """
+        Updates the plot based on the selected GeoJSON files.
+        """
         try:
             # Pfade auslesen
             vorlauf_path = self.vorlaufInput.itemAt(1).widget().text()
@@ -590,6 +732,9 @@ class NetGenerationDialog(QDialog):
             msg.exec_()
 
     def generateNetwork(self):
+        """
+        Generates the network based on the user inputs and calls the generate_callback function.
+        """
         import_type = self.importTypeComboBox.currentText()
         if import_type == "GeoJSON":
             # Extrahiere GeoJSON-spezifische Daten
@@ -634,12 +779,23 @@ class NetGenerationDialog(QDialog):
         self.accept()
 
 class ZeitreihenrechnungDialog(QDialog):
+    """
+    Dialog for time series calculation based on user inputs.
+    
+    Attributes:
+        base_path (str): Base path for file dialogs.
+        parent (QWidget): Parent widget.
+    """
+
     def __init__(self, base_path, parent=None):
         super().__init__(parent)
         self.base_path = base_path
         self.initUI()
 
     def initUI(self):
+        """
+        Initializes the user interface for the dialog.
+        """
         self.setWindowTitle("Zeitreihenrechnung")
         self.resize(400, 200)
 
@@ -684,10 +840,19 @@ class ZeitreihenrechnungDialog(QDialog):
         self.layout.addLayout(buttonLayout)
 
     def onAccept(self):
+        """
+        Validates the inputs and accepts the dialog if valid.
+        """
         if self.validateInputs():
             self.accept()
 
     def validateInputs(self):
+        """
+        Validates the start and end time steps.
+
+        Returns:
+            bool: True if inputs are valid, False otherwise.
+        """
         start = int(self.StartTimeStepInput.text())
         end = int(self.EndTimeStepInput.text())
         
@@ -700,11 +865,23 @@ class ZeitreihenrechnungDialog(QDialog):
         return True
 
     def selectFilename(self, lineEdit):
+        """
+        Opens a file dialog to select a file and updates the line edit with the selected file path.
+
+        Args:
+            lineEdit (QLineEdit): The line edit to update with the selected file path.
+        """
         filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen")
         if filename:
             lineEdit.setText(filename)
 
     def getValues(self):
+        """
+        Gets the values from the dialog.
+
+        Returns:
+            dict: Dictionary containing the results filename, start time step, and end time step.
+        """
         return {
             'results_filename': self.resultsFileInput.text(),
             'start': int(self.StartTimeStepInput.text()),
