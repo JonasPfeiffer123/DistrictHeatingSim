@@ -31,8 +31,8 @@ DistrictHeatSim is developed by Dipl.-Ing. (FH) Jonas Pfeiffer as part of the SM
 - **Automatic Heat Network Generation**: Generate heating networks based on building and generator locations.
 - **GIS Data Handling**: Uniformly manage and store GIS data in the GeoJSON format.
 - **LOD2 Data Processing**: Work with detailed 3D building data to analyze heating demands and simulate renovation options.
-- **Thermohydraulic Network Calculation**: Simulate the generated heat networks with Pandapipes.
-- **Cost Calculation**: Calculate heat generation costs based on VDI 2067 methodology and various cost inputs.
+- **Thermohydraulic Network Calculation**: Simulate the generated heat networks with [pandapipes](https://github.com/e2nIEE/pandapipes).
+- **Cost Calculation**: Calculate heat generation costs based on [VDI 2067](https://www.vdi.de/richtlinien/details/vdi-2067-blatt-1-wirtschaftlichkeit-gebaeudetechnischer-anlagen-grundlagen-und-kostenberechnung-1) methodology and various cost inputs.
 - **Renovation Calculation**: Calculate the cost of building renovation based on calculated renovation variants.
 - **PDF Report Generation**: Create detailed PDF reports with economic and technical results.
 - **Save/Load Project Results**: Integrated options to save and load calculated results in most parts of the software
@@ -82,7 +82,7 @@ To install DistrictHeatSim, ensure you have Python installed on your system. Fol
 ### LOD2-Data Processing
 1. **Filter LOD2 Data**: Filter LOD2 3D building data based on polygon or adresses
 2. **Process LOD2 Data**: Process detailed 3D building data for heat demand analysis. Calculating building areas.
-2. **Load TABULA Data**: Combine LOD2 data with TABULA building data.
+2. **Load TABULA Data**: Combine LOD2 data with [TABULA](https://webtool.building-typology.eu/#bm) building data.
 2. **Calculate Heat Demand**: Use the LOD2 and TABULA data to calculate heat demands for different renovation options.
 
 ### Heat Network Calculation
@@ -136,6 +136,25 @@ To install DistrictHeatSim, ensure you have Python installed on your system. Fol
 
 - **currently_not_used**: Contains multiple python files with various functionality which are currently not integrated in DistrictHeatSim
 
+## Documentation
+The Code is documented with docstrings which are readable by [Sphinx](https://www.sphinx-doc.org/en/master/) and therefore a documentation can be created by doing
+
+1. **Directing to the docs folder**:
+    ```sh
+    cd docs
+    ```
+
+2. **Generating the .rst-files**:
+    ```sh
+    sphinx-apidoc -o source/ ../src/districtheatsim
+    ```
+
+3. **Generate the htmls**:
+    ```sh
+    make clean
+    make html
+    ```
+
 ## Contribution Guidelines
 
 I welcome contributions from the community. To contribute:
@@ -159,3 +178,5 @@ For further information, questions, or feedback, please contact the project main
 Jonas Pfeiffer  
 [GitHub Profile](https://github.com/JonasPfeiffer123)  
 Email: jonas.pfeiffer(at)hszg.de
+
+[LinkedIn](https://de.linkedin.com/in/jonas-pfeiffer-0357691a2)
