@@ -1,0 +1,9 @@
+{
+"type": "FeatureCollection",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::25833" } },
+"features": [
+{ "type": "Feature", "properties": { "Land": "Deutschland", "Bundesland": "Sachsen", "Stadt": "Bautzen", "Adresse": "Dresdner Straße 26", "Wärmebedarf": 203477, "Gebäudetyp": "HMF", "WW_Anteil": 0.2, "Typ_Heizflächen": "HK", "VLT_max": 70, "Steigung_Heizkurve": 1.5, "RLT_max": 55, "UTM_X": 453086.62167923863, "UTM_Y": 5658988.8438295834 }, "geometry": { "type": "Point", "coordinates": [ 453086.621679238625802, 5658988.843829583376646 ] } },
+{ "type": "Feature", "properties": { "Land": "Deutschland", "Bundesland": "Sachsen", "Stadt": "Bautzen", "Adresse": "Dresdner Straße 28", "Wärmebedarf": 275175, "Gebäudetyp": "HMF", "WW_Anteil": 0.2, "Typ_Heizflächen": "HK", "VLT_max": 70, "Steigung_Heizkurve": 1.5, "RLT_max": 55, "UTM_X": 453057.91117274773, "UTM_Y": 5658986.0522321621 }, "geometry": { "type": "Point", "coordinates": [ 453057.911172747728415, 5658986.052232162095606 ] } },
+{ "type": "Feature", "properties": { "Land": "Deutschland", "Bundesland": "Sachsen", "Stadt": "Bautzen", "Adresse": "Dresdner Straße 30", "Wärmebedarf": 267295, "Gebäudetyp": "HMF", "WW_Anteil": 0.2, "Typ_Heizflächen": "HK", "VLT_max": 70, "Steigung_Heizkurve": 1.5, "RLT_max": 55, "UTM_X": 452999.22732087527, "UTM_Y": 5659031.7501939135 }, "geometry": { "type": "Point", "coordinates": [ 452999.227320875274017, 5659031.750193913467228 ] } }
+]
+}

@@ -8,7 +8,9 @@ import geopandas as gpd
 #print(total_length)
 
 # Dateipfad zur GeoJSON-Datei
-file_path = 'net_generation/Vorlauf.geojson'
+#file_path = 'H:\\Arbeit\\01_SMWK-NEUES Bearbeitung\\04_Projekt Bad Muskau\\03_Bearbeitung\\Projektordner\\Bad Muskau Quartier 1\\Wärmenetz\\Vorlauf.geojson'
+#file_path = 'H:\\Arbeit\\01_SMWK-NEUES Bearbeitung\\04_Projekt Bad Muskau\\03_Bearbeitung\\Projektordner\\Bad Muskau Quartier 2\\Wärmenetz\\Vorlauf.geojson'
+file_path = 'H:\\Arbeit\\01_SMWK-NEUES Bearbeitung\\04_Projekt Bad Muskau\\03_Bearbeitung\\Projektordner\\Bad Muskau Quartier 3\\Wärmenetz\\Vorlauf.geojson'
 
 # Einlesen der GeoJSON-Datei mit GeoPandas
 gdf = gpd.read_file(file_path, driver="GeoJSON").to_crs(epsg=25833)

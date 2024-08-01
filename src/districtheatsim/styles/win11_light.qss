@@ -1,0 +1,85 @@
+QWidget {
+    background-color: #ffffff;
+    color: #000000;
+    font-family: "Segoe UI";
+    font-size: 11pt;
+}
+
+QTabWidget::pane {
+    border-top: 2px solid #0078d4;
+    background: #f3f3f3;
+}
+
+QTabBar::tab {
+    background: #e5e5e5;
+    border: 1px solid #d1d1d1;
+    padding: 10px;
+    margin-right: 2px;
+    border-radius: 5px;
+}
+
+QTabBar::tab:selected {
+    background: #ffffff;
+    border: 1px solid #0078d4;
+    border-bottom-color: #ffffff;
+}
+
+QMenuBar {
+    background-color: #f3f3f3;
+    border-bottom: 1px solid #d1d1d1;
+}
+
+QMenuBar::item {
+    background: transparent;
+    margin: 0;
+}
+
+QMenuBar::item:selected {
+    background: #e5e5e5;
+    border-radius: 5px;
+}
+
+QMenu {
+    background-color: #ffffff;
+    border: 1px solid #d1d1d1;
+}
+
+QMenu::item {
+    background: transparent;
+    padding: 5px 10px;
+    margin: 0;
+}
+
+QMenu::item:selected {
+    background: #e5e5e5;
+    border-radius: 5px;
+}
+
+QPushButton {
+    background-color: #0078d4;
+    color: #ffffff;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+}
+
+QPushButton:hover {
+    background-color: #005a9e;
+}
+
+QPushButton:pressed {
+    background-color: #004578;
+}
+
+QLabel {
+    border: 1px solid #d1d1d1;
+    padding: 5px;
+    border-radius: 5px;
+    background-color: #f3f3f3;  /* Hintergrundfarbe für bessere Abgrenzung */
+}
+
+QLineEdit {
+    border: 1px solid #d1d1d1;
+    padding: 5px;
+    border-radius: 5px;
+}

@@ -1,0 +1,9 @@
+{
+"type": "FeatureCollection",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::25833" } },
+"features": [
+{ "type": "Feature", "properties": { "Land": "Sachsen", "Bundesland": "Bautzen", "Stadt": "Westvorstadt - Zapadne předměsto", "Adresse": "Schmole - Smolicy Dresdener Straße", "Wärmebedarf": 251980.85, "Gebäudetyp": "HMF", "WW_Anteil (%)": 15.21, "Typ_Heizflächen": "HK", "VLT_max": 70, "Steigung_Heizkurve": 1.5, "RLT_max": 55 }, "geometry": { "type": "LineString", "coordinates": [ [ 458931.940000000060536, 5669994.46 ], [ 458932.940000000060536, 5669994.46 ] ] } },
+{ "type": "Feature", "properties": { "Land": "Sachsen", "Bundesland": "Bautzen", "Stadt": "Westvorstadt - Zapadne předměsto", "Adresse": "Seidau - Židow Dresdener Straße", "Wärmebedarf": 170556.25, "Gebäudetyp": "HMF", "WW_Anteil (%)": 16.05, "Typ_Heizflächen": "HK", "VLT_max": 70, "Steigung_Heizkurve": 1.5, "RLT_max": 55 }, "geometry": { "type": "LineString", "coordinates": [ [ 459023.370118051650934, 5669976.457155299372971 ], [ 459024.370118051650934, 5669976.457155299372971 ] ] } },
+{ "type": "Feature", "properties": { "Land": "Sachsen", "Bundesland": "Bautzen", "Stadt": "Westvorstadt - Zapadne předměsto", "Adresse": "Seidau - Židow Dresdener Straße", "Wärmebedarf": 240722.92, "Gebäudetyp": "HMF", "WW_Anteil (%)": 15.74, "Typ_Heizflächen": "HK", "VLT_max": 70, "Steigung_Heizkurve": 1.5, "RLT_max": 55 }, "geometry": { "type": "LineString", "coordinates": [ [ 458976.919999999983702, 5669992.109999999403954 ], [ 458977.919999999983702, 5669992.109999999403954 ] ] } }
+]
+}
