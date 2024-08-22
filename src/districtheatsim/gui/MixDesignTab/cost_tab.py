@@ -287,6 +287,11 @@ class CostTab(QWidget):
             costs = f"Investitionskosten Flusswärmenutzung: {tech.spez_Investitionskosten_Flusswasser * tech.Wärmeleistung_FW_WP:.1f}, Investitionskosten Wärmepumpe: {tech.spezifische_Investitionskosten_WP * tech.Wärmeleistung_FW_WP:.1f}"
             full_costs = f"{tech.spez_Investitionskosten_Flusswasser * tech.Wärmeleistung_FW_WP + tech.spezifische_Investitionskosten_WP * tech.Wärmeleistung_FW_WP:.1f}"
 
+        elif isinstance(tech, AqvaHeat):
+            dimensions = f"th. Leistung: {tech.Wärmeleistung_FW_WP} kW"
+            costs = f"Investitionskosten Speicher: n/a"
+            full_costs = f"-1"
+
         elif isinstance(tech, WasteHeatPump):
             dimensions = f"Kühlleistung Abwärme: {tech.Kühlleistung_Abwärme} kW, Temperatur Abwärme: {tech.Temperatur_Abwärme} °C, th. Leistung: {tech.max_Wärmeleistung} kW"
             costs = f"Investitionskosten Abwärmenutzung: {tech.spez_Investitionskosten_Abwärme * tech.max_Wärmeleistung:.1f}, Investitionskosten Wärmepumpe: {tech.spezifische_Investitionskosten_WP * tech.max_Wärmeleistung:.1f}"

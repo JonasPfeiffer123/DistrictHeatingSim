@@ -85,6 +85,8 @@ class TechInputDialog(QDialog):
             self.dialog = WasteHeatPumpDialog(self.tech_data)
         elif self.tech_type.startswith("Flusswasser"):
             self.dialog = RiverHeatPumpDialog(self.tech_data)
+        elif self.tech_type.startswith("AqvaHeat"):
+            self.dialog = AqvaHeatDialog(self.tech_data)
         else:
             raise ValueError(f"Unbekannter Technologietyp: {self.tech_type}")
 
@@ -1233,4 +1235,71 @@ class RiverHeatPumpDialog(QDialog):
                 inputs['Temperatur_FW_WP'] = float(self.TFWInput.text())
         except ValueError:
             print("Ungültige Eingabe")
+        return inputs
+
+
+class AqvaHeatDialog(QDialog):
+    """
+    A QDialog subclass for configuring AqvaHeat parameters.
+
+    Attributes:
+        tech_data (dict): Dictionary containing initial values for the river heat pump parameters.
+        PFWInput (QLineEdit): Input field for the thermal capacity of the heat pump.
+        TFWInput (QLineEdit): Input field for the river temperature.
+        DTFWInput (QLineEdit): Input field for the permissible deviation of the heat pump's supply temperature from the network supply temperature.
+        RHcostInput (QLineEdit): Input field for the specific investment costs of river heat utilization.
+        WPRHcostInput (QLineEdit): Input field for the specific investment costs of the heat pump.
+        csvButton (QPushButton): Button to open and load a CSV file containing river temperatures.
+        canvas (FigureCanvas): Canvas to display the Matplotlib figure.
+    """
+
+    def __init__(self, tech_data=None):
+        """
+        Initializes the RiverHeatPumpDialog.
+
+        Args:
+            tech_data (dict, optional): Dictionary containing initial values for the river heat pump parameters. Defaults to None.
+        """
+        super(AqvaHeatDialog, self).__init__()
+        self.tech_data = tech_data if tech_data is not None else {}
+        self.initUI()
+
+    def initUI(self):
+        """
+        Initializes the user interface components.
+        """
+        main_layout = QVBoxLayout()
+        rhp_layout = QFormLayout()
+
+        main_layout.addLayout(rhp_layout)
+        self.setLayout(main_layout)
+
+    def openCSV(self):
+        """
+        Opens a file dialog to select a CSV file and loads its content.
+        """
+        filename, _ = QFileDialog.getOpenFileName(self, "Open CSV", "", "CSV Files (*.csv)")
+        if filename:
+            self.loadCSV(filename)
+
+    def loadCSV(self, filename):
+        """
+        Loads temperature data from a CSV file.
+
+        Args:
+            filename (str): The path to the CSV file.
+        """
+        data = np.loadtxt(filename, delimiter=';', skiprows=1, usecols=1).astype(float)
+        self.csvData = data
+        QMessageBox.information(self, "CSV geladen", f"CSV-Datei {filename} erfolgreich geladen.")
+
+    def getInputs(self):
+        """
+        Retrieves the input values from the user interface.
+
+        Returns:
+            dict: A dictionary containing the input values.
+        """
+        inputs = {
+        }
         return inputs

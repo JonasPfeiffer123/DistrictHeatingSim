@@ -202,7 +202,8 @@ class TechnologyTab(QWidget):
             "Abwärme": WasteHeatPump,
             "Flusswasser": RiverHeatPump,
             "Biomassekessel": BiomassBoiler,
-            "Gaskessel": GasBoiler
+            "Gaskessel": GasBoiler,
+            "AqvaHeat": AqvaHeat
         }
 
         base_tech_type = tech_type.split('_')[0]
@@ -311,6 +312,8 @@ class TechnologyTab(QWidget):
             display_text += f"spez. Investitionskosten: {tech.spez_Investitionskosten} €/kW"
         elif isinstance(tech, SolarThermal):
             display_text += f"Bruttokollektorfläche: {tech.bruttofläche_STA} m², Volumen Solarspeicher: {tech.vs} m³, Kollektortyp: {tech.Typ}, spez. Kosten Speicher: {tech.kosten_speicher_spez} €/m³, spez. Kosten Flachkollektor: {tech.kosten_fk_spez} €/m², spez. Kosten Röhrenkollektor: {tech.kosten_vrk_spez} €/m²"
+        elif isinstance(tech, AqvaHeat):
+            display_text += "technische Daten"
         else:
             display_text = f"Unbekannte Technologieklasse: {type(tech).__name__}"
 
