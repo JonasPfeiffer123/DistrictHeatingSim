@@ -313,22 +313,23 @@ class VisualizationTab(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Fehler beim Laden der Daten", f"Es gab ein Problem beim Laden der Daten: {str(e)}\nBitte überprüfen Sie, ob die Datei leer ist oder ungültige Daten enthält.")
 
-    def update_map_view(self, mapView, map_obj):
+    def update_map_view(self, mapView: QWebEngineView, map_obj: folium.Map):
         """
-        Update the web view to display the current map object.
+        Update the web view to display the current map object without saving a file.
 
         Args:
             mapView: The QWebEngineView widget displaying the map.
             map_obj: The Folium map object.
         """
-        map_file = os.path.join(self.base_path, 'results', 'map.html')
-
+        # Add a click marker to the map
         click_marker = folium.ClickForMarker()
         map_obj.add_child(click_marker)
 
-        map_obj.save(map_file)
+        # Generate HTML string of the map
+        map_html = map_obj._repr_html_()
 
-        mapView.load(QUrl.fromLocalFile(map_file))
+        # Load the HTML string directly into the QWebEngineView
+        mapView.setHtml(map_html)
 
     def loadNetData(self, filenames, color="#{:06x}".format(random.randint(0, 0xFFFFFF))):
         """
