@@ -249,27 +249,11 @@ class HeatSystemPresenter:
         self.view = view
         self.model = model
 
-        # Connect the model signals to the view updates
-        self.model.project_folder_changed.connect(self.on_project_folder_changed)
+        # Connect the model signals directly to the view updates
+        self.model.project_folder_changed.connect(self.view.update_project_folder_label)
 
-        # Nach der Initialisierung, prüfe, ob ein Projektordner existiert und aktualisiere das Label entsprechend
-        QTimer.singleShot(0, self.update_folder_label_on_startup)
-
-    def update_folder_label_on_startup(self):
-        """
-        Aktualisiere das Projektordner-Label nach dem Start, um sicherzustellen, 
-        dass das Label korrekt initialisiert ist, bevor es verwendet wird.
-        """
-        self.on_project_folder_changed(self.model.project_folder)
-
-    def on_project_folder_changed(self, path):
-        """
-        Respond to project folder changes.
-        
-        Args:
-            path (str): The new project folder path.
-        """
-        self.view.update_project_folder_label(path)
+        # Initialize the folder label on startup
+        QTimer.singleShot(0, lambda: self.view.update_project_folder_label(self.model.project_folder))
 
     def create_new_project(self, folder_path, project_name):
         """
@@ -292,44 +276,12 @@ class HeatSystemPresenter:
                 return False
         return False
 
-    def save_existing_project(self):
-        """
-        Save the current project.
-        """
-        if not self.model.project_folder:
-            self.view.show_error_message("Kein Projektordner ausgewählt.")
-            return
-
-        try:
-            # Hier fügen wir die Logik zum Speichern der Projektdaten hinzu
-            # Zum Beispiel:
-            project_data = self.model.get_map_data()
-            save_path = os.path.join(self.model.project_folder, "project_data.json")
-            with open(save_path, 'w') as file:
-                json.dump(project_data, file, indent=4)
-            self.view.show_info_message("Projekt gespeichert.")
-        except Exception as e:
-            self.view.show_error_message(f"Fehler beim Speichern des Projekts: {str(e)}")
-
     def open_existing_project(self, folder_path):
         """
-        Open an existing project.
+        Open an existing project by selecting a project folder.
         """
-        if folder_path and os.path.exists(folder_path):
-            try:
-                project_data_path = os.path.join(folder_path, "project_data.json")
-                if os.path.exists(project_data_path):
-                    with open(project_data_path, 'r') as file:
-                        project_data = json.load(file)
-                    self.model.set_project_folder(folder_path)
-                    self.model.map_data = project_data
-                    self.view.show_info_message("Projekt geladen.")
-                else:
-                    self.view.show_error_message("Projektdatei nicht gefunden.")
-            except Exception as e:
-                self.view.show_error_message(f"Fehler beim Öffnen des Projekts: {str(e)}")
-        else:
-            self.view.show_error_message("Ungültiger Projektordner.")
+        if folder_path:
+            self.model.set_project_folder(folder_path)
 
     def create_project_variant(self):
         """
@@ -352,20 +304,6 @@ class HeatSystemPresenter:
         except Exception as e:
             self.view.show_error_message(f"Ein Fehler ist aufgetreten: {str(e)}")
             return False
-        
-    def update_temperature_data(self):
-        """
-        Update the temperature data based on the selection dialog.
-        """
-        TRY = self.view.temperatureDataDialog.getValues()
-        self.model.try_filename = TRY.get('TRY-filename', '')
-
-    def update_heat_pump_data(self):
-        """
-        Update the heat pump data based on the selection dialog.
-        """
-        COP = self.view.heatPumpDataDialog.getValues()
-        self.model.cop_filename = COP.get('COP-filename', '')
 
 class HeatSystemDesignGUI(QMainWindow):
     """
@@ -457,10 +395,21 @@ class HeatSystemDesignGUI(QMainWindow):
 
         createNewProjectAction = QAction('Neues Projekt erstellen', self)
         chooseProjectAction = QAction('Projekt öffnen', self)
-        saveProjectAction = QAction('Projekt speichern', self)
         fileMenu.addAction(createNewProjectAction)
         fileMenu.addAction(chooseProjectAction)
-        fileMenu.addAction(saveProjectAction)
+
+         # Always add the recent projects menu
+        recentMenu = fileMenu.addMenu('Zuletzt geöffnet')
+        recent_projects = self.presenter.model.config_manager.get_recent_projects()
+        if recent_projects:
+            for project in recent_projects:
+                action = QAction(project, self)
+                action.triggered.connect(lambda checked, p=project: self.presenter.model.set_project_folder(p))
+                recentMenu.addAction(action)
+        else:
+            no_recent_action = QAction('Keine kürzlich geöffneten Projekte', self)
+            no_recent_action.setEnabled(False)
+            recentMenu.addAction(no_recent_action)
 
         createCopyAction = QAction('Projektkopie erstellen', self)
         fileMenu.addAction(createCopyAction)
@@ -481,7 +430,6 @@ class HeatSystemDesignGUI(QMainWindow):
 
         createNewProjectAction.triggered.connect(self.on_create_new_project)
         chooseProjectAction.triggered.connect(self.on_open_existing_project)
-        saveProjectAction.triggered.connect(self.on_save_existing_project)
         createCopyAction.triggered.connect(self.on_create_project_variant)
 
         chooseTemperatureDataAction.triggered.connect(self.openTemperatureDataSelection)
@@ -530,12 +478,6 @@ class HeatSystemDesignGUI(QMainWindow):
         if folder_path:
             self.presenter.open_existing_project(folder_path)
 
-    def on_save_existing_project(self):
-        """
-        Handle saving the current project.
-        """
-        self.presenter.save_existing_project()
-
     def on_create_project_variant(self):
         """
         Handle creating a project variant.
@@ -580,6 +522,15 @@ class HeatSystemDesignGUI(QMainWindow):
         COP = self.heatPumpDataDialog.getValues()
         self.cop_filename = COP['COP-filename']
 
+    def show_info_message(self, message):
+        """
+        Display an informational message to the user.
+        
+        Args:
+            message (str): The informational message to display.
+        """
+        QMessageBox.information(self, "Info", message)
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
@@ -592,7 +543,7 @@ if __name__ == '__main__':
     view.applyTheme("styles\\win11_light.qss")
 
     # Show the window maximized after a short delay; time delay is needed to show the window maximized
-    QTimer.singleShot(100, view.showMaximized)
+    QTimer.singleShot(0, view.showMaximized)
 
     view.show()
     sys.exit(app.exec_())
