@@ -42,6 +42,7 @@ from gui.RenovationTab.RenovationTab import RenovationTab
 from gui.CalculationTab.calculation_tab import CalculationTab
 from gui.MixDesignTab.mix_design_tab import MixDesignTab
 from gui.ComparisonTab.comparison_tab import ComparisonTab
+from gui.IndividualTab.individual_tab import IndividualTab
 
 from gui.dialogs import TemperatureDataDialog, HeatPumpDataDialog
 
@@ -239,6 +240,7 @@ class HeatSystemDesignGUI(QMainWindow):
         self.buildingTab = BuildingTab(self.data_manager, self)
         self.visTab = VisualizationTab(self.data_manager)
         self.lod2Tab = LOD2Tab(self.data_manager, self.visTab, self)
+        self.individualTab = IndividualTab(self.data_manager, self)
         self.calcTab = CalculationTab(self.data_manager, self)
         self.mixDesignTab = MixDesignTab(self.data_manager, self)
         self.renovationTab = RenovationTab(self.data_manager, self)
@@ -248,6 +250,7 @@ class HeatSystemDesignGUI(QMainWindow):
         tabWidget.addTab(self.buildingTab, "Wärmebedarf Gebäude")
         tabWidget.addTab(self.visTab, "Verarbeitung Geodaten")
         tabWidget.addTab(self.lod2Tab, "Verarbeitung LOD2-Daten")
+        tabWidget.addTab(self.individualTab, "Einzelversorgungslösung")
         tabWidget.addTab(self.calcTab, "Wärmenetzberechnung")
         tabWidget.addTab(self.mixDesignTab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
         tabWidget.addTab(self.renovationTab, "Gebäudesanierung")
