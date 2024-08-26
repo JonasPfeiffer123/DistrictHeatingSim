@@ -13,7 +13,7 @@ from PyQt5.QtGui import QFont
 
 from heat_generators.heat_generator_classes import *
 
-class CostTab(QWidget):
+class IndividualTab(QWidget):
     """
     The CostTab class represents the tab responsible for displaying and managing cost-related data 
     for the different components in a heat generation project.
