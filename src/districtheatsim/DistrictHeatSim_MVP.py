@@ -486,8 +486,8 @@ class HeatSystemDesignGUI(QMainWindow):
 
         chooseTemperatureDataAction.triggered.connect(self.openTemperatureDataSelection)
         createCOPDataAction.triggered.connect(self.openCOPDataSelection)
-        lightThemeAction.triggered.connect(self.applyLightTheme)
-        darkThemeAction.triggered.connect(self.applyDarkTheme)
+        lightThemeAction.triggered.connect(lambda: self.applyTheme('styles\\win11_light.qss'))
+        darkThemeAction.triggered.connect(lambda: self.applyTheme('styles\\dark_mode.qss'))
 
     def update_project_folder_label(self, path):
         """
@@ -544,22 +544,8 @@ class HeatSystemDesignGUI(QMainWindow):
         if success:
             QMessageBox.information(self, "Info", "Projektvariante wurde erfolgreich erstellt.")
 
-    def applyLightTheme(self):
-        """
-        Apply the light theme stylesheet.
-        """
-        qss_path = self.presenter.model.config_manager.get_resource_path('styles\\win11_light.qss')
-        if os.path.exists(qss_path):
-            with open(qss_path, 'r') as file:
-                self.setStyleSheet(file.read())
-        else:
-            self.show_error_message(f"Stylesheet {qss_path} nicht gefunden.")
-
-    def applyDarkTheme(self):
-        """
-        Apply the dark theme stylesheet.
-        """
-        qss_path = self.presenter.model.config_manager.get_resource_path('styles\\dark_mode.qss')
+    def applyTheme(self, theme_path):
+        qss_path = self.presenter.model.config_manager.get_resource_path(theme_path)
         if os.path.exists(qss_path):
             with open(qss_path, 'r') as file:
                 self.setStyleSheet(file.read())
@@ -594,15 +580,6 @@ class HeatSystemDesignGUI(QMainWindow):
         COP = self.heatPumpDataDialog.getValues()
         self.cop_filename = COP['COP-filename']
 
-    def show_info_message(self, message):
-        """
-        Display an informational message to the user.
-        
-        Args:
-            message (str): The informational message to display.
-        """
-        QMessageBox.information(self, "Info", message)
-
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
@@ -612,7 +589,7 @@ if __name__ == '__main__':
     presenter = HeatSystemPresenter(view, model)
 
     view.set_presenter(presenter)
-    view.applyLightTheme()
+    view.applyTheme("styles\\win11_light.qss")
 
     # Show the window maximized after a short delay; time delay is needed to show the window maximized
     QTimer.singleShot(100, view.showMaximized)
