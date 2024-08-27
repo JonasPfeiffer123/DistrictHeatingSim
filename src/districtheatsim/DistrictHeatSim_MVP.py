@@ -380,7 +380,7 @@ class HeatSystemDesignGUI(QMainWindow):
         self.projectTab = ProjectTab(self.presenter.model)
         self.buildingTab = BuildingTab(self.presenter.model, self)
         self.visTab = VisualizationTab(self.presenter.model)
-        self.lod2Tab = LOD2Tab(self.presenter.model, self.visTab, self)
+        self.lod2Tab = LOD2Tab(self.presenter.model, self)
         self.individualTab = IndividualTab(self.presenter.model, self)
         self.calcTab = CalculationTab(self.presenter.model, self)
         self.mixDesignTab = MixDesignTab(self.presenter.model, self)
