@@ -22,51 +22,172 @@ from PyQt5.QtCore import pyqtSignal, Qt
 from heat_requirement.heat_requirement_calculation_csv import generate_profiles_from_csv
 from gui.utilities import CheckableComboBox, convert_to_serializable
 
-def get_resource_path(relative_path):
-    """
-    Get the absolute path to the resource, works for dev and for PyInstaller.
-    
-    Args:
-        relative_path (str): The relative path to the resource.
-    
-    Returns:
-        str: The absolute path to the resource.
-    """
-    if getattr(sys, 'frozen', False):
-        base_path = sys._MEIPASS
-    else:
-        base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    return os.path.join(base_path, relative_path)
+class BuildingModel:
+    def __init__(self):
+        self.base_path = None
+        self.data = None
+        self.results = None
 
-class BuildingTab(QWidget):
-    """
-    The BuildingTab widget for managing building data and displaying results.
-    """
-    
-    data_added = pyqtSignal(object)
+    def set_base_path(self, base_path):
+        self.base_path = base_path
 
-    def __init__(self, data_manager=None, parent=None):
+    def get_base_path(self):
+        return self.base_path
+
+    def load_csv(self, file_path):
+        try:
+            self.data = pd.read_csv(file_path, delimiter=';', dtype={'Subtyp': str})
+        except Exception as e:
+            raise Exception(f"Fehler beim Laden der CSV-Datei: {e}")
+
+    def save_csv(self, file_path):
+        if self.data is not None:
+            try:
+                self.data.to_csv(file_path, index=False, sep=';')
+            except Exception as e:
+                raise Exception(f"Fehler beim Speichern der CSV-Datei: {e}")
+
+    def load_json(self, file_path):
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                loaded_data = json.load(f)
+                self.results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and 'lastgang_wärme' in v}
+        except Exception as e:
+            raise Exception(f"Fehler beim Laden der JSON-Datei: {e}")
+
+    def save_json(self, file_path, combined_data):
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(combined_data, f, indent=4)
+        except Exception as e:
+            raise Exception(f"Fehler beim Speichern der Ergebnisse: {e}")
+
+    def calculate_heat_demand(self, data, try_filename):
+        return generate_profiles_from_csv(data=data, TRY=try_filename, calc_method="Datensatz")
+
+    def get_resource_path(self, relative_path):
         """
-        Initializes the BuildingTab.
+        Get the absolute path to the resource, works for dev and for PyInstaller.
         
         Args:
-            data_manager: The data manager.
-            parent: The parent widget.
+            relative_path (str): The relative path to the resource.
+        
+        Returns:
+            str: The absolute path to the resource.
         """
-        super().__init__(parent)
+        if getattr(sys, 'frozen', False):
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        return os.path.join(base_path, relative_path)
+    
+class BuildingPresenter:
+    def __init__(self, model, view, data_manager, parent=None):
+        self.model = model
+        self.view = view
         self.data_manager = data_manager
         self.parent = parent
 
+        # Connect to the data_manager's signal to update the base path
+        self.data_manager.project_folder_changed.connect(self.update_default_path)
+
+        # Connect UI signals to their respective slots
+        self.view.load_csv_signal.connect(self.load_csv)
+        self.view.save_csv_signal.connect(self.save_csv)
+        self.view.calculate_heat_demand_signal.connect(self.calculate_heat_demand)
+        self.view.load_json_signal.connect(self.load_json)
+        self.view.update_path_signal.connect(self.update_default_path)
+
+        # Handle combobox changes and plotting
+        self.view.data_type_combobox.view().pressed.connect(self.on_combobox_selection_changed)
+        self.view.building_combobox.view().pressed.connect(self.on_combobox_selection_changed)
+
+        # Initialize the base path
+        self.update_default_path(self.data_manager.project_folder)
+
+    def update_default_path(self, path):
+        self.model.set_base_path(path)
+        self.view.update_output_path(self.model.get_base_path())
+
+    def load_csv(self, file_path):
+        try:
+            self.model.load_csv(file_path)
+            self.view.populate_table(self.model.data)
+        except Exception as e:
+            self.view.show_error_message("Fehler", str(e))
+
+    def save_csv(self, file_path):
+        try:
+            self.model.save_csv(file_path)
+            self.view.show_message("Erfolg", f"CSV-Datei wurde in {file_path} gespeichert.")
+        except Exception as e:
+            self.view.show_error_message("Fehler", str(e))
+
+    def load_json(self, file_path):
+        try:
+            self.model.load_json(file_path)
+            self.view.populate_building_combobox(self.model.results)
+            self.view.plot(self.model.results)
+        except Exception as e:
+            self.view.show_error_message("Fehler", str(e))
+
+    def calculate_heat_demand(self, output_path):
+        data = self.view.get_table_data()
+        if data.empty:
+            self.view.show_error_message("Fehler", "Die Tabelle enthält keine Daten.")
+            return
+
+        try:
+            try_filename = self.parent.try_filename  # Access try_filename from the parent
+            results = self.model.calculate_heat_demand(data, try_filename)
+            self.model.results = self.format_results(results, data)
+            combined_data = self.combine_data_with_results(data, self.model.results)
+            self.model.save_json(output_path, combined_data)
+            self.view.show_message("Erfolg", f"Ergebnisse wurden in {output_path} gespeichert.")
+            self.view.populate_building_combobox(self.model.results)
+            self.view.plot(self.model.results)
+        except Exception as e:
+            self.view.show_error_message("Fehler", str(e))
+
+    def format_results(self, results, data):
+        formatted_results = {}
+        for idx in range(len(data)):
+            building_id = str(idx)
+            formatted_results[building_id] = {
+                "zeitschritte": [convert_to_serializable(ts) for ts in results[0]],
+                "außentemperatur": results[-1].tolist(),
+                "lastgang_wärme": results[1][idx].tolist(),
+                "heating_wärme": results[2][idx].tolist(),
+                "warmwater_wärme": results[3][idx].tolist(),
+                "vorlauftemperatur": results[4][idx].tolist(),
+                "rücklauftemperatur": results[5][idx].tolist(),
+                "heizlast": results[-2].tolist(),
+            }
+            for key, value in data.iloc[idx].items():
+                formatted_results[building_id][key] = convert_to_serializable(value)
+        return formatted_results
+
+    def combine_data_with_results(self, data, results):
+        data.reset_index(drop=True, inplace=True)
+        data_dict = data.applymap(convert_to_serializable).to_dict(orient='index')
+        combined_data = {str(idx): {**data_dict[idx], **results[str(idx)]} for idx in range(len(data))}
+        return combined_data
+
+    def on_combobox_selection_changed(self):
+        self.view.plot(self.model.results)
+
+class BuildingTabView(QWidget):
+    load_csv_signal = pyqtSignal(str)
+    save_csv_signal = pyqtSignal(str)
+    calculate_heat_demand_signal = pyqtSignal(str)
+    load_json_signal = pyqtSignal(str)
+    update_path_signal = pyqtSignal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self.initUI()
 
-        if self.data_manager:
-            self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
-            self.updateDefaultPath(self.data_manager.project_folder)
-
     def initUI(self):
-        """
-        Initializes the UI elements of the BuildingTab.
-        """
         scroll_area = QScrollArea(self)
         scroll_area.setWidgetResizable(True)
 
@@ -121,17 +242,10 @@ class BuildingTab(QWidget):
         final_layout.addWidget(scroll_area)
         self.setLayout(final_layout)
 
-        self.data_type_combobox.view().pressed.connect(self.plot)
-        self.building_combobox.view().pressed.connect(self.plot)
-
     def initMenuBar(self):
-        """
-        Initializes the menu bar of the BuildingTab.
-        """
         self.menubar = QMenuBar(self)
         self.menubar.setFixedHeight(30)
 
-        # Add actions directly to the menubar
         load_csv_action = QAction("CSV laden", self)
         load_csv_action.triggered.connect(self.loadCsvFile)
         self.menubar.addAction(load_csv_action)
@@ -150,181 +264,50 @@ class BuildingTab(QWidget):
 
         self.main_layout.setMenuBar(self.menubar)
 
-    def updateDefaultPath(self, path):
-        """
-        Updates the default path for saving files.
-        
-        Args:
-            path (str): The new default path.
-        """
-        self.base_path = path
-        self.output_path_edit.setText(f"{self.base_path}/Lastgang/Gebäude Lastgang.json")
-
     def browseOutputFile(self):
-        """
-        Opens a file dialog to select the output JSON file.
-        """
-        fname, _ = QFileDialog.getSaveFileName(self, 'Save JSON File As', f"{self.base_path}/Lastgang", 'JSON Files (*.json);;All Files (*)')
+        fname, _ = QFileDialog.getSaveFileName(self, 'Save JSON File As', f"{self.output_path_edit.text()}", 'JSON Files (*.json);;All Files (*)')
         if fname:
             self.output_path_edit.setText(fname)
 
     def loadCsvFile(self):
-        """
-        Opens a file dialog to load a CSV file.
-        """
-        fname, _ = QFileDialog.getOpenFileName(self, 'Select CSV File', f"{self.base_path}/Gebäudedaten", 'CSV Files (*.csv);;All Files (*)')
+        fname, _ = QFileDialog.getOpenFileName(self, 'Select CSV File', f"{self.output_path_edit.text()}", 'CSV Files (*.csv);;All Files (*)')
         if fname:
-            try:
-                self.data = pd.read_csv(fname, delimiter=';', dtype={'Subtyp': str})
-                self.populateComboBoxes()
-                self.showCSVTable()
-            except Exception as e:
-                QMessageBox.critical(self, "Fehler", f"Fehler beim Laden der CSV-Datei: {e}")
+            self.load_csv_signal.emit(fname)
 
     def saveCsvFile(self):
-        """
-        Opens a file dialog to save the CSV file.
-        """
-        fname, _ = QFileDialog.getSaveFileName(self, 'Save CSV File As', f"{self.base_path}/Gebäudedaten", 'CSV Files (*.csv);;All Files (*)')
+        fname, _ = QFileDialog.getSaveFileName(self, 'Save CSV File As', f"{self.output_path_edit.text()}", 'CSV Files (*.csv);;All Files (*)')
         if fname:
-            try:
-                self.data.to_csv(fname, index=False, sep=';')
-                QMessageBox.information(self, "Erfolg", f"CSV-Datei wurde in {fname} gespeichert.")
-            except Exception as e:
-                QMessageBox.critical(self, "Fehler", f"Fehler beim Speichern der CSV-Datei: {e}")
+            self.save_csv_signal.emit(fname)
 
     def loadJsonFile(self):
-        """
-        Opens a file dialog to load a JSON file.
-        """
-        fname, _ = QFileDialog.getOpenFileName(self, 'Select JSON File', f"{self.base_path}/Lastgang", 'JSON Files (*.json);;All Files (*)')
+        fname, _ = QFileDialog.getOpenFileName(self, 'Select JSON File', f"{self.output_path_edit.text()}", 'JSON Files (*.json);;All Files (*)')
         if fname:
-            try:
-                with open(fname, 'r', encoding='utf-8') as f:
-                    loaded_data = json.load(f)
-
-                    self.results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and 'lastgang_wärme' in v}
-
-                    df = pd.DataFrame.from_dict({k: v for k, v in loaded_data.items() if k.isdigit()}, orient='index')
-
-                    # Update the table with loaded data
-                    self.data = df
-                    self.populateComboBoxes()
-                    self.showCSVTable()
-
-                self.building_combobox.clear()
-                for key in self.results.keys():
-                    self.building_combobox.addItem(f'Building {key}')
-                    item = self.building_combobox.model().item(self.building_combobox.count() - 1, 0)
-                    item.setCheckState(Qt.Checked)
-
-                self.plot()
-            except Exception as e:
-                QMessageBox.critical(self, "Fehler", f"Fehler beim Laden der JSON-Datei: {e}")
+            self.load_json_signal.emit(fname)
 
     def calculateHeatDemand(self):
-        """
-        Calculates the heat demand profiles and saves the results to a JSON file.
-        """
-        json_path = self.output_path_edit.text()
-        if not json_path:
-            QMessageBox.warning(self, "Fehler", "Bitte wählen Sie einen Speicherort für die Ergebnisse aus.")
-            return
+        output_path = self.output_path_edit.text()
+        self.calculate_heat_demand_signal.emit(output_path)
 
-        data = self.getTableData()
-        if data.empty:
-            QMessageBox.warning(self, "Fehler", "Die Tabelle enthält keine Daten.")
-            return
+    def populate_table(self, data):
+        self.table_widget.setColumnCount(len(data.columns))
+        self.table_widget.setRowCount(len(data.index))
+        self.table_widget.setHorizontalHeaderLabels(data.columns)
 
-        yearly_time_steps, total_heat_W, heating_heat_W, warmwater_heat_W, max_heat_requirement_W, supply_temperature_curve, return_temperature_curve, hourly_air_temperatures = generate_profiles_from_csv(
-            data=data, 
-            TRY=self.parent.try_filename, 
-            calc_method="Datensatz"
-        )
-
-        self.results = {}
-        for idx in range(len(data)):
-            building_id = str(idx)
-
-            if yearly_time_steps is None:
-                QMessageBox.critical(self, "Fehler", "Fehler bei der Berechnung der Profile.")
-                return
-
-            self.results[building_id] = {
-                "zeitschritte": [convert_to_serializable(ts) for ts in yearly_time_steps],
-                "außentemperatur": hourly_air_temperatures.tolist(),
-                "lastgang_wärme": total_heat_W[idx].tolist(),
-                "heating_wärme": heating_heat_W[idx].tolist(),
-                "warmwater_wärme": warmwater_heat_W[idx].tolist(),
-                "vorlauftemperatur": supply_temperature_curve[idx].tolist(),
-                "rücklauftemperatur": return_temperature_curve[idx].tolist(),
-                "heizlast": max_heat_requirement_W.tolist()
-            }
-
-            for key, value in data.iloc[idx].items():
-                self.results[building_id][key] = convert_to_serializable(value)
-
-        data.reset_index(drop=True, inplace=True)
-        data_dict = data.applymap(convert_to_serializable).to_dict(orient='index')
-
-        combined_data = {str(idx): {**data_dict[idx], **self.results[str(idx)]} for idx in range(len(data))}
-
-        try:
-            with open(json_path, 'w', encoding='utf-8') as f:
-                json.dump(combined_data, f, indent=4)
-            QMessageBox.information(self, "Erfolg", f"Ergebnisse wurden in {json_path} gespeichert.")
-        except Exception as e:
-            QMessageBox.critical(self, "Fehler", f"Fehler beim Speichern der Ergebnisse: {e}")
-
-        self.building_combobox.clear()
-        for key in self.results.keys():
-            self.building_combobox.addItem(f'Building {key}')
-            item = self.building_combobox.model().item(self.building_combobox.count() - 1, 0)
-            item.setCheckState(Qt.Checked)
-
-        self.plot()
-
-    def showCSVTable(self):
-        """
-        Displays the loaded CSV data in the table widget.
-        """
-        self.table_widget.setColumnCount(len(self.data.columns))
-        self.table_widget.setRowCount(len(self.data.index))
-        self.table_widget.setHorizontalHeaderLabels(self.data.columns)
-
-        for i in range(len(self.data.index)):
-            for j in range(len(self.data.columns)):
-                if self.data.columns[j] in ["Gebäudetyp", "Subtyp"]:
+        for i in range(len(data.index)):
+            for j in range(len(data.columns)):
+                if data.columns[j] in ["Gebäudetyp", "Subtyp"]:
                     combobox = QComboBox()
-                    if self.data.columns[j] == "Gebäudetyp":
-                        combobox.addItems(self.building_types)
-                        combobox.setCurrentText(str(self.data.iat[i, j]))
-                        self.table_widget.setCellWidget(i, j, combobox)
-                    else:
-                        current_building_type = str(self.data.iat[i, self.data.columns.get_loc("Gebäudetyp")])
-                        if current_building_type:
-                            subtypes = self.building_subtypes.get(current_building_type[:3], [])
-                            combobox.addItems(subtypes)
-                            #print(f"Row {i}, Building Type {current_building_type[:3]}: Subtypes {subtypes}")
-                        else:
-                            print(f"Error: Gebäudetyp for row {i} is None")
-                        combobox.setCurrentText(str(self.data.iat[i, j]))
-                        self.table_widget.setCellWidget(i, j, combobox)
+                    combobox.addItem(str(data.iat[i, j]))
+                    self.table_widget.setCellWidget(i, j, combobox)
                 else:
-                    self.table_widget.setItem(i, j, QTableWidgetItem(str(self.data.iat[i, j])))
+                    self.table_widget.setItem(i, j, QTableWidgetItem(str(data.iat[i, j])))
 
         self.table_widget.resizeColumnsToContents()
         self.table_widget.resizeRowsToContents()
         self.table_widget.horizontalHeader().setStretchLastSection(True)
         self.table_widget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
-    def getTableData(self):
-        """
-        Retrieves the data from the table widget.
-        
-        Returns:
-            pd.DataFrame: The data from the table widget.
-        """
+    def get_table_data(self):
         rows = self.table_widget.rowCount()
         columns = self.table_widget.columnCount()
         data = []
@@ -343,37 +326,21 @@ class BuildingTab(QWidget):
             data.append(row_data)
 
         df = pd.DataFrame(data, columns=[self.table_widget.horizontalHeaderItem(i).text() for i in range(columns)])
-
-        # Ensure 'Subtyp' is always a string
         if 'Subtyp' in df.columns:
             df['Subtyp'] = df['Subtyp'].astype(str)
-
-        # Convert data types for other columns
-        for column in df.columns:
-            if column != 'Subtyp':  # Skip conversion for 'Subtyp'
-                try:
-                    df[column] = pd.to_numeric(df[column], errors='ignore')
-                except Exception as e:
-                    print(f"Could not convert column {column}: {e}")
-
         return df
 
-    def populateComboBoxes(self):
-        """
-        Populates the building type and subtype combo boxes.
-        """
-        df = pd.read_csv(get_resource_path('data\\BDEW profiles\\daily_coefficients.csv'), delimiter=';', dtype=str)
-        building_types = df['Standardlastprofil'].str[:3].unique()
-        self.building_types = sorted(building_types)
-        self.building_subtypes = {}
-        for building_type in self.building_types:
-            subtypes = df[df['Standardlastprofil'].str.startswith(building_type)]['Standardlastprofil'].str[-2:].unique()
-            self.building_subtypes[building_type] = sorted(subtypes)
+    def populate_building_combobox(self, results):
+        self.building_combobox.clear()
+        for key in results.keys():
+            self.building_combobox.addItem(f'Building {key}')
+            item = self.building_combobox.model().item(self.building_combobox.count() - 1, 0)
+            item.setCheckState(Qt.Checked)
 
-    def plot(self):
-        """
-        Plots the selected data types for the selected buildings.
-        """
+    def plot(self, results=None):
+        if results is None:
+            return
+
         self.figure.clear()
         ax1 = self.figure.add_subplot(111)
         ax2 = ax1.twinx()
@@ -383,7 +350,7 @@ class BuildingTab(QWidget):
 
         for building in selected_buildings:
             key = building.split()[-1]
-            value = self.results[key]
+            value = results[key]
 
             if "Heat Demand" in selected_data_types:
                 ax1.plot(value["lastgang_wärme"], label=f'Building {key} Heat Demand')
@@ -405,11 +372,23 @@ class BuildingTab(QWidget):
 
         self.canvas.draw()
 
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = QMainWindow()
-    building_tab = BuildingTab()
-    window.setCentralWidget(building_tab)
-    window.setWindowTitle("Building Tab")
-    window.show()
-    sys.exit(app.exec_())
+    def show_error_message(self, title, message):
+        QMessageBox.critical(self, title, message)
+
+    def show_message(self, title, message):
+        QMessageBox.information(self, title, message)
+
+    def update_output_path(self, path):
+        self.output_path_edit.setText(f"{path}/Lastgang/Gebäude Lastgang.json")
+
+class BuildingTab(QMainWindow):
+    def __init__(self, data_manager, parent=None):
+        super().__init__()
+        self.setWindowTitle("Building Tab Example")
+        self.setGeometry(100, 100, 800, 600)
+
+        self.model = BuildingModel()
+        self.view = BuildingTabView()
+        self.presenter = BuildingPresenter(self.model, self.view, data_manager, parent)
+
+        self.setCentralWidget(self.view)
