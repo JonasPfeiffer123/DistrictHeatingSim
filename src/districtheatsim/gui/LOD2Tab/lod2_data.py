@@ -46,7 +46,7 @@ class LOD2DataModel:
             'RLT_max': 55
         }
         self.base_path = ""
-        self.output_geojson_filename = ""
+        self.output_geojson_path = ""
 
     def set_base_path(self, base_path):
         """Set the base path for file operations."""
@@ -68,7 +68,7 @@ class LOD2DataModel:
                 parent_id = properties.get('parent_id')
                 self.building_info[parent_id] = properties
 
-            self.output_geojson_filename = filename
+            self.output_geojson_path = filename
         except Exception as e:
             raise Exception(f"Failed to load data from {filename}: {str(e)}")
 
@@ -76,9 +76,9 @@ class LOD2DataModel:
         """Save the current building data as a GeoJSON file."""
         try:
             if not path:
-                path = self.output_geojson_filename
+                path = self.output_geojson_path
 
-            with open(self.output_geojson_filename, 'r', encoding='utf-8') as file:
+            with open(self.output_geojson_path, 'r', encoding='utf-8') as file:
                 geojson_data = json.load(file)
 
             for parent_id, info in self.building_info.items():
@@ -92,12 +92,12 @@ class LOD2DataModel:
         except Exception as e:
             raise Exception(f"Failed to save data to {path}: {str(e)}")
 
-    def process_data(self):
+    def process_data(self, output_geojson_path):
         """Process the loaded data to calculate required building parameters."""
-        if not self.output_geojson_filename:
-            raise Exception("No GeoJSON file loaded to process.")
+        self.output_geojson_path = output_geojson_path
 
-        self.building_info = process_lod2(self.output_geojson_filename, self.standard_values)
+        self.building_info = process_lod2(self.output_geojson_path, self.standard_values)
+        
         address_missing = any(info['Adresse'] is None for info in self.building_info.values())
         if address_missing:
             self.building_info = calculate_centroid_and_geocode(self.building_info)
@@ -127,12 +127,12 @@ class LOD2DataModel:
             info['Wärmebedarf'] = building.yearly_heat_demand
             info['Warmwasseranteil'] = building.warm_water_share
 
-    def filter_data(self, method, *args):
+    def filter_data(self, method, lod_geojson_path, filter_file_path, output_geojson_path):
         """Filter the LOD2 data based on the specified method."""
         if method == "Filter by Polygon":
-            spatial_filter_with_polygon(*args)
+            spatial_filter_with_polygon(lod_geojson_path, filter_file_path, output_geojson_path)
         elif method == "Filter by Building Data CSV":
-            filter_LOD2_with_coordinates(*args)
+            filter_LOD2_with_coordinates(lod_geojson_path, filter_file_path, output_geojson_path)
         else:
             raise ValueError(f"Unknown filter method: {method}")
 
@@ -174,7 +174,6 @@ class LOD2DataModel:
             info.get('Koordinate_Y', ''),
         ]
 
-
 class DataVisualizationPresenter(QObject):
     data_loaded = pyqtSignal(dict)
 
@@ -201,9 +200,19 @@ class DataVisualizationPresenter(QObject):
         """Loads data from a GeoJSON file."""
         path, _ = QFileDialog.getOpenFileName(self.view, "Öffnen", self.model.get_base_path(), "GeoJSON-Dateien (*.geojson)")
         if path:
-            self.model.load_data(path)
-            self.view.update_table(self.model.building_info)
-            self.view.update_3d_view(self.model.building_info)
+            try:
+                # Load data into the model
+                self.model.load_data(path)
+                
+                # Process the data (this includes functions like process_lod2 and calculate_centroid_and_geocode)
+                self.model.process_data(path)
+                
+                # Update the view with the processed data
+                self.view.update_table(self.model.building_info)
+                self.view.update_3d_view(self.model.building_info)
+            
+            except Exception as e:
+                self.view.show_info_message("Error", f"Failed to load or process data: {str(e)}")
 
     def save_data_as_geojson(self):
         """Saves the data as a GeoJSON file."""
@@ -216,14 +225,18 @@ class DataVisualizationPresenter(QObject):
         """Shows the filter dialog for LOD2 data filtering."""
         dialog = FilterDialog(self.model.get_base_path(), self.view)
         if dialog.exec_() == QDialog.Accepted:
-            self.model.filter_data(
-                dialog.filterMethodComboBox.currentText(),
-                dialog.inputLOD2geojsonLineEdit.text(),
-                dialog.inputfilterPolygonLineEdit.text(),
-                dialog.inputfilterBuildingDataLineEdit.text(),
-                dialog.outputLOD2geojsonLineEdit.text()
-            )
-            self.model.load_data(dialog.outputLOD2geojsonLineEdit.text())
+            filter_method = dialog.filterMethodComboBox.currentText()
+            lod_geojson_path = dialog.inputLOD2geojsonLineEdit.text()
+
+            if filter_method == "Filter by Polygon":
+                filter_file_path = dialog.inputfilterPolygonLineEdit.text()
+            elif filter_method == "Filter by Building Data CSV":
+                filter_file_path = dialog.inputfilterBuildingDataLineEdit.text()
+                
+            output_geojson_path = dialog.outputLOD2geojsonLineEdit.text()
+
+            self.model.filter_data(filter_method, lod_geojson_path, filter_file_path, output_geojson_path)
+            self.model.process_data(output_geojson_path)
             self.view.update_table(self.model.building_info)
             self.view.update_3d_view(self.model.building_info)
 
@@ -240,11 +253,9 @@ class DataVisualizationPresenter(QObject):
             self.view.show_info_message("CSV-Erstellung erfolgreich", f"Gebäude-csv wurde erfolgreich erstellt: {path}")
 
     def highlight_building_3d(self, col):
-        """Highlights the selected building in the 3D view."""
+        """Highlight the selected building in the 3D view."""
         parent_id = list(self.model.building_info.keys())[col]
-        building_info = self.model.building_info[parent_id]
-        self.view.highlight_building_3d(building_info)
-
+        self.view.highlight_building_3d(parent_id)
 
 class LOD2DataVisualizationTab(QWidget):
     data_selected = pyqtSignal(int)  # Signal to emit when a table column is selected
@@ -252,13 +263,13 @@ class LOD2DataVisualizationTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.comboBoxBuildingTypesItems = []
-        self.building_subtypes = {}  # Initialize as a dictionary
+        self.building_subtypes = {}
         self.initUI()
+        self.visualization_3d = LOD2Visualization3D(self.canvas_3d)  # Initialize the 3D visualization handler
 
     def initUI(self):
         """Initializes the UI components of the LOD2DataVisualizationTab."""
         main_layout = QVBoxLayout(self)
-
         data_vis_layout = QHBoxLayout(self)
         main_layout.addLayout(data_vis_layout)
 
@@ -301,7 +312,7 @@ class LOD2DataVisualizationTab(QWidget):
         selected_columns = self.tableWidget.selectionModel().selectedColumns()
         if selected_columns:
             col = selected_columns[0].column()
-            self.data_selected.emit(col)
+            self.data_selected.emit(col)  # Emit the signal to inform the presenter
 
     def update_table(self, building_info):
         """Update the table with new data."""
@@ -313,7 +324,6 @@ class LOD2DataVisualizationTab(QWidget):
 
     def update_table_column(self, col, info):
         """Update a single column in the table."""
-        print(info)
         self.tableWidget.setItem(0, col, QTableWidgetItem(str(f"{info['Adresse']}, {info['Stadt']}, {info['Bundesland']}, {info['Land']}")))
         self.tableWidget.setItem(1, col, QTableWidgetItem(str(info['Koordinate_X'])))
         self.tableWidget.setItem(2, col, QTableWidgetItem(str(info['Koordinate_Y'])))
@@ -330,7 +340,7 @@ class LOD2DataVisualizationTab(QWidget):
 
         comboBoxSubtypes = QComboBox()
         comboBoxSubtypes.addItems(self.building_subtypes.get(comboBoxTypes.currentText(), []))
-        comboBoxSubtypes.setCurrentText(info['Subtyp'])
+        comboBoxSubtypes.setCurrentText(str(info['Subtyp']))
         self.tableWidget.setCellWidget(9, col, comboBoxSubtypes)
 
         comboBoxBuildingTypes = QComboBox()
@@ -365,12 +375,48 @@ class LOD2DataVisualizationTab(QWidget):
         self.tableWidget.setItem(29, col, QTableWidgetItem(str(info['Warmwasseranteil'])))
 
     def update_3d_view(self, building_info):
+        """Delegate the update of the 3D view to the LOD2Visualization3D class."""
+        self.visualization_3d.update_3d_view(building_info)
+
+    def highlight_building_3d(self, info):
+        """Highlights a building in the 3D plot."""
+        self.visualization_3d.highlight_building_3d(info)
+
+    def show_info_message(self, title, message):
+        """Displays an informational message box."""
+        QMessageBox.information(self, title, message)
+
+class LOD2Visualization3D:
+    def __init__(self, canvas_3d):
+        """Initialize with the 3D canvas."""
+        self.figure_3d = canvas_3d.figure
+        self.canvas_3d = canvas_3d
+        self.building_data = {}  # To keep track of all buildings
+        self.highlighted_building_id = None  # To keep track of the highlighted building
+
+    def update_3d_view(self, building_info):
         """Update the 3D view with new building data."""
+        self.building_data = building_info  # Store the current building data
         self.figure_3d.clear()
         ax = self.figure_3d.add_subplot(111, projection='3d')
 
+        # Initialize bounds
+        min_x, min_y, min_z = float('inf'), float('inf'), float('inf')
+        max_x, max_y, max_z = float('-inf'), float('-inf'), float('-inf')
+
+        # Plot each building part and update the bounds
         for parent_id, info in building_info.items():
-            self.plot_building_parts(ax, info)
+            color = 'red' if parent_id == self.highlighted_building_id else 'blue'
+            min_x, min_y, min_z, max_x, max_y, max_z = self.plot_building_parts(
+                ax, info, min_x, min_y, min_z, max_x, max_y, max_z, color)
+
+        # Set plot limits based on calculated bounds
+        ax.set_xlim(min_x, max_x)
+        ax.set_ylim(min_y, max_y)
+        ax.set_zlim(min_z, max_z)
+
+        # Set the aspect ratio for proper scaling
+        ax.set_box_aspect([max_x - min_x, max_y - min_y, max_z - min_z])
 
         ax.set_xlabel('UTM_X')
         ax.set_ylabel('UTM_Y')
@@ -379,34 +425,51 @@ class LOD2DataVisualizationTab(QWidget):
 
         self.canvas_3d.draw()
 
-    def plot_building_parts(self, ax, info):
-        """Plot the building parts in the 3D view."""
-        self.plot_geometry(ax, info['Ground'], 'green')
-        self.plot_geometry(ax, info['Wall'], 'blue')
-        self.plot_geometry(ax, info['Roof'], 'brown')
+    def plot_building_parts(self, ax, info, min_x, min_y, min_z, max_x, max_y, max_z, color):
+        """Plots the building parts in the 3D plot and updates the bounds."""
+        min_x, min_y, min_z, max_x, max_y, max_z = self.plot_geometry(
+            ax, info.get('Ground', []), color, min_x, min_y, min_z, max_x, max_y, max_z)
+        min_x, min_y, min_z, max_x, max_y, max_z = self.plot_geometry(
+            ax, info.get('Wall', []), color, min_x, min_y, min_z, max_x, max_y, max_z)
+        min_x, min_y, min_z, max_x, max_y, max_z = self.plot_geometry(
+            ax, info.get('Roof', []), color, min_x, min_y, min_z, max_x, max_y, max_z)
+        
+        return min_x, min_y, min_z, max_x, max_y, max_z
 
-    def plot_geometry(self, ax, geoms, color):
-        """Plot geometry on the 3D axes."""
+    def plot_geometry(self, ax, geoms, color, min_x, min_y, min_z, max_x, max_y, max_z):
+        """Plots the geometry in the 3D plot and updates the bounds."""
         if isinstance(geoms, (Polygon, MultiPolygon)):
             geoms = [geoms]
 
         for geom in geoms:
-            if geom.geom_type == 'Polygon':
-                x, y, z = zip(*geom.exterior.coords)
-                verts = [list(zip(x, y, z))]
-                poly_collection = Poly3DCollection(verts, facecolors=color, alpha=0.5)
-                ax.add_collection3d(poly_collection)
-            elif geom.geom_type == 'MultiPolygon':
-                for poly in geom.geoms:
-                    x, y, z = zip(*poly.exterior.coords)
+            if geom:
+                if geom.geom_type == 'Polygon':
+                    x, y, z = zip(*geom.exterior.coords)
                     verts = [list(zip(x, y, z))]
                     poly_collection = Poly3DCollection(verts, facecolors=color, alpha=0.5)
                     ax.add_collection3d(poly_collection)
+                elif geom.geom_type == 'MultiPolygon':
+                    for poly in geom.geoms:
+                        x, y, z = zip(*poly.exterior.coords)
+                        verts = [list(zip(x, y, z))]
+                        poly_collection = Poly3DCollection(verts, facecolors=color, alpha=0.5)
+                        ax.add_collection3d(poly_collection)
 
-    def highlight_building_3d(self, info):
-        """Highlights a building in the 3D plot."""
-        self.update_3d_view({info['parent_id']: info})  # Ensure the single building is highlighted
+                # Update bounds
+                min_x, min_y, min_z = min(min_x, min(x)), min(min_y, min(y)), min(min_z, min(z))
+                max_x, max_y, max_z = max(max_x, max(x)), max(max_y, max(y)), max(max_z, max(z))
 
-    def show_info_message(self, title, message):
-        """Displays an informational message box."""
-        QMessageBox.information(self, title, message)
+        return min_x, min_y, min_z, max_x, max_y, max_z
+
+    def highlight_building_3d(self, parent_id):
+        """Highlights a specific building in the 3D plot."""
+        # Check if the building is already highlighted
+        if self.highlighted_building_id == parent_id:
+            # Deselect the building by setting the highlighted_building_id to None
+            self.highlighted_building_id = None
+        else:
+            # Highlight the new building
+            self.highlighted_building_id = parent_id
+        
+        # Re-render the 3D view with the updated highlight
+        self.update_3d_view(self.building_data)
