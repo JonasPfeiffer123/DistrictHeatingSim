@@ -1,7 +1,7 @@
 """
 Filename: lod2_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-08-27
+Date: 2024-08-28
 Description: Contains the LOD2Tab as MVP structure.
 """
 

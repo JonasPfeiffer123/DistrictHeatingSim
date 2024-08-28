@@ -1,7 +1,7 @@
 """
 Filename: DistrictHeatSim_MVP.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-08-26
+Date: 2024-08-28
 Description: Main GUI file of the DistrictHeatSim-Tool utilizing the Model-View-Presenter (MVP) architecture.
 
 This script initializes and runs the main graphical user interface (GUI) for the DistrictHeatSim tool,
