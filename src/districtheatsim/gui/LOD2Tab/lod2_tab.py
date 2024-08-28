@@ -12,10 +12,12 @@ from gui.LOD2Tab.lod2_plot import LOD2PlotModel, PlotPresenter, LOD2PlotTab
 from gui.LOD2Tab.lod2_data import LOD2DataModel, DataVisualizationPresenter, LOD2DataVisualizationTab
 
 class LOD2Tab(QMainWindow):
-    def __init__(self, data_manager, parent=None):
+    def __init__(self, folder_manager, data_manager, parent=None):
         super().__init__(parent)
         self.setWindowTitle("LOD2 Tab")
         self.setGeometry(100, 100, 1200, 800)
+
+        self.parent = parent
 
         # Initialize the model
         self.data_model = LOD2DataModel()
@@ -31,8 +33,8 @@ class LOD2Tab(QMainWindow):
         self.view.addTab(self.plot_tab, "Balkendiagramm Wärmebedarf")
 
         # Initialize the presenters
-        self.data_vis_presenter = DataVisualizationPresenter(self.data_model, self.data_vis_tab, data_manager)
-        self.plot_presenter = PlotPresenter(self.plot_model, self.plot_tab, data_manager)
+        self.data_vis_presenter = DataVisualizationPresenter(self.data_model, self.data_vis_tab, folder_manager, data_manager)
+        self.plot_presenter = PlotPresenter(self.plot_model, self.plot_tab, folder_manager)
 
         # Create the Menu Bar
         self.menuBar = self.menuBar()

@@ -5,6 +5,7 @@ Date: 2024-08-27
 Description: Contains the LOD2Tab.
 """
 
+import sys
 import os
 import csv
 import json
@@ -47,6 +48,14 @@ class LOD2DataModel:
         }
         self.base_path = ""
         self.output_geojson_path = ""
+        self.slp_building_types = []  # Für SLP-Gebäudetypen
+        self.tabula_building_types = []  # Für TABULA-Gebäudetypen
+        self.building_subtypes = {}
+        self.try_filename = ""
+
+        # Load the U-values DataFrame from the CSV file
+        self.u_values_df = pd.read_csv(self.get_resource_path('data\\TABULA\\standard_u_values_TABULA.csv'), sep=";")
+        self.populateComboBoxes()
 
     def set_base_path(self, base_path):
         """Set the base path for file operations."""
@@ -55,6 +64,15 @@ class LOD2DataModel:
     def get_base_path(self):
         """Get the current base path."""
         return self.base_path
+    
+    def filter_data(self, method, lod_geojson_path, filter_file_path, output_geojson_path):
+        """Filter the LOD2 data based on the specified method."""
+        if method == "Filter by Polygon":
+            spatial_filter_with_polygon(lod_geojson_path, filter_file_path, output_geojson_path)
+        elif method == "Filter by Building Data CSV":
+            filter_LOD2_with_coordinates(lod_geojson_path, filter_file_path, output_geojson_path)
+        else:
+            raise ValueError(f"Unknown filter method: {method}")
 
     def load_data(self, filename):
         """Load data from a GeoJSON file and store it in the model."""
@@ -71,26 +89,30 @@ class LOD2DataModel:
             self.output_geojson_path = filename
         except Exception as e:
             raise Exception(f"Failed to load data from {filename}: {str(e)}")
-
-    def save_data_as_geojson(self, path=None):
-        """Save the current building data as a GeoJSON file."""
+        
+    def save_data_as_geojson(self, path, data_from_view):
+        """Save the collected data to a GeoJSON file."""
         try:
-            if not path:
-                path = self.output_geojson_path
-
             with open(self.output_geojson_path, 'r', encoding='utf-8') as file:
                 geojson_data = json.load(file)
 
-            for parent_id, info in self.building_info.items():
-                for feature in geojson_data['features']:
-                    if feature['properties'].get('parent_id') == parent_id:
-                        feature['properties'].update(info)
+            for col, feature_data in enumerate(data_from_view):
+                self.update_geojson_properties(geojson_data, feature_data, col)
 
             with open(path, 'w', encoding='utf-8') as file:
                 json.dump(geojson_data, file, ensure_ascii=False, indent=2)
 
         except Exception as e:
             raise Exception(f"Failed to save data to {path}: {str(e)}")
+
+    def update_geojson_properties(self, geojson_data, feature_data, col):
+        """Updates the properties of the GeoJSON data with the collected data."""
+        for feature in geojson_data['features']:
+            properties = feature['properties']
+            parent_id = properties.get('parent_id')
+
+            if parent_id == list(self.building_info.keys())[col]:
+                properties.update(feature_data)
 
     def process_data(self, output_geojson_path):
         """Process the loaded data to calculate required building parameters."""
@@ -102,39 +124,98 @@ class LOD2DataModel:
         if address_missing:
             self.building_info = calculate_centroid_and_geocode(self.building_info)
 
+        # Überprüfen und Laden der U-Werte für jedes Gebäude
+        for parent_id, info in self.building_info.items():
+            self.check_and_load_u_values(info)
+
+    def populateComboBoxes(self):
+        """Populates the building types and subtypes ComboBoxes."""
+        slp_df = pd.read_csv(self.get_resource_path('data\\BDEW profiles\\daily_coefficients.csv'), delimiter=';', dtype=str)
+        u_values_df = pd.read_csv(self.get_resource_path('data\\TABULA\\standard_u_values_TABULA.csv'), sep=';')
+        
+        # Für SLP-Gebäudetyp
+        self.slp_building_types = sorted(slp_df['Standardlastprofil'].str[:3].unique())
+        self.building_subtypes = {}
+        for building_type in self.slp_building_types:
+            subtypes = slp_df[slp_df['Standardlastprofil'].str.startswith(building_type)]['Standardlastprofil'].str[-2:].unique()
+            self.building_subtypes[building_type] = sorted(subtypes)
+
+        # Für TABULA-Gebäudetyp (Stelle sicher, dass diese Daten korrekt aus dem richtigen Datensatz stammen)
+        self.tabula_building_types = sorted(u_values_df['Typ'].unique().tolist())
+
+    def get_building_types(self):
+        """Get a list of building types for the ComboBox."""
+        return self.slp_building_types
+
+    def get_u_values(self, building_type, building_state):
+        """Gets the U-values based on the building type and state."""
+        u_values = self.u_values_df[(self.u_values_df['Typ'] == building_type) & (self.u_values_df['building_state'] == building_state)]
+        return (
+            u_values.iloc[0]['wall_u'] if not u_values.empty else None,
+            u_values.iloc[0]['roof_u'] if not u_values.empty else None,
+            u_values.iloc[0]['window_u'] if not u_values.empty else None,
+            u_values.iloc[0]['door_u'] if not u_values.empty else None,
+            u_values.iloc[0]['ground_u'] if not u_values.empty else None
+        )
+    
+    def check_and_load_u_values(self, info):
+        """
+        Check if U-values are already in the dataset. 
+        If not, load them based on TABULA information.
+        """
+        # Setzen von Standardwerten für Gebäudetyp und Zustand TABULA, falls nicht vorhanden
+        if 'Typ' not in info or info['Typ'] is None:
+            info['Typ'] = self.tabula_building_types[0]  # Standardwert setzen, z.B. den ersten TABULA-Typ
+        if 'Gebäudezustand' not in info or info['Gebäudezustand'] is None:
+            info['Gebäudezustand'] = 'Existing_state'  # Standardzustand setzen
+
+        # Überprüfen, ob die U-Werte None sind und ob wir sie aus den TABULA-Daten laden müssen
+        if info.get('wall_u') is None or \
+           info.get('roof_u') is None or \
+           info.get('window_u') is None or \
+           info.get('door_u') is None or \
+           info.get('ground_u') is None:
+           
+            # Ermitteln der U-Werte anhand von TABULA-Informationen
+            building_type = info.get('Typ')
+            building_state = info.get('Gebäudezustand')
+            wall_u, roof_u, window_u, door_u, ground_u = self.get_u_values(building_type, building_state)
+            
+            # Setzen der Werte in den `info`-Daten
+            info['wall_u'] = wall_u
+            info['roof_u'] = roof_u
+            info['window_u'] = window_u
+            info['door_u'] = door_u
+            info['ground_u'] = ground_u
+
     def calculate_heat_demand(self):
         """Calculate the heat demand for each building."""
         for parent_id, info in self.building_info.items():
+            # Die U-Werte und andere relevante Informationen sollten direkt aus der Tabelle gelesen werden
             u_values = {
-                'wall_u': info.get('wall_u', self.standard_values['wall_u']),
-                'roof_u': info.get('roof_u', self.standard_values['roof_u']),
-                'window_u': info.get('window_u', self.standard_values['window_u']),
-                'door_u': info.get('door_u', self.standard_values['door_u']),
-                'ground_u': info.get('ground_u', self.standard_values['ground_u']),
+                'wall_u': info.get('wall_u', None),
+                'roof_u': info.get('roof_u', None),
+                'window_u': info.get('window_u', None),
+                'door_u': info.get('door_u', None),
+                'ground_u': info.get('ground_u', None),
             }
 
+            # Berechnung der Wärmebedarfswerte basierend auf den aktuellen Werten im `info`-Daten
             building = Building(
                 ground_area=info['Ground_Area'],
                 wall_area=info['Wall_Area'],
                 roof_area=info['Roof_Area'],
-                volume=info['Volume'],
-                u_type=info.get('Typ'),
-                building_state=info.get('Gebäudezustand'),
-                filename_TRY=self.base_path,
+                building_volume=info['Volume'],
+                u_type=info.get('Typ'),  # Aus der Tabelle geladener Wert
+                building_state=info.get('Gebäudezustand'),  # Aus der Tabelle geladener Wert
+                filename_TRY=self.try_filename,
                 u_values=u_values
             )
             building.calc_yearly_heat_demand()
+            
+            # Speicherung der Ergebnisse im `info`-Daten
             info['Wärmebedarf'] = building.yearly_heat_demand
             info['Warmwasseranteil'] = building.warm_water_share
-
-    def filter_data(self, method, lod_geojson_path, filter_file_path, output_geojson_path):
-        """Filter the LOD2 data based on the specified method."""
-        if method == "Filter by Polygon":
-            spatial_filter_with_polygon(lod_geojson_path, filter_file_path, output_geojson_path)
-        elif method == "Filter by Building Data CSV":
-            filter_LOD2_with_coordinates(lod_geojson_path, filter_file_path, output_geojson_path)
-        else:
-            raise ValueError(f"Unknown filter method: {method}")
 
     def create_building_csv(self, path):
         """Create a CSV file with building data."""
@@ -151,8 +232,11 @@ class LOD2DataModel:
                 for parent_id, info in self.building_info.items():
                     row_data = self.get_building_csv_row_data(info)
                     writer.writerow(row_data)
+                    
+            QMessageBox.information(None, "Speichern erfolgreich", f"Daten wurden erfolgreich gespeichert unter: {path}")
+            
         except Exception as e:
-            raise Exception(f"Failed to create CSV file at {path}: {str(e)}")
+            QMessageBox.critical(None, "Fehler beim Speichern", f"Ein Fehler ist beim Speichern aufgetreten: {str(e)}")
 
     def get_building_csv_row_data(self, info):
         """Get the row data for the building CSV."""
@@ -173,53 +257,133 @@ class LOD2DataModel:
             info.get('Koordinate_X', ''),
             info.get('Koordinate_Y', ''),
         ]
+    
+    def get_resource_path(self, relative_path):
+        """
+        Get the absolute path to the resource, works for dev and for PyInstaller.
+        
+        Args:
+            relative_path (str): The relative path to the resource.
+        
+        Returns:
+            str: The absolute path to the resource.
+        """
+        if getattr(sys, 'frozen', False):
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        
+        return os.path.join(base_path, relative_path)
 
 class DataVisualizationPresenter(QObject):
     data_loaded = pyqtSignal(dict)
 
-    def __init__(self, model, view, data_manager):
+    def __init__(self, model, view, folder_manager, data_manager):
         super().__init__()
         self.model = model
         self.view = view
+        self.folder_manager = folder_manager
         self.data_manager = data_manager
 
-        self.data_manager.project_folder_changed.connect(self.on_project_folder_changed)
-        self.on_project_folder_changed(self.data_manager.project_folder)
+        self.folder_manager.project_folder_changed.connect(self.on_project_folder_changed)
+        self.on_project_folder_changed(self.folder_manager.project_folder)
 
         self.connect_signals()
+
+        self.model.try_filename = self.data_manager.get_try_filename()
 
     def on_project_folder_changed(self, new_base_path):
         """Updates the base path in the model when the project folder changes."""
         self.model.set_base_path(new_base_path)
+        self.model.populateComboBoxes()  # Populate ComboBox data
 
     def connect_signals(self):
         """Connects view signals to presenter slots."""
         self.view.data_selected.connect(self.highlight_building_3d)
+        self.view.u_value_updated.connect(self.update_u_values)
+        self.view.building_type_changed.connect(self.update_u_values)  # Neu: Reagiert auf Änderungen am Gebäudetyp
+        self.view.building_state_changed.connect(self.update_u_values)  # Neu: Reagiert auf Änderungen am Gebäudezustand
 
     def load_data_from_file(self):
         """Loads data from a GeoJSON file."""
         path, _ = QFileDialog.getOpenFileName(self.view, "Öffnen", self.model.get_base_path(), "GeoJSON-Dateien (*.geojson)")
         if path:
             try:
-                # Load data into the model
-                self.model.load_data(path)
-                
                 # Process the data (this includes functions like process_lod2 and calculate_centroid_and_geocode)
                 self.model.process_data(path)
                 
+                # Überprüfen und Laden der U-Werte direkt nach dem Laden der Daten
+                for parent_id, info in self.model.building_info.items():
+                    self.model.check_and_load_u_values(info)
+                
                 # Update the view with the processed data
-                self.view.update_table(self.model.building_info)
+                self.view.update_table(
+                    self.model.building_info, 
+                    self.model.get_building_types(), 
+                    self.model.tabula_building_types, 
+                    self.model.building_subtypes
+                )
                 self.view.update_3d_view(self.model.building_info)
             
             except Exception as e:
                 self.view.show_info_message("Error", f"Failed to load or process data: {str(e)}")
 
     def save_data_as_geojson(self):
-        """Saves the data as a GeoJSON file."""
-        path, _ = QFileDialog.getSaveFileName(self.view, "Speichern unter", self.model.get_base_path(), "GeoJSON-Dateien (*.geojson)")
+        """Collects data from the view and passes it to the model for saving."""
+        path, _ = QFileDialog.getSaveFileName(self.view, "Speichern unter", self.model.output_geojson_path, "GeoJSON-Dateien (*.geojson)")
         if path:
-            self.model.save_data_as_geojson(path)
-            self.view.show_info_message("Speichern erfolgreich", f"Daten wurden erfolgreich gespeichert unter: {path}")
+            try:
+                # Daten aus der View (QTableWidget) sammeln
+                data_from_view = self.collect_data_from_view()
+
+                # Übergabe der Daten an das Model zur Speicherung
+                self.model.save_data_as_geojson(path, data_from_view)
+
+                QMessageBox.information(self.view, "Speichern erfolgreich", f"Daten wurden erfolgreich gespeichert unter: {path}")
+            except Exception as e:
+                QMessageBox.critical(self.view, "Fehler beim Speichern", f"Ein Fehler ist beim Speichern aufgetreten: {str(e)}")
+
+    def collect_data_from_view(self):
+        """Collects data from the QTableWidget in the view."""
+        data = []
+        for col in range(self.view.tableWidget.columnCount()):
+            column_data = {
+                'Adresse': self.view.tableWidget.item(0, col).text().split(", ")[0],
+                'Stadt': self.view.tableWidget.item(0, col).text().split(", ")[1],
+                'Bundesland': self.view.tableWidget.item(0, col).text().split(", ")[2],
+                'Land': self.view.tableWidget.item(0, col).text().split(", ")[3],
+                'Koordinate_X': float(self.view.tableWidget.item(1, col).text()),
+                'Koordinate_Y': float(self.view.tableWidget.item(2, col).text()),
+                'Ground_Area': float(self.view.tableWidget.item(3, col).text()),
+                'Wall_Area': float(self.view.tableWidget.item(4, col).text()),
+                'Roof_Area': float(self.view.tableWidget.item(5, col).text()),
+                'Volume': float(self.view.tableWidget.item(6, col).text()),
+                'Stockwerke': int(self.view.tableWidget.item(7, col).text()) if self.view.tableWidget.item(7, col) else None,
+                'Gebäudetyp': self.view.tableWidget.cellWidget(8, col).currentText(),
+                'Subtyp': self.view.tableWidget.cellWidget(9, col).currentText(),
+                'Typ': self.view.tableWidget.cellWidget(10, col).currentText(),
+                'Gebäudezustand': self.view.tableWidget.cellWidget(11, col).currentText(),
+                'ww_demand_kWh_per_m2': float(self.view.tableWidget.item(12, col).text()) if self.view.tableWidget.item(12, col) else None,
+                'air_change_rate': float(self.view.tableWidget.item(13, col).text()) if self.view.tableWidget.item(13, col) else None,
+                'fracture_windows': float(self.view.tableWidget.item(14, col).text()) if self.view.tableWidget.item(14, col) else None,
+                'fracture_doors': float(self.view.tableWidget.item(15, col).text()) if self.view.tableWidget.item(15, col) else None,
+                'Normaußentemperatur': float(self.view.tableWidget.item(16, col).text()) if self.view.tableWidget.item(16, col) else None,
+                'room_temp': float(self.view.tableWidget.item(17, col).text()) if self.view.tableWidget.item(17, col) else None,
+                'max_air_temp_heating': float(self.view.tableWidget.item(18, col).text()) if self.view.tableWidget.item(18, col) else None,
+                'Typ_Heizflächen': self.view.tableWidget.item(24, col).text() if self.view.tableWidget.item(24, col) else None,
+                'VLT_max': float(self.view.tableWidget.item(25, col).text()) if self.view.tableWidget.item(25, col) else None,
+                'Steigung_Heizkurve': float(self.view.tableWidget.item(26, col).text()) if self.view.tableWidget.item(26, col) else None,
+                'RLT_max': float(self.view.tableWidget.item(27, col).text()) if self.view.tableWidget.item(27, col) else None,
+                'Wärmebedarf': float(self.view.tableWidget.item(28, col).text()) if self.view.tableWidget.item(28, col) else None,
+                'Warmwasseranteil': float(self.view.tableWidget.item(29, col).text()) if self.view.tableWidget.item(29, col) else None,
+                'wall_u': float(self.view.tableWidget.item(19, col).text()) if self.view.tableWidget.item(19, col) else None,
+                'roof_u': float(self.view.tableWidget.item(20, col).text()) if self.view.tableWidget.item(20, col) else None,
+                'window_u': float(self.view.tableWidget.item(21, col).text()) if self.view.tableWidget.item(21, col) else None,
+                'door_u': float(self.view.tableWidget.item(22, col).text()) if self.view.tableWidget.item(22, col) else None,
+                'ground_u': float(self.view.tableWidget.item(23, col).text()) if self.view.tableWidget.item(23, col) else None,
+            }
+            data.append(column_data)
+        return data
 
     def show_filter_dialog(self):
         """Shows the filter dialog for LOD2 data filtering."""
@@ -237,32 +401,72 @@ class DataVisualizationPresenter(QObject):
 
             self.model.filter_data(filter_method, lod_geojson_path, filter_file_path, output_geojson_path)
             self.model.process_data(output_geojson_path)
-            self.view.update_table(self.model.building_info)
+
+            # Überprüfen und Laden der U-Werte direkt nach dem Laden der Daten
+            for parent_id, info in self.model.building_info.items():
+                self.model.check_and_load_u_values(info)
+
+            self.view.update_table(
+                self.model.building_info, 
+                self.model.get_building_types(), 
+                self.model.tabula_building_types,  # Dieser Wert war vorher ausgelassen
+                self.model.building_subtypes
+            )
             self.view.update_3d_view(self.model.building_info)
 
     def calculate_heat_demand(self):
         """Calculates the heat demand for each building."""
         self.model.calculate_heat_demand()
-        self.view.update_table(self.model.building_info)
+        self.view.update_table(self.model.building_info, self.model.get_building_types(), self.model.tabula_building_types, self.model.building_subtypes)
 
     def create_building_csv(self):
         """Creates a CSV file for building data."""
         path, _ = QFileDialog.getSaveFileName(self.view, "Speichern unter", self.model.get_base_path(), "CSV-Dateien (*.csv)")
         if path:
             self.model.create_building_csv(path)
-            self.view.show_info_message("CSV-Erstellung erfolgreich", f"Gebäude-csv wurde erfolgreich erstellt: {path}")
 
     def highlight_building_3d(self, col):
         """Highlight the selected building in the 3D view."""
         parent_id = list(self.model.building_info.keys())[col]
         self.view.highlight_building_3d(parent_id)
 
+    def update_building_subtypes(self, col):
+        """Updates the subtypes ComboBox based on the selected building type."""
+        building_type = self.view.get_combobox_building_type(col)
+        subtypes = self.model.get_building_subtypes(building_type)
+        self.view.update_subtype_combobox(col, subtypes)
+
+    def update_u_values(self, col):
+        """Update U-values when the user interacts with the ComboBoxes in the view."""
+        # Aktuelle Auswahl für Gebäudetyp und Gebäudezustand TABULA abrufen
+        building_type = self.view.get_tabula_building_type(col)
+        building_state = self.view.get_building_state(col)
+
+        # U-Werte basierend auf der Auswahl neu laden
+        wall_u, roof_u, window_u, door_u, ground_u = self.model.get_u_values(building_type, building_state)
+
+        # Aktualisieren der Werte im `info`-Daten
+        parent_id = list(self.model.building_info.keys())[col]
+        info = self.model.building_info[parent_id]
+        info['wall_u'] = wall_u
+        info['roof_u'] = roof_u
+        info['window_u'] = window_u
+        info['door_u'] = door_u
+        info['ground_u'] = ground_u
+
+        # Aktualisieren der View
+        self.view.update_u_values(col, info)
+
 class LOD2DataVisualizationTab(QWidget):
-    data_selected = pyqtSignal(int)  # Signal to emit when a table column is selected
+    data_selected = pyqtSignal(int)
+    u_value_updated = pyqtSignal(int)
+    building_type_changed = pyqtSignal(int)
+    building_state_changed = pyqtSignal(int)  # Neu: Signal für Änderungen am Gebäudezustand
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.comboBoxBuildingTypesItems = []
+        self.building_types = []
         self.building_subtypes = {}
         self.initUI()
         self.visualization_3d = LOD2Visualization3D(self.canvas_3d)  # Initialize the 3D visualization handler
@@ -314,13 +518,26 @@ class LOD2DataVisualizationTab(QWidget):
             col = selected_columns[0].column()
             self.data_selected.emit(col)  # Emit the signal to inform the presenter
 
-    def update_table(self, building_info):
+    def initialize_u_values(self, building_info):
+        """Initialize the U-values for all buildings in the table after loading data."""
+        for col, (parent_id, info) in enumerate(building_info.items()):
+            # Wir gehen sicher, dass die U-Werte neu geladen werden, wenn sie None sind
+            self.update_u_values(col, info)
+
+    def update_table(self, building_info, comboBoxBuildingTypesItems, building_types, building_subtypes):
         """Update the table with new data."""
+        self.comboBoxBuildingTypesItems = comboBoxBuildingTypesItems
+        self.building_types = building_types
+        self.building_subtypes = building_subtypes
+
         self.tableWidget.setColumnCount(len(building_info))
         self.tableWidget.setHorizontalHeaderLabels([str(i + 1) for i in range(len(building_info))])
 
         for col, (parent_id, info) in enumerate(building_info.items()):
             self.update_table_column(col, info)
+
+        # Initiale Ausgabe der U-Werte nach dem Aufbau der Tabelle
+        self.initialize_u_values(building_info)
 
     def update_table_column(self, col, info):
         """Update a single column in the table."""
@@ -333,25 +550,52 @@ class LOD2DataVisualizationTab(QWidget):
         self.tableWidget.setItem(6, col, QTableWidgetItem(str(round(info['Volume'], 1))))
         self.tableWidget.setItem(7, col, QTableWidgetItem(str(info['Stockwerke'])))
 
-        comboBoxTypes = QComboBox()
-        comboBoxTypes.addItems(self.comboBoxBuildingTypesItems)
-        comboBoxTypes.setCurrentText(info['Gebäudetyp'])
-        self.tableWidget.setCellWidget(8, col, comboBoxTypes)
+        comboBoxSLPTypes = QComboBox()
+        comboBoxSLPTypes.addItems(self.comboBoxBuildingTypesItems)
+        comboBoxSLPTypes.setCurrentText(info['Gebäudetyp'])
+        comboBoxSLPTypes.currentIndexChanged.connect(lambda idx, col=col: self.building_type_changed.emit(col))
+        self.tableWidget.setCellWidget(8, col, comboBoxSLPTypes)
 
-        comboBoxSubtypes = QComboBox()
-        comboBoxSubtypes.addItems(self.building_subtypes.get(comboBoxTypes.currentText(), []))
-        comboBoxSubtypes.setCurrentText(str(info['Subtyp']))
-        self.tableWidget.setCellWidget(9, col, comboBoxSubtypes)
+        comboBoxSLPSubtypes = QComboBox()
+        comboBoxSLPSubtypes.addItems(self.building_subtypes.get(comboBoxSLPTypes.currentText(), []))
+        comboBoxSLPSubtypes.setCurrentText(str(info['Subtyp']))
+        self.tableWidget.setCellWidget(9, col, comboBoxSLPSubtypes)
 
         comboBoxBuildingTypes = QComboBox()
-        comboBoxBuildingTypes.addItems(self.comboBoxBuildingTypesItems)
+        comboBoxBuildingTypes.addItems(self.building_types)
+        comboBoxBuildingTypes.setCurrentText(info.get('Gebäudetyp'))
+        comboBoxBuildingTypes.currentIndexChanged.connect(lambda idx, col=col: self.building_type_changed.emit(col))
         self.tableWidget.setCellWidget(10, col, comboBoxBuildingTypes)
 
         comboBoxBuildingState = QComboBox()
         comboBoxBuildingState.addItems(["Existing_state", "Usual_Refurbishment", "Advanced_Refurbishment", "Individuell"])
+        comboBoxBuildingState.setCurrentText(info.get('Gebäudezustand'))
+        comboBoxBuildingState.currentIndexChanged.connect(lambda idx, col=col: self.building_state_changed.emit(col))
         self.tableWidget.setCellWidget(11, col, comboBoxBuildingState)
 
         self.set_default_or_existing_values(col, info)
+
+    def update_subtype_combobox(self, col, subtypes):
+        """Update the subtype ComboBox with the new subtypes."""
+        comboBoxSubtypes = self.tableWidget.cellWidget(9, col)
+        comboBoxSubtypes.clear()
+        comboBoxSubtypes.addItems(subtypes)
+
+    def update_u_values(self, col, info):
+        """Update U-values in the table widget based on the current selections."""
+        self.tableWidget.setItem(19, col, QTableWidgetItem(str(info.get('wall_u'))))
+        self.tableWidget.setItem(20, col, QTableWidgetItem(str(info.get('roof_u'))))
+        self.tableWidget.setItem(21, col, QTableWidgetItem(str(info.get('window_u'))))
+        self.tableWidget.setItem(22, col, QTableWidgetItem(str(info.get('door_u'))))
+        self.tableWidget.setItem(23, col, QTableWidgetItem(str(info.get('ground_u'))))
+
+    def get_tabula_building_type(self, col):
+        """Returns the currently selected TABULA building type from the ComboBox."""
+        return self.tableWidget.cellWidget(10, col).currentText()
+
+    def get_building_state(self, col):
+        """Returns the currently selected building state from the ComboBox."""
+        return self.tableWidget.cellWidget(11, col).currentText()
 
     def set_default_or_existing_values(self, col, info):
         """Set default or existing values in the table widget."""
@@ -373,6 +617,10 @@ class LOD2DataVisualizationTab(QWidget):
         self.tableWidget.setItem(27, col, QTableWidgetItem(str(info['RLT_max'])))
         self.tableWidget.setItem(28, col, QTableWidgetItem(str(info['Wärmebedarf'])))
         self.tableWidget.setItem(29, col, QTableWidgetItem(str(info['Warmwasseranteil'])))
+
+    def get_combobox_building_type(self, col):
+        """Returns the current building type from the ComboBox."""
+        return self.tableWidget.cellWidget(8, col).currentText()
 
     def update_3d_view(self, building_info):
         """Delegate the update of the 3D view to the LOD2Visualization3D class."""
