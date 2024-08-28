@@ -198,6 +198,8 @@ class DataManager:
 
     def __init__(self):
         self.map_data = []
+        self.try_filename = None  # New attribute for storing TRY filename
+        self.cop_filename = None  # New attribute for storing COP filename
 
     def add_data(self, data):
         """
@@ -216,6 +218,42 @@ class DataManager:
             list: Map data list.
         """
         return self.map_data
+    
+    def set_try_filename(self, filename):
+        """
+        Set the TRY filename.
+        
+        Args:
+            filename (str): The filename of the TRY data.
+        """
+        self.try_filename = filename
+
+    def get_try_filename(self):
+        """
+        Get the TRY filename.
+        
+        Returns:
+            str: The filename of the TRY data.
+        """
+        return self.try_filename
+
+    def set_cop_filename(self, filename):
+        """
+        Set the COP filename.
+        
+        Args:
+            filename (str): The filename of the COP data.
+        """
+        self.cop_filename = filename
+
+    def get_cop_filename(self):
+        """
+        Get the COP filename.
+        
+        Returns:
+            str: The filename of the COP data.
+        """
+        return self.cop_filename
 
 class ProjectFolderManager(QObject):
     """
@@ -257,7 +295,7 @@ class HeatSystemPresenter:
     Acts as a middleman between the Model (CentralDataManager) and the View (HeatSystemDesignGUI).
     """
 
-    def __init__(self, view, model):
+    def __init__(self, view, folder_manager, data_manager):
         """
         Initialize the HeatSystemPresenter.
         
@@ -266,13 +304,14 @@ class HeatSystemPresenter:
             model: The model instance (CentralDataManager).
         """
         self.view = view
-        self.model = model
+        self.folder_manager = folder_manager
+        self.data_manager = data_manager
 
         # Connect the model signals directly to the view updates
-        self.model.project_folder_changed.connect(self.view.update_project_folder_label)
+        self.folder_manager.project_folder_changed.connect(self.view.update_project_folder_label)
 
         # Initialize the folder label on startup
-        QTimer.singleShot(0, lambda: self.view.update_project_folder_label(self.model.project_folder))
+        QTimer.singleShot(0, lambda: self.view.update_project_folder_label(self.folder_manager.project_folder))
 
     def create_new_project(self, folder_path, project_name):
         """
@@ -288,7 +327,7 @@ class HeatSystemPresenter:
                 os.makedirs(full_path)
                 for subdir in ["Gebäudedaten", "Lastgang", "Raumanalyse", "Wärmenetz", "results"]:
                     os.makedirs(os.path.join(full_path, subdir))
-                self.model.set_project_folder(full_path)
+                self.folder_manager.set_project_folder(full_path)
                 return True
             except Exception as e:
                 self.view.show_error_message(f"Ein Fehler ist aufgetreten: {e}")
@@ -300,14 +339,14 @@ class HeatSystemPresenter:
         Open an existing project by selecting a project folder.
         """
         if folder_path:
-            self.model.set_project_folder(folder_path)
+            self.folder_manager.set_project_folder(folder_path)
 
     def create_project_variant(self):
         """
         Create a variant of the current project by copying its folder.
         """
-        base_dir = os.path.dirname(self.model.project_folder)
-        base_name = os.path.basename(self.model.project_folder)
+        base_dir = os.path.dirname(self.folder_manager.project_folder)
+        base_name = os.path.basename(self.folder_manager.project_folder)
         variant_num = 1
 
         while True:
@@ -317,8 +356,8 @@ class HeatSystemPresenter:
             variant_num += 1
 
         try:
-            shutil.copytree(self.model.project_folder, new_project_path)
-            self.model.set_project_folder(new_project_path)
+            shutil.copytree(self.folder_manager.project_folder, new_project_path)
+            self.folder_manager.set_project_folder(new_project_path)
             return True
         except Exception as e:
             self.view.show_error_message(f"Ein Fehler ist aufgetreten: {str(e)}")
@@ -377,15 +416,15 @@ class HeatSystemDesignGUI(QMainWindow):
         self.layout1.addWidget(self.folderLabel)
 
         # Initialize tabs
-        self.projectTab = ProjectTab(self.presenter.model)
-        self.buildingTab = BuildingTab(self.presenter.model, self)
-        self.visTab = VisualizationTab(self.presenter.model)
-        self.lod2Tab = LOD2Tab(self.presenter.model, self)
-        self.individualTab = IndividualTab(self.presenter.model, self)
-        self.calcTab = CalculationTab(self.presenter.model, self)
-        self.mixDesignTab = MixDesignTab(self.presenter.model, self)
-        self.renovationTab = RenovationTab(self.presenter.model, self)
-        self.comparisonTab = ComparisonTab(self.presenter.model)
+        self.projectTab = ProjectTab(self.presenter.folder_manager)
+        self.buildingTab = BuildingTab(self.presenter.folder_manager, self)
+        self.visTab = VisualizationTab(self.presenter.folder_manager)
+        self.lod2Tab = LOD2Tab(self.presenter.folder_manager, self.presenter.data_manager, self)
+        self.individualTab = IndividualTab(self.presenter.folder_manager, self)
+        self.calcTab = CalculationTab(self.presenter.folder_manager, self)
+        self.mixDesignTab = MixDesignTab(self.presenter.folder_manager, self)
+        self.renovationTab = RenovationTab(self.presenter.folder_manager, self)
+        self.comparisonTab = ComparisonTab(self.presenter.folder_manager)
 
         tabWidget.addTab(self.projectTab, "Projektdefinition")
         tabWidget.addTab(self.buildingTab, "Wärmebedarf Gebäude")
@@ -402,8 +441,8 @@ class HeatSystemDesignGUI(QMainWindow):
 
         # Connect the model signals to the view updates
         self.folder_manager.project_folder_changed.connect(self.update_project_folder_label)
-        self.presenter.model.project_folder_changed.connect(self.updateTemperatureData)
-        self.presenter.model.project_folder_changed.connect(self.updateHeatPumpData)
+        self.presenter.folder_manager.project_folder_changed.connect(self.updateTemperatureData)
+        self.presenter.folder_manager.project_folder_changed.connect(self.updateHeatPumpData)
 
     def initMenuBar(self):
         """
@@ -421,11 +460,11 @@ class HeatSystemDesignGUI(QMainWindow):
 
          # Always add the recent projects menu
         recentMenu = fileMenu.addMenu('Zuletzt geöffnet')
-        recent_projects = self.presenter.model.config_manager.get_recent_projects()
+        recent_projects = self.presenter.folder_manager.config_manager.get_recent_projects()
         if recent_projects:
             for project in recent_projects:
                 action = QAction(project, self)
-                action.triggered.connect(lambda checked, p=project: self.presenter.model.set_project_folder(p))
+                action.triggered.connect(lambda checked, p=project: self.presenter.folder_manager.set_project_folder(p))
                 recentMenu.addAction(action)
         else:
             no_recent_action = QAction('Keine kürzlich geöffneten Projekte', self)
@@ -508,7 +547,7 @@ class HeatSystemDesignGUI(QMainWindow):
             QMessageBox.information(self, "Info", "Projektvariante wurde erfolgreich erstellt.")
 
     def applyTheme(self, theme_path):
-        qss_path = self.presenter.model.config_manager.get_resource_path(theme_path)
+        qss_path = self.presenter.folder_manager.config_manager.get_resource_path(theme_path)
         if os.path.exists(qss_path):
             with open(qss_path, 'r') as file:
                 self.setStyleSheet(file.read())
@@ -534,14 +573,15 @@ class HeatSystemDesignGUI(QMainWindow):
         Update the temperature data based on the selection dialog.
         """
         TRY = self.temperatureDataDialog.getValues()
-        self.try_filename = TRY['TRY-filename']
+        self.data_manager.set_try_filename(TRY['TRY-filename'])  # Save to DataManager
 
     def updateHeatPumpData(self):
         """
         Update the heat pump data based on the selection dialog.
         """
         COP = self.heatPumpDataDialog.getValues()
-        self.cop_filename = COP['COP-filename']
+        self.data_manager.set_cop_filename(COP['COP-filename'])  # Save to DataManager
+
 
     def show_info_message(self, message):
         """
@@ -565,9 +605,12 @@ if __name__ == '__main__':
     view = HeatSystemDesignGUI(folder_manager, data_manager)
 
     # Initialize the presenter and link it to the view
-    presenter = HeatSystemPresenter(view, folder_manager)
+    presenter = HeatSystemPresenter(view, folder_manager, data_manager)
     view.set_presenter(presenter)
     view.applyTheme("styles\\win11_light.qss")
+
+    presenter.view.updateTemperatureData()
+    presenter.view.updateHeatPumpData()
 
     # Setup and show the UI
     view.initUI()
