@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMe
 from PyQt5.QtCore import pyqtSignal, QEventLoop
 from heat_generators.heat_generator_classes import *
 from gui.MixDesignTab.mix_design_dialogs import EconomicParametersDialog, NetInfrastructureDialog, WeightDialog
-from gui.threads import CalculateMixThread
+from gui.MixDesignTab.calculate_mix_thread import CalculateMixThread
 from gui.results_pdf import create_pdf
 from gui.MixDesignTab.technology_tab import TechnologyTab
 from gui.MixDesignTab.cost_tab import CostTab
