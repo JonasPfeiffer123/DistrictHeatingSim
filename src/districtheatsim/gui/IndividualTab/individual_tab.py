@@ -33,7 +33,7 @@ class IndividualTab(QWidget):
     """
     data_added = pyqtSignal(object)  # Signal that transfers data as an object
     
-    def __init__(self, data_manager, parent=None):
+    def __init__(self, folder_manager, data_manager, parent=None):
         """
         Initializes the CostTab instance.
 
@@ -42,16 +42,16 @@ class IndividualTab(QWidget):
             parent (QWidget, optional): Reference to the parent widget. Defaults to None.
         """
         super().__init__(parent)
+        self.folder_manager = folder_manager
         self.data_manager = data_manager
-        self.parent = parent
         self.results = {}
         self.tech_objects = []
         self.individual_costs = []
         self.summe_tech_kosten = 0  # Initialize the variable
 
         # Connect to the data manager signal
-        self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
-        self.updateDefaultPath(self.data_manager.project_folder)
+        self.folder_manager.project_folder_changed.connect(self.updateDefaultPath)
+        self.updateDefaultPath(self.folder_manager.project_folder)
         
         self.initUI()
 

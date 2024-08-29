@@ -67,7 +67,7 @@ class RenovationTab2(QWidget):
         Initializes the user interface.
         """
         self.setWindowTitle("Sanierungsanalyse")
-        self.setGeometry(100, 100, 1200, 800)
+        #self.setGeometry(100, 100, 1200, 800)
 
         main_layout = QVBoxLayout(self)  # Set the layout directly to 'self'
 
@@ -95,7 +95,7 @@ class RenovationTab2(QWidget):
         self.create_result_section(result_layout)
         splitter.addWidget(result_widget)
 
-        splitter.setSizes([600, 600])  # Balance the splitter sections
+        splitter.setSizes([800, 800])  # Balance the splitter sections
 
         self.setLayout(main_layout)
         self.results = {}

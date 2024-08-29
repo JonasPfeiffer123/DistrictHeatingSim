@@ -46,7 +46,7 @@ class CalculationTab(QWidget):
 
     data_added = pyqtSignal(object)
 
-    def __init__(self, data_manager, parent=None):
+    def __init__(self, folder_manager, data_manager, parent=None):
         """
         Initializes the CalculationTab with the given data manager and parent widget.
 
@@ -55,11 +55,11 @@ class CalculationTab(QWidget):
             parent: Parent widget.
         """
         super().__init__(parent)
+        self.folder_manager = folder_manager
         self.data_manager = data_manager
-        self.parent = parent
         self.calc_method = "Datensatz"
-        self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
-        self.updateDefaultPath(self.data_manager.project_folder)
+        self.folder_manager.project_folder_changed.connect(self.updateDefaultPath)
+        self.updateDefaultPath(self.folder_manager.project_folder)
         self.show_map = False
         self.map_type = None
         self.initUI()
@@ -292,8 +292,8 @@ class CalculationTab(QWidget):
         self.v_max_heat_consumer = v_max_heat_consumer
         self.building_temp_checked = building_temp_checked
         self.DiameterOpt_ckecked = DiameterOpt_ckecked
-        self.TRY_filename = self.parent.try_filename
-        self.COP_filename = self.parent.cop_filename
+        self.TRY_filename = self.data_manager.get_try_filename()
+        self.COP_filename = self.data_manager.get_cop_filename()
         args = (vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, self.COP_filename, return_temperature_heat_consumer, supply_temperature_heat_consumer, supply_temperature, flow_pressure_pump, lift_pressure_pump, \
                 netconfiguration, pipetype, v_max_pipe, material_filter, insulation_filter, self.base_path, self.dT_RL, self.v_max_heat_consumer, self.DiameterOpt_ckecked)
         kwargs = {"import_type": "GeoJSON"}

@@ -22,6 +22,12 @@ from PyQt5.QtCore import pyqtSignal, Qt
 from heat_requirement.heat_requirement_calculation_csv import generate_profiles_from_csv
 from gui.utilities import CheckableComboBox, convert_to_serializable
 
+import traceback
+import logging
+
+# Konfiguriere das Logging
+logging.basicConfig(filename='error_log.txt', level=logging.ERROR)
+
 class BuildingModel:
     """
     The BuildingModel class manages the data for the BuildingTab.
@@ -157,17 +163,16 @@ class BuildingPresenter:
         model (BuildingModel): The data model.
         view (BuildingTabView): The view for the BuildingTab.
         data_manager (object): The data manager for the application.
-        parent (QWidget, optional): The parent widget. Defaults to None.
     """
 
-    def __init__(self, model, view, data_manager, parent=None):
+    def __init__(self, model, view, folder_manager, data_manager):
         self.model = model
         self.view = view
+        self.folder_manager = folder_manager
         self.data_manager = data_manager
-        self.parent = parent
 
         # Connect to the data_manager's signal to update the base path
-        self.data_manager.project_folder_changed.connect(self.update_default_path)
+        self.folder_manager.project_folder_changed.connect(self.update_default_path)
 
         # Connect UI signals to their respective slots
         self.view.load_csv_signal.connect(self.load_csv)
@@ -181,7 +186,7 @@ class BuildingPresenter:
         self.view.building_combobox.view().pressed.connect(self.on_combobox_selection_changed)
 
         # Initialize the base path
-        self.update_default_path(self.data_manager.project_folder)
+        self.update_default_path(self.folder_manager.project_folder)
 
     def update_default_path(self, path):
         """
@@ -246,7 +251,7 @@ class BuildingPresenter:
             return
 
         try:
-            try_filename = self.parent.try_filename  # Access try_filename from the parent
+            try_filename = self.data_manager.get_try_filename()
             results = self.model.calculate_heat_demand(data, try_filename)
             self.model.results = self.format_results(results, data)
             combined_data = self.combine_data_with_results(data, self.model.results)
@@ -255,7 +260,12 @@ class BuildingPresenter:
             self.view.populate_building_combobox(self.model.results)
             self.view.plot(self.model.results)
         except Exception as e:
-            self.view.show_error_message("Fehler", str(e))
+            # Erfasse den vollständigen Traceback
+            tb_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+            # Logge den Fehler in eine Datei
+            logging.error(f"Ein Fehler ist aufgetreten:\n{tb_str}")
+            # Zeige die Fehlermeldung mit dem vollständigen Traceback
+            self.view.show_error_message("Fehler", f"Es ist ein Fehler aufgetreten: {str(e)}\n\nDetails:\n{tb_str}")
 
     def format_results(self, results, data):
         """
@@ -426,7 +436,7 @@ class BuildingTabView(QWidget):
         """
         Opens a file dialog to load a CSV file.
         """
-        fname, _ = QFileDialog.getOpenFileName(self, 'Select CSV File', f"{self.output_path_edit.text()}", 'CSV Files (*.csv);;All Files (*)')
+        fname, _ = QFileDialog.getOpenFileName(self, 'Select CSV File', f"", 'CSV Files (*.csv);;All Files (*)')
         if fname:
             self.load_csv_signal.emit(fname)
 
@@ -434,7 +444,7 @@ class BuildingTabView(QWidget):
         """
         Opens a file dialog to save the CSV file.
         """
-        fname, _ = QFileDialog.getSaveFileName(self, 'Save CSV File As', f"{self.output_path_edit.text()}", 'CSV Files (*.csv);;All Files (*)')
+        fname, _ = QFileDialog.getSaveFileName(self, 'Save CSV File As', f"", 'CSV Files (*.csv);;All Files (*)')
         if fname:
             self.save_csv_signal.emit(fname)
 
@@ -503,8 +513,10 @@ class BuildingTabView(QWidget):
             data.append(row_data)
 
         df = pd.DataFrame(data, columns=[self.table_widget.horizontalHeaderItem(i).text() for i in range(columns)])
+        # Spezifische Spalten in Strings konvertieren, wenn nötig
         if 'Subtyp' in df.columns:
             df['Subtyp'] = df['Subtyp'].astype(str)
+
         return df
 
     def populate_building_combobox(self, results):
@@ -599,13 +611,13 @@ class BuildingTab(QMainWindow):
         parent (QWidget, optional): The parent widget. Defaults to None.
     """
 
-    def __init__(self, data_manager, parent=None):
-        super().__init__()
+    def __init__(self, folder_manager, data_manager, parent=None):
+        super().__init__(parent)
         self.setWindowTitle("Building Tab Example")
         self.setGeometry(100, 100, 800, 600)
 
         self.model = BuildingModel()
         self.view = BuildingTabView()
-        self.presenter = BuildingPresenter(self.model, self.view, data_manager, parent)
+        self.presenter = BuildingPresenter(self.model, self.view, folder_manager, data_manager)
 
         self.setCentralWidget(self.view)
