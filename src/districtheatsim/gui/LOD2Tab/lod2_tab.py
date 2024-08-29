@@ -17,8 +17,6 @@ class LOD2Tab(QMainWindow):
         self.setWindowTitle("LOD2 Tab")
         self.setGeometry(100, 100, 1200, 800)
 
-        self.parent = parent
-
         # Initialize the model
         self.data_model = LOD2DataModel()
         self.plot_model = LOD2PlotModel()

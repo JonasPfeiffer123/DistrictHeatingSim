@@ -76,7 +76,7 @@ class MixDesignTab(QWidget):
     """
     data_added = pyqtSignal(object)  # Signal that transfers data as an object
     
-    def __init__(self, data_manager, parent=None):
+    def __init__(self, folder_manager, data_manager, parent=None):
         """
         Initializes the MixDesignTab instance.
 
@@ -85,8 +85,8 @@ class MixDesignTab(QWidget):
             parent (QWidget, optional): Reference to the parent widget. Defaults to None.
         """
         super().__init__(parent)
+        self.folder_manager = folder_manager
         self.data_manager = data_manager
-        self.parent = parent
         self.results = {}
         self.tech_objects = []
         
@@ -95,8 +95,8 @@ class MixDesignTab(QWidget):
         self.initUI()
 
         # Connect to the data manager signal
-        self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
-        self.updateDefaultPath(self.data_manager.project_folder)
+        self.folder_manager.project_folder_changed.connect(self.updateDefaultPath)
+        self.updateDefaultPath(self.folder_manager.project_folder)
 
     def initDialogs(self):
         """
@@ -201,10 +201,10 @@ class MixDesignTab(QWidget):
         Creates the tab widget and its sub-tabs.
         """
         self.tabWidget = QTabWidget()
-        self.techTab = TechnologyTab(self.data_manager, self)
-        self.costTab = CostTab(self.data_manager, self)
-        self.resultTab = ResultsTab(self.data_manager, self)
-        self.sensitivityTab = SensitivityTab(self.data_manager, self)
+        self.techTab = TechnologyTab(self.folder_manager, self)
+        self.costTab = CostTab(self.folder_manager, self)
+        self.resultTab = ResultsTab(self.folder_manager, self)
+        self.sensitivityTab = SensitivityTab(self.folder_manager, self)
         self.tabWidget.addTab(self.techTab, "Erzeugerdefinition")
         self.tabWidget.addTab(self.costTab, "Kostenübersicht")
         self.tabWidget.addTab(self.resultTab, "Ergebnisse")
@@ -302,8 +302,8 @@ class MixDesignTab(QWidget):
         if self.techTab.tech_objects:
             self.filename = self.techTab.FilenameInput.text()
             self.load_scale_factor = float(self.techTab.load_scale_factorInput.text())
-            self.TRY_data = import_TRY(self.parent.try_filename)
-            self.COP_data = np.genfromtxt(self.parent.cop_filename, delimiter=';')
+            self.TRY_data = import_TRY(self.data_manager.get_try_filename())
+            self.COP_data = np.genfromtxt(self.data_manager.get_cop_filename(), delimiter=';')
 
             self.calculationThread = CalculateMixThread(
                 self.filename, self.load_scale_factor, self.TRY_data, self.COP_data, self.gaspreis, 

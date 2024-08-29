@@ -64,7 +64,7 @@ def generate_profiles_from_csv(data, TRY, calc_method="Datensatz", ww_demand=0.2
             try:
                 current_building_type = str(data.at[idx, "Gebäudetyp"])
                 current_subtype = str(data.at[idx, "Subtyp"])
-                current_ww_demand = data.at[idx, "WW_Anteil"]
+                current_ww_demand = float(data.at[idx, "WW_Anteil"])
                 current_calc_method = building_type_to_method.get(current_building_type, "StandardMethode")
             except KeyError:
                 print("Building type column not found in CSV.")
