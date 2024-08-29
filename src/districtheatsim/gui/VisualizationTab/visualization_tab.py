@@ -23,7 +23,7 @@ from PyQt5.QtGui import QColor, QBrush
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 from gui.VisualizationTab.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog, SpatialAnalysisDialog, GeocodeAddressesDialog
-from gui.threads import NetGenerationThread, FileImportThread, GeocodingThread
+from gui.VisualizationTab.net_generation_threads import NetGenerationThread, FileImportThread, GeocodingThread
 
 class VisualizationModel:
     """

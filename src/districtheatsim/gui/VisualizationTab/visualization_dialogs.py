@@ -24,7 +24,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 
 from pyproj import Transformer
 
-from gui.threads import GeocodingThread
+from gui.VisualizationTab.net_generation_threads import GeocodingThread
 from geocoding.geocodingETRS89 import get_coordinates
 from osm.import_osm_data_geojson import build_query, download_data, save_to_file
 from osm.heat_supply_areas import clustering_districts_hdbscan, postprocessing_hdbscan, allocate_overlapping_area

@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QTableWidgetItem, QWidget
                              QMenu, QGridLayout)
 from PyQt5.QtCore import Qt
 
-from gui.threads import GeocodingThread
+from gui.VisualizationTab.net_generation_threads import GeocodingThread
 
 class RowInputDialog(QDialog):
     """
