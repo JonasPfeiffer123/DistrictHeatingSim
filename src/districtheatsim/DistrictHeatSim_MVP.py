@@ -423,7 +423,7 @@ class HeatSystemDesignGUI(QMainWindow):
         self.individualTab = IndividualTab(self.presenter.folder_manager, self)
         self.calcTab = CalculationTab(self.presenter.folder_manager, self)
         self.mixDesignTab = MixDesignTab(self.presenter.folder_manager, self)
-        self.renovationTab = RenovationTab(self.presenter.folder_manager, self)
+        self.renovationTab = RenovationTab(self.presenter.folder_manager, self.presenter.data_manager, self)
         self.comparisonTab = ComparisonTab(self.presenter.folder_manager)
 
         tabWidget.addTab(self.projectTab, "Projektdefinition")

@@ -1,7 +1,7 @@
 """
 Filename: RenovationTab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-08-01
+Date: 2024-08-29
 Description: Contains the main RenovationTab, container of RenovationTab1 and RenovationTab2.
 """
 
@@ -11,38 +11,47 @@ from PyQt5.QtCore import pyqtSignal
 from gui.RenovationTab.RenovationTab1 import RenovationTab1
 from gui.RenovationTab.RenovationTab2 import RenovationTab2
 
-class RenovationTab(QWidget):
+class RenovationTabPresenter:
     """
-    RenovationTab class which acts as the main container for RenovationTab1 and RenovationTab2.
-
-    Attributes:
-        data_added (pyqtSignal): Signal that emits data as an object.
-        data_manager (object): The data manager object.
-        parent (QWidget): The parent widget.
-        base_path (str): The base path for the project.
-        progressBar (QProgressBar): Progress bar widget.
-        RenovationTab1 (RenovationTab1): Instance of RenovationTab1.
-        RenovationTab2 (RenovationTab2): Instance of RenovationTab2.
+    The Presenter class for the RenovationTab, managing interaction between the Model and View.
     """
-    data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
-
-    def __init__(self, data_manager, parent=None):
-        """
-        Initialize the RenovationTab.
-
-        Args:
-            data_manager (object): The data manager.
-            parent (QWidget, optional): The parent widget. Defaults to None.
-        """
-        super().__init__(parent)
+    def __init__(self, folder_manager, data_manager, view):
+        self.folder_manager = folder_manager
         self.data_manager = data_manager
-        self.parent = parent
+        self.view = view
 
         # Connect to the data manager signal
-        self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
-        # Update the base path immediately with the current project folder
-        self.updateDefaultPath(self.data_manager.project_folder)
+        self.folder_manager.project_folder_changed.connect(self.updateDefaultPath)
 
+        # Initialize view with tabs
+        self.initTabs()
+
+    def initTabs(self):
+        """
+        Initialize the tabs with the appropriate views.
+        """
+
+        renovation_tab1 = RenovationTab1(self.folder_manager)
+        renovation_tab2 = RenovationTab2(self.folder_manager, self.data_manager)
+
+        self.view.addTab(renovation_tab1, "Wirtschaftlichkeitsrechnung Sanierung Quartier")
+        self.view.addTab(renovation_tab2, "Wirtschaftlichkeitsrechnung Sanierung Einzelgebäude")
+
+    def updateDefaultPath(self, new_base_path):
+        """
+        Update the default path for the project.
+
+        Args:
+            new_base_path (str): The new base path for the project.
+        """
+        self.view.base_path = new_base_path
+
+class RenovationTabView(QWidget):
+    """
+    The View class for the RenovationTab, responsible for displaying the UI.
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self.initUI()
 
     def initUI(self):
@@ -52,23 +61,31 @@ class RenovationTab(QWidget):
         main_layout = QVBoxLayout(self)
 
         # Create tabs
-        tabs = QTabWidget(self)
-        main_layout.addWidget(tabs)
+        self.tabs = QTabWidget(self)
+        main_layout.addWidget(self.tabs, stretch=1)  # Set stretch to 1 to use available space
 
-        self.RenovationTab1 = RenovationTab1(self.data_manager)
-        self.RenovationTab2 = RenovationTab2(self.data_manager, self.parent)
-
-        tabs.addTab(self.RenovationTab1, "Wirtschaftlichkeitsrechnung Sanierung Quartier")
-        tabs.addTab(self.RenovationTab2, "Wirtschaftlichkeitsrechnung Sanierung Einzelgebäude")
-        
         self.progressBar = QProgressBar(self)
         main_layout.addWidget(self.progressBar)
 
-    def updateDefaultPath(self, new_base_path):
+    def addTab(self, widget, title):
         """
-        Update the default path for the project.
+        Add a tab to the tab widget.
 
         Args:
-            new_base_path (str): The new base path for the project.
+            widget (QWidget): The widget to be added as a tab.
+            title (str): The title of the tab.
         """
-        self.base_path = new_base_path
+        self.tabs.addTab(widget, title)
+
+class RenovationTab(QWidget):
+    """
+    The main entry point for the RenovationTab, initializing the MVP components.
+    """
+    def __init__(self, folder_manager, data_manager, parent=None):
+        super().__init__(parent)
+
+        # Initialize View
+        self.view = RenovationTabView(self)
+
+        # Initialize Presenter
+        self.presenter = RenovationTabPresenter(folder_manager, data_manager, self.view)

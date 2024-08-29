@@ -628,7 +628,7 @@ class LOD2DataVisualizationTab(QWidget):
         Initializes the UI components of the LOD2DataVisualizationTab.
         """
         main_layout = QVBoxLayout(self)
-        data_vis_layout = QHBoxLayout(self)
+        data_vis_layout = QHBoxLayout()
         main_layout.addLayout(data_vis_layout)
 
         scroll_area = QScrollArea(self)
