@@ -90,6 +90,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QTabWidget, QMenuBar, QAction, QFileDialog, QLabel, QMessageBox, QInputDialog
 from PyQt5.QtCore import QObject, pyqtSignal, QTimer
+from PyQt5.QtGui import QIcon
 
 from gui.ProjectTab.project_tab import ProjectTab
 from gui.VisualizationTab.visualization_tab import VisualizationTab
@@ -401,6 +402,12 @@ class HeatSystemDesignGUI(QMainWindow):
         self.setWindowTitle("DistrictHeatSim")
         self.setGeometry(100, 100, 800, 600)
 
+        # Set the window icon, if available
+        icon = QIcon("styles\\logo.JPG")
+        if icon.isNull():
+            print("Icon could not be loaded.")
+        self.setWindowIcon(icon)
+
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
 
@@ -428,7 +435,7 @@ class HeatSystemDesignGUI(QMainWindow):
 
         tabWidget.addTab(self.projectTab, "Projektdefinition")
         tabWidget.addTab(self.buildingTab, "Wärmebedarf Gebäude")
-        tabWidget.addTab(self.visTab, "Verarbeitung Geodaten")
+        tabWidget.addTab(self.visTab, "Wärmenetz generieren")
         tabWidget.addTab(self.lod2Tab, "Verarbeitung LOD2-Daten")
         tabWidget.addTab(self.renovationTab, "Gebäudesanierung")
         tabWidget.addTab(self.calcTab, "Wärmenetzberechnung")
@@ -595,6 +602,7 @@ class HeatSystemDesignGUI(QMainWindow):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
+    app.setWindowIcon(QIcon("styles\\logo.JPG"))
 
     # Initialize the managers
     config_manager = ProjectConfigManager()
