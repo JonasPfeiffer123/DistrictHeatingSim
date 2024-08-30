@@ -1,8 +1,8 @@
 """
-Filename: stats_tab.py
+Filename: stat_comparison_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-08-30
-Description: Contains the StatsTab.
+Description: Contains the StatComparisonTab.
 """
 
 import os
@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QTableWidget, QTa
 
 from net_simulation_pandapipes.pp_net_time_series_simulation import import_results_csv
 
-class StatsTab(QWidget):
+class StatComparisonTab(QWidget):
     def __init__(self, folder_manager, parent=None):
         super().__init__(parent)
         self.folder_manager = folder_manager

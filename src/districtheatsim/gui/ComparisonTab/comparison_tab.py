@@ -2,14 +2,14 @@
 Filename: comparison_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-08-30
-Description: Contains the ComparisonTab.
+Description: This class is responsible for creating the main tab that holds the different comparison tabs.
 """
 
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QScrollArea, 
-                             QPushButton, QTabWidget, QHBoxLayout)
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QScrollArea, QTabWidget)
 
-from gui.ComparisonTab.stats_tab import StatsTab
+from gui.ComparisonTab.stat_comparison_tab import StatComparisonTab
+from gui.ComparisonTab.cost_comparison_tab import CostComparisonTab
+from gui.ComparisonTab.building_heat_demand_comparison_tab import BuildingHeatDemandComparisonTab
 
 class ComparisonTab(QWidget):
     def __init__(self, folder_manager, data_manager, parent=None):
@@ -33,13 +33,17 @@ class ComparisonTab(QWidget):
         self.tabWidget = QTabWidget()
         self.mainLayout.addWidget(self.tabWidget)
         
-        # Create the StatsTab and add it to the QTabWidget
-        self.statsTab = StatsTab(self.folder_manager)
-        self.tabWidget.addTab(self.statsTab, "Projektübersicht")
+        # Create the StatComparisonTab and add it to the QTabWidget
+        self.statComparisonTab = StatComparisonTab(self.folder_manager)
+        self.tabWidget.addTab(self.statComparisonTab, "Projektübersicht")
 
-        # Create different subtabs
-        self.createSubTab("Kostenvergleich")
-        self.createSubTab("Vergleich Wärmebedarf Gebäude")
+        # Create the CostComparisonTab and add it to the QTabWidget
+        self.statscostComparisonTab = CostComparisonTab(self.folder_manager)
+        self.tabWidget.addTab(self.statscostComparisonTab, "Kostenvergleich")
+
+        # Create the BuildingHeatDemandComparisonTab and add it to the QTabWidget
+        self.BHDComparisonTab = BuildingHeatDemandComparisonTab(self.folder_manager)
+        self.tabWidget.addTab(self.BHDComparisonTab, "Vergleich Wärmebedarf Gebäude")
 
         # Set the main layout
         self.setLayout(self.mainLayout)
@@ -60,14 +64,9 @@ class ComparisonTab(QWidget):
         # Create a layout for the content widget
         contentLayout = QVBoxLayout(contentWidget)
 
-        if title == "Kostenvergleich":
-            contentLayout.addWidget(QLabel("Kostenvergleich"))
-            contentLayout.addWidget(QLabel("Wärmegestehungskosten"))
-            # Additional widgets and data specific to Costs
-
-        elif title == "Vergleich Wärmebedarf Gebäude":
-            contentLayout.addWidget(QLabel("Vergleich Wärmebedarf Gebäude"))
-            contentLayout.addWidget(QLabel("Sanierungsvergleich Gebäude"))
+        #if title == "Vergleich Wärmebedarf Gebäude":
+        #    contentLayout.addWidget(QLabel("Vergleich Wärmebedarf Gebäude"))
+        #    contentLayout.addWidget(QLabel("Sanierungsvergleich Gebäude"))
             # Additional widgets and data specific to Net Length & Losses
 
         # Add the content layout to the content widget
