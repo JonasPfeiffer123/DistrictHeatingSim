@@ -1,14 +1,12 @@
 """
 Filename: lod2_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-08-28
+Date: 2024-08-30
 Description: Contains the LOD2Tab as MVP structure.
 """
 
 from PyQt5.QtWidgets import (QAction, QTabWidget, QMainWindow)
-from PyQt5.QtCore import pyqtSignal, QObject
 
-from gui.LOD2Tab.lod2_plot import LOD2PlotModel, PlotPresenter, LOD2PlotTab
 from gui.LOD2Tab.lod2_data import LOD2DataModel, DataVisualizationPresenter, LOD2DataVisualizationTab
 
 class LOD2Tab(QMainWindow):
@@ -19,20 +17,16 @@ class LOD2Tab(QMainWindow):
 
         # Initialize the model
         self.data_model = LOD2DataModel()
-        self.plot_model = LOD2PlotModel()
 
         # Initialize tabs
         self.data_vis_tab = LOD2DataVisualizationTab()
-        self.plot_tab = LOD2PlotTab()
 
         # Initialize main view
         self.view = QTabWidget()
         self.view.addTab(self.data_vis_tab, "Tabelle und Visualisierung LOD2-Daten")
-        self.view.addTab(self.plot_tab, "Balkendiagramm Wärmebedarf")
 
         # Initialize the presenters
         self.data_vis_presenter = DataVisualizationPresenter(self.data_model, self.data_vis_tab, folder_manager, data_manager)
-        self.plot_presenter = PlotPresenter(self.plot_model, self.plot_tab, folder_manager)
 
         # Create the Menu Bar
         self.menuBar = self.menuBar()
@@ -65,13 +59,3 @@ class LOD2Tab(QMainWindow):
         self.createCSVAction = QAction('Gebäude-csv für Netzgenerierung erstellen', self)
         processMenu.addAction(self.createCSVAction)
         self.createCSVAction.triggered.connect(self.data_vis_presenter.create_building_csv)
-
-        datasetMenu = self.menuBar.addMenu('Datenvergleich')
-
-        self.addDatasetAction = QAction('Datensatz hinzufügen', self)
-        datasetMenu.addAction(self.addDatasetAction)
-        self.addDatasetAction.triggered.connect(self.plot_presenter.add_dataset)
-
-        self.removeDatasetAction = QAction('Datensatz entfernen', self)
-        datasetMenu.addAction(self.removeDatasetAction)
-        self.removeDatasetAction.triggered.connect(self.plot_presenter.remove_dataset)
