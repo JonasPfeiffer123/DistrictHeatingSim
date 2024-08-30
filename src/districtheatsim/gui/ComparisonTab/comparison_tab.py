@@ -1,25 +1,25 @@
-from PyQt5.QtCore import pyqtSignal
-
 """
 Filename: comparison_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-08-01
-Description: Contains the ComparisonTab. Currently no content.
+Date: 2024-08-30
+Description: Contains the ComparisonTab.
 """
 
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QScrollArea, QPushButton)
+from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QScrollArea, 
+                             QPushButton, QTabWidget, QHBoxLayout)
+
+from gui.ComparisonTab.stats_tab import StatsTab
 
 class ComparisonTab(QWidget):
-    data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
-
-    def __init__(self, data_manager, parent=None):
+    def __init__(self, folder_manager, data_manager, parent=None):
         super().__init__(parent)
+        self.folder_manager = folder_manager
         self.data_manager = data_manager
-        self.parent = parent
 
         # Connect to the data manager signal
-        self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
-        self.updateDefaultPath(self.data_manager.project_folder)
+        self.folder_manager.project_folder_changed.connect(self.updateDefaultPath)
+        self.updateDefaultPath(self.folder_manager.project_folder)
 
         self.initUI()
 
@@ -29,77 +29,49 @@ class ComparisonTab(QWidget):
     def initUI(self):
         self.mainLayout = QVBoxLayout(self)
 
-        self.labellabel = QLabel("""Brainstorming: What is needed?
-                                 Add project button
-                                 remove project button
-                                 show stats like number of houses
-                                 heat demand
-                                 net length
-                                 net losses
-                                 costs
-                                 heat generation
-                                 heat production costs
-                                 and all the other stuff
-                                 its just enabling to output all the data
-                                 """)
-        self.mainLayout.addWidget(self.labellabel)
+        # Create a QTabWidget to hold the different comparison tabs
+        self.tabWidget = QTabWidget()
+        self.mainLayout.addWidget(self.tabWidget)
+        
+        # Create the StatsTab and add it to the QTabWidget
+        self.statsTab = StatsTab(self.folder_manager)
+        self.tabWidget.addTab(self.statsTab, "Projektübersicht")
 
+        # Create different subtabs
+        self.createSubTab("Kostenvergleich")
+        self.createSubTab("Vergleich Wärmebedarf Gebäude")
+
+        # Set the main layout
         self.setLayout(self.mainLayout)
+
+    def createSubTab(self, title):
+        subTab = QWidget()
+        subTabLayout = QVBoxLayout(subTab)
+
         # Create a scroll area to contain the content
-        self.scrollArea = QScrollArea()
-        self.scrollArea.setWidgetResizable(True)
-        self.mainLayout.addWidget(self.scrollArea)
+        scrollArea = QScrollArea()
+        scrollArea.setWidgetResizable(True)
+        subTabLayout.addWidget(scrollArea)
 
         # Create a widget to hold the content
-        self.contentWidget = QWidget()
-        self.scrollArea.setWidget(self.contentWidget)
+        contentWidget = QWidget()
+        scrollArea.setWidget(contentWidget)
 
         # Create a layout for the content widget
-        self.contentLayout = QVBoxLayout(self.contentWidget)
+        contentLayout = QVBoxLayout(contentWidget)
 
-        # Add project button
-        self.addProjectButton = QPushButton("Add Project")
-        self.addProjectButton.clicked.connect(self.addProject)
-        self.contentLayout.addWidget(self.addProjectButton)
+        if title == "Kostenvergleich":
+            contentLayout.addWidget(QLabel("Kostenvergleich"))
+            contentLayout.addWidget(QLabel("Wärmegestehungskosten"))
+            # Additional widgets and data specific to Costs
 
-        # Remove project button
-        self.removeProjectButton = QPushButton("Remove Project")
-        self.removeProjectButton.clicked.connect(self.removeProject)
-        self.contentLayout.addWidget(self.removeProjectButton)
+        elif title == "Vergleich Wärmebedarf Gebäude":
+            contentLayout.addWidget(QLabel("Vergleich Wärmebedarf Gebäude"))
+            contentLayout.addWidget(QLabel("Sanierungsvergleich Gebäude"))
+            # Additional widgets and data specific to Net Length & Losses
 
-        # Show stats
-        self.statsLabel = QLabel("Stats:")
-        self.contentLayout.addWidget(self.statsLabel)
+        # Add the content layout to the content widget
+        contentWidget.setLayout(contentLayout)
 
-        # Add other stats labels here
-        self.heatDemandLabel = QLabel("Heat Demand:")
-        self.contentLayout.addWidget(self.heatDemandLabel)
-
-        self.netLengthLabel = QLabel("Net Length:")
-        self.contentLayout.addWidget(self.netLengthLabel)
-
-        self.netLossesLabel = QLabel("Net Losses:")
-        self.contentLayout.addWidget(self.netLossesLabel)
-
-        self.costsLabel = QLabel("Costs:")
-        self.contentLayout.addWidget(self.costsLabel)
-
-        self.heatGenerationLabel = QLabel("Heat Generation:")
-        self.contentLayout.addWidget(self.heatGenerationLabel)
-
-        self.heatProductionCostsLabel = QLabel("Heat Production Costs:")
-        self.contentLayout.addWidget(self.heatProductionCostsLabel)
-
-        # Set the content layout
-        self.contentWidget.setLayout(self.contentLayout)
-
-    def addProject(self):
-        # Implement your logic to add a project here
-        # For example, you can open a file dialog to select a project file
-        # and then update the UI accordingly
-        pass
-
-    def removeProject(self):
-        # Implement your logic to remove a project here
-        # For example, you can remove the selected project from the UI
-        pass
+        # Add the subTab to the main QTabWidget
+        self.tabWidget.addTab(subTab, title)
