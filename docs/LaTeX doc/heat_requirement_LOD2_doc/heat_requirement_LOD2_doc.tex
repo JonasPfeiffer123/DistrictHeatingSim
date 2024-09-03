@@ -1,0 +1,244 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+
+\title{Berechnungsvorschriften für den Wärmebedarf eines Gebäudes}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+% Setze den Sloppy Modus ein, um den Umbruch flexibler zu gestalten
+\sloppy
+
+\section*{1. Wärmeverlust durch Transmission}
+
+Der Wärmeverlust eines Gebäudes durch Transmission kann durch die folgende Gleichung beschrieben werden:
+
+\begin{equation}
+\dot{Q}_\text{Trans} = U \cdot A \cdot \Delta T
+\end{equation}
+
+\noindent
+wobei:
+\begin{itemize}
+    \item \(\dot{Q}_\text{Trans}\): Wärmestrom (Watt, W)
+    \item \(U\): U-Wert des Bauteils (W/m²K)
+    \item \(A\): Fläche des Bauteils (m²)
+    \item \(\Delta T\): Temperaturdifferenz zwischen Innen- und Außenseite des Bauteils (K)
+\end{itemize}
+
+Für ein Gebäude summieren sich die Wärmeverluste durch alle Bauteile:
+
+\begin{equation}
+\dot{Q}_\text{Gesamt} = \sum_{i} U_i \cdot A_i \cdot \Delta T
+\end{equation}
+
+\section*{2. Wärmeverlust durch Lüftung}
+
+Der Wärmeverlust durch Lüftung wird durch den Luftaustausch zwischen Innenraum und Außenluft verursacht und ist wie folgt beschrieben:
+
+\begin{equation}
+\dot{Q}_\text{Lüftung} = 0.34 \cdot n \cdot V \cdot \Delta T
+\end{equation}
+
+\noindent
+wobei:
+\begin{itemize}
+    \item \(\dot{Q}_\text{Lüftung}\): Lüftungswärmeverlust (W)
+    \item \(n\): Luftwechselrate \(h^{-1}\)
+    \item \(V\): Volumen des Gebäudes (m³)
+    \item \(\Delta T\): Temperaturdifferenz zwischen Innen- und Außenluft (K)
+\end{itemize}
+
+\section*{3. Maximaler Heizwärmebedarf}
+
+Der maximale Heizwärmebedarf ergibt sich aus der Summe der Wärmeverluste durch Transmission und Lüftung:
+
+\begin{equation}
+Q_\text{max} = \dot{Q}_\text{Trans} + \dot{Q}_\text{Lüftung}
+\end{equation}
+
+\section*{4. Jährlicher Heizwärmebedarf}
+
+Der jährliche Heizwärmebedarf wird durch die Integration der stündlichen Heizbedarfe über das Jahr berechnet:
+
+\begin{equation}
+Q_\text{Heizung}(\text{Jahr}) = \sum_{\text{alle Stunden}} \max\left(0, m \cdot T_\text{Außen} + b\right)
+\end{equation}
+
+\noindent
+wobei:
+\begin{itemize}
+    \item \(m\): Steigung der linearen Beziehung zwischen Heizbedarf und Außentemperatur
+    \item \(T_\text{Außen}\): Außentemperatur (K)
+    \item \(b\): Y-Achsenabschnitt, abhängig von den spezifischen U-Werten und der gewünschten Raumtemperatur
+\end{itemize}
+
+\section*{5. Jährlicher Warmwasserbedarf}
+
+Der jährliche Warmwasserbedarf wird als spezifischer Verbrauch pro Quadratmeter Wohnfläche berechnet:
+
+\begin{equation}
+Q_\text{WW} = WW_\text{Bedarf} \cdot A \cdot \text{Stockwerke}
+\end{equation}
+
+\noindent
+wobei:
+\begin{itemize}
+    \item \(Q_\text{WW}\): Jährlicher Warmwasserbedarf (kWh)
+    \item \(WW_\text{Bedarf}\): Warmwasserbedarf pro Quadratmeter Wohnfläche (kWh/m²)
+    \item \(A\): Grundfläche des Gebäudes (m²)
+    \item \text{Stockwerke}: Anzahl der Stockwerke
+\end{itemize}
+
+\section*{6. Gesamtwärmebedarf}
+
+Der gesamte jährliche Wärmebedarf des Gebäudes setzt sich aus dem jährlichen Heizwärmebedarf und dem jährlichen Warmwasserbedarf zusammen:
+
+\begin{equation}
+Q_\text{Gesamt} = Q_\text{Heizung} + Q_\text{WW}
+\end{equation}
+
+Der Anteil des Warmwassers am gesamten Wärmebedarf kann berechnet werden durch:
+
+\begin{equation}
+\text{Warmwasseranteil} = \frac{Q_\text{WW}}{Q_\text{Gesamt}} \cdot 100
+\end{equation}
+
+\section*{7. Beispielrechnungen}
+
+\subsection*{Beispiel 1: Einfamilienhaus}
+
+Angenommen, ein Einfamilienhaus hat folgende Eigenschaften:
+\begin{itemize}
+    \item Grundfläche: \(A_\text{Boden} = 100 \, \text{m}^2\)
+    \item Wandfläche: \(A_\text{Wand} = 200 \, \text{m}^2\)
+    \item Dachfläche: \(A_\text{Dach} = 100 \, \text{m}^2\)
+    \item Fensterfläche: \(A_\text{Fenster} = 20 \, \text{m}^2\)
+    \item Türfläche: \(A_\text{Tür} = 5 \, \text{m}^2\)
+    \item Volumen: \(V = 400 \, \text{m}^3\)
+    \item U-Werte: 
+    {\small \( U_\text{Wand} = 0.23 \, \text{W/m}^2\text{K}, U_\text{Dach} = 0.19 \, \\
+            \text{W/m}^2\text{K}, U_\text{Fenster} = 1.3 \, \\
+            \text{W/m}^2\text{K}, U_\text{Tür} = 1.3 \, \text{W/m}^2\text{K} \)}
+    \item Luftwechselrate: \(n = 0.5 \, \text{h}^{-1}\)
+    \item Innentemperatur: \(T_\text{innen} = 20 \, \text{°C}\)
+    \item Außentemperatur: \(T_\text{außen} = -12 \, \text{°C}\) (Winter)
+\end{itemize}
+
+Berechnung der Flächen für die Wände ohne Fenster und Türen:
+
+\begin{equation}
+A_\text{Wand, eff} = A_\text{Wand} - A_\text{Fenster} - A_\text{Tür} = 200 - 20 - 5 = 175 \, \text{m}^2
+\end{equation}
+
+Berechnung der Wärmeverluste über die einzelnen Bauteile:
+
+\begin{itemize}
+    \item Wärmeverlust über die Wände:
+    \begin{equation}
+    \dot{Q}_\text{Wand} = U_\text{Wand} \cdot A_\text{Wand, eff} \cdot \Delta T = 0.23 \cdot 175 \cdot (20 - (-12)) = 835.8 \, \text{W}
+    \end{equation}
+    
+    \item Wärmeverlust über das Dach:
+    \begin{equation}
+    \dot{Q}_\text{Dach} = U_\text{Dach} \cdot A_\text{Dach} \cdot \Delta T = 0.19 \cdot 100 \cdot (20 - (-12)) = 608.4 \, \text{W}
+    \end{equation}
+    
+    \item Wärmeverlust über die Fenster:
+    \begin{equation}
+    \dot{Q}_\text{Fenster} = U_\text{Fenster} \cdot A_\text{Fenster} \cdot \Delta T = 1.3 \cdot 20 \cdot (20 - (-12)) = 832 \, \text{W}
+    \end{equation}
+    
+    \item Wärmeverlust über die Tür:
+    \begin{equation}
+    \dot{Q}_\text{Tür} = U_\text{Tür} \cdot A_\text{Tür} \cdot \Delta T = 1.3 \cdot 5 \cdot (20 - (-12)) = 208 \, \text{W}
+    \end{equation}
+    
+    \item Wärmeverlust über den Boden:
+    \begin{equation}
+    \dot{Q}_\text{Boden} = U_\text{Boden} \cdot A_\text{Boden} \cdot \Delta T = 0.31 \cdot 100 \cdot (20 - (-12)) = 992 \, \text{W}
+    \end{equation}
+\end{itemize}
+
+Der Gesamtwärmeverlust durch Transmission ist daher:
+
+\begin{equation}
+\dot{Q}_\text{Trans} = 835.8 + 608.4 + 832 + 208 + 992 = 3476.2 \, \text{W}
+\end{equation}
+
+Der Wärmeverlust durch Lüftung ist:
+
+\begin{equation}
+\dot{Q}_\text{Lüftung} = 0.34 \cdot 0.5 \cdot 400 \cdot (20 - (-12)) = 435.2 \, \text{W}
+\end{equation}
+
+Der maximale Heizwärmebedarf ist daher:
+
+\begin{equation}
+Q_\text{max} = \dot{Q}_\text{Trans} + \dot{Q}_\text{Lüftung} = 3476.2 + 435.2 = 3911.4 \, \text{W}
+\end{equation}
+
+\subsection*{Beispiel 2: Mehrfamilienhaus}
+
+Für ein Mehrfamilienhaus mit einer Grundfläche von \(A_\text{Boden} = 500 \, \text{m}^2\), einer Wandfläche von \(A_\text{Wand} = 1000 \, \text{m}^2\), einer Fensterfläche von \(A_\text{Fenster} = 100 \, \text{m}^2\), einer Türfläche von \(A_\text{Tür} = 25 \, \text{m}^2\), und einem Volumen von \(V = 2000 \, \text{m}^3\), sowie denselben U-Werten und Temperaturdifferenzen wie im vorherigen Beispiel, beträgt der maximale Heizwärmebedarf:
+
+Berechnung der Flächen für die Wände ohne Fenster und Türen:
+
+\begin{equation}
+A_\text{Wand, eff} = A_\text{Wand} - A_\text{Fenster} - A_\text{Tür} = 1000 - 100 - 25 = 875 \, \text{m}^2
+\end{equation}
+
+Berechnung der Wärmeverluste über die einzelnen Bauteile:
+
+\begin{itemize}
+    \item Wärmeverlust über die Wände:
+    \begin{equation}
+    \dot{Q}_\text{Wand} = U_\text{Wand} \cdot A_\text{Wand, eff} \cdot \Delta T = 0.23 \cdot 875 \cdot (20 - (-12)) = 4179 \, \text{W}
+    \end{equation}
+    
+    \item Wärmeverlust über das Dach:
+    \begin{equation}
+    \dot{Q}_\text{Dach} = U_\text{Dach} \cdot A_\text{Dach} \cdot \Delta T = 0.19 \cdot 500 \cdot (20 - (-12)) = 3042 \, \text{W}
+    \end{equation}
+    
+    \item Wärmeverlust über die Fenster:
+    \begin{equation}
+    \dot{Q}_\text{Fenster} = U_\text{Fenster} \cdot A_\text{Fenster} \cdot \Delta T = 1.3 \cdot 100 \cdot (20 - (-12)) = 4160 \, \text{W}
+    \end{equation}
+    
+    \item Wärmeverlust über die Türen:
+    \begin{equation}
+    \dot{Q}_\text{Tür} = U_\text{Tür} \cdot A_\text{Tür} \cdot \Delta T = 1.3 \cdot 25 \cdot (20 - (-12)) = 1040 \, \text{W}
+    \end{equation}
+    
+    \item Wärmeverlust über den Boden:
+    \begin{equation}
+    \dot{Q}_\text{Boden} = U_\text{Boden} \cdot A_\text{Boden} \cdot \Delta T = 0.31 \cdot 500 \cdot (20 - (-12)) = 4960 \, \text{W}
+    \end{equation}
+\end{itemize}
+
+Der Gesamtwärmeverlust durch Transmission ist daher:
+
+\begin{equation}
+\dot{Q}_\text{Trans} = 4179 + 3042 + 4160 + 1040 + 4960 = 17381 \, \text{W}
+\end{equation}
+
+Der Wärmeverlust durch Lüftung ist:
+
+\begin{equation}
+\dot{Q}_\text{Lüftung} = 0.34 \cdot 0.5 \cdot 2000 \cdot (20 - (-12)) = 2176 \, \text{W}
+\end{equation}
+
+Der maximale Heizwärmebedarf ist daher:
+
+\begin{equation}
+Q_\text{max} = \dot{Q}_\text{Trans} + \dot{Q}_\text{Lüftung} = 17381 + 2176 = 19557 \, \text{W}
+\end{equation}
+
+\end{document}
