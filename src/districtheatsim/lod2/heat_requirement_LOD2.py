@@ -116,9 +116,10 @@ class Building:
         # Calculate transmission heat loss
         self.transmission_heat_loss = self.total_heat_loss_per_K * self.dT_max_K
 
-        # Calculate ventilation heat loss
+        # Calculate ventilation heat loss; natural ventilation assumed and no heat recovery
         self.ventilation_heat_loss = 0.34 * self.u_values["air_change_rate"] * self.building_volume * self.dT_max_K
 
+        # Solar and internal gains are not considered in this example; they would reduce the heating demand
         # Total maximum heating demand
         self.max_heating_demand = self.transmission_heat_loss + self.ventilation_heat_loss
 
