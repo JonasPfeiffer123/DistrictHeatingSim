@@ -101,6 +101,7 @@ from gui.CalculationTab.calculation_tab import CalculationTab
 from gui.MixDesignTab.mix_design_tab import MixDesignTab
 from gui.ComparisonTab.comparison_tab import ComparisonTab
 from gui.IndividualTab.individual_tab import IndividualTab
+from gui.PVTab.pv_tab import PVTab
 
 from gui.dialogs import TemperatureDataDialog, HeatPumpDataDialog
 
@@ -432,6 +433,7 @@ class HeatSystemDesignGUI(QMainWindow):
         self.mixDesignTab = MixDesignTab(self.presenter.folder_manager, self.presenter.data_manager, self)
         self.comparisonTab = ComparisonTab(self.presenter.folder_manager, self.presenter.data_manager)
         self.individualTab = IndividualTab(self.presenter.folder_manager, self.presenter.data_manager)
+        self.pvTab = PVTab(self.presenter.folder_manager, self.presenter.data_manager)
 
         tabWidget.addTab(self.projectTab, "Projektdefinition")
         tabWidget.addTab(self.buildingTab, "Wärmebedarf Gebäude")
@@ -442,6 +444,7 @@ class HeatSystemDesignGUI(QMainWindow):
         tabWidget.addTab(self.mixDesignTab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
         tabWidget.addTab(self.comparisonTab, "Variantenvergleich")
         tabWidget.addTab(self.individualTab, "Einzelversorgungslösung")
+        tabWidget.addTab(self.pvTab, "Photovoltaik")
 
         self.temperatureDataDialog = TemperatureDataDialog(self)
         self.heatPumpDataDialog = HeatPumpDataDialog(self)

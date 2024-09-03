@@ -128,7 +128,7 @@ def Calculate_Solar_Radiation(Irradiance_hori_L, D_L, Day_of_Year_L, Longitude, 
                (1 + np.cos(deg_to_rad(Collector_tilt_angle))) +
                Irradiance_hori_L * Albedo * 0.5 * (1 - np.cos(deg_to_rad(Collector_tilt_angle))))
 
-    print("Total irradiation: " + str(round(np.sum(GT_H_Gk)/1000, 1)) + " kWh/m²")
+    #print("Total irradiation: " + str(round(np.sum(GT_H_Gk)/1000, 1)) + " kWh/m²")
 
     # Returns the total radiation intensity on the collector
     return GT_H_Gk
