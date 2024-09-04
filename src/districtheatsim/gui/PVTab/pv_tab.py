@@ -120,7 +120,7 @@ class PVTab(QMainWindow):
                         roof_orientation = float(roof_orientations[i])
 
                         # Calculate PV for the current roof segment
-                        yield_kWh, max_power, _ = Calculate_PV(
+                        yield_MWh, max_power, _ = Calculate_PV(
                             try_data_file,
                             Gross_area=roof_area,
                             Longitude=building_info['Koordinate_X'],
@@ -136,12 +136,12 @@ class PVTab(QMainWindow):
                             'Roof Area (m²)': roof_area,
                             'Slope (°)': roof_slope,
                             'Orientation (°)': roof_orientation,
-                            'Yield (kWh)': yield_kWh,
+                            'Yield (MWh)': yield_MWh,
                             'Max Power (kW)': max_power
                         })
 
                         # Add roof details as a child item to the building in the tree view
-                        self.data_vis_tab.add_roof(building_item, roof_area, roof_slope, roof_orientation, yield_kWh, max_power)
+                        self.data_vis_tab.add_roof(building_item, roof_area, roof_slope, roof_orientation, yield_MWh, max_power)
 
             # Save results to CSV
             results_df = pd.DataFrame(results)

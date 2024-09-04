@@ -227,8 +227,8 @@ class IndividualTab(QWidget):
 
     def plot(self, results=None):
         """
-        Plots the selected data types for the selected buildings.
-
+        Plots the selected data types for the selected buildings, adjusting the figure size for the legend outside.
+        
         Args:
             results (dict, optional): The results data to plot. Defaults to None.
         """
@@ -260,8 +260,15 @@ class IndividualTab(QWidget):
         ax1.set_xlabel('Time (hours)')
         ax1.set_ylabel('Heat Demand (W)')
         ax2.set_ylabel('Temperature (°C)')
-        ax1.legend(loc='upper left')
-        ax2.legend(loc='upper right')
+
+        # Legend for ax1 on the left
+        ax1.legend(loc='center right', bbox_to_anchor=(-0.2, 0.5))  # Left of the plot
+        # Legend for ax2 on the right
+        ax2.legend(loc='center left', bbox_to_anchor=(1.2, 0.5))  # Right of the plot
+
+        # Adjust layout to ensure the legends do not overlap the plot
+        self.figure.subplots_adjust(left=0.25, right=0.75, top=0.9, bottom=0.1)
+
         ax1.grid()
 
         self.canvas.draw()
