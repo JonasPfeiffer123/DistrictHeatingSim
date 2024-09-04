@@ -1,0 +1,100 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+
+\title{Fachliche Beschreibung des Berechnungsalgorithmus nach VDI 4655}
+\author{Dipl.-Ing. (FH) Jonas Pfeiffer}
+\date{2024-09-04}
+
+\begin{document}
+
+\maketitle
+
+\section*{1. Einleitung}
+Die VDI-Richtlinie 4655 beschreibt Verfahren zur Berechnung von Lastprofilen für Wohngebäude, insbesondere im Hinblick auf Heizwärme-, Warmwasser- und Strombedarfe. Das Ziel des hier beschriebenen Algorithmus ist es, diese Lastprofile auf Basis von Testreferenzjahrsdaten (TRY), Gebäude- und Haushaltsinformationen sowie Temperatur- und Wolkendaten zu erstellen.
+
+Die Methode zur Berechnung von Wärmebedarfsprofilen basiert auf einer Aufteilung des Jahresbedarfs in Viertelstundenintervalle, wobei Faktoren für typische Verbrauchstage sowie saisonale und witterungsbedingte Einflüsse berücksichtigt werden.
+
+\section*{2. Grundlage des Berechnungsalgorithmus nach VDI 4655}
+
+Die Berechnungsmethode der VDI 4655 orientiert sich an der Aufteilung des Jahresenergieverbrauchs (Heizung, Warmwasser, Strom) in detaillierte Viertelstundenprofile. Diese Profile werden durch die Kombination von Temperatur- und Wolkendaten mit typischen Verbrauchsprofilen für Gebäude- und Haushaltsarten erstellt. Die Berücksichtigung von saisonalen Schwankungen und verschiedenen Klimazonen ermöglicht eine realitätsnahe Simulation des Energieverbrauchs.
+
+\subsection*{2.1 Testreferenzjahr (TRY) und Wetterdaten}
+Die Basis der Berechnungen bildet das sogenannte Testreferenzjahr (TRY), das Wetterdaten wie stündliche Temperaturen und Bewölkungsgrade enthält. Diese Daten werden verwendet, um den Einfluss der Außenbedingungen auf den Heizwärmebedarf sowie auf den Strombedarf für die Warmwasserbereitung zu modellieren.
+
+Die Wetterdaten werden aus einer TRY-Datei eingelesen, und es werden die folgenden Größen extrahiert:
+\begin{itemize}
+    \item \textbf{Temperatur (T)}: Die stündliche Außentemperatur wird zur Berechnung des Heizbedarfs genutzt.
+    \item \textbf{Bewölkungsgrad (N)}: Der Bewölkungsgrad beeinflusst den Strombedarf für Licht und Geräte sowie den Heizbedarf.
+\end{itemize}
+
+\subsection*{2.2 Definition von Nutzungsprofilen}
+Für verschiedene Gebäudetypen und Haushaltsgrößen (z.B. Einfamilienhäuser, Mehrfamilienhäuser) werden in der VDI 4655 typische Tagesprofile definiert. Diese Profile spiegeln das Nutzungsverhalten über den Tag hinweg wider und variieren je nach Gebäudetyp, Tag (Werk-, Wochen- oder Feiertag) und Jahreszeit (Sommer, Übergangszeit, Winter).
+
+Die Jahreszeit wird anhand der durchschnittlichen Tagestemperatur \( T_{\text{avg}} \) folgendermaßen bestimmt:
+\[
+\text{Saison} = 
+\begin{cases} 
+\text{Winter (W)} & \text{wenn } T_{\text{avg}} < 5^\circ\text{C} \\
+\text{Übergangszeit (Ü)} & \text{wenn } 5^\circ\text{C} \leq T_{\text{avg}} \leq 15^\circ\text{C} \\
+\text{Sommer (S)} & \text{wenn } T_{\text{avg}} > 15^\circ\text{C} 
+\end{cases}
+\]
+
+Jeder Tag wird als Wochentag oder Wochenende/Feiertag klassifiziert, was zu einem kombinierten Profiltag führt, z.B. "WSH" (Winter, Wochentag, hoher Bewölkungsgrad).
+
+\section*{3. Berechnungsansatz nach VDI 4655}
+
+\subsection*{3.1 Jahresenergieverbrauch und Aufteilung auf tägliche Profile}
+Der Jahresenergieverbrauch (JEV) wird für Heizung, Warmwasser und Strom separat angegeben. Dieser wird auf die Tage des Jahres verteilt, wobei tages-, saison- und klimazonenspezifische Faktoren berücksichtigt werden. 
+
+Die Tagesbedarfe für Heizung und Warmwasser werden folgendermaßen berechnet:
+\[
+Q_{\text{Tag, Heizung}} = JEV_{\text{Heizung}} \cdot f_{\text{Heizung, TT}} 
+\]
+\[
+Q_{\text{Tag, WW}} = JEV_{\text{WW}} \cdot f_{\text{WW, TT}} 
+\]
+wobei:
+\begin{itemize}
+    \item \( f_{\text{Heizung, TT}} \) und \( f_{\text{WW, TT}} \) spezifische Tagesfaktoren sind, die den Einfluss der Saison, des Tages und des Klimas berücksichtigen.
+\end{itemize}
+
+\subsection*{3.2 Berechnung stündlicher und viertelstündlicher Lastprofile}
+Nachdem der tägliche Energiebedarf ermittelt wurde, wird dieser auf stündliche und viertelstündliche Intervalle verteilt. Die Aufteilung erfolgt auf Basis der in der VDI 4655 definierten Standardlastprofile, die typische Nutzungszyklen im Tagesverlauf widerspiegeln. Dabei werden für jede Viertelstunde des Tages spezifische Lastfaktoren verwendet.
+
+Für die viertelstündliche Aufteilung wird der Tagesbedarf \( Q_{\text{Tag}} \) auf 96 Viertelstunden des Tages verteilt:
+\[
+Q_{\text{15min, Heizung}} = Q_{\text{Tag, Heizung}} \cdot f_{\text{15min, Heizung}}
+\]
+\[
+Q_{\text{15min, WW}} = Q_{\text{Tag, WW}} \cdot f_{\text{15min, WW}}
+\]
+\noindent
+Hierbei ist \( f_{\text{15min}} \) der Lastfaktor, der für jede Viertelstunde eines Tages gilt.
+
+\subsection*{3.3 Korrektur der Lastprofile basierend auf tatsächlichem Verbrauch}
+Der tatsächliche Energieverbrauch kann von den Standardwerten der VDI 4655 abweichen. In diesem Fall erfolgt eine Korrektur der normierten viertelstündlichen Profile. Der korrigierte viertelstündliche Bedarf wird folgendermaßen berechnet:
+\[
+Q_{\text{15min, korr}} = \frac{Q_{\text{15min, norm}}}{\sum Q_{\text{15min, norm}}} \cdot JEV
+\]
+Hierbei wird der normierte viertelstündliche Bedarf \( Q_{\text{15min, norm}} \) so skaliert, dass er den tatsächlichen Jahresenergieverbrauch \( JEV \) berücksichtigt.
+
+\section*{4. Anwendungsbereiche des VDI 4655-Profils}
+Das VDI 4655-Verfahren wird vor allem zur Simulation und Modellierung von Energieverbrauchsprofilen in Wohngebäuden verwendet. Anwendungsbereiche sind:
+
+\begin{itemize}
+    \item \textbf{Simulation von Lastprofilen}: Ermöglicht eine detaillierte Simulation des stündlichen oder viertelstündlichen Energiebedarfs für Heizung, Warmwasser und Strom.
+    \item \textbf{Netzplanung und Dimensionierung}: Hilft bei der Planung und Dimensionierung von Heiz- und Stromnetzen, insbesondere in Fernwärme- oder Stromversorgungsnetzen.
+    \item \textbf{Optimierung der Energienutzung}: Liefert eine Basis für die Optimierung der Energienutzung und die Integration erneuerbarer Energien.
+\end{itemize}
+
+\section*{5. Zusammenfassung}
+Das VDI 4655-Verfahren bietet eine strukturierte Methode zur Berechnung von detaillierten Energieverbrauchsprofilen für Heizung, Warmwasser und Strom. Durch die Berücksichtigung von Wetterdaten, Gebäudetypen und typischen Tages- und Jahresprofilen ermöglicht es eine realitätsnahe Simulation des Energiebedarfs von Wohngebäuden.
+
+Das Verfahren ermöglicht die Erstellung viertelstündlicher Profile, die zur Netzplanung und zur Optimierung der Energieversorgung verwendet werden können. Besonders hervorzuheben ist die Anpassbarkeit des Verfahrens an unterschiedliche Klimazonen und Gebäudetypen, was es für eine Vielzahl von Anwendungsszenarien geeignet macht.
+
+\end{document}
