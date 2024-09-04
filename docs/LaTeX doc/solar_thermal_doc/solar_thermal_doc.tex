@@ -1,0 +1,105 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+
+\title{Fachliche Beschreibung des Berechnungsalgorithmus zur Berechnung der Solarthermie}
+\author{Dipl.-Ing. (FH) Jonas Pfeiffer}
+\date{2024-07-31}
+
+\begin{document}
+
+\maketitle
+
+\section*{1. Einleitung}
+
+Dieses Dokument beschreibt die Berechnungsvorschrift zur Ermittlung der thermischen Energie, die eine Solaranlage basierend auf Testreferenzjahresdaten (TRY) erzeugt. Der Algorithmus berücksichtigt sowohl die globale als auch die direkte Sonneneinstrahlung, sowie die Temperatur- und Windverhältnisse. Es werden die charakteristischen Parameter der Solarkollektoren, die Speichergrößen und die Systemverluste in die Berechnung einbezogen. 
+
+Die Berechnung erfolgt basierend auf physikalischen Modellen, die den Energiefluss durch die Solarkollektoren, die Wärmeübertragung im Speicher und die Rohrleitungsverluste abbilden.
+
+\section*{2. Eingabeparameter}
+
+Die Funktion \texttt{Berechnung\_STA} verwendet die folgenden Eingabeparameter:
+
+\begin{itemize}
+    \item \textbf{Bruttofläche\_STA}: Die Bruttofläche der Solaranlage in Quadratmetern.
+    \item \textbf{VS}: Speichervolumen der Solaranlage in Litern.
+    \item \textbf{Typ}: Der Typ der Solaranlage (\texttt{"Flachkollektor"} oder \texttt{"Vakuumröhrenkollektor"}).
+    \item \textbf{Last\_L}: Array des Lastprofils in Watt.
+    \item \textbf{VLT\_L, RLT\_L}: Vorlauf- und Rücklauftemperaturprofil.
+    \item \textbf{TRY}: Testreferenzjahr-Daten (Temperatur, Windgeschwindigkeit, Direktstrahlung, Globalstrahlung).
+    \item \textbf{time\_steps}: Zeitstempel.
+    \item \textbf{Longitude, Latitude}: Geografische Koordinaten des Standorts.
+    \item \textbf{Albedo}: Reflektionsgrad der Umgebung.
+    \item \textbf{Tsmax}: Maximale Speichertemperatur in Grad Celsius.
+    \item \textbf{East\_West\_collector\_azimuth\_angle, Collector\_tilt\_angle}: Azimut- und Neigungswinkel des Kollektors.
+\end{itemize}
+
+Die Parameter wie Vorwärmung, Temperaturdifferenzen in Wärmetauschern und Speichervolumen können optional angepasst werden.
+
+\section*{3. Berechnungsschritte}
+
+\subsection*{3.1 Anpassung der Testreferenzjahr-Daten}
+
+Zuerst werden die stündlichen Daten des Testreferenzjahres, wie Temperatur, Windgeschwindigkeit und Strahlungsdaten, auf das kleinste Zeitintervall der Eingabedaten (\texttt{time\_steps}) angepasst. Dies geschieht durch Wiederholung der stündlichen Daten entsprechend dem Intervall. Anschließend werden die Daten in Arrays umgewandelt, die dem Zeitstempel der Berechnung entsprechen.
+
+\subsection*{3.2 Solarkollektoren und ihre Eigenschaften}
+
+Je nach Kollektortyp (\texttt{Flachkollektor} oder \texttt{Vakuumröhrenkollektor}) werden verschiedene Kollektoreigenschaften wie die optische Effizienz, Wärmekoeffizienten und Aperaturflächen verwendet. Beispielsweise werden für Flachkollektoren die Eigenschaften des \texttt{Vitosol 200-F XL13} verwendet:
+\[
+\eta_0 = 0.763, \quad K_{\theta,\text{diff}} = 0.931, \quad c_1 = 1.969, \quad c_2 = 0.015
+\]
+
+Für Vakuumröhrenkollektoren werden spezifische Eigenschaften wie der optische Wirkungsgrad \( \eta_0 \), sowie die Wärmeverluste \( a_1 \) und \( a_2 \) berücksichtigt. Diese Parameter werden verwendet, um die Kollektorleistung zu berechnen, abhängig von den Umgebungsbedingungen und der Strahlung.
+
+\subsection*{3.3 Berechnung der Solarstrahlung}
+
+Die Funktion \texttt{Berechnung\_Solarstrahlung}, die in einem separaten Skript definiert ist, wird aufgerufen, um die direkte, diffuse und reflektierte Strahlung auf die geneigte Oberfläche zu berechnen. Diese Funktion verwendet geometrische Modelle zur Bestimmung des Einfallswinkels der Sonnenstrahlen auf die Kollektorfläche und berechnet den Strahlungsfluss unter Berücksichtigung der Neigungs- und Azimutwinkel des Kollektors.
+
+Die Rückgabe dieser Funktion umfasst:
+\begin{itemize}
+    \item \textbf{GT\_H\_Gk}: Die Gesamtstrahlung auf der geneigten Oberfläche.
+    \item \textbf{GbT}: Direkte Strahlung auf der geneigten Fläche.
+    \item \textbf{GdT\_H\_Dk}: Diffuse Strahlung auf der geneigten Fläche.
+    \item \textbf{K\_beam}: Modifizierte Strahlungsintensität durch den Einfallswinkel.
+\end{itemize}
+
+\subsection*{3.4 Berechnung der Kollektorfeldleistung}
+
+Die Leistung des Kollektorfelds wird berechnet, indem der Wirkungsgrad des Kollektors und die auf die geneigte Fläche einfallende Strahlung verwendet werden. Die Berechnung der Leistung für die Kollektorfläche erfolgt unter Berücksichtigung von Strahlungsverlusten, Kollektoreffizienz und thermischen Verlusten:
+\[
+P_{\text{Kollektor}} = \left( \eta_0 \cdot K_{\theta,\text{beam}} \cdot G_b + \eta_0 \cdot K_{\theta,\text{diff}} \cdot G_d \right) - c_1 \cdot (T_{\text{m}} - T_{\text{Luft}}) - c_2 \cdot (T_{\text{m}} - T_{\text{Luft}})^2
+\]
+Dabei ist \( G_b \) die direkte Strahlung und \( G_d \) die diffuse Strahlung, während \( c_1 \) und \( c_2 \) die Wärmeverluste des Kollektors darstellen. \( T_{\text{m}} \) ist die mittlere Temperatur im Kollektor und \( T_{\text{Luft}} \) die Umgebungstemperatur.
+
+\subsection*{3.5 Berechnung der Rohrleitungsverluste}
+
+Die Verluste in den Verbindungsleitungen werden unter Berücksichtigung der Rohrlänge, des Durchmessers und der Wärmedurchgangskoeffizienten berechnet. Die Formel zur Berechnung der Verluste in den erdverlegten Rohren ist wie folgt:
+\[
+P_{\text{RVT}} = L_{\text{Rohr}} \cdot \left( \frac{2 \pi \cdot D_{\text{Rohr}} \cdot K_{\text{Rohr}}}{\log\left( \frac{D_{\text{Rohr}}}{2} \right)} \right) \cdot (T_{\text{Vorlauf}} - T_{\text{Luft}})
+\]
+
+\subsection*{3.6 Speicherberechnung}
+
+Das Speichervolumen und die Temperatur des Speichers beeinflussen die Menge der nutzbaren Wärmeenergie. Die gespeicherte Wärmemenge wird anhand der Wärmekapazität und der Temperaturdifferenz berechnet:
+\[
+Q_{\text{Speicher}} = m_{\text{Speicher}} \cdot c_p \cdot \Delta T
+\]
+wobei \( m_{\text{Speicher}} \) die Masse des Wassers im Speicher ist, \( c_p \) die spezifische Wärmekapazität von Wasser (ca. 4.18 kJ/kgK) und \( \Delta T \) die Temperaturdifferenz zwischen der Vorlauf- und Rücklauftemperatur darstellt.
+
+\subsection*{3.7 Wärmeoutput und Stagnation}
+
+Der Wärmeoutput der Solaranlage wird als Funktion der Kollektorleistung und der Speicherverluste berechnet. Falls die Speichertemperatur das zulässige Maximum erreicht, tritt Stagnation auf, und die Kollektorfeldertrag wird auf null gesetzt.
+
+Der Gesamtwärmeoutput wird über die Simulationszeit summiert:
+\[
+Q_{\text{output}} = \sum_{i=1}^{n} \frac{P_{\text{Kollektor},i} \cdot \Delta t}{1000}
+\]
+Dabei ist \( P_{\text{Kollektor},i} \) die Kollektorleistung zum Zeitpunkt \( i \), und \( \Delta t \) die Zeitschrittweite.
+
+\section*{4. Schlussfolgerung}
+
+Dieser Berechnungsalgorithmus ermöglicht die genaue Bestimmung der thermischen Energie, die von einer Solarthermieanlage erzeugt wird. Er berücksichtigt die Effizienz des Kollektors, die Umweltbedingungen und die Systemverluste, um den Gesamtenergieertrag und die Speicherperformance zu berechnen. Die Ergebnisse können zur Optimierung von Solaranlagen und deren Integration in Fernwärmenetze genutzt werden.
+\end{document}
