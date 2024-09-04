@@ -310,7 +310,7 @@ class PVDataVisualizationTab(QWidget):
         scroll_layout = QVBoxLayout(scroll_content)
 
         self.treeWidget = QTreeWidget(self)
-        self.treeWidget.setHeaderLabels(['Gebäude/Dach', 'Dachfläche (m²)', 'Dachneigung (°)', 'Dachausrichtung (°)', 'Yield (kWh)', 'Max Power (kW)'])
+        self.treeWidget.setHeaderLabels(['Gebäude/Dach', 'Dachfläche (m²)', 'Dachneigung (°)', 'Dachausrichtung (°)', 'Yield (MWh)', 'Max Power (kW)'])
         scroll_layout.addWidget(self.treeWidget)
 
         self.figure_3d = plt.figure()
@@ -325,14 +325,14 @@ class PVDataVisualizationTab(QWidget):
         building_item.setText(1, f'UTM_X: {koordinate_x}, UTM_Y: {koordinate_y}')
         return building_item
 
-    def add_roof(self, building_item, roof_area, roof_slope, roof_orientation, yield_kWh, max_power):
+    def add_roof(self, building_item, roof_area, roof_slope, roof_orientation, yield_MWh, max_power):
         """Add a roof entry under a building in the tree view."""
         roof_item = QTreeWidgetItem(building_item)
         roof_item.setText(0, 'Dach')
         roof_item.setText(1, f'{roof_area:.2f}')
         roof_item.setText(2, f'{roof_slope:.2f}')
         roof_item.setText(3, f'{roof_orientation:.2f}')
-        roof_item.setText(4, f'{yield_kWh:.2f}')
+        roof_item.setText(4, f'{yield_MWh:.2f}')
         roof_item.setText(5, f'{max_power:.2f}')
 
     def display_data(self, building_info):
