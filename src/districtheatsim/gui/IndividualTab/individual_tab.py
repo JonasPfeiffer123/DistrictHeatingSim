@@ -247,11 +247,11 @@ class IndividualTab(QWidget):
             value = results[key]
 
             if "Heat Demand" in selected_data_types:
-                ax1.plot(value["lastgang_wärme"], label=f'Building {key} Heat Demand')
+                ax1.plot(value["wärme"], label=f'Building {key} Heat Demand')
             if "Heating Demand" in selected_data_types:
-                ax1.plot(value["heating_wärme"], label=f'Building {key} Heating Demand', linestyle='--')
+                ax1.plot(value["heizwärme"], label=f'Building {key} Heating Demand', linestyle='--')
             if "Warmwater Demand" in selected_data_types:
-                ax1.plot(value["warmwater_wärme"], label=f'Building {key} Warmwater Demand', linestyle=':')
+                ax1.plot(value["warmwasserwärme"], label=f'Building {key} Warmwater Demand', linestyle=':')
             if "Supply Temperature" in selected_data_types:
                 ax2.plot(value["vorlauftemperatur"], label=f'Building {key} Supply Temp', linestyle='-.')
             if "Return Temperature" in selected_data_types:

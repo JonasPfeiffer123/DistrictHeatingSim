@@ -286,7 +286,7 @@ class BuildingPresenter:
                 "außentemperatur": results[-1].tolist(),
                 "wärme": results[1][idx].tolist(),
                 "heizwärme": results[2][idx].tolist(),
-                "warnwasserwärme": results[3][idx].tolist(),
+                "warmwasserwärme": results[3][idx].tolist(),
                 "max_last": results[4].tolist(),
                 "vorlauftemperatur": results[5][idx].tolist(),
                 "rücklauftemperatur": results[6][idx].tolist(),
@@ -483,9 +483,15 @@ class BuildingTabView(QWidget):
         for row in range(rows):
             row_data = []
             for column in range(columns):
-                if self.table_widget.cellWidget(row, column):
-                    row_data.append(self.table_widget.cellWidget(row, column).currentText())
+                widget = self.table_widget.cellWidget(row, column)
+                if widget:
+                    # Check if the widget is a QComboBox (for example) or QLineEdit and handle accordingly
+                    if isinstance(widget, QComboBox):
+                        row_data.append(widget.currentText())
+                    elif isinstance(widget, QLineEdit):
+                        row_data.append(widget.text())
                 else:
+                    # If no widget, get the text from the item directly
                     item = self.table_widget.item(row, column)
                     if item and item.text():
                         row_data.append(item.text())
@@ -494,6 +500,7 @@ class BuildingTabView(QWidget):
             data.append(row_data)
 
         df = pd.DataFrame(data, columns=[self.table_widget.horizontalHeaderItem(i).text() for i in range(columns)])
+
         # Spezifische Spalten in Strings konvertieren, wenn nötig
         if 'Subtyp' in df.columns:
             df['Subtyp'] = df['Subtyp'].astype(str)

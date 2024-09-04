@@ -54,14 +54,6 @@ Ergebnispräsentation:
     --> Feedback welche Daten geladen sind und ausgegeben werden.
 - PDF-Ausgabe noch weiter ausarbeiten und visuell verbessern.
 
-Variantenvergleich:
-- Aktuelle Variante ist geladen.
-- Zu vergleichende Variante(n) können zusätzlich ausgewählt werden. (Projektordner)
-- Möglichkeiten Ergebnisse zu vergleichen.
-    --> Alles Mögliche.
-    - Tabellarischer und visueller Vergleich von Daten wie Wärmebedarfen, Temperaturen, Netzdimensionen, Erzeugern und Kosten.
-- sehr cool wenn unsaniert und saniert gegenübergestellt werden kann.
-
 Einzelversorgungslösung:
 - Ausgehend von berechnetem Gebäudelastgang
 - Einfach als Auswahloption in Wirtschaftlichkeitsrechnung / Erzeugerauslegung?
