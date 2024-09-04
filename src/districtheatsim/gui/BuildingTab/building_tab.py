@@ -14,9 +14,9 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QFileDialog, QLabel, QMessageBox, QApplication, 
-                             QMainWindow, QTableWidget, QTableWidgetItem, QHeaderView, QComboBox, QScrollArea,
-                             QMenuBar, QAction, QLineEdit)
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QFileDialog, QLabel, QMessageBox,
+                             QMainWindow, QTableWidget, QTableWidgetItem, QHeaderView, QComboBox, 
+                             QScrollArea, QMenuBar, QAction, QLineEdit, QAbstractScrollArea, QHBoxLayout)
 from PyQt5.QtCore import pyqtSignal, Qt
 
 from heat_requirement.heat_requirement_calculation_csv import generate_profiles_from_csv
@@ -105,7 +105,7 @@ class BuildingModel:
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 loaded_data = json.load(f)
-                self.results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and 'lastgang_wärme' in v}
+                self.results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and 'wärme' in v}
         except Exception as e:
             raise Exception(f"Fehler beim Laden der JSON-Datei: {e}")
 
@@ -252,7 +252,7 @@ class BuildingPresenter:
 
         try:
             try_filename = self.data_manager.get_try_filename()
-            results = self.model.calculate_heat_demand(data, try_filename)
+            results = self.model.calculate_heat_demand(data, try_filename) # returns yearly_time_steps, total_heat_W, heating_heat_W, warmwater_heat_W, max_heat_requirement_W, supply_temperature_curve, return_temperature_curve, hourly_air_temperatures
             self.model.results = self.format_results(results, data)
             combined_data = self.combine_data_with_results(data, self.model.results)
             self.model.save_json(output_path, combined_data)
@@ -284,12 +284,12 @@ class BuildingPresenter:
             formatted_results[building_id] = {
                 "zeitschritte": [convert_to_serializable(ts) for ts in results[0]],
                 "außentemperatur": results[-1].tolist(),
-                "lastgang_wärme": results[1][idx].tolist(),
-                "heating_wärme": results[2][idx].tolist(),
-                "warmwater_wärme": results[3][idx].tolist(),
-                "vorlauftemperatur": results[4][idx].tolist(),
-                "rücklauftemperatur": results[5][idx].tolist(),
-                "heizlast": results[-2].tolist(),
+                "wärme": results[1][idx].tolist(),
+                "heizwärme": results[2][idx].tolist(),
+                "warnwasserwärme": results[3][idx].tolist(),
+                "max_last": results[4].tolist(),
+                "vorlauftemperatur": results[5][idx].tolist(),
+                "rücklauftemperatur": results[6][idx].tolist(),
             }
             for key, value in data.iloc[idx].items():
                 formatted_results[building_id][key] = convert_to_serializable(value)
@@ -341,67 +341,55 @@ class BuildingTabView(QWidget):
 
     def initUI(self):
         """
-        Initializes the UI components.
+        Initializes the optimized UI components with improved layout and functionality.
         """
-        scroll_area = QScrollArea(self)
-        scroll_area.setWidgetResizable(True)
-
-        container_widget = QWidget()
-        scroll_area.setWidget(container_widget)
-
-        self.main_layout = QVBoxLayout(container_widget)
+        self.main_layout = QVBoxLayout(self)
         self.initMenuBar()
 
+        # Data table area
         self.table_widget = QTableWidget(self)
+        self.table_widget.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
         self.main_layout.addWidget(self.table_widget)
 
-        # Add output path widgets
-        self.output_path_layout = QVBoxLayout()
-        self.output_path_label = QLabel("Output JSON File:")
-        self.output_path_edit = QLineEdit(f"")
+        # Output path layout (more compact with better labels)
+        output_path_layout = QHBoxLayout()
+        output_path_layout.addWidget(QLabel("Output JSON File:"))
+        self.output_path_edit = QLineEdit("")
+        output_path_layout.addWidget(self.output_path_edit)
         self.output_path_button = QPushButton("Browse")
         self.output_path_button.clicked.connect(self.browseOutputFile)
+        output_path_layout.addWidget(self.output_path_button)
+        self.main_layout.addLayout(output_path_layout)
 
-        self.output_path_layout.addWidget(self.output_path_label)
-        self.output_path_layout.addWidget(self.output_path_edit)
-        self.output_path_layout.addWidget(self.output_path_button)
-        self.main_layout.addLayout(self.output_path_layout)
-
-        # Initialize the plot area
+        # Plot area (with toolbar and interaction improvements)
         self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)
-        self.canvas.setMinimumSize(400, 400)
         self.toolbar = NavigationToolbar(self.canvas, self)
-
         self.main_layout.addWidget(self.canvas)
         self.main_layout.addWidget(self.toolbar)
 
-        # Initialize the comboboxes for data selection
+        # Data selection comboboxes (streamlined with clearer labels)
         self.data_type_combobox = CheckableComboBox(self)
-        self.data_type_combobox.addItem("Heat Demand")
-        self.data_type_combobox.addItem("Heating Demand")
-        self.data_type_combobox.addItem("Warmwater Demand")
-        self.data_type_combobox.addItem("Supply Temperature")
-        self.data_type_combobox.addItem("Return Temperature")
-
-        item = self.data_type_combobox.model().item(0)
-        item.setCheckState(Qt.Checked)
-        
-        self.building_combobox = CheckableComboBox(self)
-        
-        self.main_layout.addWidget(QLabel("Select Data Types"))
+        for data_type in ["Heat Demand", "Heating Demand", "Warmwater Demand", "Supply Temperature", "Return Temperature"]:
+            self.data_type_combobox.addItem(data_type)
+        self.main_layout.addWidget(QLabel("Select Data Types:"))
         self.main_layout.addWidget(self.data_type_combobox)
-        self.main_layout.addWidget(QLabel("Select Buildings"))
+
+        self.building_combobox = CheckableComboBox(self)
+        self.main_layout.addWidget(QLabel("Select Buildings:"))
         self.main_layout.addWidget(self.building_combobox)
 
-        container_widget.setLayout(self.main_layout)
-        final_layout = QVBoxLayout(self)
-        final_layout.addWidget(scroll_area)
-        self.setLayout(final_layout)
+        self.setLayout(self.main_layout)
+
+        # Initialize the data type comboboxes for the first time with the first item checked (heat demand)
+        self.data_type_combobox.model().item(0).setCheckState(Qt.Checked)
+
+        # Initialize the building combobox for the first time with the first item checked (Building 0)
+        #self.building_combobox.model().item(0).setCheckState(Qt.Checked)
 
     def initMenuBar(self):
         """
-        Initializes the menu bar with actions.
+        Initializes a cleaner menu bar with distinct separation from the rest of the layout.
         """
         self.menubar = QMenuBar(self)
         self.menubar.setFixedHeight(30)
@@ -428,7 +416,7 @@ class BuildingTabView(QWidget):
         """
         Opens a file dialog to select the output JSON file.
         """
-        fname, _ = QFileDialog.getSaveFileName(self, 'Save JSON File As', f"{self.output_path_edit.text()}", 'JSON Files (*.json);;All Files (*)')
+        fname, _ = QFileDialog.getSaveFileName(self, 'Save JSON File As', self.output_path_edit.text(), 'JSON Files (*.json);;All Files (*)')
         if fname:
             self.output_path_edit.setText(fname)
 
@@ -436,7 +424,7 @@ class BuildingTabView(QWidget):
         """
         Opens a file dialog to load a CSV file.
         """
-        fname, _ = QFileDialog.getOpenFileName(self, 'Select CSV File', f"", 'CSV Files (*.csv);;All Files (*)')
+        fname, _ = QFileDialog.getOpenFileName(self, 'Select CSV File', f"{self.base_path}/Gebäudedaten", 'CSV Files (*.csv);;All Files (*)')
         if fname:
             self.load_csv_signal.emit(fname)
 
@@ -444,7 +432,7 @@ class BuildingTabView(QWidget):
         """
         Opens a file dialog to save the CSV file.
         """
-        fname, _ = QFileDialog.getSaveFileName(self, 'Save CSV File As', f"", 'CSV Files (*.csv);;All Files (*)')
+        fname, _ = QFileDialog.getSaveFileName(self, 'Save CSV File As', f"{self.base_path}/Gebäudedaten", 'CSV Files (*.csv);;All Files (*)')
         if fname:
             self.save_csv_signal.emit(fname)
 
@@ -452,13 +440,13 @@ class BuildingTabView(QWidget):
         """
         Opens a file dialog to load a JSON file.
         """
-        fname, _ = QFileDialog.getOpenFileName(self, 'Select JSON File', f"{self.output_path_edit.text()}", 'JSON Files (*.json);;All Files (*)')
+        fname, _ = QFileDialog.getOpenFileName(self, 'Select JSON File', self.output_path_edit.text(), 'JSON Files (*.json);;All Files (*)')
         if fname:
             self.load_json_signal.emit(fname)
 
     def calculateHeatDemand(self):
         """
-        Emits a signal to calculate heat demand and save the results.
+        Emits a signal to calculate heat demand.
         """
         output_path = self.output_path_edit.text()
         self.calculate_heat_demand_signal.emit(output_path)
@@ -476,17 +464,10 @@ class BuildingTabView(QWidget):
 
         for i in range(len(data.index)):
             for j in range(len(data.columns)):
-                if data.columns[j] in ["Gebäudetyp", "Subtyp"]:
-                    combobox = QComboBox()
-                    combobox.addItem(str(data.iat[i, j]))
-                    self.table_widget.setCellWidget(i, j, combobox)
-                else:
-                    self.table_widget.setItem(i, j, QTableWidgetItem(str(data.iat[i, j])))
+                item = QTableWidgetItem(str(data.iat[i, j]))
+                self.table_widget.setItem(i, j, item)
 
         self.table_widget.resizeColumnsToContents()
-        self.table_widget.resizeRowsToContents()
-        self.table_widget.horizontalHeader().setStretchLastSection(True)
-        self.table_widget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
     def get_table_data(self):
         """
@@ -534,8 +515,8 @@ class BuildingTabView(QWidget):
 
     def plot(self, results=None):
         """
-        Plots the selected data types for the selected buildings.
-
+        Plots the selected data types for the selected buildings, adjusting the figure size for the legend outside.
+        
         Args:
             results (dict, optional): The results data to plot. Defaults to None.
         """
@@ -554,11 +535,11 @@ class BuildingTabView(QWidget):
             value = results[key]
 
             if "Heat Demand" in selected_data_types:
-                ax1.plot(value["lastgang_wärme"], label=f'Building {key} Heat Demand')
+                ax1.plot(value["wärme"], label=f'Building {key} Heat Demand')
             if "Heating Demand" in selected_data_types:
-                ax1.plot(value["heating_wärme"], label=f'Building {key} Heating Demand', linestyle='--')
+                ax1.plot(value["heizwärme"], label=f'Building {key} Heating Demand', linestyle='--')
             if "Warmwater Demand" in selected_data_types:
-                ax1.plot(value["warmwater_wärme"], label=f'Building {key} Warmwater Demand', linestyle=':')
+                ax1.plot(value["warmwasserwärme"], label=f'Building {key} Warmwater Demand', linestyle=':')
             if "Supply Temperature" in selected_data_types:
                 ax2.plot(value["vorlauftemperatur"], label=f'Building {key} Supply Temp', linestyle='-.')
             if "Return Temperature" in selected_data_types:
@@ -567,8 +548,15 @@ class BuildingTabView(QWidget):
         ax1.set_xlabel('Time (hours)')
         ax1.set_ylabel('Heat Demand (W)')
         ax2.set_ylabel('Temperature (°C)')
-        ax1.legend(loc='upper left')
-        ax2.legend(loc='upper right')
+
+        # Legend for ax1 on the left
+        ax1.legend(loc='center right', bbox_to_anchor=(-0.2, 0.5))  # Left of the plot
+        # Legend for ax2 on the right
+        ax2.legend(loc='center left', bbox_to_anchor=(1.2, 0.5))  # Right of the plot
+
+        # Adjust layout to ensure the legends do not overlap the plot
+        self.figure.subplots_adjust(left=0.25, right=0.75, top=0.9, bottom=0.1)
+
         ax1.grid()
 
         self.canvas.draw()
@@ -596,11 +584,12 @@ class BuildingTabView(QWidget):
     def update_output_path(self, path):
         """
         Updates the output path in the view.
-
+        
         Args:
             path (str): The new output path.
         """
-        self.output_path_edit.setText(f"{path}/Lastgang/Gebäude Lastgang.json")
+        self.base_path = path  # Update the base path
+        self.output_path_edit.setText(f"{self.base_path}/Lastgang/Gebäude Lastgang.json")
 
 class BuildingTab(QMainWindow):
     """
