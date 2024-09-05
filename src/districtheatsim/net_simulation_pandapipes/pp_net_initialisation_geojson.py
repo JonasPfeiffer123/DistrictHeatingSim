@@ -73,12 +73,12 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, COP
 
     # Extract data arrays
     yearly_time_steps = np.array(df["zeitschritte"].values[0]).astype(np.datetime64)
-    waerme_gebaeude_ges_W = np.array([results[str(i)]["lastgang_wärme"] for i in range(len(results))])
-    heizwaerme_gebaeude_ges_W = np.array([results[str(i)]["heating_wärme"] for i in range(len(results))])
-    ww_waerme_gebaeude_ges_W = np.array([results[str(i)]["warmwater_wärme"] for i in range(len(results))])
+    waerme_gebaeude_ges_W = np.array([results[str(i)]["lastgang_wärme"] for i in range(len(results))])*1000
+    heizwaerme_gebaeude_ges_W = np.array([results[str(i)]["heating_wärme"] for i in range(len(results))])*1000
+    ww_waerme_gebaeude_ges_W = np.array([results[str(i)]["warmwater_wärme"] for i in range(len(results))])*1000
     supply_temperature_building_curve = np.array([results[str(i)]["vorlauftemperatur"] for i in range(len(results))])
     return_temperature_building_curve = np.array([results[str(i)]["rücklauftemperatur"] for i in range(len(results))])
-    max_waerme_gebaeude_ges_W = results["0"]["heizlast"]
+    max_waerme_gebaeude_ges_W = results["0"]["heizlast"]*1000
 
     ### Definition Soll-Rücklauftemperatur ### 
     if return_temperature_heat_consumer == None:
