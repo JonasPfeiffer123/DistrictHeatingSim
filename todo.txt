@@ -46,14 +46,6 @@ Erzeugerauslegung:
 - Erweiterung Funktionalitäten
 - Ergebnisausgabe: Anzahl Starts, Betriebsstunden und Betriebsstunden/Start im GUI ausgeben
 
-Gebäudesanierung:
-- UI Optimierung
-
-Ergebnispräsentation:
-- PDF-Ausgabe aus dem Tab für Wirtschaftlichkeit in den Haupttab holen.
-    --> Feedback welche Daten geladen sind und ausgegeben werden.
-- PDF-Ausgabe noch weiter ausarbeiten und visuell verbessern.
-
 Einzelversorgungslösung:
 - Ausgehend von berechnetem Gebäudelastgang
 - Einfach als Auswahloption in Wirtschaftlichkeitsrechnung / Erzeugerauslegung?
@@ -86,6 +78,10 @@ Betrachtung Stromsektor:
 - Softwarearchitektur strukturieren nach MVP
 
 
+Ergebnispräsentation:
+- PDF-Ausgabe aus dem Tab für Wirtschaftlichkeit in den Haupttab holen.
+    --> Feedback welche Daten geladen sind und ausgegeben werden.
+- PDF-Ausgabe noch weiter ausarbeiten und visuell verbessern.
 
 
 
