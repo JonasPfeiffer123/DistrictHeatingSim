@@ -4,12 +4,11 @@
 # Description: Contains the PVTab as MVP structure.
 
 import pandas as pd
-
-from PyQt5.QtWidgets import (QAction, QTabWidget, QMainWindow, QPushButton, QVBoxLayout, QWidget, QFileDialog, QMessageBox, QTableWidgetItem)
+from PyQt5.QtWidgets import (QAction, QVBoxLayout, QWidget, QFileDialog, QMessageBox, QMenuBar)
 from gui.PVTab.pv_mvp import PVDataModel, DataVisualizationPresenter, PVDataVisualizationTab
 from heat_generators.photovoltaics import Calculate_PV
 
-class PVTab(QMainWindow):
+class PVTab(QWidget):
     def __init__(self, folder_manager, data_manager, parent=None):
         super().__init__(parent)
 
@@ -26,38 +25,41 @@ class PVTab(QMainWindow):
         # Initialize the model
         self.data_model = PVDataModel()
 
-        # Initialize tabs
+        # Initialize the view
         self.data_vis_tab = PVDataVisualizationTab()
 
-        # Initialize main view
-        self.view = QTabWidget()
-        self.view.addTab(self.data_vis_tab, "Tabelle und Visualisierung LOD2-Daten")
+        # Initialize the presenter
+        self.data_vis_presenter = DataVisualizationPresenter(
+            self.data_model, self.data_vis_tab, folder_manager, data_manager)
 
-        # Initialize the presenters
-        self.data_vis_presenter = DataVisualizationPresenter(self.data_model, self.data_vis_tab, folder_manager, data_manager)
+        # Set up the layout
+        self.main_layout = QVBoxLayout()
 
         # Create the Menu Bar
-        self.menuBar = self.menuBar()
         self.initMenuBar()
 
-        # Create the Calculate Button
-        self.calculate_button = QPushButton("Berechnen", self)
-        self.calculate_button.clicked.connect(self.calculate_pv_yield)
-        layout = QVBoxLayout()
-        layout.addWidget(self.calculate_button)
-        layout.addWidget(self.view)
+        # Add the data visualization tab to the layout
+        self.main_layout.addWidget(self.data_vis_tab)
 
-        central_widget = QWidget()
-        central_widget.setLayout(layout)
-        self.setCentralWidget(central_widget)
+        self.setLayout(self.main_layout)
 
     def initMenuBar(self):
         """Initializes the menu bar with actions."""
-        fileMenu = self.menuBar.addMenu('Datei')
+        self.menubar = QMenuBar(self)
+        self.menubar.setFixedHeight(30)
+        fileMenu = self.menubar.addMenu('Datei')
 
+        # Action to open a file
         self.openAction = QAction('Öffnen', self)
         fileMenu.addAction(self.openAction)
         self.openAction.triggered.connect(self.data_vis_presenter.load_data_from_file)
+
+        # Action to trigger the calculation
+        self.calculateAction = QAction('Berechnen', self)
+        calcButton = self.menubar.addAction(self.calculateAction)
+        self.calculateAction.triggered.connect(self.calculate_pv_yield)
+
+        self.main_layout.setMenuBar(self.menubar)
 
     def on_project_folder_changed(self, new_base_path):
         """
@@ -71,18 +73,12 @@ class PVTab(QMainWindow):
     def set_base_path(self, base_path):
         """
         Set the base path for file operations.
-
-        Args:
-            base_path (str): The base path for file operations.
         """
         self.base_path = base_path
 
     def get_base_path(self):
         """
         Get the current base path.
-
-        Returns:
-            str: The current base path.
         """
         return self.base_path
 
@@ -90,7 +86,8 @@ class PVTab(QMainWindow):
         """Handles the PV yield calculation when the 'Berechnen' button is pressed."""
         try:
             # Get the output file name
-            output_filename, _ = QFileDialog.getSaveFileName(self, "Speichern unter", f"{self.get_base_path()}/results/pv_results.csv", "CSV-Dateien (*.csv)")
+            output_filename, _ = QFileDialog.getSaveFileName(
+                self, "Speichern unter", f"{self.get_base_path()}/results/pv_results.csv", "CSV-Dateien (*.csv)")
 
             if not output_filename:
                 return
@@ -108,7 +105,8 @@ class PVTab(QMainWindow):
 
             # Loop through each building and each roof for calculation
             for parent_id, building_info in self.data_model.building_info.items():
-                building_item = self.data_vis_tab.add_building(building_info['Adresse'], building_info['Koordinate_X'], building_info['Koordinate_Y'])
+                building_item = self.data_vis_tab.add_building(
+                    building_info['Adresse'], building_info['Koordinate_X'], building_info['Koordinate_Y'])
                 for roof in building_info.get('Roofs', []):
                     roof_areas = roof['Area'] if isinstance(roof['Area'], list) else [roof['Area']]
                     roof_slopes = roof['Roof_Slope'] if isinstance(roof['Roof_Slope'], list) else [roof['Roof_Slope']]
@@ -141,12 +139,14 @@ class PVTab(QMainWindow):
                         })
 
                         # Add roof details as a child item to the building in the tree view
-                        self.data_vis_tab.add_roof(building_item, roof_area, roof_slope, roof_orientation, yield_MWh, max_power)
+                        self.data_vis_tab.add_roof(
+                            building_item, roof_area, roof_slope, roof_orientation, yield_MWh, max_power)
 
             # Save results to CSV
             results_df = pd.DataFrame(results)
             results_df.to_csv(output_filename, index=False, sep=';')
 
-            QMessageBox.information(self, "Berechnung abgeschlossen", f"PV-Ertragsberechnung erfolgreich abgeschlossen.\nErgebnisse gespeichert in: {output_filename}")
+            QMessageBox.information(
+                self, "Berechnung abgeschlossen", f"PV-Ertragsberechnung erfolgreich abgeschlossen.\nErgebnisse gespeichert in: {output_filename}")
         except Exception as e:
             QMessageBox.critical(self, "Fehler", f"Fehler bei der Berechnung: {str(e)}")

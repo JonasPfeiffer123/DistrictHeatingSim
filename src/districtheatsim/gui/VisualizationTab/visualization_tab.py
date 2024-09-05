@@ -469,10 +469,20 @@ class VisualizationTabView(QWidget):
 
     def initUI(self):
         """Initializes the user interface components."""
-        layout = QVBoxLayout()
+        self.main_layout = QVBoxLayout()
 
-        self.m = folium.Map(location=[51.1657, 10.4515], zoom_start=6)
-        self.mapView = QWebEngineView()
+        self.initMenuBar()
+
+        self.initMapView()
+
+        self.initLayerManagement()
+
+        self.progressBar = QProgressBar(self)
+        self.main_layout.addWidget(self.progressBar)
+
+        self.setLayout(self.main_layout)
+
+    def initMenuBar(self):
         self.menuBar = QMenuBar(self)
         self.menuBar.setFixedHeight(30)
         fileMenu = self.menuBar.addMenu('Datei')
@@ -498,9 +508,19 @@ class VisualizationTabView(QWidget):
         self.layerGenerationAction = QAction('Wärmenetz aus Daten generieren', self)
         fileMenu.addAction(self.layerGenerationAction)
 
-        layout.addWidget(self.menuBar)
-        layout.addWidget(self.mapView)
+        self.main_layout.addWidget(self.menuBar)
 
+    def initMapView(self):
+        """
+        Initializes the map view with the current folium map object.
+        """
+        self.m = folium.Map(location=[51.1657, 10.4515], zoom_start=6)
+        self.mapView = QWebEngineView()
+        self.main_layout.addWidget(self.mapView)
+
+    def initLayerManagement(self):
+        """Initializes the layer management components.
+        """
         self.layerList = QListWidget(self)
         self.layerList.setMaximumHeight(100)
 
@@ -511,12 +531,7 @@ class VisualizationTabView(QWidget):
         layerManagementLayout.addWidget(self.layerList)
         layerManagementLayout.addWidget(self.removeLayerButton)
         layerManagementLayout.addWidget(self.changeColorButton)
-        layout.addLayout(layerManagementLayout)
-
-        self.progressBar = QProgressBar(self)
-        layout.addWidget(self.progressBar)
-
-        self.setLayout(layout)
+        self.main_layout.addLayout(layerManagementLayout)
 
     def update_map_view(self, map_obj):
         """

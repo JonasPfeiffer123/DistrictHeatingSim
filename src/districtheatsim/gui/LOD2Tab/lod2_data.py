@@ -600,7 +600,7 @@ class DataVisualizationPresenter(QObject):
         # Aktualisieren der View
         self.view.update_u_values(col, info)
 
-class LOD2DataVisualizationTab(QWidget):
+class LOD2DataVisualization(QWidget):
     """
     The view class for LOD2 data visualization.
     """
@@ -611,7 +611,7 @@ class LOD2DataVisualizationTab(QWidget):
 
     def __init__(self, parent=None):
         """
-        Initializes the LOD2DataVisualizationTab with UI components.
+        Initializes the LOD2DataVisualization with UI components.
 
         Args:
             parent (QWidget, optional): The parent widget.
@@ -625,7 +625,7 @@ class LOD2DataVisualizationTab(QWidget):
 
     def initUI(self):
         """
-        Initializes the UI components of the LOD2DataVisualizationTab.
+        Initializes the UI components of the LOD2DataVisualization.
         """
         main_layout = QVBoxLayout(self)
         data_vis_layout = QHBoxLayout()
