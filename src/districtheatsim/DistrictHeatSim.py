@@ -86,11 +86,13 @@ import os
 import shutil
 import warnings
 import json
+import traceback
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QTabWidget, QMenuBar, QAction, QFileDialog, QLabel, QMessageBox, QInputDialog
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QTabWidget, QMenuBar, QAction, 
+                             QFileDialog, QLabel, QMessageBox, QInputDialog)
 from PyQt5.QtCore import QObject, pyqtSignal, QTimer
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QPixmap
 
 from gui.ProjectTab.project_tab import ProjectTab
 from gui.VisualizationTab.visualization_tab import VisualizationTab
@@ -102,7 +104,7 @@ from gui.MixDesignTab.mix_design_tab import MixDesignTab
 from gui.ComparisonTab.comparison_tab import ComparisonTab
 from gui.IndividualTab.individual_tab import IndividualTab
 from gui.PVTab.pv_tab import PVTab
-
+from gui.results_pdf import create_pdf
 from gui.dialogs import TemperatureDataDialog, HeatPumpDataDialog
 
 class ProjectConfigManager:
@@ -403,12 +405,6 @@ class HeatSystemDesignGUI(QMainWindow):
         self.setWindowTitle("DistrictHeatSim")
         self.setGeometry(100, 100, 800, 600)
 
-        # Set the window icon, if available
-        icon = QIcon("styles\\logo.JPG")
-        if icon.isNull():
-            print("Icon could not be loaded.")
-        self.setWindowIcon(icon)
-
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
 
@@ -416,35 +412,11 @@ class HeatSystemDesignGUI(QMainWindow):
 
         self.initMenuBar()
 
-        tabWidget = QTabWidget()
-        self.layout1.addWidget(tabWidget)
+        self.initTabs()
 
         # Initialize the folderLabel
         self.folderLabel = QLabel("Kein Projektordner ausgewählt")
         self.layout1.addWidget(self.folderLabel)
-
-        # Initialize tabs
-        self.projectTab = ProjectTab(self.presenter.folder_manager)
-        self.buildingTab = BuildingTab(self.presenter.folder_manager, self.presenter.data_manager)
-        self.visTab = VisualizationTab(self.presenter.folder_manager)
-        self.lod2Tab = LOD2Tab(self.presenter.folder_manager, self.presenter.data_manager)
-        self.renovationTab = RenovationTab(self.presenter.folder_manager, self.presenter.data_manager)
-        self.calcTab = CalculationTab(self.presenter.folder_manager, self.presenter.data_manager, self)
-        self.mixDesignTab = MixDesignTab(self.presenter.folder_manager, self.presenter.data_manager, self)
-        self.comparisonTab = ComparisonTab(self.presenter.folder_manager, self.presenter.data_manager)
-        self.individualTab = IndividualTab(self.presenter.folder_manager, self.presenter.data_manager)
-        self.pvTab = PVTab(self.presenter.folder_manager, self.presenter.data_manager)
-
-        tabWidget.addTab(self.projectTab, "Projektdefinition")
-        tabWidget.addTab(self.buildingTab, "Wärmebedarf Gebäude")
-        tabWidget.addTab(self.visTab, "Wärmenetz generieren")
-        tabWidget.addTab(self.lod2Tab, "Verarbeitung LOD2-Daten")
-        tabWidget.addTab(self.renovationTab, "Gebäudesanierung")
-        tabWidget.addTab(self.calcTab, "Wärmenetzberechnung")
-        tabWidget.addTab(self.mixDesignTab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
-        tabWidget.addTab(self.comparisonTab, "Variantenvergleich")
-        tabWidget.addTab(self.individualTab, "Einzelversorgungslösung")
-        tabWidget.addTab(self.pvTab, "Photovoltaik")
 
         self.temperatureDataDialog = TemperatureDataDialog(self)
         self.heatPumpDataDialog = HeatPumpDataDialog(self)
@@ -484,6 +456,9 @@ class HeatSystemDesignGUI(QMainWindow):
         createCopyAction = QAction('Projektkopie erstellen', self)
         fileMenu.addAction(createCopyAction)
 
+        pdfExportAction = QAction('PDF exportieren', self)
+        fileMenu.addAction(pdfExportAction)
+
         dataMenu = self.menubar.addMenu('Datenbasis')
         chooseTemperatureDataAction = QAction('Temperaturdaten festlegen', self)
         createCOPDataAction = QAction('COP-Kennfeld festlegen', self)
@@ -501,21 +476,69 @@ class HeatSystemDesignGUI(QMainWindow):
         createNewProjectAction.triggered.connect(self.on_create_new_project)
         chooseProjectAction.triggered.connect(self.on_open_existing_project)
         createCopyAction.triggered.connect(self.on_create_project_variant)
-
+        pdfExportAction.triggered.connect(self.on_pdf_export)
         chooseTemperatureDataAction.triggered.connect(self.openTemperatureDataSelection)
         createCOPDataAction.triggered.connect(self.openCOPDataSelection)
         lightThemeAction.triggered.connect(lambda: self.applyTheme('styles\\win11_light.qss'))
         darkThemeAction.triggered.connect(lambda: self.applyTheme('styles\\dark_mode.qss'))
 
-    def update_project_folder_label(self, path):
+    def initTabs(self):
+        tabWidget = QTabWidget()
+        self.layout1.addWidget(tabWidget)
+
+        # Initialize tabs
+        self.projectTab = ProjectTab(self.presenter.folder_manager)
+        self.buildingTab = BuildingTab(self.presenter.folder_manager, self.presenter.data_manager)
+        self.visTab = VisualizationTab(self.presenter.folder_manager)
+        self.lod2Tab = LOD2Tab(self.presenter.folder_manager, self.presenter.data_manager)
+        self.renovationTab = RenovationTab(self.presenter.folder_manager, self.presenter.data_manager)
+        self.calcTab = CalculationTab(self.presenter.folder_manager, self.presenter.data_manager, self)
+        self.mixDesignTab = MixDesignTab(self.presenter.folder_manager, self.presenter.data_manager, self)
+        self.comparisonTab = ComparisonTab(self.presenter.folder_manager, self.presenter.data_manager)
+        self.individualTab = IndividualTab(self.presenter.folder_manager, self.presenter.data_manager)
+        self.pvTab = PVTab(self.presenter.folder_manager, self.presenter.data_manager)
+
+        tabWidget.addTab(self.projectTab, "Projektdefinition")
+        tabWidget.addTab(self.buildingTab, "Wärmebedarf Gebäude")
+        tabWidget.addTab(self.visTab, "Wärmenetz generieren")
+        tabWidget.addTab(self.lod2Tab, "Verarbeitung LOD2-Daten")
+        tabWidget.addTab(self.renovationTab, "Gebäudesanierung")
+        tabWidget.addTab(self.calcTab, "Wärmenetzberechnung")
+        tabWidget.addTab(self.mixDesignTab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
+        tabWidget.addTab(self.comparisonTab, "Variantenvergleich")
+        tabWidget.addTab(self.individualTab, "Einzelversorgungslösung")
+        tabWidget.addTab(self.pvTab, "Photovoltaik")
+
+    def initLogo(self):
+        """
+        Initialize the logo in the GUI. Doesn't work with currently.
+        """
+        
+        """logoLabel = QLabel(self)
+        pixmap = QPixmap('styles\\logo.JPG')
+        logoLabel.setPixmap(pixmap)
+        logoLabel.setGeometry(10, 10, 100, 100)
+        logoLabel.show()"""	
+
+        """# Set the window icon, if available
+        icon = QIcon("styles\\logo.JPG")
+        if icon.isNull():
+            print("Icon could not be loaded.")
+        self.setWindowIcon(icon)"""
+
+        self.setWindowIcon(QIcon('styles\\logo.png'))
+
+    def update_project_folder_label(self, base_path):
         """
         Update the project folder label in the UI.
         
         Args:
             path (str): The current project folder path.
         """
-        if path:
-            self.folderLabel.setText(f"Ausgewählter Projektordner: {path}")
+        self.base_path = base_path
+
+        if base_path:
+            self.folderLabel.setText(f"Ausgewählter Projektordner: {base_path}")
         else:
             self.folderLabel.setText("Kein Projektordner ausgewählt")
 
@@ -532,7 +555,7 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         Handle the creation of a new project.
         """
-        folder_path = QFileDialog.getExistingDirectory(self, "Speicherort für neues Projekt wählen")
+        folder_path = QFileDialog.getExistingDirectory(self, "Speicherort für neues Projekt wählen", self.base_path)
         if folder_path:
             projectName, ok = QInputDialog.getText(self, 'Neues Projekt', 'Projektnamen eingeben:')
             if ok and projectName:
@@ -544,7 +567,7 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         Handle opening an existing project.
         """
-        folder_path = QFileDialog.getExistingDirectory(self, "Projektordner auswählen")
+        folder_path = QFileDialog.getExistingDirectory(self, "Projektordner auswählen", self.base_path)
         if folder_path:
             self.presenter.open_existing_project(folder_path)
 
@@ -555,6 +578,19 @@ class HeatSystemDesignGUI(QMainWindow):
         success = self.presenter.create_project_variant()
         if success:
             QMessageBox.information(self, "Info", "Projektvariante wurde erfolgreich erstellt.")
+
+    def on_pdf_export(self):
+        """
+        Handle the PDF export action.
+        """
+        filename, _ = QFileDialog.getSaveFileName(self, 'PDF speichern als...', f"{self.base_path}/results/results.pdf", filter='PDF Files (*.pdf)')
+        if filename:
+            try:
+                create_pdf(self, filename)
+                QMessageBox.information(self, "PDF erfolgreich erstellt.", f"Die Ergebnisse wurden erfolgreich in {filename} gespeichert.")
+            except Exception as e:
+                error_message = traceback.format_exc()
+                QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern als PDF:\n{error_message}\n\n{str(e)}")
 
     def applyTheme(self, theme_path):
         qss_path = self.presenter.folder_manager.config_manager.get_resource_path(theme_path)
@@ -605,7 +641,6 @@ class HeatSystemDesignGUI(QMainWindow):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
-    app.setWindowIcon(QIcon("styles\\logo.JPG"))
 
     # Initialize the managers
     config_manager = ProjectConfigManager()

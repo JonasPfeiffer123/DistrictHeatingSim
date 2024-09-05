@@ -13,7 +13,6 @@ from PyQt5.QtCore import pyqtSignal, QEventLoop
 from heat_generators.heat_generator_classes import *
 from gui.MixDesignTab.mix_design_dialogs import EconomicParametersDialog, NetInfrastructureDialog, WeightDialog
 from gui.MixDesignTab.calculate_mix_thread import CalculateMixThread
-from gui.results_pdf import create_pdf
 from gui.MixDesignTab.technology_tab import TechnologyTab
 from gui.MixDesignTab.cost_tab import CostTab
 from gui.MixDesignTab.results_tab import ResultsTab
@@ -151,10 +150,6 @@ class MixDesignTab(QWidget):
         loadJSONAction = QAction('Ergebnisse aus JSON laden', self)
         loadJSONAction.triggered.connect(self.load_results_JSON)
         fileMenu.addAction(loadJSONAction)
-
-        pdfAction = QAction('Ergebnisse als PDF speichern', self)
-        pdfAction.triggered.connect(self.on_export_pdf_clicked)
-        fileMenu.addAction(pdfAction)
 
         # 'Einstellungen'-Menü
         settingsMenu = self.menuBar.addMenu('Einstellungen')
@@ -620,20 +615,4 @@ class MixDesignTab(QWidget):
                 QMessageBox.information(self, "Erfolgreich geladen", f"Die Ergebnisse wurden erfolgreich aus {filename} geladen.")
             except Exception as e:
                 QMessageBox.critical(self, "Ladefehler", f"Fehler beim Laden der JSON-Datei: {e}")
-                raise e
-
-    def on_export_pdf_clicked(self):
-        """
-        Exports the results to a PDF file.
-        """
-        filename, _ = QFileDialog.getSaveFileName(self, 'PDF speichern als...', self.base_path, filter='PDF Files (*.pdf)')
-        if filename:
-            try:
-                create_pdf(self, filename)
-                
-                QMessageBox.information(self, "PDF erfolgreich erstellt.", f"Die Ergebnisse wurden erfolgreich in {filename} gespeichert.")
-            
-            except Exception as e:
-                error_message = traceback.format_exc()
-                QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern als PDF:\n{error_message}")
                 raise e
