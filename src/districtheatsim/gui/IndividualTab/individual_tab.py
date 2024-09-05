@@ -10,12 +10,14 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QFileDialog, QPushButton, QComboBox, QLineEdit, QMessageBox,
                              QFormLayout, QScrollArea, QHBoxLayout, QTabWidget, QMenuBar, QMenu, QListWidget,
-                             QAbstractItemView, QDialog, QListWidgetItem)
+                             QAbstractItemView, QDialog, QListWidgetItem, QTableWidgetItem, QTableWidget, QHeaderView)
 from PyQt5.QtCore import pyqtSignal, Qt
 import json
 from gui.utilities import CheckableComboBox  # Assuming you have this implemented
 from gui.MixDesignTab.heat_generator_dialogs import TechInputDialog  # Import your dialogs
 from heat_generators.heat_generator_classes import *
+from gui.IndividualTab.building_thread import CalculateBuildingMixThread
+from utilities.test_reference_year import import_TRY
 
 class IndividualTab(QWidget):
     """
@@ -26,6 +28,7 @@ class IndividualTab(QWidget):
         super().__init__(parent)
         self.folder_manager = folder_manager
         self.data_manager = data_manager
+        self.parent = parent
         self.base_path = None
 
         self.folder_manager.project_folder_changed.connect(self.update_default_path)
@@ -468,13 +471,12 @@ class TechnologyTab(QWidget):
 
 
 class ResultsTab(QWidget):
-    """
-    Handles the presentation of the calculation results.
-    """
-
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
+        self.building_costs = {}  # Store costs per building
+        self.results = {}  # Store the results for each building
+        self.total_cost = 0
         self.initUI()
 
     def initUI(self):
@@ -483,26 +485,161 @@ class ResultsTab(QWidget):
         # Button to trigger the calculation
         self.calc_button = QPushButton("Start Generator Calculation", self)
         self.calc_button.setStyleSheet("margin-top: 10px;")
-        self.calc_button.clicked.connect(self.start_generator_calculation)
+        self.calc_button.clicked.connect(self.start_calculation_for_all_buildings)
         layout.addWidget(self.calc_button)
+
+        # Table to display the calculation results
+        self.resultsTable = QTableWidget()
+        self.resultsTable.setColumnCount(4)
+        self.resultsTable.setHorizontalHeaderLabels(['Building', 'Generator', 'Individual Costs (€)', 'Total Costs (€)'])
+        layout.addWidget(self.resultsTable)
+
+        # Label to show the total cost across all buildings
+        self.totalCostLabel = QLabel()
+        layout.addWidget(self.totalCostLabel)
 
         self.setLayout(layout)
 
-    def start_generator_calculation(self):
+    def start_calculation_for_all_buildings(self):
         """
-        Starts the generator calculation based on the configuration.
+        Starts the calculation for all buildings.
         """
-        results = []
+        self.building_costs = {}
+        self.total_cost = 0
+
+        # Iterate over each building in the technology tab
         for building_id, config in self.parent.technology_tab.generator_configs.items():
-            selected_generator = config["generator_combobox"].currentText()
-            generator_details = config.get("generator_details", "No details provided")  # Placeholder for dialog results
+            tech_objects = self.parent.technology_tab.tech_objects[building_id]
 
-            # Dummy calculation logic
-            results.append(
-                f"Building {building_id} - Generator: {selected_generator}, Details: {generator_details}"
-            )
+            # Extract building-specific data from the loaded JSON (from DiagramTab)
+            if building_id in self.parent.diagram_tab.results:
+                building_data = self.parent.diagram_tab.results[building_id]
 
-        QMessageBox.information(self, "Generator Calculation", "\n".join(results))
+                # Run the calculation thread with the building-specific data
+                self.run_building_calculation_thread(building_id, building_data, tech_objects)
+
+    def run_building_calculation_thread(self, building_id, building_data, tech_objects):
+        """
+        Runs the calculation thread for a specific building.
+        """
+        self.calculationThread = CalculateBuildingMixThread(
+            building_id=building_id,
+            building_data=building_data,
+            tech_objects=tech_objects,
+            TRY_data=import_TRY(self.parent.data_manager.get_try_filename()),
+            COP_data=np.genfromtxt(self.parent.data_manager.get_cop_filename()),
+            gas_price=self.parent.parent.mixDesignTab.gaspreis,
+            electricity_price=self.parent.parent.mixDesignTab.strompreis,
+            wood_price=self.parent.parent.mixDesignTab.holzpreis,
+            BEW=self.parent.parent.mixDesignTab.BEW,
+            interest_on_capital=self.parent.parent.mixDesignTab.kapitalzins,
+            price_increase_rate=self.parent.parent.mixDesignTab.preissteigerungsrate,
+            period=self.parent.parent.mixDesignTab.betrachtungszeitraum,
+            wage=self.parent.parent.mixDesignTab.stundensatz
+        )
+
+        self.calculationThread.calculation_done.connect(self.on_building_calculation_done)
+        self.calculationThread.calculation_error.connect(self.on_calculation_error)
+        self.calculationThread.start()
+
+    def on_building_calculation_done(self, result):
+        """
+        Handles the completion of the calculation for a building.
+        """
+        building_id = result["building_id"]
+        self.results[building_id] = result  # Store the result for this building
+        self.calculate_building_costs(building_id)
+        self.update_results_table()
+
+    def calculate_building_costs(self, building_id):
+        """
+        Calculates the costs for the technologies in a specific building after the calculation.
+        """
+        tech_objects = self.parent.technology_tab.tech_objects[building_id]
+        building_total_cost = 0
+
+        for tech_object in tech_objects:
+            cost = self.calculate_tech_cost(tech_object)
+            building_total_cost += cost
+
+        self.building_costs[building_id] = building_total_cost
+        self.total_cost += building_total_cost
+
+    def calculate_tech_cost(self, tech_object):
+        """
+        Calculates the cost of a given technology object.
+        """
+        try:
+            # Calculate the cost for each tech object based on its type
+            if isinstance(tech_object, GasBoiler):
+                print(tech_object.P_max, tech_object.spez_Investitionskosten)
+                cost = tech_object.P_max * tech_object.spez_Investitionskosten
+            elif isinstance(tech_object, BiomassBoiler):#
+                print(tech_object.P_BMK, tech_object.spez_Investitionskosten, tech_object.Größe_Holzlager, tech_object.spez_Investitionskosten_Holzlager)
+                cost = tech_object.P_BMK * tech_object.spez_Investitionskosten + \
+                    tech_object.Größe_Holzlager * tech_object.spez_Investitionskosten_Holzlager
+            elif isinstance(tech_object, CHP):
+                print(tech_object.th_Leistung_BHKW, tech_object.spez_Investitionskosten_GBHKW)
+                cost = tech_object.th_Leistung_BHKW * tech_object.spez_Investitionskosten_GBHKW
+            elif isinstance(tech_object, SolarThermal):
+                print(tech_object.bruttofläche_STA, tech_object.kosten_fk_spez, tech_object.vs, tech_object.kosten_speicher_spez)
+                cost = tech_object.bruttofläche_STA * tech_object.kosten_fk_spez + \
+                    tech_object.vs * tech_object.kosten_speicher_spez
+            elif isinstance(tech_object, Geothermal):
+                print(tech_object.Fläche, tech_object.spez_Bohrkosten, tech_object.max_Wärmeleistung, tech_object.spezifische_Investitionskosten_WP)    
+                cost = tech_object.Fläche * tech_object.spez_Bohrkosten + \
+                    tech_object.max_Wärmeleistung * tech_object.spezifische_Investitionskosten_WP
+            elif isinstance(tech_object, WasteHeatPump):
+                print(tech_object.Kühlleistung_Abwärme, tech_object.spez_Investitionskosten_Abwärme, tech_object.max_Wärmeleistung, tech_object.spezifische_Investitionskosten_WP)  
+                cost = tech_object.Kühlleistung_Abwärme * tech_object.spez_Investitionskosten_Abwärme + \
+                    tech_object.max_Wärmeleistung * tech_object.spezifische_Investitionskosten_WP
+            elif isinstance(tech_object, RiverHeatPump):
+                print(tech_object.Wärmeleistung_FW_WP, tech_object.spez_Investitionskosten_Flusswasser, tech_object.spezifische_Investitionskosten_WP)
+                cost = tech_object.Wärmeleistung_FW_WP * tech_object.spez_Investitionskosten_Flusswasser + \
+                    tech_object.Wärmeleistung_FW_WP * tech_object.spezifische_Investitionskosten_WP
+            else:
+                cost = 0  # Fallback for unknown technology types
+            return cost
+        except Exception as e:
+            print(f"Error calculating cost for technology: {e}")
+            return 0
+
+
+    def update_results_table(self):
+        """
+        Updates the table with the calculated costs for each building and technology.
+        """
+        self.resultsTable.setRowCount(0)
+
+        for building_id, total_cost in self.building_costs.items():
+            tech_objects = self.parent.technology_tab.tech_objects[building_id]
+
+            for tech in tech_objects:
+                row_position = self.resultsTable.rowCount()
+                self.resultsTable.insertRow(row_position)
+
+                # Set building ID and technology class name
+                self.resultsTable.setItem(row_position, 0, QTableWidgetItem(f"Building {building_id}"))
+                self.resultsTable.setItem(row_position, 1, QTableWidgetItem(tech.__class__.__name__))
+
+                # Calculate and display individual cost for the technology
+                individual_cost = self.calculate_tech_cost(tech)
+                self.resultsTable.setItem(row_position, 2, QTableWidgetItem(f"{individual_cost:.2f} €"))
+
+                # Display total cost for the building
+                self.resultsTable.setItem(row_position, 3, QTableWidgetItem(f"{total_cost:.2f} €"))
+
+    def update_total_cost_label(self):
+        """
+        Updates the label that shows the total cost across all buildings.
+        """
+        self.totalCostLabel.setText(f"Total Cost: {self.total_cost:.2f} €")
+
+    def on_calculation_error(self, error_message):
+        """
+        Handles calculation errors.
+        """
+        QMessageBox.critical(self, "Berechnungsfehler", str(error_message))
 
 class CustomListWidget(QListWidget):
     """

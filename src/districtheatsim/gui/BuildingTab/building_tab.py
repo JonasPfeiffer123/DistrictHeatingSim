@@ -137,7 +137,9 @@ class BuildingModel:
         Returns:
             tuple: A tuple containing the calculated profiles.
         """
-        return generate_profiles_from_csv(data=data, TRY=try_filename, calc_method="Datensatz")
+        yearly_time_steps, total_heat_W, heating_heat_W, warmwater_heat_W, max_heat_requirement_W, supply_temperature_curve, return_temperature_curve, hourly_air_temperatures = generate_profiles_from_csv(data=data, TRY=try_filename, calc_method="Datensatz")
+
+        return yearly_time_steps, total_heat_W/1000, heating_heat_W/1000, warmwater_heat_W/1000, max_heat_requirement_W/1000, supply_temperature_curve, return_temperature_curve, hourly_air_temperatures
 
     def get_resource_path(self, relative_path):
         """
@@ -553,7 +555,7 @@ class BuildingTabView(QWidget):
                 ax2.plot(value["rücklauftemperatur"], label=f'Building {key} Return Temp', linestyle='-.')
 
         ax1.set_xlabel('Time (hours)')
-        ax1.set_ylabel('Heat Demand (W)')
+        ax1.set_ylabel('Heat Demand (kW)')
         ax2.set_ylabel('Temperature (°C)')
 
         # Legend for ax1 on the left
