@@ -311,11 +311,13 @@ class PVDataVisualizationTab(QWidget):
 
         self.treeWidget = QTreeWidget(self)
         self.treeWidget.setHeaderLabels(['Gebäude/Dach', 'Dachfläche (m²)', 'Dachneigung (°)', 'Dachausrichtung (°)', 'Yield (MWh)', 'Max Power (kW)'])
+        # Automatically resize columns to fit their content
+        self.treeWidget.header().setSectionResizeMode(QHeaderView.ResizeToContents)
         scroll_layout.addWidget(self.treeWidget)
 
         self.figure_3d = plt.figure()
         self.canvas_3d = FigureCanvas(self.figure_3d)
-        self.canvas_3d.setMinimumSize(1100, 1100)
+        self.canvas_3d.setMinimumSize(1000, 1000)
         data_vis_layout.addWidget(self.canvas_3d)
 
     def add_building(self, adresse, koordinate_x, koordinate_y):
