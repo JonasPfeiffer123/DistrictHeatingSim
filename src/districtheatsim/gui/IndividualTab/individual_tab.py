@@ -10,7 +10,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QFileDialog, QPushButton, QComboBox, QLineEdit, QMessageBox,
                              QFormLayout, QScrollArea, QHBoxLayout, QTabWidget, QMenuBar, QMenu, QListWidget,
-                             QAbstractItemView, QDialog)
+                             QAbstractItemView, QDialog, QListWidgetItem)
 from PyQt5.QtCore import pyqtSignal, Qt
 import json
 from gui.utilities import CheckableComboBox  # Assuming you have this implemented
@@ -265,31 +265,58 @@ class TechnologyTab(QWidget):
             generator_combobox.addItem("Solarthermie")
             generator_combobox.setFixedWidth(150)
 
-            # Button to open configuration dialog
-            configure_button = QPushButton(f"Configure {building_id}", self)
-            configure_button.setFixedWidth(120)
-            configure_button.clicked.connect(lambda _, b_id=building_id, g_cbox=generator_combobox: self.open_generator_dialog(b_id, g_cbox))
+            # Add button to add the selected technology to the list
+            add_button = QPushButton(f"Add {building_id}", self)
+            add_button.setFixedWidth(120)
+            add_button.clicked.connect(lambda _, b_id=building_id, g_cbox=generator_combobox: self.add_technology(b_id, g_cbox))
+
+            # Remove button to remove selected technology
+            remove_button = QPushButton(f"Remove {building_id}", self)
+            remove_button.setFixedWidth(120)
+            remove_button.clicked.connect(lambda _, b_id=building_id: self.remove_selected_technology(b_id))
 
             # Create a CustomListWidget for each building to manage the technologies
-            tech_list_widget = CustomListWidget(self)
+            self.tech_list_widget = CustomListWidget(self, building_id=building_id)
+            self.tech_list_widget.itemDoubleClicked.connect(self.edit_technology)
 
             # Store configurations in dictionary for each building
             self.generator_configs[building_id] = {
                 "generator_combobox": generator_combobox,
-                "tech_list_widget": tech_list_widget  # Store the list widget for later updates
+                "tech_list_widget": self.tech_list_widget  # Store the list widget for later updates
             }
+
+            # Initialize the tech_objects for this building
+            self.tech_objects[building_id] = []  # Empty list for each building's tech objects
 
             row_layout.addWidget(QLabel(f"Building {building_id} Generator:"))
             row_layout.addWidget(generator_combobox)
-            row_layout.addWidget(configure_button)
-            row_layout.addWidget(tech_list_widget)  # Add the technology list widget to the row
+            row_layout.addWidget(add_button)
+            row_layout.addWidget(remove_button)
+            row_layout.addWidget(self.tech_list_widget)  # Add the technology list widget to the row
 
             self.form_layout.addRow(row_layout)
 
-    def open_generator_dialog(self, building_id, generator_combobox):
+    def updateTechObjectsOrder(self, building_id):
         """
-        Opens a dialog to configure the selected generator for a specific building.
-        The configured technology will be added to the respective CustomListWidget.
+        Updates the order of technology objects based on the list display for a specific building.
+        """
+        tech_list_widget = self.generator_configs[building_id]["tech_list_widget"]
+        new_order = []
+
+        # Loop through the items in the list widget for the specific building
+        for index in range(tech_list_widget.count()):
+            item_text = tech_list_widget.item(index).text()
+            for tech in self.tech_objects[building_id]:  # Only check the tech objects for the specific building
+                if self.formatTechForDisplay(tech) == item_text:
+                    new_order.append(tech)
+                    break
+
+        # Update the order of tech objects for the specific building
+        self.tech_objects[building_id] = new_order
+
+    def add_technology(self, building_id, generator_combobox):
+        """
+        Adds a selected technology from the combobox to the CustomListWidget for a specific building.
         """
         generator_type = generator_combobox.currentText()
         tech_data = self.generator_configs.get(building_id, {})
@@ -300,44 +327,77 @@ class TechnologyTab(QWidget):
             # Retrieve the inputs after the dialog is accepted
             tech_inputs = dialog.getInputs()
 
-            # Create a display string for the tech configuration
-            tech_display = f"{generator_type}: {tech_inputs}"
+            # Create and store the new tech object
+            new_tech = self.createTechnology(generator_type, tech_inputs)
+            self.tech_objects[building_id].append(new_tech)
 
             # Add the configuration to the CustomListWidget for the building
             tech_list_widget = self.generator_configs[building_id]["tech_list_widget"]
-            tech_list_widget.addItem(tech_display)
+            list_item = QListWidgetItem(self.formatTechForDisplay(new_tech))
+            
+            # Store the tech object in the list item
+            list_item.setData(Qt.UserRole, new_tech)
+            
+            tech_list_widget.addItem(list_item)
 
             QMessageBox.information(self, "Generator Configured", f"Configuration for {generator_type} saved for Building {building_id}.")
 
 
-    def setupTechnologySelection(self):
+    def remove_selected_technology(self, building_id):
         """
-        Sets up the technology selection widgets and layout.
+        Removes the selected technology from the CustomListWidget for a specific building.
         """
-        self.addLabel('Definierte Wärmeerzeuger')
-        self.techList = CustomListWidget(self)
-        self.techList.setDragDropMode(QAbstractItemView.InternalMove)
-        self.techList.itemDoubleClicked.connect(self.editTech)
-        self.mainLayout.addWidget(self.techList)
-        self.addButtonLayout()
+        tech_list_widget = self.generator_configs[building_id]["tech_list_widget"]
+        selected_row = tech_list_widget.currentRow()
+        if selected_row != -1:
+            # Remove from the list widget
+            tech_list_widget.takeItem(selected_row)
 
-    def addButtonLayout(self):
+            # Also remove from the tech_objects for the building
+            del self.tech_objects[building_id][selected_row]
+
+    def edit_technology(self, item):
         """
-        Adds the button layout for managing technologies.
+        Opens a dialog to edit the selected technology from the CustomListWidget.
         """
-        buttonLayout = QHBoxLayout()
-        self.btnDeleteSelectedTech = QPushButton("Ausgewählte Technologie entfernen")
-        self.btnRemoveTech = QPushButton("Alle Technologien entfernen")
-        buttonLayout.addWidget(self.btnDeleteSelectedTech)
-        buttonLayout.addWidget(self.btnRemoveTech)
-        self.mainLayout.addLayout(buttonLayout)
-        self.btnDeleteSelectedTech.clicked.connect(self.removeSelectedTech)
-        self.btnRemoveTech.clicked.connect(self.removeTech)
+        # Retrieve the associated technology object directly
+        tech_object = item.data(Qt.UserRole)
+
+        if tech_object:
+            # Create a mapping between the class names and expected strings
+            tech_type_mapping = {
+                "GasBoiler": "Gaskessel",
+                "BiomassBoiler": "Biomassekessel",
+                "CHP": "BHKW",  # Mapping from class name to expected string
+                "SolarThermal": "Solarthermie",
+                "Geothermal": "Geothermie",
+                "WasteHeatPump": "Abwärme",
+                "RiverHeatPump": "Flusswasser",
+                "AqvaHeat": "AqvaHeat"
+            }
+
+            # Get the class name of the technology object and map it to the expected string
+            tech_class_name = tech_object.__class__.__name__
+            tech_type = tech_type_mapping.get(tech_class_name, tech_class_name)
+
+            # Open the dialog with the correct technology type and its current data
+            dialog = TechInputDialog(tech_type, tech_object.__dict__)
+            if dialog.exec_():
+                updated_inputs = dialog.getInputs()
+
+                # Update the technology object with the modified data
+                for key, value in updated_inputs.items():
+                    setattr(tech_object, key, value)
+
+                # Update the displayed text in the list item
+                item.setText(self.formatTechForDisplay(tech_object))
+
 
     def createTechnology(self, tech_type, inputs):
         """
         Creates a technology object based on the type and inputs.
-
+        Ensures that the technology has a unique name by including the building ID and technology type.
+        
         Args:
             tech_type (str): The type of technology.
             inputs (dict): The inputs for the technology.
@@ -357,87 +417,23 @@ class TechnologyTab(QWidget):
             "AqvaHeat": AqvaHeat
         }
 
-        base_tech_type = tech_type.split('_')[0]
+        base_tech_type = tech_type.split('_')[0]  # Ensure we are working with the base type
         tech_class = tech_classes.get(base_tech_type)
+        
         if not tech_class:
-            raise ValueError(f"Unbekannter Technologietyp: {tech_type}")
+            raise ValueError(f"Unknown technology type: {tech_type}")
 
-        tech_count = sum(1 for tech in self.tech_objects if tech.name.startswith(base_tech_type))
+        # Generate a unique name for the technology, including its type and a count for uniqueness
+        tech_count = len(self.tech_objects)  # Total number of tech objects across buildings
         unique_name = f"{base_tech_type}_{tech_count + 1}"
 
-        return tech_class(name=unique_name, **inputs)
+        # Ensure the inputs contain a 'name' field
+        inputs['name'] = unique_name
 
-    def addTech(self, tech_type, tech_data):
-        """
-        Adds a new technology to the list.
+        # Return the created technology object
+        return tech_class(**inputs)
 
-        Args:
-            tech_type (str): The type of technology.
-            tech_data (dict): The data for the technology.
-        """
-        dialog = TechInputDialog(tech_type, tech_data)
-        if dialog.exec_() == QDialog.Accepted:
-            new_tech = self.createTechnology(tech_type, dialog.getInputs())
-            self.tech_objects.append(new_tech)
-            self.updateTechList()
-
-    def editTech(self, item):
-        """
-        Edits the selected technology.
-
-        Args:
-            item (QListWidgetItem): The selected item to edit.
-        """
-        selected_tech_index = self.techList.row(item)
-        selected_tech = self.tech_objects[selected_tech_index]
-        tech_data = {k: v for k, v in selected_tech.__dict__.items() if not k.startswith('_')}
-
-        dialog = TechInputDialog(selected_tech.name, tech_data)
-        if dialog.exec_() == QDialog.Accepted:
-            updated_inputs = dialog.getInputs()
-            updated_tech = self.createTechnology(selected_tech.name.split('_')[0], updated_inputs)
-            updated_tech.name = selected_tech.name
-            self.tech_objects[selected_tech_index] = updated_tech
-            self.updateTechList()
-
-    def removeSelectedTech(self):
-        """
-        Removes the selected technology from the list.
-        """
-        selected_row = self.techList.currentRow()
-        if selected_row != -1:
-            self.techList.takeItem(selected_row)
-            del self.tech_objects[selected_row]
-            self.updateTechList()
-
-    def removeTech(self):
-        """
-        Removes all technologies from the list.
-        """
-        self.techList.clear()
-        self.tech_objects = []
-
-    def updateTechList(self):
-        """
-        Updates the technology list display.
-        """
-        self.techList.clear()
-        for tech in self.tech_objects:
-            self.techList.addItem(self.formatTechForDisplay(tech))
-
-    def updateTechObjectsOrder(self):
-        """
-        Updates the order of technology objects based on the list display.
-        """
-        new_order = []
-        for index in range(self.techList.count()):
-            item_text = self.techList.item(index).text()
-            for tech in self.tech_objects:
-                if self.formatTechForDisplay(tech) == item_text:
-                    new_order.append(tech)
-                    break
-        self.tech_objects = new_order
-
+    
     def formatTechForDisplay(self, tech):
         """
         Formats a technology object for display in the list.
@@ -510,18 +506,19 @@ class ResultsTab(QWidget):
 
 class CustomListWidget(QListWidget):
     """
-    A custom QListWidget with additional functionality for handling drop events
-    and updating the order of technology objects in the parent TechnologyTab.
+    A custom QListWidget to manage technology objects for a building.
+    This widget supports drag-and-drop reordering of items.
     """
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, building_id=None):
         super().__init__(parent)
+        self.setDragDropMode(QAbstractItemView.InternalMove)
         self.parent_tab = parent
+        self.building_id = building_id  # Store building_id to identify which building is being updated
 
     def dropEvent(self, event):
         """
-        Handles the drop event to update the order of technology objects
-        in the parent TechnologyTab.
+        Updates the order of technology objects in the parent after drag and drop.
         """
         super().dropEvent(event)
         if self.parent_tab:
-            self.parent_tab.updateTechObjectsOrder()
+            self.parent_tab.updateTechObjectsOrder(self.building_id)
