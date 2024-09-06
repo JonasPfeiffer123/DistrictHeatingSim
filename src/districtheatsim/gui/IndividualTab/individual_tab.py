@@ -484,14 +484,13 @@ class ResultsTab(QWidget):
 
         # Button to trigger the calculation
         self.calc_button = QPushButton("Start Generator Calculation", self)
-        self.calc_button.setStyleSheet("margin-top: 10px;")
         self.calc_button.clicked.connect(self.start_calculation_for_all_buildings)
         layout.addWidget(self.calc_button)
 
         # Table to display the calculation results
         self.resultsTable = QTableWidget()
         self.resultsTable.setColumnCount(4)
-        self.resultsTable.setHorizontalHeaderLabels(['Building', 'Generator', 'Individual Costs (€)', 'Total Costs (€)'])
+        self.resultsTable.setHorizontalHeaderLabels(['Name', 'Anlagendimensionen', 'Kosten', 'Gesamtkosten'])
         layout.addWidget(self.resultsTable)
 
         # Label to show the total cost across all buildings
@@ -527,7 +526,7 @@ class ResultsTab(QWidget):
             building_data=building_data,
             tech_objects=tech_objects,
             TRY_data=import_TRY(self.parent.data_manager.get_try_filename()),
-            COP_data=np.genfromtxt(self.parent.data_manager.get_cop_filename()),
+            COP_data=np.genfromtxt(self.parent.data_manager.get_cop_filename(), delimiter=';'),
             gas_price=self.parent.parent.mixDesignTab.gaspreis,
             electricity_price=self.parent.parent.mixDesignTab.strompreis,
             wood_price=self.parent.parent.mixDesignTab.holzpreis,
@@ -574,7 +573,7 @@ class ResultsTab(QWidget):
             if isinstance(tech_object, GasBoiler):
                 print(tech_object.P_max, tech_object.spez_Investitionskosten)
                 cost = tech_object.P_max * tech_object.spez_Investitionskosten
-            elif isinstance(tech_object, BiomassBoiler):#
+            elif isinstance(tech_object, BiomassBoiler):
                 print(tech_object.P_BMK, tech_object.spez_Investitionskosten, tech_object.Größe_Holzlager, tech_object.spez_Investitionskosten_Holzlager)
                 cost = tech_object.P_BMK * tech_object.spez_Investitionskosten + \
                     tech_object.Größe_Holzlager * tech_object.spez_Investitionskosten_Holzlager
@@ -609,25 +608,84 @@ class ResultsTab(QWidget):
         """
         Updates the table with the calculated costs for each building and technology.
         """
-        self.resultsTable.setRowCount(0)
+        self.resultsTable.setRowCount(0)  # Clear the table
 
         for building_id, total_cost in self.building_costs.items():
             tech_objects = self.parent.technology_tab.tech_objects[building_id]
+            building_total = 0
 
             for tech in tech_objects:
                 row_position = self.resultsTable.rowCount()
                 self.resultsTable.insertRow(row_position)
 
-                # Set building ID and technology class name
-                self.resultsTable.setItem(row_position, 0, QTableWidgetItem(f"Building {building_id}"))
-                self.resultsTable.setItem(row_position, 1, QTableWidgetItem(tech.__class__.__name__))
+                # Set technology details
+                self.resultsTable.setItem(row_position, 0, QTableWidgetItem(tech.__class__.__name__))
+                dimensions, cost, total = self.extract_tech_data(tech)
+                self.resultsTable.setItem(row_position, 1, QTableWidgetItem(dimensions))
+                self.resultsTable.setItem(row_position, 2, QTableWidgetItem(f"{cost:.2f} €"))
+                self.resultsTable.setItem(row_position, 3, QTableWidgetItem(f"{total:.2f} €"))
 
-                # Calculate and display individual cost for the technology
-                individual_cost = self.calculate_tech_cost(tech)
-                self.resultsTable.setItem(row_position, 2, QTableWidgetItem(f"{individual_cost:.2f} €"))
+                building_total += total
 
-                # Display total cost for the building
-                self.resultsTable.setItem(row_position, 3, QTableWidgetItem(f"{total_cost:.2f} €"))
+            # Insert subtotal for the building
+            row_position = self.resultsTable.rowCount()
+            self.resultsTable.insertRow(row_position)
+            self.resultsTable.setItem(row_position, 0, QTableWidgetItem(f"Building {building_id} subtotal"))
+            self.resultsTable.setItem(row_position, 3, QTableWidgetItem(f"{building_total:.2f} €"))
+
+        # Update the total cost label
+        self.update_total_cost_label()
+    
+    def extract_tech_data(self, tech):
+        """
+        Extracts the data for a given technology object.
+
+        Args:
+            tech (object): The technology object being extracted.
+
+        Returns:
+            tuple: Dimensions, cost, and total cost for the technology.
+        """
+        try:
+            if isinstance(tech, GasBoiler):
+                dimensions = f"th. Leistung: {tech.P_max:.2f} kW"
+                cost = tech.P_max * tech.spez_Investitionskosten
+                total = cost  # No additional costs for GasBoiler
+            elif isinstance(tech, BiomassBoiler):
+                dimensions = f"th. Leistung: {tech.P_BMK:.2f} kW, Holzlager: {tech.Größe_Holzlager:.2f} m³"
+                cost = tech.P_BMK * tech.spez_Investitionskosten
+                total = cost + (tech.Größe_Holzlager * tech.spez_Investitionskosten_Holzlager)
+            elif isinstance(tech, CHP):
+                dimensions = f"th. Leistung: {tech.th_Leistung_BHKW:.2f} kW, el. Leistung: {tech.el_Leistung_Soll:.2f} kW"
+                cost = tech.spez_Investitionskosten_GBHKW * tech.th_Leistung_BHKW
+                total = cost  # No additional costs for CHP
+            elif isinstance(tech, SolarThermal):
+                dimensions = f"Kollektorfläche: {tech.bruttofläche_STA:.2f} m², Speichervolumen: {tech.vs:.2f} m³"
+                cost = tech.bruttofläche_STA * tech.kosten_fk_spez
+                total = cost + (tech.vs * tech.kosten_speicher_spez)
+            elif isinstance(tech, Geothermal):
+                dimensions = f"Bohrfläche: {tech.Fläche:.2f} m², Bohrtiefe: {tech.Bohrtiefe:.2f} m"
+                cost = tech.Fläche * tech.spez_Bohrkosten
+                total = cost + (tech.max_Wärmeleistung * tech.spezifische_Investitionskosten_WP)
+            elif isinstance(tech, WasteHeatPump):
+                dimensions = f"Kühlleistung Abwärme: {tech.Kühlleistung_Abwärme:.2f} kW, th. Leistung: {tech.max_Wärmeleistung:.2f} kW"
+                cost = tech.Kühlleistung_Abwärme * tech.spez_Investitionskosten_Abwärme
+                total = cost + (tech.max_Wärmeleistung * tech.spezifische_Investitionskosten_WP)
+            elif isinstance(tech, RiverHeatPump):
+                dimensions = f"th. Leistung: {tech.Wärmeleistung_FW_WP:.2f} kW"
+                cost = tech.Wärmeleistung_FW_WP * tech.spez_Investitionskosten_Flusswasser
+                total = cost + (tech.Wärmeleistung_FW_WP * tech.spezifische_Investitionskosten_WP)
+            else:
+                dimensions = "N/A"
+                cost = 0
+                total = 0
+        except Exception as e:
+            print(f"Error extracting tech data: {e}")
+            dimensions = "N/A"
+            cost = 0
+            total = 0
+
+        return dimensions, cost, total
 
     def update_total_cost_label(self):
         """

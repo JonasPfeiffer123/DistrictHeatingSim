@@ -130,9 +130,10 @@ class HeatPump:
         row_header = values[0, 1:]  # Vorlauftemperaturen
         col_header = values[1:, 0]  # Quelltemperaturen
         values = values[1:, 1:]
-        f = RegularGridInterpolator((col_header, row_header), values, method='linear')
 
-        # technische Grenze der Wärmepumpe ist Temperaturhub von 75 °C
+        f = RegularGridInterpolator((col_header, row_header), values, method='linear', bounds_error=False, fill_value=None)
+
+        # Technische Grenze der Wärmepumpe ist Temperaturhub von 75 °C
         VLT_L = np.minimum(VLT_L, 75 + QT)
 
         # Überprüfen, ob QT eine Zahl oder ein Array ist
@@ -145,10 +146,29 @@ class HeatPump:
                 raise ValueError("QT muss entweder eine einzelne Zahl oder ein Array mit der gleichen Länge wie VLT_L sein.")
             QT_array = QT
 
-        # Berechnung von COP_L
-        COP_L = f(np.column_stack((QT_array, VLT_L)))
+        # Vorbereitung für die Interpolation
+        input_array = np.column_stack((QT_array, VLT_L))
+
+        # Initialisiere COP_L mit NaNs, um ungültige Werte zu markieren
+        COP_L = np.full_like(VLT_L, np.nan)
+
+        try:
+            # Berechne die COPs für alle Werte, wobei ungültige Werte nicht extrapoliert werden
+            COP_L = f(input_array)
+            
+            # Für ungültige Werte (wo keine Interpolation möglich ist), setze COP auf 0
+            out_of_bounds_mask = np.isnan(COP_L)
+            COP_L[out_of_bounds_mask] = 0  # Setzt nur die ungültigen Werte auf 0
+            
+            if np.any(out_of_bounds_mask):
+                print(f"Einige Werte waren außerhalb des gültigen Bereichs und wurden auf 0 gesetzt.")
+        except ValueError as e:
+            # Dies wird normalerweise nicht mehr auftreten, aber falls doch, behandeln wir es weiterhin
+            print(f"Interpolation error: {e}. Setting COP to 0 for values out of bounds.")
+            COP_L = np.zeros_like(VLT_L)
 
         return COP_L, VLT_L
+
     
     def WGK(self, Wärmeleistung, Wärmemenge, Strombedarf, spez_Investitionskosten_WQ, Strompreis, q, r, T, BEW, stundensatz):
         """
@@ -1019,6 +1039,7 @@ class CHP:
             float: Weighted average cost of energy for the CHP system.
         """
         if Wärmemenge == 0:
+            self.WGK_BHKW = 0
             return 0
         # Holzvergaser-BHKW: 130 kW: 240.000 -> 1850 €/kW
         # (Erd-)Gas-BHKW: 100 kW: 150.000 € -> 1500 €/kW
@@ -1093,7 +1114,7 @@ class CHP:
         self.spec_co2_total = self.co2_total / Wärmemenge if Wärmemenge > 0 else 0 # tCO2/MWh_heat
 
         self.primärenergie = Brennstoffbedarf * self.primärenergiefaktor
-
+     
         results = {
             'Wärmemenge': Wärmemenge,
             'Wärmeleistung_L': Wärmeleistung_kW,

@@ -71,7 +71,7 @@ class CalculateBuildingMixThread(QThread):
             flow_temp = np.array(self.building_data['vorlauftemperatur'])
             return_temp = np.array(self.building_data['rücklauftemperatur'])
 
-            initial_data = (time_steps, last_profile, flow_temp, return_temp)
+            initial_data = time_steps, last_profile, flow_temp, return_temp
             calc1, calc2 = 0, len(time_steps)
 
             if self.optimize:
