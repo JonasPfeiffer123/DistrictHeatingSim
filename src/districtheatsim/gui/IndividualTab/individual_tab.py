@@ -331,7 +331,7 @@ class TechnologyTab(QWidget):
             tech_inputs = dialog.getInputs()
 
             # Create and store the new tech object
-            new_tech = self.createTechnology(generator_type, tech_inputs)
+            new_tech = self.createTechnology(generator_type, tech_inputs, building_id)
             self.tech_objects[building_id].append(new_tech)
 
             # Add the configuration to the CustomListWidget for the building
@@ -396,7 +396,7 @@ class TechnologyTab(QWidget):
                 item.setText(self.formatTechForDisplay(tech_object))
 
 
-    def createTechnology(self, tech_type, inputs):
+    def createTechnology(self, tech_type, inputs, building_id):
         """
         Creates a technology object based on the type and inputs.
         Ensures that the technology has a unique name by including the building ID and technology type.
@@ -404,6 +404,7 @@ class TechnologyTab(QWidget):
         Args:
             tech_type (str): The type of technology.
             inputs (dict): The inputs for the technology.
+            building_id (str): The ID of the building for which the technology is being created.
 
         Returns:
             Technology: The created technology object.
@@ -422,20 +423,25 @@ class TechnologyTab(QWidget):
 
         base_tech_type = tech_type.split('_')[0]  # Ensure we are working with the base type
         tech_class = tech_classes.get(base_tech_type)
-        
+
         if not tech_class:
             raise ValueError(f"Unknown technology type: {tech_type}")
 
-        # Generate a unique name for the technology, including its type and a count for uniqueness
-        tech_count = len(self.tech_objects)  # Total number of tech objects across buildings
-        unique_name = f"{base_tech_type}_{tech_count + 1}"
+        # Retrieve the existing technologies for the building
+        tech_objects_for_building = self.tech_objects.get(building_id, [])
+
+        # Count the number of technologies of the same type in the current building
+        same_tech_type_count = sum(1 for tech in tech_objects_for_building if tech_type in tech.name)
+
+        # Generate a unique name for the technology based on the building ID and technology count for that building
+        unique_name = f"{tech_type}_{building_id}_{same_tech_type_count + 1}"
+        print(f"unique_name: {unique_name}")
 
         # Ensure the inputs contain a 'name' field
         inputs['name'] = unique_name
 
         # Return the created technology object
         return tech_class(**inputs)
-
     
     def formatTechForDisplay(self, tech):
         """
@@ -471,7 +477,19 @@ class TechnologyTab(QWidget):
 
 
 class ResultsTab(QWidget):
+    """
+    The ResultsTab class represents the tab responsible for displaying and managing the calculation results
+    for different technologies and additional results like cost, PEF, CO2 emissions, and more.
+    """
+    calculation_done = pyqtSignal(object)  # Signal emitted when calculation is done
+
     def __init__(self, parent=None):
+        """
+        Initializes the ResultsTab instance.
+        
+        Args:
+            parent (QWidget, optional): Reference to the parent widget. Defaults to None.
+        """
         super().__init__(parent)
         self.parent = parent
         self.building_costs = {}  # Store costs per building
@@ -480,6 +498,9 @@ class ResultsTab(QWidget):
         self.initUI()
 
     def initUI(self):
+        """
+        Initializes the user interface components for the ResultsTab.
+        """
         layout = QVBoxLayout(self)
 
         # Button to trigger the calculation
@@ -489,8 +510,8 @@ class ResultsTab(QWidget):
 
         # Table to display the calculation results
         self.resultsTable = QTableWidget()
-        self.resultsTable.setColumnCount(4)
-        self.resultsTable.setHorizontalHeaderLabels(['Name', 'Anlagendimensionen', 'Kosten', 'Gesamtkosten'])
+        self.resultsTable.setColumnCount(7)
+        self.resultsTable.setHorizontalHeaderLabels(['Name', 'Anlagendimensionen', 'Kosten', 'Gesamtkosten', 'Wärmemenge MWh', 'WGK (€/MWh)', 'PEF', 'CO2 (t)'])
         layout.addWidget(self.resultsTable)
 
         # Label to show the total cost across all buildings
@@ -513,8 +534,6 @@ class ResultsTab(QWidget):
             # Extract building-specific data from the loaded JSON (from DiagramTab)
             if building_id in self.parent.diagram_tab.results:
                 building_data = self.parent.diagram_tab.results[building_id]
-
-                # Run the calculation thread with the building-specific data
                 self.run_building_calculation_thread(building_id, building_data, tech_objects)
 
     def run_building_calculation_thread(self, building_id, building_data, tech_objects):
@@ -547,6 +566,7 @@ class ResultsTab(QWidget):
         """
         building_id = result["building_id"]
         self.results[building_id] = result  # Store the result for this building
+        self.parent.technology_tab.updateTechObjectsOrder(building_id)  # Update the order of tech objects
         self.calculate_building_costs(building_id)
         self.update_results_table()
 
@@ -569,31 +589,23 @@ class ResultsTab(QWidget):
         Calculates the cost of a given technology object.
         """
         try:
-            # Calculate the cost for each tech object based on its type
             if isinstance(tech_object, GasBoiler):
-                print(tech_object.P_max, tech_object.spez_Investitionskosten)
                 cost = tech_object.P_max * tech_object.spez_Investitionskosten
             elif isinstance(tech_object, BiomassBoiler):
-                print(tech_object.P_BMK, tech_object.spez_Investitionskosten, tech_object.Größe_Holzlager, tech_object.spez_Investitionskosten_Holzlager)
                 cost = tech_object.P_BMK * tech_object.spez_Investitionskosten + \
                     tech_object.Größe_Holzlager * tech_object.spez_Investitionskosten_Holzlager
             elif isinstance(tech_object, CHP):
-                print(tech_object.th_Leistung_BHKW, tech_object.spez_Investitionskosten_GBHKW)
                 cost = tech_object.th_Leistung_BHKW * tech_object.spez_Investitionskosten_GBHKW
             elif isinstance(tech_object, SolarThermal):
-                print(tech_object.bruttofläche_STA, tech_object.kosten_fk_spez, tech_object.vs, tech_object.kosten_speicher_spez)
                 cost = tech_object.bruttofläche_STA * tech_object.kosten_fk_spez + \
                     tech_object.vs * tech_object.kosten_speicher_spez
             elif isinstance(tech_object, Geothermal):
-                print(tech_object.Fläche, tech_object.spez_Bohrkosten, tech_object.max_Wärmeleistung, tech_object.spezifische_Investitionskosten_WP)    
                 cost = tech_object.Fläche * tech_object.spez_Bohrkosten + \
                     tech_object.max_Wärmeleistung * tech_object.spezifische_Investitionskosten_WP
             elif isinstance(tech_object, WasteHeatPump):
-                print(tech_object.Kühlleistung_Abwärme, tech_object.spez_Investitionskosten_Abwärme, tech_object.max_Wärmeleistung, tech_object.spezifische_Investitionskosten_WP)  
                 cost = tech_object.Kühlleistung_Abwärme * tech_object.spez_Investitionskosten_Abwärme + \
                     tech_object.max_Wärmeleistung * tech_object.spezifische_Investitionskosten_WP
             elif isinstance(tech_object, RiverHeatPump):
-                print(tech_object.Wärmeleistung_FW_WP, tech_object.spez_Investitionskosten_Flusswasser, tech_object.spezifische_Investitionskosten_WP)
                 cost = tech_object.Wärmeleistung_FW_WP * tech_object.spez_Investitionskosten_Flusswasser + \
                     tech_object.Wärmeleistung_FW_WP * tech_object.spezifische_Investitionskosten_WP
             else:
@@ -603,10 +615,9 @@ class ResultsTab(QWidget):
             print(f"Error calculating cost for technology: {e}")
             return 0
 
-
     def update_results_table(self):
         """
-        Updates the table with the calculated costs for each building and technology.
+        Updates the table with the calculated costs and additional results for each building and technology.
         """
         self.resultsTable.setRowCount(0)  # Clear the table
 
@@ -618,12 +629,17 @@ class ResultsTab(QWidget):
                 row_position = self.resultsTable.rowCount()
                 self.resultsTable.insertRow(row_position)
 
-                # Set technology details
-                self.resultsTable.setItem(row_position, 0, QTableWidgetItem(tech.__class__.__name__))
-                dimensions, cost, total = self.extract_tech_data(tech)
+                # Extract technology details
+                print(tech, building_id)
+                dimensions, cost, total, wärmemenge, wgk, pef, co2 = self.extract_tech_data(tech, building_id)
+                self.resultsTable.setItem(row_position, 0, QTableWidgetItem(tech.name))
                 self.resultsTable.setItem(row_position, 1, QTableWidgetItem(dimensions))
                 self.resultsTable.setItem(row_position, 2, QTableWidgetItem(f"{cost:.2f} €"))
                 self.resultsTable.setItem(row_position, 3, QTableWidgetItem(f"{total:.2f} €"))
+                self.resultsTable.setItem(row_position, 4, QTableWidgetItem(f"{wärmemenge:.2f} MWh"))
+                self.resultsTable.setItem(row_position, 5, QTableWidgetItem(f"{wgk:.2f} €/MWh"))
+                self.resultsTable.setItem(row_position, 6, QTableWidgetItem(f"{pef:.4f}"))
+                self.resultsTable.setItem(row_position, 7, QTableWidgetItem(f"{co2:.4f} t"))
 
                 building_total += total
 
@@ -635,8 +651,8 @@ class ResultsTab(QWidget):
 
         # Update the total cost label
         self.update_total_cost_label()
-    
-    def extract_tech_data(self, tech):
+
+    def extract_tech_data(self, tech, building_id):
         """
         Extracts the data for a given technology object.
 
@@ -644,9 +660,13 @@ class ResultsTab(QWidget):
             tech (object): The technology object being extracted.
 
         Returns:
-            tuple: Dimensions, cost, and total cost for the technology.
+            tuple: Dimensions, cost, total cost, WGK (€/MWh), PEF, and CO2 emissions (t) for the technology.
         """
         try:
+            # Use the name of the technology instead of the object for comparison
+            tech_name = tech.name
+            print(f"Extracting data for tech: {tech_name}")
+
             if isinstance(tech, GasBoiler):
                 dimensions = f"th. Leistung: {tech.P_max:.2f} kW"
                 cost = tech.P_max * tech.spez_Investitionskosten
@@ -658,7 +678,7 @@ class ResultsTab(QWidget):
             elif isinstance(tech, CHP):
                 dimensions = f"th. Leistung: {tech.th_Leistung_BHKW:.2f} kW, el. Leistung: {tech.el_Leistung_Soll:.2f} kW"
                 cost = tech.spez_Investitionskosten_GBHKW * tech.th_Leistung_BHKW
-                total = cost  # No additional costs for CHP
+                total = cost
             elif isinstance(tech, SolarThermal):
                 dimensions = f"Kollektorfläche: {tech.bruttofläche_STA:.2f} m², Speichervolumen: {tech.vs:.2f} m³"
                 cost = tech.bruttofläche_STA * tech.kosten_fk_spez
@@ -675,17 +695,40 @@ class ResultsTab(QWidget):
                 dimensions = f"th. Leistung: {tech.Wärmeleistung_FW_WP:.2f} kW"
                 cost = tech.Wärmeleistung_FW_WP * tech.spez_Investitionskosten_Flusswasser
                 total = cost + (tech.Wärmeleistung_FW_WP * tech.spezifische_Investitionskosten_WP)
+            elif isinstance(tech, AqvaHeat):
+                dimensions = f"Noch nicht implementiert"
+                cost = f"Noch nicht implementiert"
+                total = f"Noch nicht implementiert"
             else:
                 dimensions = "N/A"
                 cost = 0
                 total = 0
+
+            # Fetch the result for the building
+            building_result = self.results[building_id]
+
+            # Extract the necessary data from the result
+            # Instead of comparing the tech object, compare the tech name (tech_name) with the entries in the 'techs' list
+            tech_index = building_result['techs'].index(tech_name)  # Find the index of the technology by name
+
+            # Extract data from the results using the index
+            wärmemenge = building_result['Wärmemengen'][tech_index]
+            wgk = building_result['WGK'][tech_index]  # Wärmegestehungskosten (WGK) in €/MWh
+            pef = building_result['primärenergie_L'][tech_index]  # Primärenergiefaktor (PEF)
+            co2 = building_result['specific_emissions_L'][tech_index] * building_result['Wärmemengen'][tech_index]  # CO2 emissions (t)
+
+
         except Exception as e:
             print(f"Error extracting tech data: {e}")
             dimensions = "N/A"
             cost = 0
             total = 0
+            wärmemenge = 0
+            wgk = 0
+            pef = 0
+            co2 = 0
 
-        return dimensions, cost, total
+        return dimensions, cost, total, wärmemenge, wgk, pef, co2
 
     def update_total_cost_label(self):
         """
