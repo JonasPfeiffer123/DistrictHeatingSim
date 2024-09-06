@@ -10,7 +10,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QFileDialog, QPushButton, QComboBox, QLineEdit, QMessageBox,
                              QFormLayout, QScrollArea, QHBoxLayout, QTabWidget, QMenuBar, QMenu, QListWidget,
-                             QAbstractItemView, QDialog, QListWidgetItem, QTableWidgetItem, QTableWidget, QHeaderView)
+                             QAbstractItemView, QDialog, QListWidgetItem, QTableWidgetItem, QTableWidget, QHeaderView, QCheckBox)
 from PyQt5.QtCore import pyqtSignal, Qt
 import json
 from gui.utilities import CheckableComboBox  # Assuming you have this implemented
@@ -435,7 +435,6 @@ class TechnologyTab(QWidget):
 
         # Generate a unique name for the technology based on the building ID and technology count for that building
         unique_name = f"{tech_type}_{building_id}_{same_tech_type_count + 1}"
-        print(f"unique_name: {unique_name}")
 
         # Ensure the inputs contain a 'name' field
         inputs['name'] = unique_name
@@ -503,6 +502,11 @@ class ResultsTab(QWidget):
         """
         layout = QVBoxLayout(self)
 
+        # ComboBox to select building for the plot
+        self.buildingSelectComboBox = QComboBox(self)
+        self.buildingSelectComboBox.currentIndexChanged.connect(self.onBuildingSelectionChanged)
+        layout.addWidget(self.buildingSelectComboBox)
+
         # Button to trigger the calculation
         self.calc_button = QPushButton("Start Generator Calculation", self)
         self.calc_button.clicked.connect(self.start_calculation_for_all_buildings)
@@ -518,6 +522,8 @@ class ResultsTab(QWidget):
         self.totalCostLabel = QLabel()
         layout.addWidget(self.totalCostLabel)
 
+        # Diagrams section
+        self.setupDiagrams(layout)
         self.setLayout(layout)
 
     def start_calculation_for_all_buildings(self):
@@ -569,6 +575,22 @@ class ResultsTab(QWidget):
         self.parent.technology_tab.updateTechObjectsOrder(building_id)  # Update the order of tech objects
         self.calculate_building_costs(building_id)
         self.update_results_table()
+
+        # Populate the ComboBox with building IDs
+        self.populateBuildingComboBox()
+
+        # Automatically select the first building after calculation is done
+        self.buildingSelectComboBox.setCurrentIndex(0)
+
+    def populateBuildingComboBox(self):
+        """
+        Populates the building selection ComboBox with available buildings.
+        """
+        self.buildingSelectComboBox.clear()
+        building_ids = sorted(self.results.keys())  # Get all building IDs that have results
+        print(building_ids)
+        for building_id in building_ids:
+            self.buildingSelectComboBox.addItem(f"Building {building_id}")
 
     def calculate_building_costs(self, building_id):
         """
@@ -630,7 +652,6 @@ class ResultsTab(QWidget):
                 self.resultsTable.insertRow(row_position)
 
                 # Extract technology details
-                print(tech, building_id)
                 dimensions, cost, total, wärmemenge, wgk, pef, co2 = self.extract_tech_data(tech, building_id)
                 self.resultsTable.setItem(row_position, 0, QTableWidgetItem(tech.name))
                 self.resultsTable.setItem(row_position, 1, QTableWidgetItem(dimensions))
@@ -663,10 +684,6 @@ class ResultsTab(QWidget):
             tuple: Dimensions, cost, total cost, WGK (€/MWh), PEF, and CO2 emissions (t) for the technology.
         """
         try:
-            # Use the name of the technology instead of the object for comparison
-            tech_name = tech.name
-            print(f"Extracting data for tech: {tech_name}")
-
             if isinstance(tech, GasBoiler):
                 dimensions = f"th. Leistung: {tech.P_max:.2f} kW"
                 cost = tech.P_max * tech.spez_Investitionskosten
@@ -708,8 +725,8 @@ class ResultsTab(QWidget):
             building_result = self.results[building_id]
 
             # Extract the necessary data from the result
-            # Instead of comparing the tech object, compare the tech name (tech_name) with the entries in the 'techs' list
-            tech_index = building_result['techs'].index(tech_name)  # Find the index of the technology by name
+            # Instead of comparing the tech object, compare the tech name (tech.name) with the entries in the 'techs' list
+            tech_index = building_result['techs'].index(tech.name)  # Find the index of the technology by name
 
             # Extract data from the results using the index
             wärmemenge = building_result['Wärmemengen'][tech_index]
@@ -741,6 +758,255 @@ class ResultsTab(QWidget):
         Handles calculation errors.
         """
         QMessageBox.critical(self, "Berechnungsfehler", str(error_message))
+
+    def updateBuildingSelection(self, index):
+        """
+        Updates the selected building and re-plots the results.
+
+        Args:
+            index (int): The index of the selected building.
+        """
+        self.selected_building = index
+        self.plotResultsForBuilding()
+
+    def onBuildingSelectionChanged(self):
+        """
+        Updates the plot when a new building is selected from the ComboBox.
+        """
+        self.clearPlot()
+
+        current_text = self.buildingSelectComboBox.currentText()
+        
+        if not current_text:  # Check if the ComboBox has a valid selection
+            print("No building selected.")
+            return
+
+        print(f"Selected ComboBox Text: {current_text}")
+
+        # Check if the format is as expected (e.g., "Building 0")
+        if " " in current_text:
+            selected_building = current_text.split()[-1]  # Extract just the building ID (e.g., "0")
+            print(f"Selected building: {selected_building}")
+
+            if selected_building in self.results:
+                self.plotResults(self.results[selected_building])
+            else:
+                print(f"No results available for Building {selected_building}")
+        else:
+            print("Unexpected ComboBox format.")
+
+
+    def clearPlot(self):
+        """
+        Clears the plot area when no data is available.
+        """
+        self.figure1.clear()
+        self.canvas1.draw()
+        self.pieChartFigure.clear()
+        self.pieChartCanvas.draw()
+
+    def plotResultsForBuilding(self):
+        """
+        Plots the results for the selected building.
+        """
+        if self.selected_building is None:
+            return
+        
+        building_results = self.results.get(self.selected_building)
+        if building_results:
+            self.plotResults(building_results)
+
+    def setupDiagrams(self, layout):
+        """
+        Sets up the diagrams for the ResultsTab.
+        """
+        # Variable selection layout
+        self.variableSelectionLayout = QHBoxLayout()
+        self.variableComboBox = CheckableComboBox()
+        self.variableComboBox.view().pressed.connect(self.updateSelectedVariables)
+        self.secondYAxisCheckBox = QCheckBox("Second y-Axis")
+        self.secondYAxisCheckBox.stateChanged.connect(self.updateSelectedVariables)
+
+        self.variableSelectionLayout.addWidget(self.variableComboBox)
+        self.variableSelectionLayout.addWidget(self.secondYAxisCheckBox)
+        layout.addLayout(self.variableSelectionLayout)
+
+        self.scrollArea = QScrollArea()
+        self.scrollArea.setWidgetResizable(True)
+        self.scrollWidget = QWidget()
+        self.scrollLayout = QVBoxLayout(self.scrollWidget)
+
+        # Diagrams
+        self.figure1 = Figure(figsize=(8, 6))
+        self.canvas1 = FigureCanvas(self.figure1)
+        self.canvas1.setMinimumSize(500, 500)
+        self.scrollLayout.addWidget(self.canvas1)
+
+        self.pieChartFigure = Figure(figsize=(6, 6))
+        self.pieChartCanvas = FigureCanvas(self.pieChartFigure)
+        self.pieChartCanvas.setMinimumSize(500, 500)
+        self.scrollLayout.addWidget(self.pieChartCanvas)
+
+        self.scrollArea.setWidget(self.scrollWidget)
+        layout.addWidget(self.scrollArea)
+
+    def plotResults(self, results):
+        """
+        Plots the results in the diagrams for a specific building.
+
+        Args:
+            results (dict): The results for the selected building.
+        """
+        # Verwende die Ergebnisse des spezifischen Gebäudes
+        building_id = results['building_id']
+        
+        if building_id not in self.results:
+            print(f"Error: No results found for building {building_id}")
+            return
+
+        building_results = self.results[building_id]
+
+        # Überprüfe, ob 'time_steps' in den Ergebnissen des Gebäudes vorhanden sind
+        if 'time_steps' not in building_results:
+            print(f"Error: 'time_steps' not found for building {building_id}")
+            return
+
+        time_steps = building_results['time_steps']
+
+        self.extracted_data = {}
+        for tech_class in building_results['tech_classes']:
+            for var_name in dir(tech_class):
+                var_value = getattr(tech_class, var_name)
+                if isinstance(var_value, (list, np.ndarray)) and len(var_value) == len(time_steps):
+                    unique_var_name = f"{tech_class.name}_{var_name}"
+                    self.extracted_data[unique_var_name] = var_value
+
+        # Fülle die Variable-Combobox
+        self.variableComboBox.clear()
+        self.variableComboBox.addItems(self.extracted_data.keys())
+        self.variableComboBox.addItem("Last_L")
+
+        # Wähle initiale Variablen aus
+        initial_vars = [var_name for var_name in self.extracted_data.keys() if "_Wärmeleistung" in var_name]
+        initial_vars.append("Last_L")
+
+        for index in range(self.variableComboBox.count()):
+            item_text = self.variableComboBox.model().item(index).text()
+            if item_text in initial_vars:
+                # Setze die Checkbox des Items auf Checked
+                item = self.variableComboBox.model().item(index)
+                item.setCheckState(Qt.Checked)
+
+        self.selected_variables = self.variableComboBox.checkedItems()
+
+        # Zeichne die Diagramme
+        self.figure1.clear()
+        self.plotVariables(self.figure1, time_steps, self.selected_variables, building_results)
+        self.canvas1.draw()
+
+        # Zeichne das Tortendiagramm
+        self.plotPieChart(building_results)
+
+    def plotVariables(self, figure, time_steps, selected_vars, building_results):
+        """
+        Plots the selected variables in the diagram for the selected building.
+        
+        Args:
+            figure (Figure): The figure to plot on.
+            time_steps (list): The list of time steps.
+            selected_vars (list): The list of selected variables.
+            building_results (dict): The results for the selected building.
+        """
+        ax1 = figure.add_subplot(111)
+        stackplot_vars = [var for var in selected_vars if "_Wärmeleistung" in var]
+        other_vars = [var for var in selected_vars if var not in stackplot_vars and var != "Last_L"]
+
+        stackplot_data = [building_results.get(var, []) for var in stackplot_vars if var in building_results]
+        if stackplot_data:
+            ax1.stackplot(time_steps, stackplot_data, labels=stackplot_vars)
+
+        if "Last_L" in selected_vars:
+            ax1.plot(time_steps, building_results["Last_L"], color='blue', label='Last', linewidth=0.5)
+
+        ax2 = ax1.twinx() if self.secondYAxisCheckBox.isChecked() else None
+        for var_name in other_vars:
+            if var_name in building_results:
+                var_value = building_results[var_name]
+                target_ax = ax2 if ax2 else ax1
+                target_ax.plot(time_steps, var_value, label=var_name)
+
+        ax1.set_title(f"Jahresdauerlinie - Gebäude {building_results['building_id']}")
+        ax1.set_xlabel("Jahresstunden")
+        ax1.set_ylabel("thermische Leistung in kW")
+        ax1.grid()
+
+        if ax2:
+            ax1.legend(loc='upper left')
+            ax2.legend(loc='upper right')
+        else:
+            ax1.legend(loc='upper center')
+
+    def plotPieChart(self, building_results):
+        """
+        Plots the pie chart for the energy shares for a specific building.
+        
+        Args:
+            building_results (dict): The results for the selected building.
+        """
+        Anteile = building_results['Anteile']
+        labels = building_results['techs']
+        colors = building_results['colors']
+        summe = sum(Anteile)
+        if round(summe, 5) < 1:
+            Anteile.append(1 - summe)
+            labels.append("ungedeckter Bedarf")
+            colors.append("black")
+
+        self.pieChartFigure.clear()
+        ax = self.pieChartFigure.add_subplot(111)
+        wedges, texts, autotexts = ax.pie(
+            Anteile, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90, pctdistance=0.85
+        )
+
+        for text in texts:
+            text.set_fontsize(10)
+        for autotext in autotexts:
+            autotext.set_fontsize(10)
+            autotext.set_color('black')
+            autotext.set_weight('bold')
+
+        ax.set_title(f"Anteile Wärmeerzeugung - Gebäude {building_results['building_id']}")
+        ax.legend(loc='lower left')
+        ax.axis("equal")
+
+        self.pieChartCanvas.draw()
+
+    def updateSelectedVariables(self):
+        """
+        Updates the selected variables and re-plots the diagram.
+        """
+        # Stelle sicher, dass das ausgewählte Gebäude genutzt wird
+        selected_building_id = str(self.buildingSelectComboBox.currentIndex())
+
+        # Prüfe, ob die Ergebnisse für das ausgewählte Gebäude vorhanden sind
+        if selected_building_id not in self.results:
+            print(f"Error: No results found for building {selected_building_id}")
+            return
+
+        building_results = self.results[selected_building_id]
+        
+        # Überprüfe, ob 'time_steps' in den Ergebnissen des Gebäudes enthalten ist
+        if 'time_steps' not in building_results:
+            print(f"Error: 'time_steps' not found for building {selected_building_id}")
+            return
+
+        # Extrahiere die Zeitstufen und plotte die Variablen für das spezifische Gebäude
+        time_steps = building_results['time_steps']
+        self.selected_variables = self.variableComboBox.checkedItems()
+
+        self.figure1.clear()
+        self.plotVariables(self.figure1, time_steps, self.selected_variables, building_results)
+        self.canvas1.draw()
 
 class CustomListWidget(QListWidget):
     """
