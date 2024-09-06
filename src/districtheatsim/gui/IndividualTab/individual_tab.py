@@ -502,11 +502,6 @@ class ResultsTab(QWidget):
         """
         layout = QVBoxLayout(self)
 
-        # ComboBox to select building for the plot
-        self.buildingSelectComboBox = QComboBox(self)
-        self.buildingSelectComboBox.currentIndexChanged.connect(self.onBuildingSelectionChanged)
-        layout.addWidget(self.buildingSelectComboBox)
-
         # Button to trigger the calculation
         self.calc_button = QPushButton("Start Generator Calculation", self)
         self.calc_button.clicked.connect(self.start_calculation_for_all_buildings)
@@ -521,6 +516,11 @@ class ResultsTab(QWidget):
         # Label to show the total cost across all buildings
         self.totalCostLabel = QLabel()
         layout.addWidget(self.totalCostLabel)
+
+        # ComboBox to select building for the plot
+        self.buildingSelectComboBox = QComboBox(self)
+        self.buildingSelectComboBox.currentIndexChanged.connect(self.onBuildingSelectionChanged)
+        layout.addWidget(self.buildingSelectComboBox)
 
         # Diagrams section
         self.setupDiagrams(layout)
@@ -759,16 +759,6 @@ class ResultsTab(QWidget):
         """
         QMessageBox.critical(self, "Berechnungsfehler", str(error_message))
 
-    def updateBuildingSelection(self, index):
-        """
-        Updates the selected building and re-plots the results.
-
-        Args:
-            index (int): The index of the selected building.
-        """
-        self.selected_building = index
-        self.plotResultsForBuilding()
-
     def onBuildingSelectionChanged(self):
         """
         Updates the plot when a new building is selected from the ComboBox.
@@ -794,16 +784,6 @@ class ResultsTab(QWidget):
                 print(f"No results available for Building {selected_building}")
         else:
             print("Unexpected ComboBox format.")
-
-
-    def clearPlot(self):
-        """
-        Clears the plot area when no data is available.
-        """
-        self.figure1.clear()
-        self.canvas1.draw()
-        self.pieChartFigure.clear()
-        self.pieChartCanvas.draw()
 
     def plotResultsForBuilding(self):
         """
@@ -857,89 +837,110 @@ class ResultsTab(QWidget):
         Args:
             results (dict): The results for the selected building.
         """
-        # Verwende die Ergebnisse des spezifischen Gebäudes
         building_id = results['building_id']
         
+        # Verify that the building results are available
         if building_id not in self.results:
             print(f"Error: No results found for building {building_id}")
             return
 
         building_results = self.results[building_id]
 
-        # Überprüfe, ob 'time_steps' in den Ergebnissen des Gebäudes vorhanden sind
+        # Verify that time_steps are present
         if 'time_steps' not in building_results:
             print(f"Error: 'time_steps' not found for building {building_id}")
             return
+        
+        print(building_results)
 
         time_steps = building_results['time_steps']
 
+        # Create a mapping between specific and universal variables
         self.extracted_data = {}
+        self.variable_mapping = {}  # To map specific names to 'Wärmeleistung_L'
+
         for tech_class in building_results['tech_classes']:
             for var_name in dir(tech_class):
                 var_value = getattr(tech_class, var_name)
                 if isinstance(var_value, (list, np.ndarray)) and len(var_value) == len(time_steps):
                     unique_var_name = f"{tech_class.name}_{var_name}"
                     self.extracted_data[unique_var_name] = var_value
+                    
+                    # If the variable is related to Wärmeleistung_L, store the mapping
+                    if "Wärmeleistung_L" in var_name:
+                        self.variable_mapping[unique_var_name] = "Wärmeleistung_L"
 
-        # Fülle die Variable-Combobox
+        # Populate the Variable ComboBox with the available variables
         self.variableComboBox.clear()
         self.variableComboBox.addItems(self.extracted_data.keys())
-        self.variableComboBox.addItem("Last_L")
+        self.variableComboBox.addItem("Last_L")  # Adding 'Last_L' manually
 
-        # Wähle initiale Variablen aus
+        # Automatically check initial variables
         initial_vars = [var_name for var_name in self.extracted_data.keys() if "_Wärmeleistung" in var_name]
         initial_vars.append("Last_L")
 
         for index in range(self.variableComboBox.count()):
             item_text = self.variableComboBox.model().item(index).text()
             if item_text in initial_vars:
-                # Setze die Checkbox des Items auf Checked
                 item = self.variableComboBox.model().item(index)
                 item.setCheckState(Qt.Checked)
 
         self.selected_variables = self.variableComboBox.checkedItems()
 
-        # Zeichne die Diagramme
+        # Plot the diagrams
         self.figure1.clear()
         self.plotVariables(self.figure1, time_steps, self.selected_variables, building_results)
         self.canvas1.draw()
 
-        # Zeichne das Tortendiagramm
+        # Draw the pie chart
         self.plotPieChart(building_results)
+
 
     def plotVariables(self, figure, time_steps, selected_vars, building_results):
         """
         Plots the selected variables in the diagram for the selected building.
-        
+
         Args:
             figure (Figure): The figure to plot on.
             time_steps (list): The list of time steps.
             selected_vars (list): The list of selected variables.
             building_results (dict): The results for the selected building.
         """
+        print("Selected variables for plotting:", selected_vars)
         ax1 = figure.add_subplot(111)
-        stackplot_vars = [var for var in selected_vars if "_Wärmeleistung" in var]
-        other_vars = [var for var in selected_vars if var not in stackplot_vars and var != "Last_L"]
 
-        stackplot_data = [building_results.get(var, []) for var in stackplot_vars if var in building_results]
-        if stackplot_data:
-            ax1.stackplot(time_steps, stackplot_data, labels=stackplot_vars)
+        # Extract stackplot data from Wärmeleistung_L (multiple arrays for each generator)
+        stackplot_data = building_results.get("Wärmeleistung_L", [])
+        
+        # Debug: Show how many arrays are in Wärmeleistung_L
+        print(f"Number of Wärmeleistung arrays: {len(stackplot_data)}")
 
-        if "Last_L" in selected_vars:
+        # Check if stackplot_data exists and ensure length matches time_steps
+        if stackplot_data and all(len(data) == len(time_steps) for data in stackplot_data):
+            ax1.stackplot(time_steps, *stackplot_data, labels=building_results['techs'])  # Stack all arrays with generator labels
+        else:
+            print("Error: Stackplot data is missing or doesn't match time steps length")
+
+        # Plot 'Last_L' variable if selected
+        if "Last_L" in selected_vars and "Last_L" in building_results:
             ax1.plot(time_steps, building_results["Last_L"], color='blue', label='Last', linewidth=0.5)
 
+        # Add a second y-axis if required
         ax2 = ax1.twinx() if self.secondYAxisCheckBox.isChecked() else None
-        for var_name in other_vars:
-            if var_name in building_results:
-                var_value = building_results[var_name]
-                target_ax = ax2 if ax2 else ax1
-                target_ax.plot(time_steps, var_value, label=var_name)
+        for var_name in selected_vars:
+            if var_name not in ["Last_L", "Wärmeleistung_L"]:
+                var_value = building_results.get(var_name)
+                if var_value is not None:
+                    target_ax = ax2 if ax2 else ax1
+                    target_ax.plot(time_steps, var_value, label=var_name)
 
+        # Set plot details
         ax1.set_title(f"Jahresdauerlinie - Gebäude {building_results['building_id']}")
         ax1.set_xlabel("Jahresstunden")
         ax1.set_ylabel("thermische Leistung in kW")
         ax1.grid()
 
+        # Set legends based on axes
         if ax2:
             ax1.legend(loc='upper left')
             ax2.legend(loc='upper right')
@@ -1007,6 +1008,15 @@ class ResultsTab(QWidget):
         self.figure1.clear()
         self.plotVariables(self.figure1, time_steps, self.selected_variables, building_results)
         self.canvas1.draw()
+
+    def clearPlot(self):
+        """
+        Clears the plot area when no data is available.
+        """
+        self.figure1.clear()
+        self.canvas1.draw()
+        self.pieChartFigure.clear()
+        self.pieChartCanvas.draw()
 
 class CustomListWidget(QListWidget):
     """
