@@ -137,7 +137,7 @@ def Berechnung_Solarstrahlung(Globalstrahlung_L, D_L, Tag_des_Jahres_L, time_ste
     # Diffuse Strahlung auf der schrägen Oberfläche
     GdT_H_Dk = GT_H_Gk - GbT
 
-    # IAM_EW und IAM_NS sind wahrscheinlich Faktoren, die den Einfluss des Einstrahlungswinkels
+    # IAM_EW und IAM_NS sind Faktoren, die den Einfluss des Einstrahlungswinkels
     # auf die Strahlung beschreiben. K_beam ist das Produkt dieser beiden Faktoren.
     K_beam = IAM_EW * IAM_NS
 

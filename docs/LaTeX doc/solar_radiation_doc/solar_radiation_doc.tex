@@ -5,7 +5,7 @@
 \usepackage{graphicx}
 \usepackage{hyperref}
 
-\title{Fachliche Beschreibung des Berechnungsalgorithmus zur Berechnung der Solarstrahlung}
+\title{Fachliche Beschreibung des Berechnungsalgorithmus zur Solarstrahlungsberechnung}
 \author{Dipl.-Ing. (FH) Jonas Pfeiffer}
 \date{2024-09-04}
 
@@ -15,115 +15,104 @@
 
 \section*{1. Einleitung}
 
-Dieses Dokument beschreibt im Detail den Berechnungsalgorithmus zur Bestimmung der Solarstrahlung, die auf eine geneigte Oberfläche trifft. Der Algorithmus basiert auf Wetterdaten eines Testreferenzjahres (TRY) und berücksichtigt Faktoren wie den Einfallswinkel der Sonnenstrahlen, die Neigung der Oberfläche und den Albedo-Effekt. Diese Berechnungsmethode wird in der Simulation von Solaranlagen, insbesondere für solarthermische Anlagen, eingesetzt.
+Dieses Dokument beschreibt detailliert den Algorithmus zur Berechnung der Solarstrahlung, die auf eine geneigte Oberfläche trifft. Der Algorithmus berücksichtigt Wetterdaten eines Testreferenzjahres (TRY), die geografische Lage, den Einfallswinkel der Sonnenstrahlen, die Neigung der Kollektorfläche und den Albedo-Effekt. Diese Methode wird zur Simulation von Solaranlagen verwendet, insbesondere für solarthermische Anwendungen in Wärmenetzen.
 
-Die Berechnung der Solarstrahlung erfolgt mit physikalischen Modellen, die den Einfallswinkel der Strahlung auf geneigte Kollektoren berücksichtigen und die direkte, diffuse und reflektierte Strahlung berechnen.
+Yield calculation program for solar thermal energy in heating networks (calculation basis: ScenoCalc District Heating 2.0, \url{https://www.scfw.de/})
 
-\section*{2. Konstante und Hilfsfunktionen}
+\section*{2. Grundlagen}
 
-\subsection*{2.1 \texttt{DEG\_TO\_RAD}}
+\subsection*{2.1 Grad-Radian-Konversion}
 
-Die Konstante \texttt{DEG\_TO\_RAD} wird verwendet, um Winkel in Grad in Bogenmaß (Radiant) umzurechnen. Diese Konstante basiert auf der bekannten Umrechnungsformel:
+Die Umrechnung von Grad in Bogenmaß erfolgt durch die Konstante:
 \[
-1^\circ = \frac{\pi}{180} \, \text{Rad}.
+\text{DEG\_TO\_RAD} = \frac{\pi}{180}
 \]
-Sie wird bei der Berechnung von trigonometrischen Funktionen verwendet, da diese Funktionen in der Programmiersprache Python Bogenmaß erwarten.
+Diese Konstante wird verwendet, da trigonometrische Funktionen in Python Eingaben im Bogenmaß erwarten.
 
-\subsection*{2.2 \texttt{deg\_to\_rad(deg)}}
-
-Die Funktion \texttt{deg\_to\_rad(deg)} konvertiert einen Winkel in Grad in Bogenmaß. Der Algorithmus benötigt dies, da Winkel in Grad angegeben werden, aber für die Berechnungen der trigonometrischen Funktionen das Bogenmaß erforderlich ist.
-
-\begin{verbatim}
-def deg_to_rad(deg):
-    return deg * DEG_TO_RAD
-\end{verbatim}
+Die Funktion \texttt{deg\_to\_rad(deg)} wandelt einen Winkel \( \theta \) in Grad in Bogenmaß um:
+\[
+\theta_{\text{rad}} = \theta_{\text{deg}} \times \frac{\pi}{180}
+\]
 
 \section*{3. Berechnung der Solarstrahlung}
 
-\subsection*{3.1 \texttt{Berechnung\_Solarstrahlung}}
+Die Hauptfunktion des Algorithmus ist \texttt{Berechnung\_Solarstrahlung}, die die Strahlungsintensität auf einer geneigten Kollektorfläche berechnet. Die Berechnung erfolgt in mehreren Schritten, die im Folgenden beschrieben werden.
 
-Diese Funktion ist der Kern des Algorithmus. Sie berechnet die auf eine geneigte Oberfläche einfallende Solarstrahlung unter Berücksichtigung direkter und diffuser Strahlung sowie reflektierter Strahlung durch Albedo.
+\subsection*{3.1 Berechnung des Tagwinkels und der Zeitgleichung}
 
-\subsubsection*{Eingabeparameter}
-
-Die Funktion nimmt verschiedene Eingabedaten entgegen:
-
-\begin{itemize}
-    \item \textbf{Globalstrahlung\_L}: Array der globalen Strahlungsdaten.
-    \item \textbf{D\_L}: Direkte Strahlungskomponente.
-    \item \textbf{Tag\_des\_Jahres\_L}: Tag des Jahres.
-    \item \textbf{time\_steps}: Zeitarray.
-    \item \textbf{Longitude, STD\_Longitude, Latitude}: Geografische Koordinaten der Anlage.
-    \item \textbf{Albedo}: Reflektionsgrad der Umgebung.
-    \item \textbf{IAM\_W, IAM\_N}: Modifikationsfaktoren für den Einstrahlungswinkel in Ost-West- bzw. Nord-Süd-Richtung.
-    \item \textbf{EWCaa, CTA}: Azimutwinkel und Neigungswinkel des Solarkollektors.
-\end{itemize}
-
-\subsubsection*{Berechnungsschritte}
-
-\textbf{1. Berechnung der Sonnenzeit und des Tagwinkels}
-
-Der Tag des Jahres wird in einen Winkel umgerechnet, der für die Berechnung der Sonnenposition erforderlich ist. Der Tagwinkel \( B \) wird wie folgt berechnet:
+Der Tag des Jahres \( N \) wird in einen Winkel \( B \) umgerechnet:
 \[
-B = \frac{360 \cdot (\text{Tag\_des\_Jahres\_L} - 1)}{365}
+B = \frac{360 \times (N - 1)}{365}
 \]
-Zusätzlich wird eine Zeitkorrektur \( E \) berechnet, die die Abweichungen der Sonnenzeit durch die elliptische Bahn der Erde um die Sonne berücksichtigt:
+Dieser Winkel ist notwendig, um die Sonnenposition im Jahreszyklus zu berechnen.
+
+Die Zeitgleichung \( E \), die die Abweichungen zwischen Sonnenzeit und Standardzeit berücksichtigt, wird mit folgender Formel berechnet:
 \[
 E = 229.2 \cdot \left( 0.000075 + 0.001868 \cos(B) - 0.032077 \sin(B) - 0.014615 \cos(2B) - 0.04089 \sin(2B) \right)
 \]
-Die Sonnenzeit wird unter Berücksichtigung der geographischen Länge berechnet.
 
-\textbf{2. Berechnung des Sonnenzenitwinkels (SZA)}
+\subsection*{3.2 Berechnung der Sonnenzeit}
 
-Der Sonnenzenitwinkel beschreibt den Winkel zwischen dem Lot auf die Erdoberfläche und den Sonnenstrahlen. Er wird berechnet, indem die geografische Breite \( \phi \), der Stundenwinkel \( h \) und die Deklination \( \delta \) der Sonne wie folgt genutzt werden:
+Die Sonnenzeit wird unter Berücksichtigung der geografischen Länge \( L \), der Standardlänge des Zeitzonenmeridians \( L_{std} \) und der Zeitgleichung \( E \) berechnet:
+\[
+t_{\text{solar}} = \frac{(t_{\text{Uhrzeit}} - 0.5) \cdot 3600 + E \cdot 60 + 4 \cdot (L_{std} - L) \cdot 60}{3600}
+\]
+
+\subsection*{3.3 Sonnenzenitwinkel und Deklination der Sonne}
+
+Die Deklination der Sonne \( \delta \) wird als Funktion des Tages des Jahres berechnet:
+\[
+\delta = 23.45 \cdot \sin\left( \frac{360 \cdot (284 + N)}{365} \right)
+\]
+
+Der Sonnenzenitwinkel \( SZA \) beschreibt den Winkel zwischen dem Lot auf die Erdoberfläche und den Sonnenstrahlen:
 \[
 SZA = \arccos\left( \cos(\phi) \cos(h) \cos(\delta) + \sin(\phi) \sin(\delta) \right)
 \]
-Der Stundenwinkel \( h \) beschreibt den Winkel der Sonne relativ zu ihrer höchsten Position am Himmel.
-
-\textbf{3. Berechnung des Einfallswinkels auf den Kollektor}
-
-Der Einfallswinkel \( I_aC \) der Solarstrahlung auf den geneigten Kollektor wird mit der folgenden Formel berechnet:
+wobei \( \phi \) die geografische Breite und \( h \) der Stundenwinkel der Sonne ist:
 \[
-I_aC = \arccos\left( \cos(SZA) \cos(CTA) + \sin(SZA) \sin(CTA) \cos(EWs\_az\_angle - EWCaa) \right)
-\]
-Hierbei ist \( CTA \) der Neigungswinkel des Kollektors und \( EWCaa \) der Azimutwinkel.
-
-\textbf{4. Berechnung des Einstrahlungswinkels}
-
-Für die Modifikationsfaktoren \( IAM\_W \) und \( IAM\_N \) wird der Einfallswinkel berechnet, um den Effekt der Strahlungsintensität in Ost-West- und Nord-Süd-Richtung zu berücksichtigen. Dies wird durch eine Lookup-Funktion realisiert, die den Einstrahlungswinkel in 10°-Schritten interpoliert.
-
-\textbf{5. Berechnung der direkten und diffusen Strahlung}
-
-Die direkte Strahlung \( Gbhoris \) auf der horizontalen Fläche wird mit dem Kosinus des Sonnenzenitwinkels multipliziert:
-\[
-Gbhoris = D\_L \cdot \cos(SZA)
-\]
-Die diffuse Strahlung ergibt sich aus der Differenz der globalen Strahlung und der direkten Strahlung:
-\[
-Gdhoris = Globalstrahlung\_L - Gbhoris
+h = -180 + t_{\text{solar}} \times \frac{180}{12}
 \]
 
-\textbf{6. Albedo-Effekt und Gesamtstrahlung}
+\subsection*{3.4 Einfallswinkel auf die geneigte Fläche}
 
-Der Albedo-Effekt berücksichtigt die Reflexion von Strahlung durch die Umgebung. Diese reflektierte Strahlung wird zur Berechnung der Gesamtstrahlung auf der geneigten Oberfläche hinzugefügt:
+Der Einfallswinkel \( I_aC \) der Sonnenstrahlung auf die geneigte Fläche wird berechnet, um die Intensität der direkten Strahlung auf den Kollektor zu bestimmen:
 \[
-GT\_H\_Gk = Gbhoris \cdot Rb + Gdhoris \cdot Ai \cdot Rb + Gdhoris \cdot (1 - Ai) \cdot 0.5 \cdot (1 + \cos(CTA)) + Globalstrahlung\_L \cdot Albedo \cdot 0.5 \cdot (1 - \cos(CTA))
+I_aC = \arccos\left( \cos(SZA) \cos(CTA) + \sin(SZA) \sin(CTA) \cos(\gamma_S - \gamma_C) \right)
 \]
-Hierbei beschreibt \( Rb \) das Verhältnis der Strahlungsintensität auf der geneigten Fläche zur horizontalen Fläche und \( Ai \) den atmosphärischen Diffusanteil.
+wobei \( CTA \) der Neigungswinkel des Kollektors, \( \gamma_S \) der Sonnenazimutwinkel und \( \gamma_C \) der Azimutwinkel des Kollektors ist.
 
-\subsubsection*{Rückgabewerte}
+\subsection*{3.5 Berechnung der direkten und diffusen Strahlung}
 
-Die Funktion liefert folgende Werte zurück:
-\begin{itemize}
-    \item \textbf{GT\_H\_Gk}: Die Gesamtstrahlung auf der geneigten Oberfläche.
-    \item \textbf{K\_beam}: Modifizierte Strahlungsintensität.
-    \item \textbf{GbT}: Direkte Strahlung auf der geneigten Fläche.
-    \item \textbf{GdT\_H\_Dk}: Diffuse Strahlung auf der geneigten Fläche.
-\end{itemize}
+Die direkte Strahlung auf die horizontale Fläche \( Gbhoris \) wird berechnet als:
+\[
+Gbhoris = D_L \cdot \cos(SZA)
+\]
 
-\section*{4. Zusammenfassung}
+Die diffuse Strahlung \( Gdhoris \) ergibt sich als Differenz zwischen der globalen Strahlung \( G \) und der direkten Strahlung:
+\[
+Gdhoris = G - Gbhoris
+\]
 
-Der Algorithmus zur Berechnung der Solarstrahlung berücksichtigt die geometrische Lage des Kollektors, die Position der Sonne, atmosphärische Effekte und den Albedo-Effekt. Dies ermöglicht eine präzise Berechnung der Strahlungsenergie, die auf eine geneigte Fläche (wie einen Solarkollektor) fällt. Diese Berechnungen sind essentiell für die Simulation und Optimierung solarthermischer Anlagen in Wärmenetzen.
+\subsection*{3.6 Atmosphärischer Diffusanteil und Gesamtstrahlung}
+
+Der atmosphärische Diffusanteil \( Ai \) wird basierend auf der horizontalen Direktstrahlung \( Gbhoris \) und der Solarkonstanten (1367 W/m²) wie folgt berechnet:
+\[
+Ai = \frac{Gbhoris}{1367 \cdot (1 + 0.033 \cdot \cos(360 \cdot N / 365)) \cdot \cos(SZA)}
+\]
+
+Die Gesamtstrahlung \( GT_HGk \) auf der geneigten Oberfläche wird berechnet durch:
+\[
+GT_HGk = Gbhoris \cdot R_b + Gdhoris \cdot Ai \cdot R_b + Gdhoris \cdot (1 - Ai) \cdot 0.5 \cdot (1 + \cos(CTA)) + G \cdot \text{Albedo} \cdot 0.5 \cdot (1 - \cos(CTA))
+\]
+Hierbei beschreibt \( R_b \) das Verhältnis der Strahlungsintensität auf der geneigten Fläche zur horizontalen Fläche.
+
+\section*{4. Modifikation der Strahlung basierend auf dem Einfallswinkel (IAM)}
+
+Für die Anpassung der Strahlung aufgrund des Einfallswinkels wird der sogenannte Incidence Angle Modifier (IAM) verwendet. Dieser wird sowohl für die Ost-West- als auch für die Nord-Süd-Richtung berechnet. Der IAM wird durch eine Lookup-Tabelle für die Einfallswinkel interpoliert.
+
+\section*{5. Zusammenfassung}
+
+Dieser Algorithmus berechnet die Solarstrahlung auf geneigten Flächen, basierend auf physikalischen Modellen und atmosphärischen Einflüssen. Durch die Berücksichtigung von direkter, diffuser und reflektierter Strahlung kann der Energieertrag einer Solaranlage realistisch simuliert werden. Diese Berechnung ist entscheidend für die Planung und Optimierung solarthermischer Anlagen.
 
 \end{document}
