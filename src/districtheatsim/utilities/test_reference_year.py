@@ -40,8 +40,9 @@ def import_TRY(filename):
     direct_radiation = data['B'].values
     diffuse_radiation = data['D'].values
     global_radition = direct_radiation + diffuse_radiation
+    cloud_cover = data['N'].values
 
-    return temperature, windspeed, direct_radiation, global_radition
+    return temperature, windspeed, direct_radiation, global_radition, cloud_cover
 
 ### Available data points of TRY files ###
 """

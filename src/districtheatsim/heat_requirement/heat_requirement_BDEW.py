@@ -1,7 +1,7 @@
 """
 Filename: heat_requirement_BDEW.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-31
+Date: 2024-09-09
 Description: Contains functions to calculate heat demand profiles with the BDEW SLP methods
 """
 
@@ -9,6 +9,8 @@ import pandas as pd
 import numpy as np
 import os
 import sys
+
+from utilities.test_reference_year import import_TRY
 
 def get_resource_path(relative_path):
     """
@@ -26,22 +28,6 @@ def get_resource_path(relative_path):
         base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     return os.path.join(base_path, relative_path)
-
-def import_TRY(filename):
-    """
-    Import Test Reference Year (TRY) data for weather conditions.
-
-    Args:
-        filename (str): The path to the TRY data file.
-
-    Returns:
-        array: Numpy array containing temperature data.
-    """
-    col_widths = [8, 8, 3, 3, 3, 6, 5, 4, 5, 2, 5, 4, 5, 5, 4, 5, 3]
-    col_names = ["RW", "HW", "MM", "DD", "HH", "t", "p", "WR", "WG", "N", "x", "RF", "B", "D", "A", "E", "IL"]
-    data = pd.read_fwf(filename, widths=col_widths, names=col_names, skiprows=34)
-    temperature = data['t'].values
-    return temperature
 
 def generate_year_months_days_weekdays(year):
     """
@@ -143,7 +129,7 @@ def calculate(JWB_kWh, profiletype, subtype, TRY, year, real_ww_share):
         tuple: Arrays of hourly intervals, total heat demand, heating demand, warm water demand, and temperature.
     """
     days_of_year, months, days, daily_weekdays = generate_year_months_days_weekdays(year)
-    hourly_temperature = import_TRY(TRY)
+    hourly_temperature, _, _, _, _ = import_TRY(TRY)
     daily_avg_temperature = np.round(calculate_daily_averages(hourly_temperature), 1)
     daily_reference_temperature = np.round((daily_avg_temperature + 2.5) * 2, -1) / 2 - 2.5
 

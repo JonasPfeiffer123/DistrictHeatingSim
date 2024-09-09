@@ -1,7 +1,7 @@
 """
 Filename: SanierungsanalysefuerGUI.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-08-01
+Date: 2024-09-09
 Description: Contains the calculation model for the renovation cost analysis.
 """
 
@@ -236,7 +236,7 @@ def calculate_all_results(length, width, floors, floor_height, u_ground, u_wall,
     Returns:
         dict: A dictionary containing the results of the renovation analysis.
     """
-    temperature_data, _, _, _ = import_TRY(try_filename)
+    temperature_data, _, _, _, _ = import_TRY(try_filename)
 
     grundflaeche = length * width
     wall_area_pro_stockwerk = (2*length + 2*width) * floor_height
