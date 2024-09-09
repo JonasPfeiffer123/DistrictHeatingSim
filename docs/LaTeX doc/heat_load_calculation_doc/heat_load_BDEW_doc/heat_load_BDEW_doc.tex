@@ -1,24 +1,11 @@
-\documentclass{article}
-\usepackage{amsmath}
-\usepackage{amsfonts}
-\usepackage{amssymb}
-\usepackage{graphicx}
-\usepackage{hyperref}
+\section{Berechnungsmethode: BDEW}
+\label{sec:bdew}
 
-\title{Ausführliche Beschreibung des BDEW-Lastprofilverfahrens zur Berechnung des Wärmebedarfs}
-\author{Dipl.-Ing. (FH) Jonas Pfeiffer}
-\date{2024-09-04}
-
-\begin{document}
-
-\maketitle
-
-\section*{1. Einleitung}
 Das BDEW-Standardlastprofilverfahren (SLP) ist eine weit verbreitete Methode zur Berechnung des stündlichen Wärmebedarfs eines Gebäudes basierend auf Jahresenergieverbrauch und Wetterbedingungen. Es wird verwendet, um typische Lastprofile für die Heizwärme (Raumwärme) und den Warmwasserbedarf eines Gebäudes zu erstellen. Dies ermöglicht eine detaillierte Simulation von Energieverbrauchsprofilen, die in der Energiewirtschaft genutzt werden können, um z.B. die Planung und Steuerung von Wärmenetzen zu optimieren.
 
 Die Berechnung basiert auf einer Kombination von physikalischen und statistischen Modellen, die temperaturabhängige Profile und Nutzungsfaktoren über den Tages-, Wochen- und Jahresverlauf berücksichtigen. Das Ziel ist es, den gesamten jährlichen Wärmebedarf auf stündlicher Basis realitätsgetreu zu modellieren.
 
-\section*{2. Grundlegende Komponenten der Wärmebedarfsberechnung}
+\subsection{Grundlegende Komponenten der Wärmebedarfsberechnung}
 Der Gesamtwärmebedarf eines Gebäudes setzt sich aus zwei wesentlichen Komponenten zusammen:
 
 \begin{itemize}
@@ -28,12 +15,12 @@ Der Gesamtwärmebedarf eines Gebäudes setzt sich aus zwei wesentlichen Komponen
 
 Das BDEW-SLP-Verfahren nutzt verschiedene Koeffizienten und Faktoren, um den Einfluss dieser beiden Komponenten auf den täglichen und stündlichen Wärmebedarf zu modellieren.
 
-\section*{3. Jahreswärmebedarf und Tagesprofile}
+\subsection{Jahreswärmebedarf und Tagesprofile}
 
-\subsection*{3.1 Ausgangspunkt: Der Jahreswärmebedarf (JWB)}
+\subsubsection{Ausgangspunkt: Der Jahreswärmebedarf (JWB)}
 Der Jahreswärmebedarf eines Gebäudes wird meist in Kilowattstunden (kWh) angegeben und beschreibt den gesamten Energieverbrauch für Heizung und Warmwasser über ein Jahr. Dieser Wert wird in der Praxis z.B. durch Abrechnungsdaten oder Messungen ermittelt und stellt die Grundlage der weiteren Berechnungen dar.
 
-\subsection*{3.2 Aufteilung in tägliche Profile}
+\subsubsection{Aufteilung in tägliche Profile}
 Der erste Schritt besteht darin, den Jahreswärmebedarf auf die einzelnen Tage des Jahres aufzuteilen. Diese Aufteilung erfolgt auf Basis der täglichen Temperaturdaten und der spezifischen Tagesprofile, die vom BDEW vorgegeben werden. Das Tagesprofil bestimmt, wie der Wärmebedarf an einem bestimmten Tag (z.B. ein Montag im Januar) aussieht.
 
 Für jeden Tag wird der Heizwärmebedarf folgendermaßen berechnet:
@@ -49,7 +36,7 @@ Hierbei sind:
     \item \( T_{\text{avg}} \): Die Tagesdurchschnittstemperatur.
 \end{itemize}
 
-\subsection*{3.3 Temperaturabhängige Berechnung des Heizwärmebedarfs}
+\subsubsection{Temperaturabhängige Berechnung des Heizwärmebedarfs}
 Der Heizwärmebedarf ist eng an die Außentemperatur gekoppelt. Bei niedrigeren Außentemperaturen muss mehr Energie für das Heizen aufgewendet werden, um die Raumtemperatur konstant zu halten. Der Heizwärmebedarf wird durch eine temperaturabhängige Funktion modelliert:
 \[
 Q_{\text{Heizung}}(T) = \frac{A}{1 + \left( \frac{B}{T_{\text{ref}} - 40} \right)^C} + m_H \cdot T_{\text{avg}} + b_H
@@ -62,7 +49,7 @@ wobei:
 
 Diese Funktion stellt sicher, dass bei extrem niedrigen Außentemperaturen der Heizbedarf stark ansteigt, während er bei höheren Temperaturen entsprechend abnimmt.
 
-\subsection*{3.4 Berechnung des Warmwasserbedarfs}
+\subsubsection{Berechnung des Warmwasserbedarfs}
 Der Warmwasserbedarf wird durch eine ähnliche Gleichung wie der Heizwärmebedarf modelliert, jedoch ist er weniger stark von der Außentemperatur abhängig. Die Berechnung erfolgt über die Gleichung:
 \[
 Q_{\text{WW}}(T) = m_W \cdot T_{\text{avg}} + b_W
@@ -74,7 +61,7 @@ wobei:
 \end{itemize}
 Für das Warmwasser ist die Temperaturabhängigkeit weniger relevant, da der Warmwasserbedarf eher durch das Nutzungsverhalten (z.B. morgendliches Duschen) bestimmt wird.
 
-\section*{4. Tages- und Wochenfaktoren}
+\subsection{Tages- und Wochenfaktoren}
 Neben den Temperaturabhängigkeiten werden auch tages- und wochenabhängige Faktoren in die Berechnung einbezogen. Diese Faktoren spiegeln das typische Verbrauchsverhalten an verschiedenen Wochentagen wider. So ist der Wärmebedarf an einem Montag anders als an einem Sonntag, da der Montag typischerweise ein Arbeitstag ist und andere Heizmuster vorliegen.
 
 Die tagesabhängigen Lastprofile werden über Faktoren \( F_{\text{Tag}} \) angepasst:
@@ -83,9 +70,9 @@ F_{\text{Tag}} = F_{\text{Wochentag}} \cdot F_{\text{Wochenfaktor}} \cdot F_{\te
 \]
 Diese Faktoren berücksichtigen z.B. die geringere Nutzung an Wochenenden oder Feiertagen und reduzieren den berechneten Heiz- oder Warmwasserbedarf entsprechend.
 
-\section*{5. Berechnung stündlicher Lastprofile}
+\subsection{Berechnung stündlicher Lastprofile}
 
-\subsection*{5.1 Aufteilung des Tageswärmebedarfs auf Stunden}
+\subsubsection{Aufteilung des Tageswärmebedarfs auf Stunden}
 Nachdem der Tageswärmebedarf für Heizung und Warmwasser berechnet wurde, wird dieser Bedarf auf die Stunden des Tages verteilt. Hierbei wird das typische Nutzungsverhalten im Tagesverlauf berücksichtigt, indem stündliche Koeffizienten \( f_{\text{Stunde}} \) verwendet werden. Diese Koeffizienten geben an, welcher Anteil des Tagesbedarfs in einer bestimmten Stunde auftritt.
 
 Der stündliche Wärmebedarf wird mit der folgenden Interpolationsformel berechnet:
@@ -94,19 +81,18 @@ Q_{\text{Heizung, Stunde}} = Q_{\text{Tag, Heizung}} \cdot \left( f_{\text{Stund
 \]
 Hierbei wird zwischen zwei Temperaturgrenzwerten \( T_{\text{Grenze}} \) interpoliert, um einen fließenden Übergang zwischen den stündlichen Lasten zu gewährleisten.
 
-\subsection*{5.2 Stündliche Profile für Heizung und Warmwasser}
+\subsubsection{Stündliche Profile für Heizung und Warmwasser}
 Der Wärmebedarf wird für jede Stunde des Tages sowohl für die Heizung als auch für den Warmwasserbedarf berechnet. Diese stündlichen Profile sind wichtig, um den Verbrauch über den Tag hinweg detailliert abzubilden. Insbesondere bei stark schwankenden Außentemperaturen ergeben sich deutliche Unterschiede im stündlichen Heizwärmebedarf.
 
-\section*{6. Anpassung des Warmwasseranteils am Gesamtwärmebedarf}
+\subsection{Anpassung des Warmwasseranteils am Gesamtwärmebedarf}
 Falls der tatsächliche Warmwasseranteil bekannt ist, kann dieser im Modell berücksichtigt werden. Der initiale Warmwasseranteil wird als Verhältnis des berechneten Warmwasserbedarfs zum gesamten Wärmebedarf ermittelt:
 \[
 \text{WW-Anteil} = \frac{Q_{\text{WW}}}{Q_{\text{Heizung}} + Q_{\text{WW}}}
 \]
 Falls der tatsächliche Warmwasseranteil vom berechneten abweicht, kann dieser durch einen Korrekturfaktor angepasst werden. Die Berechnung erfolgt durch Skalierung des berechneten Warmwasser- und Heizwärmebedarfs mit entsprechenden Korrekturfaktoren.
 
-\section*{7. Zusammenfassung}
+\subsection{Zusammenfassung}
 Das BDEW-Lastprofilverfahren bietet eine detaillierte Methode zur Berechnung des stündlichen Wärmebedarfs auf Basis von Jahresverbrauchsdaten und Wetterdaten. Es berücksichtigt sowohl die Temperaturabhängigkeit des Heizbedarfs als auch tageszeitliche und wochenabhängige Faktoren. Das Verfahren eignet sich hervorragend zur Modellierung von Wärmeverbrauchsprofilen, die für die Steuerung und Optimierung von Wärmenetzen genutzt werden können.
 
 Durch die Berücksichtigung von tages- und stundenbasierten Faktoren sowie der Anpassung an reale Verbrauchsdaten (z.B. durch den Warmwasseranteil) liefert das Verfahren genaue und praxisnahe Ergebnisse. Es ermöglicht eine präzise Abschätzung des stündlichen Wärmebedarfs für unterschiedliche Gebäudetypen und Nutzungsverhalten.
 
-\end{document}
