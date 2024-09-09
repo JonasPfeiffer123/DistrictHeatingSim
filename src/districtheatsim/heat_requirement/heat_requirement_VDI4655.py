@@ -1,7 +1,7 @@
 """
 Filename: heat_requirement_VDI4655.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-31
+Date: 2024-09-09
 Description: Contains functions to calculate heat demand profiles with the VDI 4655 methods
 """
 
@@ -9,6 +9,8 @@ import pandas as pd
 import numpy as np
 import os
 import sys
+
+from utilities.test_reference_year import import_TRY
 
 def get_resource_path(relative_path):
     """
@@ -26,23 +28,6 @@ def get_resource_path(relative_path):
         base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     return os.path.join(base_path, relative_path)
-
-def import_TRY(filename):
-    """
-    Import Test Reference Year (TRY) data for weather conditions.
-
-    Args:
-        filename (str): The path to the TRY data file.
-
-    Returns:
-        tuple: Two numpy arrays containing temperature and cloud cover data.
-    """
-    col_widths = [8, 8, 3, 3, 3, 6, 5, 4, 5, 2, 5, 4, 5, 5, 4, 5, 3]
-    col_names = ["RW", "HW", "MM", "DD", "HH", "t", "p", "WR", "WG", "N", "x", "RF", "B", "D", "A", "E", "IL"]
-    data = pd.read_fwf(filename, widths=col_widths, names=col_names, skiprows=34)
-    temperature = data['t'].values
-    cloud_cover = data['N'].values
-    return temperature, cloud_cover
 
 def generate_year_months_days_weekdays(year):
     """
@@ -162,7 +147,7 @@ def calculation_load_profile(TRY, building_type, number_people_household, YEU_el
     factors = get_resource_path('data\\VDI 4655 profiles\\VDI 4655 data\\Faktoren.csv')
 
     days_of_year, months, days, weekdays = generate_year_months_days_weekdays(year)
-    temperature, degree_of_coverage = import_TRY(TRY)
+    temperature, _, _, _, degree_of_coverage = import_TRY(TRY)
     daily_avg_temperature, daily_avg_degree_of_coverage = calculate_daily_averages(temperature, degree_of_coverage)
     season = np.where(daily_avg_temperature < 5, "W", np.where((daily_avg_temperature >= 5) & (daily_avg_temperature <= 15), "Ü", "S"))
     day_type = np.where((weekdays == 1) | np.isin(days_of_year, holidays), "S", "W")

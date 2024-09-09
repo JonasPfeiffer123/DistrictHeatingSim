@@ -1,7 +1,7 @@
 """
 Filename: photovoltaics.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-31
+Date: 2024-09-09
 Description: Calculation of solar irradiation according to Scenocalc District Heating 2.0 and PV according to eupvgis.
 
 """
@@ -9,31 +9,7 @@ Description: Calculation of solar irradiation according to Scenocalc District He
 import numpy as np
 import pandas as pd
 
-def import_TRY(filename):
-    """
-    Imports Test Reference Year (TRY) data for temperature, windspeed, direct and global radiation.
-
-    Args:
-        filename (str): Path to the TRY file.
-
-    Returns:
-        tuple: Arrays containing temperature, windspeed, direct radiation, and global radiation.
-    """
-    # Define column widths and names
-    col_widths = [8, 8, 3, 3, 3, 6, 5, 4, 5, 2, 5, 4, 5, 5, 4, 5, 3]
-    col_names = ["RW", "HW", "MM", "DD", "HH", "t", "p", "WR", "WG", "N", "x", "RF", "B", "D", "A", "E", "IL"]
-
-    # Read the file
-    data = pd.read_fwf(filename, widths=col_widths, names=col_names, skiprows=34)
-
-    # Store the columns as numpy arrays
-    temperature = data['t'].values
-    windspeed = data['WG'].values
-    direct_radiation = data['B'].values
-    diffuse_radiation = data['D'].values
-    global_radiation = direct_radiation + diffuse_radiation
-
-    return temperature, windspeed, direct_radiation, global_radiation
+from utilities.test_reference_year import import_TRY
 
 # Constant for degree-radian conversion
 DEG_TO_RAD = np.pi / 180
@@ -152,7 +128,7 @@ def Calculate_PV(TRY_data, Gross_area, Longitude, STD_Longitude, Latitude, Albed
         tuple: Annual PV yield (kWh), maximum power (kW), and power output array (W).
     """
     # Import TRY
-    Ta_L, W_L, D_L, G_L = import_TRY(TRY_data)
+    Ta_L, W_L, D_L, G_L, _ = import_TRY(TRY_data)
 
     # Define constants for the photovoltaic calculation.
     eff_nom = 0.199  # Nominal efficiency

@@ -22,7 +22,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 
 import pandapipes as pp
 
-from heat_requirement.heat_requirement_BDEW import import_TRY
+from utilities.test_reference_year import import_TRY
 
 def get_resource_path(relative_path):
     """ Get the absolute path to the resource, works for dev and for PyInstaller """
@@ -645,7 +645,7 @@ class NetGenerationDialog(QDialog):
             max_air_temperature = float(self.parameter_rows_net[3].itemAt(1).widget().text())
             min_air_temperature = float(self.parameter_rows_net[4].itemAt(1).widget().text())
 
-            air_temperature_data = import_TRY(self.parent.parent.try_filename)
+            air_temperature_data, _, _, _, _ = import_TRY(self.parent.parent.try_filename)
 
             # Berechnung der Temperaturkurve basierend auf den ausgewählten Einstellungen
             temperature_curve = []
