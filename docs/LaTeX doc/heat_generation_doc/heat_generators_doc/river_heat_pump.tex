@@ -1,0 +1,73 @@
+\section{RiverHeatPump Class}
+The \texttt{RiverHeatPump} class models a river water heat pump system, providing methods to calculate both performance and economic metrics. It extends the base \texttt{HeatPump} class.
+
+\subsection{Attributes}
+\begin{itemize}
+    \item \texttt{Wärmeleistung\_FW\_WP (float)}: Heat output of the river water heat pump.
+    \item \texttt{Temperatur\_FW\_WP (float)}: Temperature of the river water.
+    \item \texttt{dT (float)}: Temperature difference for operation. Default is 0.
+    \item \texttt{spez\_Investitionskosten\_Flusswasser (float)}: Specific investment costs for river water heat pump in €/kW. Default is 1000 €/kW.
+    \item \texttt{spezifische\_Investitionskosten\_WP (float)}: Specific investment costs for the heat pump in €/kW. Default is 1000 €/kW.
+    \item \texttt{min\_Teillast (float)}: Minimum partial load as a fraction of nominal load. Default is 0.2.
+    \item \texttt{co2\_factor\_electricity (float)}: CO$_2$ emission factor for electricity in tCO$_2$/MWh. Default is 0.4.
+    \item \texttt{primärenergiefaktor (float)}: Primary energy factor for electricity. Default is 2.4.
+\end{itemize}
+
+\subsection{Methods}
+\begin{itemize}
+    \item \texttt{Berechnung\_WP(Wärmeleistung\_L, VLT\_L, COP\_data)}: Calculates the cooling load, electric power consumption, and adjusted flow temperatures.
+    \begin{itemize}
+        \item \textbf{Wärmeleistung\_L (array-like)}: Heat output load.
+        \item \textbf{VLT\_L (array-like)}: Flow temperatures.
+        \item \textbf{COP\_data (array-like)}: COP data for interpolation.
+    \end{itemize}
+    Returns the cooling load, electric power consumption, and adjusted flow temperatures.
+
+    \item \texttt{abwärme(Last\_L, VLT\_L, COP\_data, duration)}: Calculates the waste heat and other performance metrics for the river heat pump.
+    \begin{itemize}
+        \item \textbf{Last\_L (array-like)}: Load demand in kW.
+        \item \textbf{VLT\_L (array-like)}: Flow temperatures.
+        \item \textbf{COP\_data (array-like)}: COP data for interpolation.
+        \item \textbf{duration (float)}: Duration of each time step in hours.
+    \end{itemize}
+    Returns the heat energy, electricity demand, heat output, electric power, cooling energy, and cooling load.
+
+    \item \texttt{calculate(VLT\_L, COP\_data, Strompreis, q, r, T, BEW, stundensatz, duration, general\_results)}: Calculates the economic and environmental metrics for the river heat pump.
+    \begin{itemize}
+        \item \textbf{VLT\_L (array-like)}: Flow temperatures.
+        \item \textbf{COP\_data (array-like)}: COP data for interpolation.
+        \item \textbf{Strompreis (float)}: Price of electricity in €/MWh.
+        \item \textbf{q (float)}, \textbf{r (float)}, \textbf{T (int)}, \textbf{BEW (float)}, \textbf{stundensatz (float)}: Economic parameters.
+        \item \textbf{duration (float)}: Time duration for the simulation in hours.
+        \item \textbf{general\_results (dict)}: Dictionary containing load profiles and other results.
+    \end{itemize}
+    Returns a dictionary of calculated results, including economic and environmental metrics.
+
+    \item \texttt{to\_dict()}: Converts the object attributes to a dictionary for serialization.
+
+    \item \texttt{from\_dict(data)}: Creates an object from a dictionary of attributes.
+\end{itemize}
+
+\subsection{Economic and Environmental Considerations}
+The \texttt{RiverHeatPump} class provides a method to calculate the \textbf{weighted average cost of heat generation (WGK)}, which takes into account investment costs, electricity consumption, and operational factors. The class also calculates the specific CO$_2$ emissions and primary energy usage for the heat pump.
+
+\subsection{Usage Example}
+The following example demonstrates how the \texttt{RiverHeatPump} class can be initialized and used to simulate the performance of a river water heat pump:
+
+\begin{verbatim}
+river_heat_pump = RiverHeatPump(
+    name="Flusswärmepumpe", 
+    Wärmeleistung_FW_WP=300,  # kW
+    Temperatur_FW_WP=12  # °C
+)
+results = river_heat_pump.calculate(
+    VLT_L=temperature_forward, 
+    COP_data=cop_data, 
+    Strompreis=100,  # €/MWh
+    q=0.03, r=0.02, T=20, BEW=0.8, 
+    stundensatz=50, 
+    duration=1, 
+    general_results=load_profile
+)
+\end{verbatim}
+In this example, a river water heat pump with a heat output of 300 kW and a river water temperature of 12°C is simulated. The performance metrics are calculated based on the provided data.

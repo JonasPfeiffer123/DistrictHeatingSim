@@ -1,0 +1,75 @@
+\section{Geothermal Class}
+The \texttt{Geothermal} class models a geothermal heat pump system, inheriting from the \texttt{HeatPump} base class. It includes methods for simulating the geothermal heat extraction process and calculating various economic and environmental metrics.
+
+\subsection{Attributes}
+\begin{itemize}
+    \item \texttt{Fläche (float)}: Area available for the geothermal installation in square meters.
+    \item \texttt{Bohrtiefe (float)}: Drilling depth for geothermal wells in meters.
+    \item \texttt{Temperatur\_Geothermie (float)}: Temperature of the geothermal source in degrees Celsius.
+    \item \texttt{spez\_Bohrkosten (float)}: Specific drilling costs per meter. Default is 100 €/m.
+    \item \texttt{spez\_Entzugsleistung (float)}: Specific heat extraction rate per meter. Default is 50 W/m.
+    \item \texttt{Vollbenutzungsstunden (float)}: Full utilization hours per year. Default is 2400 hours.
+    \item \texttt{Abstand\_Sonden (float)}: Distance between probes in meters. Default is 10 m.
+    \item \texttt{min\_Teillast (float)}: Minimum partial load as a fraction of nominal load. Default is 0.2.
+    \item \texttt{co2\_factor\_electricity (float)}: CO$_2$ factor for electricity consumption, in tCO$_2$/MWh. Default is 0.4 tCO$_2$/MWh.
+    \item \texttt{primärenergiefaktor (float)}: Primary energy factor for electricity usage. Default is 2.4.
+\end{itemize}
+
+\subsection{Methods}
+\begin{itemize}
+    \item \texttt{Geothermie(Last\_L, VLT\_L, COP\_data, duration)}: Simulates the geothermal heat extraction process and calculates the heat output, electricity demand, and system performance metrics.
+    \begin{itemize}
+        \item \textbf{Last\_L (array-like)}: Load demand profile in kW.
+        \item \textbf{VLT\_L (array-like)}: Flow temperatures in degrees Celsius.
+        \item \textbf{COP\_data (array-like)}: Coefficient of performance (COP) data for interpolation.
+        \item \textbf{duration (float)}: Time step duration in hours.
+    \end{itemize}
+    Returns the heat energy produced, electricity demand, heat output, and electric power output.
+
+    \item \texttt{calculate(VLT\_L, COP\_data, Strompreis, q, r, T, BEW, stundensatz, duration, general\_results)}: Calculates the economic and environmental metrics for the geothermal heat pump system.
+    \begin{itemize}
+        \item \textbf{VLT\_L (array-like)}: Flow temperatures in degrees Celsius.
+        \item \textbf{COP\_data (array-like)}: COP data for performance calculation.
+        \item \textbf{Strompreis (float)}: Electricity price in €/MWh.
+        \item \textbf{q (float)}: Capital recovery factor.
+        \item \textbf{r (float)}: Price escalation factor.
+        \item \textbf{T (int)}: Consideration period in years.
+        \item \textbf{BEW (float)}: Discount rate for operational costs.
+        \item \textbf{stundensatz (float)}: Hourly labor rate in €/hour.
+        \item \textbf{duration (float)}: Duration of each time step in hours.
+        \item \textbf{general\_results (dict)}: General results dictionary, including the load demand profile.
+    \end{itemize}
+    Returns a dictionary containing heat output, electricity demand, weighted average cost of heat generation (WGK), specific CO$_2$ emissions, and primary energy consumption.
+
+    \item \texttt{to\_dict()}: Converts the object attributes into a dictionary for serialization.
+    
+    \item \texttt{from\_dict(data)}: Creates an object from a dictionary of attributes.
+\end{itemize}
+
+\subsection{Economic and Environmental Considerations}
+The \texttt{Geothermal} class calculates the weighted average cost of heat generation (WGK), which accounts for the costs of drilling, installation, operation, and electricity consumption. It also calculates specific CO$_2$ emissions based on electricity usage, as well as primary energy consumption using a primary energy factor.
+
+\subsection{Usage Example}
+The following example demonstrates how to initialize and use the \texttt{Geothermal} class to calculate the performance of a geothermal system:
+
+\begin{verbatim}
+geothermal_system = Geothermal(
+    name="Geothermal Heat Pump",
+    Fläche=500,  # m²
+    Bohrtiefe=150,  # m
+    Temperatur_Geothermie=10,  # °C
+    spez_Bohrkosten=120,  # €/m
+    spez_Entzugsleistung=55  # W/m
+)
+results = geothermal_system.calculate(
+    VLT_L=temperature_profile, 
+    COP_data=cop_profile, 
+    Strompreis=100,  # €/MWh
+    q=0.04, r=0.02, T=20, 
+    BEW=0.9, 
+    stundensatz=50, 
+    duration=1, 
+    general_results=load_data
+)
+\end{verbatim}
+This example demonstrates how to create a geothermal system with 500 m² area, 150 m drilling depth, and a geothermal source temperature of 10°C. The system's performance and economic metrics are calculated using the provided data.

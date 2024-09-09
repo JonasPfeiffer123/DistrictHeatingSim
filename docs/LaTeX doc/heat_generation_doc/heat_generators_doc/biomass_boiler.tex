@@ -1,0 +1,101 @@
+\section{BiomassBoiler Class}
+The \texttt{BiomassBoiler} class models a biomass boiler system and includes methods for simulating the boiler’s performance, fuel consumption, storage integration, and economic and environmental analysis.
+
+\subsection{Attributes}
+\begin{itemize}
+    \item \texttt{name (str)}: Name of the biomass boiler system.
+    \item \texttt{P\_BMK (float)}: Boiler power in kW.
+    \item \texttt{Größe\_Holzlager (float)}: Size of the wood storage in cubic meters.
+    \item \texttt{spez\_Investitionskosten (float)}: Specific investment costs for the boiler in €/kW.
+    \item \texttt{spez\_Investitionskosten\_Holzlager (float)}: Specific investment costs for wood storage in €/m³.
+    \item \texttt{Nutzungsgrad\_BMK (float)}: Efficiency of the biomass boiler.
+    \item \texttt{min\_Teillast (float)}: Minimum part-load operation as a fraction of the nominal load.
+    \item \texttt{speicher\_aktiv (bool)}: Indicates whether a storage system is active.
+    \item \texttt{Speicher\_Volumen (float)}: Volume of the thermal storage in cubic meters.
+    \item \texttt{T\_vorlauf (float)}: Supply temperature in degrees Celsius.
+    \item \texttt{T\_ruecklauf (float)}: Return temperature in degrees Celsius.
+    \item \texttt{initial\_fill (float)}: Initial fill level of the storage as a fraction of total volume.
+    \item \texttt{min\_fill (float)}: Minimum fill level of the storage as a fraction of total volume.
+    \item \texttt{max\_fill (float)}: Maximum fill level of the storage as a fraction of total volume.
+    \item \texttt{spez\_Investitionskosten\_Speicher (float)}: Specific investment costs for the thermal storage in €/m³.
+    \item \texttt{BMK\_an (bool)}: Indicates whether the boiler is on.
+    \item \texttt{opt\_BMK\_min (float)}: Minimum boiler capacity for optimization.
+    \item \texttt{opt\_BMK\_max (float)}: Maximum boiler capacity for optimization.
+    \item \texttt{opt\_Speicher\_min (float)}: Minimum storage capacity for optimization.
+    \item \texttt{opt\_Speicher\_max (float)}: Maximum storage capacity for optimization.
+    \item \texttt{Nutzungsdauer (int)}: Service life of the biomass boiler in years.
+    \item \texttt{f\_Inst (float)}: Installation factor.
+    \item \texttt{f\_W\_Insp (float)}: Maintenance and inspection factor.
+    \item \texttt{Bedienaufwand (float)}: Operational effort for the system.
+    \item \texttt{co2\_factor\_fuel (float)}: CO$_2$ factor for the fuel in tCO$_2$/MWh.
+    \item \texttt{primärenergiefaktor (float)}: Primary energy factor for the fuel.
+\end{itemize}
+
+\subsection{Methods}
+\begin{itemize}
+    \item \texttt{Biomassekessel(Last\_L, duration)}: Simulates the operation of the biomass boiler over a given load profile and duration.
+    \begin{itemize}
+        \item \textbf{Last\_L (array)}: Load profile of the system in kW.
+        \item \textbf{duration (float)}: Duration of each time step in hours.
+    \end{itemize}
+    
+    \item \texttt{storage(Last\_L, duration)}: Simulates the operation of the storage system, adjusting boiler output to optimize storage usage.
+    \begin{itemize}
+        \item \textbf{Last\_L (array)}: Load profile of the system in kW.
+        \item \textbf{duration (float)}: Duration of each time step in hours.
+    \end{itemize}
+
+    \item \texttt{WGK(Wärmemenge, Brennstoffbedarf, Brennstoffkosten, q, r, T, BEW, stundensatz)}: Calculates the weighted average cost of heat generation (WGK) based on the system's investment costs, fuel costs, and operating costs.
+    \begin{itemize}
+        \item \textbf{Wärmemenge (float)}: Amount of heat generated in kWh.
+        \item \textbf{Brennstoffbedarf (float)}: Fuel consumption in MWh.
+        \item \textbf{Brennstoffkosten (float)}: Cost of the biomass fuel in €/MWh.
+        \item \textbf{q (float)}: Factor for capital recovery.
+        \item \textbf{r (float)}: Price escalation factor.
+        \item \textbf{T (int)}: Time period in years for the calculation.
+        \item \textbf{BEW (float)}: Operational cost factor.
+        \item \textbf{stundensatz (float)}: Hourly labor rate for operational efforts.
+    \end{itemize}
+
+    \item \texttt{calculate(Holzpreis, q, r, T, BEW, stundensatz, duration, general\_results)}: Simulates the performance of the biomass boiler, calculating both heat generation and economic parameters.
+    \begin{itemize}
+        \item \textbf{Holzpreis (float)}: Price of wood fuel in €/MWh.
+        \item \textbf{q (float)}: Factor for capital recovery.
+        \item \textbf{r (float)}: Price escalation factor.
+        \item \textbf{T (int)}: Time period in years for the calculation.
+        \item \textbf{BEW (float)}: Operational cost factor.
+        \item \textbf{stundensatz (float)}: Hourly labor rate for operational efforts.
+        \item \textbf{duration (float)}: Duration of each time step in hours.
+        \item \textbf{general\_results (dict)}: A dictionary containing general results from the simulation, such as remaining loads.
+    \end{itemize}
+    Returns a dictionary with key results such as fuel consumption, heat output, specific CO$_2$ emissions, and primary energy usage.
+
+    \item \texttt{to\_dict()}: Converts the \texttt{BiomassBoiler} object to a dictionary for serialization and storage.
+
+    \item \texttt{from\_dict(data)}: Initializes a \texttt{BiomassBoiler} object from a dictionary.
+\end{itemize}
+
+\subsection{Economic and Environmental Considerations}
+The \texttt{BiomassBoiler} class includes methods to calculate the system’s \textbf{weighted average cost of heat generation (WGK)}. This takes into account the investment, installation, operational costs, and fuel consumption. The system’s specific CO$_2$ emissions are calculated based on the amount of fuel burned, and its \textbf{primary energy consumption} is calculated based on the heat output and the primary energy factor.
+
+\subsection{Usage Example}
+The \texttt{BiomassBoiler} class can be used to simulate the performance of a biomass heating system with or without a storage unit. Below is an example of how to initialize and use the class:
+
+\begin{verbatim}
+biomass_boiler = BiomassBoiler(
+    name="Biomassekessel",
+    P_BMK=500,  # kW
+    Größe_Holzlager=50,  # m³
+    Nutzungsgrad_BMK=0.85,
+    Speicher_Volumen=100,  # m³
+    speicher_aktiv=True
+)
+results = biomass_boiler.calculate(
+    Holzpreis=20,  # €/MWh
+    q=0.05, r=0.03, T=15, BEW=1.1, 
+    stundensatz=50, 
+    duration=1, 
+    general_results=load_profile
+)
+\end{verbatim}
+In this example, a biomass boiler with a power rating of 500 kW and a wood storage volume of 50 m³ is simulated. The system includes a 100 m³ thermal storage unit. Performance and cost metrics are calculated based on the provided inputs.

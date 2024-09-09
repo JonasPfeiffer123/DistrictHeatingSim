@@ -1,0 +1,102 @@
+\section{SolarThermal Class}
+The \texttt{SolarThermal} class models a solar thermal system and includes methods for performance, economic, and environmental calculations. The class can handle various types of solar collectors (e.g., flat plate and vacuum tube collectors) and includes parameters for storage system integration.
+
+\subsection{Attributes}
+\begin{itemize}
+    \item \texttt{name (str)}: Name of the solar thermal system.
+    \item \texttt{bruttofläche\_STA (float)}: Gross collector area of the solar thermal system in square meters.
+    \item \texttt{vs (float)}: Volume of the storage system in cubic meters.
+    \item \texttt{Typ (str)}: Type of solar collector, e.g., "Flachkollektor" or "Vakuumröhrenkollektor".
+    \item \texttt{kosten\_speicher\_spez (float)}: Specific costs for the storage system in €/m³.
+    \item \texttt{kosten\_fk\_spez (float)}: Specific costs for flat plate collectors in €/m².
+    \item \texttt{kosten\_vrk\_spez (float)}: Specific costs for vacuum tube collectors in €/m².
+    \item \texttt{Tsmax (float)}: Maximum storage temperature in degrees Celsius.
+    \item \texttt{Longitude (float)}: Longitude of the installation site.
+    \item \texttt{STD\_Longitude (float)}: Standard longitude for the time zone.
+    \item \texttt{Latitude (float)}: Latitude of the installation site.
+    \item \texttt{East\_West\_collector\_azimuth\_angle (float)}: Azimuth angle of the solar collector in degrees.
+    \item \texttt{Collector\_tilt\_angle (float)}: Tilt angle of the solar collector in degrees.
+    \item \texttt{Tm\_rl (float)}: Mean return temperature in degrees Celsius.
+    \item \texttt{Qsa (float)}: Initial heat output.
+    \item \texttt{Vorwärmung\_K (float)}: Preheating in Kelvin.
+    \item \texttt{DT\_WT\_Solar\_K (float)}: Temperature difference across the solar heat exchanger in Kelvin.
+    \item \texttt{DT\_WT\_Netz\_K (float)}: Temperature difference across the network heat exchanger in Kelvin.
+    \item \texttt{opt\_volume\_min (float)}: Minimum optimization volume in cubic meters.
+    \item \texttt{opt\_volume\_max (float)}: Maximum optimization volume in cubic meters.
+    \item \texttt{opt\_area\_min (float)}: Minimum optimization area in square meters.
+    \item \texttt{opt\_area\_max (float)}: Maximum optimization area in square meters.
+    \item \texttt{kosten\_pro\_typ (dict)}: Dictionary containing the specific costs for different types of solar collectors.
+    \item \texttt{Kosten\_STA\_spez (float)}: Specific costs for the solar thermal system in €/m².
+    \item \texttt{Nutzungsdauer (int)}: Service life of the solar thermal system in years (20 years by default).
+    \item \texttt{f\_Inst (float)}: Installation factor.
+    \item \texttt{f\_W\_Insp (float)}: Maintenance and inspection factor.
+    \item \texttt{Bedienaufwand (float)}: Operating effort for the system.
+    \item \texttt{Anteil\_Förderung\_BEW (float)}: Subsidy rate for renewable energy law compliance.
+    \item \texttt{Betriebskostenförderung\_BEW (float)}: Operational cost subsidy per MWh of thermal energy under the renewable energy law.
+    \item \texttt{co2\_factor\_solar (float)}: CO$_2$ factor for solar energy (typically 0 for solar heat).
+    \item \texttt{primärenergiefaktor (float)}: Primary energy factor (typically 0 for solar thermal energy).
+\end{itemize}
+
+\subsection{Methods}
+\begin{itemize}
+    \item \texttt{calc\_WGK(q, r, T, BEW, stundensatz)}: Calculates the weighted average cost of heat generation (WGK) based on the system's investment costs, operational costs, and subsidy status. 
+    \begin{itemize}
+        \item \textbf{q (float)}: Factor for capital recovery.
+        \item \textbf{r (float)}: Price escalation factor.
+        \item \textbf{T (int)}: Time period in years for the calculation.
+        \item \textbf{BEW (str)}: Indicates eligibility for renewable energy subsidies ("Ja" or "Nein").
+        \item \textbf{stundensatz (float)}: Hourly labor rate for operational efforts.
+    \end{itemize}
+    Returns the WGK of the system based on total investments, subsidies, and operating costs.
+
+    \item \texttt{calculate(VLT\_L, RLT\_L, TRY, time\_steps, calc1, calc2, q, r, T, BEW, stundensatz, duration, general\_results)}: 
+    Simulates the solar thermal system's performance over a time period, taking into account forward and return temperatures, weather data, and operational costs. 
+    \begin{itemize}
+        \item \textbf{VLT\_L (array)}: Array of forward temperatures in degrees Celsius.
+        \item \textbf{RLT\_L (array)}: Array of return temperatures in degrees Celsius.
+        \item \textbf{TRY (array)}: Test reference year weather data.
+        \item \textbf{time\_steps (array)}: Array of time steps for the simulation.
+        \item \textbf{calc1 (float)}, \textbf{calc2 (float)}: Additional calculation parameters.
+        \item \textbf{q (float)}, \textbf{r (float)}, \textbf{T (int)}, \textbf{BEW (str)}, \textbf{stundensatz (float)}: Parameters for cost calculation.
+        \item \textbf{duration (float)}: Duration of each simulation time step.
+        \item \textbf{general\_results (dict)}: A dictionary containing general results from the simulation, such as remaining loads.
+    \end{itemize}
+    Returns a dictionary of simulation results, including the heat output, specific CO$_2$ emissions, primary energy usage, and storage state.
+
+    \item \texttt{to\_dict()}: Converts the \texttt{SolarThermal} object to a dictionary for easy serialization and storage.
+    
+    \item \texttt{from\_dict(data)}: Creates a \texttt{SolarThermal} object from a dictionary of attributes.
+\end{itemize}
+
+\subsection{Economic and Environmental Considerations}
+The \texttt{SolarThermal} class includes methods to calculate the system's \textbf{weighted average cost of heat generation (WGK)}, which takes into account installation costs, operational costs, and subsidies under the renewable energy law. The system's specific CO$_2$ emissions are calculated as the amount of emissions per unit of heat generated, and the system's \textbf{primary energy usage} is computed based on its heat output.
+
+\subsection{Usage Example}
+This class is highly adaptable for different solar thermal setups. The following example demonstrates how the class can be initialized and used:
+
+\begin{verbatim}
+solar_system = SolarThermal(
+    name="SolarThermie-Anlage",
+    bruttofläche_STA=500,  # m²
+    vs=50,  # m³ storage
+    Typ="Flachkollektor",
+    Tsmax=90, 
+    Longitude=-14.42, 
+    STD_Longitude=-15, 
+    Latitude=51.17, 
+    East_West_collector_azimuth_angle=0, 
+    Collector_tilt_angle=36
+)
+results = solar_system.calculate(
+    VLT_L=temperature_forward, 
+    RLT_L=temperature_return, 
+    TRY=weather_data, 
+    time_steps=steps, 
+    calc1=0.8, calc2=1.2, 
+    q=0.03, r=0.02, T=20, BEW="Ja", 
+    stundensatz=50, 
+    duration=1, 
+    general_results=load_profile
+)
+\end{verbatim}
+This example shows a solar thermal system with flat plate collectors covering 500 m² and a storage volume of 50 m³. Performance and cost metrics are calculated based on the provided inputs.

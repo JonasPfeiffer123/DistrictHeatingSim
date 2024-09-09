@@ -1,0 +1,23 @@
+\section{HeatPump Class}
+The \texttt{HeatPump} class represents a heat pump system and provides methods to calculate various performance and economic metrics. The class is highly modular, making it possible to adapt it to different types of heat sources and use cases. The primary attributes and methods of the class are detailed below:
+
+\subsection{Attributes}
+\begin{itemize}
+    \item \texttt{name (str)}: The name of the heat pump.
+    \item \texttt{spezifische\_Investitionskosten\_WP (float)}: Specific investment costs of the heat pump per kW. Default is 1000 €/kW.
+    \item \texttt{Nutzungsdauer\_WP (int)}: Useful life of the heat pump in years. Default is 20 years.
+    \item \texttt{f\_Inst\_WP (float)}: Installation factor for the heat pump. Default is 1.
+    \item \texttt{f\_W\_Insp\_WP (float)}: Maintenance and inspection factor for the heat pump. Default is 1.5.
+    \item \texttt{Bedienaufwand\_WP (float)}: Operating effort for the heat pump in hours. Default is 0.
+    \item \texttt{f\_Inst\_WQ (float)}: Installation factor for the heat source. Default is 0.5.
+    \item \texttt{f\_W\_Insp\_WQ (float)}: Maintenance and inspection factor for the heat source. Default is 0.5.
+    \item \texttt{Bedienaufwand\_WQ (float)}: Operating effort for the heat source in hours. Default is 0.
+    \item \texttt{Nutzungsdauer\_WQ\_dict (dict)}: Dictionary containing useful life of different heat sources (e.g., waste heat, river water).
+    \item \texttt{co2\_factor\_electricity (float)}: CO$_2$ emission factor for electricity in tCO$_2$/MWh. Default is 2.4.
+\end{itemize}
+
+\subsection{Methods}
+\begin{itemize}
+    \item \texttt{COP\_WP(VLT\_L, QT, COP\_data)}: Calculates the coefficient of performance (COP) of the heat pump by interpolating the COP data based on flow temperatures (\texttt{VLT\_L}) and source temperatures (\texttt{QT}).
+    \item \texttt{WGK(Wärmeleistung, Wärmemenge, Strombedarf, spez\_Investitionskosten\_WQ, Strompreis, q, r, T, BEW, stundensatz)}: Calculates the weighted average cost of heat generation (WGK) based on thermal performance, investment, and operational costs.
+\end{itemize}
