@@ -28,6 +28,14 @@ def generate_profiles_from_csv(data, TRY, calc_method):
             - return_temperature_curve (ndarray): Rücklauftemperaturkurve.
             - hourly_air_temperatures (ndarray): Stündliche Außentemperaturen.
     """
+
+    # folgendes wird statisch gesetzt, muss in Zukunft noch in config-Datei ausgelagert werden oder im UI einstellbar sein
+    year = 2021 # Jahr, für das die Berechnung durchgeführt wird (für VDI 4655, BDEW)
+    holidays = np.array(["2021-01-01", "2021-04-02", "2021-04-05", "2021-05-01", "2021-05-24", "2021-05-13", 
+                         "2021-06-03", "2021-10-03", "2021-11-01", "2021-12-25", "2021-12-26"]).astype('datetime64[D]') # Feiertage in Deutschland 2021 (ohne Wochenenden) als datetime64[D]-Array (YYYY-MM-DD) für VDI 4655
+    climate_zone = "9"  # Klimazone 9: Deutschland (VDI 4655)
+    number_people_household = 2  # Anzahl der Personen im Haushalt (VDI 4655)
+    
     try:
         YEU_total_heat_kWh = data["Wärmebedarf"].values.astype(float)
         building_type = data["Gebäudetyp"].values.astype(str)
@@ -81,10 +89,12 @@ def generate_profiles_from_csv(data, TRY, calc_method):
         if current_calc_method == "VDI4655":
             YEU_heating_kWh, YEU_hot_water_kWh = YEU_total_heat_kWh * (1-ww_demand), YEU_total_heat_kWh * ww_demand
             heating, hot_water = YEU_heating_kWh[idx], YEU_hot_water_kWh[idx]
-            yearly_time_steps, hourly_heat_demand_total_kW, hourly_heat_demand_heating_kW, hourly_heat_demand_warmwater_kW, hourly_air_temperatures, electricity_kW = heat_requirement_VDI4655.calculate(heating, hot_water, building_type=current_building_type, TRY=TRY)
+            # YEU_electricity_kW is currently set to 0, as it is not used in the following calculations
+            yearly_time_steps, hourly_heat_demand_total_kW, hourly_heat_demand_heating_kW, hourly_heat_demand_warmwater_kW, hourly_air_temperatures, electricity_kW = heat_requirement_VDI4655.calculate(YEU_heating_kWh=heating, YEU_hot_water_kWh=hot_water, YEU_electricity_kWh=0, building_type=current_building_type, number_people_household=number_people_household, year=year, climate_zone=climate_zone, TRY=TRY, holidays=holidays)
 
         elif current_calc_method == "BDEW":
-            yearly_time_steps, hourly_heat_demand_total_kW, hourly_heat_demand_heating_kW, hourly_heat_demand_warmwater_kW, hourly_air_temperatures = heat_requirement_BDEW.calculate(YEU_kWh=YEU, building_type=current_building_type, subtyp=current_subtype, TRY=TRY, real_ww_share=current_ww_demand)
+            # year is set to 2021 as a default value
+            yearly_time_steps, hourly_heat_demand_total_kW, hourly_heat_demand_heating_kW, hourly_heat_demand_warmwater_kW, hourly_air_temperatures = heat_requirement_BDEW.calculate(YEU_kWh=YEU, building_type=current_building_type, subtyp=current_subtype, TRY=TRY, year=year, real_ww_share=current_ww_demand)
 
         hourly_heat_demand_total_kW = np.clip(hourly_heat_demand_total_kW, 0, None)
         hourly_heat_demand_heating_kW = np.clip(hourly_heat_demand_heating_kW, 0, None)
