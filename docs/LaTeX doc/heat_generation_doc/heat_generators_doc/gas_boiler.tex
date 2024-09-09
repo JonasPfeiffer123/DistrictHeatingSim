@@ -1,0 +1,92 @@
+\section{GasBoiler Class}
+The \texttt{GasBoiler} class represents a gas boiler system, designed to calculate and simulate the performance, cost, and emissions of a gas boiler in a heating system. The class incorporates key economic, operational, and environmental factors and can be used for comprehensive analysis in energy systems.
+
+\subsection{Attributes}
+\begin{itemize}
+    \item \texttt{name (str)}: Name of the gas boiler system.
+    \item \texttt{spez\_Investitionskosten (float)}: Specific investment costs for the gas boiler in €/kW. 
+    \item \texttt{Nutzungsgrad (float)}: Efficiency of the gas boiler, typically ranging between 0.8 and 1.0. It represents the ratio of useful heat output to the total energy input.
+    \item \texttt{Faktor\_Dimensionierung (float)}: Dimensioning factor to account for capacity oversizing.
+    \item \texttt{Nutzungsdauer (int)}: Lifespan of the gas boiler in years. Defaults to 20 years.
+    \item \texttt{f\_Inst (float)}: Installation factor, representing additional costs due to installation complexities.
+    \item \texttt{f\_W\_Insp (float)}: Inspection factor, accounting for periodic maintenance and inspection costs.
+    \item \texttt{Bedienaufwand (float)}: Operational effort, representing the cost of operation in terms of labor.
+    \item \texttt{co2\_factor\_fuel (float)}: CO$_2$ emission factor for the fuel (natural gas), typically measured in tCO$_2$/MWh.
+    \item \texttt{primärenergiefaktor (float)}: Primary energy factor for the fuel, representing the amount of primary energy required to produce one unit of usable energy (MWh). This factor accounts for energy losses in the fuel supply chain.
+\end{itemize}
+
+\subsection{Methods}
+\begin{itemize}
+    \item \texttt{GasBoiler(Last\_L, duration)}: 
+    Simulates the operation of the gas boiler based on the load profile and duration of operation.
+    \begin{itemize}
+        \item \textbf{Last\_L (array)}: Array representing the heat load in kW that the gas boiler needs to meet.
+        \item \textbf{duration (float)}: Duration of each time step in hours for which the load is simulated.
+    \end{itemize}
+    This method calculates the total heat output (\texttt{Wärmemenge\_Gaskessel}) and gas demand (\texttt{Gasbedarf}) based on the efficiency (\texttt{Nutzungsgrad}) and the given load.
+
+    \item \texttt{WGK(Brennstoffkosten, q, r, T, BEW, stundensatz)}:
+    Calculates the weighted average cost of heat generation (\textbf{WGK}), factoring in investment costs, fuel costs, and operational expenses.
+    \begin{itemize}
+        \item \textbf{Brennstoffkosten (float)}: The cost of fuel (natural gas) in €/MWh.
+        \item \textbf{q (float)}: Capital recovery factor.
+        \item \textbf{r (float)}: Factor accounting for price escalation or depreciation.
+        \item \textbf{T (int)}: Time period in years for the cost calculation.
+        \item \textbf{BEW (float)}: Subsidy or other cost-reducing factors.
+        \item \textbf{stundensatz (float)}: Hourly labor rate for the operation of the gas boiler.
+    \end{itemize}
+    The method calculates total investment costs, operational costs, and returns the specific heat generation cost (\texttt{WGK\_GK}).
+
+    \item \texttt{calculate(Gaspreis, q, r, T, BEW, stundensatz, duration, Last\_L, general\_results)}:
+    Performs a complete calculation of the gas boiler's performance and economic metrics. It simulates the boiler's operation over a given time period and computes the weighted average cost of heat generation, CO$_2$ emissions, and primary energy usage.
+    \begin{itemize}
+        \item \textbf{Gaspreis (float)}: Price of natural gas in €/MWh.
+        \item \textbf{q (float)}, \textbf{r (float)}, \textbf{T (int)}, \textbf{BEW (float)}: Parameters for cost and subsidy calculation.
+        \item \textbf{stundensatz (float)}: Labor rate for boiler operation in €/hour.
+        \item \textbf{duration (float)}: Duration of each simulation time step in hours.
+        \item \textbf{Last\_L (array)}: Load profile of the system in kW.
+        \item \textbf{general\_results (dict)}: Dictionary containing general results such as residual load.
+    \end{itemize}
+    This method computes:
+    \begin{itemize}
+        \item \texttt{Wärmemenge}: Total heat output of the gas boiler.
+        \item \texttt{Wärmeleistung\_L}: Time-resolved heat output.
+        \item \texttt{Brennstoffbedarf}: Total gas demand based on the heat output and efficiency.
+        \item \texttt{WGK}: Weighted average cost of heat generation.
+        \item \texttt{spec\_co2\_total}: Specific CO$_2$ emissions in tCO$_2$/MWh heat.
+        \item \texttt{primärenergie}: Primary energy usage of the system.
+    \end{itemize}
+    Returns a dictionary of the results, including performance metrics, cost analysis, and emissions data.
+
+    \item \texttt{to\_dict()}: 
+    Converts the \texttt{GasBoiler} object to a dictionary for serialization or storage. This method is useful for saving the configuration or results of the gas boiler system.
+
+    \item \texttt{from\_dict(data)}:
+    Creates a \texttt{GasBoiler} object from a dictionary containing the system's attributes. This method is essential for re-loading configurations from a stored state.
+\end{itemize}
+
+\subsection{Economic and Environmental Considerations}
+The \texttt{GasBoiler} class is designed to simulate both the economic and environmental impacts of a gas boiler system. The \textbf{weighted average cost of heat generation (WGK)} takes into account both investment costs and operational costs, including fuel prices, labor, and maintenance. Additionally, the system's \textbf{CO$_2$ emissions} are calculated based on fuel consumption and the specific CO$_2$ factor for natural gas, allowing for an analysis of the environmental footprint of the system. The \textbf{primary energy consumption} is also calculated, offering insights into the system's overall energy efficiency and sustainability.
+
+\subsection{Usage Example}
+The following is an example of how the \texttt{GasBoiler} class can be initialized and used:
+
+\begin{verbatim}
+gas_boiler = GasBoiler(
+    name="Gasheizkessel",
+    spez_Investitionskosten=35,  # €/kW
+    Nutzungsgrad=0.92,  # 92% efficiency
+    Faktor_Dimensionierung=1.1  # Slight oversizing
+)
+
+results = gas_boiler.calculate(
+    Gaspreis=30,  # €/MWh
+    q=0.03, r=0.02, T=20, BEW=1, 
+    stundensatz=50, 
+    duration=1, 
+    Last_L=load_profile, 
+    general_results={'Restlast_L': residual_load}
+)
+\end{verbatim}
+
+In this example, the gas boiler is dimensioned to have an efficiency of 92\% and is slightly oversized. The calculation method estimates the heat output, gas demand, CO$_2$ emissions, and the weighted average cost of heat generation based on a load profile and general system parameters.

@@ -1,0 +1,101 @@
+\section{CHP Class}
+The \texttt{CHP} class models a Combined Heat and Power (CHP) system, allowing for the calculation of both performance metrics and economic evaluations. The system can operate with or without storage and can simulate gas or wood gas-powered CHPs.
+
+\subsection{Attributes}
+\begin{itemize}
+    \item \texttt{name (str)}: Name of the CHP system.
+    \item \texttt{th\_Leistung\_BHKW (float)}: Thermal power of the CHP system in kW.
+    \item \texttt{spez\_Investitionskosten\_GBHKW (float)}: Specific investment costs for gas CHP in €/kW. Default is 1500 €/kW.
+    \item \texttt{spez\_Investitionskosten\_HBHKW (float)}: Specific investment costs for wood gas CHP in €/kW. Default is 1850 €/kW.
+    \item \texttt{el\_Wirkungsgrad (float)}: Electrical efficiency of the CHP system. Default is 0.33.
+    \item \texttt{KWK\_Wirkungsgrad (float)}: Combined heat and power efficiency. Default is 0.9.
+    \item \texttt{min\_Teillast (float)}: Minimum partial load as a fraction of nominal load. Default is 0.7.
+    \item \texttt{speicher\_aktiv (bool)}: Indicates if a storage system is active. Default is False.
+    \item \texttt{Speicher\_Volumen\_BHKW (float)}: Storage volume in cubic meters. Default is 20 m³.
+    \item \texttt{T\_vorlauf (float)}: Flow temperature in degrees Celsius. Default is 90°C.
+    \item \texttt{T\_ruecklauf (float)}: Return temperature in degrees Celsius. Default is 60°C.
+    \item \texttt{initial\_fill (float)}: Initial fill level of the storage. Default is 0.0.
+    \item \texttt{min\_fill (float)}: Minimum fill level of the storage. Default is 0.2.
+    \item \texttt{max\_fill (float)}: Maximum fill level of the storage. Default is 0.8.
+    \item \texttt{spez\_Investitionskosten\_Speicher (float)}: Specific investment costs for storage in €/m³. Default is 750 €/m³.
+    \item \texttt{BHKW\_an (bool)}: Indicates if the CHP is on. Default is True.
+    \item \texttt{thermischer\_Wirkungsgrad (float)}: Thermal efficiency of the CHP system.
+    \item \texttt{el\_Leistung\_Soll (float)}: Desired electrical power output of the CHP system in kW.
+    \item \texttt{Nutzungsdauer (int)}: Lifespan of the CHP system in years. Default is 15 years.
+    \item \texttt{f\_Inst (float)}: Installation factor.
+    \item \texttt{f\_W\_Insp (float)}: Inspection factor.
+    \item \texttt{Bedienaufwand (float)}: Operational effort.
+    \item \texttt{co2\_factor\_fuel (float)}: CO$_2$ emission factor for fuel in tCO$_2$/MWh.
+    \item \texttt{primärenergiefaktor (float)}: Primary energy factor.
+    \item \texttt{co2\_factor\_electricity (float)}: CO$_2$ emission factor for electricity in tCO$_2$/MWh. Default is 0.4 tCO$_2$/MWh.
+\end{itemize}
+
+\subsection{Methods}
+\begin{itemize}
+    \item \texttt{BHKW(Last\_L, duration)}: Calculates the power and heat output of the CHP system without storage.
+    \begin{itemize}
+        \item \textbf{Last\_L (array-like)}: Load demand in kW.
+        \item \textbf{duration (float)}: Duration of the time step in hours.
+    \end{itemize}
+    Returns the heat output, electrical output, fuel consumption, and number of starts.
+
+    \item \texttt{storage(Last\_L, duration)}: Calculates the power and heat output of the CHP system with storage.
+    \begin{itemize}
+        \item \textbf{Last\_L (array-like)}: Load demand in kW.
+        \item \textbf{duration (float)}: Duration of the time step in hours.
+    \end{itemize}
+    Returns the heat output, electrical output, storage status, and fuel consumption.
+
+    \item \texttt{WGK(Wärmemenge, Strommenge, Brennstoffbedarf, Brennstoffkosten, Strompreis, q, r, T, BEW, stundensatz)}: Calculates the weighted average cost of energy for the CHP system.
+    \begin{itemize}
+        \item \textbf{Wärmemenge (float)}: Total heat generated in MWh.
+        \item \textbf{Strommenge (float)}: Total electricity generated in MWh.
+        \item \textbf{Brennstoffbedarf (float)}: Fuel consumption in MWh.
+        \item \textbf{Brennstoffkosten (float)}: Fuel cost in €/MWh.
+        \item \textbf{Strompreis (float)}: Electricity price in €/MWh.
+        \item \textbf{q (float)}, \textbf{r (float)}: Factors for capital recovery and price escalation.
+        \item \textbf{T (int)}: Time period in years.
+        \item \textbf{BEW (float)}: Discount rate.
+        \item \textbf{stundensatz (float)}: Hourly rate for labor in €/hour.
+    \end{itemize}
+
+    \item \texttt{calculate(Gaspreis, Holzpreis, Strompreis, q, r, T, BEW, stundensatz, duration, general\_results)}: 
+    Simulates the CHP system's economic and environmental performance over a time period.
+    \begin{itemize}
+        \item \textbf{Gaspreis (float)}: Gas price in €/MWh.
+        \item \textbf{Holzpreis (float)}: Wood price in €/MWh.
+        \item \textbf{Strompreis (float)}: Electricity price in €/MWh.
+        \item \textbf{q (float)}, \textbf{r (float)}, \textbf{T (int)}, \textbf{BEW (float)}, \textbf{stundensatz (float)}: Cost parameters.
+        \item \textbf{duration (float)}: Duration of the simulation in hours.
+        \item \textbf{general\_results (dict)}: Dictionary containing load profiles and other metrics.
+    \end{itemize}
+
+    \item \texttt{to\_dict()}: Converts the object attributes into a dictionary for serialization.
+    
+    \item \texttt{from\_dict(data)}: Creates an object from a dictionary of attributes.
+\end{itemize}
+
+\subsection{Economic and Environmental Considerations}
+The \texttt{CHP} class calculates both the weighted average cost of heat generation (WGK) and the specific CO$_2$ emissions for a CHP system. These calculations consider fuel costs, electricity generation, and operational factors. The class also accounts for the CO$_2$ savings achieved through electricity generation and estimates the system's primary energy usage.
+
+\subsection{Usage Example}
+The following example demonstrates the initialization and use of the \texttt{CHP} class to simulate the performance of a gas-powered CHP system:
+
+\begin{verbatim}
+chp_system = CHP(
+    name="Gas-BHKW", 
+    th_Leistung_BHKW=200,  # kW
+    speicher_aktiv=True,
+    Speicher_Volumen_BHKW=30  # m³
+)
+results = chp_system.calculate(
+    Gaspreis=60,  # €/MWh
+    Holzpreis=40,  # €/MWh
+    Strompreis=100,  # €/MWh
+    q=0.03, r=0.02, T=15, BEW=0.8, 
+    stundensatz=50, 
+    duration=1, 
+    general_results=load_profile
+)
+\end{verbatim}
+This example initializes a gas-powered CHP system with 200 kW thermal power and a 30 m³ storage volume. The economic and environmental performance is calculated based on the provided inputs.
