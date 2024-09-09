@@ -1,7 +1,7 @@
 """
 Filename: building_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-31
+Date: 2024-09-09
 Description: Contains the BuildingTab for managing building data and displaying results.
 """
 
@@ -15,8 +15,8 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QFileDialog, QLabel, QMessageBox,
-                             QMainWindow, QTableWidget, QTableWidgetItem, QHeaderView, QComboBox, 
-                             QScrollArea, QMenuBar, QAction, QLineEdit, QAbstractScrollArea, QHBoxLayout)
+                             QMainWindow, QTableWidget, QTableWidgetItem, QComboBox, 
+                             QMenuBar, QAction, QLineEdit, QAbstractScrollArea, QHBoxLayout)
 from PyQt5.QtCore import pyqtSignal, Qt
 
 from heat_requirement.heat_requirement_calculation_csv import generate_profiles_from_csv
@@ -139,6 +139,7 @@ class BuildingModel:
         """
         yearly_time_steps, total_heat_W, heating_heat_W, warmwater_heat_W, max_heat_requirement_W, supply_temperature_curve, return_temperature_curve, hourly_air_temperatures = generate_profiles_from_csv(data=data, TRY=try_filename, calc_method="Datensatz")
 
+        # not sure if thats the best way to return the data in kW, but it works for now
         return yearly_time_steps, total_heat_W/1000, heating_heat_W/1000, warmwater_heat_W/1000, max_heat_requirement_W/1000, supply_temperature_curve, return_temperature_curve, hourly_air_temperatures
 
     def get_resource_path(self, relative_path):
