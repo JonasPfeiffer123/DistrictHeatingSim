@@ -141,13 +141,12 @@ def standardized_quarter_hourly_profile(year, building_type, days_of_year, type_
     hot_water_demand = merged_df['Warmwasser normiert'].values
     return quarter_hourly_intervals, electricity_demand, heating_demand, hot_water_demand
 
-def calculation_load_profile(TRY, factors, building_type, number_people_household, YEU_electricity_kWh, YEU_heating_kWh, YEU_hot_water_kWh, holidays, climate_zone="9", year=2019):
+def calculation_load_profile(TRY, building_type, number_people_household, YEU_electricity_kWh, YEU_heating_kWh, YEU_hot_water_kWh, holidays, climate_zone, year):
     """
     Calculate load profiles based on the VDI 4655 methods.
 
     Args:
         TRY (str): Path to the TRY data file.
-        factors (str): Path to the factors CSV file.
         building_type (str): The type of building.
         number_people_household (int): Number of people in the household.
         YEU_electricity_kWh (float): Yearly electricity usage in kWh.
@@ -160,6 +159,8 @@ def calculation_load_profile(TRY, factors, building_type, number_people_househol
     Returns:
         tuple: Arrays of quarter-hourly intervals, electricity demand, heating demand, hot water demand, and temperature.
     """
+    factors = get_resource_path('data\\VDI 4655 profiles\\VDI 4655 data\\Faktoren.csv')
+
     days_of_year, months, days, weekdays = generate_year_months_days_weekdays(year)
     temperature, degree_of_coverage = import_TRY(TRY)
     daily_avg_temperature, daily_avg_degree_of_coverage = calculate_daily_averages(temperature, degree_of_coverage)
@@ -200,29 +201,25 @@ def calculation_load_profile(TRY, factors, building_type, number_people_househol
 
     return quarter_hourly_intervals, electricity_corrected, heating_corrected, hot_water_corrected, temperature
 
-def calculate(YEU_heating_kWh, YEU_hot_water_kWh, YEU_electricity_kWh=1, building_type="MFH", number_people_household=2, year=2019, climate_zone="9", TRY=get_resource_path('data\\TRY\\TRY_511676144222\\TRY2015_511676144222_Jahr.dat')):
+def calculate(YEU_heating_kWh, YEU_hot_water_kWh, YEU_electricity_kWh, building_type, number_people_household, year, climate_zone, TRY, holidays):
     """
     Calculate heat demand profiles using VDI 4655 methods.
 
     Args:
         YEU_heating_kWh (float): Yearly heating usage in kWh.
         YEU_hot_water_kWh (float): Yearly hot water usage in kWh.
-        YEU_electricity_kWh (float, optional): Yearly electricity usage in kWh. Defaults to 1.
-        building_type (str, optional): Type of building. Defaults to "MFH".
-        number_people_household (int, optional): Number of people in the household. Defaults to 2.
-        year (int, optional): Year for the calculation. Defaults to 2019.
-        climate_zone (str, optional): Climate zone. Defaults to "9".
-        TRY (str, optional): Path to the TRY data file. Defaults to get_resource_path('data\\TRY\\TRY_511676144222\\TRY2015_511676144222_Jahr.dat').
+        YEU_electricity_kWh (float, optional): Yearly electricity usage in kWh.
+        building_type (str, optional): Type of building.
+        number_people_household (int, optional): Number of people in the household.
+        year (int, optional): Year for the calculation.
+        climate_zone (str, optional): Climate zone.
+        TRY (str, optional): Path to the TRY data file.
 
     Returns:
         tuple: Arrays of quarter-hourly intervals, total heat demand, heating demand, hot water demand, temperature, and electricity demand.
     """
-    holidays = np.array(["2019-01-01", "2019-04-19", "2019-04-22", "2019-05-01", "2019-05-30", 
-                         "2019-06-10", "2019-06-20", "2019-10-03", "2019-11-01", "2019-12-25", "2019-12-26"]).astype('datetime64[D]')
-    
-    factors = get_resource_path('data\\VDI 4655 profiles\\VDI 4655 data\\Faktoren.csv')
 
-    time_15min, electricity_kWh_15min, heating_kWh_15min, hot_water_kWh_15min, temperature = calculation_load_profile(TRY, factors, building_type, number_people_household, 
+    time_15min, electricity_kWh_15min, heating_kWh_15min, hot_water_kWh_15min, temperature = calculation_load_profile(TRY, building_type, number_people_household, 
                                                                                                   YEU_electricity_kWh, YEU_heating_kWh, YEU_hot_water_kWh, 
                                                                                                   holidays, climate_zone, year)
     total_heat_kWh_15min = heating_kWh_15min + hot_water_kWh_15min

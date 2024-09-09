@@ -38,27 +38,25 @@ Die Funktion führt folgende Schritte aus:
 
 \subsubsection{Aufteilung des Gesamtwärmebedarfs}
 
-Der Gesamtwärmebedarf \( YEU \) wird in Heizwärme und Warmwasserbedarf aufgeteilt:
+Der Gesamtwärmebedarf wird in Heizwärme und Warmwasserbedarf aufgeteilt:
 
 \[
-\text{Heizwärmebedarf} = YEU \times (1 - ww\_demand)
+\text{Heizwärmebedarf} = \text{Gesamtwärmebedarf} \times (1 - \text{Warmwasserbedarf})
 \]
 \[
-\text{Warmwasserbedarf} = YEU \times ww\_demand
+\text{Warmwasserbedarf} = \text{Gesamtwärmebedarf} \times \text{Warmwasserbedarf}
 \]
-
-Dabei ist \( ww\_demand \) der Anteil des Warmwasserbedarfs am Gesamtwärmebedarf.
 
 \subsubsection{Berechnungsmethoden}
 Je nach Gebäudetyp wird die Berechnung entweder nach der Methode VDI 4655 oder BDEW durchgeführt.
 
 \paragraph{VDI 4655}
-Für bestimmte Gebäudetypen, wie Einfamilienhäuser (EFH) und Mehrfamilienhäuser (MFH), wird die Methode VDI 4655 verwendet. Diese Methode berechnet stündliche Lastprofile für Heizung und Warmwasser sowie stündliche Lufttemperaturen.
+Für bestimmte Gebäudetypen, wie Einfamilienhäuser (EFH) und Mehrfamilienhäuser (MFH), kann die Methodik nach VDI 4655 verwendet werden. Diese Methode berechnet viertelstündliche Lastprofile für Heizung, Warmwasser und Strom. Eine ausführliche Beschreibung erfolgt in Kapitel \ref{sec:heat_load_VDI4655_doc}.
 
 \paragraph{BDEW}
-Für andere Gebäudetypen, wie Gewerbebauten oder Großwohnbauten, wird die Methode BDEW verwendet, die ähnliche Berechnungen wie VDI 4655 durchführt, jedoch spezifisch auf andere Gebäudestrukturen angepasst ist.
+Die Methodik der Standardlastprofile nach BDEW bieten hingegen deutlich heterogene Gebäudetypen. Neben Ein- und Mehrfamilienhäusern (HEF, HMF) sind das Gebäudenutzungstypen wie Gewerbebauten oder Bürobauten. Die Berechnungsmethode gibt stündliche Lastprofile für Heizung und Warmwasser aus. Eine ausführliche Beschreibung erfolgt in Kapitel \ref{sec:heat_load_BDEW_doc}.
 
-Die spezifische Berechnungsmethode wird basierend auf dem Gebäudetyp ausgewählt. Wenn keine Methode definiert ist, wird eine Standardmethode verwendet.
+Die spezifische Berechnungsmethode wird basierend auf dem Gebäudetyp ausgewählt.
 
 \subsubsection{Korrektur negativer Lasten}
 Um physikalisch unsinnige negative Werte zu vermeiden, werden alle negativen stündlichen Lasten auf 0 gesetzt:
