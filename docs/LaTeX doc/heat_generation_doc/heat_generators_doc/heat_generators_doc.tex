@@ -1,0 +1,63 @@
+\section{HeatPump Class}
+The \texttt{HeatPump} class represents a heat pump system and provides methods to calculate various performance and economic metrics. The class is highly modular, making it possible to adapt it to different types of heat sources and use cases. The primary attributes and methods of the class are detailed below:
+
+\subsection{Attributes}
+\begin{itemize}
+    \item \texttt{name (str)}: The name of the heat pump.
+    \item \texttt{spezifische\_Investitionskosten\_WP (float)}: Specific investment costs of the heat pump per kW. Default is 1000 €/kW.
+    \item \texttt{Nutzungsdauer\_WP (int)}: Useful life of the heat pump in years. Default is 20 years.
+    \item \texttt{f\_Inst\_WP (float)}: Installation factor for the heat pump. Default is 1.
+    \item \texttt{f\_W\_Insp\_WP (float)}: Maintenance and inspection factor for the heat pump. Default is 1.5.
+    \item \texttt{Bedienaufwand\_WP (float)}: Operating effort for the heat pump in hours. Default is 0.
+    \item \texttt{f\_Inst\_WQ (float)}: Installation factor for the heat source. Default is 0.5.
+    \item \texttt{f\_W\_Insp\_WQ (float)}: Maintenance and inspection factor for the heat source. Default is 0.5.
+    \item \texttt{Bedienaufwand\_WQ (float)}: Operating effort for the heat source in hours. Default is 0.
+    \item \texttt{Nutzungsdauer\_WQ\_dict (dict)}: Dictionary containing useful life of different heat sources (e.g., waste heat, river water).
+    \item \texttt{co2\_factor\_electricity (float)}: CO$_2$ emission factor for electricity in tCO$_2$/MWh. Default is 2.4.
+\end{itemize}
+
+\subsection{Methods}
+\begin{itemize}
+    \item \texttt{COP\_WP(VLT\_L, QT, COP\_data)}: Calculates the coefficient of performance (COP) of the heat pump by interpolating the COP data based on flow temperatures (\texttt{VLT\_L}) and source temperatures (\texttt{QT}).
+    \item \texttt{WGK(Wärmeleistung, Wärmemenge, Strombedarf, spez\_Investitionskosten\_WQ, Strompreis, q, r, T, BEW, stundensatz)}: Calculates the weighted average cost of heat generation (WGK) based on thermal performance, investment, and operational costs.
+\end{itemize}
+
+\section{RiverHeatPump Class}
+The \texttt{RiverHeatPump} class extends the \texttt{HeatPump} class and models a heat pump system that uses river water as the heat source. In addition to the attributes of the base class, it includes parameters specific to river water heat pumps.
+
+\subsection{Attributes}
+\begin{itemize}
+    \item \texttt{Wärmeleistung\_FW\_WP (float)}: Heat output of the river water heat pump in kW.
+    \item \texttt{Temperatur\_FW\_WP (float)}: Temperature of the river water in °C.
+    \item \texttt{dT (float)}: Temperature difference across the heat exchanger in °C.
+    \item \texttt{spez\_Investitionskosten\_Flusswasser (float)}: Specific investment costs for the river water heat pump per kW.
+    \item \texttt{min\_Teillast (float)}: Minimum partial load. Default is 0.2.
+    \item \texttt{co2\_factor\_electricity (float)}: CO$_2$ emission factor for electricity in tCO$_2$/MWh.
+    \item \texttt{primärenergiefaktor (float)}: Primary energy factor for river water heat pumps.
+\end{itemize}
+
+\subsection{Methods}
+\begin{itemize}
+    \item \texttt{Berechnung\_WP(Wärmeleistung\_L, VLT\_L, COP\_data)}: Calculates the cooling load, electric power consumption, and adjusted flow temperatures based on the given load and COP data.
+    \item \texttt{calculate(VLT\_L, COP\_data, Strompreis, q, r, T, BEW, stundensatz, duration, general\_results)}: Calculates the economic and environmental metrics for the river heat pump based on flow temperatures, electricity prices, and other input parameters.
+\end{itemize}
+
+\section{CHP Class}
+The \texttt{CHP} class represents a combined heat and power (CHP) system. It extends the \texttt{HeatPump} class and provides methods to calculate both the electrical and thermal performance of the CHP system.
+
+\subsection{Attributes}
+\begin{itemize}
+    \item \texttt{th\_Leistung\_BHKW (float)}: Thermal power of the CHP system in kW.
+    \item \texttt{spez\_Investitionskosten\_GBHKW (float)}: Specific investment costs for gas CHPs in €/kW. Default is 1500 €/kW.
+    \item \texttt{el\_Wirkungsgrad (float)}: Electrical efficiency of the CHP system. Default is 0.33.
+    \item \texttt{KWK\_Wirkungsgrad (float)}: Combined heat and power efficiency. Default is 0.9.
+    \item \texttt{min\_Teillast (float)}: Minimum part-load operation as a fraction of the nominal load. Default is 0.7.
+    \item \texttt{speicher\_aktiv (bool)}: Indicates whether a storage system is used.
+\end{itemize}
+
+\subsection{Methods}
+\begin{itemize}
+    \item \texttt{BHKW(Last\_L, duration)}: Simulates the operation of the CHP system without storage. 
+    \item \texttt{storage(Last\_L, duration)}: Simulates the operation of the CHP system with thermal storage.
+    \item \texttt{calculate(Gaspreis, Holzpreis, Strompreis, q, r, T, BEW, stundensatz, duration, general\_results)}: Calculates the economic and environmental performance of the CHP system for both gas and wood-based CHPs.
+\end{itemize}

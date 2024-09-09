@@ -8,6 +8,9 @@ Description: This code defines a `Building` class to calculate the heating deman
              The example demonstrates the usage for three buildings with specific dimensions and U-values, outputting their volumes and calculated heat demands.
 """
 
+""" This Script could also be used for cooling demand calculation by adding the cooling demand calculation method to the Building class. For that, solar and internal gains should be considered. 
+    The Building class could be extended to include additional parameters such as shading, orientation, and glazing properties to calculate the cooling demand."""
+
 import os
 import sys
 
