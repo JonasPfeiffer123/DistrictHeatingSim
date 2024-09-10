@@ -1,23 +1,84 @@
-\section{HeatPump Class}
-The \texttt{HeatPump} class represents a heat pump system and provides methods to calculate various performance and economic metrics. The class is highly modular, making it possible to adapt it to different types of heat sources and use cases. The primary attributes and methods of the class are detailed below:
+\section{HeatPump Klasse}
+Die \texttt{HeatPump}-Klasse repräsentiert ein Wärmepumpensystem und bietet Methoden zur Berechnung verschiedener Leistungs- und Wirtschaftlichkeitskennzahlen. Die Klasse ist modular aufgebaut und ermöglicht die Anpassung an unterschiedliche Wärmequellen und Anwendungsfälle. Nachfolgend werden die wichtigsten Attribute und Methoden der Klasse detailliert beschrieben.
 
-\subsection{Attributes}
+\subsection{Attribute}
 \begin{itemize}
-    \item \texttt{name (str)}: The name of the heat pump.
-    \item \texttt{spezifische\_Investitionskosten\_WP (float)}: Specific investment costs of the heat pump per kW. Default is 1000 €/kW.
-    \item \texttt{Nutzungsdauer\_WP (int)}: Useful life of the heat pump in years. Default is 20 years.
-    \item \texttt{f\_Inst\_WP (float)}: Installation factor for the heat pump. Default is 1.
-    \item \texttt{f\_W\_Insp\_WP (float)}: Maintenance and inspection factor for the heat pump. Default is 1.5.
-    \item \texttt{Bedienaufwand\_WP (float)}: Operating effort for the heat pump in hours. Default is 0.
-    \item \texttt{f\_Inst\_WQ (float)}: Installation factor for the heat source. Default is 0.5.
-    \item \texttt{f\_W\_Insp\_WQ (float)}: Maintenance and inspection factor for the heat source. Default is 0.5.
-    \item \texttt{Bedienaufwand\_WQ (float)}: Operating effort for the heat source in hours. Default is 0.
-    \item \texttt{Nutzungsdauer\_WQ\_dict (dict)}: Dictionary containing useful life of different heat sources (e.g., waste heat, river water).
-    \item \texttt{co2\_factor\_electricity (float)}: CO$_2$ emission factor for electricity in tCO$_2$/MWh. Default is 2.4.
+    \item \texttt{name (str)}: Der Name der Wärmepumpe.
+    \item \texttt{spezifische\_Investitionskosten\_WP (float)}: Spezifische Investitionskosten der Wärmepumpe pro kW. Standardwert: 1000 €/kW.
+    \item \texttt{Nutzungsdauer\_WP (int)}: Nutzungsdauer der Wärmepumpe in Jahren. Standardwert: 20 Jahre.
+    \item \texttt{f\_Inst\_WP (float)}: Installationsfaktor für die Wärmepumpe. Standardwert: 1.
+    \item \texttt{f\_W\_Insp\_WP (float)}: Wartungs- und Inspektionsfaktor für die Wärmepumpe. Standardwert: 1.5.
+    \item \texttt{Bedienaufwand\_WP (float)}: Betriebsaufwand für die Wärmepumpe in Stunden. Standardwert: 0.
+    \item \texttt{f\_Inst\_WQ (float)}: Installationsfaktor für die Wärmequelle. Standardwert: 0.5.
+    \item \texttt{f\_W\_Insp\_WQ (float)}: Wartungs- und Inspektionsfaktor für die Wärmequelle. Standardwert: 0.5.
+    \item \texttt{Bedienaufwand\_WQ (float)}: Betriebsaufwand für die Wärmequelle in Stunden. Standardwert: 0.
+    \item \texttt{Nutzungsdauer\_WQ\_dict (dict)}: Wörterbuch, das die Nutzungsdauer verschiedener Wärmequellen (z.B. Abwärme, Flusswasser) enthält.
+    \item \texttt{co2\_factor\_electricity (float)}: CO$_2$-Emissionsfaktor für Strom in tCO$_2$/MWh. Standardwert: 2.4 tCO$_2$/MWh.
 \end{itemize}
 
-\subsection{Methods}
+\subsection{Methoden}
 \begin{itemize}
-    \item \texttt{COP\_WP(VLT\_L, QT, COP\_data)}: Calculates the coefficient of performance (COP) of the heat pump by interpolating the COP data based on flow temperatures (\texttt{VLT\_L}) and source temperatures (\texttt{QT}).
-    \item \texttt{WGK(Wärmeleistung, Wärmemenge, Strombedarf, spez\_Investitionskosten\_WQ, Strompreis, q, r, T, BEW, stundensatz)}: Calculates the weighted average cost of heat generation (WGK) based on thermal performance, investment, and operational costs.
+    \item \texttt{COP\_WP(VLT\_L, QT, COP\_data)}: Berechnet die Leistungszahl (COP) der Wärmepumpe, indem die COP-Daten basierend auf Vorlauftemperaturen (\texttt{VLT\_L}) und Quellentemperaturen (\texttt{QT}) interpoliert werden.
+    
+    Diese Methode verwendet eine zweidimensionale Interpolation basierend auf vorgegebenen Vorlauf- und Quellentemperaturen. Der COP wird für jede Kombination von Vorlauftemperatur und Quellentemperatur bestimmt. Der Interpolationsalgorithmus verwendet Gitterdaten aus einer Datei oder einem Dataset, in dem die Kennlinien der Wärmepumpe enthalten sind:
+    \[
+    COP = f(\texttt{VLT\_L}, \texttt{QT})
+    \]
+    Wo \( f \) die Interpolationsfunktion ist, die die Kennlinien der Wärmepumpe verwendet, um den entsprechenden COP zu berechnen.
+    
+    \item \texttt{WGK(Wärmeleistung, Wärmemenge, Strombedarf, spez\_Investitionskosten\_WQ, Strompreis, q, r, T, BEW, stundensatz)}: Berechnet die gewichteten Durchschnittskosten der Wärmeerzeugung (WGK) der Wärmepumpe auf Basis der thermischen Leistung, der Investitionskosten und der Betriebskosten.
+    
+    \begin{itemize}
+        \item \textbf{Wärmeleistung (float)}: Erzeugte Wärmeleistung in kW.
+        \item \textbf{Wärmemenge (float)}: Gesamte Wärmemenge, die von der Wärmepumpe produziert wurde, in MWh.
+        \item \textbf{Strombedarf (float)}: Strombedarf der Wärmepumpe in MWh.
+        \item \textbf{spez\_Investitionskosten\_WQ (float)}: Spezifische Investitionskosten für die Wärmequelle.
+        \item \textbf{Strompreis (float)}: Strompreis in €/MWh.
+        \item \textbf{q (float)}: Kapitalrückgewinnungsfaktor.
+        \item \textbf{r (float)}: Preissteigerungsfaktor.
+        \item \textbf{T (int)}: Betrachtungszeitraum in Jahren.
+        \item \textbf{BEW (float)}: Abzinsungsfaktor.
+        \item \textbf{stundensatz (float)}: Arbeitskosten pro Stunde in €/Stunde.
+    \end{itemize}
+    
+    Diese Methode berechnet die Gesamtkosten der Wärmeerzeugung, indem die Investitionskosten der Wärmepumpe und der Wärmequelle über die Lebensdauer des Systems mit den Betriebskosten kombiniert werden. Die jährlichen Kosten werden mit dem Annuitätenfaktor berechnet:
+    \[
+    E1\_WP = \frac{ \texttt{Investitionskosten\_WP} + \texttt{Betriebskosten} }{\texttt{Wärmemenge}}
+    \]
+    und die spezifischen Wärmeerzeugungskosten (\texttt{WGK}) werden folgendermaßen berechnet:
+    \[
+    \texttt{WGK\_Gesamt} = \frac{\texttt{E1\_WP} + \texttt{E1\_WQ}}{\texttt{Wärmemenge}}
+    \]
 \end{itemize}
+
+\subsection{Nutzung der Methoden}
+\textbf{Beispiel zur Berechnung des COP und der Wärmeerzeugungskosten (WGK)}:
+
+\begin{verbatim}
+heat_pump = HeatPump(name="Luft-Wärmepumpe", spezifische_Investitionskosten_WP=1200)
+
+# COP-Berechnung
+VLT_L = np.array([40, 50, 60])
+QT = 10
+COP_data = np.array([[0, 35, 45, 55, 65],
+                     [5, 3.6, 3.4, 3.2, 3.0, 2.8],
+                     [10, 4.0, 3.8, 3.6, 3.4, 3.2],
+                     [15, 4.4, 4.2, 4.0, 3.8, 3.6]])
+
+COP_L, adjusted_VLT_L = heat_pump.COP_WP(VLT_L, QT, COP_data)
+
+# WGK-Berechnung
+Wärmeleistung = 50  # kW
+Wärmemenge = 120  # MWh
+Strombedarf = 40  # MWh
+Strompreis = 80  # €/MWh
+q = 0.03
+r = 0.02
+T = 20
+BEW = 0.95
+stundensatz = 50
+spez_Investitionskosten_WQ = 600
+
+WGK_Gesamt_a = heat_pump.WGK(Wärmeleistung, Wärmemenge, Strombedarf, spez_Investitionskosten_WQ, Strompreis, q, r, T, BEW, stundensatz)
+\end{verbatim}
+In diesem Beispiel wird der COP der Wärmepumpe auf Basis der Vorlauf- und Quellentemperaturen berechnet. Anschließend werden die gewichteten Durchschnittskosten der Wärmeerzeugung (WGK) unter Berücksichtigung von Investitions- und Betriebskosten der Wärmepumpe und der Wärmequelle berechnet.

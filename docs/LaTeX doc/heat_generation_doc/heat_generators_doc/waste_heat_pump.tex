@@ -1,61 +1,61 @@
-\section{WasteHeatPump Class}
-The \texttt{WasteHeatPump} class models a waste heat recovery heat pump system, inheriting from the \texttt{HeatPump} base class. It includes methods for simulating the performance of the heat pump and calculating various economic and environmental metrics based on waste heat recovery.
+\section{WasteHeatPump Klasse}
+Die \texttt{WasteHeatPump}-Klasse modelliert ein Wärmepumpensystem zur Rückgewinnung von Abwärme und erbt von der \texttt{HeatPump}-Basisklasse. Sie enthält Methoden zur Simulation der Leistung der Wärmepumpe sowie zur Berechnung verschiedener ökonomischer und ökologischer Kennzahlen auf Basis der Abwärmenutzung.
 
-\subsection{Attributes}
+\subsection{Attribute}
 \begin{itemize}
-    \item \texttt{Kühlleistung\_Abwärme (float)}: Cooling capacity of the waste heat pump in kW.
-    \item \texttt{Temperatur\_Abwärme (float)}: Temperature of the waste heat source in degrees Celsius.
-    \item \texttt{spez\_Investitionskosten\_Abwärme (float)}: Specific investment costs for the waste heat pump per kW. Default is 500 €/kW.
-    \item \texttt{spezifische\_Investitionskosten\_WP (float)}: Specific investment costs of the heat pump per kW. Default is 1000 €/kW.
-    \item \texttt{min\_Teillast (float)}: Minimum partial load as a fraction of nominal load. Default is 0.2.
-    \item \texttt{co2\_factor\_electricity (float)}: CO$_2$ factor for electricity consumption, in tCO$_2$/MWh. Default is 0.4 tCO$_2$/MWh.
-    \item \texttt{primärenergiefaktor (float)}: Primary energy factor for electricity. Default is 2.4.
+    \item \texttt{Kühlleistung\_Abwärme (float)}: Kühlleistung der Abwärmepumpe in kW.
+    \item \texttt{Temperatur\_Abwärme (float)}: Temperatur der Abwärmequelle in Grad Celsius.
+    \item \texttt{spez\_Investitionskosten\_Abwärme (float)}: Spezifische Investitionskosten der Abwärmepumpe pro kW. Standardwert: 500 €/kW.
+    \item \texttt{spezifische\_Investitionskosten\_WP (float)}: Spezifische Investitionskosten der Wärmepumpe pro kW. Standardwert: 1000 €/kW.
+    \item \texttt{min\_Teillast (float)}: Minimale Teillast als Anteil der Nennlast. Standardwert: 0,2.
+    \item \texttt{co2\_factor\_electricity (float)}: CO$_2$-Faktor für den Stromverbrauch in tCO$_2$/MWh. Standardwert: 0,4 tCO$_2$/MWh.
+    \item \texttt{primärenergiefaktor (float)}: Primärenergiefaktor für den Stromverbrauch. Standardwert: 2,4.
 \end{itemize}
 
-\subsection{Methods}
+\subsection{Methoden}
 \begin{itemize}
-    \item \texttt{Berechnung\_WP(VLT\_L, COP\_data)}: Calculates the heat load, electric power consumption, and adjusted flow temperatures for the waste heat pump.
+    \item \texttt{Berechnung\_WP(VLT\_L, COP\_data)}: Berechnet die Wärmelast, den Stromverbrauch und die angepassten Vorlauftemperaturen für die Abwärmepumpe.
     \begin{itemize}
-        \item \textbf{VLT\_L (array-like)}: Flow temperatures in degrees Celsius.
-        \item \textbf{COP\_data (array-like)}: Coefficient of performance (COP) data for interpolation.
+        \item \textbf{VLT\_L (array-like)}: Vorlauftemperaturen in Grad Celsius.
+        \item \textbf{COP\_data (array-like)}: COP-Daten zur Interpolation.
     \end{itemize}
-    Returns the heat load and electric power consumption for the waste heat pump.
+    Gibt die Wärmelast und den Stromverbrauch für die Abwärmepumpe zurück.
 
-    \item \texttt{abwärme(Last\_L, VLT\_L, COP\_data, duration)}: Calculates the waste heat and other performance metrics for the heat pump.
+    \item \texttt{abwärme(Last\_L, VLT\_L, COP\_data, duration)}: Berechnet die Abwärme und weitere Leistungskennzahlen für die Wärmepumpe.
     \begin{itemize}
-        \item \textbf{Last\_L (array-like)}: Load demand in kW.
-        \item \textbf{VLT\_L (array-like)}: Flow temperatures in degrees Celsius.
-        \item \textbf{COP\_data (array-like)}: COP data for performance calculation.
-        \item \textbf{duration (float)}: Duration of each time step in hours.
+        \item \textbf{Last\_L (array-like)}: Lastanforderung in kW.
+        \item \textbf{VLT\_L (array-like)}: Vorlauftemperaturen in Grad Celsius.
+        \item \textbf{COP\_data (array-like)}: COP-Daten zur Leistungsberechnung.
+        \item \textbf{duration (float)}: Dauer des Zeitschritts in Stunden.
     \end{itemize}
-    Returns the heat energy produced, electricity demand, heat output, and electric power output.
+    Gibt die erzeugte Wärmemenge, den Strombedarf, die Wärmeleistung und die elektrische Leistung zurück.
 
     \item \texttt{calculate(VLT\_L, COP\_data, Strompreis, q, r, T, BEW, stundensatz, duration, general\_results)}: 
-    Calculates the economic and environmental metrics for the waste heat pump system.
+    Berechnet die ökonomischen und ökologischen Kennzahlen für die Abwärmepumpe.
     \begin{itemize}
-        \item \textbf{VLT\_L (array-like)}: Flow temperatures in degrees Celsius.
-        \item \textbf{COP\_data (array-like)}: COP data for performance calculation.
-        \item \textbf{Strompreis (float)}: Price of electricity in €/MWh.
-        \item \textbf{q (float)}: Capital recovery factor.
-        \item \textbf{r (float)}: Price escalation factor.
-        \item \textbf{T (int)}: Consideration period in years.
-        \item \textbf{BEW (float)}: Discount rate for operational costs.
-        \item \textbf{stundensatz (float)}: Hourly labor rate in €/hour.
-        \item \textbf{duration (float)}: Time step duration in hours.
-        \item \textbf{general\_results (dict)}: General results dictionary, including the load demand profile.
+        \item \textbf{VLT\_L (array-like)}: Vorlauftemperaturen in Grad Celsius.
+        \item \textbf{COP\_data (array-like)}: COP-Daten zur Leistungsberechnung.
+        \item \textbf{Strompreis (float)}: Strompreis in €/MWh.
+        \item \textbf{q (float)}: Kapitalrückgewinnungsfaktor.
+        \item \textbf{r (float)}: Preissteigerungsfaktor.
+        \item \textbf{T (int)}: Betrachtungszeitraum in Jahren.
+        \item \textbf{BEW (float)}: Abzinsungsfaktor für Betriebskosten.
+        \item \textbf{stundensatz (float)}: Arbeitskosten pro Stunde in €/Stunde.
+        \item \textbf{duration (float)}: Dauer jedes Simulationsschritts in Stunden.
+        \item \textbf{general\_results (dict)}: Allgemeine Ergebnisse, inklusive Lastprofil.
     \end{itemize}
-    Returns a dictionary of the calculated metrics, including heat output, electricity demand, CO$_2$ emissions, and primary energy consumption.
+    Gibt ein Wörterbuch mit den berechneten Kennzahlen, einschließlich Wärmemenge, Strombedarf, CO$_2$-Emissionen und Primärenergieverbrauch, zurück.
 
-    \item \texttt{to\_dict()}: Converts the object attributes into a dictionary for serialization.
+    \item \texttt{to\_dict()}: Wandelt die Objektattribute in ein Wörterbuch um.
     
-    \item \texttt{from\_dict(data)}: Creates an object from a dictionary of attributes.
+    \item \texttt{from\_dict(data)}: Erstellt ein Objekt aus einem Wörterbuch von Attributen.
 \end{itemize}
 
-\subsection{Economic and Environmental Considerations}
-The \texttt{WasteHeatPump} class calculates the weighted average cost of heat generation (WGK) for the waste heat pump, which accounts for the costs of installation, operation, and electricity consumption. The class also computes specific CO$_2$ emissions based on electricity usage, as well as the primary energy consumption of the system.
+\subsection{Ökonomische und ökologische Überlegungen}
+Die \texttt{WasteHeatPump}-Klasse berechnet die gewichteten Durchschnittskosten der Wärmeerzeugung (WGK) für die Abwärmepumpe, die die Installations-, Betriebs- und Stromkosten berücksichtigen. Die Klasse berechnet auch die spezifischen CO$_2$-Emissionen basierend auf dem Stromverbrauch sowie den Primärenergieverbrauch des Systems.
 
-\subsection{Usage Example}
-The following example demonstrates how to initialize and use the \texttt{WasteHeatPump} class to calculate the performance of a waste heat recovery system:
+\subsection{Nutzungsbeispiel}
+Das folgende Beispiel zeigt, wie die \texttt{WasteHeatPump}-Klasse initialisiert und verwendet wird, um die Leistung eines Abwärmenutzungssystems zu berechnen:
 
 \begin{verbatim}
 waste_heat_pump = WasteHeatPump(
@@ -74,4 +74,4 @@ results = waste_heat_pump.calculate(
     general_results=load_profile
 )
 \end{verbatim}
-This example creates a waste heat recovery system with a cooling capacity of 100 kW and a waste heat source temperature of 60°C. The performance metrics and economic evaluations are calculated based on the input data.
+In diesem Beispiel wird ein Abwärmenutzungssystem mit einer Kühlleistung von 100 kW und einer Abwärmequellentemperatur von 60°C erstellt. Die Leistungskennzahlen und wirtschaftlichen Bewertungen werden basierend auf den Eingabedaten berechnet.

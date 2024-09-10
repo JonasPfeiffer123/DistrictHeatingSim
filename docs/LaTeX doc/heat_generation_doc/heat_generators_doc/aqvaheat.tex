@@ -1,0 +1,58 @@
+\section{AqvaHeat Klasse}
+Die \texttt{AqvaHeat}-Klasse modelliert ein Wärmepumpensystem, das Vakuum-Eis-Schlamm-Generatoren zur Wärmerückgewinnung nutzt, und erbt von der \texttt{HeatPump}-Basisklasse. Sie enthält Methoden zur Berechnung der Leistung der Wärmepumpe sowie zur Ermittlung wirtschaftlicher und ökologischer Kennzahlen.
+
+\subsection{Attribute}
+\begin{itemize}
+    \item \texttt{Wärmeleistung\_FW\_WP (float)}: Wärmeleistung der Wärmepumpe.
+    \item \texttt{Temperatur\_FW\_WP (float)}: Temperatur der Wärmequelle (z.B. Flusswasser) in Grad Celsius.
+    \item \texttt{dT (float)}: Temperaturdifferenz im Betrieb. Standardwert: 2,5.
+    \item \texttt{spez\_Investitionskosten\_Flusswasser (float)}: Spezifische Investitionskosten der Wärmepumpe in €/kW. Standardwert: 1000 €/kW.
+    \item \texttt{spezifische\_Investitionskosten\_WP (float)}: Spezifische Investitionskosten der Wärmepumpe in €/kW. Standardwert: 1000 €/kW.
+    \item \texttt{min\_Teillast (float)}: Minimale Teillast als Bruchteil der Nennlast. Standardwert: 1 (keine Teillast).
+    \item \texttt{co2\_factor\_electricity (float)}: CO$_2$-Faktor für den Stromverbrauch in tCO$_2$/MWh. Standardwert: 0,4.
+    \item \texttt{primärenergiefaktor (float)}: Primärenergiefaktor für den Stromverbrauch. Standardwert: 2,4.
+\end{itemize}
+
+\subsection{Methoden}
+\begin{itemize}
+    \item \texttt{Berechnung\_WP(Wärmeleistung\_L, VLT\_L, COP\_data)}: Berechnet die Kühlleistung, den Stromverbrauch und die angepassten Vorlauftemperaturen.
+    \begin{itemize}
+        \item \textbf{Wärmeleistung\_L (array-like)}: Wärmeleistungsprofil.
+        \item \textbf{VLT\_L (array-like)}: Vorlauftemperaturen.
+        \item \textbf{COP\_data (array-like)}: COP-Daten zur Interpolation.
+    \end{itemize}
+    Gibt die Kühlleistung, den Stromverbrauch und die angepassten Vorlauftemperaturen zurück.
+
+    \item \texttt{calculate(output\_temperatures, COP\_data, duration, general\_results)}: Berechnet die wirtschaftlichen und ökologischen Kennzahlen für das AqvaHeat-System.
+    \begin{itemize}
+        \item \textbf{output\_temperatures (array-like)}: Vorlauftemperaturen.
+        \item \textbf{COP\_data (array-like)}: COP-Daten zur Interpolation.
+        \item \textbf{duration (float)}: Dauer jedes Zeitschritts in Stunden.
+        \item \textbf{general\_results (dict)}: Wörterbuch mit den Ergebnissen, wie z.B. Restlasten.
+    \end{itemize}
+    Gibt ein Wörterbuch mit den berechneten Ergebnissen zurück, einschließlich der erzeugten Wärmemenge, des Strombedarfs, der Primärenergie und CO$_2$-Emissionen.
+
+    \item \texttt{to\_dict()}: Wandelt die Objektattribute in ein Wörterbuch um.
+
+    \item \texttt{from\_dict(data)}: Erstellt ein Objekt aus einem Wörterbuch von Attributen.
+\end{itemize}
+
+\subsection{Ökonomische und ökologische Überlegungen}
+Die \texttt{AqvaHeat}-Klasse bietet eine Methode zur Berechnung der \textbf{gewichteten Durchschnittskosten der Wärmeerzeugung (WGK)}, die die Investitionskosten, den Stromverbrauch und betriebliche Faktoren berücksichtigt. Zusätzlich werden die spezifischen CO$_2$-Emissionen und der Primärenergieverbrauch des Systems berechnet.
+
+\subsection{Nutzungsbeispiel}
+Das folgende Beispiel zeigt, wie die \texttt{AqvaHeat}-Klasse initialisiert und verwendet werden kann, um die Leistung eines AqvaHeat-Systems zu simulieren:
+
+\begin{verbatim}
+aqva_heat_pump = AqvaHeat(
+    name="AqvaHeat-System", 
+    nominal_power=100  # kW
+)
+results = aqva_heat_pump.calculate(
+    output_temperatures=temperature_profile, 
+    COP_data=cop_profile, 
+    duration=1, 
+    general_results=load_profile
+)
+\end{verbatim}
+In diesem Beispiel wird ein AqvaHeat-System mit einer Nennleistung von 100 kW simuliert. Die Leistungskennzahlen werden basierend auf den bereitgestellten Daten berechnet.
