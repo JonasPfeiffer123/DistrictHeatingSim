@@ -1,22 +1,16 @@
 """
 Filename: net_generation_thread.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-08-29
+Date: 2024-09-10
 Description: Contains the threaded functionality function for generating the network.
 """
 
-import numpy as np
 import geopandas as gpd
 import traceback
 
 from PyQt5.QtCore import QThread, pyqtSignal
 
 from net_generation.import_and_create_layers import generate_and_export_layers
-
-from net_simulation_pandapipes.pp_net_time_series_simulation import import_results_csv
-
-from heat_generators.heat_generator_classes import Berechnung_Erzeugermix, optimize_mix
-
 from geocoding.geocodingETRS89 import process_data
 
 import os

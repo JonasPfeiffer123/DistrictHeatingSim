@@ -1,7 +1,7 @@
 """
 Filename: mix_design_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-08-01
+Date: 2024-09-10
 Description: Contains the MixdesignTab.
 """
 
@@ -10,7 +10,7 @@ import pandas as pd
 import traceback
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMessageBox, QFileDialog, QMenuBar, QScrollArea, QAction, QDialog)
 from PyQt5.QtCore import pyqtSignal, QEventLoop
-from heat_generators.heat_generator_classes import *
+from heat_generators.heat_generation_mix import *
 from gui.MixDesignTab.mix_design_dialogs import EconomicParametersDialog, NetInfrastructureDialog, WeightDialog
 from gui.MixDesignTab.calculate_mix_thread import CalculateMixThread
 from gui.MixDesignTab.technology_tab import TechnologyTab

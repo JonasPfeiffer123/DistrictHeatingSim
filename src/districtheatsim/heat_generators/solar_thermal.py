@@ -1,7 +1,7 @@
 """
 Filename: solar_thermal.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-31
+Date: 2024-09-10
 Description: This script calculates the heat generation of a thermal solar heat generator.
 
 Additional Information: Yield calculation program for solar thermal energy in heating networks (calculation basis: ScenoCalc District Heating 2.0) https://www.scfw.de/)
@@ -13,6 +13,227 @@ import numpy as np
 from datetime import datetime, timezone
 
 from heat_generators.solar_radiation import Berechnung_Solarstrahlung
+from heat_generators.annuity import annuität
+
+class SolarThermal:
+    """
+    A class representing a solar thermal system.
+
+    Attributes:
+        name (str): Name of the solar thermal system.
+        bruttofläche_STA (float): Gross area of the solar thermal system in square meters.
+        vs (float): Volume of the storage system in cubic meters.
+        Typ (str): Type of solar collector, e.g., "Flachkollektor" or "Vakuumröhrenkollektor".
+        kosten_speicher_spez (float): Specific costs for the storage system in €/m^3.
+        kosten_fk_spez (float): Specific costs for flat plate collectors in €/m^2.
+        kosten_vrk_spez (float): Specific costs for vacuum tube collectors in €/m^2.
+        Tsmax (float): Maximum storage temperature in degrees Celsius.
+        Longitude (float): Longitude of the installation site.
+        STD_Longitude (float): Standard longitude for the time zone.
+        Latitude (float): Latitude of the installation site.
+        East_West_collector_azimuth_angle (float): Azimuth angle of the collector in degrees.
+        Collector_tilt_angle (float): Tilt angle of the collector in degrees.
+        Tm_rl (float): Mean return temperature in degrees Celsius.
+        Qsa (float): Initial heat output.
+        Vorwärmung_K (float): Preheating in Kelvin.
+        DT_WT_Solar_K (float): Temperature difference for the solar heat exchanger in Kelvin.
+        DT_WT_Netz_K (float): Temperature difference for the network heat exchanger in Kelvin.
+        opt_volume_min (float): Minimum optimization volume in cubic meters.
+        opt_volume_max (float): Maximum optimization volume in cubic meters.
+        opt_area_min (float): Minimum optimization area in square meters.
+        opt_area_max (float): Maximum optimization area in square meters.
+        kosten_pro_typ (dict): Dictionary containing the specific costs for different types of collectors.
+        Kosten_STA_spez (float): Specific costs for the solar thermal system.
+        Nutzungsdauer (int): Service life of the solar thermal system in years.
+        f_Inst (float): Installation factor.
+        f_W_Insp (float): Inspection factor.
+        Bedienaufwand (float): Operational effort.
+        Anteil_Förderung_BEW (float): Subsidy rate for the renewable energy law.
+        Betriebskostenförderung_BEW (float): Operational cost subsidy for the renewable energy law in €/MWh.
+        co2_factor_solar (float): CO2 factor for solar energy in tCO2/MWh.
+        primärenergiefaktor (float): Primary energy factor for solar energy.
+    """
+
+    def __init__(self, name, bruttofläche_STA, vs, Typ, kosten_speicher_spez=750, kosten_fk_spez=430, kosten_vrk_spez=590, Tsmax=90, Longitude=-14.4222, 
+                 STD_Longitude=-15, Latitude=51.1676, East_West_collector_azimuth_angle=0, Collector_tilt_angle=36, Tm_rl=60, Qsa=0, Vorwärmung_K=8, 
+                 DT_WT_Solar_K=5, DT_WT_Netz_K=5, opt_volume_min=0, opt_volume_max=200, opt_area_min=0, opt_area_max=2000):
+        """
+        Initializes the SolarThermal class.
+
+        Args:
+            name (str): Name of the solar thermal system.
+            bruttofläche_STA (float): Gross area of the solar thermal system in square meters.
+            vs (float): Volume of the storage system in cubic meters.
+            Typ (str): Type of solar collector, e.g., "Flachkollektor" or "Vakuumröhrenkollektor".
+            kosten_speicher_spez (float, optional): Specific costs for the storage system in €/m^3. Defaults to 750.
+            kosten_fk_spez (float, optional): Specific costs for flat plate collectors in €/m^2. Defaults to 430.
+            kosten_vrk_spez (float, optional): Specific costs for vacuum tube collectors in €/m^2. Defaults to 590.
+            Tsmax (float, optional): Maximum storage temperature in degrees Celsius. Defaults to 90.
+            Longitude (float, optional): Longitude of the installation site. Defaults to -14.4222.
+            STD_Longitude (float, optional): Standard longitude for the time zone. Defaults to -15.
+            Latitude (float, optional): Latitude of the installation site. Defaults to 51.1676.
+            East_West_collector_azimuth_angle (float, optional): Azimuth angle of the collector in degrees. Defaults to 0.
+            Collector_tilt_angle (float, optional): Tilt angle of the collector in degrees. Defaults to 36.
+            Tm_rl (float, optional): Mean return temperature in degrees Celsius. Defaults to 60.
+            Qsa (float, optional): Initial heat output. Defaults to 0.
+            Vorwärmung_K (float, optional): Preheating in Kelvin. Defaults to 8.
+            DT_WT_Solar_K (float, optional): Temperature difference for the solar heat exchanger in Kelvin. Defaults to 5.
+            DT_WT_Netz_K (float, optional): Temperature difference for the network heat exchanger in Kelvin. Defaults to 5.
+            opt_volume_min (float, optional): Minimum optimization volume in cubic meters. Defaults to 0.
+            opt_volume_max (float, optional): Maximum optimization volume in cubic meters. Defaults to 200.
+            opt_area_min (float, optional): Minimum optimization area in square meters. Defaults to 0.
+            opt_area_max (float, optional): Maximum optimization area in square meters. Defaults to 2000.
+        """
+        self.name = name
+        self.bruttofläche_STA = bruttofläche_STA
+        self.vs = vs
+        self.Typ = Typ
+        self.kosten_speicher_spez = kosten_speicher_spez
+        self.kosten_fk_spez = kosten_fk_spez
+        self.kosten_vrk_spez = kosten_vrk_spez
+        self.Tsmax = Tsmax
+        self.Longitude = Longitude
+        self.STD_Longitude = STD_Longitude
+        self.Latitude = Latitude
+        self.East_West_collector_azimuth_angle = East_West_collector_azimuth_angle
+        self.Collector_tilt_angle = Collector_tilt_angle
+        self.Tm_rl = Tm_rl
+        self.Qsa = Qsa
+        self.Vorwärmung_K = Vorwärmung_K
+        self.DT_WT_Solar_K = DT_WT_Solar_K
+        self.DT_WT_Netz_K = DT_WT_Netz_K
+        self.opt_volume_min = opt_volume_min
+        self.opt_volume_max = opt_volume_max
+        self.opt_area_min = opt_area_min
+        self.opt_area_max = opt_area_max
+
+        self.kosten_pro_typ = {
+            # Viessmann Flachkollektor Vitosol 200-FM, 2,56 m²: 697,9 € (brutto); 586,5 € (netto) -> 229 €/m²
+            # + 200 €/m² Installation/Zubehör
+            "Flachkollektor": self.kosten_fk_spez,
+            # Ritter Vakuumröhrenkollektor CPC XL1921 (4,99m²): 2299 € (brutto); 1932 € (Netto) -> 387 €/m²
+            # + 200 €/m² Installation/Zubehör
+            "Vakuumröhrenkollektor": self.kosten_vrk_spez
+        }
+
+        self.Kosten_STA_spez = self.kosten_pro_typ[self.Typ]  # €/m^2
+        self.Nutzungsdauer = 20  # Jahre
+        self.f_Inst, self.f_W_Insp, self.Bedienaufwand = 0.5, 1, 0
+        self.Anteil_Förderung_BEW = 0.4
+        self.Betriebskostenförderung_BEW = 10  # €/MWh 10 Jahre
+        self.co2_factor_solar = 0.0  # tCO2/MWh heat is 0 ?
+        self.primärenergiefaktor = 0.0
+
+    def calc_WGK(self, q, r, T, BEW, stundensatz):
+        """
+        Calculates the weighted average cost of heat generation (WGK).
+
+        Args:
+            q (float): Factor for capital recovery.
+            r (float): Factor for price escalation.
+            T (int): Time period in years.
+            BEW (str): Subsidy eligibility ("Ja" or "Nein").
+            stundensatz (float): Hourly rate for labor.
+
+        Returns:
+            float: Weighted average cost of heat generation.
+        """
+        if self.Wärmemenge_Solarthermie == 0:
+            return 0
+
+        self.Investitionskosten_Speicher = self.vs * self.kosten_speicher_spez
+        self.Investitionskosten_STA = self.bruttofläche_STA * self.Kosten_STA_spez
+        self.Investitionskosten = self.Investitionskosten_Speicher + self.Investitionskosten_STA
+
+        self.A_N = annuität(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, q, r, T, stundensatz=stundensatz)
+        self.WGK = self.A_N / self.Wärmemenge_Solarthermie
+
+        self.Eigenanteil = 1 - self.Anteil_Förderung_BEW
+        self.Investitionskosten_Gesamt_BEW = self.Investitionskosten * self.Eigenanteil
+        self.Annuität_BEW = annuität(self.Investitionskosten_Gesamt_BEW, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, q, r, T, stundensatz=stundensatz)
+        self.WGK_BEW = self.Annuität_BEW / self.Wärmemenge_Solarthermie
+
+        self.WGK_BEW_BKF = self.WGK_BEW - self.Betriebskostenförderung_BEW
+
+        if BEW == "Nein":
+            return self.WGK
+        elif BEW == "Ja":
+            return self.WGK_BEW_BKF
+        
+    def calculate(self, VLT_L, RLT_L, TRY, time_steps, calc1, calc2, q, r, T, BEW, stundensatz, duration, general_results):
+        """
+        Calculates the performance and cost of the solar thermal system.
+
+        Args:
+            VLT_L (array): Forward temperature profile in degrees Celsius.
+            RLT_L (array): Return temperature profile in degrees Celsius.
+            TRY (array): Test Reference Year data.
+            time_steps (array): Array of time steps.
+            calc1 (float): Calculation parameter 1.
+            calc2 (float): Calculation parameter 2.
+            q (float): Factor for capital recovery.
+            r (float): Factor for price escalation.
+            T (int): Time period in years.
+            BEW (str): Subsidy eligibility ("Ja" or "Nein").
+            stundensatz (float): Hourly rate for labor.
+            duration (float): Duration of each time step in hours.
+            general_results (dict): General results dictionary containing rest load.
+
+        Returns:
+            dict: Dictionary containing the results of the calculation.
+        """
+        # Berechnung der Solarthermieanlage
+        self.Wärmemenge_Solarthermie, self.Wärmeleistung_kW, self.Speicherladung_Solarthermie, self.Speicherfüllstand_Solarthermie = Berechnung_STA(self.bruttofläche_STA, 
+                                                                                                        self.vs, self.Typ, general_results['Restlast_L'], VLT_L, RLT_L, 
+                                                                                                        TRY, time_steps, calc1, calc2, duration, self.Tsmax, self.Longitude, self.STD_Longitude, 
+                                                                                                        self.Latitude, self.East_West_collector_azimuth_angle, self.Collector_tilt_angle, self.Tm_rl, 
+                                                                                                        self.Qsa, self.Vorwärmung_K, self.DT_WT_Solar_K, self.DT_WT_Netz_K)
+        # Berechnung der Wärmegestehungskosten
+        self.WGK_Solarthermie = self.calc_WGK(q, r, T, BEW, stundensatz)
+
+        # Berechnung der Emissionen
+        self.co2_emissions = self.Wärmemenge_Solarthermie * self.co2_factor_solar  # tCO2
+        # specific emissions heat
+        self.spec_co2_total = self.co2_emissions / self.Wärmemenge_Solarthermie if self.Wärmemenge_Solarthermie > 0 else 0  # tCO2/MWh_heat
+
+        self.primärenergie_Solarthermie = self.Wärmemenge_Solarthermie * self.primärenergiefaktor
+
+        results = { 
+            'Wärmemenge': self.Wärmemenge_Solarthermie,
+            'Wärmeleistung_L': self.Wärmeleistung_kW,
+            'WGK': self.WGK_Solarthermie,
+            'spec_co2_total': self.spec_co2_total,
+            'primärenergie': self.primärenergie_Solarthermie,
+            'Speicherladung_L': self.Speicherladung_Solarthermie,
+            'Speicherfüllstand_L': self.Speicherfüllstand_Solarthermie,
+            'color': "red"
+        }
+
+        return results
+
+    def to_dict(self):
+        """
+        Converts the SolarThermal object to a dictionary.
+
+        Returns:
+            dict: Dictionary representation of the SolarThermal object.
+        """
+        return self.__dict__
+
+    @staticmethod
+    def from_dict(data):
+        """
+        Creates a SolarThermal object from a dictionary.
+
+        Args:
+            data (dict): Dictionary containing the attributes of a SolarThermal object.
+
+        Returns:
+            SolarThermal: A new SolarThermal object with attributes from the dictionary.
+        """
+        obj = SolarThermal.__new__(SolarThermal)
+        obj.__dict__.update(data)
+        return obj
 
 def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY, time_steps, calc1, calc2, duration, Tsmax=90, Longitude=-14.4222, STD_Longitude=-15, Latitude=51.1676,
                    East_West_collector_azimuth_angle=0, Collector_tilt_angle=36, Tm_rl=60, Qsa=0, Vorwärmung_K=8, DT_WT_Solar_K=5, DT_WT_Netz_K=5):
@@ -372,3 +593,4 @@ def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY, time_s
         Zähler += 1
 
     return Gesamtwärmemenge, np.array(Speicher_Wärmeoutput_L).astype("float64"), np.array(Speicherladung_L).astype("float64"), np.array(Speicherfüllstand_L).astype("float64")
+
