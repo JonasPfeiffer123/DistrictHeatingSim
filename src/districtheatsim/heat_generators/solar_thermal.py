@@ -124,7 +124,7 @@ class SolarThermal:
         self.co2_factor_solar = 0.0  # tCO2/MWh heat is 0 ?
         self.primärenergiefaktor = 0.0
 
-    def calc_WGK(self, q, r, T, BEW, stundensatz):
+    def calculate_heat_generation_costs(self, q, r, T, BEW, stundensatz):
         """
         Calculates the weighted average cost of heat generation (WGK).
 
@@ -160,6 +160,14 @@ class SolarThermal:
         elif BEW == "Ja":
             return self.WGK_BEW_BKF
         
+    def calculate_environmental_impact(self):
+        # Berechnung der Emissionen
+        self.co2_emissions = self.Wärmemenge_Solarthermie * self.co2_factor_solar  # tCO2
+        # specific emissions heat
+        self.spec_co2_total = self.co2_emissions / self.Wärmemenge_Solarthermie if self.Wärmemenge_Solarthermie > 0 else 0  # tCO2/MWh_heat
+
+        self.primärenergie_Solarthermie = self.Wärmemenge_Solarthermie * self.primärenergiefaktor
+        
     def calculate(self, VLT_L, RLT_L, TRY, time_steps, calc1, calc2, q, r, T, BEW, stundensatz, duration, general_results):
         """
         Calculates the performance and cost of the solar thermal system.
@@ -189,14 +197,9 @@ class SolarThermal:
                                                                                                         self.Latitude, self.East_West_collector_azimuth_angle, self.Collector_tilt_angle, self.Tm_rl, 
                                                                                                         self.Qsa, self.Vorwärmung_K, self.DT_WT_Solar_K, self.DT_WT_Netz_K)
         # Berechnung der Wärmegestehungskosten
-        self.WGK_Solarthermie = self.calc_WGK(q, r, T, BEW, stundensatz)
+        self.WGK_Solarthermie = self.calculate_heat_generation_costs(q, r, T, BEW, stundensatz)
 
-        # Berechnung der Emissionen
-        self.co2_emissions = self.Wärmemenge_Solarthermie * self.co2_factor_solar  # tCO2
-        # specific emissions heat
-        self.spec_co2_total = self.co2_emissions / self.Wärmemenge_Solarthermie if self.Wärmemenge_Solarthermie > 0 else 0  # tCO2/MWh_heat
-
-        self.primärenergie_Solarthermie = self.Wärmemenge_Solarthermie * self.primärenergiefaktor
+        self.calculate_environmental_impact()
 
         results = { 
             'Wärmemenge': self.Wärmemenge_Solarthermie,

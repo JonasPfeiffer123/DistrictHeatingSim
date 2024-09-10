@@ -70,7 +70,7 @@ class BiomassBoiler:
         self.co2_factor_fuel = 0.036 # tCO2/MWh pellets
         self.primärenergiefaktor = 0.2 # Pellets
 
-    def Biomassekessel(self, Last_L, duration):
+    def simulate_operation(self, Last_L, duration):
         """
         Simulates the operation of the biomass boiler.
 
@@ -96,7 +96,7 @@ class BiomassBoiler:
         self.Betriebsstunden_gesamt = np.sum(betrieb_mask) * duration
         self.Betriebsstunden_pro_Start = self.Betriebsstunden_gesamt / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
 
-    def storage(self, Last_L, duration):
+    def simulate_storage(self, Last_L, duration):
         """
         Simulates the operation of the storage system.
 
@@ -153,7 +153,7 @@ class BiomassBoiler:
         self.Betriebsstunden_gesamt_Speicher = np.sum(betrieb_mask) * duration
         self.Betriebsstunden_pro_Start_Speicher = self.Betriebsstunden_gesamt_Speicher / self.Anzahl_Starts_Speicher if self.Anzahl_Starts_Speicher > 0 else 0
 
-    def WGK(self, Wärmemenge, Brennstoffbedarf, Brennstoffkosten, q, r, T, BEW, stundensatz):
+    def calculate_heat_generation_costs(self, Wärmemenge, Brennstoffbedarf, Brennstoffkosten, q, r, T, BEW, stundensatz):
         """
         Calculates the weighted average cost of heat generation.
 
@@ -201,7 +201,7 @@ class BiomassBoiler:
             dict: Dictionary containing the results of the calculation.
         """
         if self.speicher_aktiv:
-            self.storage(general_results["Restlast_L"], duration)
+            self.simulate_storage(general_results["Restlast_L"], duration)
             Wärmemenge = self.Wärmemenge_Biomassekessel_Speicher
             Brennstoffbedarf = self.Brennstoffbedarf_BMK_Speicher
             Wärmeleistung_kW = self.Wärmeleistung_kW
@@ -209,7 +209,7 @@ class BiomassBoiler:
             Betriebsstunden = self.Betriebsstunden_gesamt_Speicher
             Betriebsstunden_pro_Start = self.Betriebsstunden_pro_Start_Speicher
         else:
-            self.Biomassekessel(general_results["Restlast_L"], duration)
+            self.simulate_operation(general_results["Restlast_L"], duration)
             Wärmemenge = self.Wärmemenge_BMK
             Brennstoffbedarf = self.Brennstoffbedarf_BMK
             Wärmeleistung_kW = self.Wärmeleistung_kW
@@ -217,7 +217,7 @@ class BiomassBoiler:
             Betriebsstunden = self.Betriebsstunden_gesamt
             Betriebsstunden_pro_Start = self.Betriebsstunden_pro_Start
 
-        self.WGK(Wärmemenge, Brennstoffbedarf, Holzpreis, q, r, T, BEW, stundensatz)
+        self.calculate_heat_generation_costs(Wärmemenge, Brennstoffbedarf, Holzpreis, q, r, T, BEW, stundensatz)
 
         # CO2 emissions due to fuel usage
         self.co2_emissions = Brennstoffbedarf * self.co2_factor_fuel # tCO2
