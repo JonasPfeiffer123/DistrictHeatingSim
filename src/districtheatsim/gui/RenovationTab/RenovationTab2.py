@@ -10,8 +10,8 @@ import sys
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-from PyQt5.QtWidgets import QApplication, QVBoxLayout, QWidget, QPushButton, QLabel, QLineEdit, QComboBox, QGroupBox, QFormLayout, QHBoxLayout, QScrollArea
-from PyQt5.QtCore import pyqtSlot, pyqtSignal
+from PyQt5.QtWidgets import QApplication, QVBoxLayout, QWidget, QPushButton, QLabel, QLineEdit, QComboBox, QGroupBox, QFormLayout, QHBoxLayout, QScrollArea, QSplitter, QTabWidget
+from PyQt5.QtCore import pyqtSlot, pyqtSignal, Qt
 
 from utilities.SanierungsanalysefuerGUI import calculate_all_results
 
@@ -43,22 +43,22 @@ class PlotCanvas(FigureCanvas):
         self.axes.set_ylabel(ylabel)
         self.draw()
 
-
 class RenovationTab2(QWidget):
     """
     The RenovationTab2 class provides a tab for performing individual renovation cost analysis.
     """
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
 
-    def __init__(self, data_manager, parent=None):
+    def __init__(self, folder_manager, data_manager, parent=None):
         super().__init__(parent)
+        self.folder_manager = folder_manager
         self.data_manager = data_manager
         self.parent = parent
 
         # Connect to the data manager signal
-        self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
+        self.folder_manager.project_folder_changed.connect(self.updateDefaultPath)
         # Update the base path immediately with the current project folder
-        self.updateDefaultPath(self.data_manager.project_folder)
+        self.updateDefaultPath(self.folder_manager.project_folder)
 
         self.initUI()
     
@@ -67,57 +67,41 @@ class RenovationTab2(QWidget):
         Initializes the user interface.
         """
         self.setWindowTitle("Sanierungsanalyse")
-        self.setGeometry(100, 100, 1200, 800)
-        
-        main_layout = QVBoxLayout()
+        #self.setGeometry(100, 100, 1200, 800)
 
+        main_layout = QVBoxLayout(self)  # Set the layout directly to 'self'
+
+        # Main splitter to divide the UI into input and result sections
+        splitter = QSplitter(Qt.Horizontal)
+        main_layout.addWidget(splitter)
+
+        # Creating input sections
+        input_widget = QWidget()
+        input_layout = QVBoxLayout(input_widget)
         self.input_fields = {}
-        self.create_input_groups(main_layout)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll_content = QWidget()
-        scroll_content.setLayout(main_layout)
-        scroll.setWidget(scroll_content)
+        tab_widget = QTabWidget()
+        self.create_input_tabs(tab_widget)
+        input_layout.addWidget(tab_widget)
 
-        layout = QHBoxLayout()
-        layout.addWidget(scroll)
+        #scroll = QScrollArea()
+        #scroll.setWidgetResizable(True)
+        #scroll.setWidget(input_widget)
+        splitter.addWidget(input_widget)
 
-        result_layout = QVBoxLayout()
+        # Creating results and plotting sections
+        result_widget = QWidget()
+        result_layout = QVBoxLayout(result_widget)
+        self.create_result_section(result_layout)
+        splitter.addWidget(result_widget)
 
-        self.run_button = QPushButton("Analyse durchführen")
-        self.run_button.clicked.connect(self.run_analysis)
-        result_layout.addWidget(self.run_button)
+        splitter.setSizes([800, 800])  # Balance the splitter sections
 
-        self.combo_box = QComboBox()
-        self.combo_box.addItems(["Investitionskosten in €", "Gesamtenergiebedarf in kWh/a", "Energieeinsparung in kWh/a", "Kosteneinsparung in €/a", 
-                                "Kaltmieten in €/m²", "Warmmieten in €/m²", "Amortisationszeit in a", "NPV in €", "LCCA in €", "ROI"])
-        self.combo_box.currentIndexChanged.connect(self.update_plot)
-        result_layout.addWidget(self.combo_box)
-
-        self.canvas = PlotCanvas(self, width=12, height=5)
-        result_layout.addWidget(self.canvas)
-
-        self.result_label = QLabel("Ergebnisse werden hier angezeigt")
-        result_layout.addWidget(self.result_label)
-
-        layout.addLayout(result_layout)
-
-        self.setLayout(layout)
-
+        self.setLayout(main_layout)
         self.results = {}
 
-    def create_input_groups(self, layout):
-        """
-        Creates input groups for various parameters.
-
-        Args:
-            layout (QVBoxLayout): The main layout to add input groups to.
-        """
-        left_layout = QVBoxLayout()
-        right_layout = QVBoxLayout()
-        main_layout = QHBoxLayout()
-
+    def create_input_tabs(self, tab_widget):
+        # Grouping input fields into tabs for better organization
         groups = {
             "Gebäudedaten": [("Länge (m)", "10"), ("Breite (m)", "15"), ("Anzahl Stockwerke", "2"), ("Stockwerkshöhe (m)", "3")],
             "U-Werte": [("U-Wert Boden (W/m²K)", "0.77"), ("U-Wert Fassade (W/m²K)", "1.0"), 
@@ -145,28 +129,38 @@ class RenovationTab2(QWidget):
                                     ("Instandhaltungskosten Dach (€/Jahr)", "75"), 
                                     ("Instandhaltungskosten Fenster (€/Jahr)", "60"),
                                     ("Instandhaltungskosten Tür (€/Jahr)", "25")],                                        
-            "Restwertanteil": [("Restwert-Anteil Boden", "0.30"), ("Restwert-Anteil Fassade", "0.30"), 
-                            ("Restwert-Anteil Dach", "0.50"), ("Restwert-Anteil Fenster", "0.20"), 
+            "Restwertanteil": [("Restwert-Anteil Boden", "0.30"), ("Restwert-Anteil Fassade", "0.30"),
+                            ("Restwert-Anteil Dach", "0.50"), ("Restwert-Anteil Fenster", "0.20"),
                             ("Restwert-Anteil Tür", "0.10")],
             "Förderung": [("Förderquote", "0.5")]
         }
 
-        for i, (group_name, fields) in enumerate(groups.items()):
-            group_box = QGroupBox(group_name)
+        for group_name, fields in groups.items():
+            group_widget = QWidget()
             form_layout = QFormLayout()
             for label, default in fields:
                 self.input_fields[label] = QLineEdit()
                 self.input_fields[label].setText(default)
                 form_layout.addRow(QLabel(label), self.input_fields[label])
-            group_box.setLayout(form_layout)
-            if i % 2 == 0:
-                left_layout.addWidget(group_box)
-            else:
-                right_layout.addWidget(group_box)
+            group_widget.setLayout(form_layout)
+            tab_widget.addTab(group_widget, group_name)
 
-        main_layout.addLayout(left_layout)
-        main_layout.addLayout(right_layout)
-        layout.addLayout(main_layout)
+    def create_result_section(self, layout):
+        self.run_button = QPushButton("Analyse durchführen")
+        self.run_button.clicked.connect(self.run_analysis)
+        layout.addWidget(self.run_button)
+
+        self.combo_box = QComboBox()
+        self.combo_box.addItems(["Investitionskosten in €", "Gesamtenergiebedarf in kWh/a", "Energieeinsparung in kWh/a", "Kosteneinsparung in €/a",
+                                 "Kaltmieten in €/m²", "Warmmieten in €/m²", "Amortisationszeit in a", "NPV in €", "LCCA in €", "ROI"])
+        self.combo_box.currentIndexChanged.connect(self.update_plot)
+        layout.addWidget(self.combo_box)
+
+        self.canvas = PlotCanvas(self, width=12, height=6)
+        layout.addWidget(self.canvas)
+
+        self.result_label = QLabel("Ergebnisse werden hier angezeigt")
+        layout.addWidget(self.result_label)
 
     def updateDefaultPath(self, new_base_path):
         """
@@ -176,7 +170,7 @@ class RenovationTab2(QWidget):
             new_base_path (str): The new base path for the project.
         """
         self.base_path = new_base_path
-        
+
     @pyqtSlot()
     def run_analysis(self):
         """
@@ -248,7 +242,7 @@ class RenovationTab2(QWidget):
                 target_u_wall, target_u_roof, target_u_window, target_u_door,
                 cost_ground, cost_wall, cost_roof, cost_window, cost_door,
                 fracture_windows, fracture_doors, air_change_rate, min_air_temp, room_temp, max_air_temp_heating,
-                warmwasserbedarf, betriebskosten, instandhaltungskosten, restwert_anteile, foerderquote, self.parent.try_filename
+                warmwasserbedarf, betriebskosten, instandhaltungskosten, restwert_anteile, foerderquote, self.data_manager.get_try_filename()
             )
 
             self.result_label.setText("Analyse abgeschlossen. Wählen Sie ein Diagramm aus der Liste.")

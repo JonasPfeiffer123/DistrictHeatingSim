@@ -1,0 +1,73 @@
+\section{RiverHeatPump Klasse}
+Die \texttt{RiverHeatPump}-Klasse modelliert ein Wärmepumpensystem, das Flusswasser als Wärmequelle nutzt, und erbt von der \texttt{HeatPump}-Basisklasse. Sie enthält Methoden zur Berechnung der Leistung der Wärmepumpe sowie zur Ermittlung wirtschaftlicher und ökologischer Kennzahlen.
+
+\subsection{Attribute}
+\begin{itemize}
+    \item \texttt{Wärmeleistung\_FW\_WP (float)}: Wärmeleistung der Flusswasser-Wärmepumpe in kW.
+    \item \texttt{Temperatur\_FW\_WP (float)}: Temperatur des Flusswassers in Grad Celsius.
+    \item \texttt{dT (float)}: Temperaturdifferenz für den Betrieb. Standardwert: 0.
+    \item \texttt{spez\_Investitionskosten\_Flusswasser (float)}: Spezifische Investitionskosten der Flusswasser-Wärmepumpe in €/kW. Standardwert: 1000 €/kW.
+    \item \texttt{spezifische\_Investitionskosten\_WP (float)}: Spezifische Investitionskosten der Wärmepumpe in €/kW. Standardwert: 1000 €/kW.
+    \item \texttt{min\_Teillast (float)}: Minimale Teillast als Bruchteil der Nennlast. Standardwert: 0,2.
+    \item \texttt{co2\_factor\_electricity (float)}: CO$_2$-Faktor für den Stromverbrauch in tCO$_2$/MWh. Standardwert: 0,4.
+    \item \texttt{primärenergiefaktor (float)}: Primärenergiefaktor für den Stromverbrauch. Standardwert: 2,4.
+\end{itemize}
+
+\subsection{Methoden}
+\begin{itemize}
+    \item \texttt{calculate\_heat\_pump(Wärmeleistung\_L, VLT\_L, COP\_data)}: Berechnet die Kühlleistung, den Stromverbrauch und die angepassten Vorlauftemperaturen.
+    \begin{itemize}
+        \item \textbf{Wärmeleistung\_L (array-like)}: Wärmeleistungsprofil.
+        \item \textbf{VLT\_L (array-like)}: Vorlauftemperaturen.
+        \item \textbf{COP\_data (array-like)}: COP-Daten zur Interpolation.
+    \end{itemize}
+    Gibt die Kühlleistung, den Stromverbrauch und die angepassten Vorlauftemperaturen zurück.
+
+    \item \texttt{calculate\_river\_heat(Last\_L, VLT\_L, COP\_data, duration)}: Berechnet die Abwärme und weitere Leistungskennzahlen für die Flusswasser-Wärmepumpe.
+    \begin{itemize}
+        \item \textbf{Last\_L (array-like)}: Lastanforderung in kW.
+        \item \textbf{VLT\_L (array-like)}: Vorlauftemperaturen.
+        \item \textbf{COP\_data (array-like)}: COP-Daten zur Leistungsberechnung.
+        \item \textbf{duration (float)}: Dauer jedes Zeitschritts in Stunden.
+    \end{itemize}
+    Gibt die erzeugte Wärmemenge, den Strombedarf, die Wärmeleistung, die elektrische Leistung, die Kühlenergie und die Kühlleistung zurück.
+
+    \item \texttt{calculate(VLT\_L, COP\_data, Strompreis, q, r, T, BEW, stundensatz, duration, general\_results)}: Berechnet die wirtschaftlichen und ökologischen Kennzahlen für die Flusswasser-Wärmepumpe.
+    \begin{itemize}
+        \item \textbf{VLT\_L (array-like)}: Vorlauftemperaturen.
+        \item \textbf{COP\_data (array-like)}: COP-Daten zur Interpolation.
+        \item \textbf{Strompreis (float)}: Strompreis in €/MWh.
+        \item \textbf{q (float)}, \textbf{r (float)}, \textbf{T (int)}, \textbf{BEW (float)}, \textbf{stundensatz (float)}: Wirtschaftliche Parameter.
+        \item \textbf{duration (float)}: Simulationsdauer in Stunden.
+        \item \textbf{general\_results (dict)}: Wörterbuch mit Lastprofilen und anderen Ergebnissen.
+    \end{itemize}
+    Gibt ein Wörterbuch mit den berechneten Ergebnissen, einschließlich der wirtschaftlichen und ökologischen Kennzahlen, zurück.
+
+    \item \texttt{to\_dict()}: Wandelt die Objektattribute in ein Wörterbuch um.
+
+    \item \texttt{from\_dict(data)}: Erstellt ein Objekt aus einem Wörterbuch von Attributen.
+\end{itemize}
+
+\subsection{Ökonomische und ökologische Überlegungen}
+Die \texttt{RiverHeatPump}-Klasse bietet eine Methode zur Berechnung der \textbf{Wärmegestehungskosten (WGK)}, die die Investitionskosten, den Stromverbrauch und betriebliche Faktoren berücksichtigt. Zudem werden die spezifischen CO$_2$-Emissionen und der Primärenergieverbrauch der Wärmepumpe berechnet.
+
+\subsection{Nutzungsbeispiel}
+Das folgende Beispiel zeigt, wie die \texttt{RiverHeatPump}-Klasse initialisiert und verwendet werden kann, um die Leistung einer Flusswasser-Wärmepumpe zu simulieren:
+
+\begin{verbatim}
+river_heat_pump = RiverHeatPump(
+    name="Flusswärmepumpe", 
+    Wärmeleistung_FW_WP=300,  # kW
+    Temperatur_FW_WP=12  # °C
+)
+results = river_heat_pump.calculate(
+    VLT_L=temperature_forward, 
+    COP_data=cop_data, 
+    Strompreis=100,  # €/MWh
+    q=0.03, r=0.02, T=20, BEW=0.8, 
+    stundensatz=50, 
+    duration=1, 
+    general_results=load_profile
+)
+\end{verbatim}
+In diesem Beispiel wird eine Flusswasser-Wärmepumpe mit einer Wärmeleistung von 300 kW und einer Flusswassertemperatur von 12°C simuliert. Die Leistungskennzahlen werden basierend auf den bereitgestellten Daten berechnet.

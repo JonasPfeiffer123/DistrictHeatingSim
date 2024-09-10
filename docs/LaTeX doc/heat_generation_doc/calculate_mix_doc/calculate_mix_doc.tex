@@ -1,0 +1,48 @@
+\section{Optimierungsfunktion für den Erzeugermix}
+\label{sec:calculate_mix_doc}
+
+\subsection{Einleitung}
+Die Berechnungsfunktion \texttt{Berechnung\_Erzeugermix} ermittelt die Energieerzeugung für einen vorgegebenen Mix an Technologien. Ziel ist es, die Wärmeerzeugung für ein bestimmtes Lastprofil unter Einbeziehung verschiedener Kosten-, Effizienz- und Emissionsfaktoren zu berechnen.
+
+\subsection{Mathematisches Modell}
+\subsubsection{Eingangsparameter}
+Die Berechnungsfunktion nimmt eine Reihe von Eingangsparametern an, die die technologischen und ökonomischen Bedingungen beschreiben. Diese beinhalten unter anderem:
+
+\begin{itemize}
+    \item \textbf{tech\_order}: Liste der zu betrachtenden Technologien.
+    \item \textbf{initial\_data}: Tuple bestehend aus Zeitpunkten, Lastprofil, Vorlauf- und Rücklauftemperaturen.
+    \item \textbf{Gaspreis}, \textbf{Strompreis}, \textbf{Holzpreis}: Energiekosten in €/kWh.
+    \item \textbf{BEW}: Förderung BEW Ja/Nein.
+    \item \textbf{kapitalzins}, \textbf{preissteigerungsrate}, \textbf{betrachtungszeitraum}: Finanzielle Parameter für die Kostenberechnung.
+\end{itemize}
+
+\subsubsection{Berechnungslogik}
+Die Funktion berechnet zunächst die Jahreswärmebedarfe basierend auf dem Lastprofil \( L \) und der zeitlichen Auflösung:
+\[
+\text{Jahreswärmebedarf} = \frac{\sum L}{1000} \cdot \text{duration}
+\]
+Die Wärmebedarfsfunktion läuft über eine Schleife für jede Technologie in der \texttt{tech\_order}. Je nach Art der Technologie (Solarthermie, Abwärme, Geothermie usw.) wird ein spezifisches Berechnungsmodell angewandt.
+
+\subsubsection{Technologiespezifische Berechnung}
+Jede Technologie verwendet unterschiedliche Berechnungsmodelle:
+
+\begin{itemize}
+    \item \textbf{Solarthermie}: Berechnet den Ertrag basierend auf der Vorlauftemperatur und der solaren Einstrahlung aus dem Testreferenzjahr (TRY).
+    \item \textbf{Wärmepumpen} und \textbf{Abwärme}: Verwenden den COP-Wert (\emph{Coefficient of Performance}) und Strompreis zur Ermittlung der Betriebsaufwendungen.
+    \item \textbf{Blockheizkraftwerke (BHKW)}: Berücksichtigen sowohl thermische als auch elektrische Leistungen, sowie den Brennstoffverbrauch.
+\end{itemize}
+
+\subsection{Kapital- und Emissionskosten}
+Neben den Betriebskosten werden auch kapitalgebundene und emissionsbasierte Kosten berechnet. Der kapitalgebundene Kostenanteil ergibt sich aus:
+\[
+A_{N,K} = A_0 \cdot \frac{(q - 1)}{1 - q^{-T}}
+\]
+wobei \( q = 1 + \text{Zinsrate} \).
+
+Die spezifischen CO2-Emissionen werden pro erzeugte Wärmemenge berechnet:
+\[
+\text{CO2\_Emissionen} = \frac{\sum \text{Wärmemenge}_i \cdot \text{spec\_co2}_i}{\text{Jahreswärmebedarf}}
+\]
+
+\subsection{Zusammenfassung}
+Die Funktion \texttt{Berechnung\_Erzeugermix} führt eine detaillierte Berechnung der Energieerzeugung durch, indem sie mehrere Technologien gleichzeitig berücksichtigt. Die Berechnung erfolgt basierend auf stündlichen Daten für Lastprofile, Temperaturen und Emissionen.

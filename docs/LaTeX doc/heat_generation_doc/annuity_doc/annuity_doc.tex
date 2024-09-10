@@ -1,0 +1,80 @@
+\section{Wirtschaftlichkeitsrechnung nach VDI 2067}
+\label{sec:annuity_doc}
+
+\subsection{Einleitung}
+Die Berechnung der Wirtschaftlichkeit technischer Anlagen ist ein zentraler Bestandteil des Energiemanagements. Die Annuitätsmethode gemäß VDI 2067 ermöglicht es, die Gesamtkosten einer technischen Anlage über die gesamte Nutzungsdauer zu erfassen und zu bewerten. Die Kosten umfassen die kapitalgebundenen, bedarfsgebundenen und betriebsgebundenen Kosten, sowie Erlöse.
+
+\subsection{Die Annuität}
+Die Annuität bezeichnet eine jährliche Zahlung, die Kapital- und Betriebskosten sowie Wartungskosten und gegebenenfalls Erlöse berücksichtigt. Die Berechnung der Annuität basiert auf den folgenden Komponenten:
+
+\subsubsection{Formel zur Berechnung der Annuität}
+Die Annuität \(A_N\) wird durch die Summe der folgenden Komponenten bestimmt:
+
+\[
+A_N = A_{N,K} + A_{N,V} + A_{N,B} + A_{N,S} - A_{N,E}
+\]
+
+wobei:
+\begin{itemize}
+    \item \(A_{N,K}\): Kapitalgebundene Kosten
+    \item \(A_{N,V}\): Bedarfsgebundene Kosten
+    \item \(A_{N,B}\): Betriebsgebundene Kosten
+    \item \(A_{N,S}\): Sonstige Kosten
+    \item \(A_{N,E}\): Erlöse
+\end{itemize}
+
+\subsubsection{Kapitalgebundene Kosten}
+Die kapitalgebundenen Kosten \(A_{N,K}\) umfassen die Investitionskosten und den Restwert der Anlage:
+\[
+A_{N,K} = (A_0 - R_W) \cdot a
+\]
+wobei:
+\begin{itemize}
+    \item \(A_0\) die Anfangsinvestition ist,
+    \item \(R_W\) der Restwert der Anlage nach Ablauf der Nutzungsdauer \(T\) ist,
+    \item \(a\) der Annuitätsfaktor ist:
+    \[
+    a = \frac{q - 1}{1 - q^{-T}}
+    \]
+    \item \(q\) der Zinsfaktor ist, also \(q = 1 + \text{Zinssatz}\).
+\end{itemize}
+
+\subsubsection{Bedarfsgebundene Kosten}
+Die bedarfsgebundenen Kosten \(A_{N,V}\) werden aus dem Energiebedarf und den Energiekosten berechnet:
+\[
+A_{N,V} = \text{Energiebedarf} \cdot \text{Energiekosten} \cdot a \cdot b_V
+\]
+wobei:
+\[
+b_V = \frac{1 - \left(\frac{r}{q}\right)^T}{q - r}
+\]
+und \(r\) der Preissteigerungsfaktor (Inflation) ist.
+
+\subsubsection{Betriebsgebundene Kosten}
+Die betriebsgebundenen Kosten \(A_{N,B}\) setzen sich aus den Betriebskosten und den Wartungskosten zusammen:
+\[
+A_{N,B} = (\text{Bedienaufwand} \cdot \text{Stundensatz} + A_0 \cdot (f_\text{Inst} + f_\text{W\_Insp}) / 100) \cdot a \cdot b_B
+\]
+wobei:
+\begin{itemize}
+    \item \(f_\text{Inst}\): Installationsfaktor,
+    \item \(f_\text{W\_Insp}\): Wartungs- und Inspektionsfaktor.
+\end{itemize}
+
+\subsubsection{Sonstige Kosten}
+Sonstige Kosten \(A_{N,S}\) können in ähnlicher Weise berechnet werden, wobei keine weiteren Parameter in diesem Beispiel angegeben sind.
+
+\subsubsection{Erlöse}
+Falls Erlöse \(A_{N,E}\) vorhanden sind (z.B. durch den Verkauf von Energie), werden diese von der Annuität abgezogen:
+\[
+A_{N,E} = E_1 \cdot a \cdot b_E
+\]
+
+\subsubsection{Rückgabewert}
+Die Gesamtannuität wird als Summe der Komponenten berechnet. Sie ergibt die jährlichen Gesamtkosten oder Erträge der Anlage:
+\[
+A_N = - (A_{N,K} + A_{N,V} + A_{N,B} + A_{N,S} - A_{N,E})
+\]
+
+\subsection{Zusammenfassung}
+Die Annuitätsberechnung gemäß VDI 2067 bietet eine umfassende Methode, um die Kosten und Erlöse einer technischen Anlage über die gesamte Nutzungsdauer zu bewerten. Durch die Anwendung von Kapitalwertfaktoren und Preissteigerungsfaktoren können die jährlichen Belastungen und Einsparungen realitätsnah abgebildet werden.

@@ -1,7 +1,7 @@
 """
 Filename: heat_requirement_BDEW.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-31
+Date: 2024-09-09
 Description: Contains functions to calculate heat demand profiles with the BDEW SLP methods
 """
 
@@ -9,6 +9,8 @@ import pandas as pd
 import numpy as np
 import os
 import sys
+
+from utilities.test_reference_year import import_TRY
 
 def get_resource_path(relative_path):
     """
@@ -26,22 +28,6 @@ def get_resource_path(relative_path):
         base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     return os.path.join(base_path, relative_path)
-
-def import_TRY(filename):
-    """
-    Import Test Reference Year (TRY) data for weather conditions.
-
-    Args:
-        filename (str): The path to the TRY data file.
-
-    Returns:
-        array: Numpy array containing temperature data.
-    """
-    col_widths = [8, 8, 3, 3, 3, 6, 5, 4, 5, 2, 5, 4, 5, 5, 4, 5, 3]
-    col_names = ["RW", "HW", "MM", "DD", "HH", "t", "p", "WR", "WG", "N", "x", "RF", "B", "D", "A", "E", "IL"]
-    data = pd.read_fwf(filename, widths=col_widths, names=col_names, skiprows=34)
-    temperature = data['t'].values
-    return temperature
 
 def generate_year_months_days_weekdays(year):
     """
@@ -127,7 +113,7 @@ def get_weekday_factor(daily_weekdays, profiletype, subtype, daily_data):
         raise ValueError("Profile not found")
     return np.array([profile_row.iloc[0][str(day)] for day in daily_weekdays]).astype(float)
 
-def calculation_load_profile(TRY, JWB_kWh, profiletype, subtype, holidays, year, real_ww_share=None):
+def calculate(JWB_kWh, profiletype, subtype, TRY, year, real_ww_share):
     """
     Calculate load profiles based on the BDEW SLP methods.
 
@@ -136,7 +122,6 @@ def calculation_load_profile(TRY, JWB_kWh, profiletype, subtype, holidays, year,
         JWB_kWh (float): Yearly heat demand in kWh.
         profiletype (str): The profile type.
         subtype (str): The profile subtype.
-        holidays (array): Array of holiday dates.
         year (int): Year for the calculation.
         real_ww_share (float, optional): Real warm water share. Defaults to None.
 
@@ -144,7 +129,7 @@ def calculation_load_profile(TRY, JWB_kWh, profiletype, subtype, holidays, year,
         tuple: Arrays of hourly intervals, total heat demand, heating demand, warm water demand, and temperature.
     """
     days_of_year, months, days, daily_weekdays = generate_year_months_days_weekdays(year)
-    hourly_temperature = import_TRY(TRY)
+    hourly_temperature, _, _, _, _ = import_TRY(TRY)
     daily_avg_temperature = np.round(calculate_daily_averages(hourly_temperature), 1)
     daily_reference_temperature = np.round((daily_avg_temperature + 2.5) * 2, -1) / 2 - 2.5
 
@@ -230,23 +215,3 @@ def calculation_load_profile(TRY, JWB_kWh, profiletype, subtype, holidays, year,
     hourly_intervals = calculate_hourly_intervals(year)
 
     return hourly_intervals, hourly_heat_demand_total_normed, hourly_heat_demand_heating_normed.astype(float), hourly_heat_demand_warmwater_normed.astype(float), hourly_temperature
-
-def calculate(YEU_kWh=10000, building_type="HMF", subtyp="03", TRY=get_resource_path('data\\TRY\\TRY_511676144222\\TRY2015_511676144222_Jahr.dat'), year=2021, real_ww_share=None):
-    """
-    Calculate heat demand profiles using BDEW SLP methods.
-
-    Args:
-        YEU_kWh (int, optional): Yearly energy usage in kWh. Defaults to 10000.
-        building_type (str, optional): Type of building. Defaults to "HMF".
-        subtyp (str, optional): Subtype of building. Defaults to "03".
-        TRY (str, optional): Path to the TRY data file. Defaults to get_resource_path('data\\TRY\\TRY_511676144222\\TRY2015_511676144222_Jahr.dat').
-        year (int, optional): Year for the calculation. Defaults to 2021.
-        real_ww_share (float, optional): Real warm water share. Defaults to None.
-
-    Returns:
-        tuple: Arrays of hourly intervals, total heat demand, heating demand, warm water demand, and temperature.
-    """
-    holidays = np.array(["2021-01-01", "2021-04-02", "2021-04-05", "2021-05-01", "2021-05-24", "2021-05-13", 
-                         "2021-06-03", "2021-10-03", "2021-11-01", "2021-12-25", "2021-12-26"]).astype('datetime64[D]')
-    hourly_intervals, hourly_heat_demand_total, hourly_heat_demand_heating, hourly_heat_demand_warmwater, hourly_temperature = calculation_load_profile(TRY, YEU_kWh, building_type, subtyp, holidays, year, real_ww_share)
-    return hourly_intervals, hourly_heat_demand_total, hourly_heat_demand_heating, hourly_heat_demand_warmwater, hourly_temperature

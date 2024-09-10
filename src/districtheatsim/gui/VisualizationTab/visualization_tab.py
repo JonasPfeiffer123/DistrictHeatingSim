@@ -1,9 +1,12 @@
 """
 Filename: visualization_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-08-01
-Description: Contains the VisualizationTab.
+Date: 2024-08-27
+Description: Contains the VisualizationTab as MVP model.
 """
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 import os
 import random
@@ -11,484 +14,559 @@ import geopandas as gpd
 import pandas as pd
 from shapely.geometry import Point
 
-from PyQt5.QtCore import pyqtSignal, QUrl
+import folium
+
+from PyQt5.QtCore import pyqtSignal, QObject
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QMenuBar, QAction, QFileDialog, \
-    QHBoxLayout, QListWidget, QDialog, QProgressBar, QColorDialog, QListWidgetItem, QMessageBox
+    QHBoxLayout, QListWidget, QProgressBar, QColorDialog, QListWidgetItem, QMessageBox, QMainWindow, QDialog
 from PyQt5.QtGui import QColor, QBrush
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 
-import folium
+from gui.VisualizationTab.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog, GeocodeAddressesDialog
+from gui.VisualizationTab.net_generation_threads import NetGenerationThread, FileImportThread, GeocodingThread
 
-from gui.VisualizationTab.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog, SpatialAnalysisDialog, GeocodeAddressesDialog
-from gui.threads import NetGenerationThread, FileImportThread, GeocodingThread
-
-class VisualizationTab(QWidget):
+class VisualizationModel:
     """
-    The VisualizationTab class provides a GUI tab for visualizing geographical data using Folium.
-    It allows importing and displaying layers from GeoJSON files, generating layers, and performing
-    various spatial operations such as geocoding addresses and querying OSM data.
+    The VisualizationModel class is responsible for handling all data-related operations
+    such as loading and saving GeoJSON files, generating GeoJSON from CSV files, 
+    and calculating the center and zoom level of the map.
+
+    Attributes:
+        layers (dict): A dictionary storing the layers added to the model.
+        base_path (str): The base path used for file operations.
     """
-    layers_imported = pyqtSignal(dict)
 
-    def __init__(self, data_manager, parent=None):
-        """
-        Initialize the VisualizationTab.
-
-        Args:
-            data_manager: An object managing data-related operations.
-            parent: The parent widget.
-        """
-        super().__init__(parent)
-        self.data_manager = data_manager
+    def __init__(self):
+        """Initializes the VisualizationModel with empty layers and base path."""
         self.layers = {}
+        self.base_path = ""
 
-        self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
-        self.updateDefaultPath(self.data_manager.project_folder)
-
-        self.initUI()
-
-    def initUI(self):
+    def set_base_path(self, base_path):
         """
-        Initialize the user interface for the VisualizationTab.
-        """
-        layout = QVBoxLayout()
-
-        self.m = folium.Map(location=[51.1657, 10.4515], zoom_start=6)
-        self.mapView = QWebEngineView()
-
-        self.menuBar = QMenuBar(self)
-        self.menuBar.setFixedHeight(30)
-        fileMenu = self.menuBar.addMenu('Datei')
-
-        downloadAction = QAction('Adressdaten geocodieren', self)
-        downloadAction.triggered.connect(self.openGeocodeAdressesDialog)
-        fileMenu.addAction(downloadAction)
-
-        loadCsvAction = QAction('CSV-Koordinaten laden', self)
-        loadCsvAction.triggered.connect(self.loadCsvCoordinates)
-        fileMenu.addAction(loadCsvAction)
-
-        downloadAction = QAction('OSM Straßenabfrage', self)
-        downloadAction.triggered.connect(self.openDownloadOSMDataDialog)
-        fileMenu.addAction(downloadAction)
-
-        osmBuildingAction = QAction('OSM Gebäudeabfrage', self)
-        osmBuildingAction.triggered.connect(self.openOSMBuildingQueryDialog)
-        fileMenu.addAction(osmBuildingAction)
-
-        spatialAnalysisAction = QAction('Clustering Quartiere', self)
-        spatialAnalysisAction.triggered.connect(self.openspatialAnalysisDialog)
-        fileMenu.addAction(spatialAnalysisAction)
-
-        importAction = QAction('Import geojson-Datei', self)
-        importAction.triggered.connect(self.importNetData)
-        fileMenu.addAction(importAction)
-
-        downloadAction = QAction('Wärmenetz aus Daten generieren', self)
-        downloadAction.triggered.connect(self.openLayerGenerationDialog)
-        fileMenu.addAction(downloadAction)
-
-        layout.addWidget(self.menuBar)
-
-        self.updateMapView()
-        layout.addWidget(self.mapView)
-
-        self.layerList = QListWidget(self)
-        self.layerList.setMaximumHeight(100)
-
-        self.removeLayerButton = QPushButton("Layer entfernen", self)
-        self.removeLayerButton.clicked.connect(self.removeSelectedLayer)
-
-        self.changeColorButton = QPushButton("Farbe ändern", self)
-        self.changeColorButton.clicked.connect(self.changeLayerColor)
-
-        layerManagementLayout = QHBoxLayout()
-        layerManagementLayout.addWidget(self.layerList)
-        layerManagementLayout.addWidget(self.removeLayerButton)
-        layerManagementLayout.addWidget(self.changeColorButton)
-        layout.addLayout(layerManagementLayout)
-
-        self.progressBar = QProgressBar(self)
-        layout.addWidget(self.progressBar)
-
-        self.setLayout(layout)
-
-    def updateDefaultPath(self, new_base_path):
-        """
-        Update the default path for file operations.
+        Sets the base path for file operations.
 
         Args:
-            new_base_path: The new base path.
+            base_path (str): The base path to be set.
         """
-        self.base_path = new_base_path
+        self.base_path = base_path
 
-    def connect_signals(self, calculation_tab):
+    def get_base_path(self):
         """
-        Connect signals from the calculation tab.
-
-        Args:
-            calculation_tab: The calculation tab object.
-        """
-        calculation_tab.data_added.connect(self.loadNetData)
-    
-    def openGeocodeAdressesDialog(self):
-        """
-        Open the dialog for geocoding addresses from a CSV file.
-        """
-        fname, _ = QFileDialog.getOpenFileName(self, 'CSV-Koordinaten laden', self.base_path, 'CSV Files (*.csv);;All Files (*)')
-        if fname:
-            self.geocodeAdresses(fname)
-
-    def geocodeAdresses(self, inputfilename):
-        """
-        Start the geocoding process for the provided CSV file.
-
-        Args:
-            inputfilename: The path to the CSV file.
-        """
-        if hasattr(self, 'geocodingThread') and self.geocodingThread.isRunning():
-            self.geocodingThread.terminate()
-            self.geocodingThread.wait()
-        self.geocodingThread = GeocodingThread(inputfilename)
-        self.geocodingThread.calculation_done.connect(self.on_generation_done_geocode_Adress)
-        self.geocodingThread.calculation_error.connect(self.on_generation_error_geocode_Adress)
-        self.geocodingThread.start()
-        self.progressBar.setRange(0, 0)
-
-    def on_generation_done_geocode_Adress(self, fname):
-        """
-        Handle successful geocoding completion.
-
-        Args:
-            fname: The path to the generated CSV file.
-        """
-        self.progressBar.setRange(0, 1)
-        self.loadCsvCoordinates(fname)
-
-    def on_generation_error_geocode_Adress(self, error_message):
-        """
-        Handle errors during the geocoding process.
-
-        Args:
-            error_message: The error message.
-        """
-        QMessageBox.critical(self, "Fehler beim Geocoding", str(error_message))
-        self.progressBar.setRange(0, 1)
-
-    def openDownloadOSMDataDialog(self):
-        """
-        Open the dialog for downloading OSM data.
-        """
-        dialog = DownloadOSMDataDialog(self.base_path, self)
-        if dialog.exec_() == QDialog.Accepted:
-            pass
-
-    def openOSMBuildingQueryDialog(self):
-        """
-        Open the dialog for querying OSM building data.
-        """
-        dialog = OSMBuildingQueryDialog(self.base_path, self)
-        if dialog.exec_() == QDialog.Accepted:
-            pass
-
-    def openspatialAnalysisDialog(self):
-        """
-        Open the dialog for performing spatial analysis.
-        """
-        dialog = SpatialAnalysisDialog(self.base_path, self)
-        if dialog.exec_() == QDialog.Accepted:
-            pass
-
-    def openLayerGenerationDialog(self):
-        """
-        Open the dialog for generating layers from data.
-        """
-        dialog = LayerGenerationDialog(self.base_path, self)
-        dialog.setVisualizationTab(self)
-        dialog.accepted_inputs.connect(self.generateAndImportLayers)
-        self.currentLayerDialog = dialog
-        dialog.show()
-        dialog.raise_()
-        dialog.activateWindow()
-        self.raise_()
-        self.activateWindow()
-
-    def generateAndImportLayers(self, inputs):
-        """
-        Start the process of generating and importing layers based on user inputs.
-
-        Args:
-            inputs: The inputs for generating layers.
-        """
-        if hasattr(self, 'netgenerationThread') and self.netgenerationThread.isRunning():
-            self.netgenerationThread.terminate()
-            self.netgenerationThread.wait()
-        self.netgenerationThread = NetGenerationThread(inputs, self.base_path)
-        self.netgenerationThread.calculation_done.connect(self.on_generation_done)
-        self.netgenerationThread.calculation_error.connect(self.on_generation_error)
-        self.netgenerationThread.start()
-        self.progressBar.setRange(0, 0)
-
-    def on_generation_done(self, results):
-        """
-        Handle successful layer generation.
-
-        Args:
-            results: The results of the layer generation.
-        """
-        self.progressBar.setRange(0, 1)
-        filenames = [f"{self.base_path}\Wärmenetz\HAST.geojson", f"{self.base_path}\Wärmenetz\Rücklauf.geojson",
-                     f"{self.base_path}\Wärmenetz\Vorlauf.geojson", f"{self.base_path}\Wärmenetz\Erzeugeranlagen.geojson"]
-        self.loadNetData(filenames)
-        
-        generatedLayers = {
-            'HAST': f"{self.base_path}\Wärmenetz\HAST.geojson",
-            'Rücklauf': f"{self.base_path}\Wärmenetz\Rücklauf.geojson",
-            'Vorlauf': f"{self.base_path}\Wärmenetz\Vorlauf.geojson",
-            'Erzeugeranlagen': f"{self.base_path}\Wärmenetz\Erzeugeranlagen.geojson"
-        }
-
-        self.layers_imported.emit(generatedLayers)
-
-    def on_generation_error(self, error_message):
-        """
-        Handle errors during the layer generation process.
-
-        Args:
-            error_message: The error message.
-        """
-        QMessageBox.critical(self, "Berechnungsfehler", error_message)
-        self.progressBar.setRange(0, 1)
-
-    def importNetData(self):
-        """
-        Import network data from selected GeoJSON files.
-        """
-        fnames, _ = QFileDialog.getOpenFileNames(self, 'Netzdaten importieren', self.base_path, 'GeoJSON Files (*.geojson);;All Files (*)')
-        if fnames:
-            self.loadNetData(fnames)
-    
-    def calculate_map_center_and_zoom(self):
-        """
-        Calculate the center and zoom level for the map based on the loaded layers.
+        Returns the current base path.
 
         Returns:
-            list: Center coordinates [latitude, longitude].
-            int: Zoom level.
+            str: The current base path.
+        """
+        return self.base_path
+
+    def load_geojson(self, file_path):
+        """
+        Loads a GeoJSON file and returns it as a GeoDataFrame.
+
+        Args:
+            file_path (str): The path to the GeoJSON file.
+
+        Returns:
+            GeoDataFrame: The loaded GeoJSON as a GeoDataFrame.
+        """
+        return gpd.read_file(file_path)
+
+    def create_geojson_from_csv(self, csv_file_path, geojson_file_path):
+        """
+        Creates a GeoJSON file from a CSV file containing coordinates.
+
+        Args:
+            csv_file_path (str): The path to the CSV file.
+            geojson_file_path (str): The path where the GeoJSON file will be saved.
+        """
+        df = pd.read_csv(csv_file_path, delimiter=';')
+        gdf = gpd.GeoDataFrame(
+            df,
+            geometry=[Point(xy) for xy in zip(df.UTM_X, df.UTM_Y)],
+            crs="EPSG:25833"
+        )
+        gdf.to_file(geojson_file_path, driver='GeoJSON')
+
+    def calculate_map_center_and_zoom(self):
+        """
+        Calculates the center coordinates and zoom level for the map based on the loaded layers.
+
+        Returns:
+            list: The center coordinates [latitude, longitude].
+            int: The zoom level.
         """
         if not self.layers:
             return [51.1657, 10.4515], 6
 
         minx, miny, maxx, maxy = None, None, None, None
         for layer in self.layers.values():
-            bounds = layer.get_bounds()
-            if minx is None or bounds[0][0] < minx:
-                minx = bounds[0][0]
-            if miny is None or bounds[0][1] < miny:
-                miny = bounds[0][1]
-            if maxx is None or bounds[1][0] > maxx:
-                maxx = bounds[1][0]
-            if maxy is None or bounds[1][1] > maxy:
-                maxy = bounds[1][1]
+            bounds = layer.total_bounds
+            if minx is None or bounds[0] < minx:
+                minx = bounds[0]
+            if miny is None or bounds[1] < miny:
+                miny = bounds[1]
+            if maxx is None or bounds[2] > maxx:
+                maxx = bounds[2]
+            if maxy is None or bounds[3] > maxy:
+                maxy = bounds[3]
 
         center_x = (minx + maxx) / 2
         center_y = (miny + maxy) / 2
         zoom = 17
-
         return [center_x, center_y], zoom
-    
-    def updateMapView(self):
+
+
+class VisualizationPresenter(QObject):
+    """
+    The VisualizationPresenter class acts as the mediator between the model and the view.
+    It handles user input, updates the model, and refreshes the view accordingly.
+
+    Attributes:
+        layers_imported (pyqtSignal): Signal emitted when layers are imported.
+        model (VisualizationModel): The model instance containing the data logic.
+        view (VisualizationTabView): The view instance containing the UI logic.
+        data_manager (DataManager): The data manager that handles project-related data.
+    """
+
+    layers_imported = pyqtSignal(dict)
+
+    def __init__(self, model, view, data_manager):
         """
-        Update the map view with the current layers and settings.
+        Initializes the VisualizationPresenter with the given model, view, and data manager.
+
+        Args:
+            model (VisualizationModel): The model instance.
+            view (VisualizationTabView): The view instance.
+            data_manager (DataManager): The data manager instance.
+        """
+        super().__init__()
+        self.model = model
+        self.view = view
+        self.data_manager = data_manager
+
+        self.data_manager.project_folder_changed.connect(self.on_project_folder_changed)
+
+        self.view.downloadAction.triggered.connect(self.open_geocode_addresses_dialog)
+        self.view.loadCsvAction.triggered.connect(self.load_csv_coordinates)
+        self.view.importAction.triggered.connect(self.import_geojson)
+        self.view.removeLayerButton.clicked.connect(self.remove_selected_layer)
+        self.view.changeColorButton.clicked.connect(self.change_layer_color)
+        self.view.layerGenerationAction.triggered.connect(self.open_layer_generation_dialog)
+        self.view.downloadActionOSM.triggered.connect(self.open_osm_data_dialog)
+        self.view.osmBuildingAction.triggered.connect(self.open_osm_building_query_dialog)
+
+        self.on_project_folder_changed(self.data_manager.project_folder)
+
+        self.update_map_view()
+
+    def on_project_folder_changed(self, new_base_path):
+        """
+        Updates the base path in the model when the project folder changes.
+
+        Args:
+            new_base_path (str): The new base path.
+        """
+        self.model.set_base_path(new_base_path)
+
+    def load_csv_coordinates(self):
+        """
+        Loads coordinates from a CSV file and adds them as a GeoJSON layer to the map.
         """
         try:
-            center, zoom = self.calculate_map_center_and_zoom()
+            fname, _ = QFileDialog.getOpenFileName(self.view, 'CSV-Koordinaten laden', self.model.get_base_path(), 'CSV Files (*.csv);;All Files (*)')
+            if fname:
+                geojson_path = os.path.join(self.model.get_base_path(), 'Gebäudedaten', f"{os.path.splitext(os.path.basename(fname))[0]}.geojson")
+                self.model.create_geojson_from_csv(fname, geojson_path)
+                self.add_geojson_layer([geojson_path])
+        except Exception as e:
+            self.view.show_error_message("Fehler beim Laden von CSV-Koordinaten", str(e))
+
+    def import_geojson(self):
+        """
+        Imports GeoJSON files and adds them as layers to the map.
+        """
+        try:
+            fnames, _ = QFileDialog.getOpenFileNames(self.view, 'Netzdaten importieren', self.model.get_base_path(), 'GeoJSON Files (*.geojson);;All Files (*)')
+            if fnames:
+                self.add_geojson_layer(fnames)
+        except Exception as e:
+            self.view.show_error_message("Fehler beim Importieren von GeoJSON", str(e))
+
+    def terminate_thread(self, thread):
+        """
+        Terminates the specified thread if it is running.
+
+        Args:
+            thread (str): The name of the thread attribute to terminate.
+        """
+        if hasattr(self, thread) and getattr(self, thread).isRunning():
+            getattr(self, thread).terminate()
+            getattr(self, thread).wait()
+
+    def add_geojson_layer(self, filenames, color=None):
+        """
+        Adds a GeoJSON layer to the map.
+
+        Args:
+            filenames (list): A list of GeoJSON file paths.
+            color (str, optional): The color to use for the layer. Defaults to a random color.
+        """
+        try:
+            color = color or "#{:06x}".format(random.randint(0, 0xFFFFFF))
+            self.terminate_thread('netgenerationThread')
+
+            self.netgenerationThread = FileImportThread(self.view.mapView, filenames, color)
+            self.netgenerationThread.calculation_done.connect(self.on_import_done)
+            self.netgenerationThread.calculation_error.connect(self.on_import_error)
+            self.netgenerationThread.start()
+            self.view.progressBar.setRange(0, 0)
+        except Exception as e:
+            self.view.show_error_message("Fehler beim Hinzufügen einer GeoJSON-Schicht", str(e))
+
+    def on_import_done(self, results):
+        """
+        Handles the successful import of GeoJSON data and updates the map view.
+
+        Args:
+            results (dict): The imported GeoJSON data.
+        """
+        try:
+            self.view.progressBar.setRange(0, 1)
+            for filename, geojson_data in results.items():
+                geojson_layer = folium.GeoJson(
+                    geojson_data['gdf'],
+                    name=geojson_data['name'],
+                    style_function=lambda feature: {
+                        'fillColor': geojson_data['style']['color'],
+                        'color': geojson_data['style']['color'],
+                        'weight': 1.5,
+                        'fillOpacity': 0.5,
+                    }
+                )
+                self.model.layers[geojson_data['name']] = geojson_layer
+
+                if geojson_data['name'] not in [self.view.layerList.item(i).text() for i in range(self.view.layerList.count())]:
+                    listItem = QListWidgetItem(geojson_data['name'])
+                    listItem.setBackground(QColor(geojson_data['style']['color']))
+                    listItem.setForeground(QBrush(QColor('#FFFFFF')))
+                    self.view.layerList.addItem(listItem)
+
+            self.update_map_view()
+        except Exception as e:
+            self.view.show_error_message("Fehler beim Importieren und Hinzufügen der Schicht", str(e))
+
+    def on_import_error(self, error_message):
+        """
+        Handles errors that occur during the import of GeoJSON data.
+
+        Args:
+            error_message (str): The error message to display.
+        """
+        self.view.progressBar.setRange(0, 1)
+        self.view.show_error_message("Fehler beim Importieren der GeoJSON-Daten", error_message)
+
+    def update_map_view(self):
+        """
+        Updates the map view with the current layers and settings.
+        """
+        try:
+            center, zoom = self.model.calculate_map_center_and_zoom()
             if center is None or zoom is None:
                 raise ValueError("Keine gültigen Daten zum Berechnen des Kartenmittelpunkts und Zooms gefunden.")
 
-            self.m = folium.Map(location=center, zoom_start=zoom)
-            for layer in self.layers.values():
-                self.m.add_child(layer)
-            self.update_map_view(self.mapView, self.m)
+            m = folium.Map(location=center, zoom_start=zoom)
+            for layer in self.model.layers.values():
+                layer.add_to(m)
+            self.view.update_map_view(m)
         except Exception as e:
-            QMessageBox.critical(self, "Fehler beim Laden der Daten", f"Es gab ein Problem beim Laden der Daten: {str(e)}\nBitte überprüfen Sie, ob die Datei leer ist oder ungültige Daten enthält.")
+            self.view.show_error_message("Fehler beim Laden der Daten", str(e))
 
-    def update_map_view(self, mapView, map_obj):
+    def remove_selected_layer(self):
         """
-        Update the web view to display the current map object.
+        Removes the selected layer from the map.
+        """
+        selectedItems = self.view.layerList.selectedItems()
+        if selectedItems:
+            selectedItem = selectedItems[0]
+            layerName = selectedItem.text()
+            self.view.layerList.takeItem(self.view.layerList.row(selectedItem))
+            del self.model.layers[layerName]
+            self.update_map_view()
+
+    def change_layer_color(self):
+        """
+        Opens a color dialog to change the color of the selected layer.
+        """
+        selectedItems = self.view.layerList.selectedItems()
+        if selectedItems:
+            selectedItem = selectedItems[0]
+            layerName = selectedItem.text()
+            color = QColorDialog.getColor()
+            if color.isValid():
+                self.update_layer_color(layerName, color.name())
+
+    def update_layer_color(self, layerName, new_color):
+        """
+        Updates the color of the specified layer.
 
         Args:
-            mapView: The QWebEngineView widget displaying the map.
-            map_obj: The Folium map object.
+            layerName (str): The name of the layer.
+            new_color (str): The new color for the layer.
         """
-        map_file = os.path.join(self.base_path, 'results', 'map.html')
+        if layerName in self.model.layers:
+            del self.model.layers[layerName]
+            self.add_geojson_layer([layerName], new_color)
 
-        click_marker = folium.ClickForMarker()
-        map_obj.add_child(click_marker)
-
-        map_obj.save(map_file)
-
-        mapView.load(QUrl.fromLocalFile(map_file))
-
-    def loadNetData(self, filenames, color="#{:06x}".format(random.randint(0, 0xFFFFFF))):
+    def open_geocode_addresses_dialog(self):
         """
-        Load network data from GeoJSON files and add them as layers.
+        Opens the dialog for geocoding addresses from a CSV file.
+        """
+        dialog = GeocodeAddressesDialog(self.model.get_base_path(), self.view)
+        if dialog.exec_() == QDialog.Accepted:
+            fname = dialog.get_file_name()
+            self.geocode_addresses(fname)
+
+    def geocode_addresses(self, inputfilename):
+        """
+        Starts the geocoding process for the provided CSV file.
 
         Args:
-            filenames: List of GeoJSON file paths.
-            color: The color to use for the layers.
+            inputfilename (str): The path to the CSV file.
         """
-        if not isinstance(filenames, list):
-            filenames = [filenames]
+        if hasattr(self, 'geocodingThread') and self.geocodingThread.isRunning():
+            self.geocodingThread.terminate()
+            self.geocodingThread.wait()
+        self.geocodingThread = GeocodingThread(inputfilename)
+        self.geocodingThread.calculation_done.connect(self.on_geocode_done)
+        self.geocodingThread.calculation_error.connect(self.on_geocode_error)
+        self.geocodingThread.start()
+        self.view.progressBar.setRange(0, 0)
 
-        self.addGeoJsonLayer(self.m, filenames, color)
-
-    def addGeoJsonLayer(self, m, filenames, color):
+    def on_geocode_done(self, fname):
         """
-        Add a GeoJSON layer to the map.
+        Handles successful completion of geocoding and loads the resulting CSV coordinates.
 
         Args:
-            m: The Folium map object.
-            filenames: List of GeoJSON file paths.
-            color: The color to use for the layers.
+            fname (str): The path to the generated CSV file.
+        """
+        self.view.progressBar.setRange(0, 1)
+        self.load_csv_coordinates(fname)
+
+    def on_geocode_error(self, error_message):
+        """
+        Handles errors that occur during the geocoding process.
+
+        Args:
+            error_message (str): The error message to display.
+        """
+        self.view.show_error_message("Fehler beim Geocoding", error_message)
+        self.view.progressBar.setRange(0, 1)
+
+    def open_layer_generation_dialog(self):
+        """
+        Opens the dialog for generating layers from data.
+        """
+        dialog = LayerGenerationDialog(self.model.get_base_path(), self.view)
+        dialog.setVisualizationTab(self)
+        dialog.accepted_inputs.connect(self.generate_and_import_layers)
+        self.currentLayerDialog = dialog
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()
+        self.view.raise_()
+        self.view.activateWindow()
+
+    def generate_and_import_layers(self, inputs):
+        """
+        Starts the process of generating and importing layers based on user inputs.
+
+        Args:
+            inputs (dict): The inputs for generating layers.
         """
         if hasattr(self, 'netgenerationThread') and self.netgenerationThread.isRunning():
             self.netgenerationThread.terminate()
             self.netgenerationThread.wait()
-
-        self.netgenerationThread = FileImportThread(m, filenames, color)
-        self.netgenerationThread.calculation_done.connect(self.on_import_done)
-        self.netgenerationThread.calculation_error.connect(self.on_import_error)
+        self.netgenerationThread = NetGenerationThread(inputs, self.model.get_base_path())
+        self.netgenerationThread.calculation_done.connect(self.on_generation_done)
+        self.netgenerationThread.calculation_error.connect(self.on_generation_error)
         self.netgenerationThread.start()
-        self.progressBar.setRange(0, 0)
+        self.view.progressBar.setRange(0, 0)
 
-    def on_import_done(self, results):
+    def on_generation_done(self, results):
         """
-        Handle successful import of GeoJSON data.
+        Handles successful layer generation and updates the map view.
 
         Args:
-            results: The imported GeoJSON data.
+            results (dict): The results of the layer generation.
         """
-        self.progressBar.setRange(0, 1)
-        for filename, geojson_data in results.items():
-            def create_style_function(color, weight, fillOpacity):
-                return lambda feature: {
-                    'fillColor': color,
-                    'color': color,
-                    'weight': 1.5,
-                    'fillOpacity': 0.5,
-                }
+        self.view.progressBar.setRange(0, 1)
+        filenames = [f"{self.model.get_base_path()}\Wärmenetz\HAST.geojson", f"{self.model.get_base_path()}\Wärmenetz\Rücklauf.geojson",
+                     f"{self.model.get_base_path()}\Wärmenetz\Vorlauf.geojson", f"{self.model.get_base_path()}\Wärmenetz\Erzeugeranlagen.geojson"]
+        self.add_geojson_layer(filenames)
+        generatedLayers = {
+            'HAST': f"{self.model.get_base_path()}\Wärmenetz\HAST.geojson",
+            'Rücklauf': f"{self.model.get_base_path()}\Wärmenetz\Rücklauf.geojson",
+            'Vorlauf': f"{self.model.get_base_path()}\Wärmenetz\Vorlauf.geojson",
+            'Erzeugeranlagen': f"{self.model.get_base_path()}\Wärmenetz\Erzeugeranlagen.geojson"
+        }
+        self.layers_imported.emit(generatedLayers)
 
-            geojson_layer = folium.GeoJson(
-                geojson_data['gdf'],
-                name=geojson_data['name'],
-                style_function=create_style_function(geojson_data['style']['color'], geojson_data['style']['weight'], geojson_data['style']['fillOpacity'])
-            )
-            geojson_layer.add_to(self.m)
-
-            self.layers[geojson_data['name']] = geojson_layer
-
-            if geojson_data['name'] not in [self.layerList.item(i).text() for i in range(self.layerList.count())]:
-                listItem = QListWidgetItem(geojson_data['name'])
-                listItem.setBackground(QColor(geojson_data['style']['color']))
-                listItem.setForeground(QBrush(QColor('#FFFFFF')))
-                self.layerList.addItem(listItem)
-
-        self.updateMapView()
-
-    def on_import_error(self, error_message):
+    def on_generation_error(self, error_message):
         """
-        Handle errors during the import process.
+        Handles errors that occur during the layer generation process.
 
         Args:
-            error_message: The error message.
+            error_message (str): The error message to display.
         """
-        self.progressBar.setRange(0, 1)
-        print("Fehler beim Importieren der GeoJSON-Daten:", error_message)
+        self.view.show_error_message("Berechnungsfehler", error_message)
+        self.view.progressBar.setRange(0, 1)
 
-    def removeSelectedLayer(self):
+    def open_osm_data_dialog(self):
         """
-        Remove the selected layer from the map.
+        Opens the dialog for downloading OSM data.
         """
-        selectedItems = self.layerList.selectedItems()
-        if selectedItems:
-            selectedItem = selectedItems[0]
-            layerName = selectedItem.text()
-            self.layerList.takeItem(self.layerList.row(selectedItem))
-            del self.layers[layerName]
-            self.updateMapView()
+        dialog = DownloadOSMDataDialog(self.model.get_base_path(), self.view)
+        if dialog.exec_() == QDialog.Accepted:
+            pass  # Handle accepted case if necessary
 
-    def changeLayerColor(self):
+    def open_osm_building_query_dialog(self):
         """
-        Open a color dialog to change the color of the selected layer.
+        Opens the dialog for querying OSM building data.
         """
-        selectedItems = self.layerList.selectedItems()
-        if selectedItems:
-            selectedItem = selectedItems[0]
-            layerName = selectedItem.text()
-            
-            color = QColorDialog.getColor()
-            if color.isValid():
-                self.updateLayerColor(layerName, color.name())
+        dialog = OSMBuildingQueryDialog(self.model.get_base_path(), self.view)
+        if dialog.exec_() == QDialog.Accepted:
+            pass  # Handle accepted case if necessary
 
-    def updateLayerColor(self, layerName, new_color):
+
+class VisualizationTabView(QWidget):
+    """
+    The VisualizationTabView class is responsible for managing the user interface components
+    such as the map display, menus, buttons, and progress bar.
+
+    Attributes:
+        m (folium.Map): The folium map object used to display geographical data.
+        mapView (QWebEngineView): The web view used to render the folium map.
+        menuBar (QMenuBar): The menu bar containing various actions.
+        layerList (QListWidget): The list widget displaying the layers.
+        removeLayerButton (QPushButton): The button to remove selected layers.
+        changeColorButton (QPushButton): The button to change the color of a selected layer.
+        progressBar (QProgressBar): The progress bar used to display the progress of operations.
+    """
+
+    def __init__(self, parent=None):
+        """Initializes the VisualizationTabView with the necessary UI components."""
+        super().__init__(parent)
+        self.initUI()
+
+    def initUI(self):
+        """Initializes the user interface components."""
+        self.main_layout = QVBoxLayout()
+
+        self.initMenuBar()
+
+        self.initMapView()
+
+        self.initLayerManagement()
+
+        self.progressBar = QProgressBar(self)
+        self.main_layout.addWidget(self.progressBar)
+
+        self.setLayout(self.main_layout)
+
+    def initMenuBar(self):
+        self.menuBar = QMenuBar(self)
+        self.menuBar.setFixedHeight(30)
+        fileMenu = self.menuBar.addMenu('Datei')
+
+        self.downloadAction = QAction('Adressdaten geocodieren', self)
+        fileMenu.addAction(self.downloadAction)
+
+        self.loadCsvAction = QAction('CSV-Koordinaten laden', self)
+        fileMenu.addAction(self.loadCsvAction)
+
+        self.downloadActionOSM = QAction('OSM Straßenabfrage', self)
+        fileMenu.addAction(self.downloadActionOSM)
+
+        self.osmBuildingAction = QAction('OSM Gebäudeabfrage', self)
+        fileMenu.addAction(self.osmBuildingAction)
+        
+        self.importAction = QAction('Import geojson-Datei', self)
+        fileMenu.addAction(self.importAction)
+
+        self.layerGenerationAction = QAction('Wärmenetz aus Daten generieren', self)
+        fileMenu.addAction(self.layerGenerationAction)
+
+        self.main_layout.addWidget(self.menuBar)
+
+    def initMapView(self):
         """
-        Update the color of the specified layer.
+        Initializes the map view with the current folium map object.
+        """
+        self.m = folium.Map(location=[51.1657, 10.4515], zoom_start=6)
+        self.mapView = QWebEngineView()
+        self.main_layout.addWidget(self.mapView)
+
+    def initLayerManagement(self):
+        """Initializes the layer management components.
+        """
+        self.layerList = QListWidget(self)
+        self.layerList.setMaximumHeight(100)
+
+        self.removeLayerButton = QPushButton("Layer entfernen", self)
+        self.changeColorButton = QPushButton("Farbe ändern", self)
+
+        layerManagementLayout = QHBoxLayout()
+        layerManagementLayout.addWidget(self.layerList)
+        layerManagementLayout.addWidget(self.removeLayerButton)
+        layerManagementLayout.addWidget(self.changeColorButton)
+        self.main_layout.addLayout(layerManagementLayout)
+
+    def update_map_view(self, map_obj):
+        """
+        Updates the web view to display the current map object.
 
         Args:
-            layerName: The name of the layer.
-            new_color: The new color for the layer.
+            map_obj (folium.Map): The folium map object to render.
         """
-        if layerName in self.layers:
-            del self.layers[layerName]
-            self.loadNetData(layerName, new_color)
-            self.updateListItemColor(layerName, new_color)
+        map_html = map_obj._repr_html_()
+        self.mapView.setHtml(map_html)
 
-    def updateListItemColor(self, layerName, new_color):
+    def show_error_message(self, title, message):
         """
-        Update the color of the specified layer item in the list.
+        Displays an error message in a message box.
 
         Args:
-            layerName: The name of the layer.
-            new_color: The new color for the layer item.
+            title (str): The title of the error message box.
+            message (str): The error message to display.
         """
-        for index in range(self.layerList.count()):
-            listItem = self.layerList.item(index)
-            if listItem.text() == layerName:
-                listItem.setBackground(QColor(new_color))
-                listItem.setForeground(QBrush(QColor('#FFFFFF')))
-                break
+        QMessageBox.critical(self, title, message)
 
-    def createGeoJsonFromCsv(self, csv_file_path, geojson_file_path):
+
+class VisualizationTab(QMainWindow):
+    """
+    The VisualizationTab class integrates the model, view, and presenter
+    into a single main window for the application.
+
+    Attributes:
+        model (VisualizationModel): The model instance containing the data logic.
+        view (VisualizationTabView): The view instance containing the UI logic.
+        presenter (VisualizationPresenter): The presenter instance handling the interaction between model and view.
+    """
+
+    def __init__(self, data_manager, parent=None):
         """
-        Create a GeoJSON file from a CSV file containing coordinates.
+        Initializes the VisualizationTab with the given data manager.
 
         Args:
-            csv_file_path: The path to the CSV file.
-            geojson_file_path: The path to save the GeoJSON file.
+            data_manager (DataManager): The data manager instance handling project-related data.
+            parent (QWidget, optional): The parent widget. Defaults to None.
         """
-        df = pd.read_csv(csv_file_path, delimiter=';')
+        super().__init__()
+        self.setWindowTitle("Visualization Tab")
+        self.setGeometry(100, 100, 800, 600)
 
-        gdf = gpd.GeoDataFrame(
-            df, 
-            geometry=[Point(xy) for xy in zip(df.UTM_X, df.UTM_Y)],
-            crs="EPSG:25833"
-        )
+        self.model = VisualizationModel()
+        self.view = VisualizationTabView()
+        self.presenter = VisualizationPresenter(self.model, self.view, data_manager)
 
-        gdf.to_file(geojson_file_path, driver='GeoJSON')
-
-    def loadCsvCoordinates(self, fname=None):
-        """
-        Load coordinates from a CSV file and display them on the map.
-
-        Args:
-            fname: The path to the CSV file.
-        """
-        if not fname:
-            fname, _ = QFileDialog.getOpenFileName(self, 'CSV-Koordinaten laden', self.base_path, 'CSV Files (*.csv);;All Files (*)')
-        if fname:
-            base_name = os.path.splitext(os.path.basename(fname))[0]
-            geojson_path = os.path.join(self.base_path, 'Gebäudedaten', f"{base_name}.geojson")
-            
-            self.createGeoJsonFromCsv(fname, geojson_path)
-            self.addGeoJsonLayer(self.m, [geojson_path], color=None)
+        self.setCentralWidget(self.view)

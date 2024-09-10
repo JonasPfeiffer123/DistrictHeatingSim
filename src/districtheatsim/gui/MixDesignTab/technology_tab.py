@@ -1,22 +1,20 @@
 """
 Filename: technology_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-08-01
+Date: 2024-09-10
 Description: Contains the TechnologyTab.
 """
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QLineEdit, 
-    QListWidget, QDialog, QFileDialog, QScrollArea, QCheckBox, QFormLayout, 
-    QDialogButtonBox, QAbstractItemView, QMessageBox
+    QListWidget, QDialog, QFileDialog, QScrollArea, QAbstractItemView, QMessageBox
 )
-from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtCore import pyqtSignal
 import pandas as pd
-import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
-from heat_generators.heat_generator_classes import *
+from heat_generators.heat_generation_mix import *
 from gui.MixDesignTab.heat_generator_dialogs import TechInputDialog
 
 class CustomListWidget(QListWidget):

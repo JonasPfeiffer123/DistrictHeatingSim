@@ -1,0 +1,40 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+
+\title{Berechnungsmodelle und Optimierungsfunktionen für Wärmeerzeugungssysteme in DistrictHeatSim - Dokumentation}
+\author{Dipl.-Ing. (FH) Jonas Pfeiffer}
+\date{2024-09-10}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+
+\section{Einleitung}
+Dieses Dokument beschreibt die mathematischen Modelle und Optimierungsfunktionen, die zur Berechnung und Bewertung verschiedener Wärmeerzeugungssysteme verwendet werden. Der Code konzentriert sich auf die Optimierung von Energieeffizienz und Wirtschaftlichkeit und wendet dabei die VDI 2067-Richtlinien für die Kostenanalyse an. Für die Berechnungen werden die Python-Bibliotheken NumPy, SciPy und Pandas verwendet. Die Berechnungsmodelle sind in Klassen organisiert, die spezifische Wärmeerzeugungssysteme repräsentieren.
+
+\input{annuity_doc/annuity_doc.tex}
+
+\input{heat_generators_doc/heat_pump.tex}
+\input{heat_generators_doc/geothermal_heat_pump.tex}
+\input{heat_generators_doc/waste_heat_pump.tex}
+\input{heat_generators_doc/river_heat_pump.tex}
+\input{heat_generators_doc/aqvaheat.tex}
+\input{heat_generators_doc/chp.tex}
+\input{heat_generators_doc/biomass_boiler.tex}
+\input{heat_generators_doc/gas_boiler.tex}
+\input{heat_generators_doc/solarthermal.tex}
+
+\input{calculate_mix_doc/calculate_mix_doc.tex}
+\input{optimize_mix_doc/optimize_mix_doc.tex}
+
+\section{Fazit}
+Dieses Dokument bietet einen umfassenden Überblick über die Modelle und Optimierungsstrategien, die für Wärmeerzeugungssysteme verwendet werden. Zukünftige Arbeiten werden das System erweitern, um die Systeme genau zu modellieren und die Optimierungsfunktionen zu verbessern.
+
+
+\end{document}
