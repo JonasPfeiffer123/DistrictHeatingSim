@@ -22,7 +22,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QMenuBar, QAction
 from PyQt5.QtGui import QColor, QBrush
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 
-from gui.VisualizationTab.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog, SpatialAnalysisDialog, GeocodeAddressesDialog
+from gui.VisualizationTab.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog, GeocodeAddressesDialog
 from gui.VisualizationTab.net_generation_threads import NetGenerationThread, FileImportThread, GeocodingThread
 
 class VisualizationModel:
@@ -154,7 +154,6 @@ class VisualizationPresenter(QObject):
         self.view.layerGenerationAction.triggered.connect(self.open_layer_generation_dialog)
         self.view.downloadActionOSM.triggered.connect(self.open_osm_data_dialog)
         self.view.osmBuildingAction.triggered.connect(self.open_osm_building_query_dialog)
-        self.view.spatialAnalysisAction.triggered.connect(self.open_spatial_analysis_dialog)
 
         self.on_project_folder_changed(self.data_manager.project_folder)
 
@@ -430,14 +429,6 @@ class VisualizationPresenter(QObject):
         if dialog.exec_() == QDialog.Accepted:
             pass  # Handle accepted case if necessary
 
-    def open_spatial_analysis_dialog(self):
-        """
-        Opens the dialog for performing spatial analysis.
-        """
-        dialog = SpatialAnalysisDialog(self.model.get_base_path(), self.view)
-        if dialog.exec_() == QDialog.Accepted:
-            pass  # Handle accepted case if necessary
-
     def open_osm_building_query_dialog(self):
         """
         Opens the dialog for querying OSM building data.
@@ -498,10 +489,7 @@ class VisualizationTabView(QWidget):
 
         self.osmBuildingAction = QAction('OSM Gebäudeabfrage', self)
         fileMenu.addAction(self.osmBuildingAction)
-
-        self.spatialAnalysisAction = QAction('Clustering Quartiere', self)
-        fileMenu.addAction(self.spatialAnalysisAction)
-
+        
         self.importAction = QAction('Import geojson-Datei', self)
         fileMenu.addAction(self.importAction)
 
