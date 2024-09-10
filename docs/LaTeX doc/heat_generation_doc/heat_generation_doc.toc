@@ -80,4 +80,4 @@
 \contentsline {subsubsection}{\numberline {13.2.3}Nebenbedingungen}{38}{subsubsection.13.2.3}%
 \contentsline {subsection}{\numberline {13.3}Ergebnis}{38}{subsection.13.3}%
 \contentsline {subsection}{\numberline {13.4}Zusammenfassung}{38}{subsection.13.4}%
-\contentsline {section}{\numberline {14}Zusammenfassung}{38}{section.14}%
+\contentsline {section}{\numberline {14}Fazit}{38}{section.14}%

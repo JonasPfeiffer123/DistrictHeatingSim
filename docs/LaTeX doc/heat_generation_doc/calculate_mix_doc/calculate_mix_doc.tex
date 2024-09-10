@@ -2,7 +2,7 @@
 \label{sec:calculate_mix_doc}
 
 \subsection{Einleitung}
-Die Berechnungsfunktion \texttt{Berechnung\_Erzeugermix} ermittelt die optimale Energieerzeugung für einen vorgegebenen Mix an Technologien. Ziel ist es, die Wärmeerzeugung für ein bestimmtes Lastprofil unter Einbeziehung verschiedener Kosten-, Effizienz- und Emissionsfaktoren zu berechnen.
+Die Berechnungsfunktion \texttt{Berechnung\_Erzeugermix} ermittelt die Energieerzeugung für einen vorgegebenen Mix an Technologien. Ziel ist es, die Wärmeerzeugung für ein bestimmtes Lastprofil unter Einbeziehung verschiedener Kosten-, Effizienz- und Emissionsfaktoren zu berechnen.
 
 \subsection{Mathematisches Modell}
 \subsubsection{Eingangsparameter}
@@ -12,7 +12,7 @@ Die Berechnungsfunktion nimmt eine Reihe von Eingangsparametern an, die die tech
     \item \textbf{tech\_order}: Liste der zu betrachtenden Technologien.
     \item \textbf{initial\_data}: Tuple bestehend aus Zeitpunkten, Lastprofil, Vorlauf- und Rücklauftemperaturen.
     \item \textbf{Gaspreis}, \textbf{Strompreis}, \textbf{Holzpreis}: Energiekosten in €/kWh.
-    \item \textbf{BEW}: Spezifische CO2-Emissionen des Strommixes in kg CO2/kWh.
+    \item \textbf{BEW}: Förderung BEW Ja/Nein.
     \item \textbf{kapitalzins}, \textbf{preissteigerungsrate}, \textbf{betrachtungszeitraum}: Finanzielle Parameter für die Kostenberechnung.
 \end{itemize}
 
