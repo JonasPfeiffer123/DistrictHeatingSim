@@ -32,7 +32,7 @@ Die \texttt{CHP}-Klasse modelliert ein Blockheizkraftwerk (BHKW), das sowohl the
 
 \subsection{Methoden}
 \begin{itemize}
-    \item \texttt{BHKW(Last\_L, duration)}: Berechnet die Wärme- und Stromerzeugung des BHKWs ohne Speichersystem.
+    \item \texttt{simulate\_operation(Last\_L, duration)}: Berechnet die Wärme- und Stromerzeugung des BHKWs ohne Speichersystem.
     \begin{itemize}
         \item \textbf{Last\_L (array)}: Lastprofil in kW.
         \item \textbf{duration (float)}: Dauer jedes Zeitschritts in Stunden.
@@ -46,7 +46,7 @@ Die \texttt{CHP}-Klasse modelliert ein Blockheizkraftwerk (BHKW), das sowohl the
     \texttt{Brennstoffbedarf\_BHKW} = \frac{\texttt{Wärmemenge\_BHKW} + \texttt{Strommenge\_BHKW}}{\texttt{KWK\_Wirkungsgrad}}
     \]
 
-    \item \texttt{storage(Last\_L, duration)}: Berechnet die Wärme- und Stromerzeugung des BHKWs mit einem Speichersystem.
+    \item \texttt{simulate\_storage(Last\_L, duration)}: Berechnet die Wärme- und Stromerzeugung des BHKWs mit einem Speichersystem.
     \begin{itemize}
         \item \textbf{Last\_L (array)}: Lastprofil des Systems in kW.
         \item \textbf{duration (float)}: Dauer jedes Zeitschritts in Stunden.
@@ -56,7 +56,7 @@ Die \texttt{CHP}-Klasse modelliert ein Blockheizkraftwerk (BHKW), das sowohl the
     \texttt{speicher\_kapazitaet} = \texttt{Speicher\_Volumen\_BHKW} \times 4186 \times (\texttt{T\_vorlauf} - \texttt{T\_ruecklauf}) / 3600
     \]
     
-    \item \texttt{WGK(Wärmemenge, Strommenge, Brennstoffbedarf, Brennstoffkosten, Strompreis, q, r, T, BEW, stundensatz)}: Berechnet die gewichteten Durchschnittskosten für das BHKW.
+    \item \texttt{calculate\_heat\_generation\_costs(Wärmemenge, Strommenge, Brennstoffbedarf, Brennstoffkosten, Strompreis, q, r, T, BEW, stundensatz)}: Berechnet die gewichteten Durchschnittskosten für das BHKW.
     \begin{itemize}
         \item \textbf{Wärmemenge (float)}: Erzeugte Wärmemenge in MWh.
         \item \textbf{Strommenge (float)}: Erzeugte Strommenge in MWh.
@@ -92,7 +92,7 @@ Die \texttt{CHP}-Klasse modelliert ein Blockheizkraftwerk (BHKW), das sowohl the
 \end{itemize}
 
 \subsection{Ökonomische und ökologische Überlegungen}
-Die \texttt{CHP}-Klasse ermöglicht die Berechnung der gewichteten Durchschnittskosten der Energieerzeugung und der spezifischen CO$_2$-Emissionen eines BHKW-Systems. Diese Berechnungen berücksichtigen die Brennstoffkosten, die Stromerzeugung sowie die Arbeits- und Betriebskosten. Darüber hinaus werden die CO$_2$-Einsparungen durch die Stromerzeugung und der Primärenergieverbrauch des Systems ermittelt.
+Die \texttt{CHP}-Klasse ermöglicht die Berechnung der Wärmegestehungsksoten und der spezifischen CO$_2$-Emissionen eines BHKW-Systems. Diese Berechnungen berücksichtigen die Brennstoffkosten, die Stromerzeugung sowie die Arbeits- und Betriebskosten. Darüber hinaus werden die CO$_2$-Einsparungen durch die Stromerzeugung und der Primärenergieverbrauch des Systems ermittelt.
 
 \subsection{Nutzungsbeispiel}
 Das folgende Beispiel zeigt die Initialisierung und Verwendung der \texttt{CHP}-Klasse zur Simulation eines gasbetriebenen BHKWs:

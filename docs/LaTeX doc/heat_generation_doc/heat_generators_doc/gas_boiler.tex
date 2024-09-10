@@ -18,7 +18,7 @@ Die \texttt{GasBoiler}-Klasse repräsentiert ein Gaskesselsystem, das dazu dient
 \subsection{Methoden}
 Die \texttt{GasBoiler}-Klasse enthält mehrere Methoden, die die Auslegung und Berechnung eines Gaskessels im Detail beschreiben. Im Folgenden werden die mathematischen Grundlagen und Berechnungslogiken der wichtigsten Methoden erläutert.
 
-\subsubsection{GasBoiler(Last\_L, duration)}
+\subsubsection{simulate\_operation(Last\_L, duration)}
 Diese Methode simuliert den Betrieb des Gaskessels basierend auf einem gegebenen Lastprofil und der Betriebsdauer. Sie berechnet die Wärmeerzeugung des Kessels, den Brennstoffbedarf sowie die maximale Leistung. Die wichtigsten Schritte der Berechnung sind:
 
 \begin{itemize}
@@ -45,8 +45,8 @@ Diese Methode simuliert den Betrieb des Gaskessels basierend auf einem gegebenen
     \]
 \end{itemize}
 
-\subsubsection{WGK(Brennstoffkosten, q, r, T, BEW, stundensatz)}
-Diese Methode berechnet die gewichteten Durchschnittskosten der Wärmeerzeugung (\textbf{WGK}). Diese beinhalten sowohl Investitions- als auch Betriebskosten, um die tatsächlichen Kosten der Wärmeerzeugung pro MWh zu ermitteln. Die Berechnung erfolgt in mehreren Schritten:
+\subsubsection{calculate\_heat\_generation\_cost(Brennstoffkosten, q, r, T, BEW, stundensatz)}
+Diese Methode berechnet die Wärmegestehungskosten (\textbf{WGK}). Diese beinhalten sowohl Investitions- als auch Betriebskosten, um die tatsächlichen Kosten der Wärmeerzeugung pro MWh zu ermitteln. Die Berechnung erfolgt in mehreren Schritten:
 
 \begin{itemize}
     \item \textbf{Berechnung der Investitionskosten:} Die spezifischen Investitionskosten (\texttt{spez\_Investitionskosten}) werden mit der maximalen Leistung des Kessels (\texttt{P\_max}) multipliziert, um die gesamten Investitionskosten (\texttt{Investitionskosten}) zu erhalten:
@@ -59,7 +59,7 @@ Diese Methode berechnet die gewichteten Durchschnittskosten der Wärmeerzeugung 
     \texttt{A\_N} = \text{annuität}(\texttt{Investitionskosten}, \texttt{Nutzungsdauer}, \texttt{f\_Inst}, \texttt{f\_W\_Insp}, \texttt{Bedienaufwand}, q, r, T)
     \]
 
-    \item \textbf{Berechnung der Wärmeerzeugungskosten:} Die jährlichen Gesamtkosten werden durch die erzeugte Wärmemenge geteilt, um die spezifischen Wärmeerzeugungskosten (\texttt{WGK\_GK}) zu erhalten:
+    \item \textbf{Berechnung der Wärmegestehungskosten:} Die jährlichen Gesamtkosten werden durch die erzeugte Wärmemenge geteilt, um die spezifischen Wärmegestehungskosten (\texttt{WGK\_GK}) zu erhalten:
     \[
     \texttt{WGK\_GK} = \frac{\texttt{A\_N}}{\texttt{Wärmemenge\_Gaskessel}}
     \]
@@ -92,7 +92,7 @@ Diese Methode führt eine vollständige Berechnung der Systemleistung und Kosten
 Die vollständige Berechnungsmethode ermöglicht die Simulation der Leistung eines Gaskessels über einen bestimmten Zeitraum und liefert umfassende ökonomische und ökologische Kennzahlen, die für eine energetische Bewertung entscheidend sind.
 
 \subsection{Ökonomische und ökologische Überlegungen}
-Die \texttt{GasBoiler}-Klasse wurde entwickelt, um sowohl die ökonomischen als auch die ökologischen Auswirkungen eines Gaskesselsystems zu simulieren. Die \textbf{gewichteten Durchschnittskosten der Wärmeerzeugung (WGK)} berücksichtigen sowohl Investitionskosten als auch Betriebskosten, einschließlich Brennstoffpreise, Arbeitskosten und Wartung. Zudem werden die \textbf{CO$_2$-Emissionen} des Systems basierend auf dem Brennstoffverbrauch und dem spezifischen CO$_2$-Faktor für Erdgas berechnet, um eine Analyse des ökologischen Fußabdrucks des Systems zu ermöglichen. Der \textbf{Primärenergieverbrauch} wird ebenfalls berechnet, um Einblicke in die Gesamtenergieeffizienz und Nachhaltigkeit des Systems zu geben.
+Die \texttt{GasBoiler}-Klasse wurde entwickelt, um sowohl die ökonomischen als auch die ökologischen Auswirkungen eines Gaskesselsystems zu simulieren. Die \textbf{Wärmegestehungskosten (WGK)} berücksichtigen sowohl Investitionskosten als auch Betriebskosten, einschließlich Brennstoffpreise, Arbeitskosten und Wartung. Zudem werden die \textbf{CO$_2$-Emissionen} des Systems basierend auf dem Brennstoffverbrauch und dem spezifischen CO$_2$-Faktor für Erdgas berechnet, um eine Analyse des ökologischen Fußabdrucks des Systems zu ermöglichen. Der \textbf{Primärenergieverbrauch} wird ebenfalls berechnet, um Einblicke in die Gesamtenergieeffizienz und Nachhaltigkeit des Systems zu geben.
 
 \subsection{Nutzungsbeispiel}
 Das folgende Beispiel zeigt, wie die \texttt{GasBoiler}-Klasse initialisiert und verwendet werden kann:

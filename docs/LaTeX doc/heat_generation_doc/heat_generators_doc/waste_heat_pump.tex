@@ -14,14 +14,14 @@ Die \texttt{WasteHeatPump}-Klasse modelliert ein Wärmepumpensystem zur Rückgew
 
 \subsection{Methoden}
 \begin{itemize}
-    \item \texttt{Berechnung\_WP(VLT\_L, COP\_data)}: Berechnet die Wärmelast, den Stromverbrauch und die angepassten Vorlauftemperaturen für die Abwärmepumpe.
+    \item \texttt{calculate\_heat\_pump(VLT\_L, COP\_data)}: Berechnet die Wärmelast, den Stromverbrauch und die angepassten Vorlauftemperaturen für die Abwärmepumpe.
     \begin{itemize}
         \item \textbf{VLT\_L (array-like)}: Vorlauftemperaturen in Grad Celsius.
         \item \textbf{COP\_data (array-like)}: COP-Daten zur Interpolation.
     \end{itemize}
     Gibt die Wärmelast und den Stromverbrauch für die Abwärmepumpe zurück.
 
-    \item \texttt{abwärme(Last\_L, VLT\_L, COP\_data, duration)}: Berechnet die Abwärme und weitere Leistungskennzahlen für die Wärmepumpe.
+    \item \texttt{calculate\_waste\_heat(Last\_L, VLT\_L, COP\_data, duration)}: Berechnet die Abwärme und weitere Leistungskennzahlen für die Wärmepumpe.
     \begin{itemize}
         \item \textbf{Last\_L (array-like)}: Lastanforderung in kW.
         \item \textbf{VLT\_L (array-like)}: Vorlauftemperaturen in Grad Celsius.
@@ -52,7 +52,7 @@ Die \texttt{WasteHeatPump}-Klasse modelliert ein Wärmepumpensystem zur Rückgew
 \end{itemize}
 
 \subsection{Ökonomische und ökologische Überlegungen}
-Die \texttt{WasteHeatPump}-Klasse berechnet die gewichteten Durchschnittskosten der Wärmeerzeugung (WGK) für die Abwärmepumpe, die die Installations-, Betriebs- und Stromkosten berücksichtigen. Die Klasse berechnet auch die spezifischen CO$_2$-Emissionen basierend auf dem Stromverbrauch sowie den Primärenergieverbrauch des Systems.
+Die \texttt{WasteHeatPump}-Klasse berechnet die Wärmegestehungskosten (WGK) für die Abwärmepumpe, die die Installations-, Betriebs- und Stromkosten berücksichtigen. Die Klasse berechnet auch die spezifischen CO$_2$-Emissionen basierend auf dem Stromverbrauch sowie den Primärenergieverbrauch des Systems.
 
 \subsection{Nutzungsbeispiel}
 Das folgende Beispiel zeigt, wie die \texttt{WasteHeatPump}-Klasse initialisiert und verwendet wird, um die Leistung eines Abwärmenutzungssystems zu berechnen:

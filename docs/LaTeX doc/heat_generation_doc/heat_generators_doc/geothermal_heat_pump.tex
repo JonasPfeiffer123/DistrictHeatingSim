@@ -17,7 +17,7 @@ Die \texttt{Geothermal}-Klasse modelliert ein geothermisches Wärmepumpensystem 
 
 \subsection{Methoden}
 \begin{itemize}
-    \item \texttt{Geothermie(Last\_L, VLT\_L, COP\_data, duration)}: Simuliert den geothermischen Wärmeentzugsprozess und berechnet die erzeugte Wärmemenge, den Strombedarf und weitere Leistungskennzahlen.
+    \item \texttt{calculate\_operation(Last\_L, VLT\_L, COP\_data, duration)}: Simuliert den geothermischen Wärmeentzugsprozess und berechnet die erzeugte Wärmemenge, den Strombedarf und weitere Leistungskennzahlen.
     \begin{itemize}
         \item \textbf{Last\_L (array-like)}: Lastprofil in kW.
         \item \textbf{VLT\_L (array-like)}: Vorlauftemperaturen in Grad Celsius.
@@ -54,7 +54,7 @@ Die \texttt{Geothermal}-Klasse modelliert ein geothermisches Wärmepumpensystem 
 \end{itemize}
 
 \subsection{Ökonomische und ökologische Überlegungen}
-Die \texttt{Geothermal}-Klasse berechnet die gewichteten Durchschnittskosten der Wärmeerzeugung (WGK), welche die Kosten für Bohrung, Installation, Betrieb und Stromverbrauch berücksichtigen. Sie berechnet außerdem die spezifischen CO$_2$-Emissionen basierend auf dem Stromverbrauch sowie den Primärenergieverbrauch unter Verwendung eines Primärenergiefaktors.
+Die \texttt{Geothermal}-Klasse berechnet die Wärmegestehungskosten (WGK), welche die Kosten für Bohrung, Installation, Betrieb und Stromverbrauch berücksichtigen. Sie berechnet außerdem die spezifischen CO$_2$-Emissionen basierend auf dem Stromverbrauch sowie den Primärenergieverbrauch unter Verwendung eines Primärenergiefaktors.
 
 \subsection{Nutzungsbeispiel}
 Das folgende Beispiel zeigt, wie die \texttt{Geothermal}-Klasse initialisiert und verwendet wird, um die Leistung eines geothermischen Systems zu berechnen:

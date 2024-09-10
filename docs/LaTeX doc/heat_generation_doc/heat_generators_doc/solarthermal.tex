@@ -39,18 +39,18 @@ Die \texttt{SolarThermal}-Klasse modelliert ein solarthermisches System und enth
 
 \subsection{Methoden}
 \begin{itemize}
-    \item \texttt{calc\_WGK(q, r, T, BEW, stundensatz)}: Berechnet die gewichteten Durchschnittskosten der Wärmeerzeugung (WGK) basierend auf den Investitions- und Betriebskosten des Systems sowie auf der Förderfähigkeit nach dem EEG.
+    \item \texttt{calculate\_heat\_generation\_costs(q, r, T, BEW, stundensatz)}: Berechnet die Wärmegestehungsksoten (WGK) basierend auf den Investitions- und Betriebskosten des Systems sowie auf der Förderfähigkeit nach dem BEW.
     \begin{itemize}
         \item \textbf{q (float)}: Kapitalrückgewinnungsfaktor.
         \item \textbf{r (float)}: Preissteigerungsfaktor.
         \item \textbf{T (int)}: Betrachtungszeitraum in Jahren.
-        \item \textbf{BEW (str)}: Angabe der Förderfähigkeit nach EEG ("Ja" oder "Nein").
+        \item \textbf{BEW (str)}: Angabe der Betrachtung der Förderung nach BEW ("Ja" oder "Nein").
         \item \textbf{stundensatz (float)}: Stundensatz für Arbeitsaufwand.
     \end{itemize}
-    Gibt die WGK des Systems basierend auf Investitionen, Förderungen und Betriebskosten zurück.
+    Gibt die Wärmegesethungskosten des Systems basierend auf Investitionen, Förderungen und Betriebskosten zurück.
 
     \item \texttt{calculate(VLT\_L, RLT\_L, TRY, time\_steps, calc1, calc2, q, r, T, BEW, stundensatz, duration, general\_results)}: 
-    Simuliert die Leistung des solarthermischen Systems über einen bestimmten Zeitraum und berücksichtigt dabei Vorlauf- und Rücklauftemperaturen, Wetterdaten und Betriebskosten.
+    Simuliert die Leistung des solarthermischen Systems über einen bestimmten Zeitraum und berücksichtigt dabei Vorlauf- und Rücklauftemperaturen, Wetterdaten und Betriebskosten. Die Berechnung erfolgt in einer ausgelagerten Funktion. Dies wird im Abschnitt "Ertragsberechnung" genauer erläutert.
     \begin{itemize}
         \item \textbf{VLT\_L (array)}: Array von Vorlauftemperaturen in Grad Celsius.
         \item \textbf{RLT\_L (array)}: Array von Rücklauftemperaturen in Grad Celsius.
@@ -61,15 +61,95 @@ Die \texttt{SolarThermal}-Klasse modelliert ein solarthermisches System und enth
         \item \textbf{duration (float)}: Dauer jedes Simulationszeitschritts.
         \item \textbf{general\_results (dict)}: Wörterbuch, das allgemeine Ergebnisse aus der Simulation enthält, wie z.B. Restlasten.
     \end{itemize}
-    Gibt ein Wörterbuch mit den Ergebnissen der Simulation zurück, einschließlich Wärmeerzeugung, spezifischen CO$_2$-Emissionen, Primärenergieverbrauch und Speicherstatus.
+    Gibt ein Dictionary mit den Ergebnissen der Simulation zurück, einschließlich Wärmeerzeugung, spezifischen CO$_2$-Emissionen, Primärenergieverbrauch und Speicherstatus.
 
     \item \texttt{to\_dict()}: Wandelt das \texttt{SolarThermal}-Objekt in ein Wörterbuch um, um eine einfache Serialisierung und Speicherung zu ermöglichen.
     
     \item \texttt{from\_dict(data)}: Erstellt ein \texttt{SolarThermal}-Objekt aus einem Wörterbuch von Attributen.
 \end{itemize}
 
+\subsection{Ertragsberechnung}
+
+Im folgenden wird die Berechung der Solarthermie erläutert. Die Datengrundlage für die Berechnung ist das Testreferenzjahr (TRY), das Wetterdaten wie Temperatur, Windgeschwindigkeit und Strahlungsdaten enthält. Die Berechnung erfolgt in mehreren Schritten, die im Folgenden beschrieben werden. Es werden die charakteristischen Parameter der Solarkollektoren, die Speichergrößen und die Systemverluste in die Berechnung einbezogen. Die Berechnung erfolgt basierend auf physikalischen Modellen, die den Energiefluss durch die Solarkollektoren, die Wärmeübertragung im Speicher und die Rohrleitungsverluste abbilden.
+
+Yield calculation program for solar thermal energy in heating networks (calculation basis: ScenoCalc District Heating 2.0, \url{https://www.scfw.de/})
+
+\subsubsection*{Eingabeparameter}
+
+Die Funktion \texttt{Berechnung\_STA} verwendet die folgenden Eingabeparameter:
+
+\begin{itemize}
+    \item \textbf{Bruttofläche\_STA}: Die Bruttofläche der Solaranlage in Quadratmetern.
+    \item \textbf{VS}: Speichervolumen der Solaranlage in Litern.
+    \item \textbf{Typ}: Der Typ der Solaranlage (\texttt{"Flachkollektor"} oder \texttt{"Vakuumröhrenkollektor"}).
+    \item \textbf{Last\_L}: Array des Lastprofils in Watt.
+    \item \textbf{VLT\_L, RLT\_L}: Vorlauf- und Rücklauftemperaturprofil.
+    \item \textbf{TRY}: Testreferenzjahr-Daten (Temperatur, Windgeschwindigkeit, Direktstrahlung, Globalstrahlung).
+    \item \textbf{time\_steps}: Zeitstempel.
+    \item \textbf{Longitude, Latitude}: Geografische Koordinaten des Standorts.
+    \item \textbf{Albedo}: Reflektionsgrad der Umgebung.
+    \item \textbf{Tsmax}: Maximale Speichertemperatur in Grad Celsius.
+    \item \textbf{East\_West\_collector\_azimuth\_angle, Collector\_tilt\_angle}: Azimut- und Neigungswinkel des Kollektors.
+\end{itemize}
+
+Die Parameter wie Vorwärmung, Temperaturdifferenzen in Wärmetauschern und Speichervolumen können optional angepasst werden.
+
+\subsubsection{Definition von Solarkollektoren und ihren Eigenschaften}
+
+Je nach Kollektortyp (\texttt{Flachkollektor} oder \texttt{Vakuumröhrenkollektor}) werden verschiedene Kollektoreigenschaften wie die optische Effizienz, Wärmekoeffizienten und Aperaturflächen verwendet. Beispielsweise werden für Flachkollektoren die Eigenschaften des \texttt{Vitosol 200-F XL13} verwendet:
+\[
+\eta_0 = 0.763, \quad K_{\theta,\text{diff}} = 0.931, \quad c_1 = 1.969, \quad c_2 = 0.015
+\]
+
+Für Vakuumröhrenkollektoren werden spezifische Eigenschaften wie der optische Wirkungsgrad \( \eta_0 \), sowie die Wärmeverluste \( a_1 \) und \( a_2 \) berücksichtigt. Diese Parameter werden verwendet, um die Kollektorleistung zu berechnen, abhängig von den Umgebungsbedingungen und der Strahlung.
+
+\subsubsection{Berechnung der Solarstrahlung}
+
+Die Funktion \texttt{Berechnung\_Solarstrahlung}, die in einem separaten Skript definiert ist, wird aufgerufen, um die direkte, diffuse und reflektierte Strahlung auf die geneigte Oberfläche zu berechnen. Diese Funktion verwendet geometrische Modelle zur Bestimmung des Einfallswinkels der Sonnenstrahlen auf die Kollektorfläche und berechnet den Strahlungsfluss unter Berücksichtigung der Neigungs- und Azimutwinkel des Kollektors.
+
+Die Rückgabe dieser Funktion umfasst:
+\begin{itemize}
+    \item \textbf{GT\_H\_Gk}: Die Gesamtstrahlung auf der geneigten Oberfläche.
+    \item \textbf{GbT}: Direkte Strahlung auf der geneigten Fläche.
+    \item \textbf{GdT\_H\_Dk}: Diffuse Strahlung auf der geneigten Fläche.
+    \item \textbf{K\_beam}: Modifizierte Strahlungsintensität durch den Einfallswinkel.
+\end{itemize}
+
+\subsubsection{Berechnung der Kollektorfeldleistung}
+
+Die Leistung des Kollektorfelds wird berechnet, indem der Wirkungsgrad des Kollektors und die auf die geneigte Fläche einfallende Strahlung verwendet werden. Die Berechnung der Leistung für die Kollektorfläche erfolgt unter Berücksichtigung von Strahlungsverlusten, Kollektoreffizienz und thermischen Verlusten:
+\[
+P_{\text{Kollektor}} = \left( \eta_0 \cdot K_{\theta,\text{beam}} \cdot G_b + \eta_0 \cdot K_{\theta,\text{diff}} \cdot G_d \right) - c_1 \cdot (T_{\text{m}} - T_{\text{Luft}}) - c_2 \cdot (T_{\text{m}} - T_{\text{Luft}})^2
+\]
+Dabei ist \( G_b \) die direkte Strahlung und \( G_d \) die diffuse Strahlung, während \( c_1 \) und \( c_2 \) die Wärmeverluste des Kollektors darstellen. \( T_{\text{m}} \) ist die mittlere Temperatur im Kollektor und \( T_{\text{Luft}} \) die Umgebungstemperatur.
+
+\subsubsection{Berechnung der Rohrleitungsverluste}
+
+Die Verluste in den Verbindungsleitungen werden unter Berücksichtigung der Rohrlänge, des Durchmessers und der Wärmedurchgangskoeffizienten berechnet. Die Formel zur Berechnung der Verluste in den erdverlegten Rohren ist wie folgt:
+\[
+P_{\text{RVT}} = L_{\text{Rohr}} \cdot \left( \frac{2 \pi \cdot D_{\text{Rohr}} \cdot K_{\text{Rohr}}}{\log\left( \frac{D_{\text{Rohr}}}{2} \right)} \right) \cdot (T_{\text{Vorlauf}} - T_{\text{Luft}})
+\]
+
+\subsubsection{Speicherberechnung}
+
+Das Speichervolumen und die Temperatur des Speichers beeinflussen die Menge der nutzbaren Wärmeenergie. Die gespeicherte Wärmemenge wird anhand der Wärmekapazität und der Temperaturdifferenz berechnet:
+\[
+Q_{\text{Speicher}} = m_{\text{Speicher}} \cdot c_p \cdot \Delta T
+\]
+wobei \( m_{\text{Speicher}} \) die Masse des Wassers im Speicher ist, \( c_p \) die spezifische Wärmekapazität von Wasser (ca. 4.18 kJ/kgK) und \( \Delta T \) die Temperaturdifferenz zwischen der Vorlauf- und Rücklauftemperatur darstellt.
+
+\subsubsection{Wärmeoutput und Stagnation}
+
+Der Wärmeoutput der Solaranlage wird als Funktion der Kollektorleistung und der Speicherverluste berechnet. Falls die Speichertemperatur das zulässige Maximum erreicht, tritt Stagnation auf, und die Kollektorfeldertrag wird auf null gesetzt.
+
+Der Gesamtwärmeoutput wird über die Simulationszeit summiert:
+\[
+Q_{\text{output}} = \sum_{i=1}^{n} \frac{P_{\text{Kollektor},i} \cdot \Delta t}{1000}
+\]
+Dabei ist \( P_{\text{Kollektor},i} \) die Kollektorleistung zum Zeitpunkt \( i \), und \( \Delta t \) die Zeitschrittweite.
+
 \subsection{Wirtschaftliche und ökologische Überlegungen}
-Die \texttt{SolarThermal}-Klasse enthält Methoden zur Berechnung der \textbf{gewichteten Durchschnittskosten der Wärmeerzeugung (WGK)}, die die Installationskosten, Betriebskosten und Förderungen gemäß EEG berücksichtigt. Die spezifischen CO$_2$-Emissionen des Systems werden als Emissionen pro erzeugter Wärmeeinheit berechnet, und der \textbf{Primärenergieverbrauch} wird basierend auf der Wärmeerzeugung des Systems ermittelt.
+Die \texttt{SolarThermal}-Klasse enthält Methoden zur Berechnung der \textbf{Wärmegesethungskosten (WGK)}, die die Installationskosten, Betriebskosten und Förderungen gemäß BEW berücksichtigt. Die spezifischen CO$_2$-Emissionen des Systems werden als Emissionen pro erzeugter Wärmeeinheit berechnet, und der \textbf{Primärenergieverbrauch} wird basierend auf der Wärmeerzeugung des Systems ermittelt.
 
 \subsection{Nutzungsbeispiel}
 Diese Klasse ist anpassungsfähig für verschiedene solarthermische Konfigurationen. Das folgende Beispiel zeigt, wie die Klasse initialisiert und verwendet werden kann:
@@ -100,5 +180,3 @@ results = solar_system.calculate(
 )
 \end{verbatim}
 In diesem Beispiel wird eine Solarthermieanlage mit Flachkollektoren auf einer Fläche von 500 m² und einem Speichervolumen von 50 m³ simuliert. Die Leistungs- und Kostenkennzahlen werden basierend auf den bereitgestellten Eingabedaten berechnet.
-
-%\input{../solar_thermal_doc/solar_thermal_doc.tex}
