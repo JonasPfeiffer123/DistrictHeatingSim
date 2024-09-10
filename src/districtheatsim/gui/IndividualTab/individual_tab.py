@@ -1,21 +1,21 @@
 """
 Filename: individual_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-04
+Date: 2024-09-10
 Description: Contains the IndividualTab for managing building data and calculating heat generation technologies.
 """
 
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QFileDialog, QPushButton, QComboBox, QLineEdit, QMessageBox,
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QFileDialog, QPushButton, QComboBox, QMessageBox,
                              QFormLayout, QScrollArea, QHBoxLayout, QTabWidget, QMenuBar, QMenu, QListWidget,
-                             QAbstractItemView, QDialog, QListWidgetItem, QTableWidgetItem, QTableWidget, QHeaderView, QCheckBox)
+                             QAbstractItemView, QListWidgetItem, QTableWidgetItem, QTableWidget, QCheckBox)
 from PyQt5.QtCore import pyqtSignal, Qt
 import json
 from gui.utilities import CheckableComboBox  # Assuming you have this implemented
 from gui.MixDesignTab.heat_generator_dialogs import TechInputDialog  # Import your dialogs
-from heat_generators.heat_generator_classes import *
+from heat_generators.heat_generation_mix import *
 from gui.IndividualTab.building_thread import CalculateBuildingMixThread
 from utilities.test_reference_year import import_TRY
 

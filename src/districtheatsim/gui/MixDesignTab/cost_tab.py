@@ -1,7 +1,7 @@
 """
 Filename: cost_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-05
+Date: 2024-09-10
 Description: Contains the CostTab.
 """
 
@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QScrollArea, QTableWi
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtGui import QFont
 
-from heat_generators.heat_generator_classes import *
+from heat_generators.heat_generation_mix import *
 
 class CostTab(QWidget):
     """

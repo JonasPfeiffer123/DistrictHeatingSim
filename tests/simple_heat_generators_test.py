@@ -11,7 +11,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.districtheatsim.heat_generators import solar_thermal
-from src.districtheatsim.heat_generators import heat_generator_classes
+from districtheatsim.heat_generators import heat_generation_mix
 from src.districtheatsim.utilities.test_reference_year import import_TRY
 
 import numpy as np
@@ -66,13 +66,13 @@ def test_annuität():
     # Erlöse, könnte z.B. Stromverkauf aus BHKW sein oder auch Wärmeverkauf, kann auf 0 gesetzt werden, dann nur Aussage über Höhe der Kosten
     E1 = 0
 
-    A_N = heat_generator_classes.annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand, q, r, T, Energiebedarf, Energiekosten, E1)
+    A_N = heat_generation_mix.annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand, q, r, T, Energiebedarf, Energiekosten, E1)
 
     print(f"Annuität: {A_N:.2f} €")
 
 def test_gas_boiler():
     # spez Investitionskosten in €/kW
-    gBoiler = heat_generator_classes.GasBoiler(name="Gas_Boiler_1", spez_Investitionskosten=25)
+    gBoiler = heat_generation_mix.GasBoiler(name="Gas_Boiler_1", spez_Investitionskosten=25)
 
     # Lastgang, z.B. in kW, muss derzeitig für korrekte wirtschaftliche Betrachtung Länge von 8760 haben
     min_last = 50
@@ -102,7 +102,7 @@ def test_gas_boiler():
     print(f"Wärmegestehungskosten Gaskessel: {WGK:.2f} €/MWh")
 
 def test_biomass_boiler():
-    bBoiler = heat_generator_classes.BiomassBoiler(name="Biomasss_Boiler_1", P_BMK=200, Größe_Holzlager=20, spez_Investitionskosten=200, spez_Investitionskosten_Holzlager=400)
+    bBoiler = heat_generation_mix.BiomassBoiler(name="Biomasss_Boiler_1", P_BMK=200, Größe_Holzlager=20, spez_Investitionskosten=200, spez_Investitionskosten_Holzlager=400)
 
     # Lastgang, z.B. in kW, muss derzeitig für korrekte wirtschaftliche Betrachtung Länge von 8760 haben
     min_last = 50
@@ -131,7 +131,7 @@ def test_biomass_boiler():
     print(f"Wärmegestehungskosten Biomassekessel: {WGK:.2f} €/MWh")
 
 def test_chp():
-    chp = heat_generator_classes.CHP(name="BHKW", th_Leistung_BHKW=100, spez_Investitionskosten_GBHKW=1500, spez_Investitionskosten_HBHKW=1850, el_Wirkungsgrad=0.33, KWK_Wirkungsgrad=0.9, min_Teillast=0.8)
+    chp = heat_generation_mix.CHP(name="BHKW", th_Leistung_BHKW=100, spez_Investitionskosten_GBHKW=1500, spez_Investitionskosten_HBHKW=1850, el_Wirkungsgrad=0.33, KWK_Wirkungsgrad=0.9, min_Teillast=0.8)
 
     # Lastgang, z.B. in kW, muss derzeitig für korrekte wirtschaftliche Betrachtung Länge von 8760 haben
     min_last = 50
@@ -204,7 +204,7 @@ def test_chp():
     plt.show()
 
 def test_solar_thermal():
-    solarThermal = heat_generator_classes.SolarThermal(name="STA", bruttofläche_STA=200, vs=20, Typ="Vakuumröhrenkollektor", kosten_speicher_spez=750, kosten_fk_spez=430, kosten_vrk_spez=590, Tsmax=90, Longitude=-14.4222, 
+    solarThermal = heat_generation_mix.SolarThermal(name="STA", bruttofläche_STA=200, vs=20, Typ="Vakuumröhrenkollektor", kosten_speicher_spez=750, kosten_fk_spez=430, kosten_vrk_spez=590, Tsmax=90, Longitude=-14.4222, 
                  STD_Longitude=-15, Latitude=51.1676, East_West_collector_azimuth_angle=0, Collector_tilt_angle=36, Tm_rl=60, Qsa=0, Vorwärmung_K=8, DT_WT_Solar_K=5, DT_WT_Netz_K=5)
     
     # Lastgang, z.B. in kW, muss derzeitig für korrekte wirtschaftliche Betrachtung Länge von 8760 haben
@@ -249,7 +249,7 @@ def test_solar_thermal():
     print(f"Wärmegestehungskosten Solarthermie: {WGK:.2f} €/MWh")
 
 def test_waste_heat_pump():
-    wasteHeatPump = heat_generator_classes.WasteHeatPump(name="Abwärme", Kühlleistung_Abwärme=50, Temperatur_Abwärme=30, spez_Investitionskosten_Abwärme=500, spezifische_Investitionskosten_WP=1000)
+    wasteHeatPump = heat_generation_mix.WasteHeatPump(name="Abwärme", Kühlleistung_Abwärme=50, Temperatur_Abwärme=30, spez_Investitionskosten_Abwärme=500, spezifische_Investitionskosten_WP=1000)
     
     # Lastgang, z.B. in kW, muss derzeitig für korrekte wirtschaftliche Betrachtung Länge von 8760 haben
     min_last = 50
@@ -279,7 +279,7 @@ def test_waste_heat_pump():
     print(f"Wärmegestehungskosten Abwärme: {WGK:.2f} €/MWh")
 
 def test_river_heat_pump():
-    riverHeatPump = heat_generator_classes.RiverHeatPump(name="Flusswasser", Wärmeleistung_FW_WP=200, Temperatur_FW_WP=10, dT=0, spez_Investitionskosten_Flusswasser=1000, spezifische_Investitionskosten_WP=1000)
+    riverHeatPump = heat_generation_mix.RiverHeatPump(name="Flusswasser", Wärmeleistung_FW_WP=200, Temperatur_FW_WP=10, dT=0, spez_Investitionskosten_Flusswasser=1000, spezifische_Investitionskosten_WP=1000)
     
     # Lastgang, z.B. in kW, muss derzeitig für korrekte wirtschaftliche Betrachtung Länge von 8760 haben
     min_last = 50
@@ -309,7 +309,7 @@ def test_river_heat_pump():
     print(f"Wärmegestehungskosten Flusswasserwärme: {WGK:.2f} €/MWh")
 
 def test_geothermal_heat_pump():
-    geothermalHeatPump = heat_generator_classes.Geothermal(name="Geothermie", Fläche=200, Bohrtiefe=100, Temperatur_Geothermie=10, spez_Bohrkosten=100, spez_Entzugsleistung=50, Vollbenutzungsstunden=2400, 
+    geothermalHeatPump = heat_generation_mix.Geothermal(name="Geothermie", Fläche=200, Bohrtiefe=100, Temperatur_Geothermie=10, spez_Bohrkosten=100, spez_Entzugsleistung=50, Vollbenutzungsstunden=2400, 
                                                            Abstand_Sonden=10, spezifische_Investitionskosten_WP=1000)
     
     # Lastgang, z.B. in kW, muss derzeitig für korrekte wirtschaftliche Betrachtung Länge von 8760 haben
@@ -341,15 +341,15 @@ def test_geothermal_heat_pump():
     print(f"Wärmegestehungskosten Geothermie: {WGK:.2f} €/MWh")
 
 def test_berechnung_erzeugermix(optimize=False, plot=True):
-    solarThermal = heat_generator_classes.SolarThermal(name="Solarthermie", bruttofläche_STA=200, vs=20, Typ="Vakuumröhrenkollektor", kosten_speicher_spez=800, kosten_vrk_spez=500)
-    bBoiler = heat_generator_classes.BiomassBoiler(name="Biomassekessel", P_BMK=150, Größe_Holzlager=20, spez_Investitionskosten=200, spez_Investitionskosten_Holzlager=400)
-    gBoiler = heat_generator_classes.GasBoiler(name="Gaskessel", spez_Investitionskosten=30)  # Angenommen, GasBoiler benötigt keine zusätzlichen Eingaben
-    gCHP = heat_generator_classes.CHP(name="BHKW", th_Leistung_BHKW=50, spez_Investitionskosten_GBHKW=1500)
-    wCHP = heat_generator_classes.CHP(name="Holz-BHKW", th_Leistung_BHKW=30, spez_Investitionskosten_HBHKW=1800)  # Angenommen, Holzgas-BHKW verwendet dieselbe Klasse wie BHKW
-    geothermalHeatPump = heat_generator_classes.Geothermal(name="Geothermie", Fläche=200, Bohrtiefe=100, Temperatur_Geothermie=10, Abstand_Sonden=10, spez_Bohrkosten=100, spez_Entzugsleistung=45, Vollbenutzungsstunden=2400, spezifische_Investitionskosten_WP=1000)
-    wasteHeatPump = heat_generator_classes.WasteHeatPump(name="Abwärme", Kühlleistung_Abwärme=40, Temperatur_Abwärme=30, spez_Investitionskosten_Abwärme=500, spezifische_Investitionskosten_WP=1000)
-    wasteWaterHeatPump = heat_generator_classes.WasteHeatPump(name="Abwasserwärme", Kühlleistung_Abwärme=20, Temperatur_Abwärme=18, spez_Investitionskosten_Abwärme=500, spezifische_Investitionskosten_WP=1000)
-    riverHeatPump = heat_generator_classes.RiverHeatPump(name="Flusswasser", Wärmeleistung_FW_WP=200, Temperatur_FW_WP=8, dT=0, spez_Investitionskosten_Flusswasser=600, spezifische_Investitionskosten_WP=1000)
+    solarThermal = heat_generation_mix.SolarThermal(name="Solarthermie", bruttofläche_STA=200, vs=20, Typ="Vakuumröhrenkollektor", kosten_speicher_spez=800, kosten_vrk_spez=500)
+    bBoiler = heat_generation_mix.BiomassBoiler(name="Biomassekessel", P_BMK=150, Größe_Holzlager=20, spez_Investitionskosten=200, spez_Investitionskosten_Holzlager=400)
+    gBoiler = heat_generation_mix.GasBoiler(name="Gaskessel", spez_Investitionskosten=30)  # Angenommen, GasBoiler benötigt keine zusätzlichen Eingaben
+    gCHP = heat_generation_mix.CHP(name="BHKW", th_Leistung_BHKW=50, spez_Investitionskosten_GBHKW=1500)
+    wCHP = heat_generation_mix.CHP(name="Holz-BHKW", th_Leistung_BHKW=30, spez_Investitionskosten_HBHKW=1800)  # Angenommen, Holzgas-BHKW verwendet dieselbe Klasse wie BHKW
+    geothermalHeatPump = heat_generation_mix.Geothermal(name="Geothermie", Fläche=200, Bohrtiefe=100, Temperatur_Geothermie=10, Abstand_Sonden=10, spez_Bohrkosten=100, spez_Entzugsleistung=45, Vollbenutzungsstunden=2400, spezifische_Investitionskosten_WP=1000)
+    wasteHeatPump = heat_generation_mix.WasteHeatPump(name="Abwärme", Kühlleistung_Abwärme=40, Temperatur_Abwärme=30, spez_Investitionskosten_Abwärme=500, spezifische_Investitionskosten_WP=1000)
+    wasteWaterHeatPump = heat_generation_mix.WasteHeatPump(name="Abwasserwärme", Kühlleistung_Abwärme=20, Temperatur_Abwärme=18, spez_Investitionskosten_Abwärme=500, spezifische_Investitionskosten_WP=1000)
+    riverHeatPump = heat_generation_mix.RiverHeatPump(name="Flusswasser", Wärmeleistung_FW_WP=200, Temperatur_FW_WP=8, dT=0, spez_Investitionskosten_Flusswasser=600, spezifische_Investitionskosten_WP=1000)
        
     tech_order = [solarThermal, gCHP, geothermalHeatPump, bBoiler, gBoiler]
     #tech_order = [gCHP, wCHP, bBoiler, riverHeatPump, wasteHeatPump, gBoiler]
@@ -396,10 +396,10 @@ def test_berechnung_erzeugermix(optimize=False, plot=True):
     betrachtungszeitraum = 20 # Jahre
 
     if optimize == True:
-        tech_order = heat_generator_classes.optimize_mix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, \
+        tech_order = heat_generation_mix.optimize_mix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, \
                                             kapitalzins=kapitalzins, preissteigerungsrate=preissteigerungsrate, betrachtungszeitraum=betrachtungszeitraum, stundensatz=stundensatz)
         
-    general_results = heat_generator_classes.Berechnung_Erzeugermix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, kapitalzins=kapitalzins, preissteigerungsrate=preissteigerungsrate, betrachtungszeitraum=betrachtungszeitraum)
+    general_results = heat_generation_mix.Berechnung_Erzeugermix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, kapitalzins=kapitalzins, preissteigerungsrate=preissteigerungsrate, betrachtungszeitraum=betrachtungszeitraum)
     print(general_results)
 
     if plot == True:

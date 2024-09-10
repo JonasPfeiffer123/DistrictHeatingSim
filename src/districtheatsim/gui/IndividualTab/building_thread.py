@@ -1,15 +1,14 @@
 """
 Filename: building_thread.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-05
+Date: 2024-09-10
 Description: Contains the threaded functionality function for calculating the heat generation mix.
 """
 
 import numpy as np
 import traceback
-import json
 from PyQt5.QtCore import QThread, pyqtSignal
-from heat_generators.heat_generator_classes import Berechnung_Erzeugermix, optimize_mix
+from heat_generators.heat_generation_mix import Berechnung_Erzeugermix, optimize_mix
 
 class CalculateBuildingMixThread(QThread):
     """
