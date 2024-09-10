@@ -44,7 +44,7 @@ class HeatPump:
         self.Nutzungsdauer_WQ_dict = {"Abwärme": 20, "Abwasserwärme": 20, "Flusswasser": 20, "Geothermie": 30}
         self.co2_factor_electricity = 2.4 # tCO2/MWh electricity
 
-    def COP_WP(self, VLT_L, QT, COP_data):
+    def calculate_COP(self, VLT_L, QT, COP_data):
         """
         Calculates the Coefficient of Performance (COP) of the heat pump using interpolation.
 
@@ -102,7 +102,7 @@ class HeatPump:
         return COP_L, VLT_L
 
     
-    def WGK(self, Wärmeleistung, Wärmemenge, Strombedarf, spez_Investitionskosten_WQ, Strompreis, q, r, T, BEW, stundensatz):
+    def calculate_heat_generation_costs(self, Wärmeleistung, Wärmemenge, Strombedarf, spez_Investitionskosten_WQ, Strompreis, q, r, T, BEW, stundensatz):
         """
         Calculates the heat generation costs (WGK) of the heat pump.
 
@@ -182,7 +182,7 @@ class RiverHeatPump(HeatPump):
         self.co2_factor_electricity = 0.4 # tCO2/MWh electricity
         self.primärenergiefaktor = 2.4
 
-    def Berechnung_WP(self, Wärmeleistung_L, VLT_L, COP_data):
+    def calculate_heat_pump(self, Wärmeleistung_L, VLT_L, COP_data):
         """
         Calculates the cooling load, electric power consumption, and adjusted flow temperatures for the heat pump.
 
@@ -194,13 +194,13 @@ class RiverHeatPump(HeatPump):
         Returns:
             tuple: Cooling load, electric power consumption, and adjusted flow temperatures.
         """
-        COP_L, VLT_L_WP = self.COP_WP(VLT_L, self.Temperatur_FW_WP, COP_data)
+        COP_L, VLT_L_WP = self.calculate_COP(VLT_L, self.Temperatur_FW_WP, COP_data)
         Kühlleistung_L = Wärmeleistung_L * (1 - (1 / COP_L))
         el_Leistung_L = Wärmeleistung_L - Kühlleistung_L
         return Kühlleistung_L, el_Leistung_L, VLT_L_WP
 
     # Änderung Kühlleistung und Temperatur zu Numpy-Array in aw sowie vor- und nachgelagerten Funktionen
-    def abwärme(self, Last_L, VLT_L, COP_data, duration):
+    def calculate_river_heat(self, Last_L, VLT_L, COP_data, duration):
         """
         Calculates the waste heat and other performance metrics for the heat pump.
 
@@ -225,7 +225,7 @@ class RiverHeatPump(HeatPump):
         betrieb_mask = Last_L >= self.Wärmeleistung_FW_WP * self.min_Teillast
         Wärmeleistung_tat_L[betrieb_mask] = np.minimum(Last_L[betrieb_mask], self.Wärmeleistung_FW_WP)
 
-        Kühlleistung_tat_L[betrieb_mask], el_Leistung_tat_L[betrieb_mask], VLT_L_WP[betrieb_mask] = self.Berechnung_WP(Wärmeleistung_tat_L[betrieb_mask], VLT_L[betrieb_mask], COP_data)
+        Kühlleistung_tat_L[betrieb_mask], el_Leistung_tat_L[betrieb_mask], VLT_L_WP[betrieb_mask] = self.calculate_heat_pump(Wärmeleistung_tat_L[betrieb_mask], VLT_L[betrieb_mask], COP_data)
 
         # Wärmepumpe soll nur in Betrieb sein, wenn Sie die Vorlauftemperatur erreichen kann
         betrieb_mask_vlt = VLT_L_WP >= VLT_L - self.dT
@@ -238,6 +238,14 @@ class RiverHeatPump(HeatPump):
         Strombedarf = np.sum(el_Leistung_tat_L / 1000) * duration
 
         return Wärmemenge, Strombedarf, Wärmeleistung_tat_L, el_Leistung_tat_L, Kühlmenge, Kühlleistung_tat_L
+    
+    def calculate_environmental_impact(self):
+        # CO2 emissions due to fuel usage
+        self.co2_emissions = self.Strombedarf_Flusswärme * self.co2_factor_electricity # tCO2
+        # specific emissions heat
+        self.spec_co2_total = self.co2_emissions / self.Wärmemenge_Flusswärme if self.Wärmemenge_Flusswärme > 0 else 0 # tCO2/MWh_heat
+
+        self.primärenergie = self.Strombedarf_Flusswärme * self.primärenergiefaktor
     
     def calculate(self,VLT_L, COP_data, Strompreis, q, r, T, BEW, stundensatz, duration, general_results):
         """
@@ -259,16 +267,11 @@ class RiverHeatPump(HeatPump):
             dict: Dictionary containing calculated metrics and results.
         """
         
-        self.Wärmemenge_Flusswärme, self.Strombedarf_Flusswärme, self.Wärmeleistung_kW, self.el_Leistung_kW, self.Kühlmenge_Flusswärme, self.Kühlleistung_Flusswärme_L = self.abwärme(general_results["Restlast_L"], VLT_L, COP_data, duration)
+        self.Wärmemenge_Flusswärme, self.Strombedarf_Flusswärme, self.Wärmeleistung_kW, self.el_Leistung_kW, self.Kühlmenge_Flusswärme, self.Kühlleistung_Flusswärme_L = self.calculate_river_heat(general_results["Restlast_L"], VLT_L, COP_data, duration)
 
-        WGK_Abwärme = self.WGK(self.Wärmeleistung_FW_WP, self.Wärmemenge_Flusswärme, self.Strombedarf_Flusswärme, self.spez_Investitionskosten_Flusswasser, Strompreis, q, r, T, BEW, stundensatz)
+        WGK_Abwärme = self.calculate_heat_generation_costs(self.Wärmeleistung_FW_WP, self.Wärmemenge_Flusswärme, self.Strombedarf_Flusswärme, self.spez_Investitionskosten_Flusswasser, Strompreis, q, r, T, BEW, stundensatz)
 
-        # CO2 emissions due to fuel usage
-        self.co2_emissions = self.Strombedarf_Flusswärme * self.co2_factor_electricity # tCO2
-        # specific emissions heat
-        self.spec_co2_total = self.co2_emissions / self.Wärmemenge_Flusswärme if self.Wärmemenge_Flusswärme > 0 else 0 # tCO2/MWh_heat
-
-        self.primärenergie = self.Strombedarf_Flusswärme * self.primärenergiefaktor
+        self.calculate_environmental_impact()
 
         results = {
             'Wärmemenge': self.Wärmemenge_Flusswärme,
@@ -307,7 +310,337 @@ class RiverHeatPump(HeatPump):
         obj.__dict__.update(data)
         return obj
 
-# AqvaHeat Simulation
+class WasteHeatPump(HeatPump):
+    """
+    This class represents a Waste Heat Pump and provides methods to calculate various performance and economic metrics.
+
+    Args:
+        HeatPump (_type_): Base class for the heat pump.
+
+    Attributes:
+        Kühlleistung_Abwärme (float): Cooling capacity of the waste heat pump.
+        Temperatur_Abwärme (float): Temperature of the waste heat.
+        spez_Investitionskosten_Abwärme (float): Specific investment costs for waste heat pump per kW. Default is 500.
+        spezifische_Investitionskosten_WP (float): Specific investment costs of the heat pump per kW. Default is 1000.
+        min_Teillast (float): Minimum partial load. Default is 0.2.
+        co2_factor_electricity (float): CO2 emission factor for electricity in tCO2/MWh. Default is 0.4.
+        primärenergiefaktor (float): Primary energy factor. Default is 2.4.
+
+    Methods:
+        Berechnung_WP(VLT_L, COP_data): Calculates the heat load, electric power consumption, and adjusted flow temperatures.
+        abwärme(Last_L, VLT_L, COP_data, duration): Calculates the waste heat and other performance metrics.
+        calculate(VLT_L, COP_data, Strompreis, q, r, T, BEW, stundensatz, duration, general_results): Calculates the economic and environmental metrics for the heat pump.
+        to_dict(): Converts the object attributes to a dictionary.
+        from_dict(data): Creates an object from a dictionary of attributes.
+    """
+    def __init__(self, name, Kühlleistung_Abwärme, Temperatur_Abwärme, spez_Investitionskosten_Abwärme=500, spezifische_Investitionskosten_WP=1000, min_Teillast=0.2):
+        super().__init__(name, spezifische_Investitionskosten_WP=spezifische_Investitionskosten_WP)
+        self.Kühlleistung_Abwärme = Kühlleistung_Abwärme
+        self.Temperatur_Abwärme = Temperatur_Abwärme
+        self.spez_Investitionskosten_Abwärme = spez_Investitionskosten_Abwärme
+        self.min_Teillast = min_Teillast
+        self.co2_factor_electricity = 0.4 # tCO2/MWh electricity
+        self.primärenergiefaktor = 2.4
+
+    def calculate_heat_pump(self, VLT_L, COP_data):
+        """
+        Calculates the heat load, electric power consumption, and adjusted flow temperatures for the waste heat pump.
+
+        Args:
+            VLT_L (array-like): Flow temperatures.
+            COP_data (array-like): COP data for interpolation.
+
+        Returns:
+            tuple: Heat load, electric power consumption.
+        """
+        COP_L, VLT_L = self.calculate_COP(VLT_L, self.Temperatur_Abwärme, COP_data)
+        Wärmeleistung_L = self.Kühlleistung_Abwärme / (1 - (1 / COP_L))
+        el_Leistung_L = Wärmeleistung_L - self.Kühlleistung_Abwärme
+        return Wärmeleistung_L, el_Leistung_L
+
+    def calculate_waste_heat(self, Last_L, VLT_L, COP_data, duration):
+        """
+        Calculates the waste heat and other performance metrics for the waste heat pump.
+
+        Args:
+            Last_L (array-like): Load demand.
+            VLT_L (array-like): Flow temperatures.
+            COP_data (array-like): COP data for interpolation.
+            duration (float): Time duration.
+
+        Returns:
+            tuple: Heat energy, electricity demand, heat output, electric power.
+        """
+        if self.Kühlleistung_Abwärme == 0:
+            return 0, 0, np.zeros_like(Last_L), np.zeros_like(VLT_L)
+
+        Wärmeleistung_L, el_Leistung_L = self.calculate_heat_pump(VLT_L, COP_data)
+
+        Wärmeleistung_tat_L = np.zeros_like(Last_L)
+        el_Leistung_tat_L = np.zeros_like(Last_L)
+
+        # Cases where the heat pump can be operated
+        betrieb_mask = Last_L >= Wärmeleistung_L * self.min_Teillast
+        Wärmeleistung_tat_L[betrieb_mask] = np.minimum(Last_L[betrieb_mask], Wärmeleistung_L[betrieb_mask])
+        el_Leistung_tat_L[betrieb_mask] = Wärmeleistung_tat_L[betrieb_mask] - (Wärmeleistung_tat_L[betrieb_mask] / Wärmeleistung_L[betrieb_mask]) * el_Leistung_L[betrieb_mask]
+
+        Wärmemenge = np.sum(Wärmeleistung_tat_L / 1000) * duration
+        Strombedarf = np.sum(el_Leistung_tat_L / 1000) * duration
+
+        self.max_Wärmeleistung = np.max(Wärmeleistung_tat_L)
+
+        return Wärmemenge, Strombedarf, Wärmeleistung_tat_L, el_Leistung_tat_L
+    
+    def calculate_environmental_impact(self):
+        # CO2 emissions due to fuel usage
+        self.co2_emissions = self.Strombedarf_Abwärme * self.co2_factor_electricity # tCO2
+        # specific emissions heat
+        self.spec_co2_total = self.co2_emissions / self.Wärmemenge_Abwärme if self.Wärmemenge_Abwärme > 0 else 0 # tCO2/MWh_heat
+
+        self.primärenergie = self.Strombedarf_Abwärme * self.primärenergiefaktor
+    
+    def calculate(self, VLT_L, COP_data, Strompreis, q, r, T, BEW, stundensatz, duration, general_results):
+        """
+        Calculates the economic and environmental metrics for the waste heat pump.
+
+        Args:
+            VLT_L (array-like): Flow temperatures.
+            COP_data (array-like): COP data for interpolation.
+            Strompreis (float): Price of electricity.
+            q (float): Interest rate factor.
+            r (float): Inflation rate factor.
+            T (int): Consideration period in years.
+            BEW (float): Discount rate.
+            stundensatz (float): Hourly labor rate.
+            duration (float): Time duration.
+            general_results (dict): Dictionary containing general results and metrics.
+
+        Returns:
+            dict: Dictionary containing calculated metrics and results.
+        """
+        self.Wärmemenge_Abwärme, self.Strombedarf_Abwärme, self.Wärmeleistung_kW, self.el_Leistung_kW = self.calculate_waste_heat(general_results['Restlast_L'], VLT_L, COP_data, duration)
+
+        WGK_Abwärme = self.calculate_heat_generation_costs(self.max_Wärmeleistung, self.Wärmemenge_Abwärme, self.Strombedarf_Abwärme, self.spez_Investitionskosten_Abwärme, Strompreis, q, r, T, BEW, stundensatz)
+
+        self.calculate_environmental_impact()
+
+        results = {
+            'Wärmemenge': self.Wärmemenge_Abwärme,
+            'Wärmeleistung_L': self.Wärmeleistung_kW,
+            'Strombedarf': self.Strombedarf_Abwärme,
+            'el_Leistung_L': self.el_Leistung_kW,
+            'WGK': WGK_Abwärme,
+            'spec_co2_total': self.spec_co2_total,
+            'primärenergie': self.primärenergie,
+            'color': "grey"
+        }
+
+        return results
+    
+    def to_dict(self):
+        """
+        Converts the object attributes to a dictionary.
+
+        Returns:
+            dict: Dictionary containing object attributes.
+        """
+        return self.__dict__
+
+    @staticmethod
+    def from_dict(data):
+        """
+        Creates an object from a dictionary of attributes.
+
+        Args:
+            data (dict): Dictionary containing object attributes.
+
+        Returns:
+            WasteHeatPump: Created object from the given dictionary.
+        """
+        obj = WasteHeatPump.__new__(WasteHeatPump)
+        obj.__dict__.update(data)
+        return obj
+
+class Geothermal(HeatPump):
+    """
+    This class represents a Geothermal Heat Pump and provides methods to calculate various performance and economic metrics.
+
+    Args:
+        HeatPump (_type_): Base class for the heat pump.
+
+    Attributes:
+        Fläche (float): Area available for geothermal installation.
+        Bohrtiefe (float): Drilling depth for geothermal wells.
+        Temperatur_Geothermie (float): Temperature of the geothermal source.
+        spez_Bohrkosten (float): Specific drilling costs per meter. Default is 100.
+        spez_Entzugsleistung (float): Specific extraction performance per meter. Default is 50.
+        Vollbenutzungsstunden (float): Full utilization hours per year. Default is 2400.
+        Abstand_Sonden (float): Distance between probes. Default is 10.
+        min_Teillast (float): Minimum partial load. Default is 0.2.
+        co2_factor_electricity (float): CO2 emission factor for electricity in tCO2/MWh. Default is 0.4.
+        primärenergiefaktor (float): Primary energy factor. Default is 2.4.
+
+    Methods:
+        Geothermie(Last_L, VLT_L, COP_data, duration): Calculates the geothermal heat extraction and other performance metrics.
+        calculate(VLT_L, COP_data, Strompreis, q, r, T, BEW, stundensatz, duration, general_results): Calculates the economic and environmental metrics for the geothermal heat pump.
+        to_dict(): Converts the object attributes to a dictionary.
+        from_dict(data): Creates an object from a dictionary of attributes.
+    """
+    def __init__(self, name, Fläche, Bohrtiefe, Temperatur_Geothermie, spez_Bohrkosten=100, spez_Entzugsleistung=50,
+                 Vollbenutzungsstunden=2400, Abstand_Sonden=10, spezifische_Investitionskosten_WP=1000, min_Teillast=0.2):
+        super().__init__(name, spezifische_Investitionskosten_WP=spezifische_Investitionskosten_WP)
+        self.Fläche = Fläche
+        self.Bohrtiefe = Bohrtiefe
+        self.Temperatur_Geothermie = Temperatur_Geothermie
+        self.spez_Bohrkosten = spez_Bohrkosten
+        self.spez_Entzugsleistung = spez_Entzugsleistung
+        self.Vollbenutzungsstunden = Vollbenutzungsstunden
+        self.Abstand_Sonden = Abstand_Sonden
+        self.min_Teillast = min_Teillast
+        self.co2_factor_electricity = 0.4 # tCO2/MWh electricity
+        self.primärenergiefaktor = 2.4
+
+    def calculate_operation(self, Last_L, VLT_L, COP_data, duration):
+        """
+        Calculates the geothermal heat extraction and other performance metrics.
+
+        Args:
+            Last_L (array-like): Load demand.
+            VLT_L (array-like): Flow temperatures.
+            COP_data (array-like): COP data for interpolation.
+            duration (float): Time duration.
+
+        Returns:
+            tuple: Heat energy, electricity demand, heat output, electric power.
+        """
+        if self.Fläche == 0 or self.Bohrtiefe == 0:
+            return 0, 0, np.zeros_like(Last_L), np.zeros_like(VLT_L)
+
+        Anzahl_Sonden = (round(np.sqrt(self.Fläche) / self.Abstand_Sonden) + 1) ** 2
+
+        Entzugsleistung_2400 = self.Bohrtiefe * self.spez_Entzugsleistung * Anzahl_Sonden / 1000
+        # kW bei 2400 h, 22 Sonden, 50 W/m: 220 kW
+        Entzugswärmemenge = Entzugsleistung_2400 * self.Vollbenutzungsstunden / 1000  # MWh
+        self.Investitionskosten_Sonden = self.Bohrtiefe * self.spez_Bohrkosten * Anzahl_Sonden
+
+        COP_L, VLT_WP = self.calculate_COP(VLT_L, self.Temperatur_Geothermie, COP_data)
+
+        # tatsächliche Anzahl der Betriebsstunden der Wärmepumpe hängt von der Wärmeleistung ab,
+        # diese hängt über Entzugsleistung von der angenommenen Betriebsstundenzahl ab
+        B_min = 1
+        B_max = 8760
+        tolerance = 0.5
+        while B_max - B_min > tolerance:
+            B = (B_min + B_max) / 2
+            # Berechnen der Entzugsleistung
+            Entzugsleistung = Entzugswärmemenge * 1000 / B  # kW
+            # Berechnen der Wärmeleistung und elektrischen Leistung
+            Wärmeleistung_L = Entzugsleistung / (1 - (1 / COP_L))
+            el_Leistung_L = Wärmeleistung_L - Entzugsleistung
+
+            # Berechnen der tatsächlichen Werte
+            Wärmeleistung_tat_L = np.zeros_like(Last_L)
+            el_Leistung_tat_L = np.zeros_like(Last_L)
+            Entzugsleistung_tat_L = np.zeros_like(Last_L)
+
+            # Fälle, in denen die Wärmepumpe betrieben werden kann
+            betrieb_mask = Last_L >= Wärmeleistung_L * self.min_Teillast
+            Wärmeleistung_tat_L[betrieb_mask] = np.minimum(Last_L[betrieb_mask], Wärmeleistung_L[betrieb_mask])
+            el_Leistung_tat_L[betrieb_mask] = Wärmeleistung_tat_L[betrieb_mask] - (Entzugsleistung * np.ones_like(Last_L))[betrieb_mask]
+            Entzugsleistung_tat_L[betrieb_mask] = Wärmeleistung_tat_L[betrieb_mask] - el_Leistung_tat_L[betrieb_mask]
+
+            Entzugswärme = np.sum(Entzugsleistung_tat_L) / 1000
+            Wärmemenge = np.sum(Wärmeleistung_tat_L) / 1000
+            Strombedarf = np.sum(el_Leistung_tat_L) / 1000
+            Betriebsstunden = np.count_nonzero(Wärmeleistung_tat_L)
+
+            # Falls es keine Nutzung gibt, wird das Ergebnis 0
+            if Betriebsstunden == 0:
+                Wärmeleistung_tat_L = np.array([0])
+                el_Leistung_tat_L = np.array([0])
+
+            if Entzugswärme > Entzugswärmemenge:
+                B_min = B
+            else:
+                B_max = B
+
+        self.max_Wärmeleistung = max(Wärmeleistung_tat_L)
+        JAZ = Wärmemenge / Strombedarf
+        Wärmemenge, Strombedarf = Wärmemenge * duration, Strombedarf * duration
+        
+        return Wärmemenge, Strombedarf, Wärmeleistung_tat_L, el_Leistung_tat_L
+    
+    def calculate_environmental_impact(self):
+        # CO2 emissions due to fuel usage
+        self.co2_emissions = self.Strombedarf_Geothermie * self.co2_factor_electricity # tCO2
+        # specific emissions heat
+        self.spec_co2_total = self.co2_emissions / self.Wärmemenge_Geothermie if self.Wärmemenge_Geothermie > 0 else 0 # tCO2/MWh_heat
+
+        self.primärenergie = self.Strombedarf_Geothermie * self.primärenergiefaktor
+    
+    def calculate(self, VLT_L, COP_data, Strompreis, q, r, T, BEW, stundensatz, duration, general_results):
+        """
+        Calculates the economic and environmental metrics for the geothermal heat pump.
+
+        Args:
+            VLT_L (array-like): Flow temperatures.
+            COP_data (array-like): COP data for interpolation.
+            Strompreis (float): Price of electricity.
+            q (float): Interest rate factor.
+            r (float): Inflation rate factor.
+            T (int): Consideration period in years.
+            BEW (float): Discount rate.
+            stundensatz (float): Hourly labor rate.
+            duration (float): Time duration.
+            general_results (dict): Dictionary containing general results and metrics.
+
+        Returns:
+            dict: Dictionary containing calculated metrics and results.
+        """
+        self.Wärmemenge_Geothermie, self.Strombedarf_Geothermie, self.Wärmeleistung_kW, self.el_Leistung_kW = self.calculate_operation(general_results['Restlast_L'], VLT_L, COP_data, duration)
+
+        self.spez_Investitionskosten_Erdsonden = self.Investitionskosten_Sonden / self.max_Wärmeleistung
+        WGK_Geothermie = self.calculate_heat_generation_costs(self.max_Wärmeleistung, self.Wärmemenge_Geothermie, self.Strombedarf_Geothermie, self.spez_Investitionskosten_Erdsonden, Strompreis, q, r, T, BEW, stundensatz)
+
+        self.calculate_environmental_impact()
+
+        results = {
+            'Wärmemenge': self.Wärmemenge_Geothermie,
+            'Wärmeleistung_L': self.Wärmeleistung_kW,
+            'Strombedarf': self.Strombedarf_Geothermie,
+            'el_Leistung_L': self.el_Leistung_kW,
+            'WGK': WGK_Geothermie,
+            'spec_co2_total': self.spec_co2_total,
+            'primärenergie': self.primärenergie,
+            'color': "darkorange"
+        }
+
+        return results
+
+    def to_dict(self):
+        """
+        Converts the object attributes to a dictionary.
+
+        Returns:
+            dict: Dictionary containing object attributes.
+        """
+        return self.__dict__
+    
+    @staticmethod
+    def from_dict(data):
+        """
+        Creates an object from a dictionary of attributes.
+
+        Args:
+            data (dict): Dictionary containing object attributes.
+
+        Returns:
+            Geothermal: Created object from the given dictionary.
+        """
+        obj = Geothermal.__new__(Geothermal)
+        obj.__dict__.update(data)
+        return obj
+    
 class AqvaHeat(HeatPump):
     """
     This class represents a AqvaHeat-solution (vacuum ice slurry generator with attached heat pump) and provides methods to calculate various performance and economic metrics.
@@ -355,7 +688,7 @@ class AqvaHeat(HeatPump):
 
         # HEAT PUMP
         # calculate first the heat pump (from 12°C to supply temperature)
-        COP, effective_output_temperatures = self.COP_WP(output_temperatures, intermediate_temperature, COP_data)
+        COP, effective_output_temperatures = self.calculate_COP(output_temperatures, intermediate_temperature, COP_data)
         cooling_powers = effective_powers * (1 - (1 / COP))
         electrical_powers = effective_powers - cooling_powers
 
@@ -453,327 +786,3 @@ class AqvaHeat(HeatPump):
         obj.__dict__.update(data)
         return obj
 
-class WasteHeatPump(HeatPump):
-    """
-    This class represents a Waste Heat Pump and provides methods to calculate various performance and economic metrics.
-
-    Args:
-        HeatPump (_type_): Base class for the heat pump.
-
-    Attributes:
-        Kühlleistung_Abwärme (float): Cooling capacity of the waste heat pump.
-        Temperatur_Abwärme (float): Temperature of the waste heat.
-        spez_Investitionskosten_Abwärme (float): Specific investment costs for waste heat pump per kW. Default is 500.
-        spezifische_Investitionskosten_WP (float): Specific investment costs of the heat pump per kW. Default is 1000.
-        min_Teillast (float): Minimum partial load. Default is 0.2.
-        co2_factor_electricity (float): CO2 emission factor for electricity in tCO2/MWh. Default is 0.4.
-        primärenergiefaktor (float): Primary energy factor. Default is 2.4.
-
-    Methods:
-        Berechnung_WP(VLT_L, COP_data): Calculates the heat load, electric power consumption, and adjusted flow temperatures.
-        abwärme(Last_L, VLT_L, COP_data, duration): Calculates the waste heat and other performance metrics.
-        calculate(VLT_L, COP_data, Strompreis, q, r, T, BEW, stundensatz, duration, general_results): Calculates the economic and environmental metrics for the heat pump.
-        to_dict(): Converts the object attributes to a dictionary.
-        from_dict(data): Creates an object from a dictionary of attributes.
-    """
-    def __init__(self, name, Kühlleistung_Abwärme, Temperatur_Abwärme, spez_Investitionskosten_Abwärme=500, spezifische_Investitionskosten_WP=1000, min_Teillast=0.2):
-        super().__init__(name, spezifische_Investitionskosten_WP=spezifische_Investitionskosten_WP)
-        self.Kühlleistung_Abwärme = Kühlleistung_Abwärme
-        self.Temperatur_Abwärme = Temperatur_Abwärme
-        self.spez_Investitionskosten_Abwärme = spez_Investitionskosten_Abwärme
-        self.min_Teillast = min_Teillast
-        self.co2_factor_electricity = 0.4 # tCO2/MWh electricity
-        self.primärenergiefaktor = 2.4
-
-    def Berechnung_WP(self, VLT_L, COP_data):
-        """
-        Calculates the heat load, electric power consumption, and adjusted flow temperatures for the waste heat pump.
-
-        Args:
-            VLT_L (array-like): Flow temperatures.
-            COP_data (array-like): COP data for interpolation.
-
-        Returns:
-            tuple: Heat load, electric power consumption.
-        """
-        COP_L, VLT_L = self.COP_WP(VLT_L, self.Temperatur_Abwärme, COP_data)
-        Wärmeleistung_L = self.Kühlleistung_Abwärme / (1 - (1 / COP_L))
-        el_Leistung_L = Wärmeleistung_L - self.Kühlleistung_Abwärme
-        return Wärmeleistung_L, el_Leistung_L
-
-    def abwärme(self, Last_L, VLT_L, COP_data, duration):
-        """
-        Calculates the waste heat and other performance metrics for the waste heat pump.
-
-        Args:
-            Last_L (array-like): Load demand.
-            VLT_L (array-like): Flow temperatures.
-            COP_data (array-like): COP data for interpolation.
-            duration (float): Time duration.
-
-        Returns:
-            tuple: Heat energy, electricity demand, heat output, electric power.
-        """
-        if self.Kühlleistung_Abwärme == 0:
-            return 0, 0, np.zeros_like(Last_L), np.zeros_like(VLT_L)
-
-        Wärmeleistung_L, el_Leistung_L = self.Berechnung_WP(VLT_L, COP_data)
-
-        Wärmeleistung_tat_L = np.zeros_like(Last_L)
-        el_Leistung_tat_L = np.zeros_like(Last_L)
-
-        # Cases where the heat pump can be operated
-        betrieb_mask = Last_L >= Wärmeleistung_L * self.min_Teillast
-        Wärmeleistung_tat_L[betrieb_mask] = np.minimum(Last_L[betrieb_mask], Wärmeleistung_L[betrieb_mask])
-        el_Leistung_tat_L[betrieb_mask] = Wärmeleistung_tat_L[betrieb_mask] - (Wärmeleistung_tat_L[betrieb_mask] / Wärmeleistung_L[betrieb_mask]) * el_Leistung_L[betrieb_mask]
-
-        Wärmemenge = np.sum(Wärmeleistung_tat_L / 1000) * duration
-        Strombedarf = np.sum(el_Leistung_tat_L / 1000) * duration
-
-        self.max_Wärmeleistung = np.max(Wärmeleistung_tat_L)
-
-        return Wärmemenge, Strombedarf, Wärmeleistung_tat_L, el_Leistung_tat_L
-    
-    def calculate(self, VLT_L, COP_data, Strompreis, q, r, T, BEW, stundensatz, duration, general_results):
-        """
-        Calculates the economic and environmental metrics for the waste heat pump.
-
-        Args:
-            VLT_L (array-like): Flow temperatures.
-            COP_data (array-like): COP data for interpolation.
-            Strompreis (float): Price of electricity.
-            q (float): Interest rate factor.
-            r (float): Inflation rate factor.
-            T (int): Consideration period in years.
-            BEW (float): Discount rate.
-            stundensatz (float): Hourly labor rate.
-            duration (float): Time duration.
-            general_results (dict): Dictionary containing general results and metrics.
-
-        Returns:
-            dict: Dictionary containing calculated metrics and results.
-        """
-        self.Wärmemenge_Abwärme, self.Strombedarf_Abwärme, self.Wärmeleistung_kW, self.el_Leistung_kW = self.abwärme(general_results['Restlast_L'], VLT_L, COP_data, duration)
-
-        WGK_Abwärme = self.WGK(self.max_Wärmeleistung, self.Wärmemenge_Abwärme, self.Strombedarf_Abwärme, self.spez_Investitionskosten_Abwärme, Strompreis, q, r, T, BEW, stundensatz)
-
-        # CO2 emissions due to fuel usage
-        self.co2_emissions = self.Strombedarf_Abwärme * self.co2_factor_electricity # tCO2
-        # specific emissions heat
-        self.spec_co2_total = self.co2_emissions / self.Wärmemenge_Abwärme if self.Wärmemenge_Abwärme > 0 else 0 # tCO2/MWh_heat
-
-        self.primärenergie = self.Strombedarf_Abwärme * self.primärenergiefaktor
-
-        results = {
-            'Wärmemenge': self.Wärmemenge_Abwärme,
-            'Wärmeleistung_L': self.Wärmeleistung_kW,
-            'Strombedarf': self.Strombedarf_Abwärme,
-            'el_Leistung_L': self.el_Leistung_kW,
-            'WGK': WGK_Abwärme,
-            'spec_co2_total': self.spec_co2_total,
-            'primärenergie': self.primärenergie,
-            'color': "grey"
-        }
-
-        return results
-    
-    def to_dict(self):
-        """
-        Converts the object attributes to a dictionary.
-
-        Returns:
-            dict: Dictionary containing object attributes.
-        """
-        return self.__dict__
-
-    @staticmethod
-    def from_dict(data):
-        """
-        Creates an object from a dictionary of attributes.
-
-        Args:
-            data (dict): Dictionary containing object attributes.
-
-        Returns:
-            WasteHeatPump: Created object from the given dictionary.
-        """
-        obj = WasteHeatPump.__new__(WasteHeatPump)
-        obj.__dict__.update(data)
-        return obj
-
-class Geothermal(HeatPump):
-    """
-    This class represents a Geothermal Heat Pump and provides methods to calculate various performance and economic metrics.
-
-    Args:
-        HeatPump (_type_): Base class for the heat pump.
-
-    Attributes:
-        Fläche (float): Area available for geothermal installation.
-        Bohrtiefe (float): Drilling depth for geothermal wells.
-        Temperatur_Geothermie (float): Temperature of the geothermal source.
-        spez_Bohrkosten (float): Specific drilling costs per meter. Default is 100.
-        spez_Entzugsleistung (float): Specific extraction performance per meter. Default is 50.
-        Vollbenutzungsstunden (float): Full utilization hours per year. Default is 2400.
-        Abstand_Sonden (float): Distance between probes. Default is 10.
-        min_Teillast (float): Minimum partial load. Default is 0.2.
-        co2_factor_electricity (float): CO2 emission factor for electricity in tCO2/MWh. Default is 0.4.
-        primärenergiefaktor (float): Primary energy factor. Default is 2.4.
-
-    Methods:
-        Geothermie(Last_L, VLT_L, COP_data, duration): Calculates the geothermal heat extraction and other performance metrics.
-        calculate(VLT_L, COP_data, Strompreis, q, r, T, BEW, stundensatz, duration, general_results): Calculates the economic and environmental metrics for the geothermal heat pump.
-        to_dict(): Converts the object attributes to a dictionary.
-        from_dict(data): Creates an object from a dictionary of attributes.
-    """
-    def __init__(self, name, Fläche, Bohrtiefe, Temperatur_Geothermie, spez_Bohrkosten=100, spez_Entzugsleistung=50,
-                 Vollbenutzungsstunden=2400, Abstand_Sonden=10, spezifische_Investitionskosten_WP=1000, min_Teillast=0.2):
-        super().__init__(name, spezifische_Investitionskosten_WP=spezifische_Investitionskosten_WP)
-        self.Fläche = Fläche
-        self.Bohrtiefe = Bohrtiefe
-        self.Temperatur_Geothermie = Temperatur_Geothermie
-        self.spez_Bohrkosten = spez_Bohrkosten
-        self.spez_Entzugsleistung = spez_Entzugsleistung
-        self.Vollbenutzungsstunden = Vollbenutzungsstunden
-        self.Abstand_Sonden = Abstand_Sonden
-        self.min_Teillast = min_Teillast
-        self.co2_factor_electricity = 0.4 # tCO2/MWh electricity
-        self.primärenergiefaktor = 2.4
-
-    def Geothermie(self, Last_L, VLT_L, COP_data, duration):
-        """
-        Calculates the geothermal heat extraction and other performance metrics.
-
-        Args:
-            Last_L (array-like): Load demand.
-            VLT_L (array-like): Flow temperatures.
-            COP_data (array-like): COP data for interpolation.
-            duration (float): Time duration.
-
-        Returns:
-            tuple: Heat energy, electricity demand, heat output, electric power.
-        """
-        if self.Fläche == 0 or self.Bohrtiefe == 0:
-            return 0, 0, np.zeros_like(Last_L), np.zeros_like(VLT_L)
-
-        Anzahl_Sonden = (round(np.sqrt(self.Fläche) / self.Abstand_Sonden) + 1) ** 2
-
-        Entzugsleistung_2400 = self.Bohrtiefe * self.spez_Entzugsleistung * Anzahl_Sonden / 1000
-        # kW bei 2400 h, 22 Sonden, 50 W/m: 220 kW
-        Entzugswärmemenge = Entzugsleistung_2400 * self.Vollbenutzungsstunden / 1000  # MWh
-        self.Investitionskosten_Sonden = self.Bohrtiefe * self.spez_Bohrkosten * Anzahl_Sonden
-
-        COP_L, VLT_WP = self.COP_WP(VLT_L, self.Temperatur_Geothermie, COP_data)
-
-        # tatsächliche Anzahl der Betriebsstunden der Wärmepumpe hängt von der Wärmeleistung ab,
-        # diese hängt über Entzugsleistung von der angenommenen Betriebsstundenzahl ab
-        B_min = 1
-        B_max = 8760
-        tolerance = 0.5
-        while B_max - B_min > tolerance:
-            B = (B_min + B_max) / 2
-            # Berechnen der Entzugsleistung
-            Entzugsleistung = Entzugswärmemenge * 1000 / B  # kW
-            # Berechnen der Wärmeleistung und elektrischen Leistung
-            Wärmeleistung_L = Entzugsleistung / (1 - (1 / COP_L))
-            el_Leistung_L = Wärmeleistung_L - Entzugsleistung
-
-            # Berechnen der tatsächlichen Werte
-            Wärmeleistung_tat_L = np.zeros_like(Last_L)
-            el_Leistung_tat_L = np.zeros_like(Last_L)
-            Entzugsleistung_tat_L = np.zeros_like(Last_L)
-
-            # Fälle, in denen die Wärmepumpe betrieben werden kann
-            betrieb_mask = Last_L >= Wärmeleistung_L * self.min_Teillast
-            Wärmeleistung_tat_L[betrieb_mask] = np.minimum(Last_L[betrieb_mask], Wärmeleistung_L[betrieb_mask])
-            el_Leistung_tat_L[betrieb_mask] = Wärmeleistung_tat_L[betrieb_mask] - (Entzugsleistung * np.ones_like(Last_L))[betrieb_mask]
-            Entzugsleistung_tat_L[betrieb_mask] = Wärmeleistung_tat_L[betrieb_mask] - el_Leistung_tat_L[betrieb_mask]
-
-            Entzugswärme = np.sum(Entzugsleistung_tat_L) / 1000
-            Wärmemenge = np.sum(Wärmeleistung_tat_L) / 1000
-            Strombedarf = np.sum(el_Leistung_tat_L) / 1000
-            Betriebsstunden = np.count_nonzero(Wärmeleistung_tat_L)
-
-            # Falls es keine Nutzung gibt, wird das Ergebnis 0
-            if Betriebsstunden == 0:
-                Wärmeleistung_tat_L = np.array([0])
-                el_Leistung_tat_L = np.array([0])
-
-            if Entzugswärme > Entzugswärmemenge:
-                B_min = B
-            else:
-                B_max = B
-
-        self.max_Wärmeleistung = max(Wärmeleistung_tat_L)
-        JAZ = Wärmemenge / Strombedarf
-        Wärmemenge, Strombedarf = Wärmemenge * duration, Strombedarf * duration
-        
-        return Wärmemenge, Strombedarf, Wärmeleistung_tat_L, el_Leistung_tat_L
-    
-    def calculate(self, VLT_L, COP_data, Strompreis, q, r, T, BEW, stundensatz, duration, general_results):
-        """
-        Calculates the economic and environmental metrics for the geothermal heat pump.
-
-        Args:
-            VLT_L (array-like): Flow temperatures.
-            COP_data (array-like): COP data for interpolation.
-            Strompreis (float): Price of electricity.
-            q (float): Interest rate factor.
-            r (float): Inflation rate factor.
-            T (int): Consideration period in years.
-            BEW (float): Discount rate.
-            stundensatz (float): Hourly labor rate.
-            duration (float): Time duration.
-            general_results (dict): Dictionary containing general results and metrics.
-
-        Returns:
-            dict: Dictionary containing calculated metrics and results.
-        """
-        self.Wärmemenge_Geothermie, self.Strombedarf_Geothermie, self.Wärmeleistung_kW, self.el_Leistung_kW = self.Geothermie(general_results['Restlast_L'], VLT_L, COP_data, duration)
-
-        self.spez_Investitionskosten_Erdsonden = self.Investitionskosten_Sonden / self.max_Wärmeleistung
-        WGK_Geothermie = self.WGK(self.max_Wärmeleistung, self.Wärmemenge_Geothermie, self.Strombedarf_Geothermie, self.spez_Investitionskosten_Erdsonden, Strompreis, q, r, T, BEW, stundensatz)
-
-        # CO2 emissions due to fuel usage
-        self.co2_emissions = self.Strombedarf_Geothermie * self.co2_factor_electricity # tCO2
-        # specific emissions heat
-        self.spec_co2_total = self.co2_emissions / self.Wärmemenge_Geothermie if self.Wärmemenge_Geothermie > 0 else 0 # tCO2/MWh_heat
-
-        self.primärenergie = self.Strombedarf_Geothermie * self.primärenergiefaktor
-
-        results = {
-            'Wärmemenge': self.Wärmemenge_Geothermie,
-            'Wärmeleistung_L': self.Wärmeleistung_kW,
-            'Strombedarf': self.Strombedarf_Geothermie,
-            'el_Leistung_L': self.el_Leistung_kW,
-            'WGK': WGK_Geothermie,
-            'spec_co2_total': self.spec_co2_total,
-            'primärenergie': self.primärenergie,
-            'color': "darkorange"
-        }
-
-        return results
-
-    def to_dict(self):
-        """
-        Converts the object attributes to a dictionary.
-
-        Returns:
-            dict: Dictionary containing object attributes.
-        """
-        return self.__dict__
-    
-    @staticmethod
-    def from_dict(data):
-        """
-        Creates an object from a dictionary of attributes.
-
-        Args:
-            data (dict): Dictionary containing object attributes.
-
-        Returns:
-            Geothermal: Created object from the given dictionary.
-        """
-        obj = Geothermal.__new__(Geothermal)
-        obj.__dict__.update(data)
-        return obj

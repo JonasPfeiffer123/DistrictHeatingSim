@@ -13,6 +13,7 @@ from scipy.optimize import minimize
 from heat_generators.heat_pumps import *
 from heat_generators.chp import CHP
 from heat_generators.biomass_boiler import BiomassBoiler
+from heat_generators.gas_boiler import GasBoiler
 from heat_generators.solar_thermal import SolarThermal
 
 from heat_generators.annuity import annuität
@@ -124,7 +125,7 @@ def Berechnung_Erzeugermix(tech_order, initial_data, start, end, TRY, COP_data, 
         elif tech.name.startswith("Biomassekessel"):
             tech_results = tech.calculate(Holzpreis, q, r, T, BEW, stundensatz, duration, general_results)
         elif tech.name.startswith("Gaskessel"):
-            tech_results = tech.calculate(Gaspreis, q, r, T, BEW, stundensatz, duration, Last_L, general_results)
+            tech_results = tech.calculate(Gaspreis, q, r, T, BEW, stundensatz, duration, general_results)
         elif tech.name.startswith("AqvaHeat"):
             tech_results = tech.calculate(VLT_L, COP_data, duration, general_results)
         else:

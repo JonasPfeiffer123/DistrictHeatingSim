@@ -90,7 +90,7 @@ class CHP:
             self.primärenergiefaktor = 0.2 # Pellets
         self.co2_factor_electricity = 0.4 # tCO2/MWh electricity
 
-    def BHKW(self, Last_L, duration):
+    def simulate_operation(self, Last_L, duration):
         """
         Calculates the power and heat output of the CHP system without storage.
 
@@ -121,7 +121,7 @@ class CHP:
         self.Betriebsstunden_gesamt = np.sum(betrieb_mask) * duration
         self.Betriebsstunden_pro_Start = self.Betriebsstunden_gesamt / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
 
-    def storage(self, Last_L, duration):
+    def simulate_storage(self, Last_L, duration):
         """
         Calculates the power and heat output of the CHP system with storage.
 
@@ -181,7 +181,7 @@ class CHP:
         self.Betriebsstunden_gesamt_Speicher = np.sum(betrieb_mask) * duration
         self.Betriebsstunden_pro_Start_Speicher = self.Betriebsstunden_gesamt_Speicher / self.Anzahl_Starts_Speicher if self.Anzahl_Starts_Speicher > 0 else 0
     
-    def WGK(self, Wärmemenge, Strommenge, Brennstoffbedarf, Brennstoffkosten, Strompreis, q, r, T, BEW, stundensatz):
+    def calculate_heat_generation_costs(self, Wärmemenge, Strommenge, Brennstoffbedarf, Brennstoffkosten, Strompreis, q, r, T, BEW, stundensatz):
         """
         Calculates the economic metrics for the CHP system.
 
@@ -239,7 +239,7 @@ class CHP:
             dict: Dictionary containing calculated results.
         """
         if self.speicher_aktiv:
-            self.storage(general_results["Restlast_L"], duration)
+            self.simulate_storage(general_results["Restlast_L"], duration)
             Wärmemenge = self.Wärmemenge_BHKW_Speicher
             Strommenge = self.Strommenge_BHKW_Speicher
             Brennstoffbedarf = self.Brennstoffbedarf_BHKW_Speicher
@@ -249,7 +249,7 @@ class CHP:
             Betriebsstunden = self.Betriebsstunden_gesamt_Speicher
             Betriebsstunden_pro_Start = self.Betriebsstunden_pro_Start_Speicher
         else:
-            self.BHKW(general_results["Restlast_L"], duration)
+            self.simulate_operation(general_results["Restlast_L"], duration)
             Wärmemenge = self.Wärmemenge_BHKW
             Strommenge = self.Strommenge_BHKW
             Brennstoffbedarf = self.Brennstoffbedarf_BHKW
@@ -264,7 +264,7 @@ class CHP:
         elif self.name.startswith("Holzgas-BHKW"):
             self.Brennstoffpreis = Holzpreis
 
-        self.WGK(Wärmemenge, Strommenge, Brennstoffbedarf, self.Brennstoffpreis, Strompreis, q, r, T, BEW, stundensatz)
+        self.calculate_heat_generation_costs(Wärmemenge, Strommenge, Brennstoffbedarf, self.Brennstoffpreis, Strompreis, q, r, T, BEW, stundensatz)
 
         # CO2 emissions due to fuel usage
         self.co2_emissions = Brennstoffbedarf * self.co2_factor_fuel # tCO2

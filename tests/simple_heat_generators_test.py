@@ -113,7 +113,7 @@ def test_biomass_boiler():
     # Dauer Zeitschritte 1 h
     duration = 1
 
-    Wärmeleistung_BMK_L, Wärmemenge_BMK = bBoiler.Biomassekessel(Last_L, duration)
+    Wärmeleistung_BMK_L, Wärmemenge_BMK = bBoiler.simulate_operation(Last_L, duration)
     print(f"Wärmeleistung BMK: {Wärmeleistung_BMK_L} kW, Wärmemenge BMK: {Wärmemenge_BMK:.2f} MWh")
 
     # muss noch angepasst werden, dass Nutzungsgrad mit definiert wird
@@ -127,7 +127,7 @@ def test_biomass_boiler():
     BEW = "Nein"
     Stundensatz = 45
 
-    WGK = bBoiler.WGK(Wärmemenge_BMK, Brennstoffbedarf_BMK, Holzpreis, q, r, T, BEW, Stundensatz)
+    WGK = bBoiler.calculate_heat_generation_costs(Wärmemenge_BMK, Brennstoffbedarf_BMK, Holzpreis, q, r, T, BEW, Stundensatz)
     print(f"Wärmegestehungskosten Biomassekessel: {WGK:.2f} €/MWh")
 
 def test_chp():
@@ -157,22 +157,22 @@ def test_chp():
     BEW = "Nein"
     Stundensatz = 45
 
-    chp.BHKW(Last_L, duration)
+    chp.simulate_operation(Last_L, duration)
     print(f"""Wärmeleistung BHKW: {chp.Wärmeleistung_kW} kW, elektrische Leistung BHKW: {chp.el_Leistung_kW} kW,
           Wärmemenge BHKW: {chp.Wärmemenge_BHKW:.2f} MWh, Strommenge BHKW: {chp.Strommenge_BHKW:.2f} MWh,
           Brennstoffbedarf BHKW: {chp.Brennstoffbedarf_BHKW:.2f} MWh, Anzahl Starts BHKW: {chp.Anzahl_Starts}, 
           Betriebsstunden BHKW: {chp.Betriebsstunden_gesamt} h, Betriebsstunden pro Start: {chp.Betriebsstunden_pro_Start:.2f}""")
     
-    WGK = chp.WGK(chp.Wärmemenge_BHKW, chp.Strommenge_BHKW, chp.Brennstoffbedarf_BHKW, Brennstoffpreis, Strompreis, q, r, T, BEW, Stundensatz)
+    WGK = chp.calculate_heat_generation_costs(chp.Wärmemenge_BHKW, chp.Strommenge_BHKW, chp.Brennstoffbedarf_BHKW, Brennstoffpreis, Strompreis, q, r, T, BEW, Stundensatz)
     print(f"Wärmegestehungskosten BHKW ohne Speicher: {WGK:.2f} €/MWh")
     
-    chp.storage(Last_L, duration)
+    chp.simulate_storage(Last_L, duration)
     print(f"""Wärmeleistung BHKW mit Speicher: {chp.Wärmeleistung_kW} kW, elektrische Leistung BHKW: {chp.el_Leistung_BHKW_kW} kW,
           Wärmemenge BHKW: {chp.Wärmemenge_BHKW_Speicher:.2f} MWh, Strommenge BHKW: {chp.Strommenge_BHKW_Speicher:.2f} MWh,
           Brennstoffbedarf BHKW: {chp.Brennstoffbedarf_BHKW_Speicher:.2f} MWh, Anzahl Starts BHKW: {chp.Anzahl_Starts_Speicher}, 
           Betriebsstunden BHKW: {chp.Betriebsstunden_gesamt_Speicher} h, Betriebsstunden pro Start: {chp.Betriebsstunden_pro_Start_Speicher:.2f}""")
     
-    WGK = chp.WGK(chp.Wärmemenge_BHKW_Speicher, chp.Strommenge_BHKW_Speicher, chp.Brennstoffbedarf_BHKW_Speicher, Brennstoffpreis, Strompreis, q, r, T, BEW, Stundensatz)
+    WGK = chp.calculate_heat_generation_costs(chp.Wärmemenge_BHKW_Speicher, chp.Strommenge_BHKW_Speicher, chp.Brennstoffbedarf_BHKW_Speicher, Brennstoffpreis, Strompreis, q, r, T, BEW, Stundensatz)
     print(f"Wärmegestehungskosten BHKW mit Speicher: {WGK:.2f} €/MWh")
     
     fig, axs = plt.subplots(2, 1, figsize=(15, 10))
@@ -245,7 +245,7 @@ def test_solar_thermal():
     BEW = "Nein"
     Stundensatz = 45
 
-    WGK = solarThermal.calc_WGK(Wärmemenge, q, r, T, BEW, Stundensatz)
+    WGK = solarThermal.calculate_heat_generation_costs(Wärmemenge, q, r, T, BEW, Stundensatz)
     print(f"Wärmegestehungskosten Solarthermie: {WGK:.2f} €/MWh")
 
 def test_waste_heat_pump():
@@ -265,7 +265,7 @@ def test_waste_heat_pump():
 
     duration = 1
 
-    Wärmemenge, Strombedarf_Abwärme, Wärmeleistung_L, el_Leistung_L= wasteHeatPump.abwärme(Last_L, VLT_L, COP_data, duration)
+    Wärmemenge, Strombedarf_Abwärme, Wärmeleistung_L, el_Leistung_L= wasteHeatPump.calculate_waste_heat(Last_L, VLT_L, COP_data, duration)
     print(f"Abwärmemenge: {Wärmemenge:.2f} MWh, Strombedarf Abwärme: {Strombedarf_Abwärme:.2f} MWh, Abwärmeleistung: {Wärmeleistung_L} kW, elektrische Leistung Abwärme: {el_Leistung_L} kW")
 
     Strompreis = 150 # €/MWh
@@ -275,7 +275,7 @@ def test_waste_heat_pump():
     BEW = "Nein"
     Stundensatz = 45
 
-    WGK = wasteHeatPump.WGK(wasteHeatPump.max_Wärmeleistung, Wärmemenge, Strombedarf_Abwärme, wasteHeatPump.spez_Investitionskosten_Abwärme, Strompreis, q, r, T, BEW, Stundensatz)
+    WGK = wasteHeatPump.calculate_heat_generation_costs(wasteHeatPump.max_Wärmeleistung, Wärmemenge, Strombedarf_Abwärme, wasteHeatPump.spez_Investitionskosten_Abwärme, Strompreis, q, r, T, BEW, Stundensatz)
     print(f"Wärmegestehungskosten Abwärme: {WGK:.2f} €/MWh")
 
 def test_river_heat_pump():
@@ -295,7 +295,7 @@ def test_river_heat_pump():
 
     duration = 1
 
-    Wärmemenge, Strombedarf_FW_WP, Wärmeleistung_L, el_Leistung_L, Kühlmenge, Kühlleistung_L = riverHeatPump.abwärme(Last_L, VLT_L, COP_data, duration)
+    Wärmemenge, Strombedarf_FW_WP, Wärmeleistung_L, el_Leistung_L, Kühlmenge, Kühlleistung_L = riverHeatPump.calculate_river_heat(Last_L, VLT_L, COP_data, duration)
     print(f"Wärmemenge Flusswasser-WP: {Wärmemenge:.2f} MWh, Strombedarf Flusswasser-WP: {Strombedarf_FW_WP:.2f} MWh, Kühlmenge Flusswasser-WP: {Kühlmenge:.2f} MWh, Wärmeleistung Flusswasser-WP: {Wärmeleistung_L} kW, elektrische Leistung Flusswasser-WP: {el_Leistung_L} kW, Kühlleistung Flusswasser-WP: {Kühlleistung_L} kW")
 
     Strompreis = 150 # €/MWh
@@ -305,7 +305,7 @@ def test_river_heat_pump():
     BEW = "Nein"
     Stundensatz = 45
 
-    WGK= riverHeatPump.WGK(riverHeatPump.Wärmeleistung_FW_WP, Wärmemenge, Strombedarf_FW_WP, riverHeatPump.spez_Investitionskosten_Flusswasser, Strompreis, q, r, T, BEW, Stundensatz)
+    WGK= riverHeatPump.calculate_heat_generation_costs(riverHeatPump.Wärmeleistung_FW_WP, Wärmemenge, Strombedarf_FW_WP, riverHeatPump.spez_Investitionskosten_Flusswasser, Strompreis, q, r, T, BEW, Stundensatz)
     print(f"Wärmegestehungskosten Flusswasserwärme: {WGK:.2f} €/MWh")
 
 def test_geothermal_heat_pump():
@@ -326,7 +326,7 @@ def test_geothermal_heat_pump():
 
     duration = 1
 
-    Wärmemenge, Strombedarf, Wärmeleistung_L, el_Leistung_Geothermie_L = geothermalHeatPump.Geothermie(Last_L, VLT_L, COP_data, duration)
+    Wärmemenge, Strombedarf, Wärmeleistung_L, el_Leistung_Geothermie_L = geothermalHeatPump.calculate_operation(Last_L, VLT_L, COP_data, duration)
     print(f"Wärmemenge Geothermie: {Wärmemenge:.2f} MWh, Strombedarf Geothermie: {Strombedarf:.2f} MWh, Wärmeleistung Geothermie: {Wärmeleistung_L} kW, elektrische Leistung Geothermie: {el_Leistung_Geothermie_L} kW")
 
     Strompreis = 150 # €/MWh
@@ -337,7 +337,7 @@ def test_geothermal_heat_pump():
     Stundensatz = 45
 
     geothermalHeatPump.spez_Investitionskosten_Erdsonden = geothermalHeatPump.Investitionskosten_Sonden / geothermalHeatPump.max_Wärmeleistung
-    WGK = geothermalHeatPump.WGK(geothermalHeatPump.max_Wärmeleistung, Wärmemenge, Strombedarf, geothermalHeatPump.spez_Investitionskosten_Erdsonden, Strompreis, q, r, T, BEW, Stundensatz)
+    WGK = geothermalHeatPump.calculate_heat_generation_costs(geothermalHeatPump.max_Wärmeleistung, Wärmemenge, Strombedarf, geothermalHeatPump.spez_Investitionskosten_Erdsonden, Strompreis, q, r, T, BEW, Stundensatz)
     print(f"Wärmegestehungskosten Geothermie: {WGK:.2f} €/MWh")
 
 def test_berechnung_erzeugermix(optimize=False, plot=True):

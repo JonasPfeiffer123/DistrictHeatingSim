@@ -46,7 +46,7 @@ class GasBoiler:
         self.co2_factor_fuel = 0.201  # tCO2/MWh gas
         self.primärenergiefaktor = 1.1
 
-    def Gaskessel(self, Last_L, duration):
+    def simulate_operation(self, Last_L, duration):
         """
         Simulates the operation of the gas boiler.
 
@@ -62,7 +62,7 @@ class GasBoiler:
         self.Gasbedarf = self.Wärmemenge_Gaskessel / self.Nutzungsgrad
         self.P_max = max(Last_L) * self.Faktor_Dimensionierung
 
-    def WGK(self, Brennstoffkosten, q, r, T, BEW, stundensatz):
+    def calculate_heat_generation_cost(self, Brennstoffkosten, q, r, T, BEW, stundensatz):
         """
         Calculates the weighted average cost of heat generation.
 
@@ -86,7 +86,22 @@ class GasBoiler:
                             self.Gasbedarf, Brennstoffkosten, stundensatz=stundensatz)
         self.WGK_GK = self.A_N / self.Wärmemenge_Gaskessel
 
-    def calculate(self, Gaspreis, q, r, T, BEW, stundensatz, duration, Last_L, general_results):
+    def calculate_environmental_impact(self):
+        """
+        Calculates the environmental impact of the gas boiler.
+        This method calculates the CO2 emissions due to fuel usage and the specific emissions heat.
+        It also calculates the primary energy consumption.
+        Returns:
+            None
+        """
+        # CO2 emissions due to fuel usage
+        self.co2_emissions = self.Gasbedarf * self.co2_factor_fuel  # tCO2
+        # specific emissions heat
+        self.spec_co2_total = self.co2_emissions / self.Wärmemenge_Gaskessel if self.Wärmemenge_Gaskessel > 0 else 0  # tCO2/MWh_heat
+        # primary energy factor
+        self.primärenergie = self.Gasbedarf * self.primärenergiefaktor
+
+    def calculate(self, Gaspreis, q, r, T, BEW, stundensatz, duration, general_results):
         """
         Calculates the performance and cost of the gas boiler system.
 
@@ -104,15 +119,9 @@ class GasBoiler:
         Returns:
             dict: Dictionary containing the results of the calculation.
         """
-        self.Gaskessel(general_results['Restlast_L'], duration)
-        self.WGK(Gaspreis, q, r, T, BEW, stundensatz)
-
-        # CO2 emissions due to fuel usage
-        self.co2_emissions = self.Gasbedarf * self.co2_factor_fuel  # tCO2
-        # specific emissions heat
-        self.spec_co2_total = self.co2_emissions / self.Wärmemenge_Gaskessel if self.Wärmemenge_Gaskessel > 0 else 0  # tCO2/MWh_heat
-
-        self.primärenergie = self.Gasbedarf * self.primärenergiefaktor
+        self.simulate_operation(general_results['Restlast_L'], duration)
+        self.calculate_heat_generation_cost(Gaspreis, q, r, T, BEW, stundensatz)
+        self.calculate_environmental_impact()
 
         results = {
             'Wärmemenge': self.Wärmemenge_Gaskessel,
