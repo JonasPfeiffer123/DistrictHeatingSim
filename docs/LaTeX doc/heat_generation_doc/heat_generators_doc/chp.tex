@@ -1,85 +1,101 @@
-\section{CHP Class}
-The \texttt{CHP} class models a Combined Heat and Power (CHP) system, allowing for the calculation of both performance metrics and economic evaluations. The system can operate with or without storage and can simulate gas or wood gas-powered CHPs.
+\section{CHP Klasse}
+Die \texttt{CHP}-Klasse modelliert ein Blockheizkraftwerk (BHKW), das sowohl thermische als auch elektrische Energie bereitstellt. Die Klasse enthält Methoden zur Berechnung der Leistung, des Brennstoffverbrauchs, der ökonomischen Kennzahlen und der Umweltauswirkungen. Das System kann mit oder ohne Speicher betrieben werden und unterstützt sowohl gas- als auch holzgasbetriebene BHKWs.
 
-\subsection{Attributes}
+\subsection{Attribute}
 \begin{itemize}
-    \item \texttt{name (str)}: Name of the CHP system.
-    \item \texttt{th\_Leistung\_BHKW (float)}: Thermal power of the CHP system in kW.
-    \item \texttt{spez\_Investitionskosten\_GBHKW (float)}: Specific investment costs for gas CHP in €/kW. Default is 1500 €/kW.
-    \item \texttt{spez\_Investitionskosten\_HBHKW (float)}: Specific investment costs for wood gas CHP in €/kW. Default is 1850 €/kW.
-    \item \texttt{el\_Wirkungsgrad (float)}: Electrical efficiency of the CHP system. Default is 0.33.
-    \item \texttt{KWK\_Wirkungsgrad (float)}: Combined heat and power efficiency. Default is 0.9.
-    \item \texttt{min\_Teillast (float)}: Minimum partial load as a fraction of nominal load. Default is 0.7.
-    \item \texttt{speicher\_aktiv (bool)}: Indicates if a storage system is active. Default is False.
-    \item \texttt{Speicher\_Volumen\_BHKW (float)}: Storage volume in cubic meters. Default is 20 m³.
-    \item \texttt{T\_vorlauf (float)}: Flow temperature in degrees Celsius. Default is 90°C.
-    \item \texttt{T\_ruecklauf (float)}: Return temperature in degrees Celsius. Default is 60°C.
-    \item \texttt{initial\_fill (float)}: Initial fill level of the storage. Default is 0.0.
-    \item \texttt{min\_fill (float)}: Minimum fill level of the storage. Default is 0.2.
-    \item \texttt{max\_fill (float)}: Maximum fill level of the storage. Default is 0.8.
-    \item \texttt{spez\_Investitionskosten\_Speicher (float)}: Specific investment costs for storage in €/m³. Default is 750 €/m³.
-    \item \texttt{BHKW\_an (bool)}: Indicates if the CHP is on. Default is True.
-    \item \texttt{thermischer\_Wirkungsgrad (float)}: Thermal efficiency of the CHP system.
-    \item \texttt{el\_Leistung\_Soll (float)}: Desired electrical power output of the CHP system in kW.
-    \item \texttt{Nutzungsdauer (int)}: Lifespan of the CHP system in years. Default is 15 years.
-    \item \texttt{f\_Inst (float)}: Installation factor.
-    \item \texttt{f\_W\_Insp (float)}: Inspection factor.
-    \item \texttt{Bedienaufwand (float)}: Operational effort.
-    \item \texttt{co2\_factor\_fuel (float)}: CO$_2$ emission factor for fuel in tCO$_2$/MWh.
-    \item \texttt{primärenergiefaktor (float)}: Primary energy factor.
-    \item \texttt{co2\_factor\_electricity (float)}: CO$_2$ emission factor for electricity in tCO$_2$/MWh. Default is 0.4 tCO$_2$/MWh.
+    \item \texttt{name (str)}: Name des BHKW-Systems.
+    \item \texttt{th\_Leistung\_BHKW (float)}: Thermische Leistung des BHKWs in kW.
+    \item \texttt{spez\_Investitionskosten\_GBHKW (float)}: Spezifische Investitionskosten für gasbetriebene BHKWs in €/kW. Standard: 1500 €/kW.
+    \item \texttt{spez\_Investitionskosten\_HBHKW (float)}: Spezifische Investitionskosten für holzgasbetriebene BHKWs in €/kW. Standard: 1850 €/kW.
+    \item \texttt{el\_Wirkungsgrad (float)}: Elektrischer Wirkungsgrad des BHKWs. Standard: 0,33.
+    \item \texttt{KWK\_Wirkungsgrad (float)}: Gesamtwirkungsgrad des BHKWs (kombinierte Wärme- und Stromerzeugung). Standard: 0,9.
+    \item \texttt{min\_Teillast (float)}: Minimale Teillast als Anteil der Nennlast. Standard: 0,7.
+    \item \texttt{speicher\_aktiv (bool)}: Gibt an, ob ein Speichersystem aktiv ist. Standard: \texttt{False}.
+    \item \texttt{Speicher\_Volumen\_BHKW (float)}: Speichervolumen in Kubikmetern. Standard: 20 m³.
+    \item \texttt{T\_vorlauf (float)}: Vorlauftemperatur in Grad Celsius. Standard: 90°C.
+    \item \texttt{T\_ruecklauf (float)}: Rücklauftemperatur in Grad Celsius. Standard: 60°C.
+    \item \texttt{initial\_fill (float)}: Anfangsfüllstand des Speichers als Bruchteil des maximalen Füllstands.
+    \item \texttt{min\_fill (float)}: Minimaler Füllstand des Speichers.
+    \item \texttt{max\_fill (float)}: Maximaler Füllstand des Speichers.
+    \item \texttt{spez\_Investitionskosten\_Speicher (float)}: Spezifische Investitionskosten für den Speicher in €/m³.
+    \item \texttt{BHKW\_an (bool)}: Gibt an, ob das BHKW eingeschaltet ist.
+    \item \texttt{thermischer\_Wirkungsgrad (float)}: Thermischer Wirkungsgrad des BHKWs.
+    \item \texttt{el\_Leistung\_Soll (float)}: Zielwert der elektrischen Leistung des BHKWs in kW.
+    \item \texttt{Nutzungsdauer (int)}: Lebensdauer des BHKWs in Jahren.
+    \item \texttt{f\_Inst (float)}: Installationsfaktor.
+    \item \texttt{f\_W\_Insp (float)}: Wartungs- und Inspektionsfaktor.
+    \item \texttt{Bedienaufwand (float)}: Arbeitsaufwand für den Betrieb.
+    \item \texttt{co2\_factor\_fuel (float)}: CO$_2$-Emissionsfaktor für den Brennstoff in tCO$_2$/MWh.
+    \item \texttt{primärenergiefaktor (float)}: Primärenergiefaktor für den Brennstoff.
+    \item \texttt{co2\_factor\_electricity (float)}: CO$_2$-Emissionsfaktor für Strom in tCO$_2$/MWh. Standard: 0,4 tCO$_2$/MWh.
 \end{itemize}
 
-\subsection{Methods}
+\subsection{Methoden}
 \begin{itemize}
-    \item \texttt{BHKW(Last\_L, duration)}: Calculates the power and heat output of the CHP system without storage.
+    \item \texttt{BHKW(Last\_L, duration)}: Berechnet die Wärme- und Stromerzeugung des BHKWs ohne Speichersystem.
     \begin{itemize}
-        \item \textbf{Last\_L (array-like)}: Load demand in kW.
-        \item \textbf{duration (float)}: Duration of the time step in hours.
+        \item \textbf{Last\_L (array)}: Lastprofil in kW.
+        \item \textbf{duration (float)}: Dauer jedes Zeitschritts in Stunden.
     \end{itemize}
-    Returns the heat output, electrical output, fuel consumption, and number of starts.
+    Diese Methode berechnet die thermische und elektrische Leistung sowie den Brennstoffverbrauch des BHKWs. Die Berechnung der erzeugten Wärme basiert auf dem thermischen Wirkungsgrad:
+    \[
+    \texttt{Wärmemenge\_BHKW} = \sum_{t=1}^{n} \left( \frac{\texttt{Wärmeleistung\_kW}[t]}{1000} \right) \times \texttt{duration}
+    \]
+    Der Brennstoffbedarf wird auf Basis des kombinierten Wirkungsgrads (\texttt{KWK\_Wirkungsgrad}) berechnet:
+    \[
+    \texttt{Brennstoffbedarf\_BHKW} = \frac{\texttt{Wärmemenge\_BHKW} + \texttt{Strommenge\_BHKW}}{\texttt{KWK\_Wirkungsgrad}}
+    \]
 
-    \item \texttt{storage(Last\_L, duration)}: Calculates the power and heat output of the CHP system with storage.
+    \item \texttt{storage(Last\_L, duration)}: Berechnet die Wärme- und Stromerzeugung des BHKWs mit einem Speichersystem.
     \begin{itemize}
-        \item \textbf{Last\_L (array-like)}: Load demand in kW.
-        \item \textbf{duration (float)}: Duration of the time step in hours.
+        \item \textbf{Last\_L (array)}: Lastprofil des Systems in kW.
+        \item \textbf{duration (float)}: Dauer jedes Zeitschritts in Stunden.
     \end{itemize}
-    Returns the heat output, electrical output, storage status, and fuel consumption.
-
-    \item \texttt{WGK(Wärmemenge, Strommenge, Brennstoffbedarf, Brennstoffkosten, Strompreis, q, r, T, BEW, stundensatz)}: Calculates the weighted average cost of energy for the CHP system.
-    \begin{itemize}
-        \item \textbf{Wärmemenge (float)}: Total heat generated in MWh.
-        \item \textbf{Strommenge (float)}: Total electricity generated in MWh.
-        \item \textbf{Brennstoffbedarf (float)}: Fuel consumption in MWh.
-        \item \textbf{Brennstoffkosten (float)}: Fuel cost in €/MWh.
-        \item \textbf{Strompreis (float)}: Electricity price in €/MWh.
-        \item \textbf{q (float)}, \textbf{r (float)}: Factors for capital recovery and price escalation.
-        \item \textbf{T (int)}: Time period in years.
-        \item \textbf{BEW (float)}: Discount rate.
-        \item \textbf{stundensatz (float)}: Hourly rate for labor in €/hour.
-    \end{itemize}
-
-    \item \texttt{calculate(Gaspreis, Holzpreis, Strompreis, q, r, T, BEW, stundensatz, duration, general\_results)}: 
-    Simulates the CHP system's economic and environmental performance over a time period.
-    \begin{itemize}
-        \item \textbf{Gaspreis (float)}: Gas price in €/MWh.
-        \item \textbf{Holzpreis (float)}: Wood price in €/MWh.
-        \item \textbf{Strompreis (float)}: Electricity price in €/MWh.
-        \item \textbf{q (float)}, \textbf{r (float)}, \textbf{T (int)}, \textbf{BEW (float)}, \textbf{stundensatz (float)}: Cost parameters.
-        \item \textbf{duration (float)}: Duration of the simulation in hours.
-        \item \textbf{general\_results (dict)}: Dictionary containing load profiles and other metrics.
-    \end{itemize}
-
-    \item \texttt{to\_dict()}: Converts the object attributes into a dictionary for serialization.
+    Diese Methode berechnet die Speichernutzung und das Füllniveau basierend auf der erzeugten Wärme und dem Lastprofil. Die Wärmespeicherkapazität in kWh wird berechnet:
+    \[
+    \texttt{speicher\_kapazitaet} = \texttt{Speicher\_Volumen\_BHKW} \times 4186 \times (\texttt{T\_vorlauf} - \texttt{T\_ruecklauf}) / 3600
+    \]
     
-    \item \texttt{from\_dict(data)}: Creates an object from a dictionary of attributes.
+    \item \texttt{WGK(Wärmemenge, Strommenge, Brennstoffbedarf, Brennstoffkosten, Strompreis, q, r, T, BEW, stundensatz)}: Berechnet die gewichteten Durchschnittskosten für das BHKW.
+    \begin{itemize}
+        \item \textbf{Wärmemenge (float)}: Erzeugte Wärmemenge in MWh.
+        \item \textbf{Strommenge (float)}: Erzeugte Strommenge in MWh.
+        \item \textbf{Brennstoffbedarf (float)}: Brennstoffverbrauch in MWh.
+        \item \textbf{Brennstoffkosten (float)}: Brennstoffkosten in €/MWh.
+        \item \textbf{Strompreis (float)}: Strompreis in €/MWh.
+        \item \textbf{q (float)}, \textbf{r (float)}: Faktoren für Kapitalrückgewinnung und Preissteigerung.
+        \item \textbf{T (int)}: Zeitperiode in Jahren.
+        \item \textbf{BEW (float)}: Abzinsungsfaktor.
+        \item \textbf{stundensatz (float)}: Arbeitskosten in €/Stunde.
+    \end{itemize}
+    Diese Methode berechnet die spezifischen Wärmeerzeugungskosten (\texttt{WGK\_BHKW}) auf Basis der Investitions- und Betriebskosten:
+    \[
+    \texttt{WGK\_BHKW} = \frac{\texttt{A\_N}}{\texttt{Wärmemenge}}
+    \]
+
+    \item \texttt{calculate(Gaspreis, Holzpreis, Strompreis, q, r, T, BEW, stundensatz, duration, general\_results)}: Führt eine vollständige Simulation des BHKWs durch, einschließlich der Berechnung der ökonomischen und ökologischen Kennzahlen.
+    \begin{itemize}
+        \item \textbf{Gaspreis (float)}: Gaspreis in €/MWh.
+        \item \textbf{Holzpreis (float)}: Preis für Holzgas in €/MWh.
+        \item \textbf{Strompreis (float)}: Strompreis in €/MWh.
+        \item \textbf{q (float)}, \textbf{r (float)}, \textbf{T (int)}, \textbf{BEW (float)}, \textbf{stundensatz (float)}: Parameter für die Kostenberechnung.
+        \item \textbf{duration (float)}: Simulationsdauer in Stunden.
+        \item \textbf{general\_results (dict)}: Wörterbuch mit allgemeinen Ergebnissen wie Lastprofilen.
+    \end{itemize}
+    Die Methode berechnet zudem die spezifischen CO$_2$-Emissionen und den Primärenergieverbrauch:
+    \[
+    \texttt{co2\_emissions} = \texttt{Brennstoffbedarf} \times \texttt{co2\_factor\_fuel}
+    \]
+    \[
+    \texttt{primärenergie} = \texttt{Brennstoffbedarf} \times \texttt{primärenergiefaktor}
+    \]
 \end{itemize}
 
-\subsection{Economic and Environmental Considerations}
-The \texttt{CHP} class calculates both the weighted average cost of heat generation (WGK) and the specific CO$_2$ emissions for a CHP system. These calculations consider fuel costs, electricity generation, and operational factors. The class also accounts for the CO$_2$ savings achieved through electricity generation and estimates the system's primary energy usage.
+\subsection{Ökonomische und ökologische Überlegungen}
+Die \texttt{CHP}-Klasse ermöglicht die Berechnung der gewichteten Durchschnittskosten der Energieerzeugung und der spezifischen CO$_2$-Emissionen eines BHKW-Systems. Diese Berechnungen berücksichtigen die Brennstoffkosten, die Stromerzeugung sowie die Arbeits- und Betriebskosten. Darüber hinaus werden die CO$_2$-Einsparungen durch die Stromerzeugung und der Primärenergieverbrauch des Systems ermittelt.
 
-\subsection{Usage Example}
-The following example demonstrates the initialization and use of the \texttt{CHP} class to simulate the performance of a gas-powered CHP system:
+\subsection{Nutzungsbeispiel}
+Das folgende Beispiel zeigt die Initialisierung und Verwendung der \texttt{CHP}-Klasse zur Simulation eines gasbetriebenen BHKWs:
 
 \begin{verbatim}
 chp_system = CHP(
@@ -98,4 +114,4 @@ results = chp_system.calculate(
     general_results=load_profile
 )
 \end{verbatim}
-This example initializes a gas-powered CHP system with 200 kW thermal power and a 30 m³ storage volume. The economic and environmental performance is calculated based on the provided inputs.
+In diesem Beispiel wird ein gasbetriebenes BHKW mit einer thermischen Leistung von 200 kW und einem Speichervolumen von 30 m³ simuliert. Die ökonomische und ökologische Leistung des Systems wird anhand der bereitgestellten Eingaben berechnet.

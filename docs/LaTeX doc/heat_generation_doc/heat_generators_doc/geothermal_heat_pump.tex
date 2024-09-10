@@ -1,56 +1,63 @@
-\section{Geothermal Class}
-The \texttt{Geothermal} class models a geothermal heat pump system, inheriting from the \texttt{HeatPump} base class. It includes methods for simulating the geothermal heat extraction process and calculating various economic and environmental metrics.
+\section{Geothermal Klasse}
+Die \texttt{Geothermal}-Klasse modelliert ein geothermisches Wärmepumpensystem und erbt von der \texttt{HeatPump}-Basis-Klasse. Sie enthält Methoden zur Simulation des geothermischen Wärmeentzugsprozesses und zur Berechnung verschiedener ökonomischer und ökologischer Kennzahlen.
 
-\subsection{Attributes}
+\subsection{Attribute}
 \begin{itemize}
-    \item \texttt{Fläche (float)}: Area available for the geothermal installation in square meters.
-    \item \texttt{Bohrtiefe (float)}: Drilling depth for geothermal wells in meters.
-    \item \texttt{Temperatur\_Geothermie (float)}: Temperature of the geothermal source in degrees Celsius.
-    \item \texttt{spez\_Bohrkosten (float)}: Specific drilling costs per meter. Default is 100 €/m.
-    \item \texttt{spez\_Entzugsleistung (float)}: Specific heat extraction rate per meter. Default is 50 W/m.
-    \item \texttt{Vollbenutzungsstunden (float)}: Full utilization hours per year. Default is 2400 hours.
-    \item \texttt{Abstand\_Sonden (float)}: Distance between probes in meters. Default is 10 m.
-    \item \texttt{min\_Teillast (float)}: Minimum partial load as a fraction of nominal load. Default is 0.2.
-    \item \texttt{co2\_factor\_electricity (float)}: CO$_2$ factor for electricity consumption, in tCO$_2$/MWh. Default is 0.4 tCO$_2$/MWh.
-    \item \texttt{primärenergiefaktor (float)}: Primary energy factor for electricity usage. Default is 2.4.
+    \item \texttt{Fläche (float)}: Verfügbare Fläche für die geothermische Installation in Quadratmetern.
+    \item \texttt{Bohrtiefe (float)}: Bohrtiefe der geothermischen Sonden in Metern.
+    \item \texttt{Temperatur\_Geothermie (float)}: Temperatur der geothermischen Quelle in Grad Celsius.
+    \item \texttt{spez\_Bohrkosten (float)}: Spezifische Bohrkosten pro Meter. Standardwert: 100 €/m.
+    \item \texttt{spez\_Entzugsleistung (float)}: Spezifische Entzugsleistung pro Meter. Standardwert: 50 W/m.
+    \item \texttt{Vollbenutzungsstunden (float)}: Vollbenutzungsstunden pro Jahr. Standardwert: 2400 Stunden.
+    \item \texttt{Abstand\_Sonden (float)}: Abstand zwischen den Sonden in Metern. Standardwert: 10 m.
+    \item \texttt{min\_Teillast (float)}: Minimale Teillast als Anteil der Nennlast. Standardwert: 0,2.
+    \item \texttt{co2\_factor\_electricity (float)}: CO$_2$-Emissionsfaktor für Stromverbrauch, in tCO$_2$/MWh. Standardwert: 0,4 tCO$_2$/MWh.
+    \item \texttt{primärenergiefaktor (float)}: Primärenergiefaktor für den Stromverbrauch. Standardwert: 2,4.
 \end{itemize}
 
-\subsection{Methods}
+\subsection{Methoden}
 \begin{itemize}
-    \item \texttt{Geothermie(Last\_L, VLT\_L, COP\_data, duration)}: Simulates the geothermal heat extraction process and calculates the heat output, electricity demand, and system performance metrics.
+    \item \texttt{Geothermie(Last\_L, VLT\_L, COP\_data, duration)}: Simuliert den geothermischen Wärmeentzugsprozess und berechnet die erzeugte Wärmemenge, den Strombedarf und weitere Leistungskennzahlen.
     \begin{itemize}
-        \item \textbf{Last\_L (array-like)}: Load demand profile in kW.
-        \item \textbf{VLT\_L (array-like)}: Flow temperatures in degrees Celsius.
-        \item \textbf{COP\_data (array-like)}: Coefficient of performance (COP) data for interpolation.
-        \item \textbf{duration (float)}: Time step duration in hours.
+        \item \textbf{Last\_L (array-like)}: Lastprofil in kW.
+        \item \textbf{VLT\_L (array-like)}: Vorlauftemperaturen in Grad Celsius.
+        \item \textbf{COP\_data (array-like)}: Daten zur Leistungszahl (COP) zur Interpolation.
+        \item \textbf{duration (float)}: Dauer des Zeitschritts in Stunden.
     \end{itemize}
-    Returns the heat energy produced, electricity demand, heat output, and electric power output.
-
-    \item \texttt{calculate(VLT\_L, COP\_data, Strompreis, q, r, T, BEW, stundensatz, duration, general\_results)}: Calculates the economic and environmental metrics for the geothermal heat pump system.
-    \begin{itemize}
-        \item \textbf{VLT\_L (array-like)}: Flow temperatures in degrees Celsius.
-        \item \textbf{COP\_data (array-like)}: COP data for performance calculation.
-        \item \textbf{Strompreis (float)}: Electricity price in €/MWh.
-        \item \textbf{q (float)}: Capital recovery factor.
-        \item \textbf{r (float)}: Price escalation factor.
-        \item \textbf{T (int)}: Consideration period in years.
-        \item \textbf{BEW (float)}: Discount rate for operational costs.
-        \item \textbf{stundensatz (float)}: Hourly labor rate in €/hour.
-        \item \textbf{duration (float)}: Duration of each time step in hours.
-        \item \textbf{general\_results (dict)}: General results dictionary, including the load demand profile.
-    \end{itemize}
-    Returns a dictionary containing heat output, electricity demand, weighted average cost of heat generation (WGK), specific CO$_2$ emissions, and primary energy consumption.
-
-    \item \texttt{to\_dict()}: Converts the object attributes into a dictionary for serialization.
+    Diese Methode berechnet den geothermischen Wärmeertrag auf Basis der Quelltemperatur und der spezifischen Entzugsleistung pro Meter. Die Entzugsleistung wird als:
+    \[
+    \texttt{Entzugsleistung} = \texttt{Bohrtiefe} \times \texttt{spez\_Entzugsleistung} \times \texttt{Anzahl\_Sonden}
+    \]
+    berechnet, wobei die Anzahl der Sonden von der verfügbaren Fläche und dem Abstand der Sonden abhängt.
     
-    \item \texttt{from\_dict(data)}: Creates an object from a dictionary of attributes.
+    \item \texttt{calculate(VLT\_L, COP\_data, Strompreis, q, r, T, BEW, stundensatz, duration, general\_results)}: Berechnet die ökonomischen und ökologischen Kennzahlen für das geothermische Wärmepumpensystem.
+    \begin{itemize}
+        \item \textbf{VLT\_L (array-like)}: Vorlauftemperaturen in Grad Celsius.
+        \item \textbf{COP\_data (array-like)}: COP-Daten zur Leistungsberechnung.
+        \item \textbf{Strompreis (float)}: Strompreis in €/MWh.
+        \item \textbf{q (float)}: Kapitalrückgewinnungsfaktor.
+        \item \textbf{r (float)}: Preissteigerungsfaktor.
+        \item \textbf{T (int)}: Betrachtungszeitraum in Jahren.
+        \item \textbf{BEW (float)}: Abzinsungsfaktor für Betriebskosten.
+        \item \textbf{stundensatz (float)}: Stundensatz in €/Stunde.
+        \item \textbf{duration (float)}: Dauer jedes Simulationsschritts in Stunden.
+        \item \textbf{general\_results (dict)}: Allgemeine Ergebnisse, inklusive Lastprofil.
+    \end{itemize}
+    Diese Methode berechnet die gewichteten Durchschnittskosten der Wärmeerzeugung (WGK) und die CO$_2$-Emissionen basierend auf dem Stromverbrauch. Die spezifischen CO$_2$-Emissionen werden wie folgt berechnet:
+    \[
+    \texttt{spec\_co2\_total} = \frac{\texttt{co2\_emissions}}{\texttt{Wärmemenge\_Geothermie}} \, \text{tCO$_2$/MWh}
+    \]
+
+    \item \texttt{to\_dict()}: Wandelt die Objektattribute in ein Wörterbuch um.
+    
+    \item \texttt{from\_dict(data)}: Erstellt ein Objekt aus einem Wörterbuch von Attributen.
 \end{itemize}
 
-\subsection{Economic and Environmental Considerations}
-The \texttt{Geothermal} class calculates the weighted average cost of heat generation (WGK), which accounts for the costs of drilling, installation, operation, and electricity consumption. It also calculates specific CO$_2$ emissions based on electricity usage, as well as primary energy consumption using a primary energy factor.
+\subsection{Ökonomische und ökologische Überlegungen}
+Die \texttt{Geothermal}-Klasse berechnet die gewichteten Durchschnittskosten der Wärmeerzeugung (WGK), welche die Kosten für Bohrung, Installation, Betrieb und Stromverbrauch berücksichtigen. Sie berechnet außerdem die spezifischen CO$_2$-Emissionen basierend auf dem Stromverbrauch sowie den Primärenergieverbrauch unter Verwendung eines Primärenergiefaktors.
 
-\subsection{Usage Example}
-The following example demonstrates how to initialize and use the \texttt{Geothermal} class to calculate the performance of a geothermal system:
+\subsection{Nutzungsbeispiel}
+Das folgende Beispiel zeigt, wie die \texttt{Geothermal}-Klasse initialisiert und verwendet wird, um die Leistung eines geothermischen Systems zu berechnen:
 
 \begin{verbatim}
 geothermal_system = Geothermal(
@@ -72,4 +79,4 @@ results = geothermal_system.calculate(
     general_results=load_data
 )
 \end{verbatim}
-This example demonstrates how to create a geothermal system with 500 m² area, 150 m drilling depth, and a geothermal source temperature of 10°C. The system's performance and economic metrics are calculated using the provided data.
+In diesem Beispiel wird ein geothermisches System mit einer Fläche von 500 m² und einer Bohrtiefe von 150 m simuliert. Die Leistung und die ökonomischen Kennzahlen des Systems werden anhand der eingegebenen Daten berechnet.

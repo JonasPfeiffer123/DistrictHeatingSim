@@ -1,84 +1,84 @@
-\section{SolarThermal Class}
-The \texttt{SolarThermal} class models a solar thermal system and includes methods for performance, economic, and environmental calculations. The class can handle various types of solar collectors (e.g., flat plate and vacuum tube collectors) and includes parameters for storage system integration.
+\section{SolarThermal Klasse}
+Die \texttt{SolarThermal}-Klasse modelliert ein solarthermisches System und enthält Methoden zur Berechnung der Leistung, der wirtschaftlichen Kennzahlen und der Umweltauswirkungen. Die Klasse unterstützt verschiedene Arten von Sonnenkollektoren (z. B. Flachkollektoren und Vakuumröhrenkollektoren) und enthält Parameter für die Integration eines Speichersystems.
 
-\subsection{Attributes}
+\subsection{Attribute}
 \begin{itemize}
-    \item \texttt{name (str)}: Name of the solar thermal system.
-    \item \texttt{bruttofläche\_STA (float)}: Gross collector area of the solar thermal system in square meters.
-    \item \texttt{vs (float)}: Volume of the storage system in cubic meters.
-    \item \texttt{Typ (str)}: Type of solar collector, e.g., "Flachkollektor" or "Vakuumröhrenkollektor".
-    \item \texttt{kosten\_speicher\_spez (float)}: Specific costs for the storage system in €/m³.
-    \item \texttt{kosten\_fk\_spez (float)}: Specific costs for flat plate collectors in €/m².
-    \item \texttt{kosten\_vrk\_spez (float)}: Specific costs for vacuum tube collectors in €/m².
-    \item \texttt{Tsmax (float)}: Maximum storage temperature in degrees Celsius.
-    \item \texttt{Longitude (float)}: Longitude of the installation site.
-    \item \texttt{STD\_Longitude (float)}: Standard longitude for the time zone.
-    \item \texttt{Latitude (float)}: Latitude of the installation site.
-    \item \texttt{East\_West\_collector\_azimuth\_angle (float)}: Azimuth angle of the solar collector in degrees.
-    \item \texttt{Collector\_tilt\_angle (float)}: Tilt angle of the solar collector in degrees.
-    \item \texttt{Tm\_rl (float)}: Mean return temperature in degrees Celsius.
-    \item \texttt{Qsa (float)}: Initial heat output.
-    \item \texttt{Vorwärmung\_K (float)}: Preheating in Kelvin.
-    \item \texttt{DT\_WT\_Solar\_K (float)}: Temperature difference across the solar heat exchanger in Kelvin.
-    \item \texttt{DT\_WT\_Netz\_K (float)}: Temperature difference across the network heat exchanger in Kelvin.
-    \item \texttt{opt\_volume\_min (float)}: Minimum optimization volume in cubic meters.
-    \item \texttt{opt\_volume\_max (float)}: Maximum optimization volume in cubic meters.
-    \item \texttt{opt\_area\_min (float)}: Minimum optimization area in square meters.
-    \item \texttt{opt\_area\_max (float)}: Maximum optimization area in square meters.
-    \item \texttt{kosten\_pro\_typ (dict)}: Dictionary containing the specific costs for different types of solar collectors.
-    \item \texttt{Kosten\_STA\_spez (float)}: Specific costs for the solar thermal system in €/m².
-    \item \texttt{Nutzungsdauer (int)}: Service life of the solar thermal system in years (20 years by default).
-    \item \texttt{f\_Inst (float)}: Installation factor.
-    \item \texttt{f\_W\_Insp (float)}: Maintenance and inspection factor.
-    \item \texttt{Bedienaufwand (float)}: Operating effort for the system.
-    \item \texttt{Anteil\_Förderung\_BEW (float)}: Subsidy rate for renewable energy law compliance.
-    \item \texttt{Betriebskostenförderung\_BEW (float)}: Operational cost subsidy per MWh of thermal energy under the renewable energy law.
-    \item \texttt{co2\_factor\_solar (float)}: CO$_2$ factor for solar energy (typically 0 for solar heat).
-    \item \texttt{primärenergiefaktor (float)}: Primary energy factor (typically 0 for solar thermal energy).
+    \item \texttt{name (str)}: Name der Solarthermieanlage.
+    \item \texttt{bruttofläche\_STA (float)}: Brutto-Kollektorfläche der Solarthermieanlage in Quadratmetern.
+    \item \texttt{vs (float)}: Volumen des Speichersystems in Kubikmetern.
+    \item \texttt{Typ (str)}: Typ des Sonnenkollektors, z.B. "Flachkollektor" oder "Vakuumröhrenkollektor".
+    \item \texttt{kosten\_speicher\_spez (float)}: Spezifische Kosten für das Speichersystem in €/m³.
+    \item \texttt{kosten\_fk\_spez (float)}: Spezifische Kosten für Flachkollektoren in €/m².
+    \item \texttt{kosten\_vrk\_spez (float)}: Spezifische Kosten für Vakuumröhrenkollektoren in €/m².
+    \item \texttt{Tsmax (float)}: Maximale Speichertemperatur in Grad Celsius.
+    \item \texttt{Longitude (float)}: Längengrad des Installationsortes.
+    \item \texttt{STD\_Longitude (float)}: Standardlängengrad der Zeitzone.
+    \item \texttt{Latitude (float)}: Breitengrad des Installationsortes.
+    \item \texttt{East\_West\_collector\_azimuth\_angle (float)}: Azimutwinkel des Sonnenkollektors in Grad.
+    \item \texttt{Collector\_tilt\_angle (float)}: Neigungswinkel des Sonnenkollektors in Grad.
+    \item \texttt{Tm\_rl (float)}: Mittlere Rücklauftemperatur in Grad Celsius.
+    \item \texttt{Qsa (float)}: Anfangsleistung.
+    \item \texttt{Vorwärmung\_K (float)}: Vorwärmung in Kelvin.
+    \item \texttt{DT\_WT\_Solar\_K (float)}: Temperaturdifferenz über den Solar-Wärmetauscher in Kelvin.
+    \item \texttt{DT\_WT\_Netz\_K (float)}: Temperaturdifferenz über den Netz-Wärmetauscher in Kelvin.
+    \item \texttt{opt\_volume\_min (float)}: Minimales Optimierungsvolumen in Kubikmetern.
+    \item \texttt{opt\_volume\_max (float)}: Maximales Optimierungsvolumen in Kubikmetern.
+    \item \texttt{opt\_area\_min (float)}: Minimale Optimierungsfläche in Quadratmetern.
+    \item \texttt{opt\_area\_max (float)}: Maximale Optimierungsfläche in Quadratmetern.
+    \item \texttt{kosten\_pro\_typ (dict)}: Wörterbuch, das die spezifischen Kosten für verschiedene Arten von Sonnenkollektoren enthält.
+    \item \texttt{Kosten\_STA\_spez (float)}: Spezifische Kosten für die Solarthermieanlage in €/m².
+    \item \texttt{Nutzungsdauer (int)}: Lebensdauer der Solarthermieanlage in Jahren (Standardwert: 20 Jahre).
+    \item \texttt{f\_Inst (float)}: Installationsfaktor.
+    \item \texttt{f\_W\_Insp (float)}: Wartungs- und Inspektionsfaktor.
+    \item \texttt{Bedienaufwand (float)}: Betriebsaufwand für das System.
+    \item \texttt{Anteil\_Förderung\_BEW (float)}: Fördersatz für das Erneuerbare-Energien-Gesetz.
+    \item \texttt{Betriebskostenförderung\_BEW (float)}: Betriebskostenzuschuss pro MWh thermischer Energie.
+    \item \texttt{co2\_factor\_solar (float)}: CO$_2$-Faktor für Solarenergie (typisch 0 für Solarwärme).
+    \item \texttt{primärenergiefaktor (float)}: Primärenergiefaktor (typisch 0 für Solarthermie).
 \end{itemize}
 
-\subsection{Methods}
+\subsection{Methoden}
 \begin{itemize}
-    \item \texttt{calc\_WGK(q, r, T, BEW, stundensatz)}: Calculates the weighted average cost of heat generation (WGK) based on the system's investment costs, operational costs, and subsidy status. 
+    \item \texttt{calc\_WGK(q, r, T, BEW, stundensatz)}: Berechnet die gewichteten Durchschnittskosten der Wärmeerzeugung (WGK) basierend auf den Investitions- und Betriebskosten des Systems sowie auf der Förderfähigkeit nach dem EEG.
     \begin{itemize}
-        \item \textbf{q (float)}: Factor for capital recovery.
-        \item \textbf{r (float)}: Price escalation factor.
-        \item \textbf{T (int)}: Time period in years for the calculation.
-        \item \textbf{BEW (str)}: Indicates eligibility for renewable energy subsidies ("Ja" or "Nein").
-        \item \textbf{stundensatz (float)}: Hourly labor rate for operational efforts.
+        \item \textbf{q (float)}: Kapitalrückgewinnungsfaktor.
+        \item \textbf{r (float)}: Preissteigerungsfaktor.
+        \item \textbf{T (int)}: Betrachtungszeitraum in Jahren.
+        \item \textbf{BEW (str)}: Angabe der Förderfähigkeit nach EEG ("Ja" oder "Nein").
+        \item \textbf{stundensatz (float)}: Stundensatz für Arbeitsaufwand.
     \end{itemize}
-    Returns the WGK of the system based on total investments, subsidies, and operating costs.
+    Gibt die WGK des Systems basierend auf Investitionen, Förderungen und Betriebskosten zurück.
 
     \item \texttt{calculate(VLT\_L, RLT\_L, TRY, time\_steps, calc1, calc2, q, r, T, BEW, stundensatz, duration, general\_results)}: 
-    Simulates the solar thermal system's performance over a time period, taking into account forward and return temperatures, weather data, and operational costs. 
+    Simuliert die Leistung des solarthermischen Systems über einen bestimmten Zeitraum und berücksichtigt dabei Vorlauf- und Rücklauftemperaturen, Wetterdaten und Betriebskosten.
     \begin{itemize}
-        \item \textbf{VLT\_L (array)}: Array of forward temperatures in degrees Celsius.
-        \item \textbf{RLT\_L (array)}: Array of return temperatures in degrees Celsius.
-        \item \textbf{TRY (array)}: Test reference year weather data.
-        \item \textbf{time\_steps (array)}: Array of time steps for the simulation.
-        \item \textbf{calc1 (float)}, \textbf{calc2 (float)}: Additional calculation parameters.
-        \item \textbf{q (float)}, \textbf{r (float)}, \textbf{T (int)}, \textbf{BEW (str)}, \textbf{stundensatz (float)}: Parameters for cost calculation.
-        \item \textbf{duration (float)}: Duration of each simulation time step.
-        \item \textbf{general\_results (dict)}: A dictionary containing general results from the simulation, such as remaining loads.
+        \item \textbf{VLT\_L (array)}: Array von Vorlauftemperaturen in Grad Celsius.
+        \item \textbf{RLT\_L (array)}: Array von Rücklauftemperaturen in Grad Celsius.
+        \item \textbf{TRY (array)}: Testreferenzjahr-Wetterdaten.
+        \item \textbf{time\_steps (array)}: Array von Zeitschritten für die Simulation.
+        \item \textbf{calc1 (float)}, \textbf{calc2 (float)}: Zusätzliche Berechnungsparameter.
+        \item \textbf{q (float)}, \textbf{r (float)}, \textbf{T (int)}, \textbf{BEW (str)}, \textbf{stundensatz (float)}: Parameter für die Kostenberechnung.
+        \item \textbf{duration (float)}: Dauer jedes Simulationszeitschritts.
+        \item \textbf{general\_results (dict)}: Wörterbuch, das allgemeine Ergebnisse aus der Simulation enthält, wie z.B. Restlasten.
     \end{itemize}
-    Returns a dictionary of simulation results, including the heat output, specific CO$_2$ emissions, primary energy usage, and storage state.
+    Gibt ein Wörterbuch mit den Ergebnissen der Simulation zurück, einschließlich Wärmeerzeugung, spezifischen CO$_2$-Emissionen, Primärenergieverbrauch und Speicherstatus.
 
-    \item \texttt{to\_dict()}: Converts the \texttt{SolarThermal} object to a dictionary for easy serialization and storage.
+    \item \texttt{to\_dict()}: Wandelt das \texttt{SolarThermal}-Objekt in ein Wörterbuch um, um eine einfache Serialisierung und Speicherung zu ermöglichen.
     
-    \item \texttt{from\_dict(data)}: Creates a \texttt{SolarThermal} object from a dictionary of attributes.
+    \item \texttt{from\_dict(data)}: Erstellt ein \texttt{SolarThermal}-Objekt aus einem Wörterbuch von Attributen.
 \end{itemize}
 
-\subsection{Economic and Environmental Considerations}
-The \texttt{SolarThermal} class includes methods to calculate the system's \textbf{weighted average cost of heat generation (WGK)}, which takes into account installation costs, operational costs, and subsidies under the renewable energy law. The system's specific CO$_2$ emissions are calculated as the amount of emissions per unit of heat generated, and the system's \textbf{primary energy usage} is computed based on its heat output.
+\subsection{Wirtschaftliche und ökologische Überlegungen}
+Die \texttt{SolarThermal}-Klasse enthält Methoden zur Berechnung der \textbf{gewichteten Durchschnittskosten der Wärmeerzeugung (WGK)}, die die Installationskosten, Betriebskosten und Förderungen gemäß EEG berücksichtigt. Die spezifischen CO$_2$-Emissionen des Systems werden als Emissionen pro erzeugter Wärmeeinheit berechnet, und der \textbf{Primärenergieverbrauch} wird basierend auf der Wärmeerzeugung des Systems ermittelt.
 
-\subsection{Usage Example}
-This class is highly adaptable for different solar thermal setups. The following example demonstrates how the class can be initialized and used:
+\subsection{Nutzungsbeispiel}
+Diese Klasse ist anpassungsfähig für verschiedene solarthermische Konfigurationen. Das folgende Beispiel zeigt, wie die Klasse initialisiert und verwendet werden kann:
 
 \begin{verbatim}
 solar_system = SolarThermal(
     name="SolarThermie-Anlage",
     bruttofläche_STA=500,  # m²
-    vs=50,  # m³ storage
+    vs=50,  # m³ Speicher
     Typ="Flachkollektor",
     Tsmax=90, 
     Longitude=-14.42, 
@@ -99,4 +99,6 @@ results = solar_system.calculate(
     general_results=load_profile
 )
 \end{verbatim}
-This example shows a solar thermal system with flat plate collectors covering 500 m² and a storage volume of 50 m³. Performance and cost metrics are calculated based on the provided inputs.
+In diesem Beispiel wird eine Solarthermieanlage mit Flachkollektoren auf einer Fläche von 500 m² und einem Speichervolumen von 50 m³ simuliert. Die Leistungs- und Kostenkennzahlen werden basierend auf den bereitgestellten Eingabedaten berechnet.
+
+%\input{../solar_thermal_doc/solar_thermal_doc.tex}

@@ -5,30 +5,36 @@
 \usepackage{graphicx}
 \usepackage{hyperref}
 
-\title{Calculation and Optimization of Heat Generator Systems}
+\title{Berechnungsmodelle und Optimierungsfunktionen für Wärmeerzeugungssysteme in DistrictHeatSim - Dokumentation}
 \author{Dipl.-Ing. (FH) Jonas Pfeiffer}
-\date{2024-09-09}
+\date{2024-09-10}
 
 \begin{document}
 
 \maketitle
 
-\section{Introduction}
-This document describes the mathematical models and optimization functions used to calculate and evaluate various heat generation systems. The code focuses on optimizing energy efficiency and economic viability, applying the VDI 2067 guidelines for cost analysis.
+\tableofcontents
+
+\section{Einleitung}
+Dieses Dokument beschreibt die mathematischen Modelle und Optimierungsfunktionen, die zur Berechnung und Bewertung verschiedener Wärmeerzeugungssysteme verwendet werden. Der Code konzentriert sich auf die Optimierung von Energieeffizienz und Wirtschaftlichkeit und wendet dabei die VDI 2067-Richtlinien für die Kostenanalyse an. Für die Berechnungen werden die Python-Bibliotheken NumPy, SciPy und Pandas verwendet. Die Berechnungsmodelle sind in Klassen organisiert, die spezifische Wärmeerzeugungssysteme repräsentieren.
 
 \input{annuity_doc/annuity_doc.tex}
-\input{calculate_mix_doc/calculate_mix_doc.tex}
-\input{optimize_mix_doc/optimize_mix_doc.tex}
 
 \input{heat_generators_doc/heat_pump.tex}
 \input{heat_generators_doc/geothermal_heat_pump.tex}
 \input{heat_generators_doc/waste_heat_pump.tex}
 \input{heat_generators_doc/river_heat_pump.tex}
+\input{heat_generators_doc/aqvaheat.tex}
 \input{heat_generators_doc/chp.tex}
 \input{heat_generators_doc/biomass_boiler.tex}
 \input{heat_generators_doc/gas_boiler.tex}
 \input{heat_generators_doc/solarthermal.tex}
 
-\section{Conclusion}
-This document provides a comprehensive overview of the models and optimization strategies used for heating systems. Future work will extend the system to cover additional environmental factors and economic uncertainties.
+\input{calculate_mix_doc/calculate_mix_doc.tex}
+\input{optimize_mix_doc/optimize_mix_doc.tex}
+
+\section{Zusammenfassung}
+Dieses Dokument bietet einen umfassenden Überblick über die Modelle und Optimierungsstrategien, die für Wärmeerzeugungssysteme verwendet werden. Zukünftige Arbeiten werden das System erweitern, um die Systeme genau zu modellieren und die Optimierungsfunktionen zu verbessern.
+
+
 \end{document}

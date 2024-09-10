@@ -1,82 +1,108 @@
-\section{GasBoiler Class}
-The \texttt{GasBoiler} class represents a gas boiler system, designed to calculate and simulate the performance, cost, and emissions of a gas boiler in a heating system. The class incorporates key economic, operational, and environmental factors and can be used for comprehensive analysis in energy systems.
+\section{GasBoiler Klasse}
+Die \texttt{GasBoiler}-Klasse repräsentiert ein Gaskesselsystem, das dazu dient, die Leistung, Kosten und Emissionen eines Gaskessels in einem Heizsystem zu berechnen und zu simulieren. Die Klasse umfasst zentrale ökonomische, betriebliche und ökologische Faktoren und ermöglicht eine umfassende Analyse in Energiesystemen.
 
-\subsection{Attributes}
+\subsection{Attribute}
 \begin{itemize}
-    \item \texttt{name (str)}: Name of the gas boiler system.
-    \item \texttt{spez\_Investitionskosten (float)}: Specific investment costs for the gas boiler in €/kW. 
-    \item \texttt{Nutzungsgrad (float)}: Efficiency of the gas boiler, typically ranging between 0.8 and 1.0. It represents the ratio of useful heat output to the total energy input.
-    \item \texttt{Faktor\_Dimensionierung (float)}: Dimensioning factor to account for capacity oversizing.
-    \item \texttt{Nutzungsdauer (int)}: Lifespan of the gas boiler in years. Defaults to 20 years.
-    \item \texttt{f\_Inst (float)}: Installation factor, representing additional costs due to installation complexities.
-    \item \texttt{f\_W\_Insp (float)}: Inspection factor, accounting for periodic maintenance and inspection costs.
-    \item \texttt{Bedienaufwand (float)}: Operational effort, representing the cost of operation in terms of labor.
-    \item \texttt{co2\_factor\_fuel (float)}: CO$_2$ emission factor for the fuel (natural gas), typically measured in tCO$_2$/MWh.
-    \item \texttt{primärenergiefaktor (float)}: Primary energy factor for the fuel, representing the amount of primary energy required to produce one unit of usable energy (MWh). This factor accounts for energy losses in the fuel supply chain.
+    \item \texttt{name (str)}: Name des Gaskesselsystems.
+    \item \texttt{spez\_Investitionskosten (float)}: Spezifische Investitionskosten für den Gaskessel in €/kW.
+    \item \texttt{Nutzungsgrad (float)}: Wirkungsgrad des Gaskessels, der typischerweise zwischen 0,8 und 1,0 liegt. Er repräsentiert das Verhältnis von nutzbarer Wärmeleistung zur gesamten zugeführten Energie.
+    \item \texttt{Faktor\_Dimensionierung (float)}: Dimensionierungsfaktor, der eine eventuelle Überdimensionierung berücksichtigt.
+    \item \texttt{Nutzungsdauer (int)}: Lebensdauer des Gaskessels in Jahren. Standardmäßig 20 Jahre.
+    \item \texttt{f\_Inst (float)}: Installationsfaktor, der zusätzliche Kosten aufgrund von Installationskomplexität repräsentiert.
+    \item \texttt{f\_W\_Insp (float)}: Inspektionsfaktor, der periodische Wartungs- und Inspektionskosten berücksichtigt.
+    \item \texttt{Bedienaufwand (float)}: Betriebskosten in Form von Arbeitsaufwand.
+    \item \texttt{co2\_factor\_fuel (float)}: CO$_2$-Emissionsfaktor für den Brennstoff (Erdgas), typischerweise in tCO$_2$/MWh.
+    \item \texttt{primärenergiefaktor (float)}: Primärenergiefaktor für den Brennstoff, der die Menge an Primärenergie darstellt, die benötigt wird, um eine Einheit nutzbare Energie (MWh) zu erzeugen. Dieser Faktor berücksichtigt Energieverluste in der Brennstofflieferkette.
 \end{itemize}
 
-\subsection{Methods}
+\subsection{Methoden}
+Die \texttt{GasBoiler}-Klasse enthält mehrere Methoden, die die Auslegung und Berechnung eines Gaskessels im Detail beschreiben. Im Folgenden werden die mathematischen Grundlagen und Berechnungslogiken der wichtigsten Methoden erläutert.
+
+\subsubsection{GasBoiler(Last\_L, duration)}
+Diese Methode simuliert den Betrieb des Gaskessels basierend auf einem gegebenen Lastprofil und der Betriebsdauer. Sie berechnet die Wärmeerzeugung des Kessels, den Brennstoffbedarf sowie die maximale Leistung. Die wichtigsten Schritte der Berechnung sind:
+
 \begin{itemize}
-    \item \texttt{GasBoiler(Last\_L, duration)}: 
-    Simulates the operation of the gas boiler based on the load profile and duration of operation.
-    \begin{itemize}
-        \item \textbf{Last\_L (array)}: Array representing the heat load in kW that the gas boiler needs to meet.
-        \item \textbf{duration (float)}: Duration of each time step in hours for which the load is simulated.
-    \end{itemize}
-    This method calculates the total heat output (\texttt{Wärmemenge\_Gaskessel}) and gas demand (\texttt{Gasbedarf}) based on the efficiency (\texttt{Nutzungsgrad}) and the given load.
+    \item \textbf{Berechnung der Wärmeleistung:} Zunächst wird das gegebene Lastprofil \texttt{Last\_L} verwendet, um die stündliche Wärmeleistung in kW zu bestimmen. Da negative Lasten (falls vorhanden) keinen Sinn ergeben, wird die Funktion \texttt{np.maximum()} verwendet, um negative Werte auf 0 zu setzen:
+    \[
+    \texttt{Wärmeleistung\_kW} = \max(\texttt{Last\_L}, 0)
+    \]
+    
+    \item \textbf{Berechnung der Wärmemenge:} Die Wärmemenge (\texttt{Wärmemenge\_Gaskessel}) wird über die Summe der stündlichen Wärmeleistung, multipliziert mit der Simulationsdauer \texttt{duration} in Stunden, berechnet:
+    \[
+    \texttt{Wärmemenge\_Gaskessel} = \sum_{t=1}^{n} \left( \frac{\texttt{Wärmeleistung\_kW}[t]}{1000} \right) \times \texttt{duration}
+    \]
+    Dabei wird die Wärmeleistung von kW in MWh umgerechnet (Faktor 1000).
 
-    \item \texttt{WGK(Brennstoffkosten, q, r, T, BEW, stundensatz)}:
-    Calculates the weighted average cost of heat generation (\textbf{WGK}), factoring in investment costs, fuel costs, and operational expenses.
-    \begin{itemize}
-        \item \textbf{Brennstoffkosten (float)}: The cost of fuel (natural gas) in €/MWh.
-        \item \textbf{q (float)}: Capital recovery factor.
-        \item \textbf{r (float)}: Factor accounting for price escalation or depreciation.
-        \item \textbf{T (int)}: Time period in years for the cost calculation.
-        \item \textbf{BEW (float)}: Subsidy or other cost-reducing factors.
-        \item \textbf{stundensatz (float)}: Hourly labor rate for the operation of the gas boiler.
-    \end{itemize}
-    The method calculates total investment costs, operational costs, and returns the specific heat generation cost (\texttt{WGK\_GK}).
+    \item \textbf{Berechnung des Gasbedarfs:} Der Gasbedarf (\texttt{Gasbedarf}) wird aus der erzeugten Wärmemenge und dem Wirkungsgrad (\texttt{Nutzungsgrad}) des Gaskessels berechnet:
+    \[
+    \texttt{Gasbedarf} = \frac{\texttt{Wärmemenge\_Gaskessel}}{\texttt{Nutzungsgrad}}
+    \]
+    Der Wirkungsgrad berücksichtigt die Verluste, die bei der Umwandlung von Brennstoff in nutzbare Wärme entstehen.
 
-    \item \texttt{calculate(Gaspreis, q, r, T, BEW, stundensatz, duration, Last\_L, general\_results)}:
-    Performs a complete calculation of the gas boiler's performance and economic metrics. It simulates the boiler's operation over a given time period and computes the weighted average cost of heat generation, CO$_2$ emissions, and primary energy usage.
-    \begin{itemize}
-        \item \textbf{Gaspreis (float)}: Price of natural gas in €/MWh.
-        \item \textbf{q (float)}, \textbf{r (float)}, \textbf{T (int)}, \textbf{BEW (float)}: Parameters for cost and subsidy calculation.
-        \item \textbf{stundensatz (float)}: Labor rate for boiler operation in €/hour.
-        \item \textbf{duration (float)}: Duration of each simulation time step in hours.
-        \item \textbf{Last\_L (array)}: Load profile of the system in kW.
-        \item \textbf{general\_results (dict)}: Dictionary containing general results such as residual load.
-    \end{itemize}
-    This method computes:
-    \begin{itemize}
-        \item \texttt{Wärmemenge}: Total heat output of the gas boiler.
-        \item \texttt{Wärmeleistung\_L}: Time-resolved heat output.
-        \item \texttt{Brennstoffbedarf}: Total gas demand based on the heat output and efficiency.
-        \item \texttt{WGK}: Weighted average cost of heat generation.
-        \item \texttt{spec\_co2\_total}: Specific CO$_2$ emissions in tCO$_2$/MWh heat.
-        \item \texttt{primärenergie}: Primary energy usage of the system.
-    \end{itemize}
-    Returns a dictionary of the results, including performance metrics, cost analysis, and emissions data.
-
-    \item \texttt{to\_dict()}: 
-    Converts the \texttt{GasBoiler} object to a dictionary for serialization or storage. This method is useful for saving the configuration or results of the gas boiler system.
-
-    \item \texttt{from\_dict(data)}:
-    Creates a \texttt{GasBoiler} object from a dictionary containing the system's attributes. This method is essential for re-loading configurations from a stored state.
+    \item \textbf{Maximale Leistung:} Die maximale Leistung des Gaskessels (\texttt{P\_max}) wird basierend auf der maximalen Last im Profil und einem Dimensionierungsfaktor berechnet, der mögliche Überdimensionierungen des Kessels berücksichtigt:
+    \[
+    \texttt{P\_max} = \max(\texttt{Last\_L}) \times \texttt{Faktor\_Dimensionierung}
+    \]
 \end{itemize}
 
-\subsection{Economic and Environmental Considerations}
-The \texttt{GasBoiler} class is designed to simulate both the economic and environmental impacts of a gas boiler system. The \textbf{weighted average cost of heat generation (WGK)} takes into account both investment costs and operational costs, including fuel prices, labor, and maintenance. Additionally, the system's \textbf{CO$_2$ emissions} are calculated based on fuel consumption and the specific CO$_2$ factor for natural gas, allowing for an analysis of the environmental footprint of the system. The \textbf{primary energy consumption} is also calculated, offering insights into the system's overall energy efficiency and sustainability.
+\subsubsection{WGK(Brennstoffkosten, q, r, T, BEW, stundensatz)}
+Diese Methode berechnet die gewichteten Durchschnittskosten der Wärmeerzeugung (\textbf{WGK}). Diese beinhalten sowohl Investitions- als auch Betriebskosten, um die tatsächlichen Kosten der Wärmeerzeugung pro MWh zu ermitteln. Die Berechnung erfolgt in mehreren Schritten:
 
-\subsection{Usage Example}
-The following is an example of how the \texttt{GasBoiler} class can be initialized and used:
+\begin{itemize}
+    \item \textbf{Berechnung der Investitionskosten:} Die spezifischen Investitionskosten (\texttt{spez\_Investitionskosten}) werden mit der maximalen Leistung des Kessels (\texttt{P\_max}) multipliziert, um die gesamten Investitionskosten (\texttt{Investitionskosten}) zu erhalten:
+    \[
+    \texttt{Investitionskosten} = \texttt{spez\_Investitionskosten} \times \texttt{P\_max}
+    \]
+    
+    \item \textbf{Annuität:} Um die jährlichen Kapitalrückzahlungen zu berechnen, wird der Annuitätenfaktor verwendet, der sowohl die Kapitalrückzahlung über die Lebensdauer des Kessels als auch Installations- und Wartungskosten berücksichtigt. Der Annuitätenfaktor \texttt{A\_N} berechnet sich mit der Funktion \texttt{annuität}, die auf den Kapitalrückgewinnungsfaktor (\texttt{q}), die Lebensdauer (\texttt{T}), und die Installations- und Wartungskosten (\texttt{f\_Inst} und \texttt{f\_W\_Insp}) eingeht:
+    \[
+    \texttt{A\_N} = \text{annuität}(\texttt{Investitionskosten}, \texttt{Nutzungsdauer}, \texttt{f\_Inst}, \texttt{f\_W\_Insp}, \texttt{Bedienaufwand}, q, r, T)
+    \]
+
+    \item \textbf{Berechnung der Wärmeerzeugungskosten:} Die jährlichen Gesamtkosten werden durch die erzeugte Wärmemenge geteilt, um die spezifischen Wärmeerzeugungskosten (\texttt{WGK\_GK}) zu erhalten:
+    \[
+    \texttt{WGK\_GK} = \frac{\texttt{A\_N}}{\texttt{Wärmemenge\_Gaskessel}}
+    \]
+    Diese Kosten beinhalten die Investitionskosten, Betriebskosten und den Gaspreis.
+\end{itemize}
+
+\subsubsection{calculate(Gaspreis, q, r, T, BEW, stundensatz, duration, Last\_L, general\_results)}
+Diese Methode führt eine vollständige Berechnung der Systemleistung und Kostenanalyse durch. Sie kombiniert die oben beschriebenen Schritte und berechnet die wichtigsten ökonomischen und ökologischen Kennzahlen:
+
+\begin{itemize}
+    \item \textbf{Berechnung der Wärmemenge und des Gasbedarfs:} Die Methode ruft \texttt{Gaskessel()} auf, um die Wärmemenge und den Gasbedarf zu berechnen.
+    
+    \item \textbf{Berechnung der CO$_2$-Emissionen:} Die CO$_2$-Emissionen werden auf Basis des Gasverbrauchs und des spezifischen CO$_2$-Faktors für Erdgas (\texttt{co2\_factor\_fuel}) berechnet:
+    \[
+    \texttt{co2\_emissions} = \texttt{Gasbedarf} \times \texttt{co2\_factor\_fuel}
+    \]
+    Um die spezifischen CO$_2$-Emissionen pro erzeugte Wärmeeinheit (in tCO$_2$/MWh) zu ermitteln, werden die gesamten CO$_2$-Emissionen durch die Wärmemenge geteilt:
+    \[
+    \texttt{spec\_co2\_total} = \frac{\texttt{co2\_emissions}}{\texttt{Wärmemenge\_Gaskessel}}
+    \]
+    
+    \item \textbf{Primärenergieverbrauch:} Der Primärenergieverbrauch wird durch Multiplikation des Gasverbrauchs mit dem Primärenergiefaktor (\texttt{primärenergiefaktor}) berechnet:
+    \[
+    \texttt{primärenergie} = \texttt{Gasbedarf} \times \texttt{primärenergiefaktor}
+    \]
+    
+    \item \textbf{Ergebnisse:} Am Ende werden die berechneten Werte in einem Wörterbuch (\texttt{results}) zurückgegeben, das die Wärmemenge, die zeitlich aufgelöste Wärmeleistung (\texttt{Wärmeleistung\_L}), den Brennstoffbedarf, die gewichteten Durchschnittskosten (\texttt{WGK}), die spezifischen CO$_2$-Emissionen und den Primärenergieverbrauch enthält.
+\end{itemize}
+
+Die vollständige Berechnungsmethode ermöglicht die Simulation der Leistung eines Gaskessels über einen bestimmten Zeitraum und liefert umfassende ökonomische und ökologische Kennzahlen, die für eine energetische Bewertung entscheidend sind.
+
+\subsection{Ökonomische und ökologische Überlegungen}
+Die \texttt{GasBoiler}-Klasse wurde entwickelt, um sowohl die ökonomischen als auch die ökologischen Auswirkungen eines Gaskesselsystems zu simulieren. Die \textbf{gewichteten Durchschnittskosten der Wärmeerzeugung (WGK)} berücksichtigen sowohl Investitionskosten als auch Betriebskosten, einschließlich Brennstoffpreise, Arbeitskosten und Wartung. Zudem werden die \textbf{CO$_2$-Emissionen} des Systems basierend auf dem Brennstoffverbrauch und dem spezifischen CO$_2$-Faktor für Erdgas berechnet, um eine Analyse des ökologischen Fußabdrucks des Systems zu ermöglichen. Der \textbf{Primärenergieverbrauch} wird ebenfalls berechnet, um Einblicke in die Gesamtenergieeffizienz und Nachhaltigkeit des Systems zu geben.
+
+\subsection{Nutzungsbeispiel}
+Das folgende Beispiel zeigt, wie die \texttt{GasBoiler}-Klasse initialisiert und verwendet werden kann:
 
 \begin{verbatim}
 gas_boiler = GasBoiler(
     name="Gasheizkessel",
     spez_Investitionskosten=35,  # €/kW
-    Nutzungsgrad=0.92,  # 92% efficiency
-    Faktor_Dimensionierung=1.1  # Slight oversizing
+    Nutzungsgrad=0.92,  # 92% Effizienz
+    Faktor_Dimensionierung=1.1  # Leichte Überdimensionierung
 )
 
 results = gas_boiler.calculate(
@@ -89,4 +115,4 @@ results = gas_boiler.calculate(
 )
 \end{verbatim}
 
-In this example, the gas boiler is dimensioned to have an efficiency of 92\% and is slightly oversized. The calculation method estimates the heat output, gas demand, CO$_2$ emissions, and the weighted average cost of heat generation based on a load profile and general system parameters.
+In diesem Beispiel wird der Gaskessel mit einem Wirkungsgrad von 92\% und einer leichten Überdimensionierung dimensioniert. Die Berechnungsmethode schätzt die Wärmeerzeugung, den Gasbedarf, die CO$_2$-Emissionen und die gewichteten Durchschnittskosten der Wärmeerzeugung basierend auf einem Lastprofil und allgemeinen Systemparametern.
