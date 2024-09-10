@@ -33,7 +33,7 @@ Die \texttt{BiomassBoiler}-Klasse modelliert ein Biomassekesselsystem und enthä
 
 \subsection{Methoden}
 \begin{itemize}
-    \item \texttt{Biomassekessel(Last\_L, duration)}: Simuliert den Betrieb des Biomassekessels über ein gegebenes Lastprofil und eine bestimmte Zeitdauer.
+    \item \texttt{simulate\_operation(Last\_L, duration)}: Simuliert den Betrieb des Biomassekessels über ein gegebenes Lastprofil und eine bestimmte Zeitdauer.
     \begin{itemize}
         \item \textbf{Last\_L (array)}: Lastprofil des Systems in kW.
         \item \textbf{duration (float)}: Dauer jedes Zeitschritts in Stunden.
@@ -48,7 +48,7 @@ Die \texttt{BiomassBoiler}-Klasse modelliert ein Biomassekesselsystem und enthä
     \texttt{Brennstoffbedarf\_BMK} = \frac{\texttt{Wärmemenge\_BMK}}{\texttt{Nutzungsgrad\_BMK}}
     \]
 
-    \item \texttt{storage(Last\_L, duration)}: Simuliert den Betrieb des Speichersystems und passt die Kesselleistung zur Optimierung des Speicherbetriebs an.
+    \item \texttt{simulate\_storage(Last\_L, duration)}: Simuliert den Betrieb des Speichersystems und passt die Kesselleistung zur Optimierung des Speicherbetriebs an.
     \begin{itemize}
         \item \textbf{Last\_L (array)}: Lastprofil des Systems in kW.
         \item \textbf{duration (float)}: Dauer jedes Zeitschritts in Stunden.
@@ -60,7 +60,7 @@ Die \texttt{BiomassBoiler}-Klasse modelliert ein Biomassekesselsystem und enthä
     \]
     Dabei ist 4186 die spezifische Wärmekapazität von Wasser in J/kgK.
 
-    \item \texttt{WGK(Wärmemenge, Brennstoffbedarf, Brennstoffkosten, q, r, T, BEW, stundensatz)}: Berechnet die gewichteten Durchschnittskosten der Wärmeerzeugung (WGK) basierend auf den Investitionskosten, Brennstoffkosten und Betriebskosten des Systems.
+    \item \texttt{calculate\_heat\_generation\_costs(Wärmemenge, Brennstoffbedarf, Brennstoffkosten, q, r, T, BEW, stundensatz)}: Berechnet die gewichteten Durchschnittskosten der Wärmeerzeugung (WGK) basierend auf den Investitionskosten, Brennstoffkosten und Betriebskosten des Systems.
     \begin{itemize}
         \item \textbf{Wärmemenge (float)}: Erzeugte Wärmemenge in kWh.
         \item \textbf{Brennstoffbedarf (float)}: Brennstoffverbrauch in MWh.
@@ -104,7 +104,7 @@ Die \texttt{BiomassBoiler}-Klasse modelliert ein Biomassekesselsystem und enthä
 \end{itemize}
 
 \subsection{Ökonomische und ökologische Überlegungen}
-Die \texttt{BiomassBoiler}-Klasse ermöglicht die Berechnung der \textbf{gewichteten Durchschnittskosten der Wärmeerzeugung (WGK)} unter Berücksichtigung der Investitions-, Installations- und Betriebskosten sowie des Brennstoffverbrauchs. Die spezifischen CO$_2$-Emissionen werden auf Basis des verbrannten Brennstoffs berechnet, und der \textbf{Primärenergieverbrauch} wird anhand der erzeugten Wärmemenge und des Primärenergiefaktors ermittelt.
+Die \texttt{BiomassBoiler}-Klasse ermöglicht die Berechnung der \textbf{Wärmegestehungskosten (WGK)} unter Berücksichtigung der Investitions-, Installations- und Betriebskosten sowie des Brennstoffverbrauchs. Die spezifischen CO$_2$-Emissionen werden auf Basis des verbrannten Brennstoffs berechnet, und der \textbf{Primärenergieverbrauch} wird anhand der erzeugten Wärmemenge und des Primärenergiefaktors ermittelt.
 
 \subsection{Nutzungsbeispiel}
 Die \texttt{BiomassBoiler}-Klasse kann verwendet werden, um die Leistung eines Biomasseheizsystems mit oder ohne Speicher zu simulieren. Das folgende Beispiel zeigt, wie die Klasse initialisiert und verwendet werden kann:

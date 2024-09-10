@@ -18,7 +18,7 @@ Die \texttt{HeatPump}-Klasse repräsentiert ein Wärmepumpensystem und bietet Me
 
 \subsection{Methoden}
 \begin{itemize}
-    \item \texttt{COP\_WP(VLT\_L, QT, COP\_data)}: Berechnet die Leistungszahl (COP) der Wärmepumpe, indem die COP-Daten basierend auf Vorlauftemperaturen (\texttt{VLT\_L}) und Quellentemperaturen (\texttt{QT}) interpoliert werden.
+    \item \texttt{calculate\_COP(VLT\_L, QT, COP\_data)}: Berechnet die Leistungszahl (COP) der Wärmepumpe, indem die COP-Daten basierend auf Vorlauftemperaturen (\texttt{VLT\_L}) und Quellentemperaturen (\texttt{QT}) interpoliert werden.
     
     Diese Methode verwendet eine zweidimensionale Interpolation basierend auf vorgegebenen Vorlauf- und Quellentemperaturen. Der COP wird für jede Kombination von Vorlauftemperatur und Quellentemperatur bestimmt. Der Interpolationsalgorithmus verwendet Gitterdaten aus einer Datei oder einem Dataset, in dem die Kennlinien der Wärmepumpe enthalten sind:
     \[
@@ -26,7 +26,7 @@ Die \texttt{HeatPump}-Klasse repräsentiert ein Wärmepumpensystem und bietet Me
     \]
     Wo \( f \) die Interpolationsfunktion ist, die die Kennlinien der Wärmepumpe verwendet, um den entsprechenden COP zu berechnen.
     
-    \item \texttt{WGK(Wärmeleistung, Wärmemenge, Strombedarf, spez\_Investitionskosten\_WQ, Strompreis, q, r, T, BEW, stundensatz)}: Berechnet die gewichteten Durchschnittskosten der Wärmeerzeugung (WGK) der Wärmepumpe auf Basis der thermischen Leistung, der Investitionskosten und der Betriebskosten.
+    \item \texttt{calculate\_heat\_generation\_costs(Wärmeleistung, Wärmemenge, Strombedarf, spez\_Investitionskosten\_WQ, Strompreis, q, r, T, BEW, stundensatz)}: Berechnet die gewichteten Durchschnittskosten der Wärmeerzeugung (WGK) der Wärmepumpe auf Basis der thermischen Leistung, der Investitionskosten und der Betriebskosten.
     
     \begin{itemize}
         \item \textbf{Wärmeleistung (float)}: Erzeugte Wärmeleistung in kW.

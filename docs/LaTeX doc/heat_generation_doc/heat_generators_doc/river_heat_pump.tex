@@ -15,7 +15,7 @@ Die \texttt{RiverHeatPump}-Klasse modelliert ein Wärmepumpensystem, das Flusswa
 
 \subsection{Methoden}
 \begin{itemize}
-    \item \texttt{Berechnung\_WP(Wärmeleistung\_L, VLT\_L, COP\_data)}: Berechnet die Kühlleistung, den Stromverbrauch und die angepassten Vorlauftemperaturen.
+    \item \texttt{calculate\_heat\_pump(Wärmeleistung\_L, VLT\_L, COP\_data)}: Berechnet die Kühlleistung, den Stromverbrauch und die angepassten Vorlauftemperaturen.
     \begin{itemize}
         \item \textbf{Wärmeleistung\_L (array-like)}: Wärmeleistungsprofil.
         \item \textbf{VLT\_L (array-like)}: Vorlauftemperaturen.
@@ -23,7 +23,7 @@ Die \texttt{RiverHeatPump}-Klasse modelliert ein Wärmepumpensystem, das Flusswa
     \end{itemize}
     Gibt die Kühlleistung, den Stromverbrauch und die angepassten Vorlauftemperaturen zurück.
 
-    \item \texttt{abwärme(Last\_L, VLT\_L, COP\_data, duration)}: Berechnet die Abwärme und weitere Leistungskennzahlen für die Flusswasser-Wärmepumpe.
+    \item \texttt{calculate\_river\_heat(Last\_L, VLT\_L, COP\_data, duration)}: Berechnet die Abwärme und weitere Leistungskennzahlen für die Flusswasser-Wärmepumpe.
     \begin{itemize}
         \item \textbf{Last\_L (array-like)}: Lastanforderung in kW.
         \item \textbf{VLT\_L (array-like)}: Vorlauftemperaturen.
@@ -49,7 +49,7 @@ Die \texttt{RiverHeatPump}-Klasse modelliert ein Wärmepumpensystem, das Flusswa
 \end{itemize}
 
 \subsection{Ökonomische und ökologische Überlegungen}
-Die \texttt{RiverHeatPump}-Klasse bietet eine Methode zur Berechnung der \textbf{gewichteten Durchschnittskosten der Wärmeerzeugung (WGK)}, die die Investitionskosten, den Stromverbrauch und betriebliche Faktoren berücksichtigt. Zudem werden die spezifischen CO$_2$-Emissionen und der Primärenergieverbrauch der Wärmepumpe berechnet.
+Die \texttt{RiverHeatPump}-Klasse bietet eine Methode zur Berechnung der \textbf{Wärmegestehungskosten (WGK)}, die die Investitionskosten, den Stromverbrauch und betriebliche Faktoren berücksichtigt. Zudem werden die spezifischen CO$_2$-Emissionen und der Primärenergieverbrauch der Wärmepumpe berechnet.
 
 \subsection{Nutzungsbeispiel}
 Das folgende Beispiel zeigt, wie die \texttt{RiverHeatPump}-Klasse initialisiert und verwendet werden kann, um die Leistung einer Flusswasser-Wärmepumpe zu simulieren:
