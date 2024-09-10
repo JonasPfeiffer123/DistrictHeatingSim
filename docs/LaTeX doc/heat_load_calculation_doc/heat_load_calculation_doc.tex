@@ -1,0 +1,133 @@
+\documentclass[a4paper,12pt]{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+
+\title{Berechnung des Wärmebedarfs von Gebäuden basierend auf CSV-Daten}
+\author{Dipl.-Ing. (FH) Jonas Pfeiffer}
+\date{2024-09-09}
+
+\begin{document}
+
+\maketitle
+
+\section{Einleitung}
+Dieses Dokument beschreibt die Methodik zur Berechnung von Heizlastprofilen für Gebäude basierend auf CSV-Daten. Die Implementierung beinhaltet Funktionen zur Ermittlung des Heizwärme- und Warmwasserbedarfs von Gebäuden, welche die Berechnungsmethoden VDI 4655 und BDEW verwenden. Zusätzlich werden die Vor- und Rücklauftemperaturen der Heizsysteme berechnet.
+
+\section{Funktion \texttt{generate\_profiles\_from\_csv}}
+
+Die Funktion \texttt{generate\_profiles\_from\_csv} berechnet die Heizprofile eines Gebäudes auf Grundlage der folgenden Eingabedaten:
+
+\begin{itemize}
+    \item \textbf{data}: Ein DataFrame mit Gebäudeinformationen, insbesondere:
+    \begin{itemize}
+        \item Wärmebedarf in kWh
+        \item Gebäudetyp
+        \item Subtyp
+        \item Anteil des Warmwasserbedarfs am Gesamtwärmebedarf
+        \item Normaußentemperatur
+    \end{itemize}
+    \item \textbf{TRY}: Pfad zu den Testreferenzjahresdaten (TRY), die stündliche Wetterdaten (z.B. Lufttemperaturen) enthalten.
+    \item \textbf{calc\_method}: Die Berechnungsmethode zur Ermittlung des Wärmebedarfs, basierend auf dem Gebäudetyp oder einer angegebenen Methode.
+\end{itemize}
+
+\subsection{Berechnungslogik}
+Die Funktion führt folgende Schritte aus:
+
+\subsubsection{Aufteilung des Gesamtwärmebedarfs}
+
+Der Gesamtwärmebedarf wird in Heizwärme und Warmwasserbedarf aufgeteilt:
+
+\[
+\text{Heizwärmebedarf} = \text{Gesamtwärmebedarf} \times (1 - \text{Warmwasserbedarf})
+\]
+\[
+\text{Warmwasserbedarf} = \text{Gesamtwärmebedarf} \times \text{Warmwasserbedarf}
+\]
+
+\subsubsection{Berechnungsmethoden}
+Je nach Gebäudetyp wird die Berechnung entweder nach der Methode VDI 4655 oder BDEW durchgeführt.
+
+\paragraph{VDI 4655}
+Für bestimmte Gebäudetypen, wie Einfamilienhäuser (EFH) und Mehrfamilienhäuser (MFH), kann die Methodik nach VDI 4655 verwendet werden. Diese Methode berechnet viertelstündliche Lastprofile für Heizung, Warmwasser und Strom. Eine ausführliche Beschreibung erfolgt in Kapitel \ref{sec:heat_load_VDI4655_doc}.
+
+\paragraph{BDEW}
+Die Methodik der Standardlastprofile nach BDEW bieten hingegen deutlich heterogene Gebäudetypen. Neben Ein- und Mehrfamilienhäusern (HEF, HMF) sind das Gebäudenutzungstypen wie Gewerbebauten oder Bürobauten. Die Berechnungsmethode gibt stündliche Lastprofile für Heizung und Warmwasser aus. Eine ausführliche Beschreibung erfolgt in Kapitel \ref{sec:heat_load_BDEW_doc}.
+
+Die spezifische Berechnungsmethode wird basierend auf dem Gebäudetyp ausgewählt.
+
+\subsubsection{Korrektur negativer Lasten}
+Um physikalisch unsinnige negative Werte zu vermeiden, werden alle negativen stündlichen Lasten auf 0 gesetzt:
+
+\[
+\text{hourly\_heat\_demand\_total\_kW} = \max(0, \text{hourly\_heat\_demand\_total\_kW})
+\]
+
+\subsubsection{Umrechnung in Watt}
+Die berechneten Lasten in kW werden in Watt umgerechnet:
+
+\[
+\text{total\_heat\_W} = \text{hourly\_heat\_demand\_total\_kW} \times 1000
+\]
+
+\subsection{Ausgabe}
+Die Funktion gibt folgende Werte zurück:
+\begin{itemize}
+    \item \textbf{yearly\_time\_steps}: Stündliche Zeitpunkte über das Jahr hinweg.
+    \item \textbf{total\_heat\_W}: Gesamtwärmelast in Watt.
+    \item \textbf{heating\_heat\_W}: Heizwärmelast in Watt.
+    \item \textbf{warmwater\_heat\_W}: Warmwasserlast in Watt.
+    \item \textbf{max\_heat\_requirement\_W}: Maximaler Wärmebedarf in Watt.
+    \item \textbf{supply\_temperature\_curve}: Vorlauftemperaturkurve des Gebäudes.
+    \item \textbf{return\_temperature\_curve}: Rücklauftemperaturkurve des Gebäudes.
+    \item \textbf{hourly\_air\_temperatures}: Stündliche Außentemperaturen.
+\end{itemize}
+
+\section{Funktion \texttt{calculate\_temperature\_curves}}
+
+Diese Funktion berechnet die Vor- und Rücklauftemperaturkurven eines Gebäudes basierend auf den stündlichen Lufttemperaturen.
+
+\subsection{Eingabe}
+\begin{itemize}
+    \item \textbf{data}: Ein DataFrame mit den Vor- und Rücklauftemperaturen der Heizsysteme sowie den Steigungen der Heizkurve für jedes Gebäude.
+    \item \textbf{hourly\_air\_temperatures}: Array mit stündlichen Außentemperaturen.
+\end{itemize}
+
+\subsection{Berechnung der Temperaturkurven}
+
+\subsubsection{Temperaturdifferenz}
+Die Differenz zwischen Vor- und Rücklauftemperatur \( \Delta T \) wird für jedes Gebäude berechnet:
+
+\[
+\Delta T = VLT_{\text{max}} - RLT_{\text{max}}
+\]
+
+Dabei ist \( VLT_{\text{max}} \) die maximale Vorlauftemperatur und \( RLT_{\text{max}} \) die maximale Rücklauftemperatur des Gebäudes.
+
+\subsubsection{Vorlauftemperaturkurve}
+Die Vorlauftemperatur wird basierend auf der Außentemperatur und der Steigung der Heizkurve \( s \) berechnet. Für Außentemperaturen unterhalb der Normaußentemperatur \( T_{\text{min}} \) bleibt die Vorlauftemperatur konstant:
+
+\[
+\text{Vorlauftemperatur} = VLT_{\text{max}}, \quad \text{wenn } T_{\text{außen}} \leq T_{\text{min}}
+\]
+
+Wenn die Außentemperatur \( T_{\text{außen}} \) größer ist als \( T_{\text{min}} \), wird die Vorlauftemperatur gemäß folgender Gleichung angepasst:
+
+\[
+\text{Vorlauftemperatur} = VLT_{\text{max}} + s \times (T_{\text{außen}} - T_{\text{min}})
+\]
+
+\subsubsection{Rücklauftemperaturkurve}
+Die Rücklauftemperaturkurve wird durch Subtraktion der Temperaturdifferenz \( \Delta T \) von der Vorlauftemperatur berechnet:
+
+\[
+\text{Rücklauftemperatur} = \text{Vorlauftemperatur} - \Delta T
+\]
+
+\input{heat_load_VDI4655_doc/heat_load_VDI4655_doc.tex}
+
+\input{heat_load_BDEW_doc/heat_load_BDEW_doc.tex}
+
+\end{document}

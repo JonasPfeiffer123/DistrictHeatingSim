@@ -1,7 +1,7 @@
 """
 Filename: visualization_dialogs.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-08-01
+Date: 2024-09-10
 Description: Contains the Dialogs for the VisualizationTab.
 """
 
@@ -24,10 +24,9 @@ from PyQt5.QtCore import Qt, pyqtSignal
 
 from pyproj import Transformer
 
-from gui.threads import GeocodingThread
+from gui.VisualizationTab.net_generation_threads import GeocodingThread
 from geocoding.geocodingETRS89 import get_coordinates
 from osm.import_osm_data_geojson import build_query, download_data, save_to_file
-from osm.heat_supply_areas import clustering_districts_hdbscan, postprocessing_hdbscan, allocate_overlapping_area
 
 def get_resource_path(relative_path):
     """ Get the absolute path to the resource, works for dev and for PyInstaller """
@@ -789,152 +788,6 @@ class OSMBuildingQueryDialog(QDialog):
             polygon = polygon_gdf.geometry.iloc[0]
             filtered_gdf = gdf[gdf.geometry.within(polygon)]
             filtered_gdf.to_file(filename, driver='GeoJSON')
-
-class SpatialAnalysisDialog(QDialog):
-    """
-    Dialog for performing spatial analysis to cluster buildings into districts.
-    """
-    def __init__(self, base_path, parent=None):
-        super().__init__(parent)
-        self.base_path = base_path
-        self.initUI()
-
-    def initUI(self):
-        """
-        Initialize the user interface for the dialog.
-        """
-        layout = QVBoxLayout(self)
-        self.setWindowTitle("Clustering Quartiere")
-        self.setGeometry(300, 300, 600, 400)
-
-        self.explanationLabel = QLabel("""Hier können Gebäude aus dem OSM-download räumlich geclustert werden. \nEs werden den Gebäuden zufällig Wärmebedarfe zugewiesen, wodurch sich für die einzelnen Cluster spez. Wärmebedarfe ergeben. \nAnhand eines intern definierten Schwellwerts lassen sich so Versorgungsgebiete definieren. \nIm Ergebnis werden alle generierten Cluster sowie die ermittelten Gebäude zur Wärmeversorgung mit Wärmenetzen ausgegeben. \nDiese Funktionen dienen lediglich der demonstration grundsätzlicher Möglichkeiten und könnte in Zukunft hin zur Nutzbarkeit ausgebaut werden.""")
-        layout.addWidget(self.explanationLabel)
-
-        self.geojsonWidget = QWidget(self)
-        geojsonLayout = QVBoxLayout(self.geojsonWidget)
-        self.geojsonLabel = QLabel("Dateiname der geojson mit den Gebäuden die geclustert werden sollen.")
-        self.geojsonLineEdit, self.geojsonButton = self.createFileInput(f"{self.base_path}\Raumanalyse\output_buildings.geojson")
-        geojsonLayout.addLayout(self.createFileInputLayout(self.geojsonLineEdit, self.geojsonButton))
-        layout.addWidget(self.geojsonLabel)
-        layout.addWidget(self.geojsonWidget)
-
-        self.geojsonareaWidget = QWidget(self)
-        geojsonareaLayout = QVBoxLayout(self.geojsonareaWidget)
-        self.geojsonareaLabel = QLabel("Dateiname der geojson in der die Polygone der ermittelten Quartiere/Cluster gespeichert werden sollen.")
-        self.geojsonareaLineEdit, self.geojsonareaButton = self.createFileInput(f"{self.base_path}\Raumanalyse\quartiere.geojson")
-        geojsonareaLayout.addLayout(self.createFileInputLayout(self.geojsonareaLineEdit, self.geojsonareaButton))
-        layout.addWidget(self.geojsonareaLabel)
-        layout.addWidget(self.geojsonareaWidget)
-
-        self.geojsonfilteredbuildingsWidget = QWidget(self)
-        geojsonfilteredbuildingsLayout = QVBoxLayout(self.geojsonfilteredbuildingsWidget)
-        self.geojsonfilteredbuildingsLabel = QLabel("Dateiname der geojson in der die nach Wärmenetzversorgung gefilterten gebäude gespeichert werden sollen.")
-        self.geojsonfilteredbuildingsLineEdit, self.geojsonfilteredbuildingsButton = self.createFileInput(f"{self.base_path}\Raumanalyse\waermenetz_buildings.geojson")
-        geojsonfilteredbuildingsLayout.addLayout(self.createFileInputLayout(self.geojsonfilteredbuildingsLineEdit, self.geojsonfilteredbuildingsButton))
-        layout.addWidget(self.geojsonfilteredbuildingsLabel)
-        layout.addWidget(self.geojsonfilteredbuildingsWidget)
-
-        self.queryButton = QPushButton("Berechnung Starten", self)
-        self.queryButton.clicked.connect(self.calculate)
-        layout.addWidget(self.queryButton)
-
-        self.okButton = QPushButton("OK", self)
-        self.okButton.clicked.connect(self.accept)
-        layout.addWidget(self.okButton)
-        self.cancelButton = QPushButton("Abbrechen", self)
-        self.cancelButton.clicked.connect(self.reject)
-        layout.addWidget(self.cancelButton)
-
-
-    def createFileInput(self, default_path):
-        """
-        Create a file input field with a browse button.
-
-        Args:
-            default_path: The default file path.
-
-        Returns:
-            QLineEdit: The line edit for file path input.
-            QPushButton: The browse button.
-        """
-        lineEdit = QLineEdit(default_path)
-        button = QPushButton("Durchsuchen")
-        button.clicked.connect(lambda: self.selectFile(lineEdit))
-        return lineEdit, button
-
-    def selectFile(self, lineEdit):
-        """
-        Open a file dialog to select a file.
-
-        Args:
-            lineEdit: The QLineEdit widget to set the selected file path.
-        """
-        filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", "", "All Files (*)")
-        if filename:
-            lineEdit.setText(filename)
-
-    def createFileInputLayout(self, lineEdit, button):
-        """
-        Create a layout for file input.
-
-        Args:
-            lineEdit: The QLineEdit widget.
-            button: The QPushButton widget.
-
-        Returns:
-            QHBoxLayout: The layout containing the file input widgets.
-        """
-        layout = QHBoxLayout()
-        layout.addWidget(lineEdit)
-        layout.addWidget(button)
-        return layout
-
-    def calculate_building_data(self, gdf, output_filename):
-        """
-        Calculate additional building data for the GeoDataFrame.
-
-        Args:
-            gdf: The GeoDataFrame containing the building data.
-            output_filename: The output file name.
-
-        Returns:
-            GeoDataFrame: The updated GeoDataFrame with additional building data.
-        """
-        gdf['area_sqm'] = gdf['geometry'].area
-        gdf['spez. Wärmebedarf [kWh/m²*a]'] = np.random.uniform(50, 200, gdf.shape[0])
-        gdf['Anzahl Geschosse'] = 3
-        gdf['Jahreswärmebedarf [kWh/a]'] = gdf['spez. Wärmebedarf [kWh/m²*a]'] * gdf['Anzahl Geschosse'] * gdf['area_sqm']
-        gdf.to_file(output_filename, driver='GeoJSON')
-
-        return gdf
-
-    def calculate(self):
-        """
-        Perform the spatial analysis to cluster buildings into districts.
-        """
-        geojson_file_buildings = self.geojsonLineEdit.text()
-        geojson_file_areas = self.geojsonareaLineEdit.text()
-        geojson_file_filtered_buildings = self.geojsonfilteredbuildingsLineEdit.text()
-        gdf = gpd.read_file(geojson_file_buildings, driver='GeoJSON').to_crs(epsg=25833)
-        ignore_types = ['ruins', 'greenhouse', 'shed', 'silo', 'slurry_tank', 
-                    'toilets', 'hut', 'cabin', 'ger', 'static_caravan', 
-                    'construction', 'cowshed', 'garage', 'garages', 'carport',
-                    'farm_auxiliary', 'roof', 'digester']
-
-        gdf = gdf[~gdf['building'].isin(ignore_types)]
-        gdf = self.calculate_building_data(gdf, geojson_file_buildings)
-        
-        quartiere = clustering_districts_hdbscan(gdf)
-        quartiere = postprocessing_hdbscan(quartiere)
-        quartiere = allocate_overlapping_area(quartiere)
-        quartiere.to_file(geojson_file_areas, driver='GeoJSON')
-
-        waermenetz_buildings = gdf[gdf['quartier_label'].isin(quartiere[quartiere['Versorgungsgebiet'] == 'Wärmenetzversorgung'].index)]
-        waermenetz_buildings = waermenetz_buildings[['geometry']]
-        waermenetz_buildings.to_file(geojson_file_filtered_buildings, driver='GeoJSON')
-
-        self.parent().loadNetData(geojson_file_filtered_buildings)
-        self.parent().loadNetData(geojson_file_areas)
 
 class GeocodeAddressesDialog(QDialog):
     """

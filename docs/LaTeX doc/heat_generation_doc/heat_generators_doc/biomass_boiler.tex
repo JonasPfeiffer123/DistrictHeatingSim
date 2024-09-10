@@ -1,0 +1,129 @@
+\section{BiomassBoiler Klasse}
+Die \texttt{BiomassBoiler}-Klasse modelliert ein Biomassekesselsystem und enthält Methoden zur Simulation der Leistung des Kessels, des Brennstoffverbrauchs, der Speicherintegration sowie zur ökonomischen und ökologischen Analyse.
+
+\subsection{Attribute}
+\begin{itemize}
+    \item \texttt{name (str)}: Name des Biomassekesselsystems.
+    \item \texttt{P\_BMK (float)}: Kesselleistung in kW.
+    \item \texttt{Größe\_Holzlager (float)}: Größe des Holzlagers in Kubikmetern.
+    \item \texttt{spez\_Investitionskosten (float)}: Spezifische Investitionskosten für den Kessel in €/kW.
+    \item \texttt{spez\_Investitionskosten\_Holzlager (float)}: Spezifische Investitionskosten für das Holzlager in €/m³.
+    \item \texttt{Nutzungsgrad\_BMK (float)}: Wirkungsgrad des Biomassekessels.
+    \item \texttt{min\_Teillast (float)}: Minimale Teillast in Relation zur Nennlast.
+    \item \texttt{speicher\_aktiv (bool)}: Gibt an, ob ein Speichersystem aktiv ist.
+    \item \texttt{Speicher\_Volumen (float)}: Volumen des Wärmespeichers in Kubikmetern.
+    \item \texttt{T\_vorlauf (float)}: Vorlauftemperatur in Grad Celsius.
+    \item \texttt{T\_ruecklauf (float)}: Rücklauftemperatur in Grad Celsius.
+    \item \texttt{initial\_fill (float)}: Anfangsfüllstand des Speichers in Relation zum Gesamtvolumen.
+    \item \texttt{min\_fill (float)}: Minimaler Füllstand des Speichers in Relation zum Gesamtvolumen.
+    \item \texttt{max\_fill (float)}: Maximaler Füllstand des Speichers in Relation zum Gesamtvolumen.
+    \item \texttt{spez\_Investitionskosten\_Speicher (float)}: Spezifische Investitionskosten für den Wärmespeicher in €/m³.
+    \item \texttt{BMK\_an (bool)}: Gibt an, ob der Kessel in Betrieb ist.
+    \item \texttt{opt\_BMK\_min (float)}: Minimale Kesselleistung für die Optimierung.
+    \item \texttt{opt\_BMK\_max (float)}: Maximale Kesselleistung für die Optimierung.
+    \item \texttt{opt\_Speicher\_min (float)}: Minimale Speicherkapazität für die Optimierung.
+    \item \texttt{opt\_Speicher\_max (float)}: Maximale Speicherkapazität für die Optimierung.
+    \item \texttt{Nutzungsdauer (int)}: Nutzungsdauer des Biomassekessels in Jahren.
+    \item \texttt{f\_Inst (float)}: Installationsfaktor.
+    \item \texttt{f\_W\_Insp (float)}: Wartungs- und Inspektionsfaktor.
+    \item \texttt{Bedienaufwand (float)}: Arbeitsaufwand für den Betrieb.
+    \item \texttt{co2\_factor\_fuel (float)}: CO$_2$-Faktor für den Brennstoff in tCO$_2$/MWh.
+    \item \texttt{primärenergiefaktor (float)}: Primärenergiefaktor für den Brennstoff.
+\end{itemize}
+
+\subsection{Methoden}
+\begin{itemize}
+    \item \texttt{simulate\_operation(Last\_L, duration)}: Simuliert den Betrieb des Biomassekessels über ein gegebenes Lastprofil und eine bestimmte Zeitdauer.
+    \begin{itemize}
+        \item \textbf{Last\_L (array)}: Lastprofil des Systems in kW.
+        \item \textbf{duration (float)}: Dauer jedes Zeitschritts in Stunden.
+    \end{itemize}
+    
+    Diese Methode simuliert den Betrieb des Kessels und berechnet die erzeugte Wärmemenge sowie den Brennstoffbedarf. Die Formel für die Wärmeerzeugung ist:
+    \[
+    \texttt{Wärmemenge\_BMK} = \sum_{t=1}^{n} \left( \frac{\texttt{Wärmeleistung\_kW}[t]}{1000} \right) \times \texttt{duration}
+    \]
+    Die Brennstoffmenge wird auf Basis des Wirkungsgrades (\texttt{Nutzungsgrad\_BMK}) berechnet:
+    \[
+    \texttt{Brennstoffbedarf\_BMK} = \frac{\texttt{Wärmemenge\_BMK}}{\texttt{Nutzungsgrad\_BMK}}
+    \]
+
+    \item \texttt{simulate\_storage(Last\_L, duration)}: Simuliert den Betrieb des Speichersystems und passt die Kesselleistung zur Optimierung des Speicherbetriebs an.
+    \begin{itemize}
+        \item \textbf{Last\_L (array)}: Lastprofil des Systems in kW.
+        \item \textbf{duration (float)}: Dauer jedes Zeitschritts in Stunden.
+    \end{itemize}
+    
+    Diese Methode berechnet die Speicherfüllstände, indem sie die Wärmemenge, die in den Speicher geladen oder daraus entnommen wird, auf Basis der Vor- und Rücklauftemperaturen bestimmt. Das Speichervolumen in kWh wird folgendermaßen berechnet:
+    \[
+    \texttt{speicher\_kapazitaet} = \texttt{Speicher\_Volumen} \times 4186 \times (\texttt{T\_vorlauf} - \texttt{T\_ruecklauf}) / 3600
+    \]
+    Dabei ist 4186 die spezifische Wärmekapazität von Wasser in J/kgK.
+
+    \item \texttt{calculate\_heat\_generation\_costs(Wärmemenge, Brennstoffbedarf, Brennstoffkosten, q, r, T, BEW, stundensatz)}: Berechnet die gewichteten Durchschnittskosten der Wärmeerzeugung (WGK) basierend auf den Investitionskosten, Brennstoffkosten und Betriebskosten des Systems.
+    \begin{itemize}
+        \item \textbf{Wärmemenge (float)}: Erzeugte Wärmemenge in kWh.
+        \item \textbf{Brennstoffbedarf (float)}: Brennstoffverbrauch in MWh.
+        \item \textbf{Brennstoffkosten (float)}: Kosten des Biomassebrennstoffs in €/MWh.
+        \item \textbf{q (float)}: Kapitalrückgewinnungsfaktor.
+        \item \textbf{r (float)}: Preissteigerungsfaktor.
+        \item \textbf{T (int)}: Zeitperiode in Jahren.
+        \item \textbf{BEW (float)}: Betriebskostenfaktor.
+        \item \textbf{stundensatz (float)}: Stundensatz für den Arbeitsaufwand.
+    \end{itemize}
+    
+    Die Methode berechnet die Investitionskosten des Kessels, des Holzlagers und des Speichers und verwendet die Annuitätenmethode zur Berechnung der jährlichen Kapitalrückzahlung:
+    \[
+    \texttt{A\_N} = \text{annuität}(\texttt{Investitionskosten}, \texttt{Nutzungsdauer}, \texttt{f\_Inst}, \texttt{f\_W\_Insp}, \texttt{Bedienaufwand}, q, r, T)
+    \]
+    Die spezifischen Wärmeerzeugungskosten werden durch Division der Gesamtkosten durch die erzeugte Wärmemenge berechnet:
+    \[
+    \texttt{WGK\_BMK} = \frac{\texttt{A\_N}}{\texttt{Wärmemenge}}
+    \]
+
+    \item \texttt{calculate(Holzpreis, q, r, T, BEW, stundensatz, duration, general\_results)}: Führt eine vollständige Simulation des Biomassekessels durch, einschließlich der Berechnung der Wärmeerzeugung und ökonomischer Parameter.
+    \begin{itemize}
+        \item \textbf{Holzpreis (float)}: Preis des Brennstoffs (Holzpellets) in €/MWh.
+        \item \textbf{q (float)}: Kapitalrückgewinnungsfaktor.
+        \item \textbf{r (float)}: Preissteigerungsfaktor.
+        \item \textbf{T (int)}: Zeitperiode in Jahren.
+        \item \textbf{BEW (float)}: Betriebskostenfaktor.
+        \item \textbf{stundensatz (float)}: Stundensatz für den Arbeitsaufwand.
+        \item \textbf{duration (float)}: Dauer jedes Simulationsschritts in Stunden.
+        \item \textbf{general\_results (dict)}: Wörterbuch mit allgemeinen Ergebnissen, wie z.B. Restlasten.
+    \end{itemize}
+    
+    Diese Methode berechnet die Leistung des Kessels, den Brennstoffverbrauch und die Wärmemenge. Falls ein Speicher aktiviert ist, wird die Methode \texttt{storage()} aufgerufen. Zusätzlich werden die spezifischen CO$_2$-Emissionen und der Primärenergieverbrauch berechnet:
+    \[
+    \texttt{co2\_emissions} = \texttt{Brennstoffbedarf} \times \texttt{co2\_factor\_fuel}
+    \]
+    \[
+    \texttt{primärenergie} = \texttt{Brennstoffbedarf} \times \texttt{primärenergiefaktor}
+    \]
+    Diese Berechnungen ermöglichen eine umfassende Analyse der ökologischen Auswirkungen des Systems.
+\end{itemize}
+
+\subsection{Ökonomische und ökologische Überlegungen}
+Die \texttt{BiomassBoiler}-Klasse ermöglicht die Berechnung der \textbf{Wärmegestehungskosten (WGK)} unter Berücksichtigung der Investitions-, Installations- und Betriebskosten sowie des Brennstoffverbrauchs. Die spezifischen CO$_2$-Emissionen werden auf Basis des verbrannten Brennstoffs berechnet, und der \textbf{Primärenergieverbrauch} wird anhand der erzeugten Wärmemenge und des Primärenergiefaktors ermittelt.
+
+\subsection{Nutzungsbeispiel}
+Die \texttt{BiomassBoiler}-Klasse kann verwendet werden, um die Leistung eines Biomasseheizsystems mit oder ohne Speicher zu simulieren. Das folgende Beispiel zeigt, wie die Klasse initialisiert und verwendet werden kann:
+
+\begin{verbatim}
+biomass_boiler = BiomassBoiler(
+    name="Biomassekessel",
+    P_BMK=500,  # kW
+    Größe_Holzlager=50,  # m³
+    Nutzungsgrad_BMK=0.85,
+    Speicher_Volumen=100,  # m³
+    speicher_aktiv=True
+)
+results = biomass_boiler.calculate(
+    Holzpreis=20,  # €/MWh
+    q=0.05, r=0.03, T=15, BEW=1.1, 
+    stundensatz=50, 
+    duration=1, 
+    general_results=load_profile
+)
+\end{verbatim}
+In diesem Beispiel wird ein Biomassekessel mit einer Leistung von 500 kW und einem Holzlager von 50 m³ simuliert. Das System enthält einen 100 m³ großen Wärmespeicher. Leistung und Kosten werden basierend auf den eingegebenen Parametern berechnet.

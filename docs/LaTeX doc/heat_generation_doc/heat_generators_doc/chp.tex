@@ -1,0 +1,117 @@
+\section{CHP Klasse}
+Die \texttt{CHP}-Klasse modelliert ein Blockheizkraftwerk (BHKW), das sowohl thermische als auch elektrische Energie bereitstellt. Die Klasse enthält Methoden zur Berechnung der Leistung, des Brennstoffverbrauchs, der ökonomischen Kennzahlen und der Umweltauswirkungen. Das System kann mit oder ohne Speicher betrieben werden und unterstützt sowohl gas- als auch holzgasbetriebene BHKWs.
+
+\subsection{Attribute}
+\begin{itemize}
+    \item \texttt{name (str)}: Name des BHKW-Systems.
+    \item \texttt{th\_Leistung\_BHKW (float)}: Thermische Leistung des BHKWs in kW.
+    \item \texttt{spez\_Investitionskosten\_GBHKW (float)}: Spezifische Investitionskosten für gasbetriebene BHKWs in €/kW. Standard: 1500 €/kW.
+    \item \texttt{spez\_Investitionskosten\_HBHKW (float)}: Spezifische Investitionskosten für holzgasbetriebene BHKWs in €/kW. Standard: 1850 €/kW.
+    \item \texttt{el\_Wirkungsgrad (float)}: Elektrischer Wirkungsgrad des BHKWs. Standard: 0,33.
+    \item \texttt{KWK\_Wirkungsgrad (float)}: Gesamtwirkungsgrad des BHKWs (kombinierte Wärme- und Stromerzeugung). Standard: 0,9.
+    \item \texttt{min\_Teillast (float)}: Minimale Teillast als Anteil der Nennlast. Standard: 0,7.
+    \item \texttt{speicher\_aktiv (bool)}: Gibt an, ob ein Speichersystem aktiv ist. Standard: \texttt{False}.
+    \item \texttt{Speicher\_Volumen\_BHKW (float)}: Speichervolumen in Kubikmetern. Standard: 20 m³.
+    \item \texttt{T\_vorlauf (float)}: Vorlauftemperatur in Grad Celsius. Standard: 90°C.
+    \item \texttt{T\_ruecklauf (float)}: Rücklauftemperatur in Grad Celsius. Standard: 60°C.
+    \item \texttt{initial\_fill (float)}: Anfangsfüllstand des Speichers als Bruchteil des maximalen Füllstands.
+    \item \texttt{min\_fill (float)}: Minimaler Füllstand des Speichers.
+    \item \texttt{max\_fill (float)}: Maximaler Füllstand des Speichers.
+    \item \texttt{spez\_Investitionskosten\_Speicher (float)}: Spezifische Investitionskosten für den Speicher in €/m³.
+    \item \texttt{BHKW\_an (bool)}: Gibt an, ob das BHKW eingeschaltet ist.
+    \item \texttt{thermischer\_Wirkungsgrad (float)}: Thermischer Wirkungsgrad des BHKWs.
+    \item \texttt{el\_Leistung\_Soll (float)}: Zielwert der elektrischen Leistung des BHKWs in kW.
+    \item \texttt{Nutzungsdauer (int)}: Lebensdauer des BHKWs in Jahren.
+    \item \texttt{f\_Inst (float)}: Installationsfaktor.
+    \item \texttt{f\_W\_Insp (float)}: Wartungs- und Inspektionsfaktor.
+    \item \texttt{Bedienaufwand (float)}: Arbeitsaufwand für den Betrieb.
+    \item \texttt{co2\_factor\_fuel (float)}: CO$_2$-Emissionsfaktor für den Brennstoff in tCO$_2$/MWh.
+    \item \texttt{primärenergiefaktor (float)}: Primärenergiefaktor für den Brennstoff.
+    \item \texttt{co2\_factor\_electricity (float)}: CO$_2$-Emissionsfaktor für Strom in tCO$_2$/MWh. Standard: 0,4 tCO$_2$/MWh.
+\end{itemize}
+
+\subsection{Methoden}
+\begin{itemize}
+    \item \texttt{simulate\_operation(Last\_L, duration)}: Berechnet die Wärme- und Stromerzeugung des BHKWs ohne Speichersystem.
+    \begin{itemize}
+        \item \textbf{Last\_L (array)}: Lastprofil in kW.
+        \item \textbf{duration (float)}: Dauer jedes Zeitschritts in Stunden.
+    \end{itemize}
+    Diese Methode berechnet die thermische und elektrische Leistung sowie den Brennstoffverbrauch des BHKWs. Die Berechnung der erzeugten Wärme basiert auf dem thermischen Wirkungsgrad:
+    \[
+    \texttt{Wärmemenge\_BHKW} = \sum_{t=1}^{n} \left( \frac{\texttt{Wärmeleistung\_kW}[t]}{1000} \right) \times \texttt{duration}
+    \]
+    Der Brennstoffbedarf wird auf Basis des kombinierten Wirkungsgrads (\texttt{KWK\_Wirkungsgrad}) berechnet:
+    \[
+    \texttt{Brennstoffbedarf\_BHKW} = \frac{\texttt{Wärmemenge\_BHKW} + \texttt{Strommenge\_BHKW}}{\texttt{KWK\_Wirkungsgrad}}
+    \]
+
+    \item \texttt{simulate\_storage(Last\_L, duration)}: Berechnet die Wärme- und Stromerzeugung des BHKWs mit einem Speichersystem.
+    \begin{itemize}
+        \item \textbf{Last\_L (array)}: Lastprofil des Systems in kW.
+        \item \textbf{duration (float)}: Dauer jedes Zeitschritts in Stunden.
+    \end{itemize}
+    Diese Methode berechnet die Speichernutzung und das Füllniveau basierend auf der erzeugten Wärme und dem Lastprofil. Die Wärmespeicherkapazität in kWh wird berechnet:
+    \[
+    \texttt{speicher\_kapazitaet} = \texttt{Speicher\_Volumen\_BHKW} \times 4186 \times (\texttt{T\_vorlauf} - \texttt{T\_ruecklauf}) / 3600
+    \]
+    
+    \item \texttt{calculate\_heat\_generation\_costs(Wärmemenge, Strommenge, Brennstoffbedarf, Brennstoffkosten, Strompreis, q, r, T, BEW, stundensatz)}: Berechnet die gewichteten Durchschnittskosten für das BHKW.
+    \begin{itemize}
+        \item \textbf{Wärmemenge (float)}: Erzeugte Wärmemenge in MWh.
+        \item \textbf{Strommenge (float)}: Erzeugte Strommenge in MWh.
+        \item \textbf{Brennstoffbedarf (float)}: Brennstoffverbrauch in MWh.
+        \item \textbf{Brennstoffkosten (float)}: Brennstoffkosten in €/MWh.
+        \item \textbf{Strompreis (float)}: Strompreis in €/MWh.
+        \item \textbf{q (float)}, \textbf{r (float)}: Faktoren für Kapitalrückgewinnung und Preissteigerung.
+        \item \textbf{T (int)}: Zeitperiode in Jahren.
+        \item \textbf{BEW (float)}: Abzinsungsfaktor.
+        \item \textbf{stundensatz (float)}: Arbeitskosten in €/Stunde.
+    \end{itemize}
+    Diese Methode berechnet die spezifischen Wärmeerzeugungskosten (\texttt{WGK\_BHKW}) auf Basis der Investitions- und Betriebskosten:
+    \[
+    \texttt{WGK\_BHKW} = \frac{\texttt{A\_N}}{\texttt{Wärmemenge}}
+    \]
+
+    \item \texttt{calculate(Gaspreis, Holzpreis, Strompreis, q, r, T, BEW, stundensatz, duration, general\_results)}: Führt eine vollständige Simulation des BHKWs durch, einschließlich der Berechnung der ökonomischen und ökologischen Kennzahlen.
+    \begin{itemize}
+        \item \textbf{Gaspreis (float)}: Gaspreis in €/MWh.
+        \item \textbf{Holzpreis (float)}: Preis für Holzgas in €/MWh.
+        \item \textbf{Strompreis (float)}: Strompreis in €/MWh.
+        \item \textbf{q (float)}, \textbf{r (float)}, \textbf{T (int)}, \textbf{BEW (float)}, \textbf{stundensatz (float)}: Parameter für die Kostenberechnung.
+        \item \textbf{duration (float)}: Simulationsdauer in Stunden.
+        \item \textbf{general\_results (dict)}: Wörterbuch mit allgemeinen Ergebnissen wie Lastprofilen.
+    \end{itemize}
+    Die Methode berechnet zudem die spezifischen CO$_2$-Emissionen und den Primärenergieverbrauch:
+    \[
+    \texttt{co2\_emissions} = \texttt{Brennstoffbedarf} \times \texttt{co2\_factor\_fuel}
+    \]
+    \[
+    \texttt{primärenergie} = \texttt{Brennstoffbedarf} \times \texttt{primärenergiefaktor}
+    \]
+\end{itemize}
+
+\subsection{Ökonomische und ökologische Überlegungen}
+Die \texttt{CHP}-Klasse ermöglicht die Berechnung der Wärmegestehungsksoten und der spezifischen CO$_2$-Emissionen eines BHKW-Systems. Diese Berechnungen berücksichtigen die Brennstoffkosten, die Stromerzeugung sowie die Arbeits- und Betriebskosten. Darüber hinaus werden die CO$_2$-Einsparungen durch die Stromerzeugung und der Primärenergieverbrauch des Systems ermittelt.
+
+\subsection{Nutzungsbeispiel}
+Das folgende Beispiel zeigt die Initialisierung und Verwendung der \texttt{CHP}-Klasse zur Simulation eines gasbetriebenen BHKWs:
+
+\begin{verbatim}
+chp_system = CHP(
+    name="Gas-BHKW", 
+    th_Leistung_BHKW=200,  # kW
+    speicher_aktiv=True,
+    Speicher_Volumen_BHKW=30  # m³
+)
+results = chp_system.calculate(
+    Gaspreis=60,  # €/MWh
+    Holzpreis=40,  # €/MWh
+    Strompreis=100,  # €/MWh
+    q=0.03, r=0.02, T=15, BEW=0.8, 
+    stundensatz=50, 
+    duration=1, 
+    general_results=load_profile
+)
+\end{verbatim}
+In diesem Beispiel wird ein gasbetriebenes BHKW mit einer thermischen Leistung von 200 kW und einem Speichervolumen von 30 m³ simuliert. Die ökonomische und ökologische Leistung des Systems wird anhand der bereitgestellten Eingaben berechnet.

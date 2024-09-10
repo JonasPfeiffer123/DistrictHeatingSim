@@ -8,7 +8,7 @@ Description: Contains the Dialogs of the main GUI
 import sys
 import os
 
-from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QPushButton, QHBoxLayout, QFileDialog
+from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QPushButton, QHBoxLayout, QFileDialog, QCheckBox, QDialogButtonBox
 
 def get_resource_path(relative_path):
     """
@@ -179,4 +179,55 @@ class HeatPumpDataDialog(QDialog):
         """
         return {
             'COP-filename': self.heatPumpDataFileInput.text()
+        }
+
+class PDFSelectionDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("PDF Abschnittsauswahl")
+        self.resize(300, 200)
+
+        layout = QVBoxLayout()
+
+        # Checkboxen für die verschiedenen Abschnitte
+        self.net_structure_cb = QCheckBox("Netzstruktur")
+        self.net_structure_cb.setChecked(True)
+        self.economic_conditions_cb = QCheckBox("Wirtschaftliche Randbedingungen")
+        self.economic_conditions_cb.setChecked(True)
+        self.technologies_cb = QCheckBox("Erzeugertechnologien")
+        self.technologies_cb.setChecked(True)
+        self.net_infrastructure_cb = QCheckBox("Netzinfrastruktur")
+        self.net_infrastructure_cb.setChecked(True)
+        self.costs_cb = QCheckBox("Kosten")
+        self.costs_cb.setChecked(True)
+        self.results_cb = QCheckBox("Berechnungsergebnisse")
+        self.results_cb.setChecked(True)
+
+        # Checkboxen zum Layout hinzufügen
+        layout.addWidget(self.net_structure_cb)
+        layout.addWidget(self.economic_conditions_cb)
+        layout.addWidget(self.technologies_cb)
+        layout.addWidget(self.net_infrastructure_cb)
+        layout.addWidget(self.costs_cb)
+        layout.addWidget(self.results_cb)
+
+        # Dialogbuttons (OK/Cancel)
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+        layout.addWidget(buttonBox)
+
+        self.setLayout(layout)
+
+    def get_selected_sections(self):
+        """
+        Gibt die vom Benutzer ausgewählten Abschnitte zurück.
+        """
+        return {
+            'net_structure': self.net_structure_cb.isChecked(),
+            'economic_conditions': self.economic_conditions_cb.isChecked(),
+            'technologies': self.technologies_cb.isChecked(),
+            'net_infrastructure': self.net_infrastructure_cb.isChecked(),
+            'costs': self.costs_cb.isChecked(),
+            'results': self.results_cb.isChecked()
         }

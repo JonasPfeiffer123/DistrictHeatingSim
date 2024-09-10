@@ -227,7 +227,9 @@ class ResultsTab(QWidget):
         Sets up the results table.
         """
         self.resultsTable = QTableWidget()
+        #self.resultsTable.setColumnCount(8)
         self.resultsTable.setColumnCount(6)
+        #self.resultsTable.setHorizontalHeaderLabels(['Technologie', 'Wärmemenge (MWh)', 'Anzahl Starts', 'Betriebsstunden', 'Kosten (€/MWh)', 'Anteil (%)', 'spez. CO2-Emissionen (t_CO2/MWh_th)', 'Primärenergiefaktor'])
         self.resultsTable.setHorizontalHeaderLabels(['Technologie', 'Wärmemenge (MWh)', 'Kosten (€/MWh)', 'Anteil (%)', 'spez. CO2-Emissionen (t_CO2/MWh_th)', 'Primärenergiefaktor'])
         self.resultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.resultsAndPieChartLayout.addWidget(self.resultsTable)
@@ -241,9 +243,12 @@ class ResultsTab(QWidget):
         """
         self.resultsTable.setRowCount(len(results['techs']))
 
+        #for i, (tech, wärmemenge, anzahl_starts, betriebsstunden, wgk, anteil, spec_emission, primary_energy) in enumerate(zip(results['techs'], results['Wärmemengen'], results['anzahl_starts'], results['betriebsstunden'], results['WGK'], results['Anteile'], results['specific_emissions_L'], results['primärenergie_L'])):
         for i, (tech, wärmemenge, wgk, anteil, spec_emission, primary_energy) in enumerate(zip(results['techs'], results['Wärmemengen'], results['WGK'], results['Anteile'], results['specific_emissions_L'], results['primärenergie_L'])):
             self.resultsTable.setItem(i, 0, QTableWidgetItem(tech))
             self.resultsTable.setItem(i, 1, QTableWidgetItem(f"{wärmemenge:.2f}"))
+            #self.resultsTable.setItem(i, 2, QTableWidgetItem(f"{anzahl_starts:.0f}"))
+            #self.resultsTable.setItem(i, 3, QTableWidgetItem(f"{betriebsstunden:.0f}"))
             self.resultsTable.setItem(i, 2, QTableWidgetItem(f"{wgk:.2f}"))
             self.resultsTable.setItem(i, 3, QTableWidgetItem(f"{anteil*100:.2f}"))
             self.resultsTable.setItem(i, 4, QTableWidgetItem(f"{spec_emission:.4f}"))

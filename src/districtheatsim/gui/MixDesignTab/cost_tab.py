@@ -1,7 +1,7 @@
 """
 Filename: cost_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-08-01
+Date: 2024-09-10
 Description: Contains the CostTab.
 """
 
@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QScrollArea, QTableWi
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtGui import QFont
 
-from heat_generators.heat_generator_classes import *
+from heat_generators.heat_generation_mix import *
 
 class CostTab(QWidget):
     """
@@ -70,7 +70,7 @@ class CostTab(QWidget):
         """
         self.createMainScrollArea()
         self.setupInfrastructureCostsTable()
-        self.setupCalculationOptimization()
+        self.setupTechDataTable()
         self.setupCostCompositionChart()
         self.setLayout(self.createMainLayout())
         
@@ -204,17 +204,11 @@ class CostTab(QWidget):
         return annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand, q=q, r=r, T=t, stundensatz=stundensatz)
     
     ### Setup of Calculation Result Tables ###
-    def setupCalculationOptimization(self):
-        """
-        Sets up the calculation optimization table.
-        """
-        self.addLabel('Kosten Erzeuger')
-        self.setupTechDataTable()
-
     def setupTechDataTable(self):
         """
         Sets up the technology data table.
         """
+        self.addLabel('Kosten Erzeuger')
         self.techDataTable = QTableWidget()
         self.techDataTable.setColumnCount(4)
         self.techDataTable.setHorizontalHeaderLabels(['Name', 'Dimensionen', 'Kosten', 'Gesamtkosten'])

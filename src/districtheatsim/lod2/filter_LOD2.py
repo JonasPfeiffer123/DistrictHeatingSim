@@ -392,3 +392,119 @@ def calculate_centroid_and_geocode(building_info):
             info['Adresse'] = None
 
     return building_info
+
+def calculate_normal_and_angles(roof_geom):
+    """
+    Calculate the normal vector, slope (inclination), azimuth (orientation),
+    and area of each polygon within a MultiPolygon geometry.
+
+    Args:
+        roof_geom (shapely.geometry.Polygon or shapely.geometry.MultiPolygon): 
+            The geometry of the roof, which can be either a Polygon or MultiPolygon.
+
+    Returns:
+        list of tuples: A list where each tuple contains the normal vector, the slope in degrees,
+                        the azimuth in degrees, and the area of each polygon.
+    """
+
+    def calculate_single_polygon(polygon):
+        """Helper function to calculate properties for a single polygon."""
+        coords = list(polygon.exterior.coords)
+        if len(coords) < 3:
+            return None, None, None, None
+
+        # Berechnung des Normalenvektors für die ersten drei Punkte
+        p1 = np.array(coords[0])
+        p2 = np.array(coords[1])
+        p3 = np.array(coords[2])
+        v1 = p2 - p1
+        v2 = p3 - p1
+        normal = np.cross(v1, v2)
+        normal = normal / np.linalg.norm(normal)
+        
+        # Neigungswinkel
+        inclination = np.degrees(np.arccos(normal[2]))
+        
+        # Azimutwinkel
+        azimuth = np.degrees(np.arctan2(normal[1], normal[0]))
+        if azimuth < 0:
+            azimuth += 360
+
+        # Fläche des Polygons
+        area = polygon.area
+
+        return normal, inclination, azimuth, area
+
+    results = []
+
+    if isinstance(roof_geom, MultiPolygon):
+        # Iterate over each polygon in the MultiPolygon
+        for polygon in roof_geom.geoms:
+            result = calculate_single_polygon(polygon)
+            if result:
+                results.append(result)
+
+    elif isinstance(roof_geom, Polygon):
+        # Handle the case where the geometry is just a single Polygon
+        result = calculate_single_polygon(roof_geom)
+        if result:
+            results.append(result)
+
+    return results
+
+def process_roof(file_path):
+    """
+    Processes LOD2 data and calculates roof area, slope, and orientation for PV calculation,
+    including wall geometries.
+    """
+    gdf = gpd.read_file(file_path)
+
+    building_info = {}
+
+    for _, row in gdf.iterrows():
+        parent_id = row['Obj_Parent'] if 'Obj_Parent' in row and row['Obj_Parent'] is not None else row['ID']
+        
+        if parent_id not in building_info:
+            building_info[parent_id] = {
+                'Ground': [], 'Wall': [], 'Roofs': [],
+                'Koordinate_X': None, 'Koordinate_Y': None,
+                'Adresse': None, 'Stadt': None, 'Bundesland': None, 'Land': None
+            }
+
+        if row['Geometr_3D'] == 'Ground':
+            building_info[parent_id]['Ground'].append(row['geometry'])
+        elif row['Geometr_3D'] == 'Wall':
+            building_info[parent_id]['Wall'].append(row['geometry'])
+        elif row['Geometr_3D'] == 'Roof':
+            # Berechnung von Normalvektor, Dachneigung und -ausrichtung für jedes Teilpolygon im Dachsegment
+            roof_segments = calculate_normal_and_angles(row['geometry'])
+            
+            for normal, roof_slope, roof_orientation, area in roof_segments:
+                # Speicherung der Ergebnisse in einer Liste von Dächern
+                roof_data = {
+                    'geometry': row['geometry'],
+                    'Roof_Slope': roof_slope,
+                    'Roof_Orientation': roof_orientation,
+                    'Area': area,
+                    'Normal_Vector': normal,
+                    'parent_id': parent_id  # Hinzufügen des parent_id
+                }
+                building_info[parent_id]['Roofs'].append(roof_data)
+
+        if 'Adresse' in row and pd.notna(row['Adresse']):
+            building_info[parent_id]['Adresse'] = row['Adresse']
+            building_info[parent_id]['Stadt'] = row['Stadt']
+            building_info[parent_id]['Bundesland'] = row['Bundesland']
+            building_info[parent_id]['Land'] = row['Land']
+            building_info[parent_id]['Koordinate_X'] = row['Koordinate_X']
+            building_info[parent_id]['Koordinate_Y'] = row['Koordinate_Y']
+
+    for parent_id, info in building_info.items():
+        info['Ground_Area'] = sum(calculate_area_3d_for_feature(geom) for geom in info['Ground'])
+        info['Wall_Area'] = sum(calculate_area_3d_for_feature(geom) for geom in info['Wall'])
+        info['Roof_Area'] = sum(roof['Area'] for roof in info['Roofs'])
+
+        if not info['Ground_Area'] or np.isnan(info['Ground_Area']):
+            info['Ground_Area'] = calculate_area_from_wall_coordinates(info['Ground'])
+
+    return building_info

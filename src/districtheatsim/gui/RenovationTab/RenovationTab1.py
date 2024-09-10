@@ -13,8 +13,10 @@ import geopandas as gpd
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-from PyQt5.QtWidgets import QApplication, QVBoxLayout, QWidget, QPushButton, QLabel, QLineEdit, QComboBox, QGroupBox, QFormLayout, QHBoxLayout, QScrollArea, QFileDialog, QMessageBox, QTableWidget, QTableWidgetItem
-from PyQt5.QtCore import pyqtSlot, pyqtSignal 
+from PyQt5.QtWidgets import (QApplication, QVBoxLayout, QWidget, QPushButton, QLabel, QLineEdit, QComboBox, 
+                             QGroupBox, QFormLayout, QHBoxLayout, QScrollArea, QFileDialog, QMessageBox, 
+                             QTableWidget, QTableWidgetItem, QSplitter, QTabWidget)
+from PyQt5.QtCore import pyqtSlot, pyqtSignal, Qt
 
 from utilities.SanierungsanalysefuerGUI import SanierungsAnalyse
 
@@ -83,7 +85,7 @@ class RenovationTab1(QWidget):
     """
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
 
-    def __init__(self, data_manager, parent=None):
+    def __init__(self, folder_manager, parent=None):
         """
         Initializes the RenovationTab1.
 
@@ -92,12 +94,12 @@ class RenovationTab1(QWidget):
             parent (QWidget, optional): The parent widget. Defaults to None.
         """
         super().__init__(parent)
-        self.data_manager = data_manager
-
+        self.folder_manager = folder_manager
+        
         # Connect to the data manager signal
-        self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
+        self.folder_manager.project_folder_changed.connect(self.updateDefaultPath)
         # Update the base path immediately with the current project folder
-        self.updateDefaultPath(self.data_manager.project_folder)
+        self.updateDefaultPath(self.folder_manager.project_folder)
 
         self.initUI()
     
@@ -106,56 +108,37 @@ class RenovationTab1(QWidget):
         Initializes the UI components of the RenovationTab1.
         """
         self.setWindowTitle("Sanierungsanalyse")
-        self.setGeometry(100, 100, 1200, 800)
+        #self.setGeometry(100, 100, 1200, 800)
 
         main_layout = QVBoxLayout()
+
+        # Main splitter to divide the UI into input and result sections
+        splitter = QSplitter(Qt.Horizontal)
+        main_layout.addWidget(splitter)
+
+        # Creating input sections
+        input_widget = QWidget()
+        input_layout = QVBoxLayout(input_widget)
         self.input_fields = {}
-        self.create_input_groups(main_layout)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll_content = QWidget()
-        scroll_content.setLayout(main_layout)
-        scroll.setWidget(scroll_content)
+        tab_widget = QTabWidget()
+        self.create_input_tabs(tab_widget)
+        input_layout.addWidget(tab_widget)
 
-        layout = QHBoxLayout()
-        layout.addWidget(scroll)
+        #scroll = QScrollArea()
+        #scroll.setWidgetResizable(True)
+        #scroll.setWidget(input_widget)
+        splitter.addWidget(input_widget)
 
-        result_layout = QVBoxLayout()
+        # Creating results and plotting sections
+        result_widget = QWidget()
+        result_layout = QVBoxLayout(result_widget)
+        self.create_result_section(result_layout)
+        splitter.addWidget(result_widget)
 
-        self.load_button_ist = QPushButton("IST-Stand GeoJSON laden")
-        self.load_button_ist.clicked.connect(self.load_ist_geojson)
-        result_layout.addWidget(self.load_button_ist)
+        splitter.setSizes([800, 800])  # Balance the splitter sections
 
-        self.ist_table = QTableWidget()
-        result_layout.addWidget(self.ist_table)
-
-        self.load_button_saniert = QPushButton("Sanierten Stand GeoJSON laden")
-        self.load_button_saniert.clicked.connect(self.load_saniert_geojson)
-        result_layout.addWidget(self.load_button_saniert)
-
-        self.saniert_table = QTableWidget()
-        result_layout.addWidget(self.saniert_table)
-
-        self.run_button = QPushButton("Analyse durchführen")
-        self.run_button.clicked.connect(self.run_analysis)
-        result_layout.addWidget(self.run_button)
-
-        self.combo_box = QComboBox()
-        self.combo_box.addItems(["Investitionskosten in €", "Gesamtenergiebedarf in kWh/a", "Energieeinsparung in kWh/a", "Kosteneinsparung in €/a", 
-                                 "Kaltmieten in €/m²", "Warmmieten in €/m²", "Amortisationszeit in a", "NPV in €", "LCCA in €", "ROI"])
-        self.combo_box.currentIndexChanged.connect(self.update_plot)
-        result_layout.addWidget(self.combo_box)
-
-        self.canvas = PlotCanvas(self, width=12, height=5)
-        result_layout.addWidget(self.canvas)
-
-        self.result_label = QLabel("Ergebnisse werden hier angezeigt")
-        result_layout.addWidget(self.result_label)
-
-        layout.addLayout(result_layout)
-        self.setLayout(layout)
-
+        self.setLayout(main_layout)
         self.results = {}
         self.ist_geojson = None
         self.saniert_geojson = None
@@ -172,57 +155,79 @@ class RenovationTab1(QWidget):
             'ground_u'
         ]
 
-    def create_input_groups(self, layout):
-        """
-        Creates input groups for the various input parameters and adds them to the given layout.
+    def create_input_tabs(self, tab_widget):
+        # Adding a new tab for file loading
+        file_tab = QWidget()
+        file_layout = QVBoxLayout()
 
-        Args:
-            layout (QVBoxLayout): The layout to add the input groups to.
-        """
-        left_layout = QVBoxLayout()
-        right_layout = QVBoxLayout()
-        main_layout = QHBoxLayout()
+        self.load_button_ist = QPushButton("IST-Stand GeoJSON laden")
+        self.load_button_ist.clicked.connect(self.load_ist_geojson)
+        file_layout.addWidget(self.load_button_ist)
 
+        self.ist_table = QTableWidget()
+        file_layout.addWidget(self.ist_table)
+
+        self.load_button_saniert = QPushButton("Sanierten Stand GeoJSON laden")
+        self.load_button_saniert.clicked.connect(self.load_saniert_geojson)
+        file_layout.addWidget(self.load_button_saniert)
+
+        self.saniert_table = QTableWidget()
+        file_layout.addWidget(self.saniert_table)
+
+        file_tab.setLayout(file_layout)
+        tab_widget.addTab(file_tab, "Dateien laden")
+
+        # Grouping input fields into additional tabs for better organization
         groups = {
-            "Kosten": [("Kosten Boden (€/m²)", "100"), ("Kosten Fassade (€/m²)", "100"), 
-                        ("Kosten Dach (€/m²)", "150"), ("Kosten Fenster (€/m²)", "200"), 
+            "Kosten": [("Kosten Boden (€/m²)", "100"), ("Kosten Fassade (€/m²)", "100"),
+                        ("Kosten Dach (€/m²)", "150"), ("Kosten Fenster (€/m²)", "200"),
                         ("Kosten Tür (€/m²)", "250")],
-            "Sonstiges": [("Energiepreis vor Sanierung (€/kWh)", "0.10"), 
+            "Sonstiges": [("Energiepreis vor Sanierung (€/kWh)", "0.10"),
                         ("Energiepreis nach Sanierung (€/kWh)", "0.08"),
-                        ("Diskontierungsrate (%)", "3"), 
+                        ("Diskontierungsrate (%)", "3"),
                         ("Jahre", "20"), ("Kaltmiete (€/m²)", "5")],
             "Betriebskosten": [("Betriebskosten Boden (€/Jahr)", "50"),
-                                ("Betriebskosten Fassade (€/Jahr)", "100"), 
-                                ("Betriebskosten Dach (€/Jahr)", "125"), 
-                                ("Betriebskosten Fenster (€/Jahr)", "120"), 
+                                ("Betriebskosten Fassade (€/Jahr)", "100"),
+                                ("Betriebskosten Dach (€/Jahr)", "125"),
+                                ("Betriebskosten Fenster (€/Jahr)", "120"),
                                 ("Betriebskosten Tür (€/Jahr)", "40")],
-            "Instandhaltungskosten": [("Instandhaltungskosten Boden (€/Jahr)", "25"), 
-                                    ("Instandhaltungskosten Fassade (€/Jahr)", "50"), 
-                                    ("Instandhaltungskosten Dach (€/Jahr)", "75"), 
+            "Instandhaltungskosten": [("Instandhaltungskosten Boden (€/Jahr)", "25"),
+                                    ("Instandhaltungskosten Fassade (€/Jahr)", "50"),
+                                    ("Instandhaltungskosten Dach (€/Jahr)", "75"),
                                     ("Instandhaltungskosten Fenster (€/Jahr)", "60"),
-                                    ("Instandhaltungskosten Tür (€/Jahr)", "25")],                                        
-            "Restwertanteil": [("Restwert-Anteil Boden", "0.30"), ("Restwert-Anteil Fassade", "0.30"), 
-                                ("Restwert-Anteil Dach", "0.50"), ("Restwert-Anteil Fenster", "0.20"), 
+                                    ("Instandhaltungskosten Tür (€/Jahr)", "25")],
+            "Restwertanteil": [("Restwert-Anteil Boden", "0.30"), ("Restwert-Anteil Fassade", "0.30"),
+                                ("Restwert-Anteil Dach", "0.50"), ("Restwert-Anteil Fenster", "0.20"),
                                 ("Restwert-Anteil Tür", "0.10")],
             "Förderung": [("Förderquote", "0.5")]
         }
 
-        for i, (group_name, fields) in enumerate(groups.items()):
-            group_box = QGroupBox(group_name)
+        for group_name, fields in groups.items():
+            group_widget = QWidget()
             form_layout = QFormLayout()
             for label, default in fields:
                 self.input_fields[label] = QLineEdit()
                 self.input_fields[label].setText(default)
                 form_layout.addRow(QLabel(label), self.input_fields[label])
-            group_box.setLayout(form_layout)
-            if i % 2 == 0:
-                left_layout.addWidget(group_box)
-            else:
-                right_layout.addWidget(group_box)
+            group_widget.setLayout(form_layout)
+            tab_widget.addTab(group_widget, group_name)
 
-        main_layout.addLayout(left_layout)
-        main_layout.addLayout(right_layout)
-        layout.addLayout(main_layout)
+    def create_result_section(self, layout):
+        self.run_button = QPushButton("Analyse durchführen")
+        self.run_button.clicked.connect(self.run_analysis)
+        layout.addWidget(self.run_button)
+
+        self.combo_box = QComboBox()
+        self.combo_box.addItems(["Investitionskosten in €", "Gesamtenergiebedarf in kWh/a", "Energieeinsparung in kWh/a", "Kosteneinsparung in €/a",
+                                 "Kaltmieten in €/m²", "Warmmieten in €/m²", "Amortisationszeit in a", "NPV in €", "LCCA in €", "ROI"])
+        self.combo_box.currentIndexChanged.connect(self.update_plot)
+        layout.addWidget(self.combo_box)
+
+        self.canvas = PlotCanvas(self, width=12, height=6)  # Increased the canvas size
+        layout.addWidget(self.canvas)
+
+        self.result_label = QLabel("Ergebnisse werden hier angezeigt")
+        layout.addWidget(self.result_label)
 
     def updateDefaultPath(self, new_base_path):
         """

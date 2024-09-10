@@ -1,7 +1,7 @@
 """
 Filename: mix_design_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-08-01
+Date: 2024-09-10
 Description: Contains the MixdesignTab.
 """
 
@@ -10,10 +10,9 @@ import pandas as pd
 import traceback
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMessageBox, QFileDialog, QMenuBar, QScrollArea, QAction, QDialog)
 from PyQt5.QtCore import pyqtSignal, QEventLoop
-from heat_generators.heat_generator_classes import *
+from heat_generators.heat_generation_mix import *
 from gui.MixDesignTab.mix_design_dialogs import EconomicParametersDialog, NetInfrastructureDialog, WeightDialog
-from gui.threads import CalculateMixThread
-from gui.results_pdf import create_pdf
+from gui.MixDesignTab.calculate_mix_thread import CalculateMixThread
 from gui.MixDesignTab.technology_tab import TechnologyTab
 from gui.MixDesignTab.cost_tab import CostTab
 from gui.MixDesignTab.results_tab import ResultsTab
@@ -76,7 +75,7 @@ class MixDesignTab(QWidget):
     """
     data_added = pyqtSignal(object)  # Signal that transfers data as an object
     
-    def __init__(self, data_manager, parent=None):
+    def __init__(self, folder_manager, data_manager, parent=None):
         """
         Initializes the MixDesignTab instance.
 
@@ -85,8 +84,8 @@ class MixDesignTab(QWidget):
             parent (QWidget, optional): Reference to the parent widget. Defaults to None.
         """
         super().__init__(parent)
+        self.folder_manager = folder_manager
         self.data_manager = data_manager
-        self.parent = parent
         self.results = {}
         self.tech_objects = []
         
@@ -95,8 +94,8 @@ class MixDesignTab(QWidget):
         self.initUI()
 
         # Connect to the data manager signal
-        self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
-        self.updateDefaultPath(self.data_manager.project_folder)
+        self.folder_manager.project_folder_changed.connect(self.updateDefaultPath)
+        self.updateDefaultPath(self.folder_manager.project_folder)
 
     def initDialogs(self):
         """
@@ -152,10 +151,6 @@ class MixDesignTab(QWidget):
         loadJSONAction.triggered.connect(self.load_results_JSON)
         fileMenu.addAction(loadJSONAction)
 
-        pdfAction = QAction('Ergebnisse als PDF speichern', self)
-        pdfAction.triggered.connect(self.on_export_pdf_clicked)
-        fileMenu.addAction(pdfAction)
-
         # 'Einstellungen'-Menü
         settingsMenu = self.menuBar.addMenu('Einstellungen')
         settingsMenu.addAction(self.createAction('Wirtschaftliche Parameter...', self.openEconomicParametersDialog))
@@ -201,10 +196,10 @@ class MixDesignTab(QWidget):
         Creates the tab widget and its sub-tabs.
         """
         self.tabWidget = QTabWidget()
-        self.techTab = TechnologyTab(self.data_manager, self)
-        self.costTab = CostTab(self.data_manager, self)
-        self.resultTab = ResultsTab(self.data_manager, self)
-        self.sensitivityTab = SensitivityTab(self.data_manager, self)
+        self.techTab = TechnologyTab(self.folder_manager, self)
+        self.costTab = CostTab(self.folder_manager, self)
+        self.resultTab = ResultsTab(self.folder_manager, self)
+        self.sensitivityTab = SensitivityTab(self.folder_manager, self)
         self.tabWidget.addTab(self.techTab, "Erzeugerdefinition")
         self.tabWidget.addTab(self.costTab, "Kostenübersicht")
         self.tabWidget.addTab(self.resultTab, "Ergebnisse")
@@ -302,8 +297,8 @@ class MixDesignTab(QWidget):
         if self.techTab.tech_objects:
             self.filename = self.techTab.FilenameInput.text()
             self.load_scale_factor = float(self.techTab.load_scale_factorInput.text())
-            self.TRY_data = import_TRY(self.parent.try_filename)
-            self.COP_data = np.genfromtxt(self.parent.cop_filename, delimiter=';')
+            self.TRY_data = import_TRY(self.data_manager.get_try_filename())
+            self.COP_data = np.genfromtxt(self.data_manager.get_cop_filename(), delimiter=';')
 
             self.calculationThread = CalculateMixThread(
                 self.filename, self.load_scale_factor, self.TRY_data, self.COP_data, self.gaspreis, 
@@ -620,20 +615,4 @@ class MixDesignTab(QWidget):
                 QMessageBox.information(self, "Erfolgreich geladen", f"Die Ergebnisse wurden erfolgreich aus {filename} geladen.")
             except Exception as e:
                 QMessageBox.critical(self, "Ladefehler", f"Fehler beim Laden der JSON-Datei: {e}")
-                raise e
-
-    def on_export_pdf_clicked(self):
-        """
-        Exports the results to a PDF file.
-        """
-        filename, _ = QFileDialog.getSaveFileName(self, 'PDF speichern als...', self.base_path, filter='PDF Files (*.pdf)')
-        if filename:
-            try:
-                create_pdf(self, filename)
-                
-                QMessageBox.information(self, "PDF erfolgreich erstellt.", f"Die Ergebnisse wurden erfolgreich in {filename} gespeichert.")
-            
-            except Exception as e:
-                error_message = traceback.format_exc()
-                QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern als PDF:\n{error_message}")
                 raise e

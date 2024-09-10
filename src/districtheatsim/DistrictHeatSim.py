@@ -1,38 +1,98 @@
 """
 Filename: DistrictHeatSim.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-31
-Description: Main GUI file of the DistrictHeatSim-Tool.
+Date: 2024-08-28
+Description: Main GUI file of the DistrictHeatSim-Tool utilizing the Model-View-Presenter (MVP) architecture.
 
-This script initializes and runs the main graphical user interface (GUI) for the DistrictHeatSim tool. 
-It includes various tabs for project management, data visualization, building heating requirements, 
-and heat network calculations.
+This script initializes and runs the main graphical user interface (GUI) for the DistrictHeatSim tool,
+which is designed for simulating and managing district heating systems. The tool includes various tabs
+for project management, data visualization, building heating requirements, and heat network calculations.
+
+The script has been modularized for better maintainability and separation of concerns, dividing the responsibilities
+among several distinct classes:
 
 Classes:
-    CentralDataManager: Manages central data and signals related to the project folder.
-    HeatSystemDesignGUI: Main window class for the GUI, initializes all components and handles user interactions.
+    1. ProjectConfigManager:
+        - Handles the loading, saving, and management of project configurations, including maintaining a history
+          of recent projects and resolving resource paths.
+
+    2. DataManager:
+        - Responsible for managing central data related to the application, such as map data, which can be accessed
+          and modified as needed.
+
+    3. ProjectFolderManager:
+        - Manages operations related to the project folder, such as setting the project folder path and emitting
+          signals when changes occur. This class also handles loading the last opened project.
+
+    4. HeatSystemPresenter:
+        - Acts as the Presenter in the MVP architecture, mediating interactions between the GUI (View) and
+          the underlying data and configuration managers (Model). It facilitates project creation, opening,
+          variant creation, and updates to the data based on user actions.
+
+    5. HeatSystemDesignGUI:
+        - Serves as the View in the MVP architecture, responsible for initializing and managing the user interface.
+          This class handles user interactions, updates the display based on data from the Presenter, and manages
+          the GUI's various components, such as tabs and dialogs.
 
 Functions:
-    get_resource_path(relative_path): Returns the absolute path to a resource, considering PyInstaller packaging.
-    get_config_path(): Returns the path to the configuration file.
-    load_config(): Loads the configuration from the config file.
-    save_config(config): Saves the configuration to the config file.
-    get_last_project(): Retrieves the last opened project path from the config.
-    set_last_project(path): Sets the last opened project path in the config.
-    get_recent_projects(): Retrieves a list of recent projects from the config.
+    - The functionality is encapsulated within the relevant classes, promoting modularity and clarity:
+        - ProjectConfigManager:
+            - get_default_config_path(): Returns the path to the default configuration file.
+            - load_config(): Loads configuration data from the config file.
+            - save_config(config): Saves configuration data to the config file.
+            - get_last_project(): Retrieves the path of the last opened project.
+            - set_last_project(path): Sets the path of the last opened project.
+            - get_recent_projects(): Retrieves a list of recently opened project paths.
+            - get_resource_path(relative_path): Resolves the absolute path to a resource, considering PyInstaller packaging.
+
+        - DataManager:
+            - add_data(data): Adds data to the map data list.
+            - get_map_data(): Retrieves the current map data list.
+
+        - ProjectFolderManager:
+            - set_project_folder(path): Sets the project folder path and emits a signal upon change.
+            - load_last_project(): Loads the last opened project folder, emitting a signal if not found.
+
+        - HeatSystemPresenter:
+            - create_new_project(folder_path, project_name): Creates a new project with the specified name and folder path.
+            - open_existing_project(folder_path): Opens an existing project from the specified folder path.
+            - create_project_variant(): Creates a variant of the current project by duplicating its folder.
+            - update_temperature_data(): Updates temperature data based on user input.
+            - update_heat_pump_data(): Updates heat pump data based on user input.
+
+        - HeatSystemDesignGUI:
+            - initUI(): Initializes the user interface, including the menu bar and tabs.
+            - initMenuBar(): Sets up the menu bar and connects actions to their respective methods.
+            - update_project_folder_label(path): Updates the project folder label in the UI.
+            - show_error_message(message): Displays an error message in a dialog box.
+            - show_info_message(message): Displays an informational message in a dialog box.
+            - on_create_new_project(): Handles the creation of a new project by the user.
+            - on_open_existing_project(): Handles the opening of an existing project by the user.
+            - on_create_project_variant(): Handles the creation of a project variant by the user.
+            - applyTheme(theme_path): Applies the selected theme stylesheet to the GUI.
+            - openTemperatureDataSelection(): Opens the temperature data selection dialog.
+            - openCOPDataSelection(): Opens the COP data selection dialog.
+            - updateTemperatureData(): Updates the temperature data in the model based on dialog input.
+            - updateHeatPumpData(): Updates heat pump data in the model based on dialog input.
 
 Usage:
-    Run this script to launch the DistrictHeatSim GUI.
+    To launch the DistrictHeatSim GUI, run this script. The GUI offers a comprehensive environment for managing
+    district heating projects, providing features such as project creation, data visualization, and configuration
+    customization through light and dark themes. The modular design facilitates ease of maintenance and extension.
 """
 
 import sys
 import os
 import shutil
 import warnings
+import json
+import traceback
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QTabWidget, QMenuBar, QAction, QFileDialog, QLabel, QMessageBox, QInputDialog
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QTabWidget, QMenuBar, QAction, 
+                             QFileDialog, QLabel, QMessageBox, QInputDialog)
 from PyQt5.QtCore import QObject, pyqtSignal, QTimer
+from PyQt5.QtGui import QIcon, QPixmap
 
 from gui.ProjectTab.project_tab import ProjectTab
 from gui.VisualizationTab.visualization_tab import VisualizationTab
@@ -42,113 +102,108 @@ from gui.RenovationTab.RenovationTab import RenovationTab
 from gui.CalculationTab.calculation_tab import CalculationTab
 from gui.MixDesignTab.mix_design_tab import MixDesignTab
 from gui.ComparisonTab.comparison_tab import ComparisonTab
-
+from gui.IndividualTab.individual_tab import IndividualTab
+from gui.PVTab.pv_tab import PVTab
+from gui.results_pdf import create_pdf
 from gui.dialogs import TemperatureDataDialog, HeatPumpDataDialog
 
-def get_resource_path(relative_path):
+class ProjectConfigManager:
     """
-    Get the absolute path to a resource, considering if the script is packaged with PyInstaller.
-    
-    Args:
-        relative_path (str): Relative path to the resource.
-    
-    Returns:
-        str: Absolute path to the resource.
+    Handles loading and saving of project configuration.
     """
-    if getattr(sys, 'frozen', False):
-        base_path = sys._MEIPASS
-    else:
-        base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'districtheatsim')
-    return os.path.join(base_path, relative_path)
 
-import json
+    def __init__(self, config_path=None):
+        self.config_path = config_path or self.get_default_config_path()
 
-def get_config_path():
-    """
-    Get the path to the configuration file.
-    
-    Returns:
-        str: Path to the config file.
-    """
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+    def get_default_config_path(self):
+        """
+        Get the path to the default configuration file.
+        """
+        return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
 
-def load_config():
-    """
-    Load the configuration from the config file.
-    
-    Returns:
-        dict: Configuration data.
-    """
-    config_path = get_config_path()
-    if os.path.exists(config_path):
-        with open(config_path, 'r') as file:
-            return json.load(file)
-    return {}
+    def load_config(self):
+        """
+        Load the configuration from the config file.
+        
+        Returns:
+            dict: Configuration data.
+        """
+        if os.path.exists(self.config_path):
+            with open(self.config_path, 'r') as file:
+                return json.load(file)
+        return {}
 
-def save_config(config):
-    """
-    Save the configuration to the config file.
-    
-    Args:
-        config (dict): Configuration data to be saved.
-    """
-    config_path = get_config_path()
-    with open(config_path, 'w') as file:
-        json.dump(config, file, indent=4)
+    def save_config(self, config):
+        """
+        Save the configuration to the config file.
+        
+        Args:
+            config (dict): Configuration data to be saved.
+        """
+        with open(self.config_path, 'w') as file:
+            json.dump(config, file, indent=4)
 
-def get_last_project():
-    """
-    Retrieve the last opened project path from the config.
-    
-    Returns:
-        str: Last opened project path.
-    """
-    config = load_config()
-    return config.get('last_project', '')
+    def get_last_project(self):
+        """
+        Retrieve the last opened project path from the config.
+        
+        Returns:
+            str: Last opened project path.
+        """
+        config = self.load_config()
+        return config.get('last_project', '')
 
-def set_last_project(path):
-    """
-    Set the last opened project path in the config.
-    
-    Args:
-        path (str): Path to the last opened project.
-    """
-    config = load_config()
-    config['last_project'] = path
-    if 'recent_projects' not in config:
-        config['recent_projects'] = []
-    if path not in config['recent_projects']:
-        config['recent_projects'].insert(0, path)
-        config['recent_projects'] = config['recent_projects'][:5]  # Save only the last 5 projects
-    save_config(config)
+    def set_last_project(self, path):
+        """
+        Set the last opened project path in the config.
+        
+        Args:
+            path (str): Path to the last opened project.
+        """
+        config = self.load_config()
+        config['last_project'] = path
+        if 'recent_projects' not in config:
+            config['recent_projects'] = []
+        if path not in config['recent_projects']:
+            config['recent_projects'].insert(0, path)
+            config['recent_projects'] = config['recent_projects'][:5]  # Save only the last 5 projects
+        self.save_config(config)
 
-def get_recent_projects():
-    """
-    Retrieve a list of recent projects from the config.
+    def get_recent_projects(self):
+        """
+        Retrieve a list of recent projects from the config.
+        
+        Returns:
+            list: List of recent project paths.
+        """
+        config = self.load_config()
+        return config.get('recent_projects', [])
     
-    Returns:
-        list: List of recent project paths.
-    """
-    config = load_config()
-    return config.get('recent_projects', [])
+    def get_resource_path(self, relative_path):
+        """
+        Get the absolute path to a resource, considering if the script is packaged with PyInstaller.
+        
+        Args:
+            relative_path (str): Relative path to the resource.
+        
+        Returns:
+            str: Absolute path to the resource.
+        """
+        if getattr(sys, 'frozen', False):
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'districtheatsim')
+        return os.path.join(base_path, relative_path)
 
-class CentralDataManager(QObject):
+class DataManager:
     """
-    Manages central data and signals related to the project folder.
-    
-    Attributes:
-        project_folder_changed (pyqtSignal): Signal emitted when the project folder changes.
+    Manages central data for the application.
     """
-    project_folder_changed = pyqtSignal(str)
 
     def __init__(self):
-        """
-        Initialize the CentralDataManager.
-        """
-        super(CentralDataManager, self).__init__()
         self.map_data = []
-        self.project_folder = get_resource_path("project_data\\Beispiel")
-        print(self.project_folder)
+        self.try_filename = None  # New attribute for storing TRY filename
+        self.cop_filename = None  # New attribute for storing COP filename
 
     def add_data(self, data):
         """
@@ -167,6 +222,56 @@ class CentralDataManager(QObject):
             list: Map data list.
         """
         return self.map_data
+    
+    def set_try_filename(self, filename):
+        """
+        Set the TRY filename.
+        
+        Args:
+            filename (str): The filename of the TRY data.
+        """
+        self.try_filename = filename
+
+    def get_try_filename(self):
+        """
+        Get the TRY filename.
+        
+        Returns:
+            str: The filename of the TRY data.
+        """
+        return self.try_filename
+
+    def set_cop_filename(self, filename):
+        """
+        Set the COP filename.
+        
+        Args:
+            filename (str): The filename of the COP data.
+        """
+        self.cop_filename = filename
+
+    def get_cop_filename(self):
+        """
+        Get the COP filename.
+        
+        Returns:
+            str: The filename of the COP data.
+        """
+        return self.cop_filename
+
+class ProjectFolderManager(QObject):
+    """
+    Manages the project folder and emits signals related to changes.
+    
+    Attributes:
+        project_folder_changed (pyqtSignal): Signal emitted when the project folder changes.
+    """
+    project_folder_changed = pyqtSignal(str)
+
+    def __init__(self, config_manager=None):
+        super(ProjectFolderManager, self).__init__()
+        self.config_manager = config_manager or ProjectConfigManager()
+        self.project_folder = self.config_manager.get_resource_path("project_data\\Beispiel")
 
     def set_project_folder(self, path):
         """
@@ -177,46 +282,121 @@ class CentralDataManager(QObject):
         """
         self.project_folder = path
         self.project_folder_changed.emit(path)
+        self.config_manager.set_last_project(path)
+
+    def load_last_project(self):
+        """
+        Load the last opened project folder.
+        """
+        last_project = self.config_manager.get_last_project()
+        if last_project and os.path.exists(last_project):
+            self.set_project_folder(last_project)
+        else:
+            self.project_folder_changed.emit("")
+        
+class HeatSystemPresenter:
+    """
+    Acts as a middleman between the Model (CentralDataManager) and the View (HeatSystemDesignGUI).
+    """
+
+    def __init__(self, view, folder_manager, data_manager):
+        """
+        Initialize the HeatSystemPresenter.
+        
+        Args:
+            view: The view instance (HeatSystemDesignGUI).
+            model: The model instance (CentralDataManager).
+        """
+        self.view = view
+        self.folder_manager = folder_manager
+        self.data_manager = data_manager
+
+        # Connect the model signals directly to the view updates
+        self.folder_manager.project_folder_changed.connect(self.view.update_project_folder_label)
+
+        # Initialize the folder label on startup
+        QTimer.singleShot(0, lambda: self.view.update_project_folder_label(self.folder_manager.project_folder))
+
+    def create_new_project(self, folder_path, project_name):
+        """
+        Create a new project.
+        
+        Args:
+            folder_path (str): The folder path to create the project in.
+            project_name (str): The name of the new project.
+        """
+        if folder_path and project_name:
+            try:
+                full_path = os.path.join(folder_path, project_name)
+                os.makedirs(full_path)
+                for subdir in ["Gebäudedaten", "Lastgang", "Raumanalyse", "Wärmenetz", "results"]:
+                    os.makedirs(os.path.join(full_path, subdir))
+                self.folder_manager.set_project_folder(full_path)
+                return True
+            except Exception as e:
+                self.view.show_error_message(f"Ein Fehler ist aufgetreten: {e}")
+                return False
+        return False
+
+    def open_existing_project(self, folder_path):
+        """
+        Open an existing project by selecting a project folder.
+        """
+        if folder_path:
+            self.folder_manager.set_project_folder(folder_path)
+
+    def create_project_variant(self):
+        """
+        Create a variant of the current project by copying its folder.
+        """
+        base_dir = os.path.dirname(self.folder_manager.project_folder)
+        base_name = os.path.basename(self.folder_manager.project_folder)
+        variant_num = 1
+
+        while True:
+            new_project_path = os.path.join(base_dir, f"{base_name} Variante {variant_num}")
+            if not os.path.exists(new_project_path):
+                break
+            variant_num += 1
+
+        try:
+            shutil.copytree(self.folder_manager.project_folder, new_project_path)
+            self.folder_manager.set_project_folder(new_project_path)
+            return True
+        except Exception as e:
+            self.view.show_error_message(f"Ein Fehler ist aufgetreten: {str(e)}")
+            return False
 
 class HeatSystemDesignGUI(QMainWindow):
     """
     Main window class for the GUI, initializes all components and handles user interactions.
     
     Attributes:
-        data_manager (CentralDataManager): Instance of CentralDataManager.
-        projectFolderPath (str): Path to the current project folder.
-        temperatureDataDialog (TemperatureDataDialog): Dialog for selecting temperature data.
-        heatPumpDataDialog (HeatPumpDataDialog): Dialog for selecting heat pump data.
-        layout1 (QVBoxLayout): Main layout of the central widget.
-        folderLabel (QLabel): Label displaying the current project folder path.
+        presenter (HeatSystemPresenter): The Presenter instance managing logic.
     """
 
-    def __init__(self):
+    def __init__(self, folder_manager, data_manager):
         """
         Initialize the HeatSystemDesignGUI.
         """
         super().__init__()
-        self.data_manager = CentralDataManager()
-        self.projectFolderPath = None
+        self.presenter = None  # Initially, no presenter is set
+        self.folder_manager = folder_manager
+        self.data_manager = data_manager
+
+    def set_presenter(self, presenter):
+        """
+        Set the presenter for this view and initialize the UI.
+        
+        Args:
+            presenter (HeatSystemPresenter): The Presenter instance to manage logic.
+        """
+        self.presenter = presenter
 
         self.temperatureDataDialog = TemperatureDataDialog(self)
         self.heatPumpDataDialog = HeatPumpDataDialog(self)
 
-        self.updateTemperatureData()
-        self.updateHeatPumpData()
-
-        self.initUI()
-
-        self.data_manager.project_folder_changed.connect(self.projectTab.updateDefaultPath)
-        self.data_manager.project_folder_changed.connect(self.visTab.updateDefaultPath)
-        self.data_manager.project_folder_changed.connect(self.calcTab.updateDefaultPath)
-        self.data_manager.project_folder_changed.connect(self.mixDesignTab.updateDefaultPath)
-
-        # Ensure the window is maximized after all initializations
-        self.showMaximized()
-
-        # Load the last opened project after a short delay
-        QTimer.singleShot(100, self.load_last_project)
+        self.initUI()  # Now it's safe to initialize the UI
 
     def initUI(self):
         """
@@ -232,32 +412,19 @@ class HeatSystemDesignGUI(QMainWindow):
 
         self.initMenuBar()
 
-        tabWidget = QTabWidget()
-        self.layout1.addWidget(tabWidget)
+        self.initTabs()
 
-        self.projectTab = ProjectTab(self.data_manager)
-        self.buildingTab = BuildingTab(self.data_manager, self)
-        self.visTab = VisualizationTab(self.data_manager)
-        self.lod2Tab = LOD2Tab(self.data_manager, self.visTab, self)
-        self.calcTab = CalculationTab(self.data_manager, self)
-        self.mixDesignTab = MixDesignTab(self.data_manager, self)
-        self.renovationTab = RenovationTab(self.data_manager, self)
-        self.comparisonTab = ComparisonTab(self.data_manager)
-
-        tabWidget.addTab(self.projectTab, "Projektdefinition")
-        tabWidget.addTab(self.buildingTab, "Wärmebedarf Gebäude")
-        tabWidget.addTab(self.visTab, "Verarbeitung Geodaten")
-        tabWidget.addTab(self.lod2Tab, "Verarbeitung LOD2-Daten")
-        tabWidget.addTab(self.calcTab, "Wärmenetzberechnung")
-        tabWidget.addTab(self.mixDesignTab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
-        tabWidget.addTab(self.renovationTab, "Gebäudesanierung")
-        tabWidget.addTab(self.comparisonTab, "Variantenvergleich")
-
-        if self.data_manager.project_folder:
-            self.folderLabel = QLabel(f"Standard-Projektordner: {self.data_manager.project_folder}")
-        else:
-            self.folderLabel = QLabel("Kein Ordner ausgewählt")
+        # Initialize the folderLabel
+        self.folderLabel = QLabel("Kein Projektordner ausgewählt")
         self.layout1.addWidget(self.folderLabel)
+
+        self.temperatureDataDialog = TemperatureDataDialog(self)
+        self.heatPumpDataDialog = HeatPumpDataDialog(self)
+
+        # Connect the model signals to the view updates
+        self.folder_manager.project_folder_changed.connect(self.update_project_folder_label)
+        self.presenter.folder_manager.project_folder_changed.connect(self.updateTemperatureData)
+        self.presenter.folder_manager.project_folder_changed.connect(self.updateHeatPumpData)
 
     def initMenuBar(self):
         """
@@ -270,18 +437,16 @@ class HeatSystemDesignGUI(QMainWindow):
 
         createNewProjectAction = QAction('Neues Projekt erstellen', self)
         chooseProjectAction = QAction('Projekt öffnen', self)
-        saveProjectAction = QAction('Projekt speichern', self)
         fileMenu.addAction(createNewProjectAction)
         fileMenu.addAction(chooseProjectAction)
-        fileMenu.addAction(saveProjectAction)
 
-        # Always add the recent projects menu
+         # Always add the recent projects menu
         recentMenu = fileMenu.addMenu('Zuletzt geöffnet')
-        recent_projects = get_recent_projects()
+        recent_projects = self.presenter.folder_manager.config_manager.get_recent_projects()
         if recent_projects:
             for project in recent_projects:
                 action = QAction(project, self)
-                action.triggered.connect(lambda checked, p=project: self.setProjectFolderPath(p))
+                action.triggered.connect(lambda checked, p=project: self.presenter.folder_manager.set_project_folder(p))
                 recentMenu.addAction(action)
         else:
             no_recent_action = QAction('Keine kürzlich geöffneten Projekte', self)
@@ -289,8 +454,10 @@ class HeatSystemDesignGUI(QMainWindow):
             recentMenu.addAction(no_recent_action)
 
         createCopyAction = QAction('Projektkopie erstellen', self)
-        createCopyAction.triggered.connect(self.createProjectVariant)
         fileMenu.addAction(createCopyAction)
+
+        pdfExportAction = QAction('PDF exportieren', self)
+        fileMenu.addAction(pdfExportAction)
 
         dataMenu = self.menubar.addMenu('Datenbasis')
         chooseTemperatureDataAction = QAction('Temperaturdaten festlegen', self)
@@ -306,143 +473,132 @@ class HeatSystemDesignGUI(QMainWindow):
 
         self.layout1.addWidget(self.menubar)
 
-        createNewProjectAction.triggered.connect(self.createNewProject)
-        chooseProjectAction.triggered.connect(self.openExistingProject)
-        saveProjectAction.triggered.connect(self.saveExistingProject)
-
+        createNewProjectAction.triggered.connect(self.on_create_new_project)
+        chooseProjectAction.triggered.connect(self.on_open_existing_project)
+        createCopyAction.triggered.connect(self.on_create_project_variant)
+        pdfExportAction.triggered.connect(self.on_pdf_export)
         chooseTemperatureDataAction.triggered.connect(self.openTemperatureDataSelection)
         createCOPDataAction.triggered.connect(self.openCOPDataSelection)
-        lightThemeAction.triggered.connect(self.applyLightTheme)
-        darkThemeAction.triggered.connect(self.applyDarkTheme)
+        lightThemeAction.triggered.connect(lambda: self.applyTheme('styles\\win11_light.qss'))
+        darkThemeAction.triggered.connect(lambda: self.applyTheme('styles\\dark_mode.qss'))
 
-    def applyLightTheme(self):
+    def initTabs(self):
+        tabWidget = QTabWidget()
+        self.layout1.addWidget(tabWidget)
+
+        # Initialize tabs
+        self.projectTab = ProjectTab(self.presenter.folder_manager)
+        self.buildingTab = BuildingTab(self.presenter.folder_manager, self.presenter.data_manager)
+        self.visTab = VisualizationTab(self.presenter.folder_manager)
+        self.lod2Tab = LOD2Tab(self.presenter.folder_manager, self.presenter.data_manager)
+        self.renovationTab = RenovationTab(self.presenter.folder_manager, self.presenter.data_manager)
+        self.calcTab = CalculationTab(self.presenter.folder_manager, self.presenter.data_manager, self)
+        self.mixDesignTab = MixDesignTab(self.presenter.folder_manager, self.presenter.data_manager, self)
+        self.comparisonTab = ComparisonTab(self.presenter.folder_manager, self.presenter.data_manager)
+        self.individualTab = IndividualTab(self.presenter.folder_manager, self.presenter.data_manager, self)
+        self.pvTab = PVTab(self.presenter.folder_manager, self.presenter.data_manager)
+
+        tabWidget.addTab(self.projectTab, "Projektdefinition")
+        tabWidget.addTab(self.buildingTab, "Wärmebedarf Gebäude")
+        tabWidget.addTab(self.visTab, "Wärmenetz generieren")
+        tabWidget.addTab(self.lod2Tab, "Verarbeitung LOD2-Daten")
+        tabWidget.addTab(self.renovationTab, "Gebäudesanierung")
+        tabWidget.addTab(self.calcTab, "Wärmenetzberechnung")
+        tabWidget.addTab(self.mixDesignTab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
+        tabWidget.addTab(self.comparisonTab, "Variantenvergleich")
+        tabWidget.addTab(self.individualTab, "Einzelversorgungslösung")
+        tabWidget.addTab(self.pvTab, "Photovoltaik")
+
+    def initLogo(self):
         """
-        Apply the light theme stylesheet.
+        Initialize the logo in the GUI. Doesn't work with currently.
         """
-        qss_path = get_resource_path('styles/win11_light.qss')
-        if os.path.exists(qss_path):
-            with open(qss_path, 'r') as file:
-                self.setStyleSheet(file.read())
+        
+        """logoLabel = QLabel(self)
+        pixmap = QPixmap('styles\\logo.JPG')
+        logoLabel.setPixmap(pixmap)
+        logoLabel.setGeometry(10, 10, 100, 100)
+        logoLabel.show()"""	
+
+        """# Set the window icon, if available
+        icon = QIcon("styles\\logo.JPG")
+        if icon.isNull():
+            print("Icon could not be loaded.")
+        self.setWindowIcon(icon)"""
+
+        self.setWindowIcon(QIcon('styles\\logo.png'))
+
+    def update_project_folder_label(self, base_path):
+        """
+        Update the project folder label in the UI.
+        
+        Args:
+            path (str): The current project folder path.
+        """
+        self.base_path = base_path
+
+        if base_path:
+            self.folderLabel.setText(f"Ausgewählter Projektordner: {base_path}")
         else:
-            print(f"Stylesheet {qss_path} not found.")
+            self.folderLabel.setText("Kein Projektordner ausgewählt")
 
-    def applyDarkTheme(self):
+    def show_error_message(self, message):
         """
-        Apply the dark theme stylesheet.
+        Display an error message to the user.
+        
+        Args:
+            message (str): The error message to display.
         """
-        qss_path = get_resource_path('styles/dark_mode.qss')
-        if os.path.exists(qss_path):
-            with open(qss_path, 'r') as file:
-                self.setStyleSheet(file.read())
-        else:
-            print(f"Stylesheet {qss_path} not found.")
+        QMessageBox.critical(self, "Fehler", message)
 
-    def createNewProject(self):
+    def on_create_new_project(self):
         """
-        Create a new project by selecting a folder and entering a project name.
+        Handle the creation of a new project.
         """
-        folder_path = QFileDialog.getExistingDirectory(self, "Speicherort für neues Projekt wählen")
+        folder_path = QFileDialog.getExistingDirectory(self, "Speicherort für neues Projekt wählen", self.base_path)
         if folder_path:
             projectName, ok = QInputDialog.getText(self, 'Neues Projekt', 'Projektnamen eingeben:')
             if ok and projectName:
-                try:
-                    full_path = os.path.join(folder_path, projectName)
-                    os.makedirs(full_path)
-                    for subdir in ["Gebäudedaten", "Lastgang", "Raumanalyse", "Wärmenetz", "results"]:
-                        os.makedirs(os.path.join(full_path, subdir))
+                success = self.presenter.create_new_project(folder_path, projectName)
+                if success:
                     QMessageBox.information(self, "Projekt erstellt", f"Projekt '{projectName}' wurde erfolgreich erstellt.")
-                    self.setProjectFolderPath(full_path)
-                except Exception as e:
-                    QMessageBox.critical(self, "Fehler", f"Ein Fehler ist aufgetreten: {e}")
 
-    def openExistingProject(self):
+    def on_open_existing_project(self):
         """
-        Open an existing project by selecting a project folder.
+        Handle opening an existing project.
         """
-        folder_path = QFileDialog.getExistingDirectory(self, "Projektordner auswählen")
+        folder_path = QFileDialog.getExistingDirectory(self, "Projektordner auswählen", self.base_path)
         if folder_path:
-            self.setProjectFolderPath(folder_path)
+            self.presenter.open_existing_project(folder_path)
 
-        # Projektergebnisse laden
-        # die einzelnen Ladefunktionen der Projekttabs nacheinander aufrufen
-        # Netz in Karte laden
-        # Koordinaten in Karte laden
-        #self.visTab.loadNetData()
-        
-        # Pandapipes Netz laden
-        #self.calcTab.loadNet()
-
-        # Pandapipes Berechnungsergebnisse Zeitreihe laden
-        #self.calcTab.load_net_results()
-
-        # Erzeugerrechnung Ergebnisse laden
-        #self.mixDesignTab.load_results_JSON()
-
-        # ...
-        pass
-
-
-    def saveExistingProject(self):
+    def on_create_project_variant(self):
         """
-        Save the current project's results.
+        Handle creating a project variant.
         """
-        # Projektergebnisse speichern ...
-        # die einzelnen Speicherfunktionen der Projekttabs nacheinander aufrufen, wenn vorhanden
+        success = self.presenter.create_project_variant()
+        if success:
+            QMessageBox.information(self, "Info", "Projektvariante wurde erfolgreich erstellt.")
 
-        # Pandapipes Netz speichern
-        #self.calcTab.saveNet()
-
-        # dimensioniertes geoJSON Netz speichern
-        #self.calcTab.exportNetGeoJSON()
-
-        # Erzeugerrechnung Ergebnisse speichern
-        #self.mixDesignTab.save_results_JSON()
-        pass
-
-    def createProjectVariant(self):
+    def on_pdf_export(self):
         """
-        Create a variant of the current project by copying its folder.
+        Handle the PDF export action.
         """
-        if not self.projectFolderPath:
-            QMessageBox.warning(self, "Warnung", "Kein Projektordner ausgewählt.", QMessageBox.Ok)
-            return
+        filename, _ = QFileDialog.getSaveFileName(self, 'PDF speichern als...', f"{self.base_path}/results/results.pdf", filter='PDF Files (*.pdf)')
+        if filename:
+            try:
+                create_pdf(self, filename)
+                QMessageBox.information(self, "PDF erfolgreich erstellt.", f"Die Ergebnisse wurden erfolgreich in {filename} gespeichert.")
+            except Exception as e:
+                error_message = traceback.format_exc()
+                QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern als PDF:\n{error_message}\n\n{str(e)}")
 
-        base_dir = os.path.dirname(self.projectFolderPath)
-        base_name = os.path.basename(self.projectFolderPath)
-        variant_num = 1
-
-        while True:
-            new_project_path = os.path.join(base_dir, f"{base_name} Variante {variant_num}")
-            if not os.path.exists(new_project_path):
-                break
-            variant_num += 1
-
-        try:
-            shutil.copytree(self.projectFolderPath, new_project_path)
-            QMessageBox.information(self, "Info", f"Projektvariante wurde erfolgreich erstellt: {new_project_path}")
-            self.setProjectFolderPath(new_project_path)
-        except Exception as e:
-            QMessageBox.critical(self, "Fehler", f"Ein Fehler ist aufgetreten: {str(e)}")
-
-    def load_last_project(self):
-        """
-        Load the last opened project after a short delay.
-        """
-        last_project = get_last_project()
-        if last_project and os.path.exists(last_project):
-            self.setProjectFolderPath(last_project)
-
-    def setProjectFolderPath(self, path):
-        """
-        Set the project folder path and update related components.
-        
-        Args:
-            path (str): Path to the project folder.
-        """
-        self.projectFolderPath = path
-        self.data_manager.set_project_folder(path)
-        self.folderLabel.setText(f"Ausgewählter Projektordner: {path}")
-        set_last_project(path)  # Save the last opened project
+    def applyTheme(self, theme_path):
+        qss_path = self.presenter.folder_manager.config_manager.get_resource_path(theme_path)
+        if os.path.exists(qss_path):
+            with open(qss_path, 'r') as file:
+                self.setStyleSheet(file.read())
+        else:
+            self.show_error_message(f"Stylesheet {qss_path} nicht gefunden.")
 
     def openTemperatureDataSelection(self):
         """
@@ -463,28 +619,48 @@ class HeatSystemDesignGUI(QMainWindow):
         Update the temperature data based on the selection dialog.
         """
         TRY = self.temperatureDataDialog.getValues()
-        self.try_filename = TRY['TRY-filename']
+        self.data_manager.set_try_filename(TRY['TRY-filename'])  # Save to DataManager
 
     def updateHeatPumpData(self):
         """
         Update the heat pump data based on the selection dialog.
         """
         COP = self.heatPumpDataDialog.getValues()
-        self.cop_filename = COP['COP-filename']
+        self.data_manager.set_cop_filename(COP['COP-filename'])  # Save to DataManager
+
+
+    def show_info_message(self, message):
+        """
+        Display an informational message to the user.
+        
+        Args:
+            message (str): The informational message to display.
+        """
+        QMessageBox.information(self, "Info", message)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
 
-    # Set Light Theme
-    qss_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'styles', 'win11_light.qss')
-    if os.path.exists(qss_path):
-        with open(qss_path, 'r') as file:
-            app.setStyleSheet(file.read())
-    else:
-        print(f"Stylesheet {qss_path} not found.")
+    # Initialize the managers
+    config_manager = ProjectConfigManager()
+    folder_manager = ProjectFolderManager(config_manager)
+    data_manager = DataManager()
 
-    ex = HeatSystemDesignGUI()
-    ex.showMaximized()
-    ex.show()
+    # Initialize the GUI
+    view = HeatSystemDesignGUI(folder_manager, data_manager)
+
+    # Initialize the presenter and link it to the view
+    presenter = HeatSystemPresenter(view, folder_manager, data_manager)
+    view.set_presenter(presenter)
+    view.applyTheme("styles\\win11_light.qss")
+
+    presenter.view.updateTemperatureData()
+    presenter.view.updateHeatPumpData()
+
+    # Setup and show the UI
+    view.initUI()
+    QTimer.singleShot(0, view.showMaximized)
+
+    view.show()
     sys.exit(app.exec_())
