@@ -84,4 +84,7 @@ Ergebnispräsentation:
 - PDF-Ausgabe noch weiter ausarbeiten und visuell verbessern.
 
 
+Lastgang.csv beim starten laden --> Problem wenn nicht vorhanden --> Exception-Handling!!!
+Vorlauf.geojson nicht vorhanden --> Fehler bei Wärmenetzberechnung
+
 

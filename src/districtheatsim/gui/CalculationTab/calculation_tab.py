@@ -12,6 +12,7 @@ import csv
 import pandas as pd
 import itertools
 import json
+import os
 
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -46,7 +47,7 @@ class CalculationTab(QWidget):
 
     data_added = pyqtSignal(object)
 
-    def __init__(self, folder_manager, data_manager, parent=None):
+    def __init__(self, folder_manager, data_manager, config_manager, parent=None):
         """
         Initializes the CalculationTab with the given data manager and parent widget.
 
@@ -57,6 +58,7 @@ class CalculationTab(QWidget):
         super().__init__(parent)
         self.folder_manager = folder_manager
         self.data_manager = data_manager
+        self.config_manager = config_manager
         self.calc_method = "Datensatz"
         self.folder_manager.project_folder_changed.connect(self.updateDefaultPath)
         self.updateDefaultPath(self.folder_manager.project_folder)
@@ -632,9 +634,10 @@ class CalculationTab(QWidget):
         """
         Saves the network to a file.
         """
-        pickle_file_path = f"{self.base_path}\Wärmenetz\Ergebnisse Netzinitialisierung.p"
-        csv_file_path = f"{self.base_path}\Wärmenetz\Ergebnisse Netzinitialisierung.csv"
-        json_file_path = f"{self.base_path}\Wärmenetz\Konfiguration Netzinitialisierung.json"
+
+        pickle_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('pp_pickle_file_path'))
+        csv_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('csv_net_init_file_path'))
+        json_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('json_net_init_file_path'))
         
         if self.net_data:
             try:
@@ -682,9 +685,9 @@ class CalculationTab(QWidget):
         """
         Loads the network from a file.
         """
-        csv_file_path = f"{self.base_path}\Wärmenetz\Ergebnisse Netzinitialisierung.csv"
-        pickle_file_path = f"{self.base_path}\Wärmenetz\Ergebnisse Netzinitialisierung.p"
-        json_file_path = f"{self.base_path}\Wärmenetz\Konfiguration Netzinitialisierung.json"
+        pickle_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('pp_pickle_file_path'))
+        csv_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('csv_net_init_file_path'))
+        json_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('json_net_init_file_path'))
         
         try:
             self.net = pp.from_pickle(pickle_file_path)
@@ -748,7 +751,7 @@ class CalculationTab(QWidget):
         """
         Loads the network results from a file.
         """
-        results_csv_filepath = f"{self.base_path}\Lastgang\Lastgang.csv"
+        results_csv_filepath = os.path.join(self.base_path, self.config_manager.get_relative_path('load_profile_path'))
         plot_data = import_results_csv(results_csv_filepath)
         self.time_steps, self.waerme_ges_kW, self.strom_wp_kW, self.pump_results = plot_data
         self.plot_data_func(plot_data)
@@ -759,7 +762,7 @@ class CalculationTab(QWidget):
         """
         Exports the network to a GeoJSON file.
         """
-        geoJSON_filepath = f"{self.base_path}\Wärmenetz\dimensioniertes Wärmenetz.geojson"
+        geoJSON_filepath = os.path.join(self.base_path, self.config_manager.get_relative_path('dimensioned_net_path'))
         if self.net_data:
             net = self.net_data[0]
             

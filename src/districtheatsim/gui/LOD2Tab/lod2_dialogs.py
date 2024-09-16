@@ -5,6 +5,8 @@ Date: 2024-08-01
 Description: Contains the Dialogs for the LOD2Tab.
 """
 
+import os
+
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QFileDialog
 from PyQt5.QtGui import QFont
 
@@ -24,7 +26,7 @@ class FilterDialog(QDialog):
         outputLOD2geojsonButton (QPushButton): Button to browse for output LOD2 geojson file.
         filterMethodComboBox (QComboBox): Combo box to select the filter method.
     """
-    def __init__(self, base_path, parent=None):
+    def __init__(self, base_path, config_manager, parent=None):
         """
         Initializes the FilterDialog.
 
@@ -34,6 +36,11 @@ class FilterDialog(QDialog):
         """
         super().__init__(parent)
         self.base_path = base_path
+        self.config_manager = config_manager
+
+        self.initUI()
+
+    def initUI(self):
         self.setWindowTitle("LOD2-Daten filtern")
         self.setGeometry(300, 300, 600, 400)
         
@@ -41,16 +48,16 @@ class FilterDialog(QDialog):
         font = QFont()
         font.setPointSize(10)
 
-        self.inputLOD2geojsonLineEdit, self.inputLOD2geojsonButton = self.createFileInput(f"{self.base_path}\\Gebäudedaten\\lod2_data.geojson", font)
+        self.inputLOD2geojsonLineEdit, self.inputLOD2geojsonButton = self.createFileInput(os.path.abspath(os.path.join(self.base_path, self.config_manager.get_relative_path("LOD2_Data_path"))), font)
         layout.addLayout(self.createFileInputLayout("Eingabe-LOD2-geojson:", self.inputLOD2geojsonLineEdit, self.inputLOD2geojsonButton, font))
 
-        self.inputfilterPolygonLineEdit, self.inputfilterPolygonButton = self.createFileInput(f"{self.base_path}\\Gebäudedaten\\Quartierabgrenzung.geojson", font)
+        self.inputfilterPolygonLineEdit, self.inputfilterPolygonButton = self.createFileInput(os.path.join(self.base_path, self.config_manager.get_relative_path("area_polygon_file_path")), font)
         layout.addLayout(self.createFileInputLayout("Eingabe-Filter-Polygon-shapefile:", self.inputfilterPolygonLineEdit, self.inputfilterPolygonButton, font))
 
-        self.inputfilterBuildingDataLineEdit, self.inputfilterBuildingDataButton = self.createFileInput(f"{self.base_path}\\Gebäudedaten\\data_input.csv", font)
+        self.inputfilterBuildingDataLineEdit, self.inputfilterBuildingDataButton = self.createFileInput(os.path.abspath(os.path.join(self.base_path, self.config_manager.get_relative_path("current_building_data_path"))), font)
         layout.addLayout(self.createFileInputLayout("Eingabe-Filter-Gebäude-csv:", self.inputfilterBuildingDataLineEdit, self.inputfilterBuildingDataButton, font))
 
-        self.outputLOD2geojsonLineEdit, self.outputLOD2geojsonButton = self.createFileInput(f"{self.base_path}\\Gebäudedaten\\Quartier LOD2.geojson", font)
+        self.outputLOD2geojsonLineEdit, self.outputLOD2geojsonButton = self.createFileInput(os.path.join(self.base_path, self.config_manager.get_relative_path("LOD2_area_path")), font)
         layout.addLayout(self.createFileInputLayout("Ausgabe-LOD2-geojson:", self.outputLOD2geojsonLineEdit, self.outputLOD2geojsonButton, font))
 
         self.filterMethodComboBox = QComboBox(self)
@@ -115,7 +122,7 @@ class FilterDialog(QDialog):
         Args:
             lineEdit (QLineEdit): The QLineEdit to set the selected file path.
         """
-        filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", f"{self.base_path}/Gebäudedaten", "All Files (*)")
+        filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", lineEdit.text(), "All Files (*)")
         if filename:
             lineEdit.setText(filename)
 

@@ -265,7 +265,8 @@ class KostenBerechnungDialog(QDialog):
         """
         super().__init__(parent)
         self.base_path = parent.base_path
-        self.filename = f"{self.base_path}\Wärmenetz\dimensioniertes Wärmenetz.geojson"
+        self.config_manager = parent.config_manager
+        self.filename = os.path.join(self.base_path, self.config_manager.get_relative_path("dimensioned_net_path"))
         self.label = label
         self.value = value
         self.type = type
@@ -339,6 +340,7 @@ class NetInfrastructureDialog(QDialog):
         """
         super().__init__(parent)
         self.base_path = None
+        self.config_manager = parent.config_manager
         self.initUI()
         self.initDefaultValues()
         self.table.verticalHeader().setContextMenuPolicy(Qt.CustomContextMenu)

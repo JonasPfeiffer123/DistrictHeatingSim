@@ -15,9 +15,10 @@ class RenovationTabPresenter:
     """
     The Presenter class for the RenovationTab, managing interaction between the Model and View.
     """
-    def __init__(self, folder_manager, data_manager, view):
+    def __init__(self, folder_manager, data_manager, config_manager, view):
         self.folder_manager = folder_manager
         self.data_manager = data_manager
+        self.config_manager = config_manager
         self.view = view
 
         # Connect to the data manager signal
@@ -81,11 +82,11 @@ class RenovationTab(QWidget):
     """
     The main entry point for the RenovationTab, initializing the MVP components.
     """
-    def __init__(self, folder_manager, data_manager, parent=None):
+    def __init__(self, folder_manager, data_manager, config_manager, parent=None):
         super().__init__(parent)
 
         # Initialize View
         self.view = RenovationTabView(self)
 
         # Initialize Presenter
-        self.presenter = RenovationTabPresenter(folder_manager, data_manager, self.view)
+        self.presenter = RenovationTabPresenter(folder_manager, data_manager, config_manager, self.view)

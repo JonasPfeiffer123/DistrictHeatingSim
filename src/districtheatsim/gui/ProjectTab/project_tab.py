@@ -287,13 +287,15 @@ class ProjectPresenter:
         view (ProjectTabView): The view for the project tab.
         data_manager (DataManager): Manages the data and state of the application.
     """
-    def __init__(self, model, view, data_manager):
+    def __init__(self, model, view, folder_manager, data_manager, config_manager):
         self.model = model
         self.view = view
+        self.folder_manager = folder_manager
         self.data_manager = data_manager
+        self.config_manager = config_manager
 
         # Connect to the data_manager's signal to update the base path
-        self.data_manager.project_folder_changed.connect(self.on_project_folder_changed)
+        self.folder_manager.project_folder_changed.connect(self.on_variant_folder_changed)
 
         # Connect view signals to presenter methods
         self.view.treeView.doubleClicked.connect(self.on_tree_view_double_clicked)
@@ -304,9 +306,9 @@ class ProjectPresenter:
         self.view.downloadAction.triggered.connect(self.open_geocode_addresses_dialog)
 
         # Initialize the base path
-        self.on_project_folder_changed(self.data_manager.project_folder)
+        self.on_variant_folder_changed(self.folder_manager.variant_folder)
 
-    def on_project_folder_changed(self, path):
+    def on_variant_folder_changed(self, path):
         """
         Handle the event when the project folder changes.
 
@@ -315,19 +317,25 @@ class ProjectPresenter:
         """
         self.model.set_base_path(path)
         self.view.update_path_label(path)
-        self.view.treeView.setRootIndex(self.view.treeView.model().index(path))
+        self.view.treeView.setRootIndex(self.view.treeView.model().index(os.path.dirname(path)))
 
     def on_tree_view_double_clicked(self, index):
         """
         Handle the event when an item in the tree view is double-clicked.
-
-        Args:
-            index (QModelIndex): The index of the item in the tree view.
         """
         file_path = self.view.get_selected_file_path(index)
-        if file_path.endswith('.csv'):
+        
+        if os.path.isdir(file_path):
+            # Prüfe, ob der Ordner eine Variante oder ein Projekt ist
+            if "Variante" in os.path.basename(file_path):
+                # Variante öffnen
+                self.folder_manager.set_variant_folder(file_path)
+            else:
+                # Projekt öffnen und die Varianten darin anzeigen
+                self.folder_manager.set_project_folder(file_path)
+        elif file_path.endswith('.csv'):
+            # CSV-Datei laden
             self.load_csv(file_path)
-        # Further file types (e.g., geojson) can be added here
 
     def open_csv(self):
         """
@@ -408,7 +416,7 @@ class ProjectPresenter:
                 default_values = dialog.get_input_data()
 
                 try:
-                    output_file_path = self.model.get_resource_path(f"Gebäudedaten/generated_building_data.csv")
+                    output_file_path = self.config_manager.get_resource_path("OSM_building_data_path")
                     self.model.create_csv_from_geojson(geojson_file_path, output_file_path, default_values)
                     self.load_csv(output_file_path)
                 except Exception as e:
@@ -595,7 +603,7 @@ class ProjectTabView(QWidget):
         Args:
             new_base_path (str): The new base path of the project.
         """
-        self.pathLabel.setText(f"Projektordner: {new_base_path}")
+        self.pathLabel.setText(f"Geöffnete Variante: {new_base_path}")
 
     def get_selected_file_path(self, index):
         """
@@ -629,13 +637,13 @@ class ProjectTab(QMainWindow):
         data_manager (DataManager): Manages the data and state of the application.
         parent (QWidget, optional): The parent widget. Defaults to None.
     """
-    def __init__(self, data_manager, parent=None):
+    def __init__(self, folder_manager, data_manager, config_manager, parent=None):
         super().__init__()
         self.setWindowTitle("Project Tab Example")
         self.setGeometry(100, 100, 800, 600)
 
         self.model = ProjectModel()
         self.view = ProjectTabView()
-        self.presenter = ProjectPresenter(self.model, self.view, data_manager)
+        self.presenter = ProjectPresenter(self.model, self.view, folder_manager, data_manager, config_manager)
 
         self.setCentralWidget(self.view)

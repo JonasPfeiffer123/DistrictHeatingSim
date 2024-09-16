@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QFileDialog, QPushBut
                              QAbstractItemView, QListWidgetItem, QTableWidgetItem, QTableWidget, QCheckBox)
 from PyQt5.QtCore import pyqtSignal, Qt
 import json
+import os
 from gui.utilities import CheckableComboBox  # Assuming you have this implemented
 from gui.MixDesignTab.heat_generator_dialogs import TechInputDialog  # Import your dialogs
 from heat_generators.heat_generation_mix import *
@@ -24,10 +25,11 @@ class IndividualTab(QWidget):
     Main tab that manages the menu bar and three sub-tabs: DiagramTab, TechnologyTab, and ResultsTab.
     """
 
-    def __init__(self, folder_manager, data_manager, parent=None):
+    def __init__(self, folder_manager, data_manager, config_manager, parent=None):
         super().__init__(parent)
         self.folder_manager = folder_manager
         self.data_manager = data_manager
+        self.config_manager = config_manager
         self.parent = parent
         self.base_path = None
 
@@ -71,7 +73,7 @@ class IndividualTab(QWidget):
         self.setLayout(main_layout)
 
     def load_json_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, 'Select JSON File', f"{self.base_path}/Lastgang", 'JSON Files (*.json);;All Files (*)')
+        file_path, _ = QFileDialog.getOpenFileName(self, 'Select JSON File', os.path.join(self.base_path, self.config_manager.get_relative_path("load_profile_path")), 'JSON Files (*.json);;All Files (*)')
         if file_path:
             self.diagram_tab.load_json(file_path)  # Load JSON data into the diagram tab
 

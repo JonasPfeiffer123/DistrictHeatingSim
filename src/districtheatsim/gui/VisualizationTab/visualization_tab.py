@@ -130,7 +130,7 @@ class VisualizationPresenter(QObject):
 
     layers_imported = pyqtSignal(dict)
 
-    def __init__(self, model, view, data_manager):
+    def __init__(self, model, view, folder_manager, data_manager, config_manager):
         """
         Initializes the VisualizationPresenter with the given model, view, and data manager.
 
@@ -142,9 +142,11 @@ class VisualizationPresenter(QObject):
         super().__init__()
         self.model = model
         self.view = view
+        self.folder_maanger = folder_manager
         self.data_manager = data_manager
+        self.config_manager = config_manager
 
-        self.data_manager.project_folder_changed.connect(self.on_project_folder_changed)
+        self.folder_maanger.project_folder_changed.connect(self.on_project_folder_changed)
 
         self.view.downloadAction.triggered.connect(self.open_geocode_addresses_dialog)
         self.view.loadCsvAction.triggered.connect(self.load_csv_coordinates)
@@ -155,9 +157,11 @@ class VisualizationPresenter(QObject):
         self.view.downloadActionOSM.triggered.connect(self.open_osm_data_dialog)
         self.view.osmBuildingAction.triggered.connect(self.open_osm_building_query_dialog)
 
-        self.on_project_folder_changed(self.data_manager.project_folder)
+        self.on_project_folder_changed(self.folder_maanger.project_folder)
 
         self.update_map_view()
+
+        print(self.config_manager.get_resource_path("net_heat_sources_path"))
 
     def on_project_folder_changed(self, new_base_path):
         """
@@ -321,7 +325,7 @@ class VisualizationPresenter(QObject):
         """
         Opens the dialog for geocoding addresses from a CSV file.
         """
-        dialog = GeocodeAddressesDialog(self.model.get_base_path(), self.view)
+        dialog = GeocodeAddressesDialog(self.model.get_base_path(), self.config_manager, self.view)
         if dialog.exec_() == QDialog.Accepted:
             fname = dialog.get_file_name()
             self.geocode_addresses(fname)
@@ -400,15 +404,20 @@ class VisualizationPresenter(QObject):
             results (dict): The results of the layer generation.
         """
         self.view.progressBar.setRange(0, 1)
-        filenames = [f"{self.model.get_base_path()}\Wärmenetz\HAST.geojson", f"{self.model.get_base_path()}\Wärmenetz\Rücklauf.geojson",
-                     f"{self.model.get_base_path()}\Wärmenetz\Vorlauf.geojson", f"{self.model.get_base_path()}\Wärmenetz\Erzeugeranlagen.geojson"]
+        filenames = [os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("net_building_transfer_station_path")), 
+                     os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("net_return_pipes_path")),
+                     os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("net_flow_pipes_path")), 
+                     os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("net_heat_sources_path"))]
+        
         self.add_geojson_layer(filenames)
+        
         generatedLayers = {
-            'HAST': f"{self.model.get_base_path()}\Wärmenetz\HAST.geojson",
-            'Rücklauf': f"{self.model.get_base_path()}\Wärmenetz\Rücklauf.geojson",
-            'Vorlauf': f"{self.model.get_base_path()}\Wärmenetz\Vorlauf.geojson",
-            'Erzeugeranlagen': f"{self.model.get_base_path()}\Wärmenetz\Erzeugeranlagen.geojson"
-        }
+            'HAST': os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("net_building_transfer_station_path")),
+            'Rücklauf': os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("net_return_pipes_path")),
+            'Vorlauf': os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("net_flow_pipes_path")),
+            'Erzeugeranlagen': os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("net_heat_sources_path"))
+            }
+        
         self.layers_imported.emit(generatedLayers)
 
     def on_generation_error(self, error_message):
@@ -425,7 +434,7 @@ class VisualizationPresenter(QObject):
         """
         Opens the dialog for downloading OSM data.
         """
-        dialog = DownloadOSMDataDialog(self.model.get_base_path(), self.view)
+        dialog = DownloadOSMDataDialog(self.model.get_base_path(), self.config_manager, self.view)
         if dialog.exec_() == QDialog.Accepted:
             pass  # Handle accepted case if necessary
 
@@ -433,7 +442,7 @@ class VisualizationPresenter(QObject):
         """
         Opens the dialog for querying OSM building data.
         """
-        dialog = OSMBuildingQueryDialog(self.model.get_base_path(), self.view)
+        dialog = OSMBuildingQueryDialog(self.model.get_base_path(), self.config_manager, self.view)
         if dialog.exec_() == QDialog.Accepted:
             pass  # Handle accepted case if necessary
 
@@ -553,7 +562,7 @@ class VisualizationTab(QMainWindow):
         presenter (VisualizationPresenter): The presenter instance handling the interaction between model and view.
     """
 
-    def __init__(self, data_manager, parent=None):
+    def __init__(self, folder_manager, data_manager, config_manager, parent=None):
         """
         Initializes the VisualizationTab with the given data manager.
 
@@ -567,6 +576,6 @@ class VisualizationTab(QMainWindow):
 
         self.model = VisualizationModel()
         self.view = VisualizationTabView()
-        self.presenter = VisualizationPresenter(self.model, self.view, data_manager)
+        self.presenter = VisualizationPresenter(self.model, self.view, folder_manager, data_manager, config_manager)
 
         self.setCentralWidget(self.view)

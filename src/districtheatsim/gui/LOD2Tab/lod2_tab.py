@@ -5,12 +5,12 @@ Date: 2024-08-30
 Description: Contains the LOD2Tab as MVP structure.
 """
 
-from PyQt5.QtWidgets import (QAction, QTabWidget, QWidget, QVBoxLayout, QMenuBar)
+from PyQt5.QtWidgets import (QAction, QWidget, QVBoxLayout, QMenuBar)
 
 from gui.LOD2Tab.lod2_data import LOD2DataModel, DataVisualizationPresenter, LOD2DataVisualization
 
 class LOD2Tab(QWidget):
-    def __init__(self, folder_manager, data_manager, parent=None):
+    def __init__(self, folder_manager, data_manager, config_manager, parent=None):
         super().__init__(parent)
         self.setWindowTitle("LOD2 Tab")
         self.setGeometry(100, 100, 1200, 800)
@@ -22,7 +22,7 @@ class LOD2Tab(QWidget):
         self.data_vis_tab = LOD2DataVisualization()
 
         # Initialize the presenters
-        self.data_vis_presenter = DataVisualizationPresenter(self.data_model, self.data_vis_tab, folder_manager, data_manager)
+        self.data_vis_presenter = DataVisualizationPresenter(self.data_model, self.data_vis_tab, folder_manager, data_manager, config_manager)
 
         # Set up the layout
         self.main_layout = QVBoxLayout()

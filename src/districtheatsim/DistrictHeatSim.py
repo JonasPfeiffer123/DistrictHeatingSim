@@ -83,6 +83,7 @@ Usage:
 
 import sys
 import os
+import time
 import shutil
 import warnings
 import json
@@ -109,39 +110,70 @@ from gui.dialogs import TemperatureDataDialog, HeatPumpDataDialog
 
 class ProjectConfigManager:
     """
-    Handles loading and saving of project configuration.
+    Handles loading and saving of project configuration and file paths.
     """
 
-    def __init__(self, config_path=None):
+    def __init__(self, config_path=None, file_paths_path=None):
         self.config_path = config_path or self.get_default_config_path()
-
+        self.file_paths_path = file_paths_path or self.get_default_file_paths_path()
+        self.config_data = self.load_config()  # Load the config data upon initialization
+        self.file_paths_data = self.load_file_paths()  # Load file paths data upon initialization
+        
     def get_default_config_path(self):
         """
         Get the path to the default configuration file.
         """
         return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
 
+    def get_default_file_paths_path(self):
+        """
+        Get the path to the default file paths file.
+        """
+        return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'file_paths.json')
+
     def load_config(self):
         """
-        Load the configuration from the config file.
+        Load the configuration from the config file using UTF-8 encoding.
         
         Returns:
             dict: Configuration data.
         """
         if os.path.exists(self.config_path):
-            with open(self.config_path, 'r') as file:
+            with open(self.config_path, 'r', encoding='utf-8') as file:
+                return json.load(file)
+        return {}
+
+    def load_file_paths(self):
+        """
+        Load the file paths from the file paths file using UTF-8 encoding.
+        
+        Returns:
+            dict: File paths data.
+        """
+        if os.path.exists(self.file_paths_path):
+            with open(self.file_paths_path, 'r', encoding='utf-8') as file:
                 return json.load(file)
         return {}
 
     def save_config(self, config):
         """
-        Save the configuration to the config file.
+        Save the configuration to the config file using UTF-8 encoding.
         
         Args:
             config (dict): Configuration data to be saved.
         """
-        with open(self.config_path, 'w') as file:
-            json.dump(config, file, indent=4)
+        with open(self.config_path, 'w', encoding='utf-8') as file:
+            json.dump(config, file, indent=4, ensure_ascii=False)
+
+    def save_file_paths(self, file_paths):
+        """
+        Save the file paths to the file paths file using UTF-8 encoding.
+        
+        Args:
+            file_paths (dict): File paths data to be saved.
+        """
+        with open(self.file_paths_path, 'w', encoding='utf-8') as file:
+            json.dump(file_paths, file, indent=4, ensure_ascii=False)
 
     def get_last_project(self):
         """
@@ -150,8 +182,7 @@ class ProjectConfigManager:
         Returns:
             str: Last opened project path.
         """
-        config = self.load_config()
-        return config.get('last_project', '')
+        return self.config_data.get('last_project', '')
 
     def set_last_project(self, path):
         """
@@ -160,14 +191,13 @@ class ProjectConfigManager:
         Args:
             path (str): Path to the last opened project.
         """
-        config = self.load_config()
-        config['last_project'] = path
-        if 'recent_projects' not in config:
-            config['recent_projects'] = []
-        if path not in config['recent_projects']:
-            config['recent_projects'].insert(0, path)
-            config['recent_projects'] = config['recent_projects'][:5]  # Save only the last 5 projects
-        self.save_config(config)
+        self.config_data['last_project'] = path
+        if 'recent_projects' not in self.config_data:
+            self.config_data['recent_projects'] = []
+        if path not in self.config_data['recent_projects']:
+            self.config_data['recent_projects'].insert(0, path)
+            self.config_data['recent_projects'] = self.config_data['recent_projects'][:5]  # Save only the last 5 projects
+        self.save_config(self.config_data)
 
     def get_recent_projects(self):
         """
@@ -176,23 +206,43 @@ class ProjectConfigManager:
         Returns:
             list: List of recent project paths.
         """
-        config = self.load_config()
-        return config.get('recent_projects', [])
-    
-    def get_resource_path(self, relative_path):
+        return self.config_data.get('recent_projects', [])
+
+    def get_relative_path(self, key):
+        """
+        Get the relative path from the file_paths.json.
+        
+        Args:
+            key (str): The key for the resource path in the JSON file.
+        
+        Returns:
+            str: The relative path for the resource.
+        """
+        relative_path = self.file_paths_data.get(key, "")
+        if not relative_path:
+            raise KeyError(f"Key '{key}' not found in file paths configuration.")
+        
+        return relative_path
+
+    def get_resource_path(self, key):
         """
         Get the absolute path to a resource, considering if the script is packaged with PyInstaller.
         
         Args:
-            relative_path (str): Relative path to the resource.
+            key (str): The key for the resource path in the JSON file.
         
         Returns:
-            str: Absolute path to the resource.
+            str: The absolute path for the resource.
         """
+        relative_path = self.get_relative_path(key)
+        
+        # If running in a PyInstaller environment, use the _MEIPASS path
         if getattr(sys, 'frozen', False):
             base_path = sys._MEIPASS
         else:
+            # Normal path when not bundled
             base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'districtheatsim')
+        
         return os.path.join(base_path, relative_path)
 
 class DataManager:
@@ -271,18 +321,54 @@ class ProjectFolderManager(QObject):
     def __init__(self, config_manager=None):
         super(ProjectFolderManager, self).__init__()
         self.config_manager = config_manager or ProjectConfigManager()
-        self.project_folder = self.config_manager.get_resource_path("project_data\\Beispiel")
+
+        # Setze den Projektordner und den Standard-Variantenordner
+        self.project_folder = self.config_manager.get_resource_path("standard_folder_path")
+        self.variant_folder = self.config_manager.get_resource_path("standard_variant_path")
+
+        # Emit signal for the initial project and variant folder
+        self.emit_project_and_variant_folder()
+
+    def emit_project_and_variant_folder(self):
+        """
+        Emit signal for both project and variant folder.
+        """
+        if self.project_folder and self.variant_folder and os.path.exists(self.variant_folder):
+            print(f"Initial variant folder set to: {self.variant_folder}")
+            self.project_folder_changed.emit(self.variant_folder)
+        elif self.project_folder:
+            # If variant folder does not exist, set a default variant
+            print("No variant folder found, setting default variant")
+            self.variant_folder = os.path.join(self.project_folder, "Variante 1")
+            self.project_folder_changed.emit(self.variant_folder)
 
     def set_project_folder(self, path):
         """
         Set the project folder path and emit the project_folder_changed signal.
-        
-        Args:
-            path (str): Path to the project folder.
         """
         self.project_folder = path
-        self.project_folder_changed.emit(path)
-        self.config_manager.set_last_project(path)
+        self.config_manager.set_last_project(self.project_folder)
+
+        # Check if the variant folder exists, otherwise set a default variant
+        if not self.variant_folder or not os.path.exists(self.variant_folder):
+            self.variant_folder = os.path.join(self.project_folder, "Variante 1")
+        
+        self.emit_project_and_variant_folder()
+
+    def set_variant_folder(self, variant_name):
+        """
+        Set the current variant folder based on the project folder and variant name.
+        """
+        if self.project_folder:
+            self.variant_folder = os.path.join(self.project_folder, variant_name)
+            self.project_folder_changed.emit(self.variant_folder)
+            self.config_manager.set_last_project(self.project_folder)
+
+    def get_variant_folder(self):
+        """
+        Return the current variant folder.
+        """
+        return self.variant_folder if self.variant_folder else self.project_folder
 
     def load_last_project(self):
         """
@@ -292,14 +378,14 @@ class ProjectFolderManager(QObject):
         if last_project and os.path.exists(last_project):
             self.set_project_folder(last_project)
         else:
-            self.project_folder_changed.emit("")
+            self.emit_project_and_variant_folder()
         
 class HeatSystemPresenter:
     """
     Acts as a middleman between the Model (CentralDataManager) and the View (HeatSystemDesignGUI).
     """
 
-    def __init__(self, view, folder_manager, data_manager):
+    def __init__(self, view, folder_manager, data_manager, config_manager):
         """
         Initialize the HeatSystemPresenter.
         
@@ -310,16 +396,14 @@ class HeatSystemPresenter:
         self.view = view
         self.folder_manager = folder_manager
         self.data_manager = data_manager
+        self.config_manager = config_manager
 
         # Connect the model signals directly to the view updates
         self.folder_manager.project_folder_changed.connect(self.view.update_project_folder_label)
 
-        # Initialize the folder label on startup
-        QTimer.singleShot(0, lambda: self.view.update_project_folder_label(self.folder_manager.project_folder))
-
     def create_new_project(self, folder_path, project_name):
         """
-        Create a new project.
+        Create a new project with the updated folder structure.
         
         Args:
             folder_path (str): The folder path to create the project in.
@@ -329,9 +413,28 @@ class HeatSystemPresenter:
             try:
                 full_path = os.path.join(folder_path, project_name)
                 os.makedirs(full_path)
-                for subdir in ["Gebäudedaten", "Lastgang", "Raumanalyse", "Wärmenetz", "results"]:
-                    os.makedirs(os.path.join(full_path, subdir))
-                self.folder_manager.set_project_folder(full_path)
+                
+                # Create subfolders based on the new structure
+                subdirs = {
+                    "Eingangsdaten allgemein": [],
+                    "Definition Quartier IST": [],
+                    "Variante 1": [
+                        "Ergebnisse",
+                        "Gebäudedaten",
+                        "Lastgang",
+                        "Wärmenetz"
+                    ]
+                }
+                
+                # Create the main folders and their respective subfolders
+                for main_folder, subfolders in subdirs.items():
+                    main_folder_path = os.path.join(full_path, main_folder)
+                    os.makedirs(main_folder_path)
+                    for subfolder in subfolders:
+                        os.makedirs(os.path.join(main_folder_path, subfolder))
+
+                self.folder_manager.set_project_folder(main_folder_path)
+
                 return True
             except Exception as e:
                 self.view.show_error_message(f"Ein Fehler ist aufgetreten: {e}")
@@ -345,26 +448,94 @@ class HeatSystemPresenter:
         if folder_path:
             self.folder_manager.set_project_folder(folder_path)
 
-    def create_project_variant(self):
+    def create_project_copy(self):
         """
-        Create a variant of the current project by copying its folder.
+        Create a copy of the current project.
         """
         base_dir = os.path.dirname(self.folder_manager.project_folder)
         base_name = os.path.basename(self.folder_manager.project_folder)
+        copy_num = 1
+
+        # Erstelle den Pfad für das neue Projekt
+        while True:
+            new_project_path = os.path.join(base_dir, f"{base_name}_Kopie{copy_num}")
+            if not os.path.exists(new_project_path):
+                break
+            copy_num += 1
+
+        try:
+            # Kopiere das gesamte Projektverzeichnis
+            shutil.copytree(self.folder_manager.project_folder, new_project_path)
+            
+            # Setze das kopierte Projekt als neues Projektverzeichnis
+            self.folder_manager.set_project_folder(new_project_path)
+            
+            # Suche nach der ersten Variante im kopierten Projekt
+            variants = [folder for folder in os.listdir(new_project_path) if "Variante" in folder]
+            
+            if variants:
+                # Setze die erste Variante als aktive Variante
+                self.folder_manager.set_variant_folder(variants[0])
+            else:
+                # Falls keine Variante existiert, setze den Standard-Variantenordner
+                default_variant_path = os.path.join(new_project_path, "Variante 1")
+                if os.path.exists(default_variant_path):
+                    self.folder_manager.set_variant_folder("Variante 1")
+                else:
+                    # Setze den Projektordner ohne Variante
+                    self.folder_manager.set_project_folder(new_project_path)
+
+            return True
+        except Exception as e:
+            self.view.show_error_message(f"Ein Fehler ist aufgetreten: {str(e)}")
+            return False
+        
+    def create_project_variant(self):
+        """
+        Creates a new variant automatically if no name is provided, based on the existing variants.
+        """
+        base_dir = self.folder_manager.project_folder
         variant_num = 1
 
         while True:
-            new_project_path = os.path.join(base_dir, f"{base_name} Variante {variant_num}")
-            if not os.path.exists(new_project_path):
+            new_variant_name = f"Variante {variant_num}"
+            new_variant_path = os.path.join(base_dir, new_variant_name)
+            if not os.path.exists(new_variant_path):
                 break
             variant_num += 1
 
         try:
-            shutil.copytree(self.folder_manager.project_folder, new_project_path)
-            self.folder_manager.set_project_folder(new_project_path)
+            os.makedirs(os.path.join(new_variant_path, "Ergebnisse"))
+            os.makedirs(os.path.join(new_variant_path, "Gebäudedaten"))
+            os.makedirs(os.path.join(new_variant_path, "Lastgang"))
+            os.makedirs(os.path.join(new_variant_path, "Wärmenetz"))
+            self.folder_manager.set_variant_folder(new_variant_name)
             return True
         except Exception as e:
-            self.view.show_error_message(f"Ein Fehler ist aufgetreten: {str(e)}")
+            self.view.show_error_message(f"Fehler beim Erstellen der Variante: {e}")
+            return False
+        
+    def create_project_variant_copy(self):
+        """
+        Create a copy of the current variant.
+        """
+        current_variant = os.path.basename(self.folder_manager.get_variant_folder())
+        base_dir = os.path.dirname(self.folder_manager.get_variant_folder())
+        variant_num = 1
+
+        while True:
+            new_variant_name = f"{current_variant}_Kopie{variant_num}"
+            new_variant_path = os.path.join(base_dir, new_variant_name)
+            if not os.path.exists(new_variant_path):
+                break
+            variant_num += 1
+
+        try:
+            shutil.copytree(self.folder_manager.get_variant_folder(), new_variant_path)
+            self.folder_manager.set_variant_folder(new_variant_name)
+            return True
+        except Exception as e:
+            self.view.show_error_message(f"Fehler beim Kopieren der Variante: {e}")
             return False
 
 class HeatSystemDesignGUI(QMainWindow):
@@ -383,6 +554,7 @@ class HeatSystemDesignGUI(QMainWindow):
         self.presenter = None  # Initially, no presenter is set
         self.folder_manager = folder_manager
         self.data_manager = data_manager
+        self.folderLabel = None  # Initialize the folderLabel to None
 
     def set_presenter(self, presenter):
         """
@@ -435,11 +607,6 @@ class HeatSystemDesignGUI(QMainWindow):
 
         fileMenu = self.menubar.addMenu('Datei')
 
-        createNewProjectAction = QAction('Neues Projekt erstellen', self)
-        chooseProjectAction = QAction('Projekt öffnen', self)
-        fileMenu.addAction(createNewProjectAction)
-        fileMenu.addAction(chooseProjectAction)
-
          # Always add the recent projects menu
         recentMenu = fileMenu.addMenu('Zuletzt geöffnet')
         recent_projects = self.presenter.folder_manager.config_manager.get_recent_projects()
@@ -453,10 +620,26 @@ class HeatSystemDesignGUI(QMainWindow):
             no_recent_action.setEnabled(False)
             recentMenu.addAction(no_recent_action)
 
+        createNewProjectAction = QAction('Neues Projekt erstellen', self)
+        fileMenu.addAction(createNewProjectAction)
+
+        chooseProjectAction = QAction('Projekt öffnen', self)
+        fileMenu.addAction(chooseProjectAction)
+
         createCopyAction = QAction('Projektkopie erstellen', self)
         fileMenu.addAction(createCopyAction)
 
-        pdfExportAction = QAction('PDF exportieren', self)
+        # Neue Aktion "Variante öffnen" hinzufügen
+        openVariantAction = QAction('Variante öffnen', self)
+        fileMenu.addAction(openVariantAction)
+
+        createVariantAction = QAction('Variante erstellen', self)
+        fileMenu.addAction(createVariantAction)
+
+        createVariantCopyAction = QAction('Variantenkopie erstellen', self)
+        fileMenu.addAction(createVariantCopyAction)
+
+        pdfExportAction = QAction('Ergebnis-PDF exportieren', self)
         fileMenu.addAction(pdfExportAction)
 
         dataMenu = self.menubar.addMenu('Datenbasis')
@@ -475,28 +658,31 @@ class HeatSystemDesignGUI(QMainWindow):
 
         createNewProjectAction.triggered.connect(self.on_create_new_project)
         chooseProjectAction.triggered.connect(self.on_open_existing_project)
-        createCopyAction.triggered.connect(self.on_create_project_variant)
+        createCopyAction.triggered.connect(self.on_create_project_copy)
+        openVariantAction.triggered.connect(self.on_open_variant)
+        createVariantAction.triggered.connect(self.on_create_project_variant)
+        createVariantCopyAction.triggered.connect(self.on_create_project_variant_copy)
         pdfExportAction.triggered.connect(self.on_pdf_export)
         chooseTemperatureDataAction.triggered.connect(self.openTemperatureDataSelection)
         createCOPDataAction.triggered.connect(self.openCOPDataSelection)
-        lightThemeAction.triggered.connect(lambda: self.applyTheme('styles\\win11_light.qss'))
-        darkThemeAction.triggered.connect(lambda: self.applyTheme('styles\\dark_mode.qss'))
+        lightThemeAction.triggered.connect(lambda: self.applyTheme('light_theme_style_path'))
+        darkThemeAction.triggered.connect(lambda: self.applyTheme('dark_theme_style_path'))
 
     def initTabs(self):
         tabWidget = QTabWidget()
         self.layout1.addWidget(tabWidget)
 
         # Initialize tabs
-        self.projectTab = ProjectTab(self.presenter.folder_manager)
-        self.buildingTab = BuildingTab(self.presenter.folder_manager, self.presenter.data_manager)
-        self.visTab = VisualizationTab(self.presenter.folder_manager)
-        self.lod2Tab = LOD2Tab(self.presenter.folder_manager, self.presenter.data_manager)
-        self.renovationTab = RenovationTab(self.presenter.folder_manager, self.presenter.data_manager)
-        self.calcTab = CalculationTab(self.presenter.folder_manager, self.presenter.data_manager, self)
-        self.mixDesignTab = MixDesignTab(self.presenter.folder_manager, self.presenter.data_manager, self)
-        self.comparisonTab = ComparisonTab(self.presenter.folder_manager, self.presenter.data_manager)
-        self.individualTab = IndividualTab(self.presenter.folder_manager, self.presenter.data_manager, self)
-        self.pvTab = PVTab(self.presenter.folder_manager, self.presenter.data_manager)
+        self.projectTab = ProjectTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
+        self.buildingTab = BuildingTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
+        self.visTab = VisualizationTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
+        self.lod2Tab = LOD2Tab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
+        self.renovationTab = RenovationTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
+        self.calcTab = CalculationTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager, self)
+        self.mixDesignTab = MixDesignTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager, self)
+        self.comparisonTab = ComparisonTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
+        self.individualTab = IndividualTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager, self)
+        self.pvTab = PVTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
 
         tabWidget.addTab(self.projectTab, "Projektdefinition")
         tabWidget.addTab(self.buildingTab, "Wärmebedarf Gebäude")
@@ -555,7 +741,7 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         Handle the creation of a new project.
         """
-        folder_path = QFileDialog.getExistingDirectory(self, "Speicherort für neues Projekt wählen", self.base_path)
+        folder_path = QFileDialog.getExistingDirectory(self, "Speicherort für neues Projekt wählen", os.path.dirname(os.path.dirname(self.base_path)))
         if folder_path:
             projectName, ok = QInputDialog.getText(self, 'Neues Projekt', 'Projektnamen eingeben:')
             if ok and projectName:
@@ -565,11 +751,69 @@ class HeatSystemDesignGUI(QMainWindow):
 
     def on_open_existing_project(self):
         """
-        Handle opening an existing project.
+        Handle opening an existing project and let the user choose from the available variants.
         """
-        folder_path = QFileDialog.getExistingDirectory(self, "Projektordner auswählen", self.base_path)
+        folder_path = QFileDialog.getExistingDirectory(self, "Projektordner auswählen", os.path.dirname(os.path.dirname(self.base_path)))
         if folder_path:
             self.presenter.open_existing_project(folder_path)
+            
+            # Suche nach allen Unterordnern, die "Variante" im Namen enthalten
+            available_variants = self.get_available_variants(folder_path)
+            
+            if available_variants:
+                # Zeige die verfügbaren Varianten zur Auswahl an
+                variant_name, ok = QInputDialog.getItem(self, 'Variante auswählen', 'Wähle eine Variante aus:', available_variants, 0, False)
+                if ok and variant_name:
+                    self.presenter.folder_manager.set_variant_folder(variant_name)
+            else:
+                self.view.show_error_message("Keine verfügbaren Varianten gefunden.")
+
+    def get_available_variants(self, project_path):
+        """
+        Get a list of available variant folders in the project path.
+        
+        Args:
+            project_path (str): The path to the project.
+            
+        Returns:
+            list: A list of available variant names.
+        """
+        variants = []
+        for folder_name in os.listdir(project_path):
+            full_path = os.path.join(project_path, folder_name)
+            # Überprüfen, ob es sich um ein Verzeichnis handelt und ob es "Variante" enthält
+            if os.path.isdir(full_path) and folder_name.startswith("Variante"):
+                variants.append(folder_name)
+        return variants
+
+    def on_create_project_copy(self):
+        """
+        Handle creating a project variant.
+        """
+        success = self.presenter.create_project_copy()
+        if success:
+            QMessageBox.information(self, "Info", "Projektvariante wurde erfolgreich erstellt.")
+    
+    def on_open_variant(self):
+        """
+        Handle opening a specific variant from the current project.
+        """
+        project_folder = self.folder_manager.project_folder  # Aktueller Projektordner
+        print(project_folder)
+        if not project_folder:
+            self.show_error_message("Kein Projektordner ausgewählt.")
+            return
+
+        # Suche nach allen Varianten im Projektordner
+        available_variants = self.get_available_variants(project_folder)
+
+        if available_variants:
+            # Zeige die verfügbaren Varianten zur Auswahl an
+            variant_name, ok = QInputDialog.getItem(self, 'Variante öffnen', 'Wähle eine Variante aus:', available_variants, 0, False)
+            if ok and variant_name:
+                self.presenter.folder_manager.set_variant_folder(variant_name)
+        else:
+            self.show_error_message("Keine Varianten im Projekt gefunden.")
 
     def on_create_project_variant(self):
         """
@@ -579,11 +823,20 @@ class HeatSystemDesignGUI(QMainWindow):
         if success:
             QMessageBox.information(self, "Info", "Projektvariante wurde erfolgreich erstellt.")
 
+    def on_create_project_variant_copy(self):
+        """
+        Handle creating a project variant copy.
+        """
+        success = self.presenter.create_project_variant()
+        if success:
+            QMessageBox.information(self, "Info", "Projektvariantenkopie wurde erfolgreich erstellt.")
+
     def on_pdf_export(self):
         """
         Handle the PDF export action.
         """
-        filename, _ = QFileDialog.getSaveFileName(self, 'PDF speichern als...', f"{self.base_path}/results/results.pdf", filter='PDF Files (*.pdf)')
+        filepath = os.path.join(self.base_path, self.presenter.config_manager.get_relative_path("results_PDF_path"))
+        filename, _ = QFileDialog.getSaveFileName(self, 'PDF speichern als...', filepath, filter='PDF Files (*.pdf)')
         if filename:
             try:
                 create_pdf(self, filename)
@@ -593,7 +846,7 @@ class HeatSystemDesignGUI(QMainWindow):
                 QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern als PDF:\n{error_message}\n\n{str(e)}")
 
     def applyTheme(self, theme_path):
-        qss_path = self.presenter.folder_manager.config_manager.get_resource_path(theme_path)
+        qss_path = self.presenter.config_manager.get_resource_path(theme_path)
         if os.path.exists(qss_path):
             with open(qss_path, 'r') as file:
                 self.setStyleSheet(file.read())
@@ -638,6 +891,16 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         QMessageBox.information(self, "Info", message)
 
+def get_stylesheet_based_on_time():
+    """
+    Return the stylesheet path based on the current system time.
+    """
+    current_hour = time.localtime().tm_hour
+    if 6 <= current_hour < 18:  # Wenn es zwischen 6:00 und 18:00 Uhr ist
+        return "light_theme_style_path"  # Pfad zum hellen Stylesheet
+    else:
+        return "dark_theme_style_path"   # Pfad zum dunklen Stylesheet
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
@@ -651,16 +914,18 @@ if __name__ == '__main__':
     view = HeatSystemDesignGUI(folder_manager, data_manager)
 
     # Initialize the presenter and link it to the view
-    presenter = HeatSystemPresenter(view, folder_manager, data_manager)
+    presenter = HeatSystemPresenter(view, folder_manager, data_manager, config_manager)
     view.set_presenter(presenter)
-    view.applyTheme("styles\\win11_light.qss")
+    theme_path = get_stylesheet_based_on_time()
+    view.applyTheme(theme_path)
 
     presenter.view.updateTemperatureData()
     presenter.view.updateHeatPumpData()
 
     # Setup and show the UI
     view.initUI()
-    QTimer.singleShot(0, view.showMaximized)
+    QTimer.singleShot(0, lambda: view.showMaximized())
+    QTimer.singleShot(0, lambda: view.update_project_folder_label(folder_manager.variant_folder))  # Verschiebe diesen Aufruf hierhin
 
     view.show()
     sys.exit(app.exec_())

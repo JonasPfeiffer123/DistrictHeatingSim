@@ -7,6 +7,7 @@ Description: Contains the MixdesignTab.
 
 import json
 import pandas as pd
+import os
 import traceback
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMessageBox, QFileDialog, QMenuBar, QScrollArea, QAction, QDialog)
 from PyQt5.QtCore import pyqtSignal, QEventLoop
@@ -75,7 +76,7 @@ class MixDesignTab(QWidget):
     """
     data_added = pyqtSignal(object)  # Signal that transfers data as an object
     
-    def __init__(self, folder_manager, data_manager, parent=None):
+    def __init__(self, folder_manager, data_manager, config_manager, parent=None):
         """
         Initializes the MixDesignTab instance.
 
@@ -86,6 +87,7 @@ class MixDesignTab(QWidget):
         super().__init__(parent)
         self.folder_manager = folder_manager
         self.data_manager = data_manager
+        self.config_manager = config_manager
         self.results = {}
         self.tech_objects = []
         
@@ -196,7 +198,7 @@ class MixDesignTab(QWidget):
         Creates the tab widget and its sub-tabs.
         """
         self.tabWidget = QTabWidget()
-        self.techTab = TechnologyTab(self.folder_manager, self)
+        self.techTab = TechnologyTab(self.folder_manager, self.config_manager, self)
         self.costTab = CostTab(self.folder_manager, self)
         self.resultTab = ResultsTab(self.folder_manager, self)
         self.sensitivityTab = SensitivityTab(self.folder_manager, self)
@@ -348,7 +350,7 @@ class MixDesignTab(QWidget):
         """
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Information)
-        msgBox.setText(f"Die Berechnung des Erzeugermixes war erfolgreich. Die Ergebnisse wurden unter {self.base_path}\Lastgang\\results.csv gespeichert.")
+        msgBox.setText(f"Die Berechnung des Erzeugermixes war erfolgreich. Die Ergebnisse wurden unter {os.path.join(self.base_path, self.config_manager.get_relative_path('calculated_heat_generation_path'))} gespeichert.")
         msgBox.setWindowTitle("Berechnung Erfolgreich")
         msgBox.setStandardButtons(QMessageBox.Ok)
         msgBox.exec_()
@@ -503,7 +505,7 @@ class MixDesignTab(QWidget):
         df['el_Leistung_ges_L'] = results['el_Leistung_ges_L']
         
         # Save the DataFrame as a CSV file
-        csv_filename = f"{self.base_path}\Lastgang\\calculated_heat_generation.csv"
+        csv_filename = os.path.join(self.base_path, self.config_manager.get_relative_path('calculated_heat_generation_path'))
         df.to_csv(csv_filename, index=False, sep=";")
         print(f"Ergebnisse wurden in '{csv_filename}' gespeichert.")
 

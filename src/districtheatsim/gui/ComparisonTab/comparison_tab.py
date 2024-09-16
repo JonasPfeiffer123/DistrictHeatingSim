@@ -12,10 +12,11 @@ from gui.ComparisonTab.cost_comparison_tab import CostComparisonTab
 from gui.ComparisonTab.building_heat_demand_comparison_tab import BuildingHeatDemandComparisonTab
 
 class ComparisonTab(QWidget):
-    def __init__(self, folder_manager, data_manager, parent=None):
+    def __init__(self, folder_manager, data_manager, config_manager, parent=None):
         super().__init__(parent)
         self.folder_manager = folder_manager
         self.data_manager = data_manager
+        self.config_manager = config_manager
 
         # Connect to the data manager signal
         self.folder_manager.project_folder_changed.connect(self.updateDefaultPath)
@@ -34,7 +35,7 @@ class ComparisonTab(QWidget):
         self.mainLayout.addWidget(self.tabWidget)
         
         # Create the StatComparisonTab and add it to the QTabWidget
-        self.statComparisonTab = StatComparisonTab(self.folder_manager)
+        self.statComparisonTab = StatComparisonTab(self.folder_manager, self.config_manager)
         self.tabWidget.addTab(self.statComparisonTab, "Projektübersicht")
 
         # Create the CostComparisonTab and add it to the QTabWidget

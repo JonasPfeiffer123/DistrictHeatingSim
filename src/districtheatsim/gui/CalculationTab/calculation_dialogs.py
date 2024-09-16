@@ -91,7 +91,7 @@ class NetGenerationDialog(QDialog):
         jsonImportLayout = QHBoxLayout()
         jsonLabel = QLabel("JSON mit Daten:")
         jsonImportLayout.addWidget(jsonLabel)
-        self.jsonLineEdit = QLineEdit(f"{self.base_path}/Lastgang/Gebäude Lastgang.json")
+        self.jsonLineEdit = QLineEdit(os.path.join(self.base_path, self.parent.config_manager.get_relative_path('building_load_profile_path')))
         jsonImportLayout.addWidget(self.jsonLineEdit)
         jsonBrowseButton = QPushButton("Datei auswählen")
         jsonBrowseButton.clicked.connect(self.browseJsonFile)
@@ -171,10 +171,10 @@ class NetGenerationDialog(QDialog):
             list: List of QVBoxLayout containing file input fields.
         """
         default_paths = {
-            'Erzeugeranlagen': f'{self.base_path}\Wärmenetz\Erzeugeranlagen.geojson',
-            'HAST': f'{self.base_path}\Wärmenetz\HAST.geojson',
-            'Vorlauf': f'{self.base_path}\Wärmenetz\Vorlauf.geojson',
-            'Rücklauf': f'{self.base_path}\Wärmenetz\Rücklauf.geojson'
+            'Erzeugeranlagen': os.path.join(self.base_path, self.parent.config_manager.get_relative_path("net_heat_sources_path")),
+            'HAST': os.path.join(self.base_path, self.parent.config_manager.get_relative_path("net_building_transfer_station_path")),
+            'Vorlauf': os.path.join(self.base_path, self.parent.config_manager.get_relative_path("net_flow_pipes_path")),
+            'Rücklauf': os.path.join(self.base_path, self.parent.config_manager.get_relative_path("net_return_pipes_path"))
         }
 
         file_inputs_layout = self.createFileInputsGeoJSON(default_paths)
@@ -234,7 +234,7 @@ class NetGenerationDialog(QDialog):
         """
         Opens a file dialog to select a JSON file.
         """
-        fname, _ = QFileDialog.getOpenFileName(self, 'Select JSON File', f"{self.base_path}/Lastgang", 'JSON Files (*.json);;All Files (*)')
+        fname, _ = QFileDialog.getOpenFileName(self, 'Select JSON File', os.path.join(self.base_path, self.parent.config_manager.get_relative_path('building_load_profile_path')), 'JSON Files (*.json);;All Files (*)')
         if fname:
             self.jsonLineEdit.setText(fname)
     
@@ -676,6 +676,11 @@ class NetGenerationDialog(QDialog):
             hast_path = self.hastInput.itemAt(1).widget().text()
             erzeugeranlagen_path = self.erzeugeranlagenInput.itemAt(1).widget().text()
 
+            # Dateien prüfen, ob sie existieren
+            if not (os.path.exists(vorlauf_path) and os.path.exists(ruecklauf_path) and 
+                    os.path.exists(hast_path) and os.path.exists(erzeugeranlagen_path)):
+                raise FileNotFoundError("Eine oder mehrere GeoJSON-Dateien wurden nicht gefunden.")
+            
             # Dateien einlesen
             vorlauf = gpd.read_file(vorlauf_path)
             ruecklauf = gpd.read_file(ruecklauf_path)
@@ -685,6 +690,8 @@ class NetGenerationDialog(QDialog):
             # Plot vorbereiten
             self.figure1.clear()
             ax = self.figure1.add_subplot(111)
+
+            # GeoJSON-Daten plotten
             vorlauf.plot(ax=ax, color='red')
             ruecklauf.plot(ax=ax, color='blue')
             hast.plot(ax=ax, color='green')
@@ -694,13 +701,14 @@ class NetGenerationDialog(QDialog):
             annotations = []
             for idx, row in hast.iterrows():
                 point = row['geometry'].representative_point()
-                label = f"{row['Adresse']}\nWärmebedarf: {row['Wärmebedarf']}\nGebäudetyp: {row['Gebäudetyp']}\nVLT_max:{row['VLT_max']}\nRLT_max:{row['RLT_max']}"
+                label = (f"{row['Adresse']}\nWärmebedarf: {row['Wärmebedarf']}\n"
+                        f"Gebäudetyp: {row['Gebäudetyp']}\nVLT_max: {row['VLT_max']}\nRLT_max: {row['RLT_max']}")
                 annotation = ax.annotate(label, xy=(point.x, point.y), xytext=(10, 10),
                                         textcoords="offset points", bbox=dict(boxstyle="round", fc="w"))
                 annotation.set_visible(False)
                 annotations.append((point, annotation))
 
-            # Event-Handler definieren
+            # Event-Handler für Mausbewegung
             def on_move(event):
                 if event.xdata is None or event.ydata is None:
                     return
@@ -708,7 +716,6 @@ class NetGenerationDialog(QDialog):
                 visibility_changed = False
                 for point, annotation in annotations:
                     should_be_visible = (point.distance(Point(event.xdata, event.ydata)) < 5)
-
                     if should_be_visible != annotation.get_visible():
                         visibility_changed = True
                         annotation.set_visible(should_be_visible)
@@ -723,7 +730,22 @@ class NetGenerationDialog(QDialog):
             ax.set_xlabel('Longitude')
             ax.set_ylabel('Latitude')
 
+        except FileNotFoundError as e:
+            # Fehlermeldung anzeigen, wenn Dateien fehlen
+            self.figure1.clear()
+            ax = self.figure1.add_subplot(111)
+            ax.text(0.5, 0.5, 'No data available', fontsize=20, ha='center')
+            self.canvas1.draw()
+
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText("Dateien nicht gefunden")
+            msg.setInformativeText(str(e))
+            msg.setWindowTitle("Fehler")
+            msg.exec_()
+
         except Exception as e:
+            # Allgemeine Fehlermeldung bei anderen Fehlern
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Critical)
             msg.setText("Ein Fehler ist aufgetreten")
@@ -816,7 +838,7 @@ class ZeitreihenrechnungDialog(QDialog):
         self.fileInputlayout = QHBoxLayout(self)
 
         self.resultsFileLabel = QLabel("Ausgabedatei Lastgang:", self)
-        self.resultsFileInput = QLineEdit(f"{self.base_path}/Lastgang/Lastgang.csv", self)
+        self.resultsFileInput = QLineEdit(os.path.join(self.base_path, self.parent.config_manager.get_relative_path('load_profile_path')), self)
         self.selectresultsFileButton = QPushButton('csv-Datei auswählen')
         self.selectresultsFileButton.clicked.connect(lambda: self.selectFilename(self.resultsFileInput))
 
