@@ -375,7 +375,7 @@ class DataVisualizationPresenter(QObject):
     """
     data_loaded = pyqtSignal(dict)
 
-    def __init__(self, model, view, folder_manager, data_manager):
+    def __init__(self, model, view, folder_manager, data_manager, config_manager):
         """
         Initializes the DataVisualizationPresenter with references to the model, view, folder manager, and data manager.
 
@@ -390,6 +390,7 @@ class DataVisualizationPresenter(QObject):
         self.view = view
         self.folder_manager = folder_manager
         self.data_manager = data_manager
+        self.config_manager = config_manager
 
         self.folder_manager.project_folder_changed.connect(self.on_project_folder_changed)
         self.on_project_folder_changed(self.folder_manager.project_folder)
@@ -511,7 +512,7 @@ class DataVisualizationPresenter(QObject):
         """
         Shows the filter dialog for LOD2 data filtering.
         """
-        dialog = FilterDialog(self.model.get_base_path(), self.view)
+        dialog = FilterDialog(self.model.get_base_path(), self.config_manager, self.view)
         if dialog.exec_() == QDialog.Accepted:
             filter_method = dialog.filterMethodComboBox.currentText()
             lod_geojson_path = dialog.inputLOD2geojsonLineEdit.text()

@@ -168,11 +168,12 @@ class BuildingPresenter:
         data_manager (object): The data manager for the application.
     """
 
-    def __init__(self, model, view, folder_manager, data_manager):
+    def __init__(self, model, view, folder_manager, data_manager, config_manager):
         self.model = model
         self.view = view
         self.folder_manager = folder_manager
         self.data_manager = data_manager
+        self.config_manager = config_manager
 
         # Connect to the data_manager's signal to update the base path
         self.folder_manager.project_folder_changed.connect(self.update_default_path)
@@ -199,7 +200,7 @@ class BuildingPresenter:
             path (str): The new default path.
         """
         self.model.set_base_path(path)
-        self.view.update_output_path(self.model.get_base_path())
+        self.view.update_output_path(self.model.get_base_path(), self.config_manager.get_relative_path("building_load_profile_path"))
 
     def load_csv(self, file_path):
         """
@@ -591,15 +592,15 @@ class BuildingTabView(QWidget):
         """
         QMessageBox.information(self, title, message)
 
-    def update_output_path(self, path):
+    def update_output_path(self, base_path, json_path):
         """
         Updates the output path in the view.
         
         Args:
             path (str): The new output path.
         """
-        self.base_path = path  # Update the base path
-        self.output_path_edit.setText(f"{self.base_path}/Lastgang/Gebäude Lastgang.json")
+        self.base_path = base_path  # Update the base path
+        self.output_path_edit.setText(os.path.join(self.base_path, json_path))
 
 class BuildingTab(QMainWindow):
     """
@@ -610,13 +611,13 @@ class BuildingTab(QMainWindow):
         parent (QWidget, optional): The parent widget. Defaults to None.
     """
 
-    def __init__(self, folder_manager, data_manager, parent=None):
+    def __init__(self, folder_manager, data_manager, config_manager, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Building Tab Example")
         self.setGeometry(100, 100, 800, 600)
 
         self.model = BuildingModel()
         self.view = BuildingTabView()
-        self.presenter = BuildingPresenter(self.model, self.view, folder_manager, data_manager)
+        self.presenter = BuildingPresenter(self.model, self.view, folder_manager, data_manager, config_manager)
 
         self.setCentralWidget(self.view)

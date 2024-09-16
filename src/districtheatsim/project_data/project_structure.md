@@ -14,7 +14,7 @@ Dies ist die Struktur der Projektordner:
 - Projekt
     - Eingangsdaten allgemein
         - Straßen.geojson (standortspezifisch --> Stadt, Stadtteil)
-        - lod2.geojson (standortspezifisch --> Stadt, Stadtteil)
+        - LOD2_data.geojson (standortspezifisch --> Stadt, Stadtteil)
         - zusätzliche Daten wie Wassertemepraturen, andere TRY-, COP-Daten (standortspezifisch --> Region, Stadt)
     - Definition Quartier IST
         - Gebäude_IST.csv (Initiale Beschreibung des Quartiers anhand von Daten im IST-Zustand)

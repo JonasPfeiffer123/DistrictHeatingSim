@@ -1196,7 +1196,7 @@ class RiverHeatPumpDialog(QDialog):
         """
         Opens a file dialog to select a CSV file and loads its content.
         """
-        filename, _ = QFileDialog.getOpenFileName(self, "Open CSV", "", "CSV Files (*.csv)")
+        filename, _ = QFileDialog.getOpenFileName(self, "Open CSV", "", "CSV Files (*.csv)") # this needs a path
         if filename:
             self.loadCSV(filename)
 
@@ -1278,7 +1278,7 @@ class AqvaHeatDialog(QDialog):
         """
         Opens a file dialog to select a CSV file and loads its content.
         """
-        filename, _ = QFileDialog.getOpenFileName(self, "Open CSV", "", "CSV Files (*.csv)")
+        filename, _ = QFileDialog.getOpenFileName(self, "Open CSV", "", "CSV Files (*.csv)") # this needs a path
         if filename:
             self.loadCSV(filename)
 

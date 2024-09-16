@@ -5,6 +5,8 @@ Date: 2024-09-10
 Description: Contains the TechnologyTab.
 """
 
+import os
+
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QLineEdit, 
     QListWidget, QDialog, QFileDialog, QScrollArea, QAbstractItemView, QMessageBox
@@ -47,7 +49,7 @@ class TechnologyTab(QWidget):
     """
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
 
-    def __init__(self, data_manager, parent=None):
+    def __init__(self, data_manager, config_manager, parent=None):
         """
         Initializes the TechnologyTab.
 
@@ -57,6 +59,7 @@ class TechnologyTab(QWidget):
         """
         super().__init__(parent)
         self.data_manager = data_manager
+        self.config_manager = config_manager
         self.results = {}
         self.tech_objects = []
         self.initFileInputs()
@@ -82,7 +85,7 @@ class TechnologyTab(QWidget):
             new_base_path (str): The new base path.
         """
         self.base_path = new_base_path
-        new_output_path = f"{self.base_path}/Lastgang/Lastgang.csv"
+        new_output_path = os.path.join(self.base_path, self.config_manager.get_relative_path('load_profile_path'))
         self.FilenameInput.setText(new_output_path)
         self.loadFileAndPlot()
 
@@ -351,15 +354,22 @@ class TechnologyTab(QWidget):
 
     def loadFileAndPlot(self):
         """
-        Loads the file and plots the data.
+        Loads the file and plots the data. If the file is not available or has issues,
+        it displays a message on the plot canvas instead of throwing an error.
         """
         filename = self.FilenameInput.text()
         if filename:
             try:
                 data = pd.read_csv(filename, sep=";")
                 self.plotData(data)
+            except FileNotFoundError:
+                self.showInfoMessageOnPlot("Datei nicht gefunden. Bitte wählen Sie eine gültige CSV-Datei aus.")
+            except pd.errors.EmptyDataError:
+                self.showInfoMessageOnPlot("Die Datei ist leer.")
             except Exception as e:
-                self.showErrorMessage(f"Fehler beim Laden der Datei: {e}")
+                self.showInfoMessageOnPlot(f"Fehler beim Laden der Datei: {e}")
+        else:
+            self.showInfoMessageOnPlot("Keine Datei ausgewählt.")
 
     def plotData(self, data):
         """
@@ -386,11 +396,15 @@ class TechnologyTab(QWidget):
         else:
             self.showErrorMessage("Die Datei enthält nicht die erforderlichen Spalten 'Zeit' und 'Wärmeerzeugung_Heizentrale Haupteinspeisung_1_kW'.")
 
-    def showErrorMessage(self, message):
+    def showInfoMessageOnPlot(self, message):
         """
-        Shows an error message.
+        Displays an information message on the plot canvas.
 
         Args:
-            message (str): The error message to display.
+            message (str): The message to display.
         """
-        QMessageBox.critical(self, "Fehler", message)
+        self.createPlotCanvas()
+        ax = self.plotFigure.add_subplot(111)
+        ax.text(0.5, 0.5, message, ha='center', va='center', transform=ax.transAxes)
+        ax.set_axis_off()
+        self.plotCanvas.draw()

@@ -3,18 +3,21 @@
 # Date: 2024-09-03
 # Description: Contains the PVTab as MVP structure.
 
+import os
 import pandas as pd
+
 from PyQt5.QtWidgets import (QAction, QVBoxLayout, QWidget, QFileDialog, QMessageBox, QMenuBar)
 from gui.PVTab.pv_mvp import PVDataModel, DataVisualizationPresenter, PVDataVisualizationTab
 from heat_generators.photovoltaics import Calculate_PV
 
 class PVTab(QWidget):
-    def __init__(self, folder_manager, data_manager, parent=None):
+    def __init__(self, folder_manager, data_manager, config_manager, parent=None):
         super().__init__(parent)
 
         # Connect the folder manager signal
         self.folder_manager = folder_manager
         self.data_manager = data_manager
+        self.config_manager = config_manager
 
         self.folder_manager.project_folder_changed.connect(self.on_project_folder_changed)
         self.on_project_folder_changed(self.folder_manager.project_folder)
@@ -87,8 +90,8 @@ class PVTab(QWidget):
         try:
             # Get the output file name
             output_filename, _ = QFileDialog.getSaveFileName(
-                self, "Speichern unter", f"{self.get_base_path()}/results/pv_results.csv", "CSV-Dateien (*.csv)")
-
+                self, "Speichern unter", os.path.join(self.get_base_path(), self.config_manager.get_relative_path("pv_results")), "CSV-Dateien (*.csv)")
+            
             if not output_filename:
                 return
 

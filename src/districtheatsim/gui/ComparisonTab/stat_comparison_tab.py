@@ -17,9 +17,10 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QTableWidget, QTa
 from net_simulation_pandapipes.pp_net_time_series_simulation import import_results_csv
 
 class StatComparisonTab(QWidget):
-    def __init__(self, folder_manager, parent=None):
+    def __init__(self, folder_manager, config_manager, parent=None):
         super().__init__(parent)
         self.folder_manager = folder_manager
+        self.config_manager = config_manager
         self.folder_paths = []
         self.variant_data = []
 
@@ -155,9 +156,9 @@ class StatComparisonTab(QWidget):
 
             QMessageBox.information(self, "Laden erfolgreich", 
                                     "Daten erfolgreich geladen aus: {}, {} und {}.".format(
-                                        os.path.join(folder_path, "Wärmenetz", "Ergebnisse Netzinitialisierung.csv"),
-                                        os.path.join(folder_path, "Wärmenetz", "Ergebnisse Netzinitialisierung.p"),
-                                        os.path.join(folder_path, "Wärmenetz", "Konfiguration Netzinitialisierung.json")
+                                        os.path.join(folder_path, self.config_manager.get_relative_path("csv_net_init_file_path")),
+                                        os.path.join(folder_path, self.config_manager.get_relative_path("pp_pickle_file_path")),
+                                        os.path.join(folder_path, self.config_manager.get_relative_path("json_net_init_file_path"))
                                     ))
         except Exception as e:
             QMessageBox.critical(self, "Laden fehlgeschlagen", "Fehler beim Laden der Daten: {}".format(e))
@@ -166,14 +167,15 @@ class StatComparisonTab(QWidget):
         """
         Loads the network data from a pickle file.
         """
-        pickle_file_path = os.path.join(folder_path, "Wärmenetz", "Ergebnisse Netzinitialisierung.p")
+        pickle_file_path = os.path.join(folder_path, self.config_manager.get_relative_path("pp_pickle_file_path"))
         self.net = pp.from_pickle(pickle_file_path)
 
     def load_csv_file(self, folder_path):
         """
         Loads the heat and electricity demand data from a CSV file.
         """
-        csv_file_path = os.path.join(folder_path, "Wärmenetz", "Ergebnisse Netzinitialisierung.csv")
+        csv_file_path = os.path.join(folder_path, self.config_manager.get_relative_path("csv_net_init_file_path"))
+
 
         with open(csv_file_path, newline='') as csvfile:
             reader = csv.reader(csvfile, delimiter=';')
@@ -198,7 +200,7 @@ class StatComparisonTab(QWidget):
         """
         Loads additional configuration data from a JSON file.
         """
-        json_file_path = os.path.join(folder_path, "Wärmenetz", "Konfiguration Netzinitialisierung.json")
+        json_file_path = os.path.join(folder_path, self.config_manager.get_relative_path("json_net_init_file_path"))
 
         with open(json_file_path, 'r') as json_file:
             additional_data = json.load(json_file)
@@ -239,7 +241,7 @@ class StatComparisonTab(QWidget):
         """
         Loads the network results from a file.
         """
-        results_csv_filepath = os.path.join(folder_path, "Lastgang", "Lastgang.csv")
+        results_csv_filepath = os.path.join(folder_path, self.config_manager.get_relative_path("load_profile_path"))
         plot_data = import_results_csv(results_csv_filepath)
         self.time_steps, self.waerme_ges_kW, self.strom_wp_kW, self.pump_results = plot_data
 

@@ -63,7 +63,9 @@ class LayerGenerationDialog(QDialog):
         formLayout.setSpacing(10)
 
         self.fileInput, self.fileButton = self.createFileInput(f"{self.base_path}\Raumanalyse\Straßen.geojson")
+        #self.fileInput, self.fileButton = self.createFileInput(f"{os.path.dirname(self.base_path)}\\Eingangsdaten allgemein\\Straßen.geojson")
         self.dataInput, self.dataCsvButton = self.createFileInput(f"{self.base_path}\Gebäudedaten\data_input.csv")
+        #self.dataInput, self.dataCsvButton = self.createFileInput(f"{os.path.dirname(self.base_path)}\\Definition Quartier IST\\Gebäude IST.csv")
 
         self.locationModeComboBox = QComboBox(self)
         self.locationModeComboBox.addItems(["Koordinaten direkt eingeben", "Adresse eingeben", "Koordinaten aus csv laden"])
@@ -305,9 +307,10 @@ class DownloadOSMDataDialog(QDialog):
     """
     Dialog for downloading OSM data.
     """
-    def __init__(self, base_path, parent=None):
+    def __init__(self, base_path, config_manager, parent=None):
         super().__init__(parent)
         self.base_path = base_path
+        self.config_manager = config_manager
         self.tags_to_download = []
         self.tagsLayoutList = []
 
@@ -493,9 +496,10 @@ class OSMBuildingQueryDialog(QDialog):
     """
     Dialog for querying OSM building data.
     """
-    def __init__(self, base_path, parent=None):
+    def __init__(self, base_path, config_manager, parent=None):
         super().__init__(parent)
         self.base_path = base_path
+        self.config_manager = config_manager
         self.initUI()
 
     def initUI(self):
@@ -509,7 +513,7 @@ class OSMBuildingQueryDialog(QDialog):
         layout.addWidget(QLabel("Stadt, deren OSM-Gebäudedaten heruntergeladen werden sollen:"))
         layout.addWidget(self.cityLineEdit)
 
-        self.filenameLineEdit = QLineEdit(f"{self.base_path}\Raumanalyse\output_buildings.geojson", self)
+        self.filenameLineEdit = QLineEdit(os.path.join(self.base_path, self.config_manager.get_relative_path('OSM_buldings_path')), self)
         layout.addWidget(QLabel("Dateiname, unter dem die Gebäudedaten als geojson gespeichert werde sollen:"))
         layout.addWidget(self.filenameLineEdit)
 
@@ -793,9 +797,10 @@ class GeocodeAddressesDialog(QDialog):
     """
     Dialog for geocoding addresses from a CSV file.
     """
-    def __init__(self, base_path, parent=None):
+    def __init__(self, base_path, config_manager, parent=None):
         super().__init__(parent)
         self.base_path = base_path
+        self.config_manager = config_manager
         self.initUI()
 
     def initUI(self):
@@ -812,7 +817,7 @@ class GeocodeAddressesDialog(QDialog):
         font = QFont()
         font.setPointSize(10)
         
-        self.inputfilenameLineEdit, inputFileButton = self.createFileInput(f"{self.base_path}\Gebäudedaten\data_input.csv", font)
+        self.inputfilenameLineEdit, inputFileButton = self.createFileInput(os.path.abspath(os.path.join(self.base_path, self.config_manager.get_relative_path("current_building_data_path"))), font)
         layout.addLayout(self.createFileInputLayout("Eingabedatei:", self.inputfilenameLineEdit, inputFileButton, font))
         
         buttonLayout = QHBoxLayout()
