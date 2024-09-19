@@ -296,6 +296,11 @@ class CHP:
             results['Wärmeleistung_Speicher_L'] = self.Wärmeleistung_Speicher_kW
 
         return results
+    
+    def get_display_text(self):
+        return (f"{self.name}: th. Leistung: {self.th_Leistung_BHKW} kW, "
+                f"spez. Investitionskosten Erdgas-BHKW: {self.spez_Investitionskosten_GBHKW} €/kW, "
+                f"spez. Investitionskosten Holzgas-BHKW: {self.spez_Investitionskosten_HBHKW} €/kW")
 
     def to_dict(self):
         """

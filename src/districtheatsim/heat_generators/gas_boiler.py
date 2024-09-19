@@ -134,6 +134,9 @@ class GasBoiler:
         }
 
         return results
+
+    def get_display_text(self):
+        return f"{self.name}: spez. Investitionskosten: {self.spez_Investitionskosten} €/kW"
     
     def to_dict(self):
         """

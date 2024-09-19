@@ -244,6 +244,11 @@ class BiomassBoiler:
 
         return results
 
+    def get_display_text(self):
+        return (f"{self.name}: th. Leistung: {self.P_BMK}, Größe Holzlager: {self.Größe_Holzlager} t, "
+                f"spez. Investitionskosten Kessel: {self.spez_Investitionskosten} €/kW, "
+                f"spez. Investitionskosten Holzlager: {self.spez_Investitionskosten_Holzlager} €/t")
+    
     def to_dict(self):
         """
         Converts the BiomassBoiler object to a dictionary.
