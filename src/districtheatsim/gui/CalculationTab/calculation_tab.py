@@ -61,7 +61,7 @@ class CalculationTab(QWidget):
         self.config_manager = config_manager
         self.calc_method = "Datensatz"
         self.folder_manager.project_folder_changed.connect(self.updateDefaultPath)
-        self.updateDefaultPath(self.folder_manager.project_folder)
+        self.updateDefaultPath(self.folder_manager.variant_folder)
         self.show_map = False
         self.map_type = None
         self.initUI()

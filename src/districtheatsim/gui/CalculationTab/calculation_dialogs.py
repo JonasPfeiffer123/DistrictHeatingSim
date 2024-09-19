@@ -645,7 +645,7 @@ class NetGenerationDialog(QDialog):
             max_air_temperature = float(self.parameter_rows_net[3].itemAt(1).widget().text())
             min_air_temperature = float(self.parameter_rows_net[4].itemAt(1).widget().text())
 
-            air_temperature_data, _, _, _, _ = import_TRY(self.parent.parent.try_filename)
+            air_temperature_data, _, _, _, _ = import_TRY(self.parent.data_manager.get_try_filename())
 
             # Berechnung der Temperaturkurve basierend auf den ausgewählten Einstellungen
             temperature_curve = []
@@ -812,6 +812,7 @@ class ZeitreihenrechnungDialog(QDialog):
     def __init__(self, base_path, parent=None):
         super().__init__(parent)
         self.base_path = base_path
+        self.parent = parent
         self.initUI()
 
     def initUI(self):

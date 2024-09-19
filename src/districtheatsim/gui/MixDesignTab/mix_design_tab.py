@@ -97,7 +97,7 @@ class MixDesignTab(QWidget):
 
         # Connect to the data manager signal
         self.folder_manager.project_folder_changed.connect(self.updateDefaultPath)
-        self.updateDefaultPath(self.folder_manager.project_folder)
+        self.updateDefaultPath(self.folder_manager.variant_folder)
 
     def initDialogs(self):
         """
@@ -400,8 +400,8 @@ class MixDesignTab(QWidget):
         self.filename = self.techTab.FilenameInput.text()
         self.load_scale_factor = float(self.techTab.load_scale_factorInput.text())
 
-        self.TRY_data = import_TRY(self.parent.try_filename)
-        self.COP_data = np.genfromtxt(self.parent.cop_filename, delimiter=';')
+        self.TRY_data = import_TRY(self.data_manager.get_try_filename())
+        self.COP_data = np.genfromtxt(self.data_manager.get_cop_filename(), delimiter=';')
 
         results = []
         for gas_price in self.generate_values(gas_range):

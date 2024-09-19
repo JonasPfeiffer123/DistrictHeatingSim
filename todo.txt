@@ -47,11 +47,8 @@ Erzeugerauslegung:
 - Ergebnisausgabe: Anzahl Starts, Betriebsstunden und Betriebsstunden/Start im GUI ausgeben
 
 Einzelversorgungslösung:
-- Ausgehend von berechnetem Gebäudelastgang
-- Einfach als Auswahloption in Wirtschaftlichkeitsrechnung / Erzeugerauslegung?
-    --> andere Investitionskosten
-    --> andere Betriebskosten
-    --> Wie Zuweisung Anlagen? Einheitliche Varianten? Gemischte Varianten?
+- weitere Ergebnisse?
+--> was braucht man eigentlich?
 
 Test Projekte durcharbeiten:
 - Was funktioniert?
@@ -84,7 +81,6 @@ Ergebnispräsentation:
 - PDF-Ausgabe noch weiter ausarbeiten und visuell verbessern.
 
 
-Lastgang.csv beim starten laden --> Problem wenn nicht vorhanden --> Exception-Handling!!!
 Vorlauf.geojson nicht vorhanden --> Fehler bei Wärmenetzberechnung
 
 

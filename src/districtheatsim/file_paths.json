@@ -1,6 +1,7 @@
 {
-    "standard_folder_path": "project_data\\Beispiel neu",
-    "standard_variant_path": "project_data\\Beispiel neu\\Variante 1",
+    "standard_folder_path": "project_data\\Görlitz",
+    "standard_variant_path": "project_data\\Görlitz\\Variante 1",
+    "map_file": "Ergebnisse\\map.html",
     "results_PDF_path": "Ergebnisse\\results.pdf",
     "building_load_profile_path": "Lastgang\\Gebäude Lastgang.json",
     "net_heat_sources_path": "Wärmenetz\\Erzeugeranlagen.geojson",
@@ -15,12 +16,12 @@
     "area_polygon_file_path": "Gebäudedaten\\Quartierabgrenzung.geojson",
     "LOD2_area_path": "Gebäudedaten\\Quartier LOD2.geojson",
     "OSM_building_data_path": "Gebäudedaten\\OSM_building_data.csv",
-    "calculated_heat_generation_path": "Ergebnis\\calculated_heat_generation.csv",
+    "calculated_heat_generation_path": "Ergebnisse\\calculated_heat_generation.csv",
     "OSM_buldings_path": "Gebäudedaten\\OSM_Gebäude.geojson",
     "pv_results": "Ergebnisse\\pv_results.csv",
     "OSM_streets_path": "..\\Eingangsdaten allgemein\\Straßen.geojson",
     "LOD2_Data_path": "..\\Eingangsdaten allgemein\\LOD2_data.geojson",
-    "current_building_data_path": "..\\Definition Quartier IST\\Gebäude IST.csv",
+    "current_building_data_path": "..\\Definition Quartier IST\\Quartier IST.csv",
     "light_theme_style_path": ".\\styles\\win11_light.qss",
     "dark_theme_style_path": ".\\styles\\dark_mode.qss"
 

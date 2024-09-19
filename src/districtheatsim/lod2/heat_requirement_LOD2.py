@@ -123,7 +123,7 @@ class Building:
         Calculates the yearly heating demand for the building.
         """
         # Load temperature data
-        self.temperature, _, _, _, _ = import_TRY()
+        self.temperature, _, _, _, _ = import_TRY(self.filename_TRY)
         
         # Calculate the slope and y-intercept of the linear equation to model heating demand
         m = self.max_heating_demand / (self.u_values["min_air_temp"] - self.u_values["max_air_temp_heating"])  # Slope
