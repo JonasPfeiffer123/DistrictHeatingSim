@@ -17,6 +17,7 @@ from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QTableWidgetItem, QWidget
 from PyQt5.QtCore import Qt
 
 from gui.VisualizationTab.net_generation_threads import GeocodingThread
+from gui.ProjectTab.progress_tracker_tab import ProgressTrackerDialog
 
 class RowInputDialog(QDialog):
     """
@@ -304,6 +305,8 @@ class ProjectPresenter:
         self.view.saveAction.triggered.connect(self.save_csv)
         self.view.createCSVfromgeojsonAction.triggered.connect(self.create_csv_from_geojson)
         self.view.downloadAction.triggered.connect(self.open_geocode_addresses_dialog)
+        # Connect the progressAction to the presenter's method
+        self.view.progressAction.triggered.connect(self.show_progress_tracker)
 
         # Initialize the base path
         self.on_variant_folder_changed(self.folder_manager.variant_folder)
@@ -465,6 +468,39 @@ class ProjectPresenter:
         self.view.show_error_message("Fehler beim Geocoding", error_message)
         self.view.progressBar.setRange(0, 1)
 
+    def show_progress_tracker(self):
+        """
+        Show the progress tracker dialog based on required files.
+        """
+        # Define the required files and their paths
+        required_files = {
+            "results_PDF_path": "Ergebnisse\\Ergebnisse.pdf",
+            "building_load_profile_path": "Lastgang\\Gebäude Lastgang.json",
+            "net_heat_sources_path": "Wärmenetz\\Erzeugeranlagen.geojson",
+            "net_building_transfer_station_path": "Wärmenetz\\HAST.geojson",
+            "net_flow_pipes_path": "Wärmenetz\\Vorlauf.geojson",
+            "net_return_pipes_path": "Wärmenetz\\Rücklauf.geojson",
+            "load_profile_path": "Lastgang\\Lastgang.csv",
+            "pp_pickle_file_path": "Wärmenetz\\Ergebnisse Netzinitialisierung.p",
+            "csv_net_init_file_path": "Wärmenetz\\Ergebnisse Netzinitialisierung.csv",
+            "json_net_init_file_path": "Wärmenetz\\Konfiguration Netzinitialisierung.json",
+            "dimensioned_net_path": "Wärmenetz\\dimensioniertes Wärmenetz.geojson",
+            "calculated_heat_generation_path": "Ergebnisse\\calculated_heat_generation.csv",
+            "OSM_streets_path": "..\\Eingangsdaten allgemein\\Straßen.geojson",
+            "LOD2_Data_path": "..\\Eingangsdaten allgemein\\LOD2_data.geojson",
+            "current_building_data_path": "..\\Definition Quartier IST\\Quartier IST.csv"
+        }
+
+        # Check base path of the project
+        base_path = self.model.get_base_path()
+
+        # Create list of full paths to check file existence
+        full_paths = [os.path.join(base_path, path) for path in required_files.values()]
+
+        # Open progress tracker dialog
+        dialog = ProgressTrackerDialog(full_paths, base_path, self.view)
+        dialog.exec_()
+
 class ProjectTabView(QWidget):
     """
     View class for the Project Tab.
@@ -510,12 +546,18 @@ class ProjectTabView(QWidget):
         self.downloadAction = QAction('Adressdaten geocodieren', self)
         self.openAction = QAction('CSV laden', self)
         self.saveAction = QAction('CSV speichern', self)
+
         
         fileMenu.addAction(self.createCSVAction)
         fileMenu.addAction(self.openAction)
         fileMenu.addAction(self.saveAction)
         fileMenu.addAction(self.createCSVfromgeojsonAction)
         fileMenu.addAction(self.downloadAction)
+
+        # Add a menu option to show the progress tracker
+        self.progressAction = QAction('Projektfortschritt anzeigen', self)
+        fileMenu.addAction(self.progressAction)
+
         rightLayout.addWidget(self.menuBar)
 
         # CSV table with inline editing and context menu
