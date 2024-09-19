@@ -202,6 +202,8 @@ class PDFSelectionDialog(QDialog):
         self.costs_cb.setChecked(True)
         self.results_cb = QCheckBox("Berechnungsergebnisse")
         self.results_cb.setChecked(True)
+        self.combined_results_cb = QCheckBox("Wirtschaftlichkeit")
+        self.combined_results_cb.setChecked(True)
 
         # Checkboxen zum Layout hinzufügen
         layout.addWidget(self.net_structure_cb)
@@ -210,6 +212,7 @@ class PDFSelectionDialog(QDialog):
         layout.addWidget(self.net_infrastructure_cb)
         layout.addWidget(self.costs_cb)
         layout.addWidget(self.results_cb)
+        layout.addWidget(self.combined_results_cb)
 
         # Dialogbuttons (OK/Cancel)
         buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -229,5 +232,6 @@ class PDFSelectionDialog(QDialog):
             'technologies': self.technologies_cb.isChecked(),
             'net_infrastructure': self.net_infrastructure_cb.isChecked(),
             'costs': self.costs_cb.isChecked(),
-            'results': self.results_cb.isChecked()
+            'results': self.results_cb.isChecked(),
+            'combined_results': self.combined_results_cb.isChecked()
         }
