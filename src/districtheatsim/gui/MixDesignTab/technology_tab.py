@@ -1,7 +1,7 @@
 """
 Filename: technology_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-10
+Date: 2024-09-19
 Description: Contains the TechnologyTab.
 """
 
@@ -9,7 +9,7 @@ import os
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QLineEdit, 
-    QListWidget, QDialog, QFileDialog, QScrollArea, QAbstractItemView, QMessageBox
+    QListWidget, QDialog, QFileDialog, QScrollArea, QAbstractItemView
 )
 from PyQt5.QtCore import pyqtSignal
 import pandas as pd
@@ -287,38 +287,22 @@ class TechnologyTab(QWidget):
                     new_order.append(tech)
                     break
         self.tech_objects = new_order
-
+    
     def formatTechForDisplay(self, tech):
         """
-        Formats a technology object for display in the list.
-
+        Delegates the formatting of the display text to the technology object itself.
+        
         Args:
             tech (Technology): The technology object.
-
+        
         Returns:
             str: The formatted string for display.
         """
-        display_text = f"{tech.name}: "
-        if isinstance(tech, RiverHeatPump):
-            display_text += f"Wärmeleistung FW WP: {tech.Wärmeleistung_FW_WP} kW, Temperatur FW WP: {tech.Temperatur_FW_WP} °C, dT: {tech.dT} K, spez. Investitionskosten Flusswärme: {tech.spez_Investitionskosten_Flusswasser} €/kW, spez. Investitionskosten Wärmepumpe: {tech.spezifische_Investitionskosten_WP} €/kW"
-        elif isinstance(tech, WasteHeatPump):
-            display_text += f"Kühlleistung Abwärme: {tech.Kühlleistung_Abwärme} kW, Temperatur Abwärme: {tech.Temperatur_Abwärme} °C, spez. Investitionskosten Abwärme: {tech.spez_Investitionskosten_Abwärme} €/kW, spez. Investitionskosten Wärmepumpe: {tech.spezifische_Investitionskosten_WP} €/kW"
-        elif isinstance(tech, Geothermal):
-            display_text += f"Fläche Sondenfeld: {tech.Fläche} m², Bohrtiefe: {tech.Bohrtiefe} m, Quelltemperatur Erdreich: {tech.Temperatur_Geothermie} °C, spez. Bohrkosten: {tech.spez_Bohrkosten} €/m, spez. Entzugsleistung: {tech.spez_Entzugsleistung} W/m, Vollbenutzungsstunden: {tech.Vollbenutzungsstunden} h, Abstand Sonden: {tech.Abstand_Sonden} m, spez. Investitionskosten Wärmepumpe: {tech.spezifische_Investitionskosten_WP} €/kW"
-        elif isinstance(tech, CHP):
-            display_text += f"th. Leistung: {tech.th_Leistung_BHKW} kW, spez. Investitionskosten Erdgas-BHKW: {tech.spez_Investitionskosten_GBHKW} €/kW, spez. Investitionskosten Holzgas-BHKW: {tech.spez_Investitionskosten_HBHKW} €/kW"
-        elif isinstance(tech, BiomassBoiler):
-            display_text += f"th. Leistung: {tech.P_BMK}, Größe Holzlager: {tech.Größe_Holzlager} t, spez. Investitionskosten Kessel: {tech.spez_Investitionskosten} €/kW, spez. Investitionskosten Holzlager: {tech.spez_Investitionskosten_Holzlager} €/t"
-        elif isinstance(tech, GasBoiler):
-            display_text += f"spez. Investitionskosten: {tech.spez_Investitionskosten} €/kW"
-        elif isinstance(tech, SolarThermal):
-            display_text += f"Bruttokollektorfläche: {tech.bruttofläche_STA} m², Volumen Solarspeicher: {tech.vs} m³, Kollektortyp: {tech.Typ}, spez. Kosten Speicher: {tech.kosten_speicher_spez} €/m³, spez. Kosten Flachkollektor: {tech.kosten_fk_spez} €/m², spez. Kosten Röhrenkollektor: {tech.kosten_vrk_spez} €/m²"
-        elif isinstance(tech, AqvaHeat):
-            display_text += "technische Daten"
-        else:
-            display_text = f"Unbekannte Technologieklasse: {type(tech).__name__}"
-
-        return display_text
+        try:
+            return tech.get_display_text()
+        
+        except Exception as e:
+            return f"Unbekannte Technologieklasse: {type(tech).__name__}"
 
     def createMainLayout(self):
         """

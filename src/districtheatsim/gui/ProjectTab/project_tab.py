@@ -14,10 +14,9 @@ from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QTableWidgetItem, QWidget
                              QMenuBar, QAction, QProgressBar, QLabel, QTableWidget, QFileSystemModel, 
                              QTreeView, QSplitter, QMessageBox, QDialog, QLineEdit, QDialogButtonBox, 
                              QMenu, QGridLayout)
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 
 from gui.VisualizationTab.net_generation_threads import GeocodingThread
-from gui.ProjectTab.progress_tracker_tab import ProgressTrackerDialog
 
 class RowInputDialog(QDialog):
     """
@@ -305,11 +304,15 @@ class ProjectPresenter:
         self.view.saveAction.triggered.connect(self.save_csv)
         self.view.createCSVfromgeojsonAction.triggered.connect(self.create_csv_from_geojson)
         self.view.downloadAction.triggered.connect(self.open_geocode_addresses_dialog)
-        # Connect the progressAction to the presenter's method
-        self.view.progressAction.triggered.connect(self.show_progress_tracker)
 
         # Initialize the base path
         self.on_variant_folder_changed(self.folder_manager.variant_folder)
+        self.update_progress_tracker()
+
+        # Optional: Set up a timer to update the progress periodically
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_progress_tracker)
+        self.timer.start(50000)  # Update every 5 seconds
 
     def on_variant_folder_changed(self, path):
         """
@@ -468,9 +471,9 @@ class ProjectPresenter:
         self.view.show_error_message("Fehler beim Geocoding", error_message)
         self.view.progressBar.setRange(0, 1)
 
-    def show_progress_tracker(self):
+    def update_progress_tracker(self):
         """
-        Show the progress tracker dialog based on required files.
+        Update the progress based on the number of detected files.
         """
         # Define the required files and their paths
         required_files = {
@@ -497,9 +500,12 @@ class ProjectPresenter:
         # Create list of full paths to check file existence
         full_paths = [os.path.join(base_path, path) for path in required_files.values()]
 
-        # Open progress tracker dialog
-        dialog = ProgressTrackerDialog(full_paths, base_path, self.view)
-        dialog.exec_()
+        # Calculate the progress
+        generated_files = [file for file in full_paths if os.path.exists(file)]
+        progress = len(generated_files) / len(full_paths) * 100
+
+        # Update the view with the current progress
+        self.view.update_progress(progress)
 
 class ProjectTabView(QWidget):
     """
@@ -532,14 +538,47 @@ class ProjectTabView(QWidget):
         leftWidget = QWidget()
         leftWidget.setLayout(leftLayout)
         leftLayout.addWidget(self.treeView)
+
+        # Add progress bar and label under the tree view
+        self.progressLabel = QLabel("Projektfortschritt:")
+        leftLayout.addWidget(self.progressLabel)
+
+        self.projectProgressBar = QProgressBar(self)
+        leftLayout.addWidget(self.projectProgressBar)
+
         splitter.addWidget(leftWidget)
 
         # Right area - File interaction
-        rightLayout = QVBoxLayout()
+        self.rightLayout = QVBoxLayout()
 
         # Menu bar
+        self.initMenuBar()
+
+        # CSV table with inline editing and context menu
+        self.csvTable = QTableWidget()
+        self.csvTable.setEditTriggers(QTableWidget.DoubleClicked | QTableWidget.EditKeyPressed)
+        self.csvTable.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.csvTable.customContextMenuRequested.connect(self.show_context_menu)
+        self.rightLayout.addWidget(self.csvTable)
+
+        # Progress bar
+        self.progressBar = QProgressBar(self)
+        self.rightLayout.addWidget(self.progressBar)
+        rightWidget = QWidget()
+        rightWidget.setLayout(self.rightLayout)
+        splitter.addWidget(rightWidget)
+        splitter.setStretchFactor(1, 2)
+
+        mainLayout.addWidget(splitter)
+        self.setLayout(mainLayout)
+
+    def initMenuBar(self):
+        """
+        Initialize the menu bar with actions.
+        """
         self.menuBar = QMenuBar(self)
         self.menuBar.setFixedHeight(30)
+
         fileMenu = self.menuBar.addMenu('Datei')
         self.createCSVAction = QAction('CSV erstellen', self)
         self.createCSVfromgeojsonAction = QAction('Gebäude-CSV aus OSM-geojson erstellen', self)
@@ -547,36 +586,13 @@ class ProjectTabView(QWidget):
         self.openAction = QAction('CSV laden', self)
         self.saveAction = QAction('CSV speichern', self)
 
-        
         fileMenu.addAction(self.createCSVAction)
         fileMenu.addAction(self.openAction)
         fileMenu.addAction(self.saveAction)
         fileMenu.addAction(self.createCSVfromgeojsonAction)
         fileMenu.addAction(self.downloadAction)
 
-        # Add a menu option to show the progress tracker
-        self.progressAction = QAction('Projektfortschritt anzeigen', self)
-        fileMenu.addAction(self.progressAction)
-
-        rightLayout.addWidget(self.menuBar)
-
-        # CSV table with inline editing and context menu
-        self.csvTable = QTableWidget()
-        self.csvTable.setEditTriggers(QTableWidget.DoubleClicked | QTableWidget.EditKeyPressed)
-        self.csvTable.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.csvTable.customContextMenuRequested.connect(self.show_context_menu)
-        rightLayout.addWidget(self.csvTable)
-
-        # Progress bar
-        self.progressBar = QProgressBar(self)
-        rightLayout.addWidget(self.progressBar)
-        rightWidget = QWidget()
-        rightWidget.setLayout(rightLayout)
-        splitter.addWidget(rightWidget)
-        splitter.setStretchFactor(1, 2)
-
-        mainLayout.addWidget(splitter)
-        self.setLayout(mainLayout)
+        self.rightLayout.addWidget(self.menuBar)
 
     def show_context_menu(self, position):
         """
@@ -668,6 +684,13 @@ class ProjectTabView(QWidget):
             message (str): The error message to display.
         """
         QMessageBox.critical(self, title, message)
+
+    def update_progress(self, progress):
+        """
+        Update the progress bar and label with the current progress.
+        """
+        self.projectProgressBar.setValue(int(progress))
+        self.progressLabel.setText(f"Projektfortschritt: {int(progress)}%")
 
 class ProjectTab(QMainWindow):
     """

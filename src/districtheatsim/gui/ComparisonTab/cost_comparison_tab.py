@@ -19,15 +19,16 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 class CostComparisonTab(QWidget):
-    def __init__(self, folder_manager, parent=None):
+    def __init__(self, folder_manager, config_manager, parent=None):
         super().__init__(parent)
         self.folder_manager = folder_manager
+        self.config_manager = config_manager
         self.folder_paths = []
         self.variant_data = []
 
         # Connect to the data manager signal
         self.folder_manager.project_folder_changed.connect(self.updateDefaultPath)
-        self.updateDefaultPath(self.folder_manager.project_folder)
+        self.updateDefaultPath(self.folder_manager.variant_folder)
 
         self.initUI()
 
@@ -106,7 +107,7 @@ class CostComparisonTab(QWidget):
     def load_variant_data(self, folder_path):
         try:
             # Load the JSON file
-            json_file_path = os.path.join(folder_path, 'results', 'results.json')  # Assuming the results are stored in 'results.json'
+            json_file_path = os.path.join(folder_path, self.config_manager.get_relative_path("results_path"))  # Assuming the results are stored in 'results.json'
             with open(json_file_path, 'r') as json_file:
                 data_loaded = json.load(json_file)
             

@@ -507,7 +507,8 @@ class MixDesignTab(QWidget):
         # Save the DataFrame as a CSV file
         csv_filename = os.path.join(self.base_path, self.config_manager.get_relative_path('calculated_heat_generation_path'))
         df.to_csv(csv_filename, index=False, sep=";")
-        print(f"Ergebnisse wurden in '{csv_filename}' gespeichert.")
+
+        QMessageBox.information(self, "Erfolgreich gespeichert", f"Die Ergebnisse wurden erfolgreich unter {csv_filename} gespeichert.")
 
     def save_results_JSON(self):
         """
@@ -517,8 +518,8 @@ class MixDesignTab(QWidget):
             QMessageBox.warning(self, "Keine Daten vorhanden", "Es sind keine Berechnungsergebnisse oder technischen Objekte vorhanden, die gespeichert werden könnten.")
             return
         
-        filename, _ = QFileDialog.getSaveFileName(self, 'JSON speichern als...', os.path.join(self.base_path, self.config_manager.get_relative_path("results_path")), filter='JSON Files (*.json)')
-        if filename:
+        json_filename = os.path.join(self.base_path, self.config_manager.get_relative_path("results_path"))
+        if json_filename:
             # Create a copy of the results and tech_objects
             data_to_save = {
                 'results': self.results.copy() if self.results else {},
@@ -527,10 +528,10 @@ class MixDesignTab(QWidget):
 
             try:
                 # Save to a JSON file using the custom encoder
-                with open(filename, 'w') as json_file:
+                with open(json_filename, 'w') as json_file:
                     json.dump(data_to_save, json_file, indent=4, cls=CustomJSONEncoder)
                 
-                QMessageBox.information(self, "Erfolgreich gespeichert", f"Die Ergebnisse wurden erfolgreich unter {filename} gespeichert.")
+                QMessageBox.information(self, "Erfolgreich gespeichert", f"Die Ergebnisse wurden erfolgreich unter {json_filename} gespeichert.")
             except TypeError as e:
                 QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der JSON-Datei: {e}")
                 raise e
@@ -539,11 +540,11 @@ class MixDesignTab(QWidget):
         """
         Loads the results and technology objects from a JSON file.
         """
-        filename, _ = QFileDialog.getOpenFileName(self, 'JSON Datei laden...', os.path.join(self.base_path, self.config_manager.get_relative_path("results_path")), filter='JSON Files (*.json)')
-        if filename:
+        json_filename = os.path.join(self.base_path, self.config_manager.get_relative_path("results_path"))
+        if json_filename:
             try:
                 # Load the JSON file
-                with open(filename, 'r') as json_file:
+                with open(json_filename, 'r') as json_file:
                     data_loaded = json.load(json_file)
                 
                 results_loaded = data_loaded.get('results', {})
@@ -555,57 +556,63 @@ class MixDesignTab(QWidget):
                     if isinstance(value, list):
                         if key == "tech_classes":  # Convert dictionaries back to objects
                             for v in value:
-                                if v['name'] == 'BHKW' or v['name'] == 'Holzgas-BHKW':
+                                if v['name'].startswith('BHKW'):
                                     tech_classes.append(CHP.from_dict(v))
                                     results_loaded[key] = tech_classes
-                                elif v['name'] == 'Flusswasser':
+                                elif v['name'].startswith('Flusswasser'):
                                     tech_classes.append(RiverHeatPump.from_dict(v))
                                     results_loaded[key] = tech_classes
-                                elif v['name'] == 'Abwärme':
+                                elif v['name'].startswith('Abwärme'):
                                     tech_classes.append(WasteHeatPump.from_dict(v))
                                     results_loaded[key] = tech_classes
-                                elif v['name'] == 'Geothermie':
+                                elif v['name'].startswith('Geothermie'):
                                     tech_classes.append(Geothermal.from_dict(v))
                                     results_loaded[key] = tech_classes
-                                elif v['name'] == 'Biomassekessel':
+                                elif v['name'].startswith('Biomassekessel'):
                                     tech_classes.append(BiomassBoiler.from_dict(v))
                                     results_loaded[key] = tech_classes
-                                elif v['name'] == 'Gaskessel':
+                                elif v['name'].startswith('Gaskessel'):
                                     tech_classes.append(GasBoiler.from_dict(v))
                                     results_loaded[key] = tech_classes
-                                elif v['name'] == 'Solarthermie':
+                                elif v['name'].startswith('Solarthermie'):
                                     tech_classes.append(SolarThermal.from_dict(v))
+                                    results_loaded[key] = tech_classes
+                                elif v['name'].startswith('AqvaHeat'):
+                                    tech_classes.append(AqvaHeat.from_dict(v))
+                                    results_loaded[key] = tech_classes
                         elif all(isinstance(i, list) for i in value):  # Check if the list is a list of lists
                             results_loaded[key] = [np.array(v) for v in value]
                         else:
                             results_loaded[key] = np.array(value)
-                
+
                 # Load the tech_objects
                 tech_objects = []
                 for obj in tech_objects_loaded:
-                    if obj['name'] == 'BHKW' or obj['name'] == 'Holzgas-BHKW':
+                    if obj['name'].startswith('BHKW'):
                         tech_objects.append(CHP.from_dict(obj))
-                    elif obj['name'] == 'Flusswasser':
+                    elif obj['name'].startswith('Flusswasser'):
                         tech_objects.append(RiverHeatPump.from_dict(obj))
-                    elif obj['name'] == 'Abwärme':
+                    elif obj['name'].startswith('Abwärme'):
                         tech_objects.append(WasteHeatPump.from_dict(obj))
-                    elif obj['name'] == 'Geothermie':
+                    elif obj['name'].startswith('Geothermie'):
                         tech_objects.append(Geothermal.from_dict(obj))
-                    elif obj['name'] == 'Biomassekessel':
+                    elif obj['name'].startswith('Biomassekessel'):
                         tech_objects.append(BiomassBoiler.from_dict(obj))
-                    elif obj['name'] == 'Gaskessel':
+                    elif obj['name'].startswith('Gaskessel'):
                         tech_objects.append(GasBoiler.from_dict(obj))
-                    elif obj['name'] == 'Solarthermie':
+                    elif obj['name'].startswith('Solarthermie'):
                         tech_objects.append(SolarThermal.from_dict(obj))
+                    elif obj['name'].startswith('AqvaHeat'):
+                        tech_objects.append(AqvaHeat.from_dict(obj))
 
                 self.results = results_loaded
                 self.techTab.tech_objects = tech_objects
 
                 # Update the tabs with the loaded data
-                if self.techTab.tech_objects != []:
+                if self.techTab.tech_objects:
                     self.techTab.updateTechList()
 
-                if self.results != {}:
+                if self.results:
                     self.costTab.updateInfrastructureTable()  # Ensure the infrastructure table is updated first
                     self.costTab.updateTechDataTable(self.techTab.tech_objects)  # Then update the tech table
                     self.costTab.updateSumLabel()  # Then update the sum label
@@ -614,7 +621,7 @@ class MixDesignTab(QWidget):
                     self.resultTab.showAdditionalResultsTable(self.results)
                     self.resultTab.plotResults(self.results)
                 
-                QMessageBox.information(self, "Erfolgreich geladen", f"Die Ergebnisse wurden erfolgreich aus {filename} geladen.")
+                QMessageBox.information(self, "Erfolgreich geladen", f"Die Ergebnisse wurden erfolgreich aus {json_filename} geladen.")
             except Exception as e:
                 QMessageBox.critical(self, "Ladefehler", f"Fehler beim Laden der JSON-Datei: {e}")
                 raise e

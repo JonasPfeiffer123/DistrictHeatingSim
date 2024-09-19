@@ -639,6 +639,9 @@ class HeatSystemDesignGUI(QMainWindow):
         createVariantCopyAction = QAction('Variantenkopie erstellen', self)
         fileMenu.addAction(createVariantCopyAction)
 
+        importResultsAction = QAction('Projektstand / -ergebnisse Laden', self)
+        fileMenu.addAction(importResultsAction)
+
         pdfExportAction = QAction('Ergebnis-PDF exportieren', self)
         fileMenu.addAction(pdfExportAction)
 
@@ -662,6 +665,7 @@ class HeatSystemDesignGUI(QMainWindow):
         openVariantAction.triggered.connect(self.on_open_variant)
         createVariantAction.triggered.connect(self.on_create_project_variant)
         createVariantCopyAction.triggered.connect(self.on_create_project_variant_copy)
+        importResultsAction.triggered.connect(self.on_importResultsAction)
         pdfExportAction.triggered.connect(self.on_pdf_export)
         chooseTemperatureDataAction.triggered.connect(self.openTemperatureDataSelection)
         createCOPDataAction.triggered.connect(self.openCOPDataSelection)
@@ -799,7 +803,6 @@ class HeatSystemDesignGUI(QMainWindow):
         Handle opening a specific variant from the current project.
         """
         project_folder = self.folder_manager.project_folder  # Aktueller Projektordner
-        print(project_folder)
         if not project_folder:
             self.show_error_message("Kein Projektordner ausgewählt.")
             return
@@ -830,6 +833,23 @@ class HeatSystemDesignGUI(QMainWindow):
         success = self.presenter.create_project_variant()
         if success:
             QMessageBox.information(self, "Info", "Projektvariantenkopie wurde erfolgreich erstellt.")
+
+    def on_importResultsAction(self):
+        """
+        Handle the import of project results.
+        """
+
+        """
+        building tab: load building csv and building load profiles json
+        calculation tab: load net json, pickle and csv and load profile csv
+        mix design tab: load mix design results json
+        
+        """
+        self.buildingTab.presenter.load_csv(os.path.join(self.base_path, self.presenter.config_manager.get_relative_path("current_building_data_path")))
+        self.buildingTab.presenter.load_json(os.path.join(self.base_path, self.presenter.config_manager.get_relative_path("building_load_profile_path")))
+        self.calcTab.loadNet()
+        self.calcTab.load_net_results()
+        self.mixDesignTab.load_results_JSON()
 
     def on_pdf_export(self):
         """

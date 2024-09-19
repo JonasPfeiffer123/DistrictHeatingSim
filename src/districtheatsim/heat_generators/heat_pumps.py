@@ -286,6 +286,12 @@ class RiverHeatPump(HeatPump):
 
         return results
 
+    def get_display_text(self):
+        return (f"{self.name}: Wärmeleistung FW WP: {self.Wärmeleistung_FW_WP} kW, "
+                f"Temperatur FW WP: {self.Temperatur_FW_WP} °C, dT: {self.dT} K, "
+                f"spez. Investitionskosten Flusswärme: {self.spez_Investitionskosten_Flusswasser} €/kW, "
+                f"spez. Investitionskosten Wärmepumpe: {self.spezifische_Investitionskosten_WP} €/kW")
+    
     def to_dict(self):
         """
         Converts the object attributes to a dictionary.
@@ -436,6 +442,12 @@ class WasteHeatPump(HeatPump):
         }
 
         return results
+    
+    def get_display_text(self):
+        return (f"{self.name}: Kühlleistung Abwärme: {self.Kühlleistung_Abwärme} kW, "
+                f"Temperatur Abwärme: {self.Temperatur_Abwärme} °C, spez. Investitionskosten Abwärme: "
+                f"{self.spez_Investitionskosten_Abwärme} €/kW, spez. Investitionskosten Wärmepumpe: "
+                f"{self.spezifische_Investitionskosten_WP} €/kW")
     
     def to_dict(self):
         """
@@ -617,6 +629,13 @@ class Geothermal(HeatPump):
 
         return results
 
+    def get_display_text(self):
+        return (f"{self.name}: Fläche Sondenfeld: {self.Fläche} m², Bohrtiefe: {self.Bohrtiefe} m, "
+                f"Quelltemperatur Erdreich: {self.Temperatur_Geothermie} °C, spez. Bohrkosten: "
+                f"{self.spez_Bohrkosten} €/m, spez. Entzugsleistung: {self.spez_Entzugsleistung} W/m, "
+                f"Vollbenutzungsstunden: {self.Vollbenutzungsstunden} h, Abstand Sonden: {self.Abstand_Sonden} m, "
+                f"spez. Investitionskosten Wärmepumpe: {self.spezifische_Investitionskosten_WP} €/kW")
+    
     def to_dict(self):
         """
         Converts the object attributes to a dictionary.
@@ -762,6 +781,9 @@ class AqvaHeat(HeatPump):
 
         return results
 
+    def get_display_text(self):
+        return f"{self.name}: technische Daten"
+    
     def to_dict(self):
         """
         Converts the object attributes to a dictionary.

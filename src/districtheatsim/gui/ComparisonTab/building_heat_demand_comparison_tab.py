@@ -13,15 +13,16 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5.QtWidgets import (QVBoxLayout, QFileDialog, QWidget, QMessageBox, QHBoxLayout, QPushButton)
 
 class BuildingHeatDemandComparisonTab(QWidget):
-    def __init__(self, folder_manager, parent=None):
+    def __init__(self, folder_manager, config_manager, parent=None):
         super().__init__(parent)
         self.folder_manager = folder_manager
+        self.config_manager = config_manager
         self.loaded_data = []
         self.loaded_filenames = []
 
         # Connect to the data manager signal
         self.folder_manager.project_folder_changed.connect(self.updateDefaultPath)
-        self.updateDefaultPath(self.folder_manager.project_folder)
+        self.updateDefaultPath(self.folder_manager.variant_folder)
 
         self.initUI()
 

@@ -20,7 +20,7 @@ class ComparisonTab(QWidget):
 
         # Connect to the data manager signal
         self.folder_manager.project_folder_changed.connect(self.updateDefaultPath)
-        self.updateDefaultPath(self.folder_manager.project_folder)
+        self.updateDefaultPath(self.folder_manager.variant_folder)
 
         self.initUI()
 
@@ -39,11 +39,11 @@ class ComparisonTab(QWidget):
         self.tabWidget.addTab(self.statComparisonTab, "Projektübersicht")
 
         # Create the CostComparisonTab and add it to the QTabWidget
-        self.statscostComparisonTab = CostComparisonTab(self.folder_manager)
+        self.statscostComparisonTab = CostComparisonTab(self.folder_manager, self.config_manager)
         self.tabWidget.addTab(self.statscostComparisonTab, "Kostenvergleich")
 
         # Create the BuildingHeatDemandComparisonTab and add it to the QTabWidget
-        self.BHDComparisonTab = BuildingHeatDemandComparisonTab(self.folder_manager)
+        self.BHDComparisonTab = BuildingHeatDemandComparisonTab(self.folder_manager, self.config_manager)
         self.tabWidget.addTab(self.BHDComparisonTab, "Vergleich Wärmebedarf Gebäude")
 
         # Set the main layout

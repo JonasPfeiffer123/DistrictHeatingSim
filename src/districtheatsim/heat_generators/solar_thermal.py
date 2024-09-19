@@ -214,6 +214,13 @@ class SolarThermal:
 
         return results
 
+    def get_display_text(self):
+        return (f"{self.name}: Bruttokollektorfläche: {self.bruttofläche_STA} m², "
+                f"Volumen Solarspeicher: {self.vs} m³, Kollektortyp: {self.Typ}, "
+                f"spez. Kosten Speicher: {self.kosten_speicher_spez} €/m³, "
+                f"spez. Kosten Flachkollektor: {self.kosten_fk_spez} €/m², "
+                f"spez. Kosten Röhrenkollektor: {self.kosten_vrk_spez} €/m²")
+    
     def to_dict(self):
         """
         Converts the SolarThermal object to a dictionary.
