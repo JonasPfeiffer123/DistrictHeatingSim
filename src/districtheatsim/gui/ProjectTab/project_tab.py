@@ -294,6 +294,67 @@ class ProjectPresenter:
         self.data_manager = data_manager
         self.config_manager = config_manager
 
+        # Define process steps
+        self.process_steps = [
+            {
+                "name": "Schritt 1: Gebäudedaten Quartier definieren",
+                "description": "Erstellen Sie die Gebäude-CSV hier im Tab 'Projektdefinition'.",
+                "required_files": [
+                    "..\\Definition Quartier IST\\Quartier IST.csv"
+                ]
+            },
+            {
+                "name": "Schritt 2: Gebäude-Lastgang generieren",
+                "description": "Generieren Sie den Gebäude-Lastgang im Tab 'Wärmebedarf Gebäude' ",
+                "required_files": [
+                    "Lastgang\\Gebäude Lastgang.json"
+                ]
+            },
+            {
+                "name": "Schritt 3: Straßendaten herunterladen",
+                "description": "Führen Sie eine OSM-Straßenabfrage im Tab 'Wärmenetz generieren' durch.",
+                "required_files": [
+                    "..\\Eingangsdaten allgemein\\Straßen.geojson"
+                ]
+            },
+            {
+                "name": "Schritt 3: Wärmenetz Daten erstellen",
+                "description": "Generieren Sie das Wärmenetz im Tab 'Wärmenetz generieren'.",
+                "required_files": [
+                    "Wärmenetz\\Erzeugeranlagen.geojson",
+                    "Wärmenetz\\HAST.geojson",
+                    "Wärmenetz\\Vorlauf.geojson",
+                    "Wärmenetz\\Rücklauf.geojson"
+                ]
+            },
+            {
+                "name": "Schritt 4: Thermohydraulische Berechnung",
+                "description": "Führen Sie die Thermohydraulische Berechnung mit den generierten Netzdaten durch.",
+                "required_files": [
+                    "Wärmenetz\\Ergebnisse Netzinitialisierung.p",
+                    "Wärmenetz\\Ergebnisse Netzinitialisierung.csv",
+                    "Wärmenetz\\Konfiguration Netzinitialisierung.json",
+                    "Wärmenetz\\dimensioniertes Wärmenetz.geojson",
+                    "Lastgang\\Lastgang.csv"
+                ]
+            },
+            {
+                "name": "Schritt 5: Erzeugermix auslegen und berechnen",
+                "description": "Berechnen sie den Erzeugermix und speichern sie die Ergebnisse.",
+                "required_files": [
+                    "Ergebnisse\\calculated_heat_generation.csv",
+                    "Ergebnisse\\Ergebnisse.json"
+                ]
+            },
+            {
+                "name": "Schritt 6: Dokumentation erstellen",
+                "description": "Erstellen Sie die endgültige Dokumentation und PDF-Berichte.",
+                "required_files": [
+                    "Ergebnisse\\Ergebnisse.pdf"
+                ]
+            }
+        ]
+
         # Connect to the data_manager's signal to update the base path
         self.folder_manager.project_folder_changed.connect(self.on_variant_folder_changed)
 
@@ -312,7 +373,7 @@ class ProjectPresenter:
         # Optional: Set up a timer to update the progress periodically
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_progress_tracker)
-        self.timer.start(50000)  # Update every 5 seconds
+        self.timer.start(50000)  # Update every 50 seconds
 
     def on_variant_folder_changed(self, path):
         """
@@ -324,6 +385,7 @@ class ProjectPresenter:
         self.model.set_base_path(path)
         self.view.update_path_label(path)
         self.view.treeView.setRootIndex(self.view.treeView.model().index(os.path.dirname(path)))
+        self.update_progress_tracker()
 
     def on_tree_view_double_clicked(self, index):
         """
@@ -475,37 +537,24 @@ class ProjectPresenter:
         """
         Update the progress based on the number of detected files.
         """
-        # Define the required files and their paths
-        required_files = {
-            "results_PDF_path": "Ergebnisse\\Ergebnisse.pdf",
-            "building_load_profile_path": "Lastgang\\Gebäude Lastgang.json",
-            "net_heat_sources_path": "Wärmenetz\\Erzeugeranlagen.geojson",
-            "net_building_transfer_station_path": "Wärmenetz\\HAST.geojson",
-            "net_flow_pipes_path": "Wärmenetz\\Vorlauf.geojson",
-            "net_return_pipes_path": "Wärmenetz\\Rücklauf.geojson",
-            "load_profile_path": "Lastgang\\Lastgang.csv",
-            "pp_pickle_file_path": "Wärmenetz\\Ergebnisse Netzinitialisierung.p",
-            "csv_net_init_file_path": "Wärmenetz\\Ergebnisse Netzinitialisierung.csv",
-            "json_net_init_file_path": "Wärmenetz\\Konfiguration Netzinitialisierung.json",
-            "dimensioned_net_path": "Wärmenetz\\dimensioniertes Wärmenetz.geojson",
-            "calculated_heat_generation_path": "Ergebnisse\\calculated_heat_generation.csv",
-            "OSM_streets_path": "..\\Eingangsdaten allgemein\\Straßen.geojson",
-            "LOD2_Data_path": "..\\Eingangsdaten allgemein\\LOD2_data.geojson",
-            "current_building_data_path": "..\\Definition Quartier IST\\Quartier IST.csv"
-        }
-
         # Check base path of the project
         base_path = self.model.get_base_path()
 
-        # Create list of full paths to check file existence
-        full_paths = [os.path.join(base_path, path) for path in required_files.values()]
+        # Create list of full paths to check file existence and map to process steps
+        for step in self.process_steps:
+            full_paths = [os.path.join(base_path, path) for path in step['required_files']]
+            generated_files = [file for file in full_paths if os.path.exists(file)]
+            step['completed'] = len(generated_files) == len(full_paths)
+            step['missing_files'] = [path for path in full_paths if not os.path.exists(path)]
 
-        # Calculate the progress
-        generated_files = [file for file in full_paths if os.path.exists(file)]
-        progress = len(generated_files) / len(full_paths) * 100
+        # Calculate overall progress
+        total_steps = len(self.process_steps)
+        completed_steps = sum(1 for step in self.process_steps if step['completed'])
+        overall_progress = (completed_steps / total_steps) * 100
 
-        # Update the view with the current progress
-        self.view.update_progress(progress)
+        # Update the view with the current progress and steps
+        self.view.update_progress(overall_progress)
+        self.view.update_process_steps(self.process_steps)
 
 class ProjectTabView(QWidget):
     """
@@ -528,23 +577,26 @@ class ProjectTabView(QWidget):
         splitter = QSplitter()
 
         # Left area - File tree
-        leftLayout = QVBoxLayout()
+        self.leftLayout = QVBoxLayout()
         self.pathLabel = QLabel("Projektordner: Kein Ordner ausgewählt")
-        leftLayout.addWidget(self.pathLabel)
+        self.leftLayout.addWidget(self.pathLabel)
         self.model = QFileSystemModel()
         self.model.setRootPath("")
         self.treeView = QTreeView()
         self.treeView.setModel(self.model)
         leftWidget = QWidget()
-        leftWidget.setLayout(leftLayout)
-        leftLayout.addWidget(self.treeView)
+        leftWidget.setLayout(self.leftLayout)
+        self.leftLayout.addWidget(self.treeView)
 
         # Add progress bar and label under the tree view
         self.progressLabel = QLabel("Projektfortschritt:")
-        leftLayout.addWidget(self.progressLabel)
+        self.leftLayout.addWidget(self.progressLabel)
 
         self.projectProgressBar = QProgressBar(self)
-        leftLayout.addWidget(self.projectProgressBar)
+        self.leftLayout.addWidget(self.projectProgressBar)
+
+        self.processStepsLayout = QVBoxLayout()
+        self.leftLayout.addLayout(self.processStepsLayout)
 
         splitter.addWidget(leftWidget)
 
@@ -684,6 +736,27 @@ class ProjectTabView(QWidget):
             message (str): The error message to display.
         """
         QMessageBox.critical(self, title, message)
+
+    def update_process_steps(self, process_steps):
+        """
+        Update the process steps layout with the current progress and missing files.
+        """
+        # Clear the current layout
+        for i in reversed(range(self.processStepsLayout.count())): 
+            widget = self.processStepsLayout.itemAt(i).widget()
+            if widget:
+                widget.setParent(None)
+
+        # Add the process steps with status
+        for step in process_steps:
+            step_label = QLabel(f"{step['name']}: {'Abgeschlossen' if step['completed'] else 'Ausstehend'}")
+            self.processStepsLayout.addWidget(step_label)
+
+            if not step['completed']:
+                for missing_file in step['missing_files']:
+                    missing_file_label = QLabel(f"Fehlende Datei: {missing_file}")
+                    missing_file_label.setStyleSheet("color: red;")
+                    self.processStepsLayout.addWidget(missing_file_label)
 
     def update_progress(self, progress):
         """
