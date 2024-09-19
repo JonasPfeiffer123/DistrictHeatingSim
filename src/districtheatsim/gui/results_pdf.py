@@ -5,6 +5,8 @@ Date: 2024-09-05
 Description: Script for generating the results PDF of the calculation results.
 """
 
+import numpy as np
+
 from gui.dialogs import PDFSelectionDialog
 
 from io import BytesIO
@@ -218,6 +220,55 @@ def add_results_section(story, mixDesignTab):
         story.append(Spacer(1, 12))
         print(error_message)
 
+def add_combined_results_section(story, mixDesignTab):
+    """
+    Adds the combined results section to the PDF story.
+    
+    Args:
+        story (list): The list of PDF elements to be added.
+        mixDesignTab: The object containing the resultTab with data for combined results.
+    """
+    try:
+        # Hinzufügen des Abschnittstitels
+        story.append(Paragraph("Kombinierte Ergebnisse", getSampleStyleSheet()['Heading2']))
+        
+        # Holen der Resultate aus dem resultTab
+        results = mixDesignTab.resultTab.results
+        waerme_ges_kW = np.sum(results["waerme_ges_kW"])
+        strom_wp_kW = np.sum(results["strom_wp_kW"])
+        WGK_Infra = mixDesignTab.costTab.summe_annuität / results['Jahreswärmebedarf']
+        wgk_heat_pump_electricity = ((strom_wp_kW / 1000) * mixDesignTab.strompreis) / ((strom_wp_kW + waerme_ges_kW) / 1000)
+        WGK_Gesamt = results['WGK_Gesamt'] + WGK_Infra + wgk_heat_pump_electricity
+        
+        # Definieren der Daten für die Tabelle
+        combined_results_data = [("Parameter", "Wert", "Einheit")]
+        combined_results_data.extend([
+            ("Jahreswärmebedarf", round(results['Jahreswärmebedarf'], 1), "MWh"),
+            ("Stromerzeugung", round(results['Strommenge'], 2), "MWh"),
+            ("Strombedarf", round(results['Strombedarf'], 2), "MWh"),
+            ("Wärmegestehungskosten Erzeugeranlagen", round(results['WGK_Gesamt'], 2), "€/MWh"),
+            ("Wärmegestehungskosten Netzinfrastruktur", round(WGK_Infra, 2), "€/MWh"),
+            ("Wärmegestehungskosten dezentrale Wärmepumpen", round(wgk_heat_pump_electricity, 2), "€/MWh"),
+            ("Wärmegestehungskosten Gesamt", round(WGK_Gesamt, 2), "€/MWh"),
+            ("spez. CO2-Emissionen Wärme", round(results["specific_emissions_Gesamt"], 4), "t_CO2/MWh_th"),
+            ("CO2-Emissionen Wärme", round(results["specific_emissions_Gesamt"] * results['Jahreswärmebedarf'], 2), "t_CO2"),
+            ("Primärenergiefaktor", round(results["primärenergiefaktor_Gesamt"], 4), "-")
+        ])
+        
+        # Erstellen der Tabelle für die kombinierten Ergebnisse
+        combined_results_table = Table(combined_results_data, colWidths=[2 * inch, 1.5 * inch, 1.2 * inch])
+        combined_results_table.setStyle(get_custom_table_style())
+        
+        # Hinzufügen der Tabelle zur PDF-Geschichte
+        story.append(KeepTogether(combined_results_table))
+        story.append(Spacer(1, 12))
+    
+    except Exception as e:
+        error_message = f"Fehlende Daten im Abschnitt Kombinierte Ergebnisse: {str(e)}"
+        story.append(Paragraph(error_message, getSampleStyleSheet()['Normal']))
+        story.append(Spacer(1, 12))
+        print(error_message)
+
 def create_pdf(HeatSystemDesignGUI, filename):
     """
     Creates a PDF with the results of the calculation, basierend auf der Auswahl der Abschnitte.
@@ -255,6 +306,8 @@ def create_pdf(HeatSystemDesignGUI, filename):
         add_costs_section(story, mixDesignTab)
     if selected_sections['results']:
         add_results_section(story, mixDesignTab)
+    if selected_sections['combined_results']:
+        add_combined_results_section(story, mixDesignTab)
 
     # Build the PDF
     doc.build(story)
