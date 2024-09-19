@@ -94,7 +94,7 @@ def generate_profiles_from_csv(data, TRY, calc_method):
 
         elif current_calc_method == "BDEW":
             # year is set to 2021 as a default value
-            yearly_time_steps, hourly_heat_demand_total_kW, hourly_heat_demand_heating_kW, hourly_heat_demand_warmwater_kW, hourly_air_temperatures = heat_requirement_BDEW.calculate(YEU_kWh=YEU, building_type=current_building_type, subtyp=current_subtype, TRY=TRY, year=year, real_ww_share=current_ww_demand)
+            yearly_time_steps, hourly_heat_demand_total_kW, hourly_heat_demand_heating_kW, hourly_heat_demand_warmwater_kW, hourly_air_temperatures = heat_requirement_BDEW.calculate(YEU, current_building_type, current_subtype, TRY, year, current_ww_demand)
 
         hourly_heat_demand_total_kW = np.clip(hourly_heat_demand_total_kW, 0, None)
         hourly_heat_demand_heating_kW = np.clip(hourly_heat_demand_heating_kW, 0, None)

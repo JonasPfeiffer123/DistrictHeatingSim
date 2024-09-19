@@ -1,12 +1,13 @@
 """
 Filename: visualization_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-08-27
+Date: 2024-09-19
 Description: Contains the VisualizationTab as MVP model.
 """
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
+# log errorrs
+logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 import os
 import random
@@ -14,9 +15,11 @@ import geopandas as gpd
 import pandas as pd
 from shapely.geometry import Point
 
+import traceback
+
 import folium
 
-from PyQt5.QtCore import pyqtSignal, QObject
+from PyQt5.QtCore import pyqtSignal, QObject, QUrl
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QMenuBar, QAction, QFileDialog, \
     QHBoxLayout, QListWidget, QProgressBar, QColorDialog, QListWidgetItem, QMessageBox, QMainWindow, QDialog
 from PyQt5.QtGui import QColor, QBrush
@@ -89,30 +92,31 @@ class VisualizationModel:
 
     def calculate_map_center_and_zoom(self):
         """
-        Calculates the center coordinates and zoom level for the map based on the loaded layers.
+        Calculate the center and zoom level for the map based on the loaded layers.
 
         Returns:
-            list: The center coordinates [latitude, longitude].
-            int: The zoom level.
+            list: Center coordinates [latitude, longitude].
+            int: Zoom level.
         """
         if not self.layers:
             return [51.1657, 10.4515], 6
 
         minx, miny, maxx, maxy = None, None, None, None
         for layer in self.layers.values():
-            bounds = layer.total_bounds
-            if minx is None or bounds[0] < minx:
-                minx = bounds[0]
-            if miny is None or bounds[1] < miny:
-                miny = bounds[1]
-            if maxx is None or bounds[2] > maxx:
-                maxx = bounds[2]
-            if maxy is None or bounds[3] > maxy:
-                maxy = bounds[3]
+            bounds = layer.get_bounds()
+            if minx is None or bounds[0][0] < minx:
+                minx = bounds[0][0]
+            if miny is None or bounds[0][1] < miny:
+                miny = bounds[0][1]
+            if maxx is None or bounds[1][0] > maxx:
+                maxx = bounds[1][0]
+            if maxy is None or bounds[1][1] > maxy:
+                maxy = bounds[1][1]
 
         center_x = (minx + maxx) / 2
         center_y = (miny + maxy) / 2
         zoom = 17
+
         return [center_x, center_y], zoom
 
 
@@ -157,11 +161,11 @@ class VisualizationPresenter(QObject):
         self.view.downloadActionOSM.triggered.connect(self.open_osm_data_dialog)
         self.view.osmBuildingAction.triggered.connect(self.open_osm_building_query_dialog)
 
-        self.on_project_folder_changed(self.folder_maanger.project_folder)
+        self.on_project_folder_changed(self.folder_maanger.variant_folder)
+
+        self.map_file = os.path.join(self.model.base_path, self.config_manager.get_relative_path('map_file'))
 
         self.update_map_view()
-
-        print(self.config_manager.get_resource_path("net_heat_sources_path"))
 
     def on_project_folder_changed(self, new_base_path):
         """
@@ -183,7 +187,8 @@ class VisualizationPresenter(QObject):
                 self.model.create_geojson_from_csv(fname, geojson_path)
                 self.add_geojson_layer([geojson_path])
         except Exception as e:
-            self.view.show_error_message("Fehler beim Laden von CSV-Koordinaten", str(e))
+            error_message = f"{str(e)}\n\n{traceback.format_exc()}"
+            self.view.show_error_message("Fehler beim Importieren von GeoJSON", error_message)
 
     def import_geojson(self):
         """
@@ -194,7 +199,9 @@ class VisualizationPresenter(QObject):
             if fnames:
                 self.add_geojson_layer(fnames)
         except Exception as e:
-            self.view.show_error_message("Fehler beim Importieren von GeoJSON", str(e))
+            error_message = f"{str(e)}\n\n{traceback.format_exc()}"
+            self.view.show_error_message("Fehler beim Importieren von GeoJSON", error_message)
+
 
     def terminate_thread(self, thread):
         """
@@ -225,12 +232,12 @@ class VisualizationPresenter(QObject):
             self.netgenerationThread.start()
             self.view.progressBar.setRange(0, 0)
         except Exception as e:
-            self.view.show_error_message("Fehler beim Hinzufügen einer GeoJSON-Schicht", str(e))
+            error_message = f"{str(e)}\n\n{traceback.format_exc()}"
+            self.view.show_error_message("Fehler beim Hinzufügen einer GeoJSON-Schicht", error_message)
 
     def on_import_done(self, results):
         """
         Handles the successful import of GeoJSON data and updates the map view.
-
         Args:
             results (dict): The imported GeoJSON data.
         """
@@ -257,7 +264,8 @@ class VisualizationPresenter(QObject):
 
             self.update_map_view()
         except Exception as e:
-            self.view.show_error_message("Fehler beim Importieren und Hinzufügen der Schicht", str(e))
+            error_message = f"{str(e)}\n\n{traceback.format_exc()}"
+            self.view.show_error_message("Fehler beim Importieren und Hinzufügen der Schicht", error_message)
 
     def on_import_error(self, error_message):
         """
@@ -281,9 +289,10 @@ class VisualizationPresenter(QObject):
             m = folium.Map(location=center, zoom_start=zoom)
             for layer in self.model.layers.values():
                 layer.add_to(m)
-            self.view.update_map_view(m)
+            self.view.update_map_view(m, map_file=self.map_file)
         except Exception as e:
-            self.view.show_error_message("Fehler beim Laden der Daten", str(e))
+            error_message = f"{str(e)}\n\n{traceback.format_exc()}"
+            self.view.show_error_message("Fehler beim Laden der Daten", str(error_message))
 
     def remove_selected_layer(self):
         """
@@ -370,7 +379,7 @@ class VisualizationPresenter(QObject):
         """
         Opens the dialog for generating layers from data.
         """
-        dialog = LayerGenerationDialog(self.model.get_base_path(), self.view)
+        dialog = LayerGenerationDialog(self.model.get_base_path(), self.config_manager, self.view)
         dialog.setVisualizationTab(self)
         dialog.accepted_inputs.connect(self.generate_and_import_layers)
         self.currentLayerDialog = dialog
@@ -434,7 +443,7 @@ class VisualizationPresenter(QObject):
         """
         Opens the dialog for downloading OSM data.
         """
-        dialog = DownloadOSMDataDialog(self.model.get_base_path(), self.config_manager, self.view)
+        dialog = DownloadOSMDataDialog(self.model.get_base_path(), self.config_manager, self.view, self)
         if dialog.exec_() == QDialog.Accepted:
             pass  # Handle accepted case if necessary
 
@@ -442,7 +451,7 @@ class VisualizationPresenter(QObject):
         """
         Opens the dialog for querying OSM building data.
         """
-        dialog = OSMBuildingQueryDialog(self.model.get_base_path(), self.config_manager, self.view)
+        dialog = OSMBuildingQueryDialog(self.model.get_base_path(), self.config_manager, self.view, self)
         if dialog.exec_() == QDialog.Accepted:
             pass  # Handle accepted case if necessary
 
@@ -530,15 +539,20 @@ class VisualizationTabView(QWidget):
         layerManagementLayout.addWidget(self.changeColorButton)
         self.main_layout.addLayout(layerManagementLayout)
 
-    def update_map_view(self, map_obj):
+    def update_map_view(self, map_obj, map_file=None):
         """
         Updates the web view to display the current map object.
 
         Args:
             map_obj (folium.Map): The folium map object to render.
         """
-        map_html = map_obj._repr_html_()
-        self.mapView.setHtml(map_html)
+
+        click_marker = folium.ClickForMarker()
+        map_obj.add_child(click_marker)
+
+        map_obj.save(map_file)
+
+        self.mapView.load(QUrl.fromLocalFile(map_file))
 
     def show_error_message(self, title, message):
         """

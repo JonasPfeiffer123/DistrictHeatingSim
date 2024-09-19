@@ -43,10 +43,11 @@ class LayerGenerationDialog(QDialog):
     """
     accepted_inputs = pyqtSignal(dict)
 
-    def __init__(self, base_path, parent=None):
+    def __init__(self, base_path, config_manager, parent=None):
         super().__init__(parent)
         self.base_path = base_path
         self.visualization_tab = None
+        self.config_manager = config_manager
         self.setWindowFlags(Qt.Tool | Qt.WindowTitleHint | Qt.CustomizeWindowHint)
         self.initUI()
 
@@ -62,10 +63,8 @@ class LayerGenerationDialog(QDialog):
         formLayout = QFormLayout()
         formLayout.setSpacing(10)
 
-        self.fileInput, self.fileButton = self.createFileInput(f"{self.base_path}\Raumanalyse\Straßen.geojson")
-        #self.fileInput, self.fileButton = self.createFileInput(f"{os.path.dirname(self.base_path)}\\Eingangsdaten allgemein\\Straßen.geojson")
-        self.dataInput, self.dataCsvButton = self.createFileInput(f"{self.base_path}\Gebäudedaten\data_input.csv")
-        #self.dataInput, self.dataCsvButton = self.createFileInput(f"{os.path.dirname(self.base_path)}\\Definition Quartier IST\\Gebäude IST.csv")
+        self.fileInput, self.fileButton = self.createFileInput(os.path.abspath(os.path.join(self.base_path, self.config_manager.get_relative_path('OSM_streets_path'))))
+        self.dataInput, self.dataCsvButton = self.createFileInput(os.path.abspath(os.path.join(self.base_path, self.config_manager.get_relative_path('current_building_data_path'))))
 
         self.locationModeComboBox = QComboBox(self)
         self.locationModeComboBox.addItems(["Koordinaten direkt eingeben", "Adresse eingeben", "Koordinaten aus csv laden"])
@@ -307,10 +306,11 @@ class DownloadOSMDataDialog(QDialog):
     """
     Dialog for downloading OSM data.
     """
-    def __init__(self, base_path, config_manager, parent=None):
+    def __init__(self, base_path, config_manager, parent, parent_pres):
         super().__init__(parent)
         self.base_path = base_path
         self.config_manager = config_manager
+        self.parent_pres = parent_pres
         self.tags_to_download = []
         self.tagsLayoutList = []
 
@@ -342,7 +342,7 @@ class DownloadOSMDataDialog(QDialog):
         
         # File name input field
         self.filenameLabel = QLabel("Dateiname, unter dem die Straßendaten als geojson gespeichert werden sollen:")
-        self.filenameLineEdit, fileButton = self.createFileInput(f"{self.base_path}\Raumanalyse\Straßen.geojson")
+        self.filenameLineEdit, fileButton = self.createFileInput(os.path.abspath(os.path.join(self.base_path, self.config_manager.get_relative_path('OSM_streets_path'))))
         layout.addWidget(self.filenameLabel)
         layout.addLayout(self.createFileInputLayout(self.filenameLineEdit, fileButton))
 
@@ -490,16 +490,17 @@ class DownloadOSMDataDialog(QDialog):
 
         QMessageBox.information(self, "Erfolg", f"Abfrageergebnisse gespeichert in {self.filename}")
             
-        self.parent().loadNetData(self.filename)
+        self.parent_pres.add_geojson_layer([self.filename])
 
 class OSMBuildingQueryDialog(QDialog):
     """
     Dialog for querying OSM building data.
     """
-    def __init__(self, base_path, config_manager, parent=None):
+    def __init__(self, base_path, config_manager, parent, parent_pres):
         super().__init__(parent)
         self.base_path = base_path
         self.config_manager = config_manager
+        self.parent_pres = parent_pres
         self.initUI()
 
     def initUI(self):
@@ -698,7 +699,7 @@ class OSMBuildingQueryDialog(QDialog):
             gdf.to_file(filename, driver='GeoJSON')
 
         QMessageBox.information(self, "Erfolg", f"Abfrageergebnisse gespeichert in {filename}")
-        self.parent().loadNetData(filename)
+        self.parent_pres.add_geojson_layer(filename)
 
     def prepare_gdf(self, geojson_data):
         """

@@ -393,7 +393,7 @@ class DataVisualizationPresenter(QObject):
         self.config_manager = config_manager
 
         self.folder_manager.project_folder_changed.connect(self.on_project_folder_changed)
-        self.on_project_folder_changed(self.folder_manager.project_folder)
+        self.on_project_folder_changed(self.folder_manager.variant_folder)
 
         self.connect_signals()
 

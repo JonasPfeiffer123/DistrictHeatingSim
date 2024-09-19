@@ -34,7 +34,7 @@ class IndividualTab(QWidget):
         self.base_path = None
 
         self.folder_manager.project_folder_changed.connect(self.update_default_path)
-        self.update_default_path(self.folder_manager.project_folder)
+        self.update_default_path(self.folder_manager.variant_folder)
 
         self.initUI()
 

@@ -190,7 +190,7 @@ class BuildingPresenter:
         self.view.building_combobox.view().pressed.connect(self.on_combobox_selection_changed)
 
         # Initialize the base path
-        self.update_default_path(self.folder_manager.project_folder)
+        self.update_default_path(self.folder_manager.variant_folder)
 
     def update_default_path(self, path):
         """

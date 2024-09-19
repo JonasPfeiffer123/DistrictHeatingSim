@@ -63,7 +63,7 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, COP
         loaded_data = json.load(f)
 
         # Ensure results contain the necessary keys
-        results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and 'lastgang_wärme' in v}
+        results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and 'wärme' in v}
 
         # Process the loaded data to form a DataFrame
         df = pd.DataFrame.from_dict({k: v for k, v in loaded_data.items() if k.isdigit()}, orient='index')
@@ -73,12 +73,14 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, COP
 
     # Extract data arrays
     yearly_time_steps = np.array(df["zeitschritte"].values[0]).astype(np.datetime64)
-    waerme_gebaeude_ges_W = np.array([results[str(i)]["lastgang_wärme"] for i in range(len(results))])*1000
-    heizwaerme_gebaeude_ges_W = np.array([results[str(i)]["heating_wärme"] for i in range(len(results))])*1000
-    ww_waerme_gebaeude_ges_W = np.array([results[str(i)]["warmwater_wärme"] for i in range(len(results))])*1000
+    waerme_gebaeude_ges_W = np.array([results[str(i)]["wärme"] for i in range(len(results))])*1000
+    heizwaerme_gebaeude_ges_W = np.array([results[str(i)]["heizwärme"] for i in range(len(results))])*1000
+    ww_waerme_gebaeude_ges_W = np.array([results[str(i)]["warmwasserwärme"] for i in range(len(results))])*1000
     supply_temperature_building_curve = np.array([results[str(i)]["vorlauftemperatur"] for i in range(len(results))])
     return_temperature_building_curve = np.array([results[str(i)]["rücklauftemperatur"] for i in range(len(results))])
-    max_waerme_gebaeude_ges_W = results["0"]["heizlast"]*1000
+    max_waerme_gebaeude_ges_W = np.array(results["0"]["max_last"])*1000
+
+    print(max_waerme_gebaeude_ges_W)
 
     ### Definition Soll-Rücklauftemperatur ### 
     if return_temperature_heat_consumer == None:
