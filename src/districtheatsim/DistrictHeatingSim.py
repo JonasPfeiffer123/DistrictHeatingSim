@@ -1,10 +1,10 @@
 """
-Filename: DistrictHeatSim.py
+Filename: DistrictHeatingSim.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-08-28
-Description: Main GUI file of the DistrictHeatSim-Tool utilizing the Model-View-Presenter (MVP) architecture.
+Description: Main GUI file of the DistrictHeatingSim-Tool utilizing the Model-View-Presenter (MVP) architecture.
 
-This script initializes and runs the main graphical user interface (GUI) for the DistrictHeatSim tool,
+This script initializes and runs the main graphical user interface (GUI) for the DistrictHeatingSim tool,
 which is designed for simulating and managing district heating systems. The tool includes various tabs
 for project management, data visualization, building heating requirements, and heat network calculations.
 
@@ -766,7 +766,7 @@ class HeatSystemDesignGUI(QMainWindow):
                 if ok and variant_name:
                     self.presenter.folder_manager.set_variant_folder(variant_name)
             else:
-                self.view.show_error_message("Keine verfügbaren Varianten gefunden.")
+                self.show_error_message("Keine verfügbaren Varianten gefunden.")
 
     def get_available_variants(self, project_path):
         """
