@@ -1,7 +1,7 @@
 """
 Filename: mix_design_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-10
+Date: 2024-09-20
 Description: Contains the MixdesignTab.
 """
 
@@ -9,7 +9,7 @@ import json
 import pandas as pd
 import os
 import traceback
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMessageBox, QFileDialog, QMenuBar, QScrollArea, QAction, QDialog)
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMessageBox, QMenuBar, QScrollArea, QAction, QDialog)
 from PyQt5.QtCore import pyqtSignal, QEventLoop
 from heat_generators.heat_generation_mix import *
 from gui.MixDesignTab.mix_design_dialogs import EconomicParametersDialog, NetInfrastructureDialog, WeightDialog
@@ -19,6 +19,8 @@ from gui.MixDesignTab.cost_tab import CostTab
 from gui.MixDesignTab.results_tab import ResultsTab
 from gui.MixDesignTab.sensitivity_tab import SensitivityTab
 from utilities.test_reference_year import import_TRY
+
+from gui.MixDesignTab.sankey_dialog import SankeyDialog
 
 class CustomJSONEncoder(json.JSONEncoder):
     """
@@ -174,7 +176,7 @@ class MixDesignTab(QWidget):
 
         # 'weitere Ergebnisse Anzeigen'-Menü
         showAdditionalResultsMenu = self.menuBar.addMenu('weitere Ergebnisse Anzeigen')
-        showAdditionalResultsMenu.addAction(self.createAction('Kostenzusammensetzung über Betrachtungszeitraum', self.show_additional_results))
+        showAdditionalResultsMenu.addAction(self.createAction('Sankey-Diagramm Energieflüsse im Quartier', self.show_sankey))
 
         self.mainLayout.addWidget(self.menuBar)
 
@@ -355,19 +357,15 @@ class MixDesignTab(QWidget):
         msgBox.setStandardButtons(QMessageBox.Ok)
         msgBox.exec_()
 
-    def show_additional_results(self):
+    def show_sankey(self):
         """
         Shows additional results.
         """
         if self.tech_objects and self.results:
-            msgBox = QMessageBox()
-            msgBox.setIcon(QMessageBox.Information)
-            msgBox.setText(f"Hier gibts noch nichts zu sehen. Nur Konsolenausgabe.")
-            msgBox.setWindowTitle("Hier könnten Ergebnisse Visualisiert werden.")
-            msgBox.setStandardButtons(QMessageBox.Ok)
-            msgBox.exec_()
+            dialog = SankeyDialog(results=self.results, parent=self)
             print(self.results)
             print(self.tech_objects)
+            dialog.exec_()
         else:
             QMessageBox.information(self, "Keine Berechnungsergebnisse", "Es sind keine Berechnungsergebnisse verfügbar. Führen Sie zunächst eine Berechnung durch.")
 
@@ -607,6 +605,7 @@ class MixDesignTab(QWidget):
 
                 self.results = results_loaded
                 self.techTab.tech_objects = tech_objects
+                self.tech_objects = tech_objects
 
                 # Update the tabs with the loaded data
                 if self.techTab.tech_objects:
