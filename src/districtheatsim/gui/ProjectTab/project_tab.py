@@ -1,7 +1,7 @@
 """
 Filename: project_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-08-27
+Date: 2024-09-20
 Description: Contains the ProjectTab as MVP model.
 """
 
@@ -12,103 +12,11 @@ import json
 
 from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QTableWidgetItem, QWidget, QVBoxLayout, 
                              QMenuBar, QAction, QProgressBar, QLabel, QTableWidget, QFileSystemModel, 
-                             QTreeView, QSplitter, QMessageBox, QDialog, QLineEdit, QDialogButtonBox, 
-                             QMenu, QGridLayout)
+                             QTreeView, QSplitter, QMessageBox, QDialog, QMenu, QPushButton)
 from PyQt5.QtCore import Qt, QTimer
 
 from gui.VisualizationTab.net_generation_threads import GeocodingThread
-
-class RowInputDialog(QDialog):
-    """
-    Dialog for adding a new row in a table.
-
-    Args:
-        headers (list): List of headers for the table columns.
-        parent (QWidget, optional): The parent widget. Defaults to None.
-    """
-    def __init__(self, headers, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Neue Zeile hinzufügen")
-        self.layout = QGridLayout(self)
-        self.fields = {}
-
-        # Create input fields with labels
-        for i, header in enumerate(headers):
-            label = QLabel(header)
-            lineEdit = QLineEdit()
-            lineEdit.setPlaceholderText(f"Geben Sie {header} ein")
-            self.layout.addWidget(label, i, 0)
-            self.layout.addWidget(lineEdit, i, 1)
-            self.fields[header] = lineEdit
-
-        # Dialog buttons
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        buttonBox.accepted.connect(self.accept)
-        buttonBox.rejected.connect(self.reject)
-        self.layout.addWidget(buttonBox, len(headers), 0, 1, 2)
-
-    def get_input_data(self):
-        """
-        Retrieve the input data from the dialog.
-
-        Returns:
-            dict: A dictionary mapping headers to input field values.
-        """
-        return {header: field.text() for header, field in self.fields.items()}
-    
-class OSMImportDialog(QDialog):
-    """
-    Dialog for importing OSM data with user-defined default values.
-
-    Args:
-        parent (QWidget, optional): The parent widget. Defaults to None.
-    """
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("OSM-Daten importieren")
-        self.layout = QGridLayout(self)
-        self.fields = {}
-
-        # Define the default values for the fields
-        self.default_values = {
-            "Land": "Deutschland",
-            "Bundesland": "",
-            "Stadt": "",
-            "Adresse": "",
-            "Wärmebedarf": "30000",
-            "Gebäudetyp": "HMF",
-            "Subtyp": "05",
-            "WW_Anteil": "0.2",
-            "Typ_Heizflächen": "HK",
-            "VLT_max": "70",
-            "Steigung_Heizkurve": "1.5",
-            "RLT_max": "55",
-            "Normaußentemperatur": "-15"
-        }
-
-        # Create input fields with labels and default values
-        for i, (header, value) in enumerate(self.default_values.items()):
-            label = QLabel(header)
-            lineEdit = QLineEdit(value)
-            lineEdit.setPlaceholderText(f"Geben Sie {header} ein")
-            self.layout.addWidget(label, i, 0)
-            self.layout.addWidget(lineEdit, i, 1)
-            self.fields[header] = lineEdit
-
-        # Dialog buttons
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        buttonBox.accepted.connect(self.accept)
-        buttonBox.rejected.connect(self.reject)
-        self.layout.addWidget(buttonBox, len(self.default_values), 0, 1, 2)
-
-    def get_input_data(self):
-        """
-        Retrieve the input data from the dialog.
-
-        Returns:
-            dict: A dictionary mapping headers to input field values.
-        """
-        return {header: field.text() for header, field in self.fields.items()}
+from gui.ProjectTab.project_tab_dialogs import RowInputDialog, OSMImportDialog, ProcessDetailsDialog
 
 class ProjectModel:
     """
@@ -554,7 +462,7 @@ class ProjectPresenter:
 
         # Update the view with the current progress and steps
         self.view.update_progress(overall_progress)
-        self.view.update_process_steps(self.process_steps)
+        self.view.set_process_steps(self.process_steps)
 
 class ProjectTabView(QWidget):
     """
@@ -595,8 +503,10 @@ class ProjectTabView(QWidget):
         self.projectProgressBar = QProgressBar(self)
         self.leftLayout.addWidget(self.projectProgressBar)
 
-        self.processStepsLayout = QVBoxLayout()
-        self.leftLayout.addLayout(self.processStepsLayout)
+        # Button to show details
+        self.detailsButton = QPushButton("Details anzeigen", self)
+        self.detailsButton.clicked.connect(self.showDetailsDialog)
+        self.leftLayout.addWidget(self.detailsButton)
 
         splitter.addWidget(leftWidget)
 
@@ -737,33 +647,25 @@ class ProjectTabView(QWidget):
         """
         QMessageBox.critical(self, title, message)
 
-    def update_process_steps(self, process_steps):
-        """
-        Update the process steps layout with the current progress and missing files.
-        """
-        # Clear the current layout
-        for i in reversed(range(self.processStepsLayout.count())): 
-            widget = self.processStepsLayout.itemAt(i).widget()
-            if widget:
-                widget.setParent(None)
-
-        # Add the process steps with status
-        for step in process_steps:
-            step_label = QLabel(f"{step['name']}: {'Abgeschlossen' if step['completed'] else 'Ausstehend'}")
-            self.processStepsLayout.addWidget(step_label)
-
-            if not step['completed']:
-                for missing_file in step['missing_files']:
-                    missing_file_label = QLabel(f"Fehlende Datei: {missing_file}")
-                    missing_file_label.setStyleSheet("color: red;")
-                    self.processStepsLayout.addWidget(missing_file_label)
-
     def update_progress(self, progress):
         """
         Update the progress bar and label with the current progress.
         """
         self.projectProgressBar.setValue(int(progress))
         self.progressLabel.setText(f"Projektfortschritt: {int(progress)}%")
+
+    def showDetailsDialog(self):
+        """
+        Open the dialog to show process step details.
+        """
+        dialog = ProcessDetailsDialog(self.process_steps, self)
+        dialog.exec_()
+
+    def set_process_steps(self, process_steps):
+        """
+        Set the process steps data (to be used in the dialog).
+        """
+        self.process_steps = process_steps
 
 class ProjectTab(QMainWindow):
     """
