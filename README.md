@@ -23,19 +23,19 @@ DistrictHeatingSim is developed by Dipl.-Ing. (FH) Jonas Pfeiffer as part of the
 ## Features
 
 ### User Interface
-- **Project Definition**: Create croject project folders and your data input
+- **Project Definition**: Create croject project folders, your data input and track your project progress
 - **Building Heat Demand Profile Calculation**: Calculate the heat demand profiles for your buildings
 - **Geocoding**: Convert addresses to coordinates and visualize them on a map.
 - **OSM Data Integration**: Download and process OpenStreetMap data for streets and buildings.
-- **Spatial Clustering**: Cluster buildings into supply areas based on heat demand.
 - **Automatic Heat Network Generation**: Generate heating networks based on building and generator locations.
 - **GIS Data Handling**: Uniformly manage and store GIS data in the GeoJSON format.
 - **LOD2 Data Processing**: Work with detailed 3D building data to analyze heating demands and simulate renovation options.
 - **Thermohydraulic Network Calculation**: Simulate the generated heat networks with [pandapipes](https://github.com/e2nIEE/pandapipes).
 - **Cost Calculation**: Calculate heat generation costs based on [VDI 2067](https://www.vdi.de/richtlinien/details/vdi-2067-blatt-1-wirtschaftlichkeit-gebaeudetechnischer-anlagen-grundlagen-und-kostenberechnung-1) methodology and various cost inputs.
 - **Renovation Calculation**: Calculate the cost of building renovation based on calculated renovation variants.
+- **Individual supply calculation**: Besides to district heating variants, individual supply options can be calculated
 - **PDF Report Generation**: Create detailed PDF reports with economic and technical results.
-- **Save/Load Project Results**: Integrated options to save and load calculated results in most parts of the software
+- **Save/Load Project Results**: Integrated options to save and load calculated results in main parts of the software
 
 ### Technical Capabilities
 - **Heat Requirement Calculation**: Calculate heat demands based on different profiles and weather data.
@@ -66,7 +66,7 @@ To install DistrictHeatingSim, ensure you have Python installed on your system. 
 
 ### Building Heat Demand Profile Calculation
 
-1. **Load CSV-File**: Load CSV-file with project specific building informations.
+1. **Load CSV-File**: Create/Load CSV-file with project specific building informations.
 2. **Choose Profiles**: Choose profiles for these building if not defined previously.
 3. **Calculate Profiles**: Calculate the profiles based on weather data.
 4. **View in Diagram**: Results are shown in the diagramm and saved as JSON
@@ -76,8 +76,7 @@ To install DistrictHeatingSim, ensure you have Python installed on your system. 
 1. **Load Project**: Start the application and select or create a new project.
 2. **Geocoding**: Use the built-in tool to convert address data in CSV format to coordinates.
 3. **OSM Data**: Download and integrate street and building data from OpenStreetMap.
-4. **Clustering**: Cluster buildings into supply areas based on heat demand density.
-5. **Heat Network Generation**: Automatically generate a heat network based on building and generator locations.
+4. **Heat Network Generation**: Automatically generate a heat network based on building and generator locations.
 
 ### LOD2-Data Processing
 1. **Filter LOD2 Data**: Filter LOD2 3D building data based on polygon or adresses
@@ -120,7 +119,6 @@ To install DistrictHeatingSim, ensure you have Python installed on your system. 
     overpy
     geojson
     scikit-learn
-    hdbscan
     PyPDF2
     reportlab
     numpy_financial

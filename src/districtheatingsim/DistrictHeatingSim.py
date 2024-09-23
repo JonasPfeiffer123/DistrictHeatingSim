@@ -241,7 +241,7 @@ class ProjectConfigManager:
             base_path = sys._MEIPASS
         else:
             # Normal path when not bundled
-            base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'districtheatsim')
+            base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'districtheatingsim')
         
         return os.path.join(base_path, relative_path)
 
