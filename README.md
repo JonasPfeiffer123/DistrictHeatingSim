@@ -1,11 +1,11 @@
 
-# DistrictHeatSim
+# DistrictHeatingSim
 
 ## Introduction
 
-Welcome to the DistrictHeatSim project, a comprehensive tool for planning and optimizing sustainable district heating networks. This README provides an overview of the project's functionality, installation instructions, and usage guidelines. 
+Welcome to the DistrictHeatingSim project, a comprehensive tool for planning and optimizing sustainable district heating networks. This README provides an overview of the project's functionality, installation instructions, and usage guidelines. 
 
-DistrictHeatSim is developed by Dipl.-Ing. (FH) Jonas Pfeiffer as part of the SMWK-NEUES TG70 project, which focuses on the development and testing of methods and tools for the conceptualization of sustainable heating networks. The software integrates technical and economic simulations to support the design and evaluation of district heating systems.
+DistrictHeatingSim is developed by Dipl.-Ing. (FH) Jonas Pfeiffer as part of the SMWK-NEUES TG70 project, which focuses on the development and testing of methods and tools for the conceptualization of sustainable heating networks. The software integrates technical and economic simulations to support the design and evaluation of district heating systems.
 
 ## Table of Contents
 1. [Features](#features)
@@ -45,16 +45,16 @@ DistrictHeatSim is developed by Dipl.-Ing. (FH) Jonas Pfeiffer as part of the SM
 
 ## Installation
 
-To install DistrictHeatSim, ensure you have Python installed on your system. Follow the steps below:
+To install DistrictHeatingSim, ensure you have Python installed on your system. Follow the steps below:
 
 1. **Clone the repository**:
     ```sh
-    git clone https://github.com/JonasPfeiffer123/DistrictHeatSim.git
+    git clone https://github.com/JonasPfeiffer123/DistrictHeatingSim.git
     ```
 
 2. **Navigate to the project directory**:
     ```sh
-    cd DistrictHeatSim
+    cd DistrictHeatingSim
     ```
 
 3. **Install the required packages**:
@@ -128,13 +128,13 @@ To install DistrictHeatSim, ensure you have Python installed on your system. Fol
 
 ## Project Structure
 
-- **src/districtheatsim**: Source code for DistrictHeatSim
-- **docs**: Documentation for DistrictHeatSim
-- **flow_chart**: Shows two flow charts describing data processing in DistrictHeatSim
+- **src/districtheatingsim**: Source code for DistrictHeatingSim
+- **docs**: Documentation for DistrictHeatingSim
+- **flow_chart**: Shows two flow charts describing data processing in DistrictHeatingSim
 - **requirements.txt**: List of dependencies
 - **README.md**: This README file
 
-- **currently_not_used**: Contains multiple python files with various functionality which are currently not integrated in DistrictHeatSim
+- **currently_not_used**: Contains multiple python files with various functionality which are currently not integrated in DistrictHeatingSim
 
 ## Documentation
 The Code is documented with docstrings which are readable by [Sphinx](https://www.sphinx-doc.org/en/master/) and therefore a documentation can be created by doing
@@ -146,7 +146,7 @@ The Code is documented with docstrings which are readable by [Sphinx](https://ww
 
 2. **Generating the .rst-files**:
     ```sh
-    sphinx-apidoc -o source/ ../src/districtheatsim
+    sphinx-apidoc -o source/ ../src/districtheatingsim
     ```
 
 3. **Generate the htmls**:

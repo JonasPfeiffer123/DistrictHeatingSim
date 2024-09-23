@@ -12,7 +12,7 @@ import pandapipes as pp
 import numpy as np
 from pyproj import Transformer
 
-from src.districtheatsim.heat_requirement import heat_requirement_BDEW
+from src.districtheatingsim.heat_requirement import heat_requirement_BDEW
 
 # Read the CSV file with the specified delimiter and ignore bad lines
 # Since we are now looking for specific entries, we read the entire file as a single column
