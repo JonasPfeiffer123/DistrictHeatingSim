@@ -9,7 +9,7 @@ Description: Script for testing the calculation of renovation costs of buildings
 import numpy as np
 import numpy_financial as npf
 import matplotlib.pyplot as plt
-from src.districtheatsim.utilities.test_reference_year import import_TRY
+from src.districtheatingsim.utilities.test_reference_year import import_TRY
 
 class Building:
     STANDARD_U_VALUES = {
