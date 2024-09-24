@@ -12,7 +12,7 @@ from math import pi, exp, log, sqrt
 import numpy as np
 from datetime import datetime, timezone
 
-from heat_generators.solar_radiation import Berechnung_Solarstrahlung
+from heat_generators.solar_radiation import calculate_solar_radiation
 from heat_generators.annuity import annuität
 
 class SolarThermal:
@@ -371,11 +371,10 @@ def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY, time_s
     # Vorgabewerte Speicher
     QSmax = 1.16 * VS * (Tsmax - Tm_rl)
 
-    GT_H_Gk, K_beam_L, GbT_L, GdT_H_Dk_L = Berechnung_Solarstrahlung(Globalstrahlung_L, Direktstrahlung_L, 
+    GT_H_Gk, K_beam_L, GbT_L, GdT_H_Dk_L = calculate_solar_radiation(Globalstrahlung_L, Direktstrahlung_L, 
                                                                      Tag_des_Jahres_L, time_steps, Longitude,
-                                                                     STD_Longitude, Latitude, Albedo, IAM_W, IAM_N,
-                                                                     East_West_collector_azimuth_angle,
-                                                                     Collector_tilt_angle)
+                                                                     STD_Longitude, Latitude, Albedo, East_West_collector_azimuth_angle,
+                                                                     Collector_tilt_angle, IAM_W, IAM_N)
 
     Speicher_Wärmeoutput_L = []
     Speicherladung_L = []

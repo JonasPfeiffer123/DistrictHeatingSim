@@ -5,7 +5,7 @@
 
 Welcome to the DistrictHeatingSim project, a comprehensive tool for planning and optimizing sustainable district heating networks. This README provides an overview of the project's functionality, installation instructions, and usage guidelines. 
 
-DistrictHeatingSim is developed by Dipl.-Ing. (FH) Jonas Pfeiffer as part of the SMWK-NEUES TG70 project, which focuses on the development and testing of methods and tools for the conceptualization of sustainable heating networks. The software integrates technical and economic simulations to support the design and evaluation of district heating systems.
+DistrictHeatingSim is developed by Dipl.-Ing. (FH) Jonas Pfeiffer as part of the SMWK-NEUES TG70 project, which focuses on the development and testing of methods and tools for the conceptualization of sustainable heating networks. The software integrates technical and economic simulations to support the design and evaluation of district heating systems. Besides the technical methods for calculations, a huge focus lies on implementing a GUI for this process steps. The Tool is implemented as an PyQt5-GUI.
 
 ## Table of Contents
 1. [Features](#features)
@@ -133,6 +133,10 @@ To install DistrictHeatingSim, ensure you have Python installed on your system. 
 - **README.md**: This README file
 
 - **currently_not_used**: Contains multiple python files with various functionality which are currently not integrated in DistrictHeatingSim
+
+## PyInstaller
+
+
 
 ## Documentation
 The Code is documented with docstrings which are readable by [Sphinx](https://www.sphinx-doc.org/en/master/) and therefore a documentation can be created by doing

@@ -1,0 +1,51 @@
+\documentclass[a4paper,12pt]{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{hyperref}
+\geometry{a4paper, margin=1in}
+
+\title{Softwaretool DistrictHeatingSim - Dokumentation Kernfunktionen und -algorithmen}
+\author{Dipl.-Ing. (FH) Jonas Pfeiffer}
+\date{2024-09-24}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+
+\section{Einleitung}
+Die Zielsetzungen des SMWK-Projektes fokussieren auf die Entwicklung und Erprobung innovativer Methoden und Werkzeuge für die Planung und Realisierung nachhaltiger Wärmenetze, um die Wärmeversorgung klimaneutral zu gestalten. Die Analyse der umfassenden Datenbasis für Gebäudehüllen, Wärmeverbräuche und Wärmenetze dient als Fundament für präzise Bedarfs- und Potentialanalysen. Auf dieser Basis sollen Werkzeuge entwickelt werden, die sowohl die Erfassung und Aufbereitung relevanter Daten als auch die ganzheitliche Simulation von Wärmenetzen ermöglichen. Diese Simulationen umfassen technische Aspekte der Netzgenerierung und -berechnung sowie ökonomische Betrachtungen zur Bewertung von Wärmeversorgungskonzepten. Die konsequente Weiterentwicklung dieser Ansätze mündet in die Realisierung einer integrierten Softwarelösung, die als zentrales Instrument dient, um die komplexe Aufgabe der Konzeptionierung, Bewertung und Optimierung von Wärmenetzen effizient und nutzerfreundlich zu unterstützen. Diese Softwarelösung bündelt damit die Kernaspekte des Projektes und bildet den roten Faden, der von den initialen Zielstellungen zur praktischen Umsetzung führt.
+
+\input{spatial_data_processing_doc/geocoding_doc.tex}
+\input{spatial_data_processing_doc/osm_doc.tex}
+\input{spatial_data_processing_doc/net_generation_doc.tex}
+\input{heat_load_calculation_doc/heat_load_calculation_doc.tex}
+\input{heat_load_calculation_doc/heat_load_VDI4655_doc/heat_load_VDI4655_doc.tex}
+\input{heat_load_calculation_doc/heat_load_BDEW_doc/heat_load_BDEW_doc.tex}
+\input{heat_requirement_LOD2_doc/heat_requirement_LOD2_doc.tex}
+\input{renovation_analysis_doc/renovation_analysis_doc.tex}
+
+\input{net_simulation_doc/net_simulation_doc.tex}
+
+\input{heat_generation_doc/annuity_doc/annuity_doc.tex}
+\input{heat_generation_doc/heat_generators_doc/heat_pump.tex}
+\input{heat_generation_doc/heat_generators_doc/geothermal_heat_pump.tex}
+\input{heat_generation_doc/heat_generators_doc/waste_heat_pump.tex}
+\input{heat_generation_doc/heat_generators_doc/river_heat_pump.tex}
+\input{heat_generation_doc/heat_generators_doc/aqvaheat.tex}
+\input{heat_generation_doc/heat_generators_doc/chp.tex}
+\input{heat_generation_doc/heat_generators_doc/biomass_boiler.tex}
+\input{heat_generation_doc/heat_generators_doc/gas_boiler.tex}
+\input{heat_generation_doc/heat_generators_doc/solar_radiation_doc.tex}
+\input{heat_generation_doc/heat_generators_doc/solarthermal.tex}
+\input{heat_generation_doc/heat_generators_doc/photovoltaics_doc.tex}
+
+\input{heat_generation_doc/calculate_mix_doc/calculate_mix_doc.tex}
+\input{heat_generation_doc/optimize_mix_doc/optimize_mix_doc.tex}
+
+\section{Fazit}
+
+\end{document}

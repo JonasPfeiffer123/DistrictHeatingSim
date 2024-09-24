@@ -1,8 +1,8 @@
 """
 Filename: photovoltaics.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-10
-Description: Calculation of solar irradiation according to Scenocalc District Heating 2.0 and PV according to eupvgis.
+Date: 2024-09-24
+Description: Calculation of PV according to eupvgis.
 
 """
 
@@ -10,105 +10,10 @@ import numpy as np
 import pandas as pd
 
 from utilities.test_reference_year import import_TRY
-from heat_generators.annuity import annuität
+from heat_generators.solar_radiation import calculate_solar_radiation
 
 # Constant for degree-radian conversion
 DEG_TO_RAD = np.pi / 180
-
-def deg_to_rad(deg):
-    """
-    Converts degrees to radians.
-
-    Args:
-        deg (float or np.ndarray): Angle in degrees.
-
-    Returns:
-        float or np.ndarray: Angle in radians.
-    """
-    return deg * DEG_TO_RAD
-
-def Calculate_Solar_Radiation(Irradiance_hori_L, D_L, Day_of_Year_L, Longitude, STD_Longitude, Latitude, Albedo,
-                              East_West_collector_azimuth_angle, Collector_tilt_angle):
-    """
-    Calculates the solar radiation on a tilted surface.
-
-    Args:
-        Irradiance_hori_L (np.ndarray): Horizontal irradiance.
-        D_L (np.ndarray): Direct irradiance.
-        Day_of_Year_L (np.ndarray): Day of the year.
-        Longitude (float): Longitude of the location.
-        STD_Longitude (float): Standard longitude for the time zone.
-        Latitude (float): Latitude of the location.
-        Albedo (float): Albedo value.
-        East_West_collector_azimuth_angle (float): East-West collector azimuth angle.
-        Collector_tilt_angle (float): Collector tilt angle.
-
-    Returns:
-        np.ndarray: Total irradiance on the tilted surface.
-    """
-    # Creating an array from 1 to 24 h for 365 days
-    Hour_L = np.tile(np.arange(1, 25), 365)
-
-    # Calculates the angle of the day in the annual cycle
-    B = (Day_of_Year_L - 1) * 360 / 365  # °
-
-    # Calculates the Equation of Time (E), considering differences between sundial and standard time
-    E = 229.2 * (0.000075 + 0.001868 * np.cos(deg_to_rad(B)) - 0.032077 * np.sin(deg_to_rad(B)) -
-                 0.014615 * np.cos(2 * deg_to_rad(B)) - 0.04089 * np.sin(2 * deg_to_rad(B)))
-
-    # Determines the solar time
-    Solar_time = ((Hour_L - 0.5) * 3600 + E * 60 + 4 * (STD_Longitude - Longitude) * 60) / 3600
-
-    # Calculates the solar declination based on the day of the year
-    Solar_declination = 23.45 * np.sin(deg_to_rad(360 * (284 + Day_of_Year_L) / 365))
-
-    # Determines the hour angle of the sun
-    Hour_angle = -180 + Solar_time * 180 / 12
-
-    # Calculates the solar zenith angle
-    Solar_Zenith_angle = np.arccos(np.cos(deg_to_rad(Latitude)) * np.cos(deg_to_rad(Hour_angle)) *
-                                   np.cos(deg_to_rad(Solar_declination)) + np.sin(deg_to_rad(Latitude)) *
-                                   np.sin(deg_to_rad(Solar_declination))) / DEG_TO_RAD
-
-    # Determines the solar azimuth angle
-    East_West_solar_azimuth_angle = np.sign(Hour_angle) * \
-                                    np.arccos((np.cos(deg_to_rad(Solar_Zenith_angle)) * np.sin(deg_to_rad(Latitude)) -
-                                               np.sin(deg_to_rad(Solar_declination))) /
-                                              (np.sin(deg_to_rad(Solar_Zenith_angle)) * np.cos(deg_to_rad(Latitude)))) / \
-                                    DEG_TO_RAD
-
-    # Calculates the incidence angle of solar radiation on the collector
-    Incidence_angle_onto_collector = np.arccos(
-        np.cos(deg_to_rad(Solar_Zenith_angle)) * np.cos(deg_to_rad(Collector_tilt_angle)) +
-        np.sin(deg_to_rad(Solar_Zenith_angle)) * np.sin(deg_to_rad(Collector_tilt_angle)) *
-        np.cos(deg_to_rad(East_West_solar_azimuth_angle - East_West_collector_azimuth_angle))) / DEG_TO_RAD
-
-    # Defines the condition under which the collector receives solar radiation
-    condition = (Solar_Zenith_angle < 90) & (Incidence_angle_onto_collector < 90)
-
-    # Determines the ratio of radiation intensity on the tilted collector to the horizontal surface
-    function_Rb = np.cos(deg_to_rad(Incidence_angle_onto_collector)) / np.cos(deg_to_rad(Solar_Zenith_angle))
-    Rb = np.where(condition, function_Rb, 0)
-
-    # Determines the radiation portion that directly hits a horizontal surface from the sun
-    Gbhoris = D_L * np.cos(deg_to_rad(Solar_Zenith_angle))
-
-    # Determines the anisotropy index for diffuse radiation
-    Ai = Gbhoris / (1367 * (1 + 0.033 * np.cos(deg_to_rad(360 * Day_of_Year_L / 365))) *
-                    np.cos(deg_to_rad(Solar_Zenith_angle)))
-
-    # Determines the diffuse radiation part on a horizontal surface
-    Gdhoris = Irradiance_hori_L - Gbhoris
-
-    # Combines all radiation components to determine the total radiation intensity on the collector
-    GT_H_Gk = (Gbhoris * Rb + Gdhoris * Ai * Rb + Gdhoris * (1 - Ai) * 0.5 *
-               (1 + np.cos(deg_to_rad(Collector_tilt_angle))) +
-               Irradiance_hori_L * Albedo * 0.5 * (1 - np.cos(deg_to_rad(Collector_tilt_angle))))
-
-    #print("Total irradiation: " + str(round(np.sum(GT_H_Gk)/1000, 1)) + " kWh/m²")
-
-    # Returns the total radiation intensity on the collector
-    return GT_H_Gk
 
 def Calculate_PV(TRY_data, Gross_area, Longitude, STD_Longitude, Latitude, Albedo,
                  East_West_collector_azimuth_angle, Collector_tilt_angle):
@@ -141,8 +46,14 @@ def Calculate_PV(TRY_data, Gross_area, Longitude, STD_Longitude, Latitude, Albed
     k1, k2, k3, k4, k5, k6 = -0.017237, -0.040465, -0.004702, 0.000149, 0.000170, 0.000005
 
     Day_of_Year_L = np.repeat(np.arange(1, 366), 24)
+
+    # Generate time steps (hourly intervals) for a specific date range
+    start_date = np.datetime64('2024-01-01T00:00')
+    end_date = np.datetime64('2024-01-02T00:00')  # Example of 1 day
+    time_steps = np.arange(start_date, end_date, np.timedelta64(1, 'h'))
+
     # Calculate the solar irradiation for the given data.
-    GT_L = Calculate_Solar_Radiation(G_L, D_L, Longitude, Day_of_Year_L, STD_Longitude, Latitude, Albedo,
+    GT_L, _, _, _ = calculate_solar_radiation(G_L, D_L, Longitude, Day_of_Year_L, time_steps, STD_Longitude, Latitude, Albedo,
                                      East_West_collector_azimuth_angle, Collector_tilt_angle)
 
     # Calculate the average solar irradiation value (in kW/m^2).

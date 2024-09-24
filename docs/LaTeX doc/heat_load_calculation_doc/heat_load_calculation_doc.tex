@@ -1,18 +1,4 @@
-\documentclass[a4paper,12pt]{article}
-\usepackage{amsmath}
-\usepackage{amssymb}
-\usepackage{graphicx}
-\usepackage{geometry}
-\geometry{a4paper, margin=1in}
-
-\title{Berechnung des Wärmebedarfs von Gebäuden basierend auf CSV-Daten}
-\author{Dipl.-Ing. (FH) Jonas Pfeiffer}
-\date{2024-09-09}
-
-\begin{document}
-
-\maketitle
-
+% Document to describe the methodology of calculating heat load profiles for buildings based on CSV data
 \section{Einleitung}
 Dieses Dokument beschreibt die Methodik zur Berechnung von Heizlastprofilen für Gebäude basierend auf CSV-Daten. Die Implementierung beinhaltet Funktionen zur Ermittlung des Heizwärme- und Warmwasserbedarfs von Gebäuden, welche die Berechnungsmethoden VDI 4655 und BDEW verwenden. Zusätzlich werden die Vor- und Rücklauftemperaturen der Heizsysteme berechnet.
 
@@ -125,9 +111,3 @@ Die Rücklauftemperaturkurve wird durch Subtraktion der Temperaturdifferenz \( \
 \[
 \text{Rücklauftemperatur} = \text{Vorlauftemperatur} - \Delta T
 \]
-
-\input{heat_load_VDI4655_doc/heat_load_VDI4655_doc.tex}
-
-\input{heat_load_BDEW_doc/heat_load_BDEW_doc.tex}
-
-\end{document}
