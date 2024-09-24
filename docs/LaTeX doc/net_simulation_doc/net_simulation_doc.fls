@@ -1,0 +1,8 @@
+PWD c:\Users\jp66tyda\DistrictHeatingSim\docs\LaTeX doc\net_simulation_doc
+INPUT C:\Users\jp66tyda\AppData\Local\MiKTeX\miktex\data\le\pdftex\pdflatex.fmt
+INPUT c:\Users\jp66tyda\DistrictHeatingSim\docs\LaTeX doc\net_simulation_doc\net_simulation_doc.tex
+OUTPUT net_simulation_doc.log
+INPUT C:\Users\jp66tyda\AppData\Local\Programs\MiKTeX\fonts\tfm\public\cm\cmtt10.tfm
+INPUT C:\Users\jp66tyda\AppData\Local\Programs\MiKTeX\fonts\tfm\public\cm\cmbx10.tfm
+OUTPUT net_simulation_doc.pdf
+INPUT C:\Users\jp66tyda\AppData\Local\MiKTeX\fonts\map\pdftex\pdftex.map

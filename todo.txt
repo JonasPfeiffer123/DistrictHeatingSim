@@ -1,16 +1,15 @@
-To dos Stand 22.08.2024
+To dos Stand 23.09.2024
 Allgemeines:
-- Dialoge sollen bei Programmstart initialisiert werden. 
+- Dialoge sollen bei Programmstart initialisiert werden --> Optimierung Datenhaltung
 - Dafür soll auch eine Speicherdatei geschaffen werden, welche für jeden Dialog die Eingaben aus der letzte Verwendung speichert (auch nach Beenden des Programms).
 - Wird ein Dialog mehrmals geöffnet, sollen die letzten Parameter wieder geladen werden.
 - EXCEPTION-HANDLING
 - Vereinfachte Berechnungsansätze identifizieren, Ungenauigkeiten beschreiben, Optimierungspotenzial ermitteln
 - Aktuell erfolgen sehr viele Definitionen von Werten in einzelnen Dialogen und Eingaben. Das soll prinzipiell so bleiben.
-    - Jedoch wäre auch zentrale Möglichkeit dieser Daten sinnvoll. Also Projektweite Vorgabe. Speicherung als projektabhhängige Konfigdatei.
+    - Jedoch wäre auch eine zentrale Dateneingabemöglichkeit sinnvoll. Also Projektweite Vorgabe. Speicherung als projektabhhängige Konfigdatei.
+- Softwarearchitektur strukturieren nach MVP
 
 Projektmanagement:
-- Projektfortschrittstracker in Projekttab --> Aussage welche Daten / Arbeitsschritte bereits generiert wurden
-- Projektergebnisse Laden / Speichern --> In allen Tabs die relevanten Daten laden --> Vereinheitlichungen der Dateinamen erforderlich
 - Versionierung der Projektergebnisse --> wie erkenntlich machen, wenn Eingangsdaten verändert wurden? --> Auswirkungen auf Ergebnisse
 - Datenhaltung allgemein überdenken
 
@@ -21,6 +20,7 @@ LOD2-Datenverarbeitung:
 - LOD2-Daten laden --> Exception-Handling bei timeout Nominatim geocoding
 
 Wärmenetzgenerierung:
+- Kartenanwendung überarbeiten, Ansatz dafür in Ordner currrently_not_used --> statt folium Karte direkte Implementation von leaflet als html
 - GeoJSON für Netzbestandteile
     - Festlegen, ob eine geoJSON-Datei für die Speicherung aller Netzbestandteile genutzt werden soll.
     - Implementierung der Datenhaltung in geoJSON-Format, falls entschieden.
@@ -50,6 +50,19 @@ Einzelversorgungslösung:
 - weitere Ergebnisse?
 --> was braucht man eigentlich?
 
+Ergebnispräsentation:
+- Feedback welche Daten geladen sind und ausgegeben werden.
+- PDF-Ausgabe noch weiter ausarbeiten und visuell verbessern.
+
+Weiteres:
+Betrachtung Stromsektor:
+- Stromprofile zur Sektorkopplung
+    - Implementierung von Stromprofilen sowohl auf Verbraucher- als auch auf Erzeugerseite zur Unterstützung der Sektorkopplung.
+- PV-Klasse für Stromerzeugung
+    - Implementierung einer PV-Klasse zur Berechnung der Stromerzeugung.
+    - Option zur Auslesung von Fläche, Orientierung und Neigung der Solarthermie- und PV-Anlagen aus LOD2-Daten.
+    - Stromprofile PV-Anlagen
+
 Test Projekte durcharbeiten:
 - Was funktioniert?
 - Was funktioniert noch nicht?
@@ -63,24 +76,5 @@ Test Projekte durcharbeiten:
     --> Ist eine vollständige Betrachtung möglich oder Fehlen dafür Funktionen?
         --> Sind diese sinnvoll implementierbar?
 
-Weiteres:
-Betrachtung Stromsektor:
-- Stromprofile zur Sektorkopplung
-    - Implementierung von Stromprofilen sowohl auf Verbraucher- als auch auf Erzeugerseite zur Unterstützung der Sektorkopplung.
-- PV-Klasse für Stromerzeugung
-    - Implementierung einer PV-Klasse zur Berechnung der Stromerzeugung.
-    - Option zur Auslesung von Fläche, Orientierung und Neigung der Solarthermie- und PV-Anlagen aus LOD2-Daten.
-    - Stromprofile PV-Anlagen
-
-- Softwarearchitektur strukturieren nach MVP
-
-
-Ergebnispräsentation:
-- PDF-Ausgabe aus dem Tab für Wirtschaftlichkeit in den Haupttab holen.
-    --> Feedback welche Daten geladen sind und ausgegeben werden.
-- PDF-Ausgabe noch weiter ausarbeiten und visuell verbessern.
-
-
-Vorlauf.geojson nicht vorhanden --> Fehler bei Wärmenetzberechnung
 
 

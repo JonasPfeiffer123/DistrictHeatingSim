@@ -1,0 +1,106 @@
+\section{Einleitung}
+
+Dieses Dokument beschreibt detailliert den Algorithmus zur Berechnung der Solarstrahlung, die auf eine geneigte Oberfläche trifft. Der Algorithmus berücksichtigt Wetterdaten, die geografische Lage, den Einfallswinkel der Sonnenstrahlen, die Neigung der Kollektorfläche und den Albedo-Effekt. Diese Methode wird zur Simulation von Solaranlagen verwendet, insbesondere für solarthermische Anwendungen in Wärmenetzen.
+
+Die Berechnungsgrundlage stammt aus dem Ertragsberechnungsprogramm für Solarthermie in Wärmenetzen ScenoCalc Fernwärme 2.0 \url{https://www.scfw.de/}.
+
+\section{Berechnung der Solarstrahlung}
+
+Die Hauptfunktion des Algorithmus ist \texttt{Berechnung\_Solarstrahlung}, die die Strahlungsintensität auf einer geneigten Kollektorfläche berechnet. Die Berechnung erfolgt in mehreren Schritten, die im Folgenden beschrieben werden.
+
+\subsection{Berechnung des Tagwinkels und der Zeitkorrektur}
+
+Der Tag des Jahres \( N \) wird in einen Winkel \( B \) umgerechnet:
+\[
+B = \frac{360 \times (N - 1)}{365}
+\]
+Dieser Winkel ist notwendig, um die Sonnenposition im Jahreszyklus zu berechnen.
+
+Die Zeitkorrektur \( E \), die die Abweichungen zwischen Sonnenzeit und Standardzeit berücksichtigt, wird mit folgender Formel berechnet:
+\[
+E = 229.2 \cdot \left( 0.000075 + 0.001868 \cos(B) - 0.032077 \sin(B) - 0.014615 \cos(2B) - 0.04089 \sin(2B) \right)
+\]
+
+\subsection{Berechnung der Sonnenzeit}
+
+Die Sonnenzeit wird unter Berücksichtigung der geografischen Länge \( L \), der Standardlänge des Zeitzonenmeridians \( L_{std} \) und der Zeitkorrektur \( E \) berechnet:
+\[
+t_{\text{solar}} = \frac{(t_{\text{Uhrzeit}} - 0.5) \cdot 3600 + E \cdot 60 + 4 \cdot (L_{std} - L) \cdot 60}{3600}
+\]
+
+\subsection{Sonnenzenitwinkel und Deklination der Sonne}
+
+Die Deklination der Sonne \( \delta \) wird als Funktion des Tages des Jahres berechnet:
+\[
+\delta = 23.45 \cdot \sin\left( \frac{360 \cdot (284 + N)}{365} \right)
+\]
+
+Der Sonnenzenitwinkel \( SZA \) beschreibt den Winkel zwischen dem Lot auf die Erdoberfläche und den Sonnenstrahlen:
+\[
+SZA = \arccos\left( \cos(\phi) \cos(h) \cos(\delta) + \sin(\phi) \sin(\delta) \right)
+\]
+wobei \( \phi \) die geografische Breite und \( h \) der Stundenwinkel der Sonne ist:
+\[
+h = -180 + t_{\text{solar}} \times \frac{180}{12}
+\]
+
+\subsection{Berechnung des Sonnenazimutwinkels}
+
+Der Sonnenazimutwinkel \( \gamma_S \) beschreibt den Winkel zwischen der Sonne und einer Referenzrichtung (in der Regel Süden) auf der horizontalen Ebene. Der Azimutwinkel wird benötigt, um die Position der Sonne relativ zur Oberfläche der Erdkruste zu bestimmen. Er wird berechnet unter Berücksichtigung des Stundenwinkels \( h \) und des Sonnenzenitwinkels \( SZA \):
+\[
+\gamma_S = \text{sgn}(h) \cdot \arccos\left(\frac{\cos(SZA) \cdot \sin(\phi) - \sin(\delta)}{\sin(SZA) \cdot \cos(\phi)}\right)
+\]
+Hierbei wird die Signum-Funktion verwendet, um die korrekte Richtung des Azimutwinkels zu bestimmen, abhängig davon, ob die Sonne östlich oder westlich des Meridians steht.
+
+\subsection{Berechnung des Einfallswinkels auf die Kollektorfläche}
+
+Der Einfallswinkel der Sonnenstrahlen auf eine geneigte Kollektorfläche \( I_aC \) beschreibt den Winkel zwischen der Kollektorfläche und den einfallenden Strahlen der Sonne. Dieser Winkel beeinflusst maßgeblich die Intensität der direkten Sonneneinstrahlung, die auf die Kollektorfläche trifft. Der Einfallswinkel wird durch folgende Formel berechnet:
+\[
+I_aC = \arccos\left(\cos(SZA) \cdot \cos(CTA) + \sin(SZA) \cdot \sin(CTA) \cdot \cos(\gamma_S - \gamma_C)\right)
+\]
+wobei:
+- \( SZA \) der Sonnenzenitwinkel ist,
+- \( CTA \) der Neigungswinkel der Kollektorfläche,
+- \( \gamma_S \) der Sonnenazimutwinkel und
+- \( \gamma_C \) der Azimutwinkel des Kollektors.
+
+Je kleiner der Einfallswinkel, desto mehr direkte Strahlung trifft auf die Kollektorfläche. Diese Berechnung berücksichtigt sowohl die Neigung als auch die Ausrichtung der Kollektorfläche, was insbesondere bei nicht optimal nach Süden ausgerichteten Kollektoren von Bedeutung ist.
+
+Zusätzlich wird der Einfallswinkel in Bezug auf die Ost-West-Orientierung \( \text{Incidence\_angle\_EW} \) und die Nord-Süd-Orientierung \( \text{Incidence\_angle\_NS} \) berechnet. Diese Winkel dienen dazu, die Effekte der Strahlungsmodifikatoren (IAM) in beide Richtungen zu berechnen. Für die Ost-West-Orientierung lautet die Formel:
+\[
+f_{\text{EW}} = \arctan\left(\frac{\sin(SZA) \cdot \sin(\gamma_S - \gamma_C)}{\cos(I_aC)}\right)
+\]
+und für die Nord-Süd-Orientierung:
+\[
+f_{\text{NS}} = -(180 / \pi) \cdot \arctan\left(\tan(SZA) \cdot \cos(\gamma_S - \gamma_C)\right) - CTA
+\]
+Diese Funktionen stellen sicher, dass der Einfallswinkel korrekt auf die jeweiligen Ausrichtungen des Kollektors angewendet wird.
+
+\subsection{Berechnung der direkten und diffusen Strahlung}
+
+Die direkte Strahlung auf die horizontale Fläche \( Gbhoris \) wird berechnet als:
+\[
+Gbhoris = D_L \cdot \cos(SZA)
+\]
+
+Die diffuse Strahlung \( Gdhoris \) ergibt sich als Differenz zwischen der globalen Strahlung \( G \) und der direkten Strahlung:
+\[
+Gdhoris = G - Gbhoris
+\]
+
+\subsection{Atmosphärischer Diffusanteil und Gesamtstrahlung}
+
+Der atmosphärische Diffusanteil \( Ai \) wird basierend auf der horizontalen Direktstrahlung \( Gbhoris \) und der Solarkonstanten (1367 W/m²) wie folgt berechnet:
+\[
+Ai = \frac{Gbhoris}{1367 \cdot (1 + 0.033 \cdot \cos(360 \cdot N / 365)) \cdot \cos(SZA)}
+\]
+
+Die Gesamtstrahlung \( GT_HGk \) auf der geneigten Oberfläche wird berechnet durch:
+\[
+GT_HGk = Gbhoris \cdot R_b + Gdhoris \cdot Ai \cdot R_b + Gdhoris \cdot (1 - Ai) \cdot 0.5 \cdot (1 + \cos(CTA)) + G \cdot \text{Albedo} \cdot 0.5 \cdot (1 - \cos(CTA))
+\]
+Hierbei beschreibt \( R_b \) das Verhältnis der Strahlungsintensität auf der geneigten Fläche zur horizontalen Fläche.
+
+\section{Zusammenfassung}
+
+Dieser Algorithmus berechnet die Solarstrahlung auf geneigten Flächen, basierend auf physikalischen Modellen und atmosphärischen Einflüssen. Durch die Berücksichtigung von direkter, diffuser und reflektierter Strahlung kann der Energieertrag einer Solaranlage realistisch simuliert werden. Diese Berechnung ist entscheidend für die Planung und Optimierung solarthermischer Anlagen.

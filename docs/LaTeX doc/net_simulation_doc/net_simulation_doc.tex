@@ -1,0 +1,114 @@
+\section{Einleitung}
+
+Diese Dokumentation beschreibt die Funktionsweise der Python-Skripte, die zur thermischen und hydraulischen Netzwerksimulation sowie zur Initialisierung von Netzwerken auf Basis von GeoJSON-Daten verwendet werden. Zu den beschriebenen Skripten gehören:
+
+\begin{itemize}
+    \item \texttt{pp\_net\_initialisation\_geojson.py}
+    \item \texttt{pp\_net\_time\_series\_simulation.py}
+    \item \texttt{utilities.py}
+    \item \texttt{config\_plot.py}
+    \item \texttt{controllers.py}
+\end{itemize}
+
+Die Skripte bieten Funktionen für die Initialisierung von Netzwerken, Zeitreihensimulationen, Datenvorverarbeitung und Netzwerkoptimierung auf Grundlage von GeoJSON-Daten.
+
+\section{Skript: \texttt{pp\_net\_initialisation\_geojson.py}}
+
+\subsection{Übersicht}
+Dieses Skript dient der Initialisierung eines Netzwerks basierend auf GeoJSON-Daten. Es lädt Daten aus GeoJSON-Dateien, die Informationen zu Wärmetauschern, Rohrleitungen und anderen Netzwerkelementen enthalten, und erstellt ein simuliertes Netzwerk. Dieses Netzwerk kann dann für thermische und hydraulische Berechnungen genutzt werden.
+
+\subsection{Wichtige Funktionen}
+
+\subsubsection{Funktion: \texttt{initialize\_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, ...)}}
+\textbf{Beschreibung:}\\
+Diese Funktion lädt GeoJSON-Daten, die Informationen über Vorlauf- und Rücklaufleitungen, Wärmetauscher (HAST) und Erzeugeranlagen enthalten, und initialisiert damit ein Netzwerksimulationsmodell. Sie erstellt ein Netzwerk basierend auf den übergebenen GeoJSON-Daten und setzt Parameter wie Rohrleitungsdurchmesser und Wärmeflüsse.
+
+\textbf{Parameter:}
+\begin{itemize}
+    \item \texttt{vorlauf}: GeoJSON-Daten der Vorlaufleitungen.
+    \item \texttt{ruecklauf}: GeoJSON-Daten der Rücklaufleitungen.
+    \item \texttt{hast}: GeoJSON-Daten der Wärmetauscher.
+    \item \texttt{erzeugeranlagen}: GeoJSON-Daten der Erzeugeranlagen.
+\end{itemize}
+
+\subsubsection{Funktion: \texttt{create\_network(gdf\_flow\_line, gdf\_return\_line, ...)}}
+\textbf{Beschreibung:}\\
+Erstellt das \texttt{pandapipes}-Netzwerk basierend auf den übergebenen GeoJSON-Daten der Vor- und Rücklaufleitungen sowie den Wärmetauschern und Erzeugern. Dabei werden die Leitungen im Netz korrekt miteinander verbunden und Junction-Punkte gesetzt.
+
+\textbf{Parameter:}
+\begin{itemize}
+    \item \texttt{gdf\_flow\_line}: GeoDataFrame der Vorlaufleitungen.
+    \item \texttt{gdf\_return\_line}: GeoDataFrame der Rücklaufleitungen.
+    \item \texttt{gdf\_hast}: GeoDataFrame der Wärmetauscher.
+\end{itemize}
+
+\subsubsection{Funktion: \texttt{create\_pipes(net, all\_line\_coords, all\_line\_lengths, ...)}}
+\textbf{Beschreibung:}\\
+Diese Funktion fügt dem Netzwerk Rohre basierend auf den Koordinaten und Längen der Liniensegmente hinzu, die aus den GeoJSON-Daten extrahiert wurden.
+
+\textbf{Parameter:}
+\begin{itemize}
+    \item \texttt{net}: Das \texttt{pandapipes}-Netzwerkobjekt.
+    \item \texttt{all\_line\_coords}: Liste der Rohrkoordinaten.
+    \item \texttt{all\_line\_lengths}: Längen der Rohre.
+\end{itemize}
+
+\section{Skript: \texttt{pp\_net\_time\_series\_simulation.py}}
+
+\subsection{Übersicht}
+Das Skript \texttt{pp\_net\_time\_series\_simulation.py} führt Zeitreihenberechnungen für thermische und hydraulische Netzwerke durch. Es enthält Funktionen zur Aktualisierung von Steuerungen (z. B. für Rücklauf- und Vorlauftemperaturen) und zur Durchführung von Simulationen für Netzwerke über eine festgelegte Zeitperiode.
+
+\subsection{Wichtige Funktionen}
+
+\subsubsection{Funktion: \texttt{update\_const\_controls(net, qext\_w\_profiles, time\_steps, start, end)}}
+\textbf{Beschreibung:}\\
+Aktualisiert konstante Steuerungen im Netzwerk mit neuen Daten für die Zeitreihenberechnung. Dies ist besonders nützlich, wenn sich die externen Wärmeprofile im Laufe der Zeit ändern.
+
+\subsubsection{Funktion: \texttt{update\_return\_temperature\_controller(net, supply\_temperature\_heat\_consumer, return\_temperature\_heat\_consumer, time\_steps, start, end)}}
+\textbf{Beschreibung:}\\
+Aktualisiert die Steuerung der Rücklauftemperatur für Wärmekonsumenten. Die Funktion ermöglicht es, die Rücklauftemperatur in Abhängigkeit von der Zeit und der Systemlast dynamisch zu steuern.
+
+\subsubsection{Funktion: \texttt{thermohydraulic\_time\_series\_net()}}
+\textbf{Beschreibung:}\\
+Führt eine thermohydraulische Zeitreihensimulation für das gesamte Netzwerk durch. Diese Simulation berücksichtigt die Änderungen in der Vorlauf- und Rücklauftemperatur sowie den Druck im Netzwerk.
+
+\section{Skript: \texttt{utilities.py}}
+
+\subsection{Übersicht}
+Das \texttt{utilities.py}-Skript enthält Hilfsfunktionen, die in verschiedenen Netzwerksimulationen und Optimierungsalgorithmen verwendet werden. Dazu gehören Funktionen zur Berechnung der Leistung von Wärmepumpen (Coefficient of Performance, COP) und zur Netzwerkoptimierung.
+
+\subsection{Wichtige Funktionen}
+
+\subsubsection{Funktion: \texttt{COP\_WP(VLT\_L, QT, values)}}
+\textbf{Beschreibung:}\\
+Berechnet den COP (Coefficient of Performance) einer Wärmepumpe basierend auf der Vorlauftemperatur \(VLT_L\) und der Quelle \(QT\). Diese Funktion wird in der Simulation verwendet, um die Effizienz von Wärmepumpen zu bestimmen.
+
+\subsubsection{Funktion: \texttt{net\_optimization(net, v\_max\_pipe, v\_max\_heat\_exchanger, ...)}}
+\textbf{Beschreibung:}\\
+Optimiert das Netzwerk durch Anpassung der Rohrdurchmesser und der Wärmetauscher, um die maximalen Geschwindigkeiten in den Rohren und Wärmetauschern einzuhalten. Diese Funktion ist entscheidend, um sicherzustellen, dass das Netzwerk effizient arbeitet, ohne die technischen Grenzwerte zu überschreiten.
+
+\section{Skript: \texttt{config\_plot.py}}
+
+\subsection{Übersicht}
+Das \texttt{config\_plot.py}-Skript enthält Konfigurations- und Visualisierungsoptionen für Netzwerksimulationen. Es bietet Funktionen zur grafischen Darstellung von Netzwerken und Simulationsergebnissen.
+
+\subsection{Wichtige Funktionen}
+
+\subsubsection{Funktion: \texttt{plot\_network(net, output\_file)}}
+\textbf{Beschreibung:}\\
+Erstellt eine grafische Darstellung des Netzwerks und speichert das Ergebnis in einer Datei. Diese Funktion ist hilfreich, um die Struktur des Netzwerks und die Ergebnisse der Simulation visuell zu überprüfen.
+
+\subsection{Skript: \texttt{controllers.py}}
+
+\subsection{Übersicht}
+Das \texttt{controllers.py}-Skript definiert verschiedene Steuerungsmechanismen für die Netzwerksimulation. Dazu gehören Controller für Temperaturen und Durchflüsse, die in der Simulation verwendet werden, um realistische Systemverhalten zu modellieren.
+
+\subsection{Wichtige Funktionen}
+
+\subsubsection{Funktion: \texttt{TemperatureController(...)}}
+\textbf{Beschreibung:}\\
+Dieser Controller steuert die Temperatur an bestimmten Punkten im Netzwerk und ermöglicht es, Temperaturprofile zu definieren, die über die Zeit dynamisch angepasst werden können.
+
+\section{Fazit}
+
+Die beschriebenen Skripte bieten eine umfassende Lösung für die Initialisierung, Simulation und Optimierung thermischer und hydraulischer Netzwerke. Mit Hilfe der GeoJSON-basierten Netzwerkinitialisierung und der Zeitreihensimulation können realistische Szenarien für Wärmeverteilnetze modelliert und analysiert werden. Die Skripte ermöglichen eine detaillierte Analyse von Lastprofilen, Druckverlusten und Temperaturverteilungen im Netz.
