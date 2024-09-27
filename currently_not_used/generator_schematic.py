@@ -1,4 +1,15 @@
-from PyQt5.QtWidgets import (QGraphicsScene, QGraphicsPathItem, QGraphicsLineItem, QGraphicsItem, QGraphicsView)
+"""
+Filename: generator_schematic.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-09-27
+Description: Custom QGraphicsScene and QGraphicsView classes for a generator schematic. Also includes generator schematic items (ComponentItem, Pipe). Complex example for a schematic editor with custom items and connections.
+"""
+
+#### To do: ####
+# Consumer component handling: Should always be in the schematic. Also not deletable. But behaves like a generator regarding connections and labels and can be connected to the parallel lines. Also, it should change its position when other components are added or removed. It's on the right side of the last generator. At the beginning, it's the only component in the schematic.
+# Parallel Lines should be more dynamic and adjust to the scene size. They should be connected to the scene's width and not hardcoded. Also the labels should be centered. The ammount of parallel lines should be dynamic and depend on the ammount of generators.
+
+from PyQt5.QtWidgets import (QGraphicsScene, QGraphicsPathItem, QGraphicsLineItem, QGraphicsItem, QGraphicsView, QGraphicsRectItem)
 from PyQt5.QtCore import Qt, QPointF, QRectF, QLineF, pyqtSignal
 from PyQt5.QtGui import QPen, QColor, QPainterPath, QFont, QPainter
 
@@ -60,14 +71,14 @@ class CustomGraphicsScene(QGraphicsScene):
 
 class SchematicScene(CustomGraphicsScene):
     GRID_SIZE = 1  # Define grid size for snapping
-    GENERATOR_SPACING = 75
-    GENERATOR_SPACING_STORAGE = 75
+    GENERATOR_SPACING = 100
+    GENERATOR_SPACING_STORAGE = 100 # Spacing between generator and storage
     LINE_Y_OFFSET_GENERATOR = 100
     GENERATOR_X_START = 20
     LINE_THICKNESS = 3
     FLOW_LINE_COLOR = Qt.red
     RETURN_LINE_COLOR = Qt.blue
-    TEXT_FONT = QFont("Arial", 11)
+    TEXT_FONT = QFont("Arial", 12, QFont.Bold)
 
     # Define the objects that can be added to the scene
     # Color codes: yellow for Solar, blue for CHP, purple for Storage, green for Consumer
@@ -76,21 +87,67 @@ class SchematicScene(CustomGraphicsScene):
         'Solar': {
             'color': QColor('yellow'),
             'geometry': QRectF(-20, -20, 40, 40),  # Circle dimensions for Solar
+            'shape': 'circle',  # Define the shape type
             'counter': 0  # Counter for Solar
         },
         'CHP': {
             'color': QColor('blue'),
             'geometry': QRectF(-30, -15, 60, 30),  # Rectangle dimensions for CHP
+            'shape': 'rect',  # Shape as rectangle
             'counter': 0  # Counter for CHP
+        },
+        'Wood-CHP': {
+            'color': QColor('brown'),
+            'geometry': QRectF(-30, -20, 60, 40),  # Larger square to differentiate from other CHP
+            'shape': 'rect',  # Shape as rectangle
+            'counter': 0  # Counter for Wood-CHP
+        },
+        'Biomass Boiler': {
+            'color': QColor('darkgreen'),
+            'geometry': QRectF(-25, -20, 50, 40),  # Taller rectangle for biomass boiler
+            'shape': 'rect',  # Shape as rectangle
+            'counter': 0  # Counter for Biomass Boiler
+        },
+        'Gas Boiler': {
+            'color': QColor('gray'),
+            'geometry': QRectF(-25, -25, 50, 50),  # Narrower and shorter rectangle for gas boiler
+            'shape': 'rect',  # Shape as rectangle
+            'counter': 0  # Counter for Gas Boiler
+        },
+        'Geothermal Heat Pump': {
+            'color': QColor('blueviolet'),
+            'geometry': QRectF(-25, -25, 50, 50),  # Square to represent geothermal heat pump
+            'shape': 'rect',  # Shape as rectangle
+            'counter': 0  # Counter for Geothermal Heat Pump
+        },
+        'River Heat Pump': {
+            'color': QColor('deepskyblue'),
+            'geometry': QRectF(-25, -25, 50, 50),  # Larger square for river heat pump
+            'shape': 'rect',  # Shape as rectangle
+            'counter': 0  # Counter for River Heat Pump
+        },
+        'Waste Heat Pump': {
+            'color': QColor('orange'),
+            'geometry': QRectF(-25, -25, 50, 50),  # Rectangle for waste heat pump
+            'shape': 'rect',  # Shape as rectangle
+            'counter': 0  # Counter for Waste Heat Pump
+        },
+        'Aqva Heat Pump': {
+            'color': QColor('cyan'),
+            'geometry': QRectF(-25, -25, 50, 50),  # Square for Aqva heat pump
+            'shape': 'rect',  # Shape as rectangle
+            'counter': 0  # Counter for Aqva Heat Pump
         },
         'Storage': {
             'color': QColor('purple'),
             'geometry': QRectF(-20, -40, 40, 80),  # Cylindrical shape for storage
+            'shape': 'rect',  # Use rectangle to represent a cylinder
             'counter': 0  # Counter for Storage
         },
         'Consumer': {
             'color': QColor('green'),
             'geometry': QRectF(-30, -15, 60, 30),  # Rectangle dimensions for Consumer
+            'shape': 'rect',  # Shape as rectangle
             'counter': 0  # Counter for Consumer
         }
     }
@@ -112,11 +169,24 @@ class SchematicScene(CustomGraphicsScene):
 
         self.generator_y = height / 2
 
+        self.selected_item = None  # Track selected item
+
         self.create_parallel_lines()
 
-    def update_mouse_label(self, x, y):
-        """Update the mouse label when the mouse moves in the scene"""
-        self.mouse_label.setText(f"Mouse Coordinates: x = {x:.1f}, y = {y:.1f}")
+        # Verbinde das selectionChanged-Signal mit einer Methode zum Aktualisieren
+        self.selectionChanged.connect(self.update_selected_item)
+
+    def update_selected_item(self):
+        """Aktualisiert das ausgewählte Objekt, wenn sich die Auswahl in der Szene ändert."""
+        # Hole alle ausgewählten Objekte (es könnte theoretisch mehr als eines sein)
+        selected_items = self.selectedItems()
+
+        if selected_items:
+            # Falls es ein ausgewähltes Objekt gibt, speichere das erste davon
+            self.selected_item = selected_items[0]  # Speichere das ausgewählte Objekt
+        else:
+            # Falls kein Objekt ausgewählt ist, setze selected_item auf None
+            self.selected_item = None
 
     def snap_to_grid(self, position):
         """Snap the given position to the nearest grid point"""
@@ -163,12 +233,12 @@ class SchematicScene(CustomGraphicsScene):
         item_counter = self.OBJECTS[item_name]['counter']  # Get the current count for the generator
 
         # Create and add the generator
-        generator = ComponentItem(position, item_name, item_color, item_geometry)
+        generator = ComponentItem(position, item_name, item_color, item_geometry, self.FLOW_LINE_COLOR, self.RETURN_LINE_COLOR)
         generator.create_connection_points()  # Create connection points
         self.addItem(generator)
 
         label_text = f'{item_name} {item_counter}'
-        self.add_label(generator, label_text)
+        self.update_label(generator, label_text)
 
         if connect_to_lines:
             self.connect_items_to_lines(generator)
@@ -186,12 +256,12 @@ class SchematicScene(CustomGraphicsScene):
         self.OBJECTS[item_name]['counter'] += 1  # Increment the counter for the storage
         item_counter = self.OBJECTS[item_name]['counter']  # Get the current count for the storage
 
-        storage = ComponentItem(position, item_name, item_color, item_geometry)
+        storage = ComponentItem(position, item_name, item_color, item_geometry, self.FLOW_LINE_COLOR, self.RETURN_LINE_COLOR)
         storage.create_connection_points()
         self.addItem(storage)
 
         label_text = f'{item_name} {item_counter}'
-        self.add_label(storage, label_text)
+        self.update_label(storage, label_text)
 
         self.GENERATOR_X_START += self.GENERATOR_SPACING
         return storage
@@ -220,10 +290,10 @@ class SchematicScene(CustomGraphicsScene):
             item_color = self.OBJECTS[item_name]['color']  # Color of the consumer
             item_geometry = self.OBJECTS[item_name]['geometry']  # Geometry of the consumer
 
-            self.consumer = ComponentItem(position, item_name, item_color, item_geometry)
+            self.consumer = ComponentItem(position, item_name, item_color, item_geometry, self.FLOW_LINE_COLOR, self.RETURN_LINE_COLOR)
             self.consumer.create_connection_points()  # Create connection points
             self.addItem(self.consumer)
-            self.add_label(self.consumer, item_name)
+            self.update_label(self.consumer, item_name)
 
             # Connect the component to the Vorlauf and Rücklauf lines
             self.connect_items_to_lines(self.consumer)
@@ -231,11 +301,57 @@ class SchematicScene(CustomGraphicsScene):
             # Update the position for the next generator (place it to the right)
             self.GENERATOR_X_START += self.GENERATOR_SPACING  # Shift by a fixed distance
 
-    def add_label(self, item, text):
-        """Add a label under the item with a specific text"""
-        label = self.addText(text, self.TEXT_FONT)
-        label.setPos(item.pos().x(), item.pos().y() + 40)  # Place label under the item
-        item.label = label  # Store the label reference in the item
+    def update_label(self, item, new_text):
+        """Update the label of a given item with new text."""
+        if item.label:
+            # Update the text of the label
+            item.label.setPlainText(new_text)
+        else:
+            # If no label exists, create a new one
+            label = self.addText(new_text, self.TEXT_FONT)
+            item.label = label  # Link the label to the item
+
+        # Ensure the label is always on top
+        item.label.setZValue(10)  # Make sure label is displayed above everything else
+
+        # Add padding for better visibility
+        padding = 10  
+
+        # Update the position of the label based on the item type
+        if item.item_type == 'Storage':
+            # Position the label above the storage item
+            label_x = item.pos().x() - item.boundingRect().width() / 2 + padding
+            label_y = item.pos().y() - item.boundingRect().height() - padding
+        else:
+            # Position the label below the item for other types
+            label_x = item.pos().x() - item.boundingRect().width() / 2 + padding
+            label_y = item.pos().y() + item.boundingRect().height() + padding
+
+        item.label.setPos(label_x, label_y)  # Set the label position manually
+
+        # Get the updated bounding rect of the label
+        label_rect = item.label.boundingRect()
+
+        # Calculate the absolute scene position for the background rect
+        scene_label_pos = item.label.scenePos()
+        background_rect_x = scene_label_pos.x() - padding / 2
+        background_rect_y = scene_label_pos.y() - padding / 2
+        background_rect_width = label_rect.width() + padding
+        background_rect_height = label_rect.height() + padding
+
+        # Optionally: Set background color for the label (pseudo background using rect)
+        if hasattr(item, 'background_rect') and item.background_rect:  # Check if background_rect exists
+            item.background_rect.setRect(background_rect_x, background_rect_y, background_rect_width, background_rect_height)
+        else:
+            # Erstelle ein halbtransparentes Rechteck um das Label
+            background_rect = QGraphicsRectItem(background_rect_x, background_rect_y, background_rect_width, background_rect_height)
+            background_color = QColor(255, 255, 255, 150)  # Weiß mit Alpha-Wert von 150 für halbe Transparenz
+            background_rect.setBrush(background_color)  # Setze die halbtransparente Farbe
+            background_rect.setPen(QPen(Qt.NoPen))  # Keine Umrandung für den Hintergrund
+            background_rect.setZValue(9)  # Leicht unterhalb des Labels
+            self.addItem(background_rect)  # Add the background to the scene
+            item.background_rect = background_rect  # Link it to the item
+            item.label.setParentItem(background_rect)  # Ensure the label is on top of the background
 
     def connect_generator_to_storage(self, generator, storage):
         """Connect two items (generator, storage, or consumer) using their connection points"""
@@ -294,33 +410,192 @@ class SchematicScene(CustomGraphicsScene):
             self.addItem(storage_supply_pipe)
             self.pipes.append(storage_supply_pipe)
 
-    def add_solar(self):
-        """Add a Solar generator"""
-        self.add_generator('Solar')
+    def add_component(self, item_name, storage=False):
+        """Add a component (generator, storage, or consumer) to the scene"""
+        if storage:
+            self.add_generator_with_storage(item_name)
+        else:
+            if item_name == 'Consumer':
+                self.add_consumer_net('Consumer')
+            else:
+                self.add_generator(item_name)
 
-    def add_chp(self):
-        """Add a CHP generator"""
-        self.add_generator('CHP')
+    def delete_selected(self):
+        """Delete the selected component, its connections, and any associated storage or generator."""
+        if self.selected_item:
+            # Finde heraus, ob die ausgewählte Komponente eine Anlage oder ein Speicher ist
+            item_name = self.selected_item.item_type  # Typ der ausgewählten Komponente
 
-    def add_solar_storage(self):
-        """Add Solar + Storage"""
-        self.add_generator_with_storage('Solar')
+            # Liste der zu löschenden Objekte (Anlage/Speicher und deren Verbindungen)
+            items_to_delete = [self.selected_item]
 
-    def add_chp_storage(self):
-        """Add CHP + Storage"""
-        self.add_generator_with_storage('CHP')
+            # 1. Finde alle Pipes, die mit der ausgewählten Komponente verbunden sind
+            pipes_to_delete = []
+            for pipe in self.items():
+                if isinstance(pipe, Pipe):
+                    # Prüfen, ob pipe.point1 oder pipe.point2 mit der ausgewählten Komponente verbunden sind
+                    point1_is_connected = isinstance(pipe.point1, ConnectionPoint) and pipe.point1.parent == self.selected_item
+                    point2_is_connected = isinstance(pipe.point2, ConnectionPoint) and pipe.point2.parent == self.selected_item
 
-    def add_consumer(self):
-        self.add_consumer_net('Consumer')
+                    if point1_is_connected or point2_is_connected:
+                        pipes_to_delete.append(pipe)  # Diese Pipe ist verbunden und soll gelöscht werden
+
+                        # Prüfe, ob eine andere Komponente mit der Pipe verbunden ist und füge sie zur Löschliste hinzu
+                        if point1_is_connected and isinstance(pipe.point2, ConnectionPoint) and pipe.point2.parent != self.selected_item:
+                            items_to_delete.append(pipe.point2.parent)  # Verbundene Komponente hinzufügen
+                        if point2_is_connected and isinstance(pipe.point1, ConnectionPoint) and pipe.point1.parent != self.selected_item:
+                            items_to_delete.append(pipe.point1.parent)  # Verbundene Komponente hinzufügen
+
+            # 2. Finde alle Pipes, die mit verbundenen Komponenten (z.B. Speicher) zum Netz verbunden sind
+            for item in items_to_delete:
+                for pipe in self.items():
+                    if isinstance(pipe, Pipe):
+                        # Prüfen, ob die Pipe mit einer Komponente aus items_to_delete verbunden ist
+                        point1_is_connected = isinstance(pipe.point1, ConnectionPoint) and pipe.point1.parent == item
+                        point2_is_connected = isinstance(pipe.point2, ConnectionPoint) and pipe.point2.parent == item
+
+                        if point1_is_connected or point2_is_connected:
+                            if pipe not in pipes_to_delete:
+                                pipes_to_delete.append(pipe)  # Füge diese Pipe zur Löschliste hinzu
+
+            # 3. Lösche alle markierten Pipes inklusive der Verbindungen zum Vorlauf und Rücklauf (Netz)
+            for pipe in pipes_to_delete:
+                self.removeItem(pipe)
+
+            # 4. Lösche alle markierten Items (Anlage, Speicher, Verbindungen)
+            for item in items_to_delete:
+                if item.label:
+                    self.removeItem(item.label)  # Lösche das Label
+                self.removeItem(item)
+
+                # Reduziere den Zähler für den entsprechenden Objekttyp
+                if item.item_type in self.OBJECTS and self.OBJECTS[item.item_type]['counter'] > 0:
+                    self.OBJECTS[item.item_type]['counter'] -= 1
+
+            # Aktualisiere die Positionen aller verbleibenden Generatoren
+            self.reposition_generators()
+
+            # Setze selected_item zurück
+            self.selected_item = None
+
+    def reposition_generators(self):
+        """Reposition all generators and storage from left to right with the minimum spacing and update pipes and labels."""
+        current_x = 20  # Starte immer bei einer festen x-Position (z.B. 20)
+
+        # Finde alle verbleibenden Generatoren (keine Speicher) und sortiere sie nach ihrer aktuellen x-Position
+        generators = [item for item in self.items() if isinstance(item, ComponentItem) and item.item_type != 'Storage']
+
+        # Sortiere die Generatoren nach ihrer aktuellen x-Position (falls nötig)
+        generators.sort(key=lambda item: item.pos().x())
+
+        # Aktualisiere die x-Position jedes Generators mit dem Mindestabstand
+        generator_counter = 1  # Zähler für die Generatoren
+        for generator in generators:
+            generator.setPos(QPointF(current_x, generator.pos().y()))  # Setze die neue Position
+            
+            # Speicherbreite berücksichtigen, falls mit Speicher verbunden
+            linked_storage = self.find_linked_storage(generator)
+            if linked_storage:
+                current_x += self.GENERATOR_SPACING_STORAGE + self.GENERATOR_SPACING
+            else:
+                current_x += self.GENERATOR_SPACING  # Verschiebe die x-Position für den nächsten Generator
+
+            # Aktualisiere das Label des Generators mit dem aktuellen Zähler
+            self.update_label(generator, f"{generator.item_type} {generator_counter}")
+            generator_counter += 1
+
+            # Aktualisiere alle Verbindungen (Pipes), die mit diesem Generator verbunden sind
+            self.update_pipes_for_item(generator)
+
+        # Aktualisiere die x-Position für den nächsten zu platzierenden Generator
+        self.GENERATOR_X_START = current_x
+
+        # Speicher sortieren und ebenfalls repositionieren
+        storage_counter = 1  # Zähler für die Speicher
+        storages = [item for item in self.items() if isinstance(item, ComponentItem) and item.item_type == 'Storage']
+        
+        for storage in storages:
+            # Der Speicher sollte direkt neben dem Generator platziert werden, mit dem er verbunden ist
+            linked_generator = self.find_linked_generator(storage)
+            if linked_generator:
+                storage.setPos(QPointF(linked_generator.pos().x() + self.GENERATOR_SPACING, linked_generator.pos().y()))
+            
+            # Aktualisiere das Label des Speichers mit dem aktuellen Zähler
+            self.update_label(storage, f"Storage {storage_counter}")
+            storage_counter += 1
+
+            # Aktualisiere die Verbindungen für den Speicher
+            self.update_pipes_for_item(storage)
+
+    def find_linked_generator(self, storage):
+        """Find the generator linked to the given storage unit."""
+        for pipe in self.items():
+            if isinstance(pipe, Pipe):
+                # Prüfen, ob pipe.point1 ein ConnectionPoint ist und mit dem Speicher verbunden ist
+                if isinstance(pipe.point1, ConnectionPoint) and pipe.point1.parent == storage:
+                    if isinstance(pipe.point2, ConnectionPoint) and isinstance(pipe.point2.parent, ComponentItem):
+                        return pipe.point2.parent  # Rückgabe des Generators
+                # Prüfen, ob pipe.point2 ein ConnectionPoint ist und mit dem Speicher verbunden ist
+                if isinstance(pipe.point2, ConnectionPoint) and pipe.point2.parent == storage:
+                    if isinstance(pipe.point1, ConnectionPoint) and isinstance(pipe.point1.parent, ComponentItem):
+                        return pipe.point1.parent  # Rückgabe des Generators
+        return None
+    
+    def find_linked_storage(self, generator):
+        """Find the storage unit linked to the given generator."""
+        for pipe in self.items():
+            if isinstance(pipe, Pipe):
+                # Prüfen, ob pipe.point1 ein ConnectionPoint ist und mit dem Generator verbunden ist
+                if isinstance(pipe.point1, ConnectionPoint) and pipe.point1.parent == generator:
+                    if isinstance(pipe.point2, ConnectionPoint) and pipe.point2.parent.item_type == 'Storage':
+                        return pipe.point2.parent  # Rückgabe des Speichers
+                # Prüfen, ob pipe.point2 ein ConnectionPoint ist und mit dem Generator verbunden ist
+                if isinstance(pipe.point2, ConnectionPoint) and pipe.point2.parent == generator:
+                    if isinstance(pipe.point1, ConnectionPoint) and pipe.point1.parent.item_type == 'Storage':
+                        return pipe.point1.parent  # Rückgabe des Speichers
+        return None
+
+    def update_pipes_for_item(self, item):
+        """Update all pipes connected to the given item."""
+        for pipe in self.items():
+            if isinstance(pipe, Pipe):
+                # Prüfen, ob die Pipe mit dem gegebenen Item verbunden ist
+                point1_is_connected = isinstance(pipe.point1, ConnectionPoint) and pipe.point1.parent == item
+                point2_is_connected = isinstance(pipe.point2, ConnectionPoint) and pipe.point2.parent == item
+
+                if point1_is_connected or point2_is_connected:
+                    pipe.update_path()  # Aktualisiere den Pfad der Pipe
+
+    def delete_all(self):
+        """Delete all components, pipes, and reset all counters."""
+        # 1. Lösche alle Items in der Szene (Generatoren, Speicher, Verbindungen, Labels)
+        items_to_delete = [item for item in self.items() if isinstance(item, (ComponentItem, Pipe))]
+        
+        for item in items_to_delete:
+            if isinstance(item, ComponentItem) and item.label:
+                self.removeItem(item.label)  # Lösche das Label
+            self.removeItem(item)  # Entferne das Item oder die Pipe
+        
+        # 2. Zähler der verschiedenen Objekttypen zurücksetzen
+        for key in self.OBJECTS.keys():
+            self.OBJECTS[key]['counter'] = 0  # Setze den Zähler für alle Objekttypen zurück
+
+        # 3. Anfangswerte zurücksetzen (z.B. x-Position)
+        self.GENERATOR_X_START = 20  # Reset der Startposition für die nächste Anlage
+        self.selected_item = None  # Setze das aktuell ausgewählte Item zurück
+
 
 class ComponentItem(QGraphicsItem):
-    def __init__(self, position, item_type, color, geometry):
+    def __init__(self, position, item_type, color, geometry, flow_line_color=Qt.red, return_line_color=Qt.blue):
         """Create a general visual representation of a component"""
         super().__init__()
 
         self.color = color
         self.item_type = item_type
         self.geometry = geometry  # The geometry is now passed in from the scene
+        self.flow_line_color = flow_line_color
+        self.return_line_color = return_line_color
+        self.shape = SchematicScene.OBJECTS[item_type]['shape']  # Get the shape type from OBJECTS
         self.setPos(position)
 
         # Set the flags for interaction
@@ -339,34 +614,38 @@ class ComponentItem(QGraphicsItem):
     def paint(self, painter, option, widget=None):
         """Draw the item with the specified shape and color."""
         painter.setBrush(self.color)
-        painter.setPen(Qt.black)
 
-        if self.item_type == 'Solar':
-            # Drawing circular shape for Solar
-            painter.drawEllipse(self.boundingRect())
-        elif self.item_type == 'CHP':
-            # Drawing rectangular shape for CHP
-            painter.drawRect(self.boundingRect())
-        elif self.item_type == 'Storage':
-            # Drawing a cylindrical shape (represented as a tall rectangle for simplicity)
-            painter.drawRect(self.boundingRect())
+        # Überprüfe, ob das Objekt ausgewählt ist
+        if self.isSelected():
+            # Wenn das Objekt ausgewählt ist, zeichne den Rahmen dicker und in einer auffälligen Farbe
+            painter.setPen(QPen(Qt.red, 3))  # Roter, dicker Rahmen für ausgewähltes Objekt
         else:
-            # Default drawing for unknown types
+            # Normaler schwarzer Rahmen für nicht ausgewählte Objekte
+            painter.setPen(QPen(Qt.black, 1))  # Dünner schwarzer Rahmen
+
+        # Drawing based on the shape type
+        if self.shape == 'circle':
+            painter.drawEllipse(self.boundingRect())
+        elif self.shape == 'rect':
             painter.drawRect(self.boundingRect())
+        elif self.shape == 'ellipse':
+            painter.drawEllipse(self.boundingRect())  # You can add more custom shapes here
+        else:
+            painter.drawRect(self.boundingRect())  # Fallback: draw rectangle by default
 
     def create_connection_points(self):
         """Create connection points (ports) for the item based on the shape."""
         # Add connection points based on the item type (generator, storage, consumer)
         if self.item_type == 'Storage':
             # Storage has 4 connection points: top-left, top-right, bottom-left, bottom-right
-            self.connection_points.append(self.create_connection_point(0, 0.1, 'left', Qt.red))  # Top-left
-            self.connection_points.append(self.create_connection_point(1, 0.1, 'right', Qt.red))  # Top-right
-            self.connection_points.append(self.create_connection_point(0, 0.9, 'left', Qt.blue))  # Bottom-left
-            self.connection_points.append(self.create_connection_point(1, 0.9, 'right', Qt.blue))  # Bottom-right
+            self.connection_points.append(self.create_connection_point(0, 0.1, 'left', self.flow_line_color))  # Top-left
+            self.connection_points.append(self.create_connection_point(1, 0.1, 'right', self.flow_line_color))  # Top-right
+            self.connection_points.append(self.create_connection_point(0, 0.9, 'left', self.return_line_color))  # Bottom-left
+            self.connection_points.append(self.create_connection_point(1, 0.9, 'right', self.return_line_color))  # Bottom-right
         else:
             # Generators and consumers have 2 connection points: top (supply) and bottom (return)
-            self.connection_points.append(self.create_connection_point(0.5, 0, 'up', Qt.red))  # Top (middle)
-            self.connection_points.append(self.create_connection_point(0.5, 1, 'down', Qt.blue))  # Bottom (middle)
+            self.connection_points.append(self.create_connection_point(0.5, 0, 'up', self.flow_line_color))  # Top (middle)
+            self.connection_points.append(self.create_connection_point(0.5, 1, 'down', self.return_line_color))  # Bottom (middle)
 
     def create_connection_point(self, x_offset, y_offset, direction, color):
         """Helper method to create a connection point at a relative position based on the bounding rectangle."""
@@ -376,7 +655,7 @@ class ComponentItem(QGraphicsItem):
         return point
 
     def itemChange(self, change, value):
-        """Update connected pipes and label when the component moves."""
+        """Update connected pipes, label, and background when the component moves."""
         if change == QGraphicsItem.ItemPositionChange:
             # Call snap_to_grid on the scene to adjust the movement to the grid
             scene = self.scene()
@@ -384,13 +663,42 @@ class ComponentItem(QGraphicsItem):
                 value = scene.snap_to_grid(value)  # Snap to grid when moved
 
             if self.scene():  # Check if the item is in a scene
+                # Aktualisiere alle Pipes, die mit dem Item verbunden sind
                 for pipe in self.scene().items():
                     if isinstance(pipe, Pipe):
                         pipe.update_path()  # Update the path of all pipes
 
+                # Aktualisiere die Position des Labels
                 if self.label:
-                    self.label.setPos(value.x() - 20, value.y() + 40)
+                    padding = 10  # Padding für die Positionierung
 
+                    if self.item_type == 'Storage':
+                        # Label über dem Speicher platzieren
+                        label_x = value.x() - self.boundingRect().width() / 2 + padding
+                        label_y = value.y() - self.boundingRect().height() - padding
+                    else:
+                        # Label unter anderen Komponenten platzieren
+                        label_x = value.x() - self.boundingRect().width() / 2 + padding
+                        label_y = value.y() + self.boundingRect().height() + padding
+
+                    # Setze die Position des Labels
+                    self.label.setPos(label_x, label_y)
+
+                    # Aktualisiere die Position und Größe der Hintergrundbox (background_rect)
+                    if hasattr(self, 'background_rect') and self.background_rect:
+                        label_rect = self.label.boundingRect()
+
+                        # Berechne die Szene-Position des Labels
+                        scene_label_pos = self.label.scenePos()
+                        background_rect_x = scene_label_pos.x() - padding / 2
+                        background_rect_y = scene_label_pos.y() - padding / 2
+                        background_rect_width = label_rect.width() + padding
+                        background_rect_height = label_rect.height() + padding
+
+                        # Setze die neue Position und Größe des Hintergrundrechtecks
+                        self.background_rect.setRect(background_rect_x, background_rect_y, background_rect_width, background_rect_height)
+
+                # Aktualisiere die Position der Verbindungs-Punkte
                 for point in self.connection_points:
                     point.update_position()
 
