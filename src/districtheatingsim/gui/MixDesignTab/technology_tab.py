@@ -9,8 +9,10 @@ import os
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QLineEdit, 
-    QListWidget, QDialog, QFileDialog, QScrollArea, QAbstractItemView
+    QListWidget, QDialog, QFileDialog, QScrollArea, QAbstractItemView,
+    QSplitter
 )
+from PyQt5.QtGui import QColor
 from PyQt5.QtCore import pyqtSignal
 import pandas as pd
 from matplotlib.figure import Figure
@@ -18,6 +20,8 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 from heat_generators.heat_generation_mix import *
 from gui.MixDesignTab.heat_generator_dialogs import TechInputDialog
+
+from gui.MixDesignTab.generator_schematic import SchematicScene, CustomGraphicsView
 
 class CustomListWidget(QListWidget):
     """
@@ -74,7 +78,7 @@ class TechnologyTab(QWidget):
         Initializes the file input widgets.
         """
         self.FilenameInput = QLineEdit('')
-        self.selectFileButton = QPushButton('Ergebnis-CSV auswählen')
+        self.selectFileButton = QPushButton('Lastgang-CSV auswählen')
         self.selectFileButton.clicked.connect(self.on_selectFileButton_clicked)
 
     def updateDefaultPath(self, new_base_path):
@@ -97,7 +101,7 @@ class TechnologyTab(QWidget):
         self.setupFileInputs()
         self.setupScaleFactor()
         self.setupTechnologySelection()
-        self.setupPlotArea()
+        self.setupPlotAndSchematic()
         self.setLayout(self.createMainLayout())
 
     def createMainScrollArea(self):
@@ -115,9 +119,8 @@ class TechnologyTab(QWidget):
         Sets up the file input widgets and layout.
         """
         layout = QHBoxLayout()
-        layout.addWidget(QLabel('Eingabe csv-Datei berechneter Lastgang Wärmenetz'))
-        layout.addWidget(self.FilenameInput)
         layout.addWidget(self.selectFileButton)
+        layout.addWidget(self.FilenameInput)
         self.mainLayout.addLayout(layout)
         self.FilenameInput.textChanged.connect(self.loadFileAndPlot)
 
@@ -230,6 +233,7 @@ class TechnologyTab(QWidget):
             new_tech = self.createTechnology(tech_type, dialog.getInputs())
             self.tech_objects.append(new_tech)
             self.updateTechList()
+            self.addTechToScene(new_tech)  # Füge das neue Objekt zur Szene hinzu
 
     def editTech(self, item):
         """
@@ -249,6 +253,7 @@ class TechnologyTab(QWidget):
             updated_tech.name = selected_tech.name
             self.tech_objects[selected_tech_index] = updated_tech
             self.updateTechList()
+            self.updateTechInScene(updated_tech)  # Aktualisiere das Objekt in der Szene
 
     def removeSelectedTech(self):
         """
@@ -256,6 +261,8 @@ class TechnologyTab(QWidget):
         """
         selected_row = self.techList.currentRow()
         if selected_row != -1:
+            removed_tech = self.tech_objects[selected_row]
+            self.removeTechFromScene(removed_tech)  # Entferne das Objekt aus der Szene
             self.techList.takeItem(selected_row)
             del self.tech_objects[selected_row]
             self.updateTechList()
@@ -266,6 +273,7 @@ class TechnologyTab(QWidget):
         """
         self.techList.clear()
         self.tech_objects = []
+        self.schematic_scene.clear()  # Entferne alle Objekte aus der Szene
 
     def updateTechList(self):
         """
@@ -315,14 +323,29 @@ class TechnologyTab(QWidget):
         layout.addWidget(self.mainScrollArea)
         return layout
 
-    def setupPlotArea(self):
+    def setupPlotAndSchematic(self):
         """
-        Sets up the plot area for displaying graphs.
+        Sets up both the plot area and the schematic scene area.
         """
-        self.plotLayout = QVBoxLayout()
-        self.plotCanvas = None
-        self.createPlotCanvas()
-        self.mainLayout.addLayout(self.plotLayout)
+        # Create a QSplitter to split the plot area and the schematic scene
+        splitter = QSplitter(self)
+
+        # Create the plot canvas on the left side
+        self.plotLayout = QVBoxLayout()  # Füge das Plot-Layout hinzu
+        self.plotWidget = QWidget()
+        self.plotWidget.setLayout(self.plotLayout)
+        self.plotFigure = Figure(figsize=(4, 3))
+        self.plotCanvas = FigureCanvas(self.plotFigure)
+        self.plotLayout.addWidget(self.plotCanvas)
+        splitter.addWidget(self.plotWidget)
+
+        # Create the schematic scene on the right side
+        self.schematic_scene = SchematicScene(500, 500)
+        self.schematic_view = CustomGraphicsView(self.schematic_scene)
+        splitter.addWidget(self.schematic_view)
+
+        # Add the splitter to the main layout
+        self.mainLayout.addWidget(splitter)
 
     def createPlotCanvas(self):
         """
@@ -331,6 +354,7 @@ class TechnologyTab(QWidget):
         if self.plotCanvas:
             self.plotLayout.removeWidget(self.plotCanvas)
             self.plotCanvas.deleteLater()
+
         self.plotFigure = Figure(figsize=(6, 6))
         self.plotCanvas = FigureCanvas(self.plotFigure)
         self.plotCanvas.setMinimumSize(500, 500)
@@ -392,3 +416,43 @@ class TechnologyTab(QWidget):
         ax.text(0.5, 0.5, message, ha='center', va='center', transform=ax.transAxes)
         ax.set_axis_off()
         self.plotCanvas.draw()
+
+    def addTechToScene(self, tech):
+        """
+        Fügt die Technologie zur SchematicScene hinzu.
+        """
+        if tech.name.startswith('Solarthermie'):
+            self.schematic_scene.add_generator('Solar')
+        elif tech.name.startswith('BHKW'):
+            self.schematic_scene.add_generator('CHP')
+        if tech.name.startswith('Holzgas-BHKW'):
+            self.schematic_scene.add_generator('Wood-CHP')
+        elif tech.name.startswith('Geothermie'):
+            self.schematic_scene.add_generator('Geothermal Heat Pump')
+        elif tech.name.startswith('Abwärme'):
+            self.schematic_scene.add_generator('Waste Heat Pump')
+        elif tech.name.startswith('Flusswasser'):
+            self.schematic_scene.add_generator('River Heat Pump')
+        elif tech.name.startswith('Biomassekessel'):
+            self.schematic_scene.add_generator('Biomass Boiler')
+        elif tech.name.startswith('Gaskessel'):
+            self.schematic_scene.add_generator('Gas Boiler')
+        elif tech.name.startswith('AqvaHeat'):
+            self.schematic_scene.add_generator('Aqva Heat Pump')
+
+    def updateTechInScene(self, tech):
+        """
+        Aktualisiert das entsprechende Objekt in der Szene.
+        """
+        if hasattr(tech, 'scene_item') and tech.scene_item:
+            # Aktualisiere Position und Farbe des Szene-Objekts
+            tech.scene_item.setPos(tech.x_pos, tech.y_pos)
+            tech.scene_item.setBrush(QColor(tech.color))
+
+    def removeTechFromScene(self, tech):
+        """
+        Entfernt die Technologie aus der Szene.
+        """
+        if hasattr(tech, 'scene_item') and tech.scene_item:
+            self.schematic_scene.removeItem(tech.scene_item)
+            tech.scene_item = None  # Setze das Szene-Objekt auf None
