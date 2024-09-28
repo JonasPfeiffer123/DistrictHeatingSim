@@ -43,7 +43,6 @@ class SchematicWindow(QMainWindow):
         self.add_river_hp_button = QPushButton("Add River Heat Pump")
         self.add_waste_hp_button = QPushButton("Add Waste Heat Pump")
         self.add_aqva_hp_button = QPushButton("Add Aqva Heat Pump")
-        self.add_consumer_button = QPushButton("Add Consumer")
         self.delete_button = QPushButton("Delete Selected")
         self.delete_all_button = QPushButton("Delete All")
 
@@ -61,7 +60,6 @@ class SchematicWindow(QMainWindow):
         button_layout.addWidget(self.add_river_hp_button)
         button_layout.addWidget(self.add_waste_hp_button)
         button_layout.addWidget(self.add_aqva_hp_button)
-        button_layout.addWidget(self.add_consumer_button)
         button_layout.addWidget(self.delete_button)
         button_layout.addWidget(self.delete_all_button)
 
@@ -81,7 +79,6 @@ class SchematicWindow(QMainWindow):
         self.add_river_hp_button.clicked.connect(lambda: self.scene.add_component(item_name="River Heat Pump", storage=False))
         self.add_waste_hp_button.clicked.connect(lambda: self.scene.add_component(item_name="Waste Heat Pump", storage=False))
         self.add_aqva_hp_button.clicked.connect(lambda: self.scene.add_component(item_name="Aqva Heat Pump", storage=False))
-        self.add_consumer_button.clicked.connect(lambda: self.scene.add_component(item_name="Consumer", storage=False))
         self.delete_button.clicked.connect(self.scene.delete_selected)
         self.delete_all_button.clicked.connect(self.scene.delete_all)
 
