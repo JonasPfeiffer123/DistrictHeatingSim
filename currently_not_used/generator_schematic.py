@@ -1,15 +1,11 @@
 """
 Filename: generator_schematic.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-27
+Date: 2024-09-28
 Description: Custom QGraphicsScene and QGraphicsView classes for a generator schematic. Also includes generator schematic items (ComponentItem, Pipe). Complex example for a schematic editor with custom items and connections.
 """
 
-#### To do: ####
-# Consumer component handling: Should always be in the schematic. Also not deletable. But behaves like a generator regarding connections and labels and can be connected to the parallel lines. Also, it should change its position when other components are added or removed. It's on the right side of the last generator. At the beginning, it's the only component in the schematic.
-# Parallel Lines should be more dynamic and adjust to the scene size. They should be connected to the scene's width and not hardcoded. Also the labels should be centered. The ammount of parallel lines should be dynamic and depend on the ammount of generators.
-
-from PyQt5.QtWidgets import (QGraphicsScene, QGraphicsPathItem, QGraphicsLineItem, QGraphicsItem, QGraphicsView, QGraphicsRectItem)
+from PyQt5.QtWidgets import (QGraphicsScene, QGraphicsPathItem, QGraphicsLineItem, QGraphicsItem, QGraphicsView, QGraphicsRectItem, QGraphicsTextItem)
 from PyQt5.QtCore import Qt, QPointF, QRectF, QLineF, pyqtSignal
 from PyQt5.QtGui import QPen, QColor, QPainterPath, QFont, QPainter
 
@@ -171,7 +167,14 @@ class SchematicScene(CustomGraphicsScene):
 
         self.selected_item = None  # Track selected item
 
-        self.create_parallel_lines()
+        # Add the consumer first but don't draw the parallel lines yet
+        self.add_consumer_net('Consumer', connect_to_lines=False)
+
+        # Parallel lines are initialized without extending them (no generators yet)
+        self.vorlauf_line = None
+        self.ruecklauf_line = None
+
+        #self.consumer.create_parallel_lines()
 
         # Verbinde das selectionChanged-Signal mit einer Methode zum Aktualisieren
         self.selectionChanged.connect(self.update_selected_item)
@@ -195,29 +198,73 @@ class SchematicScene(CustomGraphicsScene):
         return QPointF(x, y)
     
     def create_parallel_lines(self):
-        """Create the parallel Vorlauf (red) and Rücklauf (blue) lines and add labels"""
-        scene_width = self.width()
+        """Create or update the parallel Vorlauf (red) and Rücklauf (blue) lines and add labels"""
+        # Entferne bestehende Leitungen und Labels
+        if hasattr(self, 'vorlauf_line') and self.vorlauf_line:
+            self.removeItem(self.vorlauf_line)
+        if hasattr(self, 'ruecklauf_line') and self.ruecklauf_line:
+            self.removeItem(self.ruecklauf_line)
 
-        # Vorlauf (red line)
-        self.vorlauf_line = QGraphicsLineItem(self.GENERATOR_X_START, self.generator_y - self.LINE_Y_OFFSET_GENERATOR, scene_width, self.generator_y - self.LINE_Y_OFFSET_GENERATOR)
+        # Entferne bestehende Labels
+        for item in self.items():
+            if isinstance(item, QGraphicsTextItem) and item.toPlainText() in ["Vorlauf", "Rücklauf"]:
+                self.removeItem(item)
+
+        # Überprüfe, ob Erzeuger oder Speicher vorhanden sind
+        generators_and_storage = [item for item in self.items() if isinstance(item, ComponentItem) and item != self.consumer]
+        
+        if not generators_and_storage:
+            # Keine Erzeuger oder Speicher vorhanden, also keine Leitungen zeichnen
+            return
+
+        # Finde die Position des letzten Erzeugers oder Speichers
+        last_item_x = max(item.pos().x() for item in generators_and_storage)
+
+        # Zeichne die Leitungen vom Consumer bis zum letzten Erzeuger oder Speicher
+        start_x = self.consumer.pos().x()
+        end_x = last_item_x
+
+        # Zeichne Vorlauf (rote Linie)
+        self.vorlauf_line = QGraphicsLineItem(start_x, self.generator_y - self.LINE_Y_OFFSET_GENERATOR, end_x, self.generator_y - self.LINE_Y_OFFSET_GENERATOR)
         self.vorlauf_line.setPen(QPen(self.FLOW_LINE_COLOR, self.LINE_THICKNESS))
         self.addItem(self.vorlauf_line)
 
-        # Rücklauf (blue line)
-        self.ruecklauf_line = QGraphicsLineItem(self.GENERATOR_X_START, self.generator_y + self.LINE_Y_OFFSET_GENERATOR, scene_width, self.generator_y + self.LINE_Y_OFFSET_GENERATOR)
+        # Zeichne Rücklauf (blaue Linie)
+        self.ruecklauf_line = QGraphicsLineItem(start_x, self.generator_y + self.LINE_Y_OFFSET_GENERATOR, end_x, self.generator_y + self.LINE_Y_OFFSET_GENERATOR)
         self.ruecklauf_line.setPen(QPen(self.RETURN_LINE_COLOR, self.LINE_THICKNESS))
         self.addItem(self.ruecklauf_line)
 
-        # Add label for Vorlauf (above the red line)
+        # Füge Labels hinzu, die zwischen Consumer und letztem Erzeuger/Speicher zentriert sind
+        self.update_parallel_labels(start_x, end_x)
+
+        # Nach dem Erstellen der Leitungen aktualisiere die Pipes, die mit den Leitungen verbunden sind
+        self.update_pipes_connected_to_lines()
+
+        # Consumer mit den Leitungen verbinden, falls das noch nicht geschehen ist
+        self.connect_items_to_lines(self.consumer)
+
+    def update_parallel_labels(self, start_x, end_x):
+        """Update the labels for the Vorlauf and Rücklauf lines dynamically."""
+        # Berechne die Mitte zwischen Start und Ende
+        scene_width = end_x - start_x
+        center_x = start_x + scene_width / 2
+
+        # Füge Label für Vorlauf (oberhalb der roten Linie) hinzu
         vorlauf_label = self.addText("Vorlauf", self.TEXT_FONT)
         vorlauf_label.setDefaultTextColor(self.FLOW_LINE_COLOR)
-        vorlauf_label.setPos(scene_width / 2 - vorlauf_label.boundingRect().width() / 2, self.generator_y - self.LINE_Y_OFFSET_GENERATOR - 30)
+        vorlauf_label.setPos(center_x - vorlauf_label.boundingRect().width() / 2, self.generator_y - self.LINE_Y_OFFSET_GENERATOR - 30)
 
-        # Add label for Rücklauf (below the blue line)
+        # Füge Label für Rücklauf (unterhalb der blauen Linie) hinzu
         ruecklauf_label = self.addText("Rücklauf", self.TEXT_FONT)
         ruecklauf_label.setDefaultTextColor(self.RETURN_LINE_COLOR)
-        ruecklauf_label.setPos(scene_width / 2 - ruecklauf_label.boundingRect().width() / 2, self.generator_y + self.LINE_Y_OFFSET_GENERATOR + 10)
+        ruecklauf_label.setPos(center_x - ruecklauf_label.boundingRect().width() / 2, self.generator_y + self.LINE_Y_OFFSET_GENERATOR + 10)
 
+    def update_pipes_connected_to_lines(self):
+        """Update pipes that are connected to the parallel lines."""
+        for pipe in self.pipes:
+            if not isinstance(pipe.point1, ConnectionPoint) or not isinstance(pipe.point2, ConnectionPoint):
+                # Pipe ist mit einer Linie verbunden
+                pipe.update_path()
 
     def add_generator(self, item_name, connect_to_lines=True):
         """Add a generator at a fixed position and optionally connect it to the parallel lines"""
@@ -240,6 +287,9 @@ class SchematicScene(CustomGraphicsScene):
         label_text = f'{item_name} {item_counter}'
         self.update_label(generator, label_text)
 
+        # Aktualisiere die parallelen Leitungen
+        self.create_parallel_lines()
+
         if connect_to_lines:
             self.connect_items_to_lines(generator)
 
@@ -250,8 +300,8 @@ class SchematicScene(CustomGraphicsScene):
         """Helper function to create and add a storage unit with custom geometry"""
         position = self.snap_to_grid(position)
 
-        item_color = self.OBJECTS[item_name]['color']  # Color of the generator
-        item_geometry = self.OBJECTS[item_name]['geometry']  # Geometry of the generator
+        item_color = self.OBJECTS[item_name]['color']  # Color of the storage
+        item_geometry = self.OBJECTS[item_name]['geometry']  # Geometry of the storage
 
         self.OBJECTS[item_name]['counter'] += 1  # Increment the counter for the storage
         item_counter = self.OBJECTS[item_name]['counter']  # Get the current count for the storage
@@ -278,13 +328,16 @@ class SchematicScene(CustomGraphicsScene):
         # Connect generator to storage and storage to consumer
         self.connect_generator_to_storage(generator, storage)
 
+        # Aktualisiere die parallelen Leitungen
+        self.create_parallel_lines()
+
         # Connect the storage to the parallel lines
         self.connect_items_to_lines(storage, is_storage=True)
 
-    def add_consumer_net(self, item_name):
+    def add_consumer_net(self, item_name, connect_to_lines=False):
         """Add the consumer (network)"""
         if self.consumer is None:
-            position = QPointF(self.GENERATOR_X_START, self.generator_y)  # Vertically center the generator
+            position = QPointF(self.GENERATOR_X_START, self.generator_y)  # Place consumer at Start_x
             position = self.snap_to_grid(position)  # Snap the position to the grid
 
             item_color = self.OBJECTS[item_name]['color']  # Color of the consumer
@@ -295,11 +348,12 @@ class SchematicScene(CustomGraphicsScene):
             self.addItem(self.consumer)
             self.update_label(self.consumer, item_name)
 
-            # Connect the component to the Vorlauf and Rücklauf lines
-            self.connect_items_to_lines(self.consumer)
+            # Deaktiviere Bewegung und Auswahl für den Consumer
+            self.consumer.setFlag(QGraphicsItem.ItemIsMovable, False)
+            self.consumer.setFlag(QGraphicsItem.ItemIsSelectable, False)
 
-            # Update the position for the next generator (place it to the right)
-            self.GENERATOR_X_START += self.GENERATOR_SPACING  # Shift by a fixed distance
+            # Aktualisiere die Position für den nächsten Generator (platziere ihn rechts)
+            self.GENERATOR_X_START += self.GENERATOR_SPACING  # Verschiebe um eine feste Distanz
 
     def update_label(self, item, new_text):
         """Update the label of a given item with new text."""
@@ -378,6 +432,10 @@ class SchematicScene(CustomGraphicsScene):
             
     def connect_items_to_lines(self, component, is_storage=False):
         """Connect a component to the parallel Vorlauf (red) and Rücklauf (blue) lines"""
+
+        if not hasattr(self, 'vorlauf_line') or not self.vorlauf_line:
+            return  # Leitungen existieren nicht, können keine Verbindung herstellen
+
         # Vorlauf connection (red line) to top of component
         if not is_storage:
             # Connect the top (supply) of the generator to the Vorlauf (red line)
@@ -421,112 +479,89 @@ class SchematicScene(CustomGraphicsScene):
                 self.add_generator(item_name)
 
     def delete_selected(self):
-        """Delete the selected component, its connections, and any associated storage or generator."""
-        if self.selected_item:
-            # Finde heraus, ob die ausgewählte Komponente eine Anlage oder ein Speicher ist
-            item_name = self.selected_item.item_type  # Typ der ausgewählten Komponente
+        """Delete the selected component, ensuring that connected generators and storage are deleted together."""
+        if self.selected_item and isinstance(self.selected_item, ComponentItem) and self.selected_item != self.consumer:
+            # Erstelle eine Liste mit Generatoren und zugehörigen Speichern
+            generators_with_storage = []
+            generators_without_storage = []
 
-            # Liste der zu löschenden Objekte (Anlage/Speicher und deren Verbindungen)
-            items_to_delete = [self.selected_item]
+            # Durchlaufe alle Items in der Szene und sortiere sie in die entsprechenden Listen
+            for item in self.items():
+                if isinstance(item, ComponentItem) and item.item_type != 'Storage' and item != self.consumer:
+                    linked_storage = self.find_linked_storage(item)
+                    if linked_storage:
+                        generators_with_storage.append((item, linked_storage))
+                    else:
+                        generators_without_storage.append(item)
 
-            # 1. Finde alle Pipes, die mit der ausgewählten Komponente verbunden sind
-            pipes_to_delete = []
-            for pipe in self.items():
-                if isinstance(pipe, Pipe):
-                    # Prüfen, ob pipe.point1 oder pipe.point2 mit der ausgewählten Komponente verbunden sind
-                    point1_is_connected = isinstance(pipe.point1, ConnectionPoint) and pipe.point1.parent == self.selected_item
-                    point2_is_connected = isinstance(pipe.point2, ConnectionPoint) and pipe.point2.parent == self.selected_item
+            # Prüfe, ob der ausgewählte Item ein Speicher ist und lösche auch den zugehörigen Generator
+            if self.selected_item.item_type == 'Storage':
+                # Finde den Generator, der mit dem Speicher verbunden ist
+                linked_generator = self.find_linked_generator(self.selected_item)
+                if linked_generator:
+                    generators_with_storage = [(gen, storage) for gen, storage in generators_with_storage if gen != linked_generator and storage != self.selected_item]
+                else:
+                    generators_with_storage = [(gen, storage) for gen, storage in generators_with_storage if storage != self.selected_item]
+            else:
+                # Der ausgewählte Item ist ein Generator, lösche auch den zugehörigen Speicher
+                linked_storage = self.find_linked_storage(self.selected_item)
+                if linked_storage:
+                    generators_with_storage = [(gen, storage) for gen, storage in generators_with_storage if gen != self.selected_item and storage != linked_storage]
+                else:
+                    generators_without_storage = [item for item in generators_without_storage if item != self.selected_item]
 
-                    if point1_is_connected or point2_is_connected:
-                        pipes_to_delete.append(pipe)  # Diese Pipe ist verbunden und soll gelöscht werden
+            # Lösche alles außer dem Consumer
+            self.delete_all()
 
-                        # Prüfe, ob eine andere Komponente mit der Pipe verbunden ist und füge sie zur Löschliste hinzu
-                        if point1_is_connected and isinstance(pipe.point2, ConnectionPoint) and pipe.point2.parent != self.selected_item:
-                            items_to_delete.append(pipe.point2.parent)  # Verbundene Komponente hinzufügen
-                        if point2_is_connected and isinstance(pipe.point1, ConnectionPoint) and pipe.point1.parent != self.selected_item:
-                            items_to_delete.append(pipe.point1.parent)  # Verbundene Komponente hinzufügen
+            # Füge die Generatoren und Speicher in der ursprünglichen Reihenfolge wieder hinzu
+            for generator, storage in sorted(generators_with_storage, key=lambda i: i[0].pos().x()):
+                self.add_generator_with_storage(generator.item_type)
 
-            # 2. Finde alle Pipes, die mit verbundenen Komponenten (z.B. Speicher) zum Netz verbunden sind
-            for item in items_to_delete:
-                for pipe in self.items():
-                    if isinstance(pipe, Pipe):
-                        # Prüfen, ob die Pipe mit einer Komponente aus items_to_delete verbunden ist
-                        point1_is_connected = isinstance(pipe.point1, ConnectionPoint) and pipe.point1.parent == item
-                        point2_is_connected = isinstance(pipe.point2, ConnectionPoint) and pipe.point2.parent == item
+            for generator in sorted(generators_without_storage, key=lambda i: i.pos().x()):
+                self.add_generator(generator.item_type)
 
-                        if point1_is_connected or point2_is_connected:
-                            if pipe not in pipes_to_delete:
-                                pipes_to_delete.append(pipe)  # Füge diese Pipe zur Löschliste hinzu
-
-            # 3. Lösche alle markierten Pipes inklusive der Verbindungen zum Vorlauf und Rücklauf (Netz)
-            for pipe in pipes_to_delete:
-                self.removeItem(pipe)
-
-            # 4. Lösche alle markierten Items (Anlage, Speicher, Verbindungen)
-            for item in items_to_delete:
-                if item.label:
-                    self.removeItem(item.label)  # Lösche das Label
-                self.removeItem(item)
-
-                # Reduziere den Zähler für den entsprechenden Objekttyp
-                if item.item_type in self.OBJECTS and self.OBJECTS[item.item_type]['counter'] > 0:
-                    self.OBJECTS[item.item_type]['counter'] -= 1
-
-            # Aktualisiere die Positionen aller verbleibenden Generatoren
-            self.reposition_generators()
-
-            # Setze selected_item zurück
+            # Setze das ausgewählte Item zurück
             self.selected_item = None
 
-    def reposition_generators(self):
-        """Reposition all generators and storage from left to right with the minimum spacing and update pipes and labels."""
-        current_x = 20  # Starte immer bei einer festen x-Position (z.B. 20)
-
-        # Finde alle verbleibenden Generatoren (keine Speicher) und sortiere sie nach ihrer aktuellen x-Position
-        generators = [item for item in self.items() if isinstance(item, ComponentItem) and item.item_type != 'Storage']
-
-        # Sortiere die Generatoren nach ihrer aktuellen x-Position (falls nötig)
-        generators.sort(key=lambda item: item.pos().x())
-
-        # Aktualisiere die x-Position jedes Generators mit dem Mindestabstand
-        generator_counter = 1  # Zähler für die Generatoren
-        for generator in generators:
-            generator.setPos(QPointF(current_x, generator.pos().y()))  # Setze die neue Position
-            
-            # Speicherbreite berücksichtigen, falls mit Speicher verbunden
-            linked_storage = self.find_linked_storage(generator)
-            if linked_storage:
-                current_x += self.GENERATOR_SPACING_STORAGE + self.GENERATOR_SPACING
-            else:
-                current_x += self.GENERATOR_SPACING  # Verschiebe die x-Position für den nächsten Generator
-
-            # Aktualisiere das Label des Generators mit dem aktuellen Zähler
-            self.update_label(generator, f"{generator.item_type} {generator_counter}")
-            generator_counter += 1
-
-            # Aktualisiere alle Verbindungen (Pipes), die mit diesem Generator verbunden sind
-            self.update_pipes_for_item(generator)
-
-        # Aktualisiere die x-Position für den nächsten zu platzierenden Generator
-        self.GENERATOR_X_START = current_x
-
-        # Speicher sortieren und ebenfalls repositionieren
-        storage_counter = 1  # Zähler für die Speicher
-        storages = [item for item in self.items() if isinstance(item, ComponentItem) and item.item_type == 'Storage']
+    def delete_all(self):
+        """Delete all components, pipes, and reset all counters except for the consumer and its connections."""
+        # Collect all items except for the consumer and the pipes connected to the consumer
+        items_to_delete = [
+            item for item in self.items() 
+            if isinstance(item, (ComponentItem, Pipe)) 
+            and (item != self.consumer and not self.is_connected_to_consumer(item))
+        ]
         
-        for storage in storages:
-            # Der Speicher sollte direkt neben dem Generator platziert werden, mit dem er verbunden ist
-            linked_generator = self.find_linked_generator(storage)
-            if linked_generator:
-                storage.setPos(QPointF(linked_generator.pos().x() + self.GENERATOR_SPACING, linked_generator.pos().y()))
-            
-            # Aktualisiere das Label des Speichers mit dem aktuellen Zähler
-            self.update_label(storage, f"Storage {storage_counter}")
-            storage_counter += 1
+        # Delete all selected items
+        for item in items_to_delete:
+            if isinstance(item, ComponentItem):
+                if item.label:
+                    self.removeItem(item.label)  # Delete the label
+                if hasattr(item, 'background_rect') and item.background_rect:
+                    self.removeItem(item.background_rect)  # Delete the background rect
+            self.removeItem(item)
 
-            # Aktualisiere die Verbindungen für den Speicher
-            self.update_pipes_for_item(storage)
+        # Reset the counters for all object types
+        for key in self.OBJECTS.keys():
+            self.OBJECTS[key]['counter'] = 0  # Reset counters
 
+        # Keep the consumer and its connections intact, and reset the x position for generators
+        if self.consumer:
+            self.GENERATOR_X_START = self.consumer.pos().x() + self.GENERATOR_SPACING  # Start next to the consumer
+
+        # Da keine Erzeuger mehr vorhanden sind, entferne die parallelen Leitungen
+        self.create_parallel_lines()
+        
+        self.selected_item = None  # Reset the selected item
+
+    def is_connected_to_consumer(self, item):
+        """Helper method to check if a pipe is connected to the consumer."""
+        if isinstance(item, Pipe):
+            point1_connected = isinstance(item.point1, ConnectionPoint) and item.point1.parent == self.consumer
+            point2_connected = isinstance(item.point2, ConnectionPoint) and item.point2.parent == self.consumer
+            return point1_connected or point2_connected
+        return False
+    
     def find_linked_generator(self, storage):
         """Find the generator linked to the given storage unit."""
         for pipe in self.items():
@@ -554,36 +589,6 @@ class SchematicScene(CustomGraphicsScene):
                     if isinstance(pipe.point1, ConnectionPoint) and pipe.point1.parent.item_type == 'Storage':
                         return pipe.point1.parent  # Rückgabe des Speichers
         return None
-
-    def update_pipes_for_item(self, item):
-        """Update all pipes connected to the given item."""
-        for pipe in self.items():
-            if isinstance(pipe, Pipe):
-                # Prüfen, ob die Pipe mit dem gegebenen Item verbunden ist
-                point1_is_connected = isinstance(pipe.point1, ConnectionPoint) and pipe.point1.parent == item
-                point2_is_connected = isinstance(pipe.point2, ConnectionPoint) and pipe.point2.parent == item
-
-                if point1_is_connected or point2_is_connected:
-                    pipe.update_path()  # Aktualisiere den Pfad der Pipe
-
-    def delete_all(self):
-        """Delete all components, pipes, and reset all counters."""
-        # 1. Lösche alle Items in der Szene (Generatoren, Speicher, Verbindungen, Labels)
-        items_to_delete = [item for item in self.items() if isinstance(item, (ComponentItem, Pipe))]
-        
-        for item in items_to_delete:
-            if isinstance(item, ComponentItem) and item.label:
-                self.removeItem(item.label)  # Lösche das Label
-            self.removeItem(item)  # Entferne das Item oder die Pipe
-        
-        # 2. Zähler der verschiedenen Objekttypen zurücksetzen
-        for key in self.OBJECTS.keys():
-            self.OBJECTS[key]['counter'] = 0  # Setze den Zähler für alle Objekttypen zurück
-
-        # 3. Anfangswerte zurücksetzen (z.B. x-Position)
-        self.GENERATOR_X_START = 20  # Reset der Startposition für die nächste Anlage
-        self.selected_item = None  # Setze das aktuell ausgewählte Item zurück
-
 
 class ComponentItem(QGraphicsItem):
     def __init__(self, position, item_type, color, geometry, flow_line_color=Qt.red, return_line_color=Qt.blue):
