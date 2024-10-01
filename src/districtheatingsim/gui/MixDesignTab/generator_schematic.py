@@ -266,26 +266,28 @@ class SchematicScene(CustomGraphicsScene):
                 # Pipe ist mit einer Linie verbunden
                 pipe.update_path()
 
-    def add_generator(self, item_name, connect_to_lines=True):
+    def add_generator(self, item_type, item_name, connect_to_lines=True):
         """Add a generator at a fixed position and optionally connect it to the parallel lines"""
+        """
+        item_name: Type of the generator (e.g., 'CHP', 'Solar')
+        name: Unique name for the generator (e.g., 'BHKW_1')
+        """
         # Define the generator position based on the current x-position
         position = QPointF(self.GENERATOR_X_START, self.generator_y)
         position = self.snap_to_grid(position)
 
-        item_name = item_name  # Name of the generator (Solar, CHP)
-        item_color = self.OBJECTS[item_name]['color']  # Color of the generator
-        item_geometry = self.OBJECTS[item_name]['geometry']  # Geometry of the generator
+        item_color = self.OBJECTS[item_type]['color']  # Color of the generator
+        item_geometry = self.OBJECTS[item_type]['geometry']  # Geometry of the generator
         
-        self.OBJECTS[item_name]['counter'] += 1  # Increment the counter for the generator type
-        item_counter = self.OBJECTS[item_name]['counter']  # Get the current count for the generator
+        self.OBJECTS[item_type]['counter'] += 1  # Increment the counter for the generator type
+        item_counter = self.OBJECTS[item_type]['counter']  # Get the current count for the generator
 
         # Create and add the generator
-        generator = ComponentItem(position, item_name, item_color, item_geometry, self.FLOW_LINE_COLOR, self.RETURN_LINE_COLOR)
+        generator = ComponentItem(position, item_type, item_name, item_color, item_geometry, self.FLOW_LINE_COLOR, self.RETURN_LINE_COLOR)
         generator.create_connection_points()  # Create connection points
         self.addItem(generator)
 
-        label_text = f'{item_name} {item_counter}'
-        self.update_label(generator, label_text)
+        self.update_label(generator, item_name)
 
         # Aktualisiere die parallelen Leitungen
         self.create_parallel_lines()
@@ -294,32 +296,33 @@ class SchematicScene(CustomGraphicsScene):
             self.connect_items_to_lines(generator)
 
         self.GENERATOR_X_START += self.GENERATOR_SPACING  # Shift position for the next generator
+
         return generator
 
-    def add_storage(self, position, item_name='Storage'):
+    def add_storage(self, position, item_type='Storage', item_name='Speicher'):
         """Helper function to create and add a storage unit with custom geometry"""
         position = self.snap_to_grid(position)
 
-        item_color = self.OBJECTS[item_name]['color']  # Color of the storage
-        item_geometry = self.OBJECTS[item_name]['geometry']  # Geometry of the storage
+        item_color = self.OBJECTS[item_type]['color']  # Color of the storage
+        item_geometry = self.OBJECTS[item_type]['geometry']  # Geometry of the storage
 
-        self.OBJECTS[item_name]['counter'] += 1  # Increment the counter for the storage
-        item_counter = self.OBJECTS[item_name]['counter']  # Get the current count for the storage
+        self.OBJECTS[item_type]['counter'] += 1  # Increment the counter for the storage
+        item_counter = self.OBJECTS[item_type]['counter']  # Get the current count for the storage
 
-        storage = ComponentItem(position, item_name, item_color, item_geometry, self.FLOW_LINE_COLOR, self.RETURN_LINE_COLOR)
+        storage = ComponentItem(position, item_type, item_name, item_color, item_geometry, self.FLOW_LINE_COLOR, self.RETURN_LINE_COLOR)
         storage.create_connection_points()
         self.addItem(storage)
 
-        label_text = f'{item_name} {item_counter}'
+        label_text = f'{item_name} {item_counter}'  # Add the counter to the label
         self.update_label(storage, label_text)
 
         self.GENERATOR_X_START += self.GENERATOR_SPACING
         return storage
 
-    def add_generator_with_storage(self, generator_type):
+    def add_generator_with_storage(self, item_name, name):
         """Add a generator and a storage unit, connecting them and the storage to the consumer"""
         # Add the generator but don't connect it to the lines
-        generator = self.add_generator(generator_type, connect_to_lines=False)
+        generator = self.add_generator(item_name, name, connect_to_lines=False)
 
         # Add the storage to the right of the generator
         storage_position = QPointF(generator.pos().x() + self.GENERATOR_SPACING_STORAGE, generator.pos().y())  # Fixed distance of 100 units to the right
@@ -334,19 +337,21 @@ class SchematicScene(CustomGraphicsScene):
         # Connect the storage to the parallel lines
         self.connect_items_to_lines(storage, is_storage=True)
 
-    def add_consumer_net(self, item_name, connect_to_lines=False):
+        return generator
+
+    def add_consumer_net(self, item_type, item_name="Wärmenetz", connect_to_lines=False):
         """Add the consumer (network)"""
         if self.consumer is None:
             position = QPointF(self.GENERATOR_X_START, self.generator_y)  # Place consumer at Start_x
             position = self.snap_to_grid(position)  # Snap the position to the grid
 
-            item_color = self.OBJECTS[item_name]['color']  # Color of the consumer
-            item_geometry = self.OBJECTS[item_name]['geometry']  # Geometry of the consumer
+            item_color = self.OBJECTS[item_type]['color']  # Color of the consumer
+            item_geometry = self.OBJECTS[item_type]['geometry']  # Geometry of the consumer
 
-            self.consumer = ComponentItem(position, item_name, item_color, item_geometry, self.FLOW_LINE_COLOR, self.RETURN_LINE_COLOR)
+            self.consumer = ComponentItem(position, item_type, item_name, item_color, item_geometry, self.FLOW_LINE_COLOR, self.RETURN_LINE_COLOR)
             self.consumer.create_connection_points()  # Create connection points
             self.addItem(self.consumer)
-            self.update_label(self.consumer, item_name)
+            self.update_label(self.consumer, item_name)  # Update the label for the consumer
 
             # Deaktiviere Bewegung und Auswahl für den Consumer
             self.consumer.setFlag(QGraphicsItem.ItemIsMovable, False)
@@ -468,15 +473,20 @@ class SchematicScene(CustomGraphicsScene):
             self.addItem(storage_supply_pipe)
             self.pipes.append(storage_supply_pipe)
 
-    def add_component(self, item_name, storage=False):
-        """Add a component (generator, storage, or consumer) to the scene"""
+    def add_component(self, item_name, name, storage=False):
+        """
+        Add a component (generator, storage, or consumer) to the scene.
+        item_name: Type of the component (e.g., 'CHP', 'Solar')
+        name: Unique name for the component (e.g., 'BHKW_1')
+        storage: If True, add a storage with the component
+        """
         if storage:
-            self.add_generator_with_storage(item_name)
+            return self.add_generator_with_storage(item_name, name)
         else:
             if item_name == 'Consumer':
-                self.add_consumer_net('Consumer')
+                return self.add_consumer_net(name)
             else:
-                self.add_generator(item_name)
+                return self.add_generator(item_name, name)
 
     def delete_selected(self):
         """Delete the selected component, ensuring that connected generators and storage are deleted together."""
@@ -515,10 +525,11 @@ class SchematicScene(CustomGraphicsScene):
 
             # Füge die Generatoren und Speicher in der ursprünglichen Reihenfolge wieder hinzu
             for generator, storage in sorted(generators_with_storage, key=lambda i: i[0].pos().x()):
-                self.add_generator_with_storage(generator.item_type)
+                print(generator)
+                self.add_generator_with_storage(generator.item_type, generator.item_name)
 
             for generator in sorted(generators_without_storage, key=lambda i: i.pos().x()):
-                self.add_generator(generator.item_type)
+                self.add_generator(generator.item_type, generator.item_name)
 
             # Setze das ausgewählte Item zurück
             self.selected_item = None
@@ -591,10 +602,11 @@ class SchematicScene(CustomGraphicsScene):
         return None
 
 class ComponentItem(QGraphicsItem):
-    def __init__(self, position, item_type, color, geometry, flow_line_color=Qt.red, return_line_color=Qt.blue):
+    def __init__(self, position, item_type, item_name, color, geometry, flow_line_color=Qt.red, return_line_color=Qt.blue):
         """Create a general visual representation of a component"""
         super().__init__()
 
+        self.item_name = item_name
         self.color = color
         self.item_type = item_type
         self.geometry = geometry  # The geometry is now passed in from the scene
