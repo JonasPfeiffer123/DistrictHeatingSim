@@ -231,6 +231,8 @@ class TechnologyTab(QWidget):
         dialog = TechInputDialog(tech_type, tech_data)
         if dialog.exec_() == QDialog.Accepted:
             new_tech = self.createTechnology(tech_type, dialog.getInputs())
+            # Speicheraktivität direkt vom Dialog abrufen und im tech-Objekt speichern
+            new_tech.has_storage = dialog.getInputs().get('speicher_aktiv', False)
             self.tech_objects.append(new_tech)
             self.updateTechList()
             self.addTechToScene(new_tech)  # Füge das neue Objekt zur Szene hinzu
@@ -251,6 +253,7 @@ class TechnologyTab(QWidget):
             updated_inputs = dialog.getInputs()
             updated_tech = self.createTechnology(selected_tech.name.split('_')[0], updated_inputs)
             updated_tech.name = selected_tech.name
+            updated_tech.has_storage = updated_inputs.get('speicher_aktiv', False)  # Aktualisiere die Speicheroption
             self.tech_objects[selected_tech_index] = updated_tech
             self.updateTechList()
             self.updateTechInScene(updated_tech)  # Aktualisiere das Objekt in der Szene
@@ -273,7 +276,7 @@ class TechnologyTab(QWidget):
         """
         self.techList.clear()
         self.tech_objects = []
-        self.schematic_scene.clear()  # Entferne alle Objekte aus der Szene
+        self.schematic_scene.delete_all()  # Entferne alle Objekte aus der Szene
 
     def updateTechList(self):
         """
@@ -419,26 +422,29 @@ class TechnologyTab(QWidget):
 
     def addTechToScene(self, tech):
         """
-        Fügt die Technologie zur SchematicScene hinzu.
+        Fügt die Technologie zur SchematicScene hinzu und speichert die Referenz im tech-Objekt.
         """
+        has_storage = getattr(tech, 'has_storage', False)  # Prüfe, ob der Speicher ausgewählt wurde
+        name = tech.name  # Nutze den eindeutigen Namen für die Szene
+
         if tech.name.startswith('Solarthermie'):
-            self.schematic_scene.add_generator('Solar')
+            tech.scene_item = self.schematic_scene.add_component('Solar', name, storage=True)
         elif tech.name.startswith('BHKW'):
-            self.schematic_scene.add_generator('CHP')
-        if tech.name.startswith('Holzgas-BHKW'):
-            self.schematic_scene.add_generator('Wood-CHP')
+            tech.scene_item = self.schematic_scene.add_component('CHP', name, storage=has_storage)
+        elif tech.name.startswith('Holzgas-BHKW'):
+            tech.scene_item = self.schematic_scene.add_component('Wood-CHP', name, storage=has_storage)
         elif tech.name.startswith('Geothermie'):
-            self.schematic_scene.add_generator('Geothermal Heat Pump')
+            tech.scene_item = self.schematic_scene.add_component('Geothermal Heat Pump', name, storage=False)
         elif tech.name.startswith('Abwärme'):
-            self.schematic_scene.add_generator('Waste Heat Pump')
+            tech.scene_item = self.schematic_scene.add_component('Waste Heat Pump', name, storage=False)
         elif tech.name.startswith('Flusswasser'):
-            self.schematic_scene.add_generator('River Heat Pump')
+            tech.scene_item = self.schematic_scene.add_component('River Heat Pump', name, storage=False)
         elif tech.name.startswith('Biomassekessel'):
-            self.schematic_scene.add_generator('Biomass Boiler')
+            tech.scene_item = self.schematic_scene.add_component('Biomass Boiler', name, storage=has_storage)
         elif tech.name.startswith('Gaskessel'):
-            self.schematic_scene.add_generator('Gas Boiler')
+            tech.scene_item = self.schematic_scene.add_component('Gas Boiler', name, storage=False)
         elif tech.name.startswith('AqvaHeat'):
-            self.schematic_scene.add_generator('Aqva Heat Pump')
+            tech.scene_item = self.schematic_scene.add_component('Aqva Heat Pump', name, storage=False)
 
     def updateTechInScene(self, tech):
         """
@@ -453,6 +459,13 @@ class TechnologyTab(QWidget):
         """
         Entfernt die Technologie aus der Szene.
         """
-        if hasattr(tech, 'scene_item') and tech.scene_item:
-            self.schematic_scene.removeItem(tech.scene_item)
+
+        print(f"Entferne Technologie {tech.name} aus Szene.")
+
+        if hasattr(tech, 'scene_item'):
+            print(f"Technologie-Objekt {tech.scene_item} hat ein Szene-Objekt.")
+            self.schematic_scene.selected_item = tech.scene_item
+            self.schematic_scene.delete_selected()
             tech.scene_item = None  # Setze das Szene-Objekt auf None
+            print(f"Technologie {tech.name} aus Szene entfernt.")
+            self.schematic_scene.selected_item = None
