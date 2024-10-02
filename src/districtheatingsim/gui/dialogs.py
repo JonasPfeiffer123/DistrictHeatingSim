@@ -196,6 +196,8 @@ class PDFSelectionDialog(QDialog):
         self.economic_conditions_cb.setChecked(True)
         self.technologies_cb = QCheckBox("Erzeugertechnologien")
         self.technologies_cb.setChecked(True)
+        self.technolgies_scene_cb = QCheckBox("Schaltbild Erzeugertechnologien")
+        self.technolgies_scene_cb.setChecked(True)
         self.net_infrastructure_cb = QCheckBox("Netzinfrastruktur")
         self.net_infrastructure_cb.setChecked(True)
         self.costs_cb = QCheckBox("Kosten")
@@ -209,6 +211,7 @@ class PDFSelectionDialog(QDialog):
         layout.addWidget(self.net_structure_cb)
         layout.addWidget(self.economic_conditions_cb)
         layout.addWidget(self.technologies_cb)
+        layout.addWidget(self.technolgies_scene_cb)
         layout.addWidget(self.net_infrastructure_cb)
         layout.addWidget(self.costs_cb)
         layout.addWidget(self.results_cb)
@@ -230,6 +233,7 @@ class PDFSelectionDialog(QDialog):
             'net_structure': self.net_structure_cb.isChecked(),
             'economic_conditions': self.economic_conditions_cb.isChecked(),
             'technologies': self.technologies_cb.isChecked(),
+            'technologies_scene': self.technolgies_scene_cb.isChecked(),
             'net_infrastructure': self.net_infrastructure_cb.isChecked(),
             'costs': self.costs_cb.isChecked(),
             'results': self.results_cb.isChecked(),

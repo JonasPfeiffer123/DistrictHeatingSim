@@ -179,6 +179,23 @@ class SchematicScene(CustomGraphicsScene):
         # Verbinde das selectionChanged-Signal mit einer Methode zum Aktualisieren
         self.selectionChanged.connect(self.update_selected_item)
 
+    def update_scene_size(self):
+        """
+        Updates the scene size dynamically based on the positions of all items.
+        """
+        if not self.items():
+            return
+        
+        # Berechne die Bounding Box für alle Objekte in der Szene
+        bounding_rect = self.itemsBoundingRect()
+
+        # Erweiterung der Bounding Box, falls nötig (z.B. Puffer für die Ränder)
+        margin = 25  # Margin in Pixeln, um etwas Platz um die Objekte zu lassen
+        bounding_rect.adjust(-margin, -margin, margin, margin)
+
+        # Setze die neue Szenegröße basierend auf der Bounding Box
+        self.setSceneRect(bounding_rect)
+
     def update_selected_item(self):
         """Aktualisiert das ausgewählte Objekt, wenn sich die Auswahl in der Szene ändert."""
         # Hole alle ausgewählten Objekte (es könnte theoretisch mehr als eines sein)
@@ -298,6 +315,9 @@ class SchematicScene(CustomGraphicsScene):
 
         self.GENERATOR_X_START += self.GENERATOR_SPACING  # Shift position for the next generator
 
+        # Update the scene size after adding the generator
+        self.update_scene_size()
+
         return generator
 
     def add_storage(self, position, item_type='Storage', item_name='Speicher'):
@@ -318,6 +338,10 @@ class SchematicScene(CustomGraphicsScene):
         self.update_label(storage, label_text)
 
         self.GENERATOR_X_START += self.GENERATOR_SPACING
+
+        # Update the scene size after adding the generator
+        self.update_scene_size()
+
         return storage
 
     def add_generator_with_storage(self, item_name, name):
@@ -337,6 +361,9 @@ class SchematicScene(CustomGraphicsScene):
 
         # Connect the storage to the parallel lines
         self.connect_items_to_lines(storage, is_storage=True)
+
+        # Update the scene size after adding the generator
+        self.update_scene_size()
 
         return generator
 
@@ -360,6 +387,9 @@ class SchematicScene(CustomGraphicsScene):
 
             # Aktualisiere die Position für den nächsten Generator (platziere ihn rechts)
             self.GENERATOR_X_START += self.GENERATOR_SPACING  # Verschiebe um eine feste Distanz
+
+            # Update the scene size after adding the generator
+            self.update_scene_size()
 
     def update_label(self, item, new_text):
         """Update the label of a given item with new text."""
@@ -535,6 +565,8 @@ class SchematicScene(CustomGraphicsScene):
             # Setze das ausgewählte Item zurück
             self.selected_item = None
 
+            self.update_scene_size()
+
     def delete_all(self):
         """Delete all components, pipes, and reset all counters except for the consumer and its connections."""
         # Collect all items except for the consumer and the pipes connected to the consumer
@@ -565,6 +597,8 @@ class SchematicScene(CustomGraphicsScene):
         self.create_parallel_lines()
         
         self.selected_item = None  # Reset the selected item
+
+        self.update_scene_size()
 
     def is_connected_to_consumer(self, item):
         """Helper method to check if a pipe is connected to the consumer."""
