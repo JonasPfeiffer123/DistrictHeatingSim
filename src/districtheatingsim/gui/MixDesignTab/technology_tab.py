@@ -51,6 +51,20 @@ class TechnologyTab(QWidget):
         results (dict): A dictionary to store results.
         tech_objects (list): A list of technology objects.
     """
+
+    # Globale Zähler für jede Technologieklasse
+    global_counters = {
+        "Solarthermie": 0,
+        "BHKW": 0,
+        "Holzgas-BHKW": 0,
+        "Geothermie": 0,
+        "Abwärme": 0,
+        "Flusswasser": 0,
+        "Biomassekessel": 0,
+        "Gaskessel": 0,
+        "AqvaHeat": 0,
+    }
+
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
 
     def __init__(self, data_manager, config_manager, parent=None):
@@ -163,17 +177,6 @@ class TechnologyTab(QWidget):
             layout.addWidget(widget)
         self.mainLayout.addLayout(layout)
 
-    def setupTechnologySelection(self):
-        """
-        Sets up the technology selection widgets and layout.
-        """
-        self.addLabel('Definierte Wärmeerzeuger')
-        self.techList = CustomListWidget(self)
-        self.techList.setDragDropMode(QAbstractItemView.InternalMove)
-        self.techList.itemDoubleClicked.connect(self.editTech)
-        self.mainLayout.addWidget(self.techList)
-        self.addButtonLayout()
-
     def addButtonLayout(self):
         """
         Adds the button layout for managing technologies.
@@ -186,6 +189,17 @@ class TechnologyTab(QWidget):
         self.mainLayout.addLayout(buttonLayout)
         self.btnDeleteSelectedTech.clicked.connect(self.removeSelectedTech)
         self.btnRemoveTech.clicked.connect(self.removeTech)
+
+    def setupTechnologySelection(self):
+        """
+        Sets up the technology selection widgets and layout.
+        """
+        self.addLabel('Definierte Wärmeerzeuger')
+        self.techList = CustomListWidget(self)
+        self.techList.setDragDropMode(QAbstractItemView.InternalMove)
+        self.techList.itemDoubleClicked.connect(self.editTech)
+        self.mainLayout.addWidget(self.techList)
+        self.addButtonLayout()
 
     def createTechnology(self, tech_type, inputs):
         """
@@ -215,8 +229,12 @@ class TechnologyTab(QWidget):
         if not tech_class:
             raise ValueError(f"Unbekannter Technologietyp: {tech_type}")
 
-        tech_count = sum(1 for tech in self.tech_objects if tech.name.startswith(base_tech_type))
-        unique_name = f"{base_tech_type}_{tech_count + 1}"
+        #tech_count = sum(1 for tech in self.tech_objects if tech.name.startswith(base_tech_type))
+        #unique_name = f"{base_tech_type}_{tech_count + 1}"
+
+        # Erhöhe den globalen Zähler für diese Technologieklasse
+        self.global_counters[base_tech_type] += 1
+        unique_name = f"{base_tech_type}_{self.global_counters[base_tech_type]}"
 
         return tech_class(name=unique_name, **inputs)
 
@@ -255,20 +273,68 @@ class TechnologyTab(QWidget):
             updated_tech.name = selected_tech.name
             updated_tech.has_storage = updated_inputs.get('speicher_aktiv', False)  # Aktualisiere die Speicheroption
             self.tech_objects[selected_tech_index] = updated_tech
+
+            # Lösche die gesamte Szene und erstelle neu
+            self.rebuildScene()
             self.updateTechList()
-            self.updateTechInScene(updated_tech)  # Aktualisiere das Objekt in der Szene
 
     def removeSelectedTech(self):
         """
-        Removes the selected technology from the list.
+        Entfernt das ausgewählte Technologie-Objekt und aktualisiert die Zähler und Objektnamen.
         """
         selected_row = self.techList.currentRow()
+
         if selected_row != -1:
+            # Finde das zu löschende Objekt
             removed_tech = self.tech_objects[selected_row]
-            self.removeTechFromScene(removed_tech)  # Entferne das Objekt aus der Szene
+            tech_type = removed_tech.name.split('_')[0]
+
+            # Entferne das Objekt aus der Liste
             self.techList.takeItem(selected_row)
             del self.tech_objects[selected_row]
+
+            # Aktualisiere die globalen Zähler und füge alle verbleibenden Objekte wieder hinzu
+            self.updateTechNames(tech_type)
+            self.rebuildScene()
+
+            # Aktualisiere die Anzeige der Technologien
             self.updateTechList()
+
+    def rebuildScene(self):
+        """
+        Baut die gesamte Szene neu auf, indem alle verbleibenden Technologien hinzugefügt werden.
+        """
+        self.schematic_scene.delete_all()  # Lösche alle Objekte aus der Szene
+
+        for tech in self.tech_objects:
+            # Füge jede Technologie wieder zur Szene hinzu
+            self.addTechToScene(tech)
+
+            # Aktualisiere die Namen und Zähler basierend auf der Reihenfolge in der Liste
+            tech_type = tech.name.split('_')[0]
+            self.global_counters[tech_type] = sum(1 for t in self.tech_objects if t.name.startswith(tech_type))
+
+        # Aktualisiere die Liste der Technologien in der UI
+        self.updateTechList()
+
+    def updateTechNames(self, tech_type):
+        """
+        Aktualisiert die Namen und Labels der verbleibenden Objekte einer Technologieklasse.
+        """
+        count = 1  # Starte den Zähler für die Technologieklasse bei 1
+
+        for tech in self.tech_objects:
+            if tech.name.startswith(tech_type):
+                # Aktualisiere den Namen des Technologie-Objekts basierend auf dem neuen Zähler
+                tech.name = f"{tech_type}_{count}"
+
+                # Aktualisiere den Namen und das Label in der Szene
+                tech.scene_item.item_name = tech.name
+                
+                count += 1
+
+        # Aktualisiere den globalen Zähler basierend auf der Anzahl verbleibender Objekte dieser Klasse
+        self.global_counters[tech_type] = count - 1
 
     def removeTech(self):
         """
@@ -277,6 +343,8 @@ class TechnologyTab(QWidget):
         self.techList.clear()
         self.tech_objects = []
         self.schematic_scene.delete_all()  # Entferne alle Objekte aus der Szene
+
+        self.global_counters = {tech_type: 0 for tech_type in self.global_counters}
 
     def updateTechList(self):
         """
@@ -298,6 +366,8 @@ class TechnologyTab(QWidget):
                     new_order.append(tech)
                     break
         self.tech_objects = new_order
+
+        self.rebuildScene()
     
     def formatTechForDisplay(self, tech):
         """
@@ -445,27 +515,3 @@ class TechnologyTab(QWidget):
             tech.scene_item = self.schematic_scene.add_component('Gas Boiler', name, storage=False)
         elif tech.name.startswith('AqvaHeat'):
             tech.scene_item = self.schematic_scene.add_component('Aqva Heat Pump', name, storage=False)
-
-    def updateTechInScene(self, tech):
-        """
-        Aktualisiert das entsprechende Objekt in der Szene.
-        """
-        if hasattr(tech, 'scene_item') and tech.scene_item:
-            # Aktualisiere Position und Farbe des Szene-Objekts
-            tech.scene_item.setPos(tech.x_pos, tech.y_pos)
-            tech.scene_item.setBrush(QColor(tech.color))
-
-    def removeTechFromScene(self, tech):
-        """
-        Entfernt die Technologie aus der Szene.
-        """
-
-        print(f"Entferne Technologie {tech.name} aus Szene.")
-
-        if hasattr(tech, 'scene_item'):
-            print(f"Technologie-Objekt {tech.scene_item} hat ein Szene-Objekt.")
-            self.schematic_scene.selected_item = tech.scene_item
-            self.schematic_scene.delete_selected()
-            tech.scene_item = None  # Setze das Szene-Objekt auf None
-            print(f"Technologie {tech.name} aus Szene entfernt.")
-            self.schematic_scene.selected_item = None
