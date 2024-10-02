@@ -10,12 +10,15 @@ import numpy as np
 from gui.dialogs import PDFSelectionDialog
 
 from io import BytesIO
-import PyPDF2
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, KeepTogether
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.lib import colors
+
+from PyQt5.QtCore import QBuffer, QByteArray
+
+from PyQt5.QtGui import QPainter, QPixmap
 
 def get_custom_table_style():
     """
@@ -106,6 +109,64 @@ def add_technologies_section(story, mixDesignTab):
 
     except Exception as e:
         error_message = f"Fehlende Daten im Erzeugertechnologieabschnitt: {str(e)}"
+        story.append(Paragraph(error_message, getSampleStyleSheet()['Normal']))
+        story.append(Spacer(1, 12))
+        print(error_message)
+
+def export_scene_to_image(scene):
+    """
+    Converts the QGraphicsScene to an image (QPixmap) and returns it as a BytesIO object.
+    """
+    # Erzeuge ein QPixmap mit der gleichen Größe wie die Szene
+    scene_rect = scene.sceneRect()
+    image = QPixmap(int(scene_rect.width()), int(scene_rect.height()))
+
+    # Erzeuge ein QPainter und male die Szene auf das Bild
+    painter = QPainter(image)
+    scene.render(painter)
+    painter.end()
+
+    # Konvertiere das QPixmap in ein QImage
+    qimage = image.toImage()
+
+    # Speichere das Bild in einen QBuffer als PNG
+    buffer = QBuffer()
+    buffer.open(QBuffer.ReadWrite)
+    qimage.save(buffer, "PNG")
+
+    # Konvertiere den QBuffer in BytesIO, damit es mit ReportLab funktioniert
+    buffer.seek(0)
+    byte_array = buffer.data()
+    
+    img_buffer = BytesIO(byte_array)
+    img_buffer.seek(0)
+
+    return img_buffer
+
+
+def add_schematic_scene_section(story, scene):
+    """
+    Adds the schematic scene as an image to the PDF story.
+    """
+    try:
+        # Konvertiere die Szene in ein Bild und erhalte einen BytesIO-Stream
+        img_buffer = export_scene_to_image(scene)
+        
+        # Füge das Bild zur PDF-Story hinzu
+        img = Image(img_buffer)
+        aspect_ratio = img.drawWidth / img.drawHeight
+
+        max_width = 6.5 * inch
+        if img.drawWidth > max_width:
+            img.drawWidth = max_width
+            img.drawHeight = img.drawWidth / aspect_ratio
+
+        story.append(Paragraph("Schematische Darstellung", getSampleStyleSheet()['Heading2']))
+        story.append(img)
+        story.append(Spacer(1, 12))
+
+    except Exception as e:
+        error_message = f"Fehler beim Export der Szene: {str(e)}"
         story.append(Paragraph(error_message, getSampleStyleSheet()['Normal']))
         story.append(Spacer(1, 12))
         print(error_message)
@@ -275,6 +336,8 @@ def create_pdf(HeatSystemDesignGUI, filename):
     """
     mixDesignTab = HeatSystemDesignGUI.mixDesignTab
     calcTab = HeatSystemDesignGUI.calcTab
+    schematic_scene = mixDesignTab.techTab.schematic_scene  # Nimm an, dass dies die Szene ist
+
 
     # Zeige den Abschnitts-Auswahldialog
     dialog = PDFSelectionDialog()
@@ -300,6 +363,8 @@ def create_pdf(HeatSystemDesignGUI, filename):
         add_economic_conditions_section(story, mixDesignTab)
     if selected_sections['technologies']:
         add_technologies_section(story, mixDesignTab)
+    if selected_sections.get('technologies_scene', True):
+        add_schematic_scene_section(story, schematic_scene)
     if selected_sections['net_infrastructure']:
         add_net_infrastructure_section(story, mixDesignTab)
     if selected_sections['costs']:
