@@ -1,0 +1,68 @@
+\section{Einleitung}
+Dieses Dokument beschreibt die Berechnung der Solarstrahlung und des photovoltaischen Ertrags basierend auf dem Skript \texttt{photovoltaics.py}. Die Berechnung nutzt Wetterdaten des Testreferenzjahrs (TRY) zur Bestimmung von Strahlungsintensität, Umgebungstemperatur und Windgeschwindigkeit. Diese Parameter werden verwendet, um die Einstrahlung auf geneigte Flächen und den photovoltaischen Ertrag zu berechnen.
+
+Die Solarstrahlungsberechnung erfolgt auf Basis des Scenocalc Fernwärme 2.0 Modells \url{https://www.scfw.de/}, während die PV-Berechnung nach der Berechnungsvorschrift von PVGIS durchgeführt wird \url{https://joint-research-centre.ec.europa.eu/photovoltaic-geographical-information-system-pvgis/getting-started-pvgis/pvgis-data-sources-calculation-methods_en}.
+
+\section{Berechnung der Photovoltaik-Leistung}
+Die Hauptfunktion \texttt{Calculate\_PV} im Skript berechnet die PV-Leistung für ein gegebenes System und geographische Lage. Dabei werden spezifische Systemparameter wie die Bruttofläche, die Albedo und der Kollektorneigungswinkel berücksichtigt.
+
+\subsection{Eingangsparameter}
+Die Funktion \texttt{Calculate\_PV} verwendet die folgenden Eingangsparameter:
+\begin{itemize}
+    \item \texttt{TRY\_data}: Pfad zu den TRY-Daten.
+    \item \texttt{Gross\_area}: Bruttofläche des PV-Systems in Quadratmetern.
+    \item \texttt{Longitude}: Geographische Länge des Standorts.
+    \item \texttt{STD\_Longitude}: Standardlänge für die Zeitzone.
+    \item \texttt{Latitude}: Geographische Breite des Standorts.
+    \item \texttt{Albedo}: Albedo-Wert (Reflexionsfaktor der Umgebung).
+    \item \texttt{East\_West\_collector\_azimuth\_angle}: Azimutwinkel des Kollektors in der Ost-West-Richtung.
+    \item \texttt{Collector\_tilt\_angle}: Neigungswinkel des Kollektors.
+\end{itemize}
+
+\subsection{Berechnung der Solarstrahlung}
+Die zuvor erläuterte Funktion \texttt{calculate\_solar\_radiation} wird verwendet, um die Solarstrahlung auf der geneigten Kollektorfläche zu berechnen. Dabei werden sowohl die direkte als auch die diffuse Strahlung sowie Reflexionen durch die Umgebung (Albedo) berücksichtigt. Die Solarstrahlung \( G_T \) wird durch folgende Gleichung bestimmt:
+\[
+G_T = Gbhoris \cdot R_b + Gdhoris \cdot Ai \cdot R_b + Gdhoris \cdot (1 - Ai) \cdot 0.5 \cdot (1 + \cos(CTA)) + G \cdot \text{Albedo} \cdot 0.5 \cdot (1 - \cos(CTA))
+\]
+wobei:
+\begin{itemize}
+    \item \( Gbhoris \): Direkte Strahlung auf die horizontale Fläche,
+    \item \( Gdhoris \): Diffuse Strahlung,
+    \item \( R_b \): Verhältnis der Strahlungsintensität auf der geneigten Fläche zur horizontalen Fläche,
+    \item \( Ai \): Atmosphärischer Diffusanteil,
+    \item \( CTA \): Neigungswinkel des Kollektors.
+\end{itemize}
+
+\subsection{Photovoltaik-Leistungsberechnung}
+Die Photovoltaik-Leistung wird basierend auf der berechneten Solarstrahlung, der Bruttofläche und den spezifischen Systemparametern berechnet. Die nominale Effizienz \( \eta_{\text{nom}} \) des PV-Moduls wird dabei durch Temperatur- und Strahlungseinflüsse modifiziert. Die Systemverluste (typisch 14\%) werden ebenfalls berücksichtigt. Die Leistungsberechnung erfolgt nach folgender Formel:
+\[
+P_{\text{PV}} = G_T \times \text{Fläche} \times \eta_{\text{nom}} \times (1 - \text{Systemverluste})
+\]
+Hierbei ist \( G_T \) die berechnete Strahlungsintensität in \( \frac{\text{kW}}{\text{m}^2} \), und die Verluste basieren auf verschiedenen Faktoren wie Modultemperatur und Strahlungsintensität.
+
+\subsection{Berechnung der Modultemperatur}
+Die Modultemperatur \( T_m \) wird als Funktion der Umgebungstemperatur \( T_a \), der Strahlungsintensität \( G_T \) und der Windgeschwindigkeit \( W \) berechnet:
+\[
+T_m = T_a + \frac{G_T}{U_0 + U_1 \cdot W}
+\]
+wobei \( U_0 \) und \( U_1 \) Parameter sind, die den temperaturabhängigen Leistungsverlust beschreiben.
+
+\subsection{Relative Effizienz}
+Die relative Effizienz \( \eta_{\text{rel}} \) des PV-Moduls hängt von der Strahlungsintensität \( G_1 \) und der Modultemperatur \( T_m \) ab und wird wie folgt berechnet:
+\[
+\eta_{\text{rel}} = 1 + k_1 \ln(G_1) + k_2 (\ln(G_1))^2 + k_3 T_1m + k_4 T_1m \ln(G_1) + k_5 T_m (\ln(G_1))^2 + k_6 T_m^2
+\]
+Dabei sind \( k_1, k_2, k_3, k_4, k_5, k_6 \) Konstanten, die den Einfluss der Modultemperatur und Strahlungsintensität auf die Effizienz berücksichtigen.
+
+\section{Ergebnisse und Berechnungen für Gebäude}
+Die Funktion berechnet die jährliche PV-Ausbeute.
+
+Die Ergebnisse umfassen:
+\begin{itemize}
+    \item Jährliche PV-Ausbeute in kWh,
+    \item Maximale PV-Leistung in W,
+    \item Stündliche PV-Leistung in W
+\end{itemize}
+
+\section{Zusammenfassung}
+Die in \texttt{photovoltaics.py} implementierte Methode berechnet die Solarstrahlung und den photovoltaischen Ertrag auf Grundlage der spezifischen Systemparameter und Wetterdaten. Durch Berücksichtigung der Einstrahlung, der Modultemperatur und der Systemverluste wird eine realistische Schätzung des jährlichen PV-Ertrags ermöglicht. Diese Methode kann auf verschiedene Standorte und Gebäudetypen angewendet werden.

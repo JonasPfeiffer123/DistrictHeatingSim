@@ -1,0 +1,46 @@
+\section{Geocoding}
+
+\subsection{Skript: \texttt{geocodingETRS89.py}}
+
+Dieses Skript ermöglicht die Geokodierung von Adressen aus einer CSV-Datei und transformiert die Koordinaten in das ETRS89 / UTM Zone 33N-Koordinatensystem.
+
+\subsubsection{Funktion: \texttt{get\_coordinates(address)}}
+
+\textbf{Beschreibung:}\\
+Diese Funktion nimmt eine Adresse als Eingabe entgegen und versucht, die entsprechenden geografischen Koordinaten (Längen- und Breitengrad) mithilfe des Nominatim-Geokodierungsdienstes abzurufen. Die erhaltenen Koordinaten werden vom WGS84 (GPS) Koordinatensystem in das ETRS89 / UTM Zone 33N-Koordinatensystem transformiert.
+
+\textbf{Parameter:}
+\begin{itemize}
+    \item \texttt{address (str)}: Die Adresse, für die die Koordinaten abgerufen werden sollen.
+\end{itemize}
+
+\textbf{Rückgabewert:}\\
+Ein Tuple, das die UTM-Koordinaten (UTM\_X und UTM\_Y) in Metern enthält, also \texttt{(utm\_x, utm\_y)}. Falls die Geokodierung nicht erfolgreich ist, wird \texttt{(None, None)} zurückgegeben.
+
+\subsubsection{Funktion: \texttt{process\_data(input\_csv, output\_csv)}}
+
+\textbf{Beschreibung:}\\
+Diese Funktion liest Daten aus einer Eingabe-CSV-Datei, verarbeitet jede Zeile, geokodiert die Adressen und transformiert diese in UTM-Koordinaten. Die Originaldaten werden zusammen mit den transformierten UTM-Koordinaten in eine Ausgabe-CSV-Datei geschrieben.
+
+\textbf{Parameter:}
+\begin{itemize}
+    \item \texttt{input\_csv (str)}: Pfad zur Eingabe-CSV-Datei, die die zu verarbeitenden Daten enthält. Die Datei sollte die Spalten "Land", "Bundesland", "Stadt", "Adresse" und eventuell zusätzliche Felder enthalten.
+    \item \texttt{output\_csv (str)}: Pfad zur Ausgabe-CSV-Datei, in der die verarbeiteten Daten mit den UTM-Koordinaten geschrieben werden.
+\end{itemize}
+
+\textbf{Verhalten:}
+\begin{itemize}
+    \item Die Funktion öffnet die Eingabe-CSV-Datei zum Lesen und die Ausgabe-CSV-Datei zum Schreiben.
+    \item Sie liest die Daten aus der Eingabe-CSV-Datei Zeile für Zeile, extrahiert relevante Informationen wie Land, Bundesland, Stadt und Adresse.
+    \item Aus diesen Informationen wird ein vollständiger Adressstring erstellt.
+    \item Die Funktion ruft \texttt{get\_coordinates} auf, um die vollständige Adresse zu geokodieren und die UTM-Koordinaten zu erhalten.
+    \item Die ursprünglichen Daten werden um zwei Spalten, "UTM\_X" und "UTM\_Y", erweitert, die die berechneten UTM-Koordinaten enthalten.
+    \item Die verarbeiteten Daten werden in die Ausgabe-CSV-Datei geschrieben.
+    \item Nach Abschluss gibt die Funktion "Verarbeitung abgeschlossen" aus.
+\end{itemize}
+
+\textbf{Hinweis:}\\
+Am Ende des Skripts befindet sich ein Code-Schnipsel, der zeigt, wie die \texttt{process\_data}-Funktion mit Eingabe- und Ausgabe-CSV-Dateipfaden aufgerufen wird. Dieser Teil kann aktiviert und angepasst werden, um die Geokodierung und Datenverarbeitung durchzuführen.
+
+\textbf{Zusammenfassung:}\\
+Diese Funktion ermöglicht die Geokodierung von Adressen aus einer CSV-Datei, das Abrufen der entsprechenden UTM-Koordinaten und das Erstellen einer neuen CSV-Datei mit den Originaldaten und den hinzugefügten UTM-Koordinaten. Die erstellte Datei kann für weitere räumliche Analysen oder Kartenanwendungen verwendet werden.

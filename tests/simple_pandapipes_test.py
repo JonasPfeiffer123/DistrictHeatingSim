@@ -17,10 +17,10 @@ import numpy as np
 import pandapipes as pp
 from pandapipes.control.run_control import run_control
 
-from src.districtheatsim.net_simulation_pandapipes.config_plot import config_plot
+from src.districtheatingsim.net_simulation_pandapipes.config_plot import config_plot
 
-from src.districtheatsim.net_simulation_pandapipes.pp_net_initialisation_geojson import *
-from src.districtheatsim.net_simulation_pandapipes.utilities import *
+from src.districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson import *
+from src.districtheatingsim.net_simulation_pandapipes.utilities import *
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
