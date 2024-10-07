@@ -10,8 +10,8 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.districtheatsim.lod2.filter_LOD2 import filter_LOD2_with_OSM_and_adress, spatial_filter_with_polygon, process_lod2, filter_LOD2_with_coordinates
-from src.districtheatsim.lod2.heat_requirement_LOD2 import calculate_heat_demand_for_lod2_area, Building
+from src.districtheatingsim.lod2.filter_LOD2 import filter_LOD2_with_OSM_and_adress, spatial_filter_with_polygon, process_lod2, filter_LOD2_with_coordinates
+from src.districtheatingsim.lod2.heat_requirement_LOD2 import calculate_heat_demand_for_lod2_area, Building
 
 ### aktuell sind die Pfade noch nicht enthalten ###
 def test_lod2_adress_filter():

@@ -10,9 +10,9 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.districtheatsim.heat_generators import solar_thermal
-from districtheatsim.heat_generators import heat_generation_mix
-from src.districtheatsim.utilities.test_reference_year import import_TRY
+from src.districtheatingsim.heat_generators import solar_thermal
+from districtheatingsim.heat_generators import heat_generation_mix
+from src.districtheatingsim.utilities.test_reference_year import import_TRY
 
 import numpy as np
 

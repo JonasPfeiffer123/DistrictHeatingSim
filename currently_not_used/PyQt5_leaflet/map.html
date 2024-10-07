@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaflet Map with Leaflet.draw</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    
+    <!-- Leaflet Draw CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+
+    <style>
+        #map {
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+    <!-- Leaflet Draw JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+    <script>
+        // Initialize the map and set its view to some geographical coordinates and zoom level
+        var map = L.map('map').setView([51.505, -0.09], 13);
+
+        // Load and display a tile layer on the map (OpenStreetMap tiles)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Feature group for storing drawn layers
+        var drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+
+        // Leaflet.draw control
+        var drawControl = new L.Control.Draw({
+            edit: {
+                featureGroup: drawnItems
+            },
+            draw: {
+                polygon: true,
+                polyline: false,
+                rectangle: false,
+                circle: false,
+                marker: false,
+                circlemarker: false
+            }
+        });
+        map.addControl(drawControl);
+
+        // Event listener for when shapes are created
+        map.on(L.Draw.Event.CREATED, function (e) {
+            var layer = e.layer;
+            drawnItems.addLayer(layer);
+
+            // Log GeoJSON of the drawn shape to the console
+            var geojson = layer.toGeoJSON();
+            console.log("Shape drawn as GeoJSON:", JSON.stringify(geojson));
+        });
+
+        // Expose the export function globally
+        function exportGeoJSON() {
+            var data = drawnItems.toGeoJSON();
+            console.log("All drawn shapes as GeoJSON:", JSON.stringify(data));
+            return data; // Return the GeoJSON data
+        }
+        window.exportGeoJSON = exportGeoJSON; // Make the function globally accessible
+
+        // Function to import GeoJSON and add it to the map
+        function importGeoJSON(geojson) {
+            // Add the GeoJSON data as layers to the map
+            L.geoJSON(geojson).addTo(drawnItems);
+            console.log('Imported GeoJSON:', geojson);
+        }
+        window.importGeoJSON = importGeoJSON; // Expose the import function globally
+    </script>
+</body>
+</html>

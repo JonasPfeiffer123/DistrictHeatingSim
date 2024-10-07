@@ -1,21 +1,4 @@
-\documentclass{article}
-\usepackage{amsmath}
-\usepackage{amsfonts}
-\usepackage{amssymb}
-\usepackage{graphicx}
-
-\title{Berechnungsvorschriften für den Wärmebedarf eines Gebäudes mit LOD2-Detaillierungsgrad}
-\author{Dipl.-Ing. (FH) Jonas Pfeiffer}
-\date{2024-09-04}
-
-\begin{document}
-
-\maketitle
-
-% Setze den Sloppy Modus ein, um den Umbruch flexibler zu gestalten
-\sloppy
-
-\section*{1. Wärmeverlust durch Transmission}
+\section{Wärmeverlust durch Transmission}
 
 Der Wärmeverlust eines Gebäudes durch Transmission kann durch die folgende Gleichung beschrieben werden:
 
@@ -38,7 +21,7 @@ Für ein Gebäude summieren sich die Wärmeverluste durch alle Bauteile:
 \dot{Q}_\text{Gesamt} = \sum_{i} U_i \cdot A_i \cdot \Delta T
 \end{equation}
 
-\section*{2. Wärmeverlust durch Lüftung}
+\section{Wärmeverlust durch Lüftung}
 
 Der Wärmeverlust durch Lüftung wird durch den Luftaustausch zwischen Innenraum und Außenluft verursacht und ist wie folgt beschrieben:
 
@@ -55,7 +38,7 @@ wobei:
     \item \(\Delta T\): Temperaturdifferenz zwischen Innen- und Außenluft (K)
 \end{itemize}
 
-\section*{3. Maximaler Heizwärmebedarf}
+\section{Maximaler Heizwärmebedarf}
 
 Der maximale Heizwärmebedarf ergibt sich aus der Summe der Wärmeverluste durch Transmission und Lüftung:
 
@@ -63,7 +46,7 @@ Der maximale Heizwärmebedarf ergibt sich aus der Summe der Wärmeverluste durch
 Q_\text{max} = \dot{Q}_\text{Trans} + \dot{Q}_\text{Lüftung}
 \end{equation}
 
-\section*{4. Jährlicher Heizwärmebedarf}
+\section{Jährlicher Heizwärmebedarf}
 
 Der jährliche Heizwärmebedarf wird durch die Integration der stündlichen Heizbedarfe über das Jahr berechnet:
 
@@ -79,7 +62,7 @@ wobei:
     \item \(b\): Y-Achsenabschnitt, abhängig von den spezifischen U-Werten und der gewünschten Raumtemperatur
 \end{itemize}
 
-\section*{5. Jährlicher Warmwasserbedarf}
+\section{Jährlicher Warmwasserbedarf}
 
 Der jährliche Warmwasserbedarf wird als spezifischer Verbrauch pro Quadratmeter Wohnfläche berechnet:
 
@@ -96,7 +79,7 @@ wobei:
     \item \text{Stockwerke}: Anzahl der Stockwerke
 \end{itemize}
 
-\section*{6. Gesamtwärmebedarf}
+\section{Gesamtwärmebedarf}
 
 Der gesamte jährliche Wärmebedarf des Gebäudes setzt sich aus dem jährlichen Heizwärmebedarf und dem jährlichen Warmwasserbedarf zusammen:
 
@@ -110,9 +93,9 @@ Der Anteil des Warmwassers am gesamten Wärmebedarf kann berechnet werden durch:
 \text{Warmwasseranteil} = \frac{Q_\text{WW}}{Q_\text{Gesamt}} \cdot 100
 \end{equation}
 
-\section*{7. Beispielrechnungen}
+\section{Beispielrechnungen}
 
-\subsection*{Beispiel 1: Einfamilienhaus}
+\subsection{Beispiel 1: Einfamilienhaus}
 
 Angenommen, ein Einfamilienhaus hat folgende Eigenschaften:
 \begin{itemize}
@@ -184,7 +167,7 @@ Der maximale Heizwärmebedarf ist daher:
 Q_\text{max} = \dot{Q}_\text{Trans} + \dot{Q}_\text{Lüftung} = 3476.2 + 435.2 = 3911.4 \, \text{W}
 \end{equation}
 
-\subsection*{Beispiel 2: Mehrfamilienhaus}
+\subsection{Beispiel 2: Mehrfamilienhaus}
 
 Für ein Mehrfamilienhaus mit einer Grundfläche von \(A_\text{Boden} = 500 \, \text{m}^2\), einer Wandfläche von \(A_\text{Wand} = 1000 \, \text{m}^2\), einer Fensterfläche von \(A_\text{Fenster} = 100 \, \text{m}^2\), einer Türfläche von \(A_\text{Tür} = 25 \, \text{m}^2\), und einem Volumen von \(V = 2000 \, \text{m}^3\), sowie denselben U-Werten und Temperaturdifferenzen wie im vorherigen Beispiel, beträgt der maximale Heizwärmebedarf:
 
@@ -240,5 +223,3 @@ Der maximale Heizwärmebedarf ist daher:
 \begin{equation}
 Q_\text{max} = \dot{Q}_\text{Trans} + \dot{Q}_\text{Lüftung} = 17381 + 2176 = 19557 \, \text{W}
 \end{equation}
-
-\end{document}

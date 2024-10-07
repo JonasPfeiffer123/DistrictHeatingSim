@@ -9,7 +9,6 @@ geopy
 overpy
 geojson
 scikit-learn
-hdbscan
 PyPDF2
 reportlab
 numpy_financial
