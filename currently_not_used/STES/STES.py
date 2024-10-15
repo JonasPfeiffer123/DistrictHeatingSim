@@ -270,6 +270,9 @@ class SimpleThermalStorage(ThermalStorage):
             return (Q_s + Q_b) / 1000  # Convert to kW
 
     def simulate(self, Q_in, Q_out):
+        self.Q_in = Q_in
+        self.Q_out = Q_out
+
         for t in range(0, self.hours):
             # Calculate heat loss based on the last temperature
             self.Q_loss[t] = self.calculate_heat_loss(self.T_sto[t-1])
@@ -292,6 +295,37 @@ class SimpleThermalStorage(ThermalStorage):
                 self.T_sto[t] = self.T_min
         
         self.calculate_efficiency(Q_in)
+
+    def plot_results(self):
+        """Plot the results of the simulation."""
+        fig = plt.figure(figsize=(12, 6))
+
+        # Plot Heat Input and Output
+        ax1 = fig.add_subplot(2, 1, 1)
+        ax1.plot(self.Q_in, label='Heat Input (kW)')
+        ax1.plot(self.Q_out, label='Heat Output (kW)')
+        ax1.set_title('Heat Input and Output')
+        ax1.set_xlabel('Time Step')
+        ax1.set_ylabel('Heat (kW)')
+        ax1.legend()
+
+        # Plot Stored Heat
+        ax2 = fig.add_subplot(3, 1, 2)
+        ax2.plot(self.Q_sto, label='Stored Heat (kWh)')
+        ax2.set_title('Stored Heat in the Storage')
+        ax2.set_xlabel('Time Step')
+        ax2.set_ylabel('Stored Heat (kWh)')
+        ax2.legend()
+
+        # Plot Storage Temperature
+        ax3 = fig.add_subplot(3, 1, 3)
+        ax3.plot(self.T_sto, label='Storage Temperature (°C)', color='orange')
+        ax3.set_title('Storage Temperature')
+        ax3.set_xlabel('Time Step')
+        ax3.set_ylabel('Temperature (°C)')
+        ax3.legend()
+
+        plt.tight_layout()
 
 class StratifiedThermalStorage(ThermalStorage):
     def __init__(self, *args, **kwargs):
@@ -682,7 +716,7 @@ class StratifiedThermalStorage(ThermalStorage):
 
             plt.tight_layout()
 
-class TemperaturStratifiedThermalStorage(StratifiedThermalStorage):
+class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -929,7 +963,7 @@ if __name__ == '__main__':
     # Create instance of the class for cylindrical storage
     simple_STES = SimpleThermalStorage(**params) # Seasonal Thermal Energy Storage
     stratified_STES = StratifiedThermalStorage(**params) # Stratified Seasonal Thermal Energy Storage
-    temperature_stratified_STES = TemperaturStratifiedThermalStorage(**params) # Stratified Seasonal Thermal Energy Storage with Mass Flows
+    temperature_stratified_STES = TemperatureStratifiedThermalStorage(**params) # Stratified Seasonal Thermal Energy Storage with Mass Flows
 
     # Simulated heat input and output (example random values)
     Q_in = np.random.uniform(450, 455, params['hours'])  # Heat input in kW
@@ -946,6 +980,7 @@ if __name__ == '__main__':
     energy_price_per_kWh = 0.10  # €/kWh
 
     simple_STES.simulate(Q_in, Q_out)
+    simple_STES.plot_results()
     simple_STES.calculate_operational_costs(energy_price_per_kWh)
     print(f"Storage efficiency: {simple_STES.efficiency * 100:.2f}%")
     print(f"Operational costs: {simple_STES.operational_costs:.2f} €")
