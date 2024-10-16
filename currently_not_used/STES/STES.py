@@ -298,32 +298,41 @@ class SimpleThermalStorage(ThermalStorage):
 
     def plot_results(self):
         """Plot the results of the simulation."""
-        fig = plt.figure(figsize=(12, 6))
-
+        fig = plt.figure(figsize=(16, 10))
+        axs1 = fig.add_subplot(2, 2, 1)
+        axs2 = fig.add_subplot(2, 2, 2)
+        axs3 = fig.add_subplot(2, 2, 3)
+        axs4 = fig.add_subplot(2, 2, 4)
         # Plot Heat Input and Output
-        ax1 = fig.add_subplot(2, 1, 1)
-        ax1.plot(self.Q_in, label='Heat Input (kW)')
-        ax1.plot(self.Q_out, label='Heat Output (kW)')
-        ax1.set_title('Heat Input and Output')
-        ax1.set_xlabel('Time Step')
-        ax1.set_ylabel('Heat (kW)')
-        ax1.legend()
+        axs1.plot(self.Q_in, label='Heat Input (kW)', color='red')
+        axs1.plot(self.Q_out, label='Heat Output (kW)', color='blue')
+        axs1.set_title('Heat Input and Output')
+        axs1.set_xlabel('Time Step')
+        axs1.set_ylabel('Heat (kW)')
+        axs1.legend()
 
         # Plot Stored Heat
-        ax2 = fig.add_subplot(3, 1, 2)
-        ax2.plot(self.Q_sto, label='Stored Heat (kWh)')
-        ax2.set_title('Stored Heat in the Storage')
-        ax2.set_xlabel('Time Step')
-        ax2.set_ylabel('Stored Heat (kWh)')
-        ax2.legend()
+        axs2.plot(self.Q_sto, label='Stored Heat (kWh)', color='green')
+        axs2.set_title('Stored Heat in the Storage')
+        axs2.set_xlabel('Time Step')
+        axs2.set_ylabel('Stored Heat (kWh)')
+        axs2.legend()
 
         # Plot Storage Temperature
-        ax3 = fig.add_subplot(3, 1, 3)
-        ax3.plot(self.T_sto, label='Storage Temperature (°C)', color='orange')
-        ax3.set_title('Storage Temperature')
-        ax3.set_xlabel('Time Step')
-        ax3.set_ylabel('Temperature (°C)')
-        ax3.legend()
+        axs3.plot(self.T_sto, label='Storage Temperature (°C)', color='orange')
+        axs3.set_title('Storage Temperature')
+        axs3.set_xlabel('Time Step')
+        axs3.set_ylabel('Temperature (°C)')
+        axs3.legend()
+
+        # Plot heat loss
+        axs4.plot(self.Q_loss, label='Heat Loss (kW)', color='orange')
+        axs4.set_ylabel('Heat Loss (kW)')
+        axs4.set_title('Heat Loss over Time')
+        axs4.legend()
+
+        # Plot 3D geometry
+        #self.plot_3d_temperature_distribution(axs6, 3000)
 
         plt.tight_layout()
 
@@ -712,7 +721,7 @@ class StratifiedThermalStorage(ThermalStorage):
             axs5.legend()
 
             # Plot 3D geometry
-            self.plot_3d_temperature_distribution(axs6, 3000)
+            self.plot_3d_temperature_distribution(axs6, 6000)
 
             plt.tight_layout()
 
@@ -726,6 +735,10 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
         self.T_Q_in_return = np.zeros(self.hours)  # Eingangstemperatur (input) Rücklauf Erzeuger
         self.T_Q_out_flow = np.zeros(self.hours)  # Ausgangstemperatur (output) Vorlauf Verbraucher
         self.T_Q_out_return = np.zeros(self.hours)  # Ausgangstemperatur (output) Rücklauf Verbraucher
+
+        self.excess_heat = 0  # Überschüssige Wärme durch Stagnation
+        self.unmet_demand = 0  # Nicht gedeckter Wärmebedarf
+        self.stagnation_time = 0  # Zeit in Stunden, in der Überhitzung (Stagnation) auftritt
 
     def simulate_stratified_temperature_mass_flows(self, Q_in, Q_out, T_Q_in_flow, T_Q_out_return, num_layers=5, thermal_conductivity=0.6):
         """
@@ -814,10 +827,13 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
                 
                 # Speicher voll (keine weitere Aufnahme)
                 if available_energy_in_storage >= max_possible_energy*0.95:# and self.Q_in[t] > self.Q_out[t]:
+                    self.excess_heat += self.Q_in[t] # Überschüssige Wärme
+                    self.stagnation_time += 1  # Stagnationszeit um eine Stunde erhöhen
                     self.Q_in[t] = 0  # Keine weitere Wärmezufuhr
 
                 # Speicher leer (keine weitere Entnahme)
                 if available_energy_in_storage <= max_possible_energy*0.05:# and self.Q_out[t] > self.Q_in[t]:
+                    self.unmet_demand += self.Q_out[t] # Nicht gedeckter Bedarf
                     self.Q_out[t] = 0  # Keine weitere Wärmeentnahme
 
                 # Berechne den Massenstrom für Input und Output (kg/s)
@@ -889,44 +905,44 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
         axs6 = fig.add_subplot(2, 3, 6, projection='3d')
 
         # Q_in and Q_out
-        axs1.plot(Q_in, label='Heat Input', color='red')
-        axs1.plot(Q_out, label='Heat Output', color='blue')
-        axs1.set_ylabel('Heat (kW)')
-        axs1.set_title('Heat Input and Output over Time')
+        axs1.plot(Q_in, label='Wärmeerzeugung', color='red')
+        axs1.plot(Q_out, label='Wärmeverbrauch', color='blue')
+        axs1.set_ylabel('Wärme (kW)')
+        axs1.set_title('Wärmeerzeugung und Wärmeverbrauch im Zeitverlauf')
         axs1.legend()
 
         # Plot storage temperature
-        axs2.plot(self.T_sto, label='Storage Temperature')
-        axs2.plot(self.T_Q_in_flow, label='Input Flow Temperature', linestyle='--', color='green')
-        axs2.plot(self.T_Q_out_return, label='Output Return Temperature', linestyle='--', color='orange')
-        axs2.plot(self.T_Q_in_return, label='Input Return Temperature', linestyle='--', color='purple')
-        axs2.plot(self.T_Q_out_flow, label='Output Flow Temperature', linestyle='--', color='brown')
-        axs2.set_ylabel('Temperature (°C)')
-        axs2.set_title(f'Storage Temperature over Time ({self.storage_type.capitalize()} Storage)')
+        axs2.plot(self.T_sto, label='Speichertemperatur')
+        axs2.plot(self.T_Q_in_flow, label='Vorlauftemperatur Erzeuger (Eintritt)', linestyle='--', color='green')
+        axs2.plot(self.T_Q_out_return, label='Rücklauftemperatur Verbraucher (Eintritt)', linestyle='--', color='orange')
+        axs2.plot(self.T_Q_in_return, label='Rücklauftemperatur Erzeuger (Austritt)', linestyle='--', color='purple')
+        axs2.plot(self.T_Q_out_flow, label='Vorlauftemperatur Verbraucher (Austritt)', linestyle='--', color='brown')
+        axs2.set_ylabel('Temperatur (°C)')
+        axs2.set_title(f'Systemtemperaturen im Zeitverlauf')
         axs2.legend()
 
         # Plot heat loss
-        axs3.plot(self.Q_loss, label='Heat Loss', color='orange')
-        axs3.set_ylabel('Heat Loss (kW)')
-        axs3.set_title('Heat Loss over Time')
+        axs3.plot(self.Q_loss, label='Wärmeverlust', color='orange')
+        axs3.set_ylabel('Wärmeverlust (kW)')
+        axs3.set_title('Wärmeverlust im Zeitverlauf')
         axs3.legend()
 
         # Plot stored heat
-        axs4.plot(self.Q_sto, label='Stored Heat', color='green')
-        axs4.set_ylabel('Stored Heat (kWh)')
-        axs4.set_title('Stored Heat over Time')
+        axs4.plot(self.Q_sto, label='Gespeicherte Wärme', color='green')
+        axs4.set_ylabel('Gespeicherte Wärme (kWh)')
+        axs4.set_title('Gespeicherte Wärme im Zeitverlauf')
         axs4.legend()
 
         # Plot stratified storage temperatures
         for i in range(self.T_sto_layers.shape[1]):
             axs5.plot(self.T_sto_layers[:, i], label=f'Layer {i+1}')
-        axs5.set_xlabel('Time (hours)')
-        axs5.set_ylabel('Temperature (°C)')
-        axs5.set_title('Stratified Storage Temperatures')
+        axs5.set_xlabel('Zeit (Stunden)')
+        axs5.set_ylabel('Temperatur (°C)')
+        axs5.set_title('Temperaturen der Schichten im Speicher')
         axs5.legend()
 
         # Plot 3D geometry
-        self.plot_3d_temperature_distribution(axs6, 3000)
+        self.plot_3d_temperature_distribution(axs6, 6000)
 
         plt.tight_layout()
 
@@ -979,6 +995,7 @@ if __name__ == '__main__':
     # Run simulation
     energy_price_per_kWh = 0.10  # €/kWh
 
+    """
     simple_STES.simulate(Q_in, Q_out)
     simple_STES.plot_results()
     simple_STES.calculate_operational_costs(energy_price_per_kWh)
@@ -990,12 +1007,16 @@ if __name__ == '__main__':
     stratified_STES.calculate_operational_costs(energy_price_per_kWh)
     print(f"Storage efficiency: {stratified_STES.efficiency * 100:.2f}%")
     print(f"Operational costs: {(stratified_STES.operational_costs):.2f} €")
+    """
 
     temperature_stratified_STES.simulate_stratified_temperature_mass_flows(Q_in, Q_out, T_Q_in_flow, T_Q_out_return)
     temperature_stratified_STES.plot_results(Q_in, Q_out, T_Q_in_flow, T_Q_out_return)
     temperature_stratified_STES.calculate_operational_costs(energy_price_per_kWh)
-    print(f"Storage efficiency: {temperature_stratified_STES.efficiency * 100:.2f}%")
-    print(f"Operational costs: {(temperature_stratified_STES.operational_costs):.2f} €")
+    print(f"Speicherwirkungsgrad / -effizienz: {temperature_stratified_STES.efficiency * 100:.2f}%")
+    print(f"Betriebskosten: {(temperature_stratified_STES.operational_costs):.2f} €")
+    print(f"Überschüssige Wärme durch Stagnation: {temperature_stratified_STES.excess_heat:.2f} kWh")
+    print(f"Nicht gedeckter Bedarf aufgrund von Speicherentleerung: {temperature_stratified_STES.unmet_demand:.2f} kWh")
+    print(f"Stagnationsdauer: {temperature_stratified_STES.stagnation_time} h")
 
     # Interactive 3D plot
     #interactive_plot(stratified_STES)
