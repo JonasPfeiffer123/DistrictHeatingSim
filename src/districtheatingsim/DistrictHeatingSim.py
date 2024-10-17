@@ -433,8 +433,16 @@ class HeatSystemPresenter:
                     for subfolder in subfolders:
                         os.makedirs(os.path.join(main_folder_path, subfolder))
 
-                self.folder_manager.set_project_folder(main_folder_path)
+                # Set the project folder to the newly created project
+                self.folder_manager.set_project_folder(full_path)
 
+                # Now open the newly created "Variante 1"
+                variant_folder = os.path.join(full_path, "Variante 1")
+                if os.path.exists(variant_folder):
+                    self.folder_manager.set_variant_folder("Variante 1")
+                else:
+                    self.view.show_error_message("Fehler: Variante 1 konnte nicht gefunden werden.")
+                
                 return True
             except Exception as e:
                 self.view.show_error_message(f"Ein Fehler ist aufgetreten: {e}")
@@ -450,44 +458,49 @@ class HeatSystemPresenter:
 
     def create_project_copy(self):
         """
-        Create a copy of the current project.
+        Create a copy of the current project and allow the user to input a new project name.
         """
         base_dir = os.path.dirname(self.folder_manager.project_folder)
-        base_name = os.path.basename(self.folder_manager.project_folder)
-        copy_num = 1
+        current_project_name = os.path.basename(self.folder_manager.project_folder)
 
-        # Erstelle den Pfad für das neue Projekt
-        while True:
-            new_project_path = os.path.join(base_dir, f"{base_name}_Kopie{copy_num}")
+        # Zeige ein Eingabefenster, um den neuen Projektnamen zu erhalten
+        new_project_name, ok = QInputDialog.getText(self.view, 'Projektkopie erstellen', 'Geben Sie einen neuen Namen für das Projekt ein:')
+
+        if ok and new_project_name:
+            new_project_path = os.path.join(base_dir, new_project_name)
+            
             if not os.path.exists(new_project_path):
-                break
-            copy_num += 1
+                try:
+                    # Kopiere das gesamte Projektverzeichnis
+                    shutil.copytree(self.folder_manager.project_folder, new_project_path)
 
-        try:
-            # Kopiere das gesamte Projektverzeichnis
-            shutil.copytree(self.folder_manager.project_folder, new_project_path)
-            
-            # Setze das kopierte Projekt als neues Projektverzeichnis
-            self.folder_manager.set_project_folder(new_project_path)
-            
-            # Suche nach der ersten Variante im kopierten Projekt
-            variants = [folder for folder in os.listdir(new_project_path) if "Variante" in folder]
-            
-            if variants:
-                # Setze die erste Variante als aktive Variante
-                self.folder_manager.set_variant_folder(variants[0])
-            else:
-                # Falls keine Variante existiert, setze den Standard-Variantenordner
-                default_variant_path = os.path.join(new_project_path, "Variante 1")
-                if os.path.exists(default_variant_path):
-                    self.folder_manager.set_variant_folder("Variante 1")
-                else:
-                    # Setze den Projektordner ohne Variante
+                    # Setze das kopierte Projekt als neues Projektverzeichnis
                     self.folder_manager.set_project_folder(new_project_path)
+                    
+                    # Suche nach der ersten Variante im kopierten Projekt
+                    variants = [folder for folder in os.listdir(new_project_path) if "Variante" in folder]
+                    
+                    if variants:
+                        # Setze die erste Variante als aktive Variante
+                        self.folder_manager.set_variant_folder(variants[0])
+                    else:
+                        # Falls keine Variante existiert, setze den Standard-Variantenordner
+                        default_variant_path = os.path.join(new_project_path, "Variante 1")
+                        if os.path.exists(default_variant_path):
+                            self.folder_manager.set_variant_folder("Variante 1")
+                        else:
+                            # Setze den Projektordner ohne Variante
+                            self.folder_manager.set_project_folder(new_project_path)
 
-            return True
-        except Exception as e:
-            self.view.show_error_message(f"Ein Fehler ist aufgetreten: {str(e)}")
+                    return True
+                except Exception as e:
+                    self.view.show_error_message(f"Ein Fehler ist aufgetreten: {str(e)}")
+                    return False
+            else:
+                self.view.show_error_message(f"Ein Projekt mit dem Namen '{new_project_name}' existiert bereits.")
+                return False
+        else:
+            self.view.show_error_message("Projektkopie wurde abgebrochen.")
             return False
         
     def create_project_variant(self):
@@ -613,7 +626,7 @@ class HeatSystemDesignGUI(QMainWindow):
         if recent_projects:
             for project in recent_projects:
                 action = QAction(project, self)
-                action.triggered.connect(lambda checked, p=project: self.presenter.folder_manager.set_project_folder(p))
+                action.triggered.connect(lambda checked, p=project: self.on_open_existing_project(p))
                 recentMenu.addAction(action)
         else:
             no_recent_action = QAction('Keine kürzlich geöffneten Projekte', self)
@@ -745,7 +758,9 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         Handle the creation of a new project.
         """
+
         folder_path = QFileDialog.getExistingDirectory(self, "Speicherort für neues Projekt wählen", os.path.dirname(os.path.dirname(self.base_path)))
+        
         if folder_path:
             projectName, ok = QInputDialog.getText(self, 'Neues Projekt', 'Projektnamen eingeben:')
             if ok and projectName:
@@ -753,24 +768,30 @@ class HeatSystemDesignGUI(QMainWindow):
                 if success:
                     QMessageBox.information(self, "Projekt erstellt", f"Projekt '{projectName}' wurde erfolgreich erstellt.")
 
-    def on_open_existing_project(self):
+    def on_open_existing_project(self, folder_path=None):
         """
         Handle opening an existing project and let the user choose from the available variants.
         """
-        folder_path = QFileDialog.getExistingDirectory(self, "Projektordner auswählen", os.path.dirname(os.path.dirname(self.base_path)))
-        if folder_path:
-            self.presenter.open_existing_project(folder_path)
-            
-            # Suche nach allen Unterordnern, die "Variante" im Namen enthalten
-            available_variants = self.get_available_variants(folder_path)
-            
-            if available_variants:
-                # Zeige die verfügbaren Varianten zur Auswahl an
-                variant_name, ok = QInputDialog.getItem(self, 'Variante auswählen', 'Wähle eine Variante aus:', available_variants, 0, False)
-                if ok and variant_name:
-                    self.presenter.folder_manager.set_variant_folder(variant_name)
+        # folder_path is None if the user clicks on the menu item open existing project, if recent project is clicked, folder_path is the path of the recent project
+        if not folder_path:
+            folder_path = QFileDialog.getExistingDirectory(self, "Projektordner auswählen", os.path.dirname(os.path.dirname(self.base_path)))
+
+        try:
+            if folder_path and os.path.exists(folder_path):
+                self.presenter.open_existing_project(folder_path)
+                
+                # Suche nach allen Varianten, falls es eine gibt
+                available_variants = self.get_available_variants(folder_path)
+                if available_variants:
+                    variant_name, ok = QInputDialog.getItem(self, 'Variante auswählen', 'Wähle eine Variante aus:', available_variants, 0, False)
+                    if ok and variant_name:
+                        self.presenter.folder_manager.set_variant_folder(variant_name)
+                else:
+                    self.show_error_message("Keine verfügbaren Varianten gefunden.")
             else:
-                self.show_error_message("Keine verfügbaren Varianten gefunden.")
+                raise FileNotFoundError(f"Projektpfad '{folder_path}' nicht gefunden.")
+        except FileNotFoundError as e:
+            self.show_error_message(str(e))
 
     def get_available_variants(self, project_path):
         """
@@ -780,14 +801,17 @@ class HeatSystemDesignGUI(QMainWindow):
             project_path (str): The path to the project.
             
         Returns:
-            list: A list of available variant names.
+            list: A list of available variant names or an empty list if the path is invalid.
         """
         variants = []
-        for folder_name in os.listdir(project_path):
-            full_path = os.path.join(project_path, folder_name)
-            # Überprüfen, ob es sich um ein Verzeichnis handelt und ob es "Variante" enthält
-            if os.path.isdir(full_path) and folder_name.startswith("Variante"):
-                variants.append(folder_name)
+        try:
+            for folder_name in os.listdir(project_path):
+                full_path = os.path.join(project_path, folder_name)
+                # Überprüfen, ob es sich um ein Verzeichnis handelt und ob es "Variante" enthält
+                if os.path.isdir(full_path) and folder_name.startswith("Variante"):
+                    variants.append(folder_name)
+        except FileNotFoundError:
+            self.show_error_message(f"Der Projektpfad '{project_path}' konnte nicht gefunden werden.")
         return variants
 
     def on_create_project_copy(self):
@@ -796,7 +820,7 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         success = self.presenter.create_project_copy()
         if success:
-            QMessageBox.information(self, "Info", "Projektvariante wurde erfolgreich erstellt.")
+            QMessageBox.information(self, "Info", "Projektkopie wurde erfolgreich erstellt.")
     
     def on_open_variant(self):
         """
