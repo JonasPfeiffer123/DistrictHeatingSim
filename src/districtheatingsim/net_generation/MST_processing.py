@@ -59,7 +59,7 @@ def add_intermediate_points(points_gdf, street_layer, max_distance=200, point_in
     new_points_gdf = gpd.GeoDataFrame(geometry=new_points)
     return pd.concat([points_gdf, new_points_gdf], ignore_index=True)
 
-def adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf, threshold=5, output_dir="iterations"):
+def adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf, threshold=5):
     """
     Adjusts the MST segments to follow the street lines more closely.
 
@@ -68,17 +68,12 @@ def adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf, threshol
         street_layer (geopandas.GeoDataFrame): GeoDataFrame containing the street lines.
         all_end_points_gdf (geopandas.GeoDataFrame): GeoDataFrame containing all end points.
         threshold (int, optional): Distance threshold for adjustment. Defaults to 5.
-        output_dir (str, optional): Directory to save iteration outputs. Defaults to "iterations".
 
     Returns:
         geopandas.GeoDataFrame: Updated GeoDataFrame with adjusted segments.
     """
     iteration = 0
     changes_made = True
-
-    # Create the output directory if it does not exist
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
 
     while changes_made:
         print(f"Iteration {iteration}")
