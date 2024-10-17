@@ -251,12 +251,18 @@ class BiomassBoiler:
     
     def to_dict(self):
         """
-        Converts the BiomassBoiler object to a dictionary.
+        Converts the BiomassBoiler object to a dictionary, excluding scene-related attributes.
 
         Returns:
             dict: Dictionary representation of the BiomassBoiler object.
         """
-        return self.__dict__
+        # Erstelle eine Kopie des aktuellen Objekt-Dictionaries
+        data = self.__dict__.copy()
+        
+        # Entferne das scene_item und andere nicht notwendige Felder
+        data.pop('scene_item', None)
+        return data
+
 
     @staticmethod
     def from_dict(data):
