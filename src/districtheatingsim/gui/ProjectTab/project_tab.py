@@ -12,7 +12,7 @@ import json
 
 from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QTableWidgetItem, QWidget, QVBoxLayout, 
                              QMenuBar, QAction, QProgressBar, QLabel, QTableWidget, QFileSystemModel, 
-                             QTreeView, QSplitter, QMessageBox, QDialog, QMenu, QPushButton)
+                             QTreeView, QSplitter, QMessageBox, QDialog, QMenu, QPushButton, QInputDialog)
 from PyQt5.QtCore import Qt, QTimer
 
 from gui.VisualizationTab.net_generation_threads import GeocodingThread
@@ -566,15 +566,24 @@ class ProjectTabView(QWidget):
         contextMenu = QMenu(self)
         addRowAction = QAction("Zeile hinzufügen", self)
         deleteRowAction = QAction("Zeile löschen", self)
-        duplicateRowAction = QAction("Zeile duplizieren", self)  # New action to duplicate
+        duplicateRowAction = QAction("Zeile duplizieren", self)
+        addColumnAction = QAction("Spalte hinzufügen", self)
+        deleteColumnAction = QAction("Spalte löschen", self)
+        duplicatColumnAction = QAction("Spalte duplizieren", self)
 
         contextMenu.addAction(addRowAction)
         contextMenu.addAction(deleteRowAction)
-        contextMenu.addAction(duplicateRowAction)  # Add action to menu
+        contextMenu.addAction(duplicateRowAction)
+        contextMenu.addAction(addColumnAction)
+        contextMenu.addAction(deleteColumnAction)
+        contextMenu.addAction(duplicatColumnAction)
         
         addRowAction.triggered.connect(self.add_row)
         deleteRowAction.triggered.connect(self.delete_row)
-        duplicateRowAction.triggered.connect(self.duplicate_row)  # Connect new action
+        duplicateRowAction.triggered.connect(self.duplicate_row)
+        addColumnAction.triggered.connect(self.add_column)
+        deleteColumnAction.triggered.connect(self.delete_column)
+        duplicatColumnAction.triggered.connect(self.duplicate_column)
 
         contextMenu.exec_(self.csvTable.viewport().mapToGlobal(position))
 
@@ -615,6 +624,45 @@ class ProjectTabView(QWidget):
                 self.csvTable.setItem(row, column, newItem)
         else:
             self.show_error_message("Warnung", "Bitte wählen Sie eine Zeile zum Duplizieren aus.")
+
+    def add_column(self):
+        """
+        Add a new column to the table.
+        """
+        column_count = self.csvTable.columnCount()
+        column_name, ok = QInputDialog.getText(self, "Spalte hinzufügen", "Name der neuen Spalte:")
+        if ok and column_name:
+            self.csvTable.insertColumn(column_count)
+            self.csvTable.setHorizontalHeaderItem(column_count, QTableWidgetItem(column_name))
+
+    def delete_column(self):
+        """
+        Delete the currently selected column from the table.
+        """
+        currentColumn = self.csvTable.currentColumn()
+        if currentColumn > -1:
+            self.csvTable.removeColumn(currentColumn)
+        else:
+            self.show_error_message("Warnung", "Bitte wählen Sie eine Spalte zum Löschen aus.")
+    
+    def duplicate_column(self):
+        """
+        Duplicate the currently selected column in the table.
+        """
+        currentColumn = self.csvTable.currentColumn()
+        if currentColumn > -1:
+            column_count = self.csvTable.columnCount()
+            new_column_index = column_count
+            self.csvTable.insertColumn(new_column_index)
+            header_item = self.csvTable.horizontalHeaderItem(currentColumn)
+            new_header_item = QTableWidgetItem(header_item.text() if header_item else '')
+            self.csvTable.setHorizontalHeaderItem(new_column_index, new_header_item)
+            for row in range(self.csvTable.rowCount()):
+                item = self.csvTable.item(row, currentColumn)
+                new_item = QTableWidgetItem(item.text() if item else '')
+                self.csvTable.setItem(row, new_column_index, new_item)
+        else:
+            self.show_error_message("Warnung", "Bitte wählen Sie eine Spalte zum Duplizieren aus.")
 
     def update_path_label(self, new_base_path):
         """
