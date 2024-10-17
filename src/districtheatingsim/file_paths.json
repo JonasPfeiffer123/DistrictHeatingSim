@@ -1,7 +1,6 @@
 {
     "standard_folder_path": "project_data\\Görlitz",
     "standard_variant_path": "project_data\\Görlitz\\Variante 1",
-    "map_file": "Ergebnisse\\map.html",
     "results_PDF_path": "Ergebnisse\\Ergebnisse.pdf",
     "results_path": "Ergebnisse\\Ergebnisse.json",
     "building_load_profile_path": "Lastgang\\Gebäude Lastgang.json",

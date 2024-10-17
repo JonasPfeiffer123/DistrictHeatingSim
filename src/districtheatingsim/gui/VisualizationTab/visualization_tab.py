@@ -16,6 +16,7 @@ import pandas as pd
 from shapely.geometry import Point
 
 import traceback
+import tempfile
 
 import folium
 
@@ -163,8 +164,6 @@ class VisualizationPresenter(QObject):
 
         self.on_project_folder_changed(self.folder_maanger.variant_folder)
 
-        self.map_file = os.path.join(self.model.base_path, self.config_manager.get_relative_path('map_file'))
-
         self.update_map_view()
 
     def on_project_folder_changed(self, new_base_path):
@@ -289,7 +288,7 @@ class VisualizationPresenter(QObject):
             m = folium.Map(location=center, zoom_start=zoom)
             for layer in self.model.layers.values():
                 layer.add_to(m)
-            self.view.update_map_view(m, map_file=self.map_file)
+            self.view.update_map_view(m)
         except Exception as e:
             error_message = f"{str(e)}\n\n{traceback.format_exc()}"
             self.view.show_error_message("Fehler beim Laden der Daten", str(error_message))
@@ -539,7 +538,7 @@ class VisualizationTabView(QWidget):
         layerManagementLayout.addWidget(self.changeColorButton)
         self.main_layout.addLayout(layerManagementLayout)
 
-    def update_map_view(self, map_obj, map_file=None):
+    def update_map_view(self, map_obj):
         """
         Updates the web view to display the current map object.
 
@@ -550,9 +549,12 @@ class VisualizationTabView(QWidget):
         click_marker = folium.ClickForMarker()
         map_obj.add_child(click_marker)
 
-        map_obj.save(map_file)
+        # Verwende eine temporäre Datei anstelle eines festen Dateipfads
+        with tempfile.NamedTemporaryFile(suffix=".html", delete=False) as temp_file:
+            temp_file_path = temp_file.name
+            map_obj.save(temp_file_path)
 
-        self.mapView.load(QUrl.fromLocalFile(map_file))
+        self.mapView.load(QUrl.fromLocalFile(temp_file_path))
 
     def show_error_message(self, title, message):
         """
