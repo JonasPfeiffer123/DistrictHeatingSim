@@ -309,7 +309,12 @@ class CHP:
         Returns:
             dict: Dictionary containing object attributes.
         """
-        return self.__dict__
+        # Erstelle eine Kopie des aktuellen Objekt-Dictionaries
+        data = self.__dict__.copy()
+        
+        # Entferne das scene_item und andere nicht notwendige Felder
+        data.pop('scene_item', None)
+        return data
 
     @staticmethod
     def from_dict(data):
