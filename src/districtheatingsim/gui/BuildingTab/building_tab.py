@@ -16,7 +16,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QFileDialog, QLabel, QMessageBox,
                              QMainWindow, QTableWidget, QTableWidgetItem, QComboBox, 
-                             QMenuBar, QAction, QLineEdit, QAbstractScrollArea, QHBoxLayout)
+                             QMenuBar, QAction, QLineEdit, QAbstractScrollArea, QHBoxLayout, QSizePolicy)
 from PyQt5.QtCore import pyqtSignal, Qt
 
 from heat_requirement.heat_requirement_calculation_csv import generate_profiles_from_csv
@@ -352,7 +352,8 @@ class BuildingTabView(QWidget):
 
         # Data table area
         self.table_widget = QTableWidget(self)
-        self.table_widget.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
+        self.table_widget.setMinimumSize(1200, 300)  # Set minimum width and height for the table
+        self.table_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # Allow it to expand
         self.main_layout.addWidget(self.table_widget)
 
         # Output path layout (more compact with better labels)
@@ -368,6 +369,8 @@ class BuildingTabView(QWidget):
         # Plot area (with toolbar and interaction improvements)
         self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)
+        self.canvas.setMinimumSize(1200, 500)  # Set minimum width and height for the plot
+        self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # Allow it to expand
         self.toolbar = NavigationToolbar(self.canvas, self)
         self.main_layout.addWidget(self.canvas)
         self.main_layout.addWidget(self.toolbar)
