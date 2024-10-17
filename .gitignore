@@ -152,7 +152,4 @@ cython_debug/
 #.idea/
 
 # PC specific config files for districtheatingsim
-./config.json
-
-# map.html file used for leaflet map loading
-map.html
+/src/districtheatsim/config.json
