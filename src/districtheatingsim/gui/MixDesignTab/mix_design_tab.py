@@ -607,6 +607,10 @@ class MixDesignTab(QWidget):
                 self.techTab.tech_objects = tech_objects
                 self.tech_objects = tech_objects
 
+                # Add tech objects back to the scene
+                for tech in self.techTab.tech_objects:
+                    self.techTab.addTechToScene(tech)
+
                 # Update the tabs with the loaded data
                 if self.techTab.tech_objects:
                     self.techTab.updateTechList()

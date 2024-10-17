@@ -304,7 +304,6 @@ class SchematicScene(CustomGraphicsScene):
         generator.create_connection_points()  # Create connection points
         self.addItem(generator)
 
-        print(generator, item_name)
         self.update_label(generator, item_name)
 
         # Aktualisiere die parallelen Leitungen
