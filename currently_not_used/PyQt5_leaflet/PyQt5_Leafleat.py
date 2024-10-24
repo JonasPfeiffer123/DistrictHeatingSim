@@ -1,9 +1,34 @@
 import sys
 import os
 import json
+import geopandas as gpd
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QPushButton, QWidget, QFileDialog
 from PyQt5.QtWebEngineWidgets import QWebEngineView
-from PyQt5.QtCore import QUrl
+from PyQt5.QtCore import QUrl, QObject, pyqtSlot
+from PyQt5.QtWebChannel import QWebChannel
+
+class GeoJsonReceiver(QObject):
+    @pyqtSlot(str)
+    def sendGeoJSONToPython(self, geojson_str):
+        print("Received GeoJSON from JavaScript")
+        
+        # Konvertiere den JSON-String in ein Python-Objekt
+        geojson_data = json.loads(geojson_str)
+        
+        # Erstelle ein GeoDataFrame aus dem GeoJSON
+        gdf = gpd.GeoDataFrame.from_features(geojson_data['features'])
+        
+        # Setze das ursprüngliche CRS (EPSG:4326)
+        gdf.set_crs(epsg=4326, inplace=True)
+        
+        # Konvertiere das CRS in das gewünschte Ziel-CRS (z.B. EPSG:25833)
+        target_crs = 'EPSG:25833'
+        gdf.to_crs(target_crs, inplace=True)
+        
+        # Speichere die Daten als GeoJSON
+        output_file = 'exported_data.geojson'
+        gdf.to_file(output_file, driver="GeoJSON")
+        print(f"GeoJSON gespeichert in {output_file}")
 
 class MapWindow(QMainWindow):
     def __init__(self):
@@ -12,55 +37,52 @@ class MapWindow(QMainWindow):
         self.setWindowTitle('Leaflet.draw in PyQt5')
         self.setGeometry(100, 100, 1000, 800)
 
-        # Create a QWebEngineView to display the HTML map
+        # Erstelle eine QWebEngineView, um die HTML-Karte anzuzeigen
         self.web_view = QWebEngineView()
 
-        # Path to the local HTML file (make sure it's the correct path)
+        # Lade die HTML-Datei
         map_file_path = os.path.join(os.getcwd(), 'currently_not_used\\PyQt5_leaflet\\map.html')
-
-        print(map_file_path)
-
-        # Load the HTML file in the QWebEngineView
         self.web_view.setUrl(QUrl.fromLocalFile(map_file_path))
 
-        # Set up the layout
+        # Erstelle den WebChannel und registriere das Python-Objekt
+        self.channel = QWebChannel()
+        self.receiver = GeoJsonReceiver()
+        self.channel.registerObject('pywebchannel', self.receiver)
+        self.web_view.page().setWebChannel(self.channel)
+
+        # Set up layout
         layout = QVBoxLayout()
         layout.addWidget(self.web_view)
-
-        # Create a central widget and set the layout
         central_widget = QWidget()
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
 
-        # Add buttons for importing and exporting GeoJSON
+        # Add export button
         export_button = QPushButton('Export GeoJSON')
         export_button.clicked.connect(self.export_geojson)
         layout.addWidget(export_button)
 
+        # Add import button
         import_button = QPushButton('Import GeoJSON')
         import_button.clicked.connect(self.import_geojson)
         layout.addWidget(import_button)
 
     def export_geojson(self):
-        # Run JavaScript in the embedded page to export GeoJSON and capture the result
-        self.web_view.page().runJavaScript("window.exportGeoJSON()", self.handle_geojson)
-
-    def handle_geojson(self, geojson_data):
-        # This will print the GeoJSON data that was returned from JavaScript
-        print("Exported GeoJSON:", geojson_data)
+        # Ruft die Funktion aus JavaScript auf
+        self.web_view.page().runJavaScript("exportGeoJSON()")
 
     def import_geojson(self):
-        # Open a file dialog to select a GeoJSON file
+        # Öffne ein Dialogfeld, um eine GeoJSON-Datei auszuwählen
         options = QFileDialog.Options()
         geojson_file, _ = QFileDialog.getOpenFileName(self, 'Open GeoJSON File', '', 'GeoJSON Files (*.geojson)', options=options)
-        
+
         if geojson_file:
-            # Read the GeoJSON file content
-            with open(geojson_file, 'r') as f:
+            # Lese den Inhalt der GeoJSON-Datei
+            with open(geojson_file, 'r', encoding='utf-8') as f:
                 geojson_data = json.load(f)
 
-            # Pass the GeoJSON data to the map in the JavaScript context
-            geojson_str = json.dumps(geojson_data)  # Convert to string
+            # Übergebe die GeoJSON-Daten an JavaScript
+            geojson_str = json.dumps(geojson_data)
             self.web_view.page().runJavaScript(f"window.importGeoJSON({geojson_str});")
 
 if __name__ == '__main__':
