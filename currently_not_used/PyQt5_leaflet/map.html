@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leaflet Map with Leaflet.draw</title>
+    <title>Leaflet Map with Leaflet.draw and CRS Support</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
@@ -13,12 +13,51 @@
 
     <style>
         #map {
-            height: 100vh;
+            height: 80vh;
+            width: 70%;
+            float: left;
+        }
+
+        #layerControl {
+            height: 80vh;
+            width: 30%;
+            float: left;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-left: 1px solid #ddd;
+        }
+
+        #console {
+            clear: both;
+            position: relative;
+            bottom: 0;
+            background-color: white;
+            opacity: 0.8;
+            width: 100%;
+            max-height: 150px;
+            overflow-y: scroll;
+            border-top: 1px solid black;
+            font-family: monospace;
+            padding: 5px;
         }
     </style>
 </head>
 <body>
     <div id="map"></div>
+
+    <!-- Layer Management Panel -->
+    <div id="layerControl">
+        <h3>Layer Management</h3>
+        <ul id="layerList"></ul>
+        <h4>Edit Layer</h4>
+        <label for="layerName">Name:</label>
+        <input type="text" id="layerName" placeholder="Layer Name"><br><br>
+        <label for="layerColor">Color:</label>
+        <input type="color" id="layerColor" value="#3388ff"><br><br>
+        <button onclick="saveLayerChanges()">Save Changes</button>
+    </div>
+
+    <div id="console"></div>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
@@ -26,60 +65,162 @@
     <!-- Leaflet Draw JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 
-    <script>
-        // Initialize the map and set its view to some geographical coordinates and zoom level
-        var map = L.map('map').setView([51.505, -0.09], 13);
+    <!-- Proj4 and Proj4Leaflet for coordinate transformation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.12.1/proj4.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4leaflet/1.0.2/proj4leaflet.js"></script>
 
-        // Load and display a tile layer on the map (OpenStreetMap tiles)
+    <script>
+        // Funktion zum Logging in der eingebauten Konsole
+        function logToConsole(message) {
+            var consoleDiv = document.getElementById('console');
+            consoleDiv.innerHTML += message + "<br>";
+            consoleDiv.scrollTop = consoleDiv.scrollHeight; // Automatisch nach unten scrollen
+        }
+
+        console.log = function(message) {
+            logToConsole(message);  // Log zur eingebauten Konsole
+        }
+
+        // Initialisierung der Karte und Setzen der Ansicht auf Deutschland
+        var map = L.map('map').setView([51.1657, 10.4515], 6);  // Deutschland-Zoom
+
+        // Laden und Anzeigen von OpenStreetMap-Kacheln
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-        // Feature group for storing drawn layers
-        var drawnItems = new L.FeatureGroup();
-        map.addLayer(drawnItems);
+        // Feature-Gruppe für gezeichnete und importierte Elemente
+        var allLayers = new L.FeatureGroup();
+        map.addLayer(allLayers);
 
-        // Leaflet.draw control
+        // Array zur Verwaltung der Layer
+        var layerList = [];
+        var selectedLayer = null;
+
+        // Funktion zum Hinzufügen eines Layers zur Liste
+        function addLayerToList(layer) {
+            var li = document.createElement('li');
+            li.textContent = "Layer " + (layerList.length + 1);
+            li.onclick = function() {
+                selectLayer(layer);
+            };
+            document.getElementById('layerList').appendChild(li);
+            layerList.push(layer);
+        }
+
+        // Funktion zum Auswählen eines Layers
+        function selectLayer(layer) {
+            selectedLayer = layer;
+            document.getElementById('layerName').value = layer.options.name || "Layer";
+            document.getElementById('layerColor').value = layer.options.color || "#3388ff";
+        }
+
+        // Funktion zum Speichern der Änderungen am Layer
+        function saveLayerChanges() {
+            if (selectedLayer) {
+                var newName = document.getElementById('layerName').value;
+                var newColor = document.getElementById('layerColor').value;
+
+                // Ändere den Namen und die Farbe des Layers
+                selectedLayer.setStyle({color: newColor});
+                selectedLayer.options.name = newName;
+
+                // Aktualisiere die Liste
+                document.querySelector('#layerList li.selected').textContent = newName;
+            }
+        }
+
+        // Leaflet.draw-Steuerung
         var drawControl = new L.Control.Draw({
             edit: {
-                featureGroup: drawnItems
+                featureGroup: allLayers,  // Alle Layer können bearbeitet werden
+                remove: true
             },
             draw: {
                 polygon: true,
-                polyline: false,
+                polyline: true,  // Linien hinzufügen
                 rectangle: false,
                 circle: false,
-                marker: false,
+                marker: true,
                 circlemarker: false
             }
         });
         map.addControl(drawControl);
 
-        // Event listener for when shapes are created
+        // Event-Listener für gezeichnete Shapes
         map.on(L.Draw.Event.CREATED, function (e) {
             var layer = e.layer;
-            drawnItems.addLayer(layer);
-
-            // Log GeoJSON of the drawn shape to the console
-            var geojson = layer.toGeoJSON();
-            console.log("Shape drawn as GeoJSON:", JSON.stringify(geojson));
+            allLayers.addLayer(layer);  // Füge den neuen Layer zur Gruppe hinzu
+            addLayerToList(layer);      // Füge den Layer zur Liste hinzu
         });
 
-        // Expose the export function globally
-        function exportGeoJSON() {
-            var data = drawnItems.toGeoJSON();
-            console.log("All drawn shapes as GeoJSON:", JSON.stringify(data));
-            return data; // Return the GeoJSON data
+        // Definieren von EPSG:25833 (ETRS89 / UTM Zone 33N)
+        if (typeof proj4 !== 'undefined') {
+            proj4.defs("EPSG:25833", "+proj=utm +zone=33 +ellps=GRS80 +units=m +no_defs");
+        } else {
+            console.error("proj4 is not defined");
         }
-        window.exportGeoJSON = exportGeoJSON; // Make the function globally accessible
 
-        // Function to import GeoJSON and add it to the map
-        function importGeoJSON(geojson) {
-            // Add the GeoJSON data as layers to the map
-            L.geoJSON(geojson).addTo(drawnItems);
-            console.log('Imported GeoJSON:', geojson);
+        // Funktion zum Importieren von GeoJSON und Hinzufügen zur Karte
+        function importGeoJSON(geojsonData) {
+            var crs = geojsonData.crs ? geojsonData.crs.properties.name : 'EPSG:4326';
+            console.log("CRS of the imported GeoJSON:", crs);
+
+            if (crs === "urn:ogc:def:crs:EPSG::25833") {
+                console.log("Transforming coordinates from EPSG:25833 to EPSG:4326...");
+                geojsonData.features.forEach(function (feature) {
+                    if (feature.geometry.type === "LineString") {
+                        feature.geometry.coordinates = feature.geometry.coordinates.map(function (coord) {
+                            var transformed = proj4("EPSG:25833", "EPSG:4326", coord);
+                            if (!isFinite(transformed[0]) || !isFinite(transformed[1])) {
+                                console.error("Invalid transformed coordinate", coord, "=>", transformed);
+                            }
+                            return transformed;
+                        });
+                    }
+                });
+            }
+
+            // Füge importierte GeoJSON-Daten zur allLayers-Gruppe hinzu
+            geojsonLayer = L.geoJSON(geojsonData, {
+                style: function (feature) {
+                    return { color: "#3388ff" };
+                }
+            }).eachLayer(function(layer) {
+                allLayers.addLayer(layer);  // Füge jede Geometrie zur Gruppe hinzu
+                addLayerToList(layer);      // Füge die Geometrie zur Liste hinzu
+            });
+
+            map.fitBounds(allLayers.getBounds());
+            console.log('Imported GeoJSON:', JSON.stringify(geojsonData));
         }
-        window.importGeoJSON = importGeoJSON; // Expose the import function globally
+
+        window.importGeoJSON = importGeoJSON;  // Funktion global verfügbar machen
+
+        // Funktion zum Exportieren von GeoJSON
+        function exportGeoJSON() {
+            var data = allLayers.toGeoJSON();
+            console.log("All layers as GeoJSON: " + JSON.stringify(data));
+
+            // Übermittle die Daten an Python oder speichere sie lokal
+            if (window.pywebchannel) {
+                window.pywebchannel.sendGeoJSONToPython(JSON.stringify(data));
+            }
+        }
+
     </script>
+
+    <!-- WebChannel-Code für die Kommunikation mit Python -->
+    <script src="qwebchannel.js"></script>
+    <script>
+        var geojsonExport = null;
+
+        // Initialisiere QWebChannel und verbinde mit Python
+        new QWebChannel(qt.webChannelTransport, function(channel) {
+            window.pywebchannel = channel.objects.pywebchannel;
+        });
+
+    </script> 
 </body>
 </html>
+
