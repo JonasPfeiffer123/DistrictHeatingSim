@@ -35,7 +35,7 @@ class MapWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle('Leaflet.draw in PyQt5')
-        self.setGeometry(100, 100, 1000, 800)
+        self.showMaximized()
 
         # Erstelle eine QWebEngineView, um die HTML-Karte anzuzeigen
         self.web_view = QWebEngineView()
@@ -83,6 +83,7 @@ class MapWindow(QMainWindow):
 
             # Übergebe die GeoJSON-Daten an JavaScript
             geojson_str = json.dumps(geojson_data)
+            print("Importing GeoJSON to JavaScript")
             self.web_view.page().runJavaScript(f"window.importGeoJSON({geojson_str});")
 
 if __name__ == '__main__':
