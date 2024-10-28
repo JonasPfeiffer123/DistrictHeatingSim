@@ -4,6 +4,11 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: 'OpenStreetMap'
 }).addTo(map);
 
+// Polyfill für _flat, falls es veraltet ist
+if (typeof L.LineUtil._flat === 'undefined') {
+    L.LineUtil._flat = L.LineUtil.isFlat;
+}
+
 // Definiere allLayers global und füge es zur Karte hinzu
 const allLayers = new L.FeatureGroup();
 map.addLayer(allLayers);

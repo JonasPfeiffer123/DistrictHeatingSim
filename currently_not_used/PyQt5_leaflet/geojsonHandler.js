@@ -5,6 +5,11 @@ if (typeof proj4 !== 'undefined') {
     console.error("proj4 is not defined");
 }
 
+// Polyfill für _flat, falls es veraltet ist
+if (typeof L.LineUtil._flat === 'undefined') {
+    L.LineUtil._flat = L.LineUtil.isFlat;
+}
+
 // Funktion zum Importieren von GeoJSON und Hinzufügen als eine einzelne Layer-Gruppe
 function importGeoJSON(geojsonData, fileName) {
     const crs = geojsonData.crs ? geojsonData.crs.properties.name : 'EPSG:4326';
