@@ -12,10 +12,110 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
 
     <style>
+        #container {
+            display: flex;
+            height: 100vh;
+        }
+
         #map {
             position: relative;
-            height: 80vh;
-            width: 70%;
+            height: 100%;
+            width: 75%; /* Karte nimmt 75% der Breite ein */
+        }
+
+        #layerControl {
+            width: 25%; /* Layermanagement nimmt 25% der Breite ein */
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-left: 1px solid #ddd;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        }
+
+        #layerControl h3, #layerControl h4 {
+            font-family: Arial, sans-serif;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        #layerControl label {
+            font-family: Arial, sans-serif;
+            color: #555;
+        }
+
+        #layerControl input[type="text"], 
+        #layerControl input[type="color"], 
+        #layerControl input[type="range"] {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        #layerControl button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-family: Arial, sans-serif;
+        }
+
+        #layerControl button:hover {
+            background-color: #0056b3;
+        }
+
+        #layerList {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        #layerList li {
+            margin: 5px 0;
+            font-family: Arial, sans-serif;
+            color: #333;
+        }
+
+        /* Layer-Liste Darstellung */
+        .layer-item {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            padding: 8px;
+            margin: 4px 0;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+
+        .layer-item.selected-layer {
+            background-color: #e0f7fa;
+            border-color: #00796b;
+            font-weight: bold;
+        }
+
+        .color-indicator {
+            width: 15px;
+            height: 15px;
+            margin-right: 10px;
+            border-radius: 50%;
+        }
+
+        /* Kontextmenü Styling */
+        .context-menu {
+            position: absolute;
+            z-index: 1000;
+            background-color: #ffffff;
+            border: 1px solid #ccc;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .context-menu div {
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+
+        .context-menu div:hover {
+            background-color: #f0f0f0;
         }
 
         canvas {
@@ -24,16 +124,6 @@
             left: 0;
             z-index: 1000; /* Hoher z-index, um das Three.js-Canvas über der Leaflet-Karte zu platzieren */
             pointer-events: none; /* Deaktiviert Mausinteraktionen auf dem Canvas */
-        }
-
-
-        #layerControl {
-            height: 80vh;
-            width: 30%;
-            float: left;
-            padding: 10px;
-            background-color: #f8f9fa;
-            border-left: 1px solid #ddd;
         }
 
         #console {
@@ -52,19 +142,23 @@
     </style>
 </head>
 <body>
-    <div id="map"></div>
+    <div id="container">
+        <!-- Layermanagement Panel -->
+        <div id="layerControl">
+            <h3>Layer Management</h3>
+            <ul id="layerList"></ul>
+            <!-- Farbdialog -->
+            <input type="color" id="colorPicker" style="display:none;" onchange="applyColorChange(this.value)">
 
-    <!-- Layer Management Panel -->
-    <div id="layerControl">
-        <h3>Layer Management</h3>
-        <ul id="layerList"></ul>
-        <h4>Edit Layer</h4>
-        <label for="layerName">Name:</label>
-        <input type="text" id="layerName" placeholder="Layer Name"><br><br>
-        <label for="layerColor">Color:</label>
-        <input type="color" id="layerColor" value="#3388ff"><br><br>
-        <button onclick="saveLayerChanges()">Save Changes</button>
+            <!-- Opazitätsdialog -->
+            <input type="range" id="opacitySlider" style="display:none;" min="0" max="1" step="0.1" onchange="applyOpacityChange(this.value)">
+
+        </div>
+    
+        <!-- Map Div -->
+        <div id="map"></div>
     </div>
+    
 
     <div id="console"></div>
 

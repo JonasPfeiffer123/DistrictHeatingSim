@@ -5,34 +5,34 @@ if (typeof proj4 !== 'undefined') {
     console.error("proj4 is not defined");
 }
 
-// Funktion zum Importieren von GeoJSON und Hinzufügen zur Karte
-function importGeoJSON(geojsonData) {
+// Funktion zum Importieren von GeoJSON und Hinzufügen als eine einzelne Layer-Gruppe
+function importGeoJSON(geojsonData, fileName) {
     const crs = geojsonData.crs ? geojsonData.crs.properties.name : 'EPSG:4326';
-    console.log("CRS of the imported GeoJSON:", crs);
-
+    // Transformiere Koordinaten, falls das CRS nicht WGS84 ist
     if (crs === "urn:ogc:def:crs:EPSG::25833") {
         geojsonData.features.forEach(feature => transformCoordinates(feature));
     }
 
-    // In deiner importGeoJSON Funktion:
-    geojsonData.features.forEach(feature => {
-        if (is3DFeature(feature)) {
-            console.log("3D feature detected");
-            create3DObject(feature); // 3D-Objekt in Three.js erstellen
-            focusMapOnFeature(feature);  // Karte auf das Feature fokussieren
-            focusCameraOn3DObjects();  // Kamera auf 3D-Objekte fokussieren
-        } else {
-            console.log("2D feature detected");
-            // add2DLayer(feature); // 2D-Objekt in Leaflet hinzufügen
-            create3DObject(feature); // 3D-Objekt in Three.js erstellen
-            focusMapOnFeature(feature);  // Karte auf das Feature fokussiere
-            focusCameraOn3DObjects();  // Kamera auf 3D-Objekte fokussieren
-        }
-    });
+    // Erstelle eine einzige Layer-Gruppe aus allen Features im GeoJSON
+    const layerGroup = L.geoJSON(geojsonData, {
+        style: (feature) => ({
+            color: feature.properties.color || "#3388ff",
+            fillOpacity: feature.properties.opacity ? feature.properties.opacity * 0.5 : 0.5,
+            opacity: feature.properties.opacity || 1.0
+        })
+    }).addTo(allLayers);
 
-    // Map bounds nur für 2D-Features
-    if (allLayers.getBounds().isValid()) {
-        map.fitBounds(allLayers.getBounds());
+    // Setze den Namen und Farbe der Layer-Gruppe
+    layerGroup.options.name = fileName || "Imported Layer";
+    layerGroup.options.color = geojsonData.features[0].properties.color || "#3388ff";
+    layerGroup.options.opacity = geojsonData.features[0].properties.opacity || 1.0;
+
+    // Füge die gesamte Layer-Gruppe zur Layer-Liste hinzu
+    addLayerToList(layerGroup);
+
+    // Passe den Kartenausschnitt an, um alle Features anzuzeigen
+    if (layerGroup.getBounds().isValid()) {
+        map.fitBounds(layerGroup.getBounds());
     }
 }
 
@@ -60,70 +60,25 @@ function focusMapOnFeature(feature) {
     }
 }
 
-function focusCameraOn3DObjects() {
-    const box = new THREE.Box3().setFromObject(scene);
-    const center = box.getCenter(new THREE.Vector3());
-    camera.position.set(center.x, center.y, camera.position.z);
-    camera.lookAt(center);
-}
-
-// Funktion zur Erstellung von 3D-Objekten
-function create3DObject(feature) {
-    const colors = { Ground: 0x00ff00, Wall: 0xff0000, Roof: 0x0000ff, Closure: 0xffff00 };
-    const type = feature.properties.Geometr_3D;
-    const color = colors[type] || 0xffffff;
-
-    feature.geometry.coordinates.forEach(polygon => {
-        polygon.forEach(ring => {
-            const vertices = ring.map(coord => {
-                const [lng, lat, altitude] = coord;
-                const latLng = L.latLng(lat, lng);
-                const point = map.latLngToLayerPoint(latLng);
-                const z = altitude ? altitude / 100 : 0;  // Höhe reduziert
-
-                // console.log(`Vertex at X: ${point.x}, Y: ${-point.y}, Z: ${z}`);
-                return new THREE.Vector3(point.x, -point.y, z);
-            });
-
-            const shape = new THREE.Shape(vertices.slice(0, -1));
-            const geometry = new THREE.ExtrudeGeometry(shape, { depth: 10, bevelEnabled: false });
-            const material = new THREE.MeshBasicMaterial({ color });
-            const mesh = new THREE.Mesh(geometry, material);
-
-            mesh.userData.latLng = L.latLng(vertices[0].y, vertices[0].x);
-            scene.add(mesh);
-        });
-    });
-
-    renderer.render(scene, camera);
-}
-
-// Überprüfen, ob das Feature 3D-Koordinaten enthält
-function is3DFeature(feature) {
-    function has3DCoordinates(coords) {
-        return Array.isArray(coords[0]) ? coords.some(has3DCoordinates) : coords.length === 3 && coords[2];
-    }
-    return has3DCoordinates(feature.geometry.coordinates);
-}
-
-
-// Funktion zum Hinzufügen von 2D-Geometrie zur Leaflet-Karte
+// Funktion zum Hinzufügen von 2D-Geometrie zur Leaflet-Karte und zum Erstellen des Layers
 function add2DLayer(feature) {
-    // Entferne Z-Komponente aus den Koordinaten für Leaflet
-    const trimmedFeature = {
-        ...feature,
-        geometry: {
-            ...feature.geometry,
-            coordinates: feature.geometry.coordinates.map(ring =>
-                ring.map(coord => [coord[0], coord[1]]) // Verwende nur X und Y (Longitude, Latitude)
-            )
-        }
+    const color = feature.properties.color || "#3388ff";
+    const opacity = feature.properties.opacity || 1.0;
+    const layerOptions = {
+        color: color,
+        fillOpacity: opacity * 0.5,
+        opacity: opacity
     };
 
-    // Füge das 2D-Feature der Karte hinzu
-    const layer = L.geoJSON(trimmedFeature, {
-        style: function () { return { color: "#3388ff" }; }
-    }).addTo(allLayers); // Hinzufügen zu allLayers für spätere Verwendung
+    // Erstelle und füge den Layer hinzu
+    const layer = L.geoJSON(feature, {
+        style: layerOptions
+    }).addTo(allLayers);
+
+    // Speichere Layer-Informationen in den Optionen für spätere Bearbeitungen
+    layer.options.name = feature.properties.name || "Layer";
+    layer.options.color = color;
+    layer.options.opacity = opacity;
 
     return layer;
 }
