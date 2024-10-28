@@ -8,29 +8,35 @@ if (typeof proj4 !== 'undefined') {
 // Funktion zum Importieren von GeoJSON und Hinzufügen als eine einzelne Layer-Gruppe
 function importGeoJSON(geojsonData, fileName) {
     const crs = geojsonData.crs ? geojsonData.crs.properties.name : 'EPSG:4326';
+
     // Transformiere Koordinaten, falls das CRS nicht WGS84 ist
     if (crs === "urn:ogc:def:crs:EPSG::25833") {
         geojsonData.features.forEach(feature => transformCoordinates(feature));
     }
 
-    // Erstelle eine einzige Layer-Gruppe aus allen Features im GeoJSON
+    // Erstelle eine einzelne Layer-Gruppe aus allen Features im GeoJSON
     const layerGroup = L.geoJSON(geojsonData, {
         style: (feature) => ({
             color: feature.properties.color || "#3388ff",
             fillOpacity: feature.properties.opacity ? feature.properties.opacity * 0.5 : 0.5,
             opacity: feature.properties.opacity || 1.0
         })
-    }).addTo(allLayers);
+    });
 
-    // Setze den Namen und Farbe der Layer-Gruppe
+    // Setze Gruppenoptionen und Namen
     layerGroup.options.name = fileName || "Imported Layer";
     layerGroup.options.color = geojsonData.features[0].properties.color || "#3388ff";
     layerGroup.options.opacity = geojsonData.features[0].properties.opacity || 1.0;
 
-    // Füge die gesamte Layer-Gruppe zur Layer-Liste hinzu
-    addLayerToList(layerGroup);
+    // allLayers.addLayer(layerGroup); 
+    addLayerToList(layerGroup); // Zur Layer-Liste hinzufügen, aber nur als ein Eintrag
 
-    // Passe den Kartenausschnitt an, um alle Features anzuzeigen
+    // Füge layerGroup zur editierbaren Feature-Gruppe hinzu, damit Leaflet.draw sie erkennt
+    layerGroup.eachLayer(layer => {
+        allLayers.addLayer(layer);
+    });
+
+    // Layer in den Kartenausschnitt anpassen
     if (layerGroup.getBounds().isValid()) {
         map.fitBounds(layerGroup.getBounds());
     }
@@ -93,3 +99,4 @@ function exportGeoJSON() {
 }
 
 window.importGeoJSON = importGeoJSON; // Funktion global verfügbar machen
+window.exportGeoJSON = exportGeoJSON; // Funktion global verfügbar machen

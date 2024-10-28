@@ -235,28 +235,37 @@ function deleteLayer(layer) {
     layerList.forEach(layer => addLayerToList(layer)); // Liste neu erstellen
     selectedLayer = null;
 }
+// Funktion zum automatischen Verbinden von Linienendpunkten nach dem Bearbeiten
+function snapLineEndpoints(layerGroup, threshold = 0.0001) {
+    const layers = [];
+    
+    // Speichere alle Liniensegmente in einer Liste
+    layerGroup.eachLayer(layer => {
+        if (layer instanceof L.Polyline) {
+            layers.push(layer);
+        }
+    });
 
-// Leaflet.draw-Steuerung
-var drawControl = new L.Control.Draw({
-    edit: {
-        featureGroup: allLayers,
-        remove: true
-    },
-    draw: {
-        polygon: true,
-        polyline: true,
-        rectangle: false,
-        circle: false,
-        marker: true,
-        circlemarker: false
-    }
-});
-map.addControl(drawControl);
+    // Vergleiche alle Endpunkte miteinander
+    layers.forEach(layerA => {
+        const latlngsA = layerA.getLatLngs();
+        const startA = latlngsA[0];
+        const endA = latlngsA[latlngsA.length - 1];
 
-// Event-Listener für gezeichnete Shapes
-map.on(L.Draw.Event.CREATED, function (e) {
-    var layer = e.layer;
-    allLayers.addLayer(layer);
-    addLayerToList(layer);
-    console.log("Neuer Layer hinzugefügt:", layer);
-});
+        layers.forEach(layerB => {
+            if (layerA === layerB) return;
+
+            const latlngsB = layerB.getLatLngs();
+            const startB = latlngsB[0];
+            const endB = latlngsB[latlngsB.length - 1];
+
+            // Überprüfe, ob die Endpunkte nahe beieinander liegen und "snappe" sie
+            if (startA.distanceTo(endB) < threshold) {
+                layerB.setLatLngs([startA, ...latlngsB.slice(1)]);
+            }
+            if (endA.distanceTo(startB) < threshold) {
+                layerA.setLatLngs([...latlngsA.slice(0, -1), startB]);
+            }
+        });
+    });
+}
