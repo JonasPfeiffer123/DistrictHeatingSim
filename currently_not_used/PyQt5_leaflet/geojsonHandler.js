@@ -17,11 +17,16 @@ function importGeoJSON(geojsonData) {
     // In deiner importGeoJSON Funktion:
     geojsonData.features.forEach(feature => {
         if (is3DFeature(feature)) {
+            console.log("3D feature detected");
             create3DObject(feature); // 3D-Objekt in Three.js erstellen
             focusMapOnFeature(feature);  // Karte auf das Feature fokussieren
+            focusCameraOn3DObjects();  // Kamera auf 3D-Objekte fokussieren
         } else {
-            create3DObject(feature); // 2D-Objekt in Leaflet hinzufügen
-            focusMapOnFeature(feature);  // Karte auf das Feature fokussieren
+            console.log("2D feature detected");
+            // add2DLayer(feature); // 2D-Objekt in Leaflet hinzufügen
+            create3DObject(feature); // 3D-Objekt in Three.js erstellen
+            focusMapOnFeature(feature);  // Karte auf das Feature fokussiere
+            focusCameraOn3DObjects();  // Kamera auf 3D-Objekte fokussieren
         }
     });
 
@@ -40,6 +45,10 @@ function transformCoordinates(feature) {
         feature.geometry.coordinates = feature.geometry.coordinates.map(transformRing);
     } else if (feature.geometry.type === "MultiPolygon") {
         feature.geometry.coordinates = feature.geometry.coordinates.map(polygon => polygon.map(transformRing));
+    } else if (feature.geometry.type === "LineString") {
+        feature.geometry.coordinates = transformRing(feature.geometry.coordinates);
+    } else if (feature.geometry.type === "Point") {
+        feature.geometry.coordinates = transformCoord(feature.geometry.coordinates);
     }
 }
 
@@ -51,50 +60,52 @@ function focusMapOnFeature(feature) {
     }
 }
 
+function focusCameraOn3DObjects() {
+    const box = new THREE.Box3().setFromObject(scene);
+    const center = box.getCenter(new THREE.Vector3());
+    camera.position.set(center.x, center.y, camera.position.z);
+    camera.lookAt(center);
+}
+
+// Funktion zur Erstellung von 3D-Objekten
+function create3DObject(feature) {
+    const colors = { Ground: 0x00ff00, Wall: 0xff0000, Roof: 0x0000ff, Closure: 0xffff00 };
+    const type = feature.properties.Geometr_3D;
+    const color = colors[type] || 0xffffff;
+
+    feature.geometry.coordinates.forEach(polygon => {
+        polygon.forEach(ring => {
+            const vertices = ring.map(coord => {
+                const [lng, lat, altitude] = coord;
+                const latLng = L.latLng(lat, lng);
+                const point = map.latLngToLayerPoint(latLng);
+                const z = altitude ? altitude / 100 : 0;  // Höhe reduziert
+
+                // console.log(`Vertex at X: ${point.x}, Y: ${-point.y}, Z: ${z}`);
+                return new THREE.Vector3(point.x, -point.y, z);
+            });
+
+            const shape = new THREE.Shape(vertices.slice(0, -1));
+            const geometry = new THREE.ExtrudeGeometry(shape, { depth: 10, bevelEnabled: false });
+            const material = new THREE.MeshBasicMaterial({ color });
+            const mesh = new THREE.Mesh(geometry, material);
+
+            mesh.userData.latLng = L.latLng(vertices[0].y, vertices[0].x);
+            scene.add(mesh);
+        });
+    });
+
+    renderer.render(scene, camera);
+}
+
 // Überprüfen, ob das Feature 3D-Koordinaten enthält
 function is3DFeature(feature) {
     function has3DCoordinates(coords) {
-        return Array.isArray(coords[0])
-            ? coords.some(has3DCoordinates)
-            : coords.length === 3 && coords[2] !== null && coords[2] !== undefined && coords[2] !== 0;
+        return Array.isArray(coords[0]) ? coords.some(has3DCoordinates) : coords.length === 3 && coords[2];
     }
     return has3DCoordinates(feature.geometry.coordinates);
 }
 
-// Funktion zur Erstellung eines 3D-Objekts in Three.js
-function create3DObject(feature) {
-    const types = ['Ground', 'Wall', 'Roof', 'Closure'];
-    const scaleFactor = 100;  // Ändere den Skalierungsfaktor vorerst auf 100
-
-    types.forEach(type => {
-        if (feature.properties.Geometr_3D === type) {
-            const color = type === 'Ground' ? 0x00ff00 : type === 'Wall' ? 0xff0000 : 0x0000ff;
-            feature.geometry.coordinates.forEach(polygon => {
-                polygon.forEach(ring => {
-                    const vertices = ring.map(([lng, lat, alt]) => {
-                        const latLng = L.latLng(lat, lng);
-                        const point = map.latLngToLayerPoint(latLng);
-                        const z = alt ? alt / scaleFactor : 0;  // Skaliere Z mit einem kleineren Faktor
-                        return new THREE.Vector3(point.x, -point.y, z);  // Verwende die invertierte Y-Achse
-                    });
-
-                    // Erstelle Geometrie für das Polygon
-                    const shape = new THREE.Shape(vertices.slice(0, -1)); // Entferne letzten Punkt
-                    const geometry = new THREE.ExtrudeGeometry(shape, { depth: 10, bevelEnabled: false });
-                    const material = new THREE.MeshBasicMaterial({ color, opacity: 0.5, transparent: true });
-                    const mesh = new THREE.Mesh(geometry, material);
-
-                    // Speichere Lat/Lng-Information für spätere Neupositionierung
-                    mesh.userData.latLng = L.latLng(vertices[0].y, vertices[0].x);  // Speichere Lat/Lng
-
-                    scene.add(mesh);  // Füge das Mesh zur Szene hinzu
-                });
-            });
-        }
-    });
-
-    renderer.render(scene, camera);  // Aktualisiere die Szene
-}
 
 // Funktion zum Hinzufügen von 2D-Geometrie zur Leaflet-Karte
 function add2DLayer(feature) {
