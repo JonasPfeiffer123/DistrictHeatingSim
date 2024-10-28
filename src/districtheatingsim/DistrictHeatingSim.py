@@ -108,6 +108,8 @@ from gui.PVTab.pv_tab import PVTab
 from gui.results_pdf import create_pdf
 from gui.dialogs import TemperatureDataDialog, HeatPumpDataDialog
 
+from gui.PyQt5_leaflet.PyQt5_Leafleat import LeafletTab
+
 class ProjectConfigManager:
     """
     Handles loading and saving of project configuration and file paths.
@@ -693,6 +695,7 @@ class HeatSystemDesignGUI(QMainWindow):
         self.projectTab = ProjectTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
         self.buildingTab = BuildingTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
         self.visTab = VisualizationTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
+        self.visTab2 = LeafletTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
         self.calcTab = CalculationTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager, self)
         self.mixDesignTab = MixDesignTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager, self)
         self.comparisonTab = ComparisonTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
@@ -704,6 +707,7 @@ class HeatSystemDesignGUI(QMainWindow):
         tabWidget.addTab(self.projectTab, "Projektdefinition")
         tabWidget.addTab(self.buildingTab, "Wärmebedarf Gebäude")
         tabWidget.addTab(self.visTab, "Wärmenetz generieren")
+        tabWidget.addTab(self.visTab2, "Wärmenetz generieren (Leaflet)")
         tabWidget.addTab(self.calcTab, "Wärmenetzberechnung")
         tabWidget.addTab(self.mixDesignTab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
         tabWidget.addTab(self.comparisonTab, "Variantenvergleich")
