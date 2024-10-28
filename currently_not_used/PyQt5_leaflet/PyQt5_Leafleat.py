@@ -76,6 +76,9 @@ class MapWindow(QMainWindow):
         options = QFileDialog.Options()
         geojson_file, _ = QFileDialog.getOpenFileName(self, 'Open GeoJSON File', '', 'GeoJSON Files (*.geojson)', options=options)
 
+        # isolating the file name
+        geojson_filename = geojson_file.split('/')[-1]
+
         if geojson_file:
             # Lese den Inhalt der GeoJSON-Datei
             with open(geojson_file, 'r', encoding='utf-8') as f:
@@ -83,8 +86,8 @@ class MapWindow(QMainWindow):
 
             # Übergebe die GeoJSON-Daten an JavaScript
             geojson_str = json.dumps(geojson_data)
-            print("Importing GeoJSON to JavaScript")
-            self.web_view.page().runJavaScript(f"window.importGeoJSON({geojson_str});")
+            # geojson_filename is passed to the JavaScript function, necessary for the function to work, transformed to a string
+            self.web_view.page().runJavaScript(f"window.importGeoJSON({geojson_str}, '{geojson_filename}');")
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
