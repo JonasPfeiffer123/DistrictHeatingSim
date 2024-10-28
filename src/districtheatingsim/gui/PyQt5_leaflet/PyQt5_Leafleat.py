@@ -2,7 +2,7 @@ import sys
 import os
 import json
 import geopandas as gpd
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QPushButton, QWidget, QFileDialog
+from PyQt5.QtWidgets import QApplication, QVBoxLayout, QPushButton, QWidget, QFileDialog
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtCore import QUrl, QObject, pyqtSlot
 from PyQt5.QtWebChannel import QWebChannel
@@ -30,8 +30,8 @@ class GeoJsonReceiver(QObject):
         gdf.to_file(output_file, driver="GeoJSON")
         print(f"GeoJSON gespeichert in {output_file}")
 
-class MapWindow(QMainWindow):
-    def __init__(self):
+class LeafletTab(QWidget):
+    def __init__(self, folder_manager, data_manager, config_manager):
         super().__init__()
 
         self.setWindowTitle('Leaflet.draw in PyQt5')
@@ -41,7 +41,8 @@ class MapWindow(QMainWindow):
         self.web_view = QWebEngineView()
 
         # Lade die HTML-Datei
-        map_file_path = os.path.join(os.getcwd(), 'currently_not_used\\PyQt5_leaflet\\map.html')
+        map_file_path = os.path.join(os.getcwd(), 'src\\districtheatingsim\\gui\\PyQt5_leaflet\\map.html')
+        print(map_file_path)
         self.web_view.setUrl(QUrl.fromLocalFile(map_file_path))
 
         # Erstelle den WebChannel und registriere das Python-Objekt
@@ -53,9 +54,7 @@ class MapWindow(QMainWindow):
         # Set up layout
         layout = QVBoxLayout()
         layout.addWidget(self.web_view)
-        central_widget = QWidget()
-        central_widget.setLayout(layout)
-        self.setCentralWidget(central_widget)
+        self.setLayout(layout)
 
         # Add export button
         export_button = QPushButton('Export GeoJSON')
@@ -91,6 +90,6 @@ class MapWindow(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    window = MapWindow()
+    window = LeafletTab()
     window.show()
     sys.exit(app.exec_())
