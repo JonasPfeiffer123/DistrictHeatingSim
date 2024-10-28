@@ -1,3 +1,8 @@
+// Polyfill für _flat, falls es veraltet ist
+if (typeof L.LineUtil._flat === 'undefined') {
+    L.LineUtil._flat = L.LineUtil.isFlat;
+}
+
 // Array zur Verwaltung der Layer
 var layerList = [];
 let selectedLayer = null;
