@@ -1,3 +1,8 @@
+// Filename: layerControl.js
+// Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+// Date: 2024-10-20
+// Description: JavaScript-File for the layer control functionality of the Leaflet map
+
 // Polyfill für _flat, falls es veraltet ist
 if (typeof L.LineUtil._flat === 'undefined') {
     L.LineUtil._flat = L.LineUtil.isFlat;

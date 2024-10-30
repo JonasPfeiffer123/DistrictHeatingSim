@@ -99,7 +99,6 @@ class VisualizationModel:
             list: Center coordinates [latitude, longitude].
             int: Zoom level.
         """
-        print(self.layers)
         if not self.layers:
             return [51.1657, 10.4515], 6
 

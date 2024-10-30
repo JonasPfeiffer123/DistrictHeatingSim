@@ -1,3 +1,8 @@
+// Filename: main.js
+// Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+// Date: 2024-10-20
+// Description: JavaScript-File for the main functionality of the Leaflet map
+
 // Leaflet Karte initialisieren
 const map = L.map('map').setView([51.1657, 10.4515], 6);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -26,7 +31,6 @@ allLayers.eachLayer(layer => {
         layer.editing.disable();
     }
 });
-
 
 let clickMarker = null;
 let markerModeEnabled = false;
@@ -63,12 +67,6 @@ function onMapClick(e) {
 
     clickMarker.bindPopup("Latitude: " + lat + "<br>Longitude: " + lng).openPopup();
 }
-
-function setMapCenter(lat, lng, zoom) {
-    map.setView([lat, lng], zoom);
-}
-
-window.setMapCenter = setMapCenter;
 
 // Event für den Button, um den Marker-Modus umzuschalten
 document.getElementById('toggleMarkerButton').addEventListener('click', toggleMarkerMode);
