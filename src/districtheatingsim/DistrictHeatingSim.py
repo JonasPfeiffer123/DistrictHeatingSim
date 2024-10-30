@@ -108,7 +108,7 @@ from gui.PVTab.pv_tab import PVTab
 from gui.results_pdf import create_pdf
 from gui.dialogs import TemperatureDataDialog, HeatPumpDataDialog
 
-from gui.PyQt5_leaflet.PyQt5_Leaflet import LeafletTab, VisualizationTabLeaflet
+from gui.PyQt5_leaflet.leaflet_tab import VisualizationTabLeaflet
 
 class ProjectConfigManager:
     """

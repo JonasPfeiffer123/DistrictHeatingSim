@@ -26,7 +26,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QMenuBar, QAction
 from PyQt5.QtGui import QColor, QBrush
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 
-from gui.VisualizationTab.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog, GeocodeAddressesDialog
+from gui.VisualizationTab.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog
 from gui.VisualizationTab.net_generation_threads import NetGenerationThread, FileImportThread, GeocodingThread
 
 class VisualizationModel:
@@ -332,11 +332,10 @@ class VisualizationPresenter(QObject):
 
     def open_geocode_addresses_dialog(self):
         """
-        Opens the dialog for geocoding addresses from a CSV file.
+        Open a dialog to select a CSV file for geocoding addresses.
         """
-        dialog = GeocodeAddressesDialog(self.model.get_base_path(), self.config_manager, self.view)
-        if dialog.exec_() == QDialog.Accepted:
-            fname = dialog.get_file_name()
+        fname, _ = QFileDialog.getOpenFileName(self.view, 'CSV-Koordinaten laden', self.model.get_base_path(), 'CSV Files (*.csv);;All Files (*)')
+        if fname:
             self.geocode_addresses(fname)
 
     def geocode_addresses(self, inputfilename):
