@@ -1,16 +1,14 @@
 """
-Filename: PyQt5_Leaflet.py
+Filename: leaflet_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-19
+Date: 2024-10-30
 Description: Contains the LeafTab class for displaying a Leaflet map in a PyQt5 application.
 """
 
-import sys
 import os
 import json
 import geopandas as gpd
 import pandas as pd
-import random
 import traceback
 import os
 import tempfile
@@ -150,75 +148,6 @@ class VisualizationPresenter(QObject):
 
         # Initialize map view
         self.on_project_folder_changed(self.folder_manager.variant_folder)
-        self.update_map_view()
-
-    def update_map_view(self):
-        """
-        Updates the map view by sending layer data to JavaScript using WebChannel.
-        """
-        try:
-            # Prepare each layer to send to JavaScript
-            for layer_name, layer in self.model.layers.items():
-                geojson_file_path = layer['file_path']
-                with open(geojson_file_path, 'r') as f:
-                    geojson_data = json.load(f)
-
-                # Pass the layers data to JavaScript via the WebChannel
-                layer_json = json.dumps(geojson_data)
-                self.view.web_view.page().runJavaScript(f"window.importGeoJSON({layer_json}, '{layer_name}');")
-
-        except Exception as e:
-            error_message = f"{str(e)}\n\n{traceback.format_exc()}"
-            self.view.show_error_message("Fehler beim Laden der Daten", error_message)
-
-    def load_csv_coordinates(self, fname=None):
-        """
-        Loads coordinates from a CSV file and adds them as a GeoJSON layer to the map.
-        """
-        try:
-            if not fname:
-                fname, _ = QFileDialog.getOpenFileName(self.view, 'CSV-Koordinaten laden', self.model.get_base_path(), 'CSV Files (*.csv);;All Files (*)')
-            if fname:
-                geojson_path = os.path.join(self.model.get_base_path(), 'Gebäudedaten', f"{os.path.splitext(os.path.basename(fname))[0]}.geojson")
-                self.model.create_geojson_from_csv(fname, geojson_path)
-                self.add_geojson_layer([geojson_path])
-        except Exception as e:
-            error_message = f"{str(e)}\n\n{traceback.format_exc()}"
-            self.view.show_error_message("Fehler beim Importieren von GeoJSON", error_message)
-
-    def import_geojson(self):
-        """
-        Imports GeoJSON files and adds them as layers to the map.
-        """
-        try:
-            fnames, _ = QFileDialog.getOpenFileNames(self.view, 'Netzdaten importieren', self.model.get_base_path(), 'GeoJSON Files (*.geojson);;All Files (*)')
-            if fnames:
-                self.add_geojson_layer(fnames)
-        except Exception as e:
-            error_message = f"{str(e)}\n\n{traceback.format_exc()}"
-            self.view.show_error_message("Fehler beim Importieren von GeoJSON", error_message)
-
-    def add_geojson_layer(self, filenames, color=None):
-        """
-        Adds GeoJSON layers to the map.
-
-        Args:
-            filenames (list): A list of GeoJSON file paths.
-            color (str, optional): The color to use for the layer.
-        """
-        try:
-            color = color or "#{:06x}".format(random.randint(0, 0xFFFFFF))
-            for filename in filenames:
-                # Add the layer to the model
-                layer_name = os.path.splitext(os.path.basename(filename))[0]
-                self.model.layers[layer_name] = {"file_path": filename, "color": color}
-
-            # Update map view to reflect the added layers
-            self.update_map_view()
-
-        except Exception as e:
-            error_message = f"{str(e)}\n\n{traceback.format_exc()}"
-            self.view.show_error_message("Fehler beim Hinzufügen einer GeoJSON-Schicht", error_message)
 
     def on_project_folder_changed(self, new_base_path):
         """
@@ -272,6 +201,57 @@ class VisualizationPresenter(QObject):
         """
         self.view.show_error_message("Fehler beim Geocoding", error_message)
         self.view.progressBar.setRange(0, 1)
+
+    def load_csv_coordinates(self, fname=None):
+        """
+        Loads coordinates from a CSV file and adds them as a GeoJSON layer to the map.
+        """
+        try:
+            if not fname:
+                fname, _ = QFileDialog.getOpenFileName(self.view, 'CSV-Koordinaten laden', self.model.get_base_path(), 'CSV Files (*.csv);;All Files (*)')
+            if fname:
+                geojson_path = os.path.join(self.model.get_base_path(), 'Gebäudedaten', f"{os.path.splitext(os.path.basename(fname))[0]}.geojson")
+                self.model.create_geojson_from_csv(fname, geojson_path)
+                self.add_geojson_layer([geojson_path])
+        except Exception as e:
+            error_message = f"{str(e)}\n\n{traceback.format_exc()}"
+            self.view.show_error_message("Fehler beim Importieren von GeoJSON", error_message)
+
+    def import_geojson(self):
+        """
+        Imports GeoJSON files and adds them as layers to the map.
+        """
+        try:
+            fnames, _ = QFileDialog.getOpenFileNames(self.view, 'Netzdaten importieren', self.model.get_base_path(), 'GeoJSON Files (*.geojson);;All Files (*)')
+            if fnames:
+                self.add_geojson_layer(fnames)
+        except Exception as e:
+            error_message = f"{str(e)}\n\n{traceback.format_exc()}"
+            self.view.show_error_message("Fehler beim Importieren von GeoJSON", error_message)
+
+    def add_geojson_layer(self, filenames):
+        """
+        Adds GeoJSON layers to the map.
+
+        Args:
+            filenames (list): A list of GeoJSON file paths.
+            color (str, optional): The color to use for the layer.
+        """
+        try:
+            for filename in filenames:
+                # Add the layer to the model
+                layer_name = os.path.splitext(os.path.basename(filename))[0]
+
+                with open(filename, 'r') as f:
+                    geojson_data = json.load(f)
+
+                # Pass the layers data to JavaScript via the WebChannel
+                layer_json = json.dumps(geojson_data)
+                self.view.web_view.page().runJavaScript(f"window.importGeoJSON({layer_json}, '{layer_name}');")
+
+        except Exception as e:
+            error_message = f"{str(e)}\n\n{traceback.format_exc()}"
+            self.view.show_error_message("Fehler beim Hinzufügen einer GeoJSON-Schicht", error_message)
 
     def open_layer_generation_dialog(self):
         """
