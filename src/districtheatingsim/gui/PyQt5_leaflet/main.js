@@ -64,6 +64,12 @@ function onMapClick(e) {
     clickMarker.bindPopup("Latitude: " + lat + "<br>Longitude: " + lng).openPopup();
 }
 
+function setMapCenter(lat, lng, zoom) {
+    map.setView([lat, lng], zoom);
+}
+
+window.setMapCenter = setMapCenter;
+
 // Event für den Button, um den Marker-Modus umzuschalten
 document.getElementById('toggleMarkerButton').addEventListener('click', toggleMarkerMode);
 

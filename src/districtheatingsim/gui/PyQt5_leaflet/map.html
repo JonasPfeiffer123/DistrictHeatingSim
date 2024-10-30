@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,23 +12,42 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
 
     <style>
+        /* Gesamtcontainer */
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden; /* Verhindert Scrollen */
+        }
+
         #container {
             display: flex;
+            flex-direction: column;
             height: 100vh;
+            width: 100vw;
         }
 
-        #map {
-            position: relative;
-            height: 100%;
-            width: 75%; /* Karte nimmt 75% der Breite ein */
+        /* Hauptbereich für Karte und LayerControl nebeneinander */
+        #mainContent {
+            display: flex;
+            flex-grow: 1;
+            height: calc(100% - 50px); /* Platz für die Konsole */
         }
 
+        /* Layer Control links */
         #layerControl {
-            width: 25%; /* Layermanagement nimmt 25% der Breite ein */
+            width: 25%; /* Layer Control nimmt 25% der Breite ein */
             background-color: #f8f9fa;
             padding: 15px;
-            border-left: 1px solid #ddd;
+            border-right: 1px solid #ddd;
             box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            overflow-y: auto; /* Scrollen nur innerhalb des LayerControl */
+        }
+
+        /* Karte rechts */
+        #map {
+            width: 75%; /* Karte nimmt 75% der Breite ein */
+            height: 100%;
         }
 
         #layerControl h3, #layerControl h4 {
@@ -118,54 +137,39 @@
             background-color: #f0f0f0;
         }
 
-        canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 1000; /* Hoher z-index, um das Three.js-Canvas über der Leaflet-Karte zu platzieren */
-            pointer-events: none; /* Deaktiviert Mausinteraktionen auf dem Canvas */
-        }
-
+        /* Konsole am unteren Rand */
         #console {
-            clear: both;
-            position: relative;
-            bottom: 0;
+            height: 50px;
             background-color: white;
-            opacity: 0.8;
+            opacity: 0.9;
             width: 100%;
-            max-height: 150px;
-            overflow-y: scroll;
             border-top: 1px solid black;
             font-family: monospace;
             padding: 5px;
+            overflow-y: auto;
         }
     </style>
 </head>
 <body>
     <div id="container">
-        <!-- Layermanagement Panel -->
-        <div id="layerControl">
-            <h3>Layer Management</h3>
-            <ul id="layerList"></ul>
-            <!-- Farbdialog -->
-            <input type="color" id="colorPicker" style="display:none;" onchange="applyColorChange(this.value)">
-
-            <!-- Opazitätsdialog -->
-            <input type="range" id="opacitySlider" style="display:none;" min="0" max="1" step="0.1" onchange="applyOpacityChange(this.value)">
-            
-            <button id="toggleMarkerButton">Marker setzen: Ein</button>
-            <div id="coordinateDisplay" style="padding: 10px; background-color: #f8f9fa; font-family: Arial, sans-serif; font-size: 14px;">
-                Click on the map to get coordinates.
+        <!-- Hauptbereich mit LayerControl und Karte -->
+        <div id="mainContent">
+            <div id="layerControl">
+                <h3>Layer-Übersicht</h3>
+                <ul id="layerList"></ul>
+                <input type="color" id="colorPicker" style="display:none;" onchange="applyColorChange(this.value)">
+                <input type="range" id="opacitySlider" style="display:none;" min="0" max="1" step="0.1" onchange="applyOpacityChange(this.value)">
+                <button id="toggleMarkerButton">Marker setzen: Ein</button>
+                <div id="coordinateDisplay" style="padding: 10px; background-color: #f8f9fa; font-family: Arial, sans-serif; font-size: 14px;">
+                    Click on the map to get coordinates.
+                </div>
             </div>
-
+            <div id="map"></div>
         </div>
-    
-        <!-- Map Div -->
-        <div id="map"></div>
-    </div>
-    
 
-    <div id="console"></div>
+        <!-- Konsole am unteren Rand -->
+        <div id="console"></div>
+    </div>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
