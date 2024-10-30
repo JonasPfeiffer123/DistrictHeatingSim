@@ -3,56 +3,59 @@
 // Date: 2024-10-20
 // Description: JavaScript-File for the main functionality of the Leaflet map
 
-// Leaflet Karte initialisieren
+// Initialize Leaflet map
 const map = L.map('map').setView([51.1657, 10.4515], 6);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: 'OpenStreetMap'
+    attribution: 'OpenStreetMap', maxZoom: 22
 }).addTo(map);
 
-// Polyfill für _flat, falls es veraltet ist
+// Polyfill for _flat if deprecated
 if (typeof L.LineUtil._flat === 'undefined') {
     L.LineUtil._flat = L.LineUtil.isFlat;
 }
 
-// Definiere allLayers global und füge es zur Karte hinzu
+// Define allLayers globally and add to map
 const allLayers = new L.FeatureGroup();
 map.addLayer(allLayers);
 
-// Aktivieren der Bearbeitung
-allLayers.eachLayer(layer => {
-    if (layer.editing) {
-        layer.editing.enable();
-    }
+// Enable Leaflet.pm controls with snapping
+map.pm.addControls({
+    position: 'topleft',
+    drawMarker: true,
+    drawPolyline: true,
+    editMode: true,
+    dragMode: true,
+    cutPolygon: false,
+    removalMode: true
 });
 
-// Deaktivieren der Bearbeitung
-allLayers.eachLayer(layer => {
-    if (layer.editing) {
-        layer.editing.disable();
-    }
+// Set global snapping options for Leaflet.pm
+map.pm.setGlobalOptions({
+    snappable: true,
+    snapDistance: 5, // Snap threshold in pixels
+    allowSelfIntersection: false
 });
 
+// Toggle marker mode
 let clickMarker = null;
 let markerModeEnabled = false;
-
-// Funktion zum Ein-/Ausschalten des Marker-Modus
 function toggleMarkerMode() {
     markerModeEnabled = !markerModeEnabled;
     document.getElementById('toggleMarkerButton').textContent = markerModeEnabled ? 'Marker setzen: Aus' : 'Marker setzen: Ein';
 
     if (markerModeEnabled) {
-        map.on('click', onMapClick);  // Aktiviert den Klick-Handler
+        map.on('click', onMapClick); // Enable click handler
     } else {
-        map.off('click', onMapClick); // Deaktiviert den Klick-Handler
+        map.off('click', onMapClick); // Disable click handler
         if (clickMarker) {
-            map.removeLayer(clickMarker); // Entfernt den Marker, wenn gewünscht
+            map.removeLayer(clickMarker); // Remove marker if needed
             clickMarker = null;
         }
-        document.getElementById('coordinateDisplay').textContent = ''; // Löscht Koordinatenanzeige
+        document.getElementById('coordinateDisplay').textContent = ''; // Clear coordinates display
     }
 }
 
-// Klick-Handler für die Karte
+// Click handler for the map
 function onMapClick(e) {
     var lat = e.latlng.lat.toFixed(6);
     var lng = e.latlng.lng.toFixed(6);
@@ -68,43 +71,33 @@ function onMapClick(e) {
     clickMarker.bindPopup("Latitude: " + lat + "<br>Longitude: " + lng).openPopup();
 }
 
-// Event für den Button, um den Marker-Modus umzuschalten
+// Event for the button to toggle marker mode
 document.getElementById('toggleMarkerButton').addEventListener('click', toggleMarkerMode);
 
-// Animationsschleife
-function animate() {
-    requestAnimationFrame(animate);
-}
-animate();
-
-// Leaflet.draw-Steuerung
-var drawControl = new L.Control.Draw({
-    edit: {
-        featureGroup: allLayers,
-        remove: true,
-        edit: true  // Aktivieren oder Deaktivieren von Editieren
-    },
-    draw: {
-        polygon: true,
-        polyline: true,
-        rectangle: false,
-        circle: false,
-        marker: true,
-        circlemarker: false
-    }
-});
-
-map.addControl(drawControl);
-
-// Event-Listener für gezeichnete Shapes
-map.on(L.Draw.Event.CREATED, function (e) {
-    var layer = e.layer;
+// Enable snapping for each layer on creation
+map.on('pm:create', (e) => {
+    const layer = e.layer;
     allLayers.addLayer(layer);
-    addLayerToList(layer);
-    console.log("Neuer Layer hinzugefügt:", layer);
-});
 
-// Event für das `editstop`-Ereignis hinzufügen, um das automatische Verbinden zu aktivieren
-map.on('draw:editstop', () => {
-    snapLineEndpoints(allLayers);
+    layer.pm.enable({
+        snappable: true,
+        snapDistance: 5 // Set snapping distance for this layer
+    });
+
+    // Real-time snapping with visual feedback
+    layer.on('pm:snap', (event) => {
+        console.log('Snapped to:', event.marker.getLatLng());
+        // Optional: Add visual indication of snap points, e.g., change marker color or style
+        if (event.marker) {
+            event.marker.setStyle({ color: 'red' });
+        }
+    });
+
+    layer.on('pm:unsnap', (event) => {
+        console.log('Unsnap:', event.marker.getLatLng());
+        // Reset visual indication when unsnapped
+        if (event.marker) {
+            event.marker.setStyle({ color: 'green' });
+        }
+    });
 });
