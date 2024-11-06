@@ -363,8 +363,6 @@ class MixDesignTab(QWidget):
         """
         if self.tech_objects and self.results:
             dialog = SankeyDialog(results=self.results, parent=self)
-            print(self.results)
-            print(self.tech_objects)
             dialog.exec_()
         else:
             QMessageBox.information(self, "Keine Berechnungsergebnisse", "Es sind keine Berechnungsergebnisse verfügbar. Führen Sie zunächst eine Berechnung durch.")
