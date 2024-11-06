@@ -707,7 +707,7 @@ class HeatSystemDesignGUI(QMainWindow):
         tabWidget.addTab(self.projectTab, "Projektdefinition")
         tabWidget.addTab(self.buildingTab, "Wärmebedarf Gebäude")
         #tabWidget.addTab(self.visTab, "Wärmenetz generieren")
-        tabWidget.addTab(self.visTab2, "Kartenansicht & Wärmenetzgenerierung")
+        tabWidget.addTab(self.visTab2, "Kartenansicht Wärmenetzgenerierung")
         tabWidget.addTab(self.calcTab, "Wärmenetzberechnung")
         tabWidget.addTab(self.mixDesignTab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
         tabWidget.addTab(self.comparisonTab, "Variantenvergleich")
