@@ -32,19 +32,12 @@ Wärmenetzberechnung:
 - Bei sehr viel langeweile könnte man auch das manuelle Erstellen von Netzen anfangen. 
 
 Wirtschaftlichkeitsberechnung:
-- Allgemein die Kostendefinitionen noch an irgendwas binden???
-- Überprüfung der Berechnungen / Validierung
-- Darstellung der Preisentwicklung
-    - Darstellung der kapitalgebundenen, bedarfsgebundenen und betriebsgebundenen Kosten der einzelnen Technologien über einen definierten Zeitraum in Balkendiagrammen.
-- Szenarien für schrittweisen Umbau von Bestandssystemen
-    - Entwicklung von Szenarien zur schrittweisen Umgestaltung bestehender Systeme und Bewertung ihrer Wirtschaftlichkeit.
-    - Untersuchung der Automatisierbarkeit dieser Szenarien.
+- Kostendefinitionen weiter recherchieren und einarbeiten
 
 Erzeugerauslegung:
-- Neue Erzeuger / Speicher
+- Ausbau Erzeuger / Speicher
     - Einbindung von PVT, Großwärmespeicher, AquvaHeat, Wasserstoff (Brennstoffzelle), Power-to-heat und Geothermie mit Sondenregeneration in die Erzeugerauslegung.
-- Erweiterung Funktionalitäten
-- Ergebnisausgabe: Anzahl Starts, Betriebsstunden und Betriebsstunden/Start im GUI ausgeben
+    - Erweiterung Funktionalitäten
 
 Einzelversorgungslösung:
 - weitere Ergebnisse?

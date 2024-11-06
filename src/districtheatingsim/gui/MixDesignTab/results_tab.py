@@ -119,10 +119,7 @@ class ResultsTab(QWidget):
         """
 
         # First Table (Results Table)
-        self.resultsTable = QTableWidget()
-        self.resultsTable.setColumnCount(6)
-        self.resultsTable.setHorizontalHeaderLabels(['Technologie', 'Wärmemenge (MWh)', 'Kosten (€/MWh)', 'Anteil (%)', 'spez. CO2-Emissionen (t_CO2/MWh_th)', 'Primärenergiefaktor'])
-        self.resultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.setupResultsTable()
 
         self.table1_widget = QWidget()
         table1_layout = QVBoxLayout(self.table1_widget)
@@ -131,17 +128,13 @@ class ResultsTab(QWidget):
         self.scrollLayout.addWidget(self.table1_section)
 
         # Second Table (Additional Results Table)
-        self.additionalResultsTable = QTableWidget()
-        self.additionalResultsTable.setColumnCount(3)
-        self.additionalResultsTable.setHorizontalHeaderLabels(['Ergebnis', 'Wert', 'Einheit'])
-        self.additionalResultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.setupAdditionalResultsTable()
 
         self.table2_widget = QWidget()
         table2_layout = QVBoxLayout(self.table2_widget)
         table2_layout.addWidget(self.additionalResultsTable)
         self.table2_section = CollapsibleHeader("Ergebnisse Wirtschaftlichkeit", self.table2_widget)
         self.scrollLayout.addWidget(self.table2_section)
-
 
     def addLabel(self, text):
         """
@@ -155,35 +148,52 @@ class ResultsTab(QWidget):
 
     def setupResultsTable(self):
         """
-        Sets up the results table.
+        Sets up the results table with additional columns for operational hours and starts.
         """
         self.resultsTable = QTableWidget()
-        #self.resultsTable.setColumnCount(8)
-        self.resultsTable.setColumnCount(6)
-        #self.resultsTable.setHorizontalHeaderLabels(['Technologie', 'Wärmemenge (MWh)', 'Anzahl Starts', 'Betriebsstunden', 'Kosten (€/MWh)', 'Anteil (%)', 'spez. CO2-Emissionen (t_CO2/MWh_th)', 'Primärenergiefaktor'])
-        self.resultsTable.setHorizontalHeaderLabels(['Technologie', 'Wärmemenge (MWh)', 'Kosten (€/MWh)', 'Anteil (%)', 'spez. CO2-Emissionen (t_CO2/MWh_th)', 'Primärenergiefaktor'])
+        self.resultsTable.setColumnCount(9)  # Updated to include new columns
+        self.resultsTable.setHorizontalHeaderLabels([
+            'Technologie', 'Wärmemenge (MWh)', 'Anzahl Betriebsstunden', 
+            'Anzahl Starts', 'Betriebsstunden/Start', 'Kosten (€/MWh)', 
+            'Anteil (%)', 'CO2-eq (t_CO2/MWh_th)', 'Primärenergiefaktor'
+        ])
         self.resultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.resultsAndPieChartLayout.addWidget(self.resultsTable)
 
     def showResultsInTable(self, results):
         """
-        Displays the results in the results table.
-
+        Displays the results in the results table, including calculated operational metrics.
         Args:
             results (dict): The results to display.
         """
         self.resultsTable.setRowCount(len(results['techs']))
 
-        #for i, (tech, wärmemenge, anzahl_starts, betriebsstunden, wgk, anteil, spec_emission, primary_energy) in enumerate(zip(results['techs'], results['Wärmemengen'], results['anzahl_starts'], results['betriebsstunden'], results['WGK'], results['Anteile'], results['specific_emissions_L'], results['primärenergie_L'])):
-        for i, (tech, wärmemenge, wgk, anteil, spec_emission, primary_energy) in enumerate(zip(results['techs'], results['Wärmemengen'], results['WGK'], results['Anteile'], results['specific_emissions_L'], results['primärenergie_L'])):
+        # Iterate over each technology and calculate operational metrics
+        for i, (tech, wärmemenge, wgk, anteil, spec_emission, primary_energy, wärmeleistung) in enumerate(
+                zip(results['techs'], results['Wärmemengen'], results['WGK'], 
+                    results['Anteile'], results['specific_emissions_L'], results['primärenergie_L'], results['Wärmeleistung_L'])):
+
+            # Ensure wärmemenge is treated as a NumPy array for consistency
+            if not isinstance(wärmeleistung, (list, np.ndarray)):
+                wärmeleistung = [wärmeleistung]  # Convert scalar to list for single value cases
+            wärmeleistung = np.array(wärmeleistung)
+
+            # Calculate 'Anzahl Betriebsstunden' (sum of hours with non-zero output)
+            betriebsstunden = np.count_nonzero(wärmeleistung)  # Counts all non-zero hours
+            # Calculate 'Anzahl Starts' (counts transitions from 0 to > 0)
+            starts = np.sum((wärmeleistung[:-1] == 0) & (wärmeleistung[1:] > 0))
+            # Calculate 'Betriebsstunden/Start' (average hours per start)
+            betriebsstunden_pro_start = betriebsstunden / starts if starts > 0 else 0
+
+            # Populate the table with calculated values
             self.resultsTable.setItem(i, 0, QTableWidgetItem(tech))
-            self.resultsTable.setItem(i, 1, QTableWidgetItem(f"{wärmemenge:.2f}"))
-            #self.resultsTable.setItem(i, 2, QTableWidgetItem(f"{anzahl_starts:.0f}"))
-            #self.resultsTable.setItem(i, 3, QTableWidgetItem(f"{betriebsstunden:.0f}"))
-            self.resultsTable.setItem(i, 2, QTableWidgetItem(f"{wgk:.2f}"))
-            self.resultsTable.setItem(i, 3, QTableWidgetItem(f"{anteil*100:.2f}"))
-            self.resultsTable.setItem(i, 4, QTableWidgetItem(f"{spec_emission:.4f}"))
-            self.resultsTable.setItem(i, 5, QTableWidgetItem(f"{primary_energy/wärmemenge:.4f}"))
+            self.resultsTable.setItem(i, 1, QTableWidgetItem(f"{np.sum(wärmemenge):.2f}"))
+            self.resultsTable.setItem(i, 2, QTableWidgetItem(f"{betriebsstunden}"))
+            self.resultsTable.setItem(i, 3, QTableWidgetItem(f"{starts}"))
+            self.resultsTable.setItem(i, 4, QTableWidgetItem(f"{betriebsstunden_pro_start:.2f}"))
+            self.resultsTable.setItem(i, 5, QTableWidgetItem(f"{wgk:.2f}"))
+            self.resultsTable.setItem(i, 6, QTableWidgetItem(f"{anteil * 100:.2f}"))
+            self.resultsTable.setItem(i, 7, QTableWidgetItem(f"{spec_emission:.4f}"))
+            self.resultsTable.setItem(i, 8, QTableWidgetItem(f"{primary_energy / np.sum(wärmemenge):.4f}"))
 
         self.resultsTable.resizeColumnsToContents()
         self.adjustTableSize(self.resultsTable)
@@ -196,7 +206,6 @@ class ResultsTab(QWidget):
         self.additionalResultsTable.setColumnCount(3)
         self.additionalResultsTable.setHorizontalHeaderLabels(['Ergebnis', 'Wert', 'Einheit'])
         self.additionalResultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.scrollLayout.addWidget(self.additionalResultsTable)
 
     def showAdditionalResultsTable(self, result):
         """
