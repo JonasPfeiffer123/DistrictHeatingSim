@@ -49,13 +49,13 @@ class SankeyDialog(QDialog):
         colors = self.results['colors']  # Colors for the links
 
         # Define source and target nodes
-        # All sources are from the "Input" (index 0)
-        sources = [0] * len(erzeuger_labels)
-        # Targets are the individual heat generators (indices 1 to len(erzeuger_labels))
-        targets = list(range(1, len(erzeuger_labels) + 1))
+        # Sources are individual heat generators (indices 0 to len(erzeuger_labels)-1)
+        sources = list(range(len(erzeuger_labels)))
+        # All targets point to the "Total Heat Demand" node (index len(erzeuger_labels))
+        targets = [len(erzeuger_labels)] * len(erzeuger_labels)
 
-        # Define labels for the nodes (Input and all generators)
-        node_labels = ["Netz (Jahreswärmebedarf)"] + list(erzeuger_labels)
+        # Define labels for the nodes (All generators and the total heat demand)
+        node_labels = list(erzeuger_labels) + ["Netz (Jahreswärmebedarf)"]
 
         # Create the Sankey diagram
         fig = go.Figure(go.Sankey(
@@ -67,8 +67,8 @@ class SankeyDialog(QDialog):
                 color="blue"  # Color of nodes
             ),
             link=dict(
-                source=sources,  # All links originate from the "Netz"
-                target=targets,  # Links point to each generator
+                source=sources,  # Links start from each generator
+                target=targets,  # All links go to the "Netz"
                 value=waermemengen,  # The values correspond to the heat amounts generated
                 color=colors  # Apply the custom colors for each link
             )))
