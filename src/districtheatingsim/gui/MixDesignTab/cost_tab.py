@@ -1,17 +1,18 @@
 """
 Filename: cost_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-10
+Date: 2024-11-06
 Description: Contains the CostTab.
 """
 
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QScrollArea, QTableWidget, QTableWidgetItem, QHeaderView)
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QScrollArea, QTableWidget, QTableWidgetItem, QHeaderView, QSizePolicy)
+from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QFont
 
 from heat_generators.heat_generation_mix import *
+from gui.MixDesignTab.utilities import CollapsibleHeader
 
 class CostTab(QWidget):
     """
@@ -68,34 +69,66 @@ class CostTab(QWidget):
         """
         Initializes the user interface components for the CostTab.
         """
+        # Create the main scroll area with full expansion
         self.createMainScrollArea()
+
+        # Infrastructure Costs Section
+        self.infrastructure_widget = QWidget()
+        infrastructure_layout = QVBoxLayout(self.infrastructure_widget)
         self.setupInfrastructureCostsTable()
-        self.setupTechDataTable()
-        self.setupCostCompositionChart()
-        self.setLayout(self.createMainLayout())
+        infrastructure_layout.addWidget(self.infrastructureCostsTable)
+        self.infrastructure_section = CollapsibleHeader("Kosten Wärmenetzinfrastruktur", self.infrastructure_widget)
         
-        # Create the total cost label
-        self.totalCostLabel = QLabel()
-        self.mainLayout.addWidget(self.totalCostLabel)
+        # Technology Costs Section
+        self.tech_widget = QWidget()
+        tech_layout = QVBoxLayout(self.tech_widget)
+        self.setupTechDataTable()
+        tech_layout.addWidget(self.techDataTable)
+        self.tech_section = CollapsibleHeader("Kosten Erzeuger", self.tech_widget)
+
+        # Cost Composition Section
+        self.cost_composition_widget = QWidget()
+        cost_composition_layout = QVBoxLayout(self.cost_composition_widget)
+        self.setupCostCompositionChart()
+        cost_composition_layout.addWidget(self.canvas)
+        self.cost_composition_section = CollapsibleHeader("Kostenzusammensetzung", self.cost_composition_widget)
+
+        # Add all sections to the main layout with stretch factors
+        self.mainLayout.addWidget(self.infrastructure_section, 1)
+        self.mainLayout.addWidget(self.tech_section, 1)
+        self.mainLayout.addWidget(self.cost_composition_section, 2)
+
+        # Initialize and style total cost label as QLabel
+        self.totalCostLabel = QLabel("Gesamtkosten: 0 €")
+        self.totalCostLabel.setStyleSheet("font-weight: bold; font-size: 14px; margin-top: 10px;")
+        self.mainLayout.addWidget(self.totalCostLabel, alignment=Qt.AlignLeft)
+
+        # Set the main layout to use all available space in the scroll area
+        self.mainScrollArea.setWidget(self.mainWidget)
+        self.mainLayout.setContentsMargins(10, 10, 10, 10)  # Adjust margins if needed
+
+        # Set the layout for the entire CostTab widget
+        self.setLayout(self.createMainLayout())
 
     def createMainScrollArea(self):
         """
-        Creates the main scroll area for the tab.
+        Creates the main scroll area for the tab and sets it to take full width and height.
         """
         self.mainScrollArea = QScrollArea(self)
         self.mainScrollArea.setWidgetResizable(True)
         self.mainWidget = QWidget()
         self.mainLayout = QVBoxLayout(self.mainWidget)
         self.mainScrollArea.setWidget(self.mainWidget)
+        self.mainScrollArea.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
     def createMainLayout(self):
         """
-        Creates the main layout for the tab.
-
-        Returns:
-            QVBoxLayout: The main layout for the tab.
+        Creates the main layout for the tab with adjusted spacing and margins for better alignment.
         """
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 10, 10, 10)  # Set uniform margins for the tab
+        layout.setSpacing(10)  # Adjust spacing between sections
+
         layout.addWidget(self.mainScrollArea)
         return layout
 
@@ -111,15 +144,13 @@ class CostTab(QWidget):
     
     ### Infrastructure Tables ###
     def setupInfrastructureCostsTable(self):
-        """
-        Sets up the infrastructure costs table.
-        """
-        self.addLabel('Wärmenetzinfrastruktur')
         self.infrastructureCostsTable = QTableWidget()
-        self.infrastructureCostsTable.setColumnCount(7)  # An additional column for annuity
-        self.infrastructureCostsTable.setHorizontalHeaderLabels(['Beschreibung', 'Kosten', 'T_N', 'f_Inst', 'f_W_Insp', 'Bedienaufwand', 'Annuität'])
+        self.infrastructureCostsTable.setColumnCount(7)
+        self.infrastructureCostsTable.setHorizontalHeaderLabels(
+            ['Beschreibung', 'Kosten', 'T_N', 'f_Inst', 'f_W_Insp', 'Bedienaufwand', 'Annuität']
+        )
         self.infrastructureCostsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.mainLayout.addWidget(self.infrastructureCostsTable)
+        self.infrastructureCostsTable.setAlternatingRowColors(True)
 
     def updateInfrastructureTable(self):
         """
@@ -139,28 +170,61 @@ class CostTab(QWidget):
 
         for i, obj in enumerate(infraObjects):
             self.infrastructureCostsTable.setItem(i, 0, QTableWidgetItem(obj.capitalize()))
+            
             for j, col in enumerate(columns[1:], 1):
                 key = f"{obj}_{col.lower()}"
                 value = values.get(key, "")
-                self.infrastructureCostsTable.setItem(i, j, QTableWidgetItem(str(value)))
 
+                # Apply formatting with units
+                if col == 'Kosten' and value != "":
+                    formatted_value = self.format_cost(float(value))
+                elif col == 'T_N' and value != "":
+                    formatted_value = f"{value} a"  # Append 'a' for years
+                elif col in ['f_Inst', 'f_W_Insp'] and value != "":
+                    formatted_value = f"{value} %"  # Convert to percentage and add '%'
+                elif col == 'Bedienaufwand' and value != "":
+                    formatted_value = f"{value} h"  # Append 'h' for hours
+                elif col == 'Gesamtannuität' and value != "":
+                    formatted_value = self.format_cost(float(value))
+                else:
+                    formatted_value = str(value)
+                
+                self.infrastructureCostsTable.setItem(i, j, QTableWidgetItem(formatted_value))
+
+            # Calculate annuity and format it
             A0 = float(values.get(f"{obj}_kosten", 0))
             TN = int(values.get(f"{obj}_t_n", 0))
             f_Inst = float(values.get(f"{obj}_f_inst", 0))
             f_W_Insp = float(values.get(f"{obj}_f_w_insp", 0))
             Bedienaufwand = float(values.get(f"{obj}_bedienaufwand", 0))
             annuität = self.calc_annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand)
-            self.infrastructureCostsTable.setItem(i, 6, QTableWidgetItem(f"{annuität:.1f}"))
             
+            # Set formatted annuity in the table
+            self.infrastructureCostsTable.setItem(i, 6, QTableWidgetItem(self.format_cost(annuität)))
+            
+            # Update total investment and annuity sums
             self.summe_investitionskosten += A0
             self.summe_annuität += annuität
             self.individual_costs.append((obj.capitalize(), A0))
 
         self.addSummaryRow()
 
+    def format_cost(self, value):
+        """
+        Formats the cost value in European style with spaces as thousand separators.
+
+        Args:
+            value (float): The cost value.
+
+        Returns:
+            str: Formatted cost string.
+        """
+        return f"{value:,.0f} €".replace(",", " ")
+
+
     def addSummaryRow(self):
         """
-        Adds a summary row to the infrastructure costs table.
+        Adds a summary row to the infrastructure costs table with bold formatting.
         """
         summen_row_index = self.infrastructureCostsTable.rowCount()
         self.infrastructureCostsTable.insertRow(summen_row_index)
@@ -172,11 +236,13 @@ class CostTab(QWidget):
         summen_beschreibung_item.setFont(boldFont)
         self.infrastructureCostsTable.setItem(summen_row_index, 0, summen_beschreibung_item)
 
-        summen_kosten_item = QTableWidgetItem(f"{self.summe_investitionskosten:.0f}")
+        formatted_cost = self.format_cost(self.summe_investitionskosten)
+        summen_kosten_item = QTableWidgetItem(formatted_cost)
         summen_kosten_item.setFont(boldFont)
         self.infrastructureCostsTable.setItem(summen_row_index, 1, summen_kosten_item)
 
-        summen_annuität_item = QTableWidgetItem(f"{self.summe_annuität:.0f}")
+        formatted_annuität = self.format_cost(self.summe_annuität)
+        summen_annuität_item = QTableWidgetItem(formatted_annuität)
         summen_annuität_item.setFont(boldFont)
         self.infrastructureCostsTable.setItem(summen_row_index, 6, summen_annuität_item)
 
@@ -205,15 +271,11 @@ class CostTab(QWidget):
     
     ### Setup of Calculation Result Tables ###
     def setupTechDataTable(self):
-        """
-        Sets up the technology data table.
-        """
-        self.addLabel('Kosten Erzeuger')
         self.techDataTable = QTableWidget()
         self.techDataTable.setColumnCount(4)
         self.techDataTable.setHorizontalHeaderLabels(['Name', 'Dimensionen', 'Kosten', 'Gesamtkosten'])
         self.techDataTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.mainLayout.addWidget(self.techDataTable)
+        self.techDataTable.setAlternatingRowColors(True)
 
     def updateTechDataTable(self, tech_objects):
         """
@@ -231,7 +293,7 @@ class CostTab(QWidget):
             self.techDataTable.setItem(i, 0, QTableWidgetItem(name))
             self.techDataTable.setItem(i, 1, QTableWidgetItem(dimensions))
             self.techDataTable.setItem(i, 2, QTableWidgetItem(costs))
-            self.techDataTable.setItem(i, 3, QTableWidgetItem(full_costs))
+            self.techDataTable.setItem(i, 3, QTableWidgetItem(self.format_cost(float(full_costs))))
             self.summe_tech_kosten += float(full_costs)
             self.individual_costs.append((name, float(full_costs)))
 
@@ -253,7 +315,8 @@ class CostTab(QWidget):
         summen_beschreibung_item.setFont(boldFont)
         self.techDataTable.setItem(summen_row_index, 0, summen_beschreibung_item)
 
-        summen_kosten_item = QTableWidgetItem(f"{self.summe_tech_kosten:.0f}")
+        formatted_cost = self.format_cost(self.summe_tech_kosten)
+        summen_kosten_item = QTableWidgetItem(formatted_cost)
         summen_kosten_item.setFont(boldFont)
         self.techDataTable.setItem(summen_row_index, 3, summen_kosten_item)
 
@@ -264,7 +327,10 @@ class CostTab(QWidget):
         """
         Updates the label displaying the total costs.
         """
-        self.totalCostLabel.setText(f"Gesamtkosten: {self.summe_investitionskosten + self.summe_tech_kosten:.0f} €")
+        total_cost = self.summe_investitionskosten + self.summe_tech_kosten
+        formatted_total_cost = self.format_cost(total_cost)
+        self.totalCostLabel.setText(f"Gesamtkosten: {formatted_total_cost}")
+
 
     def extractTechData(self, tech):
         """
@@ -325,12 +391,8 @@ class CostTab(QWidget):
     
     ### Setup of Cost Composition Chart ###
     def setupCostCompositionChart(self):
-        """
-        Sets up the cost composition chart.
-        """
-        self.addLabel('Kostenzusammensetzung')
         self.figure, self.canvas = self.addFigure()
-        self.mainLayout.addWidget(self.canvas)
+        self.canvas.setMinimumHeight(500)
 
     def addFigure(self):
         """
@@ -342,23 +404,42 @@ class CostTab(QWidget):
         figure = Figure(figsize=(8, 6))
         canvas = FigureCanvas(figure)
         return figure, canvas
-
+    
     def plotCostComposition(self):
         """
-        Plots the cost composition chart.
+        Plots the cost composition with a bar chart and a pie chart side by side, ensuring consistent colors between charts.
         """
         self.figure.clear()
-        ax = self.figure.add_subplot(111)
-        
+        ax1 = self.figure.add_subplot(121)  # Left subplot for bar chart
+        ax2 = self.figure.add_subplot(122)  # Right subplot for pie chart
+
+        # Data for the charts
         labels = [cost[0] for cost in self.individual_costs]
         sizes = [cost[1] for cost in self.individual_costs]
-        colors = ['#ff9999','#66b3ff','#99ff99','#ffcc99','#ff66b3','#c2c2f0','#ffb3e6']
 
-        ax.barh(labels, sizes, color=colors)
-        ax.set_title('Kostenzusammensetzung')
-        ax.set_xlabel('Kosten (€)')
-        ax.set_ylabel('Komponenten')
+        ### Pie Chart
+        # Let matplotlib assign colors and capture them for use in the bar chart
+        wedges, _, _ = ax2.pie(sizes, labels=None, autopct='%1.1f%%', startangle=140,
+                            explode=[0.1 if label == "Wärmenetz" else 0 for label in labels],
+                            labeldistance=1.1, pctdistance=0.85)
 
+        # Extract colors from the pie chart to apply to the bar chart
+        pie_colors = [wedge.get_facecolor() for wedge in wedges]
+        ax2.set_title('Kostenzusammensetzung (Relativ in %)')
+        ax2.legend(labels, loc="best", bbox_to_anchor=(1, 0.5))
+
+        ### Bar Chart
+        bars = ax1.barh(labels, sizes, color=pie_colors, height=0.5)  # Apply the same colors
+        ax1.set_title('Kostenzusammensetzung (Absolut in €)')
+        ax1.set_xlabel('Kosten (€)')
+        ax1.set_ylabel('Komponenten')
+        
+        # Display exact cost values next to each bar
+        for i, (size, label) in enumerate(zip(sizes, labels)):
+            formatted_size = self.format_cost(size)
+            ax1.text(size, i, formatted_size, va='center')
+
+        # Draw the updated figure with both charts
         self.canvas.draw()
 
     def adjustTableSize(self, table):
@@ -371,3 +452,10 @@ class CostTab(QWidget):
         header_height = table.horizontalHeader().height()
         rows_height = sum([table.rowHeight(i) for i in range(table.rowCount())])
         table.setFixedHeight(header_height + rows_height)
+
+    def totalCostLabel(self):
+        """
+        Returns the total cost label.
+        """
+        # Create the total cost label
+        self.totalCostLabel = QLabel()
