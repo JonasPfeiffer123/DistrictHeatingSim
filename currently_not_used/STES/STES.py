@@ -129,24 +129,23 @@ def interactive_plot(storage):
 class ThermalStorage:
     def __init__(self, storage_type, dimensions, rho, cp, T_ref, lambda_top, lambda_side, lambda_bottom, lambda_soil, 
                  T_amb, T_soil, T_max, T_min, initial_temp, dt_top, ds_side, db_bottom, hours=8760, num_layers=5, thermal_conductivity=0.6):
-        self.storage_type = storage_type
-        self.dimensions = dimensions
-        self.rho = rho
-        self.cp = cp
-        self.T_ref = T_ref
-        self.lambda_top = lambda_top
-        self.lambda_side = lambda_side
-        self.lambda_bottom = lambda_bottom
-        self.lambda_soil = lambda_soil
-        self.T_amb = T_amb
-        self.T_soil = T_soil
-        self.T_max = T_max
-        self.T_min = T_min
+        self.storage_type = storage_type # Type of storage (cylindrical, truncated_cone, truncated_trapezoid)
+        self.dimensions = dimensions # Dimensions of the storage (radius, height for cylindrical, top_radius, bottom_radius, height for truncated cone)
+        self.rho = rho # Density of the medium in kg/m³
+        self.cp = cp # Specific heat capacity of the medium in J/kg*K
+        self.T_ref = T_ref # Reference temperature in °C
+        self.lambda_top = lambda_top # Thermal conductivity of the top insulation in W/m*K
+        self.lambda_side = lambda_side # Thermal conductivity of the side insulation in W/m*K
+        self.lambda_bottom = lambda_bottom # Thermal conductivity of the bottom insulation in W/m*K
+        self.lambda_soil = lambda_soil # Thermal conductivity of the soil in W/m*K
+        self.T_amb = T_amb # Ambient temperature in °C
+        self.T_soil = T_soil # Soil temperature in °C
+        self.T_max = T_max # Maximum storage temperature in °C
+        self.T_min = T_min # Minimum storage temperature in °C
         self.dt_top = dt_top  # Thickness of the top insulation
         self.ds_side = ds_side  # Thickness of the side insulation
         self.db_bottom = db_bottom  # Thickness of the bottom insulation
-        self.hours = hours
-        
+        self.hours = hours  # Number of hours to simulate
         self.num_layers = num_layers  # Number of layers for stratified storage
         self.thermal_conductivity = thermal_conductivity  # W/m*K thermal conductivity of the medium
         self.Q_sto = np.zeros(hours)  # Stored heat in J
@@ -339,6 +338,54 @@ class SimpleThermalStorage(ThermalStorage):
 class StratifiedThermalStorage(ThermalStorage):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.calculate_layer_thickness()  # Berechne die Schichtdicke basierend auf der Speicherdimension
+
+    def calculate_layer_thickness(self):
+        """Calculate the thickness and volume of each layer based on the storage geometry."""
+        
+        height = self.dimensions[2]  # Common for both truncated cone and trapezoid
+        self.layer_thickness = height / self.num_layers  # Uniform layer thickness
+        
+        if self.storage_type == "cylindrical":
+            # Cylindrical storage: uniform volume per layer
+            self.layer_volume = np.full(self.num_layers, self.volume / self.num_layers)
+
+        elif self.storage_type == "truncated_cone":
+            # Truncated cone: calculate individual layer volumes
+            r1, r2 = self.dimensions[0], self.dimensions[1]  # Top and bottom radii
+            layer_volumes = []
+            
+            for i in range(self.num_layers):
+                # Calculate radii for the top and bottom of each layer
+                r_top = r1 + (r2 - r1) * (i / self.num_layers)
+                r_bottom = r1 + (r2 - r1) * ((i + 1) / self.num_layers)
+                layer_volume = (1/3) * self.layer_thickness * (np.pi * r_top**2 + np.pi * r_bottom**2 + np.pi * r_top * r_bottom)
+                layer_volumes.append(layer_volume)
+
+            self.layer_volume = np.array(layer_volumes)
+
+        elif self.storage_type == "truncated_trapezoid":
+            # Truncated trapezoid: calculate individual layer volumes
+            a1, b1 = self.dimensions[0], self.dimensions[1]  # Top length and width
+            a2, b2 = self.dimensions[3], self.dimensions[4]  # Bottom length and width
+            layer_volumes = []
+            
+            for i in range(self.num_layers):
+                # Calculate area dimensions for the top and bottom of each layer
+                a_top = a1 + (a2 - a1) * (i / self.num_layers)
+                b_top = b1 + (b2 - b1) * (i / self.num_layers)
+                a_bottom = a1 + (a2 - a1) * ((i + 1) / self.num_layers)
+                b_bottom = b1 + (b2 - b1) * ((i + 1) / self.num_layers)
+                
+                A_top = a_top * b_top
+                A_bottom = a_bottom * b_bottom
+                layer_volume = (1/3) * self.layer_thickness * (A_top + A_bottom + np.sqrt(A_top * A_bottom))
+                layer_volumes.append(layer_volume)
+            
+            self.layer_volume = np.array(layer_volumes)
+
+        else:
+            raise ValueError("Unsupported storage type for layer thickness calculation")
 
     def calculate_stratified_heat_loss(self, T_sto_layers):
         """
@@ -399,7 +446,7 @@ class StratifiedThermalStorage(ThermalStorage):
 
         return np.sum(self.Q_loss_layers)  # Gesamtverlust in kW
 
-    def simulate_stratified(self, Q_in, Q_out, num_layers=5, thermal_conductivity=0.6):
+    def simulate_stratified(self, Q_in, Q_out):
         """
         Q_in: Eingangsleistung in kW
         Q_out: Ausgangsleistung in kW
@@ -407,23 +454,9 @@ class StratifiedThermalStorage(ThermalStorage):
         """
         self.Q_in = Q_in
         self.Q_out = Q_out
-
-        # Berechne die Dicke der Schichten basierend auf der Speicherdimension
-        if self.storage_type == "cylindrical":
-            height = self.dimensions[1]  # Höhe des zylindrischen Speichers
-            layer_thickness = height / num_layers
-        elif self.storage_type == "truncated_cone":
-            height = self.dimensions[2]  # Höhe des rechteckigen Speichers
-            layer_thickness = height / num_layers
-        elif self.storage_type == "truncated_trapezoid":
-            height = self.dimensions[2]  # Höhe des Pit-Speichers
-            layer_thickness = height / num_layers
-        else:
-            raise ValueError("Unsupported storage type for layer thickness calculation")
-
-        layer_volume = self.volume / num_layers  # Volumen pro Schicht
-        self.T_sto_layers = np.full((self.hours, num_layers), self.T_sto[0])  # Initialisiere Schichttemperaturen
-        heat_stored_per_layer = np.zeros(num_layers)  # Wärme in jeder Schicht
+        
+        self.T_sto_layers = np.full((self.hours, self.num_layers), self.T_sto[0])  # Initialisiere Schichttemperaturen
+        heat_stored_per_layer = np.zeros(self.num_layers)  # Wärme in jeder Schicht
 
         for t in range(0, self.hours):
             ### Berchnung der Wärmeverluste und Wärmeleitung zwischen den Schichten ###
@@ -433,11 +466,11 @@ class StratifiedThermalStorage(ThermalStorage):
             if t == 0:
                 # Initiale gespeicherte Wärme in kWh (1 kWh = 3.6e6 J)
                 self.Q_sto[t] = self.volume * self.rho * self.cp * (self.T_sto[t] - self.T_ref) / 3.6e6
-                heat_stored_per_layer[:] = self.Q_sto[t] / num_layers  # Anfangsgleichverteilung der Wärme
+                heat_stored_per_layer[:] = self.Q_sto[t] / self.num_layers  # Anfangsgleichverteilung der Wärme
 
             else:
                 # 1.2 **Berechnung der Wärmeverluste nach außen (basierend auf Schichttemperaturen)**
-                for i in range(num_layers):
+                for i in range(self.num_layers):
                     # Berechne den Wärmeverlust für die Schicht
                     Q_loss_layer = self.Q_loss_layers[i]  # Wärmeverlust in kWh
 
@@ -446,15 +479,15 @@ class StratifiedThermalStorage(ThermalStorage):
 
                     # Berechne die Temperaturänderung aufgrund des Wärmeverlustes
                     # delta_T = Q_loss_layer / (m * cp), wobei m = rho * volume der Schicht
-                    delta_T = (Q_loss_layer * 3.6e6) / (layer_volume * self.rho * self.cp)  # in °C
+                    delta_T = (Q_loss_layer * 3.6e6) / (self.layer_volume * self.rho * self.cp)  # in °C
 
                     # Aktualisiere die Temperatur der Schicht basierend auf der Temperaturänderung
                     self.T_sto_layers[t, i] = self.T_sto_layers[t - 1, i] - delta_T  # Temperaturverlust
 
                 # 2. **Berechnung der Wärmeleitung innerhalb des Speichers (zwischen den Schichten)**
-                for i in range(num_layers - 1):
+                for i in range(self.num_layers - 1):
                     delta_T = self.T_sto_layers[t - 1, i] - self.T_sto_layers[t - 1, i + 1]
-                    heat_transfer = thermal_conductivity * self.S_side * delta_T / layer_thickness  # W = J/s
+                    heat_transfer = self.thermal_conductivity * self.S_side * delta_T / self.layer_thickness  # W = J/s
                     heat_transfer_kWh = heat_transfer / 3.6e6 * 3600  # kWh pro Stunde
 
                     # Wärme von Schicht i abziehen und zur Schicht i+1 hinzufügen
@@ -462,7 +495,7 @@ class StratifiedThermalStorage(ThermalStorage):
                     heat_stored_per_layer[i + 1] += heat_transfer_kWh
 
                     # Aktualisiere die Temperaturen basierend auf dem neuen Wärmeinhalt
-                    delta_T_transfer = heat_transfer_kWh * 3.6e6 / (layer_volume * self.rho * self.cp)  # in °C
+                    delta_T_transfer = heat_transfer_kWh * 3.6e6 / (self.layer_volume * self.rho * self.cp)  # in °C
 
                     # Temperaturanpassung für die beiden benachbarten Schichten
                     self.T_sto_layers[t, i] -= delta_T_transfer  # Schicht i verliert Wärme
@@ -472,10 +505,10 @@ class StratifiedThermalStorage(ThermalStorage):
                 remaining_heat = self.Q_in[t] - self.Q_out[t]  # Verfügbare Wärme, nach Abzug des Outputs
 
                 # **Entlade Schichten, wenn remaining_heat negativ ist (Wärmebedarf höher als Input)**
-                for i in range(num_layers):  # Entlade von unten nach oben
+                for i in range(self.num_layers):  # Entlade von unten nach oben
                     if remaining_heat < 0:
                         # Wärmebedarf ist höher als die Eingangsleistung, Speicher entlädt
-                        available_heat_in_layer = (self.T_sto_layers[t-1, i] - self.T_min) * layer_volume * self.rho * self.cp / 3.6e6  # verfügbare Wärme in kWh
+                        available_heat_in_layer = (self.T_sto_layers[t-1, i] - self.T_min) * self.layer_volume * self.rho * self.cp / 3.6e6  # verfügbare Wärme in kWh
                         heat_needed = abs(remaining_heat)
 
                         if heat_needed >= available_heat_in_layer:
@@ -486,13 +519,13 @@ class StratifiedThermalStorage(ThermalStorage):
                         else:
                             # Schicht wird nur teilweise entladen
                             heat_stored_per_layer[i] -= heat_needed
-                            self.T_sto_layers[t, i] = self.T_sto_layers[t-1, i] - (heat_needed * 3.6e6) / (layer_volume * self.rho * self.cp)
+                            self.T_sto_layers[t, i] = self.T_sto_layers[t-1, i] - (heat_needed * 3.6e6) / (self.layer_volume * self.rho * self.cp)
                             remaining_heat = 0  # Wärmebedarf gedeckt, keine weitere Entladung erforderlich
 
                 # **Lade Schichten, wenn remaining_heat positiv ist (Input höher als Wärmebedarf)**
-                for i in range(num_layers):  # Belade von oben nach unten
+                for i in range(self.num_layers):  # Belade von oben nach unten
                     # Berechne die maximal mögliche Wärme, um die Schicht auf T_max zu bringen
-                    max_heat_in_layer = (self.T_max - self.T_sto_layers[t-1, i]) * layer_volume * self.rho * self.cp / 3.6e6  # in kWh
+                    max_heat_in_layer = (self.T_max - self.T_sto_layers[t-1, i]) * self.layer_volume * self.rho * self.cp / 3.6e6  # in kWh
 
                     if remaining_heat > 0:
                         if remaining_heat >= max_heat_in_layer:
@@ -503,7 +536,7 @@ class StratifiedThermalStorage(ThermalStorage):
                         else:
                             # Schicht wird nur teilweise aufgeheizt
                             heat_stored_per_layer[i] += remaining_heat
-                            self.T_sto_layers[t, i] = self.T_sto_layers[t-1, i] + (remaining_heat * 3.6e6) / (layer_volume * self.rho * self.cp)
+                            self.T_sto_layers[t, i] = self.T_sto_layers[t-1, i] + (remaining_heat * 3.6e6) / (self.layer_volume * self.rho * self.cp)
                             remaining_heat = 0  # Keine Restwärme mehr
                     else:
                         # Falls keine Restwärme vorhanden ist, bleibt die Temperatur konstant
@@ -514,10 +547,10 @@ class StratifiedThermalStorage(ThermalStorage):
                         self.T_sto_layers[t, i] = self.T_min
 
                 # Berechne den Wärmetransport zwischen benachbarten Schichten
-                for i in range(num_layers - 1):
+                for i in range(self.num_layers - 1):
                     # Berechnung des Wärmeflusses zwischen Schicht i und i+1
                     delta_T = self.T_sto_layers[t, i] - self.T_sto_layers[t, i + 1]
-                    heat_transfer = thermal_conductivity * self.S_side * delta_T / layer_thickness  # W = J/s
+                    heat_transfer = self.thermal_conductivity * self.S_side * delta_T / self.layer_thickness  # W = J/s
                     
                     # Umrechnung in kWh für den Zeitintervall (1 Stunde = 3600 Sekunden)
                     heat_transfer_kWh = heat_transfer / 3.6e6 * 3600  # kWh pro Stunde
@@ -527,8 +560,8 @@ class StratifiedThermalStorage(ThermalStorage):
                     heat_stored_per_layer[i + 1] += heat_transfer_kWh
 
                     # Aktualisiere die Temperaturen basierend auf dem neuen Wärmeinhalt
-                    self.T_sto_layers[t, i] = (heat_stored_per_layer[i] * 3.6e6) / (layer_volume * self.rho * self.cp) + self.T_ref
-                    self.T_sto_layers[t, i + 1] = (heat_stored_per_layer[i + 1] * 3.6e6) / (layer_volume * self.rho * self.cp) + self.T_ref
+                    self.T_sto_layers[t, i] = (heat_stored_per_layer[i] * 3.6e6) / (self.layer_volume * self.rho * self.cp) + self.T_ref
+                    self.T_sto_layers[t, i + 1] = (heat_stored_per_layer[i + 1] * 3.6e6) / (self.layer_volume * self.rho * self.cp) + self.T_ref
 
                 # Berechne die Gesamtwärme im Speicher
                 self.Q_sto[t] = np.sum(heat_stored_per_layer)  # Gespeicherte Wärme in kWh
@@ -740,7 +773,7 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
         self.unmet_demand = 0  # Nicht gedeckter Wärmebedarf
         self.stagnation_time = 0  # Zeit in Stunden, in der Überhitzung (Stagnation) auftritt
 
-    def simulate_stratified_temperature_mass_flows(self, Q_in, Q_out, T_Q_in_flow, T_Q_out_return, num_layers=5, thermal_conductivity=0.6):
+    def simulate_stratified_temperature_mass_flows(self, Q_in, Q_out, T_Q_in_flow, T_Q_out_return):
         """
         Simulates stratified heat storage, considering mass flows and internal heat conduction between layers.
         Q_in: Input heat in kW (e.g., from a solar thermal source)
@@ -758,36 +791,20 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
         self.T_Q_in_flow = T_Q_in_flow_copy  # Vorlauf-Erzeuger
         self.T_Q_out_return = T_Q_out_return_copy  # Rücklauf-Verbraucher
 
-        # Layer thickness and volume per layer
-        if self.storage_type == "cylindrical":
-            height = self.dimensions[1]  # Höhe des zylindrischen Speichers
-            layer_thickness = height / num_layers
-        elif self.storage_type == "truncated_cone":
-            height = self.dimensions[2]  # Höhe des Kegelförmigen Speichers
-            layer_thickness = height / num_layers
-        elif self.storage_type == "truncated_trapezoid":
-            height = self.dimensions[2]  # Höhe des Trapezförmigen Speichers
-            layer_thickness = height / num_layers
-        else:
-            raise ValueError("Unsupported storage type for layer thickness calculation")
-
-        layer_volume = self.volume / num_layers  # Volumen pro Schicht
-        self.T_sto_layers = np.full((self.hours, num_layers), self.T_sto[0])  # Initialisiere Schichttemperaturen
-        heat_stored_per_layer = np.zeros(num_layers)  # Wärme in jeder Schicht
-
         for t in range(0, self.hours):
-            ### Berchnung der Wärmeverluste und Wärmeleitung zwischen den Schichten ###
-            # 1.1 **Berechnung der Wärmeverluste nach außen (basierend auf Schichttemperaturen)**
-            self.Q_loss[t] = self.calculate_stratified_heat_loss(self.T_sto_layers[t - 1])
-
             if t == 0:
-                # Initiale gespeicherte Wärme in kWh (1 kWh = 3.6e6 J)
-                self.Q_sto[t] = self.volume * self.rho * self.cp * (self.T_sto[t] - self.T_Q_out_return[t]) / 3.6e6 # storing in kWh
-                heat_stored_per_layer[:] = self.Q_sto[t] / num_layers  # Anfangsgleichverteilung der Wärme
+                self.T_sto_layers = np.full((self.hours, self.num_layers), self.T_sto[t])  # Initialisiere Schichttemperaturen, T_sto[0] = Anfangstemperatur, alle Schichten haben die gleiche Temperatur
+                self.Q_loss[t] = self.calculate_stratified_heat_loss(self.T_sto_layers[t])  # Berechne die Wärmeverluste
+                heat_stored_per_layer = self.layer_volume * self.rho * self.cp * (self.T_sto[t] - self.T_Q_out_return[t]) / 3.6e6  # Wärme in jeder Schicht bezogen auf die Rücklauftemperatur bei t=0 in kWh
+                self.Q_sto[t] = sum(heat_stored_per_layer) # Gespeicherte Wärme in kWh
 
             else:
+                ### Berchnung der Wärmeverluste und Wärmeleitung zwischen den Schichten ###
+                # 1.1 **Berechnung der Wärmeverluste nach außen (basierend auf Schichttemperaturen)**
+                self.Q_loss[t] = self.calculate_stratified_heat_loss(self.T_sto_layers[t - 1])
+
                 # 1.2 **Berechnung der Wärmeverluste nach außen (basierend auf Schichttemperaturen)**
-                for i in range(num_layers):
+                for i in range(self.num_layers):
                     # Berechne den Wärmeverlust für die Schicht
                     Q_loss_layer = self.Q_loss_layers[i]  # Wärmeverlust in kWh
 
@@ -796,15 +813,15 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
 
                     # Berechne die Temperaturänderung aufgrund des Wärmeverlustes
                     # delta_T = Q_loss_layer / (m * cp), wobei m = rho * volume der Schicht
-                    delta_T = (Q_loss_layer * 3.6e6) / (layer_volume * self.rho * self.cp)  # in °C
+                    delta_T = (Q_loss_layer * 3.6e6) / (self.layer_volume[i] * self.rho * self.cp)  # in °C
 
                     # Aktualisiere die Temperatur der Schicht basierend auf der Temperaturänderung
                     self.T_sto_layers[t, i] = self.T_sto_layers[t - 1, i] - delta_T  # Temperaturverlust
 
                 # 2. **Berechnung der Wärmeleitung innerhalb des Speichers (zwischen den Schichten)**
-                for i in range(num_layers - 1):
+                for i in range(self.num_layers - 1):
                     delta_T = self.T_sto_layers[t - 1, i] - self.T_sto_layers[t - 1, i + 1]
-                    heat_transfer = thermal_conductivity * self.S_side * delta_T / layer_thickness  # W = J/s
+                    heat_transfer = self.thermal_conductivity * self.S_side * delta_T / self.layer_thickness  # W = J/s
                     heat_transfer_kWh = heat_transfer / 3.6e6 * 3600  # kWh pro Stunde
 
                     # Wärme von Schicht i abziehen und zur Schicht i+1 hinzufügen
@@ -812,7 +829,7 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
                     heat_stored_per_layer[i + 1] += heat_transfer_kWh
 
                     # Aktualisiere die Temperaturen basierend auf dem neuen Wärmeinhalt
-                    delta_T_transfer = heat_transfer_kWh * 3.6e6 / (layer_volume * self.rho * self.cp)  # in °C
+                    delta_T_transfer = heat_transfer_kWh * 3.6e6 / (self.layer_volume[i] * self.rho * self.cp)  # in °C
 
                     # Temperaturanpassung für die beiden benachbarten Schichten
                     self.T_sto_layers[t, i] -= delta_T_transfer  # Schicht i verliert Wärme
@@ -822,8 +839,8 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
                 # **Speicherleer- und Speicherfüllstatus prüfen**
                 # Aktualisiere die Hauptspeichertemperatur als Durchschnittstemperatur der Schichten
                 self.T_sto[t] = np.average(self.T_sto_layers[t])
-                available_energy_in_storage = np.sum([(self.T_sto[t] - self.T_Q_out_return[t]) * layer_volume * self.rho * self.cp / 3.6e6 for i in range(num_layers)])  # Energie über T_min in kWh
-                max_possible_energy = np.sum([(self.T_Q_in_flow[t] - self.T_Q_out_return[t]) * layer_volume * self.rho * self.cp / 3.6e6 for i in range(num_layers)])  # Maximale Energie in kWh
+                available_energy_in_storage = np.sum([(self.T_sto[t] - self.T_Q_out_return[t]) * self.layer_volume[i] * self.rho * self.cp / 3.6e6 for i in range(self.num_layers)])  # Energie über T_min in kWh
+                max_possible_energy = np.sum([(self.T_Q_in_flow[t] - self.T_Q_out_return[t]) * self.layer_volume[i] * self.rho * self.cp / 3.6e6 for i in range(self.num_layers)])  # Maximale Energie in kWh
                 
                 # Speicher voll (keine weitere Aufnahme)
                 if available_energy_in_storage >= max_possible_energy*0.95:# and self.Q_in[t] > self.Q_out[t]:
@@ -848,12 +865,12 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
                     self.mass_flow_out[t] = 0
 
                 # 3. **Wärmeeinströmung (von oben nach unten)**
-                for i in range(num_layers):
+                for i in range(self.num_layers):
                     # Berechne die Mischtemperatur in Kelvin zwischen der Schicht und dem einströmenden Medium
                     mix_temp_K = ((self.mass_flow_in[t] * self.cp * (T_Q_in_flow[t] + 273.15) * 3600) + 
-                                (layer_volume * self.rho * self.cp * (self.T_sto_layers[t, i] + 273.15))) / \
+                                (self.layer_volume[i] * self.rho * self.cp * (self.T_sto_layers[t, i] + 273.15))) / \
                                 ((self.mass_flow_in[t] * self.cp * 3600) + 
-                                (layer_volume * self.rho * self.cp))
+                                (self.layer_volume[i] * self.rho * self.cp))
 
                     # Berechne die zugeführte Wärme und füge sie der Schicht hinzu
                     added_heat = self.mass_flow_in[t] * self.cp * (T_Q_in_flow[t] - self.T_sto_layers[t, i]) * 3600  # in J
@@ -866,12 +883,12 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
                     T_Q_in_flow[t] = self.T_sto_layers[t, i]
 
                 # 4. **Wärmeausströmung (von unten nach oben)**
-                for i in range(num_layers - 1, -1, -1):
+                for i in range(self.num_layers - 1, -1, -1):
                     # Berechne die Mischtemperatur in Kelvin zwischen der Schicht und dem ausströmenden Medium
                     mix_temp_K = ((self.mass_flow_out[t] * self.cp * (T_Q_out_return[t] + 273.15) * 3600) + 
-                                (layer_volume * self.rho * self.cp * (self.T_sto_layers[t, i] + 273.15))) / \
+                                (self.layer_volume[i] * self.rho * self.cp * (self.T_sto_layers[t, i] + 273.15))) / \
                                 ((self.mass_flow_out[t] * self.cp * 3600) + 
-                                (layer_volume * self.rho * self.cp))
+                                (self.layer_volume[i] * self.rho * self.cp))
 
                     # Berechne die abgeführte Wärme und ziehe sie von der Schicht ab
                     removed_heat = self.mass_flow_out[t] * self.cp * (self.T_sto_layers[t, i] - T_Q_out_return[t]) * 3600  # in J
