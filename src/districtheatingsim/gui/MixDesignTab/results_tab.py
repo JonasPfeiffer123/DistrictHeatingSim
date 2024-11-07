@@ -6,112 +6,16 @@ Description: Contains the ResultsTab.
 """
 
 import sys
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QHBoxLayout, QTableWidget, QTableWidgetItem, 
-                             QHeaderView, QScrollArea, QCheckBox, QComboBox, QApplication)
-from PyQt5.QtCore import Qt, pyqtSignal
 import numpy as np
 
-class CheckableComboBox(QComboBox):
-    """
-    A QComboBox subclass that allows multiple items to be checked.
-    """
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
-    def __init__(self, parent=None):
-        """
-        Initializes the CheckableComboBox.
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QHBoxLayout, QTableWidget, QTableWidgetItem, 
+                             QHeaderView, QScrollArea, QCheckBox, QApplication)
+from PyQt5.QtCore import pyqtSignal
 
-        Args:
-            parent (QWidget, optional): The parent widget. Defaults to None.
-        """
-        super(CheckableComboBox, self).__init__(parent)
-        self.view().pressed.connect(self.handleItemPressed)
-        self.setModelColumn(0)
-        self.checked_items = []
-
-    def handleItemPressed(self, index):
-        """
-        Handles the item pressed event to toggle the check state.
-
-        Args:
-            index (QModelIndex): The index of the pressed item.
-        """
-        item = self.model().itemFromIndex(index)
-        if item.checkState() == Qt.Checked:
-            item.setCheckState(Qt.Unchecked)
-            self.checked_items.remove(item.text())
-        else:
-            item.setCheckState(Qt.Checked)
-            self.checked_items.append(item.text())
-        self.updateText()
-
-    def updateText(self):
-        """
-        Updates the displayed text to show the checked items.
-        """
-        if self.checked_items:
-            self.setEditText(', '.join(self.checked_items))
-        else:
-            self.setEditText('')
-
-    def addItem(self, text, data=None):
-        """
-        Adds an item to the combo box.
-
-        Args:
-            text (str): The text of the item.
-            data (Any, optional): The data associated with the item. Defaults to None.
-        """
-        super(CheckableComboBox, self).addItem(text, data)
-        item = self.model().item(self.count() - 1)
-        item.setCheckState(Qt.Unchecked)
-
-    def addItems(self, texts):
-        """
-        Adds multiple items to the combo box.
-
-        Args:
-            texts (list): The list of item texts to add.
-        """
-        for text in texts:
-            self.addItem(text)
-
-    def setItemChecked(self, text, checked=True):
-        """
-        Sets the check state of an item.
-
-        Args:
-            text (str): The text of the item.
-            checked (bool, optional): The check state. Defaults to True.
-        """
-        index = self.findText(text)
-        if index != -1:
-            item = self.model().item(index)
-            item.setCheckState(Qt.Checked if checked else Qt.Unchecked)
-            if checked:
-                if text not in self.checked_items:
-                    self.checked_items.append(text)
-            else:
-                if text in self.checked_items:
-                    self.checked_items.remove(text)
-            self.updateText()
-
-    def clear(self):
-        """
-        Clears all items from the combo box.
-        """
-        super(CheckableComboBox, self).clear()
-        self.checked_items = []
-
-    def checkedItems(self):
-        """
-        Gets the list of checked items.
-
-        Returns:
-            list: The list of checked items.
-        """
-        return self.checked_items
+from gui.MixDesignTab.utilities import CheckableComboBox, CollapsibleHeader
 
 class ResultsTab(QWidget):
     """
@@ -160,18 +64,6 @@ class ResultsTab(QWidget):
         """
         self.mainLayout = QVBoxLayout(self)
 
-        self.variableSelectionLayout = QHBoxLayout()
-        self.variableComboBox = CheckableComboBox()
-        self.variableComboBox.view().pressed.connect(self.updateSelectedVariables)
-
-        self.secondYAxisCheckBox = QCheckBox("Second y-Axis")
-        self.secondYAxisCheckBox.stateChanged.connect(self.updateSelectedVariables)
-
-        self.variableSelectionLayout.addWidget(self.variableComboBox)
-        self.variableSelectionLayout.addWidget(self.secondYAxisCheckBox)
-
-        self.mainLayout.addLayout(self.variableSelectionLayout)
-
         self.scrollArea = QScrollArea()
         self.scrollArea.setWidgetResizable(True)
         self.scrollWidget = QWidget()
@@ -186,31 +78,63 @@ class ResultsTab(QWidget):
 
     def setupDiagrams(self):
         """
-        Sets up the diagrams for the ResultsTab.
+        Sets up the collapsible diagrams for the ResultsTab.
         """
+
+        # Layout for variable selection (ComboBox and Checkbox)
+        self.variableSelectionLayout = QHBoxLayout()
+        self.variableComboBox = CheckableComboBox()
+        self.variableComboBox.view().pressed.connect(self.updateSelectedVariables)
+
+        self.secondYAxisCheckBox = QCheckBox("Second y-Axis")
+        self.secondYAxisCheckBox.stateChanged.connect(self.updateSelectedVariables)
+
+        self.variableSelectionLayout.addWidget(self.variableComboBox)
+        self.variableSelectionLayout.addWidget(self.secondYAxisCheckBox)
+
+        # First Diagram (Stackplot and Line Plot)
         self.figure1 = Figure(figsize=(8, 6))
         self.canvas1 = FigureCanvas(self.figure1)
         self.canvas1.setMinimumSize(500, 500)
-        self.scrollLayout.addWidget(self.canvas1)
+        self.diagram1_widget = QWidget()
+        diagram1_layout = QVBoxLayout(self.diagram1_widget)
+        diagram1_layout.addLayout(self.variableSelectionLayout)  # Add the ComboBox and Checkbox layout
+        diagram1_layout.addWidget(self.canvas1)
+        self.diagram1_section = CollapsibleHeader("Jahresdauerlinie Diagramm", self.diagram1_widget)
+        self.scrollLayout.addWidget(self.diagram1_section)
 
+        # Second Diagram (Pie Chart)
         self.pieChartFigure = Figure(figsize=(6, 6))
         self.pieChartCanvas = FigureCanvas(self.pieChartFigure)
         self.pieChartCanvas.setMinimumSize(500, 500)
-        self.scrollLayout.addWidget(self.pieChartCanvas)
+        self.diagram2_widget = QWidget()
+        diagram2_layout = QVBoxLayout(self.diagram2_widget)
+        diagram2_layout.addWidget(self.pieChartCanvas)
+        self.diagram2_section = CollapsibleHeader("Anteile Wärmeerzeugung Diagramm", self.diagram2_widget)
+        self.scrollLayout.addWidget(self.diagram2_section)
 
     def setupCalculationOptimization(self):
         """
-        Sets up the calculation optimization section.
+        Sets up the collapsible calculation optimization section.
         """
-        self.addLabel('Übersicht Erzeugung')
 
-        self.resultsAndPieChartLayout = QHBoxLayout()
-        self.scrollLayout.addLayout(self.resultsAndPieChartLayout)
-        
+        # First Table (Results Table)
         self.setupResultsTable()
 
-        self.addLabel('Ergebnisse Wirtschaftlichkeit')
+        self.table1_widget = QWidget()
+        table1_layout = QVBoxLayout(self.table1_widget)
+        table1_layout.addWidget(self.resultsTable)
+        self.table1_section = CollapsibleHeader("Ergebnisse Erzeugung", self.table1_widget)
+        self.scrollLayout.addWidget(self.table1_section)
+
+        # Second Table (Additional Results Table)
         self.setupAdditionalResultsTable()
+
+        self.table2_widget = QWidget()
+        table2_layout = QVBoxLayout(self.table2_widget)
+        table2_layout.addWidget(self.additionalResultsTable)
+        self.table2_section = CollapsibleHeader("Ergebnisse Wirtschaftlichkeit", self.table2_widget)
+        self.scrollLayout.addWidget(self.table2_section)
 
     def addLabel(self, text):
         """
@@ -224,35 +148,52 @@ class ResultsTab(QWidget):
 
     def setupResultsTable(self):
         """
-        Sets up the results table.
+        Sets up the results table with additional columns for operational hours and starts.
         """
         self.resultsTable = QTableWidget()
-        #self.resultsTable.setColumnCount(8)
-        self.resultsTable.setColumnCount(6)
-        #self.resultsTable.setHorizontalHeaderLabels(['Technologie', 'Wärmemenge (MWh)', 'Anzahl Starts', 'Betriebsstunden', 'Kosten (€/MWh)', 'Anteil (%)', 'spez. CO2-Emissionen (t_CO2/MWh_th)', 'Primärenergiefaktor'])
-        self.resultsTable.setHorizontalHeaderLabels(['Technologie', 'Wärmemenge (MWh)', 'Kosten (€/MWh)', 'Anteil (%)', 'spez. CO2-Emissionen (t_CO2/MWh_th)', 'Primärenergiefaktor'])
+        self.resultsTable.setColumnCount(9)  # Updated to include new columns
+        self.resultsTable.setHorizontalHeaderLabels([
+            'Technologie', 'Wärmemenge (MWh)', 'Anzahl Betriebsstunden', 
+            'Anzahl Starts', 'Betriebsstunden/Start', 'Kosten (€/MWh)', 
+            'Anteil (%)', 'CO2-eq (t_CO2/MWh_th)', 'Primärenergiefaktor'
+        ])
         self.resultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.resultsAndPieChartLayout.addWidget(self.resultsTable)
 
     def showResultsInTable(self, results):
         """
-        Displays the results in the results table.
-
+        Displays the results in the results table, including calculated operational metrics.
         Args:
             results (dict): The results to display.
         """
         self.resultsTable.setRowCount(len(results['techs']))
 
-        #for i, (tech, wärmemenge, anzahl_starts, betriebsstunden, wgk, anteil, spec_emission, primary_energy) in enumerate(zip(results['techs'], results['Wärmemengen'], results['anzahl_starts'], results['betriebsstunden'], results['WGK'], results['Anteile'], results['specific_emissions_L'], results['primärenergie_L'])):
-        for i, (tech, wärmemenge, wgk, anteil, spec_emission, primary_energy) in enumerate(zip(results['techs'], results['Wärmemengen'], results['WGK'], results['Anteile'], results['specific_emissions_L'], results['primärenergie_L'])):
+        # Iterate over each technology and calculate operational metrics
+        for i, (tech, wärmemenge, wgk, anteil, spec_emission, primary_energy, wärmeleistung) in enumerate(
+                zip(results['techs'], results['Wärmemengen'], results['WGK'], 
+                    results['Anteile'], results['specific_emissions_L'], results['primärenergie_L'], results['Wärmeleistung_L'])):
+
+            # Ensure wärmemenge is treated as a NumPy array for consistency
+            if not isinstance(wärmeleistung, (list, np.ndarray)):
+                wärmeleistung = [wärmeleistung]  # Convert scalar to list for single value cases
+            wärmeleistung = np.array(wärmeleistung)
+
+            # Calculate 'Anzahl Betriebsstunden' (sum of hours with non-zero output)
+            betriebsstunden = np.count_nonzero(wärmeleistung)  # Counts all non-zero hours
+            # Calculate 'Anzahl Starts' (counts transitions from 0 to > 0)
+            starts = np.sum((wärmeleistung[:-1] == 0) & (wärmeleistung[1:] > 0))
+            # Calculate 'Betriebsstunden/Start' (average hours per start)
+            betriebsstunden_pro_start = betriebsstunden / starts if starts > 0 else 0
+
+            # Populate the table with calculated values
             self.resultsTable.setItem(i, 0, QTableWidgetItem(tech))
-            self.resultsTable.setItem(i, 1, QTableWidgetItem(f"{wärmemenge:.2f}"))
-            #self.resultsTable.setItem(i, 2, QTableWidgetItem(f"{anzahl_starts:.0f}"))
-            #self.resultsTable.setItem(i, 3, QTableWidgetItem(f"{betriebsstunden:.0f}"))
-            self.resultsTable.setItem(i, 2, QTableWidgetItem(f"{wgk:.2f}"))
-            self.resultsTable.setItem(i, 3, QTableWidgetItem(f"{anteil*100:.2f}"))
-            self.resultsTable.setItem(i, 4, QTableWidgetItem(f"{spec_emission:.4f}"))
-            self.resultsTable.setItem(i, 5, QTableWidgetItem(f"{primary_energy/wärmemenge:.4f}"))
+            self.resultsTable.setItem(i, 1, QTableWidgetItem(f"{np.sum(wärmemenge):.2f}"))
+            self.resultsTable.setItem(i, 2, QTableWidgetItem(f"{betriebsstunden}"))
+            self.resultsTable.setItem(i, 3, QTableWidgetItem(f"{starts}"))
+            self.resultsTable.setItem(i, 4, QTableWidgetItem(f"{betriebsstunden_pro_start:.2f}"))
+            self.resultsTable.setItem(i, 5, QTableWidgetItem(f"{wgk:.2f}"))
+            self.resultsTable.setItem(i, 6, QTableWidgetItem(f"{anteil * 100:.2f}"))
+            self.resultsTable.setItem(i, 7, QTableWidgetItem(f"{spec_emission:.4f}"))
+            self.resultsTable.setItem(i, 8, QTableWidgetItem(f"{primary_energy / np.sum(wärmemenge):.4f}"))
 
         self.resultsTable.resizeColumnsToContents()
         self.adjustTableSize(self.resultsTable)
@@ -265,7 +206,6 @@ class ResultsTab(QWidget):
         self.additionalResultsTable.setColumnCount(3)
         self.additionalResultsTable.setHorizontalHeaderLabels(['Ergebnis', 'Wert', 'Einheit'])
         self.additionalResultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.scrollLayout.addWidget(self.additionalResultsTable)
 
     def showAdditionalResultsTable(self, result):
         """
