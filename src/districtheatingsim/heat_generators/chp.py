@@ -298,9 +298,12 @@ class CHP:
         return results
     
     def get_display_text(self):
-        return (f"{self.name}: th. Leistung: {self.th_Leistung_BHKW} kW, "
-                f"spez. Investitionskosten Erdgas-BHKW: {self.spez_Investitionskosten_GBHKW} €/kW, "
-                f"spez. Investitionskosten Holzgas-BHKW: {self.spez_Investitionskosten_HBHKW} €/kW")
+        if self.name.startswith("BHKW"):
+            return (f"{self.name}: th. Leistung: {self.th_Leistung_kW} kW, "
+                    f"spez. Investitionskosten Erdgas-BHKW: {self.spez_Investitionskosten_GBHKW} €/kW")
+        elif self.name.startswith("Holzgas-BHKW"):
+            return (f"{self.name}: th. Leistung: {self.th_Leistung_kW} kW, "
+                    f"spez. Investitionskosten Holzgas-BHKW: {self.spez_Investitionskosten_HBHKW} €/kW")
 
     def to_dict(self):
         """
