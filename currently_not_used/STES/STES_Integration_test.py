@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 
 from STES import StratifiedThermalStorage
 from generators import CHP, PowerToHeat
+from annuity import annuität
 
 class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
     def __init__(self, **kwargs):
@@ -31,6 +32,12 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
         self.stagnation_time = 0  # Zeit in Stunden, in der Überhitzung (Stagnation) auftritt
 
         self.storage_state = np.zeros(self.hours)  # Speicherzustand in Prozent des maximalen Ladezustands
+
+        # Variable for net flow, positive for charge, negative for discharge
+        self.Q_net_storage_flow = np.zeros(self.hours)
+
+        self.T_max_rücklauf = 70  # Maximale Rücklauftemperatur für Erzeuger
+        self.T_min_vorlauf = 70  # Minimale Vorlauftemperatur für Verbraucher
 
     def simulate_stratified_temperature_mass_flows(self, t, Q_in, Q_out, T_Q_in_flow, T_Q_out_return):
         """
@@ -83,15 +90,34 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
             # Update for energy storage state
             self.T_sto[t] = np.average(self.T_sto_layers[t])
 
-            if T_Q_in_flow - self.T_sto_layers[t, 0] != 0:
+            """
+            # when the storage is full, the inflow is zero
+            if self.T_sto_layers[t, -1] < self.T_max_rücklauf:
+                # Ladeoperation möglich
                 self.mass_flow_in[t] = (Q_in * 1000) / (self.cp * (T_Q_in_flow - self.T_sto_layers[t, -1]))
             else:
+                # Speicherüberhitzung oder keine ausreichende Temperaturdifferenz
                 self.mass_flow_in[t] = 0
+                self.excess_heat += Q_in
+                self.stagnation_time += 1
+                self.Q_in = 0
 
-            if self.T_sto_layers[t, -1] - T_Q_out_return != 0:
+            # when the storage is empty, the outflow is zero
+            if self.T_sto_layers[t, 0] > self.T_min_vorlauf:
+                # Entladeoperation möglich
                 self.mass_flow_out[t] = (Q_out * 1000) / (self.cp * (self.T_sto_layers[t, 0] - T_Q_out_return))
             else:
+                # Speicher zu kalt oder keine ausreichende Temperaturdifferenz
                 self.mass_flow_out[t] = 0
+                self.unmet_demand += Q_out
+                self.Q_out = 0
+            """
+
+            self.mass_flow_in[t] = (Q_in * 1000) / (self.cp * (T_Q_in_flow - self.T_sto_layers[t, -1]))
+            self.mass_flow_out[t] = (Q_out * 1000) / (self.cp * (self.T_sto_layers[t, 0] - T_Q_out_return))
+
+            # Berechne den Netto-Wärmefluss als Differenz zwischen ein- und ausströmender Wärme
+            self.Q_net_storage_flow[t] = Q_out - Q_in
 
             # Inflow from top to bottom
             for i in range(self.num_layers):
@@ -146,7 +172,24 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
         self.storage_state[t] = (available_energy_in_storage / max_possible_energy) * 100
         
         # Ladezustand als Prozentwert zurückgeben (zwischen 0 und 100)
-        return max(0, min(100, self.storage_state[t]))
+        return max(0, min(100, self.storage_state[t])), available_energy_in_storage, max_possible_energy
+    
+    def current_storage_temperatures(self, t):
+        """
+        Gibt die aktuelle Temperatur des Speichers an den Enden zurück.
+
+        Args:
+            t (int): Aktueller Zeitschritt.
+
+        Returns:
+            tuple: Vorlauf- und Rücklauftemperatur des Speichers.
+
+        """
+
+        if t == 0:
+            return self.T_sto[t], self.T_sto[t]
+        else:
+            return self.T_sto_layers[t-1, 0], self.T_sto_layers[t-1, -1]
 
     def plot_results(self, Q_in, Q_out, T_Q_in_flow, T_Q_out_return):
         fig = plt.figure(figsize=(16, 10))
@@ -157,11 +200,12 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
         axs5 = fig.add_subplot(2, 3, 5)
         axs6 = fig.add_subplot(2, 3, 6, projection='3d')
 
-        # Q_in and Q_out
-        axs1.plot(Q_in, label='Wärmeerzeugung', color='red')
-        axs1.plot(Q_out, label='Wärmeverbrauch', color='blue')
+        # plot Wärmeerzeugung as line plot
+        axs1.plot(Q_out, label='Wärmeverbrauch', color='blue', linewidth=0.5)
+        # plot Wärmeverbrauch and storage net flow as stackplot
+        axs1.stackplot(range(self.hours), Q_in, self.Q_net_storage_flow, labels=['Wärmeerzeugung', 'Netto-Speicherfluss'], colors=['red', 'purple'])
         axs1.set_ylabel('Wärme (kW)')
-        axs1.set_title('Wärmeerzeugung und Wärmeverbrauch im Zeitverlauf')
+        axs1.set_title('Wärmeerzeugung, -verbrauch und Speicher-Nettofluss')
         axs1.legend()
 
         # Plot storage temperature
@@ -200,6 +244,28 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
 
         plt.tight_layout()
 
+    def calculate_costs(self, Wärmemenge_MWh, Investitionskosten, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T, Energiebedarf, Energiekosten, E1, stundensatz):
+        """
+        Berechnet den Anteil der Wärmegestehungskosten für den Speicher.
+        """
+        self.Wärmemenge_MWh = Wärmemenge_MWh
+        self.Investitionskosten = Investitionskosten
+        self.Nutzungsdauer = Nutzungsdauer
+        self.f_Inst = f_Inst
+        self.f_W_Insp = f_W_Insp
+        self.Bedienaufwand = Bedienaufwand
+        self.q = q
+        self.r = r
+        self.T = T
+        self.Energiebedarf = Energiebedarf
+        self.Energiekosten = Energiekosten
+        self.E1 = E1
+        self.stundensatz = stundensatz
+
+        self.A_N = annuität(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, q, r, T, Energiebedarf, Energiekosten, E1, stundensatz)
+
+        self.WGK = self.A_N / self.Wärmemenge_MWh
+
 # Control strategy for CHP
 class CHPStrategy:
     def __init__(self, storage, charge_on, charge_off):
@@ -208,47 +274,65 @@ class CHPStrategy:
 
         Args:
             storage (TemperatureStratifiedThermalStorage): Instance of the storage.
-            charge_on (int): Storage percentage to activate CHP.
-            charge_off (int): Storage percentage to deactivate CHP.
+            charge_on (int): (upper) Storage temperature to activate CHP.
+            charge_off (int): (lower) Storage temperature to deactivate CHP.
         """
         self.storage = storage
         self.charge_on = charge_on
         self.charge_off = charge_off
 
-    def decide_operation(self, storage_percentage):
+    def decide_operation(self, current_state, upper_storage_temp, lower_storage_temp):
         """
-        Decide whether to turn the CHP on or off based on storage levels.
+        Decide whether to turn the CHP on or off based on storage temperature.
+
+        current_state (bool): Current state of the CHP unit.
+        upper_storage_temp (float): Current upper storage temperature.
+        lower_storage_temp (float): Current lower storage temperature.
+
+        If the lower storage temperature is too high, the CHP is turned off to prevent overheating.
+        If the upper storage temperature is too low, the CHP is turned on to provide additional heat.
+
         """
-        if storage_percentage <= self.charge_on:
-            return True  # Turn CHP on
-        elif storage_percentage >= self.charge_off:
-            return False  # Turn CHP off
-        return None  # No change
+        # Check if the CHP is currently on or off
+        if current_state:
+            # If the CHP is on, check if the lower storage temperature is too high
+            if lower_storage_temp < self.charge_off:
+                return True  # Keep CHP on
+            else:
+                return False  # Turn CHP off
+        else:
+            if upper_storage_temp > self.charge_on:
+                return False  # Keep CHP off
+            else:    
+                return True  # Turn CHP on
 
 # Control strategy for Power-to-Heat
 class PowerToHeatStrategy:
     def __init__(self, storage, charge_on):
         """
-        Initializes the Power-to-Heat strategy, which operates based on remaining demand.
-        
+        Initializes the Power-to-Heat strategy with a switch point based on storage levels.
+
         Args:
             storage (TemperatureStratifiedThermalStorage): Instance of the storage.
+            charge_on (int): Storage temperature to activate Power-to-Heat unit.
+
         """
         self.storage = storage
         self.charge_on = charge_on
 
-    def decide_operation(self, storage_percentage):
+    def decide_operation(self, upper_storage_temp, remaining_demand):
         """
-        Decide operation based on remaining demand after other generators have operated.
-        
-        Args:
-            remaining_demand (float): Heat demand left after the CHP unit's operation.
-        
-        Returns:
-            bool: True if there is remaining demand to meet, False otherwise.
+        Decide whether to turn the Power-to-Heat unit on based on storage temperature and remaining demand.
+
+        upper_storage_temp (float): Current upper storage temperature.
+        remaining_demand (float): Remaining heat demand to be covered.
+
+        If the upper storage temperature is too low and there is still demand, the Power-to-Heat unit is turned on.
+
         """
-        if storage_percentage <= self.charge_on:
-            return True  # Turn CHP on
+
+        if upper_storage_temp < self.charge_on and remaining_demand > 0:
+            return True  # Turn P2H on
         
 class SystemController:
     def __init__(self, generators, storage, hours, energy_price_per_kWh):
@@ -279,28 +363,21 @@ class SystemController:
             remaining_demand = Q_out
             Q_in_total = 0  # Sum of heat input from all generators for this timestep
 
-            # Calculate current storage capacity
-            storage_percentage = self.storage.current_storage_state(t, T_Q_out_return, T_Q_in_flow)
+            # Calculate current storage temperatures
+            current_storage_state, _, _ = self.storage.current_storage_state(t, T_Q_out_return, T_Q_in_flow)
+            upper_storage_temp, lower_storage_temp = self.storage.current_storage_temperatures(t)
 
             # Iterate over prioritized generators
             for generator in self.generators:
-                if remaining_demand <= 0:
-                    break
-
                 # Apply the generator's specific control strategy
                 if generator.name.startswith("BHKW"):
-                    new_state = generator.strategy.decide_operation(storage_percentage)
-                    if new_state is not None:
-                        generator.BHKW_an = new_state
-                        generator_state = new_state
-                    else:
-                        generator_state = generator.BHKW_an
+                    new_state = generator.strategy.decide_operation(generator.BHKW_an, upper_storage_temp, lower_storage_temp)
+                    generator_state = new_state
+                    generator.BHKW_an = new_state
                 elif generator.name.startswith("P2H"):
-                    generator_state = generator.strategy.decide_operation(storage_percentage)
+                    generator_state = generator.strategy.decide_operation(upper_storage_temp, remaining_demand)
                 else:
                     generator_state = False  # Default to off if strategy is undefined
-
-                #print(f"Generator {generator.name} operating: {generator_state}")
 
                 # Operate the generator if the control strategy allows
                 if generator_state:
@@ -309,17 +386,12 @@ class SystemController:
                     Q_in_total += Q_in  # Accumulate total input for storage update
 
             # After evaluating all generators, update the storage with total Q_in
-            if Q_in_total > 0:
-                self.storage.simulate_stratified_temperature_mass_flows(
-                    t, Q_in_total, Q_out, T_Q_in_flow, T_Q_out_return
-                )
+            self.storage.simulate_stratified_temperature_mass_flows(t, Q_in_total, Q_out, T_Q_in_flow, T_Q_out_return)
+
+            remaining_demand -= self.storage.Q_net_storage_flow[t]  # Adjust remaining demand after storage output
 
             # Record the total Q_in for this timestep
             self.Q_in_profile[t] = Q_in_total
-
-            # If there's unmet demand after all generators have been evaluated, record it
-            if remaining_demand > 0:
-                self.results["unmet_demand"] += remaining_demand
 
         # Calculate final results after the simulation
         self.calculate_final_results()
@@ -411,13 +483,13 @@ if __name__ == '__main__':
     T_Q_out_return_profile = np.random.uniform(50, 50, params['hours'])
 
     # Initializing generators with individual strategies
-    chp = CHP("BHKW_1", th_Leistung_kW=1000, priority=1)
+    chp = CHP("BHKW_1", th_Leistung_kW=500, priority=1)
     p2h = PowerToHeat("P2H_1", th_Leistung_kW=1000, priority=2)
     storage = TemperatureStratifiedThermalStorage(**params)
 
     # Assign individual strategies to generators
-    chp.strategy = CHPStrategy(storage, charge_on=20, charge_off=90)
-    p2h.strategy = PowerToHeatStrategy(storage, charge_on=20)
+    chp.strategy = CHPStrategy(storage, charge_on=70, charge_off=70)
+    p2h.strategy = PowerToHeatStrategy(storage, charge_on=70)
 
     # Controller für die Strategien erstellen
     controller = SystemController([chp, p2h], storage, hours=params['hours'], energy_price_per_kWh=0.10)
