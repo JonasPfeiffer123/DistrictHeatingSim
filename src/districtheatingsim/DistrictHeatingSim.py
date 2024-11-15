@@ -570,6 +570,8 @@ class HeatSystemDesignGUI(QMainWindow):
         self.folder_manager = folder_manager
         self.data_manager = data_manager
         self.folderLabel = None  # Initialize the folderLabel to None
+        self.hidden_tabs = {}  # Speichert versteckte Tabs
+        self.tab_order = []  # Speichert die Reihenfolge der Tabs
 
     def set_presenter(self, presenter):
         """
@@ -599,6 +601,7 @@ class HeatSystemDesignGUI(QMainWindow):
 
         self.initMenuBar()
 
+        print("Initializing tabs...")
         self.initTabs()
 
         # Initialize the folderLabel
@@ -672,6 +675,10 @@ class HeatSystemDesignGUI(QMainWindow):
         themeMenu.addAction(lightThemeAction)
         themeMenu.addAction(darkThemeAction)
 
+        # Neuer Menüpunkt für Tabs
+        self.tabsMenu = self.menubar.addMenu('Tabs')
+        self.menu_actions = {}  # Speichert die Aktionen für die Tabs
+
         self.layout1.addWidget(self.menubar)
 
         createNewProjectAction.triggered.connect(self.on_create_new_project)
@@ -688,13 +695,15 @@ class HeatSystemDesignGUI(QMainWindow):
         darkThemeAction.triggered.connect(lambda: self.applyTheme('dark_theme_style_path'))
 
     def initTabs(self):
-        tabWidget = QTabWidget()
-        self.layout1.addWidget(tabWidget)
+        self.tabWidget = QTabWidget()
+        self.tabWidget.setTabsClosable(True)
+        self.tabWidget.tabCloseRequested.connect(self.hide_tab)
+
+        self.layout1.addWidget(self.tabWidget)
 
         # Initialize tabs
         self.projectTab = ProjectTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
         self.buildingTab = BuildingTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
-        #self.visTab = VisualizationTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
         self.visTab2 = VisualizationTabLeaflet(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
         self.calcTab = CalculationTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager, self)
         self.mixDesignTab = MixDesignTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager, self)
@@ -704,17 +713,24 @@ class HeatSystemDesignGUI(QMainWindow):
         self.individualTab = IndividualTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager, self)
         self.pvTab = PVTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
 
-        tabWidget.addTab(self.projectTab, "Projektdefinition")
-        tabWidget.addTab(self.buildingTab, "Wärmebedarf Gebäude")
-        #tabWidget.addTab(self.visTab, "Wärmenetz generieren")
-        tabWidget.addTab(self.visTab2, "Kartenansicht Wärmenetzgenerierung")
-        tabWidget.addTab(self.calcTab, "Wärmenetzberechnung")
-        tabWidget.addTab(self.mixDesignTab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
-        tabWidget.addTab(self.comparisonTab, "Variantenvergleich")
-        tabWidget.addTab(self.lod2Tab, "Verarbeitung LOD2-Daten")
-        tabWidget.addTab(self.renovationTab, "Gebäudesanierung")
-        tabWidget.addTab(self.individualTab, "Einzelversorgungslösung")
-        tabWidget.addTab(self.pvTab, "Photovoltaik")
+         # Hinzufügen der Tabs zum Widget und Menü
+        self.add_tab_to_menu(self.projectTab, "Projektdefinition")
+        self.add_tab_to_menu(self.buildingTab, "Wärmebedarf Gebäude")
+        self.add_tab_to_menu(self.visTab2, "Kartenansicht Wärmenetzgenerierung")
+        self.add_tab_to_menu(self.calcTab, "Wärmenetzberechnung")
+        self.add_tab_to_menu(self.mixDesignTab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
+        self.add_tab_to_menu(self.comparisonTab, "Variantenvergleich")
+        self.add_tab_to_menu(self.lod2Tab, "Verarbeitung LOD2-Daten")
+        self.add_tab_to_menu(self.renovationTab, "Gebäudesanierung")
+        self.add_tab_to_menu(self.individualTab, "Einzelversorgungslösung")
+        self.add_tab_to_menu(self.pvTab, "Photovoltaik")
+
+        self.default_visible_tabs = ["Projektdefinition", "Wärmebedarf Gebäude", "Kartenansicht Wärmenetzgenerierung", "Wärmenetzberechnung", "Erzeugerauslegung und Wirtschaftlichkeitsrechnung", "Variantenvergleich"]
+
+        # Tabs ausblenden, die nicht standardmäßig sichtbar sind
+        for tab_name in self.tab_order:
+            if tab_name not in self.default_visible_tabs:
+                self.toggle_tab_visibility(tab_name)
 
     def initLogo(self):
         """
@@ -939,6 +955,60 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         QMessageBox.information(self, "Info", message)
 
+    def add_tab_to_menu(self, tab_widget, tab_name):
+        """
+        Fügt einen Tab zum Tab-Widget und die entsprechende Aktion zum Menü hinzu.
+        """
+        # Tab zur Reihenfolge hinzufügen
+        if tab_name not in self.tab_order:
+            self.tab_order.append(tab_name)
+
+        # Tab zum Tab-Widget hinzufügen
+        self.tabWidget.addTab(tab_widget, tab_name)
+
+        # Menüeintrag erstellen
+        action = QAction(tab_name, self)
+        action.setCheckable(True)
+        action.setChecked(True)
+        action.triggered.connect(lambda checked: self.toggle_tab_visibility(tab_name))
+        self.tabsMenu.addAction(action)
+
+        # Aktion im Dictionary speichern
+        self.menu_actions[tab_name] = action
+
+    def toggle_tab_visibility(self, tab_name):
+        """
+        Entfernt oder fügt einen Tab hinzu, abhängig von seiner aktuellen Sichtbarkeit.
+        """
+        if tab_name in self.hidden_tabs:
+            # Tab wiederherstellen
+            restored_tab, _ = self.hidden_tabs.pop(tab_name)
+
+            # Stelle die ursprüngliche Reihenfolge sicher
+            for i, name in enumerate(self.tab_order):
+                if name == tab_name:
+                    self.tabWidget.insertTab(i, restored_tab, tab_name)
+                    self.tabWidget.setCurrentIndex(i)
+                    break
+
+            self.menu_actions[tab_name].setChecked(True)
+        else:
+            # Tab entfernen und speichern
+            for index in range(self.tabWidget.count()):
+                if self.tabWidget.tabText(index) == tab_name:
+                    tab = self.tabWidget.widget(index)
+                    self.hidden_tabs[tab_name] = (tab, index)
+                    self.tabWidget.removeTab(index)
+                    break
+            self.menu_actions[tab_name].setChecked(False)
+
+    def hide_tab(self, tab_index):
+        """
+        Versteckt einen Tab, indem die Sichtbarkeitslogik getriggert wird.
+        """
+        tab_name = self.tabWidget.tabText(tab_index)
+        self.toggle_tab_visibility(tab_name)
+
 def get_stylesheet_based_on_time():
     """
     Return the stylesheet path based on the current system time.
@@ -971,7 +1041,6 @@ if __name__ == '__main__':
     presenter.view.updateHeatPumpData()
 
     # Setup and show the UI
-    view.initUI()
     QTimer.singleShot(0, lambda: view.showMaximized())
     QTimer.singleShot(0, lambda: view.update_project_folder_label(folder_manager.variant_folder))  # Verschiebe diesen Aufruf hierhin
 
