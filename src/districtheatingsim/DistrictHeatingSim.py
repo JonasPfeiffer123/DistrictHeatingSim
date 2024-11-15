@@ -601,7 +601,6 @@ class HeatSystemDesignGUI(QMainWindow):
 
         self.initMenuBar()
 
-        print("Initializing tabs...")
         self.initTabs()
 
         # Initialize the folderLabel
