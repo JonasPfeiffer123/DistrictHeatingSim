@@ -1045,4 +1045,6 @@ if __name__ == '__main__':
 
     view.show()
     sys.exit(app.exec_())
+    input("Press Enter to exit...")
+    os.system("pause")
 
