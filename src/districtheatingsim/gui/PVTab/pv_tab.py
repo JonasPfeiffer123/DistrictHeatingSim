@@ -5,6 +5,7 @@
 
 import os
 import pandas as pd
+import traceback
 
 from PyQt5.QtWidgets import (QAction, QVBoxLayout, QWidget, QFileDialog, QMessageBox, QMenuBar)
 from gui.PVTab.pv_mvp import PVDataModel, DataVisualizationPresenter, PVDataVisualizationTab
@@ -152,4 +153,5 @@ class PVTab(QWidget):
             QMessageBox.information(
                 self, "Berechnung abgeschlossen", f"PV-Ertragsberechnung erfolgreich abgeschlossen.\nErgebnisse gespeichert in: {output_filename}")
         except Exception as e:
+            traceback.print_exc()
             QMessageBox.critical(self, "Fehler", f"Fehler bei der Berechnung: {str(e)}")
