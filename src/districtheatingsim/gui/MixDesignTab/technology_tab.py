@@ -63,6 +63,7 @@ class TechnologyTab(QWidget):
         "Biomassekessel": 0,
         "Gaskessel": 0,
         "AqvaHeat": 0,
+        "Power-to-Heat": 0
     }
 
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
@@ -219,9 +220,10 @@ class TechnologyTab(QWidget):
             "Geothermie": Geothermal,
             "Abwärme": WasteHeatPump,
             "Flusswasser": RiverHeatPump,
+            "AqvaHeat": AqvaHeat,
             "Biomassekessel": BiomassBoiler,
             "Gaskessel": GasBoiler,
-            "AqvaHeat": AqvaHeat
+            "Power-to-Heat": PowerToHeat
         }
 
         base_tech_type = tech_type.split('_')[0]
@@ -509,9 +511,11 @@ class TechnologyTab(QWidget):
             tech.scene_item = self.schematic_scene.add_component('Waste Heat Pump', name, storage=False)
         elif tech.name.startswith('Flusswasser'):
             tech.scene_item = self.schematic_scene.add_component('River Heat Pump', name, storage=False)
+        elif tech.name.startswith('AqvaHeat'):
+            tech.scene_item = self.schematic_scene.add_component('Aqva Heat Pump', name, storage=False)
         elif tech.name.startswith('Biomassekessel'):
             tech.scene_item = self.schematic_scene.add_component('Biomass Boiler', name, storage=has_storage)
         elif tech.name.startswith('Gaskessel'):
             tech.scene_item = self.schematic_scene.add_component('Gas Boiler', name, storage=False)
-        elif tech.name.startswith('AqvaHeat'):
-            tech.scene_item = self.schematic_scene.add_component('Aqva Heat Pump', name, storage=False)
+        elif tech.name.startswith('PowerToHeat'):
+            tech.scene_item = self.schematic_scene.add_component('Power-to-Heat', name, storage=False)
