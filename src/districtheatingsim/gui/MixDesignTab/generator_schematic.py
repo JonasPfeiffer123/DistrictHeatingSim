@@ -110,6 +110,12 @@ class SchematicScene(CustomGraphicsScene):
             'shape': 'rect',  # Shape as rectangle
             'counter': 0  # Counter for Gas Boiler
         },
+        'Power-to-Heat': {
+            'color': QColor('orange'),
+            'geometry': QRectF(-25, -25, 50, 50),  # Square to represent power-to-heat
+            'shape': 'rect',  # Shape as rectangle
+            'counter': 0  # Counter for Power-to-Heat
+        },
         'Geothermal Heat Pump': {
             'color': QColor('blueviolet'),
             'geometry': QRectF(-25, -25, 50, 50),  # Square to represent geothermal heat pump

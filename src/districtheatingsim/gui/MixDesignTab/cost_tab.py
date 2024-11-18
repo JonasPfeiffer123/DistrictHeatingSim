@@ -382,6 +382,11 @@ class CostTab(QWidget):
             costs = f"Investitionskosten Speicher: {tech.Investitionskosten_Speicher:.1f} €, Investitionskosten STA: {tech.Investitionskosten_STA:.1f} €"
             full_costs = f"{tech.Investitionskosten:.1f}"
 
+        elif isinstance(tech, PowerToHeat):
+            dimensions = f"th. Leistung: {tech.P_max:.1f} kW"
+            costs = f"Investitionskosten: {tech.Investitionskosten:.1f} €"
+            full_costs = f"{tech.Investitionskosten:.1f}"
+
         else:
             dimensions = "N/A"
             costs = "N/A"

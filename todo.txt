@@ -20,7 +20,7 @@ LOD2-Datenverarbeitung:
 - LOD2-Daten laden --> Exception-Handling bei timeout Nominatim geocoding
 
 Wärmenetzgenerierung:
-- Kartenanwendung überarbeiten, Ansatz dafür in Ordner currrently_not_used --> statt folium Karte direkte Implementation von leaflet als html
+- Kartenanwendung überarbeiten, Bearbeitungsfunktionen ausweiten / Export von bearbeiteten Layern, Dateistrukturüberdenken
 - GeoJSON für Netzbestandteile
     - Festlegen, ob eine geoJSON-Datei für die Speicherung aller Netzbestandteile genutzt werden soll.
     - Implementierung der Datenhaltung in geoJSON-Format, falls entschieden.

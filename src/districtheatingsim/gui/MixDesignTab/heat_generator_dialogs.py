@@ -87,6 +87,8 @@ class TechInputDialog(QDialog):
             self.dialog = RiverHeatPumpDialog(self.tech_data)
         elif self.tech_type.startswith("AqvaHeat"):
             self.dialog = AqvaHeatDialog(self.tech_data)
+        elif self.tech_type.startswith("Power-to-Heat"):
+            self.dialog = PowerToHeatDialog(self.tech_data)
         else:
             raise ValueError(f"Unbekannter Technologietyp: {self.tech_type}")
 
@@ -593,6 +595,65 @@ class GasBoilerDialog(QDialog):
             'Faktor_Dimensionierung': float(self.PowerFactorGKInput.text()),
             'spez_Investitionskosten': float(self.spezcostGKInput.text()),
             'Nutzungsgrad': float(self.effGKInput.text())
+        }
+        return inputs
+    
+class PowerToHeatDialog(QDialog):
+    """
+    A QDialog subclass for configuring Power-to-Heat parameters.
+
+    Attributes:
+        tech_data (dict): Dictionary containing initial values for the Power-to-Heat parameters.
+        PowerFactorGKInput (QLineEdit): Input field for the dimensioning factor of the Power-to-Heat.
+        effGKInput (QLineEdit): Input field for the efficiency of the Power-to-Heat.
+        spezcostGKInput (QLineEdit): Input field for the specific investment costs.
+    """
+
+    def __init__(self, tech_data=None):
+        """
+        Initializes the PowerToHeatDialog.
+
+        Args:
+            tech_data (dict, optional): Dictionary containing initial values for the Power-to-Heat parameters. Defaults to None.
+        """
+        super(PowerToHeatDialog, self).__init__()
+        self.tech_data = tech_data if tech_data is not None else {}
+        self.initUI()
+
+    def initUI(self):
+        """
+        Initializes the user interface components.
+        """
+        self.setWindowTitle("Eingabe für Power-to-Heat")
+        main_layout = QVBoxLayout()
+        g_layout = QFormLayout()
+
+        self.PowerFactorPTHInput = QLineEdit(self)
+        self.PowerFactorPTHInput.setText(str(self.tech_data.get('Faktor_Dimensionierung', "1")))
+        g_layout.addRow(QLabel("Auslegungsfaktor Power-to-Heat (Anteil an Maximallast)"), self.PowerFactorPTHInput)
+
+        self.effPTHInput = QLineEdit(self)
+        self.effPTHInput.setText(str(self.tech_data.get('Nutzungsgrad', "0.9")))
+        g_layout.addRow(QLabel("Nutzungsgrad Power-to-Heat"), self.effPTHInput)
+
+        self.spezcostPTHInput = QLineEdit(self)
+        self.spezcostPTHInput.setText(str(self.tech_data.get('spez_Investitionskosten', "30")))
+        g_layout.addRow(QLabel("spez. Investitionskosten in €/kW"), self.spezcostPTHInput)
+        
+        main_layout.addLayout(g_layout)
+        self.setLayout(main_layout)
+
+    def getInputs(self):
+        """
+        Retrieves the input values from the user interface.
+
+        Returns:
+            dict: A dictionary containing the input values.
+        """
+        inputs = {
+            'Faktor_Dimensionierung': float(self.PowerFactorPTHInput.text()),
+            'spez_Investitionskosten': float(self.spezcostPTHInput.text()),
+            'Nutzungsgrad': float(self.effPTHInput.text())
         }
         return inputs
 
