@@ -434,7 +434,7 @@ class PVVisualization3D:
         ax.set_xlabel('UTM_X')
         ax.set_ylabel('UTM_Y')
         ax.set_zlabel('Höhe')
-        ax.set_title('3D-Visualisierung der LOD2-Daten')
+        ax.set_title('3D-Visualisierung der möglichen Dachflächen für Photovoltaik')
 
         self.canvas_3d.draw()
 

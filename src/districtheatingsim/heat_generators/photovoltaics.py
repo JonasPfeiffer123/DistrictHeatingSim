@@ -8,6 +8,7 @@ Description: Calculation of PV according to eupvgis.
 
 import numpy as np
 import pandas as pd
+from datetime import datetime, timezone
 
 from utilities.test_reference_year import import_TRY
 from heat_generators.solar_radiation import calculate_solar_radiation
@@ -45,15 +46,13 @@ def Calculate_PV(TRY_data, Gross_area, Longitude, STD_Longitude, Latitude, Albed
     # Constants for the efficiency calculation depending on temperature and irradiation.
     k1, k2, k3, k4, k5, k6 = -0.017237, -0.040465, -0.004702, 0.000149, 0.000170, 0.000005
 
-    Day_of_Year_L = np.repeat(np.arange(1, 366), 24)
-
     # Generate time steps (hourly intervals) for a specific date range
     start_date = np.datetime64('2024-01-01T00:00')
-    end_date = np.datetime64('2024-01-02T00:00')  # Example of 1 day
-    time_steps = np.arange(start_date, end_date, np.timedelta64(1, 'h'))
+    time_steps = start_date + np.arange(8760) * np.timedelta64(1, 'h')
+    Day_of_Year_L = np.array([datetime.fromtimestamp(t.astype('datetime64[s]').astype(np.int64), tz=timezone.utc).timetuple().tm_yday for t in time_steps])
 
     # Calculate the solar irradiation for the given data.
-    GT_L, _, _, _ = calculate_solar_radiation(G_L, D_L, Longitude, Day_of_Year_L, time_steps, STD_Longitude, Latitude, Albedo,
+    GT_L, _, _, _ = calculate_solar_radiation(G_L, D_L, Day_of_Year_L, time_steps, Longitude, STD_Longitude, Latitude, Albedo,
                                      East_West_collector_azimuth_angle, Collector_tilt_angle)
 
     # Calculate the average solar irradiation value (in kW/m^2).
