@@ -36,8 +36,7 @@ Wirtschaftlichkeitsberechnung:
 
 Erzeugerauslegung:
 - Ausbau Erzeuger / Speicher
-    - Einbindung von PVT, Großwärmespeicher, AquvaHeat, Wasserstoff (Brennstoffzelle), Power-to-heat und Geothermie mit Sondenregeneration in die Erzeugerauslegung.
-    - Erweiterung Funktionalitäten
+    - Großwärmespeicher, Wasserstoff (Brennstoffzelle / Elektrolyseur --> Abwärme)
 
 Einzelversorgungslösung:
 - weitere Ergebnisse?
@@ -52,8 +51,6 @@ Betrachtung Stromsektor:
 - Stromprofile zur Sektorkopplung
     - Implementierung von Stromprofilen sowohl auf Verbraucher- als auch auf Erzeugerseite zur Unterstützung der Sektorkopplung.
 - PV-Klasse für Stromerzeugung
-    - Implementierung einer PV-Klasse zur Berechnung der Stromerzeugung.
-    - Option zur Auslesung von Fläche, Orientierung und Neigung der Solarthermie- und PV-Anlagen aus LOD2-Daten.
     - Stromprofile PV-Anlagen
 
 Test Projekte durcharbeiten:
