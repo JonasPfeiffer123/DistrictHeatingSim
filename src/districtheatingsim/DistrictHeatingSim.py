@@ -95,20 +95,20 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QT
 from PyQt5.QtCore import QObject, pyqtSignal, QTimer
 from PyQt5.QtGui import QIcon, QPixmap
 
-from gui.ProjectTab.project_tab import ProjectTab
-from gui.VisualizationTab.visualization_tab import VisualizationTab
-from gui.LOD2Tab.lod2_tab import LOD2Tab
-from gui.BuildingTab.building_tab import BuildingTab
-from gui.RenovationTab.RenovationTab import RenovationTab
-from gui.CalculationTab.calculation_tab import CalculationTab
-from gui.MixDesignTab.mix_design_tab import MixDesignTab
-from gui.ComparisonTab.comparison_tab import ComparisonTab
-from gui.IndividualTab.individual_tab import IndividualTab
-from gui.PVTab.pv_tab import PVTab
-from gui.results_pdf import create_pdf
-from gui.dialogs import TemperatureDataDialog, HeatPumpDataDialog
+from districtheatingsim.gui.ProjectTab.project_tab import ProjectTab
+from districtheatingsim.gui.VisualizationTab.visualization_tab import VisualizationTab
+from districtheatingsim.gui.LOD2Tab.lod2_tab import LOD2Tab
+from districtheatingsim.gui.BuildingTab.building_tab import BuildingTab
+from districtheatingsim.gui.RenovationTab.RenovationTab import RenovationTab
+from districtheatingsim.gui.CalculationTab.calculation_tab import CalculationTab
+from districtheatingsim.gui.MixDesignTab.mix_design_tab import MixDesignTab
+from districtheatingsim.gui.ComparisonTab.comparison_tab import ComparisonTab
+from districtheatingsim.gui.IndividualTab.individual_tab import IndividualTab
+from districtheatingsim.gui.PVTab.pv_tab import PVTab
+from districtheatingsim.gui.results_pdf import create_pdf
+from districtheatingsim.gui.dialogs import TemperatureDataDialog, HeatPumpDataDialog
 
-from gui.PyQt5_leaflet.leaflet_tab import VisualizationTabLeaflet
+from districtheatingsim.gui.PyQt5_leaflet.leaflet_tab import VisualizationTabLeaflet
 
 class ProjectConfigManager:
     """

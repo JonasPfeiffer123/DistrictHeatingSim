@@ -104,7 +104,7 @@ def process_data(input_csv):
 
 if __name__ == '__main__':
     # file name of the data file with adresses
-    input_csv = "data_input.csv"
+    input_csv = "data/data_ETRS89.csv"
 
     # Calling the process_data function to read from input_csv and write to output_csv
     process_data(input_csv)

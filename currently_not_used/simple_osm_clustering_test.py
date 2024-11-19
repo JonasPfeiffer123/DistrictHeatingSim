@@ -13,34 +13,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import numpy as np
 import geopandas as gpd
 
-from src.districtheatingsim.osm.import_osm_data_geojson import build_query, download_data, save_to_file
 from currently_not_used.heat_supply_areas import clustering_districts_hdbscan, postprocessing_hdbscan, allocate_overlapping_area
-
-### OSM-Download von Straßendaten ###
-def osm_street_query():
-    city_name = "Zittau"
-    tags = [
-            ("highway", "primary"),
-            ("highway", "secondary"),
-            ("highway", "tertiary"),
-            ("highway", "residential"),
-            ("highway", "living_street")
-        ]
-    element_type = "way"
-    query = build_query(city_name, tags, element_type)
-    geojson_data = download_data(query, element_type)
-    save_to_file(geojson_data, "tests\data\osm_street_data.geojson")
-    print("Speichern der OSM-Straßendaten erfolgreich abgeschlossen.")
-
-### OSM-Download von Gebäudedaten ###
-def osm_building_query():
-    city_name = "Zittau"
-    tags = None
-    element_type = "building"
-    query = build_query(city_name, tags, element_type)
-    geojson_data = download_data(query, element_type)
-    save_to_file(geojson_data, "tests\data\osm_building_data.geojson")
-    print("Speichern der OSM-Gebäudedaten erfolgreich abgeschlossen.")
 
 ### Clustering in Wärmeversorgungsgebiete ###
 def osm_clustering():
@@ -81,7 +54,4 @@ def osm_clustering():
     quarters_overlayed.to_file('tests\data\quartiere_allocated.geojson', driver='GeoJSON')
     print("Allocating overlapping areas der Quartiere erfolgreich abgeschlossen.")
 
-
-osm_street_query()
-osm_building_query()
 osm_clustering()
