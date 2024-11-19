@@ -7,7 +7,7 @@ Description: Contains the BiomassBoiler class representing a biomass boiler syst
 """
 
 import numpy as np
-from heat_generators.annuity import annuität
+from districtheatingsim.heat_generators.annuity import annuität
 
 class BiomassBoiler:
     """
@@ -183,6 +183,26 @@ class BiomassBoiler:
         
         self.WGK_BMK = self.A_N / Wärmemenge
 
+    def calculate_environmental_impact(self, Brennstoffbedarf, Wärmemenge):
+        """
+        Calculates the environmental impact of the biomass boiler system.
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
+
+        # CO2 emissions due to fuel usage
+        self.co2_emissions = Brennstoffbedarf * self.co2_factor_fuel # tCO2
+        # specific emissions heat
+        self.spec_co2_total = self.co2_emissions / Wärmemenge if Wärmemenge > 0 else 0 # tCO2/MWh_heat
+
+        self.primärenergie = Brennstoffbedarf * self.primärenergiefaktor
+        
+
+
     def calculate(self, Holzpreis, q, r, T, BEW, stundensatz, duration, general_results):
         """
         Calculates the performance and cost of the biomass boiler system.
@@ -218,14 +238,8 @@ class BiomassBoiler:
             Betriebsstunden_pro_Start = self.Betriebsstunden_pro_Start
 
         self.calculate_heat_generation_costs(Wärmemenge, Brennstoffbedarf, Holzpreis, q, r, T, BEW, stundensatz)
+        self.calculate_environmental_impact(Brennstoffbedarf, Wärmemenge)
 
-        # CO2 emissions due to fuel usage
-        self.co2_emissions = Brennstoffbedarf * self.co2_factor_fuel # tCO2
-        # specific emissions heat
-        self.spec_co2_total = self.co2_emissions / Wärmemenge if Wärmemenge > 0 else 0 # tCO2/MWh_heat
-
-        self.primärenergie = Brennstoffbedarf * self.primärenergiefaktor
-        
         results = {
             'Wärmemenge': Wärmemenge,
             'Wärmeleistung_L': Wärmeleistung_kW,

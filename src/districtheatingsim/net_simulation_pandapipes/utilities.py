@@ -22,7 +22,7 @@ from pandapipes.control.run_control import run_control
 from pandapower.timeseries import DFData
 from pandapower.control.controller.const_control import ConstControl
 
-from net_simulation_pandapipes.controllers import ReturnTemperatureController, WorstPointPressureController
+from districtheatingsim.net_simulation_pandapipes.controllers import ReturnTemperatureController, WorstPointPressureController
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)

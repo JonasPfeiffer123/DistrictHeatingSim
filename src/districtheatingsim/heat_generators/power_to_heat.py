@@ -8,7 +8,7 @@ Description: Contains the PowerToHeat class representing a power-to-heat system.
 
 import numpy as np
 
-from heat_generators.annuity import annuität
+from districtheatingsim.heat_generators.annuity import annuität
 
 class PowerToHeat:
     """

@@ -2,8 +2,13 @@
 Filename: 05_example_net_generation_test.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-11-19
-Description: Script for testing the net generation functionality.
-
+Description: Script for testing the net generation functions.
+Usage: Run the script to generate a heat network based on the given inputs.
+Functions:
+    generate_and_export_layers(osm_street_layer_geojson_file_name, data_csv_file_name, coordinates, base_path, algorithm) -> None
+        Generates and exports the heat network layers based on the given inputs.
+Example:
+    $ python 05_example_net_generation_test.py
 """
 
 import geopandas as gpd

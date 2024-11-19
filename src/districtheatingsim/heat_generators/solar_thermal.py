@@ -12,8 +12,8 @@ from math import pi, exp, log, sqrt
 import numpy as np
 from datetime import datetime, timezone
 
-from heat_generators.solar_radiation import calculate_solar_radiation
-from heat_generators.annuity import annuität
+from districtheatingsim.heat_generators.solar_radiation import calculate_solar_radiation
+from districtheatingsim.heat_generators.annuity import annuität
 
 class SolarThermal:
     """
@@ -138,7 +138,7 @@ class SolarThermal:
         Returns:
             float: Weighted average cost of heat generation.
         """
-        if self.Wärmemenge_Solarthermie == 0:
+        if self.Wärmemenge == 0:
             return 0
 
         self.Investitionskosten_Speicher = self.vs * self.kosten_speicher_spez
@@ -146,12 +146,12 @@ class SolarThermal:
         self.Investitionskosten = self.Investitionskosten_Speicher + self.Investitionskosten_STA
 
         self.A_N = annuität(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, q, r, T, stundensatz=stundensatz)
-        self.WGK = self.A_N / self.Wärmemenge_Solarthermie
+        self.WGK = self.A_N / self.Wärmemenge
 
         self.Eigenanteil = 1 - self.Anteil_Förderung_BEW
         self.Investitionskosten_Gesamt_BEW = self.Investitionskosten * self.Eigenanteil
         self.Annuität_BEW = annuität(self.Investitionskosten_Gesamt_BEW, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, q, r, T, stundensatz=stundensatz)
-        self.WGK_BEW = self.Annuität_BEW / self.Wärmemenge_Solarthermie
+        self.WGK_BEW = self.Annuität_BEW / self.Wärmemenge
 
         self.WGK_BEW_BKF = self.WGK_BEW - self.Betriebskostenförderung_BEW
 
@@ -162,11 +162,11 @@ class SolarThermal:
         
     def calculate_environmental_impact(self):
         # Berechnung der Emissionen
-        self.co2_emissions = self.Wärmemenge_Solarthermie * self.co2_factor_solar  # tCO2
+        self.co2_emissions = self.Wärmemenge * self.co2_factor_solar  # tCO2
         # specific emissions heat
-        self.spec_co2_total = self.co2_emissions / self.Wärmemenge_Solarthermie if self.Wärmemenge_Solarthermie > 0 else 0  # tCO2/MWh_heat
+        self.spec_co2_total = self.co2_emissions / self.Wärmemenge if self.Wärmemenge > 0 else 0  # tCO2/MWh_heat
 
-        self.primärenergie_Solarthermie = self.Wärmemenge_Solarthermie * self.primärenergiefaktor
+        self.primärenergie_Solarthermie = self.Wärmemenge * self.primärenergiefaktor
         
     def calculate(self, VLT_L, RLT_L, TRY, time_steps, calc1, calc2, q, r, T, BEW, stundensatz, duration, general_results):
         """
@@ -191,24 +191,24 @@ class SolarThermal:
             dict: Dictionary containing the results of the calculation.
         """
         # Berechnung der Solarthermieanlage
-        self.Wärmemenge_Solarthermie, self.Wärmeleistung_kW, self.Speicherladung_Solarthermie, self.Speicherfüllstand_Solarthermie = Berechnung_STA(self.bruttofläche_STA, 
+        self.Wärmemenge, self.Wärmeleistung_kW, self.Speicherladung, self.Speicherfüllstand = Berechnung_STA(self.bruttofläche_STA, 
                                                                                                         self.vs, self.Typ, general_results['Restlast_L'], VLT_L, RLT_L, 
                                                                                                         TRY, time_steps, calc1, calc2, duration, self.Tsmax, self.Longitude, self.STD_Longitude, 
                                                                                                         self.Latitude, self.East_West_collector_azimuth_angle, self.Collector_tilt_angle, self.Tm_rl, 
                                                                                                         self.Qsa, self.Vorwärmung_K, self.DT_WT_Solar_K, self.DT_WT_Netz_K)
         # Berechnung der Wärmegestehungskosten
-        self.WGK_Solarthermie = self.calculate_heat_generation_costs(q, r, T, BEW, stundensatz)
+        self.WGK = self.calculate_heat_generation_costs(q, r, T, BEW, stundensatz)
 
         self.calculate_environmental_impact()
 
         results = { 
-            'Wärmemenge': self.Wärmemenge_Solarthermie,
+            'Wärmemenge': self.Wärmemenge,
             'Wärmeleistung_L': self.Wärmeleistung_kW,
-            'WGK': self.WGK_Solarthermie,
+            'WGK': self.WGK,
             'spec_co2_total': self.spec_co2_total,
             'primärenergie': self.primärenergie_Solarthermie,
-            'Speicherladung_L': self.Speicherladung_Solarthermie,
-            'Speicherfüllstand_L': self.Speicherfüllstand_Solarthermie,
+            'Speicherladung_L': self.Speicherladung,
+            'Speicherfüllstand_L': self.Speicherfüllstand,
             'color': "red"
         }
 
