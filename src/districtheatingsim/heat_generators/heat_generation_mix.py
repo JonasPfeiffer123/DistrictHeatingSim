@@ -14,6 +14,7 @@ from heat_generators.heat_pumps import *
 from heat_generators.chp import CHP
 from heat_generators.biomass_boiler import BiomassBoiler
 from heat_generators.gas_boiler import GasBoiler
+from heat_generators.power_to_heat import PowerToHeat
 from heat_generators.solar_thermal import SolarThermal
 
 from heat_generators.annuity import annuität
@@ -120,14 +121,16 @@ def Berechnung_Erzeugermix(tech_order, initial_data, start, end, TRY, COP_data, 
             tech_results = tech.calculate(VLT_L, COP_data, Strompreis, q, r, T, BEW, stundensatz, duration, general_results)
         elif tech.name.startswith("Geothermie"):
             tech_results = tech.calculate(VLT_L, COP_data, Strompreis, q, r, T, BEW, stundensatz, duration, general_results)
+        elif tech.name.startswith("AqvaHeat"):
+            tech_results = tech.calculate(VLT_L, COP_data, duration, general_results)
         elif tech.name.startswith("BHKW") or tech.name.startswith("Holzgas-BHKW"):
             tech_results = tech.calculate(Gaspreis, Holzpreis, Strompreis, q, r, T, BEW, stundensatz, duration, general_results)
         elif tech.name.startswith("Biomassekessel"):
             tech_results = tech.calculate(Holzpreis, q, r, T, BEW, stundensatz, duration, general_results)
         elif tech.name.startswith("Gaskessel"):
             tech_results = tech.calculate(Gaspreis, q, r, T, BEW, stundensatz, duration, general_results)
-        elif tech.name.startswith("AqvaHeat"):
-            tech_results = tech.calculate(VLT_L, COP_data, duration, general_results)
+        elif tech.name.startswith("Power-to-Heat"):
+            tech_results = tech.calculate(Strompreis, q, r, T, BEW, stundensatz, duration, general_results)
         else:
             tech_order.remove(tech)
             print(f"{tech.name} ist kein gültiger Erzeugertyp und wird daher nicht betrachtet.")

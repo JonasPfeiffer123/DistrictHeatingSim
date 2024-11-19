@@ -20,7 +20,7 @@ LOD2-Datenverarbeitung:
 - LOD2-Daten laden --> Exception-Handling bei timeout Nominatim geocoding
 
 Wärmenetzgenerierung:
-- Kartenanwendung überarbeiten, Ansatz dafür in Ordner currrently_not_used --> statt folium Karte direkte Implementation von leaflet als html
+- Kartenanwendung überarbeiten, Bearbeitungsfunktionen ausweiten / Export von bearbeiteten Layern, Dateistrukturüberdenken
 - GeoJSON für Netzbestandteile
     - Festlegen, ob eine geoJSON-Datei für die Speicherung aller Netzbestandteile genutzt werden soll.
     - Implementierung der Datenhaltung in geoJSON-Format, falls entschieden.
@@ -36,8 +36,7 @@ Wirtschaftlichkeitsberechnung:
 
 Erzeugerauslegung:
 - Ausbau Erzeuger / Speicher
-    - Einbindung von PVT, Großwärmespeicher, AquvaHeat, Wasserstoff (Brennstoffzelle), Power-to-heat und Geothermie mit Sondenregeneration in die Erzeugerauslegung.
-    - Erweiterung Funktionalitäten
+    - Großwärmespeicher, Wasserstoff (Brennstoffzelle / Elektrolyseur --> Abwärme)
 
 Einzelversorgungslösung:
 - weitere Ergebnisse?
@@ -52,8 +51,6 @@ Betrachtung Stromsektor:
 - Stromprofile zur Sektorkopplung
     - Implementierung von Stromprofilen sowohl auf Verbraucher- als auch auf Erzeugerseite zur Unterstützung der Sektorkopplung.
 - PV-Klasse für Stromerzeugung
-    - Implementierung einer PV-Klasse zur Berechnung der Stromerzeugung.
-    - Option zur Auslesung von Fläche, Orientierung und Neigung der Solarthermie- und PV-Anlagen aus LOD2-Daten.
     - Stromprofile PV-Anlagen
 
 Test Projekte durcharbeiten:
