@@ -8,7 +8,7 @@ Description: Contains the Combined Heat and Power (CHP) class for simulating CHP
 
 import numpy as np
 
-from heat_generators.annuity import annuität
+from districtheatingsim.heat_generators.annuity import annuität
 
 class CHP:
     """
@@ -219,6 +219,18 @@ class CHP:
         self.A_N = annuität(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, q, r, T, Brennstoffbedarf, Brennstoffkosten, self.Stromeinnahmen, stundensatz)
         self.WGK_BHKW = self.A_N / Wärmemenge
 
+    def calculate_environmental_impact(self, Wärmemenge, Strommenge, Brennstoffbedarf):
+        # CO2 emissions due to fuel usage
+        self.co2_emissions = Brennstoffbedarf * self.co2_factor_fuel # tCO2
+        # CO2 savings due to electricity generation
+        self.co2_savings = Strommenge * self.co2_factor_electricity # tCO2
+        # total co2
+        self.co2_total = self.co2_emissions - self.co2_savings # tCO2
+        # specific emissions heat
+        self.spec_co2_total = self.co2_total / Wärmemenge if Wärmemenge > 0 else 0 # tCO2/MWh_heat
+
+        self.primärenergie = Brennstoffbedarf * self.primärenergiefaktor
+
     def calculate(self, Gaspreis, Holzpreis, Strompreis, q, r, T, BEW, stundensatz, duration, general_results):
         """
         Calculates the economic and environmental metrics for the CHP system.
@@ -265,17 +277,7 @@ class CHP:
             self.Brennstoffpreis = Holzpreis
 
         self.calculate_heat_generation_costs(Wärmemenge, Strommenge, Brennstoffbedarf, self.Brennstoffpreis, Strompreis, q, r, T, BEW, stundensatz)
-
-        # CO2 emissions due to fuel usage
-        self.co2_emissions = Brennstoffbedarf * self.co2_factor_fuel # tCO2
-        # CO2 savings due to electricity generation
-        self.co2_savings = Strommenge * self.co2_factor_electricity # tCO2
-        # total co2
-        self.co2_total = self.co2_emissions - self.co2_savings # tCO2
-        # specific emissions heat
-        self.spec_co2_total = self.co2_total / Wärmemenge if Wärmemenge > 0 else 0 # tCO2/MWh_heat
-
-        self.primärenergie = Brennstoffbedarf * self.primärenergiefaktor
+        self.calculate_environmental_impact(Wärmemenge, Strommenge, Brennstoffbedarf)
      
         results = {
             'Wärmemenge': Wärmemenge,

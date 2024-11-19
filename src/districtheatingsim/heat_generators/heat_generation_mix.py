@@ -10,14 +10,14 @@ import numpy as np
 
 from scipy.optimize import minimize
 
-from heat_generators.heat_pumps import *
-from heat_generators.chp import CHP
-from heat_generators.biomass_boiler import BiomassBoiler
-from heat_generators.gas_boiler import GasBoiler
-from heat_generators.power_to_heat import PowerToHeat
-from heat_generators.solar_thermal import SolarThermal
+from districtheatingsim.heat_generators.heat_pumps import *
+from districtheatingsim.heat_generators.chp import CHP
+from districtheatingsim.heat_generators.biomass_boiler import BiomassBoiler
+from districtheatingsim.heat_generators.gas_boiler import GasBoiler
+from districtheatingsim.heat_generators.power_to_heat import PowerToHeat
+from districtheatingsim.heat_generators.solar_thermal import SolarThermal
 
-from heat_generators.annuity import annuität
+from districtheatingsim.heat_generators.annuity import annuität
 
 def calculate_factors(Kapitalzins, Preissteigerungsrate, Betrachtungszeitraum):
     """
