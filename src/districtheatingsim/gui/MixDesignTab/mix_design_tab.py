@@ -162,7 +162,7 @@ class MixDesignTab(QWidget):
 
         addHeatGeneratorMenu = self.menuBar.addMenu('Wärmeerzeuger hinzufügen')
 
-        heatGenerators = ["Solarthermie", "BHKW", "Holzgas-BHKW", "Geothermie", "Abwärme", "Flusswasser", "Biomassekessel", "Gaskessel", "AqvaHeat"]
+        heatGenerators = ["Solarthermie", "BHKW", "Holzgas-BHKW", "Geothermie", "Abwärme", "Flusswasser", "AqvaHeat", "Biomassekessel", "Gaskessel", "Power-to-Heat"]
         for generator in heatGenerators:
             action = QAction(generator, self)
             action.triggered.connect(lambda checked, gen=generator: self.techTab.addTech(gen, None))
