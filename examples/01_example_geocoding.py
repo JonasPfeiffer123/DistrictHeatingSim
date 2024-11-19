@@ -14,14 +14,10 @@ Example:
     $ python 01_geocoding.py
 """
 
-import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 import pandas as pd
 import traceback
 
-from src.districtheatingsim.geocoding.geocodingETRS89 import process_data
+from districtheatingsim.geocoding.geocodingETRS89 import process_data
 
 if __name__ == '__main__':
     try:

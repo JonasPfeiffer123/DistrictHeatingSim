@@ -6,7 +6,7 @@ Description: Contains the functions for calculating the heating demand for given
 """
 
 import numpy as np
-from heat_requirement import heat_requirement_VDI4655, heat_requirement_BDEW
+from districtheatingsim.heat_requirement import heat_requirement_VDI4655, heat_requirement_BDEW
 
 def generate_profiles_from_csv(data, TRY, calc_method):
     """

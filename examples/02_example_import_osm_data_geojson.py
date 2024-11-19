@@ -18,13 +18,9 @@ Example:
 
 """
 
-import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 import traceback
 
-from src.districtheatingsim.osm.import_osm_data_geojson import build_query, download_data, save_to_file
+from districtheatingsim.osm.import_osm_data_geojson import build_query, download_data, save_to_file
 
 ### OSM-Download von Straßendaten ###
 def osm_street_query():

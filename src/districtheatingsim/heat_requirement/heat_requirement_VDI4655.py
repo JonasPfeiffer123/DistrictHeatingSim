@@ -10,7 +10,7 @@ import numpy as np
 import os
 import sys
 
-from utilities.test_reference_year import import_TRY
+from districtheatingsim.utilities.test_reference_year import import_TRY
 
 def get_resource_path(relative_path):
     """
