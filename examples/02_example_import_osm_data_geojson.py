@@ -24,13 +24,14 @@ from districtheatingsim.osm.import_osm_data_geojson import build_query, download
 
 ### OSM-Download von Straßendaten ###
 def osm_street_query():
-    city_name = "Zittau"
+    city_name = "Görlitz"
     tags = [
             ("highway", "primary"),
             ("highway", "secondary"),
             ("highway", "tertiary"),
             ("highway", "residential"),
-            ("highway", "living_street")
+            ("highway", "living_street"),
+            {"highway", "service"}
         ]
     element_type = "way"
 
