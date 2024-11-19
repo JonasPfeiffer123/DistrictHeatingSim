@@ -134,6 +134,7 @@ def Berechnung_Erzeugermix(tech_order, initial_data, start, end, TRY, COP_data, 
         else:
             tech_order.remove(tech)
             print(f"{tech.name} ist kein gültiger Erzeugertyp und wird daher nicht betrachtet.")
+            continue
 
         if tech_results['Wärmemenge'] > 0:
             general_results['Wärmeleistung_L'].append(tech_results['Wärmeleistung_L'])
@@ -143,6 +144,7 @@ def Berechnung_Erzeugermix(tech_order, initial_data, start, end, TRY, COP_data, 
             general_results['specific_emissions_L'].append(tech_results['spec_co2_total'])
             general_results['primärenergie_L'].append(tech_results['primärenergie'])
             general_results['colors'].append(tech_results['color'])
+            print(f"{general_results['Restlast_L']}, {tech_results['Wärmeleistung_L']}")
             general_results['Restlast_L'] -= tech_results['Wärmeleistung_L']
             general_results['Restwärmebedarf'] -= tech_results['Wärmemenge']
             general_results['WGK_Gesamt'] += (tech_results['Wärmemenge']*tech_results['WGK'])/general_results['Jahreswärmebedarf']

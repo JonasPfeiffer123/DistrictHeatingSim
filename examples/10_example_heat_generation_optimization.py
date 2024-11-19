@@ -5,6 +5,12 @@ Date: 2024-11-19
 Description: Example for the optimization of a heat generator mix
 """
 
+from districtheatingsim.heat_generators import solar_thermal
+from districtheatingsim.heat_generators import gas_boiler
+from districtheatingsim.heat_generators import biomass_boiler
+from districtheatingsim.heat_generators import chp
+from districtheatingsim.heat_generators import heat_pumps
+from districtheatingsim.heat_generators import power_to_heat
 from districtheatingsim.heat_generators import heat_generation_mix
 from districtheatingsim.utilities.test_reference_year import import_TRY
 
@@ -13,27 +19,80 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def test_berechnung_erzeugermix(optimize=False, plot=True):
-    solarThermal = heat_generation_mix.SolarThermal(name="Solarthermie", bruttofläche_STA=200, vs=20, Typ="Vakuumröhrenkollektor", kosten_speicher_spez=800, kosten_vrk_spez=500)
-    bBoiler = heat_generation_mix.BiomassBoiler(name="Biomassekessel", P_BMK=150, Größe_Holzlager=20, spez_Investitionskosten=200, spez_Investitionskosten_Holzlager=400)
-    gBoiler = heat_generation_mix.GasBoiler(name="Gaskessel", spez_Investitionskosten=30)  # Angenommen, GasBoiler benötigt keine zusätzlichen Eingaben
-    gCHP = heat_generation_mix.CHP(name="BHKW", th_Leistung_BHKW=50, spez_Investitionskosten_GBHKW=1500)
-    wCHP = heat_generation_mix.CHP(name="Holz-BHKW", th_Leistung_BHKW=30, spez_Investitionskosten_HBHKW=1800)  # Angenommen, Holzgas-BHKW verwendet dieselbe Klasse wie BHKW
-    geothermalHeatPump = heat_generation_mix.Geothermal(name="Geothermie", Fläche=200, Bohrtiefe=100, Temperatur_Geothermie=10, Abstand_Sonden=10, spez_Bohrkosten=100, spez_Entzugsleistung=45, Vollbenutzungsstunden=2400, spezifische_Investitionskosten_WP=1000)
-    wasteHeatPump = heat_generation_mix.WasteHeatPump(name="Abwärme", Kühlleistung_Abwärme=40, Temperatur_Abwärme=30, spez_Investitionskosten_Abwärme=500, spezifische_Investitionskosten_WP=1000)
-    wasteWaterHeatPump = heat_generation_mix.WasteHeatPump(name="Abwasserwärme", Kühlleistung_Abwärme=20, Temperatur_Abwärme=18, spez_Investitionskosten_Abwärme=500, spezifische_Investitionskosten_WP=1000)
-    riverHeatPump = heat_generation_mix.RiverHeatPump(name="Flusswasser", Wärmeleistung_FW_WP=200, Temperatur_FW_WP=8, dT=0, spez_Investitionskosten_Flusswasser=600, spezifische_Investitionskosten_WP=1000)
-       
-    tech_order = [solarThermal, gCHP, geothermalHeatPump, bBoiler, gBoiler]
-    #tech_order = [gCHP, wCHP, bBoiler, riverHeatPump, wasteHeatPump, gBoiler]
-
     # Lastgang, z.B. in kW, muss derzeitig für korrekte wirtschaftliche Betrachtung Länge von 8760 haben
     min_last = 50
-    min_last = 50
     max_last = 400
-    Last_L = np.random.randint(min_last, max_last, 8760).astype("float")
+    Last_L = np.random.randint(min_last, max_last, 8760).astype(float)
+
+    # Dauer Zeitschritte 1 h
+    duration = 1
+
+    # Wirtschaftliche Randbedingungen
+    Strompreis = 150 # €/MWh
+    Gaspreis = 70 # €/MWh
+    Holzpreis = 60 # €/MWh
+
+    #q = 1.05
+    #r = 1.03
+    #T = 20#
+    kapitalzins = 0.05
+    preissteigerungsrate = 0.03
+    betrachtungszeitraum = 20
+    BEW = "Nein"
+    stundensatz = 45
 
     # Arrays für Vor- und Rücklauftemperatur
     VLT_L, RLT_L = np.full(8760, 80), np.full(8760, 55)
+
+    # Laden des COP-Kennfeldes
+    COP_data = np.genfromtxt("examples/data/COP/Kennlinien WP.csv", delimiter=';')
+
+    # Dateiname Testreferenzjahr für Wetterdaten, Dateiname muss ggf. angepasst werden
+    TRY_data = import_TRY("examples/data/TRY/TRY_511676144222/TRY2015_511676144222_Jahr.dat")  
+    gBoiler = gas_boiler.GasBoiler(name="Gaskessel_1", spez_Investitionskosten=30, Nutzungsgrad=0.9, Faktor_Dimensionierung=1)
+
+    PTH = power_to_heat.PowerToHeat(name="Power-to-Heat_1", spez_Investitionskosten=30, Nutzungsgrad=0.9, Faktor_Dimensionierung=1)
+
+    bBoiler = biomass_boiler.BiomassBoiler(name="Biomassekessel_1", P_BMK=200, Größe_Holzlager=40, spez_Investitionskosten=200, 
+                                           spez_Investitionskosten_Holzlager=400, Nutzungsgrad_BMK=0.8, min_Teillast=0.3, speicher_aktiv=False, 
+                                           Speicher_Volumen=20, T_vorlauf=90, T_ruecklauf=60, initial_fill=0.0, min_fill=0.2, max_fill=0.8, 
+                                           spez_Investitionskosten_Speicher=750, BMK_an=True, opt_BMK_min=0, opt_BMK_max=1000, opt_Speicher_min=0, 
+                                           opt_Speicher_max=100)
+
+    bBoiler_storage = biomass_boiler.BiomassBoiler(name="Biomassekessel_2", P_BMK=200, Größe_Holzlager=40, spez_Investitionskosten=200, 
+                                                   spez_Investitionskosten_Holzlager=400, Nutzungsgrad_BMK=0.8, min_Teillast=0.3, speicher_aktiv=True, 
+                                                   Speicher_Volumen=20, T_vorlauf=90, T_ruecklauf=60, initial_fill=0.0, min_fill=0.2, max_fill=0.8, 
+                                                   spez_Investitionskosten_Speicher=750, BMK_an=True, opt_BMK_min=0, opt_BMK_max=1000, opt_Speicher_min=0, 
+                                                   opt_Speicher_max=100)
+
+    CHP = chp.CHP(name="BHKW_1", th_Leistung_BHKW=100, spez_Investitionskosten_GBHKW=1500, spez_Investitionskosten_HBHKW=1850, el_Wirkungsgrad=0.33, 
+                  KWK_Wirkungsgrad=0.9, min_Teillast=0.7, speicher_aktiv=False, Speicher_Volumen_BHKW=20, T_vorlauf=90, T_ruecklauf=60, initial_fill=0.0, 
+                  min_fill=0.2, max_fill=0.8, spez_Investitionskosten_Speicher=750, BHKW_an=True, opt_BHKW_min=0, opt_BHKW_max=1000, opt_BHKW_Speicher_min=0, 
+                  opt_BHKW_Speicher_max=100)    
+
+    CHP_storage = chp.CHP(name="BHKW_2", th_Leistung_BHKW=100, spez_Investitionskosten_GBHKW=1500, spez_Investitionskosten_HBHKW=1850, el_Wirkungsgrad=0.33, 
+                          KWK_Wirkungsgrad=0.9, min_Teillast=0.7, speicher_aktiv=True, Speicher_Volumen_BHKW=20, T_vorlauf=90, T_ruecklauf=60, initial_fill=0.0, 
+                          min_fill=0.2, max_fill=0.8, spez_Investitionskosten_Speicher=750, BHKW_an=True, opt_BHKW_min=0, opt_BHKW_max=1000, opt_BHKW_Speicher_min=0, 
+                          opt_BHKW_Speicher_max=100)
+
+    riverHeatPump = heat_pumps.WasteHeatPump(name="Abwärme_1", Kühlleistung_Abwärme=50, Temperatur_Abwärme=30, spez_Investitionskosten_Abwärme=500, 
+                                             spezifische_Investitionskosten_WP=1000, min_Teillast=0.2)
+
+    riverHeatPump = heat_pumps.RiverHeatPump(name="Flusswasser_1", Wärmeleistung_FW_WP=200, Temperatur_FW_WP=10, dT=0, spez_Investitionskosten_Flusswasser=1000, 
+                                             spezifische_Investitionskosten_WP=1000, min_Teillast=0.2)
+
+    geothermal_heat_pump = heat_pumps.Geothermal(name="Geothermie_1", Fläche=200, Bohrtiefe=100, Temperatur_Geothermie=10, spez_Bohrkosten=100, spez_Entzugsleistung=50,
+                                                Vollbenutzungsstunden=2400, Abstand_Sonden=10, spezifische_Investitionskosten_WP=1000, min_Teillast=0.2)
+    
+    # not implemented yet
+    #aqva_heat = heat_pumps.AqvaHeat(name="AqvaHeat_1", nominal_power=100, temperature_difference=0)
+    #test_aqva_heat(Last_L, duration, Strompreis, q, r, T, BEW, stundensatz, VLT_L, COP_data, aqva_heat)  
+
+    solarThermal = solar_thermal.SolarThermal(name="Solarthermie_1", bruttofläche_STA=200, vs=20, Typ="Vakuumröhrenkollektor", kosten_speicher_spez=750, kosten_fk_spez=430, kosten_vrk_spez=590, 
+                                            Tsmax=90, Longitude=-14.4222, STD_Longitude=-15, Latitude=51.1676, East_West_collector_azimuth_angle=0, Collector_tilt_angle=36, Tm_rl=60, 
+                                            Qsa=0, Vorwärmung_K=8, DT_WT_Solar_K=5, DT_WT_Netz_K=5, opt_volume_min=0, opt_volume_max=200, opt_area_min=0, opt_area_max=2000)
+
+    tech_order = [solarThermal, CHP, geothermal_heat_pump, bBoiler, gBoiler]
 
     # Angaben zum zu betrchtende Zeitraum
     # Erstelle ein Array mit stündlichen Zeitwerten für ein Jahr
@@ -50,28 +109,18 @@ def test_berechnung_erzeugermix(optimize=False, plot=True):
     start = 0
     end = 8760
 
-    # Dateiname Testreferenzjahr für Wetterdaten, Dateiname muss ggf. angepasstw werden
-    TRY = import_TRY("examples/data/TRY/TRY_511676144222/TRY2015_511676144222_Jahr.dat")
-
-    # Laden des COP-Kennfeldes
-    COP_data = np.genfromtxt("examples/data/TRY/Kennlinien WP.csv", delimiter=';')
-
-    Strompreis = 150 # €/MWh
-    Gaspreis = 70 # €/MWh
-    Holzpreis = 60 # €/MWh
-
-    BEW = "Nein"
-    stundensatz = 45
-
-    kapitalzins = 5 # %
-    preissteigerungsrate = 3 # %
-    betrachtungszeitraum = 20 # Jahre
+    weights = {
+        "WGK_Gesamt": 1.0,
+        "specific_emissions_Gesamt": 0.0,
+        "primärenergiefaktor_Gesamt": 0.0
+    }
 
     if optimize == True:
-        tech_order = heat_generation_mix.optimize_mix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, \
-                                            kapitalzins=kapitalzins, preissteigerungsrate=preissteigerungsrate, betrachtungszeitraum=betrachtungszeitraum, stundensatz=stundensatz)
+        tech_order = heat_generation_mix.optimize_mix(tech_order, initial_data, start, end, TRY_data, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, \
+                                            kapitalzins=kapitalzins, preissteigerungsrate=preissteigerungsrate, betrachtungszeitraum=betrachtungszeitraum, 
+                                            stundensatz=stundensatz, weights=weights)
         
-    general_results = heat_generation_mix.Berechnung_Erzeugermix(tech_order, initial_data, start, end, TRY, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, kapitalzins=kapitalzins, preissteigerungsrate=preissteigerungsrate, betrachtungszeitraum=betrachtungszeitraum)
+    general_results = heat_generation_mix.Berechnung_Erzeugermix(tech_order, initial_data, start, end, TRY_data, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, kapitalzins=kapitalzins, preissteigerungsrate=preissteigerungsrate, betrachtungszeitraum=betrachtungszeitraum)
     print(general_results)
 
     if plot == True:
