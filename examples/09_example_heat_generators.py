@@ -377,7 +377,7 @@ if __name__ == "__main__":
     # Lastgang, z.B. in kW, muss derzeitig für korrekte wirtschaftliche Betrachtung Länge von 8760 haben
     min_last = 50
     max_last = 400
-    Last_L = np.random.randint(min_last, max_last, 8760)
+    Last_L = np.random.randint(min_last, max_last, 8760).astype(float)
 
     # Dauer Zeitschritte 1 h
     duration = 1
@@ -392,6 +392,15 @@ if __name__ == "__main__":
     T = 20
     BEW = "Nein"
     stundensatz = 45
+
+    # Arrays für Vor- und Rücklauftemperatur
+    VLT_L, RLT_L = np.full(8760, 80), np.full(8760, 55)
+
+    # Laden des COP-Kennfeldes
+    COP_data = np.genfromtxt("examples/data/COP/Kennlinien WP.csv", delimiter=';')
+
+    # Dateiname Testreferenzjahr für Wetterdaten, Dateiname muss ggf. angepasst werden
+    TRY_data = import_TRY("examples/data/TRY/TRY_511676144222/TRY2015_511676144222_Jahr.dat")  
 
     gBoiler = gas_boiler.GasBoiler(name="Gas_Boiler_1", spez_Investitionskosten=30, Nutzungsgrad=0.9, Faktor_Dimensionierung=1)
     test_gas_boiler(Last_L, duration, Gaspreis, q, r, T, BEW, stundensatz, gBoiler)
@@ -425,12 +434,6 @@ if __name__ == "__main__":
                           opt_BHKW_Speicher_max=100)
     test_chp_storage(Last_L, duration, Strompreis, Gaspreis, Holzpreis, q, r, T, BEW, stundensatz, CHP_storage)
 
-    # Arrays für Vor- und Rücklauftemperatur
-    VLT_L, RLT_L = np.full(8760, 80), np.full(8760, 55)
-
-    # Laden des COP-Kennfeldes
-    COP_data = np.genfromtxt("examples/data/COP/Kennlinien WP.csv", delimiter=';')
-
     riverHeatPump = heat_pumps.WasteHeatPump(name="Abwärme", Kühlleistung_Abwärme=50, Temperatur_Abwärme=30, spez_Investitionskosten_Abwärme=500, 
                                              spezifische_Investitionskosten_WP=1000, min_Teillast=0.2)
     test_waste_heat_pump(Last_L, duration, Strompreis, q, r, T, BEW, stundensatz, VLT_L, COP_data, riverHeatPump)
@@ -446,9 +449,6 @@ if __name__ == "__main__":
     # not implemented yet
     #aqva_heat = heat_pumps.AqvaHeat(name="AqvaHeat", nominal_power=100, temperature_difference=0)
     #test_aqva_heat(Last_L, duration, Strompreis, q, r, T, BEW, stundensatz, VLT_L, COP_data, aqva_heat)
-
-    # Dateiname Testreferenzjahr für Wetterdaten, Dateiname muss ggf. angepasst werden
-    TRY_data = import_TRY("examples/data/TRY/TRY_511676144222/TRY2015_511676144222_Jahr.dat")    
 
     solarThermal = solar_thermal.SolarThermal(name="STA", bruttofläche_STA=200, vs=20, Typ="Vakuumröhrenkollektor", kosten_speicher_spez=750, kosten_fk_spez=430, kosten_vrk_spez=590, 
                                             Tsmax=90, Longitude=-14.4222, STD_Longitude=-15, Latitude=51.1676, East_West_collector_azimuth_angle=0, Collector_tilt_angle=36, Tm_rl=60, 
