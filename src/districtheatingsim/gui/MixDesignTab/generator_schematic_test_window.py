@@ -8,7 +8,7 @@ Description: Test window for the schematic scene with buttons to add components.
 import sys
 
 from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QPushButton, QWidget, QHBoxLayout, QApplication
-from gui.MixDesignTab.generator_schematic import SchematicScene, CustomGraphicsView
+from districtheatingsim.gui.MixDesignTab.generator_schematic import SchematicScene, CustomGraphicsView
 
 class SchematicWindow(QMainWindow):
     def __init__(self):

@@ -22,7 +22,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 
 import pandapipes as pp
 
-from utilities.test_reference_year import import_TRY
+from districtheatingsim.utilities.test_reference_year import import_TRY
 
 def get_resource_path(relative_path):
     """ Get the absolute path to the resource, works for dev and for PyInstaller """

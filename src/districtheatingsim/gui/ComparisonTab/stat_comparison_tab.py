@@ -14,7 +14,7 @@ import traceback
 
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QTableWidget, QTableWidgetItem, QFileDialog, QHBoxLayout, QMessageBox
 
-from net_simulation_pandapipes.pp_net_time_series_simulation import import_results_csv
+from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import import_results_csv
 
 class StatComparisonTab(QWidget):
     def __init__(self, folder_manager, config_manager, parent=None):

@@ -5,8 +5,6 @@ Date: 2024-09-20
 Description: Contains the ProjectTab-Dialogs.
 """
 
-import os
-
 from PyQt5.QtWidgets import (QVBoxLayout, QLabel, QDialog, QLineEdit, QDialogButtonBox, 
                              QGridLayout, QFrame, QScrollArea, QPushButton, QProgressBar)
 

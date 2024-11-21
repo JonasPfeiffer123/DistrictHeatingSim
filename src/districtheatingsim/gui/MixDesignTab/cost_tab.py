@@ -11,8 +11,8 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QScrollArea, QTableWi
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QFont
 
-from heat_generators.heat_generation_mix import *
-from gui.MixDesignTab.utilities import CollapsibleHeader
+from districtheatingsim.heat_generators.heat_generation_mix import *
+from districtheatingsim.gui.MixDesignTab.utilities import CollapsibleHeader
 
 class CostTab(QWidget):
     """
