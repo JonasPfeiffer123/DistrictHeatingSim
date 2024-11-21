@@ -46,10 +46,10 @@ DistrictHeatingSim is developed by Dipl.-Ing. (FH) Jonas Pfeiffer as part of the
 
 To install DistrictHeatingSim, ensure you have Python installed on your system. Currently only tested with Python 3.11.
 
-1. **Install the repository**:
-    ```sh
-    pip install git+https://github.com/JonasPfeiffer123/DistrictHeatingSim.git
-    ```
+**Install the repository**:
+```sh
+pip install git+https://github.com/JonasPfeiffer123/DistrictHeatingSim.git
+```
 
 ## Usage
 
