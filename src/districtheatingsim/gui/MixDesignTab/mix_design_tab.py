@@ -8,19 +8,18 @@ Description: Contains the MixdesignTab.
 import json
 import pandas as pd
 import os
-import traceback
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMessageBox, QMenuBar, QScrollArea, QAction, QDialog)
 from PyQt5.QtCore import pyqtSignal, QEventLoop
-from heat_generators.heat_generation_mix import *
-from gui.MixDesignTab.mix_design_dialogs import EconomicParametersDialog, NetInfrastructureDialog, WeightDialog
-from gui.MixDesignTab.calculate_mix_thread import CalculateMixThread
-from gui.MixDesignTab.technology_tab import TechnologyTab
-from gui.MixDesignTab.cost_tab import CostTab
-from gui.MixDesignTab.results_tab import ResultsTab
-from gui.MixDesignTab.sensitivity_tab import SensitivityTab
-from utilities.test_reference_year import import_TRY
+from districtheatingsim.heat_generators.heat_generation_mix import *
+from districtheatingsim.gui.MixDesignTab.mix_design_dialogs import EconomicParametersDialog, NetInfrastructureDialog, WeightDialog
+from districtheatingsim.gui.MixDesignTab.calculate_mix_thread import CalculateMixThread
+from districtheatingsim.gui.MixDesignTab.technology_tab import TechnologyTab
+from districtheatingsim.gui.MixDesignTab.cost_tab import CostTab
+from districtheatingsim.gui.MixDesignTab.results_tab import ResultsTab
+from districtheatingsim.gui.MixDesignTab.sensitivity_tab import SensitivityTab
+from districtheatingsim.utilities.test_reference_year import import_TRY
 
-from gui.MixDesignTab.sankey_dialog import SankeyDialog
+from districtheatingsim.gui.MixDesignTab.sankey_dialog import SankeyDialog
 
 class CustomJSONEncoder(json.JSONEncoder):
     """

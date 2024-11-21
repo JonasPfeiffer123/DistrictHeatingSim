@@ -7,7 +7,7 @@ Description: Script for generating the results PDF of the calculation results.
 
 import numpy as np
 
-from gui.dialogs import PDFSelectionDialog
+from districtheatingsim.gui.dialogs import PDFSelectionDialog
 
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
@@ -16,7 +16,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.lib import colors
 
-from PyQt5.QtCore import QBuffer, QByteArray
+from PyQt5.QtCore import QBuffer
 
 from PyQt5.QtGui import QPainter, QPixmap
 

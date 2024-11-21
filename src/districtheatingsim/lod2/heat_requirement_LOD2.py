@@ -16,8 +16,8 @@ import sys
 
 import pandas as pd
 
-from lod2.filter_LOD2 import spatial_filter_with_polygon, process_lod2, calculate_centroid_and_geocode
-from utilities.test_reference_year import import_TRY
+from districtheatingsim.lod2.filter_LOD2 import spatial_filter_with_polygon, process_lod2, calculate_centroid_and_geocode
+from districtheatingsim.utilities.test_reference_year import import_TRY
 
 def get_resource_path(relative_path):
     """

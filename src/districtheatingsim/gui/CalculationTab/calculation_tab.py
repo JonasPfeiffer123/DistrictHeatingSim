@@ -21,14 +21,14 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction, QActionGroup, QPlainTextEdit
 
-from net_simulation_pandapipes.pp_net_time_series_simulation import calculate_results, save_results_csv, import_results_csv
+from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import calculate_results, save_results_csv, import_results_csv
 
-from gui.CalculationTab.calculation_dialogs import NetGenerationDialog, ZeitreihenrechnungDialog
-from gui.CalculationTab.net_calculation_threads import NetInitializationThread, NetCalculationThread
-from net_simulation_pandapipes.config_plot import config_plot
-from gui.utilities import CheckableComboBox
+from districtheatingsim.gui.CalculationTab.calculation_dialogs import NetGenerationDialog, ZeitreihenrechnungDialog
+from districtheatingsim.gui.CalculationTab.net_calculation_threads import NetInitializationThread, NetCalculationThread
+from districtheatingsim.net_simulation_pandapipes.config_plot import config_plot
+from districtheatingsim.gui.utilities import CheckableComboBox
 
-from net_simulation_pandapipes.utilities import export_net_geojson
+from districtheatingsim.net_simulation_pandapipes.utilities import export_net_geojson
 
 class CalculationTab(QWidget):
     """

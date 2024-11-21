@@ -8,8 +8,8 @@ import pandas as pd
 import traceback
 
 from PyQt5.QtWidgets import (QAction, QVBoxLayout, QWidget, QFileDialog, QMessageBox, QMenuBar)
-from gui.PVTab.pv_mvp import PVDataModel, DataVisualizationPresenter, PVDataVisualizationTab
-from heat_generators.photovoltaics import Calculate_PV
+from districtheatingsim.gui.PVTab.pv_mvp import PVDataModel, DataVisualizationPresenter, PVDataVisualizationTab
+from districtheatingsim.heat_generators.photovoltaics import Calculate_PV
 
 class PVTab(QWidget):
     def __init__(self, folder_manager, data_manager, config_manager, parent=None):

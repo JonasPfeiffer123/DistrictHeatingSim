@@ -9,9 +9,9 @@ import traceback
 
 from PyQt5.QtCore import QThread, pyqtSignal
 
-from net_simulation_pandapipes.pp_net_initialisation_geojson import initialize_geojson
-from net_simulation_pandapipes.pp_net_time_series_simulation import thermohydraulic_time_series_net, time_series_preprocessing
-from net_simulation_pandapipes.utilities import net_optimization
+from districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson import initialize_geojson
+from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import thermohydraulic_time_series_net, time_series_preprocessing
+from districtheatingsim.net_simulation_pandapipes.utilities import net_optimization
 
 class NetInitializationThread(QThread):
     """

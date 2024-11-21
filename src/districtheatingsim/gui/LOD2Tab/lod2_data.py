@@ -21,12 +21,12 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import pyqtSignal, QObject
 
-from lod2.filter_LOD2 import (
+from districtheatingsim.lod2.filter_LOD2 import (
     spatial_filter_with_polygon, filter_LOD2_with_coordinates, 
     process_lod2, calculate_centroid_and_geocode
 )
-from lod2.heat_requirement_LOD2 import Building
-from gui.LOD2Tab.lod2_dialogs import FilterDialog
+from districtheatingsim.lod2.heat_requirement_LOD2 import Building
+from districtheatingsim.gui.LOD2Tab.lod2_dialogs import FilterDialog
 
 
 class LOD2DataModel:

@@ -6,10 +6,9 @@ Description: Contains the main RenovationTab, container of RenovationTab1 and Re
 """
 
 from PyQt5.QtWidgets import QVBoxLayout, QProgressBar, QWidget, QTabWidget
-from PyQt5.QtCore import pyqtSignal
 
-from gui.RenovationTab.RenovationTab1 import RenovationTab1
-from gui.RenovationTab.RenovationTab2 import RenovationTab2
+from districtheatingsim.gui.RenovationTab.RenovationTab1 import RenovationTab1
+from districtheatingsim.gui.RenovationTab.RenovationTab2 import RenovationTab2
 
 class RenovationTabPresenter:
     """

@@ -5,24 +5,17 @@ Date: 2024-09-03
 Description: Contains the PVTab for PV yield calculations.
 """
 
-import sys
-import os
 import json
-import pandas as pd
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from shapely.geometry import Polygon, MultiPolygon
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5.QtWidgets import (
-    QVBoxLayout, QComboBox, QFileDialog, QWidget, QTableWidget, QTableWidgetItem, 
-    QHeaderView, QDialog, QHBoxLayout, QScrollArea, QMessageBox, QTreeWidget, QTreeWidgetItem
-)
+    QVBoxLayout, QFileDialog, QWidget, QHeaderView, QHBoxLayout, QScrollArea, QMessageBox, QTreeWidget, QTreeWidgetItem)
 from PyQt5.QtCore import pyqtSignal, QObject
 
-from lod2.filter_LOD2 import (
-    spatial_filter_with_polygon, filter_LOD2_with_coordinates, 
-    process_roof, calculate_centroid_and_geocode
-)
+from districtheatingsim.lod2.filter_LOD2 import (spatial_filter_with_polygon, filter_LOD2_with_coordinates, 
+    process_roof, calculate_centroid_and_geocode)
 
 class PVDataModel:
     """

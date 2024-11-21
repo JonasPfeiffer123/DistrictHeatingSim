@@ -10,11 +10,10 @@ import sys
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-from PyQt5.QtWidgets import QApplication, QVBoxLayout, QWidget, QPushButton, QLabel, QLineEdit, QComboBox, QGroupBox, QFormLayout, QHBoxLayout, QScrollArea, QSplitter, QTabWidget
+from PyQt5.QtWidgets import QApplication, QVBoxLayout, QWidget, QPushButton, QLabel, QLineEdit, QComboBox, QFormLayout, QSplitter, QTabWidget
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, Qt
 
-from utilities.SanierungsanalysefuerGUI import calculate_all_results
-
+from districtheatingsim.utilities.renovation_analysis import calculate_all_results
 
 class PlotCanvas(FigureCanvas):
     """

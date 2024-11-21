@@ -19,8 +19,8 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QFileDialog, QLa
                              QMenuBar, QAction, QLineEdit, QAbstractScrollArea, QHBoxLayout, QSizePolicy)
 from PyQt5.QtCore import pyqtSignal, Qt
 
-from heat_requirement.heat_requirement_calculation_csv import generate_profiles_from_csv
-from gui.utilities import CheckableComboBox, convert_to_serializable
+from districtheatingsim.heat_requirement.heat_requirement_calculation_csv import generate_profiles_from_csv
+from districtheatingsim.gui.utilities import CheckableComboBox, convert_to_serializable
 
 import traceback
 import logging

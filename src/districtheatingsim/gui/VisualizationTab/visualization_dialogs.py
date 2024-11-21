@@ -10,23 +10,21 @@ import os
 
 import geopandas as gpd
 import pandas as pd
-import numpy as np
 from math import radians, sin, cos, sqrt, atan2
 from shapely.geometry import box, Point
 from shapely.ops import transform
 import pyproj
 
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QDialog, QComboBox, QPushButton, \
-    QFormLayout, QHBoxLayout, QFileDialog, QProgressBar, QMessageBox, QLabel, QWidget, \
+    QFormLayout, QHBoxLayout, QFileDialog, QMessageBox, QLabel, QWidget, \
     QTableWidget, QTableWidgetItem
-from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt, pyqtSignal
 
 from pyproj import Transformer
 
-from gui.VisualizationTab.net_generation_threads import GeocodingThread
-from geocoding.geocodingETRS89 import get_coordinates
-from osm.import_osm_data_geojson import build_query, download_data, save_to_file
+from districtheatingsim.gui.VisualizationTab.net_generation_threads import GeocodingThread
+from districtheatingsim.geocoding.geocodingETRS89 import get_coordinates
+from districtheatingsim.osm.import_osm_data_geojson import build_query, download_data, save_to_file
 
 def get_resource_path(relative_path):
     """ Get the absolute path to the resource, works for dev and for PyInstaller """
