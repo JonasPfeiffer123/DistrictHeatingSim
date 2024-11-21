@@ -7,9 +7,9 @@ Description: This class is responsible for creating the main tab that holds the 
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QScrollArea, QTabWidget)
 
-from gui.ComparisonTab.stat_comparison_tab import StatComparisonTab
-from gui.ComparisonTab.cost_comparison_tab import CostComparisonTab
-from gui.ComparisonTab.building_heat_demand_comparison_tab import BuildingHeatDemandComparisonTab
+from districtheatingsim.gui.ComparisonTab.stat_comparison_tab import StatComparisonTab
+from districtheatingsim.gui.ComparisonTab.cost_comparison_tab import CostComparisonTab
+from districtheatingsim.gui.ComparisonTab.building_heat_demand_comparison_tab import BuildingHeatDemandComparisonTab
 
 class ComparisonTab(QWidget):
     def __init__(self, folder_manager, data_manager, config_manager, parent=None):

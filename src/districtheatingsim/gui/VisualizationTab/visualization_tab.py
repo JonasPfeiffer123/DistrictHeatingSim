@@ -26,8 +26,8 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QMenuBar, QAction
 from PyQt5.QtGui import QColor, QBrush
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 
-from gui.VisualizationTab.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog
-from gui.VisualizationTab.net_generation_threads import NetGenerationThread, FileImportThread, GeocodingThread
+from districtheatingsim.gui.VisualizationTab.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog
+from districtheatingsim.gui.VisualizationTab.net_generation_threads import NetGenerationThread, FileImportThread, GeocodingThread
 
 class VisualizationModel:
     """

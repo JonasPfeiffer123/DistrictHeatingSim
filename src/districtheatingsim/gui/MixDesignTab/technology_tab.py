@@ -12,16 +12,15 @@ from PyQt5.QtWidgets import (
     QListWidget, QDialog, QFileDialog, QScrollArea, QAbstractItemView,
     QSplitter
 )
-from PyQt5.QtGui import QColor
 from PyQt5.QtCore import pyqtSignal
 import pandas as pd
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
-from heat_generators.heat_generation_mix import *
-from gui.MixDesignTab.heat_generator_dialogs import TechInputDialog
+from districtheatingsim.heat_generators.heat_generation_mix import *
+from districtheatingsim.gui.MixDesignTab.heat_generator_dialogs import TechInputDialog
 
-from gui.MixDesignTab.generator_schematic import SchematicScene, CustomGraphicsView
+from districtheatingsim.gui.MixDesignTab.generator_schematic import SchematicScene, CustomGraphicsView
 
 class CustomListWidget(QListWidget):
     """

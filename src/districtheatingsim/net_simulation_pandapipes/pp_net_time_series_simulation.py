@@ -13,8 +13,8 @@ from pandapower.timeseries import DFData
 import pandas as pd
 import numpy as np
 
-from net_simulation_pandapipes.controllers import ReturnTemperatureController
-from net_simulation_pandapipes.utilities import COP_WP
+from districtheatingsim.net_simulation_pandapipes.controllers import ReturnTemperatureController
+from districtheatingsim.net_simulation_pandapipes.utilities import COP_WP
 
 def update_const_controls(net, qext_w_profiles, time_steps, start, end):
     """Update constant controls with new data sources for time series simulation.

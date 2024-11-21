@@ -14,11 +14,10 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 from PyQt5.QtWidgets import (QApplication, QVBoxLayout, QWidget, QPushButton, QLabel, QLineEdit, QComboBox, 
-                             QGroupBox, QFormLayout, QHBoxLayout, QScrollArea, QFileDialog, QMessageBox, 
-                             QTableWidget, QTableWidgetItem, QSplitter, QTabWidget)
+                             QFormLayout, QFileDialog, QMessageBox, QTableWidget, QTableWidgetItem, QSplitter, QTabWidget)
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, Qt
 
-from utilities.SanierungsanalysefuerGUI import SanierungsAnalyse
+from districtheatingsim.utilities.renovation_analysis import SanierungsAnalyse
 
 class PlotCanvas(FigureCanvas):
     """
