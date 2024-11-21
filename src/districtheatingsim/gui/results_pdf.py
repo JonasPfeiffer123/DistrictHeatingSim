@@ -7,8 +7,6 @@ Description: Script for generating the results PDF of the calculation results.
 
 import numpy as np
 
-from districtheatingsim.gui.dialogs import PDFSelectionDialog
-
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, KeepTogether
@@ -17,8 +15,9 @@ from reportlab.lib.units import inch
 from reportlab.lib import colors
 
 from PyQt5.QtCore import QBuffer
-
 from PyQt5.QtGui import QPainter, QPixmap
+
+from districtheatingsim.gui.dialogs import PDFSelectionDialog
 
 def get_custom_table_style():
     """
@@ -143,7 +142,6 @@ def export_scene_to_image(scene):
 
     return img_buffer
 
-
 def add_schematic_scene_section(story, scene):
     """
     Adds the schematic scene as an image to the PDF story.
@@ -171,7 +169,8 @@ def add_schematic_scene_section(story, scene):
         story.append(Spacer(1, 12))
         print(error_message)
 
-def add_net_infrastructure_section(story, mixDesignTab):
+
+def add_costs_net_infrastructure_section(story, mixDesignTab):
     """
     Adds the network infrastructure section to the PDF story.
     """
@@ -225,7 +224,7 @@ def add_net_infrastructure_section(story, mixDesignTab):
         print(error_message)
 
 
-def add_costs_section(story, mixDesignTab):
+def add_costs_heat_generators_section(story, mixDesignTab):
     """
     Adds the costs section to the PDF story.
     """
@@ -249,6 +248,26 @@ def add_costs_section(story, mixDesignTab):
 
     except Exception as e:
         error_message = f"Fehlende Daten im Kostenabschnitt: {str(e)}"
+        story.append(Paragraph(error_message, getSampleStyleSheet()['Normal']))
+        story.append(Spacer(1, 12))
+        print(error_message)
+
+def add_costs_total_section(story, mixDesignTab):
+    """
+    Adds the total costs section to the PDF story.
+    Shows the plots from MixDesignTab.costTab if available.
+    """
+    try:
+        story.append(Paragraph("Gesamtkosten", getSampleStyleSheet()['Heading2']))
+
+        # Add Bar Chart as a separate plot
+        add_figure_to_story(mixDesignTab.costTab.bar_chart_figure, story)
+
+        # Add Pie Chart as a separate plot
+        add_figure_to_story(mixDesignTab.costTab.pie_chart_figure, story)
+
+    except Exception as e:
+        error_message = f"Fehlende Daten im Gesamtkostenabschnitt: {str(e)}"
         story.append(Paragraph(error_message, getSampleStyleSheet()['Normal']))
         story.append(Spacer(1, 12))
         print(error_message)
@@ -365,10 +384,12 @@ def create_pdf(HeatSystemDesignGUI, filename):
         add_technologies_section(story, mixDesignTab)
     if selected_sections.get('technologies_scene', True):
         add_schematic_scene_section(story, schematic_scene)
-    if selected_sections['net_infrastructure']:
-        add_net_infrastructure_section(story, mixDesignTab)
-    if selected_sections['costs']:
-        add_costs_section(story, mixDesignTab)
+    if selected_sections['costs_net_infrastructure']:
+        add_costs_net_infrastructure_section(story, mixDesignTab)
+    if selected_sections['costs_heat_generators']:
+        add_costs_heat_generators_section(story, mixDesignTab)
+    if selected_sections['costs_total']:
+        add_costs_total_section(story, mixDesignTab)
     if selected_sections['results']:
         add_results_section(story, mixDesignTab)
     if selected_sections['combined_results']:
