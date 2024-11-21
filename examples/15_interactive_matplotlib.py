@@ -1,8 +1,8 @@
 """
-Filename: interactive_matplotlib.py
+Filename: 15_interactive_matplotlib.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
-Description: Interactive Matpotlib test.
+Date: 2024-11-21
+Description: Not really an example, but a test for interactive matplotlib plots.
 
 """
 

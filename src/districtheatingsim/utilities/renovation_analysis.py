@@ -1,12 +1,12 @@
 """
-Filename: SanierungsanalysefuerGUI.py
+Filename: renovation_analysis.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-09-09
 Description: Contains the calculation model for the renovation cost analysis.
 """
 
 import numpy_financial as npf
-from utilities.test_reference_year import import_TRY
+from districtheatingsim.utilities.test_reference_year import import_TRY
 
 class Building:
     """
