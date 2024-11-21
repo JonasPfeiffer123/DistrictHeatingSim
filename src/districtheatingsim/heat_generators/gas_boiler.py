@@ -8,7 +8,7 @@ Description: Contains the GasBoiler class representing a gas boiler system.
 
 import numpy as np
 
-from heat_generators.annuity import annuität
+from districtheatingsim.heat_generators.annuity import annuität
 
 class GasBoiler:
     """

@@ -12,7 +12,6 @@ import pandas as pd
 import networkx as nx
 from collections import defaultdict
 import numpy as np
-import os
 
 def add_intermediate_points(points_gdf, street_layer, max_distance=200, point_interval=10):
     """

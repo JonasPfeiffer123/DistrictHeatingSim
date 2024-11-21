@@ -10,8 +10,8 @@ import traceback
 
 from PyQt5.QtCore import QThread, pyqtSignal
 
-from net_simulation_pandapipes.pp_net_time_series_simulation import import_results_csv
-from heat_generators.heat_generation_mix import Berechnung_Erzeugermix, optimize_mix
+from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import import_results_csv
+from districtheatingsim.heat_generators.heat_generation_mix import Berechnung_Erzeugermix, optimize_mix
 
 class CalculateMixThread(QThread):
     """

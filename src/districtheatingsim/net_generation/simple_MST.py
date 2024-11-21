@@ -11,8 +11,8 @@ import math
 import networkx as nx
 from shapely.geometry import LineString, Point
 
-from net_generation.A_Star_algorithm_net_generation import *
-from net_generation.MST_processing import *
+from districtheatingsim.net_generation.A_Star_algorithm_net_generation import *
+from districtheatingsim.net_generation.MST_processing import *
 
 def create_offset_points(point, distance, angle_degrees):
     """

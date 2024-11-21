@@ -9,7 +9,7 @@ import geopandas as gpd
 import pandas as pd
 from shapely.geometry import LineString, Point
 
-from net_generation.simple_MST import generate_network_fl, generate_network_rl, create_offset_points
+from districtheatingsim.net_generation.simple_MST import generate_network_fl, generate_network_rl, create_offset_points
 
 def import_osm_street_layer(osm_street_layer_geojson_file):
     """
@@ -111,9 +111,10 @@ def load_layers(osm_street_layer_geojson_file, data_csv_file_name, coordinates):
         street_layer = gpd.read_file(osm_street_layer_geojson_file)
         # Load the data as a DataFrame
         data_df = pd.read_csv(data_csv_file_name, sep=';')
+        print(f"Data successfully loaded. Data: {data_df}")
         # Convert the DataFrame into a GeoDataFrame
         data_layer = gpd.GeoDataFrame(data_df, geometry=gpd.points_from_xy(data_df.UTM_X, data_df.UTM_Y))
-
+        print(f"Data layer successfully created. Data layer: {data_layer}")
         # Create the producer location as a GeoDataFrame
         points = [Point(x, y) for x, y in coordinates]
         producer_location = gpd.GeoDataFrame(geometry=points, crs="EPSG:4326")

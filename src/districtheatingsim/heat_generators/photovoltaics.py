@@ -10,8 +10,8 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timezone
 
-from utilities.test_reference_year import import_TRY
-from heat_generators.solar_radiation import calculate_solar_radiation
+from districtheatingsim.utilities.test_reference_year import import_TRY
+from districtheatingsim.heat_generators.solar_radiation import calculate_solar_radiation
 
 # Constant for degree-radian conversion
 DEG_TO_RAD = np.pi / 180
