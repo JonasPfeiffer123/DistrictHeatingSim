@@ -90,7 +90,8 @@ class CostTab(QWidget):
         self.cost_composition_widget = QWidget()
         cost_composition_layout = QVBoxLayout(self.cost_composition_widget)
         self.setupCostCompositionChart()
-        cost_composition_layout.addWidget(self.canvas)
+        cost_composition_layout.addWidget(self.bar_chart_canvas)  # Add bar chart
+        cost_composition_layout.addWidget(self.pie_chart_canvas)  # Add pie chart
         self.cost_composition_section = CollapsibleHeader("Kostenzusammensetzung", self.cost_composition_widget)
 
         # Add all sections to the main layout with stretch factors
@@ -396,12 +397,20 @@ class CostTab(QWidget):
     
     ### Setup of Cost Composition Chart ###
     def setupCostCompositionChart(self):
-        self.figure, self.canvas = self.addFigure()
-        self.canvas.setMinimumHeight(500)
+        """
+        Sets up two separate figures for the bar chart and pie chart.
+        """
+        # Create bar chart figure and canvas
+        self.bar_chart_figure, self.bar_chart_canvas = self.addFigure()
+        self.bar_chart_canvas.setMinimumHeight(400)
+
+        # Create pie chart figure and canvas
+        self.pie_chart_figure, self.pie_chart_canvas = self.addFigure()
+        self.pie_chart_canvas.setMinimumHeight(400)
 
     def addFigure(self):
         """
-        Adds a figure to the canvas.
+        Creates and returns a new figure and its canvas.
 
         Returns:
             tuple: The figure and canvas.
@@ -412,40 +421,49 @@ class CostTab(QWidget):
     
     def plotCostComposition(self):
         """
-        Plots the cost composition with a bar chart and a pie chart side by side, ensuring consistent colors between charts.
+        Plots the cost composition with two separate figures: a bar chart and a pie chart.
         """
-        self.figure.clear()
-        ax1 = self.figure.add_subplot(121)  # Left subplot for bar chart
-        ax2 = self.figure.add_subplot(122)  # Right subplot for pie chart
-
         # Data for the charts
         labels = [cost[0] for cost in self.individual_costs]
         sizes = [cost[1] for cost in self.individual_costs]
 
-        ### Pie Chart
-        # Let matplotlib assign colors and capture them for use in the bar chart
-        wedges, _, _ = ax2.pie(sizes, labels=None, autopct='%1.1f%%', startangle=140,
-                            explode=[0.1 if label == "Wärmenetz" else 0 for label in labels],
-                            labeldistance=1.1, pctdistance=0.85)
-
-        # Extract colors from the pie chart to apply to the bar chart
-        pie_colors = [wedge.get_facecolor() for wedge in wedges]
-        ax2.set_title('Kostenzusammensetzung (Relativ in %)')
-        ax2.legend(labels, loc="best", bbox_to_anchor=(1, 0.5))
-
         ### Bar Chart
-        bars = ax1.barh(labels, sizes, color=pie_colors, height=0.5)  # Apply the same colors
+        self.bar_chart_figure.clear()
+        ax1 = self.bar_chart_figure.add_subplot(111)  # Full plot for bar chart
+        bar_colors = ax1.barh(labels, sizes, height=0.5)  # Bar chart with default colors
         ax1.set_title('Kostenzusammensetzung (Absolut in €)')
         ax1.set_xlabel('Kosten (€)')
         ax1.set_ylabel('Komponenten')
-        
+
         # Display exact cost values next to each bar
         for i, (size, label) in enumerate(zip(sizes, labels)):
             formatted_size = self.format_cost(size)
             ax1.text(size, i, formatted_size, va='center')
 
-        # Draw the updated figure with both charts
-        self.canvas.draw()
+        ### Pie Chart
+        self.pie_chart_figure.clear()
+        ax2 = self.pie_chart_figure.add_subplot(111)  # Full plot for pie chart
+        wedges, _, _ = ax2.pie(
+            sizes,
+            labels=None,
+            autopct='%1.1f%%',
+            startangle=140,
+            explode=[0.1 if label == "Wärmenetz" else 0 for label in labels],
+            labeldistance=1.1,
+            pctdistance=0.85
+        )
+        # Extract colors from pie chart for consistency
+        pie_colors = [wedge.get_facecolor() for wedge in wedges]
+        ax2.set_title('Kostenzusammensetzung (Relativ in %)')
+        ax2.legend(labels, loc="best", bbox_to_anchor=(1, 0.5))
+
+        # Apply consistent colors to the bar chart
+        for bar, color in zip(bar_colors, pie_colors):
+            bar.set_color(color)
+
+        # Draw both charts
+        self.bar_chart_canvas.draw()
+        self.pie_chart_canvas.draw()
 
     def adjustTableSize(self, table):
         """

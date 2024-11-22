@@ -1,4 +1,3 @@
-
 # DistrictHeatingSim
 
 ## Introduction
@@ -23,8 +22,8 @@ DistrictHeatingSim is developed by Dipl.-Ing. (FH) Jonas Pfeiffer as part of the
 ## Features
 
 ### User Interface
-- **Project Definition**: Create croject project folders, your data input and track your project progress
-- **Building Heat Demand Profile Calculation**: Calculate the heat demand profiles for your buildings
+- **Project Definition**: Create project folders, your data input and track your project progress
+- **Building Heat Demand Profile Calculation**: Calculate the heat demand profiles for your buildings based on BDEW SLPs (Standard Load Profiles)
 - **Geocoding**: Convert addresses to coordinates and visualize them on a map.
 - **OSM Data Integration**: Download and process OpenStreetMap data for streets and buildings.
 - **Automatic Heat Network Generation**: Generate heating networks based on building and generator locations.
@@ -41,26 +40,16 @@ DistrictHeatingSim is developed by Dipl.-Ing. (FH) Jonas Pfeiffer as part of the
 - **Heat Requirement Calculation**: Calculate heat demands based on different profiles and weather data.
 - **Economic Scenario Analysis**: Evaluate the economic feasibility of various heating scenarios.
 - **Optimization Algorithms**: Optimize heating network configurations for cost efficiency.
-- **Integration of Renewable Technologies**: Support for solar thermal, biomass, geothermal, and other renewable sources.
+- **Integration of Renewable Technologies**: Support for solar thermal, biomass, geothermal, and other renewable sources. Also includes the AqvaHeat technology, partly developed by Hochschule Zittau/Görlitz, for efficient heat distribution.
 
 ## Installation
 
-To install DistrictHeatingSim, ensure you have Python installed on your system. Follow the steps below:
+To install DistrictHeatingSim, ensure you have Python installed on your system. Currently only tested with Python 3.11.
 
-1. **Clone the repository**:
-    ```sh
-    git clone https://github.com/JonasPfeiffer123/DistrictHeatingSim.git
-    ```
-
-2. **Navigate to the project directory**:
-    ```sh
-    cd DistrictHeatingSim
-    ```
-
-3. **Install the required packages**:
-    ```sh
-    pip install -r requirements.txt
-    ```
+**Install the repository**:
+```sh
+pip install git+https://github.com/JonasPfeiffer123/DistrictHeatingSim.git
+```
 
 ## Usage
 
@@ -79,6 +68,7 @@ To install DistrictHeatingSim, ensure you have Python installed on your system. 
 4. **Heat Network Generation**: Automatically generate a heat network based on building and generator locations.
 
 ### LOD2-Data Processing
+
 1. **Filter LOD2 Data**: Filter LOD2 3D building data based on polygon or adresses
 2. **Process LOD2 Data**: Process detailed 3D building data for heat demand analysis. Calculating building areas.
 2. **Load TABULA Data**: Combine LOD2 data with [TABULA](https://webtool.building-typology.eu/#bm) building data.
@@ -99,6 +89,7 @@ To install DistrictHeatingSim, ensure you have Python installed on your system. 
 4. **Report Generation**: Generate a PDF report with the simulation results, economic analysis, and recommendations.
 
 ### Buidling Renovation Cost Calculation
+
 1. **Load Renovation Variants**: Load LOD2 results from LOD2 processing.
 2. **Cost definition**: Define specifc renovation costs.
 3. **Simulation**: Calculate total costs of renovation options. 
@@ -127,16 +118,16 @@ To install DistrictHeatingSim, ensure you have Python installed on your system. 
 ## Project Structure
 
 - **src/districtheatingsim**: Source code for DistrictHeatingSim
-- **docs**: Documentation for DistrictHeatingSim
+- **docs/**: Documentation for DistrictHeatingSim
 - **flow_chart**: Shows two flow charts describing data processing in DistrictHeatingSim
 - **requirements.txt**: List of dependencies
 - **README.md**: This README file
+- **examples/**: Contains multiple Examples for the various base functionalities of the software.
 
 - **currently_not_used**: Contains multiple python files with various functionality which are currently not integrated in DistrictHeatingSim
 
 ## PyInstaller
-
-
+Pyinstaller installation works with specific definitions. Reach out to the author for further intructions.
 
 ## Documentation
 The Code is documented with docstrings which are readable by [Sphinx](https://www.sphinx-doc.org/en/master/) and therefore a documentation can be created by doing

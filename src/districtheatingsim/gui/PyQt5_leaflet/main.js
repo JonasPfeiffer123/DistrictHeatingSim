@@ -22,11 +22,17 @@ map.addLayer(allLayers);
 map.pm.addControls({
     position: 'topleft',
     drawMarker: true,
+    drawLine: true,
     drawPolyline: true,
+    drawRectangle: true,
+    drawCircle: true,
+    drawCircleMarker: true,
+    drawPolygon: true,
     editMode: true,
     dragMode: true,
-    cutPolygon: false,
-    removalMode: true
+    cutPolygon: true,
+    removalMode: true,
+    rotateMode: false,
 });
 
 // Set global snapping options for Leaflet.pm

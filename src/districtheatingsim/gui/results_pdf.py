@@ -7,18 +7,20 @@ Description: Script for generating the results PDF of the calculation results.
 
 import numpy as np
 
-from districtheatingsim.gui.dialogs import PDFSelectionDialog
-
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, KeepTogether
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.lib import colors
+from reportlab.graphics import renderPDF
+from reportlab.graphics.shapes import Drawing, Rect, Group
+from reportlab.platypus import Image as PlatypusImage
 
 from PyQt5.QtCore import QBuffer
-
 from PyQt5.QtGui import QPainter, QPixmap
+
+from districtheatingsim.gui.dialogs import PDFSelectionDialog
 
 def get_custom_table_style():
     """
@@ -36,22 +38,35 @@ def get_custom_table_style():
         ('FONTSIZE', (0, 0), (-1, -1), 8)
     ])
 
-def add_figure_to_story(figure, story, max_width=6.5 * inch):
+def add_figure_to_story(figure, story, max_width=6.5 * inch, figures_per_row=2):
     """
-    Adds a matplotlib figure to the PDF story.
+    Adds a matplotlib figure to the PDF story with a black border and arranges figures in a grid.
     """
     img_buffer = BytesIO()
     figure.savefig(img_buffer, format='png', bbox_inches='tight', dpi=300)
     img_buffer.seek(0)
 
-    img = Image(img_buffer)
+    # Use Platypus Image for compatibility
+    img = PlatypusImage(img_buffer)
     aspect_ratio = img.drawWidth / img.drawHeight
 
     if img.drawWidth > max_width:
         img.drawWidth = max_width
         img.drawHeight = img.drawWidth / aspect_ratio
 
-    story.append(img)
+    # Add border and wrap image in a table cell
+    cell = [[img]]
+    table = Table(cell, colWidths=[img.drawWidth + 4], rowHeights=[img.drawHeight + 4])
+    table.setStyle(
+        TableStyle([
+            ('BOX', (0, 0), (-1, -1), 1, colors.black),  # Add black border
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ])
+    )
+
+    # Add the table (image with border) to the story
+    story.append(table)
     story.append(Spacer(1, 12))
 
 def add_net_structure_section(story, calcTab):
@@ -143,26 +158,37 @@ def export_scene_to_image(scene):
 
     return img_buffer
 
-
-def add_schematic_scene_section(story, scene):
+def add_schematic_scene_section(story, scene, max_width=6.5 * inch):
     """
-    Adds the schematic scene as an image to the PDF story.
+    Adds the schematic scene as an image to the PDF story with a black border.
     """
     try:
         # Konvertiere die Szene in ein Bild und erhalte einen BytesIO-Stream
         img_buffer = export_scene_to_image(scene)
-        
-        # Füge das Bild zur PDF-Story hinzu
-        img = Image(img_buffer)
+
+        # Nutze PlatypusImage für Kompatibilität
+        img = PlatypusImage(img_buffer)
         aspect_ratio = img.drawWidth / img.drawHeight
 
-        max_width = 6.5 * inch
         if img.drawWidth > max_width:
             img.drawWidth = max_width
             img.drawHeight = img.drawWidth / aspect_ratio
 
+        # Füge einen schwarzen Rahmen hinzu und bette die Szene in eine Tabelle ein
+        cell = [[img]]
+        table = Table(cell, colWidths=[img.drawWidth + 4], rowHeights=[img.drawHeight + 4])
+        table.setStyle(
+            TableStyle([
+                ('BOX', (0, 0), (-1, -1), 1, colors.black),  # Schwarzer Rahmen
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ])
+        )
+
+        # Abschnittsüberschrift hinzufügen
         story.append(Paragraph("Schematische Darstellung", getSampleStyleSheet()['Heading2']))
-        story.append(img)
+        # Die Tabelle mit dem Bild zur Story hinzufügen
+        story.append(table)
         story.append(Spacer(1, 12))
 
     except Exception as e:
@@ -171,7 +197,7 @@ def add_schematic_scene_section(story, scene):
         story.append(Spacer(1, 12))
         print(error_message)
 
-def add_net_infrastructure_section(story, mixDesignTab):
+def add_costs_net_infrastructure_section(story, mixDesignTab):
     """
     Adds the network infrastructure section to the PDF story.
     """
@@ -225,7 +251,7 @@ def add_net_infrastructure_section(story, mixDesignTab):
         print(error_message)
 
 
-def add_costs_section(story, mixDesignTab):
+def add_costs_heat_generators_section(story, mixDesignTab):
     """
     Adds the costs section to the PDF story.
     """
@@ -249,6 +275,26 @@ def add_costs_section(story, mixDesignTab):
 
     except Exception as e:
         error_message = f"Fehlende Daten im Kostenabschnitt: {str(e)}"
+        story.append(Paragraph(error_message, getSampleStyleSheet()['Normal']))
+        story.append(Spacer(1, 12))
+        print(error_message)
+
+def add_costs_total_section(story, mixDesignTab):
+    """
+    Adds the total costs section to the PDF story.
+    Shows the plots from MixDesignTab.costTab if available.
+    """
+    try:
+        story.append(Paragraph("Gesamtkosten", getSampleStyleSheet()['Heading2']))
+
+        # Add Bar Chart as a separate plot
+        add_figure_to_story(mixDesignTab.costTab.bar_chart_figure, story)
+
+        # Add Pie Chart as a separate plot
+        add_figure_to_story(mixDesignTab.costTab.pie_chart_figure, story)
+
+    except Exception as e:
+        error_message = f"Fehlende Daten im Gesamtkostenabschnitt: {str(e)}"
         story.append(Paragraph(error_message, getSampleStyleSheet()['Normal']))
         story.append(Spacer(1, 12))
         print(error_message)
@@ -365,10 +411,12 @@ def create_pdf(HeatSystemDesignGUI, filename):
         add_technologies_section(story, mixDesignTab)
     if selected_sections.get('technologies_scene', True):
         add_schematic_scene_section(story, schematic_scene)
-    if selected_sections['net_infrastructure']:
-        add_net_infrastructure_section(story, mixDesignTab)
-    if selected_sections['costs']:
-        add_costs_section(story, mixDesignTab)
+    if selected_sections['costs_net_infrastructure']:
+        add_costs_net_infrastructure_section(story, mixDesignTab)
+    if selected_sections['costs_heat_generators']:
+        add_costs_heat_generators_section(story, mixDesignTab)
+    if selected_sections['costs_total']:
+        add_costs_total_section(story, mixDesignTab)
     if selected_sections['results']:
         add_results_section(story, mixDesignTab)
     if selected_sections['combined_results']:
