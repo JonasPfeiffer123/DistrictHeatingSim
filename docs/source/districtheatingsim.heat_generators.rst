@@ -60,6 +60,14 @@ districtheatingsim.heat\_generators.photovoltaics module
    :undoc-members:
    :show-inheritance:
 
+districtheatingsim.heat\_generators.power\_to\_heat module
+----------------------------------------------------------
+
+.. automodule:: districtheatingsim.heat_generators.power_to_heat
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 districtheatingsim.heat\_generators.solar\_radiation module
 -----------------------------------------------------------
 

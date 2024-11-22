@@ -20,6 +20,22 @@ districtheatingsim.gui.MixDesignTab.cost\_tab module
    :undoc-members:
    :show-inheritance:
 
+districtheatingsim.gui.MixDesignTab.generator\_schematic module
+---------------------------------------------------------------
+
+.. automodule:: districtheatingsim.gui.MixDesignTab.generator_schematic
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+districtheatingsim.gui.MixDesignTab.generator\_schematic\_test\_window module
+-----------------------------------------------------------------------------
+
+.. automodule:: districtheatingsim.gui.MixDesignTab.generator_schematic_test_window
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 districtheatingsim.gui.MixDesignTab.heat\_generator\_dialogs module
 -------------------------------------------------------------------
 
@@ -72,6 +88,14 @@ districtheatingsim.gui.MixDesignTab.technology\_tab module
 ----------------------------------------------------------
 
 .. automodule:: districtheatingsim.gui.MixDesignTab.technology_tab
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+districtheatingsim.gui.MixDesignTab.utilities module
+----------------------------------------------------
+
+.. automodule:: districtheatingsim.gui.MixDesignTab.utilities
    :members:
    :undoc-members:
    :show-inheritance:
