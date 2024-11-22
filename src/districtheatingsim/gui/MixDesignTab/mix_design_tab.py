@@ -89,6 +89,7 @@ class MixDesignTab(QWidget):
         self.folder_manager = folder_manager
         self.data_manager = data_manager
         self.config_manager = config_manager
+        self.parent_object = parent
         self.results = {}
         self.tech_objects = []
         
@@ -360,8 +361,8 @@ class MixDesignTab(QWidget):
         """
         Shows additional results.
         """
-        if self.tech_objects and self.results:
-            dialog = SankeyDialog(results=self.results, parent=self)
+        if self.tech_objects and self.results and self.parent_object.calcTab.Gesamtwärmebedarf_Gebäude_MWh:
+            dialog = SankeyDialog(results=self.results, heat_demand=self.parent_object.calcTab.Gesamtwärmebedarf_Gebäude_MWh, parent=self)
             dialog.exec_()
         else:
             QMessageBox.information(self, "Keine Berechnungsergebnisse", "Es sind keine Berechnungsergebnisse verfügbar. Führen Sie zunächst eine Berechnung durch.")

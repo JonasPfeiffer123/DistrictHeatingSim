@@ -356,7 +356,7 @@ class CalculationTab(QWidget):
         else:
             Anzahl_Heizzentralen = None
 
-        Gesamtwärmebedarf_Gebäude_MWh = np.sum(self.waerme_ges_kW) / 1000 if hasattr(self, 'waerme_ges_kW') else None
+        self.Gesamtwärmebedarf_Gebäude_MWh = np.sum(self.waerme_ges_kW) / 1000 if hasattr(self, 'waerme_ges_kW') else None
         Gesamtheizlast_Gebäude_kW = np.max(self.waerme_ges_kW) if hasattr(self, 'waerme_ges_kW') else None
 
         if hasattr(self.net.pipe, 'length_km'):
@@ -364,7 +364,7 @@ class CalculationTab(QWidget):
         else:
             Trassenlänge_m = None
 
-        Wärmebedarfsdichte_MWh_a_m = Gesamtwärmebedarf_Gebäude_MWh / Trassenlänge_m if Gesamtwärmebedarf_Gebäude_MWh is not None and Trassenlänge_m is not None else None
+        Wärmebedarfsdichte_MWh_a_m = self.Gesamtwärmebedarf_Gebäude_MWh / Trassenlänge_m if self.Gesamtwärmebedarf_Gebäude_MWh is not None and Trassenlänge_m is not None else None
         Anschlussdichte_kW_m = Gesamtheizlast_Gebäude_kW / Trassenlänge_m if Gesamtheizlast_Gebäude_kW is not None and Trassenlänge_m is not None else None
 
         Jahreswärmeerzeugung_MWh = 0
@@ -375,7 +375,7 @@ class CalculationTab(QWidget):
                     Jahreswärmeerzeugung_MWh += np.sum(pump_data['qext_kW']) / 1000
                     Pumpenstrombedarf_MWh += np.sum((pump_data['mass_flow']/1000)*(pump_data['deltap']*100)) / 1000
 
-        Verteilverluste_kW = Jahreswärmeerzeugung_MWh - Gesamtwärmebedarf_Gebäude_MWh if Gesamtwärmebedarf_Gebäude_MWh is not None and Jahreswärmeerzeugung_MWh is not None and Jahreswärmeerzeugung_MWh != 0 else None
+        Verteilverluste_kW = Jahreswärmeerzeugung_MWh - self.Gesamtwärmebedarf_Gebäude_MWh if self.Gesamtwärmebedarf_Gebäude_MWh is not None and Jahreswärmeerzeugung_MWh is not None and Jahreswärmeerzeugung_MWh != 0 else None
         rel_Verteilverluste_percent = (Verteilverluste_kW / Jahreswärmeerzeugung_MWh) * 100 if Verteilverluste_kW is not None and Jahreswärmeerzeugung_MWh is not None and Jahreswärmeerzeugung_MWh != 0 else None
 
         result_text_parts = [
@@ -383,8 +383,8 @@ class CalculationTab(QWidget):
             f"Anzahl Heizzentralen: {Anzahl_Heizzentralen if Anzahl_Heizzentralen is not None else 'N/A'}\n\n"
         ]
 
-        if Gesamtwärmebedarf_Gebäude_MWh is not None:
-            result_text_parts.append(f"Jahresgesamtwärmebedarf Gebäude: {Gesamtwärmebedarf_Gebäude_MWh:.2f} MWh/a\n")
+        if self.Gesamtwärmebedarf_Gebäude_MWh is not None:
+            result_text_parts.append(f"Jahresgesamtwärmebedarf Gebäude: {self.Gesamtwärmebedarf_Gebäude_MWh:.2f} MWh/a\n")
         else:
             result_text_parts.append("Jahresgesamtwärmebedarf Gebäude: N/A\n")
 
