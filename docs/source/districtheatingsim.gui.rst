@@ -15,6 +15,7 @@ Subpackages
    districtheatingsim.gui.MixDesignTab
    districtheatingsim.gui.PVTab
    districtheatingsim.gui.ProjectTab
+   districtheatingsim.gui.PyQt5_leaflet
    districtheatingsim.gui.RenovationTab
    districtheatingsim.gui.VisualizationTab
 

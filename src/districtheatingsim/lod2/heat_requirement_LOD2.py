@@ -2,14 +2,13 @@
 Filename: heat_requirement_LOD2.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-09-09
-Description: This code defines a `Building` class to calculate the heating demand and warm water demand for buildings. 
-             It uses the building's physical dimensions, U-values for various components, and air change rate, 
-             along with the weather data from a Test Reference Year (TRY) dataset, to estimate the annual heating and warm water needs. 
-             The example demonstrates the usage for three buildings with specific dimensions and U-values, outputting their volumes and calculated heat demands.
-"""
+Description: This code defines a `Building` class to calculate the heating demand and warm water demand for buildings.
+It uses the building's physical dimensions, U-values for various components, and air change rate, 
+along with the weather data from a Test Reference Year (TRY) dataset, to estimate the annual heating and warm water needs. 
+The example demonstrates the usage for three buildings with specific dimensions and U-values, outputting their volumes and calculated heat demands.
 
-""" This Script could also be used for cooling demand calculation by adding the cooling demand calculation method to the Building class. For that, solar and internal gains should be considered. 
-    The Building class could be extended to include additional parameters such as shading, orientation, and glazing properties to calculate the cooling demand."""
+This Script could also be used for cooling demand calculation by adding the cooling demand calculation method to the Building class. For that, solar and internal gains should be considered. 
+The Building class could be extended to include additional parameters such as shading, orientation, and glazing properties to calculate the cooling demand."""
 
 import os
 import sys

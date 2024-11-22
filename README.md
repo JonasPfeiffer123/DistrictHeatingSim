@@ -139,7 +139,7 @@ The Code is documented with docstrings which are readable by [Sphinx](https://ww
 
 2. **Generating the .rst-files**:
     ```sh
-    sphinx-apidoc -o source/ ../src/districtheatingsim
+    sphinx-apidoc -f -o source/ ../src/districtheatingsim
     ```
 
 3. **Generate the htmls**:

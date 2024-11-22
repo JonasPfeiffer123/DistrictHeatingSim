@@ -18,7 +18,7 @@ class CheckableComboBox(QComboBox):
     A custom QComboBox widget that allows multiple selections through checkboxes.
 
     Attributes:
-        checkedStateChanged (pyqtSignal): Signal emitted when the checked state of an item changes.
+        checkedStateChanged (:class:`pyqtSignal`): Signal emitted when the checked state of an item changes.
     """
 
     checkedStateChanged = pyqtSignal()

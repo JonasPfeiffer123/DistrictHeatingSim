@@ -4,10 +4,10 @@ districtheatingsim.utilities package
 Submodules
 ----------
 
-districtheatingsim.utilities.SanierungsanalysefuerGUI module
-------------------------------------------------------------
+districtheatingsim.utilities.renovation\_analysis module
+--------------------------------------------------------
 
-.. automodule:: districtheatingsim.utilities.SanierungsanalysefuerGUI
+.. automodule:: districtheatingsim.utilities.renovation_analysis
    :members:
    :undoc-members:
    :show-inheritance:
