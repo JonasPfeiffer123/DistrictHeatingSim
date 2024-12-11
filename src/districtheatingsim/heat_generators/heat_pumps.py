@@ -11,7 +11,6 @@ from scipy.interpolate import RegularGridInterpolator
 
 import CoolProp.CoolProp as CP
 
-from districtheatingsim.heat_generators.annuity import annuität
 from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator
 
 class HeatPump(BaseHeatGenerator):
@@ -133,7 +132,7 @@ class HeatPump(BaseHeatGenerator):
         # Annahme Kosten Wärmepumpe: 1000 €/kW; Vereinfachung
         spezifische_Investitionskosten_WP = self.spezifische_Investitionskosten_WP
         Investitionskosten_WP = spezifische_Investitionskosten_WP * round(Wärmeleistung, 0)
-        E1_WP = annuität(Investitionskosten_WP, self.Nutzungsdauer_WP, self.f_Inst_WP, self.f_W_Insp_WP, self.Bedienaufwand_WP, self.q, self.r, self.T,
+        E1_WP = self.annuity(Investitionskosten_WP, self.Nutzungsdauer_WP, self.f_Inst_WP, self.f_W_Insp_WP, self.Bedienaufwand_WP, self.q, self.r, self.T,
                             Strombedarf, self.Strompreis, stundensatz=self.stundensatz)
         WGK_WP_a = E1_WP / Wärmemenge
 
@@ -145,7 +144,7 @@ class HeatPump(BaseHeatGenerator):
             raise KeyError(f"{base_name} ist kein gültiger Schlüssel in Nutzungsdauer_WQ_dict")
         
         Investitionskosten_WQ = spez_Investitionskosten_WQ * Wärmeleistung
-        E1_WQ = annuität(Investitionskosten_WQ, self.Nutzungsdauer_WQ_dict[base_name], self.f_Inst_WQ, self.f_W_Insp_WQ,
+        E1_WQ = self.annuity(Investitionskosten_WQ, self.Nutzungsdauer_WQ_dict[base_name], self.f_Inst_WQ, self.f_W_Insp_WQ,
                             self.Bedienaufwand_WQ, self.q, self.r, self.T, stundensatz=self.stundensatz)
         WGK_WQ_a = E1_WQ / Wärmemenge
 

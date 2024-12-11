@@ -7,7 +7,7 @@ Description: Contains the BiomassBoiler class representing a biomass boiler syst
 """
 
 import numpy as np
-from districtheatingsim.heat_generators.annuity import annuität
+
 from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator
 
 class BiomassBoiler(BaseHeatGenerator):
@@ -184,8 +184,8 @@ class BiomassBoiler(BaseHeatGenerator):
         self.Investitionskosten_Speicher = self.spez_Investitionskosten_Speicher * self.Speicher_Volumen
         self.Investitionskosten = self.Investitionskosten_Kessel + self.Investitionskosten_Holzlager + self.Investitionskosten_Speicher
 
-        self.A_N = annuität(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T, Brennstoffbedarf,
-                            self.Holzpreis, stundensatz=self.stundensatz)
+        self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T, 
+                                Brennstoffbedarf, self.Holzpreis, stundensatz=self.stundensatz)
         
         self.WGK_BMK = self.A_N / Wärmemenge
 
