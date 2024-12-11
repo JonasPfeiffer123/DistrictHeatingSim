@@ -299,7 +299,13 @@ class BiomassBoiler(BaseHeatGenerator):
             self.Speicher_Volumen = optimized_values[variables_order.index(f"Speicher_Volumen_{idx}")]
 
     def get_display_text(self):
-        return (f"{self.name}: th. Leistung: {self.P_BMK}, Größe Holzlager: {self.Größe_Holzlager} t, "
-                f"spez. Investitionskosten Kessel: {self.spez_Investitionskosten} €/kW, "
-                f"spez. Investitionskosten Holzlager: {self.spez_Investitionskosten_Holzlager} €/t")
+        return (f"{self.name}: th. Leistung: {self.P_BMK:.1f}, Größe Holzlager: {self.Größe_Holzlager:.1f} t, "
+                f"spez. Investitionskosten Kessel: {self.spez_Investitionskosten:.1f} €/kW, "
+                f"spez. Investitionskosten Holzlager: {self.spez_Investitionskosten_Holzlager:.1f} €/t")
+    
+    def extract_tech_data(self):
+        dimensions = f"th. Leistung: {self.P_BMK:.1f} kW, Größe Holzlager: {self.Größe_Holzlager:.1f} t"
+        costs = f"Investitionskosten Kessel: {self.Investitionskosten_Kessel:.1f} €, Investitionskosten Holzlager: {self.Investitionskosten_Holzlager:.1f} €"
+        full_costs = f"{self.Investitionskosten:.1f}"
+        return self.name, dimensions, costs, full_costs
 

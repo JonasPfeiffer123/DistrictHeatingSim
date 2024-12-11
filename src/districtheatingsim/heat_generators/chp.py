@@ -337,9 +337,15 @@ class CHP(BaseHeatGenerator):
     
     def get_display_text(self):
         if self.name.startswith("BHKW"):
-            return (f"{self.name}: th. Leistung: {self.th_Leistung_BHKW} kW, "
-                    f"spez. Investitionskosten Erdgas-BHKW: {self.spez_Investitionskosten_GBHKW} €/kW")
+            return (f"{self.name}: th. Leistung: {self.th_Leistung_BHKW:.1f} kW, "
+                    f"spez. Investitionskosten Erdgas-BHKW: {self.spez_Investitionskosten_GBHKW:.1f} €/kW")
         elif self.name.startswith("Holzgas-BHKW"):
-            return (f"{self.name}: th. Leistung: {self.th_Leistung_BHKW} kW, "
-                    f"spez. Investitionskosten Holzgas-BHKW: {self.spez_Investitionskosten_HBHKW} €/kW")
+            return (f"{self.name}: th. Leistung: {self.th_Leistung_BHKW:.1f} kW, "
+                    f"spez. Investitionskosten Holzgas-BHKW: {self.spez_Investitionskosten_HBHKW:.1f} €/kW")
+        
+    def extract_tech_data(self):
+        dimensions = f"th. Leistung: {self.th_Leistung_BHKW:.1f} kW, el. Leistung: {self.el_Leistung_Soll:.1f} kW"
+        costs = f"Investitionskosten: {self.Investitionskosten:.1f}"
+        full_costs = f"{self.Investitionskosten:.1f}"
+        return self.name, dimensions, costs, full_costs
 

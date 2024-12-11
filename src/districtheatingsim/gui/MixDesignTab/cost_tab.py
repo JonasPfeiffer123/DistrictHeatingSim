@@ -12,13 +12,6 @@ from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QFont
 
 from districtheatingsim.heat_generators.annuity import annuität
-from districtheatingsim.heat_generators.heat_pumps import RiverHeatPump, AqvaHeat, WasteHeatPump, Geothermal
-from districtheatingsim.heat_generators.chp import CHP
-from districtheatingsim.heat_generators.biomass_boiler import BiomassBoiler
-from districtheatingsim.heat_generators.gas_boiler import GasBoiler
-from districtheatingsim.heat_generators.solar_thermal import SolarThermal
-from districtheatingsim.heat_generators.power_to_heat import PowerToHeat
-
 from districtheatingsim.gui.MixDesignTab.utilities import CollapsibleHeader
 
 class CostTab(QWidget):
@@ -297,7 +290,7 @@ class CostTab(QWidget):
         self.summe_tech_kosten = 0
 
         for i, tech in enumerate(tech_objects):
-            name, dimensions, costs, full_costs = self.extractTechData(tech)
+            name, dimensions, costs, full_costs = tech.extract_tech_data()
             self.techDataTable.setItem(i, 0, QTableWidgetItem(name))
             self.techDataTable.setItem(i, 1, QTableWidgetItem(dimensions))
             self.techDataTable.setItem(i, 2, QTableWidgetItem(costs))
@@ -338,69 +331,6 @@ class CostTab(QWidget):
         total_cost = self.summe_investitionskosten + self.summe_tech_kosten
         formatted_total_cost = self.format_cost(total_cost)
         self.totalCostLabel.setText(f"Gesamtkosten: {formatted_total_cost}")
-
-
-    def extractTechData(self, tech):
-        """
-        Extracts the data for a given technology object.
-
-        Args:
-            tech (object): The technology object.
-
-        Returns:
-            tuple: The extracted data (name, dimensions, costs, full costs).
-        """
-        if isinstance(tech, RiverHeatPump):
-            dimensions = f"th. Leistung: {tech.Wärmeleistung_FW_WP} kW"
-            costs = f"Investitionskosten Flusswärmenutzung: {tech.spez_Investitionskosten_Flusswasser * tech.Wärmeleistung_FW_WP:.1f}, Investitionskosten Wärmepumpe: {tech.spezifische_Investitionskosten_WP * tech.Wärmeleistung_FW_WP:.1f}"
-            full_costs = f"{tech.spez_Investitionskosten_Flusswasser * tech.Wärmeleistung_FW_WP + tech.spezifische_Investitionskosten_WP * tech.Wärmeleistung_FW_WP:.1f}"
-
-        elif isinstance(tech, AqvaHeat):
-            dimensions = f"th. Leistung: {tech.Wärmeleistung_FW_WP} kW"
-            costs = f"Investitionskosten Speicher: n/a"
-            full_costs = f"-1"
-
-        elif isinstance(tech, WasteHeatPump):
-            dimensions = f"Kühlleistung Abwärme: {tech.Kühlleistung_Abwärme} kW, Temperatur Abwärme: {tech.Temperatur_Abwärme} °C, th. Leistung: {tech.max_Wärmeleistung} kW"
-            costs = f"Investitionskosten Abwärmenutzung: {tech.spez_Investitionskosten_Abwärme * tech.max_Wärmeleistung:.1f}, Investitionskosten Wärmepumpe: {tech.spezifische_Investitionskosten_WP * tech.max_Wärmeleistung:.1f}"
-            full_costs = f"{tech.spez_Investitionskosten_Abwärme * tech.max_Wärmeleistung + tech.spezifische_Investitionskosten_WP * tech.max_Wärmeleistung:.1f}"
-
-        elif isinstance(tech, Geothermal):
-            dimensions = f"Fläche: {tech.Fläche} m², Bohrtiefe: {tech.Bohrtiefe} m, Temperatur Geothermie: {tech.Temperatur_Geothermie} °C, Entzugsleistung: {tech.spez_Entzugsleistung} W/m, th. Leistung: {tech.max_Wärmeleistung} kW"
-            costs = f"Investitionskosten Sondenfeld: {tech.Investitionskosten_Sonden:.1f}, Investitionskosten Wärmepumpe: {tech.spezifische_Investitionskosten_WP * tech.max_Wärmeleistung:.1f}"
-            full_costs = f"{tech.Investitionskosten_Sonden + tech.spezifische_Investitionskosten_WP * tech.max_Wärmeleistung:.1f}"
-
-        elif isinstance(tech, CHP):
-            dimensions = f"th. Leistung: {tech.th_Leistung_BHKW} kW, el. Leistung: {tech.el_Leistung_Soll} kW"
-            costs = f"Investitionskosten: {tech.Investitionskosten:.1f}"
-            full_costs = f"{tech.Investitionskosten:.1f}"
-
-        elif isinstance(tech, BiomassBoiler):
-            dimensions = f"th. Leistung: {tech.P_BMK} kW, Größe Holzlager: {tech.Größe_Holzlager} t"
-            costs = f"Investitionskosten Kessel: {tech.Investitionskosten_Kessel:.1f} €, Investitionskosten Holzlager: {tech.Investitionskosten_Holzlager:.1f} €"
-            full_costs = f"{tech.Investitionskosten:.1f}"
-
-        elif isinstance(tech, GasBoiler):
-            dimensions = f"th. Leistung: {tech.P_max:.1f} kW"
-            costs = f"Investitionskosten: {tech.Investitionskosten:.1f} €"
-            full_costs = f"{tech.Investitionskosten:.1f}"
-            
-        elif isinstance(tech, SolarThermal):
-            dimensions = f"Bruttokollektorfläche: {tech.bruttofläche_STA} m², Speichervolumen: {tech.vs} m³, Kollektortyp: {tech.Typ}"
-            costs = f"Investitionskosten Speicher: {tech.Investitionskosten_Speicher:.1f} €, Investitionskosten STA: {tech.Investitionskosten_STA:.1f} €"
-            full_costs = f"{tech.Investitionskosten:.1f}"
-
-        elif isinstance(tech, PowerToHeat):
-            dimensions = f"th. Leistung: {tech.P_max:.1f} kW"
-            costs = f"Investitionskosten: {tech.Investitionskosten:.1f} €"
-            full_costs = f"{tech.Investitionskosten:.1f}"
-
-        else:
-            dimensions = "N/A"
-            costs = "N/A"
-            full_costs = "N/A"
-
-        return tech.name, dimensions, costs, full_costs
     
     ### Setup of Cost Composition Chart ###
     def setupCostCompositionChart(self):

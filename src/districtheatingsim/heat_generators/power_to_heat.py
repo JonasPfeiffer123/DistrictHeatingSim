@@ -154,33 +154,10 @@ class PowerToHeat(BaseHeatGenerator):
         pass
 
     def get_display_text(self):
-        return f"{self.name}: spez. Investitionskosten: {self.spez_Investitionskosten} €/kW"
+        return f"{self.name}: spez. Investitionskosten: {self.spez_Investitionskosten:.1f} €/kW"
     
-    def to_dict(self):
-        """
-        Converts the PowerToHeat object to a dictionary.
-
-        Returns:
-            dict: Dictionary representation of the PowerToHeat object.
-        """
-        # Erstelle eine Kopie des aktuellen Objekt-Dictionaries
-        data = self.__dict__.copy()
-        
-        # Entferne das scene_item und andere nicht notwendige Felder
-        data.pop('scene_item', None)
-        return data
-
-    @staticmethod
-    def from_dict(data):
-        """
-        Creates a new PowerToHeat object from a dictionary.
-
-        Args:
-            data (dict): Dictionary containing the attributes of a PowerToHeat object.
-
-        Returns:
-            PowerToHeat: A new PowerToHeat object.
-        """
-        obj = PowerToHeat.__new__(PowerToHeat)
-        obj.__dict__.update(data)
-        return obj
+    def extract_tech_data(self):
+        dimensions = f"th. Leistung: {self.P_max:.1f} kW"
+        costs = f"Investitionskosten: {self.Investitionskosten:.1f} €"
+        full_costs = f"{self.Investitionskosten:.1f}"
+        return self.name, dimensions, costs, full_costs

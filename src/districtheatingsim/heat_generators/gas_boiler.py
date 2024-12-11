@@ -153,4 +153,10 @@ class GasBoiler(BaseHeatGenerator):
         pass
 
     def get_display_text(self):
-        return f"{self.name}: spez. Investitionskosten: {self.spez_Investitionskosten} €/kW"
+        return f"{self.name}: spez. Investitionskosten: {self.spez_Investitionskosten:.1f} €/kW"
+    
+    def extract_tech_data(self):
+        dimensions = f"th. Leistung: {self.P_max:.1f} kW"
+        costs = f"Investitionskosten: {self.Investitionskosten:.1f} €"
+        full_costs = f"{self.Investitionskosten:.1f}"
+        return self.name, dimensions, costs, full_costs
