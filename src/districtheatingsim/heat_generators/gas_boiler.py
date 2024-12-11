@@ -80,7 +80,7 @@ class GasBoiler(BaseHeatGenerator):
         self.r = economic_parameters['inflation_rate']
         self.T = economic_parameters['time_period']
         self.BEW = economic_parameters['subsidy_eligibility']
-        self.stundensatz = economic_parameters['hourly_rate']
+        self.hourly_rate = economic_parameters['hourly_rate']
 
         if self.Wärmemenge_Gaskessel == 0:
             return 0
@@ -88,7 +88,7 @@ class GasBoiler(BaseHeatGenerator):
         self.Investitionskosten = self.spez_Investitionskosten * self.P_max
 
         self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T,
-                            self.Gasbedarf, self.Gaspreis, stundensatz=self.stundensatz)
+                            self.Gasbedarf, self.Gaspreis, hourly_rate=self.hourly_rate)
         self.WGK_GK = self.A_N / self.Wärmemenge_Gaskessel
 
     def calculate_environmental_impact(self):
