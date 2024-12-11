@@ -13,7 +13,6 @@ import numpy as np
 from datetime import datetime, timezone
 
 from districtheatingsim.heat_generators.solar_radiation import calculate_solar_radiation
-from districtheatingsim.heat_generators.annuity import annuität
 from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator
 
 class SolarThermal(BaseHeatGenerator):
@@ -152,12 +151,12 @@ class SolarThermal(BaseHeatGenerator):
         self.Investitionskosten_STA = self.bruttofläche_STA * self.Kosten_STA_spez
         self.Investitionskosten = self.Investitionskosten_Speicher + self.Investitionskosten_STA
 
-        self.A_N = annuität(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T, stundensatz=self.stundensatz)
+        self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T, stundensatz=self.stundensatz)
         self.WGK = self.A_N / self.Wärmemenge
 
         self.Eigenanteil = 1 - self.Anteil_Förderung_BEW
         self.Investitionskosten_Gesamt_BEW = self.Investitionskosten * self.Eigenanteil
-        self.Annuität_BEW = annuität(self.Investitionskosten_Gesamt_BEW, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T, stundensatz=self.stundensatz)
+        self.Annuität_BEW = self.annuity(self.Investitionskosten_Gesamt_BEW, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T, stundensatz=self.stundensatz)
         self.WGK_BEW = self.Annuität_BEW / self.Wärmemenge
 
         self.WGK_BEW_BKF = self.WGK_BEW - self.Betriebskostenförderung_BEW

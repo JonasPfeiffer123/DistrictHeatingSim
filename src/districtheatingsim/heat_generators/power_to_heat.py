@@ -8,7 +8,6 @@ Description: Contains the PowerToHeat class representing a power-to-heat system.
 
 import numpy as np
 
-from districtheatingsim.heat_generators.annuity import annuität
 from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator
 
 class PowerToHeat(BaseHeatGenerator):
@@ -88,7 +87,7 @@ class PowerToHeat(BaseHeatGenerator):
         
         self.Investitionskosten = self.spez_Investitionskosten * self.P_max
 
-        self.A_N = annuität(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T,
+        self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T,
                             self.Strombedarf, self.Strompreis, stundensatz=self.stundensatz)
         self.WGK_PTH = self.A_N / self.Wärmemenge_PowerToHeat
 

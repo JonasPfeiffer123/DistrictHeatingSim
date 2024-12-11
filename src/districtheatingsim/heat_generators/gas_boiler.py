@@ -8,7 +8,6 @@ Description: Contains the GasBoiler class representing a gas boiler system.
 
 import numpy as np
 
-from districtheatingsim.heat_generators.annuity import annuität
 from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator
 
 class GasBoiler(BaseHeatGenerator):
@@ -88,7 +87,7 @@ class GasBoiler(BaseHeatGenerator):
         
         self.Investitionskosten = self.spez_Investitionskosten * self.P_max
 
-        self.A_N = annuität(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T,
+        self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T,
                             self.Gasbedarf, self.Gaspreis, stundensatz=self.stundensatz)
         self.WGK_GK = self.A_N / self.Wärmemenge_Gaskessel
 
