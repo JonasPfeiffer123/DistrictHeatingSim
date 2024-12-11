@@ -154,7 +154,7 @@ class BiomassBoiler(BaseHeatGenerator):
         self.Betriebsstunden_gesamt_Speicher = np.sum(betrieb_mask) * duration
         self.Betriebsstunden_pro_Start_Speicher = self.Betriebsstunden_gesamt_Speicher / self.Anzahl_Starts_Speicher if self.Anzahl_Starts_Speicher > 0 else 0
 
-    def calculate_heat_generation_cost(self, Wärmemenge, Brennstoffbedarf, economic_parameters):
+    def calculate_heat_generation_costs(self, Wärmemenge, Brennstoffbedarf, economic_parameters):
         """
         Calculates the weighted average cost of heat generation.
 
@@ -237,7 +237,7 @@ class BiomassBoiler(BaseHeatGenerator):
             Betriebsstunden = self.Betriebsstunden_gesamt
             Betriebsstunden_pro_Start = self.Betriebsstunden_pro_Start
 
-        self.calculate_heat_generation_cost(Wärmemenge, Brennstoffbedarf, economic_parameters)
+        self.calculate_heat_generation_costs(Wärmemenge, Brennstoffbedarf, economic_parameters)
         self.calculate_environmental_impact(Brennstoffbedarf, Wärmemenge)
 
         results = {

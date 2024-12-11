@@ -24,22 +24,16 @@ def test_berechnung_erzeugermix(optimize=False, plot=True):
     max_last = 400
     Last_L = np.random.randint(min_last, max_last, 8760).astype(float)
 
-    # Dauer Zeitschritte 1 h
-    duration = 1
-
     # Wirtschaftliche Randbedingungen
-    Strompreis = 150 # €/MWh
-    Gaspreis = 70 # €/MWh
-    Holzpreis = 60 # €/MWh
+    electricity_price = 150 # €/MWh
+    gas_price = 70 # €/MWh
+    wood_price = 60 # €/MWh
 
-    #q = 1.05
-    #r = 1.03
-    #T = 20#
-    kapitalzins = 0.05
-    preissteigerungsrate = 0.03
-    betrachtungszeitraum = 20
+    q = 1.05
+    r = 1.03
+    T = 20
     BEW = "Nein"
-    stundensatz = 45
+    hourly_rate = 45
 
     # Arrays für Vor- und Rücklauftemperatur
     VLT_L, RLT_L = np.full(8760, 80), np.full(8760, 55)
@@ -92,7 +86,7 @@ def test_berechnung_erzeugermix(optimize=False, plot=True):
                                             Tsmax=90, Longitude=-14.4222, STD_Longitude=-15, Latitude=51.1676, East_West_collector_azimuth_angle=0, Collector_tilt_angle=36, Tm_rl=60, 
                                             Qsa=0, Vorwärmung_K=8, DT_WT_Solar_K=5, DT_WT_Netz_K=5, opt_volume_min=0, opt_volume_max=200, opt_area_min=0, opt_area_max=2000)
 
-    tech_order = [solarThermal, CHP, geothermal_heat_pump, bBoiler, gBoiler]
+    tech_objects = [solarThermal, CHP, geothermal_heat_pump, bBoiler, gBoiler]
 
     # Angaben zum zu betrchtende Zeitraum
     # Erstelle ein Array mit stündlichen Zeitwerten für ein Jahr
@@ -102,12 +96,16 @@ def test_berechnung_erzeugermix(optimize=False, plot=True):
     # Erstelle das Array mit stündlichen Zeitwerten für ein Jahr
     time_steps = np.arange(start_date, end_date, dtype='datetime64[h]')
 
-    # Die zeitabhängigen Daten werden gemeinsam übergeben
-    initial_data = time_steps, Last_L, VLT_L, RLT_L
-
-    # Start und End Zeitschritt
-    start = 0
-    end = 8760
+    economic_parameters = {
+                "gas_price": gas_price,
+                "electricity_price": electricity_price,
+                "wood_price": wood_price,
+                "capital_interest_rate": q,
+                "inflation_rate": r,
+                "time_period": T,
+                "hourly_rate": hourly_rate,
+                "subsidy_eligibility": BEW
+            }
 
     weights = {
         "WGK_Gesamt": 1.0,
@@ -115,13 +113,33 @@ def test_berechnung_erzeugermix(optimize=False, plot=True):
         "primärenergiefaktor_Gesamt": 0.0
     }
 
-    if optimize == True:
-        tech_order = heat_generation_mix.optimize_mix(tech_order, initial_data, start, end, TRY_data, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, \
-                                            kapitalzins=kapitalzins, preissteigerungsrate=preissteigerungsrate, betrachtungszeitraum=betrachtungszeitraum, 
-                                            stundensatz=stundensatz, weights=weights)
-        
-    general_results = heat_generation_mix.Berechnung_Erzeugermix(tech_order, initial_data, start, end, TRY_data, COP_data, Gaspreis, Strompreis, Holzpreis, BEW, kapitalzins=kapitalzins, preissteigerungsrate=preissteigerungsrate, betrachtungszeitraum=betrachtungszeitraum)
-    print(general_results)
+    energy_system = heat_generation_mix.EnergySystem(
+                time_steps=time_steps,
+                load_profile=Last_L,
+                VLT_L=VLT_L,
+                RLT_L=RLT_L,
+                TRY_data=TRY_data,
+                COP_data=COP_data,
+                economic_parameters=economic_parameters,
+            )
+
+        # Add technologies to the system
+    for tech in tech_objects:
+        energy_system.add_technology(tech)
+
+    # Calculate the energy mix
+    general_results = energy_system.calculate_mix()
+    print(f"Calculated energy mix: {general_results}")
+
+    # Perform optimization if needed
+    if optimize:
+        print("Optimizing mix")
+        optimized_energy_system = energy_system.optimize_mix(weights)
+        print("Optimization done")
+
+        # Calculate the energy mix
+        general_results = optimized_energy_system.calculate_mix()
+        print(f"Optimized energy mix: {general_results}")
 
     if plot == True:
         figure1 = plt.figure()
