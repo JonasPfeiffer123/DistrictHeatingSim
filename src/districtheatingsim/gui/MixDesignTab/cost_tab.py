@@ -1,7 +1,7 @@
 """
 Filename: cost_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-11-06
+Date: 2024-12-11
 Description: Contains the CostTab.
 """
 
@@ -11,7 +11,14 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QScrollArea, QTableWi
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QFont
 
-from districtheatingsim.heat_generators.heat_generation_mix import *
+from districtheatingsim.heat_generators.annuity import annuität
+from districtheatingsim.heat_generators.heat_pumps import RiverHeatPump, AqvaHeat, WasteHeatPump, Geothermal
+from districtheatingsim.heat_generators.chp import CHP
+from districtheatingsim.heat_generators.biomass_boiler import BiomassBoiler
+from districtheatingsim.heat_generators.gas_boiler import GasBoiler
+from districtheatingsim.heat_generators.solar_thermal import SolarThermal
+from districtheatingsim.heat_generators.power_to_heat import PowerToHeat
+
 from districtheatingsim.gui.MixDesignTab.utilities import CollapsibleHeader
 
 class CostTab(QWidget):
@@ -264,10 +271,10 @@ class CostTab(QWidget):
         Returns:
             float: The calculated annuity.
         """
-        q = 1 + (self.parent.kapitalzins / 100)
-        r = 1 + (self.parent.preissteigerungsrate / 100)
-        t = int(self.parent.betrachtungszeitraum)
-        stundensatz = self.parent.stundensatz
+        q = 1 + (self.parent.capital_interest_rate / 100)
+        r = 1 + (self.parent.inflation_rate / 100)
+        t = int(self.parent.time_period)
+        stundensatz = self.parent.hourly_rate
         return annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand, q=q, r=r, T=t, stundensatz=stundensatz)
     
     ### Setup of Calculation Result Tables ###

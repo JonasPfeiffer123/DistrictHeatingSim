@@ -563,8 +563,8 @@ class ResultsTab(QWidget):
             wood_price=self.parent.parent.mixDesignTab.holzpreis,
             BEW=self.parent.parent.mixDesignTab.BEW,
             interest_on_capital=self.parent.parent.mixDesignTab.kapitalzins,
-            price_increase_rate=self.parent.parent.mixDesignTab.preissteigerungsrate,
-            period=self.parent.parent.mixDesignTab.betrachtungszeitraum,
+            inflation_rate=self.parent.parent.mixDesignTab.preissteigerungsrate,
+            time_period7=self.parent.parent.mixDesignTab.betrachtungszeitraum,
             wage=self.parent.parent.mixDesignTab.stundensatz
         )
 
