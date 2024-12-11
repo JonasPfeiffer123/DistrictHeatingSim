@@ -321,10 +321,17 @@ class RiverHeatPump(HeatPump):
         self.Wärmeleistung_FW_WP = optimized_values[variables_order.index(f"Wärmeleistung_FW_WP_{idx}")]
 
     def get_display_text(self):
-        return (f"{self.name}: Wärmeleistung FW WP: {self.Wärmeleistung_FW_WP} kW, "
-                f"Temperatur FW WP: {self.Temperatur_FW_WP} °C, dT: {self.dT} K, "
-                f"spez. Investitionskosten Flusswärme: {self.spez_Investitionskosten_Flusswasser} €/kW, "
-                f"spez. Investitionskosten Wärmepumpe: {self.spezifische_Investitionskosten_WP} €/kW")
+        return (f"{self.name}: Wärmeleistung FW WP: {self.Wärmeleistung_FW_WP:.1f} kW, "
+                f"Temperatur FW WP: {self.Temperatur_FW_WP:.1f} °C, dT: {self.dT:.1f} K, "
+                f"spez. Investitionskosten Flusswärme: {self.spez_Investitionskosten_Flusswasser:.1f} €/kW, "
+                f"spez. Investitionskosten Wärmepumpe: {self.spezifische_Investitionskosten_WP:.1f} €/kW")
+    
+    def extract_tech_data(self):
+        dimensions = f"th. Leistung: {self.Wärmeleistung_FW_WP:.1f} kW"
+        costs = f"Investitionskosten Flusswärmenutzung: {self.spez_Investitionskosten_Flusswasser * self.Wärmeleistung_FW_WP:.1f}, " \
+                f"Investitionskosten Wärmepumpe: {self.spezifische_Investitionskosten_WP * self.Wärmeleistung_FW_WP:.1f}"
+        full_costs = f"{self.spez_Investitionskosten_Flusswasser * self.Wärmeleistung_FW_WP + self.spezifische_Investitionskosten_WP * self.Wärmeleistung_FW_WP:.1f}"
+        return self.name, dimensions, costs, full_costs
 
 class WasteHeatPump(HeatPump):
     """
@@ -490,6 +497,13 @@ class WasteHeatPump(HeatPump):
                 f"Temperatur Abwärme: {self.Temperatur_Abwärme} °C, spez. Investitionskosten Abwärme: "
                 f"{self.spez_Investitionskosten_Abwärme} €/kW, spez. Investitionskosten Wärmepumpe: "
                 f"{self.spezifische_Investitionskosten_WP} €/kW")
+    
+    def extract_tech_data(self):
+        dimensions = f"Kühlleistung Abwärme: {self.Kühlleistung_Abwärme:.1f} kW, Temperatur Abwärme: {self.Temperatur_Abwärme:.1f} °C, th. Leistung: {self.max_Wärmeleistung:.1f} kW"
+        costs = f"Investitionskosten Abwärmenutzung: {self.spez_Investitionskosten_Abwärme * self.max_Wärmeleistung:.1f}, " \
+                f"Investitionskosten Wärmepumpe: {self.spezifische_Investitionskosten_WP * self.max_Wärmeleistung:.1f}"
+        full_costs = f"{self.spez_Investitionskosten_Abwärme * self.max_Wärmeleistung + self.spezifische_Investitionskosten_WP * self.max_Wärmeleistung:.1f}"
+        return self.name, dimensions, costs, full_costs
 
 class Geothermal(HeatPump):
     """
@@ -690,6 +704,13 @@ class Geothermal(HeatPump):
                 f"Vollbenutzungsstunden: {self.Vollbenutzungsstunden} h, Abstand Sonden: {self.Abstand_Sonden} m, "
                 f"spez. Investitionskosten Wärmepumpe: {self.spezifische_Investitionskosten_WP} €/kW")
     
+    def extract_tech_data(self):
+        dimensions = f"Fläche: {self.Fläche:.1f} m², Bohrtiefe: {self.Bohrtiefe:.1f} m, Temperatur Geothermie: {self.Temperatur_Geothermie:.1f} °C, Entzugsleistung: {self.spez_Entzugsleistung:.1} W/m, th. Leistung: {self.max_Wärmeleistung:.1f} kW"
+        costs = f"Investitionskosten Sondenfeld: {self.Investitionskosten_Sonden:.1f}, " \
+                f"Investitionskosten Wärmepumpe: {self.spezifische_Investitionskosten_WP * self.max_Wärmeleistung:.1f}"
+        full_costs = f"{self.Investitionskosten_Sonden + self.spezifische_Investitionskosten_WP * self.max_Wärmeleistung:.1f}"
+        return self.name, dimensions, costs, full_costs
+    
 class AqvaHeat(HeatPump):
     """
     This class represents a AqvaHeat-solution (vacuum ice slurry generator with attached heat pump) and provides methods to calculate various performance and economic metrics.
@@ -835,4 +856,10 @@ class AqvaHeat(HeatPump):
 
     def get_display_text(self):
         return f"Name: {self.name}, Nennleistung: {self.nominal_power} kW, Temperaturdifferenz: {self.temperature_difference} K"
+    
+    def extract_tech_data(self):
+        dimensions = f"Nennleistung: {self.nominal_power:.1f} kW, Temperaturdifferenz: {self.temperature_difference:.1f} K"
+        costs = "Keine spezifischen Kosten"
+        full_costs = "Keine spezifischen Kosten"
+        return self.name, dimensions, costs, full_costs
 

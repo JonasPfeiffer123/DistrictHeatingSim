@@ -261,40 +261,17 @@ class SolarThermal(BaseHeatGenerator):
         self.vs = optimized_values[variables_order.index(f"vs_{idx}")]
 
     def get_display_text(self):
-        return (f"{self.name}: Bruttokollektorfläche: {self.bruttofläche_STA} m², "
-                f"Volumen Solarspeicher: {self.vs} m³, Kollektortyp: {self.Typ}, "
-                f"spez. Kosten Speicher: {self.kosten_speicher_spez} €/m³, "
-                f"spez. Kosten Flachkollektor: {self.kosten_fk_spez} €/m², "
-                f"spez. Kosten Röhrenkollektor: {self.kosten_vrk_spez} €/m²")
+        return (f"{self.name}: Bruttokollektorfläche: {self.bruttofläche_STA:.1f} m², "
+                f"Volumen Solarspeicher: {self.vs:.1} m³, Kollektortyp: {self.Typ}, "
+                f"spez. Kosten Speicher: {self.kosten_speicher_spez:.1f} €/m³, "
+                f"spez. Kosten Flachkollektor: {self.kosten_fk_spez:.1f} €/m², "
+                f"spez. Kosten Röhrenkollektor: {self.kosten_vrk_spez:.1f} €/m²")
     
-    def to_dict(self):
-        """
-        Converts the SolarThermal object to a dictionary.
-
-        Returns:
-            dict: Dictionary representation of the SolarThermal object.
-        """
-        # Erstelle eine Kopie des aktuellen Objekt-Dictionaries
-        data = self.__dict__.copy()
-        
-        # Entferne das scene_item und andere nicht notwendige Felder
-        data.pop('scene_item', None)
-        return data
-
-    @staticmethod
-    def from_dict(data):
-        """
-        Creates a SolarThermal object from a dictionary.
-
-        Args:
-            data (dict): Dictionary containing the attributes of a SolarThermal object.
-
-        Returns:
-            SolarThermal: A new SolarThermal object with attributes from the dictionary.
-        """
-        obj = SolarThermal.__new__(SolarThermal)
-        obj.__dict__.update(data)
-        return obj
+    def extract_tech_data(self):
+        dimensions = f"Bruttokollektorfläche: {self.bruttofläche_STA:.1f} m², Speichervolumen: {self.vs:.1f} m³, Kollektortyp: {self.Typ}"
+        costs = f"Investitionskosten Speicher: {self.Investitionskosten_Speicher:.1f} €, Investitionskosten STA: {self.Investitionskosten_STA:.1f} €"
+        full_costs = f"{self.Investitionskosten:.1f}"
+        return self.name, dimensions, costs, full_costs
 
 def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY_data, time_steps, duration, Tsmax=90, Longitude=-14.4222, STD_Longitude=-15, Latitude=51.1676,
                    East_West_collector_azimuth_angle=0, Collector_tilt_angle=36, Tm_rl=60, Qsa=0, Vorwärmung_K=8, DT_WT_Solar_K=5, DT_WT_Netz_K=5):

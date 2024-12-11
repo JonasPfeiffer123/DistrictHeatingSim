@@ -18,6 +18,8 @@ from districtheatingsim.heat_generators.gas_boiler import GasBoiler
 from districtheatingsim.heat_generators.biomass_boiler import BiomassBoiler
 from districtheatingsim.heat_generators.solar_thermal import SolarThermal
 from districtheatingsim.heat_generators.chp import CHP
+from districtheatingsim.heat_generators import TECH_CLASS_REGISTRY
+
 from districtheatingsim.gui.MixDesignTab.mix_design_dialogs import EconomicParametersDialog, NetInfrastructureDialog, WeightDialog
 from districtheatingsim.gui.MixDesignTab.calculate_mix_thread import CalculateMixThread
 from districtheatingsim.gui.MixDesignTab.technology_tab import TechnologyTab
@@ -343,6 +345,7 @@ class MixDesignTab(QWidget):
         self.results = result
         self.techTab.tech_objects = self.results["tech_classes"]
         self.techTab.updateTechList()
+        self.techTab.rebuildScene()
         self.costTab.updateInfrastructureTable()  # Ensure the infrastructure table is updated first
         self.costTab.updateTechDataTable(self.techTab.tech_objects)  # Then update the tech table
         self.costTab.updateSumLabel()  # Then update the sum label
@@ -361,16 +364,6 @@ class MixDesignTab(QWidget):
         """
         self.progressBar.setRange(0, 1)
         QMessageBox.critical(self, "Berechnungsfehler", str(error_message))
-
-    def show_sankey(self):
-        """
-        Shows additional results.
-        """
-        if self.tech_objects and self.results and self.parent_object.calcTab.Gesamtwärmebedarf_Gebäude_MWh:
-            dialog = SankeyDialog(results=self.results, heat_demand=self.parent_object.calcTab.Gesamtwärmebedarf_Gebäude_MWh, parent=self)
-            dialog.exec_()
-        else:
-            QMessageBox.information(self, "Keine Berechnungsergebnisse", "Es sind keine Berechnungsergebnisse verfügbar. Führen Sie zunächst eine Berechnung durch.")
 
     def optimize(self):
         """
@@ -491,6 +484,17 @@ class MixDesignTab(QWidget):
 
         return result
 
+    # Show Sankey Diagram
+    def show_sankey(self):
+        """
+        Shows additional results.
+        """
+        if self.tech_objects and self.results and self.parent_object.calcTab.Gesamtwärmebedarf_Gebäude_MWh:
+            dialog = SankeyDialog(results=self.results, heat_demand=self.parent_object.calcTab.Gesamtwärmebedarf_Gebäude_MWh, parent=self)
+            dialog.exec_()
+        else:
+            QMessageBox.information(self, "Keine Berechnungsergebnisse", "Es sind keine Berechnungsergebnisse verfügbar. Führen Sie zunächst eine Berechnung durch.")
+
     ### Save Calculation Results ###
     def save_heat_generation_results_to_csv(self, results):
         """
@@ -557,37 +561,18 @@ class MixDesignTab(QWidget):
                 
                 results_loaded = data_loaded.get('results', {})
                 tech_objects_loaded = data_loaded.get('tech_objects', [])
-                tech_classes = []
 
                 # Convert lists back to numpy arrays and dictionaries back to objects
                 for key, value in results_loaded.items():
                     if isinstance(value, list):
                         if key == "tech_classes":  # Convert dictionaries back to objects
+                            tech_classes = []
                             for v in value:
-                                if v['name'].startswith('BHKW'):
-                                    tech_classes.append(CHP.from_dict(v))
-                                    results_loaded[key] = tech_classes
-                                elif v['name'].startswith('Flusswasser'):
-                                    tech_classes.append(RiverHeatPump.from_dict(v))
-                                    results_loaded[key] = tech_classes
-                                elif v['name'].startswith('Abwärme'):
-                                    tech_classes.append(WasteHeatPump.from_dict(v))
-                                    results_loaded[key] = tech_classes
-                                elif v['name'].startswith('Geothermie'):
-                                    tech_classes.append(Geothermal.from_dict(v))
-                                    results_loaded[key] = tech_classes
-                                elif v['name'].startswith('Biomassekessel'):
-                                    tech_classes.append(BiomassBoiler.from_dict(v))
-                                    results_loaded[key] = tech_classes
-                                elif v['name'].startswith('Gaskessel'):
-                                    tech_classes.append(GasBoiler.from_dict(v))
-                                    results_loaded[key] = tech_classes
-                                elif v['name'].startswith('Solarthermie'):
-                                    tech_classes.append(SolarThermal.from_dict(v))
-                                    results_loaded[key] = tech_classes
-                                elif v['name'].startswith('AqvaHeat'):
-                                    tech_classes.append(AqvaHeat.from_dict(v))
-                                    results_loaded[key] = tech_classes
+                                for prefix, cls in TECH_CLASS_REGISTRY.items():
+                                    if v['name'].startswith(prefix):
+                                        tech_classes.append(cls.from_dict(v))
+                                        break
+                                results_loaded[key] = tech_classes
                         elif all(isinstance(i, list) for i in value):  # Check if the list is a list of lists
                             results_loaded[key] = [np.array(v) for v in value]
                         else:
@@ -596,28 +581,17 @@ class MixDesignTab(QWidget):
                 # Load the tech_objects
                 tech_objects = []
                 for obj in tech_objects_loaded:
-                    if obj['name'].startswith('BHKW'):
-                        tech_objects.append(CHP.from_dict(obj))
-                    elif obj['name'].startswith('Flusswasser'):
-                        tech_objects.append(RiverHeatPump.from_dict(obj))
-                    elif obj['name'].startswith('Abwärme'):
-                        tech_objects.append(WasteHeatPump.from_dict(obj))
-                    elif obj['name'].startswith('Geothermie'):
-                        tech_objects.append(Geothermal.from_dict(obj))
-                    elif obj['name'].startswith('Biomassekessel'):
-                        tech_objects.append(BiomassBoiler.from_dict(obj))
-                    elif obj['name'].startswith('Gaskessel'):
-                        tech_objects.append(GasBoiler.from_dict(obj))
-                    elif obj['name'].startswith('Solarthermie'):
-                        tech_objects.append(SolarThermal.from_dict(obj))
-                    elif obj['name'].startswith('AqvaHeat'):
-                        tech_objects.append(AqvaHeat.from_dict(obj))
+                    for prefix, cls in TECH_CLASS_REGISTRY.items():
+                        if obj['name'].startswith(prefix):
+                            tech_objects.append(cls.from_dict(obj))
+                            break
 
                 self.results = results_loaded
                 self.techTab.tech_objects = tech_objects
                 self.tech_objects = tech_objects
 
                 # Add tech objects back to the scene
+                self.techTab.schematic_scene.delete_all()  # Lösche alle Objekte aus der Szene
                 for tech in self.techTab.tech_objects:
                     self.techTab.addTechToScene(tech)
 
