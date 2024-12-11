@@ -8,6 +8,16 @@ Description: Contains the CollapsibleHeader class for creating collapsible secti
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QSizePolicy, QComboBox)
 from PyQt5.QtCore import QSize, Qt
 
+import json
+import numpy as np
+
+from districtheatingsim.heat_generators.heat_pumps import RiverHeatPump, WasteHeatPump, Geothermal, AqvaHeat
+from districtheatingsim.heat_generators.gas_boiler import GasBoiler
+from districtheatingsim.heat_generators.biomass_boiler import BiomassBoiler
+from districtheatingsim.heat_generators.solar_thermal import SolarThermal
+from districtheatingsim.heat_generators.chp import CHP
+from districtheatingsim.heat_generators.power_to_heat import PowerToHeat
+
 class CheckableComboBox(QComboBox):
     """
     A QComboBox subclass that allows multiple items to be checked.
@@ -147,3 +157,22 @@ class CollapsibleHeader(QWidget):
         else:
             # Only the height of the button when collapsed
             return QSize(self.toggle_button.width(), self.toggle_button.sizeHint().height())
+        
+class CustomJSONEncoder(json.JSONEncoder):
+    """
+    Custom JSON Encoder to handle encoding of specific objects and data types.
+    """
+    def default(self, obj):
+        try:
+            if isinstance(obj, np.ndarray):
+                return obj.tolist()
+            if isinstance(obj, np.integer):
+                return int(obj)
+            if isinstance(obj, np.floating):
+                return float(obj)
+            if isinstance(obj, (CHP, RiverHeatPump, WasteHeatPump, Geothermal, BiomassBoiler, GasBoiler, SolarThermal, AqvaHeat, PowerToHeat)):
+                return obj.to_dict()
+            return super().default(obj)
+        except TypeError as e:
+            print(f"Failed to encode {obj} of type {type(obj)}")
+            raise e

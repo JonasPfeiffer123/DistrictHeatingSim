@@ -13,41 +13,17 @@ import os
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMessageBox, QMenuBar, QScrollArea, QAction, QDialog)
 from PyQt5.QtCore import pyqtSignal, QEventLoop
 
-from districtheatingsim.heat_generators.heat_pumps import RiverHeatPump, WasteHeatPump, Geothermal, AqvaHeat
-from districtheatingsim.heat_generators.gas_boiler import GasBoiler
-from districtheatingsim.heat_generators.biomass_boiler import BiomassBoiler
-from districtheatingsim.heat_generators.solar_thermal import SolarThermal
-from districtheatingsim.heat_generators.chp import CHP
-from districtheatingsim.heat_generators import TECH_CLASS_REGISTRY
-
 from districtheatingsim.gui.MixDesignTab.mix_design_dialogs import EconomicParametersDialog, NetInfrastructureDialog, WeightDialog
 from districtheatingsim.gui.MixDesignTab.calculate_mix_thread import CalculateMixThread
 from districtheatingsim.gui.MixDesignTab.technology_tab import TechnologyTab
 from districtheatingsim.gui.MixDesignTab.cost_tab import CostTab
 from districtheatingsim.gui.MixDesignTab.results_tab import ResultsTab
 from districtheatingsim.gui.MixDesignTab.sensitivity_tab import SensitivityTab
-from districtheatingsim.utilities.test_reference_year import import_TRY
-
 from districtheatingsim.gui.MixDesignTab.sankey_dialog import SankeyDialog
+from districtheatingsim.gui.MixDesignTab.utilities import CustomJSONEncoder
+from districtheatingsim.heat_generators import TECH_CLASS_REGISTRY
 
-class CustomJSONEncoder(json.JSONEncoder):
-    """
-    Custom JSON Encoder to handle encoding of specific objects and data types.
-    """
-    def default(self, obj):
-        try:
-            if isinstance(obj, np.ndarray):
-                return obj.tolist()
-            if isinstance(obj, np.integer):
-                return int(obj)
-            if isinstance(obj, np.floating):
-                return float(obj)
-            if isinstance(obj, (CHP, RiverHeatPump, WasteHeatPump, Geothermal, BiomassBoiler, GasBoiler, SolarThermal)):
-                return obj.to_dict()
-            return super().default(obj)
-        except TypeError as e:
-            print(f"Failed to encode {obj} of type {type(obj)}")
-            raise e
+from districtheatingsim.utilities.test_reference_year import import_TRY
 
 class MixDesignTab(QWidget):
     """
