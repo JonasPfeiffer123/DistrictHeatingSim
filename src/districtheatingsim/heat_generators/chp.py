@@ -1,7 +1,7 @@
 """
 Filename: chp.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-10
+Date: 2024-12-11
 Description: Contains the Combined Heat and Power (CHP) class for simulating CHP systems and calculating performance and economic metrics.
 
 """
@@ -9,8 +9,9 @@ Description: Contains the Combined Heat and Power (CHP) class for simulating CHP
 import numpy as np
 
 from districtheatingsim.heat_generators.annuity import annuität
+from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator
 
-class CHP:
+class CHP(BaseHeatGenerator):
     """
     This class represents a Combined Heat and Power (CHP) system and provides methods to calculate various performance and economic metrics.
 
@@ -58,7 +59,7 @@ class CHP:
     def __init__(self, name, th_Leistung_BHKW, spez_Investitionskosten_GBHKW=1500, spez_Investitionskosten_HBHKW=1850, el_Wirkungsgrad=0.33, KWK_Wirkungsgrad=0.9, 
                  min_Teillast=0.7, speicher_aktiv=False, Speicher_Volumen_BHKW=20, T_vorlauf=90, T_ruecklauf=60, initial_fill=0.0, min_fill=0.2, max_fill=0.8, 
                  spez_Investitionskosten_Speicher=750, BHKW_an=True, opt_BHKW_min=0, opt_BHKW_max=1000, opt_BHKW_Speicher_min=0, opt_BHKW_Speicher_max=100):
-        self.name = name
+        super().__init__(name)
         self.th_Leistung_BHKW = th_Leistung_BHKW
         self.spez_Investitionskosten_GBHKW = spez_Investitionskosten_GBHKW
         self.spez_Investitionskosten_HBHKW = spez_Investitionskosten_HBHKW
@@ -181,7 +182,7 @@ class CHP:
         self.Betriebsstunden_gesamt_Speicher = np.sum(betrieb_mask) * duration
         self.Betriebsstunden_pro_Start_Speicher = self.Betriebsstunden_gesamt_Speicher / self.Anzahl_Starts_Speicher if self.Anzahl_Starts_Speicher > 0 else 0
     
-    def calculate_heat_generation_costs(self, Wärmemenge, Strommenge, Brennstoffbedarf, Brennstoffkosten, Strompreis, q, r, T, BEW, stundensatz):
+    def calculate_heat_generation_costs(self, Wärmemenge, Strommenge, Brennstoffbedarf, economic_parameters):
         """
         Calculates the economic metrics for the CHP system.
 
@@ -189,17 +190,21 @@ class CHP:
             Wärmemenge (float): Amount of heat generated.
             Strommenge (float): Amount of electricity generated.
             Brennstoffbedarf (float): Fuel consumption.
-            Brennstoffkosten (float): Fuel costs.
-            Strompreis (float): Electricity price.
-            q (float): Factor for capital recovery.
-            r (float): Factor for price escalation.
-            T (int): Time period in years.
-            BEW (float): BEW factor.
-            stundensatz (float): Hourly rate.
+            economic_parameters (dict): Dictionary containing economic parameters.
 
         Returns:
             float: Weighted average cost of energy for the CHP system.
         """
+
+        self.Strompreis = economic_parameters['electricity_price']
+        self.Gaspreis = economic_parameters['gas_price']
+        self.Holzpreis = economic_parameters['wood_price']
+        self.q = economic_parameters['capital_interest_rate']
+        self.r = economic_parameters['inflation_rate']
+        self.T = economic_parameters['time_period']
+        self.BEW = economic_parameters['subsidy_eligibility']
+        self.stundensatz = economic_parameters['hourly_rate']
+
         if Wärmemenge == 0:
             self.WGK_BHKW = 0
             return 0
@@ -207,16 +212,18 @@ class CHP:
         # (Erd-)Gas-BHKW: 100 kW: 150.000 € -> 1500 €/kW
         if self.name.startswith("BHKW"):
             spez_Investitionskosten_BHKW = self.spez_Investitionskosten_GBHKW  # €/kW
+            self.Brennstoffpreis = self.Gaspreis
         elif self.name.startswith("Holzgas-BHKW"):
             spez_Investitionskosten_BHKW = self.spez_Investitionskosten_HBHKW  # €/kW
+            self.Brennstoffpreis = self.Holzpreis
 
         self.Investitionskosten_BHKW = spez_Investitionskosten_BHKW * self.th_Leistung_BHKW
         self.Investitionskosten_Speicher = self.spez_Investitionskosten_Speicher * self.Speicher_Volumen_BHKW
         self.Investitionskosten = self.Investitionskosten_BHKW + self.Investitionskosten_Speicher
 
-        self.Stromeinnahmen = Strommenge * Strompreis
+        self.Stromeinnahmen = Strommenge * self.Strompreis
 
-        self.A_N = annuität(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, q, r, T, Brennstoffbedarf, Brennstoffkosten, self.Stromeinnahmen, stundensatz)
+        self.A_N = annuität(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T, Brennstoffbedarf, self.Brennstoffpreis, self.Stromeinnahmen, self.stundensatz)
         self.WGK_BHKW = self.A_N / Wärmemenge
 
     def calculate_environmental_impact(self, Wärmemenge, Strommenge, Brennstoffbedarf):
@@ -231,19 +238,12 @@ class CHP:
 
         self.primärenergie = Brennstoffbedarf * self.primärenergiefaktor
 
-    def calculate(self, Gaspreis, Holzpreis, Strompreis, q, r, T, BEW, stundensatz, duration, general_results):
+    def calculate(self, economic_parameters, duration, general_results, **kwargs):
         """
         Calculates the economic and environmental metrics for the CHP system.
 
         Args:
-            Gaspreis (float): Gas price.
-            Holzpreis (float): Wood price.
-            Strompreis (float): Electricity price.
-            q (float): Factor for capital recovery.
-            r (float): Factor for price escalation.
-            T (int): Time period in years.
-            BEW (float): BEW factor.
-            stundensatz (float): Hourly rate.
+            economic_parameters (dict): Dictionary containing economic parameters.
             duration (float): Time duration.
             general_results (dict): Dictionary containing general results.
 
@@ -271,12 +271,7 @@ class CHP:
             Betriebsstunden = self.Betriebsstunden_gesamt
             Betriebsstunden_pro_Start = self.Betriebsstunden_pro_Start
 
-        if self.name.startswith("BHKW"):
-            self.Brennstoffpreis = Gaspreis
-        elif self.name.startswith("Holzgas-BHKW"):
-            self.Brennstoffpreis = Holzpreis
-
-        self.calculate_heat_generation_costs(Wärmemenge, Strommenge, Brennstoffbedarf, self.Brennstoffpreis, Strompreis, q, r, T, BEW, stundensatz)
+        self.calculate_heat_generation_costs(Wärmemenge, Strommenge, Brennstoffbedarf, economic_parameters)
         self.calculate_environmental_impact(Wärmemenge, Strommenge, Brennstoffbedarf)
      
         results = {
@@ -299,40 +294,53 @@ class CHP:
 
         return results
     
-    def get_display_text(self):
-        if self.name.startswith("BHKW"):
-            return (f"{self.name}: th. Leistung: {self.th_Leistung_kW} kW, "
-                    f"spez. Investitionskosten Erdgas-BHKW: {self.spez_Investitionskosten_GBHKW} €/kW")
-        elif self.name.startswith("Holzgas-BHKW"):
-            return (f"{self.name}: th. Leistung: {self.th_Leistung_kW} kW, "
-                    f"spez. Investitionskosten Holzgas-BHKW: {self.spez_Investitionskosten_HBHKW} €/kW")
+    def set_parameters(self, variables, variables_order, idx):
+        try:
+            self.th_Leistung_BHKW = variables[variables_order.index(f"th_Leistung_BHKW_{idx}")]
+            if self.speicher_aktiv:
+                self.Speicher_Volumen_BHKW = variables[variables_order.index(f"Speicher_Volumen_BHKW_{idx}")]
+        except ValueError as e:
+            print(f"Fehler beim Setzen der Parameter für {self.name}: {e}")
 
-    def to_dict(self):
+    def add_optimization_parameters(self, idx):
         """
-        Converts the object attributes to a dictionary.
-
-        Returns:
-            dict: Dictionary containing object attributes.
-        """
-        # Erstelle eine Kopie des aktuellen Objekt-Dictionaries
-        data = self.__dict__.copy()
-        
-        # Entferne das scene_item und andere nicht notwendige Felder
-        data.pop('scene_item', None)
-        return data
-
-    @staticmethod
-    def from_dict(data):
-        """
-        Creates an object from a dictionary of attributes.
+        Fügt Optimierungsparameter für BHKW hinzu und gibt sie zurück.
 
         Args:
-            data (dict): Dictionary containing object attributes.
+            idx (int): Index der Technologie in der Liste.
 
         Returns:
-            CHP: A new CHP object with attributes from the dictionary.
+            tuple: Initiale Werte, Variablennamen und Grenzen der Variablen.
         """
-        obj = CHP.__new__(CHP)
-        obj.__dict__.update(data)
-        return obj
+        initial_values = [self.th_Leistung_BHKW]
+        variables_order = [f"th_Leistung_BHKW_{idx}"]
+        bounds = [(self.opt_BHKW_min, self.opt_BHKW_max)]
+
+        if self.speicher_aktiv:
+            initial_values.append(self.Speicher_Volumen_BHKW)
+            variables_order.append(f"Speicher_Volumen_BHKW_{idx}")
+            bounds.append((self.opt_BHKW_Speicher_min, self.opt_BHKW_Speicher_max))
+
+        return initial_values, variables_order, bounds
+    
+    def update_parameters(self, optimized_values, variables_order, idx):
+        """
+        Aktualisiert die Parameter für BHKW.
+
+        Args:
+            optimized_values (list): Liste der optimierten Werte.
+            variables_order (list): Liste der Variablennamen.
+            idx (int): Index der Technologie in der Liste.
+        """
+        self.th_Leistung_BHKW = optimized_values[variables_order.index(f"th_Leistung_BHKW_{idx}")]
+        if self.speicher_aktiv:
+            self.Speicher_Volumen_BHKW = optimized_values[variables_order.index(f"Speicher_Volumen_BHKW_{idx}")]
+    
+    def get_display_text(self):
+        if self.name.startswith("BHKW"):
+            return (f"{self.name}: th. Leistung: {self.th_Leistung_BHKW} kW, "
+                    f"spez. Investitionskosten Erdgas-BHKW: {self.spez_Investitionskosten_GBHKW} €/kW")
+        elif self.name.startswith("Holzgas-BHKW"):
+            return (f"{self.name}: th. Leistung: {self.th_Leistung_BHKW} kW, "
+                    f"spez. Investitionskosten Holzgas-BHKW: {self.spez_Investitionskosten_HBHKW} €/kW")
 

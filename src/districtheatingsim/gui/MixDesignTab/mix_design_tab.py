@@ -1,16 +1,23 @@
 """
 Filename: mix_design_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-20
+Date: 2024-12-11
 Description: Contains the MixdesignTab.
 """
 
 import json
 import pandas as pd
+import numpy as np
 import os
+
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMessageBox, QMenuBar, QScrollArea, QAction, QDialog)
 from PyQt5.QtCore import pyqtSignal, QEventLoop
-from districtheatingsim.heat_generators.heat_generation_mix import *
+
+from districtheatingsim.heat_generators.heat_pumps import RiverHeatPump, WasteHeatPump, Geothermal, AqvaHeat
+from districtheatingsim.heat_generators.gas_boiler import GasBoiler
+from districtheatingsim.heat_generators.biomass_boiler import BiomassBoiler
+from districtheatingsim.heat_generators.solar_thermal import SolarThermal
+from districtheatingsim.heat_generators.chp import CHP
 from districtheatingsim.gui.MixDesignTab.mix_design_dialogs import EconomicParametersDialog, NetInfrastructureDialog, WeightDialog
 from districtheatingsim.gui.MixDesignTab.calculate_mix_thread import CalculateMixThread
 from districtheatingsim.gui.MixDesignTab.technology_tab import TechnologyTab
@@ -241,14 +248,14 @@ class MixDesignTab(QWidget):
         Updates the economic parameters from the dialog.
         """
         values = self.economicParametersDialog.getValues()
-        self.gaspreis = values['Gaspreis in €/MWh']
-        self.strompreis = values['Strompreis in €/MWh']
-        self.holzpreis = values['Holzpreis in €/MWh']
+        self.gas_price = values['Gaspreis in €/MWh']
+        self.electricity_price = values['Strompreis in €/MWh']
+        self.wood_price = values['Holzpreis in €/MWh']
         self.BEW = values['BEW-Förderung']
-        self.kapitalzins = values['Kapitalzins in %']
-        self.preissteigerungsrate = values['Preissteigerungsrate in %']
-        self.betrachtungszeitraum = values['Betrachtungszeitraum in a']
-        self.stundensatz = values['Stundensatz in €/h']
+        self.capital_interest_rate = values['Kapitalzins in %']
+        self.inflation_rate = values['Preissteigerungsrate in %']
+        self.time_period = values['Betrachtungszeitraum in a']
+        self.hourly_rate = values['Stundensatz in €/h']
 
     ### Dialogs ###
     def openEconomicParametersDialog(self):
@@ -304,10 +311,19 @@ class MixDesignTab(QWidget):
             self.TRY_data = import_TRY(self.data_manager.get_try_filename())
             self.COP_data = np.genfromtxt(self.data_manager.get_cop_filename(), delimiter=';')
 
-            self.calculationThread = CalculateMixThread(
-                self.filename, self.load_scale_factor, self.TRY_data, self.COP_data, self.gaspreis, 
-                self.strompreis, self.holzpreis, self.BEW, self.techTab.tech_objects, optimize, 
-                self.kapitalzins, self.preissteigerungsrate, self.betrachtungszeitraum, self.stundensatz, weights)
+            self.economic_parameters = {
+                "gas_price": self.gas_price,
+                "electricity_price": self.electricity_price,
+                "wood_price": self.wood_price,
+                "capital_interest_rate": 1 + self.capital_interest_rate / 100,
+                "inflation_rate": 1 + self.inflation_rate / 100,
+                "time_period": self.time_period,
+                "hourly_rate": self.hourly_rate,
+                "subsidy_eligibility": self.BEW
+            }
+
+            self.calculationThread = CalculateMixThread(self.filename, self.load_scale_factor, self.TRY_data, self.COP_data, 
+                                                        self.economic_parameters, self.techTab.tech_objects, optimize, weights)
             
             self.calculationThread.calculation_done.connect(self.on_calculation_done)
             self.calculationThread.calculation_error.connect(self.on_calculation_error)
@@ -334,7 +350,6 @@ class MixDesignTab(QWidget):
         self.resultTab.showAdditionalResultsTable(self.results)
         self.resultTab.plotResults(self.results)
         self.save_heat_generation_results_to_csv(self.results)
-        self.showConfirmationDialog()
 
     def on_calculation_error(self, error_message):
         """
@@ -345,17 +360,6 @@ class MixDesignTab(QWidget):
         """
         self.progressBar.setRange(0, 1)
         QMessageBox.critical(self, "Berechnungsfehler", str(error_message))
-
-    def showConfirmationDialog(self):
-        """
-        Shows a confirmation dialog after a successful calculation.
-        """
-        msgBox = QMessageBox()
-        msgBox.setIcon(QMessageBox.Information)
-        msgBox.setText(f"Die Berechnung des Erzeugermixes war erfolgreich. Die Ergebnisse wurden unter {os.path.join(self.base_path, self.config_manager.get_relative_path('calculated_heat_generation_path'))} gespeichert.")
-        msgBox.setWindowTitle("Berechnung Erfolgreich")
-        msgBox.setStandardButtons(QMessageBox.Ok)
-        msgBox.exec_()
 
     def show_sankey(self):
         """
@@ -461,10 +465,19 @@ class MixDesignTab(QWidget):
             QMessageBox.critical(self, "Berechnungsfehler", str(error_message))
             calculation_done_event.quit()
 
-        self.calculationThread = CalculateMixThread(
-            self.filename, self.load_scale_factor, self.TRY_data, self.COP_data, gas_price, 
-            electricity_price, wood_price, self.BEW, self.techTab.tech_objects, False, 
-            self.kapitalzins, self.preissteigerungsrate, self.betrachtungszeitraum, self.stundensatz, weights)
+        self.economic_parameters = {
+                "gas_price": gas_price,
+                "electricity_price":electricity_price,
+                "wood_price": wood_price,
+                "capital_interest_rate": 1 + self.capital_interest_rate / 100,
+                "inflation_rate": 1 + self.inflation_rate / 100,
+                "time_period": self.time_period,
+                "hourly_rate": self.hourly_rate,
+                "subsidy_eligibility": self.BEW
+            }
+
+        self.calculationThread = CalculateMixThread(self.filename, self.load_scale_factor, self.TRY_data, self.COP_data, 
+                                                    self.economic_parameters, self.techTab.tech_objects, False,  weights)
         
         self.calculationThread.calculation_done.connect(calculation_done)
         self.calculationThread.calculation_error.connect(calculation_error)
@@ -503,8 +516,6 @@ class MixDesignTab(QWidget):
         # Save the DataFrame as a CSV file
         csv_filename = os.path.join(self.base_path, self.config_manager.get_relative_path('calculated_heat_generation_path'))
         df.to_csv(csv_filename, index=False, sep=";")
-
-        QMessageBox.information(self, "Erfolgreich gespeichert", f"Die Ergebnisse wurden erfolgreich unter {csv_filename} gespeichert.")
 
     def save_results_JSON(self):
         """

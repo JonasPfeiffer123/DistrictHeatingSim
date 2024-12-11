@@ -17,7 +17,13 @@ import pandas as pd
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
-from districtheatingsim.heat_generators.heat_generation_mix import *
+from districtheatingsim.heat_generators.biomass_boiler import BiomassBoiler
+from districtheatingsim.heat_generators.chp import CHP
+from districtheatingsim.heat_generators.gas_boiler import GasBoiler
+from districtheatingsim.heat_generators.heat_pumps import AqvaHeat, Geothermal, RiverHeatPump, WasteHeatPump
+from districtheatingsim.heat_generators.power_to_heat import PowerToHeat
+from districtheatingsim.heat_generators.solar_thermal import SolarThermal
+
 from districtheatingsim.gui.MixDesignTab.heat_generator_dialogs import TechInputDialog
 
 from districtheatingsim.gui.MixDesignTab.generator_schematic import SchematicScene, CustomGraphicsView
@@ -384,7 +390,7 @@ class TechnologyTab(QWidget):
             return tech.get_display_text()
         
         except Exception as e:
-            return f"Unbekannte Technologieklasse: {type(tech).__name__}"
+            return f"Error: {e}"
 
     def createMainLayout(self):
         """
