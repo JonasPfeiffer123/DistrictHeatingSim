@@ -86,9 +86,10 @@ class EnergySystem:
             'tech_classes': []
         }
 
-        for idx, tech in enumerate(self.technologies.copy()):
+        for tech in self.technologies.copy():
             # Set variables for optimization
             if len(variables) > 0:
+                idx = tech.name.split("_")[-1]
                 tech.set_parameters(variables, variables_order, idx)
 
             # Perform technology-specific calculation
@@ -101,7 +102,8 @@ class EnergySystem:
                                         COP_data=self.COP_data,
                                         time_steps=self.time_steps)
 
-            if tech_results['Wärmemenge'] > 0:
+            # Check if heat is generated, 0 values and very small values are not allowed
+            if tech_results['Wärmemenge'] > 1e-6:
                 general_results['Wärmeleistung_L'].append(tech_results['Wärmeleistung_L'])
                 general_results['Wärmemengen'].append(tech_results['Wärmemenge'])
                 general_results['Anteile'].append(tech_results['Wärmemenge']/general_results['Jahreswärmebedarf'])
@@ -129,8 +131,14 @@ class EnergySystem:
                     general_results['Restlast_L'] -= tech_results['Wärmeleistung_Speicher_L']
 
             else:
+                # Remove technology if no heat is generated
                 self.technologies.remove(tech)
                 print(f"{tech.name} wurde durch die Optimierung entfernt.")
+
+                # Remove variables from mapping
+                #variables_mapping = {var: tech.name for tech in self.technologies for var in tech.add_optimization_parameters(0)[1]}
+                #variables_order = list(variables_mapping.keys())
+                #print(f"Updated variables_order: {variables_order}")
 
         for tech in self.technologies:
             general_results['techs'].append(tech.name)
@@ -174,70 +182,101 @@ class EnergySystem:
         return self.optimized_energy_system
 
 class EnergySystemOptimizer:
-    def __init__(self, initial_energy_system, weights):
+    def __init__(self, initial_energy_system, weights, num_restarts=5):
         """
-        Initialize the optimizer for the energy system.
+        Initialize the optimizer for the energy system with support for multiple random restarts.
 
         Args:
             initial_energy_system (object): Initial energy system object.
             weights (dict): Weights for optimization criteria.
+            num_restarts (int): Number of random restarts for optimization. Default is 5.
         """
-        self.initial_energy_system = initial_energy_system  
+        self.initial_energy_system = initial_energy_system
         self.weights = weights
+        self.num_restarts = num_restarts
 
     def optimize(self):
         """
-        Perform optimization of the energy system.
+        Perform optimization of the energy system with multiple random restarts.
 
         Returns:
             object: Optimized energy system object.
         """
-        # copy the energy system
-        self.energy_system_copy = self.initial_energy_system.copy()
+        best_solution = None
+        best_objective_value = float('inf')
 
-        initial_values = []
-        variables_order = []
-        bounds = []
+        for restart in range(self.num_restarts):
+            print(f"Starting optimization run {restart + 1}/{self.num_restarts}")
 
-        for idx, tech in enumerate(self.energy_system_copy.technologies):
-            tech_values, tech_variables, tech_bounds = tech.add_optimization_parameters(idx)
+            # Copy the energy system for this run
+            self.energy_system_copy = self.initial_energy_system.copy()
+
+            initial_values = []
+            bounds = []
+            variables_mapping = {}  # Mapping für Variablen
+
+            for tech in self.energy_system_copy.technologies:
+                # idx is index in the name of the technology
+                idx = tech.name.split("_")[-1]
+                tech_values, tech_variables, tech_bounds = tech.add_optimization_parameters(idx)
+                
+                # Skip technologies without optimization parameters
+                if not tech_values and not tech_variables and not tech_bounds:
+                    continue
+
+                initial_values.extend(tech_values)
+                bounds.extend(tech_bounds)
+
+                # Map variables to technology name and parameter
+                for var in tech_variables:
+                    variables_mapping[var] = tech.name
             
-            # Überspringe Technologien ohne Optimierungsparameter
-            if not tech_values and not tech_variables and not tech_bounds:
-                continue
+            variables_order = list(variables_mapping.keys())
+            print(f"Variables mapping: {variables_mapping}")
+            print(f"Optimization variables: {variables_order}")
 
-            initial_values.extend(tech_values)
-            variables_order.extend(tech_variables)
-            bounds.extend(tech_bounds)
+            if not initial_values:
+                print("Keine Optimierungsparameter vorhanden. Optimierung wird übersprungen.")
+                return self.energy_system_copy.technologies
 
-        if not initial_values:
-            print("Keine Optimierungsparameter vorhanden. Optimierung wird übersprungen.")
-            return self.energy_system_copy.technologies
+            # Generate random initial values within the bounds
+            random_initial_values = [
+                np.random.uniform(low=bound[0], high=bound[1]) if bound[0] < bound[1] else bound[0]
+                for bound in bounds
+            ]
 
-        def objective(variables):
-            # Berechne den Mix für die Kopie
-            self.energy_system_copy.calculate_mix(variables, variables_order)
-            results = self.energy_system_copy.results
-            
-            # Berechne die gewichtete Summe
-            weighted_sum = (
-                self.weights['WGK_Gesamt'] * results['WGK_Gesamt'] +
-                self.weights['specific_emissions_Gesamt'] * results['specific_emissions_Gesamt'] +
-                self.weights['primärenergiefaktor_Gesamt'] * results['primärenergiefaktor_Gesamt']
-            )
-            return weighted_sum
+            def objective(variables):
+                # Calculate the mix for the copied system
+                self.energy_system_copy.calculate_mix(variables, variables_order)
+                results = self.energy_system_copy.results
+                
+                # Calculate the weighted sum
+                weighted_sum = (
+                    self.weights['WGK_Gesamt'] * results['WGK_Gesamt'] +
+                    self.weights['specific_emissions_Gesamt'] * results['specific_emissions_Gesamt'] +
+                    self.weights['primärenergiefaktor_Gesamt'] * results['primärenergiefaktor_Gesamt']
+                )
+                return weighted_sum
 
-        result = minimize(objective, initial_values, method='SLSQP', bounds=bounds)
+            # Perform the optimization
+            result = minimize(objective, random_initial_values, method='SLSQP', bounds=bounds)
 
-        if result.success:
-            for idx, tech in enumerate(self.energy_system_copy.technologies):
-                tech.update_parameters(result.x, variables_order, idx)
+            # Check if the current run has a better solution
+            if result.success and result.fun < best_objective_value:
+                best_objective_value = result.fun
+                best_solution = result
+                best_system_copy = self.energy_system_copy.copy()
+
+        # If a valid solution was found, apply the best solution
+        if best_solution:
+            for tech in best_system_copy.technologies:
+                idx = tech.name.split("_")[-1]
+                tech.update_parameters(best_solution.x, variables_order, idx)
             print("Optimierung erfolgreich")
-            return self.energy_system_copy
+            return best_system_copy
         else:
-            print("Optimierung nicht erfolgreich:", result.message)
+            print("Keine gültige Lösung gefunden.")
             return self.initial_energy_system
-
 
 """
 class EnergySystemOptimizer:

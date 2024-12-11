@@ -322,19 +322,6 @@ class CHP(BaseHeatGenerator):
 
         return initial_values, variables_order, bounds
     
-    def update_parameters(self, optimized_values, variables_order, idx):
-        """
-        Aktualisiert die Parameter für BHKW.
-
-        Args:
-            optimized_values (list): Liste der optimierten Werte.
-            variables_order (list): Liste der Variablennamen.
-            idx (int): Index der Technologie in der Liste.
-        """
-        self.th_Leistung_BHKW = optimized_values[variables_order.index(f"th_Leistung_BHKW_{idx}")]
-        if self.speicher_aktiv:
-            self.Speicher_Volumen_BHKW = optimized_values[variables_order.index(f"Speicher_Volumen_BHKW_{idx}")]
-    
     def get_display_text(self):
         if self.name.startswith("BHKW"):
             return (f"{self.name}: th. Leistung: {self.th_Leistung_BHKW:.1f} kW, "
