@@ -308,17 +308,6 @@ class RiverHeatPump(HeatPump):
         bounds = [(self.opt_power_min, self.opt_power_max)]
         
         return initial_values, variables_order, bounds
-    
-    def update_parameters(self, optimized_values, variables_order, idx):
-        """
-        Aktualisiert die Parameter für Flusswasser-Wärmepumpen.
-
-        Args:
-            optimized_values (list): Liste der optimierten Werte.
-            variables_order (list): Liste der Variablennamen.
-            idx (int): Index der Technologie in der Liste.
-        """
-        self.Wärmeleistung_FW_WP = optimized_values[variables_order.index(f"Wärmeleistung_FW_WP_{idx}")]
 
     def get_display_text(self):
         return (f"{self.name}: Wärmeleistung FW WP: {self.Wärmeleistung_FW_WP:.1f} kW, "
@@ -481,17 +470,6 @@ class WasteHeatPump(HeatPump):
 
         return initial_values, variables_order, bounds
     
-    def update_parameters(self, optimized_values, variables_order, idx):
-        """
-        Aktualisiert die Parameter für Abwärme.
-
-        Args:
-            optimized_values (list): Liste der optimierten Werte.
-            variables_order (list): Liste der Variablennamen.
-            idx (int): Index der Technologie in der Liste.
-        """
-        self.Kühlleistung_Abwärme = optimized_values[variables_order.index(f"Kühlleistung_Abwärme_{idx}")]
-    
     def get_display_text(self):
         return (f"{self.name}: Kühlleistung Abwärme: {self.Kühlleistung_Abwärme} kW, "
                 f"Temperatur Abwärme: {self.Temperatur_Abwärme} °C, spez. Investitionskosten Abwärme: "
@@ -614,6 +592,7 @@ class Geothermal(HeatPump):
                 B_max = B
 
         self.max_Wärmeleistung = max(self.Wärmeleistung_kW)
+        # To do: Fix RuntimeWarning: invalid value encountered in scalar divide 
         JAZ = self.Wärmemenge / self.Strombedarf
         self.Wärmemenge, self.Strombedarf = self.Wärmemenge * duration, self.Strombedarf * duration
     
@@ -644,6 +623,7 @@ class Geothermal(HeatPump):
         """
         self.calculate_operation(general_results['Restlast_L'], VLT_L, COP_data, duration)
 
+        # To do: Fix RuntimeWarning: divide by zero encountered in scalar divide
         self.spez_Investitionskosten_Erdsonden = self.Investitionskosten_Sonden / self.max_Wärmeleistung
         WGK = self.calculate_heat_generation_costs(self.max_Wärmeleistung, self.Wärmemenge, self.Strombedarf, self.spez_Investitionskosten_Erdsonden, economic_parameters)
 
@@ -684,18 +664,6 @@ class Geothermal(HeatPump):
         bounds = [(self.min_area_geothermal, self.max_area_geothermal), (self.min_depth_geothermal, self.max_depth_geothermal)]
         
         return initial_values, variables_order, bounds
-    
-    def update_parameters(self, optimized_values, variables_order, idx):
-        """
-        Aktualisiert die Parameter für Geothermie.
-
-        Args:
-            optimized_values (list): Liste der optimierten Werte.
-            variables_order (list): Liste der Variablennamen.
-            idx (int): Index der Technologie in der Liste.
-        """
-        self.Fläche = optimized_values[variables_order.index(f"Fläche_{idx}")]
-        self.Bohrtiefe = optimized_values[variables_order.index(f"Bohrtiefe_{idx}")]
 
     def get_display_text(self):
         return (f"{self.name}: Fläche Sondenfeld: {self.Fläche} m², Bohrtiefe: {self.Bohrtiefe} m, "
@@ -850,9 +818,6 @@ class AqvaHeat(HeatPump):
             tuple: Leere Listen für initial_values, variables_order und bounds.
         """
         return [], [], []
-
-    def update_parameters(self, optimized_values, variables_order, idx):
-        pass
 
     def get_display_text(self):
         return f"Name: {self.name}, Nennleistung: {self.nominal_power} kW, Temperaturdifferenz: {self.temperature_difference} K"

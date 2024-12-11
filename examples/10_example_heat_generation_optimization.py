@@ -148,8 +148,6 @@ def test_berechnung_erzeugermix(optimize=False, plot=True):
         plotStackPlot(figure1, general_results['time_steps'], general_results['Wärmeleistung_L'], general_results['techs'], general_results['Last_L'])
         plotPieChart(figure2, general_results['Anteile'], general_results['techs'])
 
-        plt.show()
-
 def plotStackPlot(figure, t, data, labels, Last):
     ax = figure.add_subplot(111)
     ax.stackplot(t, data, labels=labels)
@@ -181,3 +179,5 @@ def plotPieChart(figure, Anteile, labels):
 if __name__ == "__main__":
     test_berechnung_erzeugermix(optimize=False, plot=True)
     test_berechnung_erzeugermix(optimize=True, plot=True)
+
+    plt.show()

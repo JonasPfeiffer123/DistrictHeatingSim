@@ -150,9 +150,6 @@ class PowerToHeat(BaseHeatGenerator):
         """
         return [], [], []
 
-    def update_parameters(self, optimized_values, variables_order, idx):
-        pass
-
     def get_display_text(self):
         return f"{self.name}: spez. Investitionskosten: {self.spez_Investitionskosten:.1f} €/kW"
     

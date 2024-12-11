@@ -284,19 +284,6 @@ class BiomassBoiler(BaseHeatGenerator):
             bounds.append((self.opt_Speicher_min, self.opt_Speicher_max))
 
         return initial_values, variables_order, bounds
-    
-    def update_parameters(self, optimized_values, variables_order, idx):
-        """
-        Aktualisiert die Parameter für Biomassekessel.
-
-        Args:
-            optimized_values (list): Liste der optimierten Werte.
-            variables_order (list): Liste der Variablennamen.
-            idx (int): Index der Technologie in der Liste.
-        """
-        self.P_BMK = optimized_values[variables_order.index(f"P_BMK_{idx}")]
-        if self.speicher_aktiv:
-            self.Speicher_Volumen = optimized_values[variables_order.index(f"Speicher_Volumen_{idx}")]
 
     def get_display_text(self):
         return (f"{self.name}: th. Leistung: {self.P_BMK:.1f}, Größe Holzlager: {self.Größe_Holzlager:.1f} t, "

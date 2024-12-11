@@ -117,15 +117,10 @@ class BaseHeatGenerator:
         raise NotImplementedError("add_optimization_parameters must be implemented in the derived class.")
     
     def update_parameters(self, optimized_values, variables_order, idx):
-        """
-        Aktualisiert die Parameter der Technologie basierend auf den optimierten Werten.
-
-        Args:
-            optimized_values (list): Liste der optimierten Werte.
-            variables_order (list): Liste der Variablennamen.
-            idx (int): Index der Technologie in der Liste.
-        """
-        raise NotImplementedError("Die Methode 'update_parameters' muss in der abgeleiteten Klasse implementiert werden.")
+        for var, value in zip(variables_order, optimized_values):
+            if var.startswith(f"{self.name}_"):
+                param_name = var.split("_")[0]
+                setattr(self, param_name, value)
     
     def to_dict(self):
         """

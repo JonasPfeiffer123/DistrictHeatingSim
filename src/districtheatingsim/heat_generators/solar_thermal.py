@@ -242,23 +242,12 @@ class SolarThermal(BaseHeatGenerator):
         Returns:
             tuple: Initiale Werte, Variablennamen und Grenzen der Variablen.
         """
+
         initial_values = [self.bruttofläche_STA, self.vs]
         variables_order = [f"bruttofläche_STA_{idx}", f"vs_{idx}"]
         bounds = [(self.opt_area_min, self.opt_area_max), (self.opt_volume_min, self.opt_volume_max)]
         
         return initial_values, variables_order, bounds
-    
-    def update_parameters(self, optimized_values, variables_order, idx):
-        """
-        Aktualisiert die Parameter für Solarthermie.
-
-        Args:
-            optimized_values (list): Liste der optimierten Werte.
-            variables_order (list): Liste der Variablennamen.
-            idx (int): Index der Technologie in der Liste.
-        """
-        self.bruttofläche_STA = optimized_values[variables_order.index(f"bruttofläche_STA_{idx}")]
-        self.vs = optimized_values[variables_order.index(f"vs_{idx}")]
 
     def get_display_text(self):
         return (f"{self.name}: Bruttokollektorfläche: {self.bruttofläche_STA:.1f} m², "
