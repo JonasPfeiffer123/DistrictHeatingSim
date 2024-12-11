@@ -135,11 +135,6 @@ class EnergySystem:
                 self.technologies.remove(tech)
                 print(f"{tech.name} wurde durch die Optimierung entfernt.")
 
-                # Remove variables from mapping
-                #variables_mapping = {var: tech.name for tech in self.technologies for var in tech.add_optimization_parameters(0)[1]}
-                #variables_order = list(variables_mapping.keys())
-                #print(f"Updated variables_order: {variables_order}")
-
         for tech in self.technologies:
             general_results['techs'].append(tech.name)
             general_results['tech_classes'].append(tech)

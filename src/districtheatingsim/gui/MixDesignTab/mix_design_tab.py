@@ -320,8 +320,8 @@ class MixDesignTab(QWidget):
         self.progressBar.setRange(0, 1)
         self.results = result
         self.techTab.tech_objects = self.results["tech_classes"]
-        self.techTab.updateTechList()
         self.techTab.rebuildScene()
+        self.techTab.updateTechList()
         self.costTab.updateInfrastructureTable()  # Ensure the infrastructure table is updated first
         self.costTab.updateTechDataTable(self.techTab.tech_objects)  # Then update the tech table
         self.costTab.updateSumLabel()  # Then update the sum label

@@ -298,7 +298,11 @@ class TechnologyTab(QWidget):
 
             # Aktualisiere die Namen und Zähler basierend auf der Reihenfolge in der Liste
             tech_type = tech.name.split('_')[0]
+            # every other global counter should be 0
+            for key in self.global_counters:
+                self.global_counters[key] = 0
             self.global_counters[tech_type] = sum(1 for t in self.tech_objects if t.name.startswith(tech_type))
+
 
         # Aktualisiere die Liste der Technologien in der UI
         self.updateTechList()
