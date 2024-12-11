@@ -1,3 +1,9 @@
+"""
+Filename: __init__.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-12-11
+Description: This file is used to import all heat generators and to provide a registry for the heat generators.
+"""
 from .chp import CHP
 from .heat_pumps import RiverHeatPump, WasteHeatPump, Geothermal, AqvaHeat
 from .biomass_boiler import BiomassBoiler
@@ -7,6 +13,7 @@ from .solar_thermal import SolarThermal
 
 TECH_CLASS_REGISTRY = {
     'BHKW': CHP,
+    "Holzgas-BHKW": CHP,
     'Flusswasser': RiverHeatPump,
     'Abwärme': WasteHeatPump,
     'Geothermie': Geothermal,
@@ -14,5 +21,5 @@ TECH_CLASS_REGISTRY = {
     'Gaskessel': GasBoiler,
     'Solarthermie': SolarThermal,
     'AqvaHeat': AqvaHeat,
-    'PowerToHeat': PowerToHeat
+    'Power-to-Heat': PowerToHeat
 }

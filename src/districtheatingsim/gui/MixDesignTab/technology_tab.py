@@ -1,7 +1,7 @@
 """
 Filename: technology_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-19
+Date: 2024-12-11
 Description: Contains the TechnologyTab.
 """
 
@@ -17,15 +17,8 @@ import pandas as pd
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
-from districtheatingsim.heat_generators.biomass_boiler import BiomassBoiler
-from districtheatingsim.heat_generators.chp import CHP
-from districtheatingsim.heat_generators.gas_boiler import GasBoiler
-from districtheatingsim.heat_generators.heat_pumps import AqvaHeat, Geothermal, RiverHeatPump, WasteHeatPump
-from districtheatingsim.heat_generators.power_to_heat import PowerToHeat
-from districtheatingsim.heat_generators.solar_thermal import SolarThermal
-
+from districtheatingsim.heat_generators import TECH_CLASS_REGISTRY
 from districtheatingsim.gui.MixDesignTab.heat_generator_dialogs import TechInputDialog
-
 from districtheatingsim.gui.MixDesignTab.generator_schematic import SchematicScene, CustomGraphicsView
 
 class CustomListWidget(QListWidget):
@@ -218,26 +211,12 @@ class TechnologyTab(QWidget):
         Returns:
             Technology: The created technology object.
         """
-        tech_classes = {
-            "Solarthermie": SolarThermal,
-            "BHKW": CHP,
-            "Holzgas-BHKW": CHP,
-            "Geothermie": Geothermal,
-            "Abwärme": WasteHeatPump,
-            "Flusswasser": RiverHeatPump,
-            "AqvaHeat": AqvaHeat,
-            "Biomassekessel": BiomassBoiler,
-            "Gaskessel": GasBoiler,
-            "Power-to-Heat": PowerToHeat
-        }
+        tech_classes = TECH_CLASS_REGISTRY
 
         base_tech_type = tech_type.split('_')[0]
         tech_class = tech_classes.get(base_tech_type)
         if not tech_class:
             raise ValueError(f"Unbekannter Technologietyp: {tech_type}")
-
-        #tech_count = sum(1 for tech in self.tech_objects if tech.name.startswith(base_tech_type))
-        #unique_name = f"{base_tech_type}_{tech_count + 1}"
 
         # Erhöhe den globalen Zähler für diese Technologieklasse
         self.global_counters[base_tech_type] += 1
