@@ -185,7 +185,7 @@ class BiomassBoiler(BaseHeatGenerator):
         self.Investitionskosten = self.Investitionskosten_Kessel + self.Investitionskosten_Holzlager + self.Investitionskosten_Speicher
 
         self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T, 
-                                Brennstoffbedarf, self.Holzpreis, stundensatz=self.stundensatz)
+                                Brennstoffbedarf, self.Holzpreis, hourly_rate=self.stundensatz)
         
         self.WGK_BMK = self.A_N / Wärmemenge
 

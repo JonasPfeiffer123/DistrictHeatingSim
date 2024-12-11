@@ -133,7 +133,7 @@ class HeatPump(BaseHeatGenerator):
         spezifische_Investitionskosten_WP = self.spezifische_Investitionskosten_WP
         Investitionskosten_WP = spezifische_Investitionskosten_WP * round(Wärmeleistung, 0)
         E1_WP = self.annuity(Investitionskosten_WP, self.Nutzungsdauer_WP, self.f_Inst_WP, self.f_W_Insp_WP, self.Bedienaufwand_WP, self.q, self.r, self.T,
-                            Strombedarf, self.Strompreis, stundensatz=self.stundensatz)
+                            Strombedarf, self.Strompreis, hourly_rate=self.stundensatz)
         WGK_WP_a = E1_WP / Wärmemenge
 
         # Extrahieren des Basisnamens aus dem Namen des Erzeugers
@@ -145,7 +145,7 @@ class HeatPump(BaseHeatGenerator):
         
         Investitionskosten_WQ = spez_Investitionskosten_WQ * Wärmeleistung
         E1_WQ = self.annuity(Investitionskosten_WQ, self.Nutzungsdauer_WQ_dict[base_name], self.f_Inst_WQ, self.f_W_Insp_WQ,
-                            self.Bedienaufwand_WQ, self.q, self.r, self.T, stundensatz=self.stundensatz)
+                            self.Bedienaufwand_WQ, self.q, self.r, self.T, hourly_rate=self.stundensatz)
         WGK_WQ_a = E1_WQ / Wärmemenge
 
         WGK_Gesamt_a = WGK_WP_a + WGK_WQ_a

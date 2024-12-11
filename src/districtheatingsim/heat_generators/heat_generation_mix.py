@@ -10,6 +10,7 @@ import numpy as np
 import copy
 
 from scipy.optimize import minimize
+from pyomo.environ import ConcreteModel, Var, Objective, ConstraintList, SolverFactory, NonNegativeIntegers
 
 class EnergySystem:
     def __init__(self, time_steps, load_profile, VLT_L, RLT_L, TRY_data, COP_data, economic_parameters):
@@ -236,3 +237,93 @@ class EnergySystemOptimizer:
         else:
             print("Optimierung nicht erfolgreich:", result.message)
             return self.initial_energy_system
+
+
+"""
+class EnergySystemOptimizer:
+    def __init__(self, initial_energy_system, weights):
+        
+        Initialize the optimizer for the energy system using pyomo.
+
+        Args:
+            initial_energy_system (object): Initial energy system object.
+            weights (dict): Weights for optimization criteria.
+        
+        self.initial_energy_system = initial_energy_system
+        self.weights = weights
+
+    def optimize(self):
+        
+        Perform optimization of the energy system with integer constraints using pyomo.
+
+        Returns:
+            object: Optimized energy system object.
+        
+        # Copy the energy system
+        self.energy_system_copy = self.initial_energy_system.copy()
+
+        # Initialize the pyomo model
+        model = ConcreteModel()
+
+        # Collect optimization parameters
+        tech_indices = []
+        tech_bounds = []
+        tech_variables = []
+        initial_values = []
+
+        for idx, tech in enumerate(self.energy_system_copy.technologies):
+            tech_values, tech_vars, tech_bnds = tech.add_optimization_parameters(idx)
+            if not tech_values and not tech_vars and not tech_bnds:
+                continue
+
+            for var, bound in zip(tech_vars, tech_bnds):
+                tech_indices.append(idx)
+                tech_variables.append(var)
+                tech_bounds.append(bound)
+            initial_values.extend(tech_values)
+
+        # Define pyomo variables (as integers)
+        model.vars = Var(
+            range(len(initial_values)), 
+            domain=NonNegativeIntegers, 
+            bounds=lambda model, i: tech_bounds[i]
+        )
+
+        # Define the objective function
+        def objective_rule(model):
+            # Extract variable values
+            variables = [model.vars[i]() for i in range(len(initial_values))]
+            # Call the calculate_mix function with numeric values
+            self.energy_system_copy.calculate_mix(variables, tech_variables)
+            results = self.energy_system_copy.results
+
+            # Weighted sum
+            weighted_sum = (
+                self.weights['WGK_Gesamt'] * results['WGK_Gesamt'] +
+                self.weights['specific_emissions_Gesamt'] * results['specific_emissions_Gesamt'] +
+                self.weights['primärenergiefaktor_Gesamt'] * results['primärenergiefaktor_Gesamt']
+            )
+            return weighted_sum
+
+        model.objective = Objective(rule=objective_rule, sense=minimize)
+
+        # Define constraints (if necessary)
+        model.constraints = ConstraintList()
+        # Add your constraints here if you have any
+
+        # Solve the model
+        solver = SolverFactory('glpk')  # Or any solver supporting MILP
+        result = solver.solve(model, tee=True)
+
+        # Check if the solution is optimal
+        if result.solver.termination_condition == "optimal":
+            # Map optimized values back to the energy system
+            optimized_values = [model.vars[i]() for i in range(len(initial_values))]
+            for idx, tech in enumerate(self.energy_system_copy.technologies):
+                tech.update_parameters(optimized_values, tech_variables, idx)
+            print("Optimierung erfolgreich")
+            return self.energy_system_copy
+        else:
+            print("Optimierung nicht erfolgreich:", result.solver.termination_condition)
+            return self.initial_energy_system
+"""

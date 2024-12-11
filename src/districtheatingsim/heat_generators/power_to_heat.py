@@ -88,7 +88,7 @@ class PowerToHeat(BaseHeatGenerator):
         self.Investitionskosten = self.spez_Investitionskosten * self.P_max
 
         self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T,
-                            self.Strombedarf, self.Strompreis, stundensatz=self.stundensatz)
+                            self.Strombedarf, self.Strompreis, hourly_rate=self.stundensatz)
         self.WGK_PTH = self.A_N / self.Wärmemenge_PowerToHeat
 
     def calculate_environmental_impact(self):
