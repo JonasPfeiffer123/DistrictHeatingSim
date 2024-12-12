@@ -9,8 +9,8 @@ Description:
 import numpy as np
 import copy
 
-from scipy.optimize import minimize
-from pyomo.environ import ConcreteModel, Var, Objective, ConstraintList, SolverFactory, NonNegativeIntegers
+from scipy.optimize import minimize as scipy_minimize
+from pyomo.environ import ConcreteModel, Var, Objective, ConstraintList, SolverFactory, NonNegativeReals, Integers, Reals, minimize as pyomo_minimize
 
 class EnergySystem:
     def __init__(self, time_steps, load_profile, VLT_L, RLT_L, TRY_data, COP_data, economic_parameters):
@@ -133,7 +133,7 @@ class EnergySystem:
             else:
                 # Remove technology if no heat is generated
                 self.technologies.remove(tech)
-                print(f"{tech.name} wurde durch die Optimierung entfernt.")
+                print(f"{tech.name} hat keinen Beitrag zur Wärmeerzeugung.")
 
         for tech in self.technologies:
             general_results['techs'].append(tech.name)
@@ -173,6 +173,21 @@ class EnergySystem:
             list: Optimized list of technology objects with updated parameters.
         """
         optimizer = EnergySystemOptimizer(self, weights)
+        self.optimized_energy_system = optimizer.optimize()
+        
+        return self.optimized_energy_system
+    
+    def optimize_milp(self, weights):
+        """
+        Optimize the energy generation mix using a MILP solver.
+
+        Args:
+            weights (dict): Weights for optimization criteria.
+
+        Returns:
+            list: Optimized list of technology objects with updated parameters.
+        """
+        optimizer = EnergySystemMILPOptimizer(self, weights)
         self.optimized_energy_system = optimizer.optimize()
         return self.optimized_energy_system
 
@@ -227,8 +242,6 @@ class EnergySystemOptimizer:
                     variables_mapping[var] = tech.name
             
             variables_order = list(variables_mapping.keys())
-            print(f"Variables mapping: {variables_mapping}")
-            print(f"Optimization variables: {variables_order}")
 
             if not initial_values:
                 print("Keine Optimierungsparameter vorhanden. Optimierung wird übersprungen.")
@@ -240,11 +253,18 @@ class EnergySystemOptimizer:
                 for bound in bounds
             ]
 
+            print(f"Initial values: {random_initial_values}")
+
             def objective(variables):
-                # Calculate the mix for the copied system
-                self.energy_system_copy.calculate_mix(variables, variables_order)
-                results = self.energy_system_copy.results
-                
+                # Erstelle bei jedem Aufruf eine neue Kopie
+                fresh_energy_system = self.energy_system_copy.copy()
+
+                # Berechnung auf Basis der frischen Kopie
+                fresh_energy_system.calculate_mix(variables, variables_order)
+                results = fresh_energy_system.results
+
+                print(f"Variables: {variables}, Variables Order: {variables_order}, Results['WGK_Gesamt']: {results['WGK_Gesamt']}")
+
                 # Calculate the weighted sum
                 weighted_sum = (
                     self.weights['WGK_Gesamt'] * results['WGK_Gesamt'] +
@@ -254,110 +274,156 @@ class EnergySystemOptimizer:
                 return weighted_sum
 
             # Perform the optimization
-            result = minimize(objective, random_initial_values, method='SLSQP', bounds=bounds)
+            result = scipy_minimize(objective, random_initial_values, method='SLSQP', bounds=bounds)
 
             # Check if the current run has a better solution
             if result.success and result.fun < best_objective_value:
                 best_objective_value = result.fun
                 best_solution = result
-                best_system_copy = self.energy_system_copy.copy()
 
         # If a valid solution was found, apply the best solution
         if best_solution:
-            for tech in best_system_copy.technologies:
-                idx = tech.name.split("_")[-1]
-                tech.update_parameters(best_solution.x, variables_order, idx)
+            for tech in self.energy_system_copy.technologies:
+                print(f"Best Solution: {best_solution.x}, Variables Order: {variables_order}")
+                tech.update_parameters(best_solution.x, variables_order)
+
             print("Optimierung erfolgreich")
-            return best_system_copy
+            return self.energy_system_copy
         else:
             print("Keine gültige Lösung gefunden.")
             return self.initial_energy_system
 
-"""
-class EnergySystemOptimizer:
-    def __init__(self, initial_energy_system, weights):
-        
-        Initialize the optimizer for the energy system using pyomo.
+class EnergySystemMILPOptimizer:
+    def __init__(self, initial_energy_system, weights, num_restarts=1):
+        """
+        Initialize the MILP optimizer for the energy system with support for multiple random restarts.
 
         Args:
             initial_energy_system (object): Initial energy system object.
             weights (dict): Weights for optimization criteria.
-        
+            num_restarts (int): Number of random restarts for optimization. Default is 5.
+        """
         self.initial_energy_system = initial_energy_system
         self.weights = weights
+        self.num_restarts = num_restarts
 
     def optimize(self):
-        
-        Perform optimization of the energy system with integer constraints using pyomo.
+        """
+        Perform MILP optimization of the energy system with multiple random restarts.
 
         Returns:
             object: Optimized energy system object.
-        
-        # Copy the energy system
-        self.energy_system_copy = self.initial_energy_system.copy()
+        """
+        best_solution = None
+        best_objective_value = float('inf')
 
-        # Initialize the pyomo model
-        model = ConcreteModel()
+        for restart in range(self.num_restarts):
+            print(f"Starting MILP optimization run {restart + 1}/{self.num_restarts}")
 
-        # Collect optimization parameters
-        tech_indices = []
-        tech_bounds = []
-        tech_variables = []
-        initial_values = []
+            # Copy the energy system for this run
+            self.energy_system_copy = self.initial_energy_system.copy()
 
-        for idx, tech in enumerate(self.energy_system_copy.technologies):
-            tech_values, tech_vars, tech_bnds = tech.add_optimization_parameters(idx)
-            if not tech_values and not tech_vars and not tech_bnds:
-                continue
+            initial_values = []
+            bounds = []
+            variables_mapping = {}  # Mapping for variables
 
-            for var, bound in zip(tech_vars, tech_bnds):
-                tech_indices.append(idx)
-                tech_variables.append(var)
-                tech_bounds.append(bound)
-            initial_values.extend(tech_values)
+            for tech in self.energy_system_copy.technologies:
+                idx = tech.name.split("_")[-1]
+                tech_values, tech_variables, tech_bounds = tech.add_optimization_parameters(idx)
 
-        # Define pyomo variables (as integers)
-        model.vars = Var(
-            range(len(initial_values)), 
-            domain=NonNegativeIntegers, 
-            bounds=lambda model, i: tech_bounds[i]
-        )
+                # Skip technologies without optimization parameters
+                if not tech_values and not tech_variables and not tech_bounds:
+                    continue
 
-        # Define the objective function
-        def objective_rule(model):
-            # Extract variable values
-            variables = [model.vars[i]() for i in range(len(initial_values))]
-            # Call the calculate_mix function with numeric values
-            self.energy_system_copy.calculate_mix(variables, tech_variables)
-            results = self.energy_system_copy.results
+                initial_values.extend(tech_values)
+                bounds.extend(tech_bounds)
 
-            # Weighted sum
-            weighted_sum = (
-                self.weights['WGK_Gesamt'] * results['WGK_Gesamt'] +
-                self.weights['specific_emissions_Gesamt'] * results['specific_emissions_Gesamt'] +
-                self.weights['primärenergiefaktor_Gesamt'] * results['primärenergiefaktor_Gesamt']
+                # Map variables to technology name and parameter
+                for var in tech_variables:
+                    variables_mapping[var] = tech.name
+
+            variables_order = list(variables_mapping.keys())
+
+            if not initial_values:
+                print("Keine Optimierungsparameter vorhanden. Optimierung wird übersprungen.")
+                return self.energy_system_copy.technologies
+            
+            # Teste die Zielfunktion mit unterschiedlichen Variablenwerten
+            for test_value in range(bounds[0][0], bounds[0][1], 100):
+                variables = [test_value]  # Beispiel: Nur eine Variable
+                fresh_system = self.energy_system_copy.copy()
+                fresh_system.calculate_mix(variables, variables_order)
+                print(f"Test variables: {variables}, Results['WGK_Gesamt']: {fresh_system.results['WGK_Gesamt']}")
+
+            # Pyomo model setup
+            model = ConcreteModel()
+
+            # Generate random initial values within the bounds
+            random_initial_values = [
+                np.random.randint(low=bound[0], high=bound[1] + 1) if bound[0] < bound[1] else bound[0]
+                for bound in bounds
+            ]
+
+            print(f"Initial values: {random_initial_values}")
+
+            # Define Pyomo variables as integers (MILP constraint) with initialization
+            model.vars = Var(
+                range(len(variables_order)),
+                domain=Integers,
+                initialize=lambda model, i: random_initial_values[i],
+                bounds=lambda model, i: bounds[i]
             )
-            return weighted_sum
 
-        model.objective = Objective(rule=objective_rule, sense=minimize)
+            def objective_rule(model):
+                variables = [model.vars[i].value for i in range(len(variables_order))]
+                
+                # Erstelle bei jedem Aufruf eine neue Kopie
+                fresh_energy_system = self.energy_system_copy.copy()
 
-        # Define constraints (if necessary)
-        model.constraints = ConstraintList()
-        # Add your constraints here if you have any
+                # Berechnung auf Basis der frischen Kopie
+                fresh_energy_system.calculate_mix(variables, variables_order)
+                results = fresh_energy_system.results
 
-        # Solve the model
-        solver = SolverFactory('glpk')  # Or any solver supporting MILP
-        result = solver.solve(model, tee=True)
+                print(f"Variables: {variables}, Variables Order: {variables_order}, Results['WGK_Gesamt']: {results['WGK_Gesamt']}")
 
-        # Check if the solution is optimal
-        if result.solver.termination_condition == "optimal":
-            # Map optimized values back to the energy system
-            optimized_values = [model.vars[i]() for i in range(len(initial_values))]
-            for idx, tech in enumerate(self.energy_system_copy.technologies):
-                tech.update_parameters(optimized_values, tech_variables, idx)
-            print("Optimierung erfolgreich")
+                # Zielfunktion berechnen
+                weighted_sum = (
+                    self.weights['WGK_Gesamt'] * results['WGK_Gesamt'] +
+                    self.weights['specific_emissions_Gesamt'] * results['specific_emissions_Gesamt'] +
+                    self.weights['primärenergiefaktor_Gesamt'] * results['primärenergiefaktor_Gesamt']
+                )
+                return weighted_sum
+            
+            model.vars.pprint()
+
+            # Add objective function
+            model.objective = Objective(rule=objective_rule, sense=pyomo_minimize)
+
+            # Add constraints (if any)
+            model.constraints = ConstraintList()
+            model.constraints.add(model.vars[0] >= 10)
+
+            # Solve the MILP problem
+            solver = SolverFactory('highs')
+            result = solver.solve(model, tee=True)
+
+            if restart == 0:
+                best_objective_value = model.objective()
+            # Check if the current run has a better solution
+            if result.solver.termination_condition == 'optimal' and model.objective() <= best_objective_value:
+                model.vars.pprint()
+                print(f"Best objective value: {model.objective()}, Best solution: {[model.vars[i].value for i in range(len(variables_order))]}")
+                best_objective_value = model.objective()
+                best_solution = [model.vars[i].value for i in range(len(variables_order))]
+
+        # If a valid solution was found, apply the best solution
+        if best_solution:
+            for tech in self.energy_system_copy.technologies:
+                print(f"Best Solution: {best_solution}, Variables Order: {variables_order}")
+                tech.update_parameters(best_solution, variables_order)
+
+            print("MILP Optimierung erfolgreich")
             return self.energy_system_copy
         else:
-            print("Optimierung nicht erfolgreich:", result.solver.termination_condition)
+            print("Keine gültige Lösung gefunden.")
             return self.initial_energy_system
-"""
