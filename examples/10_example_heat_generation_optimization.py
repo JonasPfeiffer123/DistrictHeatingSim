@@ -18,16 +18,22 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-def test_berechnung_erzeugermix(optimize=False, plot=True):
+def test_berechnung_erzeugermix(optimize=False, plot=True, opt_method="SLSQP"):
     # Lastgang, z.B. in kW, muss derzeitig für korrekte wirtschaftliche Betrachtung Länge von 8760 haben
     min_last = 50
     max_last = 400
     Last_L = np.random.randint(min_last, max_last, 8760).astype(float)
 
+    # Load profile from csv file
+    Last_L = np.genfromtxt("examples/data/Lastgang/Lastgang.csv", delimiter=';', skip_header=1)
+    # 5 column
+    Last_L = Last_L[:, 4]
+    print(Last_L)
+
     # Wirtschaftliche Randbedingungen
-    electricity_price = 150 # €/MWh
+    electricity_price = 200 # €/MWh
     gas_price = 70 # €/MWh
-    wood_price = 60 # €/MWh
+    wood_price = 40 # €/MWh
 
     q = 1.05
     r = 1.03
@@ -86,7 +92,7 @@ def test_berechnung_erzeugermix(optimize=False, plot=True):
                                             Tsmax=90, Longitude=-14.4222, STD_Longitude=-15, Latitude=51.1676, East_West_collector_azimuth_angle=0, Collector_tilt_angle=36, Tm_rl=60, 
                                             Qsa=0, Vorwärmung_K=8, DT_WT_Solar_K=5, DT_WT_Netz_K=5, opt_volume_min=0, opt_volume_max=200, opt_area_min=0, opt_area_max=2000)
 
-    tech_objects = [solarThermal, CHP, geothermal_heat_pump, bBoiler, gBoiler]
+    tech_objects = [bBoiler, gBoiler]
 
     # Angaben zum zu betrchtende Zeitraum
     # Erstelle ein Array mit stündlichen Zeitwerten für ein Jahr
@@ -129,17 +135,27 @@ def test_berechnung_erzeugermix(optimize=False, plot=True):
 
     # Calculate the energy mix
     general_results = energy_system.calculate_mix()
-    print(f"Calculated energy mix: {general_results}")
+    # print(f"Calculated energy mix: {general_results}")
+    print(f"Techs: {general_results['techs']}")
+    print(f"Energy mix: {general_results['Anteile']}")
+    print(f"WGK: {general_results['WGK_Gesamt']}")
 
     # Perform optimization if needed
     if optimize:
-        print("Optimizing mix")
-        optimized_energy_system = energy_system.optimize_mix(weights)
+        if opt_method == "SLSQP":
+            print("Optimizing mix with SLSQP")
+            optimized_energy_system = energy_system.optimize_mix(weights)
+        elif opt_method == "MILP":
+            print("Optimizing mix with MILP")
+            optimized_energy_system = energy_system.optimize_milp(weights)
         print("Optimization done")
 
         # Calculate the energy mix
         general_results = optimized_energy_system.calculate_mix()
-        print(f"Optimized energy mix: {general_results}")
+        # print(f"Optimized energy mix: {general_results}")
+        print(f"Optimized Techs: {general_results['techs']}")
+        print(f"Optimized energy mix: {general_results['Anteile']}")
+        print(f"Optimized WGK: {general_results['WGK_Gesamt']}")
 
     if plot == True:
         figure1 = plt.figure()
@@ -177,7 +193,8 @@ def plotPieChart(figure, Anteile, labels):
     ax.axis("equal")  # Stellt sicher, dass der Pie-Chart kreisförmig bleibt
 
 if __name__ == "__main__":
-    test_berechnung_erzeugermix(optimize=False, plot=True)
-    test_berechnung_erzeugermix(optimize=True, plot=True)
+    #test_berechnung_erzeugermix(optimize=False, plot=True)
+    #test_berechnung_erzeugermix(optimize=True, plot=True, opt_method="SLSQP")
+    test_berechnung_erzeugermix(optimize=True, plot=True, opt_method="MILP")
 
     plt.show()

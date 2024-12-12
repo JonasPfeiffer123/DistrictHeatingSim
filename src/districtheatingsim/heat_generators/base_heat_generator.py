@@ -116,11 +116,34 @@ class BaseHeatGenerator:
         # This method should be overridden by each technology.
         raise NotImplementedError("add_optimization_parameters must be implemented in the derived class.")
     
-    def update_parameters(self, optimized_values, variables_order, idx):
-        for var, value in zip(variables_order, optimized_values):
-            if var.startswith(f"{self.name}_"):
-                param_name = var.split("_")[0]
+    def update_parameters(self, optimized_values, variables_order):
+        """
+        Aktualisiert die Parameter der Technologie basierend auf den optimierten Werten.
+
+        Args:
+            optimized_values (list): Liste der optimierten Werte.
+            variables_order (list): Reihenfolge der Variablen.
+        """
+        idx = self.name.split("_")[-1]
+
+        # Filtere Variablen, die zu dieser Technologie gehören
+        relevant_vars = [
+            var for var in variables_order if var.endswith(f"_{idx}")
+        ]
+        relevant_values = [
+            value for var, value in zip(variables_order, optimized_values) if var in relevant_vars
+        ]
+
+        if not relevant_vars:
+            print(f"Keine relevanten Variablen für {self.name} gefunden.")
+            return
+
+        for var, value in zip(relevant_vars, relevant_values):
+            # Extrahiere den Parametername ohne den Index
+            param_name = var.rsplit("_", 1)[0]
+            if param_name in self.__dict__:
                 setattr(self, param_name, value)
+                print(f"Setze {param_name} für {self.name} auf {value}")
     
     def to_dict(self):
         """
