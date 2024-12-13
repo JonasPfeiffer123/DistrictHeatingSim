@@ -1,16 +1,22 @@
 """
 Filename: heat_generator_mix.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-12-11
-Description: 
+Date: 2024-12-13
+Description: Class to calculate the heat generation mix for a district heating system.
 
 """
 
+import logging
+logging.basicConfig(level=logging.INFO)
+
 import numpy as np
+import matplotlib.pyplot as plt
 import copy
 
 from scipy.optimize import minimize as scipy_minimize
 from pyomo.environ import ConcreteModel, Var, Objective, ConstraintList, SolverFactory, NonNegativeReals, Integers, Reals, minimize as pyomo_minimize
+
+from districtheatingsim.heat_generators import TECH_CLASS_REGISTRY
 
 class EnergySystem:
     def __init__(self, time_steps, load_profile, VLT_L, RLT_L, TRY_data, COP_data, economic_parameters):
@@ -36,6 +42,8 @@ class EnergySystem:
         self.technologies = []  # List to store generator objects
         self.results = {}
 
+        self.duration = (np.diff(self.time_steps[:2]) / np.timedelta64(1, 'h'))[0]
+
     def add_technology(self, tech):
         """
         Add a technology to the energy system.
@@ -45,28 +53,20 @@ class EnergySystem:
         """
         self.technologies.append(tech)
 
-    def calculate_mix(self, variables=[], variables_order=[]):
+    def initialize_results(self):
         """
-        Calculate the energy generation mix for the given technologies.
+        Initialize results for the energy system.
 
-        Args:
-            variables (list): Variables for optimization.
-            variables_order (list): Order of variables for optimization.
-
-        Returns:
-            dict: Results of the energy system simulation.
         """
-        duration = np.diff(self.time_steps[:2]) / np.timedelta64(1, 'h')
-        duration = duration[0]
-
-        general_results = {
+        
+        self.results = {
             'time_steps': self.time_steps,
             'Last_L': self.load_profile,
             'VLT_L': self.VLT_L,
             'RLT_L': self.RLT_L,
-            'Jahreswärmebedarf': (np.sum(self.load_profile) / 1000) * duration,
+            'Jahreswärmebedarf': (np.sum(self.load_profile) / 1000) * self.duration,
             'WGK_Gesamt': 0,
-            'Restwärmebedarf': (np.sum(self.load_profile) / 1000) * duration,
+            'Restwärmebedarf': (np.sum(self.load_profile) / 1000) * self.duration,
             'Restlast_L': self.load_profile.copy(),
             'Wärmeleistung_L': [],
             'colors': [],
@@ -86,61 +86,174 @@ class EnergySystem:
             'tech_classes': []
         }
 
-        for tech in self.technologies.copy():
-            # Set variables for optimization
+    def set_optimization_variables(self, variables, variables_order):
+        for tech in self.technologies:
             if len(variables) > 0:
                 idx = tech.name.split("_")[-1]
                 tech.set_parameters(variables, variables_order, idx)
 
+    def aggregate_results(self, tech_results):
+        """
+        Aggregate results from a single technology into the overall system results.
+
+        Args:
+            tech_results (dict): Results from the individual technology.
+        """
+        self.results['techs'].append(tech_results.get('tech_name', 'unknown'))
+        self.results['Wärmeleistung_L'].append(tech_results.get('Wärmeleistung_L', np.zeros_like(self.load_profile)))
+        self.results['Wärmemengen'].append(tech_results.get('Wärmemenge', 0))
+        self.results['Anteile'].append(tech_results.get('Wärmemenge', 0) / self.results['Jahreswärmebedarf'])
+        self.results['WGK'].append(tech_results.get('WGK', 0))
+        self.results['specific_emissions_L'].append(tech_results.get('spec_co2_total', 0))
+        self.results['primärenergie_L'].append(tech_results.get('primärenergie', 0))
+        self.results['colors'].append(tech_results.get('color', 'gray'))
+
+        if tech_results.get('Wärmemenge', 0) > 1e-6:
+            self.results['Restlast_L'] -= tech_results.get('Wärmeleistung_L', np.zeros_like(self.load_profile))
+            self.results['Restwärmebedarf'] -= tech_results.get('Wärmemenge', 0)
+            self.results['WGK_Gesamt'] += (tech_results['Wärmemenge'] * tech_results['WGK']) / self.results['Jahreswärmebedarf']
+            self.results['specific_emissions_Gesamt'] += (tech_results['Wärmemenge'] * tech_results['spec_co2_total']) / self.results['Jahreswärmebedarf']
+            self.results['primärenergiefaktor_Gesamt'] += tech_results['primärenergie'] / self.results['Jahreswärmebedarf']
+
+        if tech_results.get("Strommenge"):
+            self.results['Strommenge'] += tech_results["Strommenge"]
+            self.results['el_Leistung_L'] += tech_results["el_Leistung_L"]
+            self.results['el_Leistung_ges_L'] += tech_results["el_Leistung_L"]
+
+        if tech_results.get("Strombedarf"):
+            self.results['Strombedarf'] += tech_results["Strombedarf"]
+            self.results['el_Leistungsbedarf_L'] += tech_results["el_Leistung_L"]
+            self.results['el_Leistung_ges_L'] -= tech_results["el_Leistung_L"]
+
+        if "Wärmeleistung_Speicher_L" in tech_results.keys():
+            self.results['Restlast_L'] -= tech_results["Wärmeleistung_Speicher_L"]
+            self.results['Wärmeleistung_L'].append(tech_results["Wärmeleistung_Speicher_L"])
+            self.results['techs'].append(f"{tech_results['tech_name']}_Speicher")
+            self.results['Anteile'].append(0)
+            self.results['colors'].append("gray")  # Optional: Farbzuordnung für Speicherleistung, ggf. dynamisch anpassen
+
+    def calculate_mix(self, variables=[], variables_order=[]):
+        """
+        Calculate the energy generation mix for the given technologies.
+
+        Args:
+            variables (list): Variables for optimization.
+            variables_order (list): Order of variables for optimization.
+
+        Returns:
+            dict: Results of the energy system simulation.
+        """
+        
+        self.initialize_results()
+
+        self.set_optimization_variables(variables, variables_order)
+
+        for tech in self.technologies:
             # Perform technology-specific calculation
             tech_results = tech.calculate(economic_parameters=self.economic_parameters,
-                                        duration=duration,
-                                        general_results=general_results,
+                                        duration=self.duration,
+                                        load_profile=self.results["Restlast_L"],
                                         VLT_L=self.VLT_L,
                                         RLT_L=self.RLT_L,
                                         TRY_data=self.TRY_data,
                                         COP_data=self.COP_data,
                                         time_steps=self.time_steps)
-
-            # Check if heat is generated, 0 values and very small values are not allowed
+            
             if tech_results['Wärmemenge'] > 1e-6:
-                general_results['Wärmeleistung_L'].append(tech_results['Wärmeleistung_L'])
-                general_results['Wärmemengen'].append(tech_results['Wärmemenge'])
-                general_results['Anteile'].append(tech_results['Wärmemenge']/general_results['Jahreswärmebedarf'])
-                general_results['WGK'].append(tech_results['WGK'])
-                general_results['specific_emissions_L'].append(tech_results['spec_co2_total'])
-                general_results['primärenergie_L'].append(tech_results['primärenergie'])
-                general_results['colors'].append(tech_results['color'])
-                general_results['Restlast_L'] -= tech_results['Wärmeleistung_L']
-                general_results['Restwärmebedarf'] -= tech_results['Wärmemenge']
-                general_results['WGK_Gesamt'] += (tech_results['Wärmemenge']*tech_results['WGK'])/general_results['Jahreswärmebedarf']
-                general_results['specific_emissions_Gesamt'] += (tech_results['Wärmemenge']*tech_results['spec_co2_total'])/general_results['Jahreswärmebedarf']
-                general_results['primärenergiefaktor_Gesamt'] += tech_results['primärenergie']/general_results['Jahreswärmebedarf']
-
-                if tech.name.startswith("BHKW") or tech.name.startswith("Holzgas-BHKW"):
-                    general_results['Strommenge'] += tech_results["Strommenge"]
-                    general_results['el_Leistung_L'] += tech_results["el_Leistung_L"]
-                    general_results['el_Leistung_ges_L'] += tech_results["el_Leistung_L"]
-
-                if tech.name.startswith("Abwärme") or tech.name.startswith("Abwasserwärme") or tech.name.startswith("Flusswasser") or tech.name.startswith("Geothermie"):
-                    general_results['Strombedarf'] += tech_results["Strombedarf"]
-                    general_results['el_Leistungsbedarf_L'] += tech_results["el_Leistung_L"]
-                    general_results['el_Leistung_ges_L'] -= tech_results['el_Leistung_L']
-
-                if "Wärmeleistung_Speicher_L" in tech_results.keys():
-                    general_results['Restlast_L'] -= tech_results['Wärmeleistung_Speicher_L']
-
+                self.aggregate_results(tech_results)
             else:
-                # Remove technology if no heat is generated
-                self.technologies.remove(tech)
-                print(f"{tech.name} hat keinen Beitrag zur Wärmeerzeugung.")
+                # Add technology as inactive with zero contribution
+                self.aggregate_results({'tech_name': tech.name})
+        
+        self.results['tech_classes'] = self.technologies
 
-        for tech in self.technologies:
-            general_results['techs'].append(tech.name)
-            general_results['tech_classes'].append(tech)
+        return self.results
 
-        self.results = general_results
-        return general_results
+    def optimize_mix(self, weights, num_restarts=5):
+        """
+        Optimize the energy generation mix for minimal cost, emissions, and primary energy use.
+
+        Args:
+            weights (dict): Weights for optimization criteria.
+
+        Returns:
+            list: Optimized list of technology objects with updated parameters.
+        """
+        optimizer = EnergySystemOptimizer(self, weights, num_restarts)
+        self.optimized_energy_system = optimizer.optimize()
+        
+        return self.optimized_energy_system
+    
+    def optimize_milp(self, weights, num_restarts=5):
+        """
+        Optimize the energy generation mix using a MILP solver.
+
+        Args:
+            weights (dict): Weights for optimization criteria.
+
+        Returns:
+            list: Optimized list of technology objects with updated parameters.
+        """
+        optimizer = EnergySystemMILPOptimizer(self, weights, num_restarts)
+        self.optimized_energy_system = optimizer.optimize()
+        return self.optimized_energy_system
+    
+    def plot_stack_plot(self, figure=None):
+        """
+        Plot a stack plot of the thermal power generated by each technology, including storage performance if applicable.
+
+        Args:
+            figure (matplotlib.figure.Figure, optional): Figure object for the plot. Defaults to None.
+        """
+        if figure is None:
+            figure = plt.figure()
+
+        data = self.results['Wärmeleistung_L']
+        labels = self.results['techs']
+        colors = self.results['colors']
+
+        ax = figure.add_subplot(111)
+        ax.stackplot(self.results['time_steps'], data, labels=labels, colors=colors)
+        ax.plot(self.results['time_steps'], self.results["Last_L"], color="black", linewidth=0.5, label="Lastprofil")
+        ax.set_title("Jahresdauerlinie")
+        ax.set_xlabel("Jahresstunden")
+        ax.set_ylabel("thermische Leistung in kW")
+        ax.grid()
+        ax.legend(loc="upper center", ncol=3)
+
+    def plot_pie_chart(self, figure=None, include_unmet_demand=True):
+        """
+        Plot a pie chart showing the contribution of each technology.
+
+        Args:
+            figure (matplotlib.figure.Figure, optional): Figure object for the plot. Defaults to None.
+            include_unmet_demand (bool): Whether to include unmet demand in the chart.
+        """
+        if figure is None:
+            figure = plt.figure()
+
+        ax = figure.add_subplot(111)
+        labels = self.results['techs']
+        Anteile = self.results['Anteile']
+        colors = self.results['colors']
+
+        # Check if unmet demand should be included
+        summe = sum(Anteile)
+        if include_unmet_demand and summe < 1:
+            Anteile.append(1 - summe)
+            labels.append("ungedeckter Bedarf")
+            colors.append("black")
+
+        ax.pie(
+            Anteile,
+            labels=labels,
+            colors=colors,
+            autopct='%1.1f%%',
+            startangle=90,
+            pctdistance=0.85
+        )
+        ax.set_title("Anteile Wärmeerzeugung")
+        ax.axis("equal")  # Ensure the pie chart is circular
     
     def copy(self):
         """
@@ -162,34 +275,72 @@ class EnergySystem:
         copied_system.technologies = [copy.deepcopy(tech) for tech in self.technologies]
         return copied_system
 
-    def optimize_mix(self, weights):
+    def to_dict(self):
+        return {
+            'time_steps': self.time_steps.tolist(),
+            'load_profile': self.load_profile.tolist(),
+            'VLT_L': self.VLT_L.tolist(),
+            'RLT_L': self.RLT_L.tolist(),
+            'TRY_data': [data.tolist() for data in self.TRY_data],
+            'COP_data': self.COP_data.tolist(), 
+            'economic_parameters': self.economic_parameters,
+            'technologies': [tech.to_dict() for tech in self.technologies],
+            'results': self.results,
+        }
+
+    @classmethod
+    def from_dict(cls, data):
         """
-        Optimize the energy generation mix for minimal cost, emissions, and primary energy use.
+        Recreate an EnergySystem instance from a dictionary.
 
         Args:
-            weights (dict): Weights for optimization criteria.
+            data (dict): Dictionary representation of the EnergySystem.
 
         Returns:
-            list: Optimized list of technology objects with updated parameters.
+            EnergySystem: A fully initialized EnergySystem object.
         """
-        optimizer = EnergySystemOptimizer(self, weights)
-        self.optimized_energy_system = optimizer.optimize()
-        
-        return self.optimized_energy_system
-    
-    def optimize_milp(self, weights):
-        """
-        Optimize the energy generation mix using a MILP solver.
+        # Restore basic attributes
+        time_steps = np.array(data['time_steps'], dtype='datetime64[ns]')
+        load_profile = np.array(data['load_profile'])
+        VLT_L = np.array(data['VLT_L'])
+        RLT_L = np.array(data['RLT_L'])
+        TRY_data = [np.array(item) for item in data['TRY_data']]
+        COP_data = np.array(data['COP_data'])
+        economic_parameters = data['economic_parameters']
 
-        Args:
-            weights (dict): Weights for optimization criteria.
+        # Create the EnergySystem object
+        obj = cls(
+            time_steps=time_steps,
+            load_profile=load_profile,
+            VLT_L=VLT_L,
+            RLT_L=RLT_L,
+            TRY_data=TRY_data,
+            COP_data=COP_data,
+            economic_parameters=economic_parameters
+        )
 
-        Returns:
-            list: Optimized list of technology objects with updated parameters.
-        """
-        optimizer = EnergySystemMILPOptimizer(self, weights)
-        self.optimized_energy_system = optimizer.optimize()
-        return self.optimized_energy_system
+        # Restore technologies
+        obj.technologies = []
+        for tech_data in data.get('technologies', []):
+            for prefix, tech_class in TECH_CLASS_REGISTRY.items():
+                if tech_data['name'].startswith(prefix):
+                    obj.technologies.append(tech_class.from_dict(tech_data))
+                    break
+
+        # Restore results (if available)
+        obj.results = {}
+        if 'results' in data:
+            for key, value in data['results'].items():
+                if isinstance(value, list):
+                    # Handle arrays, list of lists, or objects
+                    if all(isinstance(v, list) for v in value):
+                        obj.results[key] = [np.array(v) for v in value]
+                    else:
+                        obj.results[key] = np.array(value)
+                else:
+                    obj.results[key] = value
+
+        return obj
 
 class EnergySystemOptimizer:
     def __init__(self, initial_energy_system, weights, num_restarts=5):
@@ -263,7 +414,7 @@ class EnergySystemOptimizer:
                 fresh_energy_system.calculate_mix(variables, variables_order)
                 results = fresh_energy_system.results
 
-                print(f"Variables: {variables}, Variables Order: {variables_order}, Results['WGK_Gesamt']: {results['WGK_Gesamt']}")
+                #print(f"Variables: {variables}, Variables Order: {variables_order}, Results['WGK_Gesamt']: {results['WGK_Gesamt']}")
 
                 # Calculate the weighted sum
                 weighted_sum = (
@@ -293,8 +444,11 @@ class EnergySystemOptimizer:
             print("Keine gültige Lösung gefunden.")
             return self.initial_energy_system
 
+### MILP Optimizer: Doesn't work for the current energy system setup as it is not defined linerarly ###
+### Therefore, the MILP optimizer is not used in the current implementation ###
+### But shows how to implement a MILP optimizer could look like ###
 class EnergySystemMILPOptimizer:
-    def __init__(self, initial_energy_system, weights, num_restarts=1):
+    def __init__(self, initial_energy_system, weights, num_restarts=5):
         """
         Initialize the MILP optimizer for the energy system with support for multiple random restarts.
 
@@ -353,7 +507,7 @@ class EnergySystemMILPOptimizer:
                 variables = [test_value]  # Beispiel: Nur eine Variable
                 fresh_system = self.energy_system_copy.copy()
                 fresh_system.calculate_mix(variables, variables_order)
-                print(f"Test variables: {variables}, Results['WGK_Gesamt']: {fresh_system.results['WGK_Gesamt']}")
+                #print(f"Test variables: {variables}, Results['WGK_Gesamt']: {fresh_system.results['WGK_Gesamt']}")
 
             # Pyomo model setup
             model = ConcreteModel()

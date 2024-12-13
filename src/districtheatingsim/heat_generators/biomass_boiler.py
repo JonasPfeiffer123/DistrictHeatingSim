@@ -208,20 +208,20 @@ class BiomassBoiler(BaseHeatGenerator):
         self.primärenergie = Brennstoffbedarf * self.primärenergiefaktor
         
 
-    def calculate(self, economic_parameters, duration, general_results, **kwargs):
+    def calculate(self, economic_parameters, duration, load_profile, **kwargs):
         """
         Calculates the performance and cost of the biomass boiler system.
 
         Args:
             economic_parameters (dict): Dictionary containing economic parameters.
             duration (float): Duration of each time step in hours.
-            general_results (dict): General results dictionary containing rest load.
+            load_profile (array): Load profile of the system in kW.
 
         Returns:
             dict: Dictionary containing the results of the calculation.
         """
         if self.speicher_aktiv:
-            self.simulate_storage(general_results["Restlast_L"], duration)
+            self.simulate_storage(load_profile, duration)
             Wärmemenge = self.Wärmemenge_Biomassekessel_Speicher
             Brennstoffbedarf = self.Brennstoffbedarf_BMK_Speicher
             Wärmeleistung_kW = self.Wärmeleistung_kW
@@ -229,7 +229,7 @@ class BiomassBoiler(BaseHeatGenerator):
             Betriebsstunden = self.Betriebsstunden_gesamt_Speicher
             Betriebsstunden_pro_Start = self.Betriebsstunden_pro_Start_Speicher
         else:
-            self.simulate_operation(general_results["Restlast_L"], duration)
+            self.simulate_operation(load_profile, duration)
             Wärmemenge = self.Wärmemenge_BMK
             Brennstoffbedarf = self.Brennstoffbedarf_BMK
             Wärmeleistung_kW = self.Wärmeleistung_kW
@@ -241,6 +241,7 @@ class BiomassBoiler(BaseHeatGenerator):
         self.calculate_environmental_impact(Brennstoffbedarf, Wärmemenge)
 
         results = {
+            'tech_name': self.name,
             'Wärmemenge': Wärmemenge,
             'Wärmeleistung_L': Wärmeleistung_kW,
             'Brennstoffbedarf': Brennstoffbedarf,
@@ -255,6 +256,7 @@ class BiomassBoiler(BaseHeatGenerator):
 
         if self.speicher_aktiv:
             results['Wärmeleistung_Speicher_L'] = self.Wärmeleistung_Speicher_kW
+            results['Speicherfüllstand_L'] = self.speicher_fuellstand
 
         return results
     

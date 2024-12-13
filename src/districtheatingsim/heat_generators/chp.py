@@ -237,20 +237,20 @@ class CHP(BaseHeatGenerator):
 
         self.primärenergie = Brennstoffbedarf * self.primärenergiefaktor
 
-    def calculate(self, economic_parameters, duration, general_results, **kwargs):
+    def calculate(self, economic_parameters, duration, load_profile, **kwargs):
         """
         Calculates the economic and environmental metrics for the CHP system.
 
         Args:
             economic_parameters (dict): Dictionary containing economic parameters.
             duration (float): Time duration.
-            general_results (dict): Dictionary containing general results.
+            load_profile (dict): Load profile of the system in kW.
 
         Returns:
             dict: Dictionary containing calculated results.
         """
         if self.speicher_aktiv:
-            self.simulate_storage(general_results["Restlast_L"], duration)
+            self.simulate_storage(load_profile, duration)
             Wärmemenge = self.Wärmemenge_BHKW_Speicher
             Strommenge = self.Strommenge_BHKW_Speicher
             Brennstoffbedarf = self.Brennstoffbedarf_BHKW_Speicher
@@ -260,7 +260,7 @@ class CHP(BaseHeatGenerator):
             Betriebsstunden = self.Betriebsstunden_gesamt_Speicher
             Betriebsstunden_pro_Start = self.Betriebsstunden_pro_Start_Speicher
         else:
-            self.simulate_operation(general_results["Restlast_L"], duration)
+            self.simulate_operation(load_profile, duration)
             Wärmemenge = self.Wärmemenge_BHKW
             Strommenge = self.Strommenge_BHKW
             Brennstoffbedarf = self.Brennstoffbedarf_BHKW
@@ -274,6 +274,7 @@ class CHP(BaseHeatGenerator):
         self.calculate_environmental_impact(Wärmemenge, Strommenge, Brennstoffbedarf)
      
         results = {
+            'tech_name': self.name,
             'Wärmemenge': Wärmemenge,
             'Wärmeleistung_L': Wärmeleistung_kW,
             'Brennstoffbedarf': Brennstoffbedarf,
@@ -290,6 +291,7 @@ class CHP(BaseHeatGenerator):
 
         if self.speicher_aktiv:
             results['Wärmeleistung_Speicher_L'] = self.Wärmeleistung_Speicher_kW
+            results['Speicherfüllstand_L'] = self.speicher_fuellstand_BHKW
 
         return results
     

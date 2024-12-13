@@ -92,7 +92,7 @@ def test_berechnung_erzeugermix(optimize=False, plot=True, opt_method="SLSQP"):
                                             Tsmax=90, Longitude=-14.4222, STD_Longitude=-15, Latitude=51.1676, East_West_collector_azimuth_angle=0, Collector_tilt_angle=36, Tm_rl=60, 
                                             Qsa=0, Vorwärmung_K=8, DT_WT_Solar_K=5, DT_WT_Netz_K=5, opt_volume_min=0, opt_volume_max=200, opt_area_min=0, opt_area_max=2000)
 
-    tech_objects = [bBoiler, gBoiler]
+    tech_objects = [CHP_storage, bBoiler, gBoiler]
 
     # Angaben zum zu betrchtende Zeitraum
     # Erstelle ein Array mit stündlichen Zeitwerten für ein Jahr
@@ -134,67 +134,36 @@ def test_berechnung_erzeugermix(optimize=False, plot=True, opt_method="SLSQP"):
         energy_system.add_technology(tech)
 
     # Calculate the energy mix
-    general_results = energy_system.calculate_mix()
-    # print(f"Calculated energy mix: {general_results}")
-    print(f"Techs: {general_results['techs']}")
-    print(f"Energy mix: {general_results['Anteile']}")
-    print(f"WGK: {general_results['WGK_Gesamt']}")
+    system_results = energy_system.calculate_mix()
+    print(f"Techs: {system_results['techs']}")
+    print(f"Energy mix: {system_results['Anteile']}")
+    print(f"WGK: {system_results['WGK_Gesamt']}")
+
+    if plot:
+        energy_system.plot_stack_plot(plt.figure())
+        energy_system.plot_pie_chart(plt.figure())
 
     # Perform optimization if needed
     if optimize:
         if opt_method == "SLSQP":
             print("Optimizing mix with SLSQP")
-            optimized_energy_system = energy_system.optimize_mix(weights)
+            optimized_energy_system = energy_system.optimize_mix(weights, num_restarts=5)
         elif opt_method == "MILP":
             print("Optimizing mix with MILP")
-            optimized_energy_system = energy_system.optimize_milp(weights)
+            optimized_energy_system = energy_system.optimize_milp(weights, num_restarts=5)
         print("Optimization done")
 
         # Calculate the energy mix
-        general_results = optimized_energy_system.calculate_mix()
-        # print(f"Optimized energy mix: {general_results}")
-        print(f"Optimized Techs: {general_results['techs']}")
-        print(f"Optimized energy mix: {general_results['Anteile']}")
-        print(f"Optimized WGK: {general_results['WGK_Gesamt']}")
+        optimized_system_results = optimized_energy_system.calculate_mix()
+        print(f"Optimized Techs: {optimized_system_results['techs']}")
+        print(f"Optimized energy mix: {optimized_system_results['Anteile']}")
+        print(f"Optimized WGK: {optimized_system_results['WGK_Gesamt']}")
 
-    if plot == True:
-        figure1 = plt.figure()
-        figure2 = plt.figure()
-
-        plotStackPlot(figure1, general_results['time_steps'], general_results['Wärmeleistung_L'], general_results['techs'], general_results['Last_L'])
-        plotPieChart(figure2, general_results['Anteile'], general_results['techs'])
-
-def plotStackPlot(figure, t, data, labels, Last):
-    ax = figure.add_subplot(111)
-    ax.stackplot(t, data, labels=labels)
-    ax.set_title("Jahresdauerlinie")
-    ax.set_xlabel("Jahresstunden")
-    ax.set_ylabel("thermische Leistung in kW")
-    ax.legend(loc='upper center')
-    ax.grid()
-
-    # Hinzufügen von Last_L als Linienplot
-    ax1 = figure.gca()  # Get current axis
-    ax1.plot(t, Last, color='black', linewidth=0.5)  # Zeichnen der Last_L Linie
-
-def plotPieChart(figure, Anteile, labels):
-    ax = figure.add_subplot(111)
-
-    # Überprüfen, ob die Summe der Anteile weniger als 1 (100 %) beträgt
-    summe = sum(Anteile)
-    if summe < 1:
-        # Fügen Sie den fehlenden Anteil hinzu, um die Lücke darzustellen
-        Anteile.append(1 - summe)
-        labels.append("ungedeckter Bedarf")  # Oder einen anderen passenden Text für den leeren Bereich
-
-    ax.pie(Anteile, labels=labels, autopct='%1.1f%%', startangle=90)
-    ax.set_title("Anteile Wärmeerzeugung")
-    ax.legend(loc='lower left')
-    ax.axis("equal")  # Stellt sicher, dass der Pie-Chart kreisförmig bleibt
+        if plot:
+            optimized_energy_system.plot_stack_plot(plt.figure())
+            optimized_energy_system.plot_pie_chart(plt.figure())
 
 if __name__ == "__main__":
-    #test_berechnung_erzeugermix(optimize=False, plot=True)
-    #test_berechnung_erzeugermix(optimize=True, plot=True, opt_method="SLSQP")
-    test_berechnung_erzeugermix(optimize=True, plot=True, opt_method="MILP")
+    test_berechnung_erzeugermix(optimize=True, plot=True, opt_method="SLSQP")
 
     plt.show()

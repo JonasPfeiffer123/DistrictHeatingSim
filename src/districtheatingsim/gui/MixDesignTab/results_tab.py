@@ -254,18 +254,20 @@ class ResultsTab(QWidget):
         rows_height = sum([table.rowHeight(i) for i in range(table.rowCount())])
         table.setFixedHeight(header_height + rows_height)
 
-    def plotResults(self, results):
+    def plotResults(self, energy_system):
         """
         Plots the results in the diagrams.
 
         Args:
-            results (dict): The results to plot.
+            energy_system (EnergySystem): The energy system instance containing results.
         """
-        self.results = results
-        time_steps = results['time_steps']
+        self.results = energy_system.results
+        time_steps = self.results['time_steps']
+
+        print(f"Results tech_classes: {energy_system.technologies}")
 
         self.extracted_data = {}
-        for tech_class in self.results['tech_classes']:
+        for tech_class in energy_system.technologies:
             for var_name in dir(tech_class):
                 var_value = getattr(tech_class, var_name)
                 if isinstance(var_value, (list, np.ndarray)) and len(var_value) == len(time_steps):
@@ -287,8 +289,6 @@ class ResultsTab(QWidget):
         self.figure1.clear()
         self.plotVariables(self.figure1, time_steps, self.selected_variables)
         self.canvas1.draw()
-
-        self.plotPieChart()
 
     def plotVariables(self, figure, time_steps, selected_vars):
         """
@@ -337,36 +337,15 @@ class ResultsTab(QWidget):
         self.plotVariables(self.figure1, self.results['time_steps'], self.selected_variables)
         self.canvas1.draw()
 
-    def plotPieChart(self):
+    def updatePieChart(self, energy_system):
         """
-        Plots the pie chart for the energy shares.
-        """
-        Anteile = self.results['Anteile']
-        labels = self.results['techs']
-        colors = self.results['colors']
-        summe = sum(Anteile)
-        if round(summe, 5) < 1:
-            Anteile.append(1 - summe)
-            labels.append("ungedeckter Bedarf")
-            colors.append("black")
+        Updates the pie chart with results from the EnergySystem.
 
+        Args:
+            energy_system (EnergySystem): The energy system instance containing results.
+        """
         self.pieChartFigure.clear()
-        ax = self.pieChartFigure.add_subplot(111)
-        wedges, texts, autotexts = ax.pie(
-            Anteile, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90, pctdistance=0.85
-        )
-
-        for text in texts:
-            text.set_fontsize(10)
-        for autotext in autotexts:
-            autotext.set_fontsize(10)
-            autotext.set_color('black')
-            autotext.set_weight('bold')
-
-        ax.set_title("Anteile Wärmeerzeugung")
-        ax.legend(loc='lower left')
-        ax.axis("equal")
-
+        energy_system.plot_pie_chart(self.pieChartFigure)
         self.pieChartCanvas.draw()
 
 if __name__ == "__main__":
