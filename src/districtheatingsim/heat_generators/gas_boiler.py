@@ -106,23 +106,24 @@ class GasBoiler(BaseHeatGenerator):
         # primary energy factor
         self.primärenergie = self.Gasbedarf * self.primärenergiefaktor
 
-    def calculate(self, economic_parameters, duration, general_results, **kwargs):
+    def calculate(self, economic_parameters, duration, load_profile, **kwargs):
         """
         Calculates the performance and cost of the gas boiler system.
 
         Args:
             economic_parameters (dict): Economic parameters dictionary containing fuel costs, capital interest rate, inflation rate, time period, and operational costs.
             duration (float): Duration of each time step in hours.
-            general_results (dict): General results dictionary containing rest load.
+            load_profile (array): Load profile of the system in kW.
 
         Returns:
             dict: Dictionary containing the results of the calculation.
         """
-        self.simulate_operation(general_results['Restlast_L'], duration)
+        self.simulate_operation(load_profile, duration)
         self.calculate_heat_generation_cost(economic_parameters)
         self.calculate_environmental_impact()
 
         results = {
+            'tech_name': self.name,
             'Wärmemenge': self.Wärmemenge_Gaskessel,
             'Wärmeleistung_L': self.Wärmeleistung_kW,
             'Brennstoffbedarf': self.Gasbedarf,

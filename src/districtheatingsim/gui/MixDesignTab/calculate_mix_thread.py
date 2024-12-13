@@ -94,6 +94,9 @@ class CalculateMixThread(QThread):
             # Calculate the energy mix
             result = energy_system.calculate_mix()
 
+            energy_system.results["waerme_ges_kW"] = waerme_ges_kW
+            energy_system.results["strom_wp_kW"] = strom_wp_kW
+
             # Perform optimization if needed
             if self.optimize:
                 print("Optimizing mix")
@@ -101,16 +104,17 @@ class CalculateMixThread(QThread):
                 print("Optimization done")
 
                 # Calculate the energy mix
-                result = optimized_energy_system.calculate_mix()
+                optimized_result = optimized_energy_system.calculate_mix()
 
-            ### To do: Return / save both energy_system and optimized_energy_system for further analysis ###
+                # Add additional data to the result
+                optimized_energy_system.results["waerme_ges_kW"] = waerme_ges_kW
+                optimized_energy_system.results["strom_wp_kW"] = strom_wp_kW
 
-            # Add additional data to the result
-            result["waerme_ges_kW"] = waerme_ges_kW
-            result["strom_wp_kW"] = strom_wp_kW
-
-            # Emit the calculation result
-            self.calculation_done.emit(result)
+                # Emit the calculation result
+                self.calculation_done.emit(([energy_system, optimized_energy_system]))
+            else:
+                # Emit the calculation result
+                self.calculation_done.emit([energy_system])
 
         except Exception as e:
             tb = traceback.format_exc()

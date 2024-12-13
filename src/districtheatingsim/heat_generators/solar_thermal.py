@@ -174,7 +174,7 @@ class SolarThermal(BaseHeatGenerator):
 
         self.primärenergie_Solarthermie = self.Wärmemenge * self.primärenergiefaktor
 
-    def calculate(self, economic_parameters, duration, general_results, **kwargs):
+    def calculate(self, economic_parameters, duration, load_profile, **kwargs):
         VLT_L = kwargs.get('VLT_L')
         RLT_L = kwargs.get('RLT_L')
         TRY_data = kwargs.get('TRY_data')
@@ -189,13 +189,13 @@ class SolarThermal(BaseHeatGenerator):
             TRY_data (array): Test Reference Year data.
             time_steps (array): Array of time steps.
             duration (float): Duration of each time step in hours.
-            general_results (dict): General results dictionary containing rest load.
+            load_profile (array): Load profile of the system in kW.
 
         Returns:
             dict: Dictionary containing the results of the calculation.
         """
         # Berechnung der Solarthermieanlage
-        self.Wärmemenge, self.Wärmeleistung_kW, self.Speicherladung, self.Speicherfüllstand = Berechnung_STA(self.bruttofläche_STA, self.vs, self.Typ, general_results['Restlast_L'], VLT_L, RLT_L, 
+        self.Wärmemenge, self.Wärmeleistung_kW, self.Speicherladung, self.Speicherfüllstand = Berechnung_STA(self.bruttofläche_STA, self.vs, self.Typ, load_profile, VLT_L, RLT_L, 
                                                                                                         TRY_data, time_steps, duration, self.Tsmax, self.Longitude, self.STD_Longitude, self.Latitude, 
                                                                                                         self.East_West_collector_azimuth_angle, self.Collector_tilt_angle, self.Tm_rl, self.Qsa, 
                                                                                                         self.Vorwärmung_K, self.DT_WT_Solar_K, self.DT_WT_Netz_K)
@@ -204,7 +204,8 @@ class SolarThermal(BaseHeatGenerator):
 
         self.calculate_environmental_impact()
 
-        results = { 
+        results = {
+            'tech_name': self.name,
             'Wärmemenge': self.Wärmemenge,
             'Wärmeleistung_L': self.Wärmeleistung_kW,
             'WGK': self.WGK,

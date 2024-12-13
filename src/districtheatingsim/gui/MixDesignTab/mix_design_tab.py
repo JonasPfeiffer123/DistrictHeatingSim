@@ -21,7 +21,7 @@ from districtheatingsim.gui.MixDesignTab.results_tab import ResultsTab
 from districtheatingsim.gui.MixDesignTab.sensitivity_tab import SensitivityTab
 from districtheatingsim.gui.MixDesignTab.sankey_dialog import SankeyDialog
 from districtheatingsim.gui.MixDesignTab.utilities import CustomJSONEncoder
-from districtheatingsim.heat_generators import TECH_CLASS_REGISTRY
+from districtheatingsim.heat_generators.heat_generation_mix import EnergySystem
 
 from districtheatingsim.utilities.test_reference_year import import_TRY
 
@@ -156,7 +156,7 @@ class MixDesignTab(QWidget):
         # 'Berechnungen'-Menü
         calculationsMenu = self.menuBar.addMenu('Berechnungen')
         calculationsMenu.addAction(self.createAction('Berechnen', self.start_calculation))
-        calculationsMenu.addAction(self.createAction('Optimieren', self.optimize))
+        calculationsMenu.addAction(self.createAction('Optimieren', self.start_optimization))
         #calculationsMenu.addAction(self.createAction('Sensivitätsuntersuchung', self.sensitivity))
 
         # 'weitere Ergebnisse Anzeigen'-Menü
@@ -280,6 +280,8 @@ class MixDesignTab(QWidget):
             optimize (bool, optional): Whether to optimize the calculation. Defaults to False.
             weights (dict, optional): Weights for optimization. Defaults to None.
         """
+        self.optimize = optimize
+
         if not self.validateInputs():
             return
 
@@ -301,7 +303,7 @@ class MixDesignTab(QWidget):
             }
 
             self.calculationThread = CalculateMixThread(self.filename, self.load_scale_factor, self.TRY_data, self.COP_data, 
-                                                        self.economic_parameters, self.techTab.tech_objects, optimize, weights)
+                                                        self.economic_parameters, self.techTab.tech_objects, self.optimize, weights)
             
             self.calculationThread.calculation_done.connect(self.on_calculation_done)
             self.calculationThread.calculation_error.connect(self.on_calculation_error)
@@ -318,18 +320,16 @@ class MixDesignTab(QWidget):
             result (dict): The results of the calculation.
         """
         self.progressBar.setRange(0, 1)
-        self.results = result
-        self.techTab.tech_objects = self.results["tech_classes"]
-        self.techTab.rebuildScene()
-        self.techTab.updateTechList()
-        self.costTab.updateInfrastructureTable()  # Ensure the infrastructure table is updated first
-        self.costTab.updateTechDataTable(self.techTab.tech_objects)  # Then update the tech table
-        self.costTab.updateSumLabel()  # Then update the sum label
-        self.costTab.plotCostComposition()
-        self.resultTab.showResultsInTable(self.results)
-        self.resultTab.showAdditionalResultsTable(self.results)
-        self.resultTab.plotResults(self.results)
-        self.save_heat_generation_results_to_csv(self.results)
+        # To do: if optimize is True, the results are stored in the second element of the tuple, need to implement posibility to show both or even store different systems
+        self.energy_system = result[0]
+        self.results = self.energy_system.results
+        if self.optimize:
+            self.energy_system = result[1]
+            self.results = self.optimized_energy_system.results
+
+        self.process_data()
+
+        self.save_heat_generation_results_to_csv()
 
     def on_calculation_error(self, error_message):
         """
@@ -341,7 +341,7 @@ class MixDesignTab(QWidget):
         self.progressBar.setRange(0, 1)
         QMessageBox.critical(self, "Berechnungsfehler", str(error_message))
 
-    def optimize(self):
+    def start_optimization(self):
         """
         Opens the optimization dialog and starts the optimization process.
         """
@@ -424,10 +424,10 @@ class MixDesignTab(QWidget):
         result = None
         calculation_done_event = QEventLoop()
         
-        def calculation_done(result_data):
+        def calculation_done(energy_system):
             self.progressBar.setRange(0, 1)
             nonlocal result
-            result = result_data
+            result = energy_system[0].results
             calculation_done_event.quit()
 
         def calculation_error(error_message):
@@ -471,14 +471,30 @@ class MixDesignTab(QWidget):
         else:
             QMessageBox.information(self, "Keine Berechnungsergebnisse", "Es sind keine Berechnungsergebnisse verfügbar. Führen Sie zunächst eine Berechnung durch.")
 
+    def process_data(self):
+        # Update the tech objects from the loaded EnergySystem
+        self.techTab.tech_objects = self.energy_system.technologies
+        self.techTab.rebuildScene()
+        self.techTab.updateTechList()
+        self.costTab.updateInfrastructureTable()
+        self.costTab.updateTechDataTable(self.energy_system.technologies)
+        self.costTab.updateSumLabel()
+        self.costTab.plotCostComposition()
+        self.resultTab.showResultsInTable(self.energy_system.results)
+        self.resultTab.showAdditionalResultsTable(self.energy_system.results)
+        self.resultTab.plotResults(self.energy_system)
+        self.resultTab.updatePieChart(self.energy_system)
+
     ### Save Calculation Results ###
-    def save_heat_generation_results_to_csv(self, results):
+    def save_heat_generation_results_to_csv(self):
         """
         Saves the heat generation results to a CSV file.
 
         Args:
             results (dict): The calculation results.
         """
+        results = self.energy_system.results
+
         # Initialize the DataFrame with the timestamps
         df = pd.DataFrame({'time_steps': results['time_steps']})
         
@@ -508,83 +524,38 @@ class MixDesignTab(QWidget):
         
         json_filename = os.path.join(self.base_path, self.config_manager.get_relative_path("results_path"))
         if json_filename:
-            # Create a copy of the results and tech_objects
-            data_to_save = {
-                'results': self.results.copy() if self.results else {},
-                'tech_objects': [obj.to_dict() for obj in self.techTab.tech_objects]
-            }
-
             try:
-                # Save to a JSON file using the custom encoder
+                # Speichere das gesamte EnergySystem-Objekt
                 with open(json_filename, 'w') as json_file:
-                    json.dump(data_to_save, json_file, indent=4, cls=CustomJSONEncoder)
-                
-                QMessageBox.information(self, "Erfolgreich gespeichert", f"Die Ergebnisse wurden erfolgreich unter {json_filename} gespeichert.")
+                    json.dump(self.energy_system.to_dict(), json_file, indent=4, cls=CustomJSONEncoder)
+            
+                QMessageBox.information(self, "Erfolgreich gespeichert", f"Das Energiesystem wurde erfolgreich unter {json_filename} gespeichert.")
+
             except TypeError as e:
                 QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der JSON-Datei: {e}")
                 raise e
 
     def load_results_JSON(self):
         """
-        Loads the results and technology objects from a JSON file.
+        Loads the EnergySystem object and its results from a JSON file.
         """
         json_filename = os.path.join(self.base_path, self.config_manager.get_relative_path("results_path"))
-        if json_filename:
-            try:
-                # Load the JSON file
-                with open(json_filename, 'r') as json_file:
-                    data_loaded = json.load(json_file)
-                
-                results_loaded = data_loaded.get('results', {})
-                tech_objects_loaded = data_loaded.get('tech_objects', [])
+        if not json_filename:
+            QMessageBox.warning(self, "Fehler", "Pfad für Ergebnisse konnte nicht ermittelt werden.")
+            return
 
-                # Convert lists back to numpy arrays and dictionaries back to objects
-                for key, value in results_loaded.items():
-                    if isinstance(value, list):
-                        if key == "tech_classes":  # Convert dictionaries back to objects
-                            tech_classes = []
-                            for v in value:
-                                for prefix, cls in TECH_CLASS_REGISTRY.items():
-                                    if v['name'].startswith(prefix):
-                                        tech_classes.append(cls.from_dict(v))
-                                        break
-                                results_loaded[key] = tech_classes
-                        elif all(isinstance(i, list) for i in value):  # Check if the list is a list of lists
-                            results_loaded[key] = [np.array(v) for v in value]
-                        else:
-                            results_loaded[key] = np.array(value)
+        try:
+            # Load the JSON file
+            with open(json_filename, 'r') as json_file:
+                data_loaded = json.load(json_file)
 
-                # Load the tech_objects
-                tech_objects = []
-                for obj in tech_objects_loaded:
-                    for prefix, cls in TECH_CLASS_REGISTRY.items():
-                        if obj['name'].startswith(prefix):
-                            tech_objects.append(cls.from_dict(obj))
-                            break
+            # Restore the EnergySystem from the loaded dictionary
+            self.energy_system = EnergySystem.from_dict(data_loaded)
 
-                self.results = results_loaded
-                self.techTab.tech_objects = tech_objects
-                self.tech_objects = tech_objects
+            self.process_data()
 
-                # Add tech objects back to the scene
-                self.techTab.schematic_scene.delete_all()  # Lösche alle Objekte aus der Szene
-                for tech in self.techTab.tech_objects:
-                    self.techTab.addTechToScene(tech)
+            QMessageBox.information(self, "Erfolgreich geladen", f"Die Ergebnisse wurden erfolgreich aus {json_filename} geladen.")
+        except Exception as e:
+            QMessageBox.critical(self, "Ladefehler", f"Fehler beim Laden der JSON-Datei: {e}")
+            raise e
 
-                # Update the tabs with the loaded data
-                if self.techTab.tech_objects:
-                    self.techTab.updateTechList()
-
-                if self.results:
-                    self.costTab.updateInfrastructureTable()  # Ensure the infrastructure table is updated first
-                    self.costTab.updateTechDataTable(self.techTab.tech_objects)  # Then update the tech table
-                    self.costTab.updateSumLabel()  # Then update the sum label
-                    self.costTab.plotCostComposition()
-                    self.resultTab.showResultsInTable(self.results)
-                    self.resultTab.showAdditionalResultsTable(self.results)
-                    self.resultTab.plotResults(self.results)
-                
-                QMessageBox.information(self, "Erfolgreich geladen", f"Die Ergebnisse wurden erfolgreich aus {json_filename} geladen.")
-            except Exception as e:
-                QMessageBox.critical(self, "Ladefehler", f"Fehler beim Laden der JSON-Datei: {e}")
-                raise e

@@ -252,7 +252,7 @@ class RiverHeatPump(HeatPump):
 
         self.primärenergie = self.Strombedarf * self.primärenergiefaktor
     
-    def calculate(self, economic_parameters, duration, general_results, **kwargs):
+    def calculate(self, economic_parameters, duration, load_profile, **kwargs):
         VLT_L = kwargs.get('VLT_L')
         COP_data = kwargs.get('COP_data')
 
@@ -260,21 +260,22 @@ class RiverHeatPump(HeatPump):
         Calculates the economic and environmental metrics for the river heat pump.
 
         Args:
-            VLT_L (array-like): Flow temperatures.
-            COP_data (array-like): COP data for interpolation.
+            VLT_L (array): Flow temperatures.
+            COP_data (array): COP data for interpolation.
             Strompreis (float): Price of electricity.
             duration (float): Time duration.
-            general_results (dict): Dictionary containing general results and metrics.
+            load_profile (array): Load profile of the system in kW.
 
         Returns:
             dict: Dictionary containing calculated metrics and results.
         """
         
-        self.calculate_operation(general_results["Restlast_L"], VLT_L, COP_data, duration)
+        self.calculate_operation(load_profile, VLT_L, COP_data, duration)
         WGK_Abwärme = self.calculate_heat_generation_costs(self.Wärmeleistung_FW_WP, self.Wärmemenge, self.Strombedarf, self.spez_Investitionskosten_Flusswasser, economic_parameters)
         self.calculate_environmental_impact()
 
         results = {
+            'tech_name': self.name,
             'Wärmemenge': self.Wärmemenge,
             'Wärmeleistung_L': self.Wärmeleistung_kW,
             'Strombedarf': self.Strombedarf,
@@ -412,7 +413,7 @@ class WasteHeatPump(HeatPump):
 
         self.primärenergie = self.Strombedarf * self.primärenergiefaktor
     
-    def calculate(self, economic_parameters, duration, general_results, **kwargs):
+    def calculate(self, economic_parameters, duration, load_profile, **kwargs):
         VLT_L = kwargs.get('VLT_L')
         COP_data = kwargs.get('COP_data')
 
@@ -420,22 +421,23 @@ class WasteHeatPump(HeatPump):
         Calculates the economic and environmental metrics for the waste heat pump.
 
         Args:
-            VLT_L (array-like): Flow temperatures.
-            COP_data (array-like): COP data for interpolation.
+            VLT_L (array): Flow temperatures.
+            COP_data (array): COP data for interpolation.
             economic_parameters (dict): Economic parameters dictionary containing fuel costs, capital interest rate, inflation rate, time period, and operational costs.
             duration (float): Time duration.
-            general_results (dict): Dictionary containing general results and metrics.
+            load_profile (array): Load profile of the system in kW.
 
         Returns:
             dict: Dictionary containing calculated metrics and results.
         """
 
-        self.calculate_operation(general_results['Restlast_L'], VLT_L, COP_data, duration)
+        self.calculate_operation(load_profile, VLT_L, COP_data, duration)
         WGK_Abwärme = self.calculate_heat_generation_costs(self.max_Wärmeleistung, self.Wärmemenge, self.Strombedarf, self.spez_Investitionskosten_Abwärme, economic_parameters)
 
         self.calculate_environmental_impact()
 
         results = {
+            'tech_name': self.name,
             'Wärmemenge': self.Wärmemenge,
             'Wärmeleistung_L': self.Wärmeleistung_kW,
             'Strombedarf': self.Strombedarf,
@@ -528,18 +530,7 @@ class Geothermal(HeatPump):
         self.primärenergiefaktor = 2.4
 
     def calculate_operation(self, Last_L, VLT_L, COP_data, duration):
-        """
-        Calculates the geothermal heat extraction and other performance metrics.
-
-        Args:
-            Last_L (array-like): Load demand.
-            VLT_L (array-like): Flow temperatures.
-            COP_data (array-like): COP data for interpolation.
-            duration (float): Time duration.
-
-        Returns:
-            tuple: Heat energy, electricity demand, heat output, electric power.
-        """
+        
         if self.Fläche == 0 or self.Bohrtiefe == 0:
             return 0, 0, np.zeros_like(Last_L), np.zeros_like(VLT_L)
 
@@ -604,7 +595,7 @@ class Geothermal(HeatPump):
 
         self.primärenergie = self.Strombedarf * self.primärenergiefaktor
     
-    def calculate(self, economic_parameters, duration, general_results, **kwargs):
+    def calculate(self, economic_parameters, duration, load_profile, **kwargs):
         VLT_L = kwargs.get('VLT_L')
         COP_data = kwargs.get('COP_data')
 
@@ -612,16 +603,17 @@ class Geothermal(HeatPump):
         Calculates the economic and environmental metrics for the geothermal heat pump.
 
         Args:
-            VLT_L (array-like): Flow temperatures.
-            COP_data (array-like): COP data for interpolation.
+            VLT_L (array): Flow temperatures.
+            COP_data (array): COP data for interpolation.
             economic_parameters (dict): Economic parameters dictionary containing fuel costs, capital interest rate, inflation rate, time period, and operational costs.
             duration (float): Time duration.
-            general_results (dict): Dictionary containing general results and metrics.
+            load_profile (array): Load profile of the system in kW.
 
         Returns:
             dict: Dictionary containing calculated metrics and results.
         """
-        self.calculate_operation(general_results['Restlast_L'], VLT_L, COP_data, duration)
+
+        self.calculate_operation(load_profile, VLT_L, COP_data, duration)
 
         # To do: Fix RuntimeWarning: divide by zero encountered in scalar divide
         self.spez_Investitionskosten_Erdsonden = self.Investitionskosten_Sonden / self.max_Wärmeleistung
@@ -630,6 +622,7 @@ class Geothermal(HeatPump):
         self.calculate_environmental_impact()
 
         results = {
+            'tech_name': self.name,
             'Wärmemenge': self.Wärmemenge,
             'Wärmeleistung_L': self.Wärmeleistung_kW,
             'Strombedarf': self.Strombedarf,
@@ -712,14 +705,24 @@ class AqvaHeat(HeatPump):
         self.primärenergiefaktor = 2.4
         self.Wärmeleistung_FW_WP = nominal_power
 
-    def calculate(self, economic_parameters, duration, general_results, **kwargs):
-        """
-        Perform specific calculations for waste heat systems.
-        """
+    def calculate(self, economic_parameters, duration, load_profile, **kwargs):
         VLT_L = kwargs.get('VLT_L')
         COP_data = kwargs.get('COP_data')
 
-        residual_powers = general_results["Restlast_L"]
+        """
+        Calculates the economic and environmental metrics for the AqvaHeat-solution.
+        Args:
+            VLT_L (array): Flow temperatures.
+            COP_data (array): COP data for interpolation.
+            economic_parameters (dict): Economic parameters dictionary containing fuel costs, capital interest rate, inflation rate, time period, and operational costs.
+            duration (float): Time duration.
+            load_profile (array): Load profile of the system in kW.
+
+        Returns:
+            dict: Dictionary containing calculated metrics and results.
+        """
+
+        residual_powers = load_profile
         effective_powers = np.zeros_like(residual_powers)
 
         intermediate_temperature = 12  # °C
@@ -792,6 +795,7 @@ class AqvaHeat(HeatPump):
 
 
         results = {
+            'tech_name': self.name,
             'Wärmemenge': self.Wärmemenge_AqvaHeat,  # heat energy for whole duration
             'Wärmeleistung_L': self.Wärmeleistung_kW,  # vector length time steps with actual power supplied
             'Strombedarf': self.Strombedarf_AqvaHeat,  # electrical energy consumed during whole duration
