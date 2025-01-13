@@ -7,9 +7,26 @@ import os
 import pandas as pd
 import traceback
 
+from pyproj import Transformer
+
 from PyQt5.QtWidgets import (QAction, QVBoxLayout, QWidget, QFileDialog, QMessageBox, QMenuBar)
 from districtheatingsim.gui.PVTab.pv_mvp import PVDataModel, DataVisualizationPresenter, PVDataVisualizationTab
 from districtheatingsim.heat_generators.photovoltaics import Calculate_PV
+
+def transform_coordinates(etrs89_x, etrs89_y):
+    """
+    Transforms coordinates from ETRS89 (EPSG:25833) to WGS84 (EPSG:4326).
+
+    Args:
+        etrs89_x (float): ETRS89 X coordinate (in meters).
+        etrs89_y (float): ETRS89 Y coordinate (in meters).
+
+    Returns:
+        tuple: Latitude and Longitude in WGS84.
+    """
+    transformer = Transformer.from_crs("EPSG:25833", "EPSG:4326", always_xy=True)
+    lon, lat = transformer.transform(etrs89_x, etrs89_y)
+    return lat, lon
 
 class PVTab(QWidget):
     def __init__(self, folder_manager, data_manager, config_manager, parent=None):
@@ -109,8 +126,14 @@ class PVTab(QWidget):
 
             # Loop through each building and each roof for calculation
             for parent_id, building_info in self.data_model.building_info.items():
+                # Transform coordinates from ETRS89 to WGS84
+                latitude, longitude = transform_coordinates(
+                    building_info['Koordinate_X'], building_info['Koordinate_Y']
+                )
+
                 building_item = self.data_vis_tab.add_building(
-                    building_info['Adresse'], building_info['Koordinate_X'], building_info['Koordinate_Y'])
+                    building_info['Adresse'], latitude, longitude)
+                
                 for roof in building_info.get('Roofs', []):
                     roof_areas = roof['Area'] if isinstance(roof['Area'], list) else [roof['Area']]
                     roof_slopes = roof['Roof_Slope'] if isinstance(roof['Roof_Slope'], list) else [roof['Roof_Slope']]
@@ -125,9 +148,9 @@ class PVTab(QWidget):
                         yield_MWh, max_power, _ = Calculate_PV(
                             try_data_file,
                             Gross_area=roof_area,
-                            Longitude=building_info['Koordinate_X'],
+                            Longitude=longitude,
                             STD_Longitude=15,  # Replace with the correct standard longitude
-                            Latitude=building_info['Koordinate_Y'],
+                            Latitude=latitude,
                             Albedo=0.2,  # Example albedo value, adjust as necessary
                             East_West_collector_azimuth_angle=roof_orientation,
                             Collector_tilt_angle=roof_slope
