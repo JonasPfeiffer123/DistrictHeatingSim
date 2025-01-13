@@ -261,7 +261,8 @@ class VisualizationPresenter(QObject):
                 # Add the layer to the model
                 layer_name = os.path.splitext(os.path.basename(filename))[0]
 
-                with open(filename, 'r') as f:
+                # Read as UTF-8 to avoid encoding issues
+                with open(filename, 'r', encoding='utf-8') as f:
                     geojson_data = json.load(f)
 
                 # Pass the layers data to JavaScript via the WebChannel
