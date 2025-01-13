@@ -427,8 +427,6 @@ def calculate_normal_and_angles(roof_geom):
         
         # Azimutwinkel
         azimuth = np.degrees(np.arctan2(normal[1], normal[0]))
-        if azimuth < 0:
-            azimuth += 360
 
         # Fläche des Polygons
         area = polygon.area
