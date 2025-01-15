@@ -1,14 +1,14 @@
 """
 Filename: building_thread.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-10
+Date: 2024-12-11
 Description: Contains the threaded functionality function for calculating the heat generation mix.
 """
 
 import numpy as np
 import traceback
 from PyQt5.QtCore import QThread, pyqtSignal
-from districtheatingsim.heat_generators.heat_generation_mix import Berechnung_Erzeugermix, optimize_mix
+from districtheatingsim.heat_generators.heat_generation_mix import EnergySystem, EnergySystemOptimizer
 
 class CalculateBuildingMixThread(QThread):
     """
@@ -21,7 +21,7 @@ class CalculateBuildingMixThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(Exception)
 
-    def __init__(self, building_id, building_data, tech_objects, TRY_data, COP_data, gas_price, electricity_price, wood_price, BEW, interest_on_capital, price_increase_rate, period, wage, optimize=False, weights=None):
+    def __init__(self, building_id, building_data, tech_objects, TRY_data, COP_data, gas_price, electricity_price, wood_price, BEW, capital_interest_rate, inflation_rate, time_period, hourly_rate, optimize=False, weights=None):
         """
         Initializes the CalculateBuildingMixThread.
 
@@ -35,10 +35,10 @@ class CalculateBuildingMixThread(QThread):
             electricity_price (float): Electricity price.
             wood_price (float): Wood price.
             BEW (str): Subsidy eligibility.
-            interest_on_capital (float): Interest rate on capital.
-            price_increase_rate (float): Price increase rate.
-            period (int): Analysis period.
-            wage (float): Wage rate.
+            capital_interest_rate (float): Interest rate on capital.
+            price_increase_rateinflation_rate (float): Price increase rate.
+            time_period (int): Analysis period.
+            hourly_rate (float): Wage rate.
             optimize (bool, optional): Whether to optimize the mix. Defaults to False.
             weights (dict, optional): Weights for optimization criteria. Defaults to None.
         """
@@ -52,10 +52,10 @@ class CalculateBuildingMixThread(QThread):
         self.electricity_price = electricity_price
         self.wood_price = wood_price
         self.BEW = BEW
-        self.interest_on_capital = interest_on_capital
-        self.price_increase_rate = price_increase_rate
-        self.period = period
-        self.wage = wage
+        self.capital_interest_rate = capital_interest_rate
+        self.inflation_rate = inflation_rate
+        self.time_period = time_period
+        self.hourly_rate = hourly_rate
         self.optimize = optimize
         self.weights = weights
 
@@ -70,23 +70,42 @@ class CalculateBuildingMixThread(QThread):
             flow_temp = np.array(self.building_data['vorlauftemperatur'])
             return_temp = np.array(self.building_data['rücklauftemperatur'])
 
-            initial_data = time_steps, last_profile, flow_temp, return_temp
-            calc1, calc2 = 0, len(time_steps)
+            self.economic_parameters = {
+                "gas_price": self.gas_price,
+                "electricity_price": self.electricity_price,
+                "wood_price": self.wood_price,
+                "capital_interest_rate": 1 + self.capital_interest_rate / 100,
+                "inflation_rate": 1 + self.inflation_rate / 100,
+                "time_period": self.time_period,
+                "hourly_rate": self.hourly_rate,
+                "subsidy_eligibility": self.BEW
+            }
 
-            if self.optimize:
-                self.tech_objects = optimize_mix(
-                    self.tech_objects, initial_data, calc1, calc2, self.TRY_data, self.COP_data,
-                    self.gas_price, self.electricity_price, self.wood_price, self.BEW,
-                    kapitalzins=self.interest_on_capital, preissteigerungsrate=self.price_increase_rate,
-                    betrachtungszeitraum=self.period, stundensatz=self.wage, weights=self.weights
-                )
-
-            result = Berechnung_Erzeugermix(
-                self.tech_objects, initial_data, calc1, calc2, self.TRY_data, self.COP_data,
-                self.gas_price, self.electricity_price, self.wood_price, self.BEW,
-                kapitalzins=self.interest_on_capital, preissteigerungsrate=self.price_increase_rate,
-                betrachtungszeitraum=self.period, stundensatz=self.wage
+            energy_system = EnergySystem(
+                time_steps=time_steps,
+                load_profile=last_profile,
+                VLT_L=flow_temp,
+                RLT_L=return_temp,
+                TRY_data=self.TRY_data,
+                COP_data=self.COP_data,
+                economic_parameters=self.economic_parameters,
             )
+
+             # Add technologies to the system
+            for tech in self.tech_objects:
+                energy_system.add_technology(tech)
+
+            # Calculate the energy mix
+            result = energy_system.calculate_mix()
+
+            # Perform optimization if needed
+            if self.optimize:
+                print("Optimizing mix")
+                optimized_energy_system = energy_system.optimize_mix(self.weights)
+                print("Optimization done")
+
+                # Calculate the energy mix
+                result = optimized_energy_system.calculate_mix()
 
             result["building_id"] = self.building_id  # Include the building ID in the result
             self.calculation_done.emit(result)

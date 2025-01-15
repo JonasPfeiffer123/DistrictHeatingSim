@@ -717,7 +717,7 @@ class CalculationTab(QWidget):
                 additional_data = json.load(json_file)
                 
             self.supply_temperature = np.array(additional_data['supply_temperature'])
-            self.supply_temperature_heat_consumer = float(additional_data['supply_temperature_heat_consumers'])
+            self.supply_temperature_heat_consumer = np.array(additional_data['supply_temperature_heat_consumers'])
             self.return_temperature_heat_consumer = np.array(additional_data['return_temperature'])
             self.supply_temperature_buildings = np.array(additional_data['supply_temperature_buildings'])
             self.return_temperature_buildings = np.array(additional_data['return_temperature_buildings'])

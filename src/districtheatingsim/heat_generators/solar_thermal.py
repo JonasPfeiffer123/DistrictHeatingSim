@@ -1,7 +1,7 @@
 """
 Filename: solar_thermal.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-10
+Date: 2024-09-11
 Description: This script calculates the heat generation of a thermal solar heat generator.
 
 Additional Information: Yield calculation program for solar thermal energy in heating networks (calculation basis: ScenoCalc District Heating 2.0) https://www.scfw.de/)
@@ -13,9 +13,9 @@ import numpy as np
 from datetime import datetime, timezone
 
 from districtheatingsim.heat_generators.solar_radiation import calculate_solar_radiation
-from districtheatingsim.heat_generators.annuity import annuität
+from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator
 
-class SolarThermal:
+class SolarThermal(BaseHeatGenerator):
     """
     A class representing a solar thermal system.
 
@@ -84,7 +84,7 @@ class SolarThermal:
             opt_area_min (float, optional): Minimum optimization area in square meters. Defaults to 0.
             opt_area_max (float, optional): Maximum optimization area in square meters. Defaults to 2000.
         """
-        self.name = name
+        super().__init__(name)
         self.bruttofläche_STA = bruttofläche_STA
         self.vs = vs
         self.Typ = Typ
@@ -124,20 +124,26 @@ class SolarThermal:
         self.co2_factor_solar = 0.0  # tCO2/MWh heat is 0 ?
         self.primärenergiefaktor = 0.0
 
-    def calculate_heat_generation_costs(self, q, r, T, BEW, stundensatz):
+    def calculate_heat_generation_costs(self, economic_parameters):
         """
         Calculates the weighted average cost of heat generation (WGK).
 
         Args:
-            q (float): Factor for capital recovery.
-            r (float): Factor for price escalation.
-            T (int): Time period in years.
-            BEW (str): Subsidy eligibility ("Ja" or "Nein").
-            stundensatz (float): Hourly rate for labor.
+            economic_parameters (dict): Economic parameters dictionary containing fuel costs, capital interest rate, inflation rate, time period, and operational costs.
 
         Returns:
             float: Weighted average cost of heat generation.
         """
+
+        self.Strompreis = economic_parameters['electricity_price']
+        self.Gaspreis = economic_parameters['gas_price']
+        self.Holzpreis = economic_parameters['wood_price']
+        self.q = economic_parameters['capital_interest_rate']
+        self.r = economic_parameters['inflation_rate']
+        self.T = economic_parameters['time_period']
+        self.BEW = economic_parameters['subsidy_eligibility']
+        self.stundensatz = economic_parameters['hourly_rate']
+
         if self.Wärmemenge == 0:
             return 0
 
@@ -145,19 +151,19 @@ class SolarThermal:
         self.Investitionskosten_STA = self.bruttofläche_STA * self.Kosten_STA_spez
         self.Investitionskosten = self.Investitionskosten_Speicher + self.Investitionskosten_STA
 
-        self.A_N = annuität(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, q, r, T, stundensatz=stundensatz)
+        self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T, hourly_rate=self.stundensatz)
         self.WGK = self.A_N / self.Wärmemenge
 
         self.Eigenanteil = 1 - self.Anteil_Förderung_BEW
         self.Investitionskosten_Gesamt_BEW = self.Investitionskosten * self.Eigenanteil
-        self.Annuität_BEW = annuität(self.Investitionskosten_Gesamt_BEW, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, q, r, T, stundensatz=stundensatz)
+        self.Annuität_BEW = self.annuity(self.Investitionskosten_Gesamt_BEW, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T, hourly_rate=self.stundensatz)
         self.WGK_BEW = self.Annuität_BEW / self.Wärmemenge
 
         self.WGK_BEW_BKF = self.WGK_BEW - self.Betriebskostenförderung_BEW
 
-        if BEW == "Nein":
+        if self.BEW == "Nein":
             return self.WGK
-        elif BEW == "Ja":
+        elif self.BEW == "Ja":
             return self.WGK_BEW_BKF
         
     def calculate_environmental_impact(self):
@@ -167,41 +173,39 @@ class SolarThermal:
         self.spec_co2_total = self.co2_emissions / self.Wärmemenge if self.Wärmemenge > 0 else 0  # tCO2/MWh_heat
 
         self.primärenergie_Solarthermie = self.Wärmemenge * self.primärenergiefaktor
-        
-    def calculate(self, VLT_L, RLT_L, TRY, time_steps, calc1, calc2, q, r, T, BEW, stundensatz, duration, general_results):
+
+    def calculate(self, economic_parameters, duration, load_profile, **kwargs):
+        VLT_L = kwargs.get('VLT_L')
+        RLT_L = kwargs.get('RLT_L')
+        TRY_data = kwargs.get('TRY_data')
+        time_steps = kwargs.get('time_steps')
+
         """
         Calculates the performance and cost of the solar thermal system.
 
         Args:
             VLT_L (array): Forward temperature profile in degrees Celsius.
             RLT_L (array): Return temperature profile in degrees Celsius.
-            TRY (array): Test Reference Year data.
+            TRY_data (array): Test Reference Year data.
             time_steps (array): Array of time steps.
-            calc1 (float): Calculation parameter 1.
-            calc2 (float): Calculation parameter 2.
-            q (float): Factor for capital recovery.
-            r (float): Factor for price escalation.
-            T (int): Time period in years.
-            BEW (str): Subsidy eligibility ("Ja" or "Nein").
-            stundensatz (float): Hourly rate for labor.
             duration (float): Duration of each time step in hours.
-            general_results (dict): General results dictionary containing rest load.
+            load_profile (array): Load profile of the system in kW.
 
         Returns:
             dict: Dictionary containing the results of the calculation.
         """
         # Berechnung der Solarthermieanlage
-        self.Wärmemenge, self.Wärmeleistung_kW, self.Speicherladung, self.Speicherfüllstand = Berechnung_STA(self.bruttofläche_STA, 
-                                                                                                        self.vs, self.Typ, general_results['Restlast_L'], VLT_L, RLT_L, 
-                                                                                                        TRY, time_steps, calc1, calc2, duration, self.Tsmax, self.Longitude, self.STD_Longitude, 
-                                                                                                        self.Latitude, self.East_West_collector_azimuth_angle, self.Collector_tilt_angle, self.Tm_rl, 
-                                                                                                        self.Qsa, self.Vorwärmung_K, self.DT_WT_Solar_K, self.DT_WT_Netz_K)
+        self.Wärmemenge, self.Wärmeleistung_kW, self.Speicherladung, self.Speicherfüllstand = Berechnung_STA(self.bruttofläche_STA, self.vs, self.Typ, load_profile, VLT_L, RLT_L, 
+                                                                                                        TRY_data, time_steps, duration, self.Tsmax, self.Longitude, self.STD_Longitude, self.Latitude, 
+                                                                                                        self.East_West_collector_azimuth_angle, self.Collector_tilt_angle, self.Tm_rl, self.Qsa, 
+                                                                                                        self.Vorwärmung_K, self.DT_WT_Solar_K, self.DT_WT_Netz_K)
         # Berechnung der Wärmegestehungskosten
-        self.WGK = self.calculate_heat_generation_costs(q, r, T, BEW, stundensatz)
+        self.WGK = self.calculate_heat_generation_costs(economic_parameters)
 
         self.calculate_environmental_impact()
 
-        results = { 
+        results = {
+            'tech_name': self.name,
             'Wärmemenge': self.Wärmemenge,
             'Wärmeleistung_L': self.Wärmeleistung_kW,
             'WGK': self.WGK,
@@ -213,44 +217,53 @@ class SolarThermal:
         }
 
         return results
-
-    def get_display_text(self):
-        return (f"{self.name}: Bruttokollektorfläche: {self.bruttofläche_STA} m², "
-                f"Volumen Solarspeicher: {self.vs} m³, Kollektortyp: {self.Typ}, "
-                f"spez. Kosten Speicher: {self.kosten_speicher_spez} €/m³, "
-                f"spez. Kosten Flachkollektor: {self.kosten_fk_spez} €/m², "
-                f"spez. Kosten Röhrenkollektor: {self.kosten_vrk_spez} €/m²")
     
-    def to_dict(self):
+    def set_parameters(self, variables, variables_order, idx):
         """
-        Converts the SolarThermal object to a dictionary.
-
-        Returns:
-            dict: Dictionary representation of the SolarThermal object.
-        """
-        # Erstelle eine Kopie des aktuellen Objekt-Dictionaries
-        data = self.__dict__.copy()
-        
-        # Entferne das scene_item und andere nicht notwendige Felder
-        data.pop('scene_item', None)
-        return data
-
-    @staticmethod
-    def from_dict(data):
-        """
-        Creates a SolarThermal object from a dictionary.
+        Setzt spezifische Parameter für Solarthermie basierend auf den Optimierungsvariablen.
 
         Args:
-            data (dict): Dictionary containing the attributes of a SolarThermal object.
+            variables (list): Liste der Optimierungsvariablen.
+            variables_order (list): Reihenfolge der Variablen, die ihre Zuordnung beschreibt.
+            idx (int): Index der aktuellen Technologie in der Liste.
+        """
+        try:
+            self.bruttofläche_STA = variables[variables_order.index(f"bruttofläche_STA_{idx}")]
+            self.vs = variables[variables_order.index(f"vs_{idx}")]
+        except ValueError as e:
+            print(f"Fehler beim Setzen der Parameter für {self.name}: {e}")
+
+    def add_optimization_parameters(self, idx):
+        """
+        Fügt Optimierungsparameter für Solarthermie hinzu und gibt sie zurück.
+
+        Args:
+            idx (int): Index der Technologie in der Liste.
 
         Returns:
-            SolarThermal: A new SolarThermal object with attributes from the dictionary.
+            tuple: Initiale Werte, Variablennamen und Grenzen der Variablen.
         """
-        obj = SolarThermal.__new__(SolarThermal)
-        obj.__dict__.update(data)
-        return obj
 
-def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY, time_steps, calc1, calc2, duration, Tsmax=90, Longitude=-14.4222, STD_Longitude=-15, Latitude=51.1676,
+        initial_values = [self.bruttofläche_STA, self.vs]
+        variables_order = [f"bruttofläche_STA_{idx}", f"vs_{idx}"]
+        bounds = [(self.opt_area_min, self.opt_area_max), (self.opt_volume_min, self.opt_volume_max)]
+        
+        return initial_values, variables_order, bounds
+
+    def get_display_text(self):
+        return (f"{self.name}: Bruttokollektorfläche: {self.bruttofläche_STA:.1f} m², "
+                f"Volumen Solarspeicher: {self.vs:.1} m³, Kollektortyp: {self.Typ}, "
+                f"spez. Kosten Speicher: {self.kosten_speicher_spez:.1f} €/m³, "
+                f"spez. Kosten Flachkollektor: {self.kosten_fk_spez:.1f} €/m², "
+                f"spez. Kosten Röhrenkollektor: {self.kosten_vrk_spez:.1f} €/m²")
+    
+    def extract_tech_data(self):
+        dimensions = f"Bruttokollektorfläche: {self.bruttofläche_STA:.1f} m², Speichervolumen: {self.vs:.1f} m³, Kollektortyp: {self.Typ}"
+        costs = f"Investitionskosten Speicher: {self.Investitionskosten_Speicher:.1f} €, Investitionskosten STA: {self.Investitionskosten_STA:.1f} €"
+        full_costs = f"{self.Investitionskosten:.1f}"
+        return self.name, dimensions, costs, full_costs
+
+def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY_data, time_steps, duration, Tsmax=90, Longitude=-14.4222, STD_Longitude=-15, Latitude=51.1676,
                    East_West_collector_azimuth_angle=0, Collector_tilt_angle=36, Tm_rl=60, Qsa=0, Vorwärmung_K=8, DT_WT_Solar_K=5, DT_WT_Netz_K=5):
     """
     Berechnung der thermischen Solaranlage (STA) zur Wärmegewinnung.
@@ -262,10 +275,8 @@ def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY, time_s
         Last_L (array): Lastprofil.
         VLT_L (array): Vorlauftemperaturprofil.
         RLT_L (array): Rücklauftemperaturprofil.
-        TRY (tuple): TRY-Daten (Temperatur, Windgeschwindigkeit, Direktstrahlung, Globalstrahlung).
+        TRY_data (tuple): TRY-Daten (Temperatur, Windgeschwindigkeit, Direktstrahlung, Globalstrahlung).
         time_steps (array): Zeitstempel.
-        calc1 (int): Startindex für die Berechnung.
-        calc2 (int): Endindex für die Berechnung.
         duration (float): Zeitdauer der Berechnung.
         Tsmax (float, optional): Maximale Speichertemperatur. Defaults to 90.
         Longitude (float, optional): Längengrad des Standorts. Defaults to -14.4222.
@@ -282,7 +293,8 @@ def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY, time_s
     Returns:
         tuple: Gesamtwärmemenge, Wärmeoutput, Speicherladung und Speicherfüllstand.
     """
-    Temperatur_L, Windgeschwindigkeit_L, Direktstrahlung_L, Globalstrahlung_L = TRY[0], TRY[1], TRY[2], TRY[3]
+    # To do: Refining data processing that calc1 and calc2 are not necessary, dont give the whole TRY to this function
+    Temperatur_L, Windgeschwindigkeit_L, Direktstrahlung_L, Globalstrahlung_L = TRY_data[0], TRY_data[1], TRY_data[2], TRY_data[3]
 
     # Bestimmen Sie das kleinste Zeitintervall in time_steps
     min_interval = np.min(np.diff(time_steps)).astype('timedelta64[m]').astype(int)
@@ -290,10 +302,11 @@ def Berechnung_STA(Bruttofläche_STA, VS, Typ, Last_L, VLT_L, RLT_L, TRY, time_s
     # Anpassen der stündlichen Werte an die time_steps
     # Wiederholen der stündlichen Werte entsprechend des kleinsten Zeitintervalls
     repeat_factor = 60 // min_interval  # Annahme: min_interval teilt 60 ohne Rest
-    Temperatur_L = np.repeat(Temperatur_L, repeat_factor)[calc1:calc2]
-    Windgeschwindigkeit_L = np.repeat(Windgeschwindigkeit_L, repeat_factor)[calc1:calc2]
-    Direktstrahlung_L = np.repeat(Direktstrahlung_L, repeat_factor)[calc1:calc2]
-    Globalstrahlung_L = np.repeat(Globalstrahlung_L, repeat_factor)[calc1:calc2]
+    start_time_step, end_time_step = 0, len(time_steps)
+    Temperatur_L = np.repeat(Temperatur_L, repeat_factor)[start_time_step:end_time_step]
+    Windgeschwindigkeit_L = np.repeat(Windgeschwindigkeit_L, repeat_factor)[start_time_step:end_time_step]
+    Direktstrahlung_L = np.repeat(Direktstrahlung_L, repeat_factor)[start_time_step:end_time_step]
+    Globalstrahlung_L = np.repeat(Globalstrahlung_L, repeat_factor)[start_time_step:end_time_step]
 
     if Bruttofläche_STA == 0 or VS == 0:
         return 0, np.zeros_like(Last_L), np.zeros_like(Last_L), np.zeros_like(Last_L)

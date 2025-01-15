@@ -1,16 +1,16 @@
 """
 Filename: power_to_heat.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-11-18
+Date: 2024-12-11
 Description: Contains the PowerToHeat class representing a power-to-heat system.
 
 """
 
 import numpy as np
 
-from districtheatingsim.heat_generators.annuity import annuität
+from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator
 
-class PowerToHeat:
+class PowerToHeat(BaseHeatGenerator):
     """
     A class representing a power-to-heat system.
 
@@ -37,7 +37,7 @@ class PowerToHeat:
             Nutzungsgrad (float, optional): Efficiency of the power-to-heat system. Defaults to 0.9.
             Faktor_Dimensionierung (float, optional): Dimensioning factor. Defaults to 1.
         """
-        self.name = name
+        super().__init__(name)
         self.spez_Investitionskosten = spez_Investitionskosten
         self.Nutzungsgrad = Nutzungsgrad
         self.Faktor_Dimensionierung = Faktor_Dimensionierung
@@ -62,28 +62,33 @@ class PowerToHeat:
         self.Strombedarf = self.Wärmemenge_PowerToHeat / self.Nutzungsgrad
         self.P_max = max(Last_L) * self.Faktor_Dimensionierung
 
-    def calculate_heat_generation_cost(self, Brennstoffkosten, q, r, T, BEW, stundensatz):
+    def calculate_heat_generation_cost(self, economic_parameters):
         """
         Calculates the weighted average cost of heat generation.
 
         Args:
-            Brennstoffkosten (float): Electricity costs.
-            q (float): Factor for capital recovery.
-            r (float): Factor for price escalation.
-            T (int): Time period in years.
-            BEW (float): Factor for operational costs.
-            stundensatz (float): Hourly rate for labor.
+            economic_parameters (dict): Dictionary containing economic parameters.
 
         Returns:
             float: Weighted average cost of heat generation.
         """
+
+        self.Strompreis = economic_parameters['electricity_price']
+        self.Gaspreis = economic_parameters['gas_price']
+        self.Holzpreis = economic_parameters['wood_price']
+        self.q = economic_parameters['capital_interest_rate']
+        self.r = economic_parameters['inflation_rate']
+        self.T = economic_parameters['time_period']
+        self.BEW = economic_parameters['subsidy_eligibility']
+        self.stundensatz = economic_parameters['hourly_rate']
+
         if self.Wärmemenge_PowerToHeat == 0:
             return 0
         
         self.Investitionskosten = self.spez_Investitionskosten * self.P_max
 
-        self.A_N = annuität(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, q, r, T,
-                            self.Strombedarf, Brennstoffkosten, stundensatz=stundensatz)
+        self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T,
+                            self.Strombedarf, self.Strompreis, hourly_rate=self.stundensatz)
         self.WGK_PTH = self.A_N / self.Wärmemenge_PowerToHeat
 
     def calculate_environmental_impact(self):
@@ -101,29 +106,25 @@ class PowerToHeat:
         # primary energy factor
         self.primärenergie = self.Strombedarf * self.primärenergiefaktor
 
-    def calculate(self, Strompreis, q, r, T, BEW, stundensatz, duration, general_results):
+    def calculate(self, economic_parameters, duration, load_profile, **kwargs):
         """
         Calculates the performance and cost of the power-to-heat system.
 
         Args:
-            Strompreis (float): Cost of electricity in €/kWh.
-            q (float): Factor for capital recovery.
-            r (float): Factor for price escalation.
-            T (int): Time period in years.
-            BEW (float): Factor for operational costs.
-            stundensatz (float): Hourly rate for labor.
+            economic_parameters (dict): Dictionary containing economic parameters.
             duration (float): Duration of each time step in hours.
-            Last_L (array): Load profile of the system in kW.
-            general_results (dict): General results dictionary containing rest load.
+            load_profile (array): Load profile of the system in kW.
 
         Returns:
             dict: Dictionary containing the results of the calculation.
         """
-        self.simulate_operation(general_results['Restlast_L'], duration)
-        self.calculate_heat_generation_cost(Strompreis, q, r, T, BEW, stundensatz)
+
+        self.simulate_operation(load_profile, duration)
+        self.calculate_heat_generation_cost(economic_parameters)
         self.calculate_environmental_impact()
 
         results = {
+            'tech_name': self.name,
             'Wärmemenge': self.Wärmemenge_PowerToHeat,
             'Wärmeleistung_L': self.Wärmeleistung_kW,
             'Brennstoffbedarf': self.Strombedarf,
@@ -134,35 +135,27 @@ class PowerToHeat:
         }
 
         return results
-
-    def get_display_text(self):
-        return f"{self.name}: spez. Investitionskosten: {self.spez_Investitionskosten} €/kW"
     
-    def to_dict(self):
+    def set_parameters(self, variables, variables_order, idx):
+        pass
+    
+    def add_optimization_parameters(self, idx):
         """
-        Converts the PowerToHeat object to a dictionary.
-
-        Returns:
-            dict: Dictionary representation of the PowerToHeat object.
-        """
-        # Erstelle eine Kopie des aktuellen Objekt-Dictionaries
-        data = self.__dict__.copy()
-        
-        # Entferne das scene_item und andere nicht notwendige Felder
-        data.pop('scene_item', None)
-        return data
-
-    @staticmethod
-    def from_dict(data):
-        """
-        Creates a new PowerToHeat object from a dictionary.
+        PowerToHeat hat keine Optimierungsparameter. Diese Methode gibt leere Listen zurück.
 
         Args:
-            data (dict): Dictionary containing the attributes of a PowerToHeat object.
+            idx (int): Index der Technologie in der Liste.
 
         Returns:
-            PowerToHeat: A new PowerToHeat object.
+            tuple: Leere Listen für initial_values, variables_order und bounds.
         """
-        obj = PowerToHeat.__new__(PowerToHeat)
-        obj.__dict__.update(data)
-        return obj
+        return [], [], []
+
+    def get_display_text(self):
+        return f"{self.name}: spez. Investitionskosten: {self.spez_Investitionskosten:.1f} €/kW"
+    
+    def extract_tech_data(self):
+        dimensions = f"th. Leistung: {self.P_max:.1f} kW"
+        costs = f"Investitionskosten: {self.Investitionskosten:.1f} €"
+        full_costs = f"{self.Investitionskosten:.1f}"
+        return self.name, dimensions, costs, full_costs

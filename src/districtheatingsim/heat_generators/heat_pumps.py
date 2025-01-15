@@ -1,7 +1,7 @@
 """
 Filename: heat_pumps.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-10
+Date: 2024-12-11
 Description: Contains classes for different types of heat pumps and methods to calculate performance and economic metrics.
 
 """
@@ -11,9 +11,9 @@ from scipy.interpolate import RegularGridInterpolator
 
 import CoolProp.CoolProp as CP
 
-from districtheatingsim.heat_generators.annuity import annuität
+from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator
 
-class HeatPump:
+class HeatPump(BaseHeatGenerator):
     """
     This class represents a Heat Pump and provides methods to calculate various performance and economic metrics.
 
@@ -36,7 +36,7 @@ class HeatPump:
     """
 
     def __init__(self, name, spezifische_Investitionskosten_WP=1000):
-        self.name = name
+        super().__init__(name)
         self.spezifische_Investitionskosten_WP = spezifische_Investitionskosten_WP
         self.Nutzungsdauer_WP = 20
         self.f_Inst_WP, self.f_W_Insp_WP, self.Bedienaufwand_WP = 1, 1.5, 0
@@ -102,7 +102,7 @@ class HeatPump:
         return COP_L, VLT_L
 
     
-    def calculate_heat_generation_costs(self, Wärmeleistung, Wärmemenge, Strombedarf, spez_Investitionskosten_WQ, Strompreis, q, r, T, BEW, stundensatz):
+    def calculate_heat_generation_costs(self, Wärmeleistung, Wärmemenge, Strombedarf, spez_Investitionskosten_WQ, economic_parameters):
         """
         Calculates the heat generation costs (WGK) of the heat pump.
 
@@ -111,16 +111,20 @@ class HeatPump:
             Wärmemenge (float): Amount of heat produced.
             Strombedarf (float): Electricity demand.
             spez_Investitionskosten_WQ (float): Specific investment costs for the heat source.
-            Strompreis (float): Price of electricity.
-            q (float): Interest rate factor.
-            r (float): Inflation rate factor.
-            T (int): Consideration period in years.
-            BEW (float): Discount rate.
-            stundensatz (float): Hourly labor rate.
+            economic_parameters (dict): Economic parameters dictionary containing fuel costs, capital interest rate, inflation rate, time period, and operational costs.
 
         Returns:
             float: Calculated heat generation costs.
         """
+
+        self.Strompreis = economic_parameters['electricity_price']
+        self.Gaspreis = economic_parameters['gas_price']
+        self.Holzpreis = economic_parameters['wood_price']
+        self.q = economic_parameters['capital_interest_rate']
+        self.r = economic_parameters['inflation_rate']
+        self.T = economic_parameters['time_period']
+        self.BEW = economic_parameters['subsidy_eligibility']
+        self.stundensatz = economic_parameters['hourly_rate']
 
         if Wärmemenge == 0:
             return 0
@@ -128,8 +132,8 @@ class HeatPump:
         # Annahme Kosten Wärmepumpe: 1000 €/kW; Vereinfachung
         spezifische_Investitionskosten_WP = self.spezifische_Investitionskosten_WP
         Investitionskosten_WP = spezifische_Investitionskosten_WP * round(Wärmeleistung, 0)
-        E1_WP = annuität(Investitionskosten_WP, self.Nutzungsdauer_WP, self.f_Inst_WP, self.f_W_Insp_WP, self.Bedienaufwand_WP, q, r, T,
-                            Strombedarf, Strompreis, stundensatz=stundensatz)
+        E1_WP = self.annuity(Investitionskosten_WP, self.Nutzungsdauer_WP, self.f_Inst_WP, self.f_W_Insp_WP, self.Bedienaufwand_WP, self.q, self.r, self.T,
+                            Strombedarf, self.Strompreis, hourly_rate=self.stundensatz)
         WGK_WP_a = E1_WP / Wärmemenge
 
         # Extrahieren des Basisnamens aus dem Namen des Erzeugers
@@ -140,8 +144,8 @@ class HeatPump:
             raise KeyError(f"{base_name} ist kein gültiger Schlüssel in Nutzungsdauer_WQ_dict")
         
         Investitionskosten_WQ = spez_Investitionskosten_WQ * Wärmeleistung
-        E1_WQ = annuität(Investitionskosten_WQ, self.Nutzungsdauer_WQ_dict[base_name], self.f_Inst_WQ, self.f_W_Insp_WQ,
-                            self.Bedienaufwand_WQ, q, r, T, stundensatz=stundensatz)
+        E1_WQ = self.annuity(Investitionskosten_WQ, self.Nutzungsdauer_WQ_dict[base_name], self.f_Inst_WQ, self.f_W_Insp_WQ,
+                            self.Bedienaufwand_WQ, self.q, self.r, self.T, hourly_rate=self.stundensatz)
         WGK_WQ_a = E1_WQ / Wärmemenge
 
         WGK_Gesamt_a = WGK_WP_a + WGK_WQ_a
@@ -172,13 +176,16 @@ class RiverHeatPump(HeatPump):
         to_dict(): Converts the object attributes to a dictionary.
         from_dict(data): Creates an object from a dictionary of attributes.
     """
-    def __init__(self, name, Wärmeleistung_FW_WP, Temperatur_FW_WP, dT=0, spez_Investitionskosten_Flusswasser=1000, spezifische_Investitionskosten_WP=1000, min_Teillast=0.2):
+    def __init__(self, name, Wärmeleistung_FW_WP, Temperatur_FW_WP, dT=0, spez_Investitionskosten_Flusswasser=1000, spezifische_Investitionskosten_WP=1000, min_Teillast=0.2,
+                 opt_power_min=0, opt_power_max=500):
         super().__init__(name, spezifische_Investitionskosten_WP=spezifische_Investitionskosten_WP)
         self.Wärmeleistung_FW_WP = Wärmeleistung_FW_WP
         self.Temperatur_FW_WP = Temperatur_FW_WP
         self.dT = dT
         self.spez_Investitionskosten_Flusswasser = spez_Investitionskosten_Flusswasser
         self.min_Teillast = min_Teillast
+        self.opt_power_min = opt_power_min
+        self.opt_power_max = opt_power_max
         self.co2_factor_electricity = 0.4 # tCO2/MWh electricity
         self.primärenergiefaktor = 2.4
 
@@ -245,31 +252,30 @@ class RiverHeatPump(HeatPump):
 
         self.primärenergie = self.Strombedarf * self.primärenergiefaktor
     
-    def calculate(self,VLT_L, COP_data, Strompreis, q, r, T, BEW, stundensatz, duration, general_results):
+    def calculate(self, economic_parameters, duration, load_profile, **kwargs):
+        VLT_L = kwargs.get('VLT_L')
+        COP_data = kwargs.get('COP_data')
+
         """
         Calculates the economic and environmental metrics for the river heat pump.
 
         Args:
-            VLT_L (array-like): Flow temperatures.
-            COP_data (array-like): COP data for interpolation.
+            VLT_L (array): Flow temperatures.
+            COP_data (array): COP data for interpolation.
             Strompreis (float): Price of electricity.
-            q (float): Interest rate factor.
-            r (float): Inflation rate factor.
-            T (int): Consideration period in years.
-            BEW (float): Discount rate.
-            stundensatz (float): Hourly labor rate.
             duration (float): Time duration.
-            general_results (dict): Dictionary containing general results and metrics.
+            load_profile (array): Load profile of the system in kW.
 
         Returns:
             dict: Dictionary containing calculated metrics and results.
         """
         
-        self.calculate_operation(general_results["Restlast_L"], VLT_L, COP_data, duration)
-        WGK_Abwärme = self.calculate_heat_generation_costs(self.Wärmeleistung_FW_WP, self.Wärmemenge, self.Strombedarf, self.spez_Investitionskosten_Flusswasser, Strompreis, q, r, T, BEW, stundensatz)
+        self.calculate_operation(load_profile, VLT_L, COP_data, duration)
+        WGK_Abwärme = self.calculate_heat_generation_costs(self.Wärmeleistung_FW_WP, self.Wärmemenge, self.Strombedarf, self.spez_Investitionskosten_Flusswasser, economic_parameters)
         self.calculate_environmental_impact()
 
         results = {
+            'tech_name': self.name,
             'Wärmemenge': self.Wärmemenge,
             'Wärmeleistung_L': self.Wärmeleistung_kW,
             'Strombedarf': self.Strombedarf,
@@ -281,41 +287,41 @@ class RiverHeatPump(HeatPump):
         }
 
         return results
-
-    def get_display_text(self):
-        return (f"{self.name}: Wärmeleistung FW WP: {self.Wärmeleistung_FW_WP} kW, "
-                f"Temperatur FW WP: {self.Temperatur_FW_WP} °C, dT: {self.dT} K, "
-                f"spez. Investitionskosten Flusswärme: {self.spez_Investitionskosten_Flusswasser} €/kW, "
-                f"spez. Investitionskosten Wärmepumpe: {self.spezifische_Investitionskosten_WP} €/kW")
     
-    def to_dict(self):
-        """
-        Converts the object attributes to a dictionary.
+    def set_parameters(self, variables, variables_order, idx):
+        try:
+            self.Wärmeleistung_FW_WP = variables[variables_order.index(f"Wärmeleistung_FW_WP_{idx}")]
+        except ValueError as e:
+            print(f"Fehler beim Setzen der Parameter für {self.name}: {e}")
 
-        Returns:
-            dict: Dictionary containing object attributes.
+    def add_optimization_parameters(self, idx):
         """
-        # Erstelle eine Kopie des aktuellen Objekt-Dictionaries
-        data = self.__dict__.copy()
-        
-        # Entferne das scene_item und andere nicht notwendige Felder
-        data.pop('scene_item', None)
-        return data
-    
-    @staticmethod
-    def from_dict(data):
-        """
-        Creates an object from a dictionary of attributes.
+        Fügt Optimierungsparameter für Flusswasser-Wärmepumpen hinzu und gibt sie zurück.
 
         Args:
-            data (dict): Dictionary containing object attributes.
+            idx (int): Index der Technologie in der Liste.
 
         Returns:
-            RiverHeatPump: Created object from the given dictionary.
+            tuple: Initiale Werte, Variablennamen und Grenzen der Variablen.
         """
-        obj = RiverHeatPump.__new__(RiverHeatPump)
-        obj.__dict__.update(data)
-        return obj
+        initial_values = [self.Wärmeleistung_FW_WP]
+        variables_order = [f"Wärmeleistung_FW_WP_{idx}"]
+        bounds = [(self.opt_power_min, self.opt_power_max)]
+        
+        return initial_values, variables_order, bounds
+
+    def get_display_text(self):
+        return (f"{self.name}: Wärmeleistung FW WP: {self.Wärmeleistung_FW_WP:.1f} kW, "
+                f"Temperatur FW WP: {self.Temperatur_FW_WP:.1f} °C, dT: {self.dT:.1f} K, "
+                f"spez. Investitionskosten Flusswärme: {self.spez_Investitionskosten_Flusswasser:.1f} €/kW, "
+                f"spez. Investitionskosten Wärmepumpe: {self.spezifische_Investitionskosten_WP:.1f} €/kW")
+    
+    def extract_tech_data(self):
+        dimensions = f"th. Leistung: {self.Wärmeleistung_FW_WP:.1f} kW"
+        costs = f"Investitionskosten Flusswärmenutzung: {self.spez_Investitionskosten_Flusswasser * self.Wärmeleistung_FW_WP:.1f}, " \
+                f"Investitionskosten Wärmepumpe: {self.spezifische_Investitionskosten_WP * self.Wärmeleistung_FW_WP:.1f}"
+        full_costs = f"{self.spez_Investitionskosten_Flusswasser * self.Wärmeleistung_FW_WP + self.spezifische_Investitionskosten_WP * self.Wärmeleistung_FW_WP:.1f}"
+        return self.name, dimensions, costs, full_costs
 
 class WasteHeatPump(HeatPump):
     """
@@ -340,12 +346,15 @@ class WasteHeatPump(HeatPump):
         to_dict(): Converts the object attributes to a dictionary.
         from_dict(data): Creates an object from a dictionary of attributes.
     """
-    def __init__(self, name, Kühlleistung_Abwärme, Temperatur_Abwärme, spez_Investitionskosten_Abwärme=500, spezifische_Investitionskosten_WP=1000, min_Teillast=0.2):
+    def __init__(self, name, Kühlleistung_Abwärme, Temperatur_Abwärme, spez_Investitionskosten_Abwärme=500, spezifische_Investitionskosten_WP=1000, min_Teillast=0.2,
+                 opt_cooling_min=0, opt_cooling_max=500):
         super().__init__(name, spezifische_Investitionskosten_WP=spezifische_Investitionskosten_WP)
         self.Kühlleistung_Abwärme = Kühlleistung_Abwärme
         self.Temperatur_Abwärme = Temperatur_Abwärme
         self.spez_Investitionskosten_Abwärme = spez_Investitionskosten_Abwärme
         self.min_Teillast = min_Teillast
+        self.opt_cooling_min = opt_cooling_min
+        self.opt_cooling_max = opt_cooling_max
         self.co2_factor_electricity = 0.4 # tCO2/MWh electricity
         self.primärenergiefaktor = 2.4
 
@@ -404,32 +413,31 @@ class WasteHeatPump(HeatPump):
 
         self.primärenergie = self.Strombedarf * self.primärenergiefaktor
     
-    def calculate(self, VLT_L, COP_data, Strompreis, q, r, T, BEW, stundensatz, duration, general_results):
+    def calculate(self, economic_parameters, duration, load_profile, **kwargs):
+        VLT_L = kwargs.get('VLT_L')
+        COP_data = kwargs.get('COP_data')
+
         """
         Calculates the economic and environmental metrics for the waste heat pump.
 
         Args:
-            VLT_L (array-like): Flow temperatures.
-            COP_data (array-like): COP data for interpolation.
-            Strompreis (float): Price of electricity.
-            q (float): Interest rate factor.
-            r (float): Inflation rate factor.
-            T (int): Consideration period in years.
-            BEW (float): Discount rate.
-            stundensatz (float): Hourly labor rate.
+            VLT_L (array): Flow temperatures.
+            COP_data (array): COP data for interpolation.
+            economic_parameters (dict): Economic parameters dictionary containing fuel costs, capital interest rate, inflation rate, time period, and operational costs.
             duration (float): Time duration.
-            general_results (dict): Dictionary containing general results and metrics.
+            load_profile (array): Load profile of the system in kW.
 
         Returns:
             dict: Dictionary containing calculated metrics and results.
         """
 
-        self.calculate_operation(general_results['Restlast_L'], VLT_L, COP_data, duration)
-        WGK_Abwärme = self.calculate_heat_generation_costs(self.max_Wärmeleistung, self.Wärmemenge, self.Strombedarf, self.spez_Investitionskosten_Abwärme, Strompreis, q, r, T, BEW, stundensatz)
+        self.calculate_operation(load_profile, VLT_L, COP_data, duration)
+        WGK_Abwärme = self.calculate_heat_generation_costs(self.max_Wärmeleistung, self.Wärmemenge, self.Strombedarf, self.spez_Investitionskosten_Abwärme, economic_parameters)
 
         self.calculate_environmental_impact()
 
         results = {
+            'tech_name': self.name,
             'Wärmemenge': self.Wärmemenge,
             'Wärmeleistung_L': self.Wärmeleistung_kW,
             'Strombedarf': self.Strombedarf,
@@ -442,40 +450,40 @@ class WasteHeatPump(HeatPump):
 
         return results
     
+    def set_parameters(self, variables, variables_order, idx):
+        try:
+            self.Kühlleistung_Abwärme = variables[variables_order.index(f"Kühlleistung_Abwärme_{idx}")]
+        except ValueError as e:
+            print(f"Fehler beim Setzen der Parameter für {self.name}: {e}")
+
+    def add_optimization_parameters(self, idx):
+        """
+        Fügt Optimierungsparameter für Abwärme hinzu und gibt sie zurück.
+
+        Args:
+            idx (int): Index der Technologie in der Liste.
+
+        Returns:
+            tuple: Initiale Werte, Variablennamen und Grenzen der Variablen.
+        """
+        initial_values = [self.Kühlleistung_Abwärme]
+        variables_order = [f"Kühlleistung_Abwärme_{idx}"]
+        bounds = [(self.opt_cooling_min, self.opt_cooling_max)]
+
+        return initial_values, variables_order, bounds
+    
     def get_display_text(self):
         return (f"{self.name}: Kühlleistung Abwärme: {self.Kühlleistung_Abwärme} kW, "
                 f"Temperatur Abwärme: {self.Temperatur_Abwärme} °C, spez. Investitionskosten Abwärme: "
                 f"{self.spez_Investitionskosten_Abwärme} €/kW, spez. Investitionskosten Wärmepumpe: "
                 f"{self.spezifische_Investitionskosten_WP} €/kW")
     
-    def to_dict(self):
-        """
-        Converts the object attributes to a dictionary.
-
-        Returns:
-            dict: Dictionary containing object attributes.
-        """
-        # Erstelle eine Kopie des aktuellen Objekt-Dictionaries
-        data = self.__dict__.copy()
-        
-        # Entferne das scene_item und andere nicht notwendige Felder
-        data.pop('scene_item', None)
-        return data
-
-    @staticmethod
-    def from_dict(data):
-        """
-        Creates an object from a dictionary of attributes.
-
-        Args:
-            data (dict): Dictionary containing object attributes.
-
-        Returns:
-            WasteHeatPump: Created object from the given dictionary.
-        """
-        obj = WasteHeatPump.__new__(WasteHeatPump)
-        obj.__dict__.update(data)
-        return obj
+    def extract_tech_data(self):
+        dimensions = f"Kühlleistung Abwärme: {self.Kühlleistung_Abwärme:.1f} kW, Temperatur Abwärme: {self.Temperatur_Abwärme:.1f} °C, th. Leistung: {self.max_Wärmeleistung:.1f} kW"
+        costs = f"Investitionskosten Abwärmenutzung: {self.spez_Investitionskosten_Abwärme * self.max_Wärmeleistung:.1f}, " \
+                f"Investitionskosten Wärmepumpe: {self.spezifische_Investitionskosten_WP * self.max_Wärmeleistung:.1f}"
+        full_costs = f"{self.spez_Investitionskosten_Abwärme * self.max_Wärmeleistung + self.spezifische_Investitionskosten_WP * self.max_Wärmeleistung:.1f}"
+        return self.name, dimensions, costs, full_costs
 
 class Geothermal(HeatPump):
     """
@@ -503,7 +511,8 @@ class Geothermal(HeatPump):
         from_dict(data): Creates an object from a dictionary of attributes.
     """
     def __init__(self, name, Fläche, Bohrtiefe, Temperatur_Geothermie, spez_Bohrkosten=100, spez_Entzugsleistung=50,
-                 Vollbenutzungsstunden=2400, Abstand_Sonden=10, spezifische_Investitionskosten_WP=1000, min_Teillast=0.2):
+                 Vollbenutzungsstunden=2400, Abstand_Sonden=10, spezifische_Investitionskosten_WP=1000, min_Teillast=0.2, 
+                 min_area_geothermal=0, max_area_geothermal=5000, min_depth_geothermal=0, max_depth_geothermal=400):
         super().__init__(name, spezifische_Investitionskosten_WP=spezifische_Investitionskosten_WP)
         self.Fläche = Fläche
         self.Bohrtiefe = Bohrtiefe
@@ -513,22 +522,15 @@ class Geothermal(HeatPump):
         self.Vollbenutzungsstunden = Vollbenutzungsstunden
         self.Abstand_Sonden = Abstand_Sonden
         self.min_Teillast = min_Teillast
+        self.min_area_geothermal = min_area_geothermal
+        self.max_area_geothermal = max_area_geothermal
+        self.min_depth_geothermal = min_depth_geothermal
+        self.max_depth_geothermal = max_depth_geothermal
         self.co2_factor_electricity = 0.4 # tCO2/MWh electricity
         self.primärenergiefaktor = 2.4
 
     def calculate_operation(self, Last_L, VLT_L, COP_data, duration):
-        """
-        Calculates the geothermal heat extraction and other performance metrics.
-
-        Args:
-            Last_L (array-like): Load demand.
-            VLT_L (array-like): Flow temperatures.
-            COP_data (array-like): COP data for interpolation.
-            duration (float): Time duration.
-
-        Returns:
-            tuple: Heat energy, electricity demand, heat output, electric power.
-        """
+        
         if self.Fläche == 0 or self.Bohrtiefe == 0:
             return 0, 0, np.zeros_like(Last_L), np.zeros_like(VLT_L)
 
@@ -581,6 +583,7 @@ class Geothermal(HeatPump):
                 B_max = B
 
         self.max_Wärmeleistung = max(self.Wärmeleistung_kW)
+        # To do: Fix RuntimeWarning: invalid value encountered in scalar divide 
         JAZ = self.Wärmemenge / self.Strombedarf
         self.Wärmemenge, self.Strombedarf = self.Wärmemenge * duration, self.Strombedarf * duration
     
@@ -592,33 +595,34 @@ class Geothermal(HeatPump):
 
         self.primärenergie = self.Strombedarf * self.primärenergiefaktor
     
-    def calculate(self, VLT_L, COP_data, Strompreis, q, r, T, BEW, stundensatz, duration, general_results):
+    def calculate(self, economic_parameters, duration, load_profile, **kwargs):
+        VLT_L = kwargs.get('VLT_L')
+        COP_data = kwargs.get('COP_data')
+
         """
         Calculates the economic and environmental metrics for the geothermal heat pump.
 
         Args:
-            VLT_L (array-like): Flow temperatures.
-            COP_data (array-like): COP data for interpolation.
-            Strompreis (float): Price of electricity.
-            q (float): Interest rate factor.
-            r (float): Inflation rate factor.
-            T (int): Consideration period in years.
-            BEW (float): Discount rate.
-            stundensatz (float): Hourly labor rate.
+            VLT_L (array): Flow temperatures.
+            COP_data (array): COP data for interpolation.
+            economic_parameters (dict): Economic parameters dictionary containing fuel costs, capital interest rate, inflation rate, time period, and operational costs.
             duration (float): Time duration.
-            general_results (dict): Dictionary containing general results and metrics.
+            load_profile (array): Load profile of the system in kW.
 
         Returns:
             dict: Dictionary containing calculated metrics and results.
         """
-        self.calculate_operation(general_results['Restlast_L'], VLT_L, COP_data, duration)
 
+        self.calculate_operation(load_profile, VLT_L, COP_data, duration)
+
+        # To do: Fix RuntimeWarning: divide by zero encountered in scalar divide
         self.spez_Investitionskosten_Erdsonden = self.Investitionskosten_Sonden / self.max_Wärmeleistung
-        WGK = self.calculate_heat_generation_costs(self.max_Wärmeleistung, self.Wärmemenge, self.Strombedarf, self.spez_Investitionskosten_Erdsonden, Strompreis, q, r, T, BEW, stundensatz)
+        WGK = self.calculate_heat_generation_costs(self.max_Wärmeleistung, self.Wärmemenge, self.Strombedarf, self.spez_Investitionskosten_Erdsonden, economic_parameters)
 
         self.calculate_environmental_impact()
 
         results = {
+            'tech_name': self.name,
             'Wärmemenge': self.Wärmemenge,
             'Wärmeleistung_L': self.Wärmeleistung_kW,
             'Strombedarf': self.Strombedarf,
@@ -630,6 +634,29 @@ class Geothermal(HeatPump):
         }
 
         return results
+    
+    def set_parameters(self, variables, variables_order, idx):
+        try:
+            self.Fläche = variables[variables_order.index(f"Fläche_{idx}")]
+            self.Bohrtiefe = variables[variables_order.index(f"Bohrtiefe_{idx}")]
+        except ValueError as e:
+            print(f"Fehler beim Setzen der Parameter für {self.name}: {e}")
+
+    def add_optimization_parameters(self, idx):
+        """
+        Fügt Optimierungsparameter für Geothermie hinzu und gibt sie zurück.
+
+        Args:
+            idx (int): Index der Technologie in der Liste.
+
+        Returns:
+            tuple: Initiale Werte, Variablennamen und Grenzen der Variablen.
+        """
+        initial_values = [self.Fläche, self.Bohrtiefe]
+        variables_order = [f"Fläche_{idx}", f"Bohrtiefe_{idx}"]
+        bounds = [(self.min_area_geothermal, self.max_area_geothermal), (self.min_depth_geothermal, self.max_depth_geothermal)]
+        
+        return initial_values, variables_order, bounds
 
     def get_display_text(self):
         return (f"{self.name}: Fläche Sondenfeld: {self.Fläche} m², Bohrtiefe: {self.Bohrtiefe} m, "
@@ -638,34 +665,12 @@ class Geothermal(HeatPump):
                 f"Vollbenutzungsstunden: {self.Vollbenutzungsstunden} h, Abstand Sonden: {self.Abstand_Sonden} m, "
                 f"spez. Investitionskosten Wärmepumpe: {self.spezifische_Investitionskosten_WP} €/kW")
     
-    def to_dict(self):
-        """
-        Converts the object attributes to a dictionary.
-
-        Returns:
-            dict: Dictionary containing object attributes.
-        """
-        # Erstelle eine Kopie des aktuellen Objekt-Dictionaries
-        data = self.__dict__.copy()
-        
-        # Entferne das scene_item und andere nicht notwendige Felder
-        data.pop('scene_item', None)
-        return data
-    
-    @staticmethod
-    def from_dict(data):
-        """
-        Creates an object from a dictionary of attributes.
-
-        Args:
-            data (dict): Dictionary containing object attributes.
-
-        Returns:
-            Geothermal: Created object from the given dictionary.
-        """
-        obj = Geothermal.__new__(Geothermal)
-        obj.__dict__.update(data)
-        return obj
+    def extract_tech_data(self):
+        dimensions = f"Fläche: {self.Fläche:.1f} m², Bohrtiefe: {self.Bohrtiefe:.1f} m, Temperatur Geothermie: {self.Temperatur_Geothermie:.1f} °C, Entzugsleistung: {self.spez_Entzugsleistung:.1} W/m, th. Leistung: {self.max_Wärmeleistung:.1f} kW"
+        costs = f"Investitionskosten Sondenfeld: {self.Investitionskosten_Sonden:.1f}, " \
+                f"Investitionskosten Wärmepumpe: {self.spezifische_Investitionskosten_WP * self.max_Wärmeleistung:.1f}"
+        full_costs = f"{self.Investitionskosten_Sonden + self.spezifische_Investitionskosten_WP * self.max_Wärmeleistung:.1f}"
+        return self.name, dimensions, costs, full_costs
     
 class AqvaHeat(HeatPump):
     """
@@ -700,10 +705,24 @@ class AqvaHeat(HeatPump):
         self.primärenergiefaktor = 2.4
         self.Wärmeleistung_FW_WP = nominal_power
 
+    def calculate(self, economic_parameters, duration, load_profile, **kwargs):
+        VLT_L = kwargs.get('VLT_L')
+        COP_data = kwargs.get('COP_data')
 
-    def calculate(self, output_temperatures, COP_data, duration, general_results):
+        """
+        Calculates the economic and environmental metrics for the AqvaHeat-solution.
+        Args:
+            VLT_L (array): Flow temperatures.
+            COP_data (array): COP data for interpolation.
+            economic_parameters (dict): Economic parameters dictionary containing fuel costs, capital interest rate, inflation rate, time period, and operational costs.
+            duration (float): Time duration.
+            load_profile (array): Load profile of the system in kW.
 
-        residual_powers = general_results["Restlast_L"]
+        Returns:
+            dict: Dictionary containing calculated metrics and results.
+        """
+
+        residual_powers = load_profile
         effective_powers = np.zeros_like(residual_powers)
 
         intermediate_temperature = 12  # °C
@@ -714,12 +733,12 @@ class AqvaHeat(HeatPump):
 
         # HEAT PUMP
         # calculate first the heat pump (from 12°C to supply temperature)
-        COP, effective_output_temperatures = self.calculate_COP(output_temperatures, intermediate_temperature, COP_data)
+        COP, effective_output_temperatures = self.calculate_COP(VLT_L, intermediate_temperature, COP_data)
         cooling_powers = effective_powers * (1 - (1 / COP))
         electrical_powers = effective_powers - cooling_powers
 
         # disable heat pump when not reaching supply temperature
-        operation_mask = effective_output_temperatures >= output_temperatures - self.temperature_difference  # TODO: verify direction of difference
+        operation_mask = effective_output_temperatures >= VLT_L - self.temperature_difference  # TODO: verify direction of difference
         effective_powers[~operation_mask] = 0
         cooling_powers[~operation_mask] = 0
         electrical_powers[~operation_mask] = 0
@@ -776,6 +795,7 @@ class AqvaHeat(HeatPump):
 
 
         results = {
+            'tech_name': self.name,
             'Wärmemenge': self.Wärmemenge_AqvaHeat,  # heat energy for whole duration
             'Wärmeleistung_L': self.Wärmeleistung_kW,  # vector length time steps with actual power supplied
             'Strombedarf': self.Strombedarf_AqvaHeat,  # electrical energy consumed during whole duration
@@ -787,36 +807,28 @@ class AqvaHeat(HeatPump):
         }
 
         return results
-
-    def get_display_text(self):
-        return f"{self.name}: technische Daten"
     
-    def to_dict(self):
-        """
-        Converts the object attributes to a dictionary.
+    def set_parameters(self, variables, variables_order, idx):
+        pass
 
-        Returns:
-            dict: Dictionary containing object attributes.
+    def add_optimization_parameters(self, idx):
         """
-        # Erstelle eine Kopie des aktuellen Objekt-Dictionaries
-        data = self.__dict__.copy()
-        
-        # Entferne das scene_item und andere nicht notwendige Felder
-        data.pop('scene_item', None)
-        return data
-
-    @staticmethod
-    def from_dict(data):
-        """
-        Creates an object from a dictionary of attributes.
+        AqvaHeat hat keine Optimierungsparameter. Diese Methode gibt leere Listen zurück.
 
         Args:
-            data (dict): Dictionary containing object attributes.
+            idx (int): Index der Technologie in der Liste.
 
         Returns:
-            Geothermal: Created object from the given dictionary.
+            tuple: Leere Listen für initial_values, variables_order und bounds.
         """
-        obj = Geothermal.__new__(Geothermal)
-        obj.__dict__.update(data)
-        return obj
+        return [], [], []
+
+    def get_display_text(self):
+        return f"Name: {self.name}, Nennleistung: {self.nominal_power} kW, Temperaturdifferenz: {self.temperature_difference} K"
+    
+    def extract_tech_data(self):
+        dimensions = f"Nennleistung: {self.nominal_power:.1f} kW, Temperaturdifferenz: {self.temperature_difference:.1f} K"
+        costs = "Keine spezifischen Kosten"
+        full_costs = "Keine spezifischen Kosten"
+        return self.name, dimensions, costs, full_costs
 
