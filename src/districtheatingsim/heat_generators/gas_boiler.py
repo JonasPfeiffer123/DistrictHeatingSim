@@ -1,16 +1,16 @@
 """
 Filename: gas_boiler.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-10
+Date: 2024-12-11
 Description: Contains the GasBoiler class representing a gas boiler system.
 
 """
 
 import numpy as np
 
-from districtheatingsim.heat_generators.annuity import annuität
+from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator
 
-class GasBoiler:
+class GasBoiler(BaseHeatGenerator):
     """
     A class representing a gas boiler system.
 
@@ -37,7 +37,7 @@ class GasBoiler:
             Nutzungsgrad (float, optional): Efficiency of the gas boiler. Defaults to 0.9.
             Faktor_Dimensionierung (float, optional): Dimensioning factor. Defaults to 1.
         """
-        self.name = name
+        super().__init__(name)
         self.spez_Investitionskosten = spez_Investitionskosten
         self.Nutzungsgrad = Nutzungsgrad
         self.Faktor_Dimensionierung = Faktor_Dimensionierung
@@ -62,28 +62,33 @@ class GasBoiler:
         self.Gasbedarf = self.Wärmemenge_Gaskessel / self.Nutzungsgrad
         self.P_max = max(Last_L) * self.Faktor_Dimensionierung
 
-    def calculate_heat_generation_cost(self, Brennstoffkosten, q, r, T, BEW, stundensatz):
+    def calculate_heat_generation_cost(self, economic_parameters):
         """
         Calculates the weighted average cost of heat generation.
 
         Args:
-            Brennstoffkosten (float): Fuel costs.
-            q (float): Factor for capital recovery.
-            r (float): Factor for price escalation.
-            T (int): Time period in years.
-            BEW (float): Factor for operational costs.
-            stundensatz (float): Hourly rate for labor.
+            economic_parameters (dict): Economic parameters dictionary containing fuel costs, capital interest rate, inflation rate, time period, and operational costs.
 
         Returns:
             float: Weighted average cost of heat generation.
         """
+
+        self.Strompreis = economic_parameters['electricity_price']
+        self.Gaspreis = economic_parameters['gas_price']
+        self.Holzpreis = economic_parameters['wood_price']
+        self.q = economic_parameters['capital_interest_rate']
+        self.r = economic_parameters['inflation_rate']
+        self.T = economic_parameters['time_period']
+        self.BEW = economic_parameters['subsidy_eligibility']
+        self.hourly_rate = economic_parameters['hourly_rate']
+
         if self.Wärmemenge_Gaskessel == 0:
             return 0
         
         self.Investitionskosten = self.spez_Investitionskosten * self.P_max
 
-        self.A_N = annuität(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, q, r, T,
-                            self.Gasbedarf, Brennstoffkosten, stundensatz=stundensatz)
+        self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T,
+                            self.Gasbedarf, self.Gaspreis, hourly_rate=self.hourly_rate)
         self.WGK_GK = self.A_N / self.Wärmemenge_Gaskessel
 
     def calculate_environmental_impact(self):
@@ -101,29 +106,24 @@ class GasBoiler:
         # primary energy factor
         self.primärenergie = self.Gasbedarf * self.primärenergiefaktor
 
-    def calculate(self, Gaspreis, q, r, T, BEW, stundensatz, duration, general_results):
+    def calculate(self, economic_parameters, duration, load_profile, **kwargs):
         """
         Calculates the performance and cost of the gas boiler system.
 
         Args:
-            Gaspreis (float): Cost of gas.
-            q (float): Factor for capital recovery.
-            r (float): Factor for price escalation.
-            T (int): Time period in years.
-            BEW (float): Factor for operational costs.
-            stundensatz (float): Hourly rate for labor.
+            economic_parameters (dict): Economic parameters dictionary containing fuel costs, capital interest rate, inflation rate, time period, and operational costs.
             duration (float): Duration of each time step in hours.
-            Last_L (array): Load profile of the system in kW.
-            general_results (dict): General results dictionary containing rest load.
+            load_profile (array): Load profile of the system in kW.
 
         Returns:
             dict: Dictionary containing the results of the calculation.
         """
-        self.simulate_operation(general_results['Restlast_L'], duration)
-        self.calculate_heat_generation_cost(Gaspreis, q, r, T, BEW, stundensatz)
+        self.simulate_operation(load_profile, duration)
+        self.calculate_heat_generation_cost(economic_parameters)
         self.calculate_environmental_impact()
 
         results = {
+            'tech_name': self.name,
             'Wärmemenge': self.Wärmemenge_Gaskessel,
             'Wärmeleistung_L': self.Wärmeleistung_kW,
             'Brennstoffbedarf': self.Gasbedarf,
@@ -134,35 +134,27 @@ class GasBoiler:
         }
 
         return results
-
-    def get_display_text(self):
-        return f"{self.name}: spez. Investitionskosten: {self.spez_Investitionskosten} €/kW"
     
-    def to_dict(self):
-        """
-        Converts the GasBoiler object to a dictionary.
+    def set_parameters(self, variables, variables_order, idx):
+        pass
 
-        Returns:
-            dict: Dictionary representation of the GasBoiler object.
+    def add_optimization_parameters(self, idx):
         """
-        # Erstelle eine Kopie des aktuellen Objekt-Dictionaries
-        data = self.__dict__.copy()
-        
-        # Entferne das scene_item und andere nicht notwendige Felder
-        data.pop('scene_item', None)
-        return data
-
-    @staticmethod
-    def from_dict(data):
-        """
-        Creates a GasBoiler object from a dictionary.
+        GasBoiler hat keine Optimierungsparameter. Diese Methode gibt leere Listen zurück.
 
         Args:
-            data (dict): Dictionary containing the attributes of a GasBoiler object.
+            idx (int): Index der Technologie in der Liste.
 
         Returns:
-            GasBoiler: A new GasBoiler object with attributes from the dictionary.
+            tuple: Leere Listen für initial_values, variables_order und bounds.
         """
-        obj = GasBoiler.__new__(GasBoiler)
-        obj.__dict__.update(data)
-        return obj
+        return [], [], []
+
+    def get_display_text(self):
+        return f"{self.name}: spez. Investitionskosten: {self.spez_Investitionskosten:.1f} €/kW"
+    
+    def extract_tech_data(self):
+        dimensions = f"th. Leistung: {self.P_max:.1f} kW"
+        costs = f"Investitionskosten: {self.Investitionskosten:.1f} €"
+        full_costs = f"{self.Investitionskosten:.1f}"
+        return self.name, dimensions, costs, full_costs

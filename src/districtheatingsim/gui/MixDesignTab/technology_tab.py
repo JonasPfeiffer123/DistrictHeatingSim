@@ -1,7 +1,7 @@
 """
 Filename: technology_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-19
+Date: 2024-12-11
 Description: Contains the TechnologyTab.
 """
 
@@ -17,9 +17,8 @@ import pandas as pd
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
-from districtheatingsim.heat_generators.heat_generation_mix import *
+from districtheatingsim.heat_generators import TECH_CLASS_REGISTRY
 from districtheatingsim.gui.MixDesignTab.heat_generator_dialogs import TechInputDialog
-
 from districtheatingsim.gui.MixDesignTab.generator_schematic import SchematicScene, CustomGraphicsView
 
 class CustomListWidget(QListWidget):
@@ -212,26 +211,12 @@ class TechnologyTab(QWidget):
         Returns:
             Technology: The created technology object.
         """
-        tech_classes = {
-            "Solarthermie": SolarThermal,
-            "BHKW": CHP,
-            "Holzgas-BHKW": CHP,
-            "Geothermie": Geothermal,
-            "Abwärme": WasteHeatPump,
-            "Flusswasser": RiverHeatPump,
-            "AqvaHeat": AqvaHeat,
-            "Biomassekessel": BiomassBoiler,
-            "Gaskessel": GasBoiler,
-            "Power-to-Heat": PowerToHeat
-        }
+        tech_classes = TECH_CLASS_REGISTRY
 
         base_tech_type = tech_type.split('_')[0]
         tech_class = tech_classes.get(base_tech_type)
         if not tech_class:
             raise ValueError(f"Unbekannter Technologietyp: {tech_type}")
-
-        #tech_count = sum(1 for tech in self.tech_objects if tech.name.startswith(base_tech_type))
-        #unique_name = f"{base_tech_type}_{tech_count + 1}"
 
         # Erhöhe den globalen Zähler für diese Technologieklasse
         self.global_counters[base_tech_type] += 1
@@ -313,7 +298,11 @@ class TechnologyTab(QWidget):
 
             # Aktualisiere die Namen und Zähler basierend auf der Reihenfolge in der Liste
             tech_type = tech.name.split('_')[0]
+            # every other global counter should be 0
+            for key in self.global_counters:
+                self.global_counters[key] = 0
             self.global_counters[tech_type] = sum(1 for t in self.tech_objects if t.name.startswith(tech_type))
+
 
         # Aktualisiere die Liste der Technologien in der UI
         self.updateTechList()
@@ -384,7 +373,7 @@ class TechnologyTab(QWidget):
             return tech.get_display_text()
         
         except Exception as e:
-            return f"Unbekannte Technologieklasse: {type(tech).__name__}"
+            return f"Error: {e}"
 
     def createMainLayout(self):
         """

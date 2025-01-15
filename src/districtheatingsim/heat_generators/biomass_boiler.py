@@ -1,15 +1,16 @@
 """
 Filename: biomass_boiler.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-10
+Date: 2024-12-11
 Description: Contains the BiomassBoiler class representing a biomass boiler system.
 
 """
 
 import numpy as np
-from districtheatingsim.heat_generators.annuity import annuität
 
-class BiomassBoiler:
+from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator
+
+class BiomassBoiler(BaseHeatGenerator):
     """
     A class representing a biomass boiler system.
 
@@ -45,7 +46,7 @@ class BiomassBoiler:
     def __init__(self, name, P_BMK, Größe_Holzlager=40, spez_Investitionskosten=200, spez_Investitionskosten_Holzlager=400, Nutzungsgrad_BMK=0.8, min_Teillast=0.3,
                  speicher_aktiv=False, Speicher_Volumen=20, T_vorlauf=90, T_ruecklauf=60, initial_fill=0.0, min_fill=0.2, max_fill=0.8, 
                  spez_Investitionskosten_Speicher=750, BMK_an=True, opt_BMK_min=0, opt_BMK_max=1000, opt_Speicher_min=0, opt_Speicher_max=100):
-        self.name = name
+        super().__init__(name)
         self.P_BMK = P_BMK
         self.Größe_Holzlager = Größe_Holzlager
         self.spez_Investitionskosten = spez_Investitionskosten
@@ -153,23 +154,28 @@ class BiomassBoiler:
         self.Betriebsstunden_gesamt_Speicher = np.sum(betrieb_mask) * duration
         self.Betriebsstunden_pro_Start_Speicher = self.Betriebsstunden_gesamt_Speicher / self.Anzahl_Starts_Speicher if self.Anzahl_Starts_Speicher > 0 else 0
 
-    def calculate_heat_generation_costs(self, Wärmemenge, Brennstoffbedarf, Brennstoffkosten, q, r, T, BEW, stundensatz):
+    def calculate_heat_generation_costs(self, Wärmemenge, Brennstoffbedarf, economic_parameters):
         """
         Calculates the weighted average cost of heat generation.
 
         Args:
             Wärmemenge (float): Amount of heat generated.
             Brennstoffbedarf (float): Fuel consumption.
-            Brennstoffkosten (float): Fuel costs.
-            q (float): Factor for capital recovery.
-            r (float): Factor for price escalation.
-            T (int): Time period in years.
-            BEW (float): Factor for operational costs.
-            stundensatz (float): Hourly rate for labor.
+            economic_parameters (dict): Dictionary containing economic parameters.
 
         Returns:
             float: Weighted average cost of heat generation.
         """
+
+        self.Strompreis = economic_parameters['electricity_price']
+        self.Gaspreis = economic_parameters['gas_price']
+        self.Holzpreis = economic_parameters['wood_price']
+        self.q = economic_parameters['capital_interest_rate']
+        self.r = economic_parameters['inflation_rate']
+        self.T = economic_parameters['time_period']
+        self.BEW = economic_parameters['subsidy_eligibility']
+        self.stundensatz = economic_parameters['hourly_rate']
+
         if Wärmemenge == 0:
             return 0
         
@@ -178,8 +184,8 @@ class BiomassBoiler:
         self.Investitionskosten_Speicher = self.spez_Investitionskosten_Speicher * self.Speicher_Volumen
         self.Investitionskosten = self.Investitionskosten_Kessel + self.Investitionskosten_Holzlager + self.Investitionskosten_Speicher
 
-        self.A_N = annuität(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, q, r, T, Brennstoffbedarf,
-                            Brennstoffkosten, stundensatz=stundensatz)
+        self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T, 
+                                Brennstoffbedarf, self.Holzpreis, hourly_rate=self.stundensatz)
         
         self.WGK_BMK = self.A_N / Wärmemenge
 
@@ -202,26 +208,20 @@ class BiomassBoiler:
         self.primärenergie = Brennstoffbedarf * self.primärenergiefaktor
         
 
-
-    def calculate(self, Holzpreis, q, r, T, BEW, stundensatz, duration, general_results):
+    def calculate(self, economic_parameters, duration, load_profile, **kwargs):
         """
         Calculates the performance and cost of the biomass boiler system.
 
         Args:
-            Holzpreis (float): Cost of wood fuel.
-            q (float): Factor for capital recovery.
-            r (float): Factor for price escalation.
-            T (int): Time period in years.
-            BEW (float): Factor for operational costs.
-            stundensatz (float): Hourly rate for labor.
+            economic_parameters (dict): Dictionary containing economic parameters.
             duration (float): Duration of each time step in hours.
-            general_results (dict): General results dictionary containing rest load.
+            load_profile (array): Load profile of the system in kW.
 
         Returns:
             dict: Dictionary containing the results of the calculation.
         """
         if self.speicher_aktiv:
-            self.simulate_storage(general_results["Restlast_L"], duration)
+            self.simulate_storage(load_profile, duration)
             Wärmemenge = self.Wärmemenge_Biomassekessel_Speicher
             Brennstoffbedarf = self.Brennstoffbedarf_BMK_Speicher
             Wärmeleistung_kW = self.Wärmeleistung_kW
@@ -229,7 +229,7 @@ class BiomassBoiler:
             Betriebsstunden = self.Betriebsstunden_gesamt_Speicher
             Betriebsstunden_pro_Start = self.Betriebsstunden_pro_Start_Speicher
         else:
-            self.simulate_operation(general_results["Restlast_L"], duration)
+            self.simulate_operation(load_profile, duration)
             Wärmemenge = self.Wärmemenge_BMK
             Brennstoffbedarf = self.Brennstoffbedarf_BMK
             Wärmeleistung_kW = self.Wärmeleistung_kW
@@ -237,10 +237,11 @@ class BiomassBoiler:
             Betriebsstunden = self.Betriebsstunden_gesamt
             Betriebsstunden_pro_Start = self.Betriebsstunden_pro_Start
 
-        self.calculate_heat_generation_costs(Wärmemenge, Brennstoffbedarf, Holzpreis, q, r, T, BEW, stundensatz)
+        self.calculate_heat_generation_costs(Wärmemenge, Brennstoffbedarf, economic_parameters)
         self.calculate_environmental_impact(Brennstoffbedarf, Wärmemenge)
 
         results = {
+            'tech_name': self.name,
             'Wärmemenge': Wärmemenge,
             'Wärmeleistung_L': Wärmeleistung_kW,
             'Brennstoffbedarf': Brennstoffbedarf,
@@ -255,41 +256,45 @@ class BiomassBoiler:
 
         if self.speicher_aktiv:
             results['Wärmeleistung_Speicher_L'] = self.Wärmeleistung_Speicher_kW
+            results['Speicherfüllstand_L'] = self.speicher_fuellstand
 
         return results
-
-    def get_display_text(self):
-        return (f"{self.name}: th. Leistung: {self.P_BMK}, Größe Holzlager: {self.Größe_Holzlager} t, "
-                f"spez. Investitionskosten Kessel: {self.spez_Investitionskosten} €/kW, "
-                f"spez. Investitionskosten Holzlager: {self.spez_Investitionskosten_Holzlager} €/t")
     
-    def to_dict(self):
-        """
-        Converts the BiomassBoiler object to a dictionary, excluding scene-related attributes.
+    def set_parameters(self, variables, variables_order, idx):
+        try:
+            self.P_BMK = variables[variables_order.index(f"P_BMK_{idx}")]
+        except ValueError as e:
+            print(f"Fehler beim Setzen der Parameter für {self.name}: {e}")
 
-        Returns:
-            dict: Dictionary representation of the BiomassBoiler object.
+    def add_optimization_parameters(self, idx):
         """
-        # Erstelle eine Kopie des aktuellen Objekt-Dictionaries
-        data = self.__dict__.copy()
-        
-        # Entferne das scene_item und andere nicht notwendige Felder
-        data.pop('scene_item', None)
-        return data
-
-
-    @staticmethod
-    def from_dict(data):
-        """
-        Creates a BiomassBoiler object from a dictionary.
+        Fügt Optimierungsparameter für Biomassekessel hinzu und gibt sie zurück.
 
         Args:
-            data (dict): Dictionary containing the attributes of a BiomassBoiler object.
+            idx (int): Index der Technologie in der Liste.
 
         Returns:
-            BiomassBoiler: A new BiomassBoiler object with attributes from the dictionary.
+            tuple: Initiale Werte, Variablennamen und Grenzen der Variablen.
         """
-        obj = BiomassBoiler.__new__(BiomassBoiler)
-        obj.__dict__.update(data)
-        return obj
+        initial_values = [self.P_BMK]
+        variables_order = [f"P_BMK_{idx}"]
+        bounds = [(self.opt_BMK_min, self.opt_BMK_max)]
+
+        if self.speicher_aktiv:
+            initial_values.append(self.Speicher_Volumen)
+            variables_order.append(f"Speicher_Volumen_{idx}")
+            bounds.append((self.opt_Speicher_min, self.opt_Speicher_max))
+
+        return initial_values, variables_order, bounds
+
+    def get_display_text(self):
+        return (f"{self.name}: th. Leistung: {self.P_BMK:.1f}, Größe Holzlager: {self.Größe_Holzlager:.1f} t, "
+                f"spez. Investitionskosten Kessel: {self.spez_Investitionskosten:.1f} €/kW, "
+                f"spez. Investitionskosten Holzlager: {self.spez_Investitionskosten_Holzlager:.1f} €/t")
+    
+    def extract_tech_data(self):
+        dimensions = f"th. Leistung: {self.P_BMK:.1f} kW, Größe Holzlager: {self.Größe_Holzlager:.1f} t"
+        costs = f"Investitionskosten Kessel: {self.Investitionskosten_Kessel:.1f} €, Investitionskosten Holzlager: {self.Investitionskosten_Holzlager:.1f} €"
+        full_costs = f"{self.Investitionskosten:.1f}"
+        return self.name, dimensions, costs, full_costs
 
