@@ -259,9 +259,10 @@ class CalculationTab(QWidget):
             self.output_filename = netCalcInputs["results_filename"]
             self.simulate_net()
       
-    def create_and_initialize_net_geojson(self, vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, supply_temperature_heat_consumer, return_temperature_heat_consumer, supply_temperature, \
-                                          flow_pressure_pump, lift_pressure_pump, netconfiguration, dT_RL, v_max_heat_consumer, building_temp_checked, \
-                                          pipetype, v_max_pipe, material_filter, insulation_filter, DiameterOpt_ckecked):
+    def create_and_initialize_net_geojson(self, vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, supply_temperature_heat_consumer, 
+                                          return_temperature_heat_consumer, supply_temperature, flow_pressure_pump, lift_pressure_pump, 
+                                          netconfiguration, dT_RL, building_temp_checked, pipetype, v_max_pipe, material_filter, 
+                                          DiameterOpt_ckecked, k_mm):
         """
         Creates and initializes the network from GeoJSON files.
 
@@ -278,26 +279,25 @@ class CalculationTab(QWidget):
             lift_pressure_pump: Lift pressure of the pump.
             netconfiguration: Network configuration.
             dT_RL: Temperature difference between supply and return lines.
-            v_max_heat_consumer: Maximum flow velocity for heat consumers.
             building_temp_checked: Flag indicating if building temperatures are considered.
             pipetype: Type of pipe.
             v_max_pipe: Maximum flow velocity in the pipes.
             material_filter: Material filter for pipes.
-            insulation_filter: Insulation filter for pipes.
             DiameterOpt_ckecked: Flag indicating if diameter optimization is checked.
+            k_mm: Roughness of the pipe.
         """
         self.supply_temperature_heat_consumer = supply_temperature_heat_consumer
         self.return_temperature_heat_consumer = return_temperature_heat_consumer
         self.supply_temperature = supply_temperature
         self.netconfiguration = netconfiguration
         self.dT_RL = dT_RL
-        self.v_max_heat_consumer = v_max_heat_consumer
         self.building_temp_checked = building_temp_checked
         self.DiameterOpt_ckecked = DiameterOpt_ckecked
         self.TRY_filename = self.data_manager.get_try_filename()
         self.COP_filename = self.data_manager.get_cop_filename()
+        self.k_mm = k_mm
         args = (vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, self.COP_filename, return_temperature_heat_consumer, supply_temperature_heat_consumer, supply_temperature, flow_pressure_pump, lift_pressure_pump, \
-                netconfiguration, pipetype, v_max_pipe, material_filter, insulation_filter, self.base_path, self.dT_RL, self.v_max_heat_consumer, self.DiameterOpt_ckecked)
+                netconfiguration, pipetype, v_max_pipe, material_filter, self.dT_RL, self.DiameterOpt_ckecked, self.k_mm)
         kwargs = {"import_type": "GeoJSON"}
         self.initializationThread = NetInitializationThread(*args, **kwargs)
         self.common_thread_initialization()
@@ -528,6 +528,20 @@ class CalculationTab(QWidget):
         self.plot2()
         self.display_results()
         save_results_csv(self.time_steps, self.waerme_ges_kW, self.strom_wp_kW, self.pump_results, self.output_filename)
+
+        self.print_net_results(self.net)
+        print("Simulation erfolgreich abgeschlossen.")
+
+    def print_net_results(self, net):
+        print("Netzdaten:")
+        print(f"Junctions: {net.junction}")
+        print(f"Results Junctions: {net.res_junction}")
+        print(f"Pipes: {net.pipe}")
+        print(f"Results Pipes: {net.res_pipe}")
+        print(f"Heat Consumers: {net.heat_consumer}")
+        print(f"Results Heat Consumers: {net.res_heat_consumer}")
+        print(f"Circ Pump Pressure: {net.circ_pump_pressure}")
+        print(f"Results Circ Pump Pressure: {net.res_circ_pump_pressure}")
 
     def plot_data_func(self, plot_data):
         """
