@@ -1,7 +1,7 @@
 """
 Filename: pp_net_time_series_simulation.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-31
+Date: 2024-12-06
 Description: Script with functions for the implemented time series calculation.
 """
 
@@ -13,8 +13,7 @@ from pandapower.timeseries import DFData
 import pandas as pd
 import numpy as np
 
-from districtheatingsim.net_simulation_pandapipes.controllers import ReturnTemperatureController
-from districtheatingsim.net_simulation_pandapipes.utilities import COP_WP
+from districtheatingsim.net_simulation_pandapipes.utilities import COP_WP, TemperatureController
 
 def update_const_controls(net, qext_w_profiles, time_steps, start, end):
     """Update constant controls with new data sources for time series simulation.
@@ -33,30 +32,28 @@ def update_const_controls(net, qext_w_profiles, time_steps, start, end):
             if isinstance(ctrl, ConstControl) and ctrl.element_index == i and ctrl.variable == 'qext_w':
                 ctrl.data_source = data_source
 
-def update_return_temperature_controller(net, supply_temperature_heat_consumer, return_temperature_heat_consumer, time_steps, start, end):
+def update_heat_consumer_temperature_controller(net, min_supply_temperature_heat_consumer, time_steps, start, end):
     """Update return temperature controllers with new data sources for time series simulation.
 
     Args:
         net (pandapipesNet): The pandapipes network.
-        supply_temperature_heat_consumer (array): Supply temperature profiles for heat consumers.
-        return_temperature_heat_consumer (array): Return temperature profiles for heat consumers.
+        min_supply_temperature_heat_consumer (array): Supply temperature profiles for heat consumers.
         time_steps (range): Range of time steps for the simulation.
         start (int): Start index for slicing the profiles.
         end (int): End index for slicing the profiles.
     """
     controller_count = 0
     for ctrl in net.controller.object.values:
-        if isinstance(ctrl, ReturnTemperatureController):
+        if isinstance(ctrl, TemperatureController):
             # Create the DataFrame for the return temperature
             df_return_temp = pd.DataFrame(index=time_steps, data={
-                'return_temperature': return_temperature_heat_consumer[controller_count][start:end],
-                'min_supply_temperature': supply_temperature_heat_consumer[controller_count][start:end]
+                'min_supply_temperature': min_supply_temperature_heat_consumer[controller_count][start:end]
             })
             data_source_return_temp = DFData(df_return_temp)
 
             ctrl.data_source = data_source_return_temp
             controller_count += 1
-
+            
 def update_supply_temperature_controls(net, supply_temperature, time_steps, start, end):
     """Update supply temperature controls with new data sources for time series simulation.
 
@@ -86,6 +83,7 @@ def update_supply_temperature_controls(net, supply_temperature, time_steps, star
         ConstControl(net, element='circ_pump_pressure', variable='t_flow_k', element_index=0, 
                      data_source=data_source_supply_temp, profile_name='supply_temperature')
 
+
 def create_log_variables(net):
     """Create a list of variables to log during the time series simulation.
 
@@ -99,17 +97,19 @@ def create_log_variables(net):
         ('res_junction', 'p_bar'), 
         ('res_junction', 't_k'),
         ('heat_consumer', 'qext_w'),
-        ('res_heat_consumer', 'v_mean_m_per_s'),
+        ('res_heat_consumer', 'vdot_m3_per_s'),
         ('res_heat_consumer', 't_from_k'),
         ('res_heat_consumer', 't_to_k'),
         ('res_heat_consumer', 'mdot_from_kg_per_s'),
-        ('res_circ_pump_pressure', 'mdot_flow_kg_per_s'),
-        ('res_circ_pump_pressure', 'deltap_bar')
+        ('res_circ_pump_pressure', 'mdot_from_kg_per_s'),
+        ('res_circ_pump_pressure', 'p_to_bar'),
+        ('res_circ_pump_pressure', 'p_from_bar')
     ]
 
     if 'circ_pump_mass' in net:
-        log_variables.append(('res_circ_pump_mass', 'mdot_flow_kg_per_s'))
-        log_variables.append(('res_circ_pump_mass', 'deltap_bar'))
+        log_variables.append(('res_circ_pump_mass', 'mdot_from_kg_per_s'))
+        log_variables.append(('res_circ_pump_mass', 'p_to_bar'))
+        log_variables.append(('res_circ_pump_mass', 'p_from_bar'))
 
     return log_variables
 
@@ -141,6 +141,11 @@ def time_series_preprocessing(supply_temperature, supply_temperature_heat_consum
     print(f"Rücklauftemperatur HAST: {return_temperature_heat_consumer} °C")
     print(f"Vorlauftemperatur Gebäude: {supply_temperature_buildings} °C")
     print(f"Rücklauftemperatur Gebäude: {return_temperature_buildings} °C")
+
+    #print(len(total_heat_W))
+    # replace all values in total_heat_W with 2 % of the maximum value if the value is smaller than 2 % of the maximum value
+    max_heat = np.max(total_heat_W)
+    total_heat_W = np.where(total_heat_W < 0.02 * max_heat, 0.02 * max_heat, total_heat_W)
 
     waerme_hast_ges_W = []
     strom_hast_ges_W = []
@@ -190,7 +195,7 @@ def time_series_preprocessing(supply_temperature, supply_temperature_heat_consum
 
     return waerme_hast_ges_W, strom_hast_ges_W, supply_temperature_heat_consumer, return_temperature_heat_consumer 
     
-def thermohydraulic_time_series_net(net, yearly_time_steps, qext_w_profiles, start, end, supply_temperature=85, supply_temperature_heat_consumer=75, return_temperature_heat_consumer=60):
+def thermohydraulic_time_series_net(net, yearly_time_steps, qext_w_profiles, start, end, supply_temperature=85, min_supply_temperature_heat_consumer=65, return_temperature_heat_consumer=60):
     """Run a thermohydraulic time series simulation for the network.
 
     Args:
@@ -210,13 +215,14 @@ def thermohydraulic_time_series_net(net, yearly_time_steps, qext_w_profiles, sta
     yearly_time_steps = yearly_time_steps[start:end]
 
     # Update the ConstControl
+    print(f"qext_w_profiles: {qext_w_profiles}") # Structure is two-dimensional array with shape (n_profiles, n_time_steps)
     time_steps = range(0, len(qext_w_profiles[0][start:end]))
+
     update_const_controls(net, qext_w_profiles, time_steps, start, end)
 
     # If return_temperature data exists, update corresponding ReturnTemperatureController
-    if return_temperature_heat_consumer is not None and isinstance(return_temperature_heat_consumer, np.ndarray) and return_temperature_heat_consumer.ndim == 2 and \
-       supply_temperature_heat_consumer is not None and isinstance(supply_temperature_heat_consumer, np.ndarray) and supply_temperature_heat_consumer.ndim == 2:
-        update_return_temperature_controller(net, supply_temperature_heat_consumer, return_temperature_heat_consumer, time_steps, start, end)
+    if min_supply_temperature_heat_consumer is not None and isinstance(min_supply_temperature_heat_consumer, np.ndarray) and min_supply_temperature_heat_consumer.ndim == 2:
+        update_heat_consumer_temperature_controller(net, min_supply_temperature_heat_consumer, time_steps, start, end)
 
     # If supply_temperature data exists, update corresponding ReturnTemperatureController
     if supply_temperature is not None and isinstance(supply_temperature, np.ndarray):
@@ -225,7 +231,8 @@ def thermohydraulic_time_series_net(net, yearly_time_steps, qext_w_profiles, sta
     # Log variables and run time series calculation
     log_variables = create_log_variables(net)
     ow = OutputWriter(net, time_steps, output_path=None, log_variables=log_variables)
-    run_time_series.run_timeseries(net, time_steps, mode="all")
+
+    run_time_series.run_timeseries(net, time_steps, mode="bidirectional", iter=100)
 
     return yearly_time_steps, net, ow.np_results
 
@@ -250,13 +257,13 @@ def calculate_results(net, net_results, cp_kJ_kgK=4.2):
     if 'circ_pump_pressure' in net:
         for idx, row in net.circ_pump_pressure.iterrows():
             pump_results["Heizentrale Haupteinspeisung"][idx] = {
-                "mass_flow": net_results["res_circ_pump_pressure.mdot_flow_kg_per_s"][:, 0],
-                "deltap": net_results["res_circ_pump_pressure.deltap_bar"][:, 0],
+                "mass_flow": net_results["res_circ_pump_pressure.mdot_from_kg_per_s"][:, 0],
+                "flow_pressure": net_results["res_circ_pump_pressure.p_to_bar"][:, idx],
+                "return_pressure": net_results["res_circ_pump_pressure.p_from_bar"][:, idx],
+                "deltap": net_results["res_circ_pump_pressure.p_to_bar"][:, idx] - net_results["res_circ_pump_pressure.p_from_bar"][:, idx],
                 "return_temp": net_results["res_junction.t_k"][:, net.circ_pump_pressure["return_junction"][0]] - 273.15,
                 "flow_temp": net_results["res_junction.t_k"][:, net.circ_pump_pressure["flow_junction"][0]] - 273.15,
-                "return_pressure": net_results["res_junction.p_bar"][:, net.circ_pump_pressure["return_junction"][0]],
-                "flow_pressure": net_results["res_junction.p_bar"][:, net.circ_pump_pressure["flow_junction"][0]],
-                "qext_kW": net_results["res_circ_pump_pressure.mdot_flow_kg_per_s"][:, idx] * cp_kJ_kgK * (net_results["res_junction.t_k"][:, net.circ_pump_pressure["flow_junction"][0]] - net_results["res_junction.t_k"][:, net.circ_pump_pressure["return_junction"][0]])
+                "qext_kW": net_results["res_circ_pump_pressure.mdot_from_kg_per_s"][:, idx] * cp_kJ_kgK * (net_results["res_junction.t_k"][:, net.circ_pump_pressure["flow_junction"][0]] - net_results["res_junction.t_k"][:, net.circ_pump_pressure["return_junction"][0]])
             }
 
     # Add results for the Mass Pumps
@@ -264,12 +271,12 @@ def calculate_results(net, net_results, cp_kJ_kgK=4.2):
         for idx, row in net.circ_pump_mass.iterrows():
             pump_results["weitere Einspeisung"][idx] = {
                 "mass_flow": net_results["res_circ_pump_mass.mdot_flow_kg_per_s"][:, idx],
-                "deltap": net_results["res_circ_pump_mass.deltap_bar"][:, idx],
+                "flow_pressure": net_results["res_circ_pump_mass.p_to_bar"][:, idx],
+                "return_pressure": net_results["res_circ_pump_mass.p_from_bar"][:, idx],
+                "deltap": net_results["res_circ_pump_mass.p_to_bar"][:, idx] - net_results["res_circ_pump_mass.p_from_bar"][:, idx],
                 "return_temp": net_results["res_junction.t_k"][:, net.circ_pump_mass["return_junction"][0]] - 273.15,
                 "flow_temp": net_results["res_junction.t_k"][:, net.circ_pump_mass["flow_junction"][0]] - 273.15,
-                "return_pressure": net_results["res_junction.p_bar"][:, net.circ_pump_mass["return_junction"][0]],
-                "flow_pressure": net_results["res_junction.p_bar"][:, net.circ_pump_mass["flow_junction"][0]],
-                "qext_kW": net_results["res_circ_pump_mass.mdot_flow_kg_per_s"][:, idx] * cp_kJ_kgK * (net_results["res_junction.t_k"][:, net.circ_pump_mass["flow_junction"][0]] - net_results["res_junction.t_k"][:, net.circ_pump_mass["return_junction"][0]])
+                "qext_kW": net_results["res_circ_pump_mass.mdot_from_kg_per_s"][:, idx] * cp_kJ_kgK * (net_results["res_junction.t_k"][:, net.circ_pump_mass["flow_junction"][0]] - net_results["res_junction.t_k"][:, net.circ_pump_mass["return_junction"][0]])
             }
 
     return pump_results
