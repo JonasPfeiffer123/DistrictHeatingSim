@@ -83,7 +83,10 @@ document.getElementById('toggleMarkerButton').addEventListener('click', toggleMa
 // Enable snapping for each layer on creation
 map.on('pm:create', (e) => {
     const layer = e.layer;
-    allLayers.addLayer(layer);
+    console.log("Layer importiert:", layer.options.name);
+    allLayers.addLayer(layer); // Füge die Layer zur allLayers-Gruppe hinzu
+    map.addLayer(layer); // Füge die Layer zur Karte hinzu
+    addLayerToList(layer); // Füge die Layer zur Liste hinzu
 
     layer.pm.enable({
         snappable: true,
