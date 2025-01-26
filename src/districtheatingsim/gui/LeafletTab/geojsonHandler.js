@@ -51,17 +51,6 @@ function importGeoJSON(geojsonData, fileName) {
     layerGroup.options.opacity = geojsonData.features[0].properties.opacity || 1.0;
 
     addLayerToList(layerGroup); // Zur Layer-Liste hinzufügen, aber nur als ein Eintrag
-
-    // Füge layerGroup zur editierbaren Feature-Gruppe hinzu, damit Leaflet.draw sie erkennt
-    //layerGroup.eachLayer(layer => {
-    //    console.log("Layer importiert:", layerGroup.options.name);
-    //    layer.options.name = layerGroup.options.name; // Setze den Namen für jedes Layer
-    //    allLayers.addLayer(layer);
-    //    map.addLayer(layer);
-    //});
-
-    // Füge die gesamte Layer-Gruppe zur editierbaren Feature-Gruppe hinzu
-    allLayers.addLayer(layerGroup);
     map.addLayer(layerGroup);
 
     // Layer in den Kartenausschnitt anpassen

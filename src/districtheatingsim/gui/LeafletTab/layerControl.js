@@ -12,6 +12,25 @@ if (typeof L.LineUtil._flat === 'undefined') {
 var layerList = [];
 let selectedLayer = null;
 
+function createNewLayer() {
+    const layerName = prompt("Geben Sie den Namen des neuen Layers ein:");
+    if (layerName) {
+        const newLayer = L.layerGroup();
+        newLayer.options = {
+            name: layerName,
+            color: getRandomColor(),
+            opacity: 1.0
+        };
+        addLayerToList(newLayer);
+        allLayers.addLayer(newLayer);
+        map.addLayer(newLayer);
+        selectedLayer = newLayer;
+        console.log("Neuer Layer erstellt:", layerName);
+    } else {
+        console.warn("Layer-Erstellung abgebrochen.");
+    }
+}
+
 function addLayerToList(layer) {
     // Überprüfe, ob Layer bereits in der Liste existiert
     if (layerList.includes(layer)) {
