@@ -1,6 +1,6 @@
 // Filename: geojsonHandler.js
 // Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-// Date: 2024-10-20
+// Date: 2025-01-26
 // Description: JavaScript-File for the  import and export of GeoJSON data
 
 // Definieren von EPSG:25833 (ETRS89 / UTM Zone 33N)

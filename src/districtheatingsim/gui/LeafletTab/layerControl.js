@@ -1,6 +1,6 @@
 // Filename: layerControl.js
 // Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-// Date: 2024-10-20
+// Date: 2025-01-26
 // Description: JavaScript-File for the layer control functionality of the Leaflet map
 
 // Polyfill für _flat, falls es veraltet ist
@@ -58,6 +58,25 @@ function updateLayerVisuals(layer) {
     });
 }
 
+ocument.getElementById('opacityOkButton').onclick = () => {
+    document.getElementById('opacityControl').style.display = 'none';
+};
+
+function openOpacitySlider(layer) {
+    selectedLayer = layer;
+    document.getElementById('opacitySlider').value = layer.options.opacity || 1.0;
+    document.getElementById('opacityControl').style.display = 'flex';
+}
+
+document.getElementById('opacitySlider').oninput = (event) => {
+    const opacity = event.target.value;
+    if (selectedLayer) {
+        selectedLayer.setStyle({ opacity: parseFloat(opacity) });
+        selectedLayer.options.opacity = parseFloat(opacity);
+        console.log("Opazität geändert:", opacity);
+    }
+};
+
 // Kontextmenü öffnen und Aktionen auf den ausgewählten Layer anwenden
 function openContextMenu(event) {
     let contextMenu = document.getElementById('layerContextMenu');
@@ -92,8 +111,7 @@ function openContextMenu(event) {
         const opacityOption = document.createElement('div');
         opacityOption.textContent = 'Layerdichte ändern';
         opacityOption.onclick = () => {
-            document.getElementById('opacitySlider').value = selectedLayer.options.opacity || 1.0;
-            document.getElementById('opacitySlider').style.display = 'block';
+            openOpacitySlider(selectedLayer);
             closeContextMenu();
         };
         contextMenu.appendChild(opacityOption);

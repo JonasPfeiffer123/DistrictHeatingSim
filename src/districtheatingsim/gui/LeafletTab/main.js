@@ -1,6 +1,6 @@
 // Filename: main.js
 // Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-// Date: 2024-10-20
+// Date: 2025-01-26
 // Description: JavaScript-File for the main functionality of the Leaflet map
 
 // Initialize Leaflet map
@@ -76,6 +76,10 @@ function onMapClick(e) {
 
     clickMarker.bindPopup("Latitude: " + lat + "<br>Longitude: " + lng).openPopup();
 }
+
+document.getElementById('opacityOkButton').onclick = () => {
+    document.getElementById('opacityControl').style.display = 'none';
+};
 
 // Event for the button to toggle marker mode
 document.getElementById('toggleMarkerButton').addEventListener('click', toggleMarkerMode);
