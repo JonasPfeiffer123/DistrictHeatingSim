@@ -15,6 +15,15 @@ if (typeof L.LineUtil._flat === 'undefined') {
     L.LineUtil._flat = L.LineUtil.isFlat;
 }
 
+function getRandomColor() {
+    const letters = '0123456789ABCDEF';
+    let color = '#';
+    for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
+}
+
 // Funktion zum Importieren von GeoJSON und Hinzufügen als eine einzelne Layer-Gruppe
 function importGeoJSON(geojsonData, fileName) {
     const crs = geojsonData.crs ? geojsonData.crs.properties.name : 'EPSG:4326';
@@ -24,10 +33,13 @@ function importGeoJSON(geojsonData, fileName) {
         geojsonData.features.forEach(feature => transformCoordinates(feature));
     }
 
+    // Generiere eine zufällige Farbe
+    const randomColor = getRandomColor();
+
     // Erstelle eine einzelne Layer-Gruppe aus allen Features im GeoJSON
     const layerGroup = L.geoJSON(geojsonData, {
         style: (feature) => ({
-            color: feature.properties.color || "#3388ff",
+            color: randomColor,
             fillOpacity: feature.properties.opacity ? feature.properties.opacity * 0.5 : 0.5,
             opacity: feature.properties.opacity || 1.0
         })
@@ -35,21 +47,30 @@ function importGeoJSON(geojsonData, fileName) {
 
     // Setze Gruppenoptionen und Namen
     layerGroup.options.name = fileName || "Imported Layer";
-    layerGroup.options.color = geojsonData.features[0].properties.color || "#3388ff";
+    layerGroup.options.color = randomColor;
     layerGroup.options.opacity = geojsonData.features[0].properties.opacity || 1.0;
 
-    // allLayers.addLayer(layerGroup); 
     addLayerToList(layerGroup); // Zur Layer-Liste hinzufügen, aber nur als ein Eintrag
 
     // Füge layerGroup zur editierbaren Feature-Gruppe hinzu, damit Leaflet.draw sie erkennt
-    layerGroup.eachLayer(layer => {
-        allLayers.addLayer(layer);
-    });
+    //layerGroup.eachLayer(layer => {
+    //    console.log("Layer importiert:", layerGroup.options.name);
+    //    layer.options.name = layerGroup.options.name; // Setze den Namen für jedes Layer
+    //    allLayers.addLayer(layer);
+    //    map.addLayer(layer);
+    //});
 
+    // Füge die gesamte Layer-Gruppe zur editierbaren Feature-Gruppe hinzu
+    allLayers.addLayer(layerGroup);
+    map.addLayer(layerGroup);
+    
     // Layer in den Kartenausschnitt anpassen
     if (layerGroup.getBounds().isValid()) {
         map.fitBounds(layerGroup.getBounds());
     }
+
+    console.log("Layer-Gruppe importiert:", layerGroup.options.name);
+    console.log("Anzahl der Layer in allLayers nach dem Hinzufügen:", allLayers.getLayers().length);
 }
 
 // Funktion zur Transformation von Koordinaten

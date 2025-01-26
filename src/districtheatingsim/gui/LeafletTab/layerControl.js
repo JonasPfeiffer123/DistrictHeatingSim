@@ -19,8 +19,11 @@ function addLayerToList(layer) {
         return;
     }
 
+    layerList.push(layer); // Füge den Layer zur Liste hinzu
+
     const li = document.createElement('li');
-    li.classList.add('layer-item'); 
+    li.classList.add('layer-item');
+    li.layer = layer; // Verknüpfe den Listeneintrag mit dem Layer
 
     const colorIndicator = document.createElement('div');
     colorIndicator.classList.add('color-indicator');
@@ -30,8 +33,6 @@ function addLayerToList(layer) {
     const layerName = document.createElement('span');
     layerName.textContent = layer.options.name || "Layer";
     li.appendChild(layerName);
-
-    li.layer = layer;
 
     // Links-Klick zum Auswählen des Layers
     li.onclick = () => selectLayer(layer, li);
@@ -44,7 +45,6 @@ function addLayerToList(layer) {
     };
 
     document.getElementById('layerList').appendChild(li);
-    layerList.push(layer);
 }
 
 // Funktion, um die Darstellung des Layers in der Liste nur visuell anzupassen
@@ -68,9 +68,9 @@ function openContextMenu(event) {
 
         // Umbenennen-Option
         const renameOption = document.createElement('div');
-        renameOption.textContent = 'Rename';
+        renameOption.textContent = 'Layernamen Umbenennen';
         renameOption.onclick = () => {
-            const newName = prompt("Enter new name:", selectedLayer.options.name || "Layer");
+            const newName = prompt("Geben sie einen neuen Namen:", selectedLayer.options.name || "Layer");
             if (newName) {
                 selectedLayer.options.name = newName;
                 updateLayerVisuals(selectedLayer);
@@ -81,7 +81,7 @@ function openContextMenu(event) {
 
         // Farbe ändern-Option
         const colorOption = document.createElement('div');
-        colorOption.textContent = 'Change Color';
+        colorOption.textContent = 'Layerfarbe Ändern';
         colorOption.onclick = () => {
             document.getElementById('colorPicker').click();
             closeContextMenu();
@@ -90,7 +90,7 @@ function openContextMenu(event) {
 
         // Opazität ändern-Option
         const opacityOption = document.createElement('div');
-        opacityOption.textContent = 'Change Opacity';
+        opacityOption.textContent = 'Layerdichte ändern';
         opacityOption.onclick = () => {
             document.getElementById('opacitySlider').value = selectedLayer.options.opacity || 1.0;
             document.getElementById('opacitySlider').style.display = 'block';
@@ -100,7 +100,7 @@ function openContextMenu(event) {
 
         // Export-Option
         const exportOption = document.createElement('div');
-        exportOption.textContent = 'Export';
+        exportOption.textContent = 'Layer Exportieren';
         exportOption.onclick = () => {
             exportSingleLayer(selectedLayer);
             closeContextMenu();
@@ -109,7 +109,7 @@ function openContextMenu(event) {
 
         // Delete-Option
         const deleteOption = document.createElement('div');
-        deleteOption.textContent = 'Delete';
+        deleteOption.textContent = 'Layer Löschen';
         deleteOption.onclick = () => {
             deleteLayer(selectedLayer);
             closeContextMenu();
@@ -224,27 +224,58 @@ function exportSingleLayer(layer) {
         downloadAnchorNode.setAttribute("download", (layer.options.name || "layer") + ".geojson");
         document.body.appendChild(downloadAnchorNode);
         downloadAnchorNode.click();
-        downloadAnchorNode.remove();
+        document.body.removeChild(downloadAnchorNode);
         console.log("Layer exportiert:", layer.options.name);
     }
 }
 
 // Funktion zum Aktualisieren der Layer-Liste
 function updateLayerList() {
-    document.getElementById('layerList').innerHTML = '';
+    const layerListElement = document.getElementById('layerList');
+    layerListElement.innerHTML = '';
     layerList.forEach(layer => addLayerToList(layer));
 }
 
 // Löschen des Layers und Aktualisieren der Liste
 function deleteLayer(layer) {
+    console.log("Versuche, Layer zu löschen:", layer.options.name);
+
+    // Überprüfen des Typs und Inhalts von allLayers
+    console.log("Typ von allLayers:", typeof allLayers);
+    console.log("Anzahl der Layer in allLayers:", allLayers.getLayers().length);
+
+    // Überprüfen des Typs und Inhalts von layer
+    console.log("Typ von layer:", typeof layer);
+    console.log("Layer-Name:", layer.options.name);
+
     if (allLayers.hasLayer(layer)) {
-        allLayers.removeLayer(layer);
+        console.log("Layer in allLayers gefunden. Entferne Layer aus allLayers.");
+        allLayers.removeLayer(layer); // Entferne die Layer aus der allLayers-Gruppe
+    } else {
+        console.log("Layer nicht in allLayers gefunden.");
     }
-    layerList = layerList.filter(l => l !== layer);
-    document.getElementById('layerList').innerHTML = '';
-    layerList.forEach(layer => addLayerToList(layer)); // Liste neu erstellen
+
+    if (map.hasLayer(layer)) {
+        console.log("Layer in der Karte gefunden. Entferne Layer aus der Karte.");
+        map.removeLayer(layer); // Entferne die Layer direkt aus der Karte
+    } else {
+        console.log("Layer nicht in der Karte gefunden.");
+    }
+
+    layerList = layerList.filter(l => l !== layer); // Entferne die Layer aus der Liste
+
+    // Entferne den entsprechenden Listeneintrag aus der Anzeige
+    const listItems = document.querySelectorAll('.layer-item');
+    listItems.forEach(item => {
+        if (item.layer === layer) {
+            item.remove();
+        }
+    });
+
     selectedLayer = null;
+    // updateLayerList(); // Aktualisiere die Layer-Liste
 }
+
 // Funktion zum automatischen Verbinden von Linienendpunkten nach dem Bearbeiten
 function snapLineEndpoints(layerGroup, threshold = 0.0001) {
     const layers = [];

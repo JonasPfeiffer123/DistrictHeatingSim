@@ -43,7 +43,7 @@ class GeoJsonReceiver(QObject):
         gdf.to_crs(target_crs, inplace=True)
         
         # Speichere die Daten als GeoJSON
-        output_file = 'exported_data.geojson'
+        output_file = 'exported_data.geojson' ### Replace with path dialog
         gdf.to_file(output_file, driver="GeoJSON")
         print(f"GeoJSON gespeichert in {output_file}")
 
@@ -152,7 +152,7 @@ class VisualizationPresenter(QObject):
         self.data_manager = data_manager
         self.config_manager = config_manager
 
-        self.view.map_file_path = self.model.get_resource_path("gui/PyQt5_leaflet/map.html")
+        self.view.map_file_path = self.model.get_resource_path("gui/LeafletTab/map.html") ### Replace with path in file_paths
 
         # Set up folder change handling
         self.folder_manager.project_folder_changed.connect(self.on_project_folder_changed)
@@ -417,7 +417,7 @@ class VisualizationTabView(QWidget):
         self.web_view = QWebEngineView()
         
         # HTML-Karte wird geladen (Annahme: HTML-Datei ist vorbereitet)
-        self.map_file_path = self.model.get_resource_path("gui/PyQt5_leaflet/map.html")
+        self.map_file_path = self.model.get_resource_path("gui/LeafletTab/map.html")
         print(self.map_file_path)
         #self.map_file_path = os.path.join(os.getcwd(), 'src\\districtheatingsim\\gui\\PyQt5_leaflet\\map.html')
         self.web_view.setUrl(QUrl.fromLocalFile(self.map_file_path))
