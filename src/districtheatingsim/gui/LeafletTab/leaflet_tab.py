@@ -47,6 +47,17 @@ class GeoJsonReceiver(QObject):
         gdf.to_file(output_file, driver="GeoJSON")
         print(f"GeoJSON gespeichert in {output_file}")
 
+    @pyqtSlot(str)
+    def exportGeoJSON(self, geojsonString):
+        fileName, _ = QFileDialog.getSaveFileName(None, "Save GeoJSON File", "", "GeoJSON Files (*.geojson);;All Files (*)")
+        if fileName:
+            geojson_data = json.loads(geojsonString)
+            with open(fileName, 'w') as file:
+                json.dump(geojson_data, file, indent=4)  # Formatiertes Speichern mit Einrückungen
+            print(f"GeoJSON-Datei gespeichert: {fileName}")
+        else:
+            print("Speichern abgebrochen.")
+
 class VisualizationModel:
     """
     The VisualizationModel class is responsible for handling all data-related operations
@@ -424,8 +435,8 @@ class VisualizationTabView(QWidget):
 
         # Erstelle den WebChannel und registriere das Python-Objekt
         self.channel = QWebChannel()
-        self.receiver = GeoJsonReceiver()
-        self.channel.registerObject('pywebchannel', self.receiver)
+        self.geoJsonReceiver = GeoJsonReceiver()
+        self.channel.registerObject("geoJsonReceiver", self.geoJsonReceiver)
         self.web_view.page().setWebChannel(self.channel)
 
         # Füge das WebView in das Layout ein
