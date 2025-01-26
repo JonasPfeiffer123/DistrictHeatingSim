@@ -63,7 +63,7 @@ function importGeoJSON(geojsonData, fileName) {
     // Füge die gesamte Layer-Gruppe zur editierbaren Feature-Gruppe hinzu
     allLayers.addLayer(layerGroup);
     map.addLayer(layerGroup);
-    
+
     // Layer in den Kartenausschnitt anpassen
     if (layerGroup.getBounds().isValid()) {
         map.fitBounds(layerGroup.getBounds());
@@ -120,14 +120,4 @@ function add2DLayer(feature) {
     return layer;
 }
 
-// Exportiert alle GeoJSON-Daten an Python oder speichert sie lokal
-function exportGeoJSON() {
-    const data = allLayers.toGeoJSON();
-    console.log("All layers as GeoJSON: " + JSON.stringify(data));
-    if (window.pywebchannel) {
-        window.pywebchannel.sendGeoJSONToPython(JSON.stringify(data));
-    }
-}
-
 window.importGeoJSON = importGeoJSON; // Funktion global verfügbar machen
-window.exportGeoJSON = exportGeoJSON; // Funktion global verfügbar machen

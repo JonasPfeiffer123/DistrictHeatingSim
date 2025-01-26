@@ -209,7 +209,7 @@ function updateLayerOpacity() {
     }
 }
 
-// Funktion zum Exportieren eines einzelnen Layers als GeoJSON
+// Funktion zum Exportieren eines einzelnen Layers als GeoJSON und Senden an PyQt5
 function exportSingleLayer(layer) {
     if (layer) {
         const singleLayerGeoJSON = layer.toGeoJSON();
@@ -218,14 +218,18 @@ function exportSingleLayer(layer) {
             color: layer.options.color,
             opacity: layer.options.opacity
         };
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(singleLayerGeoJSON));
-        const downloadAnchorNode = document.createElement('a');
-        downloadAnchorNode.setAttribute("href", dataStr);
-        downloadAnchorNode.setAttribute("download", (layer.options.name || "layer") + ".geojson");
-        document.body.appendChild(downloadAnchorNode);
-        downloadAnchorNode.click();
-        document.body.removeChild(downloadAnchorNode);
-        console.log("Layer exportiert:", layer.options.name);
+        const geojsonString = JSON.stringify(singleLayerGeoJSON);
+
+        // Senden der GeoJSON-Daten an PyQt5
+        if (window.pywebview) {
+            window.pywebview.exportGeoJSON(geojsonString).then(response => {
+                console.log("Layer exportiert:", layer.options.name);
+            }).catch(error => {
+                console.error("Fehler beim Exportieren des Layers:", error);
+            });
+        } else {
+            console.error("PyWebView API nicht verfügbar.");
+        }
     }
 }
 

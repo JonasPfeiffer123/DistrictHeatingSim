@@ -216,12 +216,9 @@
     <!-- WebChannel-Code für die Kommunikation mit Python -->
     <script src="qwebchannel.js"></script>
     <script>
-        var geojsonExport = null;
-
-        // Initialisiere QWebChannel und verbinde mit Python
         new QWebChannel(qt.webChannelTransport, function(channel) {
-            window.pywebchannel = channel.objects.pywebchannel;
-        });
+        window.pywebview = channel.objects.geoJsonReceiver;
+    });
 
     </script> 
 </body>
