@@ -476,21 +476,16 @@ class NetGenerationDialog(QDialog):
         row_layout.addWidget(self.v_max_pipeInput)
         layout.addLayout(row_layout)
 
-        self.v_max_heat_consumerLabel = QLabel("Maximale Strömungsgeschwindigkeit HAST:")
-        self.v_max_heat_consumerInput = QLineEdit("1.5")
-        row_layout.addWidget(self.v_max_heat_consumerLabel)
-        row_layout.addWidget(self.v_max_heat_consumerInput)
-        layout.addLayout(row_layout)
-
         self.material_filterInput = QComboBox(self)
         self.material_filterInput.addItems(["KMR", "FL", "HK"])
         layout.addWidget(self.material_filterInput)
         self.material_filterInput.currentIndexChanged.connect(self.updateInputFieldsVisibility)
 
-        self.insulation_filterInput = QComboBox(self)
-        self.insulation_filterInput.addItems(["2v", "1v", "S"])
-        layout.addWidget(self.insulation_filterInput)
-        self.insulation_filterInput.currentIndexChanged.connect(self.updateInputFieldsVisibility)
+        self.k_mm_Label = QLabel("Rauigkeit der Rohrleitungen:")
+        self.k_mm_Input = QLineEdit("0.1")
+        row_layout.addWidget(self.k_mm_Label)
+        row_layout.addWidget(self.k_mm_Input)
+        layout.addLayout(row_layout)
     
         return layout
 
@@ -600,13 +595,7 @@ class NetGenerationDialog(QDialog):
         self.v_max_pipelabel.setVisible(self.DiameterOpt_ckecked)
         self.v_max_pipeInput.setVisible(self.DiameterOpt_ckecked)
 
-        self.v_max_heat_consumerLabel.setVisible(self.DiameterOpt_ckecked)
-        self.v_max_heat_consumerInput.setVisible(self.DiameterOpt_ckecked)
-
         self.material_filterInput.setVisible(self.DiameterOpt_ckecked)
-        self.insulation_filterInput.setVisible(self.DiameterOpt_ckecked)
-
-        self.insulation_filterInput.currentIndexChanged.connect(self.updateInputFieldsVisibility)
 
         self.supply_temperature_heat_consumer_checked = self.supplyTempCheckbox.isChecked()
         self.set_layout_visibility(self.supply_temperature_heat_consumer_row, self.supply_temperature_heat_consumer_checked)
@@ -767,12 +756,11 @@ class NetGenerationDialog(QDialog):
 
             json_path = self.jsonLineEdit.text()
 
-            v_max_heat_consumer  = float(self.v_max_heat_consumerInput.text())
             pipetype = self.initialpipetypeInput.currentText()
 
             v_max_pipe = float(self.v_max_pipeInput.text())
             material_filter = self.material_filterInput.currentText()
-            insulation_filter = self.insulation_filterInput.currentText()
+            k_mm = float(self.k_mm_Input.text())
 
         supply_temperature_net = self.calculateTemperatureCurve()
         flow_pressure_pump = float(self.parameter_rows_net[5].itemAt(1).widget().text())
@@ -793,10 +781,10 @@ class NetGenerationDialog(QDialog):
         ### hier muss der path für die JSON mit den Lastgängen ergänzt werden ###
         # Führen Sie die Netzgenerierung für GeoJSON durch
         if self.generate_callback:
-            self.generate_callback(vorlauf_path, ruecklauf_path, hast_path, erzeugeranlagen_path, json_path, rl_temp_heat_consumer, 
-                                   supply_temperature_heat_consumer, supply_temperature_net, flow_pressure_pump, lift_pressure_pump, self.netconfiguration, 
-                                   dT_RL, v_max_heat_consumer, self.building_temp_checked, pipetype, v_max_pipe, material_filter, insulation_filter, 
-                                   self.DiameterOpt_ckecked, import_type)
+            self.generate_callback(vorlauf_path, ruecklauf_path, hast_path, erzeugeranlagen_path, json_path, supply_temperature_heat_consumer, 
+                                   rl_temp_heat_consumer, supply_temperature_net, flow_pressure_pump, lift_pressure_pump, self.netconfiguration, 
+                                   dT_RL, self.building_temp_checked, pipetype, v_max_pipe, material_filter, self.DiameterOpt_ckecked, 
+                                   k_mm, import_type)
 
         self.accept()
 
