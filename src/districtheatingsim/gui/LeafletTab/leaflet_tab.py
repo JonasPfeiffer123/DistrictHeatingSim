@@ -52,8 +52,19 @@ class GeoJsonReceiver(QObject):
         fileName, _ = QFileDialog.getSaveFileName(None, "Save GeoJSON File", "", "GeoJSON Files (*.geojson);;All Files (*)")
         if fileName:
             geojson_data = json.loads(geojsonString)
-            with open(fileName, 'w') as file:
-                json.dump(geojson_data, file, indent=4)  # Formatiertes Speichern mit Einrückungen
+            
+            # Erstelle ein GeoDataFrame aus dem GeoJSON
+            gdf = gpd.GeoDataFrame.from_features(geojson_data['features'])
+            
+            # Setze das ursprüngliche CRS (EPSG:4326)
+            gdf.set_crs(epsg=4326, inplace=True)
+            
+            # Konvertiere das CRS in das gewünschte Ziel-CRS (z.B. EPSG:25833)
+            target_crs = 'EPSG:25833'
+            gdf.to_crs(target_crs, inplace=True)
+            
+            # Speichere die Daten als GeoJSON
+            gdf.to_file(fileName, driver="GeoJSON")
             print(f"GeoJSON-Datei gespeichert: {fileName}")
         else:
             print("Speichern abgebrochen.")
