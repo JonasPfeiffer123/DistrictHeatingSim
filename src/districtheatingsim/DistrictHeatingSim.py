@@ -96,7 +96,6 @@ from PyQt5.QtCore import QObject, pyqtSignal, QTimer
 from PyQt5.QtGui import QIcon, QPixmap
 
 from districtheatingsim.gui.ProjectTab.project_tab import ProjectTab
-from districtheatingsim.gui.VisualizationTab.visualization_tab import VisualizationTab
 from districtheatingsim.gui.LOD2Tab.lod2_tab import LOD2Tab
 from districtheatingsim.gui.BuildingTab.building_tab import BuildingTab
 from districtheatingsim.gui.RenovationTab.RenovationTab import RenovationTab
@@ -108,7 +107,7 @@ from districtheatingsim.gui.PVTab.pv_tab import PVTab
 from districtheatingsim.gui.results_pdf import create_pdf
 from districtheatingsim.gui.dialogs import TemperatureDataDialog, HeatPumpDataDialog
 
-from districtheatingsim.gui.PyQt5_leaflet.leaflet_tab import VisualizationTabLeaflet
+from districtheatingsim.gui.LeafletTab.leaflet_tab import VisualizationTabLeaflet
 
 class ProjectConfigManager:
     """
