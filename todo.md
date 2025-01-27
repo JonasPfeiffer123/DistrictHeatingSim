@@ -1,4 +1,4 @@
-# To dos Stand 21.11.2024
+# To dos Stand 27.01.2025
 
 ## UI-Management:
 ### Allgemeines:
@@ -22,7 +22,7 @@
 - LOD2-Daten laden --> Exception-Handling bei timeout Nominatim geocoding
 
 ### Wärmenetzgenerierung:
-- Kartenanwendung überarbeiten, Bearbeitungsfunktionen ausweiten / Export von bearbeiteten Layern, Dateistrukturüberdenken
+- Kartenanwendung überarbeiten, Bearbeitungsfunktionen ausweiten / Dateistrukturüberdenken
 
 ### Einzelversorgungslösungen
 - UI-Integration
@@ -43,9 +43,7 @@
     - Ausbauszenarien? 
 
 ### Wärmenetzberechnung:
-- **Prio 1:** Pandapipes 0.11 integrieren --> vorraussichtlich verschiedenste Optimierungen in der Berechnungslogik
 - Sekundäre Erzeuger hinzufügen
-- Bei sehr viel langeweile könnte man auch das manuelle Erstellen von Netzen anfangen. 
 
 ### Wirtschaftlichkeitsberechnung:
 - Kostendefinitionen weiter recherchieren und einarbeiten
