@@ -50,7 +50,7 @@ class LeafletTab(QWidget):
         self.web_view = QWebEngineView()
 
         # Lade die HTML-Datei
-        map_file_path = os.path.join(os.getcwd(), 'src\\districtheatingsim\\gui\\PyQt5_leaflet\\map.html')
+        map_file_path = os.path.join(os.getcwd(), 'src\\districtheatingsim\\gui\\LeafletTab\\map.html')
         self.web_view.setUrl(QUrl.fromLocalFile(map_file_path))
 
         # Erstelle den WebChannel und registriere das Python-Objekt

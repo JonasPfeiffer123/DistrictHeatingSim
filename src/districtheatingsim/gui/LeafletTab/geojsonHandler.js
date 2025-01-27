@@ -1,6 +1,6 @@
 // Filename: geojsonHandler.js
 // Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-// Date: 2024-10-20
+// Date: 2025-01-26
 // Description: JavaScript-File for the  import and export of GeoJSON data
 
 // Definieren von EPSG:25833 (ETRS89 / UTM Zone 33N)
@@ -15,6 +15,15 @@ if (typeof L.LineUtil._flat === 'undefined') {
     L.LineUtil._flat = L.LineUtil.isFlat;
 }
 
+function getRandomColor() {
+    const letters = '0123456789ABCDEF';
+    let color = '#';
+    for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
+}
+
 // Funktion zum Importieren von GeoJSON und Hinzufügen als eine einzelne Layer-Gruppe
 function importGeoJSON(geojsonData, fileName) {
     const crs = geojsonData.crs ? geojsonData.crs.properties.name : 'EPSG:4326';
@@ -24,10 +33,13 @@ function importGeoJSON(geojsonData, fileName) {
         geojsonData.features.forEach(feature => transformCoordinates(feature));
     }
 
+    // Generiere eine zufällige Farbe
+    const randomColor = getRandomColor();
+
     // Erstelle eine einzelne Layer-Gruppe aus allen Features im GeoJSON
     const layerGroup = L.geoJSON(geojsonData, {
         style: (feature) => ({
-            color: feature.properties.color || "#3388ff",
+            color: randomColor,
             fillOpacity: feature.properties.opacity ? feature.properties.opacity * 0.5 : 0.5,
             opacity: feature.properties.opacity || 1.0
         })
@@ -35,21 +47,19 @@ function importGeoJSON(geojsonData, fileName) {
 
     // Setze Gruppenoptionen und Namen
     layerGroup.options.name = fileName || "Imported Layer";
-    layerGroup.options.color = geojsonData.features[0].properties.color || "#3388ff";
+    layerGroup.options.color = randomColor;
     layerGroup.options.opacity = geojsonData.features[0].properties.opacity || 1.0;
 
-    // allLayers.addLayer(layerGroup); 
     addLayerToList(layerGroup); // Zur Layer-Liste hinzufügen, aber nur als ein Eintrag
-
-    // Füge layerGroup zur editierbaren Feature-Gruppe hinzu, damit Leaflet.draw sie erkennt
-    layerGroup.eachLayer(layer => {
-        allLayers.addLayer(layer);
-    });
+    map.addLayer(layerGroup);
 
     // Layer in den Kartenausschnitt anpassen
     if (layerGroup.getBounds().isValid()) {
         map.fitBounds(layerGroup.getBounds());
     }
+
+    console.log("Layer-Gruppe importiert:", layerGroup.options.name);
+    console.log("Anzahl der Layer in allLayers nach dem Hinzufügen:", allLayers.getLayers().length);
 }
 
 // Funktion zur Transformation von Koordinaten
@@ -99,14 +109,4 @@ function add2DLayer(feature) {
     return layer;
 }
 
-// Exportiert alle GeoJSON-Daten an Python oder speichert sie lokal
-function exportGeoJSON() {
-    const data = allLayers.toGeoJSON();
-    console.log("All layers as GeoJSON: " + JSON.stringify(data));
-    if (window.pywebchannel) {
-        window.pywebchannel.sendGeoJSONToPython(JSON.stringify(data));
-    }
-}
-
 window.importGeoJSON = importGeoJSON; // Funktion global verfügbar machen
-window.exportGeoJSON = exportGeoJSON; // Funktion global verfügbar machen

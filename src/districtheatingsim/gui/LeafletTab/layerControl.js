@@ -1,6 +1,6 @@
 // Filename: layerControl.js
 // Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-// Date: 2024-10-20
+// Date: 2025-01-26
 // Description: JavaScript-File for the layer control functionality of the Leaflet map
 
 // Polyfill für _flat, falls es veraltet ist
@@ -12,6 +12,25 @@ if (typeof L.LineUtil._flat === 'undefined') {
 var layerList = [];
 let selectedLayer = null;
 
+function createNewLayer() {
+    const layerName = prompt("Geben Sie den Namen des neuen Layers ein:");
+    if (layerName) {
+        const newLayer = L.layerGroup();
+        newLayer.options = {
+            name: layerName,
+            color: getRandomColor(),
+            opacity: 1.0
+        };
+        addLayerToList(newLayer);
+        allLayers.addLayer(newLayer);
+        map.addLayer(newLayer);
+        selectedLayer = newLayer;
+        console.log("Neuer Layer erstellt:", layerName);
+    } else {
+        console.warn("Layer-Erstellung abgebrochen.");
+    }
+}
+
 function addLayerToList(layer) {
     // Überprüfe, ob Layer bereits in der Liste existiert
     if (layerList.includes(layer)) {
@@ -19,8 +38,11 @@ function addLayerToList(layer) {
         return;
     }
 
+    layerList.push(layer); // Füge den Layer zur Liste hinzu
+
     const li = document.createElement('li');
-    li.classList.add('layer-item'); 
+    li.classList.add('layer-item');
+    li.layer = layer; // Verknüpfe den Listeneintrag mit dem Layer
 
     const colorIndicator = document.createElement('div');
     colorIndicator.classList.add('color-indicator');
@@ -30,8 +52,6 @@ function addLayerToList(layer) {
     const layerName = document.createElement('span');
     layerName.textContent = layer.options.name || "Layer";
     li.appendChild(layerName);
-
-    li.layer = layer;
 
     // Links-Klick zum Auswählen des Layers
     li.onclick = () => selectLayer(layer, li);
@@ -44,7 +64,6 @@ function addLayerToList(layer) {
     };
 
     document.getElementById('layerList').appendChild(li);
-    layerList.push(layer);
 }
 
 // Funktion, um die Darstellung des Layers in der Liste nur visuell anzupassen
@@ -58,6 +77,25 @@ function updateLayerVisuals(layer) {
     });
 }
 
+ocument.getElementById('opacityOkButton').onclick = () => {
+    document.getElementById('opacityControl').style.display = 'none';
+};
+
+function openOpacitySlider(layer) {
+    selectedLayer = layer;
+    document.getElementById('opacitySlider').value = layer.options.opacity || 1.0;
+    document.getElementById('opacityControl').style.display = 'flex';
+}
+
+document.getElementById('opacitySlider').oninput = (event) => {
+    const opacity = event.target.value;
+    if (selectedLayer) {
+        selectedLayer.setStyle({ opacity: parseFloat(opacity) });
+        selectedLayer.options.opacity = parseFloat(opacity);
+        console.log("Opazität geändert:", opacity);
+    }
+};
+
 // Kontextmenü öffnen und Aktionen auf den ausgewählten Layer anwenden
 function openContextMenu(event) {
     let contextMenu = document.getElementById('layerContextMenu');
@@ -68,9 +106,9 @@ function openContextMenu(event) {
 
         // Umbenennen-Option
         const renameOption = document.createElement('div');
-        renameOption.textContent = 'Rename';
+        renameOption.textContent = 'Layernamen Umbenennen';
         renameOption.onclick = () => {
-            const newName = prompt("Enter new name:", selectedLayer.options.name || "Layer");
+            const newName = prompt("Geben sie einen neuen Namen:", selectedLayer.options.name || "Layer");
             if (newName) {
                 selectedLayer.options.name = newName;
                 updateLayerVisuals(selectedLayer);
@@ -81,7 +119,7 @@ function openContextMenu(event) {
 
         // Farbe ändern-Option
         const colorOption = document.createElement('div');
-        colorOption.textContent = 'Change Color';
+        colorOption.textContent = 'Layerfarbe Ändern';
         colorOption.onclick = () => {
             document.getElementById('colorPicker').click();
             closeContextMenu();
@@ -90,17 +128,16 @@ function openContextMenu(event) {
 
         // Opazität ändern-Option
         const opacityOption = document.createElement('div');
-        opacityOption.textContent = 'Change Opacity';
+        opacityOption.textContent = 'Layerdichte ändern';
         opacityOption.onclick = () => {
-            document.getElementById('opacitySlider').value = selectedLayer.options.opacity || 1.0;
-            document.getElementById('opacitySlider').style.display = 'block';
+            openOpacitySlider(selectedLayer);
             closeContextMenu();
         };
         contextMenu.appendChild(opacityOption);
 
         // Export-Option
         const exportOption = document.createElement('div');
-        exportOption.textContent = 'Export';
+        exportOption.textContent = 'Layer Exportieren';
         exportOption.onclick = () => {
             exportSingleLayer(selectedLayer);
             closeContextMenu();
@@ -109,7 +146,7 @@ function openContextMenu(event) {
 
         // Delete-Option
         const deleteOption = document.createElement('div');
-        deleteOption.textContent = 'Delete';
+        deleteOption.textContent = 'Layer Löschen';
         deleteOption.onclick = () => {
             deleteLayer(selectedLayer);
             closeContextMenu();
@@ -209,7 +246,7 @@ function updateLayerOpacity() {
     }
 }
 
-// Funktion zum Exportieren eines einzelnen Layers als GeoJSON
+// Funktion zum Exportieren eines einzelnen Layers als GeoJSON und Senden an PyQt5
 function exportSingleLayer(layer) {
     if (layer) {
         const singleLayerGeoJSON = layer.toGeoJSON();
@@ -218,33 +255,68 @@ function exportSingleLayer(layer) {
             color: layer.options.color,
             opacity: layer.options.opacity
         };
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(singleLayerGeoJSON));
-        const downloadAnchorNode = document.createElement('a');
-        downloadAnchorNode.setAttribute("href", dataStr);
-        downloadAnchorNode.setAttribute("download", (layer.options.name || "layer") + ".geojson");
-        document.body.appendChild(downloadAnchorNode);
-        downloadAnchorNode.click();
-        downloadAnchorNode.remove();
-        console.log("Layer exportiert:", layer.options.name);
+        const geojsonString = JSON.stringify(singleLayerGeoJSON);
+
+        // Senden der GeoJSON-Daten an PyQt5
+        if (window.pywebview) {
+            window.pywebview.exportGeoJSON(geojsonString).then(response => {
+                console.log("Layer exportiert:", layer.options.name);
+            }).catch(error => {
+                console.error("Fehler beim Exportieren des Layers:", error);
+            });
+        } else {
+            console.error("PyWebView API nicht verfügbar.");
+        }
     }
 }
 
 // Funktion zum Aktualisieren der Layer-Liste
 function updateLayerList() {
-    document.getElementById('layerList').innerHTML = '';
+    const layerListElement = document.getElementById('layerList');
+    layerListElement.innerHTML = '';
     layerList.forEach(layer => addLayerToList(layer));
 }
 
 // Löschen des Layers und Aktualisieren der Liste
 function deleteLayer(layer) {
+    console.log("Versuche, Layer zu löschen:", layer.options.name);
+
+    // Überprüfen des Typs und Inhalts von allLayers
+    console.log("Typ von allLayers:", typeof allLayers);
+    console.log("Anzahl der Layer in allLayers:", allLayers.getLayers().length);
+
+    // Überprüfen des Typs und Inhalts von layer
+    console.log("Typ von layer:", typeof layer);
+    console.log("Layer-Name:", layer.options.name);
+
     if (allLayers.hasLayer(layer)) {
-        allLayers.removeLayer(layer);
+        console.log("Layer in allLayers gefunden. Entferne Layer aus allLayers.");
+        allLayers.removeLayer(layer); // Entferne die Layer aus der allLayers-Gruppe
+    } else {
+        console.log("Layer nicht in allLayers gefunden.");
     }
-    layerList = layerList.filter(l => l !== layer);
-    document.getElementById('layerList').innerHTML = '';
-    layerList.forEach(layer => addLayerToList(layer)); // Liste neu erstellen
+
+    if (map.hasLayer(layer)) {
+        console.log("Layer in der Karte gefunden. Entferne Layer aus der Karte.");
+        map.removeLayer(layer); // Entferne die Layer direkt aus der Karte
+    } else {
+        console.log("Layer nicht in der Karte gefunden.");
+    }
+
+    layerList = layerList.filter(l => l !== layer); // Entferne die Layer aus der Liste
+
+    // Entferne den entsprechenden Listeneintrag aus der Anzeige
+    const listItems = document.querySelectorAll('.layer-item');
+    listItems.forEach(item => {
+        if (item.layer === layer) {
+            item.remove();
+        }
+    });
+
     selectedLayer = null;
+    // updateLayerList(); // Aktualisiere die Layer-Liste
 }
+
 // Funktion zum automatischen Verbinden von Linienendpunkten nach dem Bearbeiten
 function snapLineEndpoints(layerGroup, threshold = 0.0001) {
     const layers = [];
