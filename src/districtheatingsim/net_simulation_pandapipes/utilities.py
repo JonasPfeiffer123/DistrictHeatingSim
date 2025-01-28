@@ -91,7 +91,7 @@ class WorstPointPressureController(BasicCtrl):
         proportional_gain (float, optional): Proportional gain for the controller. Defaults to 0.2.
         **kwargs: Additional keyword arguments.
     """
-    def __init__(self, net, circ_pump_pressure_idx=0, target_dp_min_bar=0.1, tolerance=0.2, proportional_gain=0.2, min_plift=1.5, min_pflow=3.5, **kwargs):
+    def __init__(self, net, circ_pump_pressure_idx=0, target_dp_min_bar=1, tolerance=0.2, proportional_gain=0.2, min_plift=1.5, min_pflow=3.5, **kwargs):
         super(WorstPointPressureController, self).__init__(net, **kwargs)
         self.circ_pump_pressure_idx = circ_pump_pressure_idx
         self.target_dp_min_bar = target_dp_min_bar
