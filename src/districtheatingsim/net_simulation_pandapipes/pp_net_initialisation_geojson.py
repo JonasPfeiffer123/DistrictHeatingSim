@@ -13,9 +13,9 @@ import pandas as pd
 
 from districtheatingsim.net_simulation_pandapipes.utilities import create_controllers, correct_flow_directions, COP_WP, init_diameter_types
 
-def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, COP_filename, min_supply_temperature_building, \
-                       return_temperature_heat_consumer, supply_temperature_net, flow_pressure_pump, lift_pressure_pump, netconfiguration, pipetype, dT_RL, \
-                       v_max_pipe, material_filter, insulation_filter, v_max_heat_consumer, mass_flow_secondary_producers=0.5):
+def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, COP_filename, min_supply_temperature_building, return_temperature_heat_consumer, 
+                       supply_temperature_net, flow_pressure_pump, lift_pressure_pump, netconfiguration, pipetype, dT_RL, v_max_pipe, material_filter, 
+                       mass_flow_secondary_producers=0.5, k_mm=0.1):
     """Initialize the network using GeoJSON data and various parameters.
 
     Args:
@@ -35,9 +35,8 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, COP
         dT_RL (float): Temperature difference for the return line.
         v_max_pipe (float): Maximum velocity in the pipes.
         material_filter (str): Material filter for the pipes.
-        insulation_filter (str): Insulation filter for the pipes.
-        v_max_heat_consumer (float): Maximum velocity for heat consumers.
         mass_flow_secondary_producers (float, optional): Mass flow for secondary producers. Defaults to 0.5.
+        k_mm (float, optional): Roughness coefficient for pipes. Defaults to 0.1.
 
     Returns:
         pandapipesNet: The initialized pandapipes network.
@@ -82,7 +81,7 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, COP
 
     print(max_waerme_gebaeude_ges_W)
 
-    ### Definition Soll-Rücklauftemperatur ### 
+    ### Definition Soll-Rücklauftemperatur ###
     if return_temperature_heat_consumer == None:
         return_temperature_heat_consumer = return_temperature_buildings + dT_RL
         print(f"Rücklauftemperatur HAST: {return_temperature_heat_consumer} °C")
@@ -94,6 +93,7 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, COP
         raise ValueError("Rücklauftemperatur darf nicht höher als die Vorlauftemperatur am Einspeisepunkt sein. Bitte überprüfen sie die Eingaben.")
     
     ### Definition Mindestvorlauftemperatur ###
+    ### Ersetzten durch np.where, es gibt eine Mindestvorlauftemperatur an den Gebäuden (z.B. 65 °C für Warmwasserbereitung). Diese Temperatur muss Netzseitig auch ankommen###
     if min_supply_temperature_building == None:
         min_supply_temperature_building = np.zeros_like(supply_temperature_buildings)
         min_supply_temperature_heat_consumer = np.zeros_like(supply_temperature_buildings)
@@ -139,9 +139,9 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, COP
         strombedarf_hast_ges_W = np.zeros_like(waerme_gebaeude_ges_W)
         max_el_leistung_hast_ges_W = np.zeros_like(max_waerme_gebaeude_ges_W)
 
-    net = create_network(vorlauf, ruecklauf, hast, erzeugeranlagen, max_waerme_hast_ges_W, min_supply_temperature_building, return_temperature_heat_consumer, \
+    net = create_network(vorlauf, ruecklauf, hast, erzeugeranlagen, max_waerme_hast_ges_W, min_supply_temperature_heat_consumer, return_temperature_heat_consumer, \
                             supply_temperature_net, flow_pressure_pump, lift_pressure_pump, pipetype, \
-                            v_max_pipe, material_filter, insulation_filter, v_max_heat_consumer=v_max_heat_consumer, mass_flow_secondary_producers=mass_flow_secondary_producers)
+                            v_max_pipe, material_filter, mass_flow_secondary_producers=mass_flow_secondary_producers, k_mm=k_mm)
     
     return net, yearly_time_steps, waerme_hast_ges_W, return_temperature_heat_consumer, supply_temperature_buildings, return_temperature_buildings, \
         supply_temperature_building_curve, return_temperature_building_curve, strombedarf_hast_ges_W, max_el_leistung_hast_ges_W
@@ -184,9 +184,10 @@ def get_all_point_coords_from_line_cords(all_line_coords):
     unique_point_coords = list(set(point_coords))
     return unique_point_coords
 
-def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_producer, qext_w, supply_temperature_heat_consumer=75, return_temperature_heat_consumer=60, supply_temperature=85,
-                   flow_pressure_pump=4, lift_pressure_pump=1.5, pipetype="KMR 100/250-2v", v_max_pipe=1, material_filter="KMR", insulation_filter="2v", 
-                   pipe_creation_mode="type", v_max_heat_consumer=2, main_producer_location_index=0, mass_flow_secondary_producers=0.5):
+def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_producer, qext_w, min_supply_temperature_heat_consumer=65, 
+                   return_temperature_heat_consumer=60, supply_temperature=85, flow_pressure_pump=4, lift_pressure_pump=1.5, 
+                   pipetype="KMR 100/250-2v", v_max_pipe=1, material_filter="KMR", pipe_creation_mode="type", main_producer_location_index=0, 
+                   mass_flow_secondary_producers=0.5, k_mm=0.1):
     """Create the pandapipes network using the provided data and parameters.
 
     Args:
@@ -195,7 +196,7 @@ def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_
         gdf_heat_exchanger (GeoDataFrame): GeoDataFrame for the heat exchangers.
         gdf_heat_producer (GeoDataFrame): GeoDataFrame for the heat producers.
         qext_w (array-like): External heat values.
-        supply_temperature_heat_consumer (float, optional): Supply temperature for heat consumers. Defaults to 75.
+        min_supply_temperature_heat_consumer (float, optional): Supply temperature for heat consumers. Defaults to 65.
         return_temperature_heat_consumer (float, optional): Return temperature for heat consumers. Defaults to 60.
         supply_temperature (float, optional): Supply temperature. Defaults to 85.
         flow_pressure_pump (float, optional): Flow pressure of the pump. Defaults to 4.
@@ -203,15 +204,15 @@ def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_
         pipetype (str, optional): Type of pipes used. Defaults to "KMR 100/250-2v".
         v_max_pipe (float, optional): Maximum velocity in the pipes. Defaults to 1.
         material_filter (str, optional): Material filter for the pipes. Defaults to "KMR".
-        insulation_filter (str, optional): Insulation filter for the pipes. Defaults to "2v".
         pipe_creation_mode (str, optional): Mode for creating pipes ("type" or "diameter"). Defaults to "type".
-        v_max_heat_consumer (float, optional): Maximum velocity for heat consumers. Defaults to 2.
         main_producer_location_index (int, optional): Index of the main producer location. Defaults to 0.
         mass_flow_secondary_producers (float, optional): Mass flow for secondary producers. Defaults to 0.5.
+        k_mm (float, optional): Roughness coefficient for pipes. Defaults to 0.1.
 
     Returns:
         pandapipesNet: The created pandapipes network.
     """
+
     net = pp.create_empty_network(fluid="water")
 
     # List and filter standard types for pipes
@@ -219,13 +220,10 @@ def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_
 
     properties = pipe_std_types.loc[pipetype]
     diameter_mm  = properties['inner_diameter_mm']
-    k = properties['RAU']
-    alpha = properties['WDZAHL']
+    u_w_per_m2k_pipe = properties['u_w_per_m2k'] # heat transfer coefficient for pipes
 
-    initial_mdot_guess_kg_s = qext_w / (4170*(supply_temperature-return_temperature_heat_consumer))
-    initial_Vdot_guess_m3_s = initial_mdot_guess_kg_s/1000
-    area_m2 = initial_Vdot_guess_m3_s/(v_max_heat_consumer*(1/1.2))       # Safety factor of 1.1
-    initial_dimension_guess_m = np.round(np.sqrt(area_m2 *(4/np.pi)), 3)
+    supply_temperature_k = supply_temperature + 273.15
+    return_temperature_heat_consumer_k = return_temperature_heat_consumer + 273.15
 
     def create_junctions_from_coords(net_i, all_coords):
         """Create junctions in the network from coordinates.
@@ -239,7 +237,7 @@ def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_
         """
         junction_dict = {}
         for i, coords in enumerate(all_coords, start=0):
-            junction_id = pp.create_junction(net_i, pn_bar=1.05, tfluid_k=293.15, name=f"Junction {i}", geodata=coords) # pn_bar and tfluid_k just for initialization
+            junction_id = pp.create_junction(net_i, pn_bar=1.05, tfluid_k=supply_temperature_k, name=f"Junction {i}", geodata=coords) # pn_bar and tfluid_k just for initialization
             junction_dict[coords] = junction_id
         return junction_dict
 
@@ -261,16 +259,16 @@ def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_
                 pipe_name = line_type
                 pp.create_pipe_from_parameters(net_i, from_junction=junction_dict[coords[0]],
                                             to_junction=junction_dict[coords[1]], length_km=length_m/1000,
-                                            diameter_m=diameter_mm/1000, k_mm=k, alpha_w_per_m2k=alpha, 
+                                            diameter_m=diameter_mm/1000, k_mm=k_mm, u_w_per_m2k=u_w_per_m2k_pipe, 
                                             name=f"{pipe_name} {i}", geodata=coords, sections=5, text_k=283)
             elif pipe_mode == "type":
                 pipetype = pipe_type_or_diameter
                 pipe_name = line_type
                 pp.create_pipe(net_i, from_junction=junction_dict[coords[0]], to_junction=junction_dict[coords[1]],
-                            std_type=pipetype, length_km=length_m/1000, k_mm=k, alpha_w_per_m2k=alpha,
-                            name=f"{pipe_name} {i}", geodata=coords, sections=5, text_k=283)
+                            std_type=pipetype, length_km=length_m/1000, k_mm=k_mm, name=f"{pipe_name} {i}", geodata=coords, 
+                            sections=5, text_k=283)
 
-    def create_heat_exchangers(net_i, all_coords, junction_dict, name_prefix):
+    def create_heat_consumers(net_i, all_coords, junction_dict, name_prefix):
         """Create heat exchangers in the network.
 
         Args:
@@ -279,9 +277,9 @@ def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_
             junction_dict (dict): Dictionary mapping coordinates to junction IDs.
             name_prefix (str): Prefix for naming the heat exchangers.
         """
-        for i, (coords, q, t, m, d) in enumerate(zip(all_coords, qext_w, return_temperature_heat_consumer, initial_mdot_guess_kg_s, initial_dimension_guess_m)):
-            pp.create_heat_consumer(net_i, from_junction=junction_dict[coords[0]], to_junction=junction_dict[coords[1]], controlled_mdot_kg_per_s=m, diameter_m=d, 
-                                    loss_coefficient=0, qext_w=q, name=f"{name_prefix} {i}") # treturn_k=t when implemented in function
+        for i, (coords, q, t) in enumerate(zip(all_coords, qext_w, return_temperature_heat_consumer_k)):
+            pp.create_heat_consumer(net_i, from_junction=junction_dict[coords[0]], to_junction=junction_dict[coords[1]], loss_coefficient=0, 
+                                    qext_w=q, treturn_k=t, name=f"{name_prefix} {i}")
 
     def create_circulation_pump_pressure(net_i, all_coords, junction_dict, name_prefix):
         """Create circulation pumps with constant pressure in the network.
@@ -295,7 +293,7 @@ def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_
         for i, coords in enumerate(all_coords, start=0):
             pp.create_circ_pump_const_pressure(net_i, junction_dict[coords[1]], junction_dict[coords[0]],
                                                p_flow_bar=flow_pressure_pump, plift_bar=lift_pressure_pump,
-                                               t_flow_k=273.15 + supply_temperature, type="auto",
+                                               t_flow_k=supply_temperature_k, type="auto",
                                                name=f"{name_prefix} {i}")
             
     def create_circulation_pump_mass_flow(net_i, all_coords, junction_dict, name_prefix):
@@ -309,11 +307,11 @@ def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_
         """
         for i, coords in enumerate(all_coords, start=0):
             mid_coord = ((coords[0][0] + coords[1][0]) / 2, (coords[0][1] + coords[1][1]) / 2)
-            mid_junction_idx = pp.create_junction(net_i, pn_bar=1.05, tfluid_k=293.15, name=f"Junction {name_prefix}", geodata=mid_coord)
+            mid_junction_idx = pp.create_junction(net_i, pn_bar=1.05, tfluid_k=supply_temperature_k, name=f"Junction {name_prefix}", geodata=mid_coord)
 
             pp.create_circ_pump_const_mass_flow(net_i, junction_dict[coords[1]], mid_junction_idx,
                                                p_flow_bar=flow_pressure_pump, mdot_flow_kg_per_s=mass_flow_secondary_producers,
-                                               t_flow_k=273.15 + supply_temperature, type="auto",
+                                               t_flow_k=supply_temperature_k, type="auto",
                                                name=f"{name_prefix} {i}")
             pp.create_flow_control(net, mid_junction_idx, junction_dict[coords[0]], controlled_mdot_kg_per_s=mass_flow_secondary_producers, diameter_m=0.1)
 
@@ -328,7 +326,7 @@ def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_
     create_pipes(net, *get_line_coords_and_lengths(gdf_return_line), junction_dict_rl, pipe_creation_mode, diameter_mm if pipe_creation_mode == "diameter" else pipetype, "return line")
     
     # Create the heat exchangers
-    create_heat_exchangers(net, get_line_coords_and_lengths(gdf_heat_exchanger)[0], {**junction_dict_vl, **junction_dict_rl}, "heat exchanger")
+    create_heat_consumers(net, get_line_coords_and_lengths(gdf_heat_exchanger)[0], {**junction_dict_vl, **junction_dict_rl}, "heat cosnumer")
     
     # Heat producer preprocessing for multiple pumps
     all_heat_producer_coords, all_heat_producer_lengths = get_line_coords_and_lengths(gdf_heat_producer)
@@ -342,8 +340,11 @@ def create_network(gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_
             if i != main_producer_location_index:
                 create_circulation_pump_mass_flow(net, [all_heat_producer_coords[i]], {**junction_dict_vl, **junction_dict_rl}, "heat source slave")
 
-    net = create_controllers(net, qext_w, return_temperature_heat_consumer, supply_temperature_heat_consumer)
+    # Simulate pipe flow
+    pp.pipeflow(net, mode="bidirectional", iter=100)
+
+    net = create_controllers(net, qext_w, min_supply_temperature_heat_consumer)
     net = correct_flow_directions(net)
-    net = init_diameter_types(net, v_max_pipe=v_max_pipe, material_filter=material_filter, insulation_filter=insulation_filter)
+    net = init_diameter_types(net, v_max_pipe=v_max_pipe, material_filter=material_filter, k=k_mm)
 
     return net

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaflet Map with Leaflet.draw and CRS Support</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    
+    <!-- Leaflet Draw CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+
+    <style>
+        /* Gesamtcontainer */
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden; /* Verhindert Scrollen */
+        }
+
+        #container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Hauptbereich für Karte und LayerControl nebeneinander */
+        #mainContent {
+            display: flex;
+            flex-grow: 1;
+            height: calc(100% - 50px); /* Platz für die Konsole */
+        }
+
+        /* Layer Control links */
+        #layerControl {
+            width: 25%; /* Layer Control nimmt 25% der Breite ein */
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-right: 1px solid #ddd;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            overflow-y: auto; /* Scrollen nur innerhalb des LayerControl */
+        }
+
+        /* Karte rechts */
+        #map {
+            width: 75%; /* Karte nimmt 75% der Breite ein */
+            height: 100%;
+        }
+
+        #layerControl h3, #layerControl h4 {
+            font-family: Arial, sans-serif;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        #layerControl label {
+            font-family: Arial, sans-serif;
+            color: #555;
+        }
+
+        #layerControl input[type="text"], 
+        #layerControl input[type="color"], 
+        #layerControl input[type="range"] {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        #layerControl button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-family: Arial, sans-serif;
+        }
+
+        #layerControl button:hover {
+            background-color: #0056b3;
+        }
+
+        #layerList {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        #layerList li {
+            margin: 5px 0;
+            font-family: Arial, sans-serif;
+            color: #333;
+        }
+
+        /* Layer-Liste Darstellung */
+        .layer-item {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            padding: 8px;
+            margin: 4px 0;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+
+        .layer-item.selected-layer {
+            background-color: #e0f7fa;
+            border-color: #00796b;
+            font-weight: bold;
+        }
+
+        .color-indicator {
+            width: 15px;
+            height: 15px;
+            margin-right: 10px;
+            border-radius: 50%;
+        }
+
+        /* Kontextmenü Styling */
+        .context-menu {
+            position: absolute;
+            z-index: 1000;
+            background-color: #ffffff;
+            border: 1px solid #ccc;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .context-menu div {
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+
+        .context-menu div:hover {
+            background-color: #f0f0f0;
+        }
+
+        /* Konsole am unteren Rand */
+        #console {
+            height: 50px;
+            background-color: white;
+            opacity: 0.9;
+            width: 100%;
+            border-top: 1px solid black;
+            font-family: monospace;
+            padding: 5px;
+            overflow-y: auto;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            display: none;
+        }
+
+        #opacityControl {
+            display: flex;
+            align-items: center;
+            gap: 10px; /* Abstand zwischen Slider und Button */
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <!-- Hauptbereich mit LayerControl und Karte -->
+        <div id="mainContent">
+            <div id="layerControl">
+                <h3>Layer-Übersicht</h3>
+                <ul id="layerList"></ul>
+                <input type="color" id="colorPicker" style="display:none;" onchange="applyColorChange(this.value)">
+                <div id="opacityControl" style="display:none;">
+                    <input type="range" id="opacitySlider" min="0" max="1" step="0.1" onchange="applyOpacityChange(this.value)">
+                    <button id="opacityOkButton">Ok</button>
+                </div>
+                <button id="createLayerButton" onclick="createNewLayer()">Neuen Layer erstellen</button>
+                <button id="toggleMarkerButton">Marker setzen: Ein</button>
+                <div id="coordinateDisplay" style="padding: 10px; background-color: #f8f9fa; font-family: Arial, sans-serif; font-size: 14px;">
+                    Click on the map to get coordinates.
+                </div>
+            </div>
+            <div id="map"></div>
+        </div>
+
+        <!-- Konsole am unteren Rand -->
+        <div id="console"></div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+    <!-- Leaflet Draw JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+    <!-- Proj4 and Proj4Leaflet for coordinate transformation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.12.1/proj4.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4leaflet/1.0.2/proj4leaflet.js"></script>
+
+    <!-- Three.js for 3D visualization -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <!-- Leaflet-Geoman for advanced editing -->
+    <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.11.3/dist/leaflet-geoman.css" />
+    <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.11.3/dist/leaflet-geoman.min.js"></script>
+
+    <!-- Custom JS -->
+    <script src="main.js"></script>
+    <script src="layerControl.js"></script>
+    <script src="geojsonHandler.js"></script>
+
+    <script>
+        // Funktion zum Logging in der eingebauten Konsole
+        function logToConsole(message) {
+            var consoleDiv = document.getElementById('console');
+            consoleDiv.innerHTML += message + "<br>";
+            consoleDiv.scrollTop = consoleDiv.scrollHeight; // Automatisch nach unten scrollen
+        }
+
+        // Passt console.log so an, dass mehrere Argumente verarbeitet werden
+        console.log = function(...args) {  // Verwendet rest-Parameter, um mehrere Argumente zu akzeptieren
+            const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ');
+            logToConsole(message);
+        };
+
+        const test = "Test 1";
+
+        logToConsole("Test message from inline script.", test);  // Dies sollte im Konsolenbereich angezeigt werden
+
+    </script>
+
+    <!-- WebChannel-Code für die Kommunikation mit Python -->
+    <script src="qwebchannel.js"></script>
+    <script>
+        new QWebChannel(qt.webChannelTransport, function(channel) {
+        window.pywebview = channel.objects.geoJsonReceiver;
+    });
+
+    </script> 
+</body>
+</html>
+
