@@ -11,7 +11,7 @@ from PyQt5.QtCore import QThread, pyqtSignal
 
 from districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson import initialize_geojson
 from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import thermohydraulic_time_series_net, time_series_preprocessing
-from districtheatingsim.net_simulation_pandapipes.utilities import net_optimization
+from districtheatingsim.net_simulation_pandapipes.utilities import optimize_diameter_types
 
 class NetInitializationThread(QThread):
     """
@@ -46,24 +46,22 @@ class NetInitializationThread(QThread):
             if self.kwargs.get("import_type") == "GeoJSON":
                 self.vorlauf, self.ruecklauf, self.hast, self.erzeugeranlagen, self.json_path, self.COP_filename, self.supply_temperature_heat_consumer, \
                 self.return_temperature_heat_consumer, self.supply_temperature, self.flow_pressure_pump, self.lift_pressure_pump, \
-                self.netconfiguration, self.pipetype, self.v_max_pipe, self.material_filter, self.insulation_filter, \
-                self.base_path, self.dT_RL, self.v_max_heat_consumer, self.DiameterOpt_ckecked = self.args
+                self.netconfiguration, self.pipetype, self.v_max_pipe, self.material_filter, self.dT_RL, self.DiameterOpt_ckecked, self.k_mm = self.args
 
-                self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.return_temperature_heat_consumer, \
-                self.supply_temperature_buildings, self.return_temperature_buildings, self.supply_temperature_building_curve, \
-                self.return_temperature_building_curve, strombedarf_hast_ges_W, max_el_leistung_hast_ges_W  = initialize_geojson(self.vorlauf, self.ruecklauf, self.hast, \
-                                                                             self.erzeugeranlagen, self.json_path, self.COP_filename, self.supply_temperature_heat_consumer, \
-                                                                             self.return_temperature_heat_consumer, self.supply_temperature, \
-                                                                             self.flow_pressure_pump, self.lift_pressure_pump, \
-                                                                             self.netconfiguration, self.pipetype, self.dT_RL, \
-                                                                             self.v_max_pipe, self.material_filter, self.insulation_filter, \
-                                                                             self.v_max_heat_consumer, self.mass_flow_secondary_producers)
+                self.results = (initialize_geojson(self.vorlauf, self.ruecklauf, self.hast, self.erzeugeranlagen, self.json_path, self.COP_filename, 
+                                                   self.supply_temperature_heat_consumer, self.return_temperature_heat_consumer, self.supply_temperature, 
+                                                   self.flow_pressure_pump, self.lift_pressure_pump, self.netconfiguration, self.pipetype, self.dT_RL, 
+                                                   self.v_max_pipe, self.material_filter, self.mass_flow_secondary_producers, self.k_mm))
+                
+                self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.return_temperature_heat_consumer, self.supply_temperature_buildings, \
+                self.return_temperature_buildings, self.supply_temperature_building_curve,  self.return_temperature_building_curve, strombedarf_hast_ges_W, \
+                max_el_leistung_hast_ges_W = self.results 
             else:
                 raise ValueError("Unbekannter Importtyp")
 
             # Common steps for both import types
             if self.DiameterOpt_ckecked == True:
-                self.net = net_optimization(self.net, self.v_max_pipe, self.v_max_heat_consumer, self.material_filter, self.insulation_filter)
+                self.net = optimize_diameter_types(self.net, self.v_max_pipe, self.material_filter, self.k_mm)
             
             self.calculation_done.emit((self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.supply_temperature_heat_consumer, self.return_temperature_heat_consumer, \
                                         self.supply_temperature_buildings, self.return_temperature_buildings, self.supply_temperature_building_curve, self.return_temperature_building_curve, \
