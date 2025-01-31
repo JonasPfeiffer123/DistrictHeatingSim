@@ -133,12 +133,19 @@ def print_net_results(net):
     print(f"Results Heat Consumers: {net.res_heat_consumer}")
     print(f"Circ Pump Pressure: {net.circ_pump_pressure}")
     print(f"Results Circ Pump Pressure: {net.res_circ_pump_pressure}")
+    if 'circ_pump_mass' in net:
+        print(f"Circ Pump Mass: {net.circ_pump_mass}")
+        print(f"Results Circ Pump Mass: {net.res_circ_pump_mass}")
 
 if __name__ == "__main__":
-    vorlauf_path = "examples/data/Wärmenetz/Vorlauf.geojson"
-    ruecklauf_path = "examples/data/Wärmenetz/Rücklauf.geojson"
-    hast_path = "examples/data/Wärmenetz/HAST.geojson"
-    erzeugeranlagen_path = "examples/data/Wärmenetz/Erzeugeranlagen.geojson"
+    #vorlauf_path = "examples/data/Wärmenetz/Variante 1/Vorlauf.geojson"
+    #ruecklauf_path = "examples/data/Wärmenetz/Variante 1/Rücklauf.geojson"
+    #hast_path = "examples/data/Wärmenetz/Variante 1/HAST.geojson"
+    #erzeugeranlagen_path = "examples/data/Wärmenetz/Variante 1/Erzeugeranlagen.geojson"
+    vorlauf_path = "examples/data/Wärmenetz/Variante 2/Vorlauf.geojson"
+    ruecklauf_path = "examples/data/Wärmenetz/Variante 2/Rücklauf.geojson"
+    hast_path = "examples/data/Wärmenetz/Variante 2/HAST.geojson"
+    erzeugeranlagen_path = "examples/data/Wärmenetz/Variante 2/Erzeugeranlagen.geojson"
     json_path = "examples/data/Gebäude Lastgang.json"
     supply_temperature_heat_consumer = 60 # minimum supply temperature for heat consumers
     return_temperature_heat_consumer = 50 # return temperature for heat consumers
@@ -154,7 +161,7 @@ if __name__ == "__main__":
     DiameterOpt_ckecked = True # flag indicating if diameter optimization is checked
     k_mm = 0.1 # roughness of the pipe
 
-    mass_flow_secondary_producers = 0.1 # not really used currently
+    mass_flow_secondary_producers = 1 # not really used currently
 
     TRY_filename = "examples/data/TRY/TRY_511676144222/TRY2015_511676144222_Jahr.dat"
     COP_filename = "examples/data/COP/Kennlinien WP.csv"
@@ -166,10 +173,12 @@ if __name__ == "__main__":
     
     print_net_results(net_data[0])
 
-    print(f"Supply Temperature: {supply_temperature[4290:4300]} °C")
-    
-    start_time_step = 4000 # start time step
-    end_time_step = 5000 # end time step
+    fig, ax2 = plt.subplots()
+    config_plot(net_data[0], ax2, show_junctions=True, show_pipes=True, show_heat_consumers=True, show_basemap=False, show_plot=True)
+    plt.show()
+
+    start_time_step = 1000 # start time step
+    end_time_step = 1100 # end time step
     
     time_steps, net, net_results, waerme_hast_ges_W, strom_hast_ges_W = timeseries_calculation_net(net_data, start_time_step, end_time_step)
 
@@ -180,7 +189,9 @@ if __name__ == "__main__":
 
     print_net_results(net)
 
-    print(f"Gesamtwärmebedarf: {waerme_ges_kW} kW")
-    print(f'Gesamtwärmeerzeugung: {pump_results["Heizentrale Haupteinspeisung"][0]["qext_kW"]} kW')
+    #print(f"Gesamtwärmebedarf: {waerme_ges_kW} kW")
+    #print(f'Gesamtwärmeerzeugung: {pump_results["Heizentrale Haupteinspeisung"][0]["qext_kW"]} kW')
     
     print("Simulation erfolgreich abgeschlossen.")
+
+    plot(net, time_steps, waerme_ges_kW, strom_wp_kW)
