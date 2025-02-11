@@ -262,7 +262,7 @@ class CalculationTab(QWidget):
     def create_and_initialize_net_geojson(self, vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, supply_temperature_heat_consumer, 
                                           return_temperature_heat_consumer, supply_temperature, flow_pressure_pump, lift_pressure_pump, 
                                           netconfiguration, dT_RL, building_temp_checked, pipetype, v_max_pipe, material_filter, 
-                                          DiameterOpt_ckecked, k_mm):
+                                          DiameterOpt_ckecked, k_mm, main_producer_location_index):
         """
         Creates and initializes the network from GeoJSON files.
 
@@ -285,6 +285,7 @@ class CalculationTab(QWidget):
             material_filter: Material filter for pipes.
             DiameterOpt_ckecked: Flag indicating if diameter optimization is checked.
             k_mm: Roughness of the pipe.
+            main_producer_location_index: Index of the main producer.
         """
         self.supply_temperature_heat_consumer = supply_temperature_heat_consumer
         self.return_temperature_heat_consumer = return_temperature_heat_consumer
@@ -296,8 +297,9 @@ class CalculationTab(QWidget):
         self.TRY_filename = self.data_manager.get_try_filename()
         self.COP_filename = self.data_manager.get_cop_filename()
         self.k_mm = k_mm
+        self.main_producer_location_index = main_producer_location_index
         args = (vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, self.COP_filename, return_temperature_heat_consumer, supply_temperature_heat_consumer, supply_temperature, flow_pressure_pump, lift_pressure_pump, \
-                netconfiguration, pipetype, v_max_pipe, material_filter, self.dT_RL, self.DiameterOpt_ckecked, self.k_mm)
+                netconfiguration, pipetype, v_max_pipe, material_filter, self.dT_RL, self.DiameterOpt_ckecked, self.k_mm, self.main_producer_location_index)
         kwargs = {"import_type": "GeoJSON"}
         self.initializationThread = NetInitializationThread(*args, **kwargs)
         self.common_thread_initialization()

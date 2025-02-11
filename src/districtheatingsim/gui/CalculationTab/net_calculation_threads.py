@@ -46,12 +46,13 @@ class NetInitializationThread(QThread):
             if self.kwargs.get("import_type") == "GeoJSON":
                 self.vorlauf, self.ruecklauf, self.hast, self.erzeugeranlagen, self.json_path, self.COP_filename, self.supply_temperature_heat_consumer, \
                 self.return_temperature_heat_consumer, self.supply_temperature, self.flow_pressure_pump, self.lift_pressure_pump, \
-                self.netconfiguration, self.pipetype, self.v_max_pipe, self.material_filter, self.dT_RL, self.DiameterOpt_ckecked, self.k_mm = self.args
+                self.netconfiguration, self.pipetype, self.v_max_pipe, self.material_filter, self.dT_RL, self.DiameterOpt_ckecked, self.k_mm, \
+                self.main_producer_location_index = self.args
 
                 self.results = (initialize_geojson(self.vorlauf, self.ruecklauf, self.hast, self.erzeugeranlagen, self.json_path, self.COP_filename, 
                                                    self.supply_temperature_heat_consumer, self.return_temperature_heat_consumer, self.supply_temperature, 
                                                    self.flow_pressure_pump, self.lift_pressure_pump, self.netconfiguration, self.pipetype, self.dT_RL, 
-                                                   self.v_max_pipe, self.material_filter, self.mass_flow_secondary_producers, self.k_mm))
+                                                   self.v_max_pipe, self.material_filter, self.k_mm, self.main_producer_location_index, self.mass_flow_secondary_producers,))
                 
                 self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.return_temperature_heat_consumer, self.supply_temperature_buildings, \
                 self.return_temperature_buildings, self.supply_temperature_building_curve,  self.return_temperature_building_curve, strombedarf_hast_ges_W, \

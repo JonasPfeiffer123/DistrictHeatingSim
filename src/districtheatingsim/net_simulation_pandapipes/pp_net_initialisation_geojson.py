@@ -15,7 +15,7 @@ from districtheatingsim.net_simulation_pandapipes.utilities import create_contro
 
 def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, COP_filename, min_supply_temperature_building, return_temperature_heat_consumer, 
                        supply_temperature_net, flow_pressure_pump, lift_pressure_pump, netconfiguration, pipetype, dT_RL, v_max_pipe, material_filter, 
-                       mass_flow_secondary_producers=[0.5], k_mm=0.1, main_producer_location_index=0):
+                       k_mm=0.1, main_producer_location_index=0, mass_flow_secondary_producers=[0.5]):
     """Initialize the network using GeoJSON data and various parameters.
 
     Args:
@@ -37,6 +37,7 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, COP
         material_filter (str): Material filter for the pipes.
         mass_flow_secondary_producers (float, optional): Mass flow for secondary producers. Defaults to 0.5.
         k_mm (float, optional): Roughness coefficient for pipes. Defaults to 0.1.
+        main_producer_location_index (int, optional): Index of the main producer location. Defaults to 0.
 
     Returns:
         pandapipesNet: The initialized pandapipes network.
