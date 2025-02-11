@@ -1,8 +1,8 @@
 """
 Filename: calculation_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-08-31
-Description: Contains the CalculationTab.
+Date: 2025-02-11
+Description: Contains the CalculationTab class.
 """
 
 import logging
@@ -22,13 +22,13 @@ from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction, QActionGroup, QPlainTextEdit
 
 from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import calculate_results, save_results_csv, import_results_csv
-
-from districtheatingsim.gui.CalculationTab.calculation_dialogs import NetGenerationDialog, ZeitreihenrechnungDialog
-from districtheatingsim.gui.CalculationTab.net_calculation_threads import NetInitializationThread, NetCalculationThread
 from districtheatingsim.net_simulation_pandapipes.config_plot import config_plot
-from districtheatingsim.gui.utilities import CheckableComboBox
-
 from districtheatingsim.net_simulation_pandapipes.utilities import export_net_geojson
+
+from districtheatingsim.gui.CalculationTab.timeseries_dialog import TimeSeriesCalculationDialog
+from districtheatingsim.gui.CalculationTab.net_generation_dialog import NetGenerationDialog
+from districtheatingsim.gui.CalculationTab.net_calculation_threads import NetInitializationThread, NetCalculationThread
+from districtheatingsim.gui.utilities import CheckableComboBox
 
 class CalculationTab(QWidget):
     """
@@ -251,7 +251,7 @@ class CalculationTab(QWidget):
         """
         Opens the dialog for time series calculation.
         """
-        dialog = ZeitreihenrechnungDialog(self.base_path, self)
+        dialog = TimeSeriesCalculationDialog(self.base_path, self)
         if dialog.exec_():
             netCalcInputs = dialog.getValues()
             self.calc1 = netCalcInputs["start"]
