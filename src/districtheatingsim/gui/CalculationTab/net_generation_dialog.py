@@ -6,10 +6,12 @@ Description: Contains the NetGenerationDialog class.
 """
 
 from PyQt5.QtWidgets import QVBoxLayout, QDialog, QPushButton, QTabWidget
+from PyQt5.QtCore import Qt
 
-from districtheatingsim.gui.CalculationTab.diameter_optimization_tab import DiameterOptimizationTab
 from districtheatingsim.gui.CalculationTab.network_data_tab import NetworkDataTab
+from districtheatingsim.gui.CalculationTab.producer_order_tab import ProducerOrderTab
 from districtheatingsim.gui.CalculationTab.network_config_tab import NetworkConfigTab
+from districtheatingsim.gui.CalculationTab.diameter_optimization_tab import DiameterOptimizationTab
         
 class NetGenerationDialog(QDialog):
     def __init__(self, generate_callback, base_path, parent=None):
@@ -27,10 +29,12 @@ class NetGenerationDialog(QDialog):
 
         self.tabs = QTabWidget()
         self.network_data_tab = NetworkDataTab(self.base_path, self)
+        self.producer_order_tab = ProducerOrderTab(self)
         self.network_config_tab = NetworkConfigTab(self)
         self.diameter_optimization_tab = DiameterOptimizationTab(self)
 
         self.tabs.addTab(self.network_data_tab, "Netzdaten")
+        self.tabs.addTab(self.producer_order_tab, "Erzeugerstandorte")
         self.tabs.addTab(self.network_config_tab, "Netzkonfiguration")
         self.tabs.addTab(self.diameter_optimization_tab, "Durchmesseroptimierung")
 
@@ -75,13 +79,19 @@ class NetGenerationDialog(QDialog):
             rl_temp_heat_consumer = None
 
         dT_RL = float(self.network_config_tab.parameter_rows_heat_consumer[2].itemAt(1).widget().text())
-        
+
+        # Ermitteln des Index des Haupterzeugers, wenn keiner dann 0
+        if self.network_config_tab.producer_order_list_widget.count() > 0:
+            main_producer_location_index = self.network_config_tab.producer_order_list_widget.item(0).data(Qt.UserRole)['index']
+        else:
+            main_producer_location_index = 0
+
         ### hier muss der path für die JSON mit den Lastgängen ergänzt werden ###
         # Führen Sie die Netzgenerierung für GeoJSON durch
         if self.generate_callback:
             self.generate_callback(vorlauf_path, ruecklauf_path, hast_path, erzeugeranlagen_path, json_path, supply_temperature_heat_consumer, 
                                    rl_temp_heat_consumer, supply_temperature_net, flow_pressure_pump, lift_pressure_pump, self.network_config_tab.netconfiguration, 
                                    dT_RL, self.network_config_tab.building_temp_checked, pipetype, v_max_pipe, material_filter, self.diameter_optimization_tab.DiameterOpt_ckecked, 
-                                   k_mm, import_type)
+                                   k_mm, main_producer_location_index, import_type)
 
         self.accept()

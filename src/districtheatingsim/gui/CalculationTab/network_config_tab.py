@@ -35,19 +35,37 @@ class NetworkConfigTab(QWidget):
     def initUI(self):
         layout = QVBoxLayout(self)
 
-        netConfigGroup = QGroupBox("Netzkonfiguration und Temperatursteuerung")
+        netConfigGroup = QGroupBox("Netzkonfiguration")
         netConfigGroup.setStyleSheet("QGroupBox { font-size: 11pt; font-weight: bold; }")
         netConfigLayout = QVBoxLayout()
         netConfigLayout.addLayout(self.createNetconfigurationControlInput())
-        netConfigLayout.addLayout(self.createTemperatureControlInput())
-        netConfigLayout.addLayout(self.createNetParameterInputs())
-        netConfigLayout.addLayout(self.createSupplyTemperatureCheckbox())
-        netConfigLayout.addLayout(self.createReturnTemperatureCheckbox())
-        netConfigLayout.addLayout(self.createHeatConsumerParameterInputs())
-        netConfigLayout.addLayout(self.createBuildingTemperatureCheckbox())
-        netConfigLayout.addLayout(self.createinitialpipetypeInput())
         netConfigGroup.setLayout(netConfigLayout)
         layout.addWidget(netConfigGroup)
+
+        tempConfigGroup = QGroupBox("Vorlauftemperatur- und Druckregelung")
+        tempConfigGroup.setStyleSheet("QGroupBox { font-size: 11pt; font-weight: bold; }")
+        tempConfigLayout = QVBoxLayout()
+        tempConfigLayout.addLayout(self.createTemperatureControlInput())
+        tempConfigLayout.addLayout(self.createNetParameterInputs())
+        tempConfigGroup.setLayout(tempConfigLayout)
+        layout.addWidget(tempConfigGroup)
+
+        heatConsumerConfigGroup = QGroupBox("Einstellungen für Wärmeabnehmer")
+        heatConsumerConfigGroup.setStyleSheet("QGroupBox { font-size: 11pt; font-weight: bold; }")
+        heatConsumerConfigLayout = QVBoxLayout()
+        heatConsumerConfigLayout.addLayout(self.createSupplyTemperatureCheckbox())
+        heatConsumerConfigLayout.addLayout(self.createReturnTemperatureCheckbox())
+        heatConsumerConfigLayout.addLayout(self.createHeatConsumerParameterInputs())
+        heatConsumerConfigLayout.addLayout(self.createBuildingTemperatureCheckbox())
+        heatConsumerConfigGroup.setLayout(heatConsumerConfigLayout)
+        layout.addWidget(heatConsumerConfigGroup)
+
+        pipetypeConfigGroup = QGroupBox("Rohrtyp zur Initialisierung des Netzes")
+        pipetypeConfigGroup.setStyleSheet("QGroupBox { font-size: 11pt; font-weight: bold; }")
+        pipetypeConfigLayout = QVBoxLayout()
+        pipetypeConfigLayout.addLayout(self.createinitialpipetypeInput())
+        pipetypeConfigGroup.setLayout(pipetypeConfigLayout)
+        layout.addWidget(pipetypeConfigGroup)
 
         # Update der Sichtbarkeit
         self.updateInputFieldsVisibility()
@@ -160,7 +178,6 @@ class NetworkConfigTab(QWidget):
 
     def createinitialpipetypeInput(self):
         layout = QVBoxLayout()
-        layout.addWidget(QLabel("Rohrtyp zur Initialisierung des Netzes:"))
         self.initialpipetypeInput = QComboBox(self)
         pipetypes = pp.std_types.available_std_types(pp.create_empty_network(fluid="water"), "pipe").index.tolist()
         self.initialpipetypeInput.addItems(pipetypes)
