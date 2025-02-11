@@ -411,21 +411,22 @@ def create_controllers(net, qext_w, min_supply_temperature_heat_consumer):
         T_controller = TemperatureController(net, heat_consumer_idx=i, min_supply_temperature=min_supply_temperature_heat_consumer[i])
         net.controller.loc[len(net.controller)] = [T_controller, True, -1, -1, False, False]
 
-    for i in range(len(net.circ_pump_mass)):
-        # qext_w / number of circ_pump_mass + circ_pump_pressure --> equal heat distribution
-        # Calculate the mass flow from qext_w
-        qext_i = np.sum(qext_w) / (len(net.circ_pump_mass) + len(net.circ_pump_pressure))
-        cp = 4190  # Specific heat capacity in J/(kg K)
-        delta_T = 35  # Assumed temperature difference in K
-        mass_flow = qext_i / (cp * delta_T)  # Mass flow in kg/s
+    if hasattr(net, 'circ_pump_mass'):
+        for i in range(len(net.circ_pump_mass)):
+            # qext_w / number of circ_pump_mass + circ_pump_pressure --> equal heat distribution
+            # Calculate the mass flow from qext_w
+            qext_i = np.sum(qext_w) / (len(net.circ_pump_mass) + len(net.circ_pump_pressure))
+            cp = 4190  # Specific heat capacity in J/(kg K)
+            delta_T = 35  # Assumed temperature difference in K
+            mass_flow = qext_i / (cp * delta_T)  # Mass flow in kg/s
 
-        print(f"Mass flow for circ_pump_mass_{i}: {mass_flow} kg/s")
+            print(f"Mass flow for circ_pump_mass_{i}: {mass_flow} kg/s")
 
-        placeholder_df = pd.DataFrame({f'mdot_kg_per_s_{i}': [mass_flow]})
-        placeholder_data_source = DFData(placeholder_df)
+            placeholder_df = pd.DataFrame({f'mdot_kg_per_s_{i}': [mass_flow]})
+            placeholder_data_source = DFData(placeholder_df)
 
-        ConstControl(net, element='circ_pump_mass', variable='mdot_kg_per_s', element_index=i, data_source=placeholder_data_source, profile_name=f'mdot_kg_per_s_{i}')
-        
+            ConstControl(net, element='circ_pump_mass', variable='mdot_kg_per_s', element_index=i, data_source=placeholder_data_source, profile_name=f'mdot_kg_per_s_{i}')
+            
     dp_controller = WorstPointPressureController(net)
     net.controller.loc[len(net.controller)] = [dp_controller, True, -1, -1, False, False]
 
