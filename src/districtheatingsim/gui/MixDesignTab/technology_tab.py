@@ -457,16 +457,24 @@ class TechnologyTab(QWidget):
 
         self.createPlotCanvas()
         ax = self.plotFigure.add_subplot(111)
-        if 'Zeit' in data.columns and 'Wärmeerzeugung_Heizentrale Haupteinspeisung_1_kW' in data.columns:
-            ax.plot(pd.to_datetime(data['Zeit']), data['Wärmeerzeugung_Heizentrale Haupteinspeisung_1_kW'] * scale_factor, label='Gesamtwärmebedarf')
-            ax.set_title("Jahresgang Wärmebedarf")
+
+        # Identifiziere alle Spalten, die Wärmeerzeugung enthalten
+        heat_generation_columns = [col for col in data.columns if 'Wärmeerzeugung' in col]
+
+        if 'Zeit' in data.columns and heat_generation_columns:
+            # Summiere alle Wärmeerzeugungsspalten
+            data['Summenlastgang'] = data[heat_generation_columns].sum(axis=1) * scale_factor
+
+            # Plotten des Summenlastgangs
+            ax.plot(pd.to_datetime(data['Zeit']), data['Summenlastgang'], label='Gesamtwärmebedarf')
+            ax.set_title("Jahresganglinie Wärmeerzeugung (Summe)")
             ax.set_xlabel("Zeit")
             ax.set_ylabel("Wärmebedarf (kW)")
             ax.legend()
             self.plotCanvas.draw()
         else:
-            self.showErrorMessage("Die Datei enthält nicht die erforderlichen Spalten 'Zeit' und 'Wärmeerzeugung_Heizentrale Haupteinspeisung_1_kW'.")
-
+            self.showErrorMessage("Die Datei enthält nicht die erforderlichen Spalten 'Zeit' und 'Wärmeerzeugung'.")
+    
     def showInfoMessageOnPlot(self, message):
         """
         Displays an information message on the plot canvas.
