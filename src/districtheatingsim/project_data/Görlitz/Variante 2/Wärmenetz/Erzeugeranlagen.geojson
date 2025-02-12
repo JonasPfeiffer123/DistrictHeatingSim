@@ -1,10 +1,8 @@
 {
-    "type": "FeatureCollection",
-    "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::25833" } },
-    "features": [
-    { "type": "Feature", "properties": { "Land": null, "Bundesland": null, "Stadt": null, "Adresse": null, "Wärmebedarf": null, "Gebäudetyp": null, "Subtyp": null, "WW_Anteil": null, "Typ_Heizflächen": null, "VLT_max": null, "Steigung_Heizkurve": null, "RLT_max": null, "Normaußentemperatur": null }, "geometry": { "type": "LineString", "coordinates": [ [ 499821.912201297178399, 5666140.025760277174413 ], [ 499822.912201297178399, 5666140.025760277174413 ] ] } },
-    { "type": "Feature", "properties": { "Land": null, "Bundesland": null, "Stadt": null, "Adresse": null, "Wärmebedarf": null, "Gebäudetyp": null, "Subtyp": null, "WW_Anteil": null, "Typ_Heizflächen": null, "VLT_max": null, "Steigung_Heizkurve": null, "RLT_max": null, "Normaußentemperatur": null }, "geometry": { "type": "LineString", "coordinates": [ [ 499781.357655416999478, 5666501.003997462801635 ], [ 499782.357655416999478, 5666501.003997462801635 ] ] } }
-    ]
-    }
-    
-    
+"type": "FeatureCollection",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::25833" } },
+"features": [
+{ "type": "Feature", "properties": { "Land": null, "Bundesland": null, "Stadt": null, "Adresse": null, "Wärmebedarf": null, "Gebäudetyp": null, "Subtyp": null, "WW_Anteil": null, "Typ_Heizflächen": null, "VLT_max": null, "Steigung_Heizkurve": null, "RLT_max": null, "Normaußentemperatur": null }, "geometry": { "type": "LineString", "coordinates": [ [ 499821.912201297178399, 5666140.025760277174413 ], [ 499822.912201297178399, 5666140.025760277174413 ] ] } },
+{ "type": "Feature", "properties": { "Land": null, "Bundesland": null, "Stadt": null, "Adresse": null, "Wärmebedarf": null, "Gebäudetyp": null, "Subtyp": null, "WW_Anteil": null, "Typ_Heizflächen": null, "VLT_max": null, "Steigung_Heizkurve": null, "RLT_max": null, "Normaußentemperatur": null }, "geometry": { "type": "LineString", "coordinates": [ [ 499781.357655416999478, 5666501.003997462801635 ], [ 499782.357655416999478, 5666501.003997462801635 ] ] } }
+]
+}
