@@ -15,7 +15,7 @@ from districtheatingsim.net_simulation_pandapipes.utilities import create_contro
 
 def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, COP_filename, min_supply_temperature_building, return_temperature_heat_consumer, 
                        supply_temperature_net, flow_pressure_pump, lift_pressure_pump, netconfiguration, pipetype, dT_RL, v_max_pipe, material_filter, 
-                       k_mm=0.1, main_producer_location_index=0, mass_flow_secondary_producers=[0.5]):
+                       k_mm=0.1, main_producer_location_index=0, secondary_producers=[{}]):
     """Initialize the network using GeoJSON data and various parameters.
 
     Args:
@@ -35,9 +35,9 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, COP
         dT_RL (float): Temperature difference for the return line.
         v_max_pipe (float): Maximum velocity in the pipes.
         material_filter (str): Material filter for the pipes.
-        mass_flow_secondary_producers (float, optional): Mass flow for secondary producers. Defaults to 0.5.
         k_mm (float, optional): Roughness coefficient for pipes. Defaults to 0.1.
         main_producer_location_index (int, optional): Index of the main producer location. Defaults to 0.
+        secondary_producers (dict, optional): Secondary producer data. Defaults to [{}].
 
     Returns:
         pandapipesNet: The initialized pandapipes network.
@@ -158,17 +158,19 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, COP
         "k_mm": k_mm
     }
 
-    qext_i = np.sum(max_waerme_hast_ges_W) / 2
-    cp = 4190  # Specific heat capacity in J/(kg K)
-    delta_T = 35  # Assumed temperature difference in K
-    mass_flow_secondary_producers = qext_i / (cp * delta_T)  # Mass flow in kg/s
+    # Calculate mass flow for secondary producers
+    if secondary_producers:
+        # calculate mass flow of main producer with cp = 4.18 kJ/kgK from sum of max_waerme_hast_ges_W (in W)
+        cp = 4.18 # kJ/kgK
+        mass_flow = np.sum(max_waerme_hast_ges_W/1000) / (cp * (supply_temperature_net - return_temperature_heat_consumer)) # kW / (kJ/kgK * K) = kg/s
+        secondary_producers["mass_flow"] = [secondary_producer["percentage"] * mass_flow for secondary_producer in secondary_producers]
 
     producer_dict = {
         "supply_temperature": supply_temperature_net,
         "flow_pressure_pump": flow_pressure_pump,
         "lift_pressure_pump": lift_pressure_pump,
         "main_producer_location_index": main_producer_location_index,
-        "mass_flow_secondary_producers": mass_flow_secondary_producers
+        "secondary_producers": secondary_producers
     }
 
     net = create_network(gdf_dict, consumer_dict, pipe_dict, producer_dict)
@@ -229,7 +231,7 @@ def create_network(gdf_dict, consumer_dict, pipe_dict, producer_dict):
 
     gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_producer = gdf_dict["flow_line"], gdf_dict["return_line"], gdf_dict["heat_consumer"], gdf_dict["heat_producer"]
     qext_w, min_supply_temperature_heat_consumer, return_temperature_heat_consumer = consumer_dict["qext_w"], consumer_dict["min_supply_temperature_heat_consumer"], consumer_dict["return_temperature_heat_consumer"]
-    supply_temperature, flow_pressure_pump, lift_pressure_pump, main_producer_location_index, mass_flow_secondary_producers = producer_dict["supply_temperature"], producer_dict["flow_pressure_pump"], producer_dict["lift_pressure_pump"], producer_dict["main_producer_location_index"], producer_dict["mass_flow_secondary_producers"]
+    supply_temperature, flow_pressure_pump, lift_pressure_pump, main_producer_location_index, secondary_producers = producer_dict["supply_temperature"], producer_dict["flow_pressure_pump"], producer_dict["lift_pressure_pump"], producer_dict["main_producer_location_index"], producer_dict["secondary_producers"]
     pipetype, v_max_pipe, material_filter, pipe_creation_mode, k_mm = pipe_dict["pipetype"], pipe_dict["v_max_pipe"], pipe_dict["material_filter"], pipe_dict["pipe_creation_mode"], pipe_dict["k_mm"]
 
     net = pp.create_empty_network(fluid="water")
@@ -354,11 +356,11 @@ def create_network(gdf_dict, consumer_dict, pipe_dict, producer_dict):
         # Create the circulation pump with constant pressure for the first heat producer location
         create_circulation_pump_pressure(net, [all_heat_producer_coords[main_producer_location_index]], {**junction_dict_vl, **junction_dict_rl}, "heat source")
 
-       # Create circulation pumps with constant mass flow for the remaining producer locations
-        if isinstance(mass_flow_secondary_producers, list):
-            create_circulation_pump_mass_flow(net, [all_heat_producer_coords[i] for i in range(len(all_heat_producer_coords)) if i != main_producer_location_index], {**junction_dict_vl, **junction_dict_rl}, "heat source slave", mass_flow_secondary_producers)
-        else:
-            create_circulation_pump_mass_flow(net, [all_heat_producer_coords[i] for i in range(len(all_heat_producer_coords)) if i != main_producer_location_index], {**junction_dict_vl, **junction_dict_rl}, "heat source slave", [mass_flow_secondary_producers] * (len(all_heat_producer_coords) - 1))
+        # Create circulation pumps with constant mass flow for the remaining producer locations
+        if secondary_producers:
+            mass_flows = [producer["mass_flow"] for producer in secondary_producers]
+            secondary_coords = [all_heat_producer_coords[producer["index"]] for producer in secondary_producers]
+            create_circulation_pump_mass_flow(net, secondary_coords, {**junction_dict_vl, **junction_dict_rl}, "heat source slave", mass_flows)
 
     # Simulate pipe flow
     pp.pipeflow(net, mode="bidirectional", iter=100)

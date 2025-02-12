@@ -11,7 +11,7 @@ import sys
 import geopandas as gpd
 
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, QGroupBox, QListWidget, QPushButton, \
-    QMessageBox, QAbstractItemView, QListWidgetItem
+    QMessageBox, QAbstractItemView, QListWidgetItem, QHBoxLayout, QLabel, QLineEdit
 
 from PyQt5.QtCore import Qt
 
@@ -63,6 +63,9 @@ class ProducerOrderTab(QWidget):
         self.producer_order_list_widget.setSelectionMode(QAbstractItemView.SingleSelection)
         layout.addWidget(self.producer_order_list_widget)
 
+        self.producer_percentage_inputs = QVBoxLayout()
+        layout.addLayout(self.producer_percentage_inputs)
+
         return layout
 
     def load_producers(self):
@@ -109,9 +112,13 @@ class ProducerOrderTab(QWidget):
         selected_items = self.producer_list_widget.selectedItems()
         for item in selected_items:
             producer = item.data(Qt.UserRole)
-            order_item = QListWidgetItem(producer['name'])
-            order_item.setData(Qt.UserRole, {'name': producer['name'], 'index': self.producer_list_widget.row(item)})
-            self.producer_order_list_widget.addItem(order_item)
+            # Check if the producer is already in the order list
+            if not any(self.producer_order_list_widget.item(i).data(Qt.UserRole)['index'] == self.producer_list_widget.row(item) for i in range(self.producer_order_list_widget.count())):
+                order_item = QListWidgetItem(producer['name'])
+                order_item.setData(Qt.UserRole, {'name': producer['name'], 'index': self.producer_list_widget.row(item)})
+                self.producer_order_list_widget.addItem(order_item)
+
+        self.update_producer_percentage_inputs()
 
     def remove_producer_from_order(self):
         """
@@ -121,18 +128,26 @@ class ProducerOrderTab(QWidget):
         for item in selected_items:
             self.producer_order_list_widget.takeItem(self.producer_order_list_widget.row(item))
 
-    def calculate_producer_powers(self):
-        """
-        Calculates the powers of the additional producers based on the selected rules.
+        self.update_producer_percentage_inputs()
 
-        Returns:
-            list: List of powers for the additional producers.
+    def update_producer_percentage_inputs(self):
         """
-        powers = []
-        for line_edit in self.producer_power_inputs:
-            try:
-                power = float(line_edit.text())
-                powers.append(power)
-            except ValueError:
-                powers.append(0.0)  # Standardwert, wenn keine gültige Eingabe vorhanden ist
-        return powers
+        Updates the percentage input fields for secondary producers.
+        """
+        # Clear existing percentage inputs
+        while self.producer_percentage_inputs.count():
+            item = self.producer_percentage_inputs.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+
+        # Add new percentage inputs for secondary producers
+        count = self.producer_order_list_widget.count()
+        if count > 1:
+            for i in range(1, count):
+                percentage_input_layout = QHBoxLayout()
+                label = QLabel(f"Erzeuger {i+1} Prozentuale Erzeugung (%):")
+                line_edit = QLineEdit()
+                percentage_input_layout.addWidget(label)
+                percentage_input_layout.addWidget(line_edit)
+                self.producer_percentage_inputs.addLayout(percentage_input_layout)
