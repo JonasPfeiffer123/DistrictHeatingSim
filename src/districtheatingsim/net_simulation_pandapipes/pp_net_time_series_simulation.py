@@ -94,7 +94,7 @@ def create_log_variables(net):
         list: List of tuples representing the variables to log.
     """
     log_variables = [
-        ('res_junction', 'p_bar'), 
+        ('res_junction', 'p_bar'),
         ('res_junction', 't_k'),
         ('heat_consumer', 'qext_w'),
         ('res_heat_consumer', 'vdot_m3_per_s'),
@@ -103,13 +103,17 @@ def create_log_variables(net):
         ('res_heat_consumer', 'mdot_from_kg_per_s'),
         ('res_circ_pump_pressure', 'mdot_from_kg_per_s'),
         ('res_circ_pump_pressure', 'p_to_bar'),
-        ('res_circ_pump_pressure', 'p_from_bar')
+        ('res_circ_pump_pressure', 'p_from_bar'),
+        ('res_circ_pump_pressure', 't_to_k'),
+        ('res_circ_pump_pressure', 't_from_k')
     ]
 
     if 'circ_pump_mass' in net:
         log_variables.append(('res_circ_pump_mass', 'mdot_from_kg_per_s'))
         log_variables.append(('res_circ_pump_mass', 'p_to_bar'))
         log_variables.append(('res_circ_pump_mass', 'p_from_bar'))
+        log_variables.append(('res_circ_pump_mass', 't_to_k'))
+        log_variables.append(('res_circ_pump_mass', 't_from_k'))
 
     return log_variables
 
@@ -261,22 +265,22 @@ def calculate_results(net, net_results, cp_kJ_kgK=4.2):
                 "flow_pressure": net_results["res_circ_pump_pressure.p_to_bar"][:, idx],
                 "return_pressure": net_results["res_circ_pump_pressure.p_from_bar"][:, idx],
                 "deltap": net_results["res_circ_pump_pressure.p_to_bar"][:, idx] - net_results["res_circ_pump_pressure.p_from_bar"][:, idx],
-                "return_temp": net_results["res_junction.t_k"][:, net.circ_pump_pressure["return_junction"][0]] - 273.15,
-                "flow_temp": net_results["res_junction.t_k"][:, net.circ_pump_pressure["flow_junction"][0]] - 273.15,
-                "qext_kW": net_results["res_circ_pump_pressure.mdot_from_kg_per_s"][:, idx] * cp_kJ_kgK * (net_results["res_junction.t_k"][:, net.circ_pump_pressure["flow_junction"][0]] - net_results["res_junction.t_k"][:, net.circ_pump_pressure["return_junction"][0]])
+                "return_temp": net_results["res_circ_pump_pressure.t_from_k"][:, idx] - 273.15,
+                "flow_temp": net_results["res_circ_pump_pressure.t_to_k"][:, idx] - 273.15,
+                "qext_kW": net_results["res_circ_pump_pressure.mdot_from_kg_per_s"][:, idx] * cp_kJ_kgK * (net_results["res_circ_pump_pressure.t_to_k"][:, idx] - net_results["res_circ_pump_pressure.t_from_k"][:, idx])
             }
 
     # Add results for the Mass Pumps
     if 'circ_pump_mass' in net:
         for idx, row in net.circ_pump_mass.iterrows():
             pump_results["weitere Einspeisung"][idx] = {
-                "mass_flow": net_results["res_circ_pump_mass.mdot_flow_kg_per_s"][:, idx],
+                "mass_flow": net_results["res_circ_pump_mass.mdot_from_kg_per_s"][:, idx],
                 "flow_pressure": net_results["res_circ_pump_mass.p_to_bar"][:, idx],
                 "return_pressure": net_results["res_circ_pump_mass.p_from_bar"][:, idx],
                 "deltap": net_results["res_circ_pump_mass.p_to_bar"][:, idx] - net_results["res_circ_pump_mass.p_from_bar"][:, idx],
-                "return_temp": net_results["res_junction.t_k"][:, net.circ_pump_mass["return_junction"][0]] - 273.15,
-                "flow_temp": net_results["res_junction.t_k"][:, net.circ_pump_mass["flow_junction"][0]] - 273.15,
-                "qext_kW": net_results["res_circ_pump_mass.mdot_from_kg_per_s"][:, idx] * cp_kJ_kgK * (net_results["res_junction.t_k"][:, net.circ_pump_mass["flow_junction"][0]] - net_results["res_junction.t_k"][:, net.circ_pump_mass["return_junction"][0]])
+                "return_temp": net_results["res_circ_pump_mass.t_from_k"][:, idx] - 273.15,
+                "flow_temp": net_results["res_circ_pump_mass.t_to_k"][:, idx] - 273.15,
+                "qext_kW": net_results["res_circ_pump_mass.mdot_from_kg_per_s"][:, idx] * cp_kJ_kgK * (net_results["res_circ_pump_mass.t_to_k"][:, idx] - net_results["res_circ_pump_mass.t_from_k"][:, idx])
             }
 
     return pump_results

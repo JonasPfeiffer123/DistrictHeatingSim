@@ -1,0 +1,3 @@
+ERROR:root:Fehler beim öffnen des Dialogs aufgetreten: 'NetworkDataTab' object has no attribute 'updateInputFieldsVisibility'
+ERROR:root:Fehler beim öffnen des Dialogs aufgetreten: 'NetGenerationDialog' object has no attribute 'config_manager'
+ERROR:root:Fehler beim öffnen des Dialogs aufgetreten: 'NetGenerationDialog' object has no attribute 'config_manager'
