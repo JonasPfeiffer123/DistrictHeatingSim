@@ -80,11 +80,19 @@ class NetGenerationDialog(QDialog):
 
         dT_RL = float(self.network_config_tab.parameter_rows_heat_consumer[2].itemAt(1).widget().text())
 
-        # Ermitteln des Index des Haupterzeugers, wenn keiner dann 0
-        if self.network_config_tab.producer_order_list_widget.count() > 0:
-            main_producer_location_index = self.network_config_tab.producer_order_list_widget.item(0).data(Qt.UserRole)['index']
+        # Ermitteln des Index des Haupterzeugers und der Reihenfolge der sekundären Erzeuger
+        if self.producer_order_tab.producer_order_list_widget.count() > 0:
+            main_producer_location_index = self.producer_order_tab.producer_order_list_widget.item(0).data(Qt.UserRole)['index']
+            secondary_producers = [
+                {
+                    'index': self.producer_order_tab.producer_order_list_widget.item(i).data(Qt.UserRole)['index'],
+                    'percentage': float(self.producer_order_tab.producer_percentage_inputs[i-1].text())
+                }
+                for i in range(1, self.producer_order_tab.producer_order_list_widget.count())
+            ]
         else:
             main_producer_location_index = 0
+            secondary_producers = []
 
         ### hier muss der path für die JSON mit den Lastgängen ergänzt werden ###
         # Führen Sie die Netzgenerierung für GeoJSON durch
@@ -92,6 +100,6 @@ class NetGenerationDialog(QDialog):
             self.generate_callback(vorlauf_path, ruecklauf_path, hast_path, erzeugeranlagen_path, json_path, supply_temperature_heat_consumer, 
                                    rl_temp_heat_consumer, supply_temperature_net, flow_pressure_pump, lift_pressure_pump, self.network_config_tab.netconfiguration, 
                                    dT_RL, self.network_config_tab.building_temp_checked, pipetype, v_max_pipe, material_filter, self.diameter_optimization_tab.DiameterOpt_ckecked, 
-                                   k_mm, main_producer_location_index, import_type)
+                                   k_mm, main_producer_location_index, secondary_producers, import_type)
 
         self.accept()

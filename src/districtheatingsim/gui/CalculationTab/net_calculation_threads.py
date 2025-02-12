@@ -24,7 +24,7 @@ class NetInitializationThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(str)
 
-    def __init__(self, *args, mass_flow_secondary_producers=0.1, **kwargs):
+    def __init__(self, *args, **kwargs):
         """
         Initializes the NetInitializationThread.
 
@@ -35,7 +35,6 @@ class NetInitializationThread(QThread):
         """
         super().__init__()
         self.args = args
-        self.mass_flow_secondary_producers = mass_flow_secondary_producers
         self.kwargs = kwargs
 
     def run(self):
@@ -47,12 +46,12 @@ class NetInitializationThread(QThread):
                 self.vorlauf, self.ruecklauf, self.hast, self.erzeugeranlagen, self.json_path, self.COP_filename, self.supply_temperature_heat_consumer, \
                 self.return_temperature_heat_consumer, self.supply_temperature, self.flow_pressure_pump, self.lift_pressure_pump, \
                 self.netconfiguration, self.pipetype, self.v_max_pipe, self.material_filter, self.dT_RL, self.DiameterOpt_ckecked, self.k_mm, \
-                self.main_producer_location_index = self.args
+                self.main_producer_location_index, self.secondary_producers = self.args
 
                 self.results = (initialize_geojson(self.vorlauf, self.ruecklauf, self.hast, self.erzeugeranlagen, self.json_path, self.COP_filename, 
                                                    self.supply_temperature_heat_consumer, self.return_temperature_heat_consumer, self.supply_temperature, 
                                                    self.flow_pressure_pump, self.lift_pressure_pump, self.netconfiguration, self.pipetype, self.dT_RL, 
-                                                   self.v_max_pipe, self.material_filter, self.k_mm, self.main_producer_location_index, self.mass_flow_secondary_producers,))
+                                                   self.v_max_pipe, self.material_filter, self.k_mm, self.main_producer_location_index, self.secondary_producers))
                 
                 self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.return_temperature_heat_consumer, self.supply_temperature_buildings, \
                 self.return_temperature_buildings, self.supply_temperature_building_curve,  self.return_temperature_building_curve, strombedarf_hast_ges_W, \
