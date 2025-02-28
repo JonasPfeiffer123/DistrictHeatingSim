@@ -1,13 +1,15 @@
 """
-Filename: lod2_tab.py
+Filename: lod2_main_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-08-30
-Description: Contains the LOD2Tab as MVP structure.
+Description: Contains the main tab for the LOD2 data visualization.
 """
 
 from PyQt5.QtWidgets import (QAction, QWidget, QVBoxLayout, QMenuBar)
 
-from districtheatingsim.gui.LOD2Tab.lod2_data_model import LOD2DataModel, DataVisualizationPresenter, LOD2DataVisualization
+from districtheatingsim.gui.LOD2Tab.lod2_data_model import LOD2DataModel
+from districtheatingsim.gui.LOD2Tab.lod2_presenter import DataVisualizationPresenter
+from districtheatingsim.gui.LOD2Tab.lod2_visualization import LOD2DataVisualization
 
 class LOD2Tab(QWidget):
     def __init__(self, folder_manager, data_manager, config_manager, parent=None):
