@@ -278,6 +278,8 @@ class LOD2DataModel:
                 'ground_u': info.get('ground_u', None),
             }
 
+            print("TRY-Datei:", self.try_filename)
+
             # Berechnung der Wärmebedarfswerte basierend auf den aktuellen Werten im `info`-Daten
             building = Building(
                 ground_area=info['Ground_Area'],
@@ -292,8 +294,8 @@ class LOD2DataModel:
             building.calc_yearly_heat_demand()
             
             # Speicherung der Ergebnisse im `info`-Daten
-            info['Wärmebedarf'] = building.yearly_heat_demand
-            info['Warmwasseranteil'] = building.warm_water_share
+            info['Wärmebedarf'] = np.round(building.yearly_heat_demand,2)
+            info['Warmwasseranteil'] = np.round(building.warm_water_share,2)
 
     def create_building_csv(self, path):
         """
@@ -396,8 +398,6 @@ class DataVisualizationPresenter(QObject):
         self.on_project_folder_changed(self.folder_manager.variant_folder)
 
         self.connect_signals()
-
-        self.model.try_filename = self.data_manager.get_try_filename()
 
     def on_project_folder_changed(self, new_base_path):
         """
@@ -543,6 +543,8 @@ class DataVisualizationPresenter(QObject):
         """
         Calculates the heat demand for each building.
         """
+        # takes the TRY file from the data manager, could also be implemented as a file dialog
+        self.model.try_filename = self.data_manager.get_try_filename()
         self.model.calculate_heat_demand()
         self.view.update_table(self.model.building_info, self.model.get_building_types(), self.model.tabula_building_types, self.model.building_subtypes)
 
