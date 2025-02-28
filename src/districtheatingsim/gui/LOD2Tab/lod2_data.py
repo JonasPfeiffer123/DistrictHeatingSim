@@ -625,7 +625,7 @@ class LOD2DataVisualization(QWidget):
         self.building_subtypes = {}
         
         self.initUI()
-        
+
         self.visualization_3d = LOD2Visualization3D(self.canvas_3d)  # Initialize the 3D visualization handler
 
     def initUI(self):
@@ -664,7 +664,7 @@ class LOD2DataVisualization(QWidget):
 
         self.figure_3d = plt.figure()
         self.canvas_3d = FigureCanvas(self.figure_3d)
-        self.canvas_3d.setMinimumSize(400, 400)
+        self.canvas_3d.setMinimumSize(800, 800)
         data_vis_layout.addWidget(self.canvas_3d)
 
         # Connect signals
