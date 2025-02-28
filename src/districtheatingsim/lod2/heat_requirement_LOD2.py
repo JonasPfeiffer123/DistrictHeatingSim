@@ -67,7 +67,7 @@ class Building:
             wall_area (float): Wall area of the building.
             roof_area (float): Roof area of the building.
             building_volume (float): Volume of the building.
-            filename_TRY (str, optional): Filename of the TRY dataset. Defaults to 'data\\TRY2015_511676144222_Jahr.dat'.
+            filename_TRY (str, optional): Filename of the TRY dataset. Defaults to 'data\\TRY\\TRY_511676144222\\TRY2015_511676144222_Jahr.dat'.
             u_type (str, optional): Type of the building.
             building_state (str, optional): State of the building.
             u_values (dict, optional): Custom U-values for the building components.

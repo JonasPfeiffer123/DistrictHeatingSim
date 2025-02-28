@@ -91,7 +91,7 @@ class NetCalculationThread(QThread):
 
     def __init__(self, net, yearly_time_steps, total_heat_W, calc1, calc2, supply_temperature, supply_temperature_heat_consumer, return_temperature_heat_consumer, supply_temperature_buildings, \
                  return_temperature_buildings, supply_temperature_buildings_curve, return_temperature_buildings_curve, dT_RL=5, netconfiguration=None, building_temp_checked=False, \
-                    TRY_filename=None, COP_filename=None):
+                    TRY_filename=None, COP_filename=None, secondary_producers=None):
         """
         Initializes the NetCalculationThread.
 
@@ -113,6 +113,7 @@ class NetCalculationThread(QThread):
             building_temp_checked (bool, optional): Whether building temperature is checked. Defaults to False.
             TRY_filename (str, optional): TRY filename. Defaults to None.
             COP_filename (str, optional): COP filename. Defaults to None.
+            secondary_producers (list, optional): List of secondary producers. Defaults to None. Needs to be implemented in following work flow.
         """
         super().__init__()
         self.net = net
