@@ -7,7 +7,7 @@ Description: Contains the LOD2Tab as MVP structure.
 
 from PyQt5.QtWidgets import (QAction, QWidget, QVBoxLayout, QMenuBar)
 
-from districtheatingsim.gui.LOD2Tab.lod2_data import LOD2DataModel, DataVisualizationPresenter, LOD2DataVisualization
+from districtheatingsim.gui.LOD2Tab.lod2_data_model import LOD2DataModel, DataVisualizationPresenter, LOD2DataVisualization
 
 class LOD2Tab(QWidget):
     def __init__(self, folder_manager, data_manager, config_manager, parent=None):
