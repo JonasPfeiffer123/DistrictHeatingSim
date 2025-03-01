@@ -261,7 +261,7 @@ def process_lod2(file_path, STANDARD_VALUES):
         if 'Gebäudetyp' in row and pd.notna(row['Gebäudetyp']):
             building_info[parent_id]['Gebäudetyp'] = row['Gebäudetyp']
         if 'Subtyp' in row and pd.notna(row['Subtyp']):
-            building_info[parent_id]['Subtyp'] = row['Subtyp']
+            building_info[parent_id]['Subtyp'] = normalize_subtype(row['Subtyp'])
         if 'Typ' in row and pd.notna(row['Typ']):
             building_info[parent_id]['Typ'] = row['Typ']
         if 'Gebäudezustand' in row and pd.notna(row['Gebäudezustand']):
@@ -331,6 +331,19 @@ def process_lod2(file_path, STANDARD_VALUES):
                 info[key] = value
 
     return building_info
+
+def normalize_subtype(subtype):
+    """
+    Normalize the subtype to a consistent string format.
+
+    Args:
+        subtype (str/int/float): The subtype value.
+
+    Returns:
+        str: The normalized subtype value as a string.
+    """
+    subtype_str = str(int(float(subtype)))  # Convert to int first to handle float values like 3.0
+    return subtype_str.zfill(2)  # Ensure the subtype has two digits
 
 def geocode(lat, lon):
     """
