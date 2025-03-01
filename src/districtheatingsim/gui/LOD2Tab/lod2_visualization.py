@@ -149,6 +149,9 @@ class LOD2DataVisualization(QWidget):
         Args:
             item (QTableWidgetItem): Das geänderte Item.
         """
+        if self.updating_table:
+            return  # Ignoriere Änderungen, wenn die Tabelle aktualisiert wird
+        
         table = item.tableWidget()
         category = next((cat for cat, tbl in self.tables.items() if tbl == table), None)
         if not category:
@@ -201,12 +204,15 @@ class LOD2DataVisualization(QWidget):
         self.building_types = building_types
         self.building_subtypes = building_subtypes
 
+        self.updating_table = True  # Setze die Flagge, bevor die Tabelle aktualisiert wird
         for category, table in self.tables.items():
             table.setRowCount(len(building_info))
             table.setVerticalHeaderLabels([str(i + 1) for i in range(len(building_info))])
 
         for row, (parent_id, info) in enumerate(building_info.items()):
             self.update_table_row(row, info)
+
+        self.updating_table = False  # Setze die Flagge zurück, nachdem die Tabelle aktualisiert wurde        
 
     def update_table_row(self, row, info):
         """
@@ -275,6 +281,7 @@ class LOD2DataVisualization(QWidget):
                     # **Numerische Werte**
 
                     elif gui_label == "Warmwasseranteil (%)":
+                        # formate as percentage
                         table.setItem(row, col, QTableWidgetItem(f"{value*100:.2f}"))
 
                     else:
