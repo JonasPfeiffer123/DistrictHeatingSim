@@ -103,8 +103,7 @@ class DataVisualizationPresenter(QObject):
             self.model.process_data(output_geojson_path)
 
             # Überprüfen und Laden der U-Werte direkt nach dem Laden der Daten
-            for parent_id, info in self.model.building_info.items():
-                self.model.check_and_load_u_values(info)
+            self.model.check_and_load_u_values()
 
             self.view.update_table(
                 self.model.building_info, 

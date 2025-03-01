@@ -155,6 +155,8 @@ class LOD2DataModel(QObject):
             if key in ["Typ", "Gebäudezustand"]:
                 self.update_u_values(row)
 
+            # which value is changed
+            print(f"Value changed for {key} from {self.building_info[parent_id].get(key)} to {value}")
             self.data_updated.emit()  # Signal senden nur wenn sich Werte geändert haben
 
     def get_u_values(self, building_type, building_state):
