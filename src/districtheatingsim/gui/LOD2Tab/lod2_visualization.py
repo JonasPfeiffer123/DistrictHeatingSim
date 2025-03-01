@@ -72,7 +72,7 @@ class LOD2DataVisualization(QWidget):
             "door_u": "U-Wert Tür (W/m²K)",
             "ground_u": "U-Wert Boden (W/m²K)",
             "Wärmebedarf": "Wärmebedarf (kWh)",
-            "Warmwasseranteil": "Warmwasseranteil (%)"
+            "WW_Anteil": "Warmwasseranteil (%)"
         }
 
     def initUI(self):
@@ -271,6 +271,11 @@ class LOD2DataVisualization(QWidget):
                         comboBoxBuildingState.currentIndexChanged.connect(lambda idx, r=row, k=internal_key: self.building_state_changed.emit(r, k, comboBoxBuildingState.currentText()))
                         
                         table.setCellWidget(row, col, comboBoxBuildingState)
+
+                    # **Numerische Werte**
+
+                    elif gui_label == "Warmwasseranteil (%)":
+                        table.setItem(row, col, QTableWidgetItem(f"{value*100:.2f}"))
 
                     else:
                         # Setze reguläre Werte

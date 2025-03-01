@@ -148,7 +148,7 @@ class Building:
         # Sum to get the total annual heat demand
         self.yearly_heat_demand = self.yearly_heating_demand + self.yearly_warm_water_demand
         # Calculate warm water share
-        self.warm_water_share = (self.yearly_warm_water_demand / self.yearly_heat_demand) * 100
+        self.warm_water_share = (self.yearly_warm_water_demand / self.yearly_heat_demand)
 
     def load_u_values(self, u_type, building_state):
         """

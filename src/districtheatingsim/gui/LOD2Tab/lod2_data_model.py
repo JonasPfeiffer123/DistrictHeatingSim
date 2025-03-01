@@ -259,7 +259,7 @@ class LOD2DataModel(QObject):
             
             # Speicherung der Ergebnisse im `info`-Daten
             info['Wärmebedarf'] = np.round(building.yearly_heat_demand,2)
-            info['Warmwasseranteil'] = np.round(building.warm_water_share,2)
+            info['WW_Anteil'] = np.round(building.warm_water_share,2)
     
     def get_resource_path(self, relative_path):
         """
