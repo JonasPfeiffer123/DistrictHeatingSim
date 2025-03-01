@@ -234,7 +234,7 @@ def process_lod2(file_path, STANDARD_VALUES):
                 'Adresse': None, 'Stadt': None, 'Bundesland': None, 'Land': None, 'Koordinate_X': None, 'Koordinate_Y': None,
                 'Gebäudetyp': None, 'Subtyp': None, 'Typ': None, 'Gebäudezustand': None, 'ww_demand_kWh_per_m2': None, 
                 'air_change_rate': None, 'Stockwerke': None, 'fracture_windows': None, 'fracture_doors': None, 
-                'Normaußentemperatur': None, 'room_temp': None, 'max_air_temp_heating': None, 'Wärmebedarf': None, 'Warmwasseranteil': None,
+                'Normaußentemperatur': None, 'room_temp': None, 'max_air_temp_heating': None, 'Wärmebedarf': None, 'WW_Anteil': None,
                 'Typ_Heizflächen': None, 'VLT_max': None, 'Steigung_Heizkurve': None, 'RLT_max': None,
                 'wall_u': None, 'roof_u': None, 'window_u': None, 'door_u': None, 'ground_u': None
             }
@@ -282,8 +282,8 @@ def process_lod2(file_path, STANDARD_VALUES):
             building_info[parent_id]['max_air_temp_heating'] = row['max_air_temp_heating']
         if 'Wärmebedarf' in row and pd.notna(row['Wärmebedarf']):
             building_info[parent_id]['Wärmebedarf'] = row['Wärmebedarf']
-        if 'Warmwasseranteil' in row and pd.notna(row['Warmwasseranteil']):
-            building_info[parent_id]['Warmwasseranteil'] = row['Warmwasseranteil']
+        if 'WW_Anteil' in row and pd.notna(row['WW_Anteil']):
+            building_info[parent_id]['WW_Anteil'] = row['WW_Anteil']
 
         # New fields
         if 'Typ_Heizflächen' in row and pd.notna(row['Typ_Heizflächen']):
