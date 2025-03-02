@@ -1,7 +1,7 @@
 """
 Filename: lod2_visualization.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-02-28
+Date: 2025-02-02
 Description: Contains the view class for LOD2 data visualization.
 """
 
@@ -20,7 +20,6 @@ class LOD2DataVisualization(QWidget):
     The view class for LOD2 data visualization.
     """
     data_selected = pyqtSignal(int)
-    u_value_updated = pyqtSignal(int)
     building_type_changed = pyqtSignal(int, str, str)
     building_state_changed = pyqtSignal(int, str, str)  # Neu: Signal für Änderungen am Gebäudezustand
     combobox_changed = pyqtSignal(int, str, str)  # Zeile, Key, Wert für ComboBoxen

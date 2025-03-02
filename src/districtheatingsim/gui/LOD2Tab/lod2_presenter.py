@@ -1,7 +1,7 @@
 """
 Filename: lod2_presenter.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-02-28
+Date: 2025-02-02
 Description: Contains the presenter class for the LOD2 data visualization.
 """
 
