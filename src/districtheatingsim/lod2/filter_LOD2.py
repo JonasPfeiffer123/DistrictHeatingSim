@@ -327,7 +327,7 @@ def process_lod2(file_path, STANDARD_VALUES):
                 info['Volume'] = None
 
         for key, value in STANDARD_VALUES.items():
-            if info[key] is None:
+            if key not in info or info[key] is None:
                 info[key] = value
 
     return building_info
@@ -384,24 +384,34 @@ def calculate_centroid_and_geocode(building_info):
             lat, lon = centroid_transformed.y, centroid_transformed.x
 
             address_components = geocode(lat, lon)
-            
-            land = address_components.split(", ")[6]
-            bundesland = address_components.split(", ")[4]
-            stadt = address_components.split(", ")[3]
-            strasse = address_components.split(", ")[2]
-            hausnummer = address_components.split(", ")[1]
+
+            # Überprüfen, ob die Adresse genügend Komponenten hat
+            address_parts = address_components.split(", ")
+            address_parts = address_parts[::-1]  # Reverse the list to assign from the end
+
+            land = address_parts[0] if len(address_parts) > 0 else None
+            bundesland = address_parts[1] if len(address_parts) > 1 else None
+            plz = address_parts[2] if len(address_parts) > 2 else None
+            stadt = address_parts[3] if len(address_parts) > 3 else None
+            stadtteil = address_parts[4] if len(address_parts) > 4 else None
+            strasse = address_parts[5] if len(address_parts) > 5 else None
+            hausnummer = address_parts[6] if len(address_parts) > 6 else None
 
             info['Land'] = land
             info['Bundesland'] = bundesland
+            info['PLZ'] = plz
             info['Stadt'] = stadt
-            info['Adresse'] = f"{strasse} {hausnummer}"
+            info['Stadtteil'] = stadtteil
+            info['Adresse'] = f"{strasse} {hausnummer}" if strasse and hausnummer else None
 
         else:
             print(f"Keine Ground-Geometrie für Gebäude {parent_id} gefunden. Überspringe.")
             info['Koordinaten'] = None
             info['Land'] = None
             info['Bundesland'] = None
+            info['PLZ'] = None
             info['Stadt'] = None
+            info['Stadtteil'] = None
             info['Adresse'] = None
 
     return building_info

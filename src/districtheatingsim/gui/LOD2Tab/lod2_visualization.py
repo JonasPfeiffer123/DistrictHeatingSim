@@ -237,7 +237,11 @@ class LOD2DataVisualization(QWidget):
                     if gui_label == "Gebäudetyp SLP":
                         comboBoxSLPTypes = QComboBox()
                         comboBoxSLPTypes.addItems(self.comboBoxBuildingTypesItems)
-                        comboBoxSLPTypes.setCurrentText(str(value))
+                        # if value is none, set to HMF as default
+                        if value is None or '':
+                            value = "HMF"
+                        else:
+                            comboBoxSLPTypes.setCurrentText(str(value))
                         
                         # Signal für Änderung Gebäudetyp SLP → ruft update_building_subtypes() im Presenter auf
                         comboBoxSLPTypes.currentIndexChanged.connect(lambda idx, r=row, k=internal_key: self.building_type_changed.emit(r, k, comboBoxSLPTypes.currentText()))
@@ -249,7 +253,10 @@ class LOD2DataVisualization(QWidget):
                         # Die verfügbaren Subtypen basieren auf dem Gebäudetyp SLP
                         geb_typ = info.get("Gebäudetyp", "")
                         comboBoxSLPSubtypes.addItems(self.building_subtypes.get(geb_typ, []))
-                        comboBoxSLPSubtypes.setCurrentText(str(value))
+                        if value is None or '':
+                            value = comboBoxSLPSubtypes.itemText(0)
+                        else:
+                            comboBoxSLPSubtypes.setCurrentText(str(value))
 
                         # Änderungen sofort speichern
                         comboBoxSLPSubtypes.currentIndexChanged.connect(lambda idx, r=row, k=internal_key: self.combobox_changed.emit(r, k, comboBoxSLPSubtypes.currentText()))
@@ -280,7 +287,7 @@ class LOD2DataVisualization(QWidget):
 
                     # **Numerische Werte**
 
-                    elif gui_label == "Warmwasseranteil (%)":
+                    elif gui_label == "Warmwasseranteil (%)" and isinstance(value, float) and isinstance(value, int):
                         # formate as percentage
                         table.setItem(row, col, QTableWidgetItem(f"{value*100:.2f}"))
 

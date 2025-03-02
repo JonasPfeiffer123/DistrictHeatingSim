@@ -38,6 +38,8 @@ class LOD2DataModel(QObject):
         self.building_info = {}
 
         self.standard_values = {
+            'Gebäudetyp': 'HMF',
+            'Subtyp': '03',
             'Stockwerke': 4,
             'ww_demand_kWh_per_m2': 12.8,
             'air_change_rate': 0.5,
