@@ -1,7 +1,7 @@
 """
 Filename: lod2_3d_plot_matplotlib.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-02-28
+Date: 2025-02-02
 Description: Contains the 3D visualization for LOD2 data.
 """
 
@@ -11,14 +11,10 @@ from shapely.geometry import Polygon, MultiPolygon
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 import matplotlib.cm as cm
-import matplotlib.colors as mcolors
 from matplotlib.ticker import MaxNLocator
 
 import contextily as cx
 import numpy as np
-from PIL import Image
-from pyproj import Transformer
-import geopandas as gpd
 import matplotlib.pyplot as plt
 
 class LOD2Visualization3D:

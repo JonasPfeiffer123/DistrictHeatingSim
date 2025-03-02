@@ -1,14 +1,13 @@
 """
 Filename: lod2_data_model.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-02-28
+Date: 2025-02-02
 Description: Contains the LOD2DataModel class for managing and processing LOD2 data.
 """
 
 import sys
 import os
 import csv
-import json
 import pandas as pd
 import numpy as np
 import geopandas as gpd

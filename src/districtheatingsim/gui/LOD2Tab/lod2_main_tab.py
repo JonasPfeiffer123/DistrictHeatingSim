@@ -1,7 +1,7 @@
 """
 Filename: lod2_main_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-08-30
+Date: 2025-02-02
 Description: Contains the main tab for the LOD2 data visualization.
 """
 

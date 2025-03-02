@@ -1,7 +1,7 @@
 """
 Filename: lod2_dialogs.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-08-01
+Date: 2025-02-02
 Description: Contains the Dialogs for the LOD2Tab.
 """
 
