@@ -103,7 +103,6 @@ from districtheatingsim.gui.CalculationTab.calculation_tab import CalculationTab
 from districtheatingsim.gui.MixDesignTab.mix_design_tab import MixDesignTab
 from districtheatingsim.gui.ComparisonTab.comparison_tab import ComparisonTab
 from districtheatingsim.gui.IndividualTab.individual_tab import IndividualTab
-from districtheatingsim.gui.PVTab.pv_tab import PVTab
 from districtheatingsim.gui.results_pdf import create_pdf
 from districtheatingsim.gui.dialogs import TemperatureDataDialog, HeatPumpDataDialog
 
@@ -709,7 +708,6 @@ class HeatSystemDesignGUI(QMainWindow):
         self.lod2Tab = LOD2Tab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
         self.renovationTab = RenovationTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
         self.individualTab = IndividualTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager, self)
-        self.pvTab = PVTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
 
          # Hinzufügen der Tabs zum Widget und Menü
         self.add_tab_to_menu(self.projectTab, "Projektdefinition")
@@ -721,7 +719,6 @@ class HeatSystemDesignGUI(QMainWindow):
         self.add_tab_to_menu(self.lod2Tab, "Verarbeitung LOD2-Daten")
         self.add_tab_to_menu(self.renovationTab, "Gebäudesanierung")
         self.add_tab_to_menu(self.individualTab, "Einzelversorgungslösung")
-        self.add_tab_to_menu(self.pvTab, "Photovoltaik")
 
         self.default_visible_tabs = ["Projektdefinition", "Wärmebedarf Gebäude", "Kartenansicht Wärmenetzgenerierung", "Wärmenetzberechnung", "Erzeugerauslegung und Wirtschaftlichkeitsrechnung", "Variantenvergleich"]
 

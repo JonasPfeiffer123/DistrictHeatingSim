@@ -1,11 +1,14 @@
 """
 Filename: lod2_main_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-02-02
+Date: 2025-02-03
 Description: Contains the main tab for the LOD2 data visualization.
 """
 
-from PyQt5.QtWidgets import (QAction, QWidget, QVBoxLayout, QMenuBar)
+import os
+import traceback
+
+from PyQt5.QtWidgets import (QAction, QWidget, QVBoxLayout, QMenuBar, QMessageBox, QFileDialog)
 
 from districtheatingsim.gui.LOD2Tab.lod2_data_model import LOD2DataModel
 from districtheatingsim.gui.LOD2Tab.lod2_presenter import DataVisualizationPresenter
@@ -14,6 +17,14 @@ from districtheatingsim.gui.LOD2Tab.lod2_visualization import LOD2DataVisualizat
 class LOD2Tab(QWidget):
     def __init__(self, folder_manager, data_manager, config_manager, parent=None):
         super().__init__(parent)
+
+        self.folder_manager = folder_manager
+        self.data_manager = data_manager
+        self.config_manager = config_manager
+
+        self.folder_manager.project_folder_changed.connect(self.on_project_folder_changed)
+        self.on_project_folder_changed(self.folder_manager.variant_folder)
+
         self.setWindowTitle("LOD2 Tab")
         self.setGeometry(100, 100, 1200, 800)
 
@@ -24,7 +35,7 @@ class LOD2Tab(QWidget):
         self.data_vis_tab = LOD2DataVisualization()
 
         # Initialize the presenters
-        self.data_vis_presenter = DataVisualizationPresenter(self.data_model, self.data_vis_tab, folder_manager, data_manager, config_manager)
+        self.data_vis_presenter = DataVisualizationPresenter(self.data_model, self.data_vis_tab, self.folder_manager, self.data_manager, self.config_manager)
 
         # Set up the layout
         self.main_layout = QVBoxLayout()
@@ -36,6 +47,27 @@ class LOD2Tab(QWidget):
         self.main_layout.addWidget(self.data_vis_tab)
 
         self.setLayout(self.main_layout)
+
+    def on_project_folder_changed(self, new_base_path):
+        """
+        Updates the base path in the model when the project folder changes.
+
+        Args:
+            new_base_path (str): The new base path.
+        """
+        self.set_base_path(new_base_path)
+
+    def set_base_path(self, base_path):
+        """
+        Set the base path for file operations.
+        """
+        self.base_path = base_path
+
+    def get_base_path(self):
+        """
+        Get the current base path.
+        """
+        return self.base_path
 
     def initMenuBar(self):
         """Initializes the menu bar with actions."""
@@ -65,4 +97,26 @@ class LOD2Tab(QWidget):
         processMenu.addAction(self.createCSVAction)
         self.createCSVAction.triggered.connect(self.data_vis_presenter.create_building_csv)
 
+        self.createPVAction = QAction('PV-Daten für Gebäudedachflächen berechnen', self)
+        processMenu.addAction(self.createPVAction)
+        self.createPVAction.triggered.connect(self.pv_file_dialog)
+
         self.main_layout.setMenuBar(self.menubar)
+    
+    def pv_file_dialog(self):
+        """
+        Opens a file dialog to select the PV data file.
+        """
+        try:
+            # Get the output file name
+            output_filename, _ = QFileDialog.getSaveFileName(
+                self, "Speichern unter", os.path.join(self.get_base_path(), self.config_manager.get_relative_path("pv_results")), "CSV-Dateien (*.csv)")
+            
+            if not output_filename:
+                return
+            
+            self.data_vis_presenter.calculate_pv_data(output_filename)
+        
+        except Exception as e:
+            QMessageBox.critical(self, "Fehler beim Speichern", f"Beim Speichern der Datei ist ein Fehler aufgetreten: {e}\n\n{traceback.format_exc()}")
+            return
