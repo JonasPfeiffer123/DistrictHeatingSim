@@ -14,6 +14,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import pyqtSignal
 from districtheatingsim.gui.LOD2Tab.lod2_3d_plot_matplotlib import LOD2Visualization3D
+from districtheatingsim.gui.LOD2Tab.lod2_pv_tab import PVDataVisualizationTab
 
 class LOD2DataVisualization(QWidget):
     """
@@ -100,7 +101,7 @@ class LOD2DataVisualization(QWidget):
             "Energiebedarf und Nutzung": ['Adresse', 'Gebäudetyp SLP', 'Subtyp SLP', 'WW-Bedarf (kWh/m²)', 'Typ Heizflächen', 'VLT max (°C)', 'Steigung Heizkurve', 'RLT max (°C)', 'Normaußentemperatur (°C)'],
             "Gebäudehülle und Typ": ['Adresse', 'Gebäudetyp TABULA', 'Gebäudezustand TABULA', 'U-Wert Wand (W/m²K)', 'U-Wert Dach (W/m²K)', 'U-Wert Fenster (W/m²K)', 'U-Wert Tür (W/m²K)', 'U-Wert Boden (W/m²K)'],
             "Zusätzliche Eingaben": ['Adresse', 'Luftwechselrate (1/h)', 'Fensteranteil (%)', 'Türanteil (%)', 'Raumtemperatur (°C)', 'Heizgrenztemperatur (°C)'], # umbennen in Heizgrenztempertur
-            "Ergebnisse": ['Adresse', 'Wärmebedarf (kWh)', 'Warmwasseranteil (%)']
+            "Ergebnisse Wärmebedarfe": ['Adresse', 'Wärmebedarf (kWh)', 'Warmwasseranteil (%)']
         }
 
     	# Tabellen für die Kategorien erstellen
@@ -124,6 +125,10 @@ class LOD2DataVisualization(QWidget):
             tab_layout.addWidget(table)
             tab.setLayout(tab_layout)
             self.tabs.addTab(tab, category)
+
+        # PV-Berechnung Tab
+        self.pv_tab = PVDataVisualizationTab()
+        self.tabs.addTab(self.pv_tab, "PV-Berechnung")
 
         # 3D-Plot
         self.figure_3d = plt.figure()
@@ -297,6 +302,37 @@ class LOD2DataVisualization(QWidget):
                         else:
                             table.setItem(row, col, QTableWidgetItem(str(value)))
 
+    def display_data(self, building_info):
+        """
+        Display the loaded building data in the Tree View.
+        
+        Args:
+            building_info (dict): A dictionary containing building information.
+        """
+        self.pv_tab.display_data(building_info)
+
+    def update_pv_tab(self, pv_results):
+        """
+        Update the PV tab with the calculated PV results.
+
+        Args:
+            pv_results (list): A list of dictionaries containing PV calculation results.
+        """
+        self.pv_tab.treeWidget.clear()
+        # Cluster the PV results by building
+        building_clusters = {}
+        for result in pv_results:
+            building = result['Building']
+            if building not in building_clusters:
+                building_clusters[building] = []
+                building_clusters[building].append(result)
+
+        # Add clustered results to the PV tab
+        for building, results in building_clusters.items():
+            building_item = self.pv_tab.add_building(building, results[0]['Latitude'], results[0]['Longitude'])
+            for result in results:
+                self.pv_tab.add_roof(building_item, result['Roof Area (m²)'], result['Slope (°)'], result['Orientation (°)'], result['Yield (MWh)'], result['Max Power (kW)'])
+        
     def update_subtype_combobox(self, row, subtypes):
         """
         Update the subtype ComboBox with the new subtypes.
@@ -354,14 +390,14 @@ class LOD2DataVisualization(QWidget):
         """
         self.visualization_3d.update_3d_view(building_info)
 
-    def highlight_building_3d(self, parent_id):
+    def highlight_building_3d(self, parent_id, roof=False, roof_id=None, roof_info=None):
         """
         Highlights a building in the 3D plot.
 
         Args:
             parent_id (str): The ID of the building to highlight.
         """
-        self.visualization_3d.highlight_building_3d(parent_id)
+        self.visualization_3d.highlight_building_3d(parent_id, roof, roof_id, roof_info)
 
     def show_info_message(self, title, message):
         """

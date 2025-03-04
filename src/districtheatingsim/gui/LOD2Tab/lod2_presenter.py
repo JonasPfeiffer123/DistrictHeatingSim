@@ -1,11 +1,11 @@
 """
 Filename: lod2_presenter.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-02-02
+Date: 2025-02-03
 Description: Contains the presenter class for the LOD2 data visualization.
 """
 
-from PyQt5.QtWidgets import ( QFileDialog, QDialog, QMessageBox)
+from PyQt5.QtWidgets import ( QFileDialog, QDialog, QMessageBox, QTreeWidgetItem)
 from PyQt5.QtCore import pyqtSignal, QObject
 
 from districtheatingsim.gui.LOD2Tab.lod2_dialogs import FilterDialog
@@ -59,6 +59,7 @@ class DataVisualizationPresenter(QObject):
         self.view.building_state_changed.connect(self.update_data_value)
         self.view.combobox_changed.connect(self.update_data_value)
         self.view.data_changed.connect(self.update_data_value)
+        self.view.pv_tab.treeWidget.itemSelectionChanged.connect(self.on_tree_item_selected)
         self.model.data_updated.connect(self.refresh_view)  # Reaktion auf Model-Änderungen
 
     def update_data_value(self, row, key, value):
@@ -156,6 +157,62 @@ class DataVisualizationPresenter(QObject):
         # **Den neuen Gebäudetyp SLP auch im Modell speichern**
         self.model.update_data_value(row, "Gebäudetyp", building_type)
 
+    def calculate_pv_data(self, output_filename):
+        """
+        Calculate PV data for each building and roof.
+        """
+        try:
+            self.model.try_filename = self.data_manager.get_try_filename()
+            self.model.calculate_pv_data(output_filename)
+            self.view.update_pv_tab(self.model.pv_results)
+            self.view.show_info_message("PV-Daten berechnet", f"PV-Daten wurden erfolgreich berechnet und gespeichert unter: {output_filename}")
+        except Exception as e:
+            self.view.show_info_message("Fehler", f"Fehler bei der Berechnung: {str(e)}\n{traceback.format_exc()}")
+
+    def on_tree_item_selected(self):
+        selected_items = self.view.pv_tab.treeWidget.selectedItems()
+        if selected_items:
+            self.highlight_roof_3d(selected_items[0])
+
+    def highlight_roof_3d(self, item):
+        """
+        Highlights a specific building or roof in the 3D plot based on the selected Tree View item.
+
+        Args:
+            item (QTreeWidgetItem): The selected item in the Tree View.
+        """
+        if isinstance(item, QTreeWidgetItem):
+            if item.parent() is None:
+                # It's a building
+                roof_name = item.text(0)
+                parent_id = self.find_parent_id(roof_name)
+                self.view.highlight_building_3d(parent_id, True, None, self.model.roof_info)
+            else:
+                # It's a roof under a building
+                parent_item = item.parent()
+                roof_name = parent_item.text(0)
+                roof_index = parent_item.indexOfChild(item)
+                parent_id = self.find_parent_id(roof_name)
+                self.view.highlight_building_3d(parent_id, True, roof_index, self.model.roof_info)
+        else:
+            # Wenn es ein String ist (also die parent_id)
+            self.view.highlight_building_3d(item, True, None, self.model.roof_info)
+
+    def find_parent_id(self, roof_name):
+        """
+        Finds the parent ID associated with a roof name.
+
+        Args:
+            roof_name (str): The name of the roof.
+
+        Returns:
+            str: The parent ID corresponding to the roof.
+        """
+        for parent_id, info in self.model.roof_info.items():
+            if info['Adresse'] == roof_name:
+                return parent_id
+        return None
+    
     def save_data_as_geojson(self):
         """
         Collects data from the view and passes it to the model for saving.
@@ -187,6 +244,9 @@ class DataVisualizationPresenter(QObject):
                     self.model.tabula_building_types, 
                     self.model.building_subtypes
                 )
+
+                self.view.display_data(self.model.roof_info)  # Update the PV tab with the roof data
+
                 self.view.update_3d_view(self.model.building_info)
             
             except Exception as e:

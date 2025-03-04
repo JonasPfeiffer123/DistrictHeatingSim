@@ -32,7 +32,10 @@ class LOD2Visualization3D:
         self.figure_3d = canvas_3d.figure
         self.canvas_3d = canvas_3d
         self.building_data = {}  # To keep track of all buildings
+        self.roof_data = {}  # To keep track of all roofs
         self.highlighted_building_id = None  # To keep track of the highlighted building
+        self.roof = False  # To keep track of the highlighted roof
+        self.highlighted_roof_id = None  # To keep track of the highlighted roof
         self.utm_epsg = "EPSG:25833"
 
     def update_3d_view(self, building_info):
@@ -58,13 +61,13 @@ class LOD2Visualization3D:
         # **Gebäude zeichnen**
         for i, (parent_id, info) in enumerate(building_info.items()):
             # **Hervorhebung der Auswahl**: Falls `highlighted_building_id`, dann ROT
-            if parent_id == self.highlighted_building_id:
-                color = (1, 0, 0, 1)  # **Reines Rot in RGBA**
-            else:
-                color = face_colors[i]  # Normaler Farbverlauf für unmarkierte Gebäude
+            building_color = face_colors[i]
+            if self.roof == False:
+                if parent_id == self.highlighted_building_id:
+                    building_color = (1, 0, 0, 1)  # **Reines Rot in RGBA**
             
             min_x, min_y, min_z, max_x, max_y, max_z = self.plot_building_parts(
-                ax, info, min_x, min_y, min_z, max_x, max_y, max_z, color
+                ax, info, min_x, min_y, min_z, max_x, max_y, max_z, building_color
             )
 
         # Achsenverzerrung entfernen, Z-Achse begrenzen
@@ -80,7 +83,7 @@ class LOD2Visualization3D:
 
         self.canvas_3d.draw()
 
-    def plot_building_parts(self, ax, info, min_x, min_y, min_z, max_x, max_y, max_z, color):
+    def plot_building_parts(self, ax, info, min_x, min_y, min_z, max_x, max_y, max_z, building_color):
         """
         Plots the building parts in the 3D plot and updates the bounds.
 
@@ -93,17 +96,28 @@ class LOD2Visualization3D:
             max_x (float): The maximum X value for bounding the plot.
             max_y (float): The maximum Y value for bounding the plot.
             max_z (float): The maximum Z value for bounding the plot.
-            color (str): The color to use for the building parts.
+            building_color (str): The color to use for the building parts.
 
         Returns:
             tuple: Updated bounding box values (min_x, min_y, min_z, max_x, max_y, max_z).
         """
         min_x, min_y, min_z, max_x, max_y, max_z = self.plot_geometry(
-            ax, info.get('Ground', []), color, min_x, min_y, min_z, max_x, max_y, max_z)
+            ax, info.get('Ground', []), building_color, min_x, min_y, min_z, max_x, max_y, max_z)
         min_x, min_y, min_z, max_x, max_y, max_z = self.plot_geometry(
-            ax, info.get('Wall', []), color, min_x, min_y, min_z, max_x, max_y, max_z)
-        min_x, min_y, min_z, max_x, max_y, max_z = self.plot_geometry(
-            ax, info.get('Roof', []), color, min_x, min_y, min_z, max_x, max_y, max_z)
+            ax, info.get('Wall', []), building_color, min_x, min_y, min_z, max_x, max_y, max_z)
+        if self.roof == False:
+            min_x, min_y, min_z, max_x, max_y, max_z = self.plot_geometry(
+                ax, info.get('Roof', []), building_color, min_x, min_y, min_z, max_x, max_y, max_z)
+        else:
+            # Plotting Roof geometries
+            for i, roof in enumerate(info.get('Roofs', [])):
+                roof_color = building_color
+                parent_id = roof.get('parent_id')
+                if parent_id == self.highlighted_building_id and (self.highlighted_roof_id is None or self.highlighted_roof_id == i):
+                    roof_color = (1, 0, 0, 1)  # Pure red in RGBA
+                
+                min_x, min_y, min_z, max_x, max_y, max_z = self.plot_geometry(
+                    ax, [roof['geometry']], roof_color, min_x, min_y, min_z, max_x, max_y, max_z)
 
         return min_x, min_y, min_z, max_x, max_y, max_z
 
@@ -153,23 +167,24 @@ class LOD2Visualization3D:
 
         return min_x, min_y, min_z, max_x, max_y, max_z
 
-    def highlight_building_3d(self, parent_id):
+    def highlight_building_3d(self, parent_id, roof=False, roof_id=None, roof_info=None):
         """
         Highlights a specific building in the 3D plot.
 
         Args:
             parent_id (str): The ID of the building to highlight.
         """
-        # Check if the building is already highlighted
-        if self.highlighted_building_id == parent_id:
-            # Deselect the building by setting the highlighted_building_id to None
-            self.highlighted_building_id = None
-        else:
-            # Highlight the new building
-            self.highlighted_building_id = parent_id
+        self.roof = roof
+        self.highlighted_roof_id = roof_id
+        self.highlighted_building_id = parent_id
+        self.roof_info = roof_info
 
-        # Re-render the 3D view with the updated highlight
-        self.update_3d_view(self.building_data)
+        if self.roof and roof_info:
+            # Re-render the 3D view with the updated highlight
+            self.update_3d_view(self.roof_info)
+        else:
+            # Re-render the 3D view with the updated highlight
+            self.update_3d_view(self.building_data)
 
     def set_equal_axes(self, ax, min_x, max_x, min_y, max_y, min_z, max_z):
         """

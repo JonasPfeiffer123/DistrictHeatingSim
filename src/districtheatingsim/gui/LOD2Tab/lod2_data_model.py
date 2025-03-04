@@ -12,15 +12,34 @@ import pandas as pd
 import numpy as np
 import geopandas as gpd
 import traceback
+from pyproj import Transformer
+import traceback
 
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtCore import pyqtSignal, QObject
 
 from districtheatingsim.lod2.filter_LOD2 import (
     spatial_filter_with_polygon, filter_LOD2_with_coordinates, 
-    process_lod2, calculate_centroid_and_geocode
+    process_lod2, calculate_centroid_and_geocode, process_roof
 )
 from districtheatingsim.lod2.heat_requirement_LOD2 import Building
+
+from districtheatingsim.heat_generators.photovoltaics import Calculate_PV
+
+def transform_coordinates(etrs89_x, etrs89_y):
+    """
+    Transforms coordinates from ETRS89 (EPSG:25833) to WGS84 (EPSG:4326).
+
+    Args:
+        etrs89_x (float): ETRS89 X coordinate (in meters).
+        etrs89_y (float): ETRS89 Y coordinate (in meters).
+
+    Returns:
+        tuple: Latitude and Longitude in WGS84.
+    """
+    transformer = Transformer.from_crs("EPSG:25833", "EPSG:4326", always_xy=True)
+    lon, lat = transformer.transform(etrs89_x, etrs89_y)
+    return lat, lon
 
 class LOD2DataModel(QObject):
     """
@@ -125,10 +144,12 @@ class LOD2DataModel(QObject):
         self.output_geojson_path = output_geojson_path
 
         self.building_info = process_lod2(self.output_geojson_path, self.standard_values)
+        self.roof_info = process_roof(self.output_geojson_path)
         
         address_missing = any(info['Adresse'] is None for info in self.building_info.values())
         if address_missing:
             self.building_info = calculate_centroid_and_geocode(self.building_info)
+            self.roof_info = calculate_centroid_and_geocode(self.roof_info)
 
         # Überprüfen und Laden der U-Werte für jedes Gebäude
         self.check_and_load_u_values()
@@ -157,7 +178,6 @@ class LOD2DataModel(QObject):
                 self.update_u_values(row)
 
             # which value is changed
-            print(f"Value changed for {key} from {self.building_info[parent_id].get(key)} to {value}")
             self.data_updated.emit()  # Signal senden nur wenn sich Werte geändert haben
 
     def get_u_values(self, building_type, building_state):
@@ -263,6 +283,65 @@ class LOD2DataModel(QObject):
             # Speicherung der Ergebnisse im `info`-Daten
             info['Wärmebedarf'] = np.round(building.yearly_heat_demand,2)
             info['WW_Anteil'] = np.round(building.warm_water_share,2)
+
+    def calculate_pv_data(self, output_filename):
+        """
+        Calculate PV data for each building and roof.
+        """
+        try:            
+            results = []
+
+            # Loop through each building and each roof for calculation
+            for parent_id, roof_info in self.roof_info.items():
+                # Transform coordinates from ETRS89 to WGS84
+                latitude, longitude = transform_coordinates(
+                    roof_info['Koordinate_X'], roof_info['Koordinate_Y']
+                )
+
+                for roof in roof_info.get('Roofs', []):
+                    roof_areas = roof['Area'] if isinstance(roof['Area'], list) else [roof['Area']]
+                    roof_slopes = roof['Roof_Slope'] if isinstance(roof['Roof_Slope'], list) else [roof['Roof_Slope']]
+                    roof_orientations = roof['Roof_Orientation'] if isinstance(roof['Roof_Orientation'], list) else [roof['Roof_Orientation']]
+
+                    for i in range(len(roof_areas)):
+                        roof_area = float(roof_areas[i])
+                        roof_slope = float(roof_slopes[i])
+                        roof_orientation = float(roof_orientations[i])
+
+                        # Calculate PV for the current roof segment
+                        yield_MWh, max_power, _ = Calculate_PV(
+                            self.try_filename,
+                            Gross_area=roof_area,
+                            Longitude=longitude,
+                            STD_Longitude=15,  # Replace with the correct standard longitude
+                            Latitude=latitude,
+                            Albedo=0.2,  # Example albedo value, adjust as necessary
+                            East_West_collector_azimuth_angle=roof_orientation,
+                            Collector_tilt_angle=roof_slope
+                        )
+
+                        results.append({
+                            'Building': roof_info['Adresse'],
+                            'Latitude': latitude,
+                            'Longitude': longitude,
+                            'Roof Area (m²)': roof_area,
+                            'Slope (°)': roof_slope,
+                            'Orientation (°)': roof_orientation,
+                            'Yield (MWh)': yield_MWh,
+                            'Max Power (kW)': max_power
+                        })
+            
+            self.pv_results = results
+
+            # Save results to CSV
+            results_df = pd.DataFrame(results)
+            results_df.to_csv(output_filename, index=False, sep=';')
+
+            self.data_updated.emit()  # Signal, dass die Daten aktualisiert wurden
+
+        except Exception as e:
+            # traceback zu Exception hinzufügen
+            raise Exception(f"Failed to calculate PV data: {str(e)}\n{traceback.format_exc()}")
     
     def get_resource_path(self, relative_path):
         """
