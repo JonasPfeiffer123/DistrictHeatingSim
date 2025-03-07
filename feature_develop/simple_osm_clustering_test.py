@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import numpy as np
 import geopandas as gpd
 
-from currently_not_used.heat_supply_areas import clustering_districts_hdbscan, postprocessing_hdbscan, allocate_overlapping_area
+from feature_develop.heat_supply_areas import clustering_districts_hdbscan, postprocessing_hdbscan, allocate_overlapping_area
 
 ### Clustering in Wärmeversorgungsgebiete ###
 def osm_clustering():
