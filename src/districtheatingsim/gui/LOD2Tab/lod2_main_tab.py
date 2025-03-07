@@ -1,7 +1,7 @@
 """
 Filename: lod2_main_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-02-03
+Date: 2025-02-07
 Description: Contains the main tab for the LOD2 data visualization.
 """
 
@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import (QAction, QWidget, QVBoxLayout, QMenuBar, QMessageBo
 from districtheatingsim.gui.LOD2Tab.lod2_data_model import LOD2DataModel
 from districtheatingsim.gui.LOD2Tab.lod2_presenter import DataVisualizationPresenter
 from districtheatingsim.gui.LOD2Tab.lod2_visualization import LOD2DataVisualization
+from districtheatingsim.gui.LOD2Tab.lod2_dialogs import LOD2DownloadDialog
 
 class LOD2Tab(QWidget):
     def __init__(self, folder_manager, data_manager, config_manager, parent=None):
@@ -85,6 +86,10 @@ class LOD2Tab(QWidget):
 
         processMenu = self.menubar.addMenu('Datenverarbeitung')
 
+        self.lod2DownloadAction = QAction('LOD2-Daten herunterladen', self)
+        processMenu.addAction(self.lod2DownloadAction)
+        self.lod2DownloadAction.triggered.connect(self.open_lod2_download_dialog)
+
         self.processFilterAction = QAction('LOD2-Daten filtern laden', self)
         processMenu.addAction(self.processFilterAction)
         self.processFilterAction.triggered.connect(self.data_vis_presenter.show_filter_dialog)
@@ -102,6 +107,11 @@ class LOD2Tab(QWidget):
         self.createPVAction.triggered.connect(self.pv_file_dialog)
 
         self.main_layout.setMenuBar(self.menubar)
+
+    def open_lod2_download_dialog(self):
+        """Öffnet den Dialog zum Download von LOD2-Daten."""
+        dialog = LOD2DownloadDialog(self.folder_manager, self.config_manager, self)
+        dialog.exec_()
     
     def pv_file_dialog(self):
         """
