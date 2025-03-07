@@ -96,10 +96,9 @@ def get_lod2_links(landkreis_name, gemeinde_name, download_dir):
 
 def download_lod2_files(landkreis_name, gemeinde_name, download_dir, extract_dir):
     os.makedirs(download_dir, exist_ok=True)
-    os.makedirs(extract_dir, exist_ok=True)
+    
+    # Lade gespeicherte Download-Links
     OUTPUT_FILE = os.path.join(download_dir, "lod2_selected.json")
-
-    """Lädt die LOD2-Dateien herunter, entpackt sie und speichert sie an einem definierten Ort."""
     if not os.path.exists(OUTPUT_FILE):
         print("Keine gespeicherten Download-Links gefunden. Bitte zuerst `get_lod2_links` ausführen!")
         return
@@ -112,49 +111,39 @@ def download_lod2_files(landkreis_name, gemeinde_name, download_dir, extract_dir
         return
 
     download_links = data["lod2_files"]
-    
-    """ Lädt die LOD2-Dateien herunter, entpackt sie und speichert sie an einem definierten Ort. """
+
+    # Zielordner für Gemeinde erstellen
+    os.makedirs(extract_dir, exist_ok=True)
+
     for link in download_links:
         parsed_url = urllib.parse.urlparse(link)
         query_params = urllib.parse.parse_qs(parsed_url.query)
+        file_name = query_params["files"][0] if "files" in query_params else "unknown_file.zip"
 
-        if "files" in query_params:
-            file_name = query_params["files"][0]
-        else:
-            file_name = "unknown_file.zip"
+        zip_path = os.path.join(extract_dir, file_name)
 
-        # Zielordner für die entpackten Daten pro Gemeinde anpassen
-        kommune_folder = os.path.join(extract_dir, f"{landkreis_name}_{gemeinde_name}")
-        os.makedirs(kommune_folder, exist_ok=True)
-
-        zip_path = os.path.join(kommune_folder, file_name)
-
-        print(f"Starte Download von {file_name}...")
-
+        # ⬇️ Datei nur herunterladen, wenn sie nicht existiert
         if not os.path.exists(zip_path):
             response = requests.get(link, stream=True)
-
             if response.status_code == 200:
                 with open(zip_path, "wb") as f:
                     for chunk in response.iter_content(chunk_size=8192):
                         f.write(chunk)
-                print(f"Datei gespeichert: {zip_path}")
+                print(f"✅ Datei gespeichert: {zip_path}")
             else:
-                print(f"Fehler beim Download: {link}")
+                print(f"❌ Fehler beim Download: {link}")
                 continue
 
-        # Zielordner für die entpackten Daten pro Gemeinde anpassen
-        kommune_folder = os.path.join(extract_dir, f"{landkreis_name}_{gemeinde_name}")
-        os.makedirs(kommune_folder, exist_ok=True)
+        # 🗂 ZIP entpacken, aber doppelte Unterverzeichnisse vermeiden
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_content = zip_ref.namelist()
+            first_folder = os.path.commonprefix(zip_content).rstrip('/')
 
-        extract_path = os.path.join(kommune_folder, file_name.replace(".zip", ""))
-
-        if not os.path.exists(extract_path):
-            try:
-                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                    zip_ref.extractall(extract_path)
-                print(f"Entpackt nach: {extract_path}")
-            except zipfile.BadZipFile:
-                print(f"Fehler: ZIP-Datei ist beschädigt oder ungültig: {zip_path}")
-        else:
-            print(f"Bereits entpackt: {extract_path}")
+            # 🔄 Überprüfen, ob ZIP bereits ein Verzeichnis enthält
+            if first_folder and "/" in first_folder:
+                extract_target = extract_dir  # Direkt in `kommune_folder` extrahieren
+            else:
+                extract_target = os.path.join(extract_dir, file_name.replace(".zip", ""))
+            
+            zip_ref.extractall(extract_target)
+            print(f"📂 Entpackt nach: {extract_target}")
