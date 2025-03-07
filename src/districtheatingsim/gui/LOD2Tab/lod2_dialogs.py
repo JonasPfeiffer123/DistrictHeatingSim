@@ -1,14 +1,127 @@
 """
 Filename: lod2_dialogs.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-02-02
-Description: Contains the Dialogs for the LOD2Tab.
+Date: 2025-03-07
+Description: Contains the Dialogs for the LOD2Tab. These are the LOD2DownloadDialog and FilterDialog.
 """
 
 import os
+import sys
+import json
 
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QFileDialog
+from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QFileDialog,
+                                QFormLayout, QMessageBox)
 from PyQt5.QtGui import QFont
+
+from districtheatingsim.lod2.lod2_download import get_lod2_links, download_lod2_files
+from districtheatingsim.lod2.process_lod2 import convert_shapefiles_to_geojson, merge_geojsons
+
+LOD2_JSON_FILE = "/src/districtheatingsim/data/LOD2/landkreise_gemeinden.json"  # Pfad zur JSON-Datei mit Landkreisen & Gemeinden
+
+def get_resource_path(relative_path):
+    """
+    Get the absolute path to the resource, works for dev and for PyInstaller.
+
+    Args:
+        relative_path (str): The relative path to the resource.
+
+    Returns:
+        str: The absolute path to the resource.
+    """
+    if getattr(sys, 'frozen', False):
+        # If the application is frozen, the base path is the temp folder where PyInstaller extracts everything
+        base_path = sys._MEIPASS
+    else:
+        # If the application is not frozen, the base path is the directory where the main file is located
+        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    return os.path.join(base_path, relative_path)
+
+class LOD2DownloadDialog(QDialog):
+    def __init__(self, folder_manager, config_manager, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("LOD2 Daten herunterladen")
+        self.setGeometry(300, 200, 400, 250)
+
+        self.folder_manager = folder_manager
+        self.config_manager = config_manager
+
+        lod2_json_path  = get_resource_path("..\\data\\LOD2\\landkreise_gemeinden.json")
+
+        with open(lod2_json_path, "r", encoding="utf-8") as f:
+            self.lod2_data = json.load(f)
+
+        # Speicherorte über `folder_manager` holen
+        self.download_dir = os.path.join(self.folder_manager.project_folder, "Eingangsdaten allgemein\\LOD2\\downloads")
+        self.extract_dir = os.path.join(self.folder_manager.project_folder, "Eingangsdaten allgemein\\LOD2\\extracted")
+        self.geojson_dir = os.path.join(self.folder_manager.project_folder, "Eingangsdaten allgemein\\LOD2\\geojson")
+        
+        # UI-Elemente für Landkreise, Gemeinden, Paketauswahl
+        self.landkreis_dropdown = QComboBox()
+        self.landkreis_dropdown.addItems(sorted(self.lod2_data.keys()))
+        self.landkreis_dropdown.currentTextChanged.connect(self.update_gemeinde_dropdown)
+
+        self.gemeinde_dropdown = QComboBox()
+        self.update_gemeinde_dropdown(self.landkreis_dropdown.currentText())
+
+        self.lod2_package_dropdown = QComboBox()
+        self.lod2_package_dropdown.addItem("LOD2_Shape")
+
+        self.crs_dropdown = QComboBox()
+        self.crs_dropdown.addItems(["EPSG:25833"])
+
+        self.download_button = QPushButton("Download starten")
+        self.download_button.clicked.connect(self.start_download)
+
+        # Layout für den Dialog
+        form_layout = QFormLayout()
+        form_layout.addRow(QLabel("Landkreis:"), self.landkreis_dropdown)
+        form_layout.addRow(QLabel("Gemeinde:"), self.gemeinde_dropdown)
+        form_layout.addRow(QLabel("LOD2-Paket:"), self.lod2_package_dropdown)
+        form_layout.addRow(QLabel("Ziel-CRS:"), self.crs_dropdown)
+        self.layout = QVBoxLayout()
+        self.layout.addLayout(form_layout)
+        self.layout.addWidget(self.download_button)
+        self.setLayout(self.layout)
+
+    def update_gemeinde_dropdown(self, landkreis):
+        """ Aktualisiert das Dropdown der Gemeinden basierend auf dem Landkreis. """
+        self.gemeinde_dropdown.clear()
+        if landkreis in self.lod2_data:
+            gemeinden = self.lod2_data[landkreis]["gemeinden"]
+            self.gemeinde_dropdown.addItems(sorted(gemeinden.keys()))
+
+    def start_download(self):
+        """ Startet den Download und verarbeitet die LOD2-Daten weiter. """
+        landkreis = self.landkreis_dropdown.currentText()
+        gemeinde = self.gemeinde_dropdown.currentText()
+
+        # Download- und Entpackpfade setzen
+        extract_folder = os.path.join(self.extract_dir, f"{landkreis}_{gemeinde}")
+        geojson_folder = os.path.join(self.geojson_dir, f"{landkreis}_{gemeinde}")
+        
+        # Schritt 1: Download starten
+        get_lod2_links(landkreis, gemeinde, self.download_dir)
+        download_lod2_files(landkreis, gemeinde, self.download_dir, extract_folder)
+
+        QMessageBox.information(self, "Fertig", "LOD2-Daten erfolgreich heruntergeladen und entpackt! Konvertierung zu GeoJSON startet...")
+
+        # Schritt 2: Shapefiles -> GeoJSON konvertieren
+        self.target_crs = self.crs_dropdown.currentText()
+        geojson_files = convert_shapefiles_to_geojson(extract_folder, geojson_folder, self.target_crs)
+
+        if not geojson_files:
+            QMessageBox.critical(self, "Fehler", "Keine Shapefiles gefunden oder Fehler bei der Konvertierung!")
+            return
+
+        # Schritt 3: GeoJSONs mergen
+        merged_geojson_path = os.path.join(self.geojson_dir, f"{landkreis}_{gemeinde}_LOD2.geojson")
+        merge_geojsons(geojson_folder, merged_geojson_path, self.target_crs)
+
+        QMessageBox.information(self, "Fertig", f"GeoJSON-Daten gespeichert unter: {merged_geojson_path}")
+
+        self.accept()
+
 
 class FilterDialog(QDialog):
     """

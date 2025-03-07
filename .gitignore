@@ -153,3 +153,5 @@ cython_debug/
 
 # PC specific config files for districtheatingsim
 /src/districtheatsim/config.json
+
+extracted/
