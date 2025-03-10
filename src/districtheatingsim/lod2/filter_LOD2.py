@@ -104,6 +104,7 @@ def spatial_filter_with_polygon(lod_geojson_path, polygon_shapefile_path, output
     filtered_lod_gdf = lod_gdf[lod_gdf['ID'].isin(ids_within_polygon)]
 
     filtered_lod_gdf.to_file(output_geojson_path, driver='GeoJSON')
+    print(f"Filtered LOD2 data saved to {output_geojson_path}")
 
 def calculate_polygon_area_3d(polygon):
     """

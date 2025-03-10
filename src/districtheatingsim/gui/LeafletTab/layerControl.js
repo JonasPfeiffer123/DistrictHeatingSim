@@ -77,7 +77,7 @@ function updateLayerVisuals(layer) {
     });
 }
 
-ocument.getElementById('opacityOkButton').onclick = () => {
+document.getElementById('opacityOkButton').onclick = () => {
     document.getElementById('opacityControl').style.display = 'none';
 };
 
