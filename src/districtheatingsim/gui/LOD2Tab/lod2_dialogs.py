@@ -6,7 +6,6 @@ Description: Contains the Dialogs for the LOD2Tab. These are the LOD2DownloadDia
 """
 
 import os
-import sys
 import json
 
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QFileDialog,
@@ -15,27 +14,7 @@ from PyQt5.QtGui import QFont
 
 from districtheatingsim.lod2.lod2_download import get_lod2_links, download_lod2_files
 from districtheatingsim.lod2.process_lod2 import convert_shapefiles_to_geojson, merge_geojsons
-
-LOD2_JSON_FILE = "/src/districtheatingsim/data/LOD2/landkreise_gemeinden.json"  # Pfad zur JSON-Datei mit Landkreisen & Gemeinden
-
-def get_resource_path(relative_path):
-    """
-    Get the absolute path to the resource, works for dev and for PyInstaller.
-
-    Args:
-        relative_path (str): The relative path to the resource.
-
-    Returns:
-        str: The absolute path to the resource.
-    """
-    if getattr(sys, 'frozen', False):
-        # If the application is frozen, the base path is the temp folder where PyInstaller extracts everything
-        base_path = sys._MEIPASS
-    else:
-        # If the application is not frozen, the base path is the directory where the main file is located
-        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-    return os.path.join(base_path, relative_path)
+from districtheatingsim.utilities.utilities import get_resource_path
 
 class LOD2DownloadDialog(QDialog):
     def __init__(self, folder_manager, config_manager, parent=None):

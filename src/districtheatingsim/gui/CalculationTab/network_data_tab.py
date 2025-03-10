@@ -6,7 +6,6 @@ Description: Contains the NetworkDataTab class.
 """
 
 import os
-import sys
 
 import geopandas as gpd
 from shapely import Point
@@ -17,17 +16,6 @@ from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QComboBox, QWidget, 
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-
-def get_resource_path(relative_path):
-    """ Get the absolute path to the resource, works for dev and for PyInstaller """
-    if getattr(sys, 'frozen', False):
-        # Wenn die Anwendung eingefroren ist, ist der Basispfad der Temp-Ordner, wo PyInstaller alles extrahiert
-        base_path = sys._MEIPASS
-    else:
-        # Wenn die Anwendung nicht eingefroren ist, ist der Basispfad der Ordner, in dem die Hauptdatei liegt
-        base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-    return os.path.join(base_path, relative_path)
 
 class NetworkDataTab(QWidget):
     def __init__(self, base_path, parent=None):

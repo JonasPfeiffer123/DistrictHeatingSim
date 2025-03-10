@@ -1,7 +1,7 @@
 """
 Filename: Dialogs.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-31
+Date: 2025-03-10
 Description: Contains the Dialogs of the main GUI
 """
 
@@ -11,24 +11,7 @@ import os
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QPushButton, QHBoxLayout, QFileDialog, QCheckBox, QDialogButtonBox, QHBoxLayout
 from PyQt5.QtCore import Qt
 
-def get_resource_path(relative_path):
-    """
-    Get the absolute path to the resource, works for dev and for PyInstaller.
-
-    Args:
-        relative_path (str): The relative path to the resource.
-
-    Returns:
-        str: The absolute path to the resource.
-    """
-    if getattr(sys, 'frozen', False):
-        # When the application is frozen, the base path is the temp folder where PyInstaller extracts everything
-        base_path = sys._MEIPASS
-    else:
-        # When the application is not frozen, the base path is the folder where the main file is located
-        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-    return os.path.join(base_path, relative_path)
+from districtheatingsim.utilities.utilities import get_resource_path
 
 class TemperatureDataDialog(QDialog):
     """

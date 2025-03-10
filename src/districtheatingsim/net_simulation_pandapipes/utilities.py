@@ -1,15 +1,12 @@
 """
 Filename: utilities.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-12-06
+Date: 2025-03-10
 Description: Script with different functionalities used in the pandapipes functions.
 """
 
 import time
 import logging
-import sys
-import os
-
 import numpy as np
 import pandas as pd
 import geopandas as gpd
@@ -23,26 +20,10 @@ from pandapower.timeseries import DFData
 from pandapower.control.controller.const_control import ConstControl
 from pandapower.control.basic_controller import BasicCtrl
 
+from districtheatingsim.utilities.utilities import get_resource_path
+
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
-
-def get_resource_path(relative_path):
-    """Get the absolute path to the resource, works for dev and for PyInstaller.
-
-    Args:
-        relative_path (str): The relative path to the resource.
-
-    Returns:
-        str: The absolute path to the resource.
-    """
-    if getattr(sys, 'frozen', False):
-        # When the application is frozen, the base path is the temp folder where PyInstaller extracts everything
-        base_path = sys._MEIPASS
-    else:
-        # When the application is not frozen, the base path is the directory of the main file
-        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-    return os.path.join(base_path, relative_path)
 
 def COP_WP(VLT_L, QT, values=np.genfromtxt(get_resource_path('data/COP/Kennlinien WP.csv'), delimiter=';')):
     """Calculate the Coefficient of Performance (COP) for a heat pump based on supply and source temperatures.
