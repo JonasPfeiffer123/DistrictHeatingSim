@@ -5,9 +5,6 @@ Date: 2024-08-01
 Description: Contains the heat generator Dialogs for the MixDesignTab.
 """
 
-import sys
-import os
-
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QComboBox, QCheckBox, QGroupBox, \
     QDialogButtonBox, QHBoxLayout, QFormLayout, QPushButton, QFileDialog, QMessageBox, QWidget
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -15,26 +12,6 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import art3d
-
-# Defines the map path
-def get_resource_path(relative_path):
-    """ 
-    Get the absolute path to the resource, works for development and for PyInstaller.
-
-    Args:
-        relative_path (str): The relative path to the resource.
-
-    Returns:
-        str: The absolute path to the resource.
-    """
-    if getattr(sys, 'frozen', False):
-        # If the application is frozen, the base path is the temp folder where PyInstaller extracts everything
-        base_path = sys._MEIPASS
-    else:
-        # If the application is not frozen, the base path is the directory where the main file is located
-        base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-    return os.path.join(base_path, relative_path)
 
 class TechInputDialog(QDialog):
     """

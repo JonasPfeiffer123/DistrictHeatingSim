@@ -5,7 +5,8 @@ Date: 2024-09-10
 Description: Contains the Dialogs for the VisualizationTab.
 """
 
-import sys
+# To do: Optimize file naming
+
 import os
 
 import geopandas as gpd
@@ -25,15 +26,6 @@ from pyproj import Transformer
 from districtheatingsim.gui.VisualizationTab.net_generation_threads import GeocodingThread
 from districtheatingsim.geocoding.geocodingETRS89 import get_coordinates
 from districtheatingsim.osm.import_osm_data_geojson import build_query, download_data, save_to_file
-
-def get_resource_path(relative_path):
-    """ Get the absolute path to the resource, works for dev and for PyInstaller """
-    if getattr(sys, 'frozen', False):
-        base_path = sys._MEIPASS
-    else:
-        base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-    return os.path.join(base_path, relative_path)
    
 class LayerGenerationDialog(QDialog):
     """
