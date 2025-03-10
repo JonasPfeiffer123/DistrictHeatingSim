@@ -56,7 +56,6 @@ class TemperatureDataDialog(QDialog):
         self.resize(600, 200)  # Larger and resizable window
 
         self.main_layout = QVBoxLayout(self)
-        self.setLayout(self.main_layout)
 
         # Short description of the dialog
         self.descriptionLabel = QLabel(
@@ -69,7 +68,7 @@ class TemperatureDataDialog(QDialog):
         self.main_layout.addWidget(self.descriptionLabel)
 
         # Data fields and label
-        self.input_layout = QHBoxLayout(self)
+        self.input_layout = QHBoxLayout()
 
         self.temperatureDataFileLabel = QLabel("TRY-Datei:", self)
         self.temperatureDataFileInput = QLineEdit(self)
