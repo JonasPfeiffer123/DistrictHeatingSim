@@ -1,7 +1,0 @@
-ERROR:root:Fehler beim öffnen des Dialogs aufgetreten: 'NetworkDataTab' object has no attribute 'updateInputFieldsVisibility'
-ERROR:root:Fehler beim öffnen des Dialogs aufgetreten: 'NetGenerationDialog' object has no attribute 'config_manager'
-ERROR:root:Fehler beim öffnen des Dialogs aufgetreten: 'NetGenerationDialog' object has no attribute 'config_manager'
-INFO:pandapower.io_utils:Updating output_writer with index 0
-ERROR:pandapower.timeseries.run_time_series:CalculationNotConverged at time step 2664
-ERROR:pandapower.timeseries.run_time_series:CalculationNotConverged at time step 2664
-ERROR:fiona._env:c:\Users\jonas\DistrictHeatSim\src\districtheatingsim\project_data\Görlitz\Variante 1\Gebäudedaten\Quartierabgrenzung.geojson: No such file or directory
