@@ -10,9 +10,9 @@ import sys
 import csv
 import json
 
-from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QTableWidgetItem, QWidget, QVBoxLayout, 
-                             QMenuBar, QAction, QProgressBar, QLabel, QTableWidget, QFileSystemModel, 
-                             QTreeView, QSplitter, QMessageBox, QDialog, QMenu, QPushButton, QInputDialog)
+from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QTableWidgetItem, QWidget, QVBoxLayout, QHBoxLayout,
+                             QMenuBar, QAction, QProgressBar, QLabel, QTableWidget, QFileSystemModel,
+                             QTreeView, QSplitter, QMessageBox, QDialog, QMenu, QPushButton, QInputDialog, QSizePolicy)
 from PyQt5.QtCore import Qt, QTimer
 
 from districtheatingsim.gui.VisualizationTab.net_generation_threads import GeocodingThread
@@ -291,8 +291,7 @@ class ProjectPresenter:
             path (str): The new project folder path.
         """
         self.model.set_base_path(path)
-        self.view.update_path_label(path)
-        self.view.treeView.setRootIndex(self.view.treeView.model().index(os.path.dirname(path)))
+        self.view.update_tree_view(os.path.dirname(path))
         self.update_progress_tracker()
 
     def on_tree_view_double_clicked(self, index):
@@ -484,27 +483,36 @@ class ProjectTabView(QWidget):
         mainLayout = QVBoxLayout()
         splitter = QSplitter()
 
-        # Left area - File tree
+        # Left area
         self.leftLayout = QVBoxLayout()
-        self.pathLabel = QLabel("Projektordner: Kein Ordner ausgewählt")
-        self.leftLayout.addWidget(self.pathLabel)
+
+        # Tree view for project structure
         self.model = QFileSystemModel()
         self.model.setRootPath("")
         self.treeView = QTreeView()
         self.treeView.setModel(self.model)
+        #self.treeView.setHeaderHidden(True)
+        #self.treeView.setSortingEnabled(True)
+        self.treeView.setMinimumWidth(500)  # Set a minimum width for the tree view
+        self.treeView.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # Allow it to expand
+
         leftWidget = QWidget()
         leftWidget.setLayout(self.leftLayout)
         self.leftLayout.addWidget(self.treeView)
 
         # Add progress bar and label under the tree view
+        self.progressLayout = QHBoxLayout()
         self.progressLabel = QLabel("Projektfortschritt:")
-        self.leftLayout.addWidget(self.progressLabel)
+        self.progressLayout.addWidget(self.progressLabel)
 
         self.projectProgressBar = QProgressBar(self)
-        self.leftLayout.addWidget(self.projectProgressBar)
+        self.progressLayout.addWidget(self.projectProgressBar)
+
+        self.leftLayout.addLayout(self.progressLayout)
 
         # Button to show details
         self.detailsButton = QPushButton("Details anzeigen", self)
+        self.detailsButton.setToolTip("Details zu den einzelnen Schritten anzeigen")
         self.detailsButton.clicked.connect(self.showDetailsDialog)
         self.leftLayout.addWidget(self.detailsButton)
 
@@ -543,10 +551,15 @@ class ProjectTabView(QWidget):
 
         fileMenu = self.menuBar.addMenu('Datei')
         self.createCSVAction = QAction('CSV erstellen', self)
+        self.createCSVAction.setToolTip("Create a new CSV file")
         self.createCSVfromgeojsonAction = QAction('Gebäude-CSV aus OSM-geojson erstellen', self)
+        self.createCSVfromgeojsonAction.setToolTip("Create a building CSV from OSM geojson data")
         self.downloadAction = QAction('Adressdaten geocodieren', self)
+        self.downloadAction.setToolTip("Geocode address data from a CSV file")
         self.openAction = QAction('CSV laden', self)
+        self.openAction.setToolTip("Load a CSV file")
         self.saveAction = QAction('CSV speichern', self)
+        self.saveAction.setToolTip("Save the current CSV file")
 
         fileMenu.addAction(self.createCSVAction)
         fileMenu.addAction(self.openAction)
@@ -555,6 +568,22 @@ class ProjectTabView(QWidget):
         fileMenu.addAction(self.downloadAction)
 
         self.rightLayout.addWidget(self.menuBar)
+
+    def update_tree_view(self, path):
+        """
+        Update the tree view with the given path.
+
+        Args:
+            path (str): The path to set as the root of the tree view.
+        """
+        self.treeView.setRootIndex(self.treeView.model().index(path))
+
+        print("Tree view updated with path:", path)
+
+        # Automatically resize columns to fit contents
+        for column in range(self.model.columnCount()):
+            self.treeView.resizeColumnToContents(column)
+
 
     def show_context_menu(self, position):
         """
@@ -664,15 +693,6 @@ class ProjectTabView(QWidget):
         else:
             self.show_error_message("Warnung", "Bitte wählen Sie eine Spalte zum Duplizieren aus.")
 
-    def update_path_label(self, new_base_path):
-        """
-        Update the label displaying the current project folder path.
-
-        Args:
-            new_base_path (str): The new base path of the project.
-        """
-        self.pathLabel.setText(f"Geöffnete Variante: {new_base_path}")
-
     def get_selected_file_path(self, index):
         """
         Get the file path of the selected item in the tree view.
@@ -700,7 +720,6 @@ class ProjectTabView(QWidget):
         Update the progress bar and label with the current progress.
         """
         self.projectProgressBar.setValue(int(progress))
-        self.progressLabel.setText(f"Projektfortschritt: {int(progress)}%")
 
     def showDetailsDialog(self):
         """
