@@ -152,6 +152,6 @@ cython_debug/
 #.idea/
 
 # PC specific config files for districtheatingsim
-/src/districtheatsim/config.json
+error_log.txt
 
 extracted/
