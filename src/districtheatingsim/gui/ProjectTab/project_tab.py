@@ -316,7 +316,8 @@ class ProjectPresenter:
         """
         Open a CSV file and load it into the table.
         """
-        fname, _ = QFileDialog.getOpenFileName(self.view, 'CSV öffnen', self.model.get_base_path(), 'CSV Files (*.csv);;All Files (*)')
+        standard_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("current_building_data_path"))
+        fname, _ = QFileDialog.getOpenFileName(self.view, 'CSV öffnen', standard_path, 'CSV Files (*.csv);;All Files (*)')
         if fname:
             self.load_csv(fname)
 
@@ -350,7 +351,7 @@ class ProjectPresenter:
         if file_path:
             self.model.save_csv(file_path, headers, data)
         else:
-            self.view.show_error_message("Warnung", "Es wurde keine Datei zum Speichern ausgewählt oder erstellt.")
+            self.view.show_error_message("Warnung", "Es wurde keine Datei zum Speichern ausgewählt oder erstellt. Zum Speichern muss eine Datei geöffnet oder erstellt werden.")
 
     def add_row(self):
         """
@@ -368,13 +369,15 @@ class ProjectPresenter:
         else:
             self.view.show_error_message("Warnung", "Bitte wählen Sie eine Zeile zum Löschen aus.")
 
-    def create_csv(self):
+    def create_csv(self, fname=None):
         """
         Create a new CSV file with default headers and data.
         """
         headers = ['Land', 'Bundesland', 'Stadt', 'Adresse', 'Wärmebedarf', 'Gebäudetyp', "Subtyp", 'WW_Anteil', 'Typ_Heizflächen', 'VLT_max', 'Steigung_Heizkurve', 'RLT_max', "Normaußentemperatur"]
         default_data = ['']*len(headers)
-        fname, _ = QFileDialog.getSaveFileName(self.view, 'Gebäude-CSV erstellen', self.model.get_base_path(), 'CSV Files (*.csv);;All Files (*)')
+        if not fname:
+            standard_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("current_building_data_path"))
+            fname, _ = QFileDialog.getSaveFileName(self.view, 'Gebäude-CSV erstellen', standard_path, 'CSV Files (*.csv);;All Files (*)')
         if fname:
             self.model.create_csv(fname, headers, default_data)
             self.load_csv(fname)
@@ -383,7 +386,8 @@ class ProjectPresenter:
         """
         Create a CSV file from GeoJSON data with user-defined default values.
         """
-        geojson_file_path, _ = QFileDialog.getOpenFileName(self.view, "geoJSON auswählen", self.model.get_base_path(), "All Files (*)")
+        standard_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("OSM_buldings_path"))
+        geojson_file_path, _ = QFileDialog.getOpenFileName(self.view, "geoJSON auswählen", standard_path, "All Files (*)")
         if geojson_file_path:
             dialog = OSMImportDialog(self.view)
             if dialog.exec_() == QDialog.Accepted:
@@ -391,7 +395,8 @@ class ProjectPresenter:
                 default_values = dialog.get_input_data()
 
                 try:
-                    output_file_path = self.config_manager.get_resource_path("OSM_building_data_path")
+                    standard_output_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("OSM_building_data_path"))
+                    output_file_path = standard_output_path
                     self.model.create_csv_from_geojson(geojson_file_path, output_file_path, default_values)
                     self.load_csv(output_file_path)
                 except Exception as e:
@@ -401,7 +406,8 @@ class ProjectPresenter:
         """
         Open a dialog to select a CSV file for geocoding addresses.
         """
-        fname, _ = QFileDialog.getOpenFileName(self.view, 'CSV-Koordinaten laden', self.model.get_base_path(), 'CSV Files (*.csv);;All Files (*)')
+        standard_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("current_building_data_path"))
+        fname, _ = QFileDialog.getOpenFileName(self.view, 'CSV-Koordinaten laden', standard_path, 'CSV Files (*.csv);;All Files (*)')
         if fname:
             self.geocode_addresses(fname)
 
