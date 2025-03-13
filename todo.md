@@ -82,3 +82,10 @@ Test Projekte durcharbeiten:
 - Nacharbeitung bereits durchgeführter Projekte: Können Ergebnisse reproduziert werden?
     --> Ist eine vollständige Betrachtung möglich oder Fehlen dafür Funktionen?
         --> Sind diese sinnvoll implementierbar?
+
+
+
+Wenn neues Projekt erstellt wird:
+- Ordner project data vorgeben
+- im Lineedit "Beispielprojekt" als Standard
+- nach erstellen der Ordner CSV Gebäude Quartier IST leer mit Spaltennamen erstellen
