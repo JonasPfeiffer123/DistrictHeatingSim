@@ -461,10 +461,9 @@ class HeatSystemPresenter:
         Create a copy of the current project and allow the user to input a new project name.
         """
         base_dir = os.path.dirname(self.folder_manager.project_folder)
-        current_project_name = os.path.basename(self.folder_manager.project_folder)
 
         # Zeige ein Eingabefenster, um den neuen Projektnamen zu erhalten
-        new_project_name, ok = QInputDialog.getText(self.view, 'Projektkopie erstellen', 'Geben Sie einen neuen Namen für das Projekt ein:')
+        new_project_name, ok = QInputDialog.getText(self.view, 'Projektkopie erstellen', 'Geben Sie einen neuen Namen für das Projekt ein:', text=f"{os.path.basename(self.folder_manager.project_folder)} - Kopie")
 
         if ok and new_project_name:
             new_project_path = os.path.join(base_dir, new_project_name)
@@ -530,14 +529,13 @@ class HeatSystemPresenter:
         
     def create_project_variant_copy(self):
         """
-        Create a copy of the current variant.
+        Create a copy of the current variant, including all files within the variant folder.
         """
-        current_variant = os.path.basename(self.folder_manager.get_variant_folder())
         base_dir = os.path.dirname(self.folder_manager.get_variant_folder())
         variant_num = 1
 
         while True:
-            new_variant_name = f"{current_variant}_Kopie{variant_num}"
+            new_variant_name = f"Variante {variant_num}"  # Neuer Variantenname
             new_variant_path = os.path.join(base_dir, new_variant_name)
             if not os.path.exists(new_variant_path):
                 break
@@ -774,10 +772,10 @@ class HeatSystemDesignGUI(QMainWindow):
         Handle the creation of a new project.
         """
 
-        folder_path = QFileDialog.getExistingDirectory(self, "Speicherort für neues Projekt wählen", os.path.dirname(os.path.dirname(self.base_path)))
+        folder_path = os.path.dirname(os.path.dirname(self.base_path))
         
         if folder_path:
-            projectName, ok = QInputDialog.getText(self, 'Neues Projekt', 'Projektnamen eingeben:')
+            projectName, ok = QInputDialog.getText(self, 'Neues Projekt', 'Projektnamen eingeben:', text='Neues Projekt')
             if ok and projectName:
                 success = self.presenter.create_new_project(folder_path, projectName)
                 if success:
@@ -869,7 +867,7 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         Handle creating a project variant copy.
         """
-        success = self.presenter.create_project_variant()
+        success = self.presenter.create_project_variant_copy()
         if success:
             QMessageBox.information(self, "Info", "Projektvariantenkopie wurde erfolgreich erstellt.")
 
