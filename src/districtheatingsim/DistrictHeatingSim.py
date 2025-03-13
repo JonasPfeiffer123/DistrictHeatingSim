@@ -442,6 +442,10 @@ class HeatSystemPresenter:
                     self.folder_manager.set_variant_folder("Variante 1")
                 else:
                     self.view.show_error_message("Fehler: Variante 1 konnte nicht gefunden werden.")
+
+                # Erstelle eine neue CSV-Datei im Projekt-Tab-Presenter
+                csv_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("current_building_data_path"))
+                self.view.projectTab.presenter.create_csv(csv_path)
                 
                 return True
             except Exception as e:
