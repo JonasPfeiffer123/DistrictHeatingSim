@@ -1,4 +1,4 @@
-# To dos Stand 21.11.2024
+# To dos Stand 27.01.2025
 
 ## UI-Management:
 ### Allgemeines:
@@ -17,12 +17,11 @@
 - Datenhaltung allgemein überdenken
 
 ### LOD2-Datenverarbeitung:
-- LOD2 Verarbeitung eindeutiger Gestalten, klarer im UI dokumentieren / Erklären was berechnet / verarbeitet wird.
 - Versionierung überdenken
 - LOD2-Daten laden --> Exception-Handling bei timeout Nominatim geocoding
 
 ### Wärmenetzgenerierung:
-- Kartenanwendung überarbeiten, Bearbeitungsfunktionen ausweiten / Export von bearbeiteten Layern, Dateistrukturüberdenken
+- Dateistruktur überdenken
 
 ### Einzelversorgungslösungen
 - UI-Integration
@@ -43,9 +42,7 @@
     - Ausbauszenarien? 
 
 ### Wärmenetzberechnung:
-- **Prio 1:** Pandapipes 0.11 integrieren --> vorraussichtlich verschiedenste Optimierungen in der Berechnungslogik
-- Sekundäre Erzeuger hinzufügen
-- Bei sehr viel langeweile könnte man auch das manuelle Erstellen von Netzen anfangen. 
+- Sekundäre Erzeuger überarbeiten
 
 ### Wirtschaftlichkeitsberechnung:
 - Kostendefinitionen weiter recherchieren und einarbeiten
@@ -62,11 +59,14 @@
 ### Betrachtung Stromsektor:
 - Stromprofile zur Sektorkopplung
     - Implementierung von Stromprofilen sowohl auf Verbraucher- als auch auf Erzeugerseite zur Unterstützung der Sektorkopplung.
-- PV-Klasse für Stromerzeugung
-    - Stromprofile PV-Anlagen
 
 ### MILP based energy system calculation and optimization
 - include flixOpt or similar approaches for system optimization
+
+### Calculate button for all process steps
+- define the project and then press one button to calculate everything
+
+### variable electricity prices
 
 ## Testing
 Test Projekte durcharbeiten:
@@ -81,6 +81,3 @@ Test Projekte durcharbeiten:
 - Nacharbeitung bereits durchgeführter Projekte: Können Ergebnisse reproduziert werden?
     --> Ist eine vollständige Betrachtung möglich oder Fehlen dafür Funktionen?
         --> Sind diese sinnvoll implementierbar?
-
-
-

@@ -5,7 +5,6 @@ Date: 2024-08-01
 Description: Contains the Dialogs for the MixDesignTab.
 """
 
-import sys
 import os
 
 import numpy as np
@@ -18,18 +17,6 @@ from PyQt5.QtCore import Qt
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
-
-# defines the map path
-def get_resource_path(relative_path):
-    """ Get the absolute path to the resource, works for dev and for PyInstaller """
-    if getattr(sys, 'frozen', False):
-        # When the application is frozen, the base path is the temp folder where PyInstaller extracts everything
-        base_path = sys._MEIPASS
-    else:
-        # When the application is not frozen, the base path is the folder where the main script is located
-        base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-    return os.path.join(base_path, relative_path)
 
 class EconomicParametersDialog(QDialog):
     """

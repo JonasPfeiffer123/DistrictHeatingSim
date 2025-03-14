@@ -96,19 +96,17 @@ from PyQt5.QtCore import QObject, pyqtSignal, QTimer
 from PyQt5.QtGui import QIcon, QPixmap
 
 from districtheatingsim.gui.ProjectTab.project_tab import ProjectTab
-from districtheatingsim.gui.VisualizationTab.visualization_tab import VisualizationTab
-from districtheatingsim.gui.LOD2Tab.lod2_tab import LOD2Tab
+from districtheatingsim.gui.LOD2Tab.lod2_main_tab import LOD2Tab
 from districtheatingsim.gui.BuildingTab.building_tab import BuildingTab
 from districtheatingsim.gui.RenovationTab.RenovationTab import RenovationTab
 from districtheatingsim.gui.CalculationTab.calculation_tab import CalculationTab
 from districtheatingsim.gui.MixDesignTab.mix_design_tab import MixDesignTab
 from districtheatingsim.gui.ComparisonTab.comparison_tab import ComparisonTab
 from districtheatingsim.gui.IndividualTab.individual_tab import IndividualTab
-from districtheatingsim.gui.PVTab.pv_tab import PVTab
 from districtheatingsim.gui.results_pdf import create_pdf
 from districtheatingsim.gui.dialogs import TemperatureDataDialog, HeatPumpDataDialog
 
-from districtheatingsim.gui.PyQt5_leaflet.leaflet_tab import VisualizationTabLeaflet
+from districtheatingsim.gui.LeafletTab.leaflet_tab import VisualizationTabLeaflet
 
 class ProjectConfigManager:
     """
@@ -444,6 +442,10 @@ class HeatSystemPresenter:
                     self.folder_manager.set_variant_folder("Variante 1")
                 else:
                     self.view.show_error_message("Fehler: Variante 1 konnte nicht gefunden werden.")
+
+                # Erstelle eine neue CSV-Datei im Projekt-Tab-Presenter
+                csv_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("current_building_data_path"))
+                self.view.projectTab.presenter.create_csv(csv_path)
                 
                 return True
             except Exception as e:
@@ -463,10 +465,9 @@ class HeatSystemPresenter:
         Create a copy of the current project and allow the user to input a new project name.
         """
         base_dir = os.path.dirname(self.folder_manager.project_folder)
-        current_project_name = os.path.basename(self.folder_manager.project_folder)
 
         # Zeige ein Eingabefenster, um den neuen Projektnamen zu erhalten
-        new_project_name, ok = QInputDialog.getText(self.view, 'Projektkopie erstellen', 'Geben Sie einen neuen Namen für das Projekt ein:')
+        new_project_name, ok = QInputDialog.getText(self.view, 'Projektkopie erstellen', 'Geben Sie einen neuen Namen für das Projekt ein:', text=f"{os.path.basename(self.folder_manager.project_folder)} - Kopie")
 
         if ok and new_project_name:
             new_project_path = os.path.join(base_dir, new_project_name)
@@ -532,14 +533,13 @@ class HeatSystemPresenter:
         
     def create_project_variant_copy(self):
         """
-        Create a copy of the current variant.
+        Create a copy of the current variant, including all files within the variant folder.
         """
-        current_variant = os.path.basename(self.folder_manager.get_variant_folder())
         base_dir = os.path.dirname(self.folder_manager.get_variant_folder())
         variant_num = 1
 
         while True:
-            new_variant_name = f"{current_variant}_Kopie{variant_num}"
+            new_variant_name = f"Variante {variant_num}"  # Neuer Variantenname
             new_variant_path = os.path.join(base_dir, new_variant_name)
             if not os.path.exists(new_variant_path):
                 break
@@ -710,7 +710,6 @@ class HeatSystemDesignGUI(QMainWindow):
         self.lod2Tab = LOD2Tab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
         self.renovationTab = RenovationTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
         self.individualTab = IndividualTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager, self)
-        self.pvTab = PVTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
 
          # Hinzufügen der Tabs zum Widget und Menü
         self.add_tab_to_menu(self.projectTab, "Projektdefinition")
@@ -722,7 +721,6 @@ class HeatSystemDesignGUI(QMainWindow):
         self.add_tab_to_menu(self.lod2Tab, "Verarbeitung LOD2-Daten")
         self.add_tab_to_menu(self.renovationTab, "Gebäudesanierung")
         self.add_tab_to_menu(self.individualTab, "Einzelversorgungslösung")
-        self.add_tab_to_menu(self.pvTab, "Photovoltaik")
 
         self.default_visible_tabs = ["Projektdefinition", "Wärmebedarf Gebäude", "Kartenansicht Wärmenetzgenerierung", "Wärmenetzberechnung", "Erzeugerauslegung und Wirtschaftlichkeitsrechnung", "Variantenvergleich"]
 
@@ -778,10 +776,10 @@ class HeatSystemDesignGUI(QMainWindow):
         Handle the creation of a new project.
         """
 
-        folder_path = QFileDialog.getExistingDirectory(self, "Speicherort für neues Projekt wählen", os.path.dirname(os.path.dirname(self.base_path)))
+        folder_path = os.path.dirname(os.path.dirname(self.base_path))
         
         if folder_path:
-            projectName, ok = QInputDialog.getText(self, 'Neues Projekt', 'Projektnamen eingeben:')
+            projectName, ok = QInputDialog.getText(self, 'Neues Projekt', 'Projektnamen eingeben:', text='Neues Projekt')
             if ok and projectName:
                 success = self.presenter.create_new_project(folder_path, projectName)
                 if success:
@@ -873,7 +871,7 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         Handle creating a project variant copy.
         """
-        success = self.presenter.create_project_variant()
+        success = self.presenter.create_project_variant_copy()
         if success:
             QMessageBox.information(self, "Info", "Projektvariantenkopie wurde erfolgreich erstellt.")
 

@@ -120,18 +120,19 @@ class StatComparisonTab(QWidget):
             results = {
                 "Anzahl angeschlossene Gebäude": Anzahl_Gebäude,
                 "Anzahl Heizzentralen": Anzahl_Heizzentralen,
-                "Jahresgesamtwärmebedarf (MWh)": round(Gesamtwärmebedarf_Gebäude_MWh, 2),
-                "max. Heizlast Gebäude (kW)": round(Gesamtheizlast_Gebäude_kW, 2),
-                "Trassenlänge Wärmenetz (m)": round(Trassenlänge_m, 2),
-                "Wärmebedarfsdichte (MWh/(a*m))": round(Wärmebedarfsdichte_MWh_a_m, 2),
-                "Anschlussdichte (kW/m)": round(Anschlussdichte_kW_m, 2),
-                "Jahreswärmeerzeugung (MWh)": round(Jahreswärmeerzeugung_MWh, 2),
-                "Verteilverluste (kW)": round(Verteilverluste_kW, 2),
-                "Relative Verteilverluste (%)": round(rel_Verteilverluste_percent, 2),
-                "Pumpenstrombedarf (MWh)": round(Pumpenstrombedarf_MWh, 2)
+                "Jahresgesamtwärmebedarf (MWh)": np.round(Gesamtwärmebedarf_Gebäude_MWh, 2),
+                "max. Heizlast Gebäude (kW)": np.round(Gesamtheizlast_Gebäude_kW, 2),
+                "Trassenlänge Wärmenetz (m)": np.round(Trassenlänge_m, 2),
+                "Wärmebedarfsdichte (MWh/(a*m))": np.round(Wärmebedarfsdichte_MWh_a_m, 2),
+                "Anschlussdichte (kW/m)": np.round(Anschlussdichte_kW_m, 2),
+                "Jahreswärmeerzeugung (MWh)": np.round(Jahreswärmeerzeugung_MWh, 2),
+                "Verteilverluste (kW)": np.round(Verteilverluste_kW, 2),
+                "Relative Verteilverluste (%)": np.round(rel_Verteilverluste_percent, 2),
+                "Pumpenstrombedarf (MWh)": np.round(Pumpenstrombedarf_MWh, 2)
             }
 
             return results
+        
         except Exception as e:
             # Capture the traceback and display it in a message box
             tb_str = traceback.format_exc()
@@ -148,11 +149,11 @@ class StatComparisonTab(QWidget):
             self.load_csv_file(folder_path)
             self.load_json_file(folder_path)
 
-            # Process data
-            self.process_loaded_data()
-
             # Load additional results
             self.load_net_results(folder_path)
+
+            # Process data
+            self.process_loaded_data()
 
             QMessageBox.information(self, "Laden erfolgreich", 
                                     "Daten erfolgreich geladen aus: {}, {} und {}.".format(
@@ -161,7 +162,9 @@ class StatComparisonTab(QWidget):
                                         os.path.join(folder_path, self.config_manager.get_relative_path("json_net_init_file_path"))
                                     ))
         except Exception as e:
-            QMessageBox.critical(self, "Laden fehlgeschlagen", "Fehler beim Laden der Daten: {}".format(e))
+            # add the traceback to the error message
+            tb_str = traceback.format_exc()
+            QMessageBox.critical(self, "Laden fehlgeschlagen", f"Fehler beim Laden der Daten aus {folder_path}:\n\n{str(e)}\n\nTraceback:\n{tb_str}")
 
     def load_pickle_file(self, folder_path):
         """
@@ -206,7 +209,7 @@ class StatComparisonTab(QWidget):
             additional_data = json.load(json_file)
 
         self.supply_temperature = np.array(additional_data['supply_temperature'])
-        self.supply_temperature_heat_consumer = float(additional_data['supply_temperature_heat_consumers'])
+        self.supply_temperature_heat_consumer = float(additional_data['supply_temperature_heat_consumers'] if additional_data['supply_temperature_heat_consumers'] is not None else 0.0)
         self.return_temperature_heat_consumer = np.array(additional_data['return_temperature'])
         self.supply_temperature_buildings = np.array(additional_data['supply_temperature_buildings'])
         self.return_temperature_buildings = np.array(additional_data['return_temperature_buildings'])
@@ -270,7 +273,7 @@ class StatComparisonTab(QWidget):
                 for col, data in enumerate(self.variant_data):
                     value = data.get(metric, "N/A")
                     if isinstance(value, (float, int)):
-                        value = f"{value:.2f}"  # Round the numbers to 2 decimal places
+                        value = f"{value:.2f}"  # np.Round the numbers to 2 decimal places
                     self.tableWidget.setItem(row, col + 1, QTableWidgetItem(str(value)))
 
             self.tableWidget.resizeColumnsToContents()

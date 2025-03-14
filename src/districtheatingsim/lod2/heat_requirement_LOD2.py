@@ -1,7 +1,7 @@
 """
 Filename: heat_requirement_LOD2.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-09
+Date: 2025-03-10
 Description: This code defines a `Building` class to calculate the heating demand and warm water demand for buildings.
 It uses the building's physical dimensions, U-values for various components, and air change rate, 
 along with the weather data from a Test Reference Year (TRY) dataset, to estimate the annual heating and warm water needs. 
@@ -10,32 +10,11 @@ The example demonstrates the usage for three buildings with specific dimensions 
 This Script could also be used for cooling demand calculation by adding the cooling demand calculation method to the Building class. For that, solar and internal gains should be considered. 
 The Building class could be extended to include additional parameters such as shading, orientation, and glazing properties to calculate the cooling demand."""
 
-import os
-import sys
-
 import pandas as pd
 
 from districtheatingsim.lod2.filter_LOD2 import spatial_filter_with_polygon, process_lod2, calculate_centroid_and_geocode
 from districtheatingsim.utilities.test_reference_year import import_TRY
-
-def get_resource_path(relative_path):
-    """
-    Get the absolute path to the resource, works for dev and for PyInstaller.
-
-    Args:
-        relative_path (str): The relative path to the resource.
-
-    Returns:
-        str: The absolute path to the resource.
-    """
-    if getattr(sys, 'frozen', False):
-        # If the application is frozen, the base path is the temp folder where PyInstaller extracts everything
-        base_path = sys._MEIPASS
-    else:
-        # If the application is not frozen, the base path is the directory where the main file is located
-        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-    return os.path.join(base_path, relative_path)
+from districtheatingsim.utilities.utilities import get_resource_path
 
 class Building:
     """
@@ -67,7 +46,7 @@ class Building:
             wall_area (float): Wall area of the building.
             roof_area (float): Roof area of the building.
             building_volume (float): Volume of the building.
-            filename_TRY (str, optional): Filename of the TRY dataset. Defaults to 'data\\TRY2015_511676144222_Jahr.dat'.
+            filename_TRY (str, optional): Filename of the TRY dataset. Defaults to 'data\\TRY\\TRY_511676144222\\TRY2015_511676144222_Jahr.dat'.
             u_type (str, optional): Type of the building.
             building_state (str, optional): State of the building.
             u_values (dict, optional): Custom U-values for the building components.
@@ -148,7 +127,7 @@ class Building:
         # Sum to get the total annual heat demand
         self.yearly_heat_demand = self.yearly_heating_demand + self.yearly_warm_water_demand
         # Calculate warm water share
-        self.warm_water_share = (self.yearly_warm_water_demand / self.yearly_heat_demand) * 100
+        self.warm_water_share = (self.yearly_warm_water_demand / self.yearly_heat_demand)
 
     def load_u_values(self, u_type, building_state):
         """

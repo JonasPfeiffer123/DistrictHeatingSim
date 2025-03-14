@@ -13,3 +13,6 @@ PyPDF2
 reportlab
 numpy_financial
 pyomo
+requests
+selenium
+webdriver-manager

@@ -76,7 +76,6 @@ class MixDesignTab(QWidget):
         self.config_manager = config_manager
         self.parent_object = parent
         self.results = {}
-        self.tech_objects = []
         
         self.initDialogs()
         self.setupParameters()
@@ -322,10 +321,10 @@ class MixDesignTab(QWidget):
         self.progressBar.setRange(0, 1)
         # To do: if optimize is True, the results are stored in the second element of the tuple, need to implement posibility to show both or even store different systems
         self.energy_system = result[0]
-        self.results = self.energy_system.results
+
         if self.optimize:
-            self.energy_system = result[1]
-            self.results = self.optimized_energy_system.results
+            self.optimized_energy_system = result[1]
+            self.energy_system = self.optimized_energy_system
 
         self.process_data()
 
@@ -465,11 +464,16 @@ class MixDesignTab(QWidget):
         """
         Shows additional results.
         """
-        if self.tech_objects and self.results and self.parent_object.calcTab.Gesamtwärmebedarf_Gebäude_MWh:
-            dialog = SankeyDialog(results=self.results, heat_demand=self.parent_object.calcTab.Gesamtwärmebedarf_Gebäude_MWh, parent=self)
+        if self.techTab.tech_objects and self.energy_system.results and self.parent_object.calcTab.Gesamtwärmebedarf_Gebäude_MWh:
+            dialog = SankeyDialog(results=self.energy_system.results, heat_demand=self.parent_object.calcTab.Gesamtwärmebedarf_Gebäude_MWh, parent=self)
             dialog.exec_()
         else:
-            QMessageBox.information(self, "Keine Berechnungsergebnisse", "Es sind keine Berechnungsergebnisse verfügbar. Führen Sie zunächst eine Berechnung durch.")
+            if not self.techTab.tech_objects:
+                QMessageBox.information(self, "Keine Erzeugeranlagen", "Es wurden keine Erzeugeranlagen definiert. Keine Berechnung möglich.")
+            elif not self.results:
+                QMessageBox.information(self, "Keine Berechnungsergebnisse", "Es sind keine Berechnungsergebnisse verfügbar. Führen Sie zunächst eine Berechnung durch.")
+            elif not self.parent_object.calcTab.Gesamtwärmebedarf_Gebäude_MWh:
+                QMessageBox.information(self, "Gesamtwärmebedarf nicht definiert", "Der Gesamtwärmebedarf der Gebäude ist nicht definiert. Stellen Sie sicher, dass der Gesamtwärmebedarf der Gebäude definiert ist.")
 
     def process_data(self):
         # Update the tech objects from the loaded EnergySystem
@@ -518,7 +522,7 @@ class MixDesignTab(QWidget):
         """
         Saves the results and technology objects to a JSON file.
         """
-        if not self.results and not self.techTab.tech_objects:
+        if not self.energy_system.results and not self.techTab.tech_objects:
             QMessageBox.warning(self, "Keine Daten vorhanden", "Es sind keine Berechnungsergebnisse oder technischen Objekte vorhanden, die gespeichert werden könnten.")
             return
         

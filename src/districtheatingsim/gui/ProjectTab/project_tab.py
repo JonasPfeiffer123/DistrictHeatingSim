@@ -10,9 +10,9 @@ import sys
 import csv
 import json
 
-from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QTableWidgetItem, QWidget, QVBoxLayout, 
-                             QMenuBar, QAction, QProgressBar, QLabel, QTableWidget, QFileSystemModel, 
-                             QTreeView, QSplitter, QMessageBox, QDialog, QMenu, QPushButton, QInputDialog)
+from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QTableWidgetItem, QWidget, QVBoxLayout, QHBoxLayout,
+                             QMenuBar, QAction, QProgressBar, QLabel, QTableWidget, QFileSystemModel,
+                             QTreeView, QSplitter, QMessageBox, QDialog, QMenu, QPushButton, QInputDialog, QSizePolicy)
 from PyQt5.QtCore import Qt, QTimer
 
 from districtheatingsim.gui.VisualizationTab.net_generation_threads import GeocodingThread
@@ -291,8 +291,7 @@ class ProjectPresenter:
             path (str): The new project folder path.
         """
         self.model.set_base_path(path)
-        self.view.update_path_label(path)
-        self.view.treeView.setRootIndex(self.view.treeView.model().index(os.path.dirname(path)))
+        self.view.update_tree_view(os.path.dirname(path))
         self.update_progress_tracker()
 
     def on_tree_view_double_clicked(self, index):
@@ -317,7 +316,8 @@ class ProjectPresenter:
         """
         Open a CSV file and load it into the table.
         """
-        fname, _ = QFileDialog.getOpenFileName(self.view, 'CSV öffnen', self.model.get_base_path(), 'CSV Files (*.csv);;All Files (*)')
+        standard_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("current_building_data_path"))
+        fname, _ = QFileDialog.getOpenFileName(self.view, 'CSV öffnen', standard_path, 'CSV Files (*.csv);;All Files (*)')
         if fname:
             self.load_csv(fname)
 
@@ -351,7 +351,7 @@ class ProjectPresenter:
         if file_path:
             self.model.save_csv(file_path, headers, data)
         else:
-            self.view.show_error_message("Warnung", "Es wurde keine Datei zum Speichern ausgewählt oder erstellt.")
+            self.view.show_error_message("Warnung", "Es wurde keine Datei zum Speichern ausgewählt oder erstellt. Zum Speichern muss eine Datei geöffnet oder erstellt werden.")
 
     def add_row(self):
         """
@@ -369,13 +369,15 @@ class ProjectPresenter:
         else:
             self.view.show_error_message("Warnung", "Bitte wählen Sie eine Zeile zum Löschen aus.")
 
-    def create_csv(self):
+    def create_csv(self, fname=None):
         """
         Create a new CSV file with default headers and data.
         """
         headers = ['Land', 'Bundesland', 'Stadt', 'Adresse', 'Wärmebedarf', 'Gebäudetyp', "Subtyp", 'WW_Anteil', 'Typ_Heizflächen', 'VLT_max', 'Steigung_Heizkurve', 'RLT_max', "Normaußentemperatur"]
         default_data = ['']*len(headers)
-        fname, _ = QFileDialog.getSaveFileName(self.view, 'Gebäude-CSV erstellen', self.model.get_base_path(), 'CSV Files (*.csv);;All Files (*)')
+        if not fname:
+            standard_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("current_building_data_path"))
+            fname, _ = QFileDialog.getSaveFileName(self.view, 'Gebäude-CSV erstellen', standard_path, 'CSV Files (*.csv);;All Files (*)')
         if fname:
             self.model.create_csv(fname, headers, default_data)
             self.load_csv(fname)
@@ -384,7 +386,8 @@ class ProjectPresenter:
         """
         Create a CSV file from GeoJSON data with user-defined default values.
         """
-        geojson_file_path, _ = QFileDialog.getOpenFileName(self.view, "geoJSON auswählen", self.model.get_base_path(), "All Files (*)")
+        standard_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("OSM_buldings_path"))
+        geojson_file_path, _ = QFileDialog.getOpenFileName(self.view, "geoJSON auswählen", standard_path, "All Files (*)")
         if geojson_file_path:
             dialog = OSMImportDialog(self.view)
             if dialog.exec_() == QDialog.Accepted:
@@ -392,7 +395,8 @@ class ProjectPresenter:
                 default_values = dialog.get_input_data()
 
                 try:
-                    output_file_path = self.config_manager.get_resource_path("OSM_building_data_path")
+                    standard_output_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("OSM_building_data_path"))
+                    output_file_path = standard_output_path
                     self.model.create_csv_from_geojson(geojson_file_path, output_file_path, default_values)
                     self.load_csv(output_file_path)
                 except Exception as e:
@@ -402,7 +406,8 @@ class ProjectPresenter:
         """
         Open a dialog to select a CSV file for geocoding addresses.
         """
-        fname, _ = QFileDialog.getOpenFileName(self.view, 'CSV-Koordinaten laden', self.model.get_base_path(), 'CSV Files (*.csv);;All Files (*)')
+        standard_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("current_building_data_path"))
+        fname, _ = QFileDialog.getOpenFileName(self.view, 'CSV-Koordinaten laden', standard_path, 'CSV Files (*.csv);;All Files (*)')
         if fname:
             self.geocode_addresses(fname)
 
@@ -484,27 +489,36 @@ class ProjectTabView(QWidget):
         mainLayout = QVBoxLayout()
         splitter = QSplitter()
 
-        # Left area - File tree
+        # Left area
         self.leftLayout = QVBoxLayout()
-        self.pathLabel = QLabel("Projektordner: Kein Ordner ausgewählt")
-        self.leftLayout.addWidget(self.pathLabel)
+
+        # Tree view for project structure
         self.model = QFileSystemModel()
         self.model.setRootPath("")
         self.treeView = QTreeView()
         self.treeView.setModel(self.model)
+        #self.treeView.setHeaderHidden(True)
+        #self.treeView.setSortingEnabled(True)
+        self.treeView.setMinimumWidth(500)  # Set a minimum width for the tree view
+        self.treeView.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # Allow it to expand
+
         leftWidget = QWidget()
         leftWidget.setLayout(self.leftLayout)
         self.leftLayout.addWidget(self.treeView)
 
         # Add progress bar and label under the tree view
+        self.progressLayout = QHBoxLayout()
         self.progressLabel = QLabel("Projektfortschritt:")
-        self.leftLayout.addWidget(self.progressLabel)
+        self.progressLayout.addWidget(self.progressLabel)
 
         self.projectProgressBar = QProgressBar(self)
-        self.leftLayout.addWidget(self.projectProgressBar)
+        self.progressLayout.addWidget(self.projectProgressBar)
+
+        self.leftLayout.addLayout(self.progressLayout)
 
         # Button to show details
         self.detailsButton = QPushButton("Details anzeigen", self)
+        self.detailsButton.setToolTip("Details zu den einzelnen Schritten anzeigen")
         self.detailsButton.clicked.connect(self.showDetailsDialog)
         self.leftLayout.addWidget(self.detailsButton)
 
@@ -543,10 +557,15 @@ class ProjectTabView(QWidget):
 
         fileMenu = self.menuBar.addMenu('Datei')
         self.createCSVAction = QAction('CSV erstellen', self)
+        self.createCSVAction.setToolTip("Create a new CSV file")
         self.createCSVfromgeojsonAction = QAction('Gebäude-CSV aus OSM-geojson erstellen', self)
+        self.createCSVfromgeojsonAction.setToolTip("Create a building CSV from OSM geojson data")
         self.downloadAction = QAction('Adressdaten geocodieren', self)
+        self.downloadAction.setToolTip("Geocode address data from a CSV file")
         self.openAction = QAction('CSV laden', self)
+        self.openAction.setToolTip("Load a CSV file")
         self.saveAction = QAction('CSV speichern', self)
+        self.saveAction.setToolTip("Save the current CSV file")
 
         fileMenu.addAction(self.createCSVAction)
         fileMenu.addAction(self.openAction)
@@ -555,6 +574,22 @@ class ProjectTabView(QWidget):
         fileMenu.addAction(self.downloadAction)
 
         self.rightLayout.addWidget(self.menuBar)
+
+    def update_tree_view(self, path):
+        """
+        Update the tree view with the given path.
+
+        Args:
+            path (str): The path to set as the root of the tree view.
+        """
+        self.treeView.setRootIndex(self.treeView.model().index(path))
+
+        print("Tree view updated with path:", path)
+
+        # Automatically resize columns to fit contents
+        for column in range(self.model.columnCount()):
+            self.treeView.resizeColumnToContents(column)
+
 
     def show_context_menu(self, position):
         """
@@ -664,15 +699,6 @@ class ProjectTabView(QWidget):
         else:
             self.show_error_message("Warnung", "Bitte wählen Sie eine Spalte zum Duplizieren aus.")
 
-    def update_path_label(self, new_base_path):
-        """
-        Update the label displaying the current project folder path.
-
-        Args:
-            new_base_path (str): The new base path of the project.
-        """
-        self.pathLabel.setText(f"Geöffnete Variante: {new_base_path}")
-
     def get_selected_file_path(self, index):
         """
         Get the file path of the selected item in the tree view.
@@ -700,7 +726,6 @@ class ProjectTabView(QWidget):
         Update the progress bar and label with the current progress.
         """
         self.projectProgressBar.setValue(int(progress))
-        self.progressLabel.setText(f"Projektfortschritt: {int(progress)}%")
 
     def showDetailsDialog(self):
         """

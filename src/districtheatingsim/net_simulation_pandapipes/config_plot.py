@@ -12,7 +12,7 @@ import contextily as cx
 import geopandas as gpd
 from shapely.geometry import Point
 
-def config_plot(net, ax, show_junctions=True, show_pipes=True, show_heat_consumers=True, show_pump=True, show_plot=False, show_basemap=True, map_type="OSM"):
+def config_plot(net, ax, show_junctions=True, show_pipes=True, show_heat_consumers=True, show_pump=True, show_plot=False, show_basemap=True, map_type="OSM", show_all_annotations=False):
     """
     Configures and plots the pandapipes network on a given matplotlib axis.
 
@@ -88,8 +88,7 @@ def config_plot(net, ax, show_junctions=True, show_pipes=True, show_heat_consume
             name = net.heat_consumer.loc[hc, 'name']
             qext = net.heat_consumer.loc[hc, 'qext_w']
             mdot = net.res_heat_consumer.loc[hc, 'mdot_from_kg_per_s']
-            v = net.res_heat_consumer.loc[hc, 'v_mean_m_per_s']
-            text = f"{name}\nHeat demand: {qext:.2f} W\nMass flow: {mdot:.2f} kg/s\nVelocity: {v:.2f} m/s\n"
+            text = f"{name}\nHeat demand: {qext:.2f} W\nMass flow: {mdot:.2f} kg/s\n"
             ann = make_annotation(text, mid_x, mid_y, "heat_consumer", hc)
             data_annotations.append(ann)
 
@@ -100,8 +99,9 @@ def config_plot(net, ax, show_junctions=True, show_pipes=True, show_heat_consume
             mid_x = (from_x + to_x) / 2
             mid_y = (from_y + to_y) / 2
             name = net.circ_pump_pressure.loc[pump, 'name']
-            deltap = net.res_circ_pump_pressure.loc[pump, 'deltap_bar']
-            mdot_flow = net.res_circ_pump_pressure.loc[pump, 'mdot_flow_kg_per_s']
+            deltap = net.res_circ_pump_pressure.loc[pump, 'p_to_bar'] - net.res_circ_pump_pressure.loc[pump, 'p_from_bar']
+            #deltap = net.res_circ_pump_pressure.loc[pump, 'deltap_bar']
+            mdot_flow = net.res_circ_pump_pressure.loc[pump, 'mdot_from_kg_per_s']
             text = f"Circulation Pump Pressure: {pump}\nPressure lift: {deltap:.2f} bar\nMass flow: {mdot_flow:.2f} kg/s"
             ann = make_annotation(text, mid_x, mid_y, "pump", pump)
             data_annotations.append(ann)
@@ -137,6 +137,16 @@ def config_plot(net, ax, show_junctions=True, show_pipes=True, show_heat_consume
     pp_plot.simple_plot(net, junction_size=0.01, heat_consumer_size=0.1, pump_size=0.1, 
                         pump_color='green', pipe_color='black', heat_consumer_color="blue", ax=ax, show_plot=False, 
                         junction_geodata=net.junction_geodata)
+
+    # Function to show all annotations
+    def show_all_annotations():
+        for ann_data in data_annotations:
+            ann_data['annotation'].set_visible(True)
+        ax.figure.canvas.draw_idle()
+
+    # Show all annotations if the flag is set
+    if show_all_annotations:
+        show_all_annotations()
 
     # Event handling for interactivity
     def on_move(event):
