@@ -1,33 +1,15 @@
 """
 Filename: heat_requirement_VDI4655.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-09
+Date: 2025-03-10
 Description: Contains functions to calculate heat demand profiles with the VDI 4655 methods
 """
 
 import pandas as pd
 import numpy as np
-import os
-import sys
 
 from districtheatingsim.utilities.test_reference_year import import_TRY
-
-def get_resource_path(relative_path):
-    """
-    Get the absolute path to the resource, works for development and for PyInstaller.
-
-    Args:
-        relative_path (str): The relative path to the resource.
-
-    Returns:
-        str: The absolute path to the resource.
-    """
-    if getattr(sys, 'frozen', False):
-        base_path = sys._MEIPASS
-    else:
-        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-    return os.path.join(base_path, relative_path)
+from districtheatingsim.utilities.utilities import get_resource_path
 
 def generate_year_months_days_weekdays(year):
     """

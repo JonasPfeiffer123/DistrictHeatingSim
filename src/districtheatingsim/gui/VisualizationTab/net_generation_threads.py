@@ -13,26 +13,6 @@ from PyQt5.QtCore import QThread, pyqtSignal
 from districtheatingsim.net_generation.import_and_create_layers import generate_and_export_layers
 from districtheatingsim.geocoding.geocodingETRS89 import process_data
 
-import os
-import sys
-
-def get_resource_path(relative_path):
-    """
-    Get the absolute path to the resource, works for dev and for PyInstaller.
-
-    Args:
-        relative_path (str): Relative path to the resource.
-
-    Returns:
-        str: Absolute path to the resource.
-    """
-    if getattr(sys, 'frozen', False):
-        base_path = sys._MEIPASS
-    else:
-        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-    return os.path.join(base_path, relative_path)
-
 class NetGenerationThread(QThread):
     """
     Thread for generating the network.

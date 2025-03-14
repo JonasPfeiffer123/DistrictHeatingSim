@@ -1,33 +1,17 @@
 """
 Filename: Dialogs.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-31
+Date: 2025-03-10
 Description: Contains the Dialogs of the main GUI
 """
 
 import sys
 import os
 
-from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QPushButton, QHBoxLayout, QFileDialog, QCheckBox, QDialogButtonBox
+from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QPushButton, QHBoxLayout, QFileDialog, QCheckBox, QDialogButtonBox, QHBoxLayout
+from PyQt5.QtCore import Qt
 
-def get_resource_path(relative_path):
-    """
-    Get the absolute path to the resource, works for dev and for PyInstaller.
-
-    Args:
-        relative_path (str): The relative path to the resource.
-
-    Returns:
-        str: The absolute path to the resource.
-    """
-    if getattr(sys, 'frozen', False):
-        # When the application is frozen, the base path is the temp folder where PyInstaller extracts everything
-        base_path = sys._MEIPASS
-    else:
-        # When the application is not frozen, the base path is the folder where the main file is located
-        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-    return os.path.join(base_path, relative_path)
+from districtheatingsim.utilities.utilities import get_resource_path
 
 class TemperatureDataDialog(QDialog):
     """
@@ -51,34 +35,48 @@ class TemperatureDataDialog(QDialog):
 
     def initUI(self):
         """Initializes the user interface."""
-        self.setWindowTitle("Temperaturdaten-Verwaltung")
-        self.resize(400, 200)  # Larger and resizable window
+        self.setWindowTitle("Testreferenzjahr-Datei auswählen")
+        self.resize(600, 200)  # Larger and resizable window
 
-        self.layout = QVBoxLayout(self)
+        self.main_layout = QVBoxLayout(self)
+
+        # Short description of the dialog
+        self.descriptionLabel = QLabel(
+            "Bitte wählen Sie die Datei des Testreferenzjahres (TRY) aus, die Sie verwenden möchten.<br>"
+            "Testreferenzjahre können unter <a href='https://www.dwd.de/DE/leistungen/testreferenzjahre/testreferenzjahre.html'>"
+            "https://www.dwd.de/DE/leistungen/testreferenzjahre/testreferenzjahre.html</a> bezogen werden.<br>"
+            "Es ist jedoch eine Registrierung beim DWD notwendig", self)
+        self.descriptionLabel.setWordWrap(True)
+        self.descriptionLabel.setAlignment(Qt.AlignCenter)
+        self.main_layout.addWidget(self.descriptionLabel)
+
+        # Data fields and label
+        self.input_layout = QHBoxLayout()
 
         self.temperatureDataFileLabel = QLabel("TRY-Datei:", self)
         self.temperatureDataFileInput = QLineEdit(self)
-        self.temperatureDataFileInput.setText(get_resource_path("data/TRY/TRY_511676144222/TRY2015_511676144222_Jahr.dat"))
+        self.temperatureDataFileInput.setText(get_resource_path("data\\TRY\\TRY_511676144222\\TRY2015_511676144222_Jahr.dat"))
         self.selectTRYFileButton = QPushButton('TRY-Datei auswählen')
         self.selectTRYFileButton.clicked.connect(lambda: self.selectFilename(self.temperatureDataFileInput))
 
-        self.layout.addWidget(self.temperatureDataFileLabel)
-        self.layout.addWidget(self.temperatureDataFileInput)
-        self.layout.addWidget(self.selectTRYFileButton)
+        self.input_layout.addWidget(self.temperatureDataFileLabel)
+        self.input_layout.addWidget(self.temperatureDataFileInput)
+        self.input_layout.addWidget(self.selectTRYFileButton)
 
-        self.setLayout(self.layout)
-
-        buttonLayout = QHBoxLayout()
+        self.main_layout.addLayout(self.input_layout)
+        
+        # Button layout for OK and Cancel
+        self.buttonLayout = QHBoxLayout()
         okButton = QPushButton("OK", self)
         cancelButton = QPushButton("Abbrechen", self)
         
         okButton.clicked.connect(self.accept)
         cancelButton.clicked.connect(self.reject)
         
-        buttonLayout.addWidget(okButton)
-        buttonLayout.addWidget(cancelButton)
+        self.buttonLayout.addWidget(okButton)
+        self.buttonLayout.addWidget(cancelButton)
 
-        self.layout.addLayout(buttonLayout)
+        self.main_layout.addLayout(self.buttonLayout)
 
     def selectFilename(self, lineEdit):
         """

@@ -1,7 +1,7 @@
 """
 Filename: heat_requirement_BDEW.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-09
+Date: 2025-03-10
 Description: Contains functions to calculate heat demand profiles with the BDEW SLP methods
 """
 
@@ -11,6 +11,7 @@ import os
 import sys
 
 from districtheatingsim.utilities.test_reference_year import import_TRY
+from districtheatingsim.utilities.utilities import get_resource_path
 
 def get_resource_path(relative_path):
     """

@@ -40,6 +40,8 @@ class BuildingModel:
 
     def __init__(self):
         self.base_path = None
+        self.csv_path = ""
+        self.json_path = ""
         self.data = None
         self.results = None
 
@@ -60,68 +62,103 @@ class BuildingModel:
             str: The base path.
         """
         return self.base_path
+    
+    def set_csv_path(self, csv_path):
+        """
+        Sets the path to the CSV file.
 
-    def load_csv(self, file_path):
+        Args:
+            csv_path (str): The path to the CSV file.
+        """
+        self.csv_path = csv_path
+
+    def get_csv_path(self):
+        """
+        Gets the path to the CSV file.
+
+        Returns:
+            str: The path to the CSV file.
+        """
+        return self.csv_path
+
+    def set_json_path(self, json_path):
+        """
+        Sets the path to the JSON file.
+
+        Args:
+            json_path (str): The path to the JSON file.
+        """
+        self.json_path = json_path
+
+    def get_json_path(self):
+        """
+        Gets the path to the JSON file.
+
+        Returns:
+            str: The absolute path to the JSON file.
+        """
+        return self.json_path
+
+    def load_csv(self):
         """
         Loads data from a CSV file into a DataFrame.
 
         Args:
-            file_path (str): The path to the CSV file.
+            None
 
         Raises:
             Exception: If there is an error loading the CSV file.
         """
         try:
-            self.data = pd.read_csv(file_path, delimiter=';', dtype={'Subtyp': str})
+            self.data = pd.read_csv(self.get_csv_path(), delimiter=';', dtype={'Subtyp': str})
         except Exception as e:
             raise Exception(f"Fehler beim Laden der CSV-Datei: {e}")
 
-    def save_csv(self, file_path):
+    def save_csv(self):
         """
         Saves the DataFrame to a CSV file.
 
         Args:
-            file_path (str): The path to the CSV file.
+            None
 
         Raises:
             Exception: If there is an error saving the CSV file.
         """
         if self.data is not None:
             try:
-                self.data.to_csv(file_path, index=False, sep=';')
+                self.data.to_csv(self.get_csv_path(), index=False, sep=';')
             except Exception as e:
                 raise Exception(f"Fehler beim Speichern der CSV-Datei: {e}")
 
-    def load_json(self, file_path):
+    def load_json(self):
         """
         Loads results data from a JSON file.
 
         Args:
-            file_path (str): The path to the JSON file.
+            None
 
         Raises:
             Exception: If there is an error loading the JSON file.
         """
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(self.get_json_path(), 'r', encoding='utf-8') as f:
                 loaded_data = json.load(f)
                 self.results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and 'wärme' in v}
         except Exception as e:
             raise Exception(f"Fehler beim Laden der JSON-Datei: {e}")
 
-    def save_json(self, file_path, combined_data):
+    def save_json(self, combined_data):
         """
         Saves results data to a JSON file.
 
         Args:
-            file_path (str): The path to the JSON file.
             combined_data (dict): The data to save.
 
         Raises:
             Exception: If there is an error saving the JSON file.
         """
         try:
-            with open(file_path, 'w', encoding='utf-8') as f:
+            with open(self.get_json_path(), 'w', encoding='utf-8') as f:
                 json.dump(combined_data, f, indent=4)
         except Exception as e:
             raise Exception(f"Fehler beim Speichern der Ergebnisse: {e}")
@@ -176,23 +213,22 @@ class BuildingPresenter:
         self.config_manager = config_manager
 
         # Connect to the data_manager's signal to update the base path
-        self.folder_manager.project_folder_changed.connect(self.update_default_path)
+        self.folder_manager.project_folder_changed.connect(self.standard_path)
+        # Initialize the base path
+        self.standard_path(self.folder_manager.variant_folder)
 
         # Connect UI signals to their respective slots
         self.view.load_csv_signal.connect(self.load_csv)
         self.view.save_csv_signal.connect(self.save_csv)
-        self.view.calculate_heat_demand_signal.connect(self.calculate_heat_demand)
         self.view.load_json_signal.connect(self.load_json)
-        self.view.update_path_signal.connect(self.update_default_path)
+        self.view.save_json_signal.connect(self.save_json)
+        self.view.calculate_heat_demand_signal.connect(self.calculate_heat_demand)
 
         # Handle combobox changes and plotting
         self.view.data_type_combobox.view().pressed.connect(self.on_combobox_selection_changed)
         self.view.building_combobox.view().pressed.connect(self.on_combobox_selection_changed)
 
-        # Initialize the base path
-        self.update_default_path(self.folder_manager.variant_folder)
-
-    def update_default_path(self, path):
+    def standard_path(self, path):
         """
         Updates the default path for saving files and updates the view.
 
@@ -200,69 +236,107 @@ class BuildingPresenter:
             path (str): The new default path.
         """
         self.model.set_base_path(path)
-        self.view.update_output_path(self.model.get_base_path(), self.config_manager.get_relative_path("building_load_profile_path"))
+        self.model.set_csv_path(os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("current_building_data_path")))
+        self.model.set_json_path(os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("building_load_profile_path")))
 
-    def load_csv(self, file_path):
+    def load_csv(self, fname=None):
         """
-        Loads a CSV file into the model and updates the view.
+        Opens a file dialog to load a CSV file and updates the model and view.
 
         Args:
-            file_path (str): The path to the CSV file.
+            _: Placeholder for the signal argument.
         """
-        try:
-            self.model.load_csv(file_path)
-            self.view.populate_table(self.model.data)
-        except Exception as e:
-            self.view.show_error_message("Fehler", str(e))
+        if fname is None  or fname == "":
+            fname, _ = QFileDialog.getOpenFileName(self.view, 'Select CSV File', self.model.get_csv_path(), 'CSV Files (*.csv);;All Files (*)')
+        if fname:
+            try:
+                self.model.set_csv_path(fname)
+                self.model.load_csv()
+                self.view.populate_table(self.model.data)
+                self.view.show_message("Erfolg", f"CSV-Datei {fname} wurde geladen.")
+            except Exception as e:
+                self.view.show_error_message("Fehler", str(e))
 
-    def save_csv(self, file_path):
+    def save_csv(self, fname=None):
         """
-        Saves the current data in the model to a CSV file.
-
-        Args:
-            file_path (str): The path to the CSV file.
-        """
-        try:
-            self.model.save_csv(file_path)
-            self.view.show_message("Erfolg", f"CSV-Datei wurde in {file_path} gespeichert.")
-        except Exception as e:
-            self.view.show_error_message("Fehler", str(e))
-
-    def load_json(self, file_path):
-        """
-        Loads results data from a JSON file and updates the view.
+        Opens a file dialog to save a CSV file and updates the model and view.
 
         Args:
-            file_path (str): The path to the JSON file.
+            _: Placeholder for the signal argument.
         """
-        try:
-            self.model.load_json(file_path)
-            self.view.populate_building_combobox(self.model.results)
-            self.view.plot(self.model.results)
-        except Exception as e:
-            self.view.show_error_message("Fehler", str(e))
+        if fname is None  or fname == "":
+            fname, _ = QFileDialog.getSaveFileName(self.view, 'Save CSV File', self.model.get_csv_path(), 'CSV Files (*.csv);;All Files (*)')
+        if fname:
+            try:
+                self.model.set_csv_path(fname)
+                self.model.save_csv()
+                self.view.show_message("Erfolg", f"CSV-Datei wurde in {fname} gespeichert.")
+            except Exception as e:
+                self.view.show_error_message("Fehler", str(e))
 
-    def calculate_heat_demand(self, output_path):
+    def load_json(self, fname=None):
+        """
+        Opens a file dialog to load a JSON file and updates the model and view.
+
+        Args:
+            _: Placeholder for the signal argument.
+        """
+        if fname is None or fname == "":
+            fname, _ = QFileDialog.getOpenFileName(self.view, 'Select JSON File', self.model.get_json_path(), 'JSON Files (*.json);;All Files (*)')
+        if fname:
+            try:
+                self.model.set_json_path(fname)
+                self.model.load_json()
+                self.view.populate_building_combobox(self.model.results)
+                self.view.plot(self.model.results)
+            except Exception as e:
+                self.view.show_error_message("Fehler", str(e))
+
+    def save_json(self, fname=None):
+        """
+        Opens a file dialog to save a JSON file and updates the model and view.
+
+        Args:
+            _: Placeholder for the signal argument.
+        """
+        if self.combined_data is None:
+            self.view.show_error_message("Fehler", "Es sind keine Daten zum Speichern vorhanden.")
+            return
+        
+        if fname is None or fname == "":
+            fname, _ = QFileDialog.getSaveFileName(self.view, 'Save JSON File', self.model.get_json_path(), 'JSON Files (*.json);;All Files (*)')
+        if fname:
+            try:
+                self.model.set_json_path(fname)
+                self.model.save_json(self.combined_data)
+                self.view.show_message("Erfolg", f"Ergebnisse wurden in {fname} gespeichert.")
+            except Exception as e:
+                self.view.show_error_message("Fehler", str(e))
+
+    def calculate_heat_demand(self, _=None):
         """
         Calculates heat demand profiles and saves the results to a JSON file.
 
         Args:
             output_path (str): The path to the output JSON file.
         """
-        data = self.view.get_table_data()
-        if data.empty:
+        self.data = self.view.get_table_data()
+        if self.data.empty:
             self.view.show_error_message("Fehler", "Die Tabelle enthält keine Daten.")
             return
 
         try:
             try_filename = self.data_manager.get_try_filename()
-            results = self.model.calculate_heat_demand(data, try_filename) # returns yearly_time_steps, total_heat_W, heating_heat_W, warmwater_heat_W, max_heat_requirement_W, supply_temperature_curve, return_temperature_curve, hourly_air_temperatures
-            self.model.results = self.format_results(results, data)
-            combined_data = self.combine_data_with_results(data, self.model.results)
-            self.model.save_json(output_path, combined_data)
-            self.view.show_message("Erfolg", f"Ergebnisse wurden in {output_path} gespeichert.")
+            results = self.model.calculate_heat_demand(self.data, try_filename) # returns yearly_time_steps, total_heat_W, heating_heat_W, warmwater_heat_W, max_heat_requirement_W, supply_temperature_curve, return_temperature_curve, hourly_air_temperatures
+            self.model.results = self.format_results(results, self.data)
+
             self.view.populate_building_combobox(self.model.results)
             self.view.plot(self.model.results)
+
+            self.combined_data = self.combine_data_with_results(self.data, self.model.results)
+            self.model.save_json(self.combined_data)
+
+            self.view.show_message("Erfolg", f"Berechnung der Gebäudelastgänge abgeschlossen und in {self.model.get_json_path()} gespeichert.")
         except Exception as e:
             # Erfasse den vollständigen Traceback
             tb_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
@@ -335,9 +409,9 @@ class BuildingTabView(QWidget):
 
     load_csv_signal = pyqtSignal(str)
     save_csv_signal = pyqtSignal(str)
-    calculate_heat_demand_signal = pyqtSignal(str)
     load_json_signal = pyqtSignal(str)
-    update_path_signal = pyqtSignal(str)
+    save_json_signal = pyqtSignal(str)
+    calculate_heat_demand_signal = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -349,50 +423,10 @@ class BuildingTabView(QWidget):
         """
         self.main_layout = QVBoxLayout(self)
         self.initMenuBar()
-
-        # Data table area
-        self.table_widget = QTableWidget(self)
-        self.table_widget.setMinimumSize(1200, 300)  # Set minimum width and height for the table
-        self.table_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # Allow it to expand
-        self.main_layout.addWidget(self.table_widget)
-
-        # Output path layout (more compact with better labels)
-        output_path_layout = QHBoxLayout()
-        output_path_layout.addWidget(QLabel("Output JSON File:"))
-        self.output_path_edit = QLineEdit("")
-        output_path_layout.addWidget(self.output_path_edit)
-        self.output_path_button = QPushButton("Browse")
-        self.output_path_button.clicked.connect(self.browseOutputFile)
-        output_path_layout.addWidget(self.output_path_button)
-        self.main_layout.addLayout(output_path_layout)
-
-        # Plot area (with toolbar and interaction improvements)
-        self.figure = Figure()
-        self.canvas = FigureCanvas(self.figure)
-        self.canvas.setMinimumSize(1200, 500)  # Set minimum width and height for the plot
-        self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # Allow it to expand
-        self.toolbar = NavigationToolbar(self.canvas, self)
-        self.main_layout.addWidget(self.canvas)
-        self.main_layout.addWidget(self.toolbar)
-
-        # Data selection comboboxes (streamlined with clearer labels)
-        self.data_type_combobox = CheckableComboBox(self)
-        for data_type in ["Heat Demand", "Heating Demand", "Warmwater Demand", "Supply Temperature", "Return Temperature"]:
-            self.data_type_combobox.addItem(data_type)
-        self.main_layout.addWidget(QLabel("Select Data Types:"))
-        self.main_layout.addWidget(self.data_type_combobox)
-
-        self.building_combobox = CheckableComboBox(self)
-        self.main_layout.addWidget(QLabel("Select Buildings:"))
-        self.main_layout.addWidget(self.building_combobox)
-
+        self.initDataTable()
+        self.initPlotAndComboboxes()
         self.setLayout(self.main_layout)
-
-        # Initialize the data type comboboxes for the first time with the first item checked (heat demand)
-        self.data_type_combobox.model().item(0).setCheckState(Qt.Checked)
-
-        # Initialize the building combobox for the first time with the first item checked (Building 0)
-        #self.building_combobox.model().item(0).setCheckState(Qt.Checked)
+        self.initializeComboboxes()
 
     def initMenuBar(self):
         """
@@ -401,11 +435,11 @@ class BuildingTabView(QWidget):
         self.menubar = QMenuBar(self)
         self.menubar.setFixedHeight(30)
 
-        load_csv_action = QAction("CSV laden", self)
+        load_csv_action = QAction("Gebäudedaten laden", self)
         load_csv_action.triggered.connect(self.loadCsvFile)
         self.menubar.addAction(load_csv_action)
 
-        save_csv_action = QAction("CSV speichern", self)
+        save_csv_action = QAction("Gebäudedaten speichern", self)
         save_csv_action.triggered.connect(self.saveCsvFile)
         self.menubar.addAction(save_csv_action)
 
@@ -413,50 +447,102 @@ class BuildingTabView(QWidget):
         calculate_action.triggered.connect(self.calculateHeatDemand)
         self.menubar.addAction(calculate_action)
 
+        save_json_action = QAction("Gebäudelastgänge speichern", self)
+        save_json_action.triggered.connect(self.saveJsonFile)
+        self.menubar.addAction(save_json_action)
+
         load_json_action = QAction("Gebäudelastgänge laden", self)
         load_json_action.triggered.connect(self.loadJsonFile)
         self.menubar.addAction(load_json_action)
 
         self.main_layout.setMenuBar(self.menubar)
 
-    def browseOutputFile(self):
+    def initDataTable(self):
         """
-        Opens a file dialog to select the output JSON file.
+        Initializes the data table area.
         """
-        fname, _ = QFileDialog.getSaveFileName(self, 'Save JSON File As', self.output_path_edit.text(), 'JSON Files (*.json);;All Files (*)')
-        if fname:
-            self.output_path_edit.setText(fname)
+        self.table_widget = QTableWidget(self)
+        self.table_widget.setMinimumSize(1200, 300)  # Set minimum width and height for the table
+        self.table_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # Allow it to expand
+        self.main_layout.addWidget(self.table_widget)
+
+    def initPlotAndComboboxes(self):
+        """
+        Initializes the plot area and data selection comboboxes in a horizontal layout.
+        """
+        plot_and_combobox_layout = QHBoxLayout()
+
+        # Plot area
+        self.figure = Figure()
+        self.canvas = FigureCanvas(self.figure)
+        self.canvas.setMinimumSize(800, 500)  # Set minimum width and height for the plot
+        self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # Allow it to expand
+        self.toolbar = NavigationToolbar(self.canvas, self)
+        
+        plot_layout = QVBoxLayout()
+        plot_layout.addWidget(self.canvas)
+
+        # Center the toolbar
+        toolbar_layout = QHBoxLayout()
+        toolbar_layout.addStretch(1)
+        toolbar_layout.addWidget(self.toolbar)
+        toolbar_layout.addStretch(1)
+
+        plot_layout.addLayout(toolbar_layout)
+        plot_and_combobox_layout.addLayout(plot_layout)
+
+        # Data selection comboboxes
+        combobox_layout = QVBoxLayout()
+        self.data_type_combobox = CheckableComboBox(self)
+        for data_type in ["Wärmebedarf", "Heizwärmebedarf", "Warmwasserbedarf", "Vorlauftemperatur", "Rücklauftemperatur"]:
+            self.data_type_combobox.addItem(data_type)
+        combobox_layout.addWidget(QLabel("Daten auswählen:"))
+        combobox_layout.addWidget(self.data_type_combobox)
+
+        self.building_combobox = CheckableComboBox(self)
+        combobox_layout.addWidget(QLabel("Gebäude auswählen:"))
+        combobox_layout.addWidget(self.building_combobox)
+
+        plot_and_combobox_layout.addLayout(combobox_layout)
+        self.main_layout.addLayout(plot_and_combobox_layout)
+
+    def initializeComboboxes(self):
+        """
+        Initializes the comboboxes with default selections.
+        """
+        self.data_type_combobox.model().item(0).setCheckState(Qt.Checked)
+        # Initialize the building combobox for the first time with the first item checked (Building 0)
+        # self.building_combobox.model().item(0).setCheckState(Qt.Checked)
 
     def loadCsvFile(self):
         """
-        Opens a file dialog to load a CSV file.
+        Emits a signal to load a CSV file.
         """
-        fname, _ = QFileDialog.getOpenFileName(self, 'Select CSV File', f"{self.base_path}/Gebäudedaten", 'CSV Files (*.csv);;All Files (*)')
-        if fname:
-            self.load_csv_signal.emit(fname)
-
+        self.load_csv_signal.emit(None)
+    
     def saveCsvFile(self):
         """
-        Opens a file dialog to save the CSV file.
+        Emits a signal to save a CSV file.
         """
-        fname, _ = QFileDialog.getSaveFileName(self, 'Save CSV File As', f"{self.base_path}/Gebäudedaten", 'CSV Files (*.csv);;All Files (*)')
-        if fname:
-            self.save_csv_signal.emit(fname)
+        self.save_csv_signal.emit(None)
 
     def loadJsonFile(self):
         """
-        Opens a file dialog to load a JSON file.
+        Emits a signal to load a JSON file.
         """
-        fname, _ = QFileDialog.getOpenFileName(self, 'Select JSON File', self.output_path_edit.text(), 'JSON Files (*.json);;All Files (*)')
-        if fname:
-            self.load_json_signal.emit(fname)
+        self.load_json_signal.emit(None)
+    
+    def saveJsonFile(self):
+        """
+        Emits a signal to save a JSON file.
+        """
+        self.save_json_signal.emit(None)
 
     def calculateHeatDemand(self):
         """
         Emits a signal to calculate heat demand.
         """
-        output_path = self.output_path_edit.text()
-        self.calculate_heat_demand_signal.emit(output_path)
+        self.calculate_heat_demand_signal.emit(None)
 
     def populate_table(self, data):
         """
@@ -523,7 +609,7 @@ class BuildingTabView(QWidget):
         """
         self.building_combobox.clear()
         for key in results.keys():
-            self.building_combobox.addItem(f'Building {key}')
+            self.building_combobox.addItem(f'Gebäude {key}')
             item = self.building_combobox.model().item(self.building_combobox.count() - 1, 0)
             item.setCheckState(Qt.Checked)
 
@@ -548,20 +634,20 @@ class BuildingTabView(QWidget):
             key = building.split()[-1]
             value = results[key]
 
-            if "Heat Demand" in selected_data_types:
-                ax1.plot(value["wärme"], label=f'Building {key} Heat Demand')
-            if "Heating Demand" in selected_data_types:
-                ax1.plot(value["heizwärme"], label=f'Building {key} Heating Demand', linestyle='--')
-            if "Warmwater Demand" in selected_data_types:
-                ax1.plot(value["warmwasserwärme"], label=f'Building {key} Warmwater Demand', linestyle=':')
-            if "Supply Temperature" in selected_data_types:
-                ax2.plot(value["vorlauftemperatur"], label=f'Building {key} Supply Temp', linestyle='-.')
-            if "Return Temperature" in selected_data_types:
-                ax2.plot(value["rücklauftemperatur"], label=f'Building {key} Return Temp', linestyle='-.')
+            if "Wärmebedarf" in selected_data_types:
+                ax1.plot(value["wärme"], label=f'Gebäude {key} Wärmebedarf')
+            if "Heizwärmebedarf" in selected_data_types:
+                ax1.plot(value["heizwärme"], label=f'Gebäude{key} Heizwärmebedarf', linestyle='--')
+            if "Warmwasserbedarf" in selected_data_types:
+                ax1.plot(value["warmwasserwärme"], label=f'Gebäude {key} Warmwasserbedarf', linestyle=':')
+            if "Vorlauftemperatur" in selected_data_types:
+                ax2.plot(value["vorlauftemperatur"], label=f'Gebäude {key} Vorlauftemperatur', linestyle='-.')
+            if "Rücklauftemperatur" in selected_data_types:
+                ax2.plot(value["rücklauftemperatur"], label=f'Gebäude {key} Rücklauftemperatur', linestyle='-.')
 
-        ax1.set_xlabel('Time (hours)')
-        ax1.set_ylabel('Heat Demand (kW)')
-        ax2.set_ylabel('Temperature (°C)')
+        ax1.set_xlabel('Jahresstunden')
+        ax1.set_ylabel('Wärmebedarf (kW)')
+        ax2.set_ylabel('Temperatur (°C)')
 
         # Legend for ax1 on the left
         ax1.legend(loc='center right', bbox_to_anchor=(-0.2, 0.5))  # Left of the plot
@@ -595,16 +681,6 @@ class BuildingTabView(QWidget):
         """
         QMessageBox.information(self, title, message)
 
-    def update_output_path(self, base_path, json_path):
-        """
-        Updates the output path in the view.
-        
-        Args:
-            path (str): The new output path.
-        """
-        self.base_path = base_path  # Update the base path
-        self.output_path_edit.setText(os.path.join(self.base_path, json_path))
-
 class BuildingTab(QMainWindow):
     """
     The BuildingTab class is the main window for the BuildingTab UI.
@@ -616,7 +692,7 @@ class BuildingTab(QMainWindow):
 
     def __init__(self, folder_manager, data_manager, config_manager, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Building Tab Example")
+        self.setWindowTitle("Gebäudetab")
         self.setGeometry(100, 100, 800, 600)
 
         self.model = BuildingModel()

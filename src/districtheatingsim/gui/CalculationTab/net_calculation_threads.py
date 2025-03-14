@@ -11,7 +11,7 @@ from PyQt5.QtCore import QThread, pyqtSignal
 
 from districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson import initialize_geojson
 from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import thermohydraulic_time_series_net, time_series_preprocessing
-from districtheatingsim.net_simulation_pandapipes.utilities import net_optimization
+from districtheatingsim.net_simulation_pandapipes.utilities import optimize_diameter_types
 
 class NetInitializationThread(QThread):
     """
@@ -24,7 +24,7 @@ class NetInitializationThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(str)
 
-    def __init__(self, *args, mass_flow_secondary_producers=0.1, **kwargs):
+    def __init__(self, *args, **kwargs):
         """
         Initializes the NetInitializationThread.
 
@@ -35,7 +35,6 @@ class NetInitializationThread(QThread):
         """
         super().__init__()
         self.args = args
-        self.mass_flow_secondary_producers = mass_flow_secondary_producers
         self.kwargs = kwargs
 
     def run(self):
@@ -46,24 +45,23 @@ class NetInitializationThread(QThread):
             if self.kwargs.get("import_type") == "GeoJSON":
                 self.vorlauf, self.ruecklauf, self.hast, self.erzeugeranlagen, self.json_path, self.COP_filename, self.supply_temperature_heat_consumer, \
                 self.return_temperature_heat_consumer, self.supply_temperature, self.flow_pressure_pump, self.lift_pressure_pump, \
-                self.netconfiguration, self.pipetype, self.v_max_pipe, self.material_filter, self.insulation_filter, \
-                self.base_path, self.dT_RL, self.v_max_heat_consumer, self.DiameterOpt_ckecked = self.args
+                self.netconfiguration, self.pipetype, self.v_max_pipe, self.material_filter, self.dT_RL, self.DiameterOpt_ckecked, self.k_mm, \
+                self.main_producer_location_index, self.secondary_producers = self.args
 
-                self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.return_temperature_heat_consumer, \
-                self.supply_temperature_buildings, self.return_temperature_buildings, self.supply_temperature_building_curve, \
-                self.return_temperature_building_curve, strombedarf_hast_ges_W, max_el_leistung_hast_ges_W  = initialize_geojson(self.vorlauf, self.ruecklauf, self.hast, \
-                                                                             self.erzeugeranlagen, self.json_path, self.COP_filename, self.supply_temperature_heat_consumer, \
-                                                                             self.return_temperature_heat_consumer, self.supply_temperature, \
-                                                                             self.flow_pressure_pump, self.lift_pressure_pump, \
-                                                                             self.netconfiguration, self.pipetype, self.dT_RL, \
-                                                                             self.v_max_pipe, self.material_filter, self.insulation_filter, \
-                                                                             self.v_max_heat_consumer, self.mass_flow_secondary_producers)
+                self.results = (initialize_geojson(self.vorlauf, self.ruecklauf, self.hast, self.erzeugeranlagen, self.json_path, self.COP_filename, 
+                                                   self.supply_temperature_heat_consumer, self.return_temperature_heat_consumer, self.supply_temperature, 
+                                                   self.flow_pressure_pump, self.lift_pressure_pump, self.netconfiguration, self.pipetype, self.dT_RL, 
+                                                   self.v_max_pipe, self.material_filter, self.k_mm, self.main_producer_location_index, self.secondary_producers))
+                
+                self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.return_temperature_heat_consumer, self.supply_temperature_buildings, \
+                self.return_temperature_buildings, self.supply_temperature_building_curve,  self.return_temperature_building_curve, strombedarf_hast_ges_W, \
+                max_el_leistung_hast_ges_W = self.results 
             else:
                 raise ValueError("Unbekannter Importtyp")
 
             # Common steps for both import types
             if self.DiameterOpt_ckecked == True:
-                self.net = net_optimization(self.net, self.v_max_pipe, self.v_max_heat_consumer, self.material_filter, self.insulation_filter)
+                self.net = optimize_diameter_types(self.net, self.v_max_pipe, self.material_filter, self.k_mm)
             
             self.calculation_done.emit((self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.supply_temperature_heat_consumer, self.return_temperature_heat_consumer, \
                                         self.supply_temperature_buildings, self.return_temperature_buildings, self.supply_temperature_building_curve, self.return_temperature_building_curve, \
@@ -93,7 +91,7 @@ class NetCalculationThread(QThread):
 
     def __init__(self, net, yearly_time_steps, total_heat_W, calc1, calc2, supply_temperature, supply_temperature_heat_consumer, return_temperature_heat_consumer, supply_temperature_buildings, \
                  return_temperature_buildings, supply_temperature_buildings_curve, return_temperature_buildings_curve, dT_RL=5, netconfiguration=None, building_temp_checked=False, \
-                    TRY_filename=None, COP_filename=None):
+                    TRY_filename=None, COP_filename=None, secondary_producers=None):
         """
         Initializes the NetCalculationThread.
 
@@ -115,6 +113,7 @@ class NetCalculationThread(QThread):
             building_temp_checked (bool, optional): Whether building temperature is checked. Defaults to False.
             TRY_filename (str, optional): TRY filename. Defaults to None.
             COP_filename (str, optional): COP filename. Defaults to None.
+            secondary_producers (list, optional): List of secondary producers. Defaults to None. Needs to be implemented in following work flow.
         """
         super().__init__()
         self.net = net

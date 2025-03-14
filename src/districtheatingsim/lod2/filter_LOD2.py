@@ -104,6 +104,7 @@ def spatial_filter_with_polygon(lod_geojson_path, polygon_shapefile_path, output
     filtered_lod_gdf = lod_gdf[lod_gdf['ID'].isin(ids_within_polygon)]
 
     filtered_lod_gdf.to_file(output_geojson_path, driver='GeoJSON')
+    print(f"Filtered LOD2 data saved to {output_geojson_path}")
 
 def calculate_polygon_area_3d(polygon):
     """
@@ -234,7 +235,7 @@ def process_lod2(file_path, STANDARD_VALUES):
                 'Adresse': None, 'Stadt': None, 'Bundesland': None, 'Land': None, 'Koordinate_X': None, 'Koordinate_Y': None,
                 'Gebäudetyp': None, 'Subtyp': None, 'Typ': None, 'Gebäudezustand': None, 'ww_demand_kWh_per_m2': None, 
                 'air_change_rate': None, 'Stockwerke': None, 'fracture_windows': None, 'fracture_doors': None, 
-                'Normaußentemperatur': None, 'room_temp': None, 'max_air_temp_heating': None, 'Wärmebedarf': None, 'Warmwasseranteil': None,
+                'Normaußentemperatur': None, 'room_temp': None, 'max_air_temp_heating': None, 'Wärmebedarf': None, 'WW_Anteil': None,
                 'Typ_Heizflächen': None, 'VLT_max': None, 'Steigung_Heizkurve': None, 'RLT_max': None,
                 'wall_u': None, 'roof_u': None, 'window_u': None, 'door_u': None, 'ground_u': None
             }
@@ -261,7 +262,7 @@ def process_lod2(file_path, STANDARD_VALUES):
         if 'Gebäudetyp' in row and pd.notna(row['Gebäudetyp']):
             building_info[parent_id]['Gebäudetyp'] = row['Gebäudetyp']
         if 'Subtyp' in row and pd.notna(row['Subtyp']):
-            building_info[parent_id]['Subtyp'] = row['Subtyp']
+            building_info[parent_id]['Subtyp'] = normalize_subtype(row['Subtyp'])
         if 'Typ' in row and pd.notna(row['Typ']):
             building_info[parent_id]['Typ'] = row['Typ']
         if 'Gebäudezustand' in row and pd.notna(row['Gebäudezustand']):
@@ -282,8 +283,8 @@ def process_lod2(file_path, STANDARD_VALUES):
             building_info[parent_id]['max_air_temp_heating'] = row['max_air_temp_heating']
         if 'Wärmebedarf' in row and pd.notna(row['Wärmebedarf']):
             building_info[parent_id]['Wärmebedarf'] = row['Wärmebedarf']
-        if 'Warmwasseranteil' in row and pd.notna(row['Warmwasseranteil']):
-            building_info[parent_id]['Warmwasseranteil'] = row['Warmwasseranteil']
+        if 'WW_Anteil' in row and pd.notna(row['WW_Anteil']):
+            building_info[parent_id]['WW_Anteil'] = row['WW_Anteil']
 
         # New fields
         if 'Typ_Heizflächen' in row and pd.notna(row['Typ_Heizflächen']):
@@ -327,10 +328,23 @@ def process_lod2(file_path, STANDARD_VALUES):
                 info['Volume'] = None
 
         for key, value in STANDARD_VALUES.items():
-            if info[key] is None:
+            if key not in info or info[key] is None:
                 info[key] = value
 
     return building_info
+
+def normalize_subtype(subtype):
+    """
+    Normalize the subtype to a consistent string format.
+
+    Args:
+        subtype (str/int/float): The subtype value.
+
+    Returns:
+        str: The normalized subtype value as a string.
+    """
+    subtype_str = str(int(float(subtype)))  # Convert to int first to handle float values like 3.0
+    return subtype_str.zfill(2)  # Ensure the subtype has two digits
 
 def geocode(lat, lon):
     """
@@ -371,24 +385,34 @@ def calculate_centroid_and_geocode(building_info):
             lat, lon = centroid_transformed.y, centroid_transformed.x
 
             address_components = geocode(lat, lon)
-            
-            land = address_components.split(", ")[6]
-            bundesland = address_components.split(", ")[4]
-            stadt = address_components.split(", ")[3]
-            strasse = address_components.split(", ")[2]
-            hausnummer = address_components.split(", ")[1]
+
+            # Überprüfen, ob die Adresse genügend Komponenten hat
+            address_parts = address_components.split(", ")
+            address_parts = address_parts[::-1]  # Reverse the list to assign from the end
+
+            land = address_parts[0] if len(address_parts) > 0 else None
+            bundesland = address_parts[1] if len(address_parts) > 1 else None
+            plz = address_parts[2] if len(address_parts) > 2 else None
+            stadt = address_parts[3] if len(address_parts) > 3 else None
+            stadtteil = address_parts[4] if len(address_parts) > 4 else None
+            strasse = address_parts[5] if len(address_parts) > 5 else None
+            hausnummer = address_parts[6] if len(address_parts) > 6 else None
 
             info['Land'] = land
             info['Bundesland'] = bundesland
+            info['PLZ'] = plz
             info['Stadt'] = stadt
-            info['Adresse'] = f"{strasse} {hausnummer}"
+            info['Stadtteil'] = stadtteil
+            info['Adresse'] = f"{strasse} {hausnummer}" if strasse and hausnummer else None
 
         else:
             print(f"Keine Ground-Geometrie für Gebäude {parent_id} gefunden. Überspringe.")
             info['Koordinaten'] = None
             info['Land'] = None
             info['Bundesland'] = None
+            info['PLZ'] = None
             info['Stadt'] = None
+            info['Stadtteil'] = None
             info['Adresse'] = None
 
     return building_info

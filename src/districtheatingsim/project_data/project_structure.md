@@ -12,12 +12,12 @@ In diesem Dokument wird die Verzeichnisstruktur der Projektordner visualisiert. 
 Dies ist die Struktur der Projektordner:
 
 - Projekt
+    - Definition Quartier IST
+        - Gebäude_IST.csv (Initiale Beschreibung des Quartiers anhand von Daten im IST-Zustand)
     - Eingangsdaten allgemein
         - Straßen.geojson (standortspezifisch --> Stadt, Stadtteil)
         - LOD2_data.geojson (standortspezifisch --> Stadt, Stadtteil)
         - zusätzliche Daten wie Wassertemepraturen, andere TRY-, COP-Daten (standortspezifisch --> Region, Stadt)
-    - Definition Quartier IST
-        - Gebäude_IST.csv (Initiale Beschreibung des Quartiers anhand von Daten im IST-Zustand)
     - Variante 1 ... n
         - Gebäudedaten
             - Quartier.geojson (Räumliche Abgrenzung Quartier)

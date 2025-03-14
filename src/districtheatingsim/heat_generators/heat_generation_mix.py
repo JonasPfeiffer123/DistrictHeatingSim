@@ -277,7 +277,7 @@ class EnergySystem:
 
     def to_dict(self):
         return {
-            'time_steps': self.time_steps.tolist(),
+            'time_steps': self.time_steps.astype(str).tolist(),  # Convert datetime64 to string
             'load_profile': self.load_profile.tolist(),
             'VLT_L': self.VLT_L.tolist(),
             'RLT_L': self.RLT_L.tolist(),
@@ -300,7 +300,7 @@ class EnergySystem:
             EnergySystem: A fully initialized EnergySystem object.
         """
         # Restore basic attributes
-        time_steps = np.array(data['time_steps'], dtype='datetime64[ns]')
+        time_steps = np.array(data['time_steps'], dtype='datetime64')
         load_profile = np.array(data['load_profile'])
         VLT_L = np.array(data['VLT_L'])
         RLT_L = np.array(data['RLT_L'])

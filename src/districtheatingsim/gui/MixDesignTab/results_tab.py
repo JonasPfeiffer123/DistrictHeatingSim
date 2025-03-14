@@ -10,6 +10,7 @@ import numpy as np
 
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QHBoxLayout, QTableWidget, QTableWidgetItem, 
                              QHeaderView, QScrollArea, QCheckBox, QApplication)
@@ -96,20 +97,24 @@ class ResultsTab(QWidget):
         self.figure1 = Figure(figsize=(8, 6))
         self.canvas1 = FigureCanvas(self.figure1)
         self.canvas1.setMinimumSize(500, 500)
+        self.toolbar1 = NavigationToolbar(self.canvas1, self)
         self.diagram1_widget = QWidget()
         diagram1_layout = QVBoxLayout(self.diagram1_widget)
         diagram1_layout.addLayout(self.variableSelectionLayout)  # Add the ComboBox and Checkbox layout
         diagram1_layout.addWidget(self.canvas1)
-        self.diagram1_section = CollapsibleHeader("Jahresdauerlinie Diagramm", self.diagram1_widget)
+        diagram1_layout.addWidget(self.toolbar1)
+        self.diagram1_section = CollapsibleHeader("Jahresganglinie Diagramm", self.diagram1_widget)
         self.scrollLayout.addWidget(self.diagram1_section)
 
         # Second Diagram (Pie Chart)
         self.pieChartFigure = Figure(figsize=(6, 6))
         self.pieChartCanvas = FigureCanvas(self.pieChartFigure)
         self.pieChartCanvas.setMinimumSize(500, 500)
+        self.pieCharttoolbar = NavigationToolbar(self.pieChartCanvas, self)
         self.diagram2_widget = QWidget()
         diagram2_layout = QVBoxLayout(self.diagram2_widget)
         diagram2_layout.addWidget(self.pieChartCanvas)
+        diagram2_layout.addWidget(self.pieCharttoolbar)
         self.diagram2_section = CollapsibleHeader("Anteile Wärmeerzeugung Diagramm", self.diagram2_widget)
         self.scrollLayout.addWidget(self.diagram2_section)
 
@@ -262,7 +267,7 @@ class ResultsTab(QWidget):
             energy_system (EnergySystem): The energy system instance containing results.
         """
         self.results = energy_system.results
-        time_steps = self.results['time_steps']
+        time_steps = energy_system.time_steps
 
         print(f"Results tech_classes: {energy_system.technologies}")
 
@@ -299,6 +304,7 @@ class ResultsTab(QWidget):
             time_steps (list): The list of time steps.
             selected_vars (list): The list of selected variables.
         """
+        print(f"time_steps: {time_steps}, type: {type(time_steps)}")
         ax1 = figure.add_subplot(111)
         stackplot_vars = [var for var in selected_vars if "_Wärmeleistung" in var]
         other_vars = [var for var in selected_vars if var not in stackplot_vars and var != "Last_L"]
@@ -317,7 +323,7 @@ class ResultsTab(QWidget):
                 target_ax = ax2 if ax2 else ax1
                 target_ax.plot(time_steps, var_value, label=var_name)
 
-        ax1.set_title("Jahresdauerlinie")
+        ax1.set_title("Jahresganglinie")
         ax1.set_xlabel("Jahresstunden")
         ax1.set_ylabel("thermische Leistung in kW")
         ax1.grid()

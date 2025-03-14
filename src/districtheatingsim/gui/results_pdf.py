@@ -312,8 +312,8 @@ def add_results_section(story, mixDesignTab):
         results_data = [("Technologie", "Wärmemenge (MWh)", "Kosten (€/MWh)", "Anteil (%)", "spez. CO2-Emissionen (tCO2/MWh_th)", "Primärenergiefaktor")]
         results_data.extend([
             (tech, f"{wärmemenge:.2f}", f"{wgk:.2f}", f"{anteil*100:.2f}", f"{spec_emission:.4f}", f"{primary_energy/wärmemenge:.4f}")
-            for tech, wärmemenge, wgk, anteil, spec_emission, primary_energy in zip(mixDesignTab.results['techs'], mixDesignTab.results['Wärmemengen'], mixDesignTab.results['WGK'], 
-                                                    mixDesignTab.results['Anteile'], mixDesignTab.results['specific_emissions_L'], mixDesignTab.results['primärenergie_L'])
+            for tech, wärmemenge, wgk, anteil, spec_emission, primary_energy in zip(mixDesignTab.resultTab.results['techs'], mixDesignTab.resultTab.results['Wärmemengen'], mixDesignTab.resultTab.results['WGK'], 
+                                                    mixDesignTab.resultTab.results['Anteile'], mixDesignTab.resultTab.results['specific_emissions_L'], mixDesignTab.resultTab.results['primärenergie_L'])
         ])
 
         results_table = Table(results_data, colWidths=[1.2 * inch] * len(results_data[0]))
@@ -344,7 +344,7 @@ def add_combined_results_section(story, mixDesignTab):
         waerme_ges_kW = np.sum(results["waerme_ges_kW"])
         strom_wp_kW = np.sum(results["strom_wp_kW"])
         WGK_Infra = mixDesignTab.costTab.summe_annuität / results['Jahreswärmebedarf']
-        wgk_heat_pump_electricity = ((strom_wp_kW / 1000) * mixDesignTab.strompreis) / ((strom_wp_kW + waerme_ges_kW) / 1000)
+        wgk_heat_pump_electricity = ((strom_wp_kW / 1000) * mixDesignTab.electricity_price) / ((strom_wp_kW + waerme_ges_kW) / 1000)
         WGK_Gesamt = results['WGK_Gesamt'] + WGK_Infra + wgk_heat_pump_electricity
         
         # Definieren der Daten für die Tabelle

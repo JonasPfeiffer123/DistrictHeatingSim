@@ -92,7 +92,7 @@ class CalculateMixThread(QThread):
                 energy_system.add_technology(tech)
 
             # Calculate the energy mix
-            result = energy_system.calculate_mix()
+            energy_system.calculate_mix()
 
             energy_system.results["waerme_ges_kW"] = waerme_ges_kW
             energy_system.results["strom_wp_kW"] = strom_wp_kW
@@ -104,7 +104,7 @@ class CalculateMixThread(QThread):
                 print("Optimization done")
 
                 # Calculate the energy mix
-                optimized_result = optimized_energy_system.calculate_mix()
+                optimized_energy_system.calculate_mix()
 
                 # Add additional data to the result
                 optimized_energy_system.results["waerme_ges_kW"] = waerme_ges_kW
