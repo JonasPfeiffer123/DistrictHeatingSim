@@ -23,6 +23,6 @@ setup(
         "Topic :: Scientific/Engineering",
         "Topic :: Software Development",
     ],
-    python_requires=">=3.9",  # Mindestens benötigte Python-Version
+    python_requires="==3.11",  # Getestet mit Python 3.11
     url="https://github.com/JonasPfeiffer123/DistrictHeatingSim",  # URL zum Projekt
 )
