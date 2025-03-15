@@ -4,7 +4,7 @@
 
 Welcome to the DistrictHeatingSim project, a comprehensive tool for planning and optimizing sustainable district heating networks. This README provides an overview of the project's functionality, installation instructions, and usage guidelines. 
 
-DistrictHeatingSim is developed by Dipl.-Ing. (FH) Jonas Pfeiffer as part of the SMWK-NEUES TG70 project, which focuses on the development and testing of methods and tools for the conceptualization of sustainable heating networks. The software integrates technical and economic simulations to support the design and evaluation of district heating systems. Besides the technical methods for calculations, a huge focus lies on implementing a GUI for this process steps. The Tool is implemented as an PyQt5-GUI.
+DistrictHeatingSim is developed by Dipl.-Ing. (FH) Jonas Pfeiffer as part of a preliminary research SMWK-NEUES TG70 project, which focuses on the development and testing of methods and tools for the conceptualization of sustainable heating networks. The software integrates technical and economic simulations to support the design and evaluation of district heating systems. Besides the technical methods for calculations, a huge focus lies on implementing a GUI for this process steps. The Tool is implemented as an PyQt5-GUI.
 
 ## Table of Contents
 1. [Features](#features)
@@ -53,6 +53,8 @@ pip install git+https://github.com/JonasPfeiffer123/DistrictHeatingSim.git
 
 ## Usage
 
+Start DistrictHeatingSim by running DistrictHeatingSim.py within src/districtheatingsim/
+
 ### Building Heat Demand Profile Calculation
 
 1. **Load CSV-File**: Create/Load CSV-file with project specific building informations.
@@ -96,7 +98,7 @@ pip install git+https://github.com/JonasPfeiffer123/DistrictHeatingSim.git
 
 ## Requirements
 
-- Python 3.8 - Python 3.11 ; some libraries currently not working in 3.12
+- Python 3.11 ; some libraries currently not working in 3.12 ; only tested in 3.11
 - Required Python packages listed in `requirements.txt`:
     ```text
     PyQt5
@@ -113,6 +115,10 @@ pip install git+https://github.com/JonasPfeiffer123/DistrictHeatingSim.git
     PyPDF2
     reportlab
     numpy_financial
+    pyomo
+    requests
+    selenium
+    webdriver-manager
     ```
 
 ## Project Structure
@@ -124,13 +130,13 @@ pip install git+https://github.com/JonasPfeiffer123/DistrictHeatingSim.git
 - **README.md**: This README file
 - **examples/**: Contains multiple Examples for the various base functionalities of the software.
 
-- **currently_not_used**: Contains multiple python files with various functionality which are currently not integrated in DistrictHeatingSim
+- **feature_develop**: Contains multiple python files with various functionality which are not yet integrated in DistrictHeatingSim
 
 ## PyInstaller
 Pyinstaller installation works with specific definitions. Reach out to the author for further intructions.
 
 ## Documentation
-The Code is documented with docstrings which are readable by [Sphinx](https://www.sphinx-doc.org/en/master/) and therefore a documentation can be created by doing
+The Code is documented with docstrings which are readable by [Sphinx](https://www.sphinx-doc.org/en/master/) and therefore a documentation can be created by running
 
 1. **Directing to the docs folder**:
     ```sh
