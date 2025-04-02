@@ -12,6 +12,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import art3d
+from matplotlib.figure import Figure
 
 class TechInputDialog(QDialog):
     """
@@ -66,6 +67,8 @@ class TechInputDialog(QDialog):
             self.dialog = AqvaHeatDialog(self.tech_data)
         elif self.tech_type.startswith("Power-to-Heat"):
             self.dialog = PowerToHeatDialog(self.tech_data)
+        elif self.tech_type.startswith("Saisonaler Wärmespeicher"):
+            self.dialog = TemperatureStratifiedThermalStorageDialog(self.tech_data)
         else:
             raise ValueError(f"Unbekannter Technologietyp: {self.tech_type}")
 
@@ -1339,5 +1342,155 @@ class AqvaHeatDialog(QDialog):
             dict: A dictionary containing the input values.
         """
         inputs = {
+        }
+        return inputs
+    
+class TemperatureStratifiedThermalStorageDialog(QDialog):
+    """
+    A QDialog subclass for configuring temperature stratified thermal storage parameters.
+
+    Attributes:
+
+    """
+
+    def __init__(self, tech_data=None):
+        """
+        Initializes the TemperatureStratifiedThermalStorageDialog.
+
+        Args:
+            tech_data (dict, optional): Dictionary containing initial values for the temperature stratified thermal storage parameters. Defaults to None.
+        """
+        super(TemperatureStratifiedThermalStorageDialog, self).__init__()
+        self.tech_data = tech_data if tech_data is not None else {}
+        self.initUI()
+
+    def initUI(self):
+        # Main layout
+        layout = QVBoxLayout()
+
+        # Form layout for input parameters
+        form_layout = QFormLayout()
+
+        # Dropdown for storage type
+        self.storage_type_combo = QComboBox(self)
+        self.storage_type_combo.addItems(["truncated_trapezoid", "cylindrical"])
+        self.storage_type_combo.setCurrentText("truncated_trapezoid")
+        form_layout.addRow("Storage Type:", self.storage_type_combo)
+
+        # Input fields for storage dimensions
+        self.dimensions_input = QLineEdit(self)
+        self.dimensions_input.setText("20,20,50,50,15")  # Default values: radius=10m, height=12m for cylindrical
+        form_layout.addRow("Dimensions (comma separated):", self.dimensions_input)
+
+        # Other inputs with default values
+        self.rho_input = QLineEdit(self)
+        self.rho_input.setText("1000")  # Default: Density of water (kg/m³)
+        form_layout.addRow("Density (kg/m³):", self.rho_input)
+
+        self.cp_input = QLineEdit(self)
+        self.cp_input.setText("4180")  # Default: Specific heat capacity of water (J/kg*K)
+        form_layout.addRow("Specific Heat Capacity (J/kg*K):", self.cp_input)
+
+        self.T_ref_input = QLineEdit(self)
+        self.T_ref_input.setText("10")  # Default: Reference temperature (°C)
+        form_layout.addRow("Reference Temperature (°C):", self.T_ref_input)
+
+        self.U_top_input = QLineEdit(self)
+        self.U_top_input.setText("0.3")  # Default: U-value top (W/m²K)
+        form_layout.addRow("U-value Top (W/m²K):", self.U_top_input)
+
+        self.U_side_input = QLineEdit(self)
+        self.U_side_input.setText("0.06")  # Default: U-value side (W/m²K)
+        form_layout.addRow("U-value Side (W/m²K):", self.U_side_input)
+
+        self.U_bottom_input = QLineEdit(self)
+        self.U_bottom_input.setText("0.4")  # Default: U-value bottom (W/m²K)
+        form_layout.addRow("U-value Bottom (W/m²K):", self.U_bottom_input)
+
+        self.U_soil_input = QLineEdit(self)
+        self.U_soil_input.setText("0.5")  # Default: U-value soil (W/m²K)
+        form_layout.addRow("U-value Soil (W/m²K):", self.U_soil_input)
+
+        self.d_top_input = QLineEdit(self)
+        self.d_top_input.setText("0.3")  # Default: Thickness of top insulation (m)
+        form_layout.addRow("Thickness of Top Insulation (m):", self.d_top_input)
+
+        self.d_side_input = QLineEdit(self)
+        self.d_side_input.setText("0.4")  # Default: Thickness of side insulation (m)
+        form_layout.addRow("Thickness of Side Insulation (m):", self.d_side_input)
+
+        self.d_bottom_input = QLineEdit(self)
+        self.d_bottom_input.setText("0.5")  # Default: Thickness of bottom insulation (m)
+        form_layout.addRow("Thickness of Bottom Insulation (m):", self.d_bottom_input)
+
+        self.T_amb_input = QLineEdit(self)
+        self.T_amb_input.setText("10")  # Default: Ambient temperature (°C)
+        form_layout.addRow("Ambient Temperature (°C):", self.T_amb_input)
+
+        self.T_soil_input = QLineEdit(self)
+        self.T_soil_input.setText("10")  # Default: Soil temperature (°C)
+        form_layout.addRow("Soil Temperature (°C):", self.T_soil_input)
+
+        self.T_max_input = QLineEdit(self)
+        self.T_max_input.setText("95")  # Default: Max storage temperature (°C)
+        form_layout.addRow("Max Storage Temperature (°C):", self.T_max_input)
+
+        self.T_min_input = QLineEdit(self)
+        self.T_min_input.setText("40")  # Default: Min storage temperature (°C)
+        form_layout.addRow("Min Storage Temperature (°C):", self.T_min_input)
+
+        self.initial_temp_input = QLineEdit(self)
+        self.initial_temp_input.setText("60")  # Default: Initial storage temperature (°C)
+        form_layout.addRow("Initial Temperature (°C):", self.initial_temp_input)
+        
+        self.hours_input = QLineEdit(self)
+        self.hours_input.setText("8760")  # Default: Number of hours in a year
+        form_layout.addRow("Number of Hours in a Year:", self.hours_input)
+
+        self.num_layers_input = QLineEdit(self)
+        self.num_layers_input.setText("5")  # Default: Number of layers for stratification
+        form_layout.addRow("Number of Layers for Stratification:", self.num_layers_input)
+
+        self.thermal_conductivity_input = QLineEdit(self)
+        self.thermal_conductivity_input.setText("0.6")  # Default: Thermal conductivity of the medium (W/m*K)
+        form_layout.addRow("Thermal Conductivity of Medium (W/m*K):", self.thermal_conductivity_input)
+
+        # Add the form layout to the main layout
+        layout.addLayout(form_layout)
+
+        # Set the layout for the window
+        self.setLayout(layout)
+
+        # Window properties
+        self.setGeometry(100, 100, 800, 600)
+
+    def getInputs(self):
+        """
+        Retrieves the input values from the user interface.
+
+        Returns:
+            dict: A dictionary containing the input values.
+        """
+        inputs = {
+            'storage_type': self.storage_type_combo.currentText(),
+            'dimensions': [float(x) for x in self.dimensions_input.text().split(",")],
+            'rho': float(self.rho_input.text()),
+            'cp': float(self.cp_input.text()),
+            'T_ref': float(self.T_ref_input.text()),
+            'lambda_top': float(self.U_top_input.text()),
+            'lambda_side': float(self.U_side_input.text()),
+            'lambda_bottom': float(self.U_bottom_input.text()),
+            'lambda_soil': float(self.U_soil_input.text()),
+            "dt_top": float(self.d_top_input.text()),
+            "ds_side": float(self.d_side_input.text()),
+            "db_bottom": float(self.d_bottom_input.text()),
+            'T_amb': float(self.T_amb_input.text()),
+            'T_soil': float(self.T_soil_input.text()),
+            'T_max': float(self.T_max_input.text()),
+            'T_min': float(self.T_min_input.text()),
+            'initial_temp': float(self.initial_temp_input.text()),
+            "hours": 8760,  # Anzahl der Stunden in einem Jahr
+            "num_layers": 5,  # Anzahl der Schichten für die Schichtung
+            "thermal_conductivity": 0.6  # Wärmeleitfähigkeit des Mediums (W/m*K)
         }
         return inputs

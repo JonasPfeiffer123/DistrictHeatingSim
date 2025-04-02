@@ -152,6 +152,13 @@ class MixDesignTab(QWidget):
             action.triggered.connect(lambda checked, gen=generator: self.techTab.addTech(gen, None))
             addHeatGeneratorMenu.addAction(action)
 
+        addstorageMenu = self.menuBar.addMenu('Speicher hinzufügen')
+        storageTypes = ["Saisonaler Wärmespeicher"]
+        for storage in storageTypes:
+            action = QAction(storage, self)
+            action.triggered.connect(lambda checked, stor=storage: self.techTab.addTech(stor, None))
+            addstorageMenu.addAction(action)
+
         # 'Berechnungen'-Menü
         calculationsMenu = self.menuBar.addMenu('Berechnungen')
         calculationsMenu.addAction(self.createAction('Berechnen', self.start_calculation))

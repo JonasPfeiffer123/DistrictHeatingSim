@@ -4,7 +4,7 @@ from districtheatingsim.heat_generators.chp import CHP, CHPStrategy
 from districtheatingsim.heat_generators.gas_boiler import GasBoiler, GasBoilerStrategy
 from districtheatingsim.heat_generators.power_to_heat import PowerToHeat, PowerToHeatStrategy
 from districtheatingsim.heat_generators.biomass_boiler import BiomassBoiler, BiomassBoilerStrategy
-from STES import TemperatureStratifiedThermalStorage
+from districtheatingsim.heat_generators.STES import TemperatureStratifiedThermalStorage
 
 from matplotlib import pyplot as plt
 
@@ -52,7 +52,7 @@ storage_params = {
 energy_system = EnergySystem(time_steps, load_profile, VLT_L, RLT_L, TRY_data, COP_data, economic_parameters)
 
 # Initialisiere den Speicher
-storage = TemperatureStratifiedThermalStorage(**storage_params)
+storage = TemperatureStratifiedThermalStorage(name="Saisonalspeicher", **storage_params)
 energy_system.add_storage(storage)
 
 # Füge Generatoren hinzu
@@ -73,17 +73,14 @@ biomass_boiler.strategy = BiomassBoilerStrategy(storage, charge_on=60, charge_of
 
 
 # Berechne den Energiemix mit Speicher
-Q_out_profile = load_profile
-T_Q_in_flow_profile = VLT_L
-T_Q_out_return_profile = RLT_L
-results = energy_system.calculate_mix_with_storage(Q_out_profile, T_Q_in_flow_profile, T_Q_out_return_profile)
-#results = energy_system.calculate_mix()
+results = energy_system.calculate_mix()
+
 # Ergebnisse anzeigen
 print("Simulationsergebnisse:")
-print(f"Speicherwirkungsgrad: {results['storage_classes'].efficiency*100:.2f}%")
-print(f"Betriebskosten: {results['storage_classes'].operational_costs:.2f} €")
+print(f"Speicherwirkungsgrad: {results['storage_class'].efficiency*100:.2f}%")
+print(f"Betriebskosten: {results['storage_class'].operational_costs:.2f} €")
 
 # Ergebnisse plotten
-storage.plot_results(results["Wärmeleistung_L"][0], Q_out_profile, T_Q_in_flow_profile, T_Q_out_return_profile)
+storage.plot_results(results["Wärmeleistung_L"][0], load_profile, VLT_L, RLT_L)
 energy_system.plot_stack_plot()
 plt.show()
