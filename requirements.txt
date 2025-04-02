@@ -16,3 +16,6 @@ pyomo
 requests
 selenium
 webdriver-manager
+CoolProp
+contextily
+plotly
