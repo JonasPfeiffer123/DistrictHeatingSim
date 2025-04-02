@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from STES import StratifiedThermalStorage
+from districtheatingsim.heat_generators.STES import StratifiedThermalStorage
 from generators import CHP, PowerToHeat
 from annuity import annuität
 

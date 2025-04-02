@@ -22,7 +22,7 @@ import pandas as pd
 from matplotlib.widgets import Slider, Button
 from matplotlib.animation import FuncAnimation
 
-from annuity import annuität
+from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator
 
 # Globals for animation control
 is_animating = False
@@ -128,9 +128,10 @@ def interactive_plot(storage):
     speed_slider = Slider(ax_speed, 'Speed (ms)', 50, 1000, valinit=anim_speed)
     speed_slider.on_changed(lambda val: adjust_speed(val, storage))
 
-class ThermalStorage:
-    def __init__(self, storage_type, dimensions, rho, cp, T_ref, lambda_top, lambda_side, lambda_bottom, lambda_soil, 
+class ThermalStorage(BaseHeatGenerator):
+    def __init__(self, name, storage_type, dimensions, rho, cp, T_ref, lambda_top, lambda_side, lambda_bottom, lambda_soil, 
                  T_amb, T_soil, T_max, T_min, initial_temp, dt_top, ds_side, db_bottom, hours=8760, num_layers=5, thermal_conductivity=0.6):
+        super().__init__(name)
         self.storage_type = storage_type # Type of storage (cylindrical, truncated_cone, truncated_trapezoid)
         self.dimensions = dimensions # Dimensions of the storage (radius, height for cylindrical, top_radius, bottom_radius, height for truncated cone)
         self.rho = rho # Density of the medium in kg/m³
@@ -954,9 +955,20 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
         self.E1 = E1
         self.stundensatz = stundensatz
 
-        self.A_N = annuität(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, q, r, T, Energiebedarf, Energiekosten, E1, stundensatz)
+        self.A_N = self.annuität(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, q, r, T, Energiebedarf, Energiekosten, E1, stundensatz)
 
         self.WGK = self.A_N / self.Wärmemenge_MWh
+
+    def get_display_text(self):
+        return (f"{self.storage_type.capitalize()} Storage: Volume: {self.volume:.1f} m³, "
+                f"Max Temp: {self.T_max:.1f} °C, Min Temp: {self.T_min:.1f} °C, "
+                f"Layers: {self.num_layers}")
+
+    def extract_tech_data(self):
+        dimensions = f"Volume: {self.volume:.1f} m³, Layers: {self.num_layers}"
+        costs = 0 # must be fixed
+        full_costs = 0 # must be fixed
+        return self.storage_type.capitalize(), dimensions, costs, full_costs
 
     def plot_results(self, Q_in, Q_out, T_Q_in_flow, T_Q_out_return):
         fig = plt.figure(figsize=(16, 10))
@@ -1058,7 +1070,7 @@ if __name__ == '__main__':
         "thermal_conductivity": 0.6
     }
     # Create instance of the class for cylindrical storage
-    simple_STES = SimpleThermalStorage(**params) # Seasonal Thermal Energy Storage
+    simple_STES = SimpleThermalStorage("Saisonaler Wärmespeicher", **params) # Seasonal Thermal Energy Storage
     stratified_STES = StratifiedThermalStorage(**params) # Stratified Seasonal Thermal Energy Storage
     temperature_stratified_STES = TemperatureStratifiedThermalStorage(**params) # Stratified Seasonal Thermal Energy Storage with Mass Flows
 

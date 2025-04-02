@@ -10,6 +10,7 @@ from .biomass_boiler import BiomassBoiler
 from .gas_boiler import GasBoiler
 from .power_to_heat import PowerToHeat
 from .solar_thermal import SolarThermal
+from .STES import TemperatureStratifiedThermalStorage
 
 TECH_CLASS_REGISTRY = {
     'BHKW': CHP,
@@ -21,5 +22,6 @@ TECH_CLASS_REGISTRY = {
     'Gaskessel': GasBoiler,
     'Solarthermie': SolarThermal,
     'AqvaHeat': AqvaHeat,
-    'Power-to-Heat': PowerToHeat
+    'Power-to-Heat': PowerToHeat,
+    'Saisonaler Wärmespeicher': TemperatureStratifiedThermalStorage
 }

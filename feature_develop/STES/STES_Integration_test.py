@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from STES import TemperatureStratifiedThermalStorage
+from districtheatingsim.heat_generators.STES import TemperatureStratifiedThermalStorage
 from generators import CHP, PowerToHeat
 
 # Control strategy for CHP

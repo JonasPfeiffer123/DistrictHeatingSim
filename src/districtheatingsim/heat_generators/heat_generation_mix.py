@@ -17,7 +17,7 @@ from scipy.optimize import minimize as scipy_minimize
 
 from districtheatingsim.heat_generators import TECH_CLASS_REGISTRY
 
-from districtheatingsim.heat_generators.chp import CHP
+from districtheatingsim.heat_generators.STES import TemperatureStratifiedThermalStorage
 
 class EnergySystem:
     def __init__(self, time_steps, load_profile, VLT_L, RLT_L, TRY_data, COP_data, economic_parameters):
@@ -94,7 +94,8 @@ class EnergySystem:
             'specific_emissions_Gesamt': 0,
             'primärenergiefaktor_Gesamt': 0,
             'techs': [],
-            'tech_classes': []
+            'tech_classes': [],
+            'storage_class': []
         }
 
     def set_optimization_variables(self, variables, variables_order):
@@ -155,106 +156,80 @@ class EnergySystem:
             dict: Results of the energy system simulation.
         """
         
+        # Initialize results
         self.initialize_results()
         self.set_optimization_variables(variables, variables_order)
-
+        
         for tech in self.technologies:
-            # Perform technology-specific calculation
-            tech_results = tech.calculate(economic_parameters=self.economic_parameters,
-                                        duration=self.duration,
-                                        load_profile=self.results["Restlast_L"],
-                                        VLT_L=self.VLT_L,
-                                        RLT_L=self.RLT_L,
-                                        TRY_data=self.TRY_data,
-                                        COP_data=self.COP_data,
-                                        time_steps=self.time_steps)
+            if isinstance(tech, TemperatureStratifiedThermalStorage):
+                self.storage = tech
+
+        if self.storage:
+            self.storage_state = np.zeros(len(self.time_steps))
+
+            # Ergebnisse für jeden Zeitschritt initialisieren
+            time_steps = len(self.time_steps)
+            Wärmeleistung_L = np.zeros((len(self.technologies) + 1, time_steps))  # +1 für den Speicher
+            Restlast_L = self.load_profile.copy()
+
+            for t in range(time_steps):
+                Q_out = self.load_profile[t]
+                T_Q_in_flow = self.VLT_L[t]
+                T_Q_out_return = self.RLT_L[t]
+                remaining_demand = Q_out
+                Q_in_total = 0  # Summe der Wärmeeinspeisung
+
+                # Speicherzustand und Temperaturen abrufen
+                current_storage_state, _, _ = self.storage.current_storage_state(t, T_Q_out_return, T_Q_in_flow)
+                upper_storage_temp, lower_storage_temp = self.storage.current_storage_temperatures(t)
+
+                # Generatoren basierend auf Priorität steuern
+                for i, tech in enumerate(self.technologies):
+                    tech.active = tech.strategy.decide_operation(tech.active, upper_storage_temp, lower_storage_temp, remaining_demand)
+
+                    if tech.active:
+                        Q_in, _ = tech.generate(t, remaining_demand)
+                        remaining_demand -= Q_in
+                        Q_in_total += Q_in
+                        Wärmeleistung_L[i, t] = Q_in  # Speichere die Wärmeerzeugung des Generators
+
+                # Speicher aktualisieren
+                self.storage.simulate_stratified_temperature_mass_flows(t, Q_in_total, Q_out, T_Q_in_flow, T_Q_out_return)
+
+                # Speicherleistung speichern
+                Wärmeleistung_L[-1, t] = self.storage.Q_net_storage_flow[t]
+
+                # Restlast nach Speicherentladung berechnen
+                remaining_demand -= self.storage.Q_net_storage_flow[t]
+                Restlast_L[t] = max(0, remaining_demand)
+
+            # Speicherergebnisse berechnen
+            self.storage.calculate_efficiency(self.load_profile)
+            self.storage.calculate_operational_costs(0.10) # needs to be changed to a parameter
+            self.results['storage_class'] = self.storage
             
-            if tech_results['Wärmemenge'] > 1e-6:
-                self.aggregate_results(tech_results)
-            else:
-                # Add technology as inactive with zero contribution
-                self.aggregate_results({'tech_name': tech.name})
+        else:
+
+            # Hier besteht noch Bedarf zur Anpassung der Berechnung, alle tech.calculate() Methoden müssen die gleichen Parameter verwenden
+            # und die Ergebnisse in einem einheitlichen Format zurückgeben und Speicher berücksichtigen
+            for tech in self.technologies:
+                # Perform technology-specific calculation
+                tech_results = tech.calculate(economic_parameters=self.economic_parameters,
+                                            duration=self.duration,
+                                            load_profile=self.results["Restlast_L"],
+                                            VLT_L=self.VLT_L,
+                                            RLT_L=self.RLT_L,
+                                            TRY_data=self.TRY_data,
+                                            COP_data=self.COP_data,
+                                            time_steps=self.time_steps)
+                
+        if tech_results['Wärmemenge'] > 1e-6:
+            self.aggregate_results(tech_results)
+        else:
+            # Add technology as inactive with zero contribution
+            self.aggregate_results({'tech_name': tech.name})
         
         self.results['tech_classes'] = self.technologies
-
-        return self.results
-    
-    def calculate_mix_with_storage(self, Q_out_profile, T_Q_in_flow_profile, T_Q_out_return_profile, variables=[], variables_order=[]):
-        """
-        Calculate the energy generation mix for the given technologies, including storage interactions,
-        on a time-step basis.
-
-        Args:
-            Q_out_profile (np.ndarray): Heat demand profile (kW) for each time step.
-            T_Q_in_flow_profile (np.ndarray): Inlet temperature profile (°C) for each time step.
-            T_Q_out_return_profile (np.ndarray): Outlet temperature profile (°C) for each time step.
-            variables (list): Variables for optimization.
-            variables_order (list): Order of variables for optimization.
-
-        Returns:
-            dict: Results of the energy system simulation.
-        """
-        self.initialize_results()
-        self.set_optimization_variables(variables, variables_order)
-
-        # Speicherzustand initialisieren
-        if self.storage:
-            self.storage_state = np.zeros(len(self.time_steps))  # Speicherzustand in Prozent
-        else:
-            raise ValueError("No storage defined for the energy system.")
-
-        # Ergebnisse für jeden Zeitschritt initialisieren
-        time_steps = len(self.time_steps)
-        Wärmeleistung_L = np.zeros((len(self.technologies) + 1, time_steps))  # +1 für den Speicher
-        Restlast_L = self.load_profile.copy()
-
-        for t in range(time_steps):
-            Q_out = Q_out_profile[t]
-            T_Q_in_flow = T_Q_in_flow_profile[t]
-            T_Q_out_return = T_Q_out_return_profile[t]
-            remaining_demand = Q_out
-            Q_in_total = 0  # Summe der Wärmeeinspeisung
-
-            # Speicherzustand und Temperaturen abrufen
-            current_storage_state, _, _ = self.storage.current_storage_state(t, T_Q_out_return, T_Q_in_flow)
-            upper_storage_temp, lower_storage_temp = self.storage.current_storage_temperatures(t)
-
-            # Generatoren basierend auf Priorität steuern
-            for i, tech in enumerate(self.technologies):
-                tech.active = tech.strategy.decide_operation(tech.active, upper_storage_temp, lower_storage_temp, remaining_demand)
-
-                if tech.active:
-                    Q_in, _ = tech.generate(t, remaining_demand)
-                    remaining_demand -= Q_in
-                    Q_in_total += Q_in
-                    Wärmeleistung_L[i, t] = Q_in  # Speichere die Wärmeerzeugung des Generators
-
-            # Speicher aktualisieren
-            self.storage.simulate_stratified_temperature_mass_flows(t, Q_in_total, Q_out, T_Q_in_flow, T_Q_out_return)
-
-            # Speicherleistung speichern
-            Wärmeleistung_L[-1, t] = self.storage.Q_net_storage_flow[t]
-
-            # Restlast nach Speicherentladung berechnen
-            remaining_demand -= self.storage.Q_net_storage_flow[t]
-            Restlast_L[t] = max(0, remaining_demand)
-
-        # Finalisiere Ergebnisse
-        for tech in self.technologies:
-            tech_results = tech.calculate(self.economic_parameters, self.duration, self.load_profile)
-            if tech_results['Wärmemenge'] > 1e-6:
-                self.aggregate_results(tech_results)
-            else:
-                # Add technology as inactive with zero contribution
-                self.aggregate_results({'tech_name': tech.name})
-
-        self.results['tech_classes'] = self.technologies
-
-        # Speicherergebnisse berechnen
-        self.storage.calculate_efficiency(self.load_profile)
-        self.storage.calculate_operational_costs(self.economic_parameters.get("energy_price_per_kWh", 0.10))
-
-        self.results['storage_classes'] = self.storage
 
         return self.results
 

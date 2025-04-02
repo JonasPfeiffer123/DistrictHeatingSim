@@ -151,7 +151,13 @@ class SchematicScene(CustomGraphicsScene):
             'geometry': QRectF(-30, -15, 60, 30),  # Rectangle dimensions for Consumer
             'shape': 'rect',  # Shape as rectangle
             'counter': 0  # Counter for Consumer
-        }
+        },
+        'Seasonal Thermal Storage': {
+            'color': QColor('darkorange'),
+            'geometry': QRectF(-30, -20, 60, 40),  # Rectangle dimensions for seasonal storage
+            'shape': 'trapezoid',  # Shape as trapezoid to symbolize an earth basin
+            'counter': 0  # Counter for seasonal storage
+        },
     }
 
     def __init__(self, width, height, parent=None):
@@ -396,6 +402,38 @@ class SchematicScene(CustomGraphicsScene):
             # Update the scene size after adding the generator
             self.update_scene_size()
 
+    def add_seasonal_storage(self, item_type='Saisonaler Wärmespeicher', item_name='Speicher', connect_to_lines=True):
+        """Add a seasonal storage unit at a fixed position and optionally connect it to the parallel lines."""
+        # Define the storage position based on the current x-position
+        position = QPointF(self.GENERATOR_X_START, self.generator_y)
+        position = self.snap_to_grid(position)
+
+        item_color = self.OBJECTS[item_type]['color']  # Color of the storage
+        item_geometry = self.OBJECTS[item_type]['geometry']  # Geometry of the storage
+        
+        self.OBJECTS[item_type]['counter'] += 1  # Increment the counter for the storage type
+        item_counter = self.OBJECTS[item_type]['counter']  # Get the current count for the storage
+
+        # Create and add the storage
+        storage = ComponentItem(position, item_type, item_name, item_color, item_geometry, self.FLOW_LINE_COLOR, self.RETURN_LINE_COLOR)
+        storage.create_connection_points()  # Create connection points
+        self.addItem(storage)
+
+        self.update_label(storage, f"{item_name} {item_counter}")
+
+        # Update the parallel lines
+        self.create_parallel_lines()
+
+        if connect_to_lines:
+            self.connect_items_to_lines(storage)
+
+        self.GENERATOR_X_START += self.GENERATOR_SPACING  # Shift position for the next component
+
+        # Update the scene size after adding the storage
+        self.update_scene_size()
+
+        return storage
+    
     def update_label(self, item, new_text):
         """Update the label of a given item with new text."""
         if item.label:
@@ -521,6 +559,8 @@ class SchematicScene(CustomGraphicsScene):
         else:
             if item_name == 'Consumer':
                 return self.add_consumer_net(name)
+            if item_name == 'Saisonaler Wärmespeicher':
+                return self.add_seasonal_storage(item_name, name)
             else:
                 return self.add_generator(item_name, name)
 
