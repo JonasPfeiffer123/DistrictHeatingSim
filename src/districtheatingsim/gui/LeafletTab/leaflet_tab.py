@@ -174,8 +174,6 @@ class VisualizationPresenter(QObject):
         self.data_manager = data_manager
         self.config_manager = config_manager
 
-        self.view.map_file_path = self.model.get_resource_path("gui/LeafletTab/map.html") ### Replace with path in file_paths
-
         # Set up folder change handling
         self.folder_manager.project_folder_changed.connect(self.on_project_folder_changed)
 
@@ -189,6 +187,11 @@ class VisualizationPresenter(QObject):
 
         # Initialize map view
         self.on_project_folder_changed(self.folder_manager.variant_folder)
+
+        # HTML-Karte wird geladen (Annahme: HTML-Datei ist vorbereitet)
+        self.map_file_path = self.model.get_resource_path("leaflet\\map.html")
+        self.view.web_view.setUrl(QUrl.fromLocalFile(self.map_file_path))
+
 
     def on_project_folder_changed(self, new_base_path):
         """
@@ -389,10 +392,9 @@ class VisualizationTabView(QWidget):
         progressBar (QProgressBar): The progress bar used to display the progress of operations.
     """
 
-    def __init__(self, model, parent=None):
+    def __init__(self, parent=None):
         """Initializes the VisualizationTabView with the necessary UI components."""
         super().__init__(parent)
-        self.model = model
         self.initUI()
 
     def initUI(self):
@@ -438,12 +440,6 @@ class VisualizationTabView(QWidget):
         """
         self.web_view = QWebEngineView()
         
-        # HTML-Karte wird geladen (Annahme: HTML-Datei ist vorbereitet)
-        self.map_file_path = self.model.get_resource_path("gui/LeafletTab/map.html")
-        print(self.map_file_path)
-        #self.map_file_path = os.path.join(os.getcwd(), 'src\\districtheatingsim\\gui\\PyQt5_leaflet\\map.html')
-        self.web_view.setUrl(QUrl.fromLocalFile(self.map_file_path))
-
         # Erstelle den WebChannel und registriere das Python-Objekt
         self.channel = QWebChannel()
         self.geoJsonReceiver = GeoJsonReceiver()
@@ -499,7 +495,7 @@ class VisualizationTabLeaflet(QMainWindow):
 
         # Initialize Model, View, and Presenter
         self.model = VisualizationModel()
-        self.view = VisualizationTabView(self.model)
+        self.view = VisualizationTabView()
         self.presenter = VisualizationPresenter(self.model, self.view, folder_manager, data_manager, config_manager)
 
         # Set the central widget to the view
