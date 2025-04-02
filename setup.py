@@ -16,6 +16,9 @@ setup(
     package_dir={"": "src"},  # Root ist "src"
     install_requires=read_requirements('requirements.txt'),
     include_package_data=True,  # Falls Daten wie .csv in Paketen enthalten sind
+    package_data={
+        'your_package': ['data/*.csv', 'data/*.json', 'data/*.dat', 'gui/LeafletTab/*.js', 'gui/LeafletTab/*.html'],  # Beispiel für Datenpakete
+    },
     classifiers=[
         "Programming Language :: Python :: 3.11",
         "Intended Audience :: Developers",
@@ -23,6 +26,6 @@ setup(
         "Topic :: Scientific/Engineering",
         "Topic :: Software Development",
     ],
-    python_requires="==3.11",  # Getestet mit Python 3.11
+    python_requires="~=3.11",  # Getestet mit Python 3.11
     url="https://github.com/JonasPfeiffer123/DistrictHeatingSim",  # URL zum Projekt
 )
