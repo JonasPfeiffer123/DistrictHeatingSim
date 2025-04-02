@@ -15,7 +15,10 @@ setup(
     long_description_content_type='text/markdown',
     package_dir={"": "src"},  # Root ist "src"
     install_requires=read_requirements('requirements.txt'),
-    include_package_data=True,  # Falls Daten wie .csv in Paketen enthalten sind
+    # Include all files from the data/ directory
+    package_data={
+        'your_package': ['data/**/*', 'leaflet/**/*'],  # Include all files recursively in the data/ directory
+    },
     classifiers=[
         "Programming Language :: Python :: 3.11",
         "Intended Audience :: Developers",
@@ -23,6 +26,6 @@ setup(
         "Topic :: Scientific/Engineering",
         "Topic :: Software Development",
     ],
-    python_requires=">=3.9",  # Mindestens benötigte Python-Version
+    python_requires="~=3.11",  # Tested with Python 3.11
     url="https://github.com/JonasPfeiffer123/DistrictHeatingSim",  # URL zum Projekt
 )
