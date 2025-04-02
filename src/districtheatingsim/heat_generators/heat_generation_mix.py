@@ -1,7 +1,7 @@
 """
 Filename: heat_generator_mix.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-12-13
+Date: 2025-03-25
 Description: Class to calculate the heat generation mix for a district heating system.
 
 """
@@ -14,9 +14,10 @@ import matplotlib.pyplot as plt
 import copy
 
 from scipy.optimize import minimize as scipy_minimize
-from pyomo.environ import ConcreteModel, Var, Objective, ConstraintList, SolverFactory, NonNegativeReals, Integers, Reals, minimize as pyomo_minimize
 
 from districtheatingsim.heat_generators import TECH_CLASS_REGISTRY
+
+from districtheatingsim.heat_generators.chp import CHP
 
 class EnergySystem:
     def __init__(self, time_steps, load_profile, VLT_L, RLT_L, TRY_data, COP_data, economic_parameters):
@@ -40,6 +41,7 @@ class EnergySystem:
         self.COP_data = COP_data
         self.economic_parameters = economic_parameters
         self.technologies = []  # List to store generator objects
+        self.storage = None
         self.results = {}
 
         self.duration = (np.diff(self.time_steps[:2]) / np.timedelta64(1, 'h'))[0]
@@ -52,6 +54,15 @@ class EnergySystem:
             tech (object): Technology object to add.
         """
         self.technologies.append(tech)
+
+    def add_storage(self, storage):
+        """
+        Add a seasonal storage to the energy system.
+
+        Args:
+            storage (TemperatureStratifiedThermalStorage): Storage object.
+        """
+        self.storage = storage
 
     def initialize_results(self):
         """
@@ -145,7 +156,6 @@ class EnergySystem:
         """
         
         self.initialize_results()
-
         self.set_optimization_variables(variables, variables_order)
 
         for tech in self.technologies:
@@ -168,6 +178,85 @@ class EnergySystem:
         self.results['tech_classes'] = self.technologies
 
         return self.results
+    
+    def calculate_mix_with_storage(self, Q_out_profile, T_Q_in_flow_profile, T_Q_out_return_profile, variables=[], variables_order=[]):
+        """
+        Calculate the energy generation mix for the given technologies, including storage interactions,
+        on a time-step basis.
+
+        Args:
+            Q_out_profile (np.ndarray): Heat demand profile (kW) for each time step.
+            T_Q_in_flow_profile (np.ndarray): Inlet temperature profile (°C) for each time step.
+            T_Q_out_return_profile (np.ndarray): Outlet temperature profile (°C) for each time step.
+            variables (list): Variables for optimization.
+            variables_order (list): Order of variables for optimization.
+
+        Returns:
+            dict: Results of the energy system simulation.
+        """
+        self.initialize_results()
+        self.set_optimization_variables(variables, variables_order)
+
+        # Speicherzustand initialisieren
+        if self.storage:
+            self.storage_state = np.zeros(len(self.time_steps))  # Speicherzustand in Prozent
+        else:
+            raise ValueError("No storage defined for the energy system.")
+
+        # Ergebnisse für jeden Zeitschritt initialisieren
+        time_steps = len(self.time_steps)
+        Wärmeleistung_L = np.zeros((len(self.technologies) + 1, time_steps))  # +1 für den Speicher
+        Restlast_L = self.load_profile.copy()
+
+        for t in range(time_steps):
+            Q_out = Q_out_profile[t]
+            T_Q_in_flow = T_Q_in_flow_profile[t]
+            T_Q_out_return = T_Q_out_return_profile[t]
+            remaining_demand = Q_out
+            Q_in_total = 0  # Summe der Wärmeeinspeisung
+
+            # Speicherzustand und Temperaturen abrufen
+            current_storage_state, _, _ = self.storage.current_storage_state(t, T_Q_out_return, T_Q_in_flow)
+            upper_storage_temp, lower_storage_temp = self.storage.current_storage_temperatures(t)
+
+            # Generatoren basierend auf Priorität steuern
+            for i, tech in enumerate(self.technologies):
+                tech.active = tech.strategy.decide_operation(tech.active, upper_storage_temp, lower_storage_temp, remaining_demand)
+
+                if tech.active:
+                    Q_in, _ = tech.generate(t, remaining_demand)
+                    remaining_demand -= Q_in
+                    Q_in_total += Q_in
+                    Wärmeleistung_L[i, t] = Q_in  # Speichere die Wärmeerzeugung des Generators
+
+            # Speicher aktualisieren
+            self.storage.simulate_stratified_temperature_mass_flows(t, Q_in_total, Q_out, T_Q_in_flow, T_Q_out_return)
+
+            # Speicherleistung speichern
+            Wärmeleistung_L[-1, t] = self.storage.Q_net_storage_flow[t]
+
+            # Restlast nach Speicherentladung berechnen
+            remaining_demand -= self.storage.Q_net_storage_flow[t]
+            Restlast_L[t] = max(0, remaining_demand)
+
+        # Finalisiere Ergebnisse
+        for tech in self.technologies:
+            tech_results = tech.calculate(self.economic_parameters, self.duration, self.load_profile)
+            if tech_results['Wärmemenge'] > 1e-6:
+                self.aggregate_results(tech_results)
+            else:
+                # Add technology as inactive with zero contribution
+                self.aggregate_results({'tech_name': tech.name})
+
+        self.results['tech_classes'] = self.technologies
+
+        # Speicherergebnisse berechnen
+        self.storage.calculate_efficiency(self.load_profile)
+        self.storage.calculate_operational_costs(self.economic_parameters.get("energy_price_per_kWh", 0.10))
+
+        self.results['storage_classes'] = self.storage
+
+        return self.results
 
     def optimize_mix(self, weights, num_restarts=5):
         """
@@ -184,20 +273,6 @@ class EnergySystem:
         
         return self.optimized_energy_system
     
-    def optimize_milp(self, weights, num_restarts=5):
-        """
-        Optimize the energy generation mix using a MILP solver.
-
-        Args:
-            weights (dict): Weights for optimization criteria.
-
-        Returns:
-            list: Optimized list of technology objects with updated parameters.
-        """
-        optimizer = EnergySystemMILPOptimizer(self, weights, num_restarts)
-        self.optimized_energy_system = optimizer.optimize()
-        return self.optimized_energy_system
-    
     def plot_stack_plot(self, figure=None):
         """
         Plot a stack plot of the thermal power generated by each technology, including storage performance if applicable.
@@ -208,13 +283,42 @@ class EnergySystem:
         if figure is None:
             figure = plt.figure()
 
-        data = self.results['Wärmeleistung_L']
+        # Daten aus den Ergbenissen extrahieren
+        data = np.array(self.results['Wärmeleistung_L'])  # Wärmeerzeugung der Technologien
         labels = self.results['techs']
         colors = self.results['colors']
+        time_steps = self.results['time_steps'].astype('timedelta64[h]').astype(float)
+
+        # Speicherergebnisse abrufen, falls verfügbar
+        if self.storage:
+            storage_results = self.results['storage_classes']
+            Q_net_storage_flow = storage_results.Q_net_storage_flow  # Netto-Wärmefluss des Speichers
+
+            # Speicherbeladung (negative Werte) und Speicherentladung (positive Werte) trennen
+            Q_net_positive = np.maximum(Q_net_storage_flow, 0)  # Speicherentladung
+            Q_net_negative = np.minimum(Q_net_storage_flow, 0)  # Speicherbeladung
+
+            # Speicherbeladung zuerst hinzufügen
+            data = np.vstack([Q_net_negative, data])  # Speicherbeladung als erste Zeile
+            labels = ['Speicherbeladung'] + labels
+            colors = ['orange'] + colors
+
+            # Speicherentladung zuletzt hinzufügen
+            data = np.vstack([data, Q_net_positive])  # Speicherentladung als letzte Zeile
+            labels.append('Speicherentladung')
+            colors.append('purple')
+
+        # Debugging: Überprüfe die Konsistenz der Daten
+        if len(data) != len(labels) or len(data) != len(colors):
+            print(f"Fehler: Inkonsistente Datenlängen!")
+            print(f"Länge von data: {len(data)}")
+            print(f"Länge von labels: {len(labels)}")
+            print(f"Länge von colors: {len(colors)}")
+            return
 
         ax = figure.add_subplot(111)
-        ax.stackplot(self.results['time_steps'], data, labels=labels, colors=colors)
-        ax.plot(self.results['time_steps'], self.results["Last_L"], color="black", linewidth=0.5, label="Lastprofil")
+        ax.stackplot(time_steps, data, labels=labels, colors=colors)
+        ax.plot(time_steps, self.results["Last_L"], color="black", linewidth=0.5, label="Lastprofil")
         ax.set_title("Jahresdauerlinie")
         ax.set_xlabel("Jahresstunden")
         ax.set_ylabel("thermische Leistung in kW")
@@ -439,144 +543,6 @@ class EnergySystemOptimizer:
                 tech.update_parameters(best_solution.x, variables_order)
 
             print("Optimierung erfolgreich")
-            return self.energy_system_copy
-        else:
-            print("Keine gültige Lösung gefunden.")
-            return self.initial_energy_system
-
-### MILP Optimizer: Doesn't work for the current energy system setup as it is not defined linerarly ###
-### Therefore, the MILP optimizer is not used in the current implementation ###
-### But shows how to implement a MILP optimizer could look like ###
-class EnergySystemMILPOptimizer:
-    def __init__(self, initial_energy_system, weights, num_restarts=5):
-        """
-        Initialize the MILP optimizer for the energy system with support for multiple random restarts.
-
-        Args:
-            initial_energy_system (object): Initial energy system object.
-            weights (dict): Weights for optimization criteria.
-            num_restarts (int): Number of random restarts for optimization. Default is 5.
-        """
-        self.initial_energy_system = initial_energy_system
-        self.weights = weights
-        self.num_restarts = num_restarts
-
-    def optimize(self):
-        """
-        Perform MILP optimization of the energy system with multiple random restarts.
-
-        Returns:
-            object: Optimized energy system object.
-        """
-        best_solution = None
-        best_objective_value = float('inf')
-
-        for restart in range(self.num_restarts):
-            print(f"Starting MILP optimization run {restart + 1}/{self.num_restarts}")
-
-            # Copy the energy system for this run
-            self.energy_system_copy = self.initial_energy_system.copy()
-
-            initial_values = []
-            bounds = []
-            variables_mapping = {}  # Mapping for variables
-
-            for tech in self.energy_system_copy.technologies:
-                idx = tech.name.split("_")[-1]
-                tech_values, tech_variables, tech_bounds = tech.add_optimization_parameters(idx)
-
-                # Skip technologies without optimization parameters
-                if not tech_values and not tech_variables and not tech_bounds:
-                    continue
-
-                initial_values.extend(tech_values)
-                bounds.extend(tech_bounds)
-
-                # Map variables to technology name and parameter
-                for var in tech_variables:
-                    variables_mapping[var] = tech.name
-
-            variables_order = list(variables_mapping.keys())
-
-            if not initial_values:
-                print("Keine Optimierungsparameter vorhanden. Optimierung wird übersprungen.")
-                return self.energy_system_copy.technologies
-            
-            # Teste die Zielfunktion mit unterschiedlichen Variablenwerten
-            for test_value in range(bounds[0][0], bounds[0][1], 100):
-                variables = [test_value]  # Beispiel: Nur eine Variable
-                fresh_system = self.energy_system_copy.copy()
-                fresh_system.calculate_mix(variables, variables_order)
-                #print(f"Test variables: {variables}, Results['WGK_Gesamt']: {fresh_system.results['WGK_Gesamt']}")
-
-            # Pyomo model setup
-            model = ConcreteModel()
-
-            # Generate random initial values within the bounds
-            random_initial_values = [
-                np.random.randint(low=bound[0], high=bound[1] + 1) if bound[0] < bound[1] else bound[0]
-                for bound in bounds
-            ]
-
-            print(f"Initial values: {random_initial_values}")
-
-            # Define Pyomo variables as integers (MILP constraint) with initialization
-            model.vars = Var(
-                range(len(variables_order)),
-                domain=Integers,
-                initialize=lambda model, i: random_initial_values[i],
-                bounds=lambda model, i: bounds[i]
-            )
-
-            def objective_rule(model):
-                variables = [model.vars[i].value for i in range(len(variables_order))]
-                
-                # Erstelle bei jedem Aufruf eine neue Kopie
-                fresh_energy_system = self.energy_system_copy.copy()
-
-                # Berechnung auf Basis der frischen Kopie
-                fresh_energy_system.calculate_mix(variables, variables_order)
-                results = fresh_energy_system.results
-
-                print(f"Variables: {variables}, Variables Order: {variables_order}, Results['WGK_Gesamt']: {results['WGK_Gesamt']}")
-
-                # Zielfunktion berechnen
-                weighted_sum = (
-                    self.weights['WGK_Gesamt'] * results['WGK_Gesamt'] +
-                    self.weights['specific_emissions_Gesamt'] * results['specific_emissions_Gesamt'] +
-                    self.weights['primärenergiefaktor_Gesamt'] * results['primärenergiefaktor_Gesamt']
-                )
-                return weighted_sum
-            
-            model.vars.pprint()
-
-            # Add objective function
-            model.objective = Objective(rule=objective_rule, sense=pyomo_minimize)
-
-            # Add constraints (if any)
-            model.constraints = ConstraintList()
-            model.constraints.add(model.vars[0] >= 10)
-
-            # Solve the MILP problem
-            solver = SolverFactory('highs')
-            result = solver.solve(model, tee=True)
-
-            if restart == 0:
-                best_objective_value = model.objective()
-            # Check if the current run has a better solution
-            if result.solver.termination_condition == 'optimal' and model.objective() <= best_objective_value:
-                model.vars.pprint()
-                print(f"Best objective value: {model.objective()}, Best solution: {[model.vars[i].value for i in range(len(variables_order))]}")
-                best_objective_value = model.objective()
-                best_solution = [model.vars[i].value for i in range(len(variables_order))]
-
-        # If a valid solution was found, apply the best solution
-        if best_solution:
-            for tech in self.energy_system_copy.technologies:
-                print(f"Best Solution: {best_solution}, Variables Order: {variables_order}")
-                tech.update_parameters(best_solution, variables_order)
-
-            print("MILP Optimierung erfolgreich")
             return self.energy_system_copy
         else:
             print("Keine gültige Lösung gefunden.")

@@ -27,7 +27,7 @@ class PowerToHeat(BaseHeatGenerator):
         primärenergiefaktor (float): Primary energy factor for the primary energy source.
     """
 
-    def __init__(self, name, spez_Investitionskosten=30, Nutzungsgrad=0.9, Faktor_Dimensionierung=1):
+    def __init__(self, name, spez_Investitionskosten=30, Nutzungsgrad=0.9, Faktor_Dimensionierung=1, active=True):
         """
         Initializes the PowerToHeat class.
 
@@ -45,6 +45,18 @@ class PowerToHeat(BaseHeatGenerator):
         self.f_Inst, self.f_W_Insp, self.Bedienaufwand = 1, 2, 0
         self.co2_factor_fuel = 0.4 # tCO2/MWh electricity
         self.primärenergiefaktor = 2.4
+        self.active = active
+
+        self.init_operation(8760)
+
+    def init_operation(self, hours):
+        self.Wärmeleistung_kW = np.array([0] * hours)
+        self.el_Leistung_kW = np.array([0] * hours)
+        self.Wärmemenge_MWh = 0
+        self.Strommenge_MWh = 0
+        self.Anzahl_Starts = 0
+        self.Betriebsstunden = 0
+        self.Betriebsstunden_pro_Start = 0
 
     def simulate_operation(self, Last_L, duration):
         """
@@ -58,10 +70,39 @@ class PowerToHeat(BaseHeatGenerator):
             None
         """
         self.Wärmeleistung_kW = np.maximum(Last_L, 0)
-        self.Wärmemenge_PowerToHeat = np.sum(self.Wärmeleistung_kW / 1000) * duration
-        self.Strombedarf = self.Wärmemenge_PowerToHeat / self.Nutzungsgrad
+        self.el_Leistung_kW = self.Wärmeleistung_kW / self.Nutzungsgrad
+        self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW / 1000) * duration
+        self.Strommenge_MWh = self.Wärmemenge_MWh / self.Nutzungsgrad
         self.P_max = max(Last_L) * self.Faktor_Dimensionierung
 
+        # Calculate number of starts and operating hours per start
+        betrieb_mask = self.Wärmeleistung_kW > 0
+        starts = np.diff(betrieb_mask.astype(int)) > 0
+        self.Anzahl_Starts = np.sum(starts)
+        self.Betriebsstunden = np.sum(betrieb_mask) * duration
+        self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
+
+    def generate(self, t, remaining_heat_demand):
+        """
+        Generates thermal power for the given time step `t`.
+        This method calculates the thermal power and updates the operational statistics of the power-to-heat unit.
+
+        Args:
+            t (int): The current time step.
+
+        Returns:
+            float: The thermal power (in kW) generated at the current time step.
+        """
+        if self.active == False:
+            self.th_Leistung_kW = 1000
+            self.Wärmeleistung_kW[t] = min(self.th_Leistung_kW, remaining_heat_demand)
+            self.Wärmemenge_MWh += self.Wärmeleistung_kW[t] / 1000
+            self.Betriebsstunden += 1
+            return self.Wärmeleistung_kW[t], 0
+        else:
+            self.Wärmeleistung_kW[t] = 0
+            return 0, 0
+    
     def calculate_heat_generation_cost(self, economic_parameters):
         """
         Calculates the weighted average cost of heat generation.
@@ -82,14 +123,14 @@ class PowerToHeat(BaseHeatGenerator):
         self.BEW = economic_parameters['subsidy_eligibility']
         self.stundensatz = economic_parameters['hourly_rate']
 
-        if self.Wärmemenge_PowerToHeat == 0:
+        if self.Wärmemenge_MWh == 0:
             return 0
         
         self.Investitionskosten = self.spez_Investitionskosten * self.P_max
 
         self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T,
-                            self.Strombedarf, self.Strompreis, hourly_rate=self.stundensatz)
-        self.WGK_PTH = self.A_N / self.Wärmemenge_PowerToHeat
+                            self.Strommenge_MWh, self.Strompreis, hourly_rate=self.stundensatz)
+        self.WGK_PTH = self.A_N / self.Wärmemenge_MWh
 
     def calculate_environmental_impact(self):
         """
@@ -100,11 +141,11 @@ class PowerToHeat(BaseHeatGenerator):
             None
         """
         # CO2 emissions due to fuel usage
-        self.co2_emissions = self.Strombedarf * self.co2_factor_fuel  # tCO2
+        self.co2_emissions = self.Strommenge_MWh * self.co2_factor_fuel  # tCO2
         # specific emissions heat
-        self.spec_co2_total = self.co2_emissions / self.Wärmemenge_PowerToHeat if self.Wärmemenge_PowerToHeat > 0 else 0  # tCO2/MWh_heat
+        self.spec_co2_total = self.co2_emissions / self.Wärmemenge_MWh if self.Wärmemenge_MWh > 0 else 0  # tCO2/MWh_heat
         # primary energy factor
-        self.primärenergie = self.Strombedarf * self.primärenergiefaktor
+        self.primärenergie = self.Strommenge_MWh * self.primärenergiefaktor
 
     def calculate(self, economic_parameters, duration, load_profile, **kwargs):
         """
@@ -125,10 +166,13 @@ class PowerToHeat(BaseHeatGenerator):
 
         results = {
             'tech_name': self.name,
-            'Wärmemenge': self.Wärmemenge_PowerToHeat,
+            'Wärmemenge': self.Wärmemenge_MWh,
             'Wärmeleistung_L': self.Wärmeleistung_kW,
-            'Brennstoffbedarf': self.Strombedarf,
+            'Brennstoffbedarf': self.Strommenge_MWh,
             'WGK': self.WGK_PTH,
+            'Anzahl_Starts': self.Anzahl_Starts,
+            'Betriebsstunden': self.Betriebsstunden,
+            'Betriebsstunden_pro_Start': self.Betriebsstunden_pro_Start,
             'spec_co2_total': self.spec_co2_total,
             'primärenergie': self.primärenergie,
             "color": "saddlebrown"
@@ -159,3 +203,31 @@ class PowerToHeat(BaseHeatGenerator):
         costs = f"Investitionskosten: {self.Investitionskosten:.1f} €"
         full_costs = f"{self.Investitionskosten:.1f}"
         return self.name, dimensions, costs, full_costs
+
+# Control strategy for Power-to-Heat
+class PowerToHeatStrategy:
+    def __init__(self, storage, charge_on):
+        """
+        Initializes the Power-to-Heat strategy with a switch point based on storage levels.
+
+        Args:
+            storage (TemperatureStratifiedThermalStorage): Instance of the storage.
+            charge_on (int): Storage temperature to activate Power-to-Heat unit.
+
+        """
+        self.storage = storage
+        self.charge_on = charge_on
+
+    def decide_operation(self, current_state, upper_storage_temp, lower_storage_temp, remaining_demand):
+        """
+        Decide whether to turn the Power-to-Heat unit on based on storage temperature and remaining demand.
+
+        upper_storage_temp (float): Current upper storage temperature.
+        remaining_demand (float): Remaining heat demand to be covered.
+
+        If the upper storage temperature is too low and there is still demand, the Power-to-Heat unit is turned on.
+
+        """
+
+        if upper_storage_temp < self.charge_on and remaining_demand > 0:
+            return True  # Turn P2H on
