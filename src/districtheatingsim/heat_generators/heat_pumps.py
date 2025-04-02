@@ -44,6 +44,18 @@ class HeatPump(BaseHeatGenerator):
         self.Nutzungsdauer_WQ_dict = {"Abwärme": 20, "Abwasserwärme": 20, "Flusswasser": 20, "Geothermie": 30}
         self.co2_factor_electricity = 2.4 # tCO2/MWh electricity
 
+        self.init_operation(8760)
+
+    def init_operation(self, hours):
+        self.Wärmeleistung_kW = np.array([0] * hours)
+        self.el_Leistung_kW = np.array([0] * hours)
+        self.Wärmemenge_MWh = 0
+        self.Strommenge_MWh = 0
+        self.Brennstoffbedarf_MWh = 0
+        self.Anzahl_Starts = 0
+        self.Betriebsstunden = 0
+        self.Betriebsstunden_pro_Start = 0
+
     def calculate_COP(self, VLT_L, QT, COP_data):
         """
         Calculates the Coefficient of Performance (COP) of the heat pump using interpolation.
@@ -240,17 +252,22 @@ class RiverHeatPump(HeatPump):
         self.Kühlleistung_kW[~betrieb_mask_vlt] = 0
         self.el_Leistung_kW[~betrieb_mask_vlt] = 0
 
-        self.Wärmemenge = np.sum(self.Wärmeleistung_kW / 1000) * duration
-        self.Kühlmenge = np.sum(self.Kühlleistung_kW / 1000) * duration
-        self.Strombedarf = np.sum(self.el_Leistung_kW / 1000) * duration
+        self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW / 1000) * duration
+        self.Kühlmenge_MWh = np.sum(self.Kühlleistung_kW / 1000) * duration
+        self.Strommenge_MWh = np.sum(self.el_Leistung_kW / 1000) * duration
+
+        starts = np.diff(betrieb_mask.astype(int)) > 0
+        self.Anzahl_Starts = np.sum(starts)
+        self.Betriebsstunden = np.sum(betrieb_mask) * duration
+        self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
     
     def calculate_environmental_impact(self):
         # CO2 emissions due to fuel usage
-        self.co2_emissions = self.Strombedarf * self.co2_factor_electricity # tCO2
+        self.co2_emissions = self.Strommenge_MWh * self.co2_factor_electricity # tCO2
         # specific emissions heat
-        self.spec_co2_total = self.co2_emissions / self.Wärmemenge if self.Wärmemenge > 0 else 0 # tCO2/MWh_heat
+        self.spec_co2_total = self.co2_emissions / self.Wärmemenge_MWh if self.Wärmemenge_MWh > 0 else 0 # tCO2/MWh_heat
 
-        self.primärenergie = self.Strombedarf * self.primärenergiefaktor
+        self.primärenergie = self.Strommenge_MWh * self.primärenergiefaktor
     
     def calculate(self, economic_parameters, duration, load_profile, **kwargs):
         VLT_L = kwargs.get('VLT_L')
@@ -271,22 +288,66 @@ class RiverHeatPump(HeatPump):
         """
         
         self.calculate_operation(load_profile, VLT_L, COP_data, duration)
-        WGK_Abwärme = self.calculate_heat_generation_costs(self.Wärmeleistung_FW_WP, self.Wärmemenge, self.Strombedarf, self.spez_Investitionskosten_Flusswasser, economic_parameters)
+        self.WGK = self.calculate_heat_generation_costs(self.Wärmeleistung_FW_WP, self.Wärmemenge_MWh, self.Strommenge_MWh, self.spez_Investitionskosten_Flusswasser, economic_parameters)
         self.calculate_environmental_impact()
 
         results = {
             'tech_name': self.name,
-            'Wärmemenge': self.Wärmemenge,
+            'Wärmemenge': self.Wärmemenge_MWh,
             'Wärmeleistung_L': self.Wärmeleistung_kW,
-            'Strombedarf': self.Strombedarf,
+            'Strombedarf': self.Strommenge_MWh,
             'el_Leistung_L': self.el_Leistung_kW,
-            'WGK': WGK_Abwärme,
+            'WGK': self.WGK,
+            'Anzahl_Starts': self.Anzahl_Starts,
+            'Betriebsstunden': self.Betriebsstunden,
+            'Betriebsstunden_pro_Start': self.Betriebsstunden_pro_Start,
             'spec_co2_total': self.spec_co2_total,
             'primärenergie': self.primärenergie,
             'color': "blue"
         }
 
         return results
+    
+    def generate(self, t, remaining_demand, VLT_L, COP_data):
+        """
+        Generates heat and calculates electricity consumption for the river heat pump at a given time step.
+
+        Args:
+            t (int): Current time step.
+            remaining_demand (float): Remaining heat demand in kW.
+            VLT_L (float): Flow temperature at the current time step.
+            COP_data (array-like): COP data for interpolation.
+
+        Returns:
+            tuple: Heat generation (kW) and electricity consumption (kW).
+        """
+        if self.Wärmeleistung_FW_WP == 0:
+            return 0, 0  # No operation if the heat pump is not configured
+
+        # Calculate COP and cooling load
+        COP, VLT_L_WP = self.calculate_COP(VLT_L, self.Temperatur_FW_WP, COP_data)
+        Kühlleistung = self.Wärmeleistung_FW_WP * (1 - (1 / COP))
+        el_Leistung = self.Wärmeleistung_FW_WP - Kühlleistung
+
+        # Check if the heat pump can operate
+        if remaining_demand >= self.Wärmeleistung_FW_WP * self.min_Teillast and VLT_L_WP >= VLT_L - self.dT:
+            # Generate heat and consume electricity
+            self.Wärmeleistung_kW[t] = min(remaining_demand, self.Wärmeleistung_FW_WP)
+            self.el_Leistung_kW[t] = self.Wärmeleistung_kW[t] - (self.Wärmeleistung_kW[t] / self.Wärmeleistung_FW_WP) * el_Leistung
+
+            # Update cumulative metrics
+            self.Wärmemenge_MWh += self.Wärmeleistung_kW[t] / 1000
+            self.Strommenge_MWh += self.el_Leistung_kW[t] / 1000
+
+            # Count starts and update operating hours
+            if self.Wärmeleistung_kW[t] > 0 and (t == 0 or self.Wärmeleistung_kW[t - 1] == 0):
+                self.Anzahl_Starts += 1
+            self.Betriebsstunden += 1
+            self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
+
+            return self.Wärmeleistung_kW[t], self.el_Leistung_kW[t]
+
+        return 0, 0  # No operation if conditions are not met
     
     def set_parameters(self, variables, variables_order, idx):
         try:
@@ -400,18 +461,23 @@ class WasteHeatPump(HeatPump):
         self.Wärmeleistung_kW[betrieb_mask] = np.minimum(Last_L[betrieb_mask], Wärmeleistung_L[betrieb_mask])
         self.el_Leistung_kW[betrieb_mask] = self.Wärmeleistung_kW[betrieb_mask] - (self.Wärmeleistung_kW[betrieb_mask] / Wärmeleistung_L[betrieb_mask]) * el_Leistung_L[betrieb_mask]
 
-        self.Wärmemenge = np.sum(self.Wärmeleistung_kW / 1000) * duration
-        self.Strombedarf = np.sum(self.el_Leistung_kW / 1000) * duration
+        self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW / 1000) * duration
+        self.Strommenge_MWh = np.sum(self.el_Leistung_kW / 1000) * duration
 
         self.max_Wärmeleistung = np.max(self.Wärmeleistung_kW)
+
+        starts = np.diff(betrieb_mask.astype(int)) > 0
+        self.Anzahl_Starts = np.sum(starts)
+        self.Betriebsstunden = np.sum(betrieb_mask) * duration
+        self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
     
     def calculate_environmental_impact(self):
         # CO2 emissions due to fuel usage
-        self.co2_emissions = self.Strombedarf * self.co2_factor_electricity # tCO2
+        self.co2_emissions = self.Strommenge_MWh * self.co2_factor_electricity # tCO2
         # specific emissions heat
-        self.spec_co2_total = self.co2_emissions / self.Wärmemenge if self.Wärmemenge > 0 else 0 # tCO2/MWh_heat
+        self.spec_co2_total = self.co2_emissions / self.Wärmemenge_MWh if self.Wärmemenge_MWh > 0 else 0 # tCO2/MWh_heat
 
-        self.primärenergie = self.Strombedarf * self.primärenergiefaktor
+        self.primärenergie = self.Strommenge_MWh * self.primärenergiefaktor
     
     def calculate(self, economic_parameters, duration, load_profile, **kwargs):
         VLT_L = kwargs.get('VLT_L')
@@ -432,23 +498,67 @@ class WasteHeatPump(HeatPump):
         """
 
         self.calculate_operation(load_profile, VLT_L, COP_data, duration)
-        WGK_Abwärme = self.calculate_heat_generation_costs(self.max_Wärmeleistung, self.Wärmemenge, self.Strombedarf, self.spez_Investitionskosten_Abwärme, economic_parameters)
+        self.WGK = self.calculate_heat_generation_costs(self.max_Wärmeleistung, self.Wärmemenge_MWh, self.Strommenge_MWh, self.spez_Investitionskosten_Abwärme, economic_parameters)
 
         self.calculate_environmental_impact()
 
         results = {
             'tech_name': self.name,
-            'Wärmemenge': self.Wärmemenge,
+            'Wärmemenge': self.Wärmemenge_MWh,
             'Wärmeleistung_L': self.Wärmeleistung_kW,
-            'Strombedarf': self.Strombedarf,
+            'Strombedarf': self.Strommenge_MWh,
             'el_Leistung_L': self.el_Leistung_kW,
-            'WGK': WGK_Abwärme,
+            'WGK': self.WGK,
+            'Anzahl_Starts': self.Anzahl_Starts,
+            'Betriebsstunden': self.Betriebsstunden,
+            'Betriebsstunden_pro_Start': self.Betriebsstunden_pro_Start,
             'spec_co2_total': self.spec_co2_total,
             'primärenergie': self.primärenergie,
             'color': "grey"
         }
 
         return results
+    
+    def generate(self, t, remaining_demand, VLT_L, COP_data):
+        """
+        Generates heat and calculates electricity consumption for the waste heat pump at a given time step.
+
+        Args:
+            t (int): Current time step.
+            remaining_demand (float): Remaining heat demand in kW.
+            VLT_L (float): Flow temperature at the current time step.
+            COP_data (array-like): COP data for interpolation.
+
+        Returns:
+            tuple: Heat generation (kW) and electricity consumption (kW).
+        """
+        if self.Kühlleistung_Abwärme == 0:
+            return 0, 0  # No operation if the heat pump is not configured
+
+        # Calculate COP and heat load
+        COP, VLT_L_WP = self.calculate_COP(VLT_L, self.Temperatur_Abwärme, COP_data)
+        Wärmeleistung = self.Kühlleistung_Abwärme / (1 - (1 / COP))
+        el_Leistung = Wärmeleistung - self.Kühlleistung_Abwärme
+
+        # Check if the heat pump can operate
+        if remaining_demand >= Wärmeleistung * self.min_Teillast and VLT_L_WP >= VLT_L:
+            # Generate heat and consume electricity
+            self.Wärmeleistung_kW[t] = min(remaining_demand, Wärmeleistung)
+            self.el_Leistung_kW[t] = self.Wärmeleistung_kW[t] - (self.Wärmeleistung_kW[t] / Wärmeleistung) * el_Leistung
+
+            # Update cumulative metrics
+            self.Wärmemenge_MWh += self.Wärmeleistung_kW[t] / 1000
+            self.Strommenge_MWh += self.el_Leistung_kW[t] / 1000
+
+            # Count starts and update operating hours
+            if self.Wärmeleistung_kW[t] > 0 and (t == 0 or self.Wärmeleistung_kW[t - 1] == 0):
+                self.Anzahl_Starts += 1
+            self.Betriebsstunden += 1
+            self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
+
+            return self.Wärmeleistung_kW[t], self.el_Leistung_kW[t]
+
+        return 0, 0  # No operation if conditions are not met
     
     def set_parameters(self, variables, variables_order, idx):
         try:
@@ -568,8 +678,8 @@ class Geothermal(HeatPump):
             Entzugsleistung_tat_L[betrieb_mask] = self.Wärmeleistung_kW[betrieb_mask] - self.el_Leistung_kW[betrieb_mask]
 
             Entzugswärme = np.sum(Entzugsleistung_tat_L) / 1000
-            self.Wärmemenge = np.sum(self.Wärmeleistung_kW) / 1000
-            self.Strombedarf = np.sum(self.el_Leistung_kW) / 1000
+            self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW) / 1000
+            self.Strommenge_MWh = np.sum(self.el_Leistung_kW) / 1000
             Betriebsstunden = np.count_nonzero(self.Wärmeleistung_kW)
 
             # Falls es keine Nutzung gibt, wird das Ergebnis 0
@@ -584,16 +694,21 @@ class Geothermal(HeatPump):
 
         self.max_Wärmeleistung = max(self.Wärmeleistung_kW)
         # To do: Fix RuntimeWarning: invalid value encountered in scalar divide 
-        JAZ = self.Wärmemenge / self.Strombedarf
-        self.Wärmemenge, self.Strombedarf = self.Wärmemenge * duration, self.Strombedarf * duration
+        JAZ = self.Wärmemenge_MWh / self.Strommenge_MWh
+        self.Wärmemenge_MWh, self.Strommenge_MWh = self.Wärmemenge_MWh * duration, self.Strommenge_MWh * duration
+        
+        starts = np.diff(betrieb_mask.astype(int)) > 0
+        self.Anzahl_Starts = np.sum(starts)
+        self.Betriebsstunden = np.sum(betrieb_mask) * duration
+        self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
     
     def calculate_environmental_impact(self):
         # CO2 emissions due to fuel usage
-        self.co2_emissions = self.Strombedarf * self.co2_factor_electricity # tCO2
+        self.co2_emissions = self.Strommenge_MWh * self.co2_factor_electricity # tCO2
         # specific emissions heat
-        self.spec_co2_total = self.co2_emissions / self.Wärmemenge if self.Wärmemenge > 0 else 0 # tCO2/MWh_heat
+        self.spec_co2_total = self.co2_emissions / self.Wärmemenge_MWh if self.Wärmemenge_MWh > 0 else 0 # tCO2/MWh_heat
 
-        self.primärenergie = self.Strombedarf * self.primärenergiefaktor
+        self.primärenergie = self.Strommenge_MWh * self.primärenergiefaktor
     
     def calculate(self, economic_parameters, duration, load_profile, **kwargs):
         VLT_L = kwargs.get('VLT_L')
@@ -617,23 +732,77 @@ class Geothermal(HeatPump):
 
         # To do: Fix RuntimeWarning: divide by zero encountered in scalar divide
         self.spez_Investitionskosten_Erdsonden = self.Investitionskosten_Sonden / self.max_Wärmeleistung
-        WGK = self.calculate_heat_generation_costs(self.max_Wärmeleistung, self.Wärmemenge, self.Strombedarf, self.spez_Investitionskosten_Erdsonden, economic_parameters)
+        self.WGK = self.calculate_heat_generation_costs(self.max_Wärmeleistung, self.Wärmemenge_MWh, self.Strommenge_MWh, self.spez_Investitionskosten_Erdsonden, economic_parameters)
 
         self.calculate_environmental_impact()
 
         results = {
             'tech_name': self.name,
-            'Wärmemenge': self.Wärmemenge,
+            'Wärmemenge': self.Wärmemenge_MWh,
             'Wärmeleistung_L': self.Wärmeleistung_kW,
-            'Strombedarf': self.Strombedarf,
+            'Strombedarf': self.Strommenge_MWh,
             'el_Leistung_L': self.el_Leistung_kW,
-            'WGK': WGK,
+            'WGK': self.WGK,
+            'Anzahl_Starts': self.Anzahl_Starts,
+            'Betriebsstunden': self.Betriebsstunden,
+            'Betriebsstunden_pro_Start': self.Betriebsstunden_pro_Start,
             'spec_co2_total': self.spec_co2_total,
             'primärenergie': self.primärenergie,
             'color': "darkorange"
         }
 
         return results
+    
+    def generate(self, t, remaining_demand, VLT_L, COP_data):
+        """
+        Generates heat and calculates electricity consumption for the geothermal heat pump at a given time step.
+
+        Args:
+            t (int): Current time step.
+            remaining_demand (float): Remaining heat demand in kW.
+            VLT_L (float): Flow temperature at the current time step.
+            COP_data (array-like): COP data for interpolation.
+
+        Returns:
+            tuple: Heat generation (kW) and electricity consumption (kW).
+        """
+        if self.Fläche == 0 or self.Bohrtiefe == 0:
+            return 0, 0  # No operation if the geothermal system is not configured
+
+        # Anzahl der Sonden berechnen
+        Anzahl_Sonden = (round(np.sqrt(self.Fläche) / self.Abstand_Sonden) + 1) ** 2
+
+        # Entzugsleistung bei 2400 Vollbenutzungsstunden
+        Entzugsleistung_2400 = self.Bohrtiefe * self.spez_Entzugsleistung * Anzahl_Sonden / 1000  # kW
+        Entzugswärmemenge = Entzugsleistung_2400 * self.Vollbenutzungsstunden / 1000  # MWh
+
+        # Berechnung des COP
+        COP, VLT_L_WP = self.calculate_COP(VLT_L, self.Temperatur_Geothermie, COP_data)
+
+        # Entzugsleistung und Wärmeleistung berechnen
+        Entzugsleistung = Entzugswärmemenge * 1000 / 8760  # kW (angenommene gleichmäßige Verteilung)
+        Wärmeleistung = Entzugsleistung / (1 - (1 / COP))
+        el_Leistung = Wärmeleistung - Entzugsleistung
+
+        # Betriebsbedingungen prüfen
+        if remaining_demand >= Wärmeleistung * self.min_Teillast and VLT_L_WP >= VLT_L:
+            # Wärme erzeugen und Stromverbrauch berechnen
+            self.Wärmeleistung_kW[t] = min(remaining_demand, Wärmeleistung)
+            self.el_Leistung_kW[t] = self.Wärmeleistung_kW[t] - (self.Wärmeleistung_kW[t] / Wärmeleistung) * el_Leistung
+
+            # Kumulative Werte aktualisieren
+            self.Wärmemenge_MWh += self.Wärmeleistung_kW[t] / 1000
+            self.Strommenge_MWh += self.el_Leistung_kW[t] / 1000
+
+            # Starts und Betriebsstunden aktualisieren
+            if self.Wärmeleistung_kW[t] > 0 and (t == 0 or self.Wärmeleistung_kW[t - 1] == 0):
+                self.Anzahl_Starts += 1
+            self.Betriebsstunden += 1
+            self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
+
+            return self.Wärmeleistung_kW[t], self.el_Leistung_kW[t]
+
+        return 0, 0  # Keine Operation, wenn Bedingungen nicht erfüllt sind
     
     def set_parameters(self, variables, variables_order, idx):
         try:
@@ -832,3 +1001,46 @@ class AqvaHeat(HeatPump):
         full_costs = "Keine spezifischen Kosten"
         return self.name, dimensions, costs, full_costs
 
+# Control strategy for Heat Pumps
+class HeatPumpStrategy:
+    def __init__(self, storage, charge_on, charge_off):
+        """
+        Initializes the heat pump strategy with switch points based on storage levels.
+
+        Args:
+            storage (TemperatureStratifiedThermalStorage): Instance of the storage.
+            charge_on (int): (upper) Storage temperature to activate the heat pump.
+            charge_off (int): (lower) Storage temperature to deactivate the heat pump.
+        """
+        self.storage = storage
+        self.charge_on = charge_on
+        self.charge_off = charge_off
+
+    def decide_operation(self, current_state, upper_storage_temp, lower_storage_temp, remaining_demand):
+        """
+        Decide whether to turn the heat pump on or off based on storage temperature.
+
+        Args:
+            current_state (bool): Current state of the heat pump unit.
+            upper_storage_temp (float): Current upper storage temperature.
+            lower_storage_temp (float): Current lower storage temperature.
+            remaining_demand (float): Remaining heat demand in kW.
+
+        Returns:
+            bool: True to turn the heat pump on, False to turn it off.
+
+        If the lower storage temperature is too high, the heat pump is turned off to prevent overheating.
+        If the upper storage temperature is too low, the heat pump is turned on to provide additional heat.
+        """
+        # Check if the heat pump is currently on or off
+        if current_state:
+            # If the heat pump is on, check if the lower storage temperature is too high
+            if lower_storage_temp < self.charge_off and remaining_demand > 0:
+                return True  # Keep heat pump on
+            else:
+                return False  # Turn heat pump off
+        else:
+            if upper_storage_temp > self.charge_on or remaining_demand <= 0:
+                return False  # Keep heat pump off
+            else:
+                return True  # Turn heat pump on

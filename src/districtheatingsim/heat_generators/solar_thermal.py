@@ -124,6 +124,17 @@ class SolarThermal(BaseHeatGenerator):
         self.co2_factor_solar = 0.0  # tCO2/MWh heat is 0 ?
         self.primärenergiefaktor = 0.0
 
+        self.init_operation(8760)
+
+    def init_operation(self, hours):
+        self.Wärmeleistung_kW = np.zeros(hours)
+        self.Speicherladung = np.zeros(hours)
+        self.Speicherfüllstand = np.zeros(hours)
+        self.Wärmemenge_MWh = 0
+        self.Anzahl_Starts = 0
+        self.Betriebsstunden = 0
+        self.Betriebsstunden_pro_Start = 0
+
     def calculate_heat_generation_costs(self, economic_parameters):
         """
         Calculates the weighted average cost of heat generation (WGK).
@@ -144,7 +155,7 @@ class SolarThermal(BaseHeatGenerator):
         self.BEW = economic_parameters['subsidy_eligibility']
         self.stundensatz = economic_parameters['hourly_rate']
 
-        if self.Wärmemenge == 0:
+        if self.Wärmemenge_MWh == 0:
             return 0
 
         self.Investitionskosten_Speicher = self.vs * self.kosten_speicher_spez
@@ -152,12 +163,12 @@ class SolarThermal(BaseHeatGenerator):
         self.Investitionskosten = self.Investitionskosten_Speicher + self.Investitionskosten_STA
 
         self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T, hourly_rate=self.stundensatz)
-        self.WGK = self.A_N / self.Wärmemenge
+        self.WGK = self.A_N / self.Wärmemenge_MWh
 
         self.Eigenanteil = 1 - self.Anteil_Förderung_BEW
         self.Investitionskosten_Gesamt_BEW = self.Investitionskosten * self.Eigenanteil
         self.Annuität_BEW = self.annuity(self.Investitionskosten_Gesamt_BEW, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T, hourly_rate=self.stundensatz)
-        self.WGK_BEW = self.Annuität_BEW / self.Wärmemenge
+        self.WGK_BEW = self.Annuität_BEW / self.Wärmemenge_MWh
 
         self.WGK_BEW_BKF = self.WGK_BEW - self.Betriebskostenförderung_BEW
 
@@ -168,11 +179,11 @@ class SolarThermal(BaseHeatGenerator):
         
     def calculate_environmental_impact(self):
         # Berechnung der Emissionen
-        self.co2_emissions = self.Wärmemenge * self.co2_factor_solar  # tCO2
+        self.co2_emissions = self.Wärmemenge_MWh * self.co2_factor_solar  # tCO2
         # specific emissions heat
-        self.spec_co2_total = self.co2_emissions / self.Wärmemenge if self.Wärmemenge > 0 else 0  # tCO2/MWh_heat
+        self.spec_co2_total = self.co2_emissions / self.Wärmemenge_MWh if self.Wärmemenge_MWh > 0 else 0  # tCO2/MWh_heat
 
-        self.primärenergie_Solarthermie = self.Wärmemenge * self.primärenergiefaktor
+        self.primärenergie_Solarthermie = self.Wärmemenge_MWh * self.primärenergiefaktor
 
     def calculate(self, economic_parameters, duration, load_profile, **kwargs):
         VLT_L = kwargs.get('VLT_L')
@@ -195,10 +206,19 @@ class SolarThermal(BaseHeatGenerator):
             dict: Dictionary containing the results of the calculation.
         """
         # Berechnung der Solarthermieanlage
-        self.Wärmemenge, self.Wärmeleistung_kW, self.Speicherladung, self.Speicherfüllstand = Berechnung_STA(self.bruttofläche_STA, self.vs, self.Typ, load_profile, VLT_L, RLT_L, 
+        self.Wärmemenge_MWh, self.Wärmeleistung_kW, self.Speicherladung, self.Speicherfüllstand = Berechnung_STA(self.bruttofläche_STA, self.vs, self.Typ, load_profile, VLT_L, RLT_L, 
                                                                                                         TRY_data, time_steps, duration, self.Tsmax, self.Longitude, self.STD_Longitude, self.Latitude, 
                                                                                                         self.East_West_collector_azimuth_angle, self.Collector_tilt_angle, self.Tm_rl, self.Qsa, 
+        
                                                                                                         self.Vorwärmung_K, self.DT_WT_Solar_K, self.DT_WT_Netz_K)
+        # Calculate number of starts and operating hours per start
+        betrieb_mask = self.Wärmeleistung_kW > 0
+        starts = np.diff(betrieb_mask.astype(int)) > 0
+        self.Anzahl_Starts = np.sum(starts)
+        self.Betriebsstunden = np.sum(betrieb_mask) * duration
+        self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
+    
+        
         # Berechnung der Wärmegestehungskosten
         self.WGK = self.calculate_heat_generation_costs(economic_parameters)
 
@@ -206,9 +226,12 @@ class SolarThermal(BaseHeatGenerator):
 
         results = {
             'tech_name': self.name,
-            'Wärmemenge': self.Wärmemenge,
+            'Wärmemenge': self.Wärmemenge_MWh,
             'Wärmeleistung_L': self.Wärmeleistung_kW,
             'WGK': self.WGK,
+            'Anzahl_Starts': self.Anzahl_Starts,
+            'Betriebsstunden': self.Betriebsstunden,
+            'Betriebsstunden_pro_Start': self.Betriebsstunden_pro_Start,
             'spec_co2_total': self.spec_co2_total,
             'primärenergie': self.primärenergie_Solarthermie,
             'Speicherladung_L': self.Speicherladung,
@@ -217,6 +240,61 @@ class SolarThermal(BaseHeatGenerator):
         }
 
         return results
+    
+    def generate(self, t, remaining_demand, VLT_L, RLT_L, TRY_data, time_steps, duration):
+        """
+        Generates heat for the solar thermal system at a given time step.
+
+        Args:
+            t (int): Current time step.
+            remaining_demand (float): Remaining heat demand in kW.
+            VLT_L (float): Flow temperature at the current time step.
+            RLT_L (float): Return temperature at the current time step.
+            TRY_data (array-like): Test Reference Year data.
+            time_steps (array-like): Array of time steps.
+            duration (float): Duration of each time step in hours.
+
+        Returns:
+            float: Heat generation (kW) for the current time step.
+        """
+        # Berechnung der Solarthermieanlage für den aktuellen Zeitschritt
+        Gesamtwärmemenge, Wärmeleistung, Speicherladung, Speicherfüllstand = Berechnung_STA(
+            self.bruttofläche_STA,
+            self.vs,
+            self.Typ,
+            [remaining_demand],  # Nur den aktuellen Zeitschritt übergeben
+            [VLT_L],
+            [RLT_L],
+            TRY_data,
+            [time_steps[t]],
+            duration,
+            self.Tsmax,
+            self.Longitude,
+            self.STD_Longitude,
+            self.Latitude,
+            self.East_West_collector_azimuth_angle,
+            self.Collector_tilt_angle,
+            self.Tm_rl,
+            self.Qsa,
+            self.Vorwärmung_K,
+            self.DT_WT_Solar_K,
+            self.DT_WT_Netz_K
+        )
+
+        # Ergebnisse für den aktuellen Zeitschritt speichern
+        self.Wärmeleistung_kW[t] = Wärmeleistung[0]
+        self.Speicherladung[t] = Speicherladung[0]
+        self.Speicherfüllstand[t] = Speicherfüllstand[0]
+
+        # Kumulative Werte aktualisieren
+        self.Wärmemenge_MWh += Wärmeleistung[0] / 1000  # kW -> MWh
+        if Wärmeleistung[0] > 0:
+            self.Betriebsstunden += duration
+            if t == 0 or self.Wärmeleistung_kW[t - 1] == 0:
+                self.Anzahl_Starts += 1
+        self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
+
+        return Wärmeleistung[0]  # Rückgabe der erzeugten Wärmeleistung für den aktuellen Zeitschritt
     
     def set_parameters(self, variables, variables_order, idx):
         """

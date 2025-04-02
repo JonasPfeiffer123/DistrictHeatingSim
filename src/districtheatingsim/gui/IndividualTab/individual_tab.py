@@ -472,9 +472,9 @@ class TechnologyTab(QWidget):
         elif isinstance(tech, Geothermal):
             display_text += f"Fläche Sondenfeld: {tech.Fläche} m², Bohrtiefe: {tech.Bohrtiefe} m, Quelltemperatur Erdreich: {tech.Temperatur_Geothermie} °C, spez. Bohrkosten: {tech.spez_Bohrkosten} €/m, spez. Entzugsleistung: {tech.spez_Entzugsleistung} W/m, Vollbenutzungsstunden: {tech.Vollbenutzungsstunden} h, Abstand Sonden: {tech.Abstand_Sonden} m, spez. Investitionskosten Wärmepumpe: {tech.spezifische_Investitionskosten_WP} €/kW"
         elif isinstance(tech, CHP):
-            display_text += f"th. Leistung: {tech.th_Leistung_BHKW} kW, spez. Investitionskosten Erdgas-BHKW: {tech.spez_Investitionskosten_GBHKW} €/kW, spez. Investitionskosten Holzgas-BHKW: {tech.spez_Investitionskosten_HBHKW} €/kW"
+            display_text += f"th. Leistung: {tech.th_Leistung_kW} kW, spez. Investitionskosten Erdgas-BHKW: {tech.spez_Investitionskosten_GBHKW} €/kW, spez. Investitionskosten Holzgas-BHKW: {tech.spez_Investitionskosten_HBHKW} €/kW"
         elif isinstance(tech, BiomassBoiler):
-            display_text += f"th. Leistung: {tech.P_BMK}, Größe Holzlager: {tech.Größe_Holzlager} t, spez. Investitionskosten Kessel: {tech.spez_Investitionskosten} €/kW, spez. Investitionskosten Holzlager: {tech.spez_Investitionskosten_Holzlager} €/t"
+            display_text += f"th. Leistung: {tech.thermal_capacity_kW}, Größe Holzlager: {tech.Größe_Holzlager} t, spez. Investitionskosten Kessel: {tech.spez_Investitionskosten} €/kW, spez. Investitionskosten Holzlager: {tech.spez_Investitionskosten_Holzlager} €/t"
         elif isinstance(tech, GasBoiler):
             display_text += f"spez. Investitionskosten: {tech.spez_Investitionskosten} €/kW"
         elif isinstance(tech, SolarThermal):
@@ -626,10 +626,10 @@ class ResultsTab(QWidget):
             if isinstance(tech_object, GasBoiler):
                 cost = tech_object.P_max * tech_object.spez_Investitionskosten
             elif isinstance(tech_object, BiomassBoiler):
-                cost = tech_object.P_BMK * tech_object.spez_Investitionskosten + \
+                cost = tech_object.thermal_capacity_kW * tech_object.spez_Investitionskosten + \
                     tech_object.Größe_Holzlager * tech_object.spez_Investitionskosten_Holzlager
             elif isinstance(tech_object, CHP):
-                cost = tech_object.th_Leistung_BHKW * tech_object.spez_Investitionskosten_GBHKW
+                cost = tech_object.th_Leistung_kW * tech_object.spez_Investitionskosten_GBHKW
             elif isinstance(tech_object, SolarThermal):
                 cost = tech_object.bruttofläche_STA * tech_object.kosten_fk_spez + \
                     tech_object.vs * tech_object.kosten_speicher_spez
@@ -701,12 +701,12 @@ class ResultsTab(QWidget):
                 cost = tech.P_max * tech.spez_Investitionskosten
                 total = cost  # No additional costs for GasBoiler
             elif isinstance(tech, BiomassBoiler):
-                dimensions = f"th. Leistung: {tech.P_BMK:.2f} kW, Holzlager: {tech.Größe_Holzlager:.2f} m³"
-                cost = tech.P_BMK * tech.spez_Investitionskosten
+                dimensions = f"th. Leistung: {tech.thermal_capacity_kW:.2f} kW, Holzlager: {tech.Größe_Holzlager:.2f} m³"
+                cost = tech.thermal_capacity_kW * tech.spez_Investitionskosten
                 total = cost + (tech.Größe_Holzlager * tech.spez_Investitionskosten_Holzlager)
             elif isinstance(tech, CHP):
-                dimensions = f"th. Leistung: {tech.th_Leistung_BHKW:.2f} kW, el. Leistung: {tech.el_Leistung_Soll:.2f} kW"
-                cost = tech.spez_Investitionskosten_GBHKW * tech.th_Leistung_BHKW
+                dimensions = f"th. Leistung: {tech.th_Leistung_kW:.2f} kW, el. Leistung: {tech.el_Leistung_Soll:.2f} kW"
+                cost = tech.spez_Investitionskosten_GBHKW * tech.th_Leistung_kW
                 total = cost
             elif isinstance(tech, SolarThermal):
                 dimensions = f"Kollektorfläche: {tech.bruttofläche_STA:.2f} m², Speichervolumen: {tech.vs:.2f} m³"

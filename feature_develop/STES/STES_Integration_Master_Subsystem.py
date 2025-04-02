@@ -449,7 +449,7 @@ if __name__ == "__main__":
         "thermal_conductivity": 0.6
     }
 
-    file_path = os.path.abspath('currently_not_used/STES/Lastgang.csv')
+    file_path = os.path.abspath('feature_develop/STES/Lastgang.csv')
     df = pd.read_csv(file_path, delimiter=';', encoding='utf-8')
     Q_out_profile = df['Gesamtwärmebedarf_Gebäude_kW'].values
     T_Q_in_flow_profile = np.random.uniform(85, 85, params['hours'])
