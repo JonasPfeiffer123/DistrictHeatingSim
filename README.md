@@ -52,10 +52,6 @@ To install DistrictHeatingSim, follow the steps below. The software has been tes
     ```sh
     pip install git+https://github.com/JonasPfeiffer123/DistrictHeatingSim.git
     ```
-3. Verify the installation by running the application:
-    ```sh
-    python -m districtheatingsim
-    ```
 
 ### Option 2: Manual Installation
 1. Clone the repository to your local machine:
