@@ -102,6 +102,8 @@ class CHP(BaseHeatGenerator):
         self.Betriebsstunden = 0
         self.Betriebsstunden_pro_Start = 0
 
+        self.strategy = CHPStrategy(self, charge_on=70, charge_off=70)
+
     def simulate_operation(self, Last_L, duration):
         """
         Calculates the power and heat output of the CHP system without storage.
@@ -192,6 +194,41 @@ class CHP(BaseHeatGenerator):
         self.Anzahl_Starts_Speicher = np.sum(starts)
         self.Betriebsstunden_gesamt_Speicher = np.sum(betrieb_mask) * duration
         self.Betriebsstunden_pro_Start_Speicher = self.Betriebsstunden_gesamt_Speicher / self.Anzahl_Starts_Speicher if self.Anzahl_Starts_Speicher > 0 else 0
+
+    def generate(self, t, remaining_demand):
+        """
+        Generates thermal and electrical power for the given time step `t`.
+        This method calculates the thermal power, electrical power, fuel consumption, 
+        and updates the operational statistics of the combined heat and power (CHP) unit 
+        if it is turned on. It also counts the number of starts and updates the 
+        operational hours and operational hours per start.
+        Args:
+            t (int): The current time step.
+            remaining_demand (float): The remaining heat demand that needs to be met.
+        Returns:
+            tuple: A tuple containing the thermal power (in kW) and electrical power (in kW) 
+                   generated at the current time step. If the CHP unit is turned off, 
+                   it returns (0, 0).
+        """
+        
+        if self.active:
+            self.Wärmeleistung_kW[t] = self.th_Leistung_kW # eventuell noch Teillastverhalten nachbilden
+            self.el_Leistung_kW[t] = self.th_Leistung_kW / self.thermischer_Wirkungsgrad * self.el_Wirkungsgrad
+            # Berechnen des Brennstoffbedarfs
+            self.Wärmemenge_MWh += self.Wärmeleistung_kW[t] / 1000
+            self.Strommenge_MWh += self.el_Leistung_kW[t] / 1000
+            self.Brennstoffbedarf_MWh += (self.Wärmeleistung_kW[t] + self.el_Leistung_kW[t]) / self.KWK_Wirkungsgrad / 1000
+
+            # Anzahl Starts zählen wenn änderung von 0 auf 1
+            if self.Wärmeleistung_kW[t] > 0 and self.Wärmeleistung_kW[t - 1] == 0:
+                self.Anzahl_Starts += 1
+            
+            # Betriebsstunden aktualisieren
+            self.Betriebsstunden += 1
+            self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
+
+            return self.Wärmeleistung_kW[t], self.el_Leistung_kW[t]
+        return 0, 0  # Wenn das BHKW ausgeschaltet ist, liefert es keine Wärme und keinen Strom
     
     def calculate_heat_generation_costs(self, Wärmemenge, Strommenge, Brennstoffbedarf, economic_parameters):
         """
@@ -248,7 +285,7 @@ class CHP(BaseHeatGenerator):
         self.spec_co2_total = self.co2_total / Wärmemenge if Wärmemenge > 0 else 0 # tCO2/MWh_heat
 
         self.primärenergie = Brennstoffbedarf * self.primärenergiefaktor
-
+    
     def calculate(self, economic_parameters, duration, load_profile, **kwargs):
         """
         Calculates the economic and environmental metrics for the CHP system.
@@ -317,41 +354,6 @@ class CHP(BaseHeatGenerator):
             results['Speicherfüllstand_L'] = self.speicher_fuellstand_BHKW
 
         return results
-    
-    def generate(self, t, remaining_demand):
-        """
-        Generates thermal and electrical power for the given time step `t`.
-        This method calculates the thermal power, electrical power, fuel consumption, 
-        and updates the operational statistics of the combined heat and power (CHP) unit 
-        if it is turned on. It also counts the number of starts and updates the 
-        operational hours and operational hours per start.
-        Args:
-            t (int): The current time step.
-            remaining_demand (float): The remaining heat demand that needs to be met.
-        Returns:
-            tuple: A tuple containing the thermal power (in kW) and electrical power (in kW) 
-                   generated at the current time step. If the CHP unit is turned off, 
-                   it returns (0, 0).
-        """
-        
-        if self.active:
-            self.Wärmeleistung_kW[t] = self.th_Leistung_kW # eventuell noch Teillastverhalten nachbilden
-            self.el_Leistung_kW[t] = self.th_Leistung_kW / self.thermischer_Wirkungsgrad * self.el_Wirkungsgrad
-            # Berechnen des Brennstoffbedarfs
-            self.Wärmemenge_MWh += self.Wärmeleistung_kW[t] / 1000
-            self.Strommenge_MWh += self.el_Leistung_kW[t] / 1000
-            self.Brennstoffbedarf_MWh += (self.Wärmeleistung_kW[t] + self.el_Leistung_kW[t]) / self.KWK_Wirkungsgrad / 1000
-
-            # Anzahl Starts zählen wenn änderung von 0 auf 1
-            if self.Wärmeleistung_kW[t] > 0 and self.Wärmeleistung_kW[t - 1] == 0:
-                self.Anzahl_Starts += 1
-            
-            # Betriebsstunden aktualisieren
-            self.Betriebsstunden += 1
-            self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
-
-            return self.Wärmeleistung_kW[t], self.el_Leistung_kW[t]
-        return 0, 0  # Wenn das BHKW ausgeschaltet ist, liefert es keine Wärme und keinen Strom
     
     def set_parameters(self, variables, variables_order, idx):
         try:

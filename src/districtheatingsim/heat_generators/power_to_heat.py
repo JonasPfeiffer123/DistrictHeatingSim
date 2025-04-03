@@ -159,8 +159,9 @@ class PowerToHeat(BaseHeatGenerator):
         Returns:
             dict: Dictionary containing the results of the calculation.
         """
-
-        self.simulate_operation(load_profile, duration)
+        if not hasattr(self, 'Wärmemenge_MWh') or self.Wärmemenge_MWh == 0:
+            self.simulate_operation(load_profile, duration)
+            
         self.calculate_heat_generation_cost(economic_parameters)
         self.calculate_environmental_impact()
 

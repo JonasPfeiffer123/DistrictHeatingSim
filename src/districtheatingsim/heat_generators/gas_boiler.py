@@ -27,7 +27,7 @@ class GasBoiler(BaseHeatGenerator):
         primärenergiefaktor (float): Primary energy factor for the fuel.
     """
 
-    def __init__(self, name, spez_Investitionskosten=30, Nutzungsgrad=0.9, Faktor_Dimensionierung=1):
+    def __init__(self, name, spez_Investitionskosten=30, Nutzungsgrad=0.9, Faktor_Dimensionierung=1, active=True):
         """
         Initializes the GasBoiler class.
 
@@ -41,6 +41,7 @@ class GasBoiler(BaseHeatGenerator):
         self.spez_Investitionskosten = spez_Investitionskosten
         self.Nutzungsgrad = Nutzungsgrad
         self.Faktor_Dimensionierung = Faktor_Dimensionierung
+        self.active = active
         self.Nutzungsdauer = 20
         self.f_Inst, self.f_W_Insp, self.Bedienaufwand = 1, 2, 0
         self.co2_factor_fuel = 0.201  # tCO2/MWh gas
@@ -78,6 +79,27 @@ class GasBoiler(BaseHeatGenerator):
         self.Anzahl_Starts = np.sum(starts)
         self.Betriebsstunden = np.sum(betrieb_mask) * duration
         self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
+
+    def generate(self, t, remaining_heat_demand):
+        """
+        Generates thermal power for the given time step `t`.
+        This method calculates the thermal power and updates the operational statistics of the power-to-heat unit.
+
+        Args:
+            t (int): The current time step.
+
+        Returns:
+            float: The thermal power (in kW) generated at the current time step.
+        """
+        if self.active == False:
+            self.th_Leistung_kW = 1000
+            self.Wärmeleistung_kW[t] = min(self.th_Leistung_kW, remaining_heat_demand)
+            self.Wärmemenge_MWh += self.Wärmeleistung_kW[t] / 1000
+            self.Betriebsstunden += 1
+            return self.Wärmeleistung_kW[t], 0
+        else:
+            self.Wärmeleistung_kW[t] = 0
+            return 0, 0
 
     def calculate_heat_generation_cost(self, economic_parameters):
         """
@@ -135,7 +157,9 @@ class GasBoiler(BaseHeatGenerator):
         Returns:
             dict: Dictionary containing the results of the calculation.
         """
-        self.simulate_operation(load_profile, duration)
+        if not hasattr(self, 'Wärmemenge_MWh') or self.Wärmemenge_MWh == 0:
+            self.simulate_operation(load_profile, duration)
+            
         self.calculate_heat_generation_cost(economic_parameters)
         self.calculate_environmental_impact()
 

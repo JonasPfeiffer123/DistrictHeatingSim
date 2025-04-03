@@ -164,6 +164,35 @@ class BiomassBoiler(BaseHeatGenerator):
         self.Betriebsstunden_gesamt_Speicher = np.sum(betrieb_mask) * duration
         self.Betriebsstunden_pro_Start_Speicher = self.Betriebsstunden_gesamt_Speicher / self.Anzahl_Starts_Speicher if self.Anzahl_Starts_Speicher > 0 else 0
 
+    def generate(self, t, remaining_demand):
+        """
+        Generates heat for the biomass boiler system.
+
+        Args:
+            t (int): Current time step.
+            remaining_demand (float): Remaining demand for heat.
+
+        Returns:
+            tuple: Heat generation and electricity generation.
+        """
+        
+        if self.active:
+            self.Wärmeleistung_kW[t] = self.thermal_capacity_kW
+            # Berechnen des Brennstoffbedarfs
+            self.Wärmemenge_MWh += self.Wärmeleistung_kW[t] / 1000
+            self.Brennstoffbedarf_MWh += self.Wärmeleistung_kW[t] / self.Nutzungsgrad_BMK / 1000
+
+            # Anzahl Starts zählen wenn änderung von 0 auf 1
+            if self.Wärmeleistung_kW[t] > 0 and self.Wärmeleistung_kW[t - 1] == 0:
+                self.Anzahl_Starts += 1
+            
+            # Betriebsstunden aktualisieren
+            self.Betriebsstunden += 1
+            self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
+
+            return self.Wärmeleistung_kW[t], 0 # Wärmeleistung in kW
+        return 0, 0
+
     def calculate_heat_generation_costs(self, Wärmemenge, Brennstoffbedarf, economic_parameters):
         """
         Calculates the weighted average cost of heat generation.
@@ -278,35 +307,6 @@ class BiomassBoiler(BaseHeatGenerator):
             results['Speicherfüllstand_L'] = self.speicher_fuellstand
 
         return results
-    
-    def generate(self, t, remaining_demand):
-        """
-        Generates heat for the biomass boiler system.
-
-        Args:
-            t (int): Current time step.
-            remaining_demand (float): Remaining demand for heat.
-
-        Returns:
-            tuple: Heat generation and electricity generation.
-        """
-        
-        if self.active:
-            self.Wärmeleistung_kW[t] = self.thermal_capacity_kW
-            # Berechnen des Brennstoffbedarfs
-            self.Wärmemenge_MWh += self.Wärmeleistung_kW[t] / 1000
-            self.Brennstoffbedarf_MWh += self.Wärmeleistung_kW[t] / self.Nutzungsgrad_BMK / 1000
-
-            # Anzahl Starts zählen wenn änderung von 0 auf 1
-            if self.Wärmeleistung_kW[t] > 0 and self.Wärmeleistung_kW[t - 1] == 0:
-                self.Anzahl_Starts += 1
-            
-            # Betriebsstunden aktualisieren
-            self.Betriebsstunden += 1
-            self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
-
-            return self.Wärmeleistung_kW[t], 0 # Wärmeleistung in kW
-        return 0, 0
     
     def set_parameters(self, variables, variables_order, idx):
         try:

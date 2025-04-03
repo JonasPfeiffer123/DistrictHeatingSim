@@ -4,6 +4,7 @@ from districtheatingsim.heat_generators.chp import CHP, CHPStrategy
 from districtheatingsim.heat_generators.gas_boiler import GasBoiler, GasBoilerStrategy
 from districtheatingsim.heat_generators.power_to_heat import PowerToHeat, PowerToHeatStrategy
 from districtheatingsim.heat_generators.biomass_boiler import BiomassBoiler, BiomassBoilerStrategy
+from districtheatingsim.heat_generators.heat_pumps import RiverHeatPump, WasteHeatPump, Geothermal, HeatPumpStrategy
 from districtheatingsim.heat_generators.STES import TemperatureStratifiedThermalStorage
 
 from matplotlib import pyplot as plt
@@ -56,21 +57,36 @@ storage = TemperatureStratifiedThermalStorage(name="Saisonalspeicher", **storage
 energy_system.add_storage(storage)
 
 # Füge Generatoren hinzu
-#chp = CHP("BHKW_1", th_Leistung_BHKW=500)
-#energy_system.add_technology(chp)
+chp = CHP("BHKW_1", th_Leistung_BHKW=500)
+energy_system.add_technology(chp)
+chp.strategy = CHPStrategy(storage, charge_on=70, charge_off=70)
 
-#pth = PowerToHeat("PtH_1", spez_Investitionskosten=1000, Nutzungsgrad=0.9, Faktor_Dimensionierung=1)
+#pth = PowerToHeat("PtH_1")
 #energy_system.add_technology(pth)
-
-# Strategien zuweisen
-#chp.strategy = CHPStrategy(storage, charge_on=70, charge_off=70)
 #pth.strategy = PowerToHeatStrategy(storage, charge_on=60)
 
 # Biomasssboiler hinzufügen
-biomass_boiler = BiomassBoiler("Biomassekessel_1", thermal_capacity_kW=500, spez_Investitionskosten=1000, Nutzungsgrad_BMK=0.9)
-energy_system.add_technology(biomass_boiler)
-biomass_boiler.strategy = BiomassBoilerStrategy(storage, charge_on=60, charge_off=60)
+#biomass_boiler = BiomassBoiler("Biomassekessel_1", thermal_capacity_kW=500)
+#energy_system.add_technology(biomass_boiler)
+#biomass_boiler.strategy = BiomassBoilerStrategy(storage, charge_on=60, charge_off=60)
 
+# Gasboiler hinzufügen
+#gas_boiler = GasBoiler("Gasboiler_1")
+#energy_system.add_technology(gas_boiler)
+#gas_boiler.strategy = GasBoilerStrategy(storage, charge_on=60)
+
+# Erneuerbare Energien hinzufügen
+#river_heat_pump = RiverHeatPump("Flusswärmepumpe_1")
+#energy_system.add_technology(river_heat_pump)
+#river_heat_pump.strategy = HeatPumpStrategy(storage, charge_on=60, charge_off=60)
+
+#waste_heat_pump = WasteHeatPump("Abwärmepumpe_1")
+#energy_system.add_technology(waste_heat_pump)
+#waste_heat_pump.strategy = HeatPumpStrategy(storage, charge_on=60, charge_off=60)
+
+#geothermal_heat_pump = Geothermal("Geothermie_1")
+#energy_system.add_technology(geothermal_heat_pump)
+#geothermal_heat_pump.strategy = HeatPumpStrategy(storage, charge_on=60, charge_off=60)
 
 # Berechne den Energiemix mit Speicher
 results = energy_system.calculate_mix()
