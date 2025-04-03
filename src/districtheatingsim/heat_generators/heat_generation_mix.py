@@ -163,6 +163,8 @@ class EnergySystem:
         for tech in self.technologies:
             if isinstance(tech, TemperatureStratifiedThermalStorage):
                 self.storage = tech
+                # remove the storage from the technologies list
+                self.technologies.remove(tech)
 
         if self.storage:
             self.storage_state = np.zeros(len(self.time_steps))
@@ -208,20 +210,16 @@ class EnergySystem:
             self.storage.calculate_operational_costs(0.10) # needs to be changed to a parameter
             self.results['storage_class'] = self.storage
             
-        else:
-
-            # Hier besteht noch Bedarf zur Anpassung der Berechnung, alle tech.calculate() Methoden müssen die gleichen Parameter verwenden
-            # und die Ergebnisse in einem einheitlichen Format zurückgeben und Speicher berücksichtigen
-            for tech in self.technologies:
-                # Perform technology-specific calculation
-                tech_results = tech.calculate(economic_parameters=self.economic_parameters,
-                                            duration=self.duration,
-                                            load_profile=self.results["Restlast_L"],
-                                            VLT_L=self.VLT_L,
-                                            RLT_L=self.RLT_L,
-                                            TRY_data=self.TRY_data,
-                                            COP_data=self.COP_data,
-                                            time_steps=self.time_steps)
+        for tech in self.technologies:
+            # Perform technology-specific calculation
+            tech_results = tech.calculate(economic_parameters=self.economic_parameters,
+                                        duration=self.duration,
+                                        load_profile=self.results["Restlast_L"],
+                                        VLT_L=self.VLT_L,
+                                        RLT_L=self.RLT_L,
+                                        TRY_data=self.TRY_data,
+                                        COP_data=self.COP_data,
+                                        time_steps=self.time_steps)
                 
         if tech_results['Wärmemenge'] > 1e-6:
             self.aggregate_results(tech_results)
@@ -266,7 +264,7 @@ class EnergySystem:
 
         # Speicherergebnisse abrufen, falls verfügbar
         if self.storage:
-            storage_results = self.results['storage_classes']
+            storage_results = self.results['storage_class']
             Q_net_storage_flow = storage_results.Q_net_storage_flow  # Netto-Wärmefluss des Speichers
 
             # Speicherbeladung (negative Werte) und Speicherentladung (positive Werte) trennen
