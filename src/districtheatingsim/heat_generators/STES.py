@@ -1,6 +1,5 @@
-# Calculation modell for STES (Seasonal Thermal Energy Storage) systems
 """
-DATE: 02.10.2024
+DATE: 04.04.2025
 AUTHOR: Dipl-Ing. (FH) Jonas Pfeiffer
 FILENAME: STES.py
 
@@ -12,121 +11,13 @@ Authors: Kapil Narula, Fleury de Oliveira Filho, Willy Villasmil, Martin K. Pate
 Link: https://www.sciencedirect.com/science/article/pii/S0960148119318154?via%3Dihub
 """
 
-### Reihenfolge muss geändert werden: Oben beladen, unten entladen
-### Darstellung der Temperaturverteilung in 3D als Zylinder oder Rechteck nicht nur als Kreisringe
-
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from matplotlib.widgets import Slider, Button
-from matplotlib.animation import FuncAnimation
 
 from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator
-
-# Globals for animation control
-is_animating = False
-anim_speed = 200  # Default animation speed (in ms per frame)
-anim = None  # Holds the FuncAnimation instance
-current_frame = 0  # Tracks the current frame
-
-def update_plot(val, storage, ax):
-    """Update the 3D plot based on the selected time step from the slider."""
-    global current_frame
-    current_frame = int(val)  # Set the current frame to the slider value
-    ax.cla()  # Clear the axis
-    storage.plot_3d_temperature_distribution(ax, current_frame)  # Plot for the given time step
-    ax.set_title(f'Temperature Stratification (Time Step {current_frame})')
-    plt.draw()  # Redraw the figure
-
-def animate(i, storage, ax):
-    """Animation function to update the plot at each time step."""
-    global current_frame
-    ax.cla()  # Clear the axis
-    storage.plot_3d_temperature_distribution(ax, i)  # Plot for the given time step
-    ax.set_title(f'Temperature Stratification (Time Step {i})')
-    current_frame = i
-    slider.set_val(i)  # Update slider position to reflect the current time step
-    return ax,
-
-def start_animation(storage, ax):
-    """Start the animation."""
-    global anim, is_animating
-    if not is_animating:
-        anim = FuncAnimation(fig, animate, frames=storage.hours, fargs=(storage, ax),
-                             interval=anim_speed, blit=False, repeat=True)
-        is_animating = True
-        plt.draw()
-
-def stop_animation():
-    """Stop the animation."""
-    global anim, is_animating
-    if anim is not None:
-        anim.event_source.stop()  # Stop the animation
-        is_animating = False
-
-def forward(storage):
-    """Move forward by 1 frame."""
-    global current_frame
-    current_frame = min(current_frame + 1, storage.hours - 1)  # Increment the frame
-    slider.set_val(current_frame)  # Update slider to the new frame
-
-def backward():
-    """Move backward by 1 frame."""
-    global current_frame
-    current_frame = max(current_frame - 1, 0)  # Decrement the frame
-    slider.set_val(current_frame)  # Update slider to the new frame
-
-def adjust_speed(val, storage):
-    """Adjust the animation speed based on the speed slider."""
-    global anim_speed
-    anim_speed = int(val)  # Update the speed
-    if is_animating:
-        stop_animation()  # Restart the animation with the new speed
-        start_animation(storage, ax)
-
-def interactive_plot(storage):
-    storage.labels_exist = False  # Reset the labels flag
-    storage.colorbar_exists = False  # Reset the color bar flag
-    """Create an interactive plot with a slider, start/stop buttons, and speed control."""
-    global fig, ax, slider
-    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
-    plt.subplots_adjust(left=0.1, bottom=0.35)
-    
-    # Initial plot
-    storage.plot_3d_temperature_distribution(ax, current_frame)
-    
-    # Add time step slider
-    ax_slider = plt.axes([0.1, 0.1, 0.65, 0.03], facecolor='lightgoldenrodyellow')
-    slider = Slider(ax_slider, 'Time Step', 0, storage.hours - 1, valinit=current_frame, valstep=1)
-    
-    # Update plot when slider is changed
-    slider.on_changed(lambda val: update_plot(val, storage, ax))
-    
-    # Add start button
-    ax_start = plt.axes([0.1, 0.25, 0.1, 0.04])
-    start_button = Button(ax_start, 'Start', color='lightblue', hovercolor='green')
-    start_button.on_clicked(lambda event: start_animation(storage, ax))
-    
-    # Add stop button
-    ax_stop = plt.axes([0.25, 0.25, 0.1, 0.04])
-    stop_button = Button(ax_stop, 'Stop', color='lightblue', hovercolor='red')
-    stop_button.on_clicked(lambda event: stop_animation())
-    
-    # Add forward button
-    ax_forward = plt.axes([0.4, 0.25, 0.1, 0.04])
-    forward_button = Button(ax_forward, 'Forward', color='lightblue', hovercolor='yellow')
-    forward_button.on_clicked(lambda event: forward(storage))
-    
-    # Add backward button
-    ax_backward = plt.axes([0.55, 0.25, 0.1, 0.04])
-    backward_button = Button(ax_backward, 'Backward', color='lightblue', hovercolor='yellow')
-    backward_button.on_clicked(lambda event: backward())
-    
-    # Add speed control slider
-    ax_speed = plt.axes([0.75, 0.25, 0.15, 0.04])
-    speed_slider = Slider(ax_speed, 'Speed (ms)', 50, 1000, valinit=anim_speed)
-    speed_slider.on_changed(lambda val: adjust_speed(val, storage))
+from districtheatingsim.heat_generators.STES_animation import STESAnimation
 
 class ThermalStorage(BaseHeatGenerator):
     def __init__(self, name, storage_type, dimensions, rho, cp, T_ref, lambda_top, lambda_side, lambda_bottom, lambda_soil, 
@@ -1070,9 +961,9 @@ if __name__ == '__main__':
         "thermal_conductivity": 0.6
     }
     # Create instance of the class for cylindrical storage
-    simple_STES = SimpleThermalStorage("Saisonaler Wärmespeicher", **params) # Seasonal Thermal Energy Storage
-    stratified_STES = StratifiedThermalStorage(**params) # Stratified Seasonal Thermal Energy Storage
-    temperature_stratified_STES = TemperatureStratifiedThermalStorage(**params) # Stratified Seasonal Thermal Energy Storage with Mass Flows
+    simple_STES = SimpleThermalStorage(name="Einfacher Saisonaler Wärmespeicher", **params) # Seasonal Thermal Energy Storage
+    stratified_STES = StratifiedThermalStorage(name="Geschichteter Saisonaler Wärmespeicher", **params) # Stratified Seasonal Thermal Energy Storage
+    temperature_stratified_STES = TemperatureStratifiedThermalStorage(name="Temperaturaufgelöster Saisonaler Wärmespeicher", **params) # Stratified Seasonal Thermal Energy Storage with Mass Flows
 
     # Last- und Temperaturprofile laden
     file_path = os.path.abspath('feature_develop/STES/Lastgang.csv')
@@ -1100,7 +991,7 @@ if __name__ == '__main__':
     print(f"Stagnationsdauer: {temperature_stratified_STES.stagnation_time} h")
 
     # Interactive 3D plot
-    #interactive_plot(stratified_STES)
-    #interactive_plot(temperature_stratified_STES)
+    STES_animation = STESAnimation(temperature_stratified_STES)
+    STES_animation.show()
 
     plt.show()

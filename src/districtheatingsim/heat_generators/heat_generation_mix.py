@@ -76,14 +76,14 @@ class EnergySystem:
             'VLT_L': self.VLT_L,
             'RLT_L': self.RLT_L,
             'Jahreswärmebedarf': (np.sum(self.load_profile) / 1000) * self.duration,
-            'WGK_Gesamt': 0,
-            'Restwärmebedarf': (np.sum(self.load_profile) / 1000) * self.duration,
             'Restlast_L': self.load_profile.copy(),
+            'Restwärmebedarf': (np.sum(self.load_profile) / 1000) * self.duration,
             'Wärmeleistung_L': [],
             'colors': [],
             'Wärmemengen': [],
             'Anteile': [],
             'WGK': [],
+            'WGK_Gesamt': 0,
             'Strombedarf': 0,
             'Strommenge': 0,
             'el_Leistungsbedarf_L': np.zeros_like(self.load_profile),
@@ -171,18 +171,15 @@ class EnergySystem:
 
             # Ergebnisse für jeden Zeitschritt initialisieren
             time_steps = len(self.time_steps)
-            Wärmeleistung_L = np.zeros((len(self.technologies) + 1, time_steps))  # +1 für den Speicher
-            Restlast_L = self.load_profile.copy()
 
             for t in range(time_steps):
-                Q_out = self.load_profile[t]
-                T_Q_in_flow = self.VLT_L[t]
-                T_Q_out_return = self.RLT_L[t]
-                remaining_demand = Q_out
                 Q_in_total = 0  # Summe der Wärmeeinspeisung
+                Q_out = self.load_profile[t] # Wärmebedarf
+                T_Q_in_flow = self.VLT_L[t] # Vorlauftemperatur
+                T_Q_out_return = self.RLT_L[t] # Rücklauftemperatur
+                remaining_demand = Q_out
 
                 # Speicherzustand und Temperaturen abrufen
-                current_storage_state, _, _ = self.storage.current_storage_state(t, T_Q_out_return, T_Q_in_flow)
                 upper_storage_temp, lower_storage_temp = self.storage.current_storage_temperatures(t)
 
                 # Generatoren basierend auf Priorität steuern
@@ -193,17 +190,12 @@ class EnergySystem:
                         Q_in, _ = tech.generate(t, remaining_demand)
                         remaining_demand -= Q_in
                         Q_in_total += Q_in
-                        Wärmeleistung_L[i, t] = Q_in  # Speichere die Wärmeerzeugung des Generators
 
                 # Speicher aktualisieren
                 self.storage.simulate_stratified_temperature_mass_flows(t, Q_in_total, Q_out, T_Q_in_flow, T_Q_out_return)
 
-                # Speicherleistung speichern
-                Wärmeleistung_L[-1, t] = self.storage.Q_net_storage_flow[t]
-
                 # Restlast nach Speicherentladung berechnen
                 remaining_demand -= self.storage.Q_net_storage_flow[t]
-                Restlast_L[t] = max(0, remaining_demand)
 
             # Speicherergebnisse berechnen
             self.storage.calculate_efficiency(self.load_profile)
@@ -221,11 +213,11 @@ class EnergySystem:
                                         COP_data=self.COP_data,
                                         time_steps=self.time_steps)
                 
-        if tech_results['Wärmemenge'] > 1e-6:
-            self.aggregate_results(tech_results)
-        else:
-            # Add technology as inactive with zero contribution
-            self.aggregate_results({'tech_name': tech.name})
+            if tech_results['Wärmemenge'] > 1e-6:
+                self.aggregate_results(tech_results)
+            else:
+                # Add technology as inactive with zero contribution
+                self.aggregate_results({'tech_name': tech.name})
         
         self.results['tech_classes'] = self.technologies
 

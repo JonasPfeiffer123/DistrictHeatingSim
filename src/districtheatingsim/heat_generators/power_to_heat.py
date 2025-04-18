@@ -159,7 +159,9 @@ class PowerToHeat(BaseHeatGenerator):
         Returns:
             dict: Dictionary containing the results of the calculation.
         """
+        # Problem wenn tatsächlich kein Betrieb stattfindet bei Speichernutzung
         if not hasattr(self, 'Wärmemenge_MWh') or self.Wärmemenge_MWh == 0:
+            print("Here we go")
             self.simulate_operation(load_profile, duration)
             
         self.calculate_heat_generation_cost(economic_parameters)
@@ -229,6 +231,9 @@ class PowerToHeatStrategy:
         If the upper storage temperature is too low and there is still demand, the Power-to-Heat unit is turned on.
 
         """
+        print(f"upper_storage_temp: {upper_storage_temp}, charge_on: {self.charge_on}, remaining_demand: {remaining_demand}")
 
         if upper_storage_temp < self.charge_on and remaining_demand > 0:
             return True  # Turn P2H on
+        else:
+            return False # Turn P2H off
