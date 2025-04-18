@@ -12,6 +12,7 @@ from PyQt5.QtCore import QThread, pyqtSignal
 
 from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import import_results_csv
 from districtheatingsim.heat_generators.heat_generation_mix import EnergySystem
+from districtheatingsim.utilities.test_reference_year import import_TRY
 
 class CalculateMixThread(QThread):
     """
@@ -24,7 +25,7 @@ class CalculateMixThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(Exception)
 
-    def __init__(self, filename, load_scale_factor, TRY_data, COP_data, economic_parameters, tech_objects, optimize, weights):
+    def __init__(self, filename, load_scale_factor, TRY_filename, COP_filename, economic_parameters, tech_objects, optimize, weights):
         """
         Initializes the CalculateMixThread.
 
@@ -41,8 +42,8 @@ class CalculateMixThread(QThread):
         super().__init__()
         self.filename = filename
         self.load_scale_factor = load_scale_factor
-        self.TRY_data = TRY_data
-        self.COP_data = COP_data
+        self.TRY_data = import_TRY(TRY_filename)
+        self.COP_data = np.genfromtxt(COP_filename, delimiter=';')
         self.economic_parameters = economic_parameters
         self.tech_objects = tech_objects
         self.optimize = optimize
