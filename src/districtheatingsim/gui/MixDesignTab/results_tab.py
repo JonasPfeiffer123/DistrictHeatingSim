@@ -71,7 +71,7 @@ class ResultsTab(QWidget):
         self.scrollLayout = QVBoxLayout(self.scrollWidget)
 
         self.setupDiagrams()
-        self.setupCalculationOptimization()
+        self.setupCollapsibleResultsSections()
 
         self.scrollArea.setWidget(self.scrollWidget)
         self.mainLayout.addWidget(self.scrollArea)
@@ -118,9 +118,9 @@ class ResultsTab(QWidget):
         self.diagram2_section = CollapsibleHeader("Anteile Wärmeerzeugung Diagramm", self.diagram2_widget)
         self.scrollLayout.addWidget(self.diagram2_section)
 
-    def setupCalculationOptimization(self):
+    def setupCollapsibleResultsSections(self):
         """
-        Sets up the collapsible calculation optimization section.
+        Sets up the collapsible sections for displaying results tables.
         """
 
         # First Table (Results Table)
@@ -269,8 +269,7 @@ class ResultsTab(QWidget):
         self.results = energy_system.results
         time_steps = energy_system.time_steps
 
-        print(f"Results tech_classes: {energy_system.technologies}")
-
+        # Daten extrahieren
         self.extracted_data = {}
         for tech_class in energy_system.technologies:
             for var_name in dir(tech_class):
@@ -279,60 +278,75 @@ class ResultsTab(QWidget):
                     unique_var_name = f"{tech_class.name}_{var_name}"
                     self.extracted_data[unique_var_name] = var_value
 
-        self.variableComboBox.clear()
-        self.variableComboBox.addItems(self.extracted_data.keys())
-        self.variableComboBox.addItem("Last_L")
+        # Speicherdaten hinzufügen
+        if energy_system.storage:
+            storage_results = energy_system.results['storage_class']
+            Q_net_storage_flow = storage_results.Q_net_storage_flow
 
+            # Speicherbeladung (negative Werte) und Speicherentladung (positive Werte) trennen
+            Q_net_positive = np.maximum(Q_net_storage_flow, 0)  # Speicherentladung
+            Q_net_negative = np.minimum(Q_net_storage_flow, 0)  # Speicherbeladung
+
+            # Speicherdaten zur extrahierten Datenstruktur hinzufügen
+            self.extracted_data['Speicherbeladung_kW'] = Q_net_negative
+            self.extracted_data['Speicherentladung_kW'] = Q_net_positive
+
+        # ComboBox aktualisieren
+        model = self.variableComboBox.model()
+        combo_items = [model.item(i).text() for i in range(model.rowCount())]
+        if set(self.extracted_data.keys()) != set(combo_items):
+            self.variableComboBox.clear()
+            self.variableComboBox.addItems(self.extracted_data.keys())
+            self.variableComboBox.addItem("Last_L")
+
+        # Initiale Auswahl
         initial_vars = [var_name for var_name in self.extracted_data.keys() if "_Wärmeleistung" in var_name]
         initial_vars.append("Last_L")
-
+        if energy_system.storage:
+            initial_vars.append("Speicherbeladung_kW")
+            initial_vars.append("Speicherentladung_kW")
         for var in initial_vars:
             self.variableComboBox.setItemChecked(var, True)
 
+        # Diagramm zeichnen
         self.selected_variables = self.variableComboBox.checkedItems()
-
         self.figure1.clear()
         self.plotVariables(self.figure1, time_steps, self.selected_variables)
         self.canvas1.draw()
 
-    def plotVariables(self, figure, time_steps, selected_vars):
-        """
-        Plots the selected variables in the diagram.
-
-        Args:
-            figure (Figure): The figure to plot on.
-            time_steps (list): The list of time steps.
-            selected_vars (list): The list of selected variables.
-        """
-        print(f"time_steps: {time_steps}, type: {type(time_steps)}")
-        ax1 = figure.add_subplot(111)
-        stackplot_vars = [var for var in selected_vars if "_Wärmeleistung" in var]
-        other_vars = [var for var in selected_vars if var not in stackplot_vars and var != "Last_L"]
-
+    def plot_stackplot(self, ax, time_steps, stackplot_vars):
         stackplot_data = [self.extracted_data[var] for var in stackplot_vars if var in self.extracted_data]
         if stackplot_data:
-            ax1.stackplot(time_steps, stackplot_data, labels=stackplot_vars)
+            ax.stackplot(time_steps, stackplot_data, labels=stackplot_vars)
 
+    def plot_lineplot(self, ax, time_steps, line_vars):
+        for var_name in line_vars:
+            if var_name in self.extracted_data:
+                ax.plot(time_steps, self.extracted_data[var_name], label=var_name)
+
+    def plotVariables(self, figure, time_steps, selected_vars):
+        ax1 = figure.add_subplot(111)
+        stackplot_vars = [var for var in selected_vars if "_Wärmeleistung" in var or "Speicher" in var]
+        other_vars = [var for var in selected_vars if var not in stackplot_vars and var != "Last_L"]
+
+        # Stackplot
+        self.plot_stackplot(ax1, time_steps, stackplot_vars)
+
+        # Linienplot
+        ax2 = ax1.twinx() if self.secondYAxisCheckBox.isChecked() else None
+        self.plot_lineplot(ax2 if ax2 else ax1, time_steps, other_vars)
+
+        # Lastprofil
         if "Last_L" in selected_vars:
             ax1.plot(time_steps, self.results["Last_L"], color='blue', label='Last', linewidth=0.5)
-
-        ax2 = ax1.twinx() if self.secondYAxisCheckBox.isChecked() else None
-        for var_name in other_vars:
-            if var_name in self.extracted_data:
-                var_value = self.extracted_data[var_name]
-                target_ax = ax2 if ax2 else ax1
-                target_ax.plot(time_steps, var_value, label=var_name)
 
         ax1.set_title("Jahresganglinie")
         ax1.set_xlabel("Jahresstunden")
         ax1.set_ylabel("thermische Leistung in kW")
         ax1.grid()
-
+        ax1.legend(loc='upper left' if ax2 else 'upper center')
         if ax2:
-            ax1.legend(loc='upper left')
             ax2.legend(loc='upper right')
-        else:
-            ax1.legend(loc='upper center')
 
     def updateSelectedVariables(self):
         """

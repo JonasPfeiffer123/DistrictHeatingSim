@@ -6,6 +6,8 @@ Description: Contains the base class for heat generators.
 
 """
 
+import numpy as np
+
 class BaseHeatGenerator:
     def __init__(self, name):
         self.name = name
@@ -144,6 +146,12 @@ class BaseHeatGenerator:
             if param_name in self.__dict__:
                 setattr(self, param_name, value)
                 print(f"Setze {param_name} für {self.name} auf {value}")
+
+    def get_plot_data(self):
+        """
+        Returns a dictionary of variables relevant for plotting.
+        """
+        return {var_name: getattr(self, var_name) for var_name in self.__dict__ if isinstance(getattr(self, var_name), (list, np.ndarray))}
     
     def to_dict(self):
         """
