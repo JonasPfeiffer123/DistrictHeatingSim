@@ -44,6 +44,7 @@ class ResultsTab(QWidget):
         self.parent = parent
         self.results = {}
         self.selected_variables = []
+        self.energy_system = None
 
         self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
         self.updateDefaultPath(self.data_manager.variant_folder)
@@ -164,12 +165,14 @@ class ResultsTab(QWidget):
         ])
         self.resultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
-    def showResultsInTable(self, results):
+    def showResultsInTable(self):
         """
         Displays the results in the results table, including calculated operational metrics.
-        Args:
-            results (dict): The results to display.
         """
+
+        results = self.energy_system.results
+
+
         self.resultsTable.setRowCount(len(results['techs']))
 
         # Iterate over each technology and calculate operational metrics
@@ -212,30 +215,29 @@ class ResultsTab(QWidget):
         self.additionalResultsTable.setHorizontalHeaderLabels(['Ergebnis', 'Wert', 'Einheit'])
         self.additionalResultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
-    def showAdditionalResultsTable(self, result):
+    def showAdditionalResultsTable(self):
         """
         Displays the additional results in the additional results table.
 
-        Args:
-            result (dict): The results to display.
         """
-        self.results = result
-        self.waerme_ges_kW, self.strom_wp_kW = np.sum(self.results["waerme_ges_kW"]), np.sum(self.results["strom_wp_kW"])
-        self.WGK_Infra = self.parent.costTab.summe_annuität / self.results['Jahreswärmebedarf']
+
+        results = self.energy_system.results
+        self.waerme_ges_kW, self.strom_wp_kW = np.sum(results["waerme_ges_kW"]), np.sum(results["strom_wp_kW"])
+        self.WGK_Infra = self.parent.costTab.summe_annuität / results['Jahreswärmebedarf']
         self.wgk_heat_pump_electricity = ((self.strom_wp_kW/1000) * self.parent.electricity_price) / ((self.strom_wp_kW+self.waerme_ges_kW)/1000)
-        self.WGK_Gesamt = self.results['WGK_Gesamt'] + self.WGK_Infra + self.wgk_heat_pump_electricity
+        self.WGK_Gesamt = results['WGK_Gesamt'] + self.WGK_Infra + self.wgk_heat_pump_electricity
 
         data = [
-            ("Jahreswärmebedarf", round(self.results['Jahreswärmebedarf'], 1), "MWh"),
-            ("Stromerzeugung", round(self.results['Strommenge'], 2), "MWh"),
-            ("Strombedarf", round(self.results['Strombedarf'], 2), "MWh"),
-            ("Wärmegestehungskosten Erzeugeranlagen", round(self.results['WGK_Gesamt'], 2), "€/MWh"),
+            ("Jahreswärmebedarf", round(results['Jahreswärmebedarf'], 1), "MWh"),
+            ("Stromerzeugung", round(results['Strommenge'], 2), "MWh"),
+            ("Strombedarf", round(results['Strombedarf'], 2), "MWh"),
+            ("Wärmegestehungskosten Erzeugeranlagen", round(results['WGK_Gesamt'], 2), "€/MWh"),
             ("Wärmegestehungskosten Netzinfrastruktur", round(self.WGK_Infra, 2), "€/MWh"),
             ("Wärmegestehungskosten dezentrale Wärmepumpen", round(self.wgk_heat_pump_electricity, 2), "€/MWh"),
             ("Wärmegestehungskosten Gesamt", round(self.WGK_Gesamt, 2), "€/MWh"),
-            ("spez. CO2-Emissionen Wärme", round(self.results["specific_emissions_Gesamt"], 4), "t_CO2/MWh_th"),
-            ("CO2-Emissionen Wärme", round(self.results["specific_emissions_Gesamt"]*self.results['Jahreswärmebedarf'], 2), "t_CO2"),
-            ("Primärenergiefaktor", round(self.results["primärenergiefaktor_Gesamt"], 4), "-")
+            ("spez. CO2-Emissionen Wärme", round(results["specific_emissions_Gesamt"], 4), "t_CO2/MWh_th"),
+            ("CO2-Emissionen Wärme", round(results["specific_emissions_Gesamt"]*results['Jahreswärmebedarf'], 2), "t_CO2"),
+            ("Primärenergiefaktor", round(results["primärenergiefaktor_Gesamt"], 4), "-")
         ]
 
         self.additionalResultsTable.setRowCount(len(data))
@@ -259,19 +261,30 @@ class ResultsTab(QWidget):
         rows_height = sum([table.rowHeight(i) for i in range(table.rowCount())])
         table.setFixedHeight(header_height + rows_height)
 
-    def plotResults(self, energy_system):
+    def updateResults(self, energy_system):
         """
-        Plots the results in the diagrams.
+        Updates the results in the ResultsTab.
 
         Args:
             energy_system (EnergySystem): The energy system instance containing results.
         """
-        self.results = energy_system.results
-        time_steps = energy_system.time_steps
+        self.energy_system = energy_system
+
+        self.showResultsInTable()
+        self.showAdditionalResultsTable()
+        self.plotResults()
+        self.updatePieChart()
+
+    def plotResults(self):
+        """
+        Plots the results in the diagrams.
+
+        """
+        time_steps = self.energy_system.time_steps
 
         # Daten extrahieren
         self.extracted_data = {}
-        for tech_class in energy_system.technologies:
+        for tech_class in self.energy_system.technologies:
             for var_name in dir(tech_class):
                 var_value = getattr(tech_class, var_name)
                 if isinstance(var_value, (list, np.ndarray)) and len(var_value) == len(time_steps):
@@ -279,8 +292,8 @@ class ResultsTab(QWidget):
                     self.extracted_data[unique_var_name] = var_value
 
         # Speicherdaten hinzufügen
-        if energy_system.storage:
-            storage_results = energy_system.results['storage_class']
+        if self.energy_system.storage:
+            storage_results = self.energy_system.results['storage_class']
             Q_net_storage_flow = storage_results.Q_net_storage_flow
 
             # Speicherbeladung (negative Werte) und Speicherentladung (positive Werte) trennen
@@ -291,6 +304,13 @@ class ResultsTab(QWidget):
             self.extracted_data['Speicherbeladung_kW'] = Q_net_negative
             self.extracted_data['Speicherentladung_kW'] = Q_net_positive
 
+        # Initiale Auswahl
+        initial_vars = [var_name for var_name in self.extracted_data.keys() if "_Wärmeleistung" in var_name]
+        initial_vars.append("Last_L")
+        if self.energy_system.storage:
+            initial_vars.append("Speicherbeladung_kW")
+            initial_vars.append("Speicherentladung_kW")
+
         # ComboBox aktualisieren
         model = self.variableComboBox.model()
         combo_items = [model.item(i).text() for i in range(model.rowCount())]
@@ -299,54 +319,19 @@ class ResultsTab(QWidget):
             self.variableComboBox.addItems(self.extracted_data.keys())
             self.variableComboBox.addItem("Last_L")
 
-        # Initiale Auswahl
-        initial_vars = [var_name for var_name in self.extracted_data.keys() if "_Wärmeleistung" in var_name]
-        initial_vars.append("Last_L")
-        if energy_system.storage:
-            initial_vars.append("Speicherbeladung_kW")
-            initial_vars.append("Speicherentladung_kW")
         for var in initial_vars:
             self.variableComboBox.setItemChecked(var, True)
 
         # Diagramm zeichnen
         self.selected_variables = self.variableComboBox.checkedItems()
         self.figure1.clear()
-        self.plotVariables(self.figure1, time_steps, self.selected_variables)
+        self.energy_system.plot_results(
+            figure=self.figure1,
+            selected_vars=self.selected_variables,
+            second_y_axis=self.secondYAxisCheckBox.isChecked(),
+            extracted_data=self.extracted_data
+        )
         self.canvas1.draw()
-
-    def plot_stackplot(self, ax, time_steps, stackplot_vars):
-        stackplot_data = [self.extracted_data[var] for var in stackplot_vars if var in self.extracted_data]
-        if stackplot_data:
-            ax.stackplot(time_steps, stackplot_data, labels=stackplot_vars)
-
-    def plot_lineplot(self, ax, time_steps, line_vars):
-        for var_name in line_vars:
-            if var_name in self.extracted_data:
-                ax.plot(time_steps, self.extracted_data[var_name], label=var_name)
-
-    def plotVariables(self, figure, time_steps, selected_vars):
-        ax1 = figure.add_subplot(111)
-        stackplot_vars = [var for var in selected_vars if "_Wärmeleistung" in var or "Speicher" in var]
-        other_vars = [var for var in selected_vars if var not in stackplot_vars and var != "Last_L"]
-
-        # Stackplot
-        self.plot_stackplot(ax1, time_steps, stackplot_vars)
-
-        # Linienplot
-        ax2 = ax1.twinx() if self.secondYAxisCheckBox.isChecked() else None
-        self.plot_lineplot(ax2 if ax2 else ax1, time_steps, other_vars)
-
-        # Lastprofil
-        if "Last_L" in selected_vars:
-            ax1.plot(time_steps, self.results["Last_L"], color='blue', label='Last', linewidth=0.5)
-
-        ax1.set_title("Jahresganglinie")
-        ax1.set_xlabel("Jahresstunden")
-        ax1.set_ylabel("thermische Leistung in kW")
-        ax1.grid()
-        ax1.legend(loc='upper left' if ax2 else 'upper center')
-        if ax2:
-            ax2.legend(loc='upper right')
 
     def updateSelectedVariables(self):
         """
@@ -354,18 +339,20 @@ class ResultsTab(QWidget):
         """
         self.selected_variables = self.variableComboBox.checkedItems()
         self.figure1.clear()
-        self.plotVariables(self.figure1, self.results['time_steps'], self.selected_variables)
+        self.energy_system.plot_results(
+            figure=self.figure1,
+            selected_vars=self.selected_variables,
+            second_y_axis=self.secondYAxisCheckBox.isChecked(),
+            extracted_data=self.extracted_data
+        )
         self.canvas1.draw()
 
-    def updatePieChart(self, energy_system):
+    def updatePieChart(self):
         """
         Updates the pie chart with results from the EnergySystem.
-
-        Args:
-            energy_system (EnergySystem): The energy system instance containing results.
         """
         self.pieChartFigure.clear()
-        energy_system.plot_pie_chart(self.pieChartFigure)
+        self.energy_system.plot_pie_chart(self.pieChartFigure)
         self.pieChartCanvas.draw()
 
 if __name__ == "__main__":

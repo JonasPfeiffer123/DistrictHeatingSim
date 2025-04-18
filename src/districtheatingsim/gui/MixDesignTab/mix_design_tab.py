@@ -476,10 +476,7 @@ class MixDesignTab(QWidget):
         self.costTab.updateTechDataTable(self.energy_system.technologies)
         self.costTab.updateSumLabel()
         self.costTab.plotCostComposition()
-        self.resultTab.showResultsInTable(self.energy_system.results)
-        self.resultTab.showAdditionalResultsTable(self.energy_system.results)
-        self.resultTab.plotResults(self.energy_system)
-        self.resultTab.updatePieChart(self.energy_system)
+        self.resultTab.updateResults(self.energy_system)
 
     ### Save Calculation Results ###
     def save_heat_generation_results_to_csv(self):
