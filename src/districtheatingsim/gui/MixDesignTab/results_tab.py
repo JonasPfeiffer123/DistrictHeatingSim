@@ -280,32 +280,10 @@ class ResultsTab(QWidget):
         Plots the results in the diagrams.
 
         """
-        time_steps = self.energy_system.time_steps
-
-        # Daten extrahieren
-        self.extracted_data = {}
-        for tech_class in self.energy_system.technologies:
-            for var_name in dir(tech_class):
-                var_value = getattr(tech_class, var_name)
-                if isinstance(var_value, (list, np.ndarray)) and len(var_value) == len(time_steps):
-                    unique_var_name = f"{tech_class.name}_{var_name}"
-                    self.extracted_data[unique_var_name] = var_value
-
-        # Speicherdaten hinzufügen
-        if self.energy_system.storage:
-            storage_results = self.energy_system.results['storage_class']
-            Q_net_storage_flow = storage_results.Q_net_storage_flow
-
-            # Speicherbeladung (negative Werte) und Speicherentladung (positive Werte) trennen
-            Q_net_positive = np.maximum(Q_net_storage_flow, 0)  # Speicherentladung
-            Q_net_negative = np.minimum(Q_net_storage_flow, 0)  # Speicherbeladung
-
-            # Speicherdaten zur extrahierten Datenstruktur hinzufügen
-            self.extracted_data['Speicherbeladung_kW'] = Q_net_negative
-            self.extracted_data['Speicherentladung_kW'] = Q_net_positive
+        extracted_data = self.energy_system.getInitialPlotData()
 
         # Initiale Auswahl
-        initial_vars = [var_name for var_name in self.extracted_data.keys() if "_Wärmeleistung" in var_name]
+        initial_vars = [var_name for var_name in extracted_data.keys() if "_Wärmeleistung" in var_name]
         initial_vars.append("Last_L")
         if self.energy_system.storage:
             initial_vars.append("Speicherbeladung_kW")
@@ -314,9 +292,9 @@ class ResultsTab(QWidget):
         # ComboBox aktualisieren
         model = self.variableComboBox.model()
         combo_items = [model.item(i).text() for i in range(model.rowCount())]
-        if set(self.extracted_data.keys()) != set(combo_items):
+        if set(extracted_data.keys()) != set(combo_items):
             self.variableComboBox.clear()
-            self.variableComboBox.addItems(self.extracted_data.keys())
+            self.variableComboBox.addItems(extracted_data.keys())
             self.variableComboBox.addItem("Last_L")
 
         for var in initial_vars:
@@ -328,8 +306,7 @@ class ResultsTab(QWidget):
         self.energy_system.plot_results(
             figure=self.figure1,
             selected_vars=self.selected_variables,
-            second_y_axis=self.secondYAxisCheckBox.isChecked(),
-            extracted_data=self.extracted_data
+            second_y_axis=self.secondYAxisCheckBox.isChecked()
         )
         self.canvas1.draw()
 
@@ -342,8 +319,7 @@ class ResultsTab(QWidget):
         self.energy_system.plot_results(
             figure=self.figure1,
             selected_vars=self.selected_variables,
-            second_y_axis=self.secondYAxisCheckBox.isChecked(),
-            extracted_data=self.extracted_data
+            second_y_axis=self.secondYAxisCheckBox.isChecked()
         )
         self.canvas1.draw()
 

@@ -242,7 +242,37 @@ class EnergySystem:
         
         return self.optimized_energy_system
     
-    def plot_results(self, figure, selected_vars=None, second_y_axis=False, extracted_data=None):
+    def getInitialPlotData(self):
+        """
+        Returns the initial data for plotting.
+
+        """
+
+        # Daten extrahieren
+        self.extracted_data = {}
+        for tech_class in self.technologies:
+            for var_name in dir(tech_class):
+                var_value = getattr(tech_class, var_name)
+                if isinstance(var_value, (list, np.ndarray)) and len(var_value) == len(self.time_steps):
+                    unique_var_name = f"{tech_class.name}_{var_name}"
+                    self.extracted_data[unique_var_name] = var_value
+
+        # Speicherdaten hinzufügen
+        if self.storage:
+            storage_results = self.results['storage_class']
+            Q_net_storage_flow = storage_results.Q_net_storage_flow
+
+            # Speicherbeladung (negative Werte) und Speicherentladung (positive Werte) trennen
+            Q_net_positive = np.maximum(Q_net_storage_flow, 0)  # Speicherentladung
+            Q_net_negative = np.minimum(Q_net_storage_flow, 0)  # Speicherbeladung
+
+            # Speicherdaten zur extrahierten Datenstruktur hinzufügen
+            self.extracted_data['Speicherbeladung_kW'] = Q_net_negative
+            self.extracted_data['Speicherentladung_kW'] = Q_net_positive
+
+        return self.extracted_data
+    
+    def plot_results(self, figure, selected_vars=None, second_y_axis=False):
         """
         Plots the results of the energy system.
 
@@ -251,11 +281,12 @@ class EnergySystem:
             selected_vars (list, optional): List of selected variables to plot. Defaults to None.
             second_y_axis (bool): Whether to use a second y-axis for some variables. Defaults to False.
         """
+
         ax1 = figure.add_subplot(111)
         stackplot_vars = [var for var in selected_vars if "_Wärmeleistung" in var or "Speicher" in var]
         line_vars = [var for var in selected_vars if var not in stackplot_vars and var != "Last_L"]
 
-        stackplot_data = [extracted_data[var] for var in stackplot_vars if var in extracted_data]
+        stackplot_data = [self.extracted_data[var] for var in stackplot_vars if var in self.extracted_data]
         if stackplot_data:
             ax1.stackplot(self.results["time_steps"], stackplot_data, labels=stackplot_vars)
 
@@ -263,11 +294,11 @@ class EnergySystem:
         # Linienplot
         ax2 = ax1.twinx() if second_y_axis else None
         for var_name in line_vars:
-            if var_name in extracted_data:
+            if var_name in self.extracted_data:
                 if ax2:
-                    ax2.plot(self.results["time_steps"], extracted_data[var_name], label=var_name)
+                    ax2.plot(self.results["time_steps"], self.extracted_data[var_name], label=var_name)
                 else:
-                    ax1.plot(self.results["time_steps"], extracted_data[var_name], label=var_name)
+                    ax1.plot(self.results["time_steps"], self.extracted_data[var_name], label=var_name)
 
         # Lastprofil
         if "Last_L" in selected_vars:
