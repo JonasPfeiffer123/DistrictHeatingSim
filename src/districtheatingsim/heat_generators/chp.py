@@ -397,6 +397,34 @@ class CHP(BaseHeatGenerator):
         costs = f"Investitionskosten: {self.Investitionskosten:.1f}"
         full_costs = f"{self.Investitionskosten:.1f}"
         return self.name, dimensions, costs, full_costs
+    
+    def to_dict(self):
+        """
+        Converts the CHP object to a dictionary, including the CHPStrategy.
+
+        Returns:
+            dict: Dictionary representation of the CHP object.
+        """
+        data = super().to_dict()
+        if hasattr(self, "strategy") and self.strategy:
+            data["strategy"] = self.strategy.to_dict()
+        return data
+
+    @classmethod
+    def from_dict(cls, data):
+        """
+        Creates a CHP object from a dictionary, including the CHPStrategy.
+
+        Args:
+            data (dict): Dictionary containing the attributes of the CHP object.
+
+        Returns:
+            CHP: A new CHP object.
+        """
+        obj = super().from_dict(data)
+        if "strategy" in data:
+            obj.strategy = CHPStrategy.from_dict(data["strategy"])
+        return obj
 
 
 # Control strategy for CHP
@@ -438,3 +466,29 @@ class CHPStrategy:
                 return False  # Keep CHP off
             else:    
                 return True  # Turn CHP on
+            
+    def to_dict(self):
+        """
+        Converts the CHPStrategy object to a dictionary for serialization.
+
+        Returns:
+            dict: Dictionary representation of the CHPStrategy object.
+        """
+        return {
+            "charge_on": self.charge_on,
+            "charge_off": self.charge_off
+        }
+
+    @classmethod
+    def from_dict(cls, data, storage=None):
+        """
+        Creates a CHPStrategy object from a dictionary.
+
+        Args:
+            data (dict): Dictionary containing the attributes of the CHPStrategy.
+            storage (TemperatureStratifiedThermalStorage, optional): Storage object. Defaults to None.
+
+        Returns:
+            CHPStrategy: A new CHPStrategy object.
+        """
+        return cls(storage, data["charge_on"], data["charge_off"])

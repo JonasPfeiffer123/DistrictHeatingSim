@@ -493,7 +493,7 @@ class BiomassBoilerDialog(QDialog):
             dict: The input data.
         """
         inputs = {
-            'P_BMK': float(self.PBMKInput.text()),
+            'thermal_capacity_kW': float(self.PBMKInput.text()),
             'Größe_Holzlager': float(self.HLsizeInput.text()),
             'spez_Investitionskosten': float(self.BMKcostInput.text()),
             'spez_Investitionskosten_Holzlager': float(self.HLcostInput.text()),

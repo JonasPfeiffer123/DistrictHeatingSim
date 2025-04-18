@@ -500,51 +500,32 @@ class MixDesignTab(QWidget):
     def save_heat_generation_results_to_csv(self):
         """
         Saves the heat generation results to a CSV file.
-
-        Args:
-            results (dict): The calculation results.
         """
-        results = self.energy_system.results
+        if not self.energy_system or not self.energy_system.results:
+            QMessageBox.warning(self, "Keine Daten vorhanden", "Es sind keine Berechnungsergebnisse vorhanden, die gespeichert werden könnten.")
+            return
 
-        # Initialize the DataFrame with the timestamps
-        df = pd.DataFrame({'time_steps': results['time_steps']})
-        
-        # Add the load data
-        df['Last_L'] = results['Last_L']
-        
-        # Add the heat generation data for each technology
-        for i, (tech_results, techs) in enumerate(zip(results['Wärmeleistung_L'], results['techs'])):
-            df[techs] = tech_results
-        
-        # Add the electrical power data
-        df['el_Leistungsbedarf_L'] = results['el_Leistungsbedarf_L']
-        df['el_Leistung_L'] = results['el_Leistung_L']
-        df['el_Leistung_ges_L'] = results['el_Leistung_ges_L']
-        
-        # Save the DataFrame as a CSV file
-        csv_filename = os.path.join(self.base_path, self.config_manager.get_relative_path('calculated_heat_generation_path'))
-        df.to_csv(csv_filename, index=False, sep=";")
+        try:
+            csv_filename = os.path.join(self.base_path, self.config_manager.get_relative_path('calculated_heat_generation_path'))
+            self.energy_system.save_to_csv(csv_filename)
+            QMessageBox.information(self, "Erfolgreich gespeichert", f"Die Ergebnisse wurden erfolgreich unter {csv_filename} gespeichert.")
+        except Exception as e:
+            QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der CSV-Datei: {e}")
 
     def save_results_JSON(self):
         """
         Saves the results and technology objects to a JSON file.
         """
-        if not self.energy_system.results and not self.techTab.tech_objects:
-            QMessageBox.warning(self, "Keine Daten vorhanden", "Es sind keine Berechnungsergebnisse oder technischen Objekte vorhanden, die gespeichert werden könnten.")
+        if not self.energy_system or not self.energy_system.results:
+            QMessageBox.warning(self, "Keine Daten vorhanden", "Es sind keine Berechnungsergebnisse vorhanden, die gespeichert werden könnten.")
             return
-        
-        json_filename = os.path.join(self.base_path, self.config_manager.get_relative_path("results_path"))
-        if json_filename:
-            try:
-                # Speichere das gesamte EnergySystem-Objekt
-                with open(json_filename, 'w') as json_file:
-                    json.dump(self.energy_system.to_dict(), json_file, indent=4, cls=CustomJSONEncoder)
-            
-                QMessageBox.information(self, "Erfolgreich gespeichert", f"Das Energiesystem wurde erfolgreich unter {json_filename} gespeichert.")
 
-            except TypeError as e:
-                QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der JSON-Datei: {e}")
-                raise e
+        try:
+            json_filename = os.path.join(self.base_path, self.config_manager.get_relative_path("results_path"))
+            self.energy_system.save_to_json(json_filename)
+            QMessageBox.information(self, "Erfolgreich gespeichert", f"Die Ergebnisse wurden erfolgreich unter {json_filename} gespeichert.")
+        except Exception as e:
+            QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der JSON-Datei: {e}")
 
     def load_results_JSON(self):
         """
@@ -556,17 +537,12 @@ class MixDesignTab(QWidget):
             return
 
         try:
-            # Load the JSON file
-            with open(json_filename, 'r') as json_file:
-                data_loaded = json.load(json_file)
-
-            # Restore the EnergySystem from the loaded dictionary
-            self.energy_system = EnergySystem.from_dict(data_loaded)
+            # Load the EnergySystem object
+            self.energy_system = EnergySystem.load_from_json(json_filename)
 
             self.process_data()
 
             QMessageBox.information(self, "Erfolgreich geladen", f"Die Ergebnisse wurden erfolgreich aus {json_filename} geladen.")
-        except Exception as e:
-            QMessageBox.critical(self, "Ladefehler", f"Fehler beim Laden der JSON-Datei: {e}")
-            raise e
+        except ValueError as e:
+            QMessageBox.critical(self, "Ladefehler", str(e))
 
