@@ -1,12 +1,10 @@
 """
 Filename: mix_design_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-12-11
+Date: 2025-04-18
 Description: Contains the MixdesignTab.
 """
 
-import json
-import pandas as pd
 import numpy as np
 import os
 
@@ -20,10 +18,7 @@ from districtheatingsim.gui.MixDesignTab.cost_tab import CostTab
 from districtheatingsim.gui.MixDesignTab.results_tab import ResultsTab
 from districtheatingsim.gui.MixDesignTab.sensitivity_tab import SensitivityTab
 from districtheatingsim.gui.MixDesignTab.sankey_dialog import SankeyDialog
-from districtheatingsim.gui.MixDesignTab.utilities import CustomJSONEncoder
 from districtheatingsim.heat_generators.heat_generation_mix import EnergySystem
-
-from districtheatingsim.utilities.test_reference_year import import_TRY
 
 class MixDesignTab(QWidget):
     """
@@ -161,9 +156,8 @@ class MixDesignTab(QWidget):
 
         # 'Berechnungen'-Menü
         calculationsMenu = self.menuBar.addMenu('Berechnungen')
-        calculationsMenu.addAction(self.createAction('Berechnen', self.start_calculation))
+        calculationsMenu.addAction(self.createAction('Berechnen', self.calculate_mix))
         calculationsMenu.addAction(self.createAction('Optimieren', self.start_optimization))
-        #calculationsMenu.addAction(self.createAction('Sensivitätsuntersuchung', self.sensitivity))
 
         # 'weitere Ergebnisse Anzeigen'-Menü
         showAdditionalResultsMenu = self.menuBar.addMenu('weitere Ergebnisse Anzeigen')
@@ -248,9 +242,6 @@ class MixDesignTab(QWidget):
         """
         if self.economicParametersDialog.exec_():
             self.updateEconomicParameters()
-            #self.costTab.updateInfrastructureTable()
-            #self.costTab.plotCostComposition()
-            #self.costTab.updateSumLabel()
 
     def openInfrastructureCostsDialog(self):
         """
@@ -278,7 +269,7 @@ class MixDesignTab(QWidget):
             return False
         return True
 
-    def start_calculation(self, optimize=False, weights=None):
+    def calculate_mix(self, optimize=False, weights=None):
         """
         Starts the calculation process.
 
@@ -293,9 +284,9 @@ class MixDesignTab(QWidget):
 
         if self.techTab.tech_objects:
             self.filename = self.techTab.FilenameInput.text()
+            self.TRY_filename = self.data_manager.get_try_filename()
+            self.COP_filename = self.data_manager.get_cop_filename()
             self.load_scale_factor = float(self.techTab.load_scale_factorInput.text())
-            self.TRY_data = import_TRY(self.data_manager.get_try_filename())
-            self.COP_data = np.genfromtxt(self.data_manager.get_cop_filename(), delimiter=';')
 
             self.economic_parameters = {
                 "gas_price": self.gas_price,
@@ -308,7 +299,7 @@ class MixDesignTab(QWidget):
                 "subsidy_eligibility": self.BEW
             }
 
-            self.calculationThread = CalculateMixThread(self.filename, self.load_scale_factor, self.TRY_data, self.COP_data, 
+            self.calculationThread = CalculateMixThread(self.filename, self.load_scale_factor, self.TRY_filename, self.COP_filename, 
                                                         self.economic_parameters, self.techTab.tech_objects, self.optimize, weights)
             
             self.calculationThread.calculation_done.connect(self.on_calculation_done)
@@ -354,7 +345,7 @@ class MixDesignTab(QWidget):
         dialog = WeightDialog()
         if dialog.exec_() == QDialog.Accepted:
             weights = dialog.get_weights()
-            self.start_calculation(True, weights)
+            self.calculate_mix(True, weights)
 
     def sensitivity(self, gas_range, electricity_range, wood_range, weights=None):
         """
@@ -373,17 +364,11 @@ class MixDesignTab(QWidget):
             QMessageBox.information(self, "Keine Erzeugeranlagen", "Es wurden keine Erzeugeranlagen definiert. Keine Berechnung möglich.")
             return
 
-        self.filename = self.techTab.FilenameInput.text()
-        self.load_scale_factor = float(self.techTab.load_scale_factorInput.text())
-
-        self.TRY_data = import_TRY(self.data_manager.get_try_filename())
-        self.COP_data = np.genfromtxt(self.data_manager.get_cop_filename(), delimiter=';')
-
         results = []
         for gas_price in self.generate_values(gas_range):
             for electricity_price in self.generate_values(electricity_range):
                 for wood_price in self.generate_values(wood_range):
-                    result = self.calculate_mix(gas_price, electricity_price, wood_price, weights)
+                    result = self.calculate_sensitivity(gas_price, electricity_price, wood_price, weights)
                     waerme_ges_kW, strom_wp_kW = np.sum(result["waerme_ges_kW"]), np.sum(result["strom_wp_kW"])
                     wgk_heat_pump_electricity = ((strom_wp_kW/1000) * electricity_price) / ((strom_wp_kW+waerme_ges_kW)/1000)
                     if result is not None:
@@ -414,7 +399,7 @@ class MixDesignTab(QWidget):
         step = (upper - lower) / (num_points - 1)
         return [lower + i * step for i in range(num_points)]
 
-    def calculate_mix(self, gas_price, electricity_price, wood_price, weights):
+    def calculate_sensitivity(self, gas_price, electricity_price, wood_price, weights):
         """
         Calculates the energy mix for given prices and weights.
 
@@ -452,7 +437,7 @@ class MixDesignTab(QWidget):
                 "subsidy_eligibility": self.BEW
             }
 
-        self.calculationThread = CalculateMixThread(self.filename, self.load_scale_factor, self.TRY_data, self.COP_data, 
+        self.calculationThread = CalculateMixThread(self.filename, self.load_scale_factor, self.TRY_filename, self.COP_filename, 
                                                     self.economic_parameters, self.techTab.tech_objects, False,  weights)
         
         self.calculationThread.calculation_done.connect(calculation_done)
