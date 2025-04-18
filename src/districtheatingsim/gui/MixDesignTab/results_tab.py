@@ -95,14 +95,14 @@ class ResultsTab(QWidget):
         self.variableSelectionLayout.addWidget(self.secondYAxisCheckBox)
 
         # First Diagram (Stackplot and Line Plot)
-        self.figure1 = Figure(figsize=(8, 6))
-        self.canvas1 = FigureCanvas(self.figure1)
-        self.canvas1.setMinimumSize(500, 500)
-        self.toolbar1 = NavigationToolbar(self.canvas1, self)
+        self.stackPlotFigure = Figure(figsize=(8, 6))
+        self.stackPlotCanvas = FigureCanvas(self.stackPlotFigure)
+        self.stackPlotCanvas.setMinimumSize(500, 500)
+        self.toolbar1 = NavigationToolbar(self.stackPlotCanvas, self)
         self.diagram1_widget = QWidget()
         diagram1_layout = QVBoxLayout(self.diagram1_widget)
         diagram1_layout.addLayout(self.variableSelectionLayout)  # Add the ComboBox and Checkbox layout
-        diagram1_layout.addWidget(self.canvas1)
+        diagram1_layout.addWidget(self.stackPlotCanvas)
         diagram1_layout.addWidget(self.toolbar1)
         self.diagram1_section = CollapsibleHeader("Jahresganglinie Diagramm", self.diagram1_widget)
         self.scrollLayout.addWidget(self.diagram1_section)
@@ -280,14 +280,7 @@ class ResultsTab(QWidget):
         Plots the results in the diagrams.
 
         """
-        extracted_data = self.energy_system.getInitialPlotData()
-
-        # Initiale Auswahl
-        initial_vars = [var_name for var_name in extracted_data.keys() if "_Wärmeleistung" in var_name]
-        initial_vars.append("Last_L")
-        if self.energy_system.storage:
-            initial_vars.append("Speicherbeladung_kW")
-            initial_vars.append("Speicherentladung_kW")
+        extracted_data, initial_vars = self.energy_system.getInitialPlotData()
 
         # ComboBox aktualisieren
         model = self.variableComboBox.model()
@@ -302,26 +295,26 @@ class ResultsTab(QWidget):
 
         # Diagramm zeichnen
         self.selected_variables = self.variableComboBox.checkedItems()
-        self.figure1.clear()
-        self.energy_system.plot_results(
-            figure=self.figure1,
+        self.stackPlotFigure.clear()
+        self.energy_system.plot_stack_plot(
+            figure=self.stackPlotFigure,
             selected_vars=self.selected_variables,
             second_y_axis=self.secondYAxisCheckBox.isChecked()
         )
-        self.canvas1.draw()
+        self.stackPlotCanvas.draw()
 
     def updateSelectedVariables(self):
         """
         Updates the selected variables and re-plots the diagram.
         """
         self.selected_variables = self.variableComboBox.checkedItems()
-        self.figure1.clear()
-        self.energy_system.plot_results(
-            figure=self.figure1,
+        self.stackPlotFigure.clear()
+        self.energy_system.plot_stack_plot(
+            figure=self.stackPlotFigure,
             selected_vars=self.selected_variables,
             second_y_axis=self.secondYAxisCheckBox.isChecked()
         )
-        self.canvas1.draw()
+        self.stackPlotCanvas.draw()
 
     def updatePieChart(self):
         """
