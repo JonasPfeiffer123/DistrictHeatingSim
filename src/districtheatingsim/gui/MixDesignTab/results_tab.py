@@ -165,6 +165,40 @@ class ResultsTab(QWidget):
         ])
         self.resultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
+    def setupAdditionalResultsTable(self):
+        """
+        Sets up the additional results table.
+        """
+        self.additionalResultsTable = QTableWidget()
+        self.additionalResultsTable.setColumnCount(3)
+        self.additionalResultsTable.setHorizontalHeaderLabels(['Ergebnis', 'Wert', 'Einheit'])
+        self.additionalResultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+    def adjustTableSize(self, table):
+        """
+        Adjusts the size of the table to fit its contents.
+
+        Args:
+            table (QTableWidget): The table to adjust.
+        """
+        header_height = table.horizontalHeader().height()
+        rows_height = sum([table.rowHeight(i) for i in range(table.rowCount())])
+        table.setFixedHeight(header_height + rows_height)
+
+    def updateResults(self, energy_system):
+        """
+        Updates the results in the ResultsTab.
+
+        Args:
+            energy_system (EnergySystem): The energy system instance containing results.
+        """
+        self.energy_system = energy_system
+
+        self.showResultsInTable()
+        self.showAdditionalResultsTable()
+        self.plotResults()
+        self.updatePieChart()
+
     def showResultsInTable(self):
         """
         Displays the results in the results table, including calculated operational metrics.
@@ -206,15 +240,6 @@ class ResultsTab(QWidget):
         self.resultsTable.resizeColumnsToContents()
         self.adjustTableSize(self.resultsTable)
 
-    def setupAdditionalResultsTable(self):
-        """
-        Sets up the additional results table.
-        """
-        self.additionalResultsTable = QTableWidget()
-        self.additionalResultsTable.setColumnCount(3)
-        self.additionalResultsTable.setHorizontalHeaderLabels(['Ergebnis', 'Wert', 'Einheit'])
-        self.additionalResultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-
     def showAdditionalResultsTable(self):
         """
         Displays the additional results in the additional results table.
@@ -249,31 +274,6 @@ class ResultsTab(QWidget):
 
         self.additionalResultsTable.resizeColumnsToContents()
         self.adjustTableSize(self.additionalResultsTable)
-
-    def adjustTableSize(self, table):
-        """
-        Adjusts the size of the table to fit its contents.
-
-        Args:
-            table (QTableWidget): The table to adjust.
-        """
-        header_height = table.horizontalHeader().height()
-        rows_height = sum([table.rowHeight(i) for i in range(table.rowCount())])
-        table.setFixedHeight(header_height + rows_height)
-
-    def updateResults(self, energy_system):
-        """
-        Updates the results in the ResultsTab.
-
-        Args:
-            energy_system (EnergySystem): The energy system instance containing results.
-        """
-        self.energy_system = energy_system
-
-        self.showResultsInTable()
-        self.showAdditionalResultsTable()
-        self.plotResults()
-        self.updatePieChart()
 
     def plotResults(self):
         """
