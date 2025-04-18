@@ -13,7 +13,7 @@ import pandas as pd
 import os
 
 # Testparameter
-time_steps = np.arange(0, 8760) * np.timedelta64(1, 'h') # 8760 Stunden (1 Jahr)
+time_steps = pd.date_range(start="2023-01-01", end="2023-12-31 23:00:00", freq="H").to_numpy()
 
 file_path = os.path.abspath('feature_develop/STES/Lastgang.csv')
 df = pd.read_csv(file_path, delimiter=';', encoding='utf-8')
@@ -99,4 +99,5 @@ print(f"Betriebskosten: {results['storage_class'].operational_costs:.2f} €")
 # Ergebnisse plotten
 storage.plot_results(results["Wärmeleistung_L"][0], load_profile, VLT_L, RLT_L)
 energy_system.plot_stack_plot()
+energy_system.plot_pie_chart()
 plt.show()
