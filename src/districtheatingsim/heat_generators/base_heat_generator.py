@@ -186,3 +186,10 @@ class BaseHeatGenerator:
             GasBoiler: A deep copy of the GasBoiler object.
         """
         return self.from_dict(self.to_dict())
+    
+class BaseStrategy:
+    """
+    Base class for strategies in the district heating simulation.
+
+    """
+    pass

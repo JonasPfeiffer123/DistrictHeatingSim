@@ -12,12 +12,16 @@ logging.basicConfig(level=logging.INFO)
 import numpy as np
 import matplotlib.pyplot as plt
 import copy
+import json
+import pandas as pd
 
 from scipy.optimize import minimize as scipy_minimize
 
 from districtheatingsim.heat_generators import TECH_CLASS_REGISTRY
 
 from districtheatingsim.heat_generators.STES import TemperatureStratifiedThermalStorage
+
+from districtheatingsim.gui.MixDesignTab.utilities import CustomJSONEncoder
 
 class EnergySystem:
     def __init__(self, time_steps, load_profile, VLT_L, RLT_L, TRY_data, COP_data, economic_parameters):
@@ -410,6 +414,62 @@ class EnergySystem:
                     obj.results[key] = value
 
         return obj
+    
+    def save_to_csv(self, file_path):
+        """
+        Saves the heat generation results to a CSV file.
+
+        Args:
+            file_path (str): The path to save the CSV file.
+        """
+        if not self.results:
+            raise ValueError("No results available to save.")
+
+        # Initialize the DataFrame with the timestamps
+        df = pd.DataFrame({'time_steps': self.results['time_steps']})
+        
+        # Add the load data
+        df['Last_L'] = self.results['Last_L']
+        
+        # Add the heat generation data for each technology
+        for tech_results, techs in zip(self.results['Wärmeleistung_L'], self.results['techs']):
+            df[techs] = tech_results
+        
+        # Add the electrical power data
+        df['el_Leistungsbedarf_L'] = self.results['el_Leistungsbedarf_L']
+        df['el_Leistung_L'] = self.results['el_Leistung_L']
+        df['el_Leistung_ges_L'] = self.results['el_Leistung_ges_L']
+        
+        # Save the DataFrame as a CSV file
+        df.to_csv(file_path, index=False, sep=";")
+
+    def save_to_json(self, file_path):
+        """
+        Saves the EnergySystem object and its results to a JSON file.
+
+        Args:
+            file_path (str): The path to save the JSON file.
+        """
+        with open(file_path, 'w') as json_file:
+            json.dump(self.to_dict(), json_file, indent=4, cls=CustomJSONEncoder)
+
+    @classmethod
+    def load_from_json(cls, file_path):
+        """
+        Loads the EnergySystem object and its results from a JSON file.
+
+        Args:
+            file_path (str): The path to the JSON file.
+
+        Returns:
+            EnergySystem: The loaded EnergySystem object.
+        """
+        try:
+            with open(file_path, 'r') as json_file:
+                data_loaded = json.load(json_file)
+            return cls.from_dict(data_loaded)
+        except Exception as e:
+            raise ValueError(f"Fehler beim Laden der JSON-Datei: {e}")
 
 class EnergySystemOptimizer:
     def __init__(self, initial_energy_system, weights, num_restarts=5):
