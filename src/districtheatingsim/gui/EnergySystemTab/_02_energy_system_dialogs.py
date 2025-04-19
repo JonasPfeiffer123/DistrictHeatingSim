@@ -1,8 +1,8 @@
 """
-Filename: mix_design_dialogs.py
+Filename: _02_energy_system_dialogs.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-08-01
-Description: Contains the Dialogs for the MixDesignTab.
+Date: 2025-04-19
+Description: Contains the Dialogs for the Energy System Tab.
 """
 
 import os

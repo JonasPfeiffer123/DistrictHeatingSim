@@ -12,12 +12,12 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMe
 from PyQt5.QtCore import pyqtSignal, QEventLoop
 
 from districtheatingsim.gui.EnergySystemTab._02_energy_system_dialogs import EconomicParametersDialog, NetInfrastructureDialog, WeightDialog
-from districtheatingsim.gui.EnergySystemTab.calculate_mix_thread import CalculateMixThread
-from districtheatingsim.gui.EnergySystemTab.technology_tab import TechnologyTab
-from districtheatingsim.gui.EnergySystemTab.cost_tab import CostTab
-from districtheatingsim.gui.EnergySystemTab.results_tab import ResultsTab
-from districtheatingsim.gui.EnergySystemTab.sensitivity_tab import SensitivityTab
-from districtheatingsim.gui.EnergySystemTab.sankey_dialog import SankeyDialog
+from districtheatingsim.gui.EnergySystemTab._06_calculate_energy_system_thread import CalculateMixThread
+from districtheatingsim.gui.EnergySystemTab._03_technology_tab import TechnologyTab
+from districtheatingsim.gui.EnergySystemTab._05_cost_tab import CostTab
+from districtheatingsim.gui.EnergySystemTab._07_results_tab import ResultsTab
+from districtheatingsim.gui.EnergySystemTab._08_sensitivity_tab import SensitivityTab
+from districtheatingsim.gui.EnergySystemTab._09_sankey_dialog import SankeyDialog
 from districtheatingsim.heat_generators.energy_system import EnergySystem
 
 class EnergySystemTab(QWidget):
