@@ -13,7 +13,7 @@ import pandas as pd
 import os
 
 # Testparameter
-time_steps = pd.date_range(start="2023-01-01", end="2023-12-31 23:00:00", freq="H").to_numpy()
+time_steps = pd.date_range(start="2023-01-01", end="2023-12-31 23:00:00", freq="h").to_numpy()
 
 file_path = os.path.abspath('feature_develop/STES/Lastgang.csv')
 df = pd.read_csv(file_path, delimiter=';', encoding='utf-8')
@@ -95,9 +95,13 @@ results = energy_system.calculate_mix()
 print("Simulationsergebnisse:")
 print(f"Speicherwirkungsgrad: {results['storage_class'].efficiency*100:.2f}%")
 print(f"Betriebskosten: {results['storage_class'].operational_costs:.2f} €")
+print(f"Überschüssige Wärme durch Stagnation: {results['storage_class'].excess_heat:.2f} kWh")
+print(f"Nicht gedeckter Bedarf aufgrund von Speicherentleerung: {results['storage_class'].unmet_demand:.2f} kWh")
+print(f"Stagnationsdauer: {results['storage_class'].stagnation_time} h")
+
 
 # Ergebnisse plotten
-storage.plot_results(results["Wärmeleistung_L"][0], load_profile, VLT_L, RLT_L)
+results['storage_class'].plot_results(results["Wärmeleistung_L"][0], load_profile, VLT_L, RLT_L)
 energy_system.plot_stack_plot()
 energy_system.plot_pie_chart()
 plt.show()

@@ -178,28 +178,32 @@ class EnergySystem:
 
             for t in range(time_steps):
                 Q_in_total = 0  # Summe der Wärmeeinspeisung
-                Q_out = self.load_profile[t] # Wärmebedarf
+
                 T_Q_in_flow = self.VLT_L[t] # Vorlauftemperatur
                 T_Q_out_return = self.RLT_L[t] # Rücklauftemperatur
-                remaining_demand = Q_out
+
+                Q_out_total = self.load_profile[t] # Wärmebedarf
+                remaining_load = Q_out_total
 
                 # Speicherzustand und Temperaturen abrufen
                 upper_storage_temp, lower_storage_temp = self.storage.current_storage_temperatures(t)
 
                 # Generatoren basierend auf Priorität steuern
                 for i, tech in enumerate(self.technologies):
-                    tech.active = tech.strategy.decide_operation(tech.active, upper_storage_temp, lower_storage_temp, remaining_demand)
+                    tech.active = tech.strategy.decide_operation(tech.active, upper_storage_temp, lower_storage_temp, remaining_load)
 
                     if tech.active:
-                        Q_in, _ = tech.generate(t, remaining_demand)
-                        remaining_demand -= Q_in
+                        Q_in, _ = tech.generate(t, remaining_load)
+                        remaining_load -= Q_in
                         Q_in_total += Q_in
 
                 # Speicher aktualisieren
-                self.storage.simulate_stratified_temperature_mass_flows(t, Q_in_total, Q_out, T_Q_in_flow, T_Q_out_return)
+                self.storage.simulate_stratified_temperature_mass_flows(t, Q_in_total, Q_out_total, T_Q_in_flow, T_Q_out_return)
 
-                # Restlast nach Speicherentladung berechnen
-                remaining_demand -= self.storage.Q_net_storage_flow[t]
+                if t == 100:
+                    print(f"Speicherzustand: {self.storage_state[t]}")
+                    print(f"Speicherbeladung: {self.storage.Q_net_storage_flow[t]}")
+                    print(f"Restlast: {remaining_load}")
 
             # Speicherergebnisse berechnen
             self.storage.calculate_efficiency(self.load_profile)
@@ -263,6 +267,7 @@ class EnergySystem:
         if self.storage:
             storage_results = self.results['storage_class']
             Q_net_storage_flow = storage_results.Q_net_storage_flow
+            print(f"Speicherergebnisse: {Q_net_storage_flow[8000]}")
 
             # Speicherbeladung (negative Werte) und Speicherentladung (positive Werte) trennen
             Q_net_positive = np.maximum(Q_net_storage_flow, 0)  # Speicherentladung
@@ -308,29 +313,52 @@ class EnergySystem:
         # Füge die restlichen Variablen hinzu
         stackplot_vars += [var for var in selected_vars if var not in stackplot_vars and "_Wärmeleistung" in var]
 
+        # Speicherentladung ans Ende verschieben
+        if "Speicherentladung_kW" in stackplot_vars:
+            stackplot_vars.remove("Speicherentladung_kW")
+            stackplot_vars.append("Speicherentladung_kW")
+
         # Linienvariablen (z. B. Lastprofil)
         line_vars = [var for var in selected_vars if var not in stackplot_vars and var != "Last_L"]
 
-        # Konvertiere time_steps in Stunden (float)
-        time_steps_in_hours = self.results["time_steps"].astype('timedelta64[h]').astype(float)
-
         # Stackplot-Daten vorbereiten
-        stackplot_data = [self.extracted_data[var] for var in stackplot_vars if var in self.extracted_data]
+        stackplot_data = []
+        for var in stackplot_vars:
+            if var == "Speicherbeladung_kW" and var in self.extracted_data:
+                # Speicherbeladung als negative Werte darstellen, aber nicht in den Stackplot integrieren
+                ax1.fill_between(
+                    self.results["time_steps"],
+                    0,
+                    self.extracted_data[var],
+                    label=var,
+                    step="mid",
+                    color="gray",
+                    alpha=1.0,
+                )
+            elif var in self.extracted_data:
+                stackplot_data.append(self.extracted_data[var])
+
+        # Zeichne den Stackplot für die restlichen Variablen
         if stackplot_data:
-            ax1.stackplot(time_steps_in_hours, stackplot_data, labels=stackplot_vars)
+            ax1.stackplot(
+                self.results["time_steps"],
+                stackplot_data,
+                labels=[var for var in stackplot_vars if var != "Speicherbeladung_kW"],
+                step="mid"
+            )
 
         # Linienplot
         ax2 = ax1.twinx() if second_y_axis else None
         for var_name in line_vars:
             if var_name in self.extracted_data:
                 if ax2:
-                    ax2.plot(time_steps_in_hours, self.extracted_data[var_name], label=var_name)
+                    ax2.plot(self.results["time_steps"], self.extracted_data[var_name], label=var_name)
                 else:
-                    ax1.plot(time_steps_in_hours, self.extracted_data[var_name], label=var_name)
+                    ax1.plot(self.results["time_steps"], self.extracted_data[var_name], label=var_name)
 
         # Lastprofil
         if "Last_L" in selected_vars:
-            ax1.plot(time_steps_in_hours, self.results["Last_L"], color='blue', label='Last', linewidth=0.5)
+            ax1.plot(self.results["time_steps"], self.results["Last_L"], color='blue', label='Last', linewidth=0.25)
 
         # Achsentitel und Legende
         ax1.set_title("Jahresganglinie")

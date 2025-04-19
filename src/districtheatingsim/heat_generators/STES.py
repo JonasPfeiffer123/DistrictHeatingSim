@@ -675,7 +675,8 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
         self.Q_net_storage_flow = np.zeros(self.hours)
 
         self.T_max_rücklauf = 70  # Maximale Rücklauftemperatur für Erzeuger
-        self.T_min_vorlauf = 70  # Minimale Vorlauftemperatur für Verbraucher
+
+        self.dT_VLT = 10  # Tolerance below the target supply temperature in K
 
     def simulate_stratified_temperature_mass_flows(self, t, Q_in, Q_out, T_Q_in_flow, T_Q_out_return):
         """
@@ -689,11 +690,9 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
 
         T_Q_in_flow_copy = np.copy(T_Q_in_flow)
         T_Q_out_return_copy = np.copy(T_Q_out_return)
-        Q_in_copy = np.copy(Q_in)
-        Q_out_copy = np.copy(Q_out)
 
-        self.Q_in = Q_in_copy  # Input heat in kW
-        self.Q_out = Q_out_copy  # Output heat in kW
+        self.Q_in = np.zeros(self.hours)  # Eingangsleistung in kW
+        self.Q_out = np.zeros(self.hours)  # Ausgangsleistung in kW
         self.T_Q_in_flow = T_Q_in_flow_copy  # Vorlauf-Erzeuger
         self.T_Q_out_return = T_Q_out_return_copy  # Rücklauf-Verbraucher
         
@@ -731,30 +730,30 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
             # when the storage is full, the inflow is zero
             if self.T_sto_layers[t, -1] < self.T_max_rücklauf:
                 # Ladeoperation möglich
-                self.mass_flow_in[t] = (Q_in * 1000) / (self.cp * (T_Q_in_flow - self.T_sto_layers[t, -1]))
+                self.Q_in[t] = Q_in
+                self.mass_flow_in[t] = (self.Q_in[t] * 1000) / (self.cp * (T_Q_in_flow - self.T_sto_layers[t, -1]))
             else:
                 # Speicherüberhitzung oder keine ausreichende Temperaturdifferenz
                 self.mass_flow_in[t] = 0
                 self.excess_heat += Q_in
                 self.stagnation_time += 1
-                self.Q_in = 0
+                self.Q_in[t] = Q_out
 
             # when the storage is empty, the outflow is zero
-            if self.T_sto_layers[t, 0] > self.T_min_vorlauf:
+            if self.T_sto_layers[t, 0] > T_Q_in_flow - self.dT_VLT:
                 # Entladeoperation möglich
-                self.mass_flow_out[t] = (Q_out * 1000) / (self.cp * (self.T_sto_layers[t, 0] - T_Q_out_return))
+                self.Q_out[t] = Q_out
+                self.mass_flow_out[t] = (self.Q_out[t] * 1000) / (self.cp * (self.T_sto_layers[t, 0] - T_Q_out_return))
             else:
                 # Speicher zu kalt oder keine ausreichende Temperaturdifferenz
                 self.mass_flow_out[t] = 0
                 self.unmet_demand += Q_out
-                self.Q_out = 0
-            
+                self.Q_out[t] = Q_in
 
-            #self.mass_flow_in[t] = (Q_in * 1000) / (self.cp * (T_Q_in_flow - self.T_sto_layers[t, -1]))
-            #self.mass_flow_out[t] = (Q_out * 1000) / (self.cp * (self.T_sto_layers[t, 0] - T_Q_out_return))
+            self.Q_net_storage_flow[t] = self.Q_out[t] - self.Q_in[t]
 
-            # Berechne den Netto-Wärmefluss als Differenz zwischen ein- und ausströmender Wärmemenge
-            self.Q_net_storage_flow[t] = Q_out - Q_in
+            if t == 100:
+                print(f"Mass flow in: {self.mass_flow_in[t]} kg/s, Mass flow out: {self.mass_flow_out[t]} kg/s, Q_in: {self.Q_in[t]}, Q_out: {self.Q_out[t]}, Q_net: {self.Q_net_storage_flow[t]}")
 
             # Inflow from top to bottom
             for i in range(self.num_layers):
@@ -871,8 +870,8 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
         axs6 = fig.add_subplot(2, 3, 6, projection='3d')
 
         # Separate positive and negative values for Q_net_storage_flow
-        Q_net_positive = np.maximum(self.Q_net_storage_flow, 0)  # Charging (positive values)
-        Q_net_negative = np.minimum(self.Q_net_storage_flow, 0)  # Discharging (negative values)
+        Q_net_positive = np.maximum(self.Q_net_storage_flow, 0)  # Discharging (positive values)
+        Q_net_negative = np.minimum(self.Q_net_storage_flow, 0)  # Charging (negative values)
 
         # Plot Wärmeerzeugung as line plot
         axs1.plot(Q_out, label='Wärmeverbrauch', color='blue', linewidth=0.5)
