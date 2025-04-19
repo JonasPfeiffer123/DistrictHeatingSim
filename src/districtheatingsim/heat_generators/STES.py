@@ -123,6 +123,48 @@ class ThermalStorage(BaseHeatGenerator):
         self.total_energy_loss_kWh = np.sum(self.Q_loss) # Total energy loss in kWh
         self.efficiency = 1 - (self.total_energy_loss_kWh / np.sum(Q_in)) # Efficiency as a ratio
 
+    def to_dict(self):
+        """
+        Converts the object to a dictionary, excluding non-serializable attributes.
+
+        Returns:
+            dict: Dictionary representation of the object.
+        """
+        # Erstelle eine Kopie des aktuellen Objekt-Dictionaries
+        data = self.__dict__.copy()
+        
+        # Entferne das scene_item und andere nicht notwendige Felder
+        data.pop('scene_item', None)
+
+        return data
+
+    @classmethod
+    def from_dict(cls, data):
+        """
+        Creates an object from a dictionary.
+
+        Args:
+            data (dict): Dictionary containing the attributes of the object.
+
+        Returns:
+            cls: A new object of the given class with attributes from the dictionary.
+        """
+        obj = cls.__new__(cls)
+        obj.__dict__.update(data)
+        return obj
+    
+    def __deepcopy__(self, memo):
+        """
+        Creates a deep copy of the ThermalStorage object.
+
+        Args:
+            memo (dict): Memoization dictionary for deepcopy.
+
+        Returns:
+            ThermalStorage: A deep copy of the ThermalStorage object.
+        """
+        return self.from_dict(self.to_dict())
+
 class SimpleThermalStorage(ThermalStorage):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)  # Call the parent class constructor

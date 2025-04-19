@@ -193,7 +193,13 @@ class EnergySystem:
                     tech.active = tech.strategy.decide_operation(tech.active, upper_storage_temp, lower_storage_temp, remaining_load)
 
                     if tech.active:
-                        Q_in, _ = tech.generate(t, remaining_load)
+                        # Erstelle ein kwargs-Dictionary mit technologie-spezifischen Daten
+                        kwargs = {
+                            "remaining_load": remaining_load,
+                            "VLT_L": self.VLT_L[t],
+                            "COP_data": self.COP_data
+                        }
+                        Q_in, _ = tech.generate(t, **kwargs)
                         remaining_load -= Q_in
                         Q_in_total += Q_in
 

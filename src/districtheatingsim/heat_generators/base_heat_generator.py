@@ -200,4 +200,67 @@ class BaseStrategy:
     Base class for strategies in the district heating simulation.
 
     """
-    pass
+    def __init__(self, charge_on, charge_off):
+        """
+        Initializes the BaseStrategy class.
+
+        Args:
+            charge_on (int): Storage temperature threshold for charging.
+            charge_off (int): Storage temperature threshold for discharging.
+
+        """
+        self.charge_on = charge_on
+        self.charge_off = charge_off
+
+    def decide_operation(self, current_state, upper_storage_temp, lower_storage_temp, remaining_demand):
+        """
+        Decide whether to turn the heat generator unit on based on storage temperature and remaining demand.
+
+        Args:
+            current_state (float): Current state of the system.
+            upper_storage_temp (float): Current upper storage temperature.
+            lower_storage_temp (float): Current lower storage temperature.
+            remaining_demand (float): Remaining heat demand to be covered. (not used in this implementation)
+
+        Returns:
+            bool: True if the Power-to-Heat unit should be turned on, False otherwise.
+        """
+
+        # Check if the generator is active
+        if current_state:
+            #  Check if the generator is active
+            if lower_storage_temp < self.charge_off:
+                return True # Keep generator on
+            else:
+                return False # Turn generator off
+        else:
+            if upper_storage_temp > self.charge_on:
+                return False # Turn generator off
+            else:    
+                return True  # Turn generator on
+            
+    def to_dict(self):
+        """
+        Converts the BaseStrategy object to a dictionary for serialization.
+
+        Returns:
+            dict: Dictionary representation of the BaseStrategy object.
+        """
+        return {
+            "charge_on": self.charge_on,
+            "charge_off": self.charge_off
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        """
+        Creates a BaseStrategy object from a dictionary.
+
+        Args:
+            data (dict): Dictionary containing the attributes of the BaseStrategy.
+
+        Returns:
+            BaseStrategy: A new BaseStrategy object.
+        """
+        return cls(data["charge_on"], data["charge_off"])
+        

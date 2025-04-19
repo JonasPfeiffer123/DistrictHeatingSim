@@ -8,7 +8,7 @@ Description: Contains the Combined Heat and Power (CHP) class for simulating CHP
 
 import numpy as np
 
-from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator
+from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
 
 class CHP(BaseHeatGenerator):
     """
@@ -102,7 +102,7 @@ class CHP(BaseHeatGenerator):
         self.Betriebsstunden = 0
         self.Betriebsstunden_pro_Start = 0
 
-        self.strategy = CHPStrategy(self, charge_on=70, charge_off=70)
+        self.strategy = CHPStrategy(75, 70)
 
     def simulate_operation(self, Last_L, duration):
         """
@@ -195,7 +195,7 @@ class CHP(BaseHeatGenerator):
         self.Betriebsstunden_gesamt_Speicher = np.sum(betrieb_mask) * duration
         self.Betriebsstunden_pro_Start_Speicher = self.Betriebsstunden_gesamt_Speicher / self.Anzahl_Starts_Speicher if self.Anzahl_Starts_Speicher > 0 else 0
 
-    def generate(self, t, remaining_demand):
+    def generate(self, t, **kwargs):
         """
         Generates thermal and electrical power for the given time step `t`.
         This method calculates the thermal power, electrical power, fuel consumption, 
@@ -204,7 +204,6 @@ class CHP(BaseHeatGenerator):
         operational hours and operational hours per start.
         Args:
             t (int): The current time step.
-            remaining_demand (float): The remaining heat demand that needs to be met.
         Returns:
             tuple: A tuple containing the thermal power (in kW) and electrical power (in kW) 
                    generated at the current time step. If the CHP unit is turned off, 
@@ -397,98 +396,15 @@ class CHP(BaseHeatGenerator):
         costs = f"Investitionskosten: {self.Investitionskosten:.1f}"
         full_costs = f"{self.Investitionskosten:.1f}"
         return self.name, dimensions, costs, full_costs
-    
-    def to_dict(self):
-        """
-        Converts the CHP object to a dictionary, including the CHPStrategy.
-
-        Returns:
-            dict: Dictionary representation of the CHP object.
-        """
-        data = super().to_dict()
-        if hasattr(self, "strategy") and self.strategy:
-            data["strategy"] = self.strategy.to_dict()
-        return data
-
-    @classmethod
-    def from_dict(cls, data):
-        """
-        Creates a CHP object from a dictionary, including the CHPStrategy.
-
-        Args:
-            data (dict): Dictionary containing the attributes of the CHP object.
-
-        Returns:
-            CHP: A new CHP object.
-        """
-        obj = super().from_dict(data)
-        if "strategy" in data:
-            obj.strategy = CHPStrategy.from_dict(data["strategy"])
-        return obj
-
 
 # Control strategy for CHP
-class CHPStrategy:
-    def __init__(self, storage, charge_on, charge_off):
+class CHPStrategy(BaseStrategy):
+    def __init__(self, charge_on, charge_off):
         """
         Initializes the CHP strategy with switch points based on storage levels.
 
         Args:
-            storage (TemperatureStratifiedThermalStorage): Instance of the storage.
             charge_on (int): (upper) Storage temperature to activate CHP.
             charge_off (int): (lower) Storage temperature to deactivate CHP.
         """
-        self.storage = storage
-        self.charge_on = charge_on
-        self.charge_off = charge_off
-
-    def decide_operation(self, current_state, upper_storage_temp, lower_storage_temp, remaining_demand):
-        """
-        Decide whether to turn the CHP on or off based on storage temperature.
-
-        current_state (bool): Current state of the CHP unit.
-        upper_storage_temp (float): Current upper storage temperature.
-        lower_storage_temp (float): Current lower storage temperature.
-
-        If the lower storage temperature is too high, the CHP is turned off to prevent overheating.
-        If the upper storage temperature is too low, the CHP is turned on to provide additional heat.
-
-        """
-        # Check if the CHP is currently on or off
-        if current_state:
-            # If the CHP is on, check if the lower storage temperature is too high
-            if lower_storage_temp < self.charge_off:
-                return True  # Keep CHP on
-            else:
-                return False  # Turn CHP off
-        else:
-            if upper_storage_temp > self.charge_on:
-                return False  # Keep CHP off
-            else:    
-                return True  # Turn CHP on
-            
-    def to_dict(self):
-        """
-        Converts the CHPStrategy object to a dictionary for serialization.
-
-        Returns:
-            dict: Dictionary representation of the CHPStrategy object.
-        """
-        return {
-            "charge_on": self.charge_on,
-            "charge_off": self.charge_off
-        }
-
-    @classmethod
-    def from_dict(cls, data, storage=None):
-        """
-        Creates a CHPStrategy object from a dictionary.
-
-        Args:
-            data (dict): Dictionary containing the attributes of the CHPStrategy.
-            storage (TemperatureStratifiedThermalStorage, optional): Storage object. Defaults to None.
-
-        Returns:
-            CHPStrategy: A new CHPStrategy object.
-        """
-        return cls(storage, data["charge_on"], data["charge_off"])
+        super().__init__(charge_on, charge_off)  # Initialize the BaseStrategy with charge_on and charge_off

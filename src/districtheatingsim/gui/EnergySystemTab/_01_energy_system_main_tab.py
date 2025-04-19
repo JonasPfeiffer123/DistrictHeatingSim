@@ -341,7 +341,7 @@ class EnergySystemTab(QWidget):
 
     def process_data(self):
         # Update the tech objects from the loaded EnergySystem
-        self.techTab.tech_objects = self.energy_system.technologies + [self.energy_system.storage]
+        self.techTab.tech_objects = self.energy_system.technologies + [self.energy_system.storage] if self.energy_system.storage else self.energy_system.technologies
         self.techTab.rebuildScene()
         self.techTab.updateTechList()
         self.costTab.updateInfrastructureTable()

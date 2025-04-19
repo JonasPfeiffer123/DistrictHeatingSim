@@ -7,6 +7,8 @@ from districtheatingsim.heat_generators.biomass_boiler import BiomassBoiler, Bio
 from districtheatingsim.heat_generators.heat_pumps import RiverHeatPump, WasteHeatPump, Geothermal, HeatPumpStrategy
 from districtheatingsim.heat_generators.STES import TemperatureStratifiedThermalStorage
 
+from districtheatingsim.utilities.test_reference_year import import_TRY
+
 from matplotlib import pyplot as plt
 
 import pandas as pd
@@ -16,12 +18,18 @@ import os
 time_steps = pd.date_range(start="2023-01-01", end="2023-12-31 23:00:00", freq="h").to_numpy()
 
 file_path = os.path.abspath('feature_develop/STES/Lastgang.csv')
+
 df = pd.read_csv(file_path, delimiter=';', encoding='utf-8')
 load_profile = df['Gesamtwärmebedarf_Gebäude_kW'].values
 VLT_L = np.random.uniform(85, 85, 8760)
 RLT_L = np.random.uniform(50, 50, 8760)
-TRY_data = np.zeros(len(time_steps))  # Dummy-Daten für Test Reference Year
-COP_data = np.zeros(len(time_steps))  # Dummy-Daten für COP
+
+TRY_filename = os.path.abspath('src/districtheatingsim/data/TRY/TRY_511676144222/TRY2015_511676144222_Jahr.dat')
+TRY_data = import_TRY(TRY_filename)
+
+COP_filename = os.path.abspath('src/districtheatingsim/data/COP/Kennlinien WP.csv')
+COP_data = np.genfromtxt(COP_filename, delimiter=';')
+
 economic_parameters = {"gas_price": 50, "wood_price": 40, "electricity_price": 120, "capital_interest_rate": 0.05, 
                        "inflation_rate": 0.03, "time_period": 20, "subsidy_eligibility": "Nein", "hourly_rate": 45}  # Wirtschaftsparameter
 
@@ -59,34 +67,38 @@ energy_system.add_storage(storage)
 # Füge Generatoren hinzu
 chp = CHP("BHKW_1", th_Leistung_BHKW=300)
 energy_system.add_technology(chp)
-chp.strategy = CHPStrategy(storage, charge_on=75, charge_off=75)
+chp.strategy = CHPStrategy(charge_on=75, charge_off=70)
 
-pth = PowerToHeat("PtH_1")
-energy_system.add_technology(pth)
-pth.strategy = PowerToHeatStrategy(storage, charge_on=70)
+#pth = PowerToHeat("PtH_1")
+#energy_system.add_technology(pth)
+#pth.strategy = PowerToHeatStrategy(charge_on=70)
 
 # Biomasssboiler hinzufügen
-#biomass_boiler = BiomassBoiler("Biomassekessel_1", thermal_capacity_kW=500)
-#energy_system.add_technology(biomass_boiler)
-#biomass_boiler.strategy = BiomassBoilerStrategy(storage, charge_on=70, charge_off=70)
+biomass_boiler = BiomassBoiler("Biomassekessel_1", thermal_capacity_kW=500)
+energy_system.add_technology(biomass_boiler)
+biomass_boiler.strategy = BiomassBoilerStrategy(charge_on=75, charge_off=70)
 
 # Gasboiler hinzufügen
 #gas_boiler = GasBoiler("Gasboiler_1")
 #energy_system.add_technology(gas_boiler)
-#gas_boiler.strategy = GasBoilerStrategy(storage, charge_on=60)
+#gas_boiler.strategy = GasBoilerStrategy(charge_on=70)
 
 # Erneuerbare Energien hinzufügen
-#river_heat_pump = RiverHeatPump("Flusswärmepumpe_1")
+#river_heat_pump = RiverHeatPump("Flusswärmepumpe_1", Wärmeleistung_FW_WP=200, Temperatur_FW_WP=20)
 #energy_system.add_technology(river_heat_pump)
-#river_heat_pump.strategy = HeatPumpStrategy(storage, charge_on=60, charge_off=60)
+#river_heat_pump.strategy = HeatPumpStrategy(charge_on=75, charge_off=70)
 
-#waste_heat_pump = WasteHeatPump("Abwärmepumpe_1")
+#waste_heat_pump = WasteHeatPump("Abwärmepumpe_1", Kühlleistung_Abwärme=200, Temperatur_Abwärme=20)
 #energy_system.add_technology(waste_heat_pump)
-#waste_heat_pump.strategy = HeatPumpStrategy(storage, charge_on=60, charge_off=60)
+#waste_heat_pump.strategy = HeatPumpStrategy(charge_on=75, charge_off=70)
 
-#geothermal_heat_pump = Geothermal("Geothermie_1")
+#waste_water_heat_pump = WasteHeatPump("Abwasserwärmepumpe_1", Kühlleistung_Abwärme=100, Temperatur_Abwärme=10)
+#energy_system.add_technology(waste_water_heat_pump)
+#waste_water_heat_pump.strategy = HeatPumpStrategy(charge_on=75, charge_off=70)
+
+#geothermal_heat_pump = Geothermal("Geothermie_1", Fläche=1000, Bohrtiefe=100, Temperatur_Geothermie=20)
 #energy_system.add_technology(geothermal_heat_pump)
-#geothermal_heat_pump.strategy = HeatPumpStrategy(storage, charge_on=60, charge_off=60)
+#geothermal_heat_pump.strategy = HeatPumpStrategy(charge_on=75, charge_off=70)
 
 # Berechne den Energiemix mit Speicher
 results = energy_system.calculate_mix()

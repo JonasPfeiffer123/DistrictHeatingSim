@@ -8,7 +8,7 @@ Description: Contains the BiomassBoiler class representing a biomass boiler syst
 
 import numpy as np
 
-from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator
+from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
 
 class BiomassBoiler(BaseHeatGenerator):
     """
@@ -80,6 +80,8 @@ class BiomassBoiler(BaseHeatGenerator):
         self.Anzahl_Starts = 0
         self.Betriebsstunden = 0
         self.Betriebsstunden_pro_Start = 0
+
+        self.strategy = BiomassBoilerStrategy(75, 70)
 
     def simulate_operation(self, Last_L, duration):
         """
@@ -164,13 +166,13 @@ class BiomassBoiler(BaseHeatGenerator):
         self.Betriebsstunden_gesamt_Speicher = np.sum(betrieb_mask) * duration
         self.Betriebsstunden_pro_Start_Speicher = self.Betriebsstunden_gesamt_Speicher / self.Anzahl_Starts_Speicher if self.Anzahl_Starts_Speicher > 0 else 0
 
-    def generate(self, t, remaining_demand):
+    def generate(self, t, **kwargs):
         """
         Generates heat for the biomass boiler system.
 
         Args:
             t (int): Current time step.
-            remaining_demand (float): Remaining demand for heat.
+            **kwargs: Additional arguments.
 
         Returns:
             tuple: Heat generation and electricity generation.
@@ -347,41 +349,13 @@ class BiomassBoiler(BaseHeatGenerator):
         return self.name, dimensions, costs, full_costs
 
 # Control strategy for Biomass Boiler
-class BiomassBoilerStrategy:
-    def __init__(self, storage, charge_on, charge_off):
+class BiomassBoilerStrategy(BaseStrategy):
+    def __init__(self, charge_on, charge_off):
         """
         Initializes the Biomass Boiler strategy with switch points based on storage levels.
 
         Args:
-            storage (TemperatureStratifiedThermalStorage): Instance of the storage.
             charge_on (int): (upper) Storage temperature to activate the boiler.
             charge_off (int): (lower) Storage temperature to deactivate the boiler.
         """
-        self.storage = storage
-        self.charge_on = charge_on
-        self.charge_off = charge_off
-
-    def decide_operation(self, current_state, upper_storage_temp, lower_storage_temp, remaining_demand):
-        """
-        Decide whether to turn the Biomass Boiler on or off based on storage temperature.
-
-        current_state (bool): Current state of the Biomass Boiler.
-        upper_storage_temp (float): Current upper storage temperature.
-        lower_storage_temp (float): Current lower storage temperature.
-
-        If the lower storage temperature is too high, the boiler is turned off to prevent overheating.
-        If the upper storage temperature is too low, the boiler is turned on to provide additional heat.
-
-        """
-        # Check if the Biomass Boiler is currently on or off
-        if current_state:
-            # If the boiler is on, check if the lower storage temperature is too high
-            if lower_storage_temp < self.charge_off:
-                return True  # Keep boiler on
-            else:
-                return False  # Turn boiler off
-        else:
-            if upper_storage_temp > self.charge_on:
-                return False  # Keep boiler off
-            else:
-                return True  # Turn boiler on
+        super().__init__(charge_on, charge_off)

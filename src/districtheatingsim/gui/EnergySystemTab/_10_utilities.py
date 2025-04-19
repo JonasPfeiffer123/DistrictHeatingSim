@@ -18,6 +18,9 @@ from districtheatingsim.heat_generators.solar_thermal import SolarThermal
 from districtheatingsim.heat_generators.chp import CHP
 from districtheatingsim.heat_generators.power_to_heat import PowerToHeat
 
+from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
+from districtheatingsim.heat_generators.STES import TemperatureStratifiedThermalStorage
+
 class CheckableComboBox(QComboBox):
     """
     A QComboBox subclass that allows multiple items to be checked.
@@ -170,7 +173,7 @@ class CustomJSONEncoder(json.JSONEncoder):
                 return int(obj)
             if isinstance(obj, np.floating):
                 return float(obj)
-            if isinstance(obj, (CHP, RiverHeatPump, WasteHeatPump, Geothermal, BiomassBoiler, GasBoiler, SolarThermal, AqvaHeat, PowerToHeat)):
+            if isinstance(obj, (BaseHeatGenerator, BaseStrategy, TemperatureStratifiedThermalStorage)):
                 return obj.to_dict()
             return super().default(obj)
         except TypeError as e:

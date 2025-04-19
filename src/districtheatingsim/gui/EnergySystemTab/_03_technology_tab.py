@@ -304,7 +304,6 @@ class TechnologyTab(QWidget):
                 self.global_counters[key] = 0
             self.global_counters[tech_type] = sum(1 for t in self.tech_objects if t.name.startswith(tech_type))
 
-
         # Aktualisiere die Liste der Technologien in der UI
         self.updateTechList()
 
@@ -357,6 +356,7 @@ class TechnologyTab(QWidget):
                     new_order.append(tech)
                     break
         self.tech_objects = new_order
+        print(self.tech_objects)  # Debug-Ausgabe der neuen Reihenfolge
 
         self.rebuildScene()
     
