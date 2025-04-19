@@ -21,7 +21,7 @@ from districtheatingsim.heat_generators import TECH_CLASS_REGISTRY
 
 from districtheatingsim.heat_generators.STES import TemperatureStratifiedThermalStorage
 
-from districtheatingsim.gui.EnergySystemTab.utilities import CustomJSONEncoder
+from districtheatingsim.gui.EnergySystemTab._10_utilities import CustomJSONEncoder
 
 class EnergySystem:
     def __init__(self, time_steps, load_profile, VLT_L, RLT_L, TRY_data, COP_data, economic_parameters):
