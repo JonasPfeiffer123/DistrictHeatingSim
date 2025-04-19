@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QHBoxLayout, QTableWi
                              QHeaderView, QScrollArea, QCheckBox, QApplication)
 from PyQt5.QtCore import pyqtSignal
 
-from districtheatingsim.gui.MixDesignTab.utilities import CheckableComboBox, CollapsibleHeader
+from districtheatingsim.gui.EnergySystemTab.utilities import CheckableComboBox, CollapsibleHeader
 
 class ResultsTab(QWidget):
     """

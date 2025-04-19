@@ -1,7 +1,7 @@
 """
-Filename: mix_design_tab.py
+Filename: _01_energy_system_main_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-04-18
+Date: 2025-04-19
 Description: Contains the MixdesignTab.
 """
 
@@ -11,16 +11,16 @@ import os
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMessageBox, QMenuBar, QScrollArea, QAction, QDialog)
 from PyQt5.QtCore import pyqtSignal, QEventLoop
 
-from districtheatingsim.gui.MixDesignTab.mix_design_dialogs import EconomicParametersDialog, NetInfrastructureDialog, WeightDialog
-from districtheatingsim.gui.MixDesignTab.calculate_mix_thread import CalculateMixThread
-from districtheatingsim.gui.MixDesignTab.technology_tab import TechnologyTab
-from districtheatingsim.gui.MixDesignTab.cost_tab import CostTab
-from districtheatingsim.gui.MixDesignTab.results_tab import ResultsTab
-from districtheatingsim.gui.MixDesignTab.sensitivity_tab import SensitivityTab
-from districtheatingsim.gui.MixDesignTab.sankey_dialog import SankeyDialog
+from districtheatingsim.gui.EnergySystemTab._02_energy_system_dialogs import EconomicParametersDialog, NetInfrastructureDialog, WeightDialog
+from districtheatingsim.gui.EnergySystemTab.calculate_mix_thread import CalculateMixThread
+from districtheatingsim.gui.EnergySystemTab.technology_tab import TechnologyTab
+from districtheatingsim.gui.EnergySystemTab.cost_tab import CostTab
+from districtheatingsim.gui.EnergySystemTab.results_tab import ResultsTab
+from districtheatingsim.gui.EnergySystemTab.sensitivity_tab import SensitivityTab
+from districtheatingsim.gui.EnergySystemTab.sankey_dialog import SankeyDialog
 from districtheatingsim.heat_generators.energy_system import EnergySystem
 
-class MixDesignTab(QWidget):
+class EnergySystemTab(QWidget):
     """
     The MixDesignTab class represents the tab responsible for defining and managing the design of energy mix 
     for a heat generation project.

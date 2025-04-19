@@ -12,7 +12,7 @@ from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QFont
 
 from districtheatingsim.heat_generators.annuity import annuität
-from districtheatingsim.gui.MixDesignTab.utilities import CollapsibleHeader
+from districtheatingsim.gui.EnergySystemTab.utilities import CollapsibleHeader
 
 class CostTab(QWidget):
     """

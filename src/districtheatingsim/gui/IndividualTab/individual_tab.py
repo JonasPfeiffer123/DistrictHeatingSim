@@ -19,7 +19,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QFileDialog, QPushBut
 from PyQt5.QtCore import pyqtSignal, Qt
 
 from districtheatingsim.gui.utilities import CheckableComboBox  # Assuming you have this implemented
-from districtheatingsim.gui.MixDesignTab.heat_generator_dialogs import TechInputDialog  # Import your dialogs
+from districtheatingsim.gui.EnergySystemTab.heat_generator_dialogs import TechInputDialog  # Import your dialogs
 from districtheatingsim.heat_generators.energy_system import *
 from districtheatingsim.heat_generators.biomass_boiler import BiomassBoiler
 from districtheatingsim.heat_generators.gas_boiler import GasBoiler
