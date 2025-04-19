@@ -69,11 +69,11 @@ class PowerToHeat(BaseHeatGenerator):
         Returns:
             None
         """
+        self.P_max = max(Last_L) * self.Faktor_Dimensionierung
         self.Wärmeleistung_kW = np.maximum(Last_L, 0)
         self.el_Leistung_kW = self.Wärmeleistung_kW / self.Nutzungsgrad
         self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW / 1000) * duration
         self.Strommenge_MWh = self.Wärmemenge_MWh / self.Nutzungsgrad
-        self.P_max = max(Last_L) * self.Faktor_Dimensionierung
 
         # Calculate number of starts and operating hours per start
         betrieb_mask = self.Wärmeleistung_kW > 0
@@ -231,7 +231,7 @@ class PowerToHeatStrategy:
         If the upper storage temperature is too low and there is still demand, the Power-to-Heat unit is turned on.
 
         """
-        
+
         if upper_storage_temp < self.charge_on and remaining_demand > 0:
             return True  # Turn P2H on
         else:
