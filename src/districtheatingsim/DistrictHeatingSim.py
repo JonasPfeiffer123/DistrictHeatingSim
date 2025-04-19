@@ -99,7 +99,7 @@ from districtheatingsim.gui.ProjectTab.project_tab import ProjectTab
 from districtheatingsim.gui.LOD2Tab.lod2_main_tab import LOD2Tab
 from districtheatingsim.gui.BuildingTab.building_tab import BuildingTab
 from districtheatingsim.gui.RenovationTab.RenovationTab import RenovationTab
-from districtheatingsim.gui.CalculationTab.calculation_tab import CalculationTab
+from districtheatingsim.gui.NetSimulationTab.calculation_tab import CalculationTab
 from districtheatingsim.gui.EnergySystemTab._01_energy_system_main_tab import EnergySystemTab
 from districtheatingsim.gui.ComparisonTab.comparison_tab import ComparisonTab
 from districtheatingsim.gui.IndividualTab.individual_tab import IndividualTab

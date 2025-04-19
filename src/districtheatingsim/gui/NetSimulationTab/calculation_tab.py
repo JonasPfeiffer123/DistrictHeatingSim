@@ -25,9 +25,9 @@ from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation 
 from districtheatingsim.net_simulation_pandapipes.config_plot import config_plot
 from districtheatingsim.net_simulation_pandapipes.utilities import export_net_geojson
 
-from districtheatingsim.gui.CalculationTab.timeseries_dialog import TimeSeriesCalculationDialog
-from districtheatingsim.gui.CalculationTab.net_generation_dialog import NetGenerationDialog
-from districtheatingsim.gui.CalculationTab.net_calculation_threads import NetInitializationThread, NetCalculationThread
+from districtheatingsim.gui.NetSimulationTab.timeseries_dialog import TimeSeriesCalculationDialog
+from districtheatingsim.gui.NetSimulationTab.net_generation_dialog import NetGenerationDialog
+from districtheatingsim.gui.NetSimulationTab.net_calculation_threads import NetInitializationThread, NetCalculationThread
 from districtheatingsim.gui.utilities import CheckableComboBox
 
 class CalculationTab(QWidget):

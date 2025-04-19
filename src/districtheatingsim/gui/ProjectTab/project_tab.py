@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QTableWidgetItem, QWidget
                              QTreeView, QSplitter, QMessageBox, QDialog, QMenu, QPushButton, QInputDialog, QSizePolicy)
 from PyQt5.QtCore import Qt, QTimer
 
-from districtheatingsim.gui.VisualizationTab.net_generation_threads import GeocodingThread
+from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread
 from districtheatingsim.gui.ProjectTab.project_tab_dialogs import RowInputDialog, OSMImportDialog, ProcessDetailsDialog
 
 class ProjectModel:
