@@ -14,7 +14,7 @@ from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation 
 from districtheatingsim.heat_generators.energy_system import EnergySystem
 from districtheatingsim.utilities.test_reference_year import import_TRY
 
-class CalculateMixThread(QThread):
+class CalculateEnergySystemThread(QThread):
     """
     Thread for calculating the heat generation mix.
 

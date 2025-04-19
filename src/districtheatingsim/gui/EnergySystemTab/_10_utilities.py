@@ -1,5 +1,5 @@
 """
-Filename: utilities.py
+Filename: _10_utilities.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-11-06
 Description: Contains the CollapsibleHeader class for creating collapsible sections in the GUI.

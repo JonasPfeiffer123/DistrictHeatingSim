@@ -1,5 +1,5 @@
 """
-Filename: technology_tab.py
+Filename: _03_technology_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-12-11
 Description: Contains the TechnologyTab.
