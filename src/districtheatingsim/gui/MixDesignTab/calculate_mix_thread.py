@@ -11,7 +11,7 @@ import traceback
 from PyQt5.QtCore import QThread, pyqtSignal
 
 from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import import_results_csv
-from districtheatingsim.heat_generators.heat_generation_mix import EnergySystem
+from districtheatingsim.heat_generators.energy_system import EnergySystem
 from districtheatingsim.utilities.test_reference_year import import_TRY
 
 class CalculateMixThread(QThread):

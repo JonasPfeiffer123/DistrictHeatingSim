@@ -1,5 +1,5 @@
 import numpy as np
-from districtheatingsim.heat_generators.heat_generation_mix import EnergySystem
+from districtheatingsim.heat_generators.energy_system import EnergySystem
 from districtheatingsim.heat_generators.chp import CHP, CHPStrategy
 from districtheatingsim.heat_generators.gas_boiler import GasBoiler, GasBoilerStrategy
 from districtheatingsim.heat_generators.power_to_heat import PowerToHeat, PowerToHeatStrategy

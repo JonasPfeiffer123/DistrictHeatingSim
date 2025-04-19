@@ -11,7 +11,7 @@ from districtheatingsim.heat_generators import biomass_boiler
 from districtheatingsim.heat_generators import chp
 from districtheatingsim.heat_generators import heat_pumps
 from districtheatingsim.heat_generators import power_to_heat
-from districtheatingsim.heat_generators import heat_generation_mix
+from districtheatingsim.heat_generators import energy_system
 from districtheatingsim.utilities.test_reference_year import import_TRY
 
 import numpy as np
@@ -119,7 +119,7 @@ def test_berechnung_erzeugermix(optimize=False, plot=True, opt_method="SLSQP"):
         "primärenergiefaktor_Gesamt": 0.0
     }
 
-    energy_system = heat_generation_mix.EnergySystem(
+    energy_system = energy_system.EnergySystem(
                 time_steps=time_steps,
                 load_profile=Last_L,
                 VLT_L=VLT_L,

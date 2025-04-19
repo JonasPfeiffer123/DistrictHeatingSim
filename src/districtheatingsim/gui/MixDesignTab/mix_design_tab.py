@@ -18,7 +18,7 @@ from districtheatingsim.gui.MixDesignTab.cost_tab import CostTab
 from districtheatingsim.gui.MixDesignTab.results_tab import ResultsTab
 from districtheatingsim.gui.MixDesignTab.sensitivity_tab import SensitivityTab
 from districtheatingsim.gui.MixDesignTab.sankey_dialog import SankeyDialog
-from districtheatingsim.heat_generators.heat_generation_mix import EnergySystem
+from districtheatingsim.heat_generators.energy_system import EnergySystem
 
 class MixDesignTab(QWidget):
     """
