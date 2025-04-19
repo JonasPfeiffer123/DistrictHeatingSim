@@ -30,7 +30,7 @@ class CalculateEnergySystemThread(QThread):
         Initializes the CalculateMixThread.
 
         Args:
-            filename (str): Filename for the CSV containing the initial data.
+            filename (str): Filename for the CSV containing the load data.
             load_scale_factor (float): Scaling factor for the load.
             TRY_data: Test Reference Year data.
             COP_data: Coefficient of Performance data.

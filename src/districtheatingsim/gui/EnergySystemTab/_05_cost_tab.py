@@ -264,10 +264,10 @@ class CostTab(QWidget):
         Returns:
             float: The calculated annuity.
         """
-        q = 1 + (self.parent.capital_interest_rate / 100)
-        r = 1 + (self.parent.inflation_rate / 100)
-        t = int(self.parent.time_period)
-        stundensatz = self.parent.hourly_rate
+        q = 1 + (self.parent.economic_parameters["capital_interest_rate"])
+        r = 1 + (self.parent.economic_parameters["inflation_rate"])
+        t = int(self.parent.economic_parameters["time_period"])
+        stundensatz = self.parent.economic_parameters["hourly_rate"]
         return annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand, q=q, r=r, T=t, stundensatz=stundensatz)
     
     ### Setup of Calculation Result Tables ###
