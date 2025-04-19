@@ -226,14 +226,17 @@ class EnergySystemTab(QWidget):
         Updates the economic parameters from the dialog.
         """
         values = self.economicParametersDialog.getValues()
-        self.gas_price = values['Gaspreis in €/MWh']
-        self.electricity_price = values['Strompreis in €/MWh']
-        self.wood_price = values['Holzpreis in €/MWh']
-        self.BEW = values['BEW-Förderung']
-        self.capital_interest_rate = values['Kapitalzins in %']
-        self.inflation_rate = values['Preissteigerungsrate in %']
-        self.time_period = values['Betrachtungszeitraum in a']
-        self.hourly_rate = values['Stundensatz in €/h']
+
+        self.economic_parameters = {
+                "gas_price": values['Gaspreis in €/MWh'],
+                "electricity_price": values['Strompreis in €/MWh'],
+                "wood_price": values['Holzpreis in €/MWh'],
+                "capital_interest_rate": 1 + values['Kapitalzins in %'] / 100,
+                "inflation_rate": 1 + values['Preissteigerungsrate in %'] / 100,
+                "time_period": values['Betrachtungszeitraum in a'],
+                "hourly_rate": values['Stundensatz in €/h'],
+                "subsidy_eligibility": values['BEW-Förderung']
+            }
 
     ### Dialogs ###
     def openEconomicParametersDialog(self):
@@ -283,23 +286,12 @@ class EnergySystemTab(QWidget):
             return
 
         if self.techTab.tech_objects:
-            self.filename = self.techTab.FilenameInput.text()
+            self.csv_filename = self.techTab.FilenameInput.text()
             self.TRY_filename = self.data_manager.get_try_filename()
             self.COP_filename = self.data_manager.get_cop_filename()
             self.load_scale_factor = float(self.techTab.load_scale_factorInput.text())
 
-            self.economic_parameters = {
-                "gas_price": self.gas_price,
-                "electricity_price": self.electricity_price,
-                "wood_price": self.wood_price,
-                "capital_interest_rate": 1 + self.capital_interest_rate / 100,
-                "inflation_rate": 1 + self.inflation_rate / 100,
-                "time_period": self.time_period,
-                "hourly_rate": self.hourly_rate,
-                "subsidy_eligibility": self.BEW
-            }
-
-            self.calculationThread = CalculateEnergySystemThread(self.filename, self.load_scale_factor, self.TRY_filename, self.COP_filename, 
+            self.calculationThread = CalculateEnergySystemThread(self.csv_filename, self.load_scale_factor, self.TRY_filename, self.COP_filename, 
                                                         self.economic_parameters, self.techTab.tech_objects, self.optimize, weights)
             
             self.calculationThread.calculation_done.connect(self.on_calculation_done)
@@ -308,6 +300,15 @@ class EnergySystemTab(QWidget):
             self.progressBar.setRange(0, 0)
         else:
             QMessageBox.information(self, "Keine Erzeugeranlagen", "Es wurden keine Erzeugeranlagen definiert. Keine Berechnung möglich.")
+
+    def start_optimization(self):
+        """
+        Opens the optimization dialog and starts the optimization process.
+        """
+        dialog = WeightDialog()
+        if dialog.exec_() == QDialog.Accepted:
+            weights = dialog.get_weights()
+            self.calculate_energy_system(True, weights)
 
     def on_calculation_done(self, result):
         """
@@ -338,14 +339,16 @@ class EnergySystemTab(QWidget):
         self.progressBar.setRange(0, 1)
         QMessageBox.critical(self, "Berechnungsfehler", str(error_message))
 
-    def start_optimization(self):
-        """
-        Opens the optimization dialog and starts the optimization process.
-        """
-        dialog = WeightDialog()
-        if dialog.exec_() == QDialog.Accepted:
-            weights = dialog.get_weights()
-            self.calculate_energy_system(True, weights)
+    def process_data(self):
+        # Update the tech objects from the loaded EnergySystem
+        self.techTab.tech_objects = self.energy_system.technologies + [self.energy_system.storage]
+        self.techTab.rebuildScene()
+        self.techTab.updateTechList()
+        self.costTab.updateInfrastructureTable()
+        self.costTab.updateTechDataTable(self.energy_system.technologies)
+        self.costTab.updateSumLabel()
+        self.costTab.plotCostComposition()
+        self.resultTab.updateResults(self.energy_system)
 
     def sensitivity(self, gas_range, electricity_range, wood_range, weights=None):
         """
@@ -426,19 +429,16 @@ class EnergySystemTab(QWidget):
             QMessageBox.critical(self, "Berechnungsfehler", str(error_message))
             calculation_done_event.quit()
 
-        self.economic_parameters = {
-                "gas_price": gas_price,
-                "electricity_price":electricity_price,
-                "wood_price": wood_price,
-                "capital_interest_rate": 1 + self.capital_interest_rate / 100,
-                "inflation_rate": 1 + self.inflation_rate / 100,
-                "time_period": self.time_period,
-                "hourly_rate": self.hourly_rate,
-                "subsidy_eligibility": self.BEW
-            }
+        economic_parameters = self.economic_parameters.copy()
+        economic_parameters["gas_price"] = gas_price
+        economic_parameters["electricity_price"] = electricity_price
+        economic_parameters["wood_price"] = wood_price
 
-        self.calculationThread = CalculateEnergySystemThread(self.filename, self.load_scale_factor, self.TRY_filename, self.COP_filename, 
-                                                    self.economic_parameters, self.techTab.tech_objects, False,  weights)
+        # inefficient as fuck, but it works for now
+        # Thread will load the csv, cop, and try file every time
+        # Need to split up data processing and calculation
+        self.calculationThread = CalculateEnergySystemThread(self.csv_filename, self.load_scale_factor, self.TRY_filename, self.COP_filename, 
+                                                    economic_parameters, self.techTab.tech_objects, False,  weights)
         
         self.calculationThread.calculation_done.connect(calculation_done)
         self.calculationThread.calculation_error.connect(calculation_error)
@@ -466,17 +466,6 @@ class EnergySystemTab(QWidget):
                 QMessageBox.information(self, "Keine Berechnungsergebnisse", "Es sind keine Berechnungsergebnisse verfügbar. Führen Sie zunächst eine Berechnung durch.")
             elif not self.parent_object.calcTab.Gesamtwärmebedarf_Gebäude_MWh:
                 QMessageBox.information(self, "Gesamtwärmebedarf nicht definiert", "Der Gesamtwärmebedarf der Gebäude ist nicht definiert. Stellen Sie sicher, dass der Gesamtwärmebedarf der Gebäude definiert ist.")
-
-    def process_data(self):
-        # Update the tech objects from the loaded EnergySystem
-        self.techTab.tech_objects = self.energy_system.technologies
-        self.techTab.rebuildScene()
-        self.techTab.updateTechList()
-        self.costTab.updateInfrastructureTable()
-        self.costTab.updateTechDataTable(self.energy_system.technologies)
-        self.costTab.updateSumLabel()
-        self.costTab.plotCostComposition()
-        self.resultTab.updateResults(self.energy_system)
 
     ### Save Calculation Results ###
     def save_heat_generation_results_to_csv(self):
