@@ -1,5 +1,5 @@
 """
-Filename: generator_schematic.py
+Filename: _11_generator_schematic.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-09-28
 Description: Custom QGraphicsScene and QGraphicsView classes for a generator schematic. Also includes generator schematic items (ComponentItem, Pipe). Complex example for a schematic editor with custom items and connections.

@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMe
 from PyQt5.QtCore import pyqtSignal, QEventLoop
 
 from districtheatingsim.gui.EnergySystemTab._02_energy_system_dialogs import EconomicParametersDialog, NetInfrastructureDialog, WeightDialog
-from districtheatingsim.gui.EnergySystemTab._06_calculate_energy_system_thread import CalculateMixThread
+from districtheatingsim.gui.EnergySystemTab._06_calculate_energy_system_thread import CalculateEnergySystemThread
 from districtheatingsim.gui.EnergySystemTab._03_technology_tab import TechnologyTab
 from districtheatingsim.gui.EnergySystemTab._05_cost_tab import CostTab
 from districtheatingsim.gui.EnergySystemTab._07_results_tab import ResultsTab
@@ -156,7 +156,7 @@ class EnergySystemTab(QWidget):
 
         # 'Berechnungen'-Menü
         calculationsMenu = self.menuBar.addMenu('Berechnungen')
-        calculationsMenu.addAction(self.createAction('Berechnen', self.calculate_mix))
+        calculationsMenu.addAction(self.createAction('Berechnen', self.calculate_energy_system))
         calculationsMenu.addAction(self.createAction('Optimieren', self.start_optimization))
 
         # 'weitere Ergebnisse Anzeigen'-Menü
@@ -269,7 +269,7 @@ class EnergySystemTab(QWidget):
             return False
         return True
 
-    def calculate_mix(self, optimize=False, weights=None):
+    def calculate_energy_system(self, optimize=False, weights=None):
         """
         Starts the calculation process.
 
@@ -299,7 +299,7 @@ class EnergySystemTab(QWidget):
                 "subsidy_eligibility": self.BEW
             }
 
-            self.calculationThread = CalculateMixThread(self.filename, self.load_scale_factor, self.TRY_filename, self.COP_filename, 
+            self.calculationThread = CalculateEnergySystemThread(self.filename, self.load_scale_factor, self.TRY_filename, self.COP_filename, 
                                                         self.economic_parameters, self.techTab.tech_objects, self.optimize, weights)
             
             self.calculationThread.calculation_done.connect(self.on_calculation_done)
@@ -345,7 +345,7 @@ class EnergySystemTab(QWidget):
         dialog = WeightDialog()
         if dialog.exec_() == QDialog.Accepted:
             weights = dialog.get_weights()
-            self.calculate_mix(True, weights)
+            self.calculate_energy_system(True, weights)
 
     def sensitivity(self, gas_range, electricity_range, wood_range, weights=None):
         """
@@ -437,7 +437,7 @@ class EnergySystemTab(QWidget):
                 "subsidy_eligibility": self.BEW
             }
 
-        self.calculationThread = CalculateMixThread(self.filename, self.load_scale_factor, self.TRY_filename, self.COP_filename, 
+        self.calculationThread = CalculateEnergySystemThread(self.filename, self.load_scale_factor, self.TRY_filename, self.COP_filename, 
                                                     self.economic_parameters, self.techTab.tech_objects, False,  weights)
         
         self.calculationThread.calculation_done.connect(calculation_done)

@@ -1,3 +1,10 @@
+"""
+Filename: _09_sankey_dialog.py
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2025-04-19
+Description: Contains the SankeyDialog class for displaying a Sankey diagram using Plotly in a PyQt5 application.
+"""
+
 import sys
 import plotly.graph_objects as go
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QApplication

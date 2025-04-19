@@ -1,8 +1,8 @@
 """
-Filename: heat_generator_dialogs.py
+Filename: _04_technology_dialogs.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-08-01
-Description: Contains the heat generator Dialogs for the MixDesignTab.
+Description: Contains the heat generator Dialogs for the EnergySystemTab.
 """
 
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QComboBox, QCheckBox, QGroupBox, \
