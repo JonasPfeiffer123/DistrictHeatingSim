@@ -676,7 +676,7 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
 
         self.T_max_rücklauf = 70  # Maximale Rücklauftemperatur für Erzeuger
 
-        self.dT_VLT = 10  # Tolerance below the target supply temperature in K
+        self.dT_VLT = 15  # Tolerance below the target supply temperature in K
 
     def simulate_stratified_temperature_mass_flows(self, t, Q_in, Q_out, T_Q_in_flow, T_Q_out_return):
         """
