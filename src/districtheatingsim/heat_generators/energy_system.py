@@ -200,11 +200,6 @@ class EnergySystem:
                 # Speicher aktualisieren
                 self.storage.simulate_stratified_temperature_mass_flows(t, Q_in_total, Q_out_total, T_Q_in_flow, T_Q_out_return)
 
-                if t == 100:
-                    print(f"Speicherzustand: {self.storage_state[t]}")
-                    print(f"Speicherbeladung: {self.storage.Q_net_storage_flow[t]}")
-                    print(f"Restlast: {remaining_load}")
-
             # Speicherergebnisse berechnen
             self.storage.calculate_efficiency(self.load_profile)
             self.storage.calculate_operational_costs(0.10) # needs to be changed to a parameter

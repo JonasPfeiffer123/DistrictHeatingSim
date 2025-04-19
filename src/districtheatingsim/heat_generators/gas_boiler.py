@@ -121,14 +121,18 @@ class GasBoiler(BaseHeatGenerator):
         self.BEW = economic_parameters['subsidy_eligibility']
         self.hourly_rate = economic_parameters['hourly_rate']
 
-        if self.Wärmemenge_MWh == 0:
-            return 0
+        if self.Wärmemenge_MWh > 0:
         
-        self.Investitionskosten = self.spez_Investitionskosten * self.P_max
+            self.Investitionskosten = self.spez_Investitionskosten * self.P_max
 
-        self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T,
-                            self.Brennstoffbedarf_MWh, self.Gaspreis, hourly_rate=self.hourly_rate)
-        self.WGK_GK = self.A_N / self.Wärmemenge_MWh
+            self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T,
+                                self.Brennstoffbedarf_MWh, self.Gaspreis, hourly_rate=self.hourly_rate)
+            
+            # wenn die Wärmemenge 0 ist, dann ist die WGK unendlich
+            self.WGK = self.A_N / self.Wärmemenge_MWh
+            
+        else:
+            self.WGK = float('inf')
 
     def calculate_environmental_impact(self):
         """
@@ -157,7 +161,7 @@ class GasBoiler(BaseHeatGenerator):
         Returns:
             dict: Dictionary containing the results of the calculation.
         """
-        if not hasattr(self, 'Wärmemenge_MWh') or self.Wärmemenge_MWh == 0:
+        if not hasattr(self, 'Wärmemenge_MWh'):
             self.simulate_operation(load_profile, duration)
             
         self.calculate_heat_generation_cost(economic_parameters)
@@ -168,7 +172,7 @@ class GasBoiler(BaseHeatGenerator):
             'Wärmemenge': self.Wärmemenge_MWh,
             'Wärmeleistung_L': self.Wärmeleistung_kW,
             'Brennstoffbedarf': self.Brennstoffbedarf_MWh,
-            'WGK': self.WGK_GK,
+            'WGK': self.WGK,
             'Anzahl_Starts': self.Anzahl_Starts,
             'Betriebsstunden': self.Betriebsstunden,
             'Betriebsstunden_pro_Start': self.Betriebsstunden_pro_Start,

@@ -61,14 +61,14 @@ chp = CHP("BHKW_1", th_Leistung_BHKW=300)
 energy_system.add_technology(chp)
 chp.strategy = CHPStrategy(storage, charge_on=75, charge_off=75)
 
-#pth = PowerToHeat("PtH_1")
-#energy_system.add_technology(pth)
-#pth.strategy = PowerToHeatStrategy(storage, charge_on=60)
+pth = PowerToHeat("PtH_1")
+energy_system.add_technology(pth)
+pth.strategy = PowerToHeatStrategy(storage, charge_on=70)
 
 # Biomasssboiler hinzufügen
-biomass_boiler = BiomassBoiler("Biomassekessel_1", thermal_capacity_kW=500)
-energy_system.add_technology(biomass_boiler)
-biomass_boiler.strategy = BiomassBoilerStrategy(storage, charge_on=70, charge_off=70)
+#biomass_boiler = BiomassBoiler("Biomassekessel_1", thermal_capacity_kW=500)
+#energy_system.add_technology(biomass_boiler)
+#biomass_boiler.strategy = BiomassBoilerStrategy(storage, charge_on=70, charge_off=70)
 
 # Gasboiler hinzufügen
 #gas_boiler = GasBoiler("Gasboiler_1")
@@ -101,7 +101,6 @@ print(f"Stagnationsdauer: {results['storage_class'].stagnation_time} h")
 
 
 # Ergebnisse plotten
-print(results["Wärmeleistung_L"])
 results['storage_class'].plot_results(results["Wärmeleistung_L"][0]+results["Wärmeleistung_L"][1], load_profile, VLT_L, RLT_L)
 energy_system.plot_stack_plot()
 energy_system.plot_pie_chart()
