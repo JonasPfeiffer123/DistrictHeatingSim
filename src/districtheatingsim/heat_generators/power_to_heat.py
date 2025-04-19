@@ -69,7 +69,7 @@ class PowerToHeat(BaseHeatGenerator):
         Returns:
             None
         """
-        self.P_max = max(Last_L) * self.Faktor_Dimensionierung
+        self.th_Leistung_kW = max(Last_L) * self.Faktor_Dimensionierung
         self.Wärmeleistung_kW = np.maximum(Last_L, 0)
         self.el_Leistung_kW = self.Wärmeleistung_kW / self.Nutzungsgrad
         self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW / 1000) * duration
@@ -93,7 +93,7 @@ class PowerToHeat(BaseHeatGenerator):
         Returns:
             float: The thermal power (in kW) generated at the current time step.
         """
-        if self.active == False:
+        if self.active == True:
             self.th_Leistung_kW = 1000
             self.Wärmeleistung_kW[t] = min(self.th_Leistung_kW, remaining_heat_demand)
             self.Wärmemenge_MWh += self.Wärmeleistung_kW[t] / 1000
@@ -110,8 +110,6 @@ class PowerToHeat(BaseHeatGenerator):
         Args:
             economic_parameters (dict): Dictionary containing economic parameters.
 
-        Returns:
-            float: Weighted average cost of heat generation.
         """
 
         self.Strompreis = economic_parameters['electricity_price']
@@ -122,15 +120,18 @@ class PowerToHeat(BaseHeatGenerator):
         self.T = economic_parameters['time_period']
         self.BEW = economic_parameters['subsidy_eligibility']
         self.stundensatz = economic_parameters['hourly_rate']
-
-        if self.Wärmemenge_MWh == 0:
-            return 0
         
-        self.Investitionskosten = self.spez_Investitionskosten * self.P_max
+        if self.Wärmemenge_MWh > 0:
+            self.Investitionskosten = self.spez_Investitionskosten * self.th_Leistung_kW
 
-        self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T,
-                            self.Strommenge_MWh, self.Strompreis, hourly_rate=self.stundensatz)
-        self.WGK_PTH = self.A_N / self.Wärmemenge_MWh
+            self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T,
+                                self.Strommenge_MWh, self.Strompreis, hourly_rate=self.stundensatz)
+            
+            # wenn die Wärmemenge 0 ist, dann ist die WGK unendlich
+            self.WGK = self.A_N / self.Wärmemenge_MWh
+        
+        else:
+            self.WGK = float('inf')
 
     def calculate_environmental_impact(self):
         """
@@ -159,8 +160,8 @@ class PowerToHeat(BaseHeatGenerator):
         Returns:
             dict: Dictionary containing the results of the calculation.
         """
-        # Problem wenn tatsächlich kein Betrieb stattfindet bei Speichernutzung
-        if not hasattr(self, 'Wärmemenge_MWh') or self.Wärmemenge_MWh == 0:
+        
+        if not hasattr(self, 'Wärmemenge_MWh'):
             print("Here we go")
             self.simulate_operation(load_profile, duration)
             
@@ -172,7 +173,7 @@ class PowerToHeat(BaseHeatGenerator):
             'Wärmemenge': self.Wärmemenge_MWh,
             'Wärmeleistung_L': self.Wärmeleistung_kW,
             'Brennstoffbedarf': self.Strommenge_MWh,
-            'WGK': self.WGK_PTH,
+            'WGK': self.WGK,
             'Anzahl_Starts': self.Anzahl_Starts,
             'Betriebsstunden': self.Betriebsstunden,
             'Betriebsstunden_pro_Start': self.Betriebsstunden_pro_Start,
@@ -202,7 +203,7 @@ class PowerToHeat(BaseHeatGenerator):
         return f"{self.name}: spez. Investitionskosten: {self.spez_Investitionskosten:.1f} €/kW"
     
     def extract_tech_data(self):
-        dimensions = f"th. Leistung: {self.P_max:.1f} kW"
+        dimensions = f"th. Leistung: {self.th_Leistung_kW:.1f} kW"
         costs = f"Investitionskosten: {self.Investitionskosten:.1f} €"
         full_costs = f"{self.Investitionskosten:.1f}"
         return self.name, dimensions, costs, full_costs
@@ -231,7 +232,7 @@ class PowerToHeatStrategy:
         If the upper storage temperature is too low and there is still demand, the Power-to-Heat unit is turned on.
 
         """
-
+        # Check if the upper storage temperature is below the charge_on threshold and if there is remaining demand
         if upper_storage_temp < self.charge_on and remaining_demand > 0:
             return True  # Turn P2H on
         else:

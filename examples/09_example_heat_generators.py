@@ -49,7 +49,7 @@ def test_power_to_heat(Last_L, duration, economic_parameters, PTH=power_to_heat.
             'Wärmemenge': PTH.Wärmemenge_MWh,
             'Wärmeleistung_L': PTH.Wärmeleistung_kW,
             'Brennstoffbedarf': PTH.Strommenge_MWh,
-            'WGK': PTH.WGK_PTH,
+            'WGK': PTH.WGK,
             'spec_co2_total': PTH.spec_co2_total,
             'primärenergie': PTH.primärenergie,
             "color": "saddlebrown"
