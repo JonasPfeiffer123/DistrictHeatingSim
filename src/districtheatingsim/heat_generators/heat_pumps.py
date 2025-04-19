@@ -11,7 +11,7 @@ from scipy.interpolate import RegularGridInterpolator
 
 import CoolProp.CoolProp as CP
 
-from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator
+from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
 
 class HeatPump(BaseHeatGenerator):
     """
@@ -35,13 +35,14 @@ class HeatPump(BaseHeatGenerator):
         WGK(Wärmeleistung, Wärmemenge, Strombedarf, spez_Investitionskosten_WQ, Strompreis, q, r, T, BEW, stundensatz): Calculates the heat generation costs (WGK).
     """
 
-    def __init__(self, name, spezifische_Investitionskosten_WP=1000):
+    def __init__(self, name, spezifische_Investitionskosten_WP=1000, active=True):
         super().__init__(name)
         self.spezifische_Investitionskosten_WP = spezifische_Investitionskosten_WP
+        self.active = active
         self.Nutzungsdauer_WP = 20
         self.f_Inst_WP, self.f_W_Insp_WP, self.Bedienaufwand_WP = 1, 1.5, 0
         self.f_Inst_WQ, self.f_W_Insp_WQ, self.Bedienaufwand_WQ = 0.5, 0.5, 0
-        self.Nutzungsdauer_WQ_dict = {"Abwärme": 20, "Abwasserwärme": 20, "Flusswasser": 20, "Geothermie": 30}
+        self.Nutzungsdauer_WQ_dict = {"Abwärmepumpe": 20, "Abwasserwärmepumpe": 20, "Flusswärmepumpe": 20, "Geothermie": 30}
         self.co2_factor_electricity = 2.4 # tCO2/MWh electricity
 
         self.init_operation(8760)
@@ -55,6 +56,8 @@ class HeatPump(BaseHeatGenerator):
         self.Anzahl_Starts = 0
         self.Betriebsstunden = 0
         self.Betriebsstunden_pro_Start = 0
+
+        self.strategy = HeatPumpStrategy(75, 70)
 
     def calculate_COP(self, VLT_L, QT, COP_data):
         """
@@ -308,7 +311,7 @@ class RiverHeatPump(HeatPump):
 
         return results
     
-    def generate(self, t, remaining_demand, VLT_L, COP_data):
+    def generate(self, t, **kwargs):
         """
         Generates heat and calculates electricity consumption for the river heat pump at a given time step.
 
@@ -321,6 +324,10 @@ class RiverHeatPump(HeatPump):
         Returns:
             tuple: Heat generation (kW) and electricity consumption (kW).
         """
+        remaining_demand = kwargs.get('remaining_demand', 0)
+        VLT_L = kwargs.get('VLT_L', 0)
+        COP_data = kwargs.get('COP_data', None)
+
         if self.Wärmeleistung_FW_WP == 0:
             return 0, 0  # No operation if the heat pump is not configured
 
@@ -519,7 +526,7 @@ class WasteHeatPump(HeatPump):
 
         return results
     
-    def generate(self, t, remaining_demand, VLT_L, COP_data):
+    def generate(self, t, **kwargs):
         """
         Generates heat and calculates electricity consumption for the waste heat pump at a given time step.
 
@@ -532,6 +539,10 @@ class WasteHeatPump(HeatPump):
         Returns:
             tuple: Heat generation (kW) and electricity consumption (kW).
         """
+        remaining_demand = kwargs.get('remaining_demand', 0)
+        VLT_L = kwargs.get('VLT_L', 0)
+        COP_data = kwargs.get('COP_data', None)
+
         if self.Kühlleistung_Abwärme == 0:
             return 0, 0  # No operation if the heat pump is not configured
 
@@ -753,7 +764,7 @@ class Geothermal(HeatPump):
 
         return results
     
-    def generate(self, t, remaining_demand, VLT_L, COP_data):
+    def generate(self, t, **kwargs):
         """
         Generates heat and calculates electricity consumption for the geothermal heat pump at a given time step.
 
@@ -766,6 +777,10 @@ class Geothermal(HeatPump):
         Returns:
             tuple: Heat generation (kW) and electricity consumption (kW).
         """
+        remaining_demand = kwargs.get('remaining_demand', 0)
+        VLT_L = kwargs.get('VLT_L', 0)
+        COP_data = kwargs.get('COP_data', None)
+
         if self.Fläche == 0 or self.Bohrtiefe == 0:
             return 0, 0  # No operation if the geothermal system is not configured
 
@@ -1002,19 +1017,16 @@ class AqvaHeat(HeatPump):
         return self.name, dimensions, costs, full_costs
 
 # Control strategy for Heat Pumps
-class HeatPumpStrategy:
-    def __init__(self, storage, charge_on, charge_off):
+class HeatPumpStrategy(BaseStrategy):
+    def __init__(self, charge_on, charge_off):
         """
         Initializes the heat pump strategy with switch points based on storage levels.
 
         Args:
-            storage (TemperatureStratifiedThermalStorage): Instance of the storage.
             charge_on (int): (upper) Storage temperature to activate the heat pump.
             charge_off (int): (lower) Storage temperature to deactivate the heat pump.
         """
-        self.storage = storage
-        self.charge_on = charge_on
-        self.charge_off = charge_off
+        super().__init__(charge_on, charge_off)
 
     def decide_operation(self, current_state, upper_storage_temp, lower_storage_temp, remaining_demand):
         """

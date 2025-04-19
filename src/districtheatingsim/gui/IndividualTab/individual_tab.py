@@ -624,7 +624,7 @@ class ResultsTab(QWidget):
         """
         try:
             if isinstance(tech_object, GasBoiler):
-                cost = tech_object.P_max * tech_object.spez_Investitionskosten
+                cost = tech_object.th_Leistung_kW * tech_object.spez_Investitionskosten
             elif isinstance(tech_object, BiomassBoiler):
                 cost = tech_object.thermal_capacity_kW * tech_object.spez_Investitionskosten + \
                     tech_object.Größe_Holzlager * tech_object.spez_Investitionskosten_Holzlager
@@ -697,8 +697,8 @@ class ResultsTab(QWidget):
         """
         try:
             if isinstance(tech, GasBoiler):
-                dimensions = f"th. Leistung: {tech.P_max:.2f} kW"
-                cost = tech.P_max * tech.spez_Investitionskosten
+                dimensions = f"th. Leistung: {tech.th_Leistung_kW:.2f} kW"
+                cost = tech.th_Leistung_kW * tech.spez_Investitionskosten
                 total = cost  # No additional costs for GasBoiler
             elif isinstance(tech, BiomassBoiler):
                 dimensions = f"th. Leistung: {tech.thermal_capacity_kW:.2f} kW, Holzlager: {tech.Größe_Holzlager:.2f} m³"

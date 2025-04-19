@@ -8,7 +8,7 @@ Description: Contains the GasBoiler class representing a gas boiler system.
 
 import numpy as np
 
-from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator
+from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
 
 class GasBoiler(BaseHeatGenerator):
     """
@@ -57,6 +57,8 @@ class GasBoiler(BaseHeatGenerator):
         self.Betriebsstunden = 0
         self.Betriebsstunden_pro_Start = 0
 
+        self.strategy = GasBoilerStrategy(70)
+
     def simulate_operation(self, Last_L, duration):
         """
         Simulates the operation of the gas boiler.
@@ -71,7 +73,7 @@ class GasBoiler(BaseHeatGenerator):
         self.Wärmeleistung_kW = np.maximum(Last_L, 0)
         self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW / 1000) * duration
         self.Brennstoffbedarf_MWh = self.Wärmemenge_MWh / self.Nutzungsgrad
-        self.P_max = max(Last_L) * self.Faktor_Dimensionierung
+        self.th_Leistung_kW = max(Last_L) * self.Faktor_Dimensionierung
 
         # Calculate number of starts and operating hours per start
         betrieb_mask = self.Wärmeleistung_kW > 0
@@ -80,19 +82,22 @@ class GasBoiler(BaseHeatGenerator):
         self.Betriebsstunden = np.sum(betrieb_mask) * duration
         self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
 
-    def generate(self, t, remaining_heat_demand):
+    def generate(self, t, **kwargs):
         """
         Generates thermal power for the given time step `t`.
         This method calculates the thermal power and updates the operational statistics of the power-to-heat unit.
 
         Args:
             t (int): The current time step.
+            **kwargs: Additional keyword arguments.
 
         Returns:
             float: The thermal power (in kW) generated at the current time step.
         """
-        if self.active == False:
-            self.th_Leistung_kW = 1000
+        remaining_heat_demand = kwargs.get('remaining_heat_demand', 0)
+
+        if self.active == True:
+            self.th_Leistung_kW = 1000 # das muss gefixt werden
             self.Wärmeleistung_kW[t] = min(self.th_Leistung_kW, remaining_heat_demand)
             self.Wärmemenge_MWh += self.Wärmeleistung_kW[t] / 1000
             self.Betriebsstunden += 1
@@ -123,7 +128,7 @@ class GasBoiler(BaseHeatGenerator):
 
         if self.Wärmemenge_MWh > 0:
         
-            self.Investitionskosten = self.spez_Investitionskosten * self.P_max
+            self.Investitionskosten = self.spez_Investitionskosten * self.th_Leistung_kW
 
             self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T,
                                 self.Brennstoffbedarf_MWh, self.Gaspreis, hourly_rate=self.hourly_rate)
@@ -202,38 +207,38 @@ class GasBoiler(BaseHeatGenerator):
         return f"{self.name}: spez. Investitionskosten: {self.spez_Investitionskosten:.1f} €/kW"
     
     def extract_tech_data(self):
-        dimensions = f"th. Leistung: {self.P_max:.1f} kW"
+        dimensions = f"th. Leistung: {self.th_Leistung_kW:.1f} kW"
         costs = f"Investitionskosten: {self.Investitionskosten:.1f} €"
         full_costs = f"{self.Investitionskosten:.1f}"
         return self.name, dimensions, costs, full_costs
     
-# Control strategy for Gas Boiler
-class GasBoilerStrategy:
-    def __init__(self, boiler, min_load):
+# Control strategy for GasBoiler
+class GasBoilerStrategy(BaseStrategy):
+    def __init__(self, charge_on, charge_off=None):
         """
-        Initializes the Gas Boiler strategy with a minimum load threshold.
+        Initializes the GasBoiler strategy with a switch point based on storage levels.
 
         Args:
-            boiler (GasBoiler): Instance of the gas boiler.
-            min_load (float): Minimum load to activate the gas boiler in kW.
-
+            charge_on (int): Storage temperature to activate the GasBoiler.
+            charge_off (int, optional): Storage temperature to deactivate the GasBoiler. Defaults to None.
         """
-        self.boiler = boiler
-        self.min_load = min_load
+        super().__init__(charge_on, charge_off)  # Initialize BaseStrategy with charge_on and charge_off
 
-    def decide_operation(self, current_load, remaining_demand):
+    def decide_operation(self, current_state, upper_storage_temp, lower_storage_temp, remaining_demand):
         """
-        Decide whether to turn the gas boiler on based on current load and remaining demand.
+        Decide whether to turn the GasBoiler on based on storage temperature and remaining demand.
 
         Args:
-            current_load (float): Current load on the gas boiler in kW.
-            remaining_demand (float): Remaining heat demand to be covered in kW.
-
-        If the current load is below the minimum threshold and there is still demand, the gas boiler is turned on.
+            current_state (float): Current state of the system (not used in this implementation).
+            upper_storage_temp (float): Current upper storage temperature.
+            lower_storage_temp (float): Current lower storage temperature (not used in this implementation).
+            remaining_demand (float): Remaining heat demand to be covered.
 
         Returns:
-            bool: True if the gas boiler should be turned on, False otherwise.
+            bool: True if the GasBoiler should be turned on, False otherwise.
         """
-        if current_load < self.min_load and remaining_demand > 0:
-            return True  # Turn gas boiler on
-        return False  # Keep gas boiler off
+        # Check if the upper storage temperature is below the charge_on threshold and if there is remaining demand
+        if upper_storage_temp < self.charge_on and remaining_demand > 0:
+            return True  # Turn GasBoiler on
+        else:
+            return False  # Turn GasBoiler off

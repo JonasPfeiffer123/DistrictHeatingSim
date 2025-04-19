@@ -8,7 +8,7 @@ Description: Contains the PowerToHeat class representing a power-to-heat system.
 
 import numpy as np
 
-from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator
+from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
 
 class PowerToHeat(BaseHeatGenerator):
     """
@@ -58,6 +58,8 @@ class PowerToHeat(BaseHeatGenerator):
         self.Betriebsstunden = 0
         self.Betriebsstunden_pro_Start = 0
 
+        self.strategy = PowerToHeatStrategy(70)
+
     def simulate_operation(self, Last_L, duration):
         """
         Simulates the operation of the power-to-heat system.
@@ -82,19 +84,22 @@ class PowerToHeat(BaseHeatGenerator):
         self.Betriebsstunden = np.sum(betrieb_mask) * duration
         self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
 
-    def generate(self, t, remaining_heat_demand):
+    def generate(self, t, **kwargs):
         """
         Generates thermal power for the given time step `t`.
         This method calculates the thermal power and updates the operational statistics of the power-to-heat unit.
 
         Args:
             t (int): The current time step.
+            **kwargs: Additional keyword arguments.
 
         Returns:
             float: The thermal power (in kW) generated at the current time step.
         """
+        remaining_heat_demand = kwargs.get('remaining_heat_demand', 0)
+        
         if self.active == True:
-            self.th_Leistung_kW = 1000
+            self.th_Leistung_kW = 1000 # das muss gefixt werden
             self.Wärmeleistung_kW[t] = min(self.th_Leistung_kW, remaining_heat_demand)
             self.Wärmemenge_MWh += self.Wärmeleistung_kW[t] / 1000
             self.Betriebsstunden += 1
@@ -209,31 +214,32 @@ class PowerToHeat(BaseHeatGenerator):
         return self.name, dimensions, costs, full_costs
 
 # Control strategy for Power-to-Heat
-class PowerToHeatStrategy:
-    def __init__(self, storage, charge_on):
+class PowerToHeatStrategy(BaseStrategy):
+    def __init__(self, charge_on, charge_off=None):
         """
         Initializes the Power-to-Heat strategy with a switch point based on storage levels.
 
         Args:
             storage (TemperatureStratifiedThermalStorage): Instance of the storage.
             charge_on (int): Storage temperature to activate Power-to-Heat unit.
-
         """
-        self.storage = storage
-        self.charge_on = charge_on
+        super().__init__(charge_on, charge_off)  # Initialize BaseStrategy with charge_on
 
     def decide_operation(self, current_state, upper_storage_temp, lower_storage_temp, remaining_demand):
         """
         Decide whether to turn the Power-to-Heat unit on based on storage temperature and remaining demand.
 
-        upper_storage_temp (float): Current upper storage temperature.
-        remaining_demand (float): Remaining heat demand to be covered.
+        Args:
+            current_state (float): Current state of the system (not used in this implementation).
+            upper_storage_temp (float): Current upper storage temperature.
+            lower_storage_temp (float): Current lower storage temperature (not used in this implementation).
+            remaining_demand (float): Remaining heat demand to be covered.
 
-        If the upper storage temperature is too low and there is still demand, the Power-to-Heat unit is turned on.
-
+        Returns:
+            bool: True if the Power-to-Heat unit should be turned on, False otherwise.
         """
         # Check if the upper storage temperature is below the charge_on threshold and if there is remaining demand
         if upper_storage_temp < self.charge_on and remaining_demand > 0:
             return True  # Turn P2H on
         else:
-            return False # Turn P2H off
+            return False  # Turn P2H off
