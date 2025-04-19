@@ -19,8 +19,8 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtCore import QUrl, QObject, pyqtSlot, pyqtSignal
 from PyQt5.QtWebChannel import QWebChannel
 
-from districtheatingsim.gui.VisualizationTab.visualization_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog
-from districtheatingsim.gui.VisualizationTab.net_generation_threads import NetGenerationThread, FileImportThread, GeocodingThread
+from districtheatingsim.gui.LeafletTab.leaflet_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog
+from districtheatingsim.gui.LeafletTab.net_generation_threads import NetGenerationThread, FileImportThread, GeocodingThread
 
 from shapely.geometry import Point
 
