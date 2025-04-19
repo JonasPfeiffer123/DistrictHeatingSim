@@ -18,8 +18,8 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 from districtheatingsim.heat_generators import TECH_CLASS_REGISTRY
-from districtheatingsim.gui.MixDesignTab.heat_generator_dialogs import TechInputDialog
-from districtheatingsim.gui.MixDesignTab.generator_schematic import SchematicScene, CustomGraphicsView
+from districtheatingsim.gui.EnergySystemTab.heat_generator_dialogs import TechInputDialog
+from districtheatingsim.gui.EnergySystemTab.generator_schematic import SchematicScene, CustomGraphicsView
 
 class CustomListWidget(QListWidget):
     """

@@ -100,7 +100,7 @@ from districtheatingsim.gui.LOD2Tab.lod2_main_tab import LOD2Tab
 from districtheatingsim.gui.BuildingTab.building_tab import BuildingTab
 from districtheatingsim.gui.RenovationTab.RenovationTab import RenovationTab
 from districtheatingsim.gui.CalculationTab.calculation_tab import CalculationTab
-from districtheatingsim.gui.MixDesignTab.mix_design_tab import MixDesignTab
+from districtheatingsim.gui.EnergySystemTab._01_energy_system_main_tab import EnergySystemTab
 from districtheatingsim.gui.ComparisonTab.comparison_tab import ComparisonTab
 from districtheatingsim.gui.IndividualTab.individual_tab import IndividualTab
 from districtheatingsim.gui.results_pdf import create_pdf
@@ -705,7 +705,7 @@ class HeatSystemDesignGUI(QMainWindow):
         self.buildingTab = BuildingTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
         self.visTab2 = VisualizationTabLeaflet(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
         self.calcTab = CalculationTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager, self)
-        self.mixDesignTab = MixDesignTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager, self)
+        self.mixDesignTab = EnergySystemTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager, self)
         self.comparisonTab = ComparisonTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
         self.lod2Tab = LOD2Tab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
         self.renovationTab = RenovationTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
