@@ -132,6 +132,9 @@ class ThermalStorage(BaseHeatGenerator):
         """
         # Erstelle eine Kopie des aktuellen Objekt-Dictionaries
         data = self.__dict__.copy()
+
+        # Storage saved
+        print("Storage saved")
         
         # Entferne das scene_item und andere nicht notwendige Felder
         data.pop('scene_item', None)
@@ -151,6 +154,10 @@ class ThermalStorage(BaseHeatGenerator):
         """
         obj = cls.__new__(cls)
         obj.__dict__.update(data)
+
+        # storage loaded
+        print("Storage loaded")
+        
         return obj
     
     def __deepcopy__(self, memo):
