@@ -98,8 +98,7 @@ class EnergySystem:
             'specific_emissions_Gesamt': 0,
             'primärenergiefaktor_Gesamt': 0,
             'techs': [],
-            'tech_classes': [],
-            'storage_class': []
+            'tech_classes': []
         }
 
     def set_optimization_variables(self, variables, variables_order):
@@ -266,8 +265,7 @@ class EnergySystem:
 
         # Speicherdaten hinzufügen
         if self.storage:
-            storage_results = self.results['storage_class']
-            Q_net_storage_flow = storage_results.Q_net_storage_flow
+            Q_net_storage_flow = self.storage.Q_net_storage_flow
             print(f"Speicherergebnisse: {Q_net_storage_flow[8000]}")
 
             # Speicherbeladung (negative Werte) und Speicherentladung (positive Werte) trennen
@@ -434,6 +432,7 @@ class EnergySystem:
             'COP_data': self.COP_data.tolist(), 
             'economic_parameters': self.economic_parameters,
             'technologies': [tech.to_dict() for tech in self.technologies],
+            'storage': self.storage.to_dict() if self.storage else None,  # Serialize storage
             'results': self.results,
         }
 
@@ -475,6 +474,11 @@ class EnergySystem:
                 if tech_data['name'].startswith(prefix):
                     obj.technologies.append(tech_class.from_dict(tech_data))
                     break
+
+        # Restore storage
+        if data.get('storage'):
+            obj.storage = TemperatureStratifiedThermalStorage.from_dict(data['storage'])
+
 
         # Restore results (if available)
         obj.results = {}
