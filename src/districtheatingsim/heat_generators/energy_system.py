@@ -196,7 +196,9 @@ class EnergySystem:
                         kwargs = {
                             "remaining_load": remaining_load,
                             "VLT_L": self.VLT_L[t],
-                            "COP_data": self.COP_data
+                            "COP_data": self.COP_data,
+                            "time_steps": self.time_steps,
+                            "duration": self.duration,
                         }
                         Q_in, _ = tech.generate(t, **kwargs)
                         remaining_load -= Q_in
