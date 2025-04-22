@@ -73,6 +73,7 @@ class PowerToHeat(BaseHeatGenerator):
             None
         """
         self.Wärmeleistung_kW = np.minimum(Last_L, self.thermal_capacity_kW)
+        self.el_Leistung_kW = self.Wärmeleistung_kW / self.Nutzungsgrad
 
     def generate(self, t, **kwargs):
         """
@@ -90,6 +91,7 @@ class PowerToHeat(BaseHeatGenerator):
         
         if self.active == True:
             self.Wärmeleistung_kW[t] = min(remaining_load, self.thermal_capacity_kW)
+            self.el_Leistung_kW[t] = self.Wärmeleistung_kW[t] / self.Nutzungsgrad
             return self.Wärmeleistung_kW[t], 0
         else:
             self.Wärmeleistung_kW[t] = 0
@@ -105,7 +107,6 @@ class PowerToHeat(BaseHeatGenerator):
             
         """
 
-        self.el_Leistung_kW = self.Wärmeleistung_kW / self.Nutzungsgrad
         self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW / 1000) * duration
         self.Strommenge_MWh = np.sum(self.el_Leistung_kW / 1000) * duration
         

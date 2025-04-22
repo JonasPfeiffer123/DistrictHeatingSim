@@ -85,7 +85,7 @@ class BiomassBoiler(BaseHeatGenerator):
         
         self.calculated = False  # Flag to indicate if the calculation is done
 
-    def simulate_operation(self, Last_L, duration):
+    def simulate_operation(self, Last_L):
         """
         Simulates the operation of the biomass boiler.
 
@@ -96,20 +96,10 @@ class BiomassBoiler(BaseHeatGenerator):
         Returns:
             None
         """
-        self.Wärmeleistung_kW = np.zeros_like(Last_L)
 
         # Cases where the biomass boiler can operate
-        betrieb_mask = Last_L >= self.thermal_capacity_kW * self.min_Teillast
-        self.Wärmeleistung_kW[betrieb_mask] = np.minimum(Last_L[betrieb_mask], self.thermal_capacity_kW)
-
-        self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW / 1000) * duration
-        self.Brennstoffbedarf_MWh = self.Wärmemenge_MWh / self.Nutzungsgrad_BMK
-
-        # Calculate number of starts and operating hours per start
-        starts = np.diff(betrieb_mask.astype(int)) > 0
-        self.Anzahl_Starts = np.sum(starts)
-        self.Betriebsstunden = np.sum(betrieb_mask) * duration
-        self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
+        self.betrieb_mask = Last_L >= self.thermal_capacity_kW * self.min_Teillast
+        self.Wärmeleistung_kW[self.betrieb_mask] = np.minimum(Last_L[self.betrieb_mask], self.thermal_capacity_kW)
 
     def simulate_storage(self, Last_L, duration):
         """
@@ -128,9 +118,8 @@ class BiomassBoiler(BaseHeatGenerator):
         min_speicher_fill = self.min_fill * speicher_kapazitaet
         max_speicher_fill = self.max_fill * speicher_kapazitaet
 
-        self.Wärmeleistung_kW = np.zeros_like(Last_L)
         self.Wärmeleistung_Speicher_kW = np.zeros_like(Last_L)
-        self.speicher_fuellstand = np.zeros_like(Last_L)
+        self.Speicher_Fuellstand = np.zeros_like(Last_L)
 
         for i in range(len(Last_L)):
             if self.active:
@@ -154,19 +143,9 @@ class BiomassBoiler(BaseHeatGenerator):
                 speicher_fill -= Last_L[i] * duration
                 speicher_fill = float(max(speicher_fill, 0))
 
-            self.speicher_fuellstand[i] = speicher_fill / speicher_kapazitaet * 100  # %
+            self.Speicher_Fuellstand[i] = speicher_fill / speicher_kapazitaet * 100  # %
 
-        self.Wärmemenge_Biomassekessel_Speicher = np.sum(self.Wärmeleistung_kW / 1000) * duration
-
-        # Calculate fuel consumption
-        self.Brennstoffbedarf_BMK_Speicher = self.Wärmemenge_Biomassekessel_Speicher / self.Nutzungsgrad_BMK
-
-        # Calculate number of starts and operating hours per start
-        betrieb_mask = self.Wärmeleistung_kW > 0
-        starts = np.diff(betrieb_mask.astype(int)) > 0
-        self.Anzahl_Starts_Speicher = np.sum(starts)
-        self.Betriebsstunden_gesamt_Speicher = np.sum(betrieb_mask) * duration
-        self.Betriebsstunden_pro_Start_Speicher = self.Betriebsstunden_gesamt_Speicher / self.Anzahl_Starts_Speicher if self.Anzahl_Starts_Speicher > 0 else 0
+        self.betrieb_mask = self.Wärmeleistung_kW > 0
 
     def generate(self, t, **kwargs):
         """
@@ -182,31 +161,25 @@ class BiomassBoiler(BaseHeatGenerator):
         
         if self.active:
             self.Wärmeleistung_kW[t] = self.thermal_capacity_kW
-            # Berechnen des Brennstoffbedarfs
-            self.Wärmemenge_MWh += self.Wärmeleistung_kW[t] / 1000
-            self.Brennstoffbedarf_MWh += self.Wärmeleistung_kW[t] / self.Nutzungsgrad_BMK / 1000
-
-            # Anzahl Starts zählen wenn änderung von 0 auf 1
-            if self.Wärmeleistung_kW[t] > 0 and self.Wärmeleistung_kW[t - 1] == 0:
-                self.Anzahl_Starts += 1
-            
-            # Betriebsstunden aktualisieren
-            self.Betriebsstunden += 1
-            self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
 
             return self.Wärmeleistung_kW[t], 0 # Wärmeleistung in kW
         return 0, 0
     
-    def calculate_results(self):
-        pass
+    def calculate_results(self, duration):
+        self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW / 1000) * duration
+        self.Brennstoffbedarf_MWh = self.Wärmemenge_MWh / self.Nutzungsgrad_BMK
 
-    def calculate_heat_generation_costs(self, Wärmemenge, Brennstoffbedarf, economic_parameters):
+        # Anzahl Starts und Betriebsstunden pro Start berechnen
+        starts = np.diff(self.betrieb_mask.astype(int)) > 0
+        self.Anzahl_Starts = np.sum(starts)
+        self.Betriebsstunden = np.sum(self.betrieb_mask) * duration
+        self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
+
+    def calculate_heat_generation_costs(self, economic_parameters):
         """
         Calculates the weighted average cost of heat generation.
 
         Args:
-            Wärmemenge (float): Amount of heat generated.
-            Brennstoffbedarf (float): Fuel consumption.
             economic_parameters (dict): Dictionary containing economic parameters.
 
         Returns:
@@ -222,7 +195,7 @@ class BiomassBoiler(BaseHeatGenerator):
         self.BEW = economic_parameters['subsidy_eligibility']
         self.stundensatz = economic_parameters['hourly_rate']
 
-        if Wärmemenge == 0:
+        if self.Wärmemenge_MWh == 0:
             return 0
         
         self.Investitionskosten_Kessel = self.spez_Investitionskosten * self.thermal_capacity_kW
@@ -231,27 +204,22 @@ class BiomassBoiler(BaseHeatGenerator):
         self.Investitionskosten = self.Investitionskosten_Kessel + self.Investitionskosten_Holzlager + self.Investitionskosten_Speicher
 
         self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T, 
-                                Brennstoffbedarf, self.Holzpreis, hourly_rate=self.stundensatz)
+                                self.Brennstoffbedarf_MWh, self.Holzpreis, hourly_rate=self.stundensatz)
         
-        self.WGK = self.A_N / Wärmemenge
+        self.WGK = self.A_N / self.Wärmemenge_MWh
 
-    def calculate_environmental_impact(self, Brennstoffbedarf, Wärmemenge):
+    def calculate_environmental_impact(self):
         """
         Calculates the environmental impact of the biomass boiler system.
 
-        Args:
-            None
-
-        Returns:
-            None
         """
 
         # CO2 emissions due to fuel usage
-        self.co2_emissions = Brennstoffbedarf * self.co2_factor_fuel # tCO2
+        self.co2_emissions = self.Brennstoffbedarf_MWh * self.co2_factor_fuel # tCO2
         # specific emissions heat
-        self.spec_co2_total = self.co2_emissions / Wärmemenge if Wärmemenge > 0 else 0 # tCO2/MWh_heat
+        self.spec_co2_total = self.co2_emissions / self.Wärmemenge_MWh if self.Wärmemenge_MWh > 0 else 0 # tCO2/MWh_heat
 
-        self.primärenergie = Brennstoffbedarf * self.primärenergiefaktor
+        self.primärenergie = self.Brennstoffbedarf_MWh * self.primärenergiefaktor
         
 
     def calculate(self, economic_parameters, duration, load_profile, **kwargs):
@@ -269,42 +237,23 @@ class BiomassBoiler(BaseHeatGenerator):
         # Check if the calculation has already been done
         if self.calculated == False:
             if self.speicher_aktiv:
-                self.simulate_storage(load_profile, duration)
-                Wärmemenge = self.Wärmemenge_Biomassekessel_Speicher
-                Brennstoffbedarf = self.Brennstoffbedarf_BMK_Speicher
-                Wärmeleistung_kW = self.Wärmeleistung_kW
-                Anzahl_Starts = self.Anzahl_Starts_Speicher
-                Betriebsstunden = self.Betriebsstunden_gesamt_Speicher
-                Betriebsstunden_pro_Start = self.Betriebsstunden_pro_Start_Speicher
+                self.simulate_storage(load_profile)
             else:
                 self.simulate_operation(load_profile, duration)
-                Wärmemenge = self.Wärmemenge_MWh
-                Brennstoffbedarf = self.Brennstoffbedarf_MWh
-                Wärmeleistung_kW = self.Wärmeleistung_kW
-                Anzahl_Starts = self.Anzahl_Starts
-                Betriebsstunden = self.Betriebsstunden
-                Betriebsstunden_pro_Start = self.Betriebsstunden_pro_Start
-        else:
-            # Aggregiere Ergebnisse aus der schrittweisen Berechnung
-            Wärmemenge = self.Wärmemenge_MWh
-            Brennstoffbedarf = self.Brennstoffbedarf_MWh
-            Wärmeleistung_kW = self.Wärmeleistung_kW
-            Anzahl_Starts = self.Anzahl_Starts
-            Betriebsstunden = self.Betriebsstunden
-            Betriebsstunden_pro_Start = self.Betriebsstunden_pro_Start
-
-        self.calculate_heat_generation_costs(Wärmemenge, Brennstoffbedarf, economic_parameters)
-        self.calculate_environmental_impact(Brennstoffbedarf, Wärmemenge)
+            
+        self.calculate_results(duration)
+        self.calculate_heat_generation_costs(economic_parameters)
+        self.calculate_environmental_impact()
 
         results = {
             'tech_name': self.name,
-            'Wärmemenge': Wärmemenge,
-            'Wärmeleistung_L': Wärmeleistung_kW,
-            'Brennstoffbedarf': Brennstoffbedarf,
+            'Wärmemenge': self.Wärmemenge_MWh,
+            'Wärmeleistung_L': self.Wärmeleistung_kW,
+            'Brennstoffbedarf': self.Brennstoffbedarf_MWh,
             'WGK': self.WGK,
-            'Anzahl_Starts': Anzahl_Starts,
-            'Betriebsstunden': Betriebsstunden,
-            'Betriebsstunden_pro_Start': Betriebsstunden_pro_Start,
+            'Anzahl_Starts': self.Anzahl_Starts,
+            'Betriebsstunden': self.Betriebsstunden,
+            'Betriebsstunden_pro_Start': self.Betriebsstunden_pro_Start,
             'spec_co2_total': self.spec_co2_total,
             'primärenergie': self.primärenergie,
             'color': "green"
