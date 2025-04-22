@@ -247,8 +247,9 @@ class ResultsTab(QWidget):
         """
 
         results = self.energy_system.results
+        # The following calculations really need to be done in the energy system class
         self.waerme_ges_kW, self.strom_wp_kW = np.sum(results["waerme_ges_kW"]), np.sum(results["strom_wp_kW"])
-        self.WGK_Infra = self.parent.costTab.summe_annuität / results['Jahreswärmebedarf']
+        self.WGK_Infra = self.parent.costTab.summe_annuität / (results['Jahreswärmebedarf'] * self.parent.economic_parameters["time_period"])
         self.wgk_heat_pump_electricity = ((self.strom_wp_kW/1000) * self.parent.economic_parameters["electricity_price"]) / ((self.strom_wp_kW+self.waerme_ges_kW)/1000)
         self.WGK_Gesamt = results['WGK_Gesamt'] + self.WGK_Infra + self.wgk_heat_pump_electricity
 

@@ -27,25 +27,27 @@ class GasBoiler(BaseHeatGenerator):
         primärenergiefaktor (float): Primary energy factor for the fuel.
     """
 
-    def __init__(self, name, spez_Investitionskosten=30, Nutzungsgrad=0.9, Faktor_Dimensionierung=1, active=True):
+    def __init__(self, name, thermal_capacity_kW, spez_Investitionskosten=30, Nutzungsgrad=0.9, active=True):
         """
         Initializes the GasBoiler class.
 
         Args:
             name (str): Name of the gas boiler.
+            thermal_capacity_kW (float): Thermal capacity of the gas boiler in kW.
             spez_Investitionskosten (float, optional): Specific investment costs for the boiler in €/kW. Defaults to 30.
             Nutzungsgrad (float, optional): Efficiency of the gas boiler. Defaults to 0.9.
-            Faktor_Dimensionierung (float, optional): Dimensioning factor. Defaults to 1.
         """
         super().__init__(name)
+        self.thermal_capacity_kW = thermal_capacity_kW
         self.spez_Investitionskosten = spez_Investitionskosten
         self.Nutzungsgrad = Nutzungsgrad
-        self.Faktor_Dimensionierung = Faktor_Dimensionierung
         self.active = active
         self.Nutzungsdauer = 20
         self.f_Inst, self.f_W_Insp, self.Bedienaufwand = 1, 2, 0
         self.co2_factor_fuel = 0.201  # tCO2/MWh gas
         self.primärenergiefaktor = 1.1
+
+        self.strategy = GasBoilerStrategy(70)
 
         self.init_operation(8760)
 
@@ -57,31 +59,20 @@ class GasBoiler(BaseHeatGenerator):
         self.Betriebsstunden = 0
         self.Betriebsstunden_pro_Start = 0
 
-        self.strategy = GasBoilerStrategy(70)
+        self.calculated = False  # Flag to indicate if the calculation is done
 
-    def simulate_operation(self, Last_L, duration):
+    def calculate_operation(self, Last_L):
         """
         Simulates the operation of the gas boiler.
 
         Args:
             Last_L (array): Load profile of the system in kW.
-            duration (float): Duration of each time step in hours.
 
         Returns:
             None
         """
-        self.Wärmeleistung_kW = np.maximum(Last_L, 0)
-        self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW / 1000) * duration
-        self.Brennstoffbedarf_MWh = self.Wärmemenge_MWh / self.Nutzungsgrad
-        self.th_Leistung_kW = max(Last_L) * self.Faktor_Dimensionierung
-
-        # Calculate number of starts and operating hours per start
-        betrieb_mask = self.Wärmeleistung_kW > 0
-        starts = np.diff(betrieb_mask.astype(int)) > 0
-        self.Anzahl_Starts = np.sum(starts)
-        self.Betriebsstunden = np.sum(betrieb_mask) * duration
-        self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
-
+        self.Wärmeleistung_kW = np.minimum(Last_L, self.thermal_capacity_kW)
+    
     def generate(self, t, **kwargs):
         """
         Generates thermal power for the given time step `t`.
@@ -94,17 +85,33 @@ class GasBoiler(BaseHeatGenerator):
         Returns:
             float: The thermal power (in kW) generated at the current time step.
         """
-        remaining_heat_demand = kwargs.get('remaining_heat_demand', 0)
+        remaining_load = kwargs.get('remaining_load', 0)
 
         if self.active == True:
-            self.th_Leistung_kW = 1000 # das muss gefixt werden
-            self.Wärmeleistung_kW[t] = min(self.th_Leistung_kW, remaining_heat_demand)
-            self.Wärmemenge_MWh += self.Wärmeleistung_kW[t] / 1000
-            self.Betriebsstunden += 1
+            self.Wärmeleistung_kW[t] = min(remaining_load, self.thermal_capacity_kW)
             return self.Wärmeleistung_kW[t], 0
         else:
             self.Wärmeleistung_kW[t] = 0
             return 0, 0
+        
+    def calculate_results(self, duration):
+        """
+        Calculates the operational statistics of the gas boiler.
+        This method calculates the total heat generated, fuel demand, number of starts, and operating hours.
+        
+        Args:
+            duration (float): Duration of each time step in hours.
+            
+        """
+        self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW / 1000) * duration
+        self.Brennstoffbedarf_MWh = self.Wärmemenge_MWh / self.Nutzungsgrad
+        
+        # Calculate number of starts and operating hours per start
+        betrieb_mask = self.Wärmeleistung_kW > 0
+        starts = np.diff(betrieb_mask.astype(int)) > 0
+        self.Anzahl_Starts = np.sum(starts)
+        self.Betriebsstunden = np.sum(betrieb_mask) * duration
+        self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
 
     def calculate_heat_generation_cost(self, economic_parameters):
         """
@@ -128,7 +135,7 @@ class GasBoiler(BaseHeatGenerator):
 
         if self.Wärmemenge_MWh > 0:
         
-            self.Investitionskosten = self.spez_Investitionskosten * self.th_Leistung_kW
+            self.Investitionskosten = self.spez_Investitionskosten * self.thermal_capacity_kW
 
             self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T,
                                 self.Brennstoffbedarf_MWh, self.Gaspreis, hourly_rate=self.hourly_rate)
@@ -137,6 +144,8 @@ class GasBoiler(BaseHeatGenerator):
             self.WGK = self.A_N / self.Wärmemenge_MWh
             
         else:
+            self.Investitionskosten = 0
+            self.A_N = 0
             self.WGK = float('inf')
 
     def calculate_environmental_impact(self):
@@ -166,9 +175,12 @@ class GasBoiler(BaseHeatGenerator):
         Returns:
             dict: Dictionary containing the results of the calculation.
         """
-        if not hasattr(self, 'Wärmemenge_MWh'):
-            self.simulate_operation(load_profile, duration)
-            
+
+        # Check if the calculation has already been done
+        if self.calculated == False:
+            self.calculate_operation(load_profile)
+
+        self.calculate_results(duration)
         self.calculate_heat_generation_cost(economic_parameters)
         self.calculate_environmental_impact()
 
@@ -207,7 +219,7 @@ class GasBoiler(BaseHeatGenerator):
         return f"{self.name}: spez. Investitionskosten: {self.spez_Investitionskosten:.1f} €/kW"
     
     def extract_tech_data(self):
-        dimensions = f"th. Leistung: {self.th_Leistung_kW:.1f} kW"
+        dimensions = f"th. Leistung: {self.thermal_capacity_kW:.1f} kW"
         costs = f"Investitionskosten: {self.Investitionskosten:.1f} €"
         full_costs = f"{self.Investitionskosten:.1f}"
         return self.name, dimensions, costs, full_costs

@@ -15,8 +15,8 @@ from .STES import TemperatureStratifiedThermalStorage
 TECH_CLASS_REGISTRY = {
     'BHKW': CHP,
     "Holzgas-BHKW": CHP,
-    'Flusswasser': RiverHeatPump,
-    'Abwärme': WasteHeatPump,
+    'Flusswärmepumpe': RiverHeatPump,
+    'Abwärmepumpe': WasteHeatPump,
     'Geothermie': Geothermal,
     'Biomassekessel': BiomassBoiler,
     'Gaskessel': GasBoiler,

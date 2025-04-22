@@ -56,8 +56,8 @@ class TechnologyTab(QWidget):
         "BHKW": 0,
         "Holzgas-BHKW": 0,
         "Geothermie": 0,
-        "Abwärme": 0,
-        "Flusswasser": 0,
+        "Abwärmepumpe": 0,
+        "Flusswärmepumpe": 0,
         "Biomassekessel": 0,
         "Gaskessel": 0,
         "AqvaHeat": 0,
@@ -356,7 +356,6 @@ class TechnologyTab(QWidget):
                     new_order.append(tech)
                     break
         self.tech_objects = new_order
-        print(self.tech_objects)  # Debug-Ausgabe der neuen Reihenfolge
 
         self.rebuildScene()
     
@@ -504,9 +503,9 @@ class TechnologyTab(QWidget):
             tech.scene_item = self.schematic_scene.add_component('Wood-CHP', name, storage=has_storage)
         elif tech.name.startswith('Geothermie'):
             tech.scene_item = self.schematic_scene.add_component('Geothermal Heat Pump', name, storage=False)
-        elif tech.name.startswith('Abwärme'):
+        elif tech.name.startswith('Abwärmepumpe'):
             tech.scene_item = self.schematic_scene.add_component('Waste Heat Pump', name, storage=False)
-        elif tech.name.startswith('Flusswasser'):
+        elif tech.name.startswith('Flusswärmepumpe'):
             tech.scene_item = self.schematic_scene.add_component('River Heat Pump', name, storage=False)
         elif tech.name.startswith('AqvaHeat'):
             tech.scene_item = self.schematic_scene.add_component('Aqva Heat Pump', name, storage=False)

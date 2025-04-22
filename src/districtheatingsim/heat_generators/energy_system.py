@@ -169,6 +169,10 @@ class EnergySystem:
                 # remove the storage from the technologies list
                 self.technologies.remove(tech)
 
+            else:
+                # Initialize each technology
+                tech.init_operation(8760)
+
         if self.storage:
             self.storage_state = np.zeros(len(self.time_steps))
 
@@ -203,6 +207,8 @@ class EnergySystem:
                         Q_in, _ = tech.generate(t, **kwargs)
                         remaining_load -= Q_in
                         Q_in_total += Q_in
+
+                        tech.calculated = True  # Markiere die Technologie als berechnet
 
                 # Speicher aktualisieren
                 self.storage.simulate_stratified_temperature_mass_flows(t, Q_in_total, Q_out_total, T_Q_in_flow, T_Q_out_return)

@@ -71,6 +71,8 @@ class BiomassBoiler(BaseHeatGenerator):
         self.co2_factor_fuel = 0.036 # tCO2/MWh pellets
         self.primärenergiefaktor = 0.2 # Pellets
 
+        self.strategy = BiomassBoilerStrategy(75, 70)
+
         self.init_operation(8760)
 
     def init_operation(self, hours):
@@ -80,8 +82,8 @@ class BiomassBoiler(BaseHeatGenerator):
         self.Anzahl_Starts = 0
         self.Betriebsstunden = 0
         self.Betriebsstunden_pro_Start = 0
-
-        self.strategy = BiomassBoilerStrategy(75, 70)
+        
+        self.calculated = False  # Flag to indicate if the calculation is done
 
     def simulate_operation(self, Last_L, duration):
         """
@@ -194,6 +196,9 @@ class BiomassBoiler(BaseHeatGenerator):
 
             return self.Wärmeleistung_kW[t], 0 # Wärmeleistung in kW
         return 0, 0
+    
+    def calculate_results(self):
+        pass
 
     def calculate_heat_generation_costs(self, Wärmemenge, Brennstoffbedarf, economic_parameters):
         """
@@ -261,7 +266,8 @@ class BiomassBoiler(BaseHeatGenerator):
         Returns:
             dict: Dictionary containing the results of the calculation.
         """
-        if not hasattr(self, 'Wärmemenge_MWh') or self.Wärmemenge_MWh == 0:
+        # Check if the calculation has already been done
+        if self.calculated == False:
             if self.speicher_aktiv:
                 self.simulate_storage(load_profile, duration)
                 Wärmemenge = self.Wärmemenge_Biomassekessel_Speicher

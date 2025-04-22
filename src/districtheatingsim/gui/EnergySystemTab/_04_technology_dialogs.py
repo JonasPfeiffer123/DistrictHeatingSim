@@ -59,9 +59,9 @@ class TechInputDialog(QDialog):
             self.dialog = HolzgasCHPDialog(self.tech_data)
         elif self.tech_type.startswith("Geothermie"):
             self.dialog = GeothermalDialog(self.tech_data)
-        elif self.tech_type.startswith("Abwärme"):
+        elif self.tech_type.startswith("Abwärmepumpe"):
             self.dialog = WasteHeatPumpDialog(self.tech_data)
-        elif self.tech_type.startswith("Flusswasser"):
+        elif self.tech_type.startswith("Flusswärmepumpe"):
             self.dialog = RiverHeatPumpDialog(self.tech_data)
         elif self.tech_type.startswith("AqvaHeat"):
             self.dialog = AqvaHeatDialog(self.tech_data)
@@ -549,9 +549,9 @@ class GasBoilerDialog(QDialog):
         main_layout = QVBoxLayout()
         g_layout = QFormLayout()
 
-        self.PowerFactorGKInput = QLineEdit(self)
-        self.PowerFactorGKInput.setText(str(self.tech_data.get('Faktor_Dimensionierung', "1")))
-        g_layout.addRow(QLabel("Auslegungsfaktor Gaskessel (Anteil an Maximallast)"), self.PowerFactorGKInput)
+        self.thermalCapacityGasBoilerInput = QLineEdit(self)
+        self.thermalCapacityGasBoilerInput.setText(str(self.tech_data.get('th_Leistung_kW', "1000")))
+        g_layout.addRow(QLabel("Thermische Leistung Gaskessel in kW"), self.thermalCapacityGasBoilerInput)
 
         self.effGKInput = QLineEdit(self)
         self.effGKInput.setText(str(self.tech_data.get('Nutzungsgrad', "0.9")))
@@ -572,7 +572,7 @@ class GasBoilerDialog(QDialog):
             dict: A dictionary containing the input values.
         """
         inputs = {
-            'Faktor_Dimensionierung': float(self.PowerFactorGKInput.text()),
+            'thermal_capacity_kW': float(self.thermalCapacityGasBoilerInput.text()),
             'spez_Investitionskosten': float(self.spezcostGKInput.text()),
             'Nutzungsgrad': float(self.effGKInput.text())
         }
@@ -608,9 +608,9 @@ class PowerToHeatDialog(QDialog):
         main_layout = QVBoxLayout()
         g_layout = QFormLayout()
 
-        self.PowerFactorPTHInput = QLineEdit(self)
-        self.PowerFactorPTHInput.setText(str(self.tech_data.get('Faktor_Dimensionierung', "1")))
-        g_layout.addRow(QLabel("Auslegungsfaktor Power-to-Heat (Anteil an Maximallast)"), self.PowerFactorPTHInput)
+        self.thermalCapacityPTHInput = QLineEdit(self)
+        self.thermalCapacityPTHInput.setText(str(self.tech_data.get('th_Leistung_kW', "1000")))
+        g_layout.addRow(QLabel("Thermische Leistung Power-To-Heat in kW"), self.thermalCapacityPTHInput)
 
         self.effPTHInput = QLineEdit(self)
         self.effPTHInput.setText(str(self.tech_data.get('Nutzungsgrad', "0.9")))
@@ -631,7 +631,7 @@ class PowerToHeatDialog(QDialog):
             dict: A dictionary containing the input values.
         """
         inputs = {
-            'Faktor_Dimensionierung': float(self.PowerFactorPTHInput.text()),
+            'thermal_capacity_kW': float(self.thermalCapacityPTHInput.text()),
             'spez_Investitionskosten': float(self.spezcostPTHInput.text()),
             'Nutzungsgrad': float(self.effPTHInput.text())
         }

@@ -90,6 +90,8 @@ class CHP(BaseHeatGenerator):
             self.primärenergiefaktor = 0.2 # Pellets
         self.co2_factor_electricity = 0.4 # tCO2/MWh electricity
 
+        self.strategy = CHPStrategy(75, 70)
+
         self.init_operation(8760)
 
     def init_operation(self, hours):
@@ -102,7 +104,7 @@ class CHP(BaseHeatGenerator):
         self.Betriebsstunden = 0
         self.Betriebsstunden_pro_Start = 0
 
-        self.strategy = CHPStrategy(75, 70)
+        self.calculated = False  # Flag to indicate if the calculation is done
 
     def simulate_operation(self, Last_L, duration):
         """
@@ -229,6 +231,9 @@ class CHP(BaseHeatGenerator):
             return self.Wärmeleistung_kW[t], self.el_Leistung_kW[t]
         return 0, 0  # Wenn das BHKW ausgeschaltet ist, liefert es keine Wärme und keinen Strom
     
+    def calculate_results(self):
+        pass
+    
     def calculate_heat_generation_costs(self, Wärmemenge, Strommenge, Brennstoffbedarf, economic_parameters):
         """
         Calculates the economic metrics for the CHP system.
@@ -297,7 +302,8 @@ class CHP(BaseHeatGenerator):
         Returns:
             dict: Dictionary containing calculated results.
         """
-        if not hasattr(self, 'Wärmemenge_MWh') or self.Wärmemenge_MWh == 0:
+        # Check if the calculation has already been done
+        if self.calculated == False:
             if self.speicher_aktiv:
                 self.simulate_storage(load_profile, duration)
                 Wärmemenge = self.Wärmemenge_BHKW_Speicher

@@ -56,7 +56,7 @@ class SolarThermal(BaseHeatGenerator):
 
     def __init__(self, name, bruttofläche_STA, vs, Typ, kosten_speicher_spez=750, kosten_fk_spez=430, kosten_vrk_spez=590, Tsmax=90, Longitude=-14.4222, 
                  STD_Longitude=-15, Latitude=51.1676, East_West_collector_azimuth_angle=0, Collector_tilt_angle=36, Tm_rl=60, Qsa=0, Vorwärmung_K=8, 
-                 DT_WT_Solar_K=5, DT_WT_Netz_K=5, opt_volume_min=0, opt_volume_max=200, opt_area_min=0, opt_area_max=2000):
+                 DT_WT_Solar_K=5, DT_WT_Netz_K=5, opt_volume_min=0, opt_volume_max=200, opt_area_min=0, opt_area_max=2000, active=True):
         """
         Initializes the SolarThermal class.
 
@@ -106,6 +106,7 @@ class SolarThermal(BaseHeatGenerator):
         self.opt_volume_max = opt_volume_max
         self.opt_area_min = opt_area_min
         self.opt_area_max = opt_area_max
+        self.active = active
 
         self.kosten_pro_typ = {
             # Viessmann Flachkollektor Vitosol 200-FM, 2,56 m²: 697,9 € (brutto); 586,5 € (netto) -> 229 €/m²
@@ -124,6 +125,9 @@ class SolarThermal(BaseHeatGenerator):
         self.co2_factor_solar = 0.0  # tCO2/MWh heat is 0 ?
         self.primärenergiefaktor = 0.0
 
+        self.strategy = SolarThermalStrategy(charge_on=0, charge_off=0)
+
+        self.init_calculation_constants()
         self.init_operation(8760)
 
     def init_calculation_constants(self):
@@ -216,6 +220,8 @@ class SolarThermal(BaseHeatGenerator):
         self.Betriebsstunden = 0
         self.Betriebsstunden_pro_Start = 0
 
+        self.calculated = False  # Flag to indicate if the calculation is done
+
     def calculate_heat_generation_costs(self, economic_parameters):
         """
         Calculates the weighted average cost of heat generation (WGK).
@@ -286,15 +292,17 @@ class SolarThermal(BaseHeatGenerator):
         Returns:
             dict: Dictionary containing the results of the calculation.
         """
-        # Berechnung der Solarthermieanlage
-        self.Wärmemenge_MWh, self.Wärmeleistung_kW, self.Speicherladung, self.Speicherfüllstand = self.calculate_solar_thermal_with_storage(
-            load_profile,
-            VLT_L,
-            RLT_L,
-            TRY_data,
-            time_steps,
-            duration
-        )
+        # Check if the calculation has already been done
+        if self.calculated == False:
+            # Berechnung der Solarthermieanlage
+            self.Wärmemenge_MWh, self.Wärmeleistung_kW, self.Speicherladung, self.Speicherfüllstand = self.calculate_solar_thermal_with_storage(
+                load_profile,
+                VLT_L,
+                RLT_L,
+                TRY_data,
+                time_steps,
+                duration
+            )
 
         # Calculate number of starts and operating hours per start
         betrieb_mask = self.Wärmeleistung_kW > 0

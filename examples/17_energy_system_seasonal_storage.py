@@ -69,17 +69,17 @@ chp = CHP("BHKW_1", th_Leistung_BHKW=300)
 energy_system.add_technology(chp)
 chp.strategy = CHPStrategy(charge_on=75, charge_off=70)
 
-#pth = PowerToHeat("PtH_1")
-#energy_system.add_technology(pth)
-#pth.strategy = PowerToHeatStrategy(charge_on=70)
+pth = PowerToHeat("PtH_1", thermal_capacity_kW=500)
+energy_system.add_technology(pth)
+pth.strategy = PowerToHeatStrategy(charge_on=75)
 
 # Biomasssboiler hinzufügen
-biomass_boiler = BiomassBoiler("Biomassekessel_1", thermal_capacity_kW=500)
-energy_system.add_technology(biomass_boiler)
-biomass_boiler.strategy = BiomassBoilerStrategy(charge_on=75, charge_off=70)
+#biomass_boiler = BiomassBoiler("Biomassekessel_1", thermal_capacity_kW=500)
+#energy_system.add_technology(biomass_boiler)
+#biomass_boiler.strategy = BiomassBoilerStrategy(charge_on=75, charge_off=70)
 
 # Gasboiler hinzufügen
-#gas_boiler = GasBoiler("Gasboiler_1")
+#gas_boiler = GasBoiler("Gasboiler_1", thermal_capacity_kW=1000)
 #energy_system.add_technology(gas_boiler)
 #gas_boiler.strategy = GasBoilerStrategy(charge_on=70)
 
