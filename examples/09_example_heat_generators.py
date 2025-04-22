@@ -148,16 +148,16 @@ def test_chp(Last_L, duration, economic_parameters, chp=chp.CHP(name="BHKW", th_
                                                                 opt_BHKW_Speicher_min=0, opt_BHKW_Speicher_max=100)):
 
     chp.simulate_operation(Last_L, duration)
-    Wärmemenge = chp.Wärmemenge_BHKW
-    Strommenge = chp.Strommenge_BHKW
-    Brennstoffbedarf = chp.Brennstoffbedarf_BHKW
+    Wärmemenge = chp.Wärmemenge_MWh
+    Strommenge = chp.Strommenge_MWh
+    Brennstoffbedarf = chp.Brennstoffbedarf_MWh
     Wärmeleistung_kW = chp.Wärmeleistung_kW
     el_Leistung_BHKW = chp.el_Leistung_kW
     Anzahl_Starts = chp.Anzahl_Starts
     Betriebsstunden = chp.Betriebsstunden
     Betriebsstunden_pro_Start = chp.Betriebsstunden_pro_Start
 
-    chp.calculate_heat_generation_costs(chp.Wärmemenge_BHKW, chp.Strommenge_BHKW, chp.Brennstoffbedarf_BHKW, economic_parameters)
+    chp.calculate_heat_generation_costs(chp.Wärmemenge_MWh, chp.Strommenge_MWh, chp.Brennstoffbedarf_MWh, economic_parameters)
     chp.calculate_environmental_impact(Wärmemenge, Strommenge, Brennstoffbedarf)
 
     results = {
@@ -197,7 +197,7 @@ def test_chp_storage(Last_L, duration, economic_parameters, chp=chp.CHP(name="BH
     Strommenge = chp.Strommenge_BHKW_Speicher
     Brennstoffbedarf = chp.Brennstoffbedarf_BHKW_Speicher
     Wärmeleistung_kW = chp.Wärmeleistung_kW
-    el_Leistung_BHKW = chp.el_Leistung_BHKW_kW
+    el_Leistung_BHKW = chp.el_Leistung_kW
     Anzahl_Starts = chp.Anzahl_Starts_Speicher
     Betriebsstunden = chp.Betriebsstunden_gesamt_Speicher
     Betriebsstunden_pro_Start = chp.Betriebsstunden_pro_Start_Speicher
