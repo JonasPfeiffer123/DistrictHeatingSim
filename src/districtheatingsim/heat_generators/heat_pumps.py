@@ -45,6 +45,8 @@ class HeatPump(BaseHeatGenerator):
         self.Nutzungsdauer_WQ_dict = {"Abwärmepumpe": 20, "Abwasserwärmepumpe": 20, "Flusswärmepumpe": 20, "Geothermie": 30}
         self.co2_factor_electricity = 2.4 # tCO2/MWh electricity
 
+        self.strategy = HeatPumpStrategy(75, 70)
+        
         self.init_operation(8760)
 
     def init_operation(self, hours):
@@ -57,7 +59,7 @@ class HeatPump(BaseHeatGenerator):
         self.Betriebsstunden = 0
         self.Betriebsstunden_pro_Start = 0
 
-        self.strategy = HeatPumpStrategy(75, 70)
+        self.calculated = False  # Flag to indicate if the calculation is done
 
     def calculate_COP(self, VLT_L, QT, COP_data):
         """
@@ -289,8 +291,11 @@ class RiverHeatPump(HeatPump):
         Returns:
             dict: Dictionary containing calculated metrics and results.
         """
+
+        # Check if the calculation has already been done
+        if self.calculated == False:
+            self.calculate_operation(load_profile, VLT_L, COP_data, duration)
         
-        self.calculate_operation(load_profile, VLT_L, COP_data, duration)
         self.WGK = self.calculate_heat_generation_costs(self.Wärmeleistung_FW_WP, self.Wärmemenge_MWh, self.Strommenge_MWh, self.spez_Investitionskosten_Flusswasser, economic_parameters)
         self.calculate_environmental_impact()
 
@@ -317,14 +322,12 @@ class RiverHeatPump(HeatPump):
 
         Args:
             t (int): Current time step.
-            remaining_demand (float): Remaining heat demand in kW.
-            VLT_L (float): Flow temperature at the current time step.
-            COP_data (array-like): COP data for interpolation.
+            kwargs (dict): Additional parameters including remaining load, flow temperature, and COP data.
 
         Returns:
             tuple: Heat generation (kW) and electricity consumption (kW).
         """
-        remaining_demand = kwargs.get('remaining_demand', 0)
+        remaining_load = kwargs.get('remaining_load', 0)
         VLT_L = kwargs.get('VLT_L', 0)
         COP_data = kwargs.get('COP_data', None)
 
@@ -337,9 +340,9 @@ class RiverHeatPump(HeatPump):
         el_Leistung = self.Wärmeleistung_FW_WP - Kühlleistung
 
         # Check if the heat pump can operate
-        if remaining_demand >= self.Wärmeleistung_FW_WP * self.min_Teillast and VLT_L_WP >= VLT_L - self.dT:
+        if remaining_load >= self.Wärmeleistung_FW_WP * self.min_Teillast and VLT_L_WP >= VLT_L - self.dT:
             # Generate heat and consume electricity
-            self.Wärmeleistung_kW[t] = min(remaining_demand, self.Wärmeleistung_FW_WP)
+            self.Wärmeleistung_kW[t] = min(remaining_load, self.Wärmeleistung_FW_WP)
             self.el_Leistung_kW[t] = self.Wärmeleistung_kW[t] - (self.Wärmeleistung_kW[t] / self.Wärmeleistung_FW_WP) * el_Leistung
 
             # Update cumulative metrics
@@ -503,10 +506,12 @@ class WasteHeatPump(HeatPump):
         Returns:
             dict: Dictionary containing calculated metrics and results.
         """
+        
+        # Check if the calculation has already been done
+        if self.calculated == False:
+            self.calculate_operation(load_profile, VLT_L, COP_data, duration)
 
-        self.calculate_operation(load_profile, VLT_L, COP_data, duration)
         self.WGK = self.calculate_heat_generation_costs(self.max_Wärmeleistung, self.Wärmemenge_MWh, self.Strommenge_MWh, self.spez_Investitionskosten_Abwärme, economic_parameters)
-
         self.calculate_environmental_impact()
 
         results = {
@@ -532,14 +537,12 @@ class WasteHeatPump(HeatPump):
 
         Args:
             t (int): Current time step.
-            remaining_demand (float): Remaining heat demand in kW.
-            VLT_L (float): Flow temperature at the current time step.
-            COP_data (array-like): COP data for interpolation.
+            kwargs (dict): Additional parameters including remaining load, flow temperature, and COP data.
 
         Returns:
             tuple: Heat generation (kW) and electricity consumption (kW).
         """
-        remaining_demand = kwargs.get('remaining_demand', 0)
+        remaining_load = kwargs.get('remaining_load', 0)
         VLT_L = kwargs.get('VLT_L', 0)
         COP_data = kwargs.get('COP_data', None)
 
@@ -552,9 +555,9 @@ class WasteHeatPump(HeatPump):
         el_Leistung = Wärmeleistung - self.Kühlleistung_Abwärme
 
         # Check if the heat pump can operate
-        if remaining_demand >= Wärmeleistung * self.min_Teillast and VLT_L_WP >= VLT_L:
+        if remaining_load >= Wärmeleistung * self.min_Teillast and VLT_L_WP >= VLT_L:
             # Generate heat and consume electricity
-            self.Wärmeleistung_kW[t] = min(remaining_demand, Wärmeleistung)
+            self.Wärmeleistung_kW[t] = min(remaining_load, Wärmeleistung)
             self.el_Leistung_kW[t] = self.Wärmeleistung_kW[t] - (self.Wärmeleistung_kW[t] / Wärmeleistung) * el_Leistung
 
             # Update cumulative metrics
@@ -739,7 +742,9 @@ class Geothermal(HeatPump):
             dict: Dictionary containing calculated metrics and results.
         """
 
-        self.calculate_operation(load_profile, VLT_L, COP_data, duration)
+        # Check if the calculation has already been done
+        if self.calculated == False:
+            self.calculate_operation(load_profile, VLT_L, COP_data, duration)
 
         # To do: Fix RuntimeWarning: divide by zero encountered in scalar divide
         self.spez_Investitionskosten_Erdsonden = self.Investitionskosten_Sonden / self.max_Wärmeleistung
@@ -770,14 +775,12 @@ class Geothermal(HeatPump):
 
         Args:
             t (int): Current time step.
-            remaining_demand (float): Remaining heat demand in kW.
-            VLT_L (float): Flow temperature at the current time step.
-            COP_data (array-like): COP data for interpolation.
+            kwargs (dict): Additional parameters including remaining load, flow temperature, and COP data.
 
         Returns:
             tuple: Heat generation (kW) and electricity consumption (kW).
         """
-        remaining_demand = kwargs.get('remaining_demand', 0)
+        remaining_load = kwargs.get('remaining_load', 0)
         VLT_L = kwargs.get('VLT_L', 0)
         COP_data = kwargs.get('COP_data', None)
 
@@ -800,9 +803,9 @@ class Geothermal(HeatPump):
         el_Leistung = Wärmeleistung - Entzugsleistung
 
         # Betriebsbedingungen prüfen
-        if remaining_demand >= Wärmeleistung * self.min_Teillast and VLT_L_WP >= VLT_L:
+        if remaining_load >= Wärmeleistung * self.min_Teillast and VLT_L_WP >= VLT_L:
             # Wärme erzeugen und Stromverbrauch berechnen
-            self.Wärmeleistung_kW[t] = min(remaining_demand, Wärmeleistung)
+            self.Wärmeleistung_kW[t] = min(remaining_load, Wärmeleistung)
             self.el_Leistung_kW[t] = self.Wärmeleistung_kW[t] - (self.Wärmeleistung_kW[t] / Wärmeleistung) * el_Leistung
 
             # Kumulative Werte aktualisieren

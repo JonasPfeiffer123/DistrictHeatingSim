@@ -19,7 +19,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def test_gas_boiler(Last_L, duration, economic_parameters, gBoiler=gas_boiler.GasBoiler(name="Gas_Boiler_1", spez_Investitionskosten=30, Nutzungsgrad=0.9, Faktor_Dimensionierung=1)):
-    gBoiler.simulate_operation(Last_L, duration)
+    gBoiler.calculate_operation(Last_L, duration)
     gBoiler.calculate_heat_generation_cost(economic_parameters)
     gBoiler.calculate_environmental_impact()
 

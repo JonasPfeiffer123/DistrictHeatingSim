@@ -141,7 +141,7 @@ class EnergySystemTab(QWidget):
 
         addHeatGeneratorMenu = self.menuBar.addMenu('Wärmeerzeuger hinzufügen')
 
-        heatGenerators = ["Solarthermie", "BHKW", "Holzgas-BHKW", "Geothermie", "Abwärme", "Flusswasser", "AqvaHeat", "Biomassekessel", "Gaskessel", "Power-to-Heat"]
+        heatGenerators = ["Solarthermie", "BHKW", "Holzgas-BHKW", "Geothermie", "Abwärmepumpe", "Flusswärmepumpe", "AqvaHeat", "Biomassekessel", "Gaskessel", "Power-to-Heat"]
         for generator in heatGenerators:
             action = QAction(generator, self)
             action.triggered.connect(lambda checked, gen=generator: self.techTab.addTech(gen, None))
@@ -290,6 +290,8 @@ class EnergySystemTab(QWidget):
             self.TRY_filename = self.data_manager.get_try_filename()
             self.COP_filename = self.data_manager.get_cop_filename()
             self.load_scale_factor = float(self.techTab.load_scale_factorInput.text())
+
+            print(f"techTab tech_objects: {self.techTab.tech_objects}")
 
             self.calculationThread = CalculateEnergySystemThread(self.csv_filename, self.load_scale_factor, self.TRY_filename, self.COP_filename, 
                                                         self.economic_parameters, self.techTab.tech_objects, self.optimize, weights)
