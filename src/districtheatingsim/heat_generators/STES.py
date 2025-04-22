@@ -642,10 +642,10 @@ class StratifiedThermalStorage(ThermalStorage):
 
         # Add labels, title, and color bar only if they haven't been added before
         if not self.labels_exist:
-            ax.set_title('Temperature Stratification (Time Step {})'.format(time_step))
+            ax.set_title('Temperaturverteilung (Zeitschritt {})'.format(time_step))
             ax.set_xlabel('X (m)')
             ax.set_ylabel('Y (m)')
-            ax.set_zlabel('Height (m)')
+            ax.set_zlabel('Z (m)')
             self.labels_exist = True  # Set flag to prevent re-drawing
 
         if not self.colorbar_exists:
@@ -653,7 +653,7 @@ class StratifiedThermalStorage(ThermalStorage):
             mappable = plt.cm.ScalarMappable(cmap=plt.cm.coolwarm)
             mappable.set_array([self.T_min, self.T_max])
             cbar = plt.colorbar(mappable, ax=ax, shrink=0.5, aspect=5)
-            cbar.set_label('Temperature (°C)')
+            cbar.set_label('Temperatur (°C)')
             self.colorbar_exists = True  # Set flag to prevent re-drawing
     
     def plot_results(self):
@@ -946,7 +946,7 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
 
         axs1.set_ylabel('Wärme (kW)')
         axs1.set_title('Wärmeerzeugung, -verbrauch und Speicher-Nettofluss')
-        axs1.legend()
+        axs1.legend(loc='upper left', bbox_to_anchor=(0, 1)) # Legend outside the plot
 
         # Plot storage temperature
         axs2.plot(self.T_sto, label='Speichertemperatur')
@@ -954,22 +954,22 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
         axs2.plot(T_Q_out_return, label='Rücklauftemperatur Verbraucher (Eintritt)', linestyle='--', color='orange')
         axs2.plot(self.T_Q_in_return, label='Rücklauftemperatur Erzeuger (Austritt)', linestyle='--', color='purple')
         axs2.plot(self.T_Q_out_flow, label='Vorlauftemperatur Verbraucher (Austritt)', linestyle='--', color='brown')
-        axs2.plot(self.storage_state, label='Speicherzustand', linestyle='--', color='black')
+        #axs2.plot(self.storage_state, label='Speicherzustand', linestyle='--', color='black')
         axs2.set_ylabel('Temperatur (°C)')
         axs2.set_title(f'Systemtemperaturen im Zeitverlauf')
-        axs2.legend()
+        axs2.legend(loc='upper left', bbox_to_anchor=(0, 1))  # Adjust legend position
 
         # Plot heat loss
         axs3.plot(self.Q_loss, label='Wärmeverlust', color='orange')
         axs3.set_ylabel('Wärmeverlust (kW)')
         axs3.set_title('Wärmeverlust im Zeitverlauf')
-        axs3.legend()
+        axs3.legend(loc='upper left', bbox_to_anchor=(0, 1))  # Adjust legend position
 
         # Plot stored heat
         axs4.plot(self.Q_sto, label='Gespeicherte Wärme', color='green')
         axs4.set_ylabel('Gespeicherte Wärme (kWh)')
         axs4.set_title('Gespeicherte Wärme im Zeitverlauf')
-        axs4.legend()
+        axs4.legend(loc='upper left', bbox_to_anchor=(0, 1))  # Adjust legend position
 
         # Plot stratified storage temperatures
         for i in range(self.T_sto_layers.shape[1]):
@@ -977,7 +977,7 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
         axs5.set_xlabel('Zeit (Stunden)')
         axs5.set_ylabel('Temperatur (°C)')
         axs5.set_title('Temperaturen der Schichten im Speicher')
-        axs5.legend()
+        axs5.legend(loc='upper left', bbox_to_anchor=(0, 1))  # Adjust legend position
 
         # Plot 3D geometry
         self.plot_3d_temperature_distribution(axs6, 6000)

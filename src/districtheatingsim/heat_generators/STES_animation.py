@@ -77,7 +77,7 @@ class STESAnimation:
         self.current_frame = int(val)
         self.ax.cla()  # Clear the axis
         self.storage.plot_3d_temperature_distribution(self.ax, self.current_frame)
-        self.ax.set_title(f'Temperature Stratification (Time Step {self.current_frame})')
+        self.ax.set_title(f'Temperatureverteilung (Zeitschritt {self.current_frame})')
         plt.draw()
 
     def animate(self, i):
