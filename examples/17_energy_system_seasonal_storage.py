@@ -92,13 +92,13 @@ energy_system.add_storage(storage)
 #energy_system.add_technology(waste_heat_pump)
 #waste_heat_pump.strategy = HeatPumpStrategy(charge_on=75, charge_off=70)
 
-waste_water_heat_pump = WasteHeatPump("Abwasserwärmepumpe_1", Kühlleistung_Abwärme=200, Temperatur_Abwärme=20)
-energy_system.add_technology(waste_water_heat_pump)
-waste_water_heat_pump.strategy = HeatPumpStrategy(charge_on=75, charge_off=70)
+#waste_water_heat_pump = WasteHeatPump("Abwasserwärmepumpe_1", Kühlleistung_Abwärme=200, Temperatur_Abwärme=20)
+#energy_system.add_technology(waste_water_heat_pump)
+#waste_water_heat_pump.strategy = HeatPumpStrategy(charge_on=75, charge_off=70)
 
-#geothermal_heat_pump = Geothermal("Geothermie_1", Fläche=1000, Bohrtiefe=100, Temperatur_Geothermie=20)
-#energy_system.add_technology(geothermal_heat_pump)
-#geothermal_heat_pump.strategy = HeatPumpStrategy(charge_on=75, charge_off=70)
+geothermal_heat_pump = Geothermal("Geothermie_1", Fläche=10000, Bohrtiefe=100, Temperatur_Geothermie=20)
+energy_system.add_technology(geothermal_heat_pump)
+geothermal_heat_pump.strategy = HeatPumpStrategy(charge_on=75, charge_off=70)
 
 # Berechne den Energiemix mit Speicher
 results = energy_system.calculate_mix()
