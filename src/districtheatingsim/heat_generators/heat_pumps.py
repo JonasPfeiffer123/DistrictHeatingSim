@@ -615,63 +615,98 @@ class Geothermal(HeatPump):
         self.min_depth_geothermal = min_depth_geothermal
         self.max_depth_geothermal = max_depth_geothermal
 
+        self.Anzahl_Sonden = (round(np.sqrt(self.Fläche) / self.Abstand_Sonden) + 1) ** 2
+        self.Entzugsleistung_VBH = self.Bohrtiefe * self.spez_Entzugsleistung * self.Anzahl_Sonden / 1000 # kW bei 2400 h, 22 Sonden, 50 W/m: 220 kW
+        self.Entzugswärmemenge = self.Entzugsleistung_VBH * self.Vollbenutzungsstunden / 1000  # MWh
+        self.Investitionskosten_Sonden = self.Bohrtiefe * self.spez_Bohrkosten * self.Anzahl_Sonden
+
     def calculate_operation(self, Last_L, VLT_L, COP_data):
         
-        if self.Fläche == 0 or self.Bohrtiefe == 0:
-            return 0, 0, np.zeros_like(Last_L), np.zeros_like(VLT_L)
+        if self.Fläche > 0 and self.Bohrtiefe > 0:
 
-        Anzahl_Sonden = (round(np.sqrt(self.Fläche) / self.Abstand_Sonden) + 1) ** 2
+            self.COP, self.VLT_WP = self.calculate_COP(VLT_L, self.Temperatur_Geothermie, COP_data)
 
-        Entzugsleistung_2400 = self.Bohrtiefe * self.spez_Entzugsleistung * Anzahl_Sonden / 1000
-        # kW bei 2400 h, 22 Sonden, 50 W/m: 220 kW
-        Entzugswärmemenge = Entzugsleistung_2400 * self.Vollbenutzungsstunden / 1000  # MWh
-        self.Investitionskosten_Sonden = self.Bohrtiefe * self.spez_Bohrkosten * Anzahl_Sonden
+            # tatsächliche Anzahl der Betriebsstunden der Wärmepumpe hängt von der Wärmeleistung ab,
+            # diese hängt über Entzugsleistung von der angenommenen Betriebsstundenzahl ab
+            B_min = 1
+            B_max = 8760
+            tolerance = 0.5
+            while B_max - B_min > tolerance:
+                B = (B_min + B_max) / 2
+                # Berechnen der Entzugsleistung
+                Entzugsleistung = self.Entzugswärmemenge * 1000 / B  # kW
 
-        COP_L, VLT_WP = self.calculate_COP(VLT_L, self.Temperatur_Geothermie, COP_data)
+                # Berechnen der Wärmeleistung
+                self.Wärmeleistung_kW = Entzugsleistung / (1 - (1 / self.COP))
 
-        # tatsächliche Anzahl der Betriebsstunden der Wärmepumpe hängt von der Wärmeleistung ab,
-        # diese hängt über Entzugsleistung von der angenommenen Betriebsstundenzahl ab
-        B_min = 1
-        B_max = 8760
-        tolerance = 0.5
-        while B_max - B_min > tolerance:
-            B = (B_min + B_max) / 2
-            # Berechnen der Entzugsleistung
-            Entzugsleistung = Entzugswärmemenge * 1000 / B  # kW
-            # Berechnen der Wärmeleistung und elektrischen Leistung
-            self.Wärmeleistung_kW = Entzugsleistung / (1 - (1 / COP_L))
+                # Fälle, in denen die Wärmepumpe betrieben werden kann
+                self.betrieb_mask = Last_L >= self.Wärmeleistung_kW * self.min_Teillast
+                self.Wärmeleistung_kW[self.betrieb_mask] = np.minimum(Last_L[self.betrieb_mask], self.Wärmeleistung_kW[self.betrieb_mask])
+                self.el_Leistung_kW[self.betrieb_mask] = self.Wärmeleistung_kW[self.betrieb_mask] - (Entzugsleistung * np.ones_like(Last_L))[self.betrieb_mask]
+                
+                # Berechnen der tatsächlichen Werte
+                Entzugsleistung_tat_L = np.zeros_like(Last_L)
+                Entzugsleistung_tat_L[self.betrieb_mask] = self.Wärmeleistung_kW[self.betrieb_mask] - self.el_Leistung_kW[self.betrieb_mask]
+                Entzugswärme = np.sum(Entzugsleistung_tat_L) / 1000
 
-            # Berechnen der tatsächlichen Werte
-            self.Wärmeleistung_kW = np.zeros_like(Last_L)
-            self.el_Leistung_kW = np.zeros_like(Last_L)
-            Entzugsleistung_tat_L = np.zeros_like(Last_L)
+                if Entzugswärme > self.Entzugswärmemenge:
+                    B_min = B
+                else:
+                    B_max = B
 
-            # Fälle, in denen die Wärmepumpe betrieben werden kann
-            self.betrieb_mask = Last_L >= self.Wärmeleistung_kW * self.min_Teillast
-            self.Wärmeleistung_kW[self.betrieb_mask] = np.minimum(Last_L[self.betrieb_mask], self.Wärmeleistung_kW[self.betrieb_mask])
-            self.el_Leistung_kW[self.betrieb_mask] = self.Wärmeleistung_kW[self.betrieb_mask] - (Entzugsleistung * np.ones_like(Last_L))[self.betrieb_mask]
-            Entzugsleistung_tat_L[self.betrieb_mask] = self.Wärmeleistung_kW[self.betrieb_mask] - self.el_Leistung_kW[self.betrieb_mask]
+        else:
+            # Wenn die Geothermie nicht verfügbar ist, setze alle Werte auf Null
+            self.betrieb_mask = np.zeros_like(Last_L, dtype=bool)
+            self.Wärmeleistung_kW = np.zeros_like(Last_L, dtype=float)
+            self.el_Leistung_kW = np.zeros_like(Last_L, dtype=float)
+            self.VLT_WP = np.zeros_like(Last_L, dtype=float)
+            self.COP = np.zeros_like(Last_L, dtype=float)
 
-            Entzugswärme = np.sum(Entzugsleistung_tat_L) / 1000
-            self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW) / 1000
-            self.Strommenge_MWh = np.sum(self.el_Leistung_kW) / 1000
-            Betriebsstunden = np.count_nonzero(self.Wärmeleistung_kW)
+    def generate(self, t, **kwargs):
+        """
+        Generates heat and calculates electricity consumption for the geothermal heat pump at a given time step.
 
-            # Falls es keine Nutzung gibt, wird das Ergebnis 0
-            if Betriebsstunden == 0:
-                self.Wärmeleistung_kW = np.array([0])
-                self.el_Leistung_kW = np.array([0])
+        Args:
+            t (int): Current time step.
+            kwargs (dict): Additional parameters including remaining load, flow temperature, and COP data.
 
-            if Entzugswärme > Entzugswärmemenge:
-                B_min = B
-            else:
-                B_max = B
+        Returns:
+            tuple: Heat generation (kW) and electricity consumption (kW).
+        """
+        VLT = kwargs.get('VLT_L', 0)
+        COP_data = kwargs.get('COP_data', None)
+
+        # Berechnung des COP
+        self.COP[t], self.VLT_WP[t] = self.calculate_COP(VLT, self.Temperatur_Geothermie, COP_data)
+
+        # Entzugsleistung und Wärmeleistung berechnen
+        Entzugsleistung = self.Entzugswärmemenge * 1000 / 8760  # kW (angenommene gleichmäßige Verteilung)
+        Wärmeleistung = Entzugsleistung / (1 - (1 / self.COP[t]))
+        el_Leistung = Wärmeleistung - Entzugsleistung
+
+        # Betriebsbedingungen prüfen
+        if self.active and self.VLT_WP[t] >= VLT and self.Fläche > 0 and self.Bohrtiefe > 0:
+            # Wärme erzeugen und Stromverbrauch berechnen
+            self.betrieb_mask[t] = True
+            self.Wärmeleistung_kW[t] = Wärmeleistung
+            self.el_Leistung_kW[t] = self.Wärmeleistung_kW[t] - (self.Wärmeleistung_kW[t] / Wärmeleistung) * el_Leistung
+
+        else:
+            # Keine Operation, wenn die Bedingungen nicht erfüllt sind
+            self.betrieb_mask[t] = False
+            self.Wärmeleistung_kW[t] = 0
+            self.el_Leistung_kW[t] = 0
+            self.VLT_WP[t] = 0
+            self.COP[t] = 0
+
+        return self.Wärmeleistung_kW[t], self.el_Leistung_kW[t]
 
     def calculate_results(self, duration):
         self.max_Wärmeleistung = max(self.Wärmeleistung_kW)
         self.spez_Investitionskosten_Erdsonden = self.Investitionskosten_Sonden / self.max_Wärmeleistung if self.max_Wärmeleistung > 0 else 0
 
-        self.Wärmemenge_MWh, self.Strommenge_MWh = self.Wärmemenge_MWh * duration, self.Strommenge_MWh * duration
+        self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW / 1000) * duration
+        self.Strommenge_MWh = np.sum(self.el_Leistung_kW / 1000) * duration
         self.SCOP = self.Wärmemenge_MWh / self.Strommenge_MWh if self.Strommenge_MWh > 0 else 0
         
         starts = np.diff(self.betrieb_mask.astype(int)) > 0
@@ -708,7 +743,7 @@ class Geothermal(HeatPump):
         results = {
             'tech_name': self.name,
             'Wärmemenge': self.Wärmemenge_MWh,
-            'self.Wärmeleistung_kW': self.Wärmeleistung_kW,
+            'Wärmeleistung_kW': self.Wärmeleistung_kW,
             'Strombedarf': self.Strommenge_MWh,
             'el_Leistung_L': self.el_Leistung_kW,
             'WGK': self.WGK,
@@ -721,59 +756,6 @@ class Geothermal(HeatPump):
         }
 
         return results
-    
-    def generate(self, t, **kwargs):
-        """
-        Generates heat and calculates electricity consumption for the geothermal heat pump at a given time step.
-
-        Args:
-            t (int): Current time step.
-            kwargs (dict): Additional parameters including remaining load, flow temperature, and COP data.
-
-        Returns:
-            tuple: Heat generation (kW) and electricity consumption (kW).
-        """
-        remaining_load = kwargs.get('remaining_load', 0)
-        VLT_L = kwargs.get('VLT_L', 0)
-        COP_data = kwargs.get('COP_data', None)
-
-        if self.Fläche == 0 or self.Bohrtiefe == 0:
-            return 0, 0  # No operation if the geothermal system is not configured
-
-        # Anzahl der Sonden berechnen
-        Anzahl_Sonden = (round(np.sqrt(self.Fläche) / self.Abstand_Sonden) + 1) ** 2
-
-        # Entzugsleistung bei 2400 Vollbenutzungsstunden
-        Entzugsleistung_2400 = self.Bohrtiefe * self.spez_Entzugsleistung * Anzahl_Sonden / 1000  # kW
-        Entzugswärmemenge = Entzugsleistung_2400 * self.Vollbenutzungsstunden / 1000  # MWh
-
-        # Berechnung des COP
-        COP, VLT_L_WP = self.calculate_COP(VLT_L, self.Temperatur_Geothermie, COP_data)
-
-        # Entzugsleistung und Wärmeleistung berechnen
-        Entzugsleistung = Entzugswärmemenge * 1000 / 8760  # kW (angenommene gleichmäßige Verteilung)
-        Wärmeleistung = Entzugsleistung / (1 - (1 / COP))
-        el_Leistung = Wärmeleistung - Entzugsleistung
-
-        # Betriebsbedingungen prüfen
-        if self.active and VLT_L_WP >= VLT_L:
-            # Wärme erzeugen und Stromverbrauch berechnen
-            self.Wärmeleistung_kW[t] = Wärmeleistung
-            self.el_Leistung_kW[t] = self.Wärmeleistung_kW[t] - (self.Wärmeleistung_kW[t] / Wärmeleistung) * el_Leistung
-
-            # Kumulative Werte aktualisieren
-            self.Wärmemenge_MWh += self.Wärmeleistung_kW[t] / 1000
-            self.Strommenge_MWh += self.el_Leistung_kW[t] / 1000
-
-            # Starts und Betriebsstunden aktualisieren
-            if self.Wärmeleistung_kW[t] > 0 and (t == 0 or self.Wärmeleistung_kW[t - 1] == 0):
-                self.Anzahl_Starts += 1
-            self.Betriebsstunden += 1
-            self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
-
-            return self.Wärmeleistung_kW[t], self.el_Leistung_kW[t]
-
-        return 0, 0  # Keine Operation, wenn Bedingungen nicht erfüllt sind
     
     def set_parameters(self, variables, variables_order, idx):
         try:
