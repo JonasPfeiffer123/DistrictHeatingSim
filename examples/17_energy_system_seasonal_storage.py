@@ -65,13 +65,13 @@ storage = TemperatureStratifiedThermalStorage(name="Saisonalspeicher", **storage
 energy_system.add_storage(storage)
 
 # Füge Generatoren hinzu
-chp = CHP("BHKW_1", th_Leistung_BHKW=300)
-energy_system.add_technology(chp)
-chp.strategy = CHPStrategy(charge_on=75, charge_off=70)
+#chp = CHP("BHKW_1", th_Leistung_BHKW=300)
+#energy_system.add_technology(chp)
+#chp.strategy = CHPStrategy(charge_on=75, charge_off=70)
 
-pth = PowerToHeat("PtH_1", thermal_capacity_kW=500)
-energy_system.add_technology(pth)
-pth.strategy = PowerToHeatStrategy(charge_on=75)
+#pth = PowerToHeat("PtH_1", thermal_capacity_kW=500)
+#energy_system.add_technology(pth)
+#pth.strategy = PowerToHeatStrategy(charge_on=75)
 
 # Biomasssboiler hinzufügen
 #biomass_boiler = BiomassBoiler("Biomassekessel_1", thermal_capacity_kW=500)
@@ -84,11 +84,11 @@ pth.strategy = PowerToHeatStrategy(charge_on=75)
 #gas_boiler.strategy = GasBoilerStrategy(charge_on=70)
 
 # Erneuerbare Energien hinzufügen
-#river_heat_pump = RiverHeatPump("Flusswärmepumpe_1", Wärmeleistung_FW_WP=200, Temperatur_FW_WP=20)
-#energy_system.add_technology(river_heat_pump)
-#river_heat_pump.strategy = HeatPumpStrategy(charge_on=75, charge_off=70)
+river_heat_pump = RiverHeatPump("Flusswärmepumpe_1", Wärmeleistung_FW_WP=600, Temperatur_FW_WP=20)
+energy_system.add_technology(river_heat_pump)
+river_heat_pump.strategy = HeatPumpStrategy(charge_on=75, charge_off=70)
 
-#waste_heat_pump = WasteHeatPump("Abwärmepumpe_1", Kühlleistung_Abwärme=200, Temperatur_Abwärme=20)
+#waste_heat_pump = WasteHeatPump("Abwärmepumpe_1", Kühlleistung_Abwärme=400, Temperatur_Abwärme=20)
 #energy_system.add_technology(waste_heat_pump)
 #waste_heat_pump.strategy = HeatPumpStrategy(charge_on=75, charge_off=70)
 
@@ -113,7 +113,7 @@ print(f"Stagnationsdauer: {results['storage_class'].stagnation_time} h")
 
 
 # Ergebnisse plotten
-results['storage_class'].plot_results(results["Wärmeleistung_L"][0]+results["Wärmeleistung_L"][1], load_profile, VLT_L, RLT_L)
+results['storage_class'].plot_results(results["Wärmeleistung_L"][0], load_profile, VLT_L, RLT_L)
 energy_system.plot_stack_plot()
 energy_system.plot_pie_chart()
 plt.show()

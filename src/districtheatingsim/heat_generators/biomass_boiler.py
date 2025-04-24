@@ -76,6 +76,7 @@ class BiomassBoiler(BaseHeatGenerator):
         self.init_operation(8760)
 
     def init_operation(self, hours):
+        self.betrieb_mask = np.array([False] * hours)
         self.Wärmeleistung_kW = np.array([0] * hours)
         self.Wärmemenge_MWh = 0
         self.Brennstoffbedarf_MWh = 0
@@ -160,10 +161,14 @@ class BiomassBoiler(BaseHeatGenerator):
         """
         
         if self.active:
+            self.betrieb_mask[t] = True
             self.Wärmeleistung_kW[t] = self.thermal_capacity_kW
 
-            return self.Wärmeleistung_kW[t], 0 # Wärmeleistung in kW
-        return 0, 0
+        else:
+            self.betrieb_mask[t] = False
+            self.Wärmeleistung_kW[t] = 0
+
+        return self.Wärmeleistung_kW[t], 0 # Wärmeleistung in kW, Stromerzeugung in kW
     
     def calculate_results(self, duration):
         self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW / 1000) * duration
@@ -261,7 +266,7 @@ class BiomassBoiler(BaseHeatGenerator):
 
         if self.speicher_aktiv:
             results['Wärmeleistung_Speicher_L'] = self.Wärmeleistung_Speicher_kW
-            results['Speicherfüllstand_L'] = self.speicher_fuellstand
+            results['Speicherfüllstand_L'] = self.Speicher_Fuellstand
 
         return results
     

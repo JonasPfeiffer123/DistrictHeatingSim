@@ -212,6 +212,7 @@ class SolarThermal(BaseHeatGenerator):
         self.QSmax = 1.16 * self.vs * (self.Tsmax - self.Tm_rl)
 
     def init_operation(self, hours):
+        self.betrieb_mask = np.array([False] * hours)
         self.Wärmeleistung_kW = np.zeros(hours)
         self.Speicherladung = np.zeros(hours)
         self.Speicherfüllstand = np.zeros(hours)

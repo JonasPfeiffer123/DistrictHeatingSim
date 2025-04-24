@@ -95,6 +95,7 @@ class CHP(BaseHeatGenerator):
         self.init_operation(8760)
 
     def init_operation(self, hours):
+        self.betrieb_mask = np.array([False] * hours)
         self.Wärmeleistung_kW = np.array([0] * hours)
         self.el_Leistung_kW = np.array([0] * hours)
         self.Wärmemenge_MWh = 0
@@ -183,11 +184,16 @@ class CHP(BaseHeatGenerator):
         """
         
         if self.active:
+            self.betrieb_mask[t] = True  # Set the operation mask to True for the current time step
             self.Wärmeleistung_kW[t] = self.th_Leistung_kW # eventuell noch Teillastverhalten nachbilden
             self.el_Leistung_kW[t] = self.th_Leistung_kW / self.thermischer_Wirkungsgrad * self.el_Wirkungsgrad
 
-            return self.Wärmeleistung_kW[t], self.el_Leistung_kW[t]
-        return 0, 0  # Wenn das BHKW ausgeschaltet ist, liefert es keine Wärme und keinen Strom
+        else:
+            self.betrieb_mask[t] = False
+            self.Wärmeleistung_kW[t] = 0
+            self.el_Leistung_kW[t] = 0
+
+        return self.Wärmeleistung_kW[t], self.el_Leistung_kW[t]
     
     def calculate_results(self, duration):
         self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW / 1000) * duration

@@ -222,8 +222,16 @@ class TechnologyTab(QWidget):
         # Erhöhe den globalen Zähler für diese Technologieklasse
         self.global_counters[base_tech_type] += 1
         unique_name = f"{base_tech_type}_{self.global_counters[base_tech_type]}"
+        
+        try:
+            # Erstelle die Technologieinstanz
+            return tech_class(name=unique_name, **inputs)
 
-        return tech_class(name=unique_name, **inputs)
+        except TypeError as e:
+            raise TypeError(
+                f"Fehler beim Erstellen der Technologie '{tech_type}': {e}\n"
+                f"Übergebene Eingaben: {inputs}"
+            )
 
     def addTech(self, tech_type, tech_data):
         """
