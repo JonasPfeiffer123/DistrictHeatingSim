@@ -48,7 +48,7 @@ class HeatPump(BaseHeatGenerator):
         self.init_operation(8760)
 
     def init_operation(self, hours):
-        self.betrieb_mask = np.array([False] * hours)
+        self.betrieb_mask = np.zeros(hours, dtype=bool)
         self.Wärmeleistung_kW = np.zeros(hours, dtype=float)
         self.el_Leistung_kW = np.zeros(hours, dtype=float)
         self.Kühlleistung_kW = np.zeros(hours, dtype=float)
@@ -319,8 +319,6 @@ class RiverHeatPump(HeatPump):
         # Check if the calculation has already been done
         if self.calculated == False:
             self.calculate_operation(load_profile, VLT_L, COP_data)
-
-        print(f"COP: {np.max(self.COP)}")
         
         self.calculate_results(duration)
         self.WGK = self.calculate_heat_generation_costs(self.Wärmeleistung_FW_WP, self.Wärmemenge_MWh, self.Strommenge_MWh, self.spez_Investitionskosten_Flusswasser, economic_parameters)
@@ -419,7 +417,7 @@ class WasteHeatPump(HeatPump):
         COP_L, VLT_WP_L = self.calculate_COP(VLT_L, self.Temperatur_Abwärme, COP_data)
 
         Wärmeleistung_kW = self.Kühlleistung_Abwärme / (1 - (1 / COP_L))
-        el_Leistung_kW = self.Wärmeleistung_kW - self.Kühlleistung_Abwärme
+        el_Leistung_kW = Wärmeleistung_kW - self.Kühlleistung_Abwärme
 
         return Wärmeleistung_kW, el_Leistung_kW, VLT_WP_L, COP_L
 
@@ -436,7 +434,7 @@ class WasteHeatPump(HeatPump):
             tuple: Heat energy, electricity demand, heat output, electric power.
         """
         if self.Kühlleistung_Abwärme > 0:
-            self.Wärmeleistung_kW, self.el_Leistung_kW, self.VLT_WP_L, self.COP_L = self.calculate_heat_pump(VLT_L, COP_data)
+            self.Wärmeleistung_kW, self.el_Leistung_kW, self.VLT_WP, self.COP = self.calculate_heat_pump(VLT_L, COP_data)
 
             # Cases where the heat pump can be operated
             self.betrieb_mask = Last_L >= self.Wärmeleistung_kW * self.min_Teillast
@@ -445,9 +443,12 @@ class WasteHeatPump(HeatPump):
 
         else:
             # If the waste heat pump is not available, set all values to zero
-            self.Wärmeleistung_kW = np.zeros_like(Last_L)
-            self.el_Leistung_kW = np.zeros_like(Last_L)
             self.betrieb_mask = np.zeros_like(Last_L, dtype=bool)
+            self.Wärmeleistung_kW = np.zeros_like(Last_L, dtype=float)
+            self.Kühlleistung_kW = np.zeros_like(Last_L, dtype=float)
+            self.el_Leistung_kW = np.zeros_like(Last_L, dtype=float)
+            self.VLT_WP = np.zeros_like(Last_L, dtype=float)
+            self.COP = np.zeros_like(Last_L, dtype=float)
 
     def generate(self, t, **kwargs):
         """
@@ -463,20 +464,23 @@ class WasteHeatPump(HeatPump):
         VLT = kwargs.get('VLT_L', 0)
         COP_data = kwargs.get('COP_data', None)
 
-        Wärmeleistung_kW, el_Leistung_kW, VLT_WP_L, COP_L = self.calculate_heat_pump(VLT, COP_data)
+        self.Wärmeleistung_kW[t], self.el_Leistung_kW[t], self.VLT_WP[t], self.COP[t] = self.calculate_heat_pump(VLT, COP_data)
 
         # Check if the heat pump can operate
-        if self.active and self.VLT_WP_L >= VLT and self.Kühlleistung_Abwärme > 0:
+        if self.active and self.VLT_WP[t] >= VLT and self.Kühlleistung_Abwärme > 0:
             # Generate heat and consume electricity
             self.betrieb_mask[t] = True
-            self.Wärmeleistung_kW[t] = Wärmeleistung_kW
-            self.el_Leistung_kW[t] = el_Leistung_kW
+            self.Kühlleistung_kW[t] = self.Kühlleistung_Abwärme
+
 
         else:
             # No operation if conditions are not met
             self.betrieb_mask[t] = False
             self.Wärmeleistung_kW[t] = 0
             self.el_Leistung_kW[t] = 0
+            self.Kühlleistung_kW[t] = 0
+            self.VLT_WP[t] = 0
+            self.COP[t] = 0
 
         return self.Wärmeleistung_kW[t], self.el_Leistung_kW[t]
     
