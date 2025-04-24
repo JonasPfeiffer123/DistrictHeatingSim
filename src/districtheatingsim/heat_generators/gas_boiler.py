@@ -52,6 +52,7 @@ class GasBoiler(BaseHeatGenerator):
         self.init_operation(8760)
 
     def init_operation(self, hours):
+        self.betrieb_mask = np.array([False] * hours)
         self.Wärmeleistung_kW = np.array([0] * hours)
         self.Wärmemenge_MWh = 0
         self.Brennstoffbedarf_MWh = 0
@@ -71,7 +72,8 @@ class GasBoiler(BaseHeatGenerator):
         Returns:
             None
         """
-        self.Wärmeleistung_kW = np.minimum(Last_L, self.thermal_capacity_kW)
+        self.betrieb_mask = Last_L > 0
+        self.Wärmeleistung_kW[self.betrieb_mask] = np.minimum(Last_L[self.betrieb_mask], self.thermal_capacity_kW)
     
     def generate(self, t, **kwargs):
         """
@@ -87,12 +89,14 @@ class GasBoiler(BaseHeatGenerator):
         """
         remaining_load = kwargs.get('remaining_load', 0)
 
-        if self.active == True:
+        if self.active:
+            self.betrieb_mask[t] = True
             self.Wärmeleistung_kW[t] = min(remaining_load, self.thermal_capacity_kW)
-            return self.Wärmeleistung_kW[t], 0
         else:
+            self.betrieb_mask[t] = False
             self.Wärmeleistung_kW[t] = 0
-            return 0, 0
+        
+        return self.Wärmeleistung_kW[t], 0 # No electricity generation
         
     def calculate_results(self, duration):
         """
@@ -107,10 +111,9 @@ class GasBoiler(BaseHeatGenerator):
         self.Brennstoffbedarf_MWh = self.Wärmemenge_MWh / self.Nutzungsgrad
         
         # Calculate number of starts and operating hours per start
-        betrieb_mask = self.Wärmeleistung_kW > 0
-        starts = np.diff(betrieb_mask.astype(int)) > 0
+        starts = np.diff(self.betrieb_mask.astype(int)) > 0
         self.Anzahl_Starts = np.sum(starts)
-        self.Betriebsstunden = np.sum(betrieb_mask) * duration
+        self.Betriebsstunden = np.sum(self.betrieb_mask) * duration
         self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
 
     def calculate_heat_generation_cost(self, economic_parameters):
