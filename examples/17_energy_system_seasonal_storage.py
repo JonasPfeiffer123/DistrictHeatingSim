@@ -84,17 +84,17 @@ energy_system.add_storage(storage)
 #gas_boiler.strategy = GasBoilerStrategy(charge_on=70)
 
 # Erneuerbare Energien hinzufügen
-river_heat_pump = RiverHeatPump("Flusswärmepumpe_1", Wärmeleistung_FW_WP=600, Temperatur_FW_WP=20)
-energy_system.add_technology(river_heat_pump)
-river_heat_pump.strategy = HeatPumpStrategy(charge_on=75, charge_off=70)
+#river_heat_pump = RiverHeatPump("Flusswärmepumpe_1", Wärmeleistung_FW_WP=600, Temperatur_FW_WP=20)
+#energy_system.add_technology(river_heat_pump)
+#river_heat_pump.strategy = HeatPumpStrategy(charge_on=75, charge_off=70)
 
-#waste_heat_pump = WasteHeatPump("Abwärmepumpe_1", Kühlleistung_Abwärme=400, Temperatur_Abwärme=20)
+#waste_heat_pump = WasteHeatPump("Abwärmepumpe_1", Kühlleistung_Abwärme=600, Temperatur_Abwärme=20)
 #energy_system.add_technology(waste_heat_pump)
 #waste_heat_pump.strategy = HeatPumpStrategy(charge_on=75, charge_off=70)
 
-#waste_water_heat_pump = WasteHeatPump("Abwasserwärmepumpe_1", Kühlleistung_Abwärme=100, Temperatur_Abwärme=10)
-#energy_system.add_technology(waste_water_heat_pump)
-#waste_water_heat_pump.strategy = HeatPumpStrategy(charge_on=75, charge_off=70)
+waste_water_heat_pump = WasteHeatPump("Abwasserwärmepumpe_1", Kühlleistung_Abwärme=200, Temperatur_Abwärme=20)
+energy_system.add_technology(waste_water_heat_pump)
+waste_water_heat_pump.strategy = HeatPumpStrategy(charge_on=75, charge_off=70)
 
 #geothermal_heat_pump = Geothermal("Geothermie_1", Fläche=1000, Bohrtiefe=100, Temperatur_Geothermie=20)
 #energy_system.add_technology(geothermal_heat_pump)
