@@ -290,6 +290,7 @@ class RiverHeatPump(HeatPump):
     def calculate_results(self, duration):
         self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW / 1000) * duration
         self.Strommenge_MWh = np.sum(self.el_Leistung_kW / 1000) * duration
+        self.SCOP = self.Wärmemenge_MWh / self.Strommenge_MWh if self.Strommenge_MWh > 0 else 0
 
         self.max_Wärmeleistung = np.max(self.Wärmeleistung_kW)
         
@@ -487,6 +488,7 @@ class WasteHeatPump(HeatPump):
     def calculate_results(self, duration):
         self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW / 1000) * duration
         self.Strommenge_MWh = np.sum(self.el_Leistung_kW / 1000) * duration
+        self.SCOP = self.Wärmemenge_MWh / self.Strommenge_MWh if self.Strommenge_MWh > 0 else 0
 
         self.max_Wärmeleistung = np.max(self.Wärmeleistung_kW)
         
@@ -638,7 +640,6 @@ class Geothermal(HeatPump):
             Entzugsleistung = Entzugswärmemenge * 1000 / B  # kW
             # Berechnen der Wärmeleistung und elektrischen Leistung
             self.Wärmeleistung_kW = Entzugsleistung / (1 - (1 / COP_L))
-            el_Leistung_L = self.Wärmeleistung_kW - Entzugsleistung
 
             # Berechnen der tatsächlichen Werte
             self.Wärmeleistung_kW = np.zeros_like(Last_L)
@@ -668,12 +669,10 @@ class Geothermal(HeatPump):
 
     def calculate_results(self, duration):
         self.max_Wärmeleistung = max(self.Wärmeleistung_kW)
-        # To do: Fix RuntimeWarning: divide by zero encountered in scalar divide
-        self.spez_Investitionskosten_Erdsonden = self.Investitionskosten_Sonden / self.max_Wärmeleistung
+        self.spez_Investitionskosten_Erdsonden = self.Investitionskosten_Sonden / self.max_Wärmeleistung if self.max_Wärmeleistung > 0 else 0
 
-        # To do: Fix RuntimeWarning: invalid value encountered in scalar divide 
-        JAZ = self.Wärmemenge_MWh / self.Strommenge_MWh
         self.Wärmemenge_MWh, self.Strommenge_MWh = self.Wärmemenge_MWh * duration, self.Strommenge_MWh * duration
+        self.SCOP = self.Wärmemenge_MWh / self.Strommenge_MWh if self.Strommenge_MWh > 0 else 0
         
         starts = np.diff(self.betrieb_mask.astype(int)) > 0
         self.Anzahl_Starts = np.sum(starts)
