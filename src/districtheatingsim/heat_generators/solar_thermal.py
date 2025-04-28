@@ -273,156 +273,6 @@ class SolarThermal(BaseHeatGenerator):
 
         self.primärenergie_Solarthermie = self.Wärmemenge_MWh * self.primärenergiefaktor
 
-    def calculate(self, economic_parameters, duration, load_profile, **kwargs):
-        VLT_L = kwargs.get('VLT_L')
-        RLT_L = kwargs.get('RLT_L')
-        TRY_data = kwargs.get('TRY_data')
-        time_steps = kwargs.get('time_steps')
-
-        """
-        Calculates the performance and cost of the solar thermal system.
-
-        Args:
-            VLT_L (array): Forward temperature profile in degrees Celsius.
-            RLT_L (array): Return temperature profile in degrees Celsius.
-            TRY_data (array): Test Reference Year data.
-            time_steps (array): Array of time steps.
-            duration (float): Duration of each time step in hours.
-            load_profile (array): Load profile of the system in kW.
-
-        Returns:
-            dict: Dictionary containing the results of the calculation.
-        """
-        # Check if the calculation has already been done
-        if self.calculated == False:
-            # Berechnung der Solarthermieanlage
-            self.Wärmemenge_MWh, self.Wärmeleistung_kW, self.Speicherladung, self.Speicherfüllstand = self.calculate_solar_thermal_with_storage(
-                load_profile,
-                VLT_L,
-                RLT_L,
-                TRY_data,
-                time_steps,
-                duration
-            )
-
-        # Calculate number of starts and operating hours per start
-        betrieb_mask = self.Wärmeleistung_kW > 0
-        starts = np.diff(betrieb_mask.astype(int)) > 0
-        self.Anzahl_Starts = np.sum(starts)
-        self.Betriebsstunden = np.sum(betrieb_mask) * duration
-        self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
-    
-        
-        # Berechnung der Wärmegestehungskosten
-        self.WGK = self.calculate_heat_generation_costs(economic_parameters)
-
-        self.calculate_environmental_impact()
-
-        results = {
-            'tech_name': self.name,
-            'Wärmemenge': self.Wärmemenge_MWh,
-            'Wärmeleistung_L': self.Wärmeleistung_kW,
-            'WGK': self.WGK,
-            'Anzahl_Starts': self.Anzahl_Starts,
-            'Betriebsstunden': self.Betriebsstunden,
-            'Betriebsstunden_pro_Start': self.Betriebsstunden_pro_Start,
-            'spec_co2_total': self.spec_co2_total,
-            'primärenergie': self.primärenergie_Solarthermie,
-            'Speicherladung_L': self.Speicherladung,
-            'Speicherfüllstand_L': self.Speicherfüllstand,
-            'color': "red"
-        }
-
-        return results
-    
-    def generate(self, t, **kwargs):
-        """
-        Generates heat for the solar thermal system at a given time step.
-
-        Args:
-            t (int): Current time step.
-            kwargs (dict): Additional arguments including load profile, TRY data, and time steps.
-
-        Returns:
-            float: Heat generation (kW) for the current time step.
-        """
-        remaining_demand = kwargs.get('remaining_demand')
-        VLT_L = kwargs.get('VLT_L')
-        RLT_L = kwargs.get('RLT_L')
-        TRY_data = kwargs.get('TRY_data')
-        time_steps = kwargs.get('time_steps')
-        duration = kwargs.get('duration')
-
-        # Berechnung der Solarthermieanlage für den aktuellen Zeitschritt
-        Gesamtwärmemenge, Wärmeleistung, Speicherladung, Speicherfüllstand = self.calculate_solar_thermal_with_storage(
-            remaining_demand,  # Nur den aktuellen Zeitschritt übergeben
-            VLT_L,
-            RLT_L,
-            TRY_data,
-            time_steps,
-            duration
-        )
-
-        # Ergebnisse für den aktuellen Zeitschritt speichern
-        self.Wärmeleistung_kW[t] = Wärmeleistung[0]
-        self.Speicherladung[t] = Speicherladung[0]
-        self.Speicherfüllstand[t] = Speicherfüllstand[0]
-
-        # Kumulative Werte aktualisieren
-        self.Wärmemenge_MWh += Wärmeleistung[0] / 1000  # kW -> MWh
-        if Wärmeleistung[0] > 0:
-            self.Betriebsstunden += duration
-            if t == 0 or self.Wärmeleistung_kW[t - 1] == 0:
-                self.Anzahl_Starts += 1
-        self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
-
-        return Wärmeleistung[0]  # Rückgabe der erzeugten Wärmeleistung für den aktuellen Zeitschritt
-    
-    def set_parameters(self, variables, variables_order, idx):
-        """
-        Setzt spezifische Parameter für Solarthermie basierend auf den Optimierungsvariablen.
-
-        Args:
-            variables (list): Liste der Optimierungsvariablen.
-            variables_order (list): Reihenfolge der Variablen, die ihre Zuordnung beschreibt.
-            idx (int): Index der aktuellen Technologie in der Liste.
-        """
-        try:
-            self.bruttofläche_STA = variables[variables_order.index(f"bruttofläche_STA_{idx}")]
-            self.vs = variables[variables_order.index(f"vs_{idx}")]
-        except ValueError as e:
-            print(f"Fehler beim Setzen der Parameter für {self.name}: {e}")
-
-    def add_optimization_parameters(self, idx):
-        """
-        Fügt Optimierungsparameter für Solarthermie hinzu und gibt sie zurück.
-
-        Args:
-            idx (int): Index der Technologie in der Liste.
-
-        Returns:
-            tuple: Initiale Werte, Variablennamen und Grenzen der Variablen.
-        """
-
-        initial_values = [self.bruttofläche_STA, self.vs]
-        variables_order = [f"bruttofläche_STA_{idx}", f"vs_{idx}"]
-        bounds = [(self.opt_area_min, self.opt_area_max), (self.opt_volume_min, self.opt_volume_max)]
-        
-        return initial_values, variables_order, bounds
-
-    def get_display_text(self):
-        return (f"{self.name}: Bruttokollektorfläche: {self.bruttofläche_STA:.1f} m², "
-                f"Volumen Solarspeicher: {self.vs:.1} m³, Kollektortyp: {self.Typ}, "
-                f"spez. Kosten Speicher: {self.kosten_speicher_spez:.1f} €/m³, "
-                f"spez. Kosten Flachkollektor: {self.kosten_fk_spez:.1f} €/m², "
-                f"spez. Kosten Röhrenkollektor: {self.kosten_vrk_spez:.1f} €/m²")
-    
-    def extract_tech_data(self):
-        dimensions = f"Bruttokollektorfläche: {self.bruttofläche_STA:.1f} m², Speichervolumen: {self.vs:.1f} m³, Kollektortyp: {self.Typ}"
-        costs = f"Investitionskosten Speicher: {self.Investitionskosten_Speicher:.1f} €, Investitionskosten STA: {self.Investitionskosten_STA:.1f} €"
-        full_costs = f"{self.Investitionskosten:.1f}"
-        return self.name, dimensions, costs, full_costs
-
     def calculate_solar_thermal_with_storage(self, Last_L, VLT_L, RLT_L, TRY_data, time_steps, duration):
         """
         Berechnung der thermischen Solaranlage (STA) zur Wärmegewinnung.
@@ -690,6 +540,156 @@ class SolarThermal(BaseHeatGenerator):
             Zähler += 1
 
         return Gesamtwärmemenge, np.array(Speicher_Wärmeoutput_L).astype("float64"), np.array(Speicherladung_L).astype("float64"), np.array(Speicherfüllstand_L).astype("float64")
+
+    def calculate(self, economic_parameters, duration, load_profile, **kwargs):
+        VLT_L = kwargs.get('VLT_L')
+        RLT_L = kwargs.get('RLT_L')
+        TRY_data = kwargs.get('TRY_data')
+        time_steps = kwargs.get('time_steps')
+
+        """
+        Calculates the performance and cost of the solar thermal system.
+
+        Args:
+            VLT_L (array): Forward temperature profile in degrees Celsius.
+            RLT_L (array): Return temperature profile in degrees Celsius.
+            TRY_data (array): Test Reference Year data.
+            time_steps (array): Array of time steps.
+            duration (float): Duration of each time step in hours.
+            load_profile (array): Load profile of the system in kW.
+
+        Returns:
+            dict: Dictionary containing the results of the calculation.
+        """
+        # Check if the calculation has already been done
+        if self.calculated == False:
+            # Berechnung der Solarthermieanlage
+            self.Wärmemenge_MWh, self.Wärmeleistung_kW, self.Speicherladung, self.Speicherfüllstand = self.calculate_solar_thermal_with_storage(
+                load_profile,
+                VLT_L,
+                RLT_L,
+                TRY_data,
+                time_steps,
+                duration
+            )
+
+        # Calculate number of starts and operating hours per start
+        betrieb_mask = self.Wärmeleistung_kW > 0
+        starts = np.diff(betrieb_mask.astype(int)) > 0
+        self.Anzahl_Starts = np.sum(starts)
+        self.Betriebsstunden = np.sum(betrieb_mask) * duration
+        self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
+    
+        
+        # Berechnung der Wärmegestehungskosten
+        self.WGK = self.calculate_heat_generation_costs(economic_parameters)
+
+        self.calculate_environmental_impact()
+
+        results = {
+            'tech_name': self.name,
+            'Wärmemenge': self.Wärmemenge_MWh,
+            'Wärmeleistung_L': self.Wärmeleistung_kW,
+            'WGK': self.WGK,
+            'Anzahl_Starts': self.Anzahl_Starts,
+            'Betriebsstunden': self.Betriebsstunden,
+            'Betriebsstunden_pro_Start': self.Betriebsstunden_pro_Start,
+            'spec_co2_total': self.spec_co2_total,
+            'primärenergie': self.primärenergie_Solarthermie,
+            'Speicherladung_L': self.Speicherladung,
+            'Speicherfüllstand_L': self.Speicherfüllstand,
+            'color': "red"
+        }
+
+        return results
+    
+    def generate(self, t, **kwargs):
+        """
+        Generates heat for the solar thermal system at a given time step.
+
+        Args:
+            t (int): Current time step.
+            kwargs (dict): Additional arguments including load profile, TRY data, and time steps.
+
+        Returns:
+            float: Heat generation (kW) for the current time step.
+        """
+        remaining_demand = kwargs.get('remaining_demand')
+        VLT_L = kwargs.get('VLT_L')
+        RLT_L = kwargs.get('RLT_L')
+        TRY_data = kwargs.get('TRY_data')
+        time_steps = kwargs.get('time_steps')
+        duration = kwargs.get('duration')
+
+        # Berechnung der Solarthermieanlage für den aktuellen Zeitschritt
+        Gesamtwärmemenge, Wärmeleistung, Speicherladung, Speicherfüllstand = self.calculate_solar_thermal_with_storage(
+            remaining_demand,  # Nur den aktuellen Zeitschritt übergeben
+            VLT_L,
+            RLT_L,
+            TRY_data,
+            time_steps,
+            duration
+        )
+
+        # Ergebnisse für den aktuellen Zeitschritt speichern
+        self.Wärmeleistung_kW[t] = Wärmeleistung[0]
+        self.Speicherladung[t] = Speicherladung[0]
+        self.Speicherfüllstand[t] = Speicherfüllstand[0]
+
+        # Kumulative Werte aktualisieren
+        self.Wärmemenge_MWh += Wärmeleistung[0] / 1000  # kW -> MWh
+        if Wärmeleistung[0] > 0:
+            self.Betriebsstunden += duration
+            if t == 0 or self.Wärmeleistung_kW[t - 1] == 0:
+                self.Anzahl_Starts += 1
+        self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
+
+        return Wärmeleistung[0]  # Rückgabe der erzeugten Wärmeleistung für den aktuellen Zeitschritt
+    
+    def set_parameters(self, variables, variables_order, idx):
+        """
+        Setzt spezifische Parameter für Solarthermie basierend auf den Optimierungsvariablen.
+
+        Args:
+            variables (list): Liste der Optimierungsvariablen.
+            variables_order (list): Reihenfolge der Variablen, die ihre Zuordnung beschreibt.
+            idx (int): Index der aktuellen Technologie in der Liste.
+        """
+        try:
+            self.bruttofläche_STA = variables[variables_order.index(f"bruttofläche_STA_{idx}")]
+            self.vs = variables[variables_order.index(f"vs_{idx}")]
+        except ValueError as e:
+            print(f"Fehler beim Setzen der Parameter für {self.name}: {e}")
+
+    def add_optimization_parameters(self, idx):
+        """
+        Fügt Optimierungsparameter für Solarthermie hinzu und gibt sie zurück.
+
+        Args:
+            idx (int): Index der Technologie in der Liste.
+
+        Returns:
+            tuple: Initiale Werte, Variablennamen und Grenzen der Variablen.
+        """
+
+        initial_values = [self.bruttofläche_STA, self.vs]
+        variables_order = [f"bruttofläche_STA_{idx}", f"vs_{idx}"]
+        bounds = [(self.opt_area_min, self.opt_area_max), (self.opt_volume_min, self.opt_volume_max)]
+        
+        return initial_values, variables_order, bounds
+
+    def get_display_text(self):
+        return (f"{self.name}: Bruttokollektorfläche: {self.bruttofläche_STA:.1f} m², "
+                f"Volumen Solarspeicher: {self.vs:.1} m³, Kollektortyp: {self.Typ}, "
+                f"spez. Kosten Speicher: {self.kosten_speicher_spez:.1f} €/m³, "
+                f"spez. Kosten Flachkollektor: {self.kosten_fk_spez:.1f} €/m², "
+                f"spez. Kosten Röhrenkollektor: {self.kosten_vrk_spez:.1f} €/m²")
+    
+    def extract_tech_data(self):
+        dimensions = f"Bruttokollektorfläche: {self.bruttofläche_STA:.1f} m², Speichervolumen: {self.vs:.1f} m³, Kollektortyp: {self.Typ}"
+        costs = f"Investitionskosten Speicher: {self.Investitionskosten_Speicher:.1f} €, Investitionskosten STA: {self.Investitionskosten_STA:.1f} €"
+        full_costs = f"{self.Investitionskosten:.1f}"
+        return self.name, dimensions, costs, full_costs
 
 class SolarThermalStrategy(BaseStrategy):
     def __init__(self, charge_on, charge_off=None):
