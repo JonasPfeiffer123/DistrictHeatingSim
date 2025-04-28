@@ -108,6 +108,28 @@ from districtheatingsim.gui.dialogs import TemperatureDataDialog, HeatPumpDataDi
 
 from districtheatingsim.gui.LeafletTab.leaflet_tab import VisualizationTabLeaflet
 
+def handle_global_exception(exc_type, exc_value, exc_traceback):
+    """
+    Global exception handler to display errors in a QMessageBox.
+    """
+    if issubclass(exc_type, KeyboardInterrupt):
+        # Standardverhalten für KeyboardInterrupt beibehalten
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+
+    # Erstelle die Fehlermeldung
+    error_message = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+    print(error_message)  # Optional: Logge die Fehlermeldung in die Konsole
+
+    # Zeige die Fehlermeldung in einem Dialogfenster
+    msg_box = QMessageBox()
+    msg_box.setIcon(QMessageBox.Critical)
+    msg_box.setWindowTitle("Fehler")
+    msg_box.setText("Ein unerwarteter Fehler ist aufgetreten:")
+    msg_box.setDetailedText(error_message)
+    msg_box.setStandardButtons(QMessageBox.Ok)
+    msg_box.exec_()
+
 class ProjectConfigManager:
     """
     Handles loading and saving of project configuration and file paths.
@@ -1017,6 +1039,9 @@ def get_stylesheet_based_on_time():
         return "dark_theme_style_path"   # Pfad zum dunklen Stylesheet
 
 if __name__ == '__main__':
+    # Setze den globalen Fehler-Handler
+    sys.excepthook = handle_global_exception
+    
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
 
