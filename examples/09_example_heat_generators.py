@@ -334,7 +334,7 @@ def test_solar_thermal(Last_L, duration, economic_parameters, VLT_L, RLT_L, COP_
     time_steps = np.arange(start_date, end_date, dtype='datetime64[h]')
 
     # Die Berechnung der Solarthermie erfolgt niht in der Klasse sondern in einer externen Funktion
-    solarThermal.Wärmemenge_MWh, solarThermal.Wärmeleistung_kW, solarThermal.Speicherladung, solarThermal.Speicherfüllstand = solar_thermal.Berechnung_STA(solarThermal.bruttofläche_STA, solarThermal.vs, solarThermal.Typ, Last_L, VLT_L, RLT_L, 
+    solarThermal.Wärmemenge_MWh, solarThermal.Wärmeleistung_kW, solarThermal.Speicherinhalt, solarThermal.Speicherfüllstand = solar_thermal.Berechnung_STA(solarThermal.bruttofläche_STA, solarThermal.vs, solarThermal.Typ, Last_L, VLT_L, RLT_L, 
                                                                                                         TRY_data, time_steps, duration, solarThermal.Tsmax, solarThermal.Longitude, solarThermal.STD_Longitude, 
                                                                                                         solarThermal.Latitude, solarThermal.East_West_collector_azimuth_angle, solarThermal.Collector_tilt_angle, solarThermal.Tm_rl, 
                                                                                                         solarThermal.Qsa, solarThermal.Vorwärmung_K, solarThermal.DT_WT_Solar_K, solarThermal.DT_WT_Netz_K)
@@ -349,7 +349,7 @@ def test_solar_thermal(Last_L, duration, economic_parameters, VLT_L, RLT_L, COP_
         'WGK': solarThermal.WGK,
         'spec_co2_total': solarThermal.spec_co2_total,
         'primärenergie': solarThermal.primärenergie_Solarthermie,
-        'Speicherladung_L': solarThermal.Speicherladung,
+        'Speicherladung_L': solarThermal.Speicherinhalt,
         'Speicherfüllstand_L': solarThermal.Speicherfüllstand,
         'color': "red"
     }

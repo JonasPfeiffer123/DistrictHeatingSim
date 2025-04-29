@@ -10,7 +10,6 @@ Additional Information: Yield calculation program for solar thermal energy in he
 # Import Bibliotheken
 from math import pi, exp, log, sqrt
 import numpy as np
-from datetime import datetime, timezone
 
 from districtheatingsim.heat_generators.solar_radiation import calculate_solar_radiation
 from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
@@ -180,41 +179,13 @@ class SolarThermal(BaseHeatGenerator):
             self.IAM_W = {0: 1, 10: 1.02, 20: 1.03, 30: 1.03, 40: 1.03, 50: 0.96, 60: 1.07, 70: 1.19, 80: 0.595, 90: 0.0}
             self.IAM_N = {0: 1, 10: 1, 20: 0.99, 30: 0.96, 40: 0.93, 50: 0.9, 60: 0.87, 70: 0.86, 80: 0.43, 90: 0.0}
 
-        # Vorgabewerte Rohrleitungen
-        self.Y_R = 2  # 1 oberirdisch, 2 erdverlegt, 3...
-        self.Lrbin_E = 80
-        self.Drbin_E = 0.1071
-        self.P_KR_E = 0.26
-
-        self.AR = self.Lrbin_E * self.Drbin_E * 3.14
-        self.KR_E = self.P_KR_E * self.Lrbin_E / self.AR
-        self.VRV_bin = self.Lrbin_E * (self.Drbin_E / 2) ** 2 * 3.14
-
-        self.D46 = 0.035
-        self.D47 = self.D46 / self.KR_E / 2
-        self.L_Erdreich = 2
-        self.D49 = 0.8
-        self.D51 = self.L_Erdreich / self.D46 * log((self.Drbin_E / 2 + self.D47) / (self.Drbin_E / 2))
-        self.D52 = log(2 * self.D49 / (self.Drbin_E / 2 + self.D47)) + self.D51 + log(sqrt(1 + (self.D49 / self.Drbin_E) ** 2))
-        self.hs_RE = 1 / self.D52
-        self.D54 = 2 * pi * self.L_Erdreich * self.hs_RE
-        self.D55 = 2 * self.D54
-        self.D56 = pi * (self.Drbin_E + 2 * self.D47)
-        self.Keq_RE = self.D55 / self.D56
-        self.CRK = self.VRV_bin * 3790 / 3.6 / self.AR  # 3790 für Glykol, 4180 für Wasser
-
-        # Interne Verrohrung
-        self.VRV = 0.0006
-        self.KK = 0.06
-        self.CKK = self.VRV * 3790 / 3.6
-
         # Vorgabewerte Speicher
         self.QSmax = 1.16 * self.vs * (self.Tsmax - self.Tm_rl)
 
     def init_operation(self, hours):
         self.betrieb_mask = np.array([False] * hours)
         self.Wärmeleistung_kW = np.zeros(hours)
-        self.Speicherladung = np.zeros(hours)
+        self.Speicherinhalt = np.zeros(hours)
         self.Speicherfüllstand = np.zeros(hours)
         self.Wärmemenge_MWh = 0
         self.Anzahl_Starts = 0
@@ -288,28 +259,9 @@ class SolarThermal(BaseHeatGenerator):
         Returns:
             tuple: Gesamtwärmemenge, Wärmeoutput, Speicherladung und Speicherfüllstand.
         """
-        # To do: Refining data processing that calc1 and calc2 are not necessary, dont give the whole TRY to this function
         Lufttemperatur_L, Windgeschwindigkeit_L, Direktstrahlung_L, Globalstrahlung_L = TRY_data[0], TRY_data[1], TRY_data[2], TRY_data[3]
-
-        # Bestimmen Sie das kleinste Zeitintervall in time_steps
-        min_interval = np.min(np.diff(time_steps)).astype('timedelta64[m]').astype(int)
-
-        # Anpassen der stündlichen Werte an die time_steps
-        # Wiederholen der stündlichen Werte entsprechend des kleinsten Zeitintervalls
-        repeat_factor = 60 // min_interval  # Annahme: min_interval teilt 60 ohne Rest
-        start_time_step, end_time_step = 0, len(time_steps)
-        Lufttemperatur_L = np.repeat(Lufttemperatur_L, repeat_factor)[start_time_step:end_time_step]
-        Windgeschwindigkeit_L = np.repeat(Windgeschwindigkeit_L, repeat_factor)[start_time_step:end_time_step]
-        Direktstrahlung_L = np.repeat(Direktstrahlung_L, repeat_factor)[start_time_step:end_time_step]
-        Globalstrahlung_L = np.repeat(Globalstrahlung_L, repeat_factor)[start_time_step:end_time_step]
-
-        if self.bruttofläche_STA == 0 or self.vs == 0:
-            return 0, np.zeros_like(Last_L), np.zeros_like(Last_L), np.zeros_like(Last_L)
         
-        Tag_des_Jahres_L = np.array([datetime.fromtimestamp(t.astype('datetime64[s]').astype(np.int64), tz=timezone.utc).timetuple().tm_yday for t in time_steps])
-
-        GT_H_Gk, K_beam_L, GbT_L, GdT_H_Dk_L = calculate_solar_radiation(Globalstrahlung_L, Direktstrahlung_L, 
-                                                                        Tag_des_Jahres_L, time_steps, self.Longitude,
+        GT_H_Gk, K_beam_L, GbT_L, GdT_H_Dk_L = calculate_solar_radiation(time_steps, Globalstrahlung_L, Direktstrahlung_L, self.Longitude,
                                                                         self.STD_Longitude, self.Latitude, self.Albedo, 
                                                                         self.East_West_collector_azimuth_angle,
                                                                         self.Collector_tilt_angle, self.IAM_W, self.IAM_N)
@@ -317,7 +269,7 @@ class SolarThermal(BaseHeatGenerator):
         # Initialisierung der Arrays für die Ergebnisse
         n_steps = len(time_steps)
         self.Wärmeleistung_kW = np.zeros(n_steps)
-        self.Speicherladung = np.zeros(n_steps)
+        self.Speicherinhalt = np.zeros(n_steps)
         self.Speicherfüllstand = np.zeros(n_steps)
         Tm_a_L = np.zeros(n_steps)
         Pkoll_a_L = np.zeros(n_steps)
@@ -326,23 +278,12 @@ class SolarThermal(BaseHeatGenerator):
         T_koll_b_L = np.zeros(n_steps)
         Tgkoll_a_L = np.zeros(n_steps)
         Tgkoll_L = np.zeros(n_steps)
-        Summe_PRV_L = np.zeros(n_steps)
         self.Kollektorfeldertrag_L = np.zeros(n_steps)
         Zieltemperatur_Solaranlage_L = np.zeros(n_steps)
         TRL_Solar_L = np.zeros(n_steps)
         TS_unten_L = np.zeros(n_steps)
-        PSV_L = np.zeros(n_steps)
+        Verlustwärmestrom_Speicher_L = np.zeros(n_steps)
         self.Stagnation_L = np.zeros(n_steps)
-        
-        # Temperatur Rohrleitungsvorlauf Verbindungsleitungen
-        TRV_bin_vl_L = Lufttemperatur_L
-        # Temperatur Rohrleitungsrücklauf Verbindungsleitungen
-        TRV_bin_rl_L = Lufttemperatur_L
-
-        # Temperatur Rohrleitungsvorlauf interne Rohrleitungen
-        TRV_int_vl_L = Lufttemperatur_L
-        # Temperatur Rohrleitungsrücklauf interne Rohrleitungen
-        TRV_int_rl_L = Lufttemperatur_L
 
         for i in range(n_steps):
             Eta0b_neu_K_beam_GbT = self.Eta0b_neu * K_beam_L[i] * GbT_L[i]
@@ -362,20 +303,19 @@ class SolarThermal(BaseHeatGenerator):
                             self.KollCeff_A * self.Bezugsfläche)
                 Tgkoll_L[i] = 9.3
 
-                Summe_PRV_L[i] = 0
                 self.Kollektorfeldertrag_L[i] = 0
                 self.Wärmeleistung_kW[i] = min(self.Kollektorfeldertrag_L[i], Last_L[i])
-                PSV_L[i] = 0
-                self.Speicherladung[i] = self.Qsa * 1000
-                self.Speicherfüllstand[i] = self.Speicherladung[i] / self.QSmax  # Speicherfüllungsgrad
+                Verlustwärmestrom_Speicher_L[i] = 0
+                self.Speicherinhalt[i] = self.Qsa * 1000
+                self.Speicherfüllstand[i] = self.Speicherinhalt[i] / self.QSmax  # Speicherfüllungsgrad
                 self.Stagnation_L[i] = 0
 
             else:
                 # Calculate lower storage tank temperature
-                if self.Speicherladung[i]/self.QSmax >= 0.8:
-                    TS_unten_L[i] = RLT_L[i] + self.DT_WT_Netz_K + (2/3 * (VLT_L[i] - RLT_L[i]) / 0.2 * self.Speicherladung[i]/self.QSmax) + (1 / 3 * (VLT_L[i] - RLT_L[i])) - (2/3 * (VLT_L[i] - RLT_L[i]) / 0.2 * self.Speicherladung[i]/self.QSmax)
+                if self.Speicherfüllstand[i - 1] >= 0.8:
+                    TS_unten_L[i] = RLT_L[i] + self.DT_WT_Netz_K + (2/3 * (VLT_L[i] - RLT_L[i]) / 0.2 * self.Speicherfüllstand[i - 1]) + (1 / 3 * (VLT_L[i] - RLT_L[i])) - (2/3 * (VLT_L[i] - RLT_L[i]) / 0.2 * self.Speicherfüllstand[i - 1])
                 else:
-                    TS_unten_L[i] = RLT_L[i] + self.DT_WT_Netz_K + (1 / 3 * (VLT_L[i] - RLT_L[i]) / 0.8) * self.Speicherladung[i]/self.QSmax
+                    TS_unten_L[i] = RLT_L[i] + self.DT_WT_Netz_K + (1 / 3 * (VLT_L[i] - RLT_L[i]) / 0.8) * self.Speicherfüllstand[i - 1]
 
                 # Calculate solar target temperature and return line temperature
                 Zieltemperatur_Solaranlage_L[i] = TS_unten_L[i] + self.Vorwärmung_K + self.DT_WT_Solar_K + self.DT_WT_Netz_K
@@ -425,52 +365,6 @@ class SolarThermal(BaseHeatGenerator):
                             self.KollCeff_A * self.Bezugsfläche)
                 Tgkoll_L[i] = min(Zieltemperatur_Solaranlage_L[i], T_koll)
 
-                # Variablen für wiederkehrende Bedingungen definieren
-                ziel_erreich = Tgkoll_L[i] >= Zieltemperatur_Solaranlage_L[i] and Pkoll > 0
-                ziel_erhöht = Zieltemperatur_Solaranlage_L[i] >= Zieltemperatur_Solaranlage_L[i - 1]
-
-                # Berechnung Temperatur Vorlauf und Rücklauf der Verbindungsleitungen und internen Rohrleitungen
-                if ziel_erreich:
-                    TRV_bin_vl_L[i] = Zieltemperatur_Solaranlage_L[i]
-                    TRV_bin_rl_L[i] = TRL_Solar_L[i]
-                else:
-                    TRV_bin_vl_L[i] = Lufttemperatur_L[i] - (Lufttemperatur_L[i] - TRV_bin_vl_L[i - 1]) * exp(-self.Keq_RE / self.CRK)
-                    TRV_bin_rl_L[i] = Lufttemperatur_L[i] - (Lufttemperatur_L[i] - TRV_bin_rl_L[i - 1]) * exp(-self.Keq_RE / self.CRK)
-
-                # Berechnung der transitiven Verluste P_RVT_bin_vl und P_RVT_bin_rl Verbindungsleitungen, für Erdverlegte sind diese Identisch
-                P_RVT_bin_vl = P_RVT_bin_rl = self.Lrbin_E / 1000 * ((TRV_bin_vl_L[i] + TRV_bin_rl_L[i]) / 2 - Lufttemperatur_L[i]) * 2 * pi * self.L_Erdreich * self.hs_RE
-
-                # Berechnung der kapazitiven Verluste P_RVK_bin_vl und P_RVK_bin_rl Verbindungsleitungen
-                if ziel_erhöht:
-                    P_RVK_bin_vl = max((TRV_bin_vl_L[i - 1] - TRV_bin_vl_L[i]) * self.VRV_bin * 3790 / 3600, 0)
-                    P_RVK_bin_rl = max((TRV_bin_rl_L[i - 1] - TRV_bin_rl_L[i]) * self.VRV_bin * 3790 / 3600, 0)
-                else:
-                    P_RVK_bin_vl = 0
-                    P_RVK_bin_rl = 0
-
-                trv_int_vl_check = Tgkoll_L[i] >= Zieltemperatur_Solaranlage_L[i] and Pkoll > 0
-                trv_int_rl_check = Tgkoll_L[i] >= Zieltemperatur_Solaranlage_L[i] and Pkoll > 0
-
-                # Berechnung der Temperatur Vorlauf und Rücklauf der internen Rohrleitungen
-                TRV_int_vl_L[i] = Zieltemperatur_Solaranlage_L[i] if trv_int_vl_check else Lufttemperatur_L[i] - (
-                            Lufttemperatur_L[i] - TRV_int_vl_L[i - 1]) * exp(-self.KK / self.CKK)
-                TRV_int_rl_L[i] = TRL_Solar_L[i] if trv_int_rl_check else Lufttemperatur_L[i] - (Lufttemperatur_L[i] - TRV_int_rl_L[i - 1]) * exp(-self.KK / self.CKK)
-
-                # Berechnung der transitiven Verluste P_RVT_int_vl und P_RVT_int_rl interne Rohrleitungen
-                P_RVT_int_vl = (TRV_int_vl_L[i] - Lufttemperatur_L[i]) * self.KK * self.Bezugsfläche / 1000 / 2
-                P_RVT_int_rl = (TRV_int_rl_L[i] - Lufttemperatur_L[i]) * self.KK * self.Bezugsfläche / 1000 / 2
-
-                # Berechnung der kapazitiven Verluste P_RVK_int_vl und P_RVK_int_rl interne Rohrleitungen
-                if Zieltemperatur_Solaranlage_L[i] < Zieltemperatur_Solaranlage_L[i - 1]:
-                    P_RVK_int_vl = P_RVK_int_rl = 0
-                else:
-                    P_RVK_int_vl = max((TRV_int_vl_L[i - 1] - TRV_int_vl_L[i]) * self.VRV * self.Bezugsfläche / 2 * 3790 / 3600, 0)
-                    P_RVK_int_rl = max((TRV_int_rl_L[i - 1] - TRV_int_rl_L[i]) * self.VRV * self.Bezugsfläche / 2 * 3790 / 3600, 0)
-                
-                # Berechnung der Rohrleitungsverluste
-                PRV = max(P_RVT_bin_vl, P_RVK_bin_vl, 0) + max(P_RVT_bin_rl,P_RVK_bin_rl, 0) + \
-                    max(P_RVT_int_vl, P_RVK_int_vl, 0) + max(P_RVT_int_rl, P_RVK_int_rl, 0)  # Rohrleitungsverluste
-
                 # Berechnung Kollektorfeldertrag
                 if T_koll > Tgkoll_L[i - 1]:
                     Pkoll_temp_corr = (T_koll-Tgkoll_L[i])/(T_koll-Tgkoll_L[i - 1]) * Pkoll if Tgkoll_L[i] >= Zieltemperatur_Solaranlage_L[i] else 0
@@ -479,34 +373,22 @@ class SolarThermal(BaseHeatGenerator):
                 else:
                     self.Kollektorfeldertrag_L[i] = 0
 
-                # Rohrleitungsverluste aufsummiert
-                if (self.Kollektorfeldertrag_L[i] == 0 and self.Kollektorfeldertrag_L[i - 1] == 0) or self.Kollektorfeldertrag_L[i] <= Summe_PRV_L[i - 1]:
-                    Summe_PRV_L[i] = PRV + Summe_PRV_L[i - 1] - self.Kollektorfeldertrag_L[i]
+                self.Wärmeleistung_kW[i] = min(self.Kollektorfeldertrag_L[i] + self.Speicherinhalt[i - 1], Last_L[i]) if self.Kollektorfeldertrag_L[i] + self.Speicherinhalt[i - 1] > 0 else 0
+
+                Stagnationsverluste = max(0, self.Speicherinhalt[i - 1] - Verlustwärmestrom_Speicher_L[i - 1] + self.Kollektorfeldertrag_L[i] - self.Wärmeleistung_kW[i] - self.QSmax)
+
+                PSin = self.Kollektorfeldertrag_L[i] - Stagnationsverluste
+
+                if self.Speicherinhalt[i - 1] - Verlustwärmestrom_Speicher_L[i - 1] + PSin - self.Wärmeleistung_kW[i] > self.QSmax:
+                    self.Speicherinhalt[i] = self.QSmax
                 else:
-                    Summe_PRV_L[i] = PRV
-
-                if self.Kollektorfeldertrag_L[i] > Summe_PRV_L[i - 1]:
-                    Zwischenwert = self.Kollektorfeldertrag_L[i] - Summe_PRV_L[i - 1]
-                else:
-                    Zwischenwert = 0
-
-                self.Wärmeleistung_kW[i] = min(Zwischenwert + self.Speicherladung[i], Last_L[i]) if Zwischenwert + self.Speicherladung[i] > 0 else 0
-
-                Zwischenwert_Stag_verl = max(0, self.Speicherladung[i] - PSV_L[i] + Zwischenwert - self.Wärmeleistung_kW[i] - self.QSmax)
-
-                Speicher_Wärmeinput_ohne_FS = Zwischenwert - Zwischenwert_Stag_verl
-                PSin = Speicher_Wärmeinput_ohne_FS
-
-                if self.Speicherladung[i] - PSV_L[i] + PSin - self.Wärmeleistung_kW[i] > self.QSmax:
-                    self.Speicherladung[i] = self.QSmax
-                else:
-                    self.Speicherladung[i] = self.Speicherladung[i] - PSV_L[i] + PSin - self.Wärmeleistung_kW[i]
+                    self.Speicherinhalt[i] = self.Speicherinhalt[i - 1] - Verlustwärmestrom_Speicher_L[i - 1] + PSin - self.Wärmeleistung_kW[i]
 
                 # Berechnung Mitteltemperatur im Speicher
-                self.Speicherfüllstand[i] = self.Speicherladung[i] / self.QSmax  # Speicherfüllungsgrad
+                self.Speicherfüllstand[i] = self.Speicherinhalt[i] / self.QSmax  # Speicherfüllungsgrad
 
                 TS_oben = Zieltemperatur_Solaranlage_L[i] - self.DT_WT_Solar_K
-                if self.Speicherladung[i] <= 0:
+                if self.Speicherinhalt[i] <= 0:
                     berechnete_temperatur = TS_oben
                 else:
                     temperaturverhältnis = (TS_oben - self.Tm_rl) / (self.Tsmax - self.Tm_rl)
@@ -518,9 +400,9 @@ class SolarThermal(BaseHeatGenerator):
                 gewichtete_untere_temperatur = (1 - self.Speicherfüllstand[i]) * TS_unten_L[i]
                 Tms = self.Speicherfüllstand[i] * berechnete_temperatur + gewichtete_untere_temperatur
 
-                PSV_L[i] = 0.75 * (self.vs * 1000) ** 0.5 * 0.16 * (Tms - Lufttemperatur_L[i]) / 1000
+                Verlustwärmestrom_Speicher_L[i] = 0.75 * (self.vs * 1000) ** 0.5 * 0.16 * (Tms - Lufttemperatur_L[i]) / 1000
 
-                self.Stagnation_L[i] = 1 if Tag_des_Jahres_L[i] == Tag_des_Jahres_L[i - 1] and Zwischenwert > Last_L[i] and self.Speicherladung[i] >= self.QSmax else 0
+                self.Stagnation_L[i] = 1 if np.datetime_as_string(time_steps[i], unit='D') == np.datetime_as_string(time_steps[i - 1], unit='D') and self.Kollektorfeldertrag_L[i] > Last_L[i] and self.Speicherinhalt[i] >= self.QSmax else 0
 
         self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW) * duration / 1000  # kWh -> MWh
 
@@ -578,7 +460,7 @@ class SolarThermal(BaseHeatGenerator):
             'Betriebsstunden_pro_Start': self.Betriebsstunden_pro_Start,
             'spec_co2_total': self.spec_co2_total,
             'primärenergie': self.primärenergie_Solarthermie,
-            'Speicherladung_L': self.Speicherladung,
+            'Speicherladung_L': self.Speicherinhalt,
             'Speicherfüllstand_L': self.Speicherfüllstand,
             'color': "red"
         }
@@ -615,7 +497,7 @@ class SolarThermal(BaseHeatGenerator):
 
         # Ergebnisse für den aktuellen Zeitschritt speichern
         self.Wärmeleistung_kW[t] = Wärmeleistung[0]
-        self.Speicherladung[t] = Speicherladung[0]
+        self.Speicherinhalt[t] = Speicherladung[0]
         self.Speicherfüllstand[t] = Speicherfüllstand[0]
 
         # Kumulative Werte aktualisieren
