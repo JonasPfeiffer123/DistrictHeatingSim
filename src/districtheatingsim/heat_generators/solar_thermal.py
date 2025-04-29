@@ -289,7 +289,7 @@ class SolarThermal(BaseHeatGenerator):
             tuple: Gesamtwärmemenge, Wärmeoutput, Speicherladung und Speicherfüllstand.
         """
         # To do: Refining data processing that calc1 and calc2 are not necessary, dont give the whole TRY to this function
-        Temperatur_L, Windgeschwindigkeit_L, Direktstrahlung_L, Globalstrahlung_L = TRY_data[0], TRY_data[1], TRY_data[2], TRY_data[3]
+        Lufttemperatur_L, Windgeschwindigkeit_L, Direktstrahlung_L, Globalstrahlung_L = TRY_data[0], TRY_data[1], TRY_data[2], TRY_data[3]
 
         # Bestimmen Sie das kleinste Zeitintervall in time_steps
         min_interval = np.min(np.diff(time_steps)).astype('timedelta64[m]').astype(int)
@@ -298,7 +298,7 @@ class SolarThermal(BaseHeatGenerator):
         # Wiederholen der stündlichen Werte entsprechend des kleinsten Zeitintervalls
         repeat_factor = 60 // min_interval  # Annahme: min_interval teilt 60 ohne Rest
         start_time_step, end_time_step = 0, len(time_steps)
-        Temperatur_L = np.repeat(Temperatur_L, repeat_factor)[start_time_step:end_time_step]
+        Lufttemperatur_L = np.repeat(Lufttemperatur_L, repeat_factor)[start_time_step:end_time_step]
         Windgeschwindigkeit_L = np.repeat(Windgeschwindigkeit_L, repeat_factor)[start_time_step:end_time_step]
         Direktstrahlung_L = np.repeat(Direktstrahlung_L, repeat_factor)[start_time_step:end_time_step]
         Globalstrahlung_L = np.repeat(Globalstrahlung_L, repeat_factor)[start_time_step:end_time_step]
@@ -314,232 +314,215 @@ class SolarThermal(BaseHeatGenerator):
                                                                         self.East_West_collector_azimuth_angle,
                                                                         self.Collector_tilt_angle, self.IAM_W, self.IAM_N)
 
-        Speicher_Wärmeoutput_L = []
-        Speicherladung_L = []
-        Speicherfüllstand_L = []
-        Gesamtwärmemenge = 0
+        # Initialisierung der Arrays für die Ergebnisse
+        n_steps = len(time_steps)
+        self.Wärmeleistung_kW = np.zeros(n_steps)
+        self.Speicherladung = np.zeros(n_steps)
+        self.Speicherfüllstand = np.zeros(n_steps)
+        Tm_a_L = np.zeros(n_steps)
+        Pkoll_a_L = np.zeros(n_steps)
+        Pkoll_b_L = np.zeros(n_steps)
+        T_koll_a_L = np.zeros(n_steps)
+        T_koll_b_L = np.zeros(n_steps)
+        Tgkoll_a_L = np.zeros(n_steps)
+        Tgkoll_L = np.zeros(n_steps)
+        Summe_PRV_L = np.zeros(n_steps)
+        self.Kollektorfeldertrag_L = np.zeros(n_steps)
+        Zieltemperatur_Solaranlage_L = np.zeros(n_steps)
+        TRL_Solar_L = np.zeros(n_steps)
+        TS_unten_L = np.zeros(n_steps)
+        PSV_L = np.zeros(n_steps)
+        self.Stagnation_L = np.zeros(n_steps)
+        
+        # Temperatur Rohrleitungsvorlauf Verbindungsleitungen
+        TRV_bin_vl_L = Lufttemperatur_L
+        # Temperatur Rohrleitungsrücklauf Verbindungsleitungen
+        TRV_bin_rl_L = Lufttemperatur_L
 
-        Zähler = 0
+        # Temperatur Rohrleitungsvorlauf interne Rohrleitungen
+        TRV_int_vl_L = Lufttemperatur_L
+        # Temperatur Rohrleitungsrücklauf interne Rohrleitungen
+        TRV_int_rl_L = Lufttemperatur_L
 
-        for Tag_des_Jahres, K_beam, GbT, GdT_H_Dk, Temperatur, Windgeschwindigkeit, Last, VLT, RLT in zip(Tag_des_Jahres_L, K_beam_L, GbT_L, GdT_H_Dk_L, Temperatur_L, Windgeschwindigkeit_L, Last_L, VLT_L, RLT_L):
-            Eta0b_neu_K_beam_GbT = self.Eta0b_neu * K_beam * GbT
-            Eta0b_neu_Kthetadiff_GdT_H_Dk = self.Eta0b_neu * self.Kthetadiff * GdT_H_Dk
+        for i in range(n_steps):
+            Eta0b_neu_K_beam_GbT = self.Eta0b_neu * K_beam_L[i] * GbT_L[i]
+            Eta0b_neu_Kthetadiff_GdT_H_Dk = self.Eta0b_neu * self.Kthetadiff * GdT_H_Dk_L[i]
 
-            if Zähler < 1:
-                TS_unten = RLT
-                Zieltemperatur_Solaranlage = TS_unten + self.Vorwärmung_K + self.DT_WT_Solar_K + self.DT_WT_Netz_K
-                TRL_Solar = RLT
-                Tm_a = (Zieltemperatur_Solaranlage + TRL_Solar) / 2
-                Pkoll_a = 0
-                Tgkoll_a = 9.3
-                T_koll_a = Temperatur - (Temperatur - Tgkoll_a) * exp(-self.Koll_c1 / self.KollCeff_A * 3.6) + (Pkoll_a * 3600) / (
+            if i == 0:
+                TS_unten_L[i] = RLT_L[i]
+                TRL_Solar_L[i] = RLT_L[i]
+                Zieltemperatur_Solaranlage_L[i] = TS_unten_L[i] + self.Vorwärmung_K + self.DT_WT_Solar_K + self.DT_WT_Netz_K
+                Tm_a_L[i] = (Zieltemperatur_Solaranlage_L[i] + TRL_Solar_L[i]) / 2
+                Pkoll_a_L[i] = 0
+                Tgkoll_a_L[i] = 9.3
+                T_koll_a_L[i] = Lufttemperatur_L[i] - (Lufttemperatur_L[i] - Tgkoll_a_L[i]) * exp(-self.Koll_c1 / self.KollCeff_A * 3.6) + (Pkoll_a_L[i] * 3600) / (
                             self.KollCeff_A * self.Bezugsfläche)
-                Pkoll_b = 0
-                T_koll_b = Temperatur - (Temperatur - 0) * exp(-self.Koll_c1 / self.KollCeff_A * 3.6) + (Pkoll_b * 3600) / (
+                Pkoll_b_L[i] = 0
+                T_koll_b_L[i] = Lufttemperatur_L[i] - (Lufttemperatur_L[i] - 0) * exp(-self.Koll_c1 / self.KollCeff_A * 3.6) + (Pkoll_b_L[i] * 3600) / (
                             self.KollCeff_A * self.Bezugsfläche)
-                Tgkoll = 9.3  # Kollektortemperatur im Gleichgewicht
+                Tgkoll_L[i] = 9.3
 
-                # Verluste Verbindungsleitung
-                TRV_bin_vl = Temperatur
-                TRV_bin_rl = Temperatur
-
-                # Verluste interne Rohrleitungen
-                TRV_int_vl = Temperatur
-                TRV_int_rl = Temperatur
-                Summe_PRV = 0  # Rohrleitungsverluste aufsummiert
-                Kollektorfeldertrag = 0
-                PSout = min(Kollektorfeldertrag, Last)
-                QS = self.Qsa * 1000
-                PSV = 0
-                Tag_des_Jahres_alt = Tag_des_Jahres
-                Stagnation = 0
-                S_HFG = QS / self.QSmax  # Speicherfüllungsgrad
+                Summe_PRV_L[i] = 0
+                self.Kollektorfeldertrag_L[i] = 0
+                self.Wärmeleistung_kW[i] = min(self.Kollektorfeldertrag_L[i], Last_L[i])
+                PSV_L[i] = 0
+                self.Speicherladung[i] = self.Qsa * 1000
+                self.Speicherfüllstand[i] = self.Speicherladung[i] / self.QSmax  # Speicherfüllungsgrad
+                self.Stagnation_L[i] = 0
 
             else:
-                T_koll_a_alt = T_koll_a
-                T_koll_b_alt = T_koll_b
-                Tgkoll_a_alt = Tgkoll_a
-                Tgkoll_alt = Tgkoll
-                Summe_PRV_alt = Summe_PRV
-                Zieltemperatur_Solaranlage_alt = Zieltemperatur_Solaranlage
-                Kollektorfeldertrag_alt = Kollektorfeldertrag
-
-                # Define constants
-                c1 = self.Koll_c1 * (Tm_a - Temperatur)
-                c2 = self.Koll_c2 * (Tm_a - Temperatur) ** 2
-                c3 = self.Koll_c3 * self.wcorr * Windgeschwindigkeit * (Tm_a - Temperatur)
-
                 # Calculate lower storage tank temperature
-                if QS/self.QSmax >= 0.8:
-                    TS_unten = RLT + self.DT_WT_Netz_K + (2/3 * (VLT - RLT) / 0.2 * QS/self.QSmax) + (1 / 3 * (VLT - RLT)) - (2/3 * (VLT - RLT) / 0.2 * QS/self.QSmax)
+                if self.Speicherladung[i]/self.QSmax >= 0.8:
+                    TS_unten_L[i] = RLT_L[i] + self.DT_WT_Netz_K + (2/3 * (VLT_L[i] - RLT_L[i]) / 0.2 * self.Speicherladung[i]/self.QSmax) + (1 / 3 * (VLT_L[i] - RLT_L[i])) - (2/3 * (VLT_L[i] - RLT_L[i]) / 0.2 * self.Speicherladung[i]/self.QSmax)
                 else:
-                    TS_unten = RLT + self.DT_WT_Netz_K + (1 / 3 * (VLT - RLT) / 0.8) * QS/self.QSmax
+                    TS_unten_L[i] = RLT_L[i] + self.DT_WT_Netz_K + (1 / 3 * (VLT_L[i] - RLT_L[i]) / 0.8) * self.Speicherladung[i]/self.QSmax
 
                 # Calculate solar target temperature and return line temperature
-                Zieltemperatur_Solaranlage = TS_unten + self.Vorwärmung_K + self.DT_WT_Solar_K + self.DT_WT_Netz_K
-                TRL_Solar = TS_unten + self.DT_WT_Solar_K
+                Zieltemperatur_Solaranlage_L[i] = TS_unten_L[i] + self.Vorwärmung_K + self.DT_WT_Solar_K + self.DT_WT_Netz_K
+                TRL_Solar_L[i] = TS_unten_L[i] + self.DT_WT_Solar_K
+
+                # Calculate new collector A average temperature
+                Tm_a_L[i] = (Zieltemperatur_Solaranlage_L[i] + TRL_Solar_L[i]) / 2
 
                 # Calculate collector A power output and temperature
-                Pkoll_a = max(0, (Eta0b_neu_K_beam_GbT + Eta0b_neu_Kthetadiff_GdT_H_Dk - c1 - c2 - c3) * self.Bezugsfläche / 1000)
-                T_koll_a = Temperatur - (Temperatur - Tgkoll_a_alt) * exp(-self.Koll_c1 / self.KollCeff_A * 3.6) + (Pkoll_a * 3600) / (
+                c1a = self.Koll_c1 * (Tm_a_L[i] - Lufttemperatur_L[i])
+                c2a = self.Koll_c2 * (Tm_a_L[i] - Lufttemperatur_L[i]) ** 2
+                c3a = self.Koll_c3 * self.wcorr * Windgeschwindigkeit_L[i] * (Tm_a_L[i] - Lufttemperatur_L[i])
+
+                Pkoll_a_L[i] = max(0, (Eta0b_neu_K_beam_GbT + Eta0b_neu_Kthetadiff_GdT_H_Dk - c1a - c2a - c3a) * self.Bezugsfläche / 1000)
+                T_koll_a_L[i] = Lufttemperatur_L[i] - (Lufttemperatur_L[i] - Tgkoll_a_L[i - 1]) * exp(-self.Koll_c1 / self.KollCeff_A * 3.6) + (Pkoll_a_L[i] * 3600) / (
                             self.KollCeff_A * self.Bezugsfläche)
 
                 # Calculate collector B power output and temperature
-                c1 = self.Koll_c1 * (T_koll_b_alt - Temperatur)
-                c2 = self.Koll_c2 * (T_koll_b_alt - Temperatur) ** 2
-                c3 = self.Koll_c3 * self.wcorr * Windgeschwindigkeit * (T_koll_b_alt - Temperatur)
-                Pkoll_b = max(0, (Eta0b_neu_K_beam_GbT + Eta0b_neu_Kthetadiff_GdT_H_Dk - c1 - c2 - c3) * self.Bezugsfläche / 1000)
-                T_koll_b = Temperatur - (Temperatur - Tgkoll_a_alt) * exp(-self.Koll_c1 / self.KollCeff_A * 3.6) + (Pkoll_b * 3600) / (
+                c1b = self.Koll_c1 * (T_koll_b_L[i - 1] - Lufttemperatur_L[i])
+                c2b = self.Koll_c2 * (T_koll_b_L[i - 1] - Lufttemperatur_L[i]) ** 2
+                c3b = self.Koll_c3 * self.wcorr * Windgeschwindigkeit_L[i] * (T_koll_b_L[i - 1] - Lufttemperatur_L[i])
+                
+                Pkoll_b_L[i] = max(0, (Eta0b_neu_K_beam_GbT + Eta0b_neu_Kthetadiff_GdT_H_Dk - c1b - c2b - c3b) * self.Bezugsfläche / 1000)
+                T_koll_b_L[i] = Lufttemperatur_L[i] - (Lufttemperatur_L[i] - Tgkoll_a_L[i - 1]) * exp(-self.Koll_c1 / self.KollCeff_A * 3.6) + (Pkoll_b_L[i] * 3600) / (
                             self.KollCeff_A * self.Bezugsfläche)
-
-                # Calculate new collector A glycol temperature and average temperature
-                Tgkoll_a = min(Zieltemperatur_Solaranlage, T_koll_a)
-                Tm_a = (Zieltemperatur_Solaranlage + TRL_Solar) / 2
+                
+                # Calculate new collector A glycol temperature
+                Tgkoll_a_L[i] = min(Zieltemperatur_Solaranlage_L[i], T_koll_a_L[i])
 
                 # calculate average collector temperature
-                Tm_koll_alt = (T_koll_a_alt + T_koll_b_alt) / 2
-                Tm_koll = (T_koll_a + T_koll_b) / 2
-                Tm_sys = (Zieltemperatur_Solaranlage + TRL_Solar) / 2
+                Tm_koll_alt = (T_koll_a_L[i - 1] + T_koll_b_L[i - 1]) / 2
+                Tm_koll = (T_koll_a_L[i] + T_koll_b_L[i]) / 2
+                Tm_sys = (Zieltemperatur_Solaranlage_L[i] + TRL_Solar_L[i]) / 2
                 if Tm_koll < Tm_sys and Tm_koll_alt < Tm_sys:
                     Tm = Tm_koll
                 else:
                     Tm = Tm_sys
 
                 # calculate collector power output
-                c1 = self.Koll_c1 * (Tm - Temperatur)
-                c2 = self.Koll_c2 * (Tm - Temperatur) ** 2
-                c3 = self.Koll_c3 * self.wcorr * Windgeschwindigkeit * (Tm - Temperatur)
+                c1 = self.Koll_c1 * (Tm - Lufttemperatur_L[i])
+                c2 = self.Koll_c2 * (Tm - Lufttemperatur_L[i]) ** 2
+                c3 = self.Koll_c3 * self.wcorr * Windgeschwindigkeit_L[i] * (Tm - Lufttemperatur_L[i])
                 Pkoll = max(0, (Eta0b_neu_K_beam_GbT + Eta0b_neu_Kthetadiff_GdT_H_Dk - c1 - c2 - c3) * self.Bezugsfläche / 1000)
 
                 # calculate collector temperature surplus
-                T_koll = Temperatur - (Temperatur - Tgkoll) * exp(-self.Koll_c1 / self.KollCeff_A * 3.6) + (Pkoll * 3600) / (
+                T_koll = Lufttemperatur_L[i] - (Lufttemperatur_L[i] - Tgkoll_L[i - 1]) * exp(-self.Koll_c1 / self.KollCeff_A * 3.6) + (Pkoll * 3600) / (
                             self.KollCeff_A * self.Bezugsfläche)
-                Tgkoll = min(Zieltemperatur_Solaranlage, T_koll)
-
-                # Verluste Verbindungsleitung
-                TRV_bin_vl_alt = TRV_bin_vl
-                TRV_bin_rl_alt = TRV_bin_rl
+                Tgkoll_L[i] = min(Zieltemperatur_Solaranlage_L[i], T_koll)
 
                 # Variablen für wiederkehrende Bedingungen definieren
-                ziel_erreich = Tgkoll >= Zieltemperatur_Solaranlage and Pkoll > 0
-                ziel_erhöht = Zieltemperatur_Solaranlage >= Zieltemperatur_Solaranlage_alt
+                ziel_erreich = Tgkoll_L[i] >= Zieltemperatur_Solaranlage_L[i] and Pkoll > 0
+                ziel_erhöht = Zieltemperatur_Solaranlage_L[i] >= Zieltemperatur_Solaranlage_L[i - 1]
 
-                # Berechnung von TRV_bin_vl und TRV_bin_rl
+                # Berechnung Temperatur Vorlauf und Rücklauf der Verbindungsleitungen und internen Rohrleitungen
                 if ziel_erreich:
-                    TRV_bin_vl = Zieltemperatur_Solaranlage
-                    TRV_bin_rl = TRL_Solar
+                    TRV_bin_vl_L[i] = Zieltemperatur_Solaranlage_L[i]
+                    TRV_bin_rl_L[i] = TRL_Solar_L[i]
                 else:
-                    TRV_bin_vl = Temperatur - (Temperatur - TRV_bin_vl_alt) * exp(-self.Keq_RE / self.CRK)
-                    TRV_bin_rl = Temperatur - (Temperatur - TRV_bin_rl_alt) * exp(-self.Keq_RE / self.CRK)
+                    TRV_bin_vl_L[i] = Lufttemperatur_L[i] - (Lufttemperatur_L[i] - TRV_bin_vl_L[i - 1]) * exp(-self.Keq_RE / self.CRK)
+                    TRV_bin_rl_L[i] = Lufttemperatur_L[i] - (Lufttemperatur_L[i] - TRV_bin_rl_L[i - 1]) * exp(-self.Keq_RE / self.CRK)
 
-                # Berechnung von P_RVT_bin_vl und P_RVT_bin_rl, für Erdverlegte sind diese Identisch
-                P_RVT_bin_vl = P_RVT_bin_rl = self.Lrbin_E / 1000 * ((TRV_bin_vl + TRV_bin_rl) / 2 - Temperatur) * 2 * pi * self.L_Erdreich * self.hs_RE
+                # Berechnung der transitiven Verluste P_RVT_bin_vl und P_RVT_bin_rl Verbindungsleitungen, für Erdverlegte sind diese Identisch
+                P_RVT_bin_vl = P_RVT_bin_rl = self.Lrbin_E / 1000 * ((TRV_bin_vl_L[i] + TRV_bin_rl_L[i]) / 2 - Lufttemperatur_L[i]) * 2 * pi * self.L_Erdreich * self.hs_RE
 
-                # Berechnung von P_RVK_bin_vl und P_RVK_bin_rl
+                # Berechnung der kapazitiven Verluste P_RVK_bin_vl und P_RVK_bin_rl Verbindungsleitungen
                 if ziel_erhöht:
-                    P_RVK_bin_vl = max((TRV_bin_vl_alt - TRV_bin_vl) * self.VRV_bin * 3790 / 3600, 0)
-                    P_RVK_bin_rl = max((TRV_bin_rl_alt - TRV_bin_rl) * self.VRV_bin * 3790 / 3600, 0)
+                    P_RVK_bin_vl = max((TRV_bin_vl_L[i - 1] - TRV_bin_vl_L[i]) * self.VRV_bin * 3790 / 3600, 0)
+                    P_RVK_bin_rl = max((TRV_bin_rl_L[i - 1] - TRV_bin_rl_L[i]) * self.VRV_bin * 3790 / 3600, 0)
                 else:
                     P_RVK_bin_vl = 0
                     P_RVK_bin_rl = 0
 
-                # Verluste interne Rohrleitungen
-                TRV_int_vl_alt = TRV_int_vl
-                TRV_int_rl_alt = TRV_int_rl
+                trv_int_vl_check = Tgkoll_L[i] >= Zieltemperatur_Solaranlage_L[i] and Pkoll > 0
+                trv_int_rl_check = Tgkoll_L[i] >= Zieltemperatur_Solaranlage_L[i] and Pkoll > 0
 
-                trv_int_vl_check = Tgkoll >= Zieltemperatur_Solaranlage and Pkoll > 0
-                trv_int_rl_check = Tgkoll >= Zieltemperatur_Solaranlage and Pkoll > 0
+                # Berechnung der Temperatur Vorlauf und Rücklauf der internen Rohrleitungen
+                TRV_int_vl_L[i] = Zieltemperatur_Solaranlage_L[i] if trv_int_vl_check else Lufttemperatur_L[i] - (
+                            Lufttemperatur_L[i] - TRV_int_vl_L[i - 1]) * exp(-self.KK / self.CKK)
+                TRV_int_rl_L[i] = TRL_Solar_L[i] if trv_int_rl_check else Lufttemperatur_L[i] - (Lufttemperatur_L[i] - TRV_int_rl_L[i - 1]) * exp(-self.KK / self.CKK)
 
-                TRV_int_vl = Zieltemperatur_Solaranlage if trv_int_vl_check else Temperatur - (
-                            Temperatur - TRV_int_vl_alt) * exp(-self.KK / self.CKK)
-                TRV_int_rl = TRL_Solar if trv_int_rl_check else Temperatur - (Temperatur - TRV_int_rl_alt) * exp(-self.KK / self.CKK)
+                # Berechnung der transitiven Verluste P_RVT_int_vl und P_RVT_int_rl interne Rohrleitungen
+                P_RVT_int_vl = (TRV_int_vl_L[i] - Lufttemperatur_L[i]) * self.KK * self.Bezugsfläche / 1000 / 2
+                P_RVT_int_rl = (TRV_int_rl_L[i] - Lufttemperatur_L[i]) * self.KK * self.Bezugsfläche / 1000 / 2
 
-                P_RVT_int_vl = (TRV_int_vl - Temperatur) * self.KK * self.Bezugsfläche / 1000 / 2
-                P_RVT_int_rl = (TRV_int_rl - Temperatur) * self.KK * self.Bezugsfläche / 1000 / 2
-
-                if Zieltemperatur_Solaranlage < Zieltemperatur_Solaranlage_alt:
+                # Berechnung der kapazitiven Verluste P_RVK_int_vl und P_RVK_int_rl interne Rohrleitungen
+                if Zieltemperatur_Solaranlage_L[i] < Zieltemperatur_Solaranlage_L[i - 1]:
                     P_RVK_int_vl = P_RVK_int_rl = 0
                 else:
-                    P_RVK_int_vl = max((TRV_int_vl_alt - TRV_int_vl) * self.VRV * self.Bezugsfläche / 2 * 3790 / 3600, 0)
-                    P_RVK_int_rl = max((TRV_int_rl_alt - TRV_int_rl) * self.VRV * self.Bezugsfläche / 2 * 3790 / 3600, 0)
-
+                    P_RVK_int_vl = max((TRV_int_vl_L[i - 1] - TRV_int_vl_L[i]) * self.VRV * self.Bezugsfläche / 2 * 3790 / 3600, 0)
+                    P_RVK_int_rl = max((TRV_int_rl_L[i - 1] - TRV_int_rl_L[i]) * self.VRV * self.Bezugsfläche / 2 * 3790 / 3600, 0)
+                
+                # Berechnung der Rohrleitungsverluste
                 PRV = max(P_RVT_bin_vl, P_RVK_bin_vl, 0) + max(P_RVT_bin_rl,P_RVK_bin_rl, 0) + \
                     max(P_RVT_int_vl, P_RVK_int_vl, 0) + max(P_RVT_int_rl, P_RVK_int_rl, 0)  # Rohrleitungsverluste
 
                 # Berechnung Kollektorfeldertrag
-                if T_koll > Tgkoll_alt:
-                    if Tgkoll >= Zieltemperatur_Solaranlage:
-                        value1 = (T_koll-Tgkoll)/(T_koll-Tgkoll_alt) * Pkoll
-                    else:
-                        value1 = 0
-                    value2 = max(0, min(Pkoll, value1))
+                if T_koll > Tgkoll_L[i - 1]:
+                    Pkoll_temp_corr = (T_koll-Tgkoll_L[i])/(T_koll-Tgkoll_L[i - 1]) * Pkoll if Tgkoll_L[i] >= Zieltemperatur_Solaranlage_L[i] else 0
 
-                    if Stagnation <= 0:
-                        value3 = 1
-                    else:
-                        value3 = 0
-                    Kollektorfeldertrag = value2 * value3
+                    self.Kollektorfeldertrag_L[i] = max(0, min(Pkoll, Pkoll_temp_corr)) if self.Stagnation_L[i - 1] <= 0 else 0
                 else:
-                    Kollektorfeldertrag = 0
+                    self.Kollektorfeldertrag_L[i] = 0
 
                 # Rohrleitungsverluste aufsummiert
-                if (Kollektorfeldertrag == 0 and Kollektorfeldertrag_alt == 0) or Kollektorfeldertrag <= Summe_PRV_alt:
-                    Summe_PRV = PRV + Summe_PRV_alt - Kollektorfeldertrag
+                if (self.Kollektorfeldertrag_L[i] == 0 and self.Kollektorfeldertrag_L[i - 1] == 0) or self.Kollektorfeldertrag_L[i] <= Summe_PRV_L[i - 1]:
+                    Summe_PRV_L[i] = PRV + Summe_PRV_L[i - 1] - self.Kollektorfeldertrag_L[i]
                 else:
-                    Summe_PRV = PRV
+                    Summe_PRV_L[i] = PRV
 
-                if Kollektorfeldertrag > Summe_PRV_alt:
-                    Zwischenwert = Kollektorfeldertrag - Summe_PRV_alt
+                if self.Kollektorfeldertrag_L[i] > Summe_PRV_L[i - 1]:
+                    Zwischenwert = self.Kollektorfeldertrag_L[i] - Summe_PRV_L[i - 1]
                 else:
                     Zwischenwert = 0
 
-                PSout = min(Zwischenwert + QS, Last) if Zwischenwert + QS > 0 else 0
+                self.Wärmeleistung_kW[i] = min(Zwischenwert + self.Speicherladung[i], Last_L[i]) if Zwischenwert + self.Speicherladung[i] > 0 else 0
 
-                Zwischenwert_Stag_verl = max(0, QS - PSV + Zwischenwert - PSout - self.QSmax)
+                Zwischenwert_Stag_verl = max(0, self.Speicherladung[i] - PSV_L[i] + Zwischenwert - self.Wärmeleistung_kW[i] - self.QSmax)
 
                 Speicher_Wärmeinput_ohne_FS = Zwischenwert - Zwischenwert_Stag_verl
                 PSin = Speicher_Wärmeinput_ohne_FS
 
-                if QS - PSV + PSin - PSout > self.QSmax:
-                    QS = self.QSmax
+                if self.Speicherladung[i] - PSV_L[i] + PSin - self.Wärmeleistung_kW[i] > self.QSmax:
+                    self.Speicherladung[i] = self.QSmax
                 else:
-                    QS = QS - PSV + PSin - PSout
+                    self.Speicherladung[i] = self.Speicherladung[i] - PSV_L[i] + PSin - self.Wärmeleistung_kW[i]
 
                 # Berechnung Mitteltemperatur im Speicher
-                value1 = QS/self.QSmax
-                value2 = Zieltemperatur_Solaranlage - self.DT_WT_Solar_K
-                if QS <= 0:
-                    ergebnis1 = value2
+                self.Speicherfüllstand[i] = self.Speicherladung[i] / self.QSmax  # Speicherfüllungsgrad
+
+                TS_oben = Zieltemperatur_Solaranlage_L[i] - self.DT_WT_Solar_K
+                if self.Speicherladung[i] <= 0:
+                    berechnete_temperatur = TS_oben
                 else:
-                    value3 = (value2 - self.Tm_rl) / (self.Tsmax - self.Tm_rl)
-                    if value1 < value3:
-                        ergebnis1 = VLT + self.DT_WT_Netz_K
+                    temperaturverhältnis = (TS_oben - self.Tm_rl) / (self.Tsmax - self.Tm_rl)
+                    if self.Speicherfüllstand[i] < temperaturverhältnis:
+                        berechnete_temperatur = VLT_L[i] + self.DT_WT_Netz_K
                     else:
-                        ergebnis1 = self.Tsmax
+                        berechnete_temperatur = self.Tsmax
 
-                value4 = (1 - value1) * TS_unten
-                Tms = value1 * ergebnis1 + value4
+                gewichtete_untere_temperatur = (1 - self.Speicherfüllstand[i]) * TS_unten_L[i]
+                Tms = self.Speicherfüllstand[i] * berechnete_temperatur + gewichtete_untere_temperatur
 
-                PSV = 0.75 * (self.vs * 1000) ** 0.5 * 0.16 * (Tms - Temperatur) / 1000
+                PSV_L[i] = 0.75 * (self.vs * 1000) ** 0.5 * 0.16 * (Tms - Lufttemperatur_L[i]) / 1000
 
-                if Tag_des_Jahres == Tag_des_Jahres_alt:
-                    value1_stagnation = 0
-                    if Zwischenwert > Last and QS >= self.QSmax:
-                        value1_stagnation = 1
-                    Stagnation = 1 if value1_stagnation + Stagnation > 0 else 0
-                else:
-                    Stagnation = 0
+                self.Stagnation_L[i] = 1 if Tag_des_Jahres_L[i] == Tag_des_Jahres_L[i - 1] and Zwischenwert > Last_L[i] and self.Speicherladung[i] >= self.QSmax else 0
 
-                S_HFG = QS / self.QSmax  # Speicherfüllungsgrad
-
-            Speicherfüllstand_L.append(S_HFG)
-            Speicherladung_L.append(QS)
-            Speicher_Wärmeoutput_L.append(PSout)
-            Gesamtwärmemenge += (PSout / 1000) * duration
-
-            Zähler += 1
-
-        return Gesamtwärmemenge, np.array(Speicher_Wärmeoutput_L).astype("float64"), np.array(Speicherladung_L).astype("float64"), np.array(Speicherfüllstand_L).astype("float64")
+        self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW) * duration / 1000  # kWh -> MWh
 
     def calculate(self, economic_parameters, duration, load_profile, **kwargs):
         VLT_L = kwargs.get('VLT_L')
@@ -564,7 +547,7 @@ class SolarThermal(BaseHeatGenerator):
         # Check if the calculation has already been done
         if self.calculated == False:
             # Berechnung der Solarthermieanlage
-            self.Wärmemenge_MWh, self.Wärmeleistung_kW, self.Speicherladung, self.Speicherfüllstand = self.calculate_solar_thermal_with_storage(
+            self.calculate_solar_thermal_with_storage(
                 load_profile,
                 VLT_L,
                 RLT_L,
@@ -579,8 +562,7 @@ class SolarThermal(BaseHeatGenerator):
         self.Anzahl_Starts = np.sum(starts)
         self.Betriebsstunden = np.sum(betrieb_mask) * duration
         self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
-    
-        
+
         # Berechnung der Wärmegestehungskosten
         self.WGK = self.calculate_heat_generation_costs(economic_parameters)
 
