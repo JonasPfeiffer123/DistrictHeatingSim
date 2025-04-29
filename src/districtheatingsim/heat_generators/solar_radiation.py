@@ -9,19 +9,19 @@ Additional Information: Yield calculation program for solar thermal energy in he
 
 # Import libraries
 import numpy as np
+from datetime import datetime, timezone
 
 # Constant for degree-to-radian conversion
 DEG_TO_RAD = np.pi / 180
 
-def calculate_solar_radiation(global_radiation, direct_radiation, day_of_year, time_steps, Longitude, STD_Longitude, Latitude, Albedo, East_West_collector_azimuth_angle, Collector_tilt_angle, IAM_W=None, IAM_N=None):    
+def calculate_solar_radiation(time_steps, global_radiation, direct_radiation, Longitude, STD_Longitude, Latitude, Albedo, East_West_collector_azimuth_angle, Collector_tilt_angle, IAM_W=None, IAM_N=None):    
     """
     Calculates solar radiation based on Test Reference Year data.
 
     Args:
+        time_steps (np.ndarray): Array of time steps.
         global_radiation (np.ndarray): Global radiation data.
         direct_radiation (np.ndarray): Direct radiation data.
-        day_of_year (np.ndarray): Day of the year data.
-        time_steps (np.ndarray): Array of time steps.
         Longitude (float): Longitude of the location.
         STD_Longitude (float): Standard longitude for the time zone.
         Latitude (float): Latitude of the location.
@@ -35,6 +35,9 @@ def calculate_solar_radiation(global_radiation, direct_radiation, day_of_year, t
         tuple: Contains arrays for total radiation on the inclined surface, beam radiation, diffuse radiation, and modified beam radiation.
     """
     hour_L = (time_steps - time_steps.astype('datetime64[D]')).astype('timedelta64[m]').astype(float) / 60
+
+    day_of_year = np.array([datetime.fromtimestamp(t.astype('datetime64[s]').astype(np.int64), tz=timezone.utc).timetuple().tm_yday for t in time_steps])
+
 
     # Calculate the day of the year as an angle
     B = (day_of_year - 1) * 360 / 365  # °
