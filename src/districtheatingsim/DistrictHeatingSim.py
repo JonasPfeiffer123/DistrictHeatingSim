@@ -99,14 +99,36 @@ from districtheatingsim.gui.ProjectTab.project_tab import ProjectTab
 from districtheatingsim.gui.LOD2Tab.lod2_main_tab import LOD2Tab
 from districtheatingsim.gui.BuildingTab.building_tab import BuildingTab
 from districtheatingsim.gui.RenovationTab.RenovationTab import RenovationTab
-from districtheatingsim.gui.CalculationTab.calculation_tab import CalculationTab
-from districtheatingsim.gui.MixDesignTab.mix_design_tab import MixDesignTab
+from districtheatingsim.gui.NetSimulationTab.calculation_tab import CalculationTab
+from districtheatingsim.gui.EnergySystemTab._01_energy_system_main_tab import EnergySystemTab
 from districtheatingsim.gui.ComparisonTab.comparison_tab import ComparisonTab
 from districtheatingsim.gui.IndividualTab.individual_tab import IndividualTab
 from districtheatingsim.gui.results_pdf import create_pdf
 from districtheatingsim.gui.dialogs import TemperatureDataDialog, HeatPumpDataDialog
 
 from districtheatingsim.gui.LeafletTab.leaflet_tab import VisualizationTabLeaflet
+
+def handle_global_exception(exc_type, exc_value, exc_traceback):
+    """
+    Global exception handler to display errors in a QMessageBox.
+    """
+    if issubclass(exc_type, KeyboardInterrupt):
+        # Standardverhalten für KeyboardInterrupt beibehalten
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+
+    # Erstelle die Fehlermeldung
+    error_message = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+    print(error_message)  # Optional: Logge die Fehlermeldung in die Konsole
+
+    # Zeige die Fehlermeldung in einem Dialogfenster
+    msg_box = QMessageBox()
+    msg_box.setIcon(QMessageBox.Critical)
+    msg_box.setWindowTitle("Fehler")
+    msg_box.setText("Ein unerwarteter Fehler ist aufgetreten:")
+    msg_box.setDetailedText(error_message)
+    msg_box.setStandardButtons(QMessageBox.Ok)
+    msg_box.exec_()
 
 class ProjectConfigManager:
     """
@@ -705,7 +727,7 @@ class HeatSystemDesignGUI(QMainWindow):
         self.buildingTab = BuildingTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
         self.visTab2 = VisualizationTabLeaflet(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
         self.calcTab = CalculationTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager, self)
-        self.mixDesignTab = MixDesignTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager, self)
+        self.mixDesignTab = EnergySystemTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager, self)
         self.comparisonTab = ComparisonTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
         self.lod2Tab = LOD2Tab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
         self.renovationTab = RenovationTab(self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager)
@@ -1017,6 +1039,9 @@ def get_stylesheet_based_on_time():
         return "dark_theme_style_path"   # Pfad zum dunklen Stylesheet
 
 if __name__ == '__main__':
+    # Setze den globalen Fehler-Handler
+    sys.excepthook = handle_global_exception
+    
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
 

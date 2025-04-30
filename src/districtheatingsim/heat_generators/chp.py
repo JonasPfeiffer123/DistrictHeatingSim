@@ -8,7 +8,7 @@ Description: Contains the Combined Heat and Power (CHP) class for simulating CHP
 
 import numpy as np
 
-from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator
+from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
 
 class CHP(BaseHeatGenerator):
     """
@@ -57,9 +57,9 @@ class CHP(BaseHeatGenerator):
     """
     def __init__(self, name, th_Leistung_BHKW, spez_Investitionskosten_GBHKW=1500, spez_Investitionskosten_HBHKW=1850, el_Wirkungsgrad=0.33, KWK_Wirkungsgrad=0.9, 
                  min_Teillast=0.7, speicher_aktiv=False, Speicher_Volumen_BHKW=20, T_vorlauf=90, T_ruecklauf=60, initial_fill=0.0, min_fill=0.2, max_fill=0.8, 
-                 spez_Investitionskosten_Speicher=750, BHKW_an=True, opt_BHKW_min=0, opt_BHKW_max=1000, opt_BHKW_Speicher_min=0, opt_BHKW_Speicher_max=100):
+                 spez_Investitionskosten_Speicher=750, active=True, opt_BHKW_min=0, opt_BHKW_max=1000, opt_BHKW_Speicher_min=0, opt_BHKW_Speicher_max=100):
         super().__init__(name)
-        self.th_Leistung_BHKW = th_Leistung_BHKW
+        self.th_Leistung_kW = th_Leistung_BHKW
         self.spez_Investitionskosten_GBHKW = spez_Investitionskosten_GBHKW
         self.spez_Investitionskosten_HBHKW = spez_Investitionskosten_HBHKW
         self.el_Wirkungsgrad = el_Wirkungsgrad
@@ -73,13 +73,13 @@ class CHP(BaseHeatGenerator):
         self.min_fill = min_fill
         self.max_fill = max_fill
         self.spez_Investitionskosten_Speicher = spez_Investitionskosten_Speicher
-        self.BHKW_an = BHKW_an
+        self.active = active
         self.opt_BHKW_min = opt_BHKW_min
         self.opt_BHKW_max = opt_BHKW_max
         self.opt_BHKW_Speicher_min = opt_BHKW_Speicher_min
         self.opt_BHKW_Speicher_max = opt_BHKW_Speicher_max
         self.thermischer_Wirkungsgrad = self.KWK_Wirkungsgrad - self.el_Wirkungsgrad
-        self.el_Leistung_Soll = self.th_Leistung_BHKW / self.thermischer_Wirkungsgrad * self.el_Wirkungsgrad
+        self.el_Leistung_Soll = self.th_Leistung_kW / self.thermischer_Wirkungsgrad * self.el_Wirkungsgrad
         self.Nutzungsdauer = 15
         self.f_Inst, self.f_W_Insp, self.Bedienaufwand = 6, 2, 0
         if self.name.startswith("BHKW"):
@@ -90,36 +90,37 @@ class CHP(BaseHeatGenerator):
             self.primärenergiefaktor = 0.2 # Pellets
         self.co2_factor_electricity = 0.4 # tCO2/MWh electricity
 
-    def simulate_operation(self, Last_L, duration):
+        self.strategy = CHPStrategy(75, 70)
+
+        self.init_operation(8760)
+
+    def init_operation(self, hours):
+        self.betrieb_mask = np.array([False] * hours)
+        self.Wärmeleistung_kW = np.array([0] * hours)
+        self.el_Leistung_kW = np.array([0] * hours)
+        self.Wärmemenge_MWh = 0
+        self.Strommenge_MWh = 0
+        self.Brennstoffbedarf_MWh = 0
+        self.Anzahl_Starts = 0
+        self.Betriebsstunden = 0
+        self.Betriebsstunden_pro_Start = 0
+
+        self.calculated = False  # Flag to indicate if the calculation is done
+
+    def simulate_operation(self, Last_L):
         """
         Calculates the power and heat output of the CHP system without storage.
 
         Args:
             Last_L (array-like): Load demand.
-            duration (float): Time duration.
 
         Returns:
             None
         """
-        self.Wärmeleistung_kW = np.zeros_like(Last_L)
-        self.el_Leistung_kW = np.zeros_like(Last_L)
-
         # Fälle, in denen das BHKW betrieben werden kann
-        betrieb_mask = Last_L >= self.th_Leistung_BHKW * self.min_Teillast
-        self.Wärmeleistung_kW[betrieb_mask] = np.minimum(Last_L[betrieb_mask], self.th_Leistung_BHKW)
-        self.el_Leistung_kW[betrieb_mask] = self.Wärmeleistung_kW[betrieb_mask] / self.thermischer_Wirkungsgrad * self.el_Wirkungsgrad
-
-        self.Wärmemenge_BHKW = np.sum(self.Wärmeleistung_kW / 1000) * duration
-        self.Strommenge_BHKW = np.sum(self.el_Leistung_kW / 1000) * duration
-
-        # Berechnen des Brennstoffbedarfs
-        self.Brennstoffbedarf_BHKW = (self.Wärmemenge_BHKW + self.Strommenge_BHKW) / self.KWK_Wirkungsgrad
-
-        # Anzahl Starts und Betriebsstunden pro Start berechnen
-        starts = np.diff(betrieb_mask.astype(int)) > 0
-        self.Anzahl_Starts = np.sum(starts)
-        self.Betriebsstunden_gesamt = np.sum(betrieb_mask) * duration
-        self.Betriebsstunden_pro_Start = self.Betriebsstunden_gesamt / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
+        self.betrieb_mask = Last_L >= self.th_Leistung_kW * self.min_Teillast
+        self.Wärmeleistung_kW[self.betrieb_mask] = np.minimum(Last_L[self.betrieb_mask], self.th_Leistung_kW)
+        self.el_Leistung_kW[self.betrieb_mask] = self.Wärmeleistung_kW[self.betrieb_mask] / self.thermischer_Wirkungsgrad * self.el_Wirkungsgrad
 
     def simulate_storage(self, Last_L, duration):
         """
@@ -127,7 +128,6 @@ class CHP(BaseHeatGenerator):
 
         Args:
             Last_L (array-like): Load demand.
-            duration (float): Time duration.
 
         Returns:
             None
@@ -138,57 +138,81 @@ class CHP(BaseHeatGenerator):
         min_speicher_fill = self.min_fill * speicher_kapazitaet
         max_speicher_fill = self.max_fill * speicher_kapazitaet
 
-        self.Wärmeleistung_kW = np.zeros_like(Last_L)
         self.Wärmeleistung_Speicher_kW = np.zeros_like(Last_L)
-        self.el_Leistung_BHKW_kW = np.zeros_like(Last_L)
-        self.speicher_fuellstand_BHKW = np.zeros_like(Last_L)
+        self.Speicher_Fuellstand = np.zeros_like(Last_L)
 
         for i in range(len(Last_L)):
-            if self.BHKW_an:
+            if self.active:
                 if speicher_fill >= max_speicher_fill:
-                    self.BHKW_an = False
+                    self.active = False
                 else:
-                    self.Wärmeleistung_kW[i] = self.th_Leistung_BHKW
-                    if Last_L[i] < self.th_Leistung_BHKW:
-                        self.Wärmeleistung_Speicher_kW[i] = Last_L[i] - self.th_Leistung_BHKW
-                        speicher_fill += (self.th_Leistung_BHKW - Last_L[i]) * duration
+                    self.Wärmeleistung_kW[i] = self.th_Leistung_kW
+                    if Last_L[i] < self.th_Leistung_kW:
+                        self.Wärmeleistung_Speicher_kW[i] = Last_L[i] - self.th_Leistung_kW
+                        speicher_fill += (self.th_Leistung_kW - Last_L[i]) * duration
                         speicher_fill = float(min(speicher_fill, speicher_kapazitaet))
                     else:
                         self.Wärmeleistung_Speicher_kW[i] = 0
             else:
                 if speicher_fill <= min_speicher_fill:
-                    self.BHKW_an = True
+                    self.active = True
             
-            if not self.BHKW_an:
+            if not self.active:
                 self.Wärmeleistung_kW[i] = 0
                 self.Wärmeleistung_Speicher_kW[i] = Last_L[i]
                 speicher_fill -= Last_L[i] * duration
                 speicher_fill = float(max(speicher_fill, 0))
 
-            self.el_Leistung_BHKW_kW[i] = self.Wärmeleistung_kW[i] / self.thermischer_Wirkungsgrad * self.el_Wirkungsgrad
-            self.speicher_fuellstand_BHKW[i] = speicher_fill / speicher_kapazitaet * 100  # %
+            self.el_Leistung_kW[i] = self.Wärmeleistung_kW[i] / self.thermischer_Wirkungsgrad * self.el_Wirkungsgrad
+            self.Speicher_Fuellstand[i] = speicher_fill / speicher_kapazitaet * 100  # %
 
-        self.Wärmemenge_BHKW_Speicher = np.sum(self.Wärmeleistung_kW / 1000) * duration
-        self.Strommenge_BHKW_Speicher = np.sum(self.el_Leistung_BHKW_kW / 1000) * duration
+        self.betrieb_mask = self.Wärmeleistung_kW > 0
+
+    def generate(self, t, **kwargs):
+        """
+        Generates thermal and electrical power for the given time step `t`.
+        This method calculates the thermal power, electrical power, fuel consumption, 
+        and updates the operational statistics of the combined heat and power (CHP) unit 
+        if it is turned on. It also counts the number of starts and updates the 
+        operational hours and operational hours per start.
+        Args:
+            t (int): The current time step.
+        Returns:
+            tuple: A tuple containing the thermal power (in kW) and electrical power (in kW) 
+                   generated at the current time step. If the CHP unit is turned off, 
+                   it returns (0, 0).
+        """
+        
+        if self.active:
+            self.betrieb_mask[t] = True  # Set the operation mask to True for the current time step
+            self.Wärmeleistung_kW[t] = self.th_Leistung_kW # eventuell noch Teillastverhalten nachbilden
+            self.el_Leistung_kW[t] = self.th_Leistung_kW / self.thermischer_Wirkungsgrad * self.el_Wirkungsgrad
+
+        else:
+            self.betrieb_mask[t] = False
+            self.Wärmeleistung_kW[t] = 0
+            self.el_Leistung_kW[t] = 0
+
+        return self.Wärmeleistung_kW[t], self.el_Leistung_kW[t]
+    
+    def calculate_results(self, duration):
+        self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW / 1000) * duration
+        self.Strommenge_MWh = np.sum(self.el_Leistung_kW / 1000) * duration
 
         # Berechnen des Brennstoffbedarfs
-        self.Brennstoffbedarf_BHKW_Speicher = (self.Wärmemenge_BHKW_Speicher + self.Strommenge_BHKW_Speicher) / self.KWK_Wirkungsgrad
+        self.Brennstoffbedarf_MWh = (self.Wärmemenge_MWh + self.Strommenge_MWh) / self.KWK_Wirkungsgrad
 
         # Anzahl Starts und Betriebsstunden pro Start berechnen
-        betrieb_mask = self.Wärmeleistung_kW > 0
-        starts = np.diff(betrieb_mask.astype(int)) > 0
-        self.Anzahl_Starts_Speicher = np.sum(starts)
-        self.Betriebsstunden_gesamt_Speicher = np.sum(betrieb_mask) * duration
-        self.Betriebsstunden_pro_Start_Speicher = self.Betriebsstunden_gesamt_Speicher / self.Anzahl_Starts_Speicher if self.Anzahl_Starts_Speicher > 0 else 0
+        starts = np.diff(self.betrieb_mask.astype(int)) > 0
+        self.Anzahl_Starts = np.sum(starts)
+        self.Betriebsstunden = np.sum(self.betrieb_mask) * duration
+        self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
     
-    def calculate_heat_generation_costs(self, Wärmemenge, Strommenge, Brennstoffbedarf, economic_parameters):
+    def calculate_heat_generation_costs(self, economic_parameters):
         """
         Calculates the economic metrics for the CHP system.
 
         Args:
-            Wärmemenge (float): Amount of heat generated.
-            Strommenge (float): Amount of electricity generated.
-            Brennstoffbedarf (float): Fuel consumption.
             economic_parameters (dict): Dictionary containing economic parameters.
 
         Returns:
@@ -204,8 +228,8 @@ class CHP(BaseHeatGenerator):
         self.BEW = economic_parameters['subsidy_eligibility']
         self.stundensatz = economic_parameters['hourly_rate']
 
-        if Wärmemenge == 0:
-            self.WGK_BHKW = 0
+        if self.Wärmemenge_MWh == 0:
+            self.WGK = 0
             return 0
         # Holzvergaser-BHKW: 130 kW: 240.000 -> 1850 €/kW
         # (Erd-)Gas-BHKW: 100 kW: 150.000 € -> 1500 €/kW
@@ -216,27 +240,27 @@ class CHP(BaseHeatGenerator):
             spez_Investitionskosten_BHKW = self.spez_Investitionskosten_HBHKW  # €/kW
             self.Brennstoffpreis = self.Holzpreis
 
-        self.Investitionskosten_BHKW = spez_Investitionskosten_BHKW * self.th_Leistung_BHKW
+        self.Investitionskosten_BHKW = spez_Investitionskosten_BHKW * self.th_Leistung_kW
         self.Investitionskosten_Speicher = self.spez_Investitionskosten_Speicher * self.Speicher_Volumen_BHKW
         self.Investitionskosten = self.Investitionskosten_BHKW + self.Investitionskosten_Speicher
 
-        self.Stromeinnahmen = Strommenge * self.Strompreis
+        self.Stromeinnahmen = self.Strommenge_MWh * self.Strompreis
 
-        self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T, Brennstoffbedarf, self.Brennstoffpreis, self.Stromeinnahmen, self.stundensatz)
-        self.WGK_BHKW = self.A_N / Wärmemenge
+        self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T, self.Brennstoffbedarf_MWh, self.Brennstoffpreis, self.Stromeinnahmen, self.stundensatz)
+        self.WGK = self.A_N / self.Wärmemenge_MWh
 
-    def calculate_environmental_impact(self, Wärmemenge, Strommenge, Brennstoffbedarf):
+    def calculate_environmental_impact(self):
         # CO2 emissions due to fuel usage
-        self.co2_emissions = Brennstoffbedarf * self.co2_factor_fuel # tCO2
+        self.co2_emissions = self.Brennstoffbedarf_MWh * self.co2_factor_fuel # tCO2
         # CO2 savings due to electricity generation
-        self.co2_savings = Strommenge * self.co2_factor_electricity # tCO2
+        self.co2_savings = self.Strommenge_MWh * self.co2_factor_electricity # tCO2
         # total co2
         self.co2_total = self.co2_emissions - self.co2_savings # tCO2
         # specific emissions heat
-        self.spec_co2_total = self.co2_total / Wärmemenge if Wärmemenge > 0 else 0 # tCO2/MWh_heat
+        self.spec_co2_total = self.co2_total / self.Wärmemenge_MWh if self.Wärmemenge_MWh > 0 else 0 # tCO2/MWh_heat
 
-        self.primärenergie = Brennstoffbedarf * self.primärenergiefaktor
-
+        self.primärenergie = self.Brennstoffbedarf_MWh * self.primärenergiefaktor
+    
     def calculate(self, economic_parameters, duration, load_profile, **kwargs):
         """
         Calculates the economic and environmental metrics for the CHP system.
@@ -249,41 +273,28 @@ class CHP(BaseHeatGenerator):
         Returns:
             dict: Dictionary containing calculated results.
         """
-        if self.speicher_aktiv:
-            self.simulate_storage(load_profile, duration)
-            Wärmemenge = self.Wärmemenge_BHKW_Speicher
-            Strommenge = self.Strommenge_BHKW_Speicher
-            Brennstoffbedarf = self.Brennstoffbedarf_BHKW_Speicher
-            Wärmeleistung_kW = self.Wärmeleistung_kW
-            el_Leistung_BHKW = self.el_Leistung_BHKW_kW
-            Anzahl_Starts = self.Anzahl_Starts_Speicher
-            Betriebsstunden = self.Betriebsstunden_gesamt_Speicher
-            Betriebsstunden_pro_Start = self.Betriebsstunden_pro_Start_Speicher
-        else:
-            self.simulate_operation(load_profile, duration)
-            Wärmemenge = self.Wärmemenge_BHKW
-            Strommenge = self.Strommenge_BHKW
-            Brennstoffbedarf = self.Brennstoffbedarf_BHKW
-            Wärmeleistung_kW = self.Wärmeleistung_kW
-            el_Leistung_BHKW = self.el_Leistung_kW
-            Anzahl_Starts = self.Anzahl_Starts
-            Betriebsstunden = self.Betriebsstunden_gesamt
-            Betriebsstunden_pro_Start = self.Betriebsstunden_pro_Start
-
-        self.calculate_heat_generation_costs(Wärmemenge, Strommenge, Brennstoffbedarf, economic_parameters)
-        self.calculate_environmental_impact(Wärmemenge, Strommenge, Brennstoffbedarf)
+        # Check if the calculation has already been done
+        if self.calculated == False:
+            if self.speicher_aktiv:
+                self.simulate_storage(load_profile, duration)
+            else:
+                self.simulate_operation(load_profile)
+        
+        self.calculate_results(duration)        
+        self.calculate_heat_generation_costs(economic_parameters)
+        self.calculate_environmental_impact()
      
         results = {
             'tech_name': self.name,
-            'Wärmemenge': Wärmemenge,
-            'Wärmeleistung_L': Wärmeleistung_kW,
-            'Brennstoffbedarf': Brennstoffbedarf,
-            'WGK': self.WGK_BHKW,
-            'Strommenge': Strommenge,
-            'el_Leistung_L': el_Leistung_BHKW,
-            'Anzahl_Starts': Anzahl_Starts,
-            'Betriebsstunden': Betriebsstunden,
-            'Betriebsstunden_pro_Start': Betriebsstunden_pro_Start,
+            'Wärmemenge': self.Wärmemenge_MWh,
+            'Wärmeleistung_L': self.Wärmeleistung_kW,
+            'Brennstoffbedarf': self.Brennstoffbedarf_MWh,
+            'WGK': self.WGK,
+            'Strommenge': self.Strommenge_MWh,
+            'el_Leistung_L': self.el_Leistung_kW,
+            'Anzahl_Starts': self.Anzahl_Starts,
+            'Betriebsstunden': self.Betriebsstunden,
+            'Betriebsstunden_pro_Start': self.Betriebsstunden_pro_Start,
             'spec_co2_total': self.spec_co2_total,
             'primärenergie': self.primärenergie,
             'color': "yellow"
@@ -291,13 +302,13 @@ class CHP(BaseHeatGenerator):
 
         if self.speicher_aktiv:
             results['Wärmeleistung_Speicher_L'] = self.Wärmeleistung_Speicher_kW
-            results['Speicherfüllstand_L'] = self.speicher_fuellstand_BHKW
+            results['Speicherfüllstand_L'] = self.Speicher_Fuellstand
 
         return results
     
     def set_parameters(self, variables, variables_order, idx):
         try:
-            self.th_Leistung_BHKW = variables[variables_order.index(f"th_Leistung_BHKW_{idx}")]
+            self.th_Leistung_kW = variables[variables_order.index(f"th_Leistung_BHKW_{idx}")]
             if self.speicher_aktiv:
                 self.Speicher_Volumen_BHKW = variables[variables_order.index(f"Speicher_Volumen_BHKW_{idx}")]
         except ValueError as e:
@@ -313,7 +324,7 @@ class CHP(BaseHeatGenerator):
         Returns:
             tuple: Initiale Werte, Variablennamen und Grenzen der Variablen.
         """
-        initial_values = [self.th_Leistung_BHKW]
+        initial_values = [self.th_Leistung_kW]
         variables_order = [f"th_Leistung_BHKW_{idx}"]
         bounds = [(self.opt_BHKW_min, self.opt_BHKW_max)]
 
@@ -326,15 +337,26 @@ class CHP(BaseHeatGenerator):
     
     def get_display_text(self):
         if self.name.startswith("BHKW"):
-            return (f"{self.name}: th. Leistung: {self.th_Leistung_BHKW:.1f} kW, "
+            return (f"{self.name}: th. Leistung: {self.th_Leistung_kW:.1f} kW, "
                     f"spez. Investitionskosten Erdgas-BHKW: {self.spez_Investitionskosten_GBHKW:.1f} €/kW")
         elif self.name.startswith("Holzgas-BHKW"):
-            return (f"{self.name}: th. Leistung: {self.th_Leistung_BHKW:.1f} kW, "
+            return (f"{self.name}: th. Leistung: {self.th_Leistung_kW:.1f} kW, "
                     f"spez. Investitionskosten Holzgas-BHKW: {self.spez_Investitionskosten_HBHKW:.1f} €/kW")
         
     def extract_tech_data(self):
-        dimensions = f"th. Leistung: {self.th_Leistung_BHKW:.1f} kW, el. Leistung: {self.el_Leistung_Soll:.1f} kW"
+        dimensions = f"th. Leistung: {self.th_Leistung_kW:.1f} kW, el. Leistung: {self.el_Leistung_Soll:.1f} kW"
         costs = f"Investitionskosten: {self.Investitionskosten:.1f}"
         full_costs = f"{self.Investitionskosten:.1f}"
         return self.name, dimensions, costs, full_costs
 
+# Control strategy for CHP
+class CHPStrategy(BaseStrategy):
+    def __init__(self, charge_on, charge_off):
+        """
+        Initializes the CHP strategy with switch points based on storage levels.
+
+        Args:
+            charge_on (int): (upper) Storage temperature to activate CHP.
+            charge_off (int): (lower) Storage temperature to deactivate CHP.
+        """
+        super().__init__(charge_on, charge_off)  # Initialize the BaseStrategy with charge_on and charge_off

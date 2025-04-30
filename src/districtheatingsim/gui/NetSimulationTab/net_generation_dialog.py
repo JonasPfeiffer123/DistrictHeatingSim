@@ -8,10 +8,10 @@ Description: Contains the NetGenerationDialog class.
 from PyQt5.QtWidgets import QVBoxLayout, QDialog, QPushButton, QTabWidget
 from PyQt5.QtCore import Qt
 
-from districtheatingsim.gui.CalculationTab.network_data_tab import NetworkDataTab
-from districtheatingsim.gui.CalculationTab.producer_order_tab import ProducerOrderTab
-from districtheatingsim.gui.CalculationTab.network_config_tab import NetworkConfigTab
-from districtheatingsim.gui.CalculationTab.diameter_optimization_tab import DiameterOptimizationTab
+from districtheatingsim.gui.NetSimulationTab.network_data_tab import NetworkDataTab
+from districtheatingsim.gui.NetSimulationTab.producer_order_tab import ProducerOrderTab
+from districtheatingsim.gui.NetSimulationTab.network_config_tab import NetworkConfigTab
+from districtheatingsim.gui.NetSimulationTab.diameter_optimization_tab import DiameterOptimizationTab
         
 class NetGenerationDialog(QDialog):
     def __init__(self, generate_callback, base_path, parent=None):

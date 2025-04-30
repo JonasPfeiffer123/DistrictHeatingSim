@@ -1,6 +1,5 @@
-# Calculation modell for STES (Seasonal Thermal Energy Storage) systems
 """
-DATE: 02.10.2024
+DATE: 04.04.2025
 AUTHOR: Dipl-Ing. (FH) Jonas Pfeiffer
 FILENAME: STES.py
 
@@ -12,123 +11,18 @@ Authors: Kapil Narula, Fleury de Oliveira Filho, Willy Villasmil, Martin K. Pate
 Link: https://www.sciencedirect.com/science/article/pii/S0960148119318154?via%3Dihub
 """
 
-### Reihenfolge muss geändert werden: Oben beladen, unten entladen
-### Darstellung der Temperaturverteilung in 3D als Zylinder oder Rechteck nicht nur als Kreisringe
-
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from matplotlib.widgets import Slider, Button
-from matplotlib.animation import FuncAnimation
 
-# Globals for animation control
-is_animating = False
-anim_speed = 200  # Default animation speed (in ms per frame)
-anim = None  # Holds the FuncAnimation instance
-current_frame = 0  # Tracks the current frame
+from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator
+from districtheatingsim.heat_generators.STES_animation import STESAnimation
 
-def update_plot(val, storage, ax):
-    """Update the 3D plot based on the selected time step from the slider."""
-    global current_frame
-    current_frame = int(val)  # Set the current frame to the slider value
-    ax.cla()  # Clear the axis
-    storage.plot_3d_temperature_distribution(ax, current_frame)  # Plot for the given time step
-    ax.set_title(f'Temperature Stratification (Time Step {current_frame})')
-    plt.draw()  # Redraw the figure
-
-def animate(i, storage, ax):
-    """Animation function to update the plot at each time step."""
-    global current_frame
-    ax.cla()  # Clear the axis
-    storage.plot_3d_temperature_distribution(ax, i)  # Plot for the given time step
-    ax.set_title(f'Temperature Stratification (Time Step {i})')
-    current_frame = i
-    slider.set_val(i)  # Update slider position to reflect the current time step
-    return ax,
-
-def start_animation(storage, ax):
-    """Start the animation."""
-    global anim, is_animating
-    if not is_animating:
-        anim = FuncAnimation(fig, animate, frames=storage.hours, fargs=(storage, ax),
-                             interval=anim_speed, blit=False, repeat=True)
-        is_animating = True
-        plt.draw()
-
-def stop_animation():
-    """Stop the animation."""
-    global anim, is_animating
-    if anim is not None:
-        anim.event_source.stop()  # Stop the animation
-        is_animating = False
-
-def forward(storage):
-    """Move forward by 1 frame."""
-    global current_frame
-    current_frame = min(current_frame + 1, storage.hours - 1)  # Increment the frame
-    slider.set_val(current_frame)  # Update slider to the new frame
-
-def backward():
-    """Move backward by 1 frame."""
-    global current_frame
-    current_frame = max(current_frame - 1, 0)  # Decrement the frame
-    slider.set_val(current_frame)  # Update slider to the new frame
-
-def adjust_speed(val, storage):
-    """Adjust the animation speed based on the speed slider."""
-    global anim_speed
-    anim_speed = int(val)  # Update the speed
-    if is_animating:
-        stop_animation()  # Restart the animation with the new speed
-        start_animation(storage, ax)
-
-def interactive_plot(storage):
-    storage.labels_exist = False  # Reset the labels flag
-    storage.colorbar_exists = False  # Reset the color bar flag
-    """Create an interactive plot with a slider, start/stop buttons, and speed control."""
-    global fig, ax, slider
-    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
-    plt.subplots_adjust(left=0.1, bottom=0.35)
-    
-    # Initial plot
-    storage.plot_3d_temperature_distribution(ax, current_frame)
-    
-    # Add time step slider
-    ax_slider = plt.axes([0.1, 0.1, 0.65, 0.03], facecolor='lightgoldenrodyellow')
-    slider = Slider(ax_slider, 'Time Step', 0, storage.hours - 1, valinit=current_frame, valstep=1)
-    
-    # Update plot when slider is changed
-    slider.on_changed(lambda val: update_plot(val, storage, ax))
-    
-    # Add start button
-    ax_start = plt.axes([0.1, 0.25, 0.1, 0.04])
-    start_button = Button(ax_start, 'Start', color='lightblue', hovercolor='green')
-    start_button.on_clicked(lambda event: start_animation(storage, ax))
-    
-    # Add stop button
-    ax_stop = plt.axes([0.25, 0.25, 0.1, 0.04])
-    stop_button = Button(ax_stop, 'Stop', color='lightblue', hovercolor='red')
-    stop_button.on_clicked(lambda event: stop_animation())
-    
-    # Add forward button
-    ax_forward = plt.axes([0.4, 0.25, 0.1, 0.04])
-    forward_button = Button(ax_forward, 'Forward', color='lightblue', hovercolor='yellow')
-    forward_button.on_clicked(lambda event: forward(storage))
-    
-    # Add backward button
-    ax_backward = plt.axes([0.55, 0.25, 0.1, 0.04])
-    backward_button = Button(ax_backward, 'Backward', color='lightblue', hovercolor='yellow')
-    backward_button.on_clicked(lambda event: backward())
-    
-    # Add speed control slider
-    ax_speed = plt.axes([0.75, 0.25, 0.15, 0.04])
-    speed_slider = Slider(ax_speed, 'Speed (ms)', 50, 1000, valinit=anim_speed)
-    speed_slider.on_changed(lambda val: adjust_speed(val, storage))
-
-class ThermalStorage:
-    def __init__(self, storage_type, dimensions, rho, cp, T_ref, lambda_top, lambda_side, lambda_bottom, lambda_soil, 
+class ThermalStorage(BaseHeatGenerator):
+    def __init__(self, name, storage_type, dimensions, rho, cp, T_ref, lambda_top, lambda_side, lambda_bottom, lambda_soil, 
                  T_amb, T_soil, T_max, T_min, initial_temp, dt_top, ds_side, db_bottom, hours=8760, num_layers=5, thermal_conductivity=0.6):
+        super().__init__(name)
         self.storage_type = storage_type # Type of storage (cylindrical, truncated_cone, truncated_trapezoid)
         self.dimensions = dimensions # Dimensions of the storage (radius, height for cylindrical, top_radius, bottom_radius, height for truncated cone)
         self.rho = rho # Density of the medium in kg/m³
@@ -221,11 +115,62 @@ class ThermalStorage:
     
     def calculate_operational_costs(self, energy_price_per_kWh):
         # Convert J to kWh (1 kWh = 3.6e6 J)
-        total_energy_loss_kWh = np.sum(self.Q_loss) # Total energy loss in kWh
-        self.operational_costs = total_energy_loss_kWh * energy_price_per_kWh
+        self.total_energy_loss_kWh = np.sum(self.Q_loss) # Total energy loss in kWh
+        self.operational_costs = self.total_energy_loss_kWh * energy_price_per_kWh
 
     def calculate_efficiency(self, Q_in):
-        self.efficiency = 1 - (np.sum(self.Q_loss) / np.sum(Q_in)) # Efficiency as a ratio
+        # Calculate efficiency based on the input and output energy
+        self.total_energy_loss_kWh = np.sum(self.Q_loss) # Total energy loss in kWh
+        self.efficiency = 1 - (self.total_energy_loss_kWh / np.sum(Q_in)) # Efficiency as a ratio
+
+    def to_dict(self):
+        """
+        Converts the object to a dictionary, excluding non-serializable attributes.
+
+        Returns:
+            dict: Dictionary representation of the object.
+        """
+        # Erstelle eine Kopie des aktuellen Objekt-Dictionaries
+        data = self.__dict__.copy()
+
+        # Storage saved
+        print("Storage saved")
+        
+        # Entferne das scene_item und andere nicht notwendige Felder
+        data.pop('scene_item', None)
+
+        return data
+
+    @classmethod
+    def from_dict(cls, data):
+        """
+        Creates an object from a dictionary.
+
+        Args:
+            data (dict): Dictionary containing the attributes of the object.
+
+        Returns:
+            cls: A new object of the given class with attributes from the dictionary.
+        """
+        obj = cls.__new__(cls)
+        obj.__dict__.update(data)
+
+        # storage loaded
+        print("Storage loaded")
+        
+        return obj
+    
+    def __deepcopy__(self, memo):
+        """
+        Creates a deep copy of the ThermalStorage object.
+
+        Args:
+            memo (dict): Memoization dictionary for deepcopy.
+
+        Returns:
+            ThermalStorage: A deep copy of the ThermalStorage object.
+        """
+        return self.from_dict(self.to_dict())
 
 class SimpleThermalStorage(ThermalStorage):
     def __init__(self, *args, **kwargs):
@@ -697,10 +642,10 @@ class StratifiedThermalStorage(ThermalStorage):
 
         # Add labels, title, and color bar only if they haven't been added before
         if not self.labels_exist:
-            ax.set_title('Temperature Stratification (Time Step {})'.format(time_step))
+            ax.set_title('Temperaturverteilung (Zeitschritt {})'.format(time_step))
             ax.set_xlabel('X (m)')
             ax.set_ylabel('Y (m)')
-            ax.set_zlabel('Height (m)')
+            ax.set_zlabel('Z (m)')
             self.labels_exist = True  # Set flag to prevent re-drawing
 
         if not self.colorbar_exists:
@@ -708,7 +653,7 @@ class StratifiedThermalStorage(ThermalStorage):
             mappable = plt.cm.ScalarMappable(cmap=plt.cm.coolwarm)
             mappable.set_array([self.T_min, self.T_max])
             cbar = plt.colorbar(mappable, ax=ax, shrink=0.5, aspect=5)
-            cbar.set_label('Temperature (°C)')
+            cbar.set_label('Temperatur (°C)')
             self.colorbar_exists = True  # Set flag to prevent re-drawing
     
     def plot_results(self):
@@ -773,144 +718,195 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
         self.unmet_demand = 0  # Nicht gedeckter Wärmebedarf
         self.stagnation_time = 0  # Zeit in Stunden, in der Überhitzung (Stagnation) auftritt
 
-    def simulate_stratified_temperature_mass_flows(self, Q_in, Q_out, T_Q_in_flow, T_Q_out_return):
+        self.storage_state = np.zeros(self.hours)  # Speicherzustand in Prozent des maximalen Ladezustands
+
+        # Variable for net flow, positive for charge, negative for discharge
+        self.Q_net_storage_flow = np.zeros(self.hours)
+
+        self.T_max_rücklauf = 70  # Maximale Rücklauftemperatur für Erzeuger
+
+        self.dT_VLT = 15  # Tolerance below the target supply temperature in K
+
+    def simulate_stratified_temperature_mass_flows(self, t, Q_in, Q_out, T_Q_in_flow, T_Q_out_return):
         """
-        Simulates stratified heat storage, considering mass flows and internal heat conduction between layers.
+        Simulates stratified heat storage at a specific time step, considering mass flows and internal heat conduction between layers.
+        t: Time step in hours.
         Q_in: Input heat in kW (e.g., from a solar thermal source)
         Q_out: Output heat in kW (e.g., to a district heating network)
         T_Q_in_flow: Input flow temperature (e.g., inlet temperature from the heat source)
         T_Q_out_return: Output return temperature (e.g., return temperature from the consumer)
         """
+
         T_Q_in_flow_copy = np.copy(T_Q_in_flow)
         T_Q_out_return_copy = np.copy(T_Q_out_return)
-        Q_in_copy = np.copy(Q_in)
-        Q_out_copy = np.copy(Q_out)
 
-        self.Q_in = Q_in_copy  # Input heat in kW
-        self.Q_out = Q_out_copy  # Output heat in kW
+        self.Q_in = np.zeros(self.hours)  # Eingangsleistung in kW
+        self.Q_out = np.zeros(self.hours)  # Ausgangsleistung in kW
         self.T_Q_in_flow = T_Q_in_flow_copy  # Vorlauf-Erzeuger
         self.T_Q_out_return = T_Q_out_return_copy  # Rücklauf-Verbraucher
+        
+        if t == 0:
+            self.T_sto_layers = np.full((self.hours, self.num_layers), self.T_sto[0])  # Initialisiere Schichttemperaturen
+            self.Q_loss[t] = self.calculate_stratified_heat_loss(self.T_sto_layers[t])
+            self.heat_stored_per_layer = self.layer_volume * self.rho * self.cp * (self.T_sto[0] - T_Q_out_return) / 3.6e6  # Wärme in jeder Schicht
+            self.Q_sto[t] = sum(self.heat_stored_per_layer)  # Initial total stored heat in kWh
 
-        for t in range(0, self.hours):
-            if t == 0:
-                self.T_sto_layers = np.full((self.hours, self.num_layers), self.T_sto[t])  # Initialisiere Schichttemperaturen, T_sto[0] = Anfangstemperatur, alle Schichten haben die gleiche Temperatur
-                self.Q_loss[t] = self.calculate_stratified_heat_loss(self.T_sto_layers[t])  # Berechne die Wärmeverluste
-                heat_stored_per_layer = self.layer_volume * self.rho * self.cp * (self.T_sto[t] - self.T_Q_out_return[t]) / 3.6e6  # Wärme in jeder Schicht bezogen auf die Rücklauftemperatur bei t=0 in kWh
-                self.Q_sto[t] = sum(heat_stored_per_layer) # Gespeicherte Wärme in kWh
+        else:
+            # Berechnung der Wärmeverluste und Wärmeleitung zwischen den Schichten
+            self.Q_loss[t] = self.calculate_stratified_heat_loss(self.T_sto_layers[t - 1])
 
+            for i in range(self.num_layers):
+                Q_loss_layer = self.Q_loss_layers[i]
+                self.heat_stored_per_layer[i] -= Q_loss_layer / 3600
+                delta_T = (Q_loss_layer * 3.6e6) / (self.layer_volume[i] * self.rho * self.cp)
+                self.T_sto_layers[t, i] = self.T_sto_layers[t - 1, i] - delta_T
+
+            for i in range(self.num_layers - 1):
+                delta_T = self.T_sto_layers[t - 1, i] - self.T_sto_layers[t - 1, i + 1]
+                heat_transfer = self.thermal_conductivity * self.S_side * delta_T / self.layer_thickness
+                heat_transfer_kWh = heat_transfer / 3.6e6 * 3600
+
+                self.heat_stored_per_layer[i] -= heat_transfer_kWh
+                self.heat_stored_per_layer[i + 1] += heat_transfer_kWh
+
+                delta_T_transfer = heat_transfer_kWh * 3.6e6 / (self.layer_volume[i] * self.rho * self.cp)
+                self.T_sto_layers[t, i] -= delta_T_transfer
+                self.T_sto_layers[t, i + 1] += delta_T_transfer
+
+            # Update for energy storage state
+            self.T_sto[t] = np.average(self.T_sto_layers[t])
+
+            # when the storage is full, the inflow is zero
+            if self.T_sto_layers[t, -1] < self.T_max_rücklauf:
+                # Ladeoperation möglich
+                self.Q_in[t] = Q_in
+                self.mass_flow_in[t] = (self.Q_in[t] * 1000) / (self.cp * (T_Q_in_flow - self.T_sto_layers[t, -1]))
             else:
-                ### Berchnung der Wärmeverluste und Wärmeleitung zwischen den Schichten ###
-                # 1.1 **Berechnung der Wärmeverluste nach außen (basierend auf Schichttemperaturen)**
-                self.Q_loss[t] = self.calculate_stratified_heat_loss(self.T_sto_layers[t - 1])
+                # Speicherüberhitzung oder keine ausreichende Temperaturdifferenz
+                self.mass_flow_in[t] = 0
+                self.excess_heat += Q_in
+                self.stagnation_time += 1
+                self.Q_in[t] = Q_out
 
-                # 1.2 **Berechnung der Wärmeverluste nach außen (basierend auf Schichttemperaturen)**
-                for i in range(self.num_layers):
-                    # Berechne den Wärmeverlust für die Schicht
-                    Q_loss_layer = self.Q_loss_layers[i]  # Wärmeverlust in kWh
+            # when the storage is empty, the outflow is zero
+            if self.T_sto_layers[t, 0] > T_Q_in_flow - self.dT_VLT:
+                # Entladeoperation möglich
+                self.Q_out[t] = Q_out
+                self.mass_flow_out[t] = (self.Q_out[t] * 1000) / (self.cp * (self.T_sto_layers[t, 0] - T_Q_out_return))
+            else:
+                # Speicher zu kalt oder keine ausreichende Temperaturdifferenz
+                self.mass_flow_out[t] = 0
+                self.unmet_demand += Q_out
+                self.Q_out[t] = Q_in
 
-                    # Ziehe Wärmeverluste von der gespeicherten Wärme in der Schicht ab
-                    heat_stored_per_layer[i] -= Q_loss_layer / 3600  # Wärmeverlust in kWh
+            self.Q_net_storage_flow[t] = self.Q_out[t] - self.Q_in[t]
 
-                    # Berechne die Temperaturänderung aufgrund des Wärmeverlustes
-                    # delta_T = Q_loss_layer / (m * cp), wobei m = rho * volume der Schicht
-                    delta_T = (Q_loss_layer * 3.6e6) / (self.layer_volume[i] * self.rho * self.cp)  # in °C
+            if t == 100:
+                print(f"Mass flow in: {self.mass_flow_in[t]} kg/s, Mass flow out: {self.mass_flow_out[t]} kg/s, Q_in: {self.Q_in[t]}, Q_out: {self.Q_out[t]}, Q_net: {self.Q_net_storage_flow[t]}")
 
-                    # Aktualisiere die Temperatur der Schicht basierend auf der Temperaturänderung
-                    self.T_sto_layers[t, i] = self.T_sto_layers[t - 1, i] - delta_T  # Temperaturverlust
+            # Inflow from top to bottom
+            for i in range(self.num_layers):
+                mix_temp_K = ((self.mass_flow_in[t] * self.cp * (T_Q_in_flow + 273.15) * 3600) +
+                              (self.layer_volume[i] * self.rho * self.cp * (self.T_sto_layers[t, i] + 273.15))) / \
+                             ((self.mass_flow_in[t] * self.cp * 3600) + (self.layer_volume[i] * self.rho * self.cp))
 
-                # 2. **Berechnung der Wärmeleitung innerhalb des Speichers (zwischen den Schichten)**
-                for i in range(self.num_layers - 1):
-                    delta_T = self.T_sto_layers[t - 1, i] - self.T_sto_layers[t - 1, i + 1]
-                    heat_transfer = self.thermal_conductivity * self.S_side * delta_T / self.layer_thickness  # W = J/s
-                    heat_transfer_kWh = heat_transfer / 3.6e6 * 3600  # kWh pro Stunde
+                added_heat = self.mass_flow_in[t] * self.cp * (T_Q_in_flow - self.T_sto_layers[t, i]) * 3600
+                self.heat_stored_per_layer[i] += added_heat / 3.6e6
+                self.T_sto_layers[t, i] = mix_temp_K - 273.15
+                T_Q_in_flow = self.T_sto_layers[t, i]
 
-                    # Wärme von Schicht i abziehen und zur Schicht i+1 hinzufügen
-                    heat_stored_per_layer[i] -= heat_transfer_kWh
-                    heat_stored_per_layer[i + 1] += heat_transfer_kWh
+            # Outflow from bottom to top
+            for i in range(self.num_layers - 1, -1, -1):
+                mix_temp_K = ((self.mass_flow_out[t] * self.cp * (T_Q_out_return + 273.15) * 3600) +
+                              (self.layer_volume[i] * self.rho * self.cp * (self.T_sto_layers[t, i] + 273.15))) / \
+                             ((self.mass_flow_out[t] * self.cp * 3600) + (self.layer_volume[i] * self.rho * self.cp))
 
-                    # Aktualisiere die Temperaturen basierend auf dem neuen Wärmeinhalt
-                    delta_T_transfer = heat_transfer_kWh * 3.6e6 / (self.layer_volume[i] * self.rho * self.cp)  # in °C
+                removed_heat = self.mass_flow_out[t] * self.cp * (self.T_sto_layers[t, i] - T_Q_out_return) * 3600
+                self.heat_stored_per_layer[i] -= removed_heat / 3.6e6
+                self.T_sto_layers[t, i] = mix_temp_K - 273.15
+                T_Q_out_return = self.T_sto_layers[t, i]
 
-                    # Temperaturanpassung für die beiden benachbarten Schichten
-                    self.T_sto_layers[t, i] -= delta_T_transfer  # Schicht i verliert Wärme
-                    self.T_sto_layers[t, i + 1] += delta_T_transfer  # Schicht i+1 gewinnt Wärme
+            self.Q_sto[t] = np.sum(self.heat_stored_per_layer)
+            self.T_sto[t] = np.average(self.T_sto_layers[t])
 
-                ### Be- und Entladen der Schichten basierend auf den Massenströmen und Temperaturen ###
-                # **Speicherleer- und Speicherfüllstatus prüfen**
-                # Aktualisiere die Hauptspeichertemperatur als Durchschnittstemperatur der Schichten
-                self.T_sto[t] = np.average(self.T_sto_layers[t])
-                available_energy_in_storage = np.sum([(self.T_sto[t] - self.T_Q_out_return[t]) * self.layer_volume[i] * self.rho * self.cp / 3.6e6 for i in range(self.num_layers)])  # Energie über T_min in kWh
-                max_possible_energy = np.sum([(self.T_Q_in_flow[t] - self.T_Q_out_return[t]) * self.layer_volume[i] * self.rho * self.cp / 3.6e6 for i in range(self.num_layers)])  # Maximale Energie in kWh
-                
-                # Speicher voll (keine weitere Aufnahme)
-                if available_energy_in_storage >= max_possible_energy*0.95:# and self.Q_in[t] > self.Q_out[t]:
-                    self.excess_heat += self.Q_in[t] # Überschüssige Wärme
-                    self.stagnation_time += 1  # Stagnationszeit um eine Stunde erhöhen
-                    self.Q_in[t] = 0  # Keine weitere Wärmezufuhr
+        self.T_Q_in_return[t] = self.T_sto_layers[t, -1]
+        self.T_Q_out_flow[t] = self.T_sto_layers[t, 0]
 
-                # Speicher leer (keine weitere Entnahme)
-                if available_energy_in_storage <= max_possible_energy*0.05:# and self.Q_out[t] > self.Q_in[t]:
-                    self.unmet_demand += self.Q_out[t] # Nicht gedeckter Bedarf
-                    self.Q_out[t] = 0  # Keine weitere Wärmeentnahme
+    def current_storage_state(self, t, T_Q_out_return, T_Q_in_flow):
+        """
+        Berechnet und gibt den aktuellen Ladezustand des Speichers als Anteil des maximalen Ladezustands zurück.
+        
+        Args:
+            t (int): Aktueller Zeitschritt.
+            T_Q_out_return (float): Rücklauftemperatur des Verbrauchers in °C.
+            T_Q_in_flow (float): Vorlauftemperatur des Erzeugers in °C.
 
-                # Berechne den Massenstrom für Input und Output (kg/s)
-                if T_Q_in_flow[t] - self.T_sto_layers[t, 0] != 0:  # Vermeide Division durch Null
-                    self.mass_flow_in[t] = (self.Q_in[t] * 1000) / (self.cp * (T_Q_in_flow[t] - self.T_sto_layers[t, -1]))  # kg/s für Erzeuger 
-                else:
-                    self.mass_flow_in[t] = 0
+        Returns:
+            float: Ladezustand in Prozent des maximalen Ladezustands (0–100).
+        """
+        if t == 0:
+            T_sto = self.T_sto[t]
+        else:
+            T_sto = self.T_sto[t - 1]
 
-                if self.T_sto_layers[t, -1] - T_Q_out_return[t] != 0:  # Vermeide Division durch Null
-                    self.mass_flow_out[t] = (self.Q_out[t] * 1000) / (self.cp * (self.T_sto_layers[t, 0] - T_Q_out_return[t]))  # kg/s für Verbraucher
-                else:
-                    self.mass_flow_out[t] = 0
+        available_energy_in_storage = np.sum([(T_sto - T_Q_out_return) * self.layer_volume[i] * self.rho * self.cp / 3.6e6 
+                                            for i in range(self.num_layers)])
+        max_possible_energy = np.sum([(T_Q_in_flow - T_Q_out_return) * self.layer_volume[i] * self.rho * self.cp / 3.6e6 
+                                    for i in range(self.num_layers)])
+        
+        self.storage_state[t] = (available_energy_in_storage / max_possible_energy)
+        
+        return max(0, min(1, self.storage_state[t])), available_energy_in_storage, max_possible_energy
+    
+    def current_storage_temperatures(self, t):
+        """
+        Gibt die aktuelle Temperatur des Speichers an den Enden zurück.
 
-                # 3. **Wärmeeinströmung (von oben nach unten)**
-                for i in range(self.num_layers):
-                    # Berechne die Mischtemperatur in Kelvin zwischen der Schicht und dem einströmenden Medium
-                    mix_temp_K = ((self.mass_flow_in[t] * self.cp * (T_Q_in_flow[t] + 273.15) * 3600) + 
-                                (self.layer_volume[i] * self.rho * self.cp * (self.T_sto_layers[t, i] + 273.15))) / \
-                                ((self.mass_flow_in[t] * self.cp * 3600) + 
-                                (self.layer_volume[i] * self.rho * self.cp))
+        Args:
+            t (int): Aktueller Zeitschritt.
 
-                    # Berechne die zugeführte Wärme und füge sie der Schicht hinzu
-                    added_heat = self.mass_flow_in[t] * self.cp * (T_Q_in_flow[t] - self.T_sto_layers[t, i]) * 3600  # in J
-                    heat_stored_per_layer[i] += added_heat / 3.6e6  # in kWh
+        Returns:
+            tuple: Vorlauf- und Rücklauftemperatur des Speichers.
 
-                    # Die neue Temperatur der Schicht ist die Mischtemperatur (wieder in °C umrechnen)
-                    self.T_sto_layers[t, i] = mix_temp_K - 273.15
+        """
 
-                    # Aktualisiere die Vorlauftemperatur für die nächste Schicht
-                    T_Q_in_flow[t] = self.T_sto_layers[t, i]
+        if t == 0:
+            return self.T_sto[t], self.T_sto[t]
+        else:
+            return self.T_sto_layers[t-1, 0], self.T_sto_layers[t-1, -1]
+        
+    def calculate_costs(self, Wärmemenge_MWh, Investitionskosten, Nutzungsdauer, f_Inst, f_W_Insp, Bedienaufwand, q, r, T, Energiebedarf, Energiekosten, E1, stundensatz):
+        """
+        Berechnet den Anteil der Wärmegestehungskosten für den Speicher.
+        """
+        self.Wärmemenge_MWh = Wärmemenge_MWh
+        self.Investitionskosten = Investitionskosten
+        self.Nutzungsdauer = Nutzungsdauer
+        self.f_Inst = f_Inst
+        self.f_W_Insp = f_W_Insp
+        self.Bedienaufwand = Bedienaufwand
+        self.q = q
+        self.r = r
+        self.T = T
+        self.Energiebedarf = Energiebedarf
+        self.Energiekosten = Energiekosten
+        self.E1 = E1
+        self.stundensatz = stundensatz
 
-                # 4. **Wärmeausströmung (von unten nach oben)**
-                for i in range(self.num_layers - 1, -1, -1):
-                    # Berechne die Mischtemperatur in Kelvin zwischen der Schicht und dem ausströmenden Medium
-                    mix_temp_K = ((self.mass_flow_out[t] * self.cp * (T_Q_out_return[t] + 273.15) * 3600) + 
-                                (self.layer_volume[i] * self.rho * self.cp * (self.T_sto_layers[t, i] + 273.15))) / \
-                                ((self.mass_flow_out[t] * self.cp * 3600) + 
-                                (self.layer_volume[i] * self.rho * self.cp))
+        self.A_N = self.annuität(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, q, r, T, Energiebedarf, Energiekosten, E1, stundensatz)
 
-                    # Berechne die abgeführte Wärme und ziehe sie von der Schicht ab
-                    removed_heat = self.mass_flow_out[t] * self.cp * (self.T_sto_layers[t, i] - T_Q_out_return[t]) * 3600  # in J
-                    heat_stored_per_layer[i] -= removed_heat / 3.6e6  # in kWh
+        self.WGK = self.A_N / self.Wärmemenge_MWh
 
-                    # Die neue Temperatur der Schicht ist die Mischtemperatur (wieder in °C umrechnen)
-                    self.T_sto_layers[t, i] = mix_temp_K - 273.15
+    def get_display_text(self):
+        return (f"{self.storage_type.capitalize()} Storage: Volume: {self.volume:.1f} m³, "
+                f"Max Temp: {self.T_max:.1f} °C, Min Temp: {self.T_min:.1f} °C, "
+                f"Layers: {self.num_layers}")
 
-                    # Aktualisiere die Rücklauftemperatur für die nächste Schicht
-                    T_Q_out_return[t] = self.T_sto_layers[t, i]# **Wärme einströmen lassen (von oben nach unten):**
-
-                # Berechne die Gesamtwärme im Speicher
-                self.Q_sto[t] = np.sum(heat_stored_per_layer)  # Gespeicherte Wärme in kWh
-
-                # Aktualisiere die Hauptspeichertemperatur als Durchschnittstemperatur der Schichten
-                self.T_sto[t] = np.average(self.T_sto_layers[t])
-
-            # Berechnung der Rücklauftemperaturen:
-            self.T_Q_in_return[t] = self.T_sto_layers[t, 0]  # Rücklauftemperatur für Erzeuger
-            self.T_Q_out_flow[t] = self.T_sto_layers[t, -1]  # Vorlauftemperatur für Verbraucher
-
-        self.calculate_efficiency(self.Q_in)
+    def extract_tech_data(self):
+        dimensions = f"Volume: {self.volume:.1f} m³, Layers: {self.num_layers}"
+        costs = 0 # must be fixed
+        full_costs = 0 # must be fixed
+        return self.storage_type.capitalize(), dimensions, costs, full_costs
 
     def plot_results(self, Q_in, Q_out, T_Q_in_flow, T_Q_out_return):
         fig = plt.figure(figsize=(16, 10))
@@ -921,34 +917,58 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
         axs5 = fig.add_subplot(2, 3, 5)
         axs6 = fig.add_subplot(2, 3, 6, projection='3d')
 
-        # Q_in and Q_out
-        axs1.plot(Q_in, label='Wärmeerzeugung', color='red')
-        axs1.plot(Q_out, label='Wärmeverbrauch', color='blue')
+        # Separate positive and negative values for Q_net_storage_flow
+        Q_net_positive = np.maximum(self.Q_net_storage_flow, 0)  # Discharging (positive values)
+        Q_net_negative = np.minimum(self.Q_net_storage_flow, 0)  # Charging (negative values)
+
+        # Plot Wärmeerzeugung as line plot
+        axs1.plot(Q_out, label='Wärmeverbrauch', color='blue', linewidth=0.5)
+
+        # Plot Speicherladung und -entladung separat
+        axs1.fill_between(
+            range(self.hours),
+            0,
+            Q_net_negative,  # Speicherentladung (negative Werte)
+            where=Q_net_negative < 0,
+            color='orange',
+            label='Speicherbeladung'
+        )
+        
+        # Stackplot für Wärmeerzeugung und Speicherentladung
+        axs1.stackplot(
+            range(self.hours),
+            Q_in,             # Wärmeerzeugung
+            Q_net_positive,   # Speicherladung (positive Werte)
+            labels=['Wärmeerzeugung', 'Speicherentladung'],
+            colors=['red', 'purple']
+        )
+
         axs1.set_ylabel('Wärme (kW)')
-        axs1.set_title('Wärmeerzeugung und Wärmeverbrauch im Zeitverlauf')
-        axs1.legend()
+        axs1.set_title('Wärmeerzeugung, -verbrauch und Speicher-Nettofluss')
+        axs1.legend(loc='upper left', bbox_to_anchor=(0, 1)) # Legend outside the plot
 
         # Plot storage temperature
         axs2.plot(self.T_sto, label='Speichertemperatur')
-        axs2.plot(self.T_Q_in_flow, label='Vorlauftemperatur Erzeuger (Eintritt)', linestyle='--', color='green')
-        axs2.plot(self.T_Q_out_return, label='Rücklauftemperatur Verbraucher (Eintritt)', linestyle='--', color='orange')
+        axs2.plot(T_Q_in_flow, label='Vorlauftemperatur Erzeuger (Eintritt)', linestyle='--', color='green')
+        axs2.plot(T_Q_out_return, label='Rücklauftemperatur Verbraucher (Eintritt)', linestyle='--', color='orange')
         axs2.plot(self.T_Q_in_return, label='Rücklauftemperatur Erzeuger (Austritt)', linestyle='--', color='purple')
         axs2.plot(self.T_Q_out_flow, label='Vorlauftemperatur Verbraucher (Austritt)', linestyle='--', color='brown')
+        #axs2.plot(self.storage_state, label='Speicherzustand', linestyle='--', color='black')
         axs2.set_ylabel('Temperatur (°C)')
         axs2.set_title(f'Systemtemperaturen im Zeitverlauf')
-        axs2.legend()
+        axs2.legend(loc='upper left', bbox_to_anchor=(0, 1))  # Adjust legend position
 
         # Plot heat loss
         axs3.plot(self.Q_loss, label='Wärmeverlust', color='orange')
         axs3.set_ylabel('Wärmeverlust (kW)')
         axs3.set_title('Wärmeverlust im Zeitverlauf')
-        axs3.legend()
+        axs3.legend(loc='upper left', bbox_to_anchor=(0, 1))  # Adjust legend position
 
         # Plot stored heat
         axs4.plot(self.Q_sto, label='Gespeicherte Wärme', color='green')
         axs4.set_ylabel('Gespeicherte Wärme (kWh)')
         axs4.set_title('Gespeicherte Wärme im Zeitverlauf')
-        axs4.legend()
+        axs4.legend(loc='upper left', bbox_to_anchor=(0, 1))  # Adjust legend position
 
         # Plot stratified storage temperatures
         for i in range(self.T_sto_layers.shape[1]):
@@ -956,7 +976,7 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
         axs5.set_xlabel('Zeit (Stunden)')
         axs5.set_ylabel('Temperatur (°C)')
         axs5.set_title('Temperaturen der Schichten im Speicher')
-        axs5.legend()
+        axs5.legend(loc='upper left', bbox_to_anchor=(0, 1))  # Adjust legend position
 
         # Plot 3D geometry
         self.plot_3d_temperature_distribution(axs6, 6000)
@@ -966,69 +986,51 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
 if __name__ == '__main__':
     # Complete the example usage for cylindrical storage
     params = {
-        #"storage_type": "cylindrical",  # Choose between "cylindrical", "truncated_cone", "truncated_trapezoid"
-        #"storage_type": "truncated_cone",
         "storage_type": "truncated_trapezoid",
-        #"dimensions": (25, 25),  # Radius (m), Height (m) for cylindrical
-        #"dimensions": (10, 5, 25),  # Top radius, Bottom radius, Height for truncated cone
-        "dimensions": (20, 20, 50, 50, 15),  # Top length, Top width, Bottom length, Bottom width, Height for truncated trapezoid
-        "rho": 1000,  # kg/m³ (density of water)
-        "cp": 4180,  # J/kg*K (specific heat capacity of water)
-        "T_ref": 10,  # °C reference temperature
-
-        "lambda_top": 0.04,  # W/m*K for top insulation
-        "lambda_side": 0.03,  # W/m*K for side insulation
-        "lambda_bottom": 0.05,  # W/m*K for bottom insulation
-        "lambda_soil": 1.5,  # W/m*K for soil thermal conductivity
-        "dt_top": 0.3,  # m thickness of top insulation
-        "ds_side": 0.4,  # m thickness of side insulation
-        "db_bottom": 0.5,  # m thickness of bottom insulation
-
-        "T_amb": 10,  # °C ambient temperature
-        "T_soil": 10,  # °C soil temperature
-        "T_max": 95,  # °C maximum storage temperature
-        "T_min": 40,  # °C minimum storage temperature
-        "initial_temp": 60,  # Initial storage temperature
-        "hours": 8760,  # Number of hours in a year
-        "num_layers": 5,  # Number of layers for stratified storage
-        "thermal_conductivity": 0.6  # W/m*K thermal conductivity of the medium, here water
+        "dimensions": (20, 20, 50, 50, 15),
+        "rho": 1000,
+        "cp": 4180,
+        "T_ref": 10,
+        "lambda_top": 0.04,
+        "lambda_side": 0.03,
+        "lambda_bottom": 0.05,
+        "lambda_soil": 1.5,
+        "dt_top": 0.3,
+        "ds_side": 0.4,
+        "db_bottom": 0.5,
+        "T_amb": 10,
+        "T_soil": 10,
+        "T_max": 95,
+        "T_min": 40,
+        "initial_temp": 60,
+        "hours": 8760,
+        "num_layers": 5,
+        "thermal_conductivity": 0.6
     }
     # Create instance of the class for cylindrical storage
-    simple_STES = SimpleThermalStorage(**params) # Seasonal Thermal Energy Storage
-    stratified_STES = StratifiedThermalStorage(**params) # Stratified Seasonal Thermal Energy Storage
-    temperature_stratified_STES = TemperatureStratifiedThermalStorage(**params) # Stratified Seasonal Thermal Energy Storage with Mass Flows
+    simple_STES = SimpleThermalStorage(name="Einfacher Saisonaler Wärmespeicher", **params) # Seasonal Thermal Energy Storage
+    stratified_STES = StratifiedThermalStorage(name="Geschichteter Saisonaler Wärmespeicher", **params) # Stratified Seasonal Thermal Energy Storage
+    temperature_stratified_STES = TemperatureStratifiedThermalStorage(name="Temperaturaufgelöster Saisonaler Wärmespeicher", **params) # Stratified Seasonal Thermal Energy Storage with Mass Flows
 
-    # Simulated heat input and output (example random values)
-    Q_in = np.random.uniform(450, 455, params['hours'])  # Heat input in kW
-    #Q_out = np.random.uniform(100, 200, params['hours'])  # Heat output in kW
-    T_Q_in_flow = np.random.uniform(85, 85, params['hours'])  # Input flow temperature in °C
-    T_Q_out_return = np.random.uniform(50, 50, params['hours'])  # Output return temperature in °C
-
-    # Load Q_out from Lastgang.csv
-    file_path = os.path.abspath('currently_not_used\STES\Lastgang.csv')
+    # Last- und Temperaturprofile laden
+    file_path = os.path.abspath('feature_develop/STES/Lastgang.csv')
     df = pd.read_csv(file_path, delimiter=';', encoding='utf-8')
-    Q_out = df['Gesamtwärmebedarf_Gebäude_kW'].values # Heat output kW
+    Q_out_profile = df['Gesamtwärmebedarf_Gebäude_kW'].values
+    T_Q_in_flow_profile = np.random.uniform(85, 85, params['hours'])
+    T_Q_out_return_profile = np.random.uniform(50, 50, params['hours'])
+
+    Q_in = np.array([500] * params['hours'])  # Heat input in kW
 
     # Run simulation
     energy_price_per_kWh = 0.10  # €/kWh
 
-    """
-    simple_STES.simulate(Q_in, Q_out)
-    simple_STES.plot_results()
-    simple_STES.calculate_operational_costs(energy_price_per_kWh)
-    print(f"Storage efficiency: {simple_STES.efficiency * 100:.2f}%")
-    print(f"Operational costs: {simple_STES.operational_costs:.2f} €")
+    for t in range(0, params['hours']):
+        temperature_stratified_STES.simulate_stratified_temperature_mass_flows(t, Q_in[t], Q_out_profile[t], T_Q_in_flow_profile[t], T_Q_out_return_profile[t])
 
-    stratified_STES.simulate_stratified(Q_in, Q_out)
-    stratified_STES.plot_results()
-    stratified_STES.calculate_operational_costs(energy_price_per_kWh)
-    print(f"Storage efficiency: {stratified_STES.efficiency * 100:.2f}%")
-    print(f"Operational costs: {(stratified_STES.operational_costs):.2f} €")
-    """
-
-    temperature_stratified_STES.simulate_stratified_temperature_mass_flows(Q_in, Q_out, T_Q_in_flow, T_Q_out_return)
-    temperature_stratified_STES.plot_results(Q_in, Q_out, T_Q_in_flow, T_Q_out_return)
+    temperature_stratified_STES.plot_results(Q_in, Q_out_profile, T_Q_in_flow_profile, T_Q_out_return_profile)
+    temperature_stratified_STES.calculate_efficiency(Q_in)
     temperature_stratified_STES.calculate_operational_costs(energy_price_per_kWh)
+    
     print(f"Speicherwirkungsgrad / -effizienz: {temperature_stratified_STES.efficiency * 100:.2f}%")
     print(f"Betriebskosten: {(temperature_stratified_STES.operational_costs):.2f} €")
     print(f"Überschüssige Wärme durch Stagnation: {temperature_stratified_STES.excess_heat:.2f} kWh")
@@ -1036,7 +1038,7 @@ if __name__ == '__main__':
     print(f"Stagnationsdauer: {temperature_stratified_STES.stagnation_time} h")
 
     # Interactive 3D plot
-    #interactive_plot(stratified_STES)
-    #interactive_plot(temperature_stratified_STES)
+    STES_animation = STESAnimation(temperature_stratified_STES)
+    STES_animation.show()
 
     plt.show()

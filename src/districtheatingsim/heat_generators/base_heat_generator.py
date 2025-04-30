@@ -6,6 +6,8 @@ Description: Contains the base class for heat generators.
 
 """
 
+import numpy as np
+
 class BaseHeatGenerator:
     def __init__(self, name):
         self.name = name
@@ -144,6 +146,12 @@ class BaseHeatGenerator:
             if param_name in self.__dict__:
                 setattr(self, param_name, value)
                 print(f"Setze {param_name} für {self.name} auf {value}")
+
+    def get_plot_data(self):
+        """
+        Returns a dictionary of variables relevant for plotting.
+        """
+        return {var_name: getattr(self, var_name) for var_name in self.__dict__ if isinstance(getattr(self, var_name), (list, np.ndarray))}
     
     def to_dict(self):
         """
@@ -186,3 +194,87 @@ class BaseHeatGenerator:
             GasBoiler: A deep copy of the GasBoiler object.
         """
         return self.from_dict(self.to_dict())
+    
+class BaseStrategy:
+    """
+    Base class for strategies in the district heating simulation.
+
+    """
+    def __init__(self, charge_on, charge_off):
+        """
+        Initializes the BaseStrategy class.
+
+        Args:
+            charge_on (int): Storage temperature threshold for charging.
+            charge_off (int): Storage temperature threshold for discharging.
+
+        """
+        self.charge_on = charge_on
+        self.charge_off = charge_off
+
+    def decide_operation(self, current_state, upper_storage_temp, lower_storage_temp, remaining_demand):
+        """
+        Decide whether to turn the heat generator unit on based on storage temperature and remaining demand.
+
+        Args:
+            current_state (float): Current state of the system.
+            upper_storage_temp (float): Current upper storage temperature.
+            lower_storage_temp (float): Current lower storage temperature.
+            remaining_demand (float): Remaining heat demand to be covered. (not used in this implementation)
+
+        Returns:
+            bool: True if the Power-to-Heat unit should be turned on, False otherwise.
+        """
+
+        # Check if the generator is active
+        if current_state:
+            #  Check if the generator is active
+            if lower_storage_temp < self.charge_off:
+                return True # Keep generator on
+            else:
+                return False # Turn generator off
+        else:
+            if upper_storage_temp > self.charge_on:
+                return False # Turn generator off
+            else:    
+                return True  # Turn generator on
+    
+    def to_dict(self):
+        """
+        Converts the object to a dictionary, excluding non-serializable attributes.
+
+        Returns:
+            dict: Dictionary representation of the object.
+        """
+        # Erstelle eine Kopie des aktuellen Objekt-Dictionaries
+        data = self.__dict__.copy()
+
+        return data
+
+    @classmethod
+    def from_dict(cls, data):
+        """
+        Creates an object from a dictionary.
+
+        Args:
+            data (dict): Dictionary containing the attributes of the object.
+
+        Returns:
+            cls: A new object of the given class with attributes from the dictionary.
+        """
+        obj = cls.__new__(cls)
+        obj.__dict__.update(data)
+        return obj
+    
+    def __deepcopy__(self, memo):
+        """
+        Creates a deep copy of the ThermalStorage object.
+
+        Args:
+            memo (dict): Memoization dictionary for deepcopy.
+
+        Returns:
+            ThermalStorage: A deep copy of the ThermalStorage object.
+        """
+        return self.from_dict(self.to_dict())
+        

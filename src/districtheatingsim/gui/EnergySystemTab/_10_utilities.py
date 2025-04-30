@@ -1,5 +1,5 @@
 """
-Filename: utilities.py
+Filename: _10_utilities.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-11-06
 Description: Contains the CollapsibleHeader class for creating collapsible sections in the GUI.
@@ -17,6 +17,9 @@ from districtheatingsim.heat_generators.biomass_boiler import BiomassBoiler
 from districtheatingsim.heat_generators.solar_thermal import SolarThermal
 from districtheatingsim.heat_generators.chp import CHP
 from districtheatingsim.heat_generators.power_to_heat import PowerToHeat
+
+from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
+from districtheatingsim.heat_generators.STES import TemperatureStratifiedThermalStorage
 
 class CheckableComboBox(QComboBox):
     """
@@ -170,7 +173,7 @@ class CustomJSONEncoder(json.JSONEncoder):
                 return int(obj)
             if isinstance(obj, np.floating):
                 return float(obj)
-            if isinstance(obj, (CHP, RiverHeatPump, WasteHeatPump, Geothermal, BiomassBoiler, GasBoiler, SolarThermal, AqvaHeat, PowerToHeat)):
+            if isinstance(obj, (BaseHeatGenerator, BaseStrategy, TemperatureStratifiedThermalStorage)):
                 return obj.to_dict()
             return super().default(obj)
         except TypeError as e:

@@ -1,5 +1,5 @@
 """
-Filename: cost_tab.py
+Filename: _05_cost_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-12-11
 Description: Contains the CostTab.
@@ -12,7 +12,7 @@ from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QFont
 
 from districtheatingsim.heat_generators.annuity import annuität
-from districtheatingsim.gui.MixDesignTab.utilities import CollapsibleHeader
+from districtheatingsim.gui.EnergySystemTab._10_utilities import CollapsibleHeader
 
 class CostTab(QWidget):
     """
@@ -264,10 +264,10 @@ class CostTab(QWidget):
         Returns:
             float: The calculated annuity.
         """
-        q = 1 + (self.parent.capital_interest_rate / 100)
-        r = 1 + (self.parent.inflation_rate / 100)
-        t = int(self.parent.time_period)
-        stundensatz = self.parent.hourly_rate
+        q = 1 + (self.parent.economic_parameters["capital_interest_rate"])
+        r = 1 + (self.parent.economic_parameters["inflation_rate"])
+        t = int(self.parent.economic_parameters["time_period"])
+        stundensatz = self.parent.economic_parameters["hourly_rate"]
         return annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand, q=q, r=r, T=t, stundensatz=stundensatz)
     
     ### Setup of Calculation Result Tables ###

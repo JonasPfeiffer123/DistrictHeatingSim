@@ -1,31 +1,26 @@
 """
-Filename: mix_design_tab.py
+Filename: _01_energy_system_main_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-12-11
+Date: 2025-04-19
 Description: Contains the MixdesignTab.
 """
 
-import json
-import pandas as pd
 import numpy as np
 import os
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMessageBox, QMenuBar, QScrollArea, QAction, QDialog)
 from PyQt5.QtCore import pyqtSignal, QEventLoop
 
-from districtheatingsim.gui.MixDesignTab.mix_design_dialogs import EconomicParametersDialog, NetInfrastructureDialog, WeightDialog
-from districtheatingsim.gui.MixDesignTab.calculate_mix_thread import CalculateMixThread
-from districtheatingsim.gui.MixDesignTab.technology_tab import TechnologyTab
-from districtheatingsim.gui.MixDesignTab.cost_tab import CostTab
-from districtheatingsim.gui.MixDesignTab.results_tab import ResultsTab
-from districtheatingsim.gui.MixDesignTab.sensitivity_tab import SensitivityTab
-from districtheatingsim.gui.MixDesignTab.sankey_dialog import SankeyDialog
-from districtheatingsim.gui.MixDesignTab.utilities import CustomJSONEncoder
-from districtheatingsim.heat_generators.heat_generation_mix import EnergySystem
+from districtheatingsim.gui.EnergySystemTab._02_energy_system_dialogs import EconomicParametersDialog, NetInfrastructureDialog, WeightDialog
+from districtheatingsim.gui.EnergySystemTab._06_calculate_energy_system_thread import CalculateEnergySystemThread
+from districtheatingsim.gui.EnergySystemTab._03_technology_tab import TechnologyTab
+from districtheatingsim.gui.EnergySystemTab._05_cost_tab import CostTab
+from districtheatingsim.gui.EnergySystemTab._07_results_tab import ResultsTab
+from districtheatingsim.gui.EnergySystemTab._08_sensitivity_tab import SensitivityTab
+from districtheatingsim.gui.EnergySystemTab._09_sankey_dialog import SankeyDialog
+from districtheatingsim.heat_generators.energy_system import EnergySystem
 
-from districtheatingsim.utilities.test_reference_year import import_TRY
-
-class MixDesignTab(QWidget):
+class EnergySystemTab(QWidget):
     """
     The MixDesignTab class represents the tab responsible for defining and managing the design of energy mix 
     for a heat generation project.
@@ -146,17 +141,23 @@ class MixDesignTab(QWidget):
 
         addHeatGeneratorMenu = self.menuBar.addMenu('Wärmeerzeuger hinzufügen')
 
-        heatGenerators = ["Solarthermie", "BHKW", "Holzgas-BHKW", "Geothermie", "Abwärme", "Flusswasser", "AqvaHeat", "Biomassekessel", "Gaskessel", "Power-to-Heat"]
+        heatGenerators = ["Solarthermie", "BHKW", "Holzgas-BHKW", "Geothermie", "Abwärmepumpe", "Flusswärmepumpe", "AqvaHeat", "Biomassekessel", "Gaskessel", "Power-to-Heat"]
         for generator in heatGenerators:
             action = QAction(generator, self)
             action.triggered.connect(lambda checked, gen=generator: self.techTab.addTech(gen, None))
             addHeatGeneratorMenu.addAction(action)
 
+        addstorageMenu = self.menuBar.addMenu('Speicher hinzufügen')
+        storageTypes = ["Saisonaler Wärmespeicher"]
+        for storage in storageTypes:
+            action = QAction(storage, self)
+            action.triggered.connect(lambda checked, stor=storage: self.techTab.addTech(stor, None))
+            addstorageMenu.addAction(action)
+
         # 'Berechnungen'-Menü
         calculationsMenu = self.menuBar.addMenu('Berechnungen')
-        calculationsMenu.addAction(self.createAction('Berechnen', self.start_calculation))
+        calculationsMenu.addAction(self.createAction('Berechnen', self.calculate_energy_system))
         calculationsMenu.addAction(self.createAction('Optimieren', self.start_optimization))
-        #calculationsMenu.addAction(self.createAction('Sensivitätsuntersuchung', self.sensitivity))
 
         # 'weitere Ergebnisse Anzeigen'-Menü
         showAdditionalResultsMenu = self.menuBar.addMenu('weitere Ergebnisse Anzeigen')
@@ -225,14 +226,17 @@ class MixDesignTab(QWidget):
         Updates the economic parameters from the dialog.
         """
         values = self.economicParametersDialog.getValues()
-        self.gas_price = values['Gaspreis in €/MWh']
-        self.electricity_price = values['Strompreis in €/MWh']
-        self.wood_price = values['Holzpreis in €/MWh']
-        self.BEW = values['BEW-Förderung']
-        self.capital_interest_rate = values['Kapitalzins in %']
-        self.inflation_rate = values['Preissteigerungsrate in %']
-        self.time_period = values['Betrachtungszeitraum in a']
-        self.hourly_rate = values['Stundensatz in €/h']
+
+        self.economic_parameters = {
+                "gas_price": values['Gaspreis in €/MWh'],
+                "electricity_price": values['Strompreis in €/MWh'],
+                "wood_price": values['Holzpreis in €/MWh'],
+                "capital_interest_rate": 1 + values['Kapitalzins in %'] / 100,
+                "inflation_rate": 1 + values['Preissteigerungsrate in %'] / 100,
+                "time_period": values['Betrachtungszeitraum in a'],
+                "hourly_rate": values['Stundensatz in €/h'],
+                "subsidy_eligibility": values['BEW-Förderung']
+            }
 
     ### Dialogs ###
     def openEconomicParametersDialog(self):
@@ -241,9 +245,6 @@ class MixDesignTab(QWidget):
         """
         if self.economicParametersDialog.exec_():
             self.updateEconomicParameters()
-            #self.costTab.updateInfrastructureTable()
-            #self.costTab.plotCostComposition()
-            #self.costTab.updateSumLabel()
 
     def openInfrastructureCostsDialog(self):
         """
@@ -271,7 +272,7 @@ class MixDesignTab(QWidget):
             return False
         return True
 
-    def start_calculation(self, optimize=False, weights=None):
+    def calculate_energy_system(self, optimize=False, weights=None):
         """
         Starts the calculation process.
 
@@ -285,23 +286,14 @@ class MixDesignTab(QWidget):
             return
 
         if self.techTab.tech_objects:
-            self.filename = self.techTab.FilenameInput.text()
+            self.csv_filename = self.techTab.FilenameInput.text()
+            self.TRY_filename = self.data_manager.get_try_filename()
+            self.COP_filename = self.data_manager.get_cop_filename()
             self.load_scale_factor = float(self.techTab.load_scale_factorInput.text())
-            self.TRY_data = import_TRY(self.data_manager.get_try_filename())
-            self.COP_data = np.genfromtxt(self.data_manager.get_cop_filename(), delimiter=';')
 
-            self.economic_parameters = {
-                "gas_price": self.gas_price,
-                "electricity_price": self.electricity_price,
-                "wood_price": self.wood_price,
-                "capital_interest_rate": 1 + self.capital_interest_rate / 100,
-                "inflation_rate": 1 + self.inflation_rate / 100,
-                "time_period": self.time_period,
-                "hourly_rate": self.hourly_rate,
-                "subsidy_eligibility": self.BEW
-            }
+            print(f"techTab tech_objects: {self.techTab.tech_objects}")
 
-            self.calculationThread = CalculateMixThread(self.filename, self.load_scale_factor, self.TRY_data, self.COP_data, 
+            self.calculationThread = CalculateEnergySystemThread(self.csv_filename, self.load_scale_factor, self.TRY_filename, self.COP_filename, 
                                                         self.economic_parameters, self.techTab.tech_objects, self.optimize, weights)
             
             self.calculationThread.calculation_done.connect(self.on_calculation_done)
@@ -310,6 +302,15 @@ class MixDesignTab(QWidget):
             self.progressBar.setRange(0, 0)
         else:
             QMessageBox.information(self, "Keine Erzeugeranlagen", "Es wurden keine Erzeugeranlagen definiert. Keine Berechnung möglich.")
+
+    def start_optimization(self):
+        """
+        Opens the optimization dialog and starts the optimization process.
+        """
+        dialog = WeightDialog()
+        if dialog.exec_() == QDialog.Accepted:
+            weights = dialog.get_weights()
+            self.calculate_energy_system(True, weights)
 
     def on_calculation_done(self, result):
         """
@@ -340,14 +341,16 @@ class MixDesignTab(QWidget):
         self.progressBar.setRange(0, 1)
         QMessageBox.critical(self, "Berechnungsfehler", str(error_message))
 
-    def start_optimization(self):
-        """
-        Opens the optimization dialog and starts the optimization process.
-        """
-        dialog = WeightDialog()
-        if dialog.exec_() == QDialog.Accepted:
-            weights = dialog.get_weights()
-            self.start_calculation(True, weights)
+    def process_data(self):
+        # Update the tech objects from the loaded EnergySystem
+        self.techTab.tech_objects = self.energy_system.technologies + [self.energy_system.storage] if self.energy_system.storage else self.energy_system.technologies
+        self.techTab.rebuildScene()
+        self.techTab.updateTechList()
+        self.costTab.updateInfrastructureTable()
+        self.costTab.updateTechDataTable(self.energy_system.technologies)
+        self.costTab.updateSumLabel()
+        self.costTab.plotCostComposition()
+        self.resultTab.updateResults(self.energy_system)
 
     def sensitivity(self, gas_range, electricity_range, wood_range, weights=None):
         """
@@ -366,17 +369,11 @@ class MixDesignTab(QWidget):
             QMessageBox.information(self, "Keine Erzeugeranlagen", "Es wurden keine Erzeugeranlagen definiert. Keine Berechnung möglich.")
             return
 
-        self.filename = self.techTab.FilenameInput.text()
-        self.load_scale_factor = float(self.techTab.load_scale_factorInput.text())
-
-        self.TRY_data = import_TRY(self.data_manager.get_try_filename())
-        self.COP_data = np.genfromtxt(self.data_manager.get_cop_filename(), delimiter=';')
-
         results = []
         for gas_price in self.generate_values(gas_range):
             for electricity_price in self.generate_values(electricity_range):
                 for wood_price in self.generate_values(wood_range):
-                    result = self.calculate_mix(gas_price, electricity_price, wood_price, weights)
+                    result = self.calculate_sensitivity(gas_price, electricity_price, wood_price, weights)
                     waerme_ges_kW, strom_wp_kW = np.sum(result["waerme_ges_kW"]), np.sum(result["strom_wp_kW"])
                     wgk_heat_pump_electricity = ((strom_wp_kW/1000) * electricity_price) / ((strom_wp_kW+waerme_ges_kW)/1000)
                     if result is not None:
@@ -407,7 +404,7 @@ class MixDesignTab(QWidget):
         step = (upper - lower) / (num_points - 1)
         return [lower + i * step for i in range(num_points)]
 
-    def calculate_mix(self, gas_price, electricity_price, wood_price, weights):
+    def calculate_sensitivity(self, gas_price, electricity_price, wood_price, weights):
         """
         Calculates the energy mix for given prices and weights.
 
@@ -434,19 +431,16 @@ class MixDesignTab(QWidget):
             QMessageBox.critical(self, "Berechnungsfehler", str(error_message))
             calculation_done_event.quit()
 
-        self.economic_parameters = {
-                "gas_price": gas_price,
-                "electricity_price":electricity_price,
-                "wood_price": wood_price,
-                "capital_interest_rate": 1 + self.capital_interest_rate / 100,
-                "inflation_rate": 1 + self.inflation_rate / 100,
-                "time_period": self.time_period,
-                "hourly_rate": self.hourly_rate,
-                "subsidy_eligibility": self.BEW
-            }
+        economic_parameters = self.economic_parameters.copy()
+        economic_parameters["gas_price"] = gas_price
+        economic_parameters["electricity_price"] = electricity_price
+        economic_parameters["wood_price"] = wood_price
 
-        self.calculationThread = CalculateMixThread(self.filename, self.load_scale_factor, self.TRY_data, self.COP_data, 
-                                                    self.economic_parameters, self.techTab.tech_objects, False,  weights)
+        # inefficient as fuck, but it works for now
+        # Thread will load the csv, cop, and try file every time
+        # Need to split up data processing and calculation
+        self.calculationThread = CalculateEnergySystemThread(self.csv_filename, self.load_scale_factor, self.TRY_filename, self.COP_filename, 
+                                                    economic_parameters, self.techTab.tech_objects, False,  weights)
         
         self.calculationThread.calculation_done.connect(calculation_done)
         self.calculationThread.calculation_error.connect(calculation_error)
@@ -475,69 +469,36 @@ class MixDesignTab(QWidget):
             elif not self.parent_object.calcTab.Gesamtwärmebedarf_Gebäude_MWh:
                 QMessageBox.information(self, "Gesamtwärmebedarf nicht definiert", "Der Gesamtwärmebedarf der Gebäude ist nicht definiert. Stellen Sie sicher, dass der Gesamtwärmebedarf der Gebäude definiert ist.")
 
-    def process_data(self):
-        # Update the tech objects from the loaded EnergySystem
-        self.techTab.tech_objects = self.energy_system.technologies
-        self.techTab.rebuildScene()
-        self.techTab.updateTechList()
-        self.costTab.updateInfrastructureTable()
-        self.costTab.updateTechDataTable(self.energy_system.technologies)
-        self.costTab.updateSumLabel()
-        self.costTab.plotCostComposition()
-        self.resultTab.showResultsInTable(self.energy_system.results)
-        self.resultTab.showAdditionalResultsTable(self.energy_system.results)
-        self.resultTab.plotResults(self.energy_system)
-        self.resultTab.updatePieChart(self.energy_system)
-
     ### Save Calculation Results ###
     def save_heat_generation_results_to_csv(self):
         """
         Saves the heat generation results to a CSV file.
-
-        Args:
-            results (dict): The calculation results.
         """
-        results = self.energy_system.results
+        if not self.energy_system or not self.energy_system.results:
+            QMessageBox.warning(self, "Keine Daten vorhanden", "Es sind keine Berechnungsergebnisse vorhanden, die gespeichert werden könnten.")
+            return
 
-        # Initialize the DataFrame with the timestamps
-        df = pd.DataFrame({'time_steps': results['time_steps']})
-        
-        # Add the load data
-        df['Last_L'] = results['Last_L']
-        
-        # Add the heat generation data for each technology
-        for i, (tech_results, techs) in enumerate(zip(results['Wärmeleistung_L'], results['techs'])):
-            df[techs] = tech_results
-        
-        # Add the electrical power data
-        df['el_Leistungsbedarf_L'] = results['el_Leistungsbedarf_L']
-        df['el_Leistung_L'] = results['el_Leistung_L']
-        df['el_Leistung_ges_L'] = results['el_Leistung_ges_L']
-        
-        # Save the DataFrame as a CSV file
-        csv_filename = os.path.join(self.base_path, self.config_manager.get_relative_path('calculated_heat_generation_path'))
-        df.to_csv(csv_filename, index=False, sep=";")
+        try:
+            csv_filename = os.path.join(self.base_path, self.config_manager.get_relative_path('calculated_heat_generation_path'))
+            self.energy_system.save_to_csv(csv_filename)
+            QMessageBox.information(self, "Erfolgreich gespeichert", f"Die Ergebnisse wurden erfolgreich unter {csv_filename} gespeichert.")
+        except Exception as e:
+            QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der CSV-Datei: {e}")
 
     def save_results_JSON(self):
         """
         Saves the results and technology objects to a JSON file.
         """
-        if not self.energy_system.results and not self.techTab.tech_objects:
-            QMessageBox.warning(self, "Keine Daten vorhanden", "Es sind keine Berechnungsergebnisse oder technischen Objekte vorhanden, die gespeichert werden könnten.")
+        if not self.energy_system or not self.energy_system.results:
+            QMessageBox.warning(self, "Keine Daten vorhanden", "Es sind keine Berechnungsergebnisse vorhanden, die gespeichert werden könnten.")
             return
-        
-        json_filename = os.path.join(self.base_path, self.config_manager.get_relative_path("results_path"))
-        if json_filename:
-            try:
-                # Speichere das gesamte EnergySystem-Objekt
-                with open(json_filename, 'w') as json_file:
-                    json.dump(self.energy_system.to_dict(), json_file, indent=4, cls=CustomJSONEncoder)
-            
-                QMessageBox.information(self, "Erfolgreich gespeichert", f"Das Energiesystem wurde erfolgreich unter {json_filename} gespeichert.")
 
-            except TypeError as e:
-                QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der JSON-Datei: {e}")
-                raise e
+        try:
+            json_filename = os.path.join(self.base_path, self.config_manager.get_relative_path("results_path"))
+            self.energy_system.save_to_json(json_filename)
+            QMessageBox.information(self, "Erfolgreich gespeichert", f"Die Ergebnisse wurden erfolgreich unter {json_filename} gespeichert.")
+        except Exception as e:
+            QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der JSON-Datei: {e}")
 
     def load_results_JSON(self):
         """
@@ -549,17 +510,12 @@ class MixDesignTab(QWidget):
             return
 
         try:
-            # Load the JSON file
-            with open(json_filename, 'r') as json_file:
-                data_loaded = json.load(json_file)
-
-            # Restore the EnergySystem from the loaded dictionary
-            self.energy_system = EnergySystem.from_dict(data_loaded)
+            # Load the EnergySystem object
+            self.energy_system = EnergySystem.load_from_json(json_filename)
 
             self.process_data()
 
             QMessageBox.information(self, "Erfolgreich geladen", f"Die Ergebnisse wurden erfolgreich aus {json_filename} geladen.")
-        except Exception as e:
-            QMessageBox.critical(self, "Ladefehler", f"Fehler beim Laden der JSON-Datei: {e}")
-            raise e
+        except ValueError as e:
+            QMessageBox.critical(self, "Ladefehler", str(e))
 

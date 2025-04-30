@@ -1,5 +1,5 @@
 """
-Filename: technology_tab.py
+Filename: _03_technology_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-12-11
 Description: Contains the TechnologyTab.
@@ -18,8 +18,8 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 from districtheatingsim.heat_generators import TECH_CLASS_REGISTRY
-from districtheatingsim.gui.MixDesignTab.heat_generator_dialogs import TechInputDialog
-from districtheatingsim.gui.MixDesignTab.generator_schematic import SchematicScene, CustomGraphicsView
+from districtheatingsim.gui.EnergySystemTab._04_technology_dialogs import TechInputDialog
+from districtheatingsim.gui.EnergySystemTab._11_generator_schematic import SchematicScene, CustomGraphicsView
 
 class CustomListWidget(QListWidget):
     """
@@ -56,12 +56,13 @@ class TechnologyTab(QWidget):
         "BHKW": 0,
         "Holzgas-BHKW": 0,
         "Geothermie": 0,
-        "Abwärme": 0,
-        "Flusswasser": 0,
+        "Abwärmepumpe": 0,
+        "Flusswärmepumpe": 0,
         "Biomassekessel": 0,
         "Gaskessel": 0,
         "AqvaHeat": 0,
-        "Power-to-Heat": 0
+        "Power-to-Heat": 0,
+        "Saisonaler Wärmespeicher": 0
     }
 
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
@@ -221,8 +222,16 @@ class TechnologyTab(QWidget):
         # Erhöhe den globalen Zähler für diese Technologieklasse
         self.global_counters[base_tech_type] += 1
         unique_name = f"{base_tech_type}_{self.global_counters[base_tech_type]}"
+        
+        try:
+            # Erstelle die Technologieinstanz
+            return tech_class(name=unique_name, **inputs)
 
-        return tech_class(name=unique_name, **inputs)
+        except TypeError as e:
+            raise TypeError(
+                f"Fehler beim Erstellen der Technologie '{tech_type}': {e}\n"
+                f"Übergebene Eingaben: {inputs}"
+            )
 
     def addTech(self, tech_type, tech_data):
         """
@@ -302,7 +311,6 @@ class TechnologyTab(QWidget):
             for key in self.global_counters:
                 self.global_counters[key] = 0
             self.global_counters[tech_type] = sum(1 for t in self.tech_objects if t.name.startswith(tech_type))
-
 
         # Aktualisiere die Liste der Technologien in der UI
         self.updateTechList()
@@ -503,9 +511,9 @@ class TechnologyTab(QWidget):
             tech.scene_item = self.schematic_scene.add_component('Wood-CHP', name, storage=has_storage)
         elif tech.name.startswith('Geothermie'):
             tech.scene_item = self.schematic_scene.add_component('Geothermal Heat Pump', name, storage=False)
-        elif tech.name.startswith('Abwärme'):
+        elif tech.name.startswith('Abwärmepumpe'):
             tech.scene_item = self.schematic_scene.add_component('Waste Heat Pump', name, storage=False)
-        elif tech.name.startswith('Flusswasser'):
+        elif tech.name.startswith('Flusswärmepumpe'):
             tech.scene_item = self.schematic_scene.add_component('River Heat Pump', name, storage=False)
         elif tech.name.startswith('AqvaHeat'):
             tech.scene_item = self.schematic_scene.add_component('Aqva Heat Pump', name, storage=False)
@@ -515,3 +523,5 @@ class TechnologyTab(QWidget):
             tech.scene_item = self.schematic_scene.add_component('Gas Boiler', name, storage=False)
         elif tech.name.startswith('PowerToHeat'):
             tech.scene_item = self.schematic_scene.add_component('Power-to-Heat', name, storage=False)
+        elif tech.name.startswith('Saisonaler Wärmespeicher'):
+            tech.scene_item = self.schematic_scene.add_component('Seasonal Thermal Storage', name, storage=False)
