@@ -189,11 +189,15 @@ class EnergySystem:
                 remaining_load = Q_out_total
 
                 # Speicherzustand und Temperaturen abrufen
-                upper_storage_temp, lower_storage_temp = self.storage.current_storage_temperatures(t)
+                upper_storage_temperature, lower_storage_temperature = self.storage.current_storage_temperatures(t-1) if t > 0 else (0, 0)
+                # Speicherzustand und verfügbare Energie abrufen
+                current_storage_state, available_energy, max_energy = self.storage.current_storage_state(t-1, T_Q_out_return, T_Q_in_flow) if t > 0 else (0, 0, 0)
+                # Speicherverluste berechnen
+                Q_loss = self.storage.Q_loss[t - 1] if t > 0 else 0
 
                 # Generatoren basierend auf Priorität steuern
                 for i, tech in enumerate(self.technologies):
-                    tech.active = tech.strategy.decide_operation(tech.active, upper_storage_temp, lower_storage_temp, remaining_load)
+                    tech.active = tech.strategy.decide_operation(tech.active, upper_storage_temperature, lower_storage_temperature, remaining_load)
 
                     if tech.active:
                         # Erstelle ein kwargs-Dictionary mit technologie-spezifischen Daten
@@ -203,6 +207,14 @@ class EnergySystem:
                             "COP_data": self.COP_data,
                             "time_steps": self.time_steps,
                             "duration": self.duration,
+                            "TRY_data": self.TRY_data,
+                            "RLT_L": self.RLT_L[t],
+                            "upper_storage_temperature": upper_storage_temperature,
+                            "lower_storage_temperature": lower_storage_temperature,
+                            "current_storage_state": current_storage_state,
+                            "available_energy": available_energy,
+                            "max_energy": max_energy,
+                            "Q_loss": Q_loss,
                         }
                         Q_in, _ = tech.generate(t, **kwargs)
                         remaining_load -= Q_in

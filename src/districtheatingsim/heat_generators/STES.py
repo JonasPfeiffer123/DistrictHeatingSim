@@ -854,10 +854,9 @@ class TemperatureStratifiedThermalStorage(StratifiedThermalStorage):
         max_possible_energy = np.sum([(T_Q_in_flow - T_Q_out_return) * self.layer_volume[i] * self.rho * self.cp / 3.6e6 
                                     for i in range(self.num_layers)])
         
-        self.storage_state[t] = (available_energy_in_storage / max_possible_energy) * 100
+        self.storage_state[t] = (available_energy_in_storage / max_possible_energy)
         
-        # Ladezustand als Prozentwert zurückgeben (zwischen 0 und 100)
-        return max(0, min(100, self.storage_state[t])), available_energy_in_storage, max_possible_energy
+        return max(0, min(1, self.storage_state[t])), available_energy_in_storage, max_possible_energy
     
     def current_storage_temperatures(self, t):
         """
