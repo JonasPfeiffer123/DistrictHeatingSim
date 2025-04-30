@@ -5,6 +5,7 @@ from districtheatingsim.heat_generators.gas_boiler import GasBoiler, GasBoilerSt
 from districtheatingsim.heat_generators.power_to_heat import PowerToHeat, PowerToHeatStrategy
 from districtheatingsim.heat_generators.biomass_boiler import BiomassBoiler, BiomassBoilerStrategy
 from districtheatingsim.heat_generators.heat_pumps import RiverHeatPump, WasteHeatPump, Geothermal, HeatPumpStrategy
+from districtheatingsim.heat_generators.solar_thermal import SolarThermal, SolarThermalStrategy
 from districtheatingsim.heat_generators.STES import TemperatureStratifiedThermalStorage
 
 from districtheatingsim.utilities.test_reference_year import import_TRY
@@ -65,9 +66,9 @@ storage = TemperatureStratifiedThermalStorage(name="Saisonalspeicher", **storage
 energy_system.add_storage(storage)
 
 # Füge Generatoren hinzu
-#chp = CHP("BHKW_1", th_Leistung_BHKW=300)
-#energy_system.add_technology(chp)
-#chp.strategy = CHPStrategy(charge_on=75, charge_off=70)
+chp = CHP("BHKW_1", th_Leistung_BHKW=500)
+energy_system.add_technology(chp)
+chp.strategy = CHPStrategy(charge_on=75, charge_off=70)
 
 #pth = PowerToHeat("PtH_1", thermal_capacity_kW=500)
 #energy_system.add_technology(pth)
@@ -96,9 +97,14 @@ energy_system.add_storage(storage)
 #energy_system.add_technology(waste_water_heat_pump)
 #waste_water_heat_pump.strategy = HeatPumpStrategy(charge_on=75, charge_off=70)
 
-geothermal_heat_pump = Geothermal("Geothermie_1", Fläche=10000, Bohrtiefe=100, Temperatur_Geothermie=20)
-energy_system.add_technology(geothermal_heat_pump)
-geothermal_heat_pump.strategy = HeatPumpStrategy(charge_on=75, charge_off=70)
+#geothermal_heat_pump = Geothermal("Geothermie_1", Fläche=10000, Bohrtiefe=100, Temperatur_Geothermie=20)
+#energy_system.add_technology(geothermal_heat_pump)
+#geothermal_heat_pump.strategy = HeatPumpStrategy(charge_on=75, charge_off=70)
+
+#solar_thermal = SolarThermal("Solarthermie_1", bruttofläche_STA=2500, vs=50, Typ="Vakuumröhrenkollektor")
+#energy_system.add_technology(solar_thermal)
+#solar_thermal.strategy = SolarThermalStrategy(charge_on=75, charge_off=70)
+
 
 # Berechne den Energiemix mit Speicher
 results = energy_system.calculate_mix()
