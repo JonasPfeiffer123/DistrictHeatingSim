@@ -11,7 +11,7 @@ from districtheatingsim.heat_generators import biomass_boiler
 from districtheatingsim.heat_generators import chp
 from districtheatingsim.heat_generators import heat_pumps
 from districtheatingsim.heat_generators import power_to_heat
-from districtheatingsim.heat_generators import heat_generation_mix
+from districtheatingsim.heat_generators import energy_system
 from districtheatingsim.utilities.test_reference_year import import_TRY
 
 import numpy as np
@@ -53,26 +53,26 @@ def test_berechnung_erzeugermix(optimize=False, plot=True, opt_method="SLSQP"):
 
     PTH = power_to_heat.PowerToHeat(name="Power-to-Heat_1", spez_Investitionskosten=30, Nutzungsgrad=0.9, Faktor_Dimensionierung=1)
 
-    bBoiler = biomass_boiler.BiomassBoiler(name="Biomassekessel_1", P_BMK=200, Größe_Holzlager=40, spez_Investitionskosten=200, 
+    bBoiler = biomass_boiler.BiomassBoiler(name="Biomassekessel_1", thermal_capacity_kW=200, Größe_Holzlager=40, spez_Investitionskosten=200, 
                                            spez_Investitionskosten_Holzlager=400, Nutzungsgrad_BMK=0.8, min_Teillast=0.3, speicher_aktiv=False, 
                                            Speicher_Volumen=20, T_vorlauf=90, T_ruecklauf=60, initial_fill=0.0, min_fill=0.2, max_fill=0.8, 
-                                           spez_Investitionskosten_Speicher=750, BMK_an=True, opt_BMK_min=0, opt_BMK_max=1000, opt_Speicher_min=0, 
+                                           spez_Investitionskosten_Speicher=750, active=True, opt_BMK_min=0, opt_BMK_max=1000, opt_Speicher_min=0, 
                                            opt_Speicher_max=100)
 
-    bBoiler_storage = biomass_boiler.BiomassBoiler(name="Biomassekessel_2", P_BMK=200, Größe_Holzlager=40, spez_Investitionskosten=200, 
+    bBoiler_storage = biomass_boiler.BiomassBoiler(name="Biomassekessel_2", thermal_capacity_kW=200, Größe_Holzlager=40, spez_Investitionskosten=200, 
                                                    spez_Investitionskosten_Holzlager=400, Nutzungsgrad_BMK=0.8, min_Teillast=0.3, speicher_aktiv=True, 
                                                    Speicher_Volumen=20, T_vorlauf=90, T_ruecklauf=60, initial_fill=0.0, min_fill=0.2, max_fill=0.8, 
-                                                   spez_Investitionskosten_Speicher=750, BMK_an=True, opt_BMK_min=0, opt_BMK_max=1000, opt_Speicher_min=0, 
+                                                   spez_Investitionskosten_Speicher=750, active=True, opt_BMK_min=0, opt_BMK_max=1000, opt_Speicher_min=0, 
                                                    opt_Speicher_max=100)
 
     CHP = chp.CHP(name="BHKW_1", th_Leistung_BHKW=100, spez_Investitionskosten_GBHKW=1500, spez_Investitionskosten_HBHKW=1850, el_Wirkungsgrad=0.33, 
                   KWK_Wirkungsgrad=0.9, min_Teillast=0.7, speicher_aktiv=False, Speicher_Volumen_BHKW=20, T_vorlauf=90, T_ruecklauf=60, initial_fill=0.0, 
-                  min_fill=0.2, max_fill=0.8, spez_Investitionskosten_Speicher=750, BHKW_an=True, opt_BHKW_min=0, opt_BHKW_max=1000, opt_BHKW_Speicher_min=0, 
+                  min_fill=0.2, max_fill=0.8, spez_Investitionskosten_Speicher=750, active=True, opt_BHKW_min=0, opt_BHKW_max=1000, opt_BHKW_Speicher_min=0, 
                   opt_BHKW_Speicher_max=100)    
 
     CHP_storage = chp.CHP(name="BHKW_2", th_Leistung_BHKW=100, spez_Investitionskosten_GBHKW=1500, spez_Investitionskosten_HBHKW=1850, el_Wirkungsgrad=0.33, 
                           KWK_Wirkungsgrad=0.9, min_Teillast=0.7, speicher_aktiv=True, Speicher_Volumen_BHKW=20, T_vorlauf=90, T_ruecklauf=60, initial_fill=0.0, 
-                          min_fill=0.2, max_fill=0.8, spez_Investitionskosten_Speicher=750, BHKW_an=True, opt_BHKW_min=0, opt_BHKW_max=1000, opt_BHKW_Speicher_min=0, 
+                          min_fill=0.2, max_fill=0.8, spez_Investitionskosten_Speicher=750, active=True, opt_BHKW_min=0, opt_BHKW_max=1000, opt_BHKW_Speicher_min=0, 
                           opt_BHKW_Speicher_max=100)
 
     riverHeatPump = heat_pumps.WasteHeatPump(name="Abwärme_1", Kühlleistung_Abwärme=50, Temperatur_Abwärme=30, spez_Investitionskosten_Abwärme=500, 
@@ -119,7 +119,7 @@ def test_berechnung_erzeugermix(optimize=False, plot=True, opt_method="SLSQP"):
         "primärenergiefaktor_Gesamt": 0.0
     }
 
-    energy_system = heat_generation_mix.EnergySystem(
+    energy_system = energy_system.EnergySystem(
                 time_steps=time_steps,
                 load_profile=Last_L,
                 VLT_L=VLT_L,

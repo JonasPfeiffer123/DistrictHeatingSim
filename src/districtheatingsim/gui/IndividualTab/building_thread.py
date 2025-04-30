@@ -8,7 +8,7 @@ Description: Contains the threaded functionality function for calculating the he
 import numpy as np
 import traceback
 from PyQt5.QtCore import QThread, pyqtSignal
-from districtheatingsim.heat_generators.heat_generation_mix import EnergySystem, EnergySystemOptimizer
+from districtheatingsim.heat_generators.energy_system import EnergySystem, EnergySystemOptimizer
 
 class CalculateBuildingMixThread(QThread):
     """
