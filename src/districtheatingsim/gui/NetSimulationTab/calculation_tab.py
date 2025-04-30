@@ -651,11 +651,21 @@ class CalculationTab(QWidget):
         ax_left.grid()
         self.canvas3.draw()
 
+    def get_data_path(self):
+        """
+        Returns the absolute path to the data directory.
+        """
+        # Gehe zwei Ebenen über base_path hinaus, um den Projektpfad zu erhalten
+        project_base_path = os.path.dirname(os.path.dirname(self.base_path))
+
+        # Kombiniere den Projektpfad mit dem festen Datenpfad
+        return os.path.join(project_base_path, "src", "districtheatingsim", "data")
+
     def saveNet(self):
         """
         Saves the network to a file.
         """
-
+        data_path = self.get_data_path()  # Hole den Datenpfad
         pickle_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('pp_pickle_file_path'))
         csv_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('csv_net_init_file_path'))
         json_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('json_net_init_file_path'))
@@ -665,6 +675,10 @@ class CalculationTab(QWidget):
                 self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature_heat_consumer, self.supply_temperature, self.return_temperature_heat_consumer, self.supply_temperature_buildings, self.return_temperature_buildings, \
                 self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.netconfiguration, self.dT_RL, self.building_temp_checked, self.strombedarf_hast_ges_W, \
                     self.max_el_leistung_hast_ges_W, self.TRY_filename, self.COP_filename, self.main_producer_location_index, self.secondary_producers = self.net_data
+
+                # Speichere relative Pfade relativ zum Datenpfad
+                relative_try_filename = os.path.relpath(self.TRY_filename, data_path)
+                relative_cop_filename = os.path.relpath(self.COP_filename, data_path)
 
                 pp.to_pickle(self.net, pickle_file_path)
                 
@@ -689,8 +703,8 @@ class CalculationTab(QWidget):
                     'dT_RL': self.dT_RL,
                     'building_temp_checked': self.building_temp_checked,
                     'max_el_leistung_hast_ges_W': self.max_el_leistung_hast_ges_W.tolist(),
-                    'TRY_filename': self.TRY_filename, 
-                    'COP_filename': self.COP_filename,
+                    'TRY_filename': relative_try_filename, 
+                    'COP_filename': relative_cop_filename,
                     'main_producer_location_index': self.main_producer_location_index,
                     'secondary_producers': self.secondary_producers
                 }
@@ -708,6 +722,7 @@ class CalculationTab(QWidget):
         """
         Loads the network from a file.
         """
+        data_path = self.get_data_path()  # Hole den Datenpfad
         pickle_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('pp_pickle_file_path'))
         csv_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('csv_net_init_file_path'))
         json_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('json_net_init_file_path'))
@@ -738,6 +753,10 @@ class CalculationTab(QWidget):
                 
             with open(json_file_path, 'r') as json_file:
                 additional_data = json.load(json_file)
+
+            # Lade relative Pfade und konvertiere sie in absolute Pfade
+            self.TRY_filename = os.path.join(data_path, additional_data['TRY_filename'])
+            self.COP_filename = os.path.join(data_path, additional_data['COP_filename'])
                 
             self.supply_temperature = np.array(additional_data['supply_temperature'])
             self.supply_temperature_heat_consumer = np.array(additional_data['supply_temperature_heat_consumers'])
@@ -750,8 +769,7 @@ class CalculationTab(QWidget):
             self.dT_RL = additional_data['dT_RL']
             self.building_temp_checked = additional_data['building_temp_checked']
             self.max_el_leistung_hast_ges_W = np.array(additional_data['max_el_leistung_hast_ges_W'])
-            self.TRY_filename =  additional_data['TRY_filename']
-            self.COP_filename =  additional_data['COP_filename']
+
             # new data, handle if not present in old files
             self.main_producer_location_index = additional_data.get('main_producer_location_index', 0)
             self.secondary_producers = additional_data.get('secondary_producers', [{}])
