@@ -307,7 +307,8 @@ class EnergySystemTab(QWidget):
         if self.optimize:
             self.optimized_energy_system = result[1]
             self.energy_system = self.optimized_energy_system
-
+            print(f"Technologien der optimierten Energieerzeugung: {self.optimized_energy_system.technologies}")
+            
         self.process_data()
 
         self.save_heat_generation_results_to_csv()
