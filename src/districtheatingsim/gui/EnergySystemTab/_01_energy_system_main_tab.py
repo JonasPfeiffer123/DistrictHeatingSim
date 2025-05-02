@@ -11,7 +11,7 @@ import os
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMessageBox, QMenuBar, QScrollArea, QAction, QDialog)
 from PyQt5.QtCore import pyqtSignal, QEventLoop
 
-from districtheatingsim.gui.EnergySystemTab._02_energy_system_dialogs import EconomicParametersDialog, NetInfrastructureDialog, WeightDialog
+from districtheatingsim.gui.EnergySystemTab._02_energy_system_dialogs import EconomicParametersDialog, WeightDialog
 from districtheatingsim.gui.EnergySystemTab._06_calculate_energy_system_thread import CalculateEnergySystemThread
 from districtheatingsim.gui.EnergySystemTab._03_technology_tab import TechnologyTab
 from districtheatingsim.gui.EnergySystemTab._05_cost_tab import CostTab
@@ -32,7 +32,6 @@ class EnergySystemTab(QWidget):
         results (dict): Stores results data.
         tech_objects (list): List of technology objects.
         economicParametersDialog (EconomicParametersDialog): Dialog for economic parameters.
-        netInfrastructureDialog (NetInfrastructureDialog): Dialog for infrastructure parameters.
         base_path (str): Base path for the project.
         gaspreis (float): Gas price in €/MWh.
         strompreis (float): Electricity price in €/MWh.
@@ -85,7 +84,6 @@ class EnergySystemTab(QWidget):
         Initializes the dialogs for economic and infrastructure parameters.
         """
         self.economicParametersDialog = EconomicParametersDialog(self)
-        self.netInfrastructureDialog = NetInfrastructureDialog(self)
 
     def updateDefaultPath(self, new_base_path):
         """
@@ -95,7 +93,6 @@ class EnergySystemTab(QWidget):
             new_base_path (str): The new base path for the project.
         """
         self.base_path = new_base_path
-        self.netInfrastructureDialog.base_path = self.base_path
 
     def initUI(self):
         """
@@ -137,7 +134,6 @@ class EnergySystemTab(QWidget):
         # 'Einstellungen'-Menü
         settingsMenu = self.menuBar.addMenu('Einstellungen')
         settingsMenu.addAction(self.createAction('Wirtschaftliche Parameter...', self.openEconomicParametersDialog))
-        settingsMenu.addAction(self.createAction('Infrastrukturkosten...', self.openInfrastructureCostsDialog))
 
         addHeatGeneratorMenu = self.menuBar.addMenu('Wärmeerzeuger hinzufügen')
 
@@ -186,7 +182,7 @@ class EnergySystemTab(QWidget):
         """
         self.tabWidget = QTabWidget()
         self.techTab = TechnologyTab(self.folder_manager, self.config_manager, self)
-        self.costTab = CostTab(self.folder_manager, self)
+        self.costTab = CostTab(self.folder_manager, self.config_manager, self)
         self.resultTab = ResultsTab(self.folder_manager, self)
         self.sensitivityTab = SensitivityTab(self.folder_manager, self)
         self.tabWidget.addTab(self.techTab, "Erzeugerdefinition")
@@ -225,18 +221,8 @@ class EnergySystemTab(QWidget):
         """
         Updates the economic parameters from the dialog.
         """
-        values = self.economicParametersDialog.getValues()
 
-        self.economic_parameters = {
-                "gas_price": values['Gaspreis in €/MWh'],
-                "electricity_price": values['Strompreis in €/MWh'],
-                "wood_price": values['Holzpreis in €/MWh'],
-                "capital_interest_rate": 1 + values['Kapitalzins in %'] / 100,
-                "inflation_rate": 1 + values['Preissteigerungsrate in %'] / 100,
-                "time_period": values['Betrachtungszeitraum in a'],
-                "hourly_rate": values['Stundensatz in €/h'],
-                "subsidy_eligibility": values['BEW-Förderung']
-            }
+        self.economic_parameters = self.economicParametersDialog.getValues()
 
     ### Dialogs ###
     def openEconomicParametersDialog(self):
@@ -245,15 +231,6 @@ class EnergySystemTab(QWidget):
         """
         if self.economicParametersDialog.exec_():
             self.updateEconomicParameters()
-
-    def openInfrastructureCostsDialog(self):
-        """
-        Opens the infrastructure costs dialog.
-        """
-        if self.netInfrastructureDialog.exec_():
-            self.costTab.updateInfrastructureTable()
-            self.costTab.plotCostComposition()
-            self.costTab.updateSumLabel()
 
     ### Calculation Functions ###
     def validateInputs(self):
@@ -280,6 +257,10 @@ class EnergySystemTab(QWidget):
             optimize (bool, optional): Whether to optimize the calculation. Defaults to False.
             weights (dict, optional): Weights for optimization. Defaults to None.
         """
+        self.costTab.updateInfrastructureTable()
+        #self.costTab.plotCostComposition()
+        #self.costTab.updateSumLabel()
+        
         self.optimize = optimize
 
         if not self.validateInputs():
@@ -346,7 +327,6 @@ class EnergySystemTab(QWidget):
         self.techTab.tech_objects = self.energy_system.technologies + [self.energy_system.storage] if self.energy_system.storage else self.energy_system.technologies
         self.techTab.rebuildScene()
         self.techTab.updateTechList()
-        self.costTab.updateInfrastructureTable()
         self.costTab.updateTechDataTable(self.energy_system.technologies)
         self.costTab.updateSumLabel()
         self.costTab.plotCostComposition()
