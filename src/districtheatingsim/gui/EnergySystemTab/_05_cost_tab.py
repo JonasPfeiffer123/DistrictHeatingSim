@@ -5,14 +5,17 @@ Date: 2024-12-11
 Description: Contains the CostTab.
 """
 
+import pandas as pd
+
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QScrollArea, QTableWidget, QTableWidgetItem, QHeaderView, QSizePolicy)
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QScrollArea, QTableWidget, QTableWidgetItem, QHeaderView, QSizePolicy, QHBoxLayout, QPushButton, QLineEdit, QInputDialog, QMenu)
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QFont
 
 from districtheatingsim.heat_generators.annuity import annuität
 from districtheatingsim.gui.EnergySystemTab._10_utilities import CollapsibleHeader
+from districtheatingsim.gui.EnergySystemTab._02_energy_system_dialogs import KostenBerechnungDialog
 
 class CostTab(QWidget):
     """
@@ -34,16 +37,17 @@ class CostTab(QWidget):
     """
     data_added = pyqtSignal(object)  # Signal that transfers data as an object
     
-    def __init__(self, data_manager, parent=None):
+    def __init__(self, folder_manager, config_manager, parent=None):
         """
         Initializes the CostTab instance.
 
         Args:
-            data_manager (object): Reference to the data manager instance.
+            folder_manager (object): Reference to the folder manager instance.
             parent (QWidget, optional): Reference to the parent widget. Defaults to None.
         """
         super().__init__(parent)
-        self.data_manager = data_manager
+        self.folder_manager = folder_manager
+        self.config_manager = config_manager
         self.parent = parent
         self.results = {}
         self.tech_objects = []
@@ -51,9 +55,10 @@ class CostTab(QWidget):
         self.summe_tech_kosten = 0  # Initialize the variable
 
         # Connect to the data manager signal
-        self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
-        self.updateDefaultPath(self.data_manager.variant_folder)
-        
+        self.folder_manager.project_folder_changed.connect(self.updateDefaultPath)
+        self.updateDefaultPath(self.folder_manager.variant_folder)
+
+        self.data = self.initData()  # Initialize the DataFrame
         self.initUI()
 
     def updateDefaultPath(self, new_base_path):
@@ -65,6 +70,43 @@ class CostTab(QWidget):
         """
         self.base_path = new_base_path
 
+    def initData(self):
+        """
+        Initializes the data as a pandas DataFrame with an index name and calculates the Annuität.
+        """
+        # Create the initial DataFrame
+        data = pd.DataFrame({
+            'Kosten': [2000000, 100000, 20000, 40000, 15000, 500000],
+            'T_N': [40, 20, 20, 40, 15, 20],
+            'F_inst': [1, 1, 1, 1, 1, 0],
+            'F_w_insp': [0, 1, 1, 0, 1, 0],
+            'Bedienaufwand': [5, 2, 2, 0, 5, 0]
+        }, index=['Wärmenetz', 'Hausanschlussstationen', 'Druckhaltung', 'Hydraulik', 'Elektroinstallation', 'Planungskosten'])
+        data.index.name = "Komponente"
+
+        # Calculate Annuität for each row
+        data['Annuität'] = data.apply(
+            lambda row: self.calc_annuität(
+                row['Kosten'], row['T_N'], row['F_inst'], row['F_w_insp'], row['Bedienaufwand']
+            ),
+            axis=1
+        )
+
+        # Create the summary row as a DataFrame
+        total_row = pd.DataFrame({
+            'Kosten': [data['Kosten'].sum()],
+            'T_N': [''],  # No meaningful value for T_N in the summary row
+            'F_inst': [''],  # No meaningful value for F_inst in the summary row
+            'F_w_insp': [''],  # No meaningful value for F_w_insp in the summary row
+            'Bedienaufwand': [''],  # No meaningful value for Bedienaufwand in the summary row
+            'Annuität': [data['Annuität'].sum()]
+        }, index=['Summe Infrastruktur'])
+
+        # Concatenate the summary row with the original data
+        data = pd.concat([data, total_row])
+
+        return data
+
     def initUI(self):
         """
         Initializes the user interface components for the CostTab.
@@ -73,11 +115,7 @@ class CostTab(QWidget):
         self.createMainScrollArea()
 
         # Infrastructure Costs Section
-        self.infrastructure_widget = QWidget()
-        infrastructure_layout = QVBoxLayout(self.infrastructure_widget)
         self.setupInfrastructureCostsTable()
-        infrastructure_layout.addWidget(self.infrastructureCostsTable)
-        self.infrastructure_section = CollapsibleHeader("Kosten Wärmenetzinfrastruktur", self.infrastructure_widget)
         
         # Technology Costs Section
         self.tech_widget = QWidget()
@@ -95,8 +133,8 @@ class CostTab(QWidget):
         self.cost_composition_section = CollapsibleHeader("Kostenzusammensetzung", self.cost_composition_widget)
 
         # Add all sections to the main layout with stretch factors
-        self.mainLayout.addWidget(self.infrastructure_section, 1)
-        self.mainLayout.addWidget(self.tech_section, 1)
+        self.mainLayout.addWidget(self.infrastructure_section, 2)
+        self.mainLayout.addWidget(self.tech_section, 2)
         self.mainLayout.addWidget(self.cost_composition_section, 2)
 
         # Initialize and style total cost label as QLabel
@@ -145,70 +183,85 @@ class CostTab(QWidget):
     
     ### Infrastructure Tables ###
     def setupInfrastructureCostsTable(self):
+        """
+        Sets up the infrastructure costs table.
+        """
+
+        self.infrastructure_widget = QWidget()
+        self.infrastructure_section = CollapsibleHeader("Kosten Wärmenetzinfrastruktur", self.infrastructure_widget)
+        self.infrastructure_layout = QVBoxLayout(self.infrastructure_widget)
+
         self.infrastructureCostsTable = QTableWidget()
-        self.infrastructureCostsTable.setColumnCount(7)
-        self.infrastructureCostsTable.setHorizontalHeaderLabels(
-            ['Beschreibung', 'Kosten', 'T_N', 'f_Inst', 'f_W_Insp', 'Bedienaufwand', 'Annuität']
-        )
+        self.infrastructureCostsTable.setColumnCount(len(self.data.columns))
+        self.infrastructureCostsTable.setRowCount(len(self.data))
+        self.infrastructureCostsTable.setHorizontalHeaderLabels(self.data.columns.tolist())
+        self.infrastructureCostsTable.setVerticalHeaderLabels(self.data.index.tolist())
         self.infrastructureCostsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.infrastructureCostsTable.setAlternatingRowColors(True)
 
+        self.updateInfrastructureTable()
+
+        self.infrastructureCostsTable.itemChanged.connect(self.updateDataFromTable)
+        self.infrastructureCostsTable.verticalHeader().setContextMenuPolicy(Qt.CustomContextMenu)
+        self.infrastructureCostsTable.verticalHeader().customContextMenuRequested.connect(self.openHeaderContextMenu)
+
+        self.infrastructure_layout.addWidget(self.infrastructureCostsTable)
+
+        # Add buttons for row management
+        buttonLayout = QHBoxLayout()
+
+        self.addButton = QPushButton("Zeile hinzufügen")
+        self.removeButton = QPushButton("Zeile entfernen")
+        self.berechneWärmenetzKostenButton = QPushButton("Kosten Wärmenetz aus geoJSON berechnen", self)
+        self.berechneHausanschlussKostenButton = QPushButton("Kosten Hausanschlusstationen aus geoJSON berechnen", self)
+
+        self.addButton.clicked.connect(self.addRow)
+        self.removeButton.clicked.connect(self.removeRow)
+        self.berechneWärmenetzKostenButton.clicked.connect(self.berechneWaermenetzKosten)
+        self.berechneHausanschlussKostenButton.clicked.connect(self.berechneHausanschlussKosten)
+
+        buttonLayout.addWidget(self.addButton)
+        buttonLayout.addWidget(self.removeButton)
+        buttonLayout.addWidget(self.berechneWärmenetzKostenButton)
+        buttonLayout.addWidget(self.berechneHausanschlussKostenButton)
+
+        self.infrastructure_layout.addLayout(buttonLayout)
+
     def updateInfrastructureTable(self):
         """
-        Updates the infrastructure costs table with data from the parent dialog.
+        Updates the infrastructure costs table with data from the DataFrame.
+        Ensures proper formatting and correct handling of indices.
         """
-        values = self.parent.netInfrastructureDialog.getValues()
-        infraObjects = self.parent.netInfrastructureDialog.getCurrentInfraObjects()
-        columns = ['Beschreibung', 'Kosten', 'T_N', 'f_Inst', 'f_W_Insp', 'Bedienaufwand', 'Gesamtannuität']
+        # Update the table dimensions
+        self.infrastructureCostsTable.setRowCount(len(self.data))
+        self.infrastructureCostsTable.setColumnCount(len(self.data.columns))
+        self.infrastructureCostsTable.setHorizontalHeaderLabels(self.data.columns.tolist())
+        self.infrastructureCostsTable.setVerticalHeaderLabels(self.data.index.tolist())  # Update vertical headers
 
-        self.infrastructureCostsTable.setRowCount(len(infraObjects))
-        self.infrastructureCostsTable.setColumnCount(len(columns))
-        self.infrastructureCostsTable.setHorizontalHeaderLabels(columns)
-
-        self.summe_investitionskosten = 0
-        self.summe_annuität = 0
-        self.individual_costs = []
-
-        for i, obj in enumerate(infraObjects):
-            self.infrastructureCostsTable.setItem(i, 0, QTableWidgetItem(obj.capitalize()))
-            
-            for j, col in enumerate(columns[1:], 1):
-                key = f"{obj}_{col.lower()}"
-                value = values.get(key, "")
-
-                # Apply formatting with units
-                if col == 'Kosten' and value != "":
-                    formatted_value = self.format_cost(float(value))
-                elif col == 'T_N' and value != "":
-                    formatted_value = f"{value} a"  # Append 'a' for years
-                elif col in ['f_Inst', 'f_W_Insp'] and value != "":
-                    formatted_value = f"{value} %"  # Convert to percentage and add '%'
-                elif col == 'Bedienaufwand' and value != "":
-                    formatted_value = f"{value} h"  # Append 'h' for hours
-                elif col == 'Gesamtannuität' and value != "":
-                    formatted_value = self.format_cost(float(value))
+        # Iterate over the DataFrame rows
+        self.infrastructureCostsTable.blockSignals(True)
+        for row_idx, (index, row) in enumerate(self.data.iterrows()):
+            for col_idx, (col_name, value) in enumerate(row.items()):
+                # Apply formatting based on column type
+                if col_name == 'Kosten' or col_name == 'Annuität':
+                    formatted_value = self.format_cost(value) if value != '' else ''
+                elif col_name == 'T_N':
+                    formatted_value = f"{value} a" if value != '' else ''  # Append 'a' for years
+                elif col_name in ['F_inst', 'F_w_insp']:
+                    formatted_value = f"{value} %" if value != '' else ''  # Convert to percentage and add '%'
+                elif col_name == 'Bedienaufwand':
+                    formatted_value = f"{value} h" if value != '' else ''  # Append 'h' for hours
                 else:
                     formatted_value = str(value)
-                
-                self.infrastructureCostsTable.setItem(i, j, QTableWidgetItem(formatted_value))
 
-            # Calculate annuity and format it
-            A0 = float(values.get(f"{obj}_kosten", 0))
-            TN = int(values.get(f"{obj}_t_n", 0))
-            f_Inst = float(values.get(f"{obj}_f_inst", 0))
-            f_W_Insp = float(values.get(f"{obj}_f_w_insp", 0))
-            Bedienaufwand = float(values.get(f"{obj}_bedienaufwand", 0))
-            annuität = self.calc_annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand)
-            
-            # Set formatted annuity in the table
-            self.infrastructureCostsTable.setItem(i, 6, QTableWidgetItem(self.format_cost(annuität)))
-            
-            # Update total investment and annuity sums
-            self.summe_investitionskosten += A0
-            self.summe_annuität += annuität
-            self.individual_costs.append((obj.capitalize(), A0))
+                # Ensure the value is set correctly in the table
+                self.infrastructureCostsTable.setItem(row_idx, col_idx, QTableWidgetItem(formatted_value))
+        self.infrastructureCostsTable.blockSignals(False)
 
-        self.addSummaryRow()
+        # Adjust table size and column widths
+        self.infrastructureCostsTable.resizeColumnsToContents()
+        self.infrastructureCostsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.adjustTableSize(self.infrastructureCostsTable)
 
     def format_cost(self, value):
         """
@@ -222,33 +275,131 @@ class CostTab(QWidget):
         """
         return f"{value:,.0f} €".replace(",", " ")
 
-
-    def addSummaryRow(self):
+    def updateDataFromTable(self, item):
         """
-        Adds a summary row to the infrastructure costs table with bold formatting.
+        Updates the DataFrame with values from the QTableWidget and recalculates Annuität.
+
+        Args:
+            item (QTableWidgetItem): The changed table item.
         """
-        summen_row_index = self.infrastructureCostsTable.rowCount()
-        self.infrastructureCostsTable.insertRow(summen_row_index)
+        row = item.row()
+        col = item.column()
+        value = item.text()
 
-        boldFont = QFont()
-        boldFont.setBold(True)
+        try:
+            # Remove unit suffixes before conversion
+            value = value.replace("€", "").replace("a", "").replace("%", "").replace("h", "").replace(" ", "").strip()
+            # Attempt to convert the stripped value to a float or int
+            if '.' in value or 'e' in value.lower():
+                self.data.iloc[row, col] = float(value)
+            else:
+                self.data.iloc[row, col] = int(value)
+        except ValueError:
+            self.data.iloc[row, col] = value  # Handle non-numeric values gracefully
 
-        summen_beschreibung_item = QTableWidgetItem("Summe Infrastruktur")
-        summen_beschreibung_item.setFont(boldFont)
-        self.infrastructureCostsTable.setItem(summen_row_index, 0, summen_beschreibung_item)
+        # Recalculate Annuität for the updated row
+        self.data.at[self.data.index[row], 'Annuität'] = self.calc_annuität(
+            float(self.data.at[self.data.index[row], 'Kosten']),
+            int(self.data.at[self.data.index[row], 'T_N']),
+            float(self.data.at[self.data.index[row], 'F_inst']),
+            float(self.data.at[self.data.index[row], 'F_w_insp']),
+            float(self.data.at[self.data.index[row], 'Bedienaufwand'])
+        )
 
-        formatted_cost = self.format_cost(self.summe_investitionskosten)
-        summen_kosten_item = QTableWidgetItem(formatted_cost)
-        summen_kosten_item.setFont(boldFont)
-        self.infrastructureCostsTable.setItem(summen_row_index, 1, summen_kosten_item)
+        # Update the Annuität column in the table
+        annuity_value = self.data.at[self.data.index[row], 'Annuität']
+        self.infrastructureCostsTable.blockSignals(True)
+        self.infrastructureCostsTable.setItem(row, self.data.columns.get_loc('Annuität'), QTableWidgetItem(self.format_cost(annuity_value)))
+        self.infrastructureCostsTable.blockSignals(False)
+        
+        # Recalculate the summary row
+        self.updateSummaryRow()
 
-        formatted_annuität = self.format_cost(self.summe_annuität)
-        summen_annuität_item = QTableWidgetItem(formatted_annuität)
-        summen_annuität_item.setFont(boldFont)
-        self.infrastructureCostsTable.setItem(summen_row_index, 6, summen_annuität_item)
+        # Refresh the table to include the updated summary row
+        self.updateInfrastructureTable()
 
-        self.infrastructureCostsTable.resizeColumnsToContents()
-        self.adjustTableSize(self.infrastructureCostsTable)
+    def addRow(self):
+        """
+        Adds a new row to the table and DataFrame, with default values and calculated Annuität.
+        The new row is added above the summary row.
+        """
+        # Remove the summary row temporarily
+        if 'Summe Infrastruktur' in self.data.index:
+            self.data = self.data.drop('Summe Infrastruktur')
+
+        # Create a new row with default values
+        new_row_name = f"Neues Objekt {len(self.data) + 1}"
+        default_values = {
+            'Kosten': 0,
+            'T_N': 0,
+            'F_inst': 0,
+            'F_w_insp': 0,
+            'Bedienaufwand': 0,
+            'Annuität': self.calc_annuität(0, 0, 0, 0, 0)
+        }
+        new_row = pd.DataFrame(default_values, index=[new_row_name])
+        print(new_row)
+
+        # Insert the new row into the DataFrame
+        self.data = pd.concat([self.data, new_row])
+
+        print(self.data)
+
+        # Recalculate the summary row and ensure it is the last row
+        self.updateSummaryRow()
+
+        print(self.data)
+
+        # Refresh the table
+        self.updateInfrastructureTable()
+
+    def removeRow(self):
+        """
+        Removes the selected row from the table and DataFrame.
+        """
+        current_row = self.infrastructureCostsTable.currentRow()
+        if current_row != -1:
+            # Remove the summary row temporarily
+            if 'Summe Infrastruktur' in self.data.index:
+                self.data = self.data.drop('Summe Infrastruktur')
+
+            # Remove the selected row
+            self.data = self.data.drop(self.data.index[current_row])
+
+            # Recalculate the summary row
+            self.updateSummaryRow()
+
+            # Refresh the table
+            self.updateInfrastructureTable()
+
+    def openHeaderContextMenu(self, position):
+        """
+        Opens the context menu for the vertical header.
+
+        Args:
+            position (QPoint): The position where the context menu should be opened.
+        """
+        menu = QMenu()
+        renameAction = menu.addAction("Umbenennen")
+        action = menu.exec_(self.infrastructureCostsTable.verticalHeader().mapToGlobal(position))
+
+        if action == renameAction:
+            row = self.infrastructureCostsTable.verticalHeader().logicalIndexAt(position)
+            if row != -1:
+                self.renameHeader(row)
+
+    def renameHeader(self, row):
+        """
+        Renames the header item at the specified row.
+
+        Args:
+            row (int): The row index of the header item to rename.
+        """
+        newName, okPressed = QInputDialog.getText(self, "Name ändern", "Neuer Name:", QLineEdit.Normal, "")
+        if okPressed and newName:
+            old_name = self.data.index[row]
+            self.data.rename(index={old_name: newName}, inplace=True)
+            self.infrastructureCostsTable.setVerticalHeaderLabels(self.data.index.tolist())
 
     def calc_annuität(self, A0, TN, f_Inst, f_W_Insp, Bedienaufwand):
         """
@@ -264,11 +415,70 @@ class CostTab(QWidget):
         Returns:
             float: The calculated annuity.
         """
-        q = 1 + (self.parent.economic_parameters["capital_interest_rate"])
-        r = 1 + (self.parent.economic_parameters["inflation_rate"])
+        if TN == 0: # Avoid division by zero
+            return 0.0
+        
+        q = float(self.parent.economic_parameters["capital_interest_rate"])
+        r = float(self.parent.economic_parameters["inflation_rate"])
         t = int(self.parent.economic_parameters["time_period"])
         stundensatz = self.parent.economic_parameters["hourly_rate"]
+
         return annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand, q=q, r=r, T=t, stundensatz=stundensatz)
+    
+    def updateSummaryRow(self):
+        """
+        Recalculates the summary row and appends it to the DataFrame.
+        """
+        # Remove existing summary row if it exists
+        if 'Summe Infrastruktur' in self.data.index:
+            self.data = self.data.drop('Summe Infrastruktur')
+
+        # Recalculate the summary row
+        total_row = pd.DataFrame({
+            'Kosten': [self.data['Kosten'].sum()],
+            'T_N': [''],  # No meaningful value for T_N in the summary row
+            'F_inst': [''],  # No meaningful value for F_inst in the summary row
+            'F_w_insp': [''],  # No meaningful value for F_w_insp in the summary row
+            'Bedienaufwand': [''],  # No meaningful value for Bedienaufwand in the summary row
+            'Annuität': [self.data['Annuität'].sum()]
+        }, index=['Summe Infrastruktur'])
+
+        # Append the summary row to the DataFrame
+        self.data = pd.concat([self.data, total_row])
+    
+    def updateTableValue(self, row, column, value):
+        """
+        Updates the value in the specified table cell.
+
+        Args:
+            row (int): The row index.
+            column (int): The column index.
+            value (Any): The value to set.
+        """
+        if 0 <= row < self.infrastructureCostsTable.rowCount() and 0 <= column < self.infrastructureCostsTable.columnCount():
+            self.infrastructureCostsTable.setItem(row, column, QTableWidgetItem(self.format_cost(value)))
+        else:
+            print("Fehler: Ungültiger Zeilen- oder Spaltenindex.")
+    
+    def berechneWaermenetzKosten(self):
+        """
+        Opens the dialog to calculate the cost of the heating network and updates the table.
+        """
+        dialog = KostenBerechnungDialog(self, label="spez. Kosten Wärmenetz pro m_Trasse (inkl. Tiefbau) in €/m", value="1000", type="flow line")
+        dialog.setWindowTitle("Kosten Wärmenetz berechnen")
+        if dialog.exec_():
+            cost_net = dialog.total_cost
+            self.updateTableValue(row=0, column=0, value=cost_net)
+
+    def berechneHausanschlussKosten(self):
+        """
+        Opens the dialog to calculate the cost of house connection stations and updates the table.
+        """
+        dialog = KostenBerechnungDialog(self, label="spez. Kosten Hausanschlussstationen pro kW max. Wärmebedarf in €/kW", value="250", type="HAST")
+        dialog.setWindowTitle("Kosten Hausanschlussstationen berechnen")
+        if dialog.exec_():
+            cost_net = dialog.total_cost
+            self.updateTableValue(row=1, column=0, value=cost_net)
     
     ### Setup of Calculation Result Tables ###
     def setupTechDataTable(self):
@@ -326,10 +536,18 @@ class CostTab(QWidget):
 
     def updateSumLabel(self):
         """
-        Updates the label displaying the total costs.
+        Updates the label displaying the total costs using the summary row from the DataFrame.
         """
-        total_cost = self.summe_investitionskosten + self.summe_tech_kosten
+        # Extract the total costs from the summary row
+        if 'Summe Infrastruktur' in self.data.index:
+            total_cost = self.data.at['Summe Infrastruktur', 'Kosten']
+        else:
+            total_cost = 0  # Fallback if the summary row is missing
+
+        # Format the total cost
         formatted_total_cost = self.format_cost(total_cost)
+
+        # Update the label
         self.totalCostLabel.setText(f"Gesamtkosten: {formatted_total_cost}")
     
     ### Setup of Cost Composition Chart ###
@@ -360,9 +578,18 @@ class CostTab(QWidget):
         """
         Plots the cost composition with two separate figures: a bar chart and a pie chart.
         """
+
+        # Combine costs from self.data (excluding the summary row) and individual costs
+        data_costs = [
+            (index, self.data.at[index, 'Kosten'])
+            for index in self.data.index
+            if index != 'Summe Infrastruktur'  # Exclude the summary row
+        ]
+        combined_costs = data_costs + self.individual_costs
+        
         # Data for the charts
-        labels = [cost[0] for cost in self.individual_costs]
-        sizes = [cost[1] for cost in self.individual_costs]
+        labels = [cost[0] for cost in combined_costs]
+        sizes = [cost[1] for cost in combined_costs]
 
         ### Bar Chart
         self.bar_chart_figure.clear()

@@ -29,6 +29,10 @@ def annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand=0, q=1.05, r=1.03, T=20, E
         float: Calculated annuity value.
     """
 
+    # make sure T and TN are integers
+    T = int(T)
+    TN = int(TN)
+    
     n = max(T // TN, 0)
 
     a = (q - 1) / (1 - (q ** (-T)))  # Annuitätsfaktor
