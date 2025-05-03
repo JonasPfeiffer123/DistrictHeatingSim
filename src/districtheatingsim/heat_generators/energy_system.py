@@ -46,6 +46,7 @@ class EnergySystem:
         self.economic_parameters = economic_parameters
         self.technologies = []  # List to store generator objects
         self.storage = None
+        
         self.results = {}
 
         self.duration = (np.diff(self.time_steps[:2]) / np.timedelta64(1, 'h'))[0]
@@ -71,10 +72,11 @@ class EnergySystem:
     def initialize_results(self):
         """
         Initialize results for the energy system.
-
         """
-        
-        self.results = {
+        if not hasattr(self, 'results') or not isinstance(self.results, dict):
+            self.results = {}
+
+        self.results.update({
             'time_steps': self.time_steps,
             'Last_L': self.load_profile,
             'VLT_L': self.VLT_L,
@@ -82,24 +84,23 @@ class EnergySystem:
             'Jahreswärmebedarf': (np.sum(self.load_profile) / 1000) * self.duration,
             'Restlast_L': self.load_profile.copy(),
             'Restwärmebedarf': (np.sum(self.load_profile) / 1000) * self.duration,
-            'Wärmeleistung_L': [],
-            'colors': [],
-            'Wärmemengen': [],
-            'Anteile': [],
-            'WGK': [],
             'WGK_Gesamt': 0,
             'Strombedarf': 0,
             'Strommenge': 0,
             'el_Leistungsbedarf_L': np.zeros_like(self.load_profile),
             'el_Leistung_L': np.zeros_like(self.load_profile),
             'el_Leistung_ges_L': np.zeros_like(self.load_profile),
-            'specific_emissions_L': [],
-            'primärenergie_L': [],
             'specific_emissions_Gesamt': 0,
             'primärenergiefaktor_Gesamt': 0,
-            'techs': [],
-            'tech_classes': []
-        }
+        })
+
+        # Ensure lists are initialized or cleared
+        for key in ['Wärmeleistung_L', 'colors', 'Wärmemengen', 'Anteile', 'WGK', 
+                    'specific_emissions_L', 'primärenergie_L', 'techs']:
+            if key not in self.results:
+                self.results[key] = []
+            else:
+                self.results[key].clear()
 
     def set_optimization_variables(self, variables, variables_order):
         for tech in self.technologies:
@@ -158,9 +159,9 @@ class EnergySystem:
         Returns:
             dict: Results of the energy system simulation.
         """
-        
-        # Initialize results
         self.initialize_results()
+        
+        # Initialize optimization variables
         self.set_optimization_variables(variables, variables_order)
         
         for tech in self.technologies:
@@ -229,7 +230,7 @@ class EnergySystem:
             self.storage.calculate_efficiency(self.load_profile)
             self.storage.calculate_operational_costs(0.10) # needs to be changed to a parameter
             self.results['storage_class'] = self.storage
-            
+        
         for tech in self.technologies:
             # Perform technology-specific calculation
             tech_results = tech.calculate(economic_parameters=self.economic_parameters,
@@ -246,8 +247,6 @@ class EnergySystem:
             else:
                 # Add technology as inactive with zero contribution
                 self.aggregate_results({'tech_name': tech.name})
-        
-        self.results['tech_classes'] = self.technologies
 
         self.getInitialPlotData()
 
@@ -429,17 +428,32 @@ class EnergySystem:
         Returns:
             EnergySystem: A new instance of EnergySystem with the same data.
         """
+        # Create a new EnergySystem instance with copied basic attributes
         copied_system = EnergySystem(
             time_steps=self.time_steps.copy(),
             load_profile=self.load_profile.copy(),
             VLT_L=self.VLT_L.copy(),
             RLT_L=self.RLT_L.copy(),
-            TRY_data=self.TRY_data,
-            COP_data=self.COP_data,
+            TRY_data=copy.deepcopy(self.TRY_data),
+            COP_data=copy.deepcopy(self.COP_data),
             economic_parameters=copy.deepcopy(self.economic_parameters)
         )
+
         # Deep-copy the technologies
         copied_system.technologies = [copy.deepcopy(tech) for tech in self.technologies]
+
+        # Deep-copy the storage, if it exists
+        if self.storage:
+            copied_system.storage = copy.deepcopy(self.storage)
+
+        # Deep-copy the results dictionary
+        copied_system.results = copy.deepcopy(self.results)
+
+        # Copy any additional attributes that may have been added dynamically
+        for attr_name, attr_value in self.__dict__.items():
+            if attr_name not in copied_system.__dict__:
+                copied_system.__dict__[attr_name] = copy.deepcopy(attr_value)
+
         return copied_system
 
     def to_dict(self):

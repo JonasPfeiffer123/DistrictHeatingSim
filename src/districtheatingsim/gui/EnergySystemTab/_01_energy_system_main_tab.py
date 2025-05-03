@@ -11,6 +11,8 @@ import os
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMessageBox, QMenuBar, QScrollArea, QAction, QDialog)
 from PyQt5.QtCore import pyqtSignal, QEventLoop
 
+from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import import_results_csv
+
 from districtheatingsim.gui.EnergySystemTab._02_energy_system_dialogs import EconomicParametersDialog, WeightDialog
 from districtheatingsim.gui.EnergySystemTab._06_calculate_energy_system_thread import CalculateEnergySystemThread
 from districtheatingsim.gui.EnergySystemTab._03_technology_tab import TechnologyTab
@@ -248,6 +250,59 @@ class EnergySystemTab(QWidget):
             QMessageBox.warning(self, "Ungültige Eingabe", str(e))
             return False
         return True
+    
+    def preprocessData(self):
+        """
+        Preprocesses the data before calculation.
+        """
+        self.csv_filename = self.techTab.FilenameInput.text()
+        self.TRY_filename = self.data_manager.get_try_filename()
+        self.COP_filename = self.data_manager.get_cop_filename()
+        self.load_scale_factor = float(self.techTab.load_scale_factorInput.text())
+
+        # Import data from the CSV file
+        time_steps, waerme_ges_kW, strom_wp_kW, pump_results = import_results_csv(self.csv_filename)
+
+        # Collect qext_kW values from pump results
+        qext_values = []
+        for pump_type, pumps in pump_results.items():
+            for idx, pump_data in pumps.items():
+                if 'qext_kW' in pump_data:
+                    qext_values.append(pump_data['qext_kW'])
+                else:
+                    print(f"Keine qext_kW Daten für {pump_type} Pumpe {idx}")
+
+                if pump_type == "Heizentrale Haupteinspeisung":
+                    flow_temp_circ_pump = pump_data['flow_temp']
+                    return_temp_circ_pump = pump_data['return_temp']
+
+        if qext_values:
+            qext_kW = np.sum(np.array(qext_values), axis=0)
+        else:
+            qext_kW = np.array([])
+
+        qext_kW *= self.load_scale_factor
+
+        # Create the energy system object
+        self.energy_system = EnergySystem(
+            time_steps=time_steps,
+            load_profile=qext_kW,
+            VLT_L=flow_temp_circ_pump,
+            RLT_L=return_temp_circ_pump,
+            TRY_data=self.TRY_filename,
+            COP_data=self.COP_filename,
+            economic_parameters=self.economic_parameters,
+        )
+
+        # Add technologies to the system
+        for tech in self.techTab.tech_objects:
+            self.energy_system.add_technology(tech)
+
+        self.energy_system.results["waerme_ges_kW"] = waerme_ges_kW
+        self.energy_system.results["strom_wp_kW"] = strom_wp_kW
+
+        self.costTab.updateInfrastructureTable()
+        self.energy_system.results["infrastructure_cost"]  = self.costTab.data
 
     def calculate_energy_system(self, optimize=False, weights=None):
         """
@@ -257,9 +312,6 @@ class EnergySystemTab(QWidget):
             optimize (bool, optional): Whether to optimize the calculation. Defaults to False.
             weights (dict, optional): Weights for optimization. Defaults to None.
         """
-        self.costTab.updateInfrastructureTable()
-        #self.costTab.plotCostComposition()
-        #self.costTab.updateSumLabel()
         
         self.optimize = optimize
 
@@ -267,15 +319,9 @@ class EnergySystemTab(QWidget):
             return
 
         if self.techTab.tech_objects:
-            self.csv_filename = self.techTab.FilenameInput.text()
-            self.TRY_filename = self.data_manager.get_try_filename()
-            self.COP_filename = self.data_manager.get_cop_filename()
-            self.load_scale_factor = float(self.techTab.load_scale_factorInput.text())
+            self.preprocessData()
 
-            print(f"techTab tech_objects: {self.techTab.tech_objects}")
-
-            self.calculationThread = CalculateEnergySystemThread(self.csv_filename, self.load_scale_factor, self.TRY_filename, self.COP_filename, 
-                                                        self.economic_parameters, self.techTab.tech_objects, self.optimize, weights)
+            self.calculationThread = CalculateEnergySystemThread(self.energy_system, self.optimize, weights)
             
             self.calculationThread.calculation_done.connect(self.on_calculation_done)
             self.calculationThread.calculation_error.connect(self.on_calculation_error)
@@ -301,13 +347,11 @@ class EnergySystemTab(QWidget):
             result (dict): The results of the calculation.
         """
         self.progressBar.setRange(0, 1)
-        # To do: if optimize is True, the results are stored in the second element of the tuple, need to implement posibility to show both or even store different systems
         self.energy_system = result[0]
 
         if self.optimize:
             self.optimized_energy_system = result[1]
             self.energy_system = self.optimized_energy_system
-            print(f"Technologien der optimierten Energieerzeugung: {self.optimized_energy_system.technologies}")
             
         self.process_data()
 
@@ -349,7 +393,11 @@ class EnergySystemTab(QWidget):
         if not self.techTab.tech_objects:
             QMessageBox.information(self, "Keine Erzeugeranlagen", "Es wurden keine Erzeugeranlagen definiert. Keine Berechnung möglich.")
             return
-
+        
+        if not self.energy_system.technologies:
+            QMessageBox.information(self, "Keine Erzeugeranlagen im EnergySystem", "Im EnergySystem sind keine Erzeugeranlagen definiert. Keine Berechnung möglich.")
+            return
+                
         results = []
         for gas_price in self.generate_values(gas_range):
             for electricity_price in self.generate_values(electricity_range):
@@ -417,11 +465,9 @@ class EnergySystemTab(QWidget):
         economic_parameters["electricity_price"] = electricity_price
         economic_parameters["wood_price"] = wood_price
 
-        # inefficient as fuck, but it works for now
-        # Thread will load the csv, cop, and try file every time
-        # Need to split up data processing and calculation
-        self.calculationThread = CalculateEnergySystemThread(self.csv_filename, self.load_scale_factor, self.TRY_filename, self.COP_filename, 
-                                                    economic_parameters, self.techTab.tech_objects, False,  weights)
+        self.energy_system.economic_parameters = economic_parameters
+
+        self.calculationThread = CalculateEnergySystemThread(self.energy_system, False,  weights)
         
         self.calculationThread.calculation_done.connect(calculation_done)
         self.calculationThread.calculation_error.connect(calculation_error)
