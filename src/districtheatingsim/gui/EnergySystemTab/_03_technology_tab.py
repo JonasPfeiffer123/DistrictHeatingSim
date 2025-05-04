@@ -78,7 +78,6 @@ class TechnologyTab(QWidget):
         super().__init__(parent)
         self.data_manager = data_manager
         self.config_manager = config_manager
-        self.results = {}
         self.tech_objects = []
         self.initFileInputs()
         self.initUI()
@@ -245,7 +244,7 @@ class TechnologyTab(QWidget):
         if dialog.exec_() == QDialog.Accepted:
             new_tech = self.createTechnology(tech_type, dialog.getInputs())
             # Speicheraktivität direkt vom Dialog abrufen und im tech-Objekt speichern
-            new_tech.has_storage = dialog.getInputs().get('speicher_aktiv', False)
+            new_tech.has_storage = dialog.getInputs().get('speicher_aktiv', False) # thats stupid af
             self.tech_objects.append(new_tech)
             self.updateTechList()
             self.addTechToScene(new_tech)  # Füge das neue Objekt zur Szene hinzu
@@ -496,7 +495,7 @@ class TechnologyTab(QWidget):
         ax.set_axis_off()
         self.plotCanvas.draw()
 
-    def addTechToScene(self, tech):
+    def addTechToScene(self, tech): # der Mist muss mal refactored werden
         """
         Fügt die Technologie zur SchematicScene hinzu und speichert die Referenz im tech-Objekt.
         """

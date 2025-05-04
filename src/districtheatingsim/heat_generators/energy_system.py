@@ -248,6 +248,15 @@ class EnergySystem:
                 # Add technology as inactive with zero contribution
                 self.aggregate_results({'tech_name': tech.name})
 
+        # Berechnung des ungedeckten Bedarfs nach der Verarbeitung aller Technologien
+        if np.any(self.results['Restlast_L'] > 1e-6):
+            unmet_demand = np.sum(self.results['Restlast_L']) / 1000 * self.duration
+            self.results['Wärmeleistung_L'].append(self.results['Restlast_L'])
+            self.results['Wärmemengen'].append(unmet_demand)
+            self.results['techs'].append("Ungedeckter Bedarf")
+            self.results['Anteile'].append(unmet_demand / self.results['Jahreswärmebedarf'])
+            self.results['colors'].append("black")
+
         self.getInitialPlotData()
 
         return self.results
@@ -295,8 +304,16 @@ class EnergySystem:
             self.extracted_data['Speicherbeladung_kW'] = Q_net_negative
             self.extracted_data['Speicherentladung_kW'] = Q_net_positive
 
+        if "Ungedeckter Bedarf" in self.results['techs']:
+            # Finde den Index des "Ungedeckter Bedarf" in der Liste der Technologien
+            unmet_demand_index = self.results['techs'].index("Ungedeckter Bedarf")
+            # Ungedeckter Bedarf zur extrahierten Datenstruktur hinzufügen
+            self.extracted_data['Ungedeckter_Bedarf_kW'] = self.results["Wärmeleistung_L"][unmet_demand_index]
+
         # Initiale Auswahl
         self.initial_vars = [var_name for var_name in self.extracted_data.keys() if "_Wärmeleistung" in var_name]
+        if "Ungedeckter_Bedarf_kW" in self.extracted_data:
+            self.initial_vars.append("Ungedeckter_Bedarf_kW")
         self.initial_vars.append("Last_L")
         if self.storage:
             self.initial_vars.append("Speicherbeladung_kW")
@@ -330,6 +347,8 @@ class EnergySystem:
 
         # Füge die restlichen Variablen hinzu
         stackplot_vars += [var for var in selected_vars if var not in stackplot_vars and "_Wärmeleistung" in var]
+        if "Ungedeckter_Bedarf_kW" in selected_vars:
+            stackplot_vars.append("Ungedeckter_Bedarf_kW")
 
         # Speicherentladung ans Ende verschieben
         if "Speicherentladung_kW" in stackplot_vars:
@@ -387,13 +406,12 @@ class EnergySystem:
         if ax2:
             ax2.legend(loc='upper right', ncol=2)
 
-    def plot_pie_chart(self, figure=None, include_unmet_demand=True):
+    def plot_pie_chart(self, figure=None):
         """
         Plot a pie chart showing the contribution of each technology.
 
         Args:
             figure (matplotlib.figure.Figure, optional): Figure object for the plot. Defaults to None.
-            include_unmet_demand (bool): Whether to include unmet demand in the chart.
         """
         if figure is None:
             figure = plt.figure()
@@ -402,13 +420,6 @@ class EnergySystem:
         labels = self.results['techs']
         Anteile = self.results['Anteile']
         colors = self.results['colors']
-
-        # Check if unmet demand should be included
-        summe = sum(Anteile)
-        if include_unmet_demand and summe < 1:
-            Anteile.append(1 - summe)
-            labels.append("ungedeckter Bedarf")
-            colors.append("black")
 
         ax.pie(
             Anteile,
