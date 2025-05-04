@@ -5,6 +5,7 @@ Date: 2025-04-19
 Description: Contains the MixdesignTab.
 """
 
+import traceback
 import numpy as np
 import os
 
@@ -523,7 +524,8 @@ class EnergySystemTab(QWidget):
             self.energy_system.save_to_json(json_filename)
             QMessageBox.information(self, "Erfolgreich gespeichert", f"Die Ergebnisse wurden erfolgreich unter {json_filename} gespeichert.")
         except Exception as e:
-            QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der JSON-Datei: {e}")
+            error_details = traceback.format_exc()
+            QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der JSON-Datei: {e}\n\nDetails:\n{error_details}")
 
     def load_results_JSON(self):
         """

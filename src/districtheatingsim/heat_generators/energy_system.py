@@ -1,9 +1,12 @@
 """
-Filename: heat_generator_mix.py
+Filename: energy_system.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-03-25
+Date: 2025-05-04
 Description: Class to calculate the heat generation mix for a district heating system.
 
+This class represents an energy system for district heating. It supports the calculation of heat generation mixes,
+optimization of the system, and serialization to/from JSON and CSV formats. The `TRY_data` and `COP_data` attributes
+store the filenames of the respective data files, not the data itself.
 """
 
 import logging
