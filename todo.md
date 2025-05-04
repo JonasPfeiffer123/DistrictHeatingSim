@@ -84,7 +84,6 @@ Test Projekte durcharbeiten:
 
 
 03.05.2025
-ungedeckter bedarf muss zentral im EnergySystem definiert werden und nicht nur im PieChart -> aktuell führt das zu unterschiedlichen längen, außerdem könnte man zum Sankey noch Strom ergänzen.
 
 Speichern und Laden des EnergySystem inklusive economic_parameters und InfrastructureTable überarbeiten.
 
