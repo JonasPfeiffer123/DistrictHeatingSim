@@ -485,17 +485,15 @@ class EnergySystemTab(QWidget):
         """
         Shows additional results.
         """
-        if self.techTab.tech_objects and self.energy_system.results and self.parent_object.calcTab.Gesamtwärmebedarf_Gebäude_MWh:
-            dialog = SankeyDialog(results=self.energy_system.results, heat_demand=self.parent_object.calcTab.Gesamtwärmebedarf_Gebäude_MWh, parent=self)
+        if self.techTab.tech_objects and self.energy_system.results:
+            dialog = SankeyDialog(results=self.energy_system.results, parent=self)
             dialog.exec_()
         else:
             if not self.techTab.tech_objects:
                 QMessageBox.information(self, "Keine Erzeugeranlagen", "Es wurden keine Erzeugeranlagen definiert. Keine Berechnung möglich.")
             elif not self.results:
                 QMessageBox.information(self, "Keine Berechnungsergebnisse", "Es sind keine Berechnungsergebnisse verfügbar. Führen Sie zunächst eine Berechnung durch.")
-            elif not self.parent_object.calcTab.Gesamtwärmebedarf_Gebäude_MWh:
-                QMessageBox.information(self, "Gesamtwärmebedarf nicht definiert", "Der Gesamtwärmebedarf der Gebäude ist nicht definiert. Stellen Sie sicher, dass der Gesamtwärmebedarf der Gebäude definiert ist.")
-
+            
     ### Save Calculation Results ###
     def save_heat_generation_results_to_csv(self):
         """
