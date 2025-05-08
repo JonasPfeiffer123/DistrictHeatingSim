@@ -10,6 +10,7 @@ from PyQt5.QtCore import QSize, Qt
 
 import json
 import numpy as np
+import pandas as pd
 
 from districtheatingsim.heat_generators.heat_pumps import RiverHeatPump, WasteHeatPump, Geothermal, AqvaHeat
 from districtheatingsim.heat_generators.gas_boiler import GasBoiler
@@ -173,6 +174,9 @@ class CustomJSONEncoder(json.JSONEncoder):
                 return int(obj)
             if isinstance(obj, np.floating):
                 return float(obj)
+            if isinstance(obj, pd.DataFrame):
+                # Use 'split' format for DataFrame serialization
+                return obj.to_dict(orient='split')
             if isinstance(obj, (BaseHeatGenerator, BaseStrategy, TemperatureStratifiedThermalStorage)):
                 return obj.to_dict()
             return super().default(obj)

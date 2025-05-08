@@ -21,6 +21,7 @@ class EconomicParametersDialog(QDialog):
     A QDialog subclass for inputting economic parameters.
 
     Attributes:
+        default_values (dict): Dictionary containing the default values for the input fields.
         gaspreisInput (QLineEdit): Input field for gas price.
         strompreisInput (QLineEdit): Input field for electricity price.
         holzpreisInput (QLineEdit): Input field for wood price.
@@ -32,6 +33,7 @@ class EconomicParametersDialog(QDialog):
         fig (Figure): Matplotlib figure for plotting.
         ax (Axes): Matplotlib axes for plotting.
         canvas (FigureCanvas): Canvas to display the Matplotlib figure.
+    
     """
 
     def __init__(self, parent=None):
@@ -42,9 +44,19 @@ class EconomicParametersDialog(QDialog):
             parent (QWidget, optional): The parent widget. Defaults to None.
         """
         super().__init__(parent)
+        self.default_values = {
+            "gas_price": 70.0,
+            "electricity_price": 150.0,
+            "wood_price": 50.0,
+            "capital_interest_rate": 5.0,
+            "inflation_rate": 3.0,
+            "time_period": 20,
+            "hourly_rate": 45.0,
+            "subsidy_eligibility": "Nein"
+        }
         self.initUI()
-        self.initDefaultValues()
-        self.validateInput()
+        self.loadValues(self.default_values)
+        self.plotPriceDevelopment()
         self.connectSignals()
 
     def initUI(self):
@@ -102,10 +114,10 @@ class EconomicParametersDialog(QDialog):
         buttonLayout = QHBoxLayout()
         okButton = QPushButton("OK", self)
         cancelButton = QPushButton("Abbrechen", self)
-        
+
         okButton.clicked.connect(self.accept)
         cancelButton.clicked.connect(self.reject)
-        
+
         buttonLayout.addWidget(okButton)
         buttonLayout.addWidget(cancelButton)
 
@@ -117,18 +129,51 @@ class EconomicParametersDialog(QDialog):
         self.canvas = FigureCanvas(self.fig)
         self.mainLayout.addWidget(self.canvas)
 
-    def initDefaultValues(self):
+    def loadValues(self, values):
         """
-        Initializes the input fields with default values.
+        Loads the given values into the input fields.
+
+        Args:
+            values (dict): Dictionary containing the values to load.
         """
-        self.gaspreisInput.setText("70")
-        self.strompreisInput.setText("150")
-        self.holzpreisInput.setText("50")
-        self.kapitalzinsInput.setText("5")
-        self.preissteigerungsrateInput.setText("3")
-        self.betrachtungszeitraumInput.setText("20")
-        self.stundensatzInput.setText("45")
-        self.BEWComboBox.setCurrentIndex(0)  # Sets the selection to "Nein"
+        self.gaspreisInput.setText(str(values["gas_price"]))
+        self.strompreisInput.setText(str(values["electricity_price"]))
+        self.holzpreisInput.setText(str(values["wood_price"]))
+        self.kapitalzinsInput.setText(str(values["capital_interest_rate"]))
+        self.preissteigerungsrateInput.setText(str(values["inflation_rate"]))
+        self.betrachtungszeitraumInput.setText(str(values["time_period"]))
+        self.stundensatzInput.setText(str(values["hourly_rate"]))
+        self.BEWComboBox.setCurrentText(values["subsidy_eligibility"])
+
+    def getValues(self):
+        """
+        Gets the values from the input fields.
+
+        Returns:
+            dict: A dictionary containing the input values.
+        """
+        return {
+            "gas_price": float(self.gaspreisInput.text()),
+            "electricity_price": float(self.strompreisInput.text()),
+            "wood_price": float(self.holzpreisInput.text()),
+            "capital_interest_rate": float(self.kapitalzinsInput.text()),
+            "inflation_rate": float(self.preissteigerungsrateInput.text()),
+            "time_period": int(self.betrachtungszeitraumInput.text()),
+            "hourly_rate": float(self.stundensatzInput.text()),
+            "subsidy_eligibility": self.BEWComboBox.currentText()
+        }
+
+    def updateValues(self, new_values):
+        """
+        Updates the default values and reloads them into the input fields.
+
+        Args:
+            new_values (dict): Dictionary containing the new values.
+        """
+        self.default_values.update(new_values)
+        self.loadValues(self.default_values)
+        
+        self.plotPriceDevelopment()
 
     def connectSignals(self):
         """
@@ -138,31 +183,23 @@ class EconomicParametersDialog(QDialog):
         self.strompreisInput.textChanged.connect(self.validateInput)
         self.holzpreisInput.textChanged.connect(self.validateInput)
         self.preissteigerungsrateInput.textChanged.connect(self.validateInput)
+        self.kapitalzinsInput.textChanged.connect(self.validateInput)
+        self.betrachtungszeitraumInput.textChanged.connect(self.validateInput)
+        self.stundensatzInput.textChanged.connect(self.validateInput)
+        self.BEWComboBox.currentTextChanged.connect(self.validateInput)
 
     def validateInput(self):
         """
         Validates the input fields and updates the plot if valid.
         """
-        gas_price = self.gaspreisInput.text()
-        strom_price = self.strompreisInput.text()
-        holz_price = self.holzpreisInput.text()
-        kapitalzins = self.kapitalzinsInput.text()
-        preissteigerungsrate = self.preissteigerungsrateInput.text()
-        betrachtungszeitraum = self.betrachtungszeitraumInput.text()
-        stundensatz = self.stundensatzInput.text()
-
-        if not (gas_price and strom_price and holz_price and kapitalzins and preissteigerungsrate and betrachtungszeitraum):
-            self.showErrorMessage("Alle Felder müssen ausgefüllt sein.")
-            return
-
         try:
-            float(gas_price)
-            float(strom_price)
-            float(holz_price)
-            float(kapitalzins)
-            float(preissteigerungsrate)
-            int(betrachtungszeitraum)
-            float(stundensatz)
+            float(self.gaspreisInput.text())
+            float(self.strompreisInput.text())
+            float(self.holzpreisInput.text())
+            float(self.kapitalzinsInput.text())
+            float(self.preissteigerungsrateInput.text())
+            int(self.betrachtungszeitraumInput.text())
+            float(self.stundensatzInput.text())
         except ValueError:
             self.showErrorMessage("Ungültige Eingabe. Bitte geben Sie numerische Werte ein.")
             return
@@ -206,24 +243,6 @@ class EconomicParametersDialog(QDialog):
 
         self.fig.tight_layout()
         self.canvas.draw()
-
-    def getValues(self):
-        """
-        Gets the values from the input fields.
-
-        Returns:
-            dict: A dictionary containing the input values.
-        """
-        return {
-            "gas_price": float(self.gaspreisInput.text()), # gas price in €/MWh
-            "electricity_price": float(self.strompreisInput.text()), # electricity price in €/MWh
-            "wood_price": float(self.holzpreisInput.text()), # wood price in €/MWh
-            "capital_interest_rate": 1 + (float(self.kapitalzinsInput.text()) / 100), # capital interest rate
-            "inflation_rate": 1 + (float(self.preissteigerungsrateInput.text()) / 100), # inflation rate
-            "time_period": int(self.betrachtungszeitraumInput.text()), # evaluation period in years
-            "hourly_rate": float(self.stundensatzInput.text()), # hourly wage rate for maintenance in €/h
-            "subsidy_eligibility": self.BEWComboBox.currentText() # subsidy eligibility (Yes/No)
-        }
 
 class KostenBerechnungDialog(QDialog):
     """
