@@ -84,9 +84,9 @@ Test Projekte durcharbeiten:
 
 
 03.05.2025
-
-Speichern und Laden des EnergySystem inklusive economic_parameters und InfrastructureTable überarbeiten.
-
 Liste von EnergySystems einführen. Ergebnis-CSV nicht mehr automatisch speichern, Dateiname abfragen. Benennung EnergySytems beim Speichern. JSON-Speichern speichert alle EnergySystems. Löschen & öffnen von EnergySystems. Variantenvergleich von EnergySystems
 
 SaisonalSpeicher in Optimierung mit einbeziehen, wirtschaftliche Faktoren definieren, in Wirtschaftlichkeitsrechnung mit einbeziehen. InfrastructureCost ggf. noch in EnergySystem integrieren.
+
+Snakemake
+https://snakemake.readthedocs.io/en/stable/

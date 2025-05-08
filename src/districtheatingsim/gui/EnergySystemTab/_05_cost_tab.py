@@ -338,17 +338,12 @@ class CostTab(QWidget):
             'Annuität': self.calc_annuität(0, 0, 0, 0, 0)
         }
         new_row = pd.DataFrame(default_values, index=[new_row_name])
-        print(new_row)
 
         # Insert the new row into the DataFrame
         self.data = pd.concat([self.data, new_row])
 
-        print(self.data)
-
         # Recalculate the summary row and ensure it is the last row
         self.updateSummaryRow()
-
-        print(self.data)
 
         # Refresh the table
         self.updateInfrastructureTable()

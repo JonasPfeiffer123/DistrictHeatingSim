@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMe
 from PyQt5.QtCore import pyqtSignal, QEventLoop
 
 from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import import_results_csv
+from districtheatingsim.utilities.test_reference_year import import_TRY
 
 from districtheatingsim.gui.EnergySystemTab._02_energy_system_dialogs import EconomicParametersDialog, WeightDialog
 from districtheatingsim.gui.EnergySystemTab._06_calculate_energy_system_thread import CalculateEnergySystemThread
@@ -263,6 +264,8 @@ class EnergySystemTab(QWidget):
 
         # Import data from the CSV file
         time_steps, waerme_ges_kW, strom_wp_kW, pump_results = import_results_csv(self.csv_filename)
+        self.TRY_data = import_TRY(self.TRY_filename)
+        self.COP_data = np.genfromtxt(self.COP_filename, delimiter=';')
 
         # Collect qext_kW values from pump results
         qext_values = []
@@ -290,8 +293,8 @@ class EnergySystemTab(QWidget):
             load_profile=qext_kW,
             VLT_L=flow_temp_circ_pump,
             RLT_L=return_temp_circ_pump,
-            TRY_data=self.TRY_filename,
-            COP_data=self.COP_filename,
+            TRY_data=self.TRY_data,
+            COP_data=self.COP_data,
             economic_parameters=self.economic_parameters,
         )
 
@@ -369,10 +372,21 @@ class EnergySystemTab(QWidget):
         QMessageBox.critical(self, "Berechnungsfehler", str(error_message))
 
     def process_data(self):
+        # Update economic parameters with saved parameters from energy system class
+        self.economicParametersDialog.updateValues(self.energy_system.economic_parameters)
+        self.updateEconomicParameters()
+
         # Update the tech objects from the loaded EnergySystem
         self.techTab.tech_objects = self.energy_system.technologies + [self.energy_system.storage] if self.energy_system.storage else self.energy_system.technologies
         self.techTab.rebuildScene()
         self.techTab.updateTechList()
+
+        # Lade den gespeicherten Infrastrukturkosten-DataFrame
+        if "infrastructure_cost" in self.energy_system.results:
+            self.costTab.data = self.energy_system.results["infrastructure_cost"]
+            self.costTab.updateInfrastructureTable()  # Aktualisiere die Tabelle mit den neuen Daten
+
+
         self.costTab.updateTechDataTable(self.energy_system.technologies)
         self.costTab.updateSumLabel()
         self.costTab.plotCostComposition()

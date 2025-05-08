@@ -309,7 +309,12 @@ class EnergySystem:
 
         if "Ungedeckter Bedarf" in self.results['techs']:
             # Finde den Index des "Ungedeckter Bedarf" in der Liste der Technologien
-            unmet_demand_index = self.results['techs'].index("Ungedeckter Bedarf")
+            if isinstance(self.results['techs'], list):
+                unmet_demand_index = self.results['techs'].index("Ungedeckter Bedarf")
+            if isinstance(self.results['techs'], np.ndarray):
+                unmet_demand_index = np.where(self.results['techs'] == "Ungedeckter Bedarf")[0][0]
+            else:
+                print(f"Unbekannter Datentyp: {type(self.results['techs'])}")
             # Ungedeckter Bedarf zur extrahierten Datenstruktur hinzufügen
             self.extracted_data['Ungedeckter_Bedarf_kW'] = self.results["Wärmeleistung_L"][unmet_demand_index]
 
@@ -477,11 +482,14 @@ class EnergySystem:
             'VLT_L': self.VLT_L.tolist(),
             'RLT_L': self.RLT_L.tolist(),
             'TRY_data': [data.tolist() for data in self.TRY_data],
-            'COP_data': self.COP_data.tolist(), 
+            'COP_data': self.COP_data.tolist(),
             'economic_parameters': self.economic_parameters,
             'technologies': [tech.to_dict() for tech in self.technologies],
             'storage': self.storage.to_dict() if self.storage else None,  # Serialize storage
-            'results': self.results,
+            'results': {
+                key: (value.to_dict(orient='split') if isinstance(value, pd.DataFrame) else value)
+                for key, value in self.results.items()
+            },
         }
 
     @classmethod
@@ -527,12 +535,14 @@ class EnergySystem:
         if data.get('storage'):
             obj.storage = TemperatureStratifiedThermalStorage.from_dict(data['storage'])
 
-
         # Restore results (if available)
         obj.results = {}
         if 'results' in data:
             for key, value in data['results'].items():
-                if isinstance(value, list):
+                if isinstance(value, dict) and 'columns' in value and 'data' in value:
+                    # Convert the dictionary back to a DataFrame using orient='split'
+                    obj.results[key] = pd.DataFrame(**value)
+                elif isinstance(value, list):
                     # Handle arrays, list of lists, or objects
                     if all(isinstance(v, list) for v in value):
                         obj.results[key] = [np.array(v) for v in value]
