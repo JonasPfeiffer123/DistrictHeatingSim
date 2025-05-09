@@ -48,8 +48,8 @@ class EconomicParametersDialog(QDialog):
             "gas_price": 70.0,
             "electricity_price": 150.0,
             "wood_price": 50.0,
-            "capital_interest_rate": 5.0,
-            "inflation_rate": 3.0,
+            "capital_interest_rate": 1.05,
+            "inflation_rate": 1.03,
             "time_period": 20,
             "hourly_rate": 45.0,
             "subsidy_eligibility": "Nein"
@@ -139,8 +139,8 @@ class EconomicParametersDialog(QDialog):
         self.gaspreisInput.setText(str(values["gas_price"]))
         self.strompreisInput.setText(str(values["electricity_price"]))
         self.holzpreisInput.setText(str(values["wood_price"]))
-        self.kapitalzinsInput.setText(str(values["capital_interest_rate"]))
-        self.preissteigerungsrateInput.setText(str(values["inflation_rate"]))
+        self.kapitalzinsInput.setText(str((values["capital_interest_rate"] - 1) * 100))
+        self.preissteigerungsrateInput.setText(str((values["inflation_rate"] - 1 ) * 100))
         self.betrachtungszeitraumInput.setText(str(values["time_period"]))
         self.stundensatzInput.setText(str(values["hourly_rate"]))
         self.BEWComboBox.setCurrentText(values["subsidy_eligibility"])
@@ -156,8 +156,8 @@ class EconomicParametersDialog(QDialog):
             "gas_price": float(self.gaspreisInput.text()),
             "electricity_price": float(self.strompreisInput.text()),
             "wood_price": float(self.holzpreisInput.text()),
-            "capital_interest_rate": float(self.kapitalzinsInput.text()),
-            "inflation_rate": float(self.preissteigerungsrateInput.text()),
+            "capital_interest_rate": (float(self.kapitalzinsInput.text()) / 100) + 1,
+            "inflation_rate": (float(self.preissteigerungsrateInput.text()) / 100) + 1,
             "time_period": int(self.betrachtungszeitraumInput.text()),
             "hourly_rate": float(self.stundensatzInput.text()),
             "subsidy_eligibility": self.BEWComboBox.currentText()
