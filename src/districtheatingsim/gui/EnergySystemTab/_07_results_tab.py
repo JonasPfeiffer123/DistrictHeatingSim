@@ -246,24 +246,26 @@ class ResultsTab(QWidget):
 
         """
 
-        results = self.energy_system.results
         # The following calculations really need to be done in the energy system class
-        self.waerme_ges_kW, self.strom_wp_kW = np.sum(results["waerme_ges_kW"]), np.sum(results["strom_wp_kW"])
-        self.WGK_Infra = self.parent.costTab.summe_annuität / (results['Jahreswärmebedarf'] * self.parent.economic_parameters["time_period"])
+        self.waerme_ges_kW, self.strom_wp_kW = np.sum(self.energy_system.results["waerme_ges_kW"]), np.sum(self.energy_system.results["strom_wp_kW"])
+        if 'Summe Infrastruktur' in self.parent.costTab.data.index:
+            self.WGK_Infra = self.parent.costTab.data.at['Summe Infrastruktur', 'Annuität'] / self.energy_system.results['Jahreswärmebedarf']
+        else:
+            self.WGK_Infra = 0  # Fallback-Wert
         self.wgk_heat_pump_electricity = ((self.strom_wp_kW/1000) * self.parent.economic_parameters["electricity_price"]) / ((self.strom_wp_kW+self.waerme_ges_kW)/1000)
-        self.WGK_Gesamt = results['WGK_Gesamt'] + self.WGK_Infra + self.wgk_heat_pump_electricity
+        self.WGK_Gesamt = self.energy_system.results['WGK_Gesamt'] + self.WGK_Infra + self.wgk_heat_pump_electricity
 
         data = [
-            ("Jahreswärmebedarf", round(results['Jahreswärmebedarf'], 1), "MWh"),
-            ("Stromerzeugung", round(results['Strommenge'], 2), "MWh"),
-            ("Strombedarf", round(results['Strombedarf'], 2), "MWh"),
-            ("Wärmegestehungskosten Erzeugeranlagen", round(results['WGK_Gesamt'], 2), "€/MWh"),
+            ("Jahreswärmebedarf", round(self.energy_system.results['Jahreswärmebedarf'], 1), "MWh"),
+            ("Stromerzeugung", round(self.energy_system.results['Strommenge'], 2), "MWh"),
+            ("Strombedarf", round(self.energy_system.results['Strombedarf'], 2), "MWh"),
+            ("Wärmegestehungskosten Erzeugeranlagen", round(self.energy_system.results['WGK_Gesamt'], 2), "€/MWh"),
             ("Wärmegestehungskosten Netzinfrastruktur", round(self.WGK_Infra, 2), "€/MWh"),
             ("Wärmegestehungskosten dezentrale Wärmepumpen", round(self.wgk_heat_pump_electricity, 2), "€/MWh"),
             ("Wärmegestehungskosten Gesamt", round(self.WGK_Gesamt, 2), "€/MWh"),
-            ("spez. CO2-Emissionen Wärme", round(results["specific_emissions_Gesamt"], 4), "t_CO2/MWh_th"),
-            ("CO2-Emissionen Wärme", round(results["specific_emissions_Gesamt"]*results['Jahreswärmebedarf'], 2), "t_CO2"),
-            ("Primärenergiefaktor", round(results["primärenergiefaktor_Gesamt"], 4), "-")
+            ("spez. CO2-Emissionen Wärme", round(self.energy_system.results["specific_emissions_Gesamt"], 4), "t_CO2/MWh_th"),
+            ("CO2-Emissionen Wärme", round(self.energy_system.results["specific_emissions_Gesamt"]*self.energy_system.results['Jahreswärmebedarf'], 2), "t_CO2"),
+            ("Primärenergiefaktor", round(self.energy_system.results["primärenergiefaktor_Gesamt"], 4), "-")
         ]
 
         self.additionalResultsTable.setRowCount(len(data))

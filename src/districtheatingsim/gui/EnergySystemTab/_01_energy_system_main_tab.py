@@ -5,13 +5,17 @@ Date: 2025-04-19
 Description: Contains the MixdesignTab.
 """
 
+import traceback
 import numpy as np
 import os
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMessageBox, QMenuBar, QScrollArea, QAction, QDialog)
 from PyQt5.QtCore import pyqtSignal, QEventLoop
 
-from districtheatingsim.gui.EnergySystemTab._02_energy_system_dialogs import EconomicParametersDialog, NetInfrastructureDialog, WeightDialog
+from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import import_results_csv
+from districtheatingsim.utilities.test_reference_year import import_TRY
+
+from districtheatingsim.gui.EnergySystemTab._02_energy_system_dialogs import EconomicParametersDialog, WeightDialog
 from districtheatingsim.gui.EnergySystemTab._06_calculate_energy_system_thread import CalculateEnergySystemThread
 from districtheatingsim.gui.EnergySystemTab._03_technology_tab import TechnologyTab
 from districtheatingsim.gui.EnergySystemTab._05_cost_tab import CostTab
@@ -32,7 +36,6 @@ class EnergySystemTab(QWidget):
         results (dict): Stores results data.
         tech_objects (list): List of technology objects.
         economicParametersDialog (EconomicParametersDialog): Dialog for economic parameters.
-        netInfrastructureDialog (NetInfrastructureDialog): Dialog for infrastructure parameters.
         base_path (str): Base path for the project.
         gaspreis (float): Gas price in €/MWh.
         strompreis (float): Electricity price in €/MWh.
@@ -85,7 +88,6 @@ class EnergySystemTab(QWidget):
         Initializes the dialogs for economic and infrastructure parameters.
         """
         self.economicParametersDialog = EconomicParametersDialog(self)
-        self.netInfrastructureDialog = NetInfrastructureDialog(self)
 
     def updateDefaultPath(self, new_base_path):
         """
@@ -95,7 +97,6 @@ class EnergySystemTab(QWidget):
             new_base_path (str): The new base path for the project.
         """
         self.base_path = new_base_path
-        self.netInfrastructureDialog.base_path = self.base_path
 
     def initUI(self):
         """
@@ -137,7 +138,6 @@ class EnergySystemTab(QWidget):
         # 'Einstellungen'-Menü
         settingsMenu = self.menuBar.addMenu('Einstellungen')
         settingsMenu.addAction(self.createAction('Wirtschaftliche Parameter...', self.openEconomicParametersDialog))
-        settingsMenu.addAction(self.createAction('Infrastrukturkosten...', self.openInfrastructureCostsDialog))
 
         addHeatGeneratorMenu = self.menuBar.addMenu('Wärmeerzeuger hinzufügen')
 
@@ -186,7 +186,7 @@ class EnergySystemTab(QWidget):
         """
         self.tabWidget = QTabWidget()
         self.techTab = TechnologyTab(self.folder_manager, self.config_manager, self)
-        self.costTab = CostTab(self.folder_manager, self)
+        self.costTab = CostTab(self.folder_manager, self.config_manager, self)
         self.resultTab = ResultsTab(self.folder_manager, self)
         self.sensitivityTab = SensitivityTab(self.folder_manager, self)
         self.tabWidget.addTab(self.techTab, "Erzeugerdefinition")
@@ -225,18 +225,8 @@ class EnergySystemTab(QWidget):
         """
         Updates the economic parameters from the dialog.
         """
-        values = self.economicParametersDialog.getValues()
 
-        self.economic_parameters = {
-                "gas_price": values['Gaspreis in €/MWh'],
-                "electricity_price": values['Strompreis in €/MWh'],
-                "wood_price": values['Holzpreis in €/MWh'],
-                "capital_interest_rate": 1 + values['Kapitalzins in %'] / 100,
-                "inflation_rate": 1 + values['Preissteigerungsrate in %'] / 100,
-                "time_period": values['Betrachtungszeitraum in a'],
-                "hourly_rate": values['Stundensatz in €/h'],
-                "subsidy_eligibility": values['BEW-Förderung']
-            }
+        self.economic_parameters = self.economicParametersDialog.getValues()
 
     ### Dialogs ###
     def openEconomicParametersDialog(self):
@@ -245,15 +235,6 @@ class EnergySystemTab(QWidget):
         """
         if self.economicParametersDialog.exec_():
             self.updateEconomicParameters()
-
-    def openInfrastructureCostsDialog(self):
-        """
-        Opens the infrastructure costs dialog.
-        """
-        if self.netInfrastructureDialog.exec_():
-            self.costTab.updateInfrastructureTable()
-            self.costTab.plotCostComposition()
-            self.costTab.updateSumLabel()
 
     ### Calculation Functions ###
     def validateInputs(self):
@@ -271,6 +252,61 @@ class EnergySystemTab(QWidget):
             QMessageBox.warning(self, "Ungültige Eingabe", str(e))
             return False
         return True
+    
+    def preprocessData(self):
+        """
+        Preprocesses the data before calculation.
+        """
+        self.csv_filename = self.techTab.FilenameInput.text()
+        self.TRY_filename = self.data_manager.get_try_filename()
+        self.COP_filename = self.data_manager.get_cop_filename()
+        self.load_scale_factor = float(self.techTab.load_scale_factorInput.text())
+
+        # Import data from the CSV file
+        time_steps, waerme_ges_kW, strom_wp_kW, pump_results = import_results_csv(self.csv_filename)
+        self.TRY_data = import_TRY(self.TRY_filename)
+        self.COP_data = np.genfromtxt(self.COP_filename, delimiter=';')
+
+        # Collect qext_kW values from pump results
+        qext_values = []
+        for pump_type, pumps in pump_results.items():
+            for idx, pump_data in pumps.items():
+                if 'qext_kW' in pump_data:
+                    qext_values.append(pump_data['qext_kW'])
+                else:
+                    print(f"Keine qext_kW Daten für {pump_type} Pumpe {idx}")
+
+                if pump_type == "Heizentrale Haupteinspeisung":
+                    flow_temp_circ_pump = pump_data['flow_temp']
+                    return_temp_circ_pump = pump_data['return_temp']
+
+        if qext_values:
+            qext_kW = np.sum(np.array(qext_values), axis=0)
+        else:
+            qext_kW = np.array([])
+
+        qext_kW *= self.load_scale_factor
+
+        # Create the energy system object
+        self.energy_system = EnergySystem(
+            time_steps=time_steps,
+            load_profile=qext_kW,
+            VLT_L=flow_temp_circ_pump,
+            RLT_L=return_temp_circ_pump,
+            TRY_data=self.TRY_data,
+            COP_data=self.COP_data,
+            economic_parameters=self.economic_parameters,
+        )
+
+        # Add technologies to the system
+        for tech in self.techTab.tech_objects:
+            self.energy_system.add_technology(tech)
+
+        self.energy_system.results["waerme_ges_kW"] = waerme_ges_kW
+        self.energy_system.results["strom_wp_kW"] = strom_wp_kW
+
+        self.costTab.updateInfrastructureTable()
+        self.energy_system.results["infrastructure_cost"]  = self.costTab.data
 
     def calculate_energy_system(self, optimize=False, weights=None):
         """
@@ -280,21 +316,16 @@ class EnergySystemTab(QWidget):
             optimize (bool, optional): Whether to optimize the calculation. Defaults to False.
             weights (dict, optional): Weights for optimization. Defaults to None.
         """
+        
         self.optimize = optimize
 
         if not self.validateInputs():
             return
 
         if self.techTab.tech_objects:
-            self.csv_filename = self.techTab.FilenameInput.text()
-            self.TRY_filename = self.data_manager.get_try_filename()
-            self.COP_filename = self.data_manager.get_cop_filename()
-            self.load_scale_factor = float(self.techTab.load_scale_factorInput.text())
+            self.preprocessData()
 
-            print(f"techTab tech_objects: {self.techTab.tech_objects}")
-
-            self.calculationThread = CalculateEnergySystemThread(self.csv_filename, self.load_scale_factor, self.TRY_filename, self.COP_filename, 
-                                                        self.economic_parameters, self.techTab.tech_objects, self.optimize, weights)
+            self.calculationThread = CalculateEnergySystemThread(self.energy_system, self.optimize, weights)
             
             self.calculationThread.calculation_done.connect(self.on_calculation_done)
             self.calculationThread.calculation_error.connect(self.on_calculation_error)
@@ -320,13 +351,12 @@ class EnergySystemTab(QWidget):
             result (dict): The results of the calculation.
         """
         self.progressBar.setRange(0, 1)
-        # To do: if optimize is True, the results are stored in the second element of the tuple, need to implement posibility to show both or even store different systems
         self.energy_system = result[0]
 
         if self.optimize:
             self.optimized_energy_system = result[1]
             self.energy_system = self.optimized_energy_system
-
+            
         self.process_data()
 
         self.save_heat_generation_results_to_csv()
@@ -342,11 +372,21 @@ class EnergySystemTab(QWidget):
         QMessageBox.critical(self, "Berechnungsfehler", str(error_message))
 
     def process_data(self):
+        # Update economic parameters with saved parameters from energy system class
+        self.economicParametersDialog.updateValues(self.energy_system.economic_parameters)
+        self.updateEconomicParameters()
+
         # Update the tech objects from the loaded EnergySystem
         self.techTab.tech_objects = self.energy_system.technologies + [self.energy_system.storage] if self.energy_system.storage else self.energy_system.technologies
         self.techTab.rebuildScene()
         self.techTab.updateTechList()
-        self.costTab.updateInfrastructureTable()
+
+        # Lade den gespeicherten Infrastrukturkosten-DataFrame
+        if "infrastructure_cost" in self.energy_system.results:
+            self.costTab.data = self.energy_system.results["infrastructure_cost"]
+            self.costTab.updateInfrastructureTable()  # Aktualisiere die Tabelle mit den neuen Daten
+
+
         self.costTab.updateTechDataTable(self.energy_system.technologies)
         self.costTab.updateSumLabel()
         self.costTab.plotCostComposition()
@@ -368,7 +408,11 @@ class EnergySystemTab(QWidget):
         if not self.techTab.tech_objects:
             QMessageBox.information(self, "Keine Erzeugeranlagen", "Es wurden keine Erzeugeranlagen definiert. Keine Berechnung möglich.")
             return
-
+        
+        if not self.energy_system.technologies:
+            QMessageBox.information(self, "Keine Erzeugeranlagen im EnergySystem", "Im EnergySystem sind keine Erzeugeranlagen definiert. Keine Berechnung möglich.")
+            return
+                
         results = []
         for gas_price in self.generate_values(gas_range):
             for electricity_price in self.generate_values(electricity_range):
@@ -436,11 +480,9 @@ class EnergySystemTab(QWidget):
         economic_parameters["electricity_price"] = electricity_price
         economic_parameters["wood_price"] = wood_price
 
-        # inefficient as fuck, but it works for now
-        # Thread will load the csv, cop, and try file every time
-        # Need to split up data processing and calculation
-        self.calculationThread = CalculateEnergySystemThread(self.csv_filename, self.load_scale_factor, self.TRY_filename, self.COP_filename, 
-                                                    economic_parameters, self.techTab.tech_objects, False,  weights)
+        self.energy_system.economic_parameters = economic_parameters
+
+        self.calculationThread = CalculateEnergySystemThread(self.energy_system, False,  weights)
         
         self.calculationThread.calculation_done.connect(calculation_done)
         self.calculationThread.calculation_error.connect(calculation_error)
@@ -458,17 +500,15 @@ class EnergySystemTab(QWidget):
         """
         Shows additional results.
         """
-        if self.techTab.tech_objects and self.energy_system.results and self.parent_object.calcTab.Gesamtwärmebedarf_Gebäude_MWh:
-            dialog = SankeyDialog(results=self.energy_system.results, heat_demand=self.parent_object.calcTab.Gesamtwärmebedarf_Gebäude_MWh, parent=self)
+        if self.techTab.tech_objects and self.energy_system.results:
+            dialog = SankeyDialog(results=self.energy_system.results, parent=self)
             dialog.exec_()
         else:
             if not self.techTab.tech_objects:
                 QMessageBox.information(self, "Keine Erzeugeranlagen", "Es wurden keine Erzeugeranlagen definiert. Keine Berechnung möglich.")
             elif not self.results:
                 QMessageBox.information(self, "Keine Berechnungsergebnisse", "Es sind keine Berechnungsergebnisse verfügbar. Führen Sie zunächst eine Berechnung durch.")
-            elif not self.parent_object.calcTab.Gesamtwärmebedarf_Gebäude_MWh:
-                QMessageBox.information(self, "Gesamtwärmebedarf nicht definiert", "Der Gesamtwärmebedarf der Gebäude ist nicht definiert. Stellen Sie sicher, dass der Gesamtwärmebedarf der Gebäude definiert ist.")
-
+            
     ### Save Calculation Results ###
     def save_heat_generation_results_to_csv(self):
         """
@@ -498,7 +538,8 @@ class EnergySystemTab(QWidget):
             self.energy_system.save_to_json(json_filename)
             QMessageBox.information(self, "Erfolgreich gespeichert", f"Die Ergebnisse wurden erfolgreich unter {json_filename} gespeichert.")
         except Exception as e:
-            QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der JSON-Datei: {e}")
+            error_details = traceback.format_exc()
+            QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der JSON-Datei: {e}\n\nDetails:\n{error_details}")
 
     def load_results_JSON(self):
         """

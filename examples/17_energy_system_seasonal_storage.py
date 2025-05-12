@@ -66,7 +66,7 @@ storage = TemperatureStratifiedThermalStorage(name="Saisonalspeicher", **storage
 energy_system.add_storage(storage)
 
 # Füge Generatoren hinzu
-chp = CHP("BHKW_1", th_Leistung_BHKW=500)
+chp = CHP("BHKW_1", th_Leistung_kW=500)
 energy_system.add_technology(chp)
 chp.strategy = CHPStrategy(charge_on=75, charge_off=70)
 
