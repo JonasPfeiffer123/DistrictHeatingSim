@@ -6,6 +6,7 @@ Description: Script for generating the results PDF of the calculation results.
 """
 
 import numpy as np
+import pandas as pd
 
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
@@ -199,46 +200,42 @@ def add_schematic_scene_section(story, scene, max_width=6.5 * inch):
 
 def add_costs_net_infrastructure_section(story, mixDesignTab):
     """
-    Adds the network infrastructure section to the PDF story.
+    Adds the network infrastructure section to the PDF story using costTab.data.
     """
     try:
         # Überprüfen, ob die notwendigen Daten vorhanden sind
-        if not hasattr(mixDesignTab, 'costTab') or not hasattr(mixDesignTab.costTab, 'summe_investitionskosten'):
-            story.append(Paragraph("Fehlende Daten: Summe Infrastruktur", getSampleStyleSheet()['Normal']))
+        if not hasattr(mixDesignTab, 'costTab') or mixDesignTab.costTab.data.empty:
+            story.append(Paragraph("Fehlende Daten: Netzinfrastruktur", getSampleStyleSheet()['Normal']))
             story.append(Spacer(1, 12))
             return
 
         story.append(Paragraph("Netzinfrastruktur", getSampleStyleSheet()['Heading2']))
 
-        values = mixDesignTab.netInfrastructureDialog.getValues()
-        infraObjects = mixDesignTab.netInfrastructureDialog.getCurrentInfraObjects()
-        columns = ['Beschreibung', 'Kosten', 'T_N', 'f_Inst', 'f_W_Insp', 'Bedienaufwand', 'Gesamtannuität']
+        # DataFrame aus costTab abrufen
+        data = mixDesignTab.costTab.data
 
-        infra_data = [columns]
+        # Spaltennamen und Daten für die Tabelle vorbereiten
+        columns = ['Beschreibung'] + data.columns.tolist()
+        infra_data = [columns]  # Tabellenkopf hinzufügen
 
-        for obj in infraObjects:
-            row_data = [obj.capitalize()]
-            annuität = 0
-            for col in columns[1:]:
-                key = f"{obj}_{col.lower()}"
-                value = values.get(key, "")
-                if value != "":
-                    row_data.append(str(value))
+        # Zeilen aus dem DataFrame hinzufügen
+        for index, row in data.iterrows():
+            formatted_row = [index]  # Zeilenname (Beschreibung)
+            for col_name in data.columns:
+                value = row[col_name]
+                if col_name == 'Kosten' or col_name == 'Annuität':
+                    formatted_row.append(f"{value:,.0f} €" if pd.notna(value) else "")
+                elif col_name == 'T_N':
+                    formatted_row.append(f"{value} a" if pd.notna(value) and value != '' else "")
+                elif col_name in ['F_inst', 'F_w_insp']:
+                    formatted_row.append(f"{value} %" if pd.notna(value) and value != '' else "")
+                elif col_name == 'Bedienaufwand':
+                    formatted_row.append(f"{value} h" if pd.notna(value) and value != '' else "")
+                else:
+                    formatted_row.append(str(value) if pd.notna(value) else "")
+            infra_data.append(formatted_row)
 
-                if col == 'Kosten':
-                    A0 = float(values.get(f"{obj}_kosten", 0))
-                    TN = int(values.get(f"{obj}_t_n", 0))
-                    f_Inst = float(values.get(f"{obj}_f_inst", 0))
-                    f_W_Insp = float(values.get(f"{obj}_f_w_insp", 0))
-                    Bedienaufwand = float(values.get(f"{obj}_bedienaufwand", 0))
-                    annuität = mixDesignTab.costTab.calc_annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand)
-
-            row_data.append("{:.0f}".format(annuität))
-            infra_data.append(row_data)
-
-        summen_row = ["Summe Infrastruktur", "{:.0f}".format(mixDesignTab.costTab.summe_investitionskosten), "", "", "", "", "{:.0f}".format(mixDesignTab.costTab.summe_annuität)]
-        infra_data.append(summen_row)
-
+        # Tabelle erstellen und formatieren
         infra_table = Table(infra_data)
         infra_table.setStyle(get_custom_table_style())
         story.append(KeepTogether(infra_table))
@@ -306,15 +303,21 @@ def add_results_section(story, mixDesignTab):
     try:
         story.append(Paragraph("Berechnungsergebnisse", getSampleStyleSheet()['Heading2']))
 
-        for figure in [mixDesignTab.resultTab.figure1, mixDesignTab.resultTab.pieChartFigure]:
+        for figure in [mixDesignTab.resultTab.stackPlotFigure, mixDesignTab.resultTab.pieChartFigure]:
             add_figure_to_story(figure, story)
+
+        print("Results Data:", mixDesignTab.resultTab.energy_system.results)
 
         results_data = [("Technologie", "Wärmemenge (MWh)", "Kosten (€/MWh)", "Anteil (%)", "spez. CO2-Emissionen (tCO2/MWh_th)", "Primärenergiefaktor")]
         results_data.extend([
             (tech, f"{wärmemenge:.2f}", f"{wgk:.2f}", f"{anteil*100:.2f}", f"{spec_emission:.4f}", f"{primary_energy/wärmemenge:.4f}")
-            for tech, wärmemenge, wgk, anteil, spec_emission, primary_energy in zip(mixDesignTab.resultTab.results['techs'], mixDesignTab.resultTab.results['Wärmemengen'], mixDesignTab.resultTab.results['WGK'], 
-                                                    mixDesignTab.resultTab.results['Anteile'], mixDesignTab.resultTab.results['specific_emissions_L'], mixDesignTab.resultTab.results['primärenergie_L'])
-        ])
+            for tech, wärmemenge, wgk, anteil, spec_emission, primary_energy in zip(mixDesignTab.resultTab.energy_system.results['techs'], 
+                                                                                    mixDesignTab.resultTab.energy_system.results['Wärmemengen'], 
+                                                                                    mixDesignTab.resultTab.energy_system.results['WGK'],
+                                                                                    mixDesignTab.resultTab.energy_system.results['Anteile'],
+                                                                                    mixDesignTab.resultTab.energy_system.results['specific_emissions_L'],
+                                                                                    mixDesignTab.resultTab.energy_system.results['primärenergie_L'])
+                                                                                    ])
 
         results_table = Table(results_data, colWidths=[1.2 * inch] * len(results_data[0]))
         results_table.setStyle(get_custom_table_style())
@@ -340,11 +343,14 @@ def add_combined_results_section(story, mixDesignTab):
         story.append(Paragraph("Kombinierte Ergebnisse", getSampleStyleSheet()['Heading2']))
         
         # Holen der Resultate aus dem resultTab
-        results = mixDesignTab.resultTab.results
+        results = mixDesignTab.resultTab.energy_system.results
         waerme_ges_kW = np.sum(results["waerme_ges_kW"])
         strom_wp_kW = np.sum(results["strom_wp_kW"])
-        WGK_Infra = mixDesignTab.costTab.summe_annuität / results['Jahreswärmebedarf']
-        wgk_heat_pump_electricity = ((strom_wp_kW / 1000) * mixDesignTab.electricity_price) / ((strom_wp_kW + waerme_ges_kW) / 1000)
+        if 'Summe Infrastruktur' in mixDesignTab.costTab.data.index:
+            WGK_Infra = mixDesignTab.costTab.data.at['Summe Infrastruktur', 'Annuität'] / results['Jahreswärmebedarf']
+        else:
+            WGK_Infra = 0  # Fallback-Wert
+        wgk_heat_pump_electricity = ((strom_wp_kW / 1000) * mixDesignTab.economic_parameters["electricity_price"]) / ((strom_wp_kW + waerme_ges_kW) / 1000)
         WGK_Gesamt = results['WGK_Gesamt'] + WGK_Infra + wgk_heat_pump_electricity
         
         # Definieren der Daten für die Tabelle

@@ -1,9 +1,12 @@
 """
-Filename: heat_generator_mix.py
+Filename: energy_system.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-03-25
+Date: 2025-05-04
 Description: Class to calculate the heat generation mix for a district heating system.
 
+This class represents an energy system for district heating. It supports the calculation of heat generation mixes,
+optimization of the system, and serialization to/from JSON and CSV formats. The `TRY_data` and `COP_data` attributes
+store the filenames of the respective data files, not the data itself.
 """
 
 import logging
@@ -46,6 +49,7 @@ class EnergySystem:
         self.economic_parameters = economic_parameters
         self.technologies = []  # List to store generator objects
         self.storage = None
+        
         self.results = {}
 
         self.duration = (np.diff(self.time_steps[:2]) / np.timedelta64(1, 'h'))[0]
@@ -71,10 +75,11 @@ class EnergySystem:
     def initialize_results(self):
         """
         Initialize results for the energy system.
-
         """
-        
-        self.results = {
+        if not hasattr(self, 'results') or not isinstance(self.results, dict):
+            self.results = {}
+
+        self.results.update({
             'time_steps': self.time_steps,
             'Last_L': self.load_profile,
             'VLT_L': self.VLT_L,
@@ -82,24 +87,23 @@ class EnergySystem:
             'Jahreswärmebedarf': (np.sum(self.load_profile) / 1000) * self.duration,
             'Restlast_L': self.load_profile.copy(),
             'Restwärmebedarf': (np.sum(self.load_profile) / 1000) * self.duration,
-            'Wärmeleistung_L': [],
-            'colors': [],
-            'Wärmemengen': [],
-            'Anteile': [],
-            'WGK': [],
             'WGK_Gesamt': 0,
             'Strombedarf': 0,
             'Strommenge': 0,
             'el_Leistungsbedarf_L': np.zeros_like(self.load_profile),
             'el_Leistung_L': np.zeros_like(self.load_profile),
             'el_Leistung_ges_L': np.zeros_like(self.load_profile),
-            'specific_emissions_L': [],
-            'primärenergie_L': [],
             'specific_emissions_Gesamt': 0,
             'primärenergiefaktor_Gesamt': 0,
-            'techs': [],
-            'tech_classes': []
-        }
+        })
+
+        # Ensure lists are initialized or cleared
+        for key in ['Wärmeleistung_L', 'colors', 'Wärmemengen', 'Anteile', 'WGK', 
+                    'specific_emissions_L', 'primärenergie_L', 'techs']:
+            if key not in self.results:
+                self.results[key] = []
+            else:
+                self.results[key].clear()
 
     def set_optimization_variables(self, variables, variables_order):
         for tech in self.technologies:
@@ -158,9 +162,9 @@ class EnergySystem:
         Returns:
             dict: Results of the energy system simulation.
         """
-        
-        # Initialize results
         self.initialize_results()
+        
+        # Initialize optimization variables
         self.set_optimization_variables(variables, variables_order)
         
         for tech in self.technologies:
@@ -229,7 +233,7 @@ class EnergySystem:
             self.storage.calculate_efficiency(self.load_profile)
             self.storage.calculate_operational_costs(0.10) # needs to be changed to a parameter
             self.results['storage_class'] = self.storage
-            
+        
         for tech in self.technologies:
             # Perform technology-specific calculation
             tech_results = tech.calculate(economic_parameters=self.economic_parameters,
@@ -246,8 +250,15 @@ class EnergySystem:
             else:
                 # Add technology as inactive with zero contribution
                 self.aggregate_results({'tech_name': tech.name})
-        
-        self.results['tech_classes'] = self.technologies
+
+        # Berechnung des ungedeckten Bedarfs nach der Verarbeitung aller Technologien
+        if np.any(self.results['Restlast_L'] > 1e-6):
+            unmet_demand = np.sum(self.results['Restlast_L']) / 1000 * self.duration
+            self.results['Wärmeleistung_L'].append(self.results['Restlast_L'])
+            self.results['Wärmemengen'].append(unmet_demand)
+            self.results['techs'].append("Ungedeckter Bedarf")
+            self.results['Anteile'].append(unmet_demand / self.results['Jahreswärmebedarf'])
+            self.results['colors'].append("black")
 
         self.getInitialPlotData()
 
@@ -296,8 +307,21 @@ class EnergySystem:
             self.extracted_data['Speicherbeladung_kW'] = Q_net_negative
             self.extracted_data['Speicherentladung_kW'] = Q_net_positive
 
+        if "Ungedeckter Bedarf" in self.results['techs']:
+            # Finde den Index des "Ungedeckter Bedarf" in der Liste der Technologien
+            if isinstance(self.results['techs'], list):
+                unmet_demand_index = self.results['techs'].index("Ungedeckter Bedarf")
+            if isinstance(self.results['techs'], np.ndarray):
+                unmet_demand_index = np.where(self.results['techs'] == "Ungedeckter Bedarf")[0][0]
+            else:
+                print(f"Unbekannter Datentyp: {type(self.results['techs'])}")
+            # Ungedeckter Bedarf zur extrahierten Datenstruktur hinzufügen
+            self.extracted_data['Ungedeckter_Bedarf_kW'] = self.results["Wärmeleistung_L"][unmet_demand_index]
+
         # Initiale Auswahl
         self.initial_vars = [var_name for var_name in self.extracted_data.keys() if "_Wärmeleistung" in var_name]
+        if "Ungedeckter_Bedarf_kW" in self.extracted_data:
+            self.initial_vars.append("Ungedeckter_Bedarf_kW")
         self.initial_vars.append("Last_L")
         if self.storage:
             self.initial_vars.append("Speicherbeladung_kW")
@@ -331,6 +355,8 @@ class EnergySystem:
 
         # Füge die restlichen Variablen hinzu
         stackplot_vars += [var for var in selected_vars if var not in stackplot_vars and "_Wärmeleistung" in var]
+        if "Ungedeckter_Bedarf_kW" in selected_vars:
+            stackplot_vars.append("Ungedeckter_Bedarf_kW")
 
         # Speicherentladung ans Ende verschieben
         if "Speicherentladung_kW" in stackplot_vars:
@@ -388,13 +414,12 @@ class EnergySystem:
         if ax2:
             ax2.legend(loc='upper right', ncol=2)
 
-    def plot_pie_chart(self, figure=None, include_unmet_demand=True):
+    def plot_pie_chart(self, figure=None):
         """
         Plot a pie chart showing the contribution of each technology.
 
         Args:
             figure (matplotlib.figure.Figure, optional): Figure object for the plot. Defaults to None.
-            include_unmet_demand (bool): Whether to include unmet demand in the chart.
         """
         if figure is None:
             figure = plt.figure()
@@ -403,13 +428,6 @@ class EnergySystem:
         labels = self.results['techs']
         Anteile = self.results['Anteile']
         colors = self.results['colors']
-
-        # Check if unmet demand should be included
-        summe = sum(Anteile)
-        if include_unmet_demand and summe < 1:
-            Anteile.append(1 - summe)
-            labels.append("ungedeckter Bedarf")
-            colors.append("black")
 
         ax.pie(
             Anteile,
@@ -429,17 +447,32 @@ class EnergySystem:
         Returns:
             EnergySystem: A new instance of EnergySystem with the same data.
         """
+        # Create a new EnergySystem instance with copied basic attributes
         copied_system = EnergySystem(
             time_steps=self.time_steps.copy(),
             load_profile=self.load_profile.copy(),
             VLT_L=self.VLT_L.copy(),
             RLT_L=self.RLT_L.copy(),
-            TRY_data=self.TRY_data,
-            COP_data=self.COP_data,
+            TRY_data=copy.deepcopy(self.TRY_data),
+            COP_data=copy.deepcopy(self.COP_data),
             economic_parameters=copy.deepcopy(self.economic_parameters)
         )
+
         # Deep-copy the technologies
         copied_system.technologies = [copy.deepcopy(tech) for tech in self.technologies]
+
+        # Deep-copy the storage, if it exists
+        if self.storage:
+            copied_system.storage = copy.deepcopy(self.storage)
+
+        # Deep-copy the results dictionary
+        copied_system.results = copy.deepcopy(self.results)
+
+        # Copy any additional attributes that may have been added dynamically
+        for attr_name, attr_value in self.__dict__.items():
+            if attr_name not in copied_system.__dict__:
+                copied_system.__dict__[attr_name] = copy.deepcopy(attr_value)
+
         return copied_system
 
     def to_dict(self):
@@ -449,11 +482,14 @@ class EnergySystem:
             'VLT_L': self.VLT_L.tolist(),
             'RLT_L': self.RLT_L.tolist(),
             'TRY_data': [data.tolist() for data in self.TRY_data],
-            'COP_data': self.COP_data.tolist(), 
+            'COP_data': self.COP_data.tolist(),
             'economic_parameters': self.economic_parameters,
             'technologies': [tech.to_dict() for tech in self.technologies],
             'storage': self.storage.to_dict() if self.storage else None,  # Serialize storage
-            'results': self.results,
+            'results': {
+                key: (value.to_dict(orient='split') if isinstance(value, pd.DataFrame) else value)
+                for key, value in self.results.items()
+            },
         }
 
     @classmethod
@@ -499,12 +535,14 @@ class EnergySystem:
         if data.get('storage'):
             obj.storage = TemperatureStratifiedThermalStorage.from_dict(data['storage'])
 
-
         # Restore results (if available)
         obj.results = {}
         if 'results' in data:
             for key, value in data['results'].items():
-                if isinstance(value, list):
+                if isinstance(value, dict) and 'columns' in value and 'data' in value:
+                    # Convert the dictionary back to a DataFrame using orient='split'
+                    obj.results[key] = pd.DataFrame(**value)
+                elif isinstance(value, list):
                     # Handle arrays, list of lists, or objects
                     if all(isinstance(v, list) for v in value):
                         obj.results[key] = [np.array(v) for v in value]

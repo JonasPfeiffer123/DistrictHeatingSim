@@ -242,9 +242,9 @@ class BiomassBoiler(BaseHeatGenerator):
         # Check if the calculation has already been done
         if self.calculated == False:
             if self.speicher_aktiv:
-                self.simulate_storage(load_profile)
+                self.simulate_storage(load_profile, duration)
             else:
-                self.simulate_operation(load_profile, duration)
+                self.simulate_operation(load_profile)
             
         self.calculate_results(duration)
         self.calculate_heat_generation_costs(economic_parameters)

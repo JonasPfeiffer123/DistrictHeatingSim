@@ -55,11 +55,11 @@ class CHP(BaseHeatGenerator):
         to_dict(): Converts the object attributes to a dictionary.
         from_dict(data): Creates an object from a dictionary of attributes.
     """
-    def __init__(self, name, th_Leistung_BHKW, spez_Investitionskosten_GBHKW=1500, spez_Investitionskosten_HBHKW=1850, el_Wirkungsgrad=0.33, KWK_Wirkungsgrad=0.9, 
+    def __init__(self, name, th_Leistung_kW, spez_Investitionskosten_GBHKW=1500, spez_Investitionskosten_HBHKW=1850, el_Wirkungsgrad=0.33, KWK_Wirkungsgrad=0.9, 
                  min_Teillast=0.7, speicher_aktiv=False, Speicher_Volumen_BHKW=20, T_vorlauf=90, T_ruecklauf=60, initial_fill=0.0, min_fill=0.2, max_fill=0.8, 
                  spez_Investitionskosten_Speicher=750, active=True, opt_BHKW_min=0, opt_BHKW_max=1000, opt_BHKW_Speicher_min=0, opt_BHKW_Speicher_max=100):
         super().__init__(name)
-        self.th_Leistung_kW = th_Leistung_BHKW
+        self.th_Leistung_kW = th_Leistung_kW
         self.spez_Investitionskosten_GBHKW = spez_Investitionskosten_GBHKW
         self.spez_Investitionskosten_HBHKW = spez_Investitionskosten_HBHKW
         self.el_Wirkungsgrad = el_Wirkungsgrad
@@ -308,7 +308,7 @@ class CHP(BaseHeatGenerator):
     
     def set_parameters(self, variables, variables_order, idx):
         try:
-            self.th_Leistung_kW = variables[variables_order.index(f"th_Leistung_BHKW_{idx}")]
+            self.th_Leistung_kW = variables[variables_order.index(f"th_Leistung_kW_{idx}")]
             if self.speicher_aktiv:
                 self.Speicher_Volumen_BHKW = variables[variables_order.index(f"Speicher_Volumen_BHKW_{idx}")]
         except ValueError as e:
@@ -325,7 +325,7 @@ class CHP(BaseHeatGenerator):
             tuple: Initiale Werte, Variablennamen und Grenzen der Variablen.
         """
         initial_values = [self.th_Leistung_kW]
-        variables_order = [f"th_Leistung_BHKW_{idx}"]
+        variables_order = [f"th_Leistung_kW_{idx}"]
         bounds = [(self.opt_BHKW_min, self.opt_BHKW_max)]
 
         if self.speicher_aktiv:
