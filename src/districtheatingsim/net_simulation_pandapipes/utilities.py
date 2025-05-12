@@ -509,7 +509,7 @@ def init_diameter_types(net, v_max_pipe=1.0, material_filter="KMR", k=0.1):
         pandapipesNet: The pandapipes network with initialized diameters and types.
     """
     start_time_total = time.time()
-    pp.pipeflow(net, mode="bidirectional")
+    pp.pipeflow(net, mode="bidirectional", iter=100, alpha=0.2)
     logging.info(f"Initial pipeflow calculation took {time.time() - start_time_total:.2f} seconds")
 
     pipe_std_types = pp.std_types.available_std_types(net, "pipe")

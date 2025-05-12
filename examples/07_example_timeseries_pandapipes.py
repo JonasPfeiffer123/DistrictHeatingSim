@@ -1,22 +1,10 @@
 """
 Filename: 07_example_timeseries_pandapipes.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-12-06
+Date: 2025-05-12
 Description: Script for testing the pandapipes net simulation functions.
 Usage: Run the script to generate a simple pandapipes network.
-Functions:
-    initialize_test_net(qext_w=np.array([100000, 100000, 100000, 100000]),
-                        return_temperature=np.array([55, 60, 50, 60]),
-                        supply_temperature=85,
-                        flow_pressure_pump=4,
-                        lift_pressure_pump=1.5,
-                        pipetype="110/202 PLUS")
-    timeseries_test(net)
-    create_controllers(net, qext_w)
-    update_const_controls(net, qext_w_profiles, time_steps, start, end)
-    create_log_variables(net)
-Classes:
-    WorstPointPressureController(BasicCtrl)
+
 Example:
     $ python 07_example_timeseries_pandapipes.py
 """
@@ -34,194 +22,13 @@ import pandapipes as pp
 import pandapipes.plotting as pp_plot
 from pandapipes.timeseries import run_time_series
 from pandapower.timeseries import OutputWriter
-from pandapower.timeseries import DFData
-from pandapower.control.controller.const_control import ConstControl
-from pandapower.control.basic_controller import BasicCtrl
-
-# from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import update_const_controls, create_log_variables
-# districtheatingsim.net_simulation_pandapipes.utilities import create_controllers
 
 from districtheatingsim.net_simulation_pandapipes.config_plot import config_plot
+from districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson import *
+from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import *
+from districtheatingsim.net_simulation_pandapipes.utilities import *
 
-class WorstPointPressureController(BasicCtrl):
-    """
-    A controller for maintaining the pressure difference at the worst point in the network.
-    
-    Args:
-        net (pandapipesNet): The pandapipes network.
-        circ_pump_pressure_idx (int, optional): Index of the circulation pump. Defaults to 0.
-        target_dp_min_bar (float, optional): Target minimum pressure difference in bar. Defaults to 1.
-        tolerance (float, optional): Tolerance for pressure difference. Defaults to 0.2.
-        proportional_gain (float, optional): Proportional gain for the controller. Defaults to 0.2.
-        **kwargs: Additional keyword arguments.
-    """
-    def __init__(self, net, circ_pump_pressure_idx=0, target_dp_min_bar=1, tolerance=0.2, proportional_gain=0.2, **kwargs):
-        super(WorstPointPressureController, self).__init__(net, **kwargs)
-        self.circ_pump_pressure_idx = circ_pump_pressure_idx
-        self.target_dp_min_bar = target_dp_min_bar
-        self.tolerance = tolerance
-        self.proportional_gain = proportional_gain
-
-        self.iteration = 0  # Add iteration counter
-
-    def calculate_worst_point(self, net):
-        """Calculate the worst point in the heating network, defined as the heat exchanger with the lowest pressure difference.
-
-        Args:
-            net (pandapipesNet): The pandapipes network.
-
-        Returns:
-            tuple: The minimum pressure difference and the index of the worst point.
-        """
-        
-        dp = []
-
-        for idx, qext, p_from, p_to in zip(net.heat_consumer.index, net.heat_consumer["qext_w"], net.res_heat_consumer["p_from_bar"], net.res_heat_consumer["p_to_bar"]):
-            if qext != 0:
-                dp_diff = p_from - p_to
-                dp.append((dp_diff, idx))
-
-        # Find the minimum delta p where the heat flow is not zero
-        if dp:
-            dp_min, idx_min = min(dp, key=lambda x: x[0])
-        else:
-            dp_min, idx_min = float('inf'), -1  # Default values when no qext is greater than 0
-
-        return dp_min, idx_min
-
-    def time_step(self, net, time_step):
-        """Reset the iteration counter at the start of each time step.
-
-        Args:
-            net (pandapipesNet): The pandapipes network.
-            time_step (int): The current time step.
-
-        Returns:
-            int: The current time step.
-        """
-        self.iteration = 0  # reset iteration counter
-        self.dp_min, self.heat_consumer_idx = self.calculate_worst_point(net)
-
-        return time_step
-
-    def is_converged(self, net):
-        """Check if the controller has converged.
-
-        Args:
-            net (pandapipesNet): The pandapipes network.
-
-        Returns:
-            bool: True if converged, False otherwise.
-        """
-        
-        if self.heat_consumer_idx == -1:
-            return True  # No valid heat consumer index, consider it converged
-
-        current_dp_bar = net.res_heat_consumer["p_from_bar"].at[self.heat_consumer_idx] - net.res_heat_consumer["p_to_bar"].at[self.heat_consumer_idx]
-
-        # Check if the pressure difference is within tolerance
-        dp_within_tolerance = abs(current_dp_bar - self.target_dp_min_bar) < self.tolerance
-
-        if dp_within_tolerance == True:
-            return dp_within_tolerance
-
-    def control_step(self, net):
-        """Adjust the pump pressure to maintain the target pressure difference.
-
-        Args:
-            net (pandapipesNet): The pandapipes network.
-        """
-        # Increment iteration counter
-        self.iteration += 1
-
-        # Check whether the heat flow in the heat exchanger is zero
-        current_dp_bar = net.res_heat_consumer["p_from_bar"].at[self.heat_consumer_idx] - net.res_heat_consumer["p_to_bar"].at[self.heat_consumer_idx]
-        current_plift_bar = net.circ_pump_pressure["plift_bar"].at[self.circ_pump_pressure_idx]
-        current_pflow_bar = net.circ_pump_pressure["p_flow_bar"].at[self.circ_pump_pressure_idx]
-
-        dp_error = self.target_dp_min_bar - current_dp_bar
-        
-        plift_adjustment = dp_error * self.proportional_gain
-        pflow_adjustment = dp_error * self.proportional_gain        
-
-        new_plift = current_plift_bar + plift_adjustment
-        new_pflow = current_pflow_bar + pflow_adjustment
-        
-        net.circ_pump_pressure["plift_bar"].at[self.circ_pump_pressure_idx] = new_plift
-        net.circ_pump_pressure["p_flow_bar"].at[self.circ_pump_pressure_idx] = new_pflow
-
-        return super(WorstPointPressureController, self).control_step(net)
-
-def create_controllers(net, qext_w):
-    """Create controllers for the network to manage heat consumers.
-
-    Args:
-        net (pandapipesNet): The pandapipes network.
-        qext_w (array-like): External heat values for heat consumers.
-
-    Returns:
-        pandapipesNet: The pandapipes network with controllers added.
-    """
-
-    # Creates controllers for the network
-    for i in range(len(net.heat_consumer)):
-        # Create a simple DFData object for qext_w with the specific value for this pass
-        placeholder_df = pd.DataFrame({f'qext_w_{i}': [qext_w[i]]})
-        placeholder_data_source = DFData(placeholder_df)
-
-        ConstControl(net, element='heat_consumer', variable='qext_w', element_index=i, data_source=placeholder_data_source, profile_name=f'qext_w_{i}')
-
-    #dp_min, idx_dp_min = calculate_worst_point(net)  # This function must be defined
-    dp_controller = WorstPointPressureController(net)#, idx_dp_min)  # This class must be defined
-    net.controller.loc[len(net.controller)] = [dp_controller, True, -1, -1, False, False]
-
-    return net
-
-def update_const_controls(net, qext_w_profiles, time_steps, start, end):
-    """Update constant controls with new data sources for time series simulation.
-
-    Args:
-        net (pandapipesNet): The pandapipes network.
-        qext_w_profiles (list of arrays): List of external heat profiles.
-        time_steps (range): Range of time steps for the simulation.
-        start (int): Start index for slicing the profiles.
-        end (int): End index for slicing the profiles.
-    """
-    for i, qext_w_profile in enumerate(qext_w_profiles):
-        df = pd.DataFrame(index=time_steps, data={f'qext_w_{i}': qext_w_profile[start:end]})
-        data_source = DFData(df)
-        for ctrl in net.controller.object.values:
-            if isinstance(ctrl, ConstControl) and ctrl.element_index == i and ctrl.variable == 'qext_w':
-                ctrl.data_source = data_source
-
-def create_log_variables(net):
-    """Create a list of variables to log during the time series simulation.
-
-    Args:
-        net (pandapipesNet): The pandapipes network.
-
-    Returns:
-        list: List of tuples representing the variables to log.
-    """
-    log_variables = [
-        ('res_junction', 'p_bar'), 
-        ('res_junction', 't_k'),
-        ('heat_consumer', 'qext_w'),
-        ('res_heat_consumer', 'vdot_m3_per_s'),
-        ('res_heat_consumer', 't_from_k'),
-        ('res_heat_consumer', 't_to_k'),
-        ('res_heat_consumer', 'mdot_from_kg_per_s'),
-        ('res_circ_pump_pressure', 'mdot_from_kg_per_s'),
-        ('res_circ_pump_pressure', 'p_to_bar'),
-        ('res_circ_pump_pressure', 'p_from_bar')
-    ]
-
-    if 'circ_pump_mass' in net:
-        log_variables.append(('res_circ_pump_mass', 'mdot_from_kg_per_s'))
-        log_variables.append(('res_circ_pump_mass', 'p_to_bar'))
-        log_variables.append(('res_circ_pump_mass', 'p_from_bar'))
-
-    return log_variables
+from districtheatingsim.net_simulation_pandapipes.config_plot import config_plot
 
 def initialize_test_net(qext_w=np.array([100000, 100000, 100000]),
                         return_temperature=np.array([55, 60, 50]),
@@ -229,6 +36,8 @@ def initialize_test_net(qext_w=np.array([100000, 100000, 100000]),
                         flow_pressure_pump=4, 
                         lift_pressure_pump=1.5,
                         pipetype="110/202 PLUS"):
+    print("Initializing test network...")
+    # Initialize the pandapipes network
     net = pp.create_empty_network(fluid="water")
     
     k = 0.1  # roughness
@@ -270,12 +79,13 @@ def initialize_test_net(qext_w=np.array([100000, 100000, 100000]),
     pp.pipeflow(net, mode="bidirectional", iter=100, alpha=0.2)
 
     # Placeholder functions for additional processing
-    net = create_controllers(net, qext_w)
+    net = create_controllers(net, qext_w, return_temperature)
 
     return net
 
 
 def timeseries_test(net):
+    print("Running time series test...")
     start = 0
     end = 8 # 8760 hours in a year
 
@@ -292,7 +102,7 @@ def timeseries_test(net):
     print(f"qext_w_profiles: {qext_w_profiles}") # Structure is two-dimensional array with shape (n_profiles, n_time_steps)
 
     # set some time steps to zero
-    qext_w_profiles[0, 7] = 0
+    #qext_w_profiles[0, 7] = 0
     #qext_w_profiles[1, 7] = 0
     #qext_w_profiles[2, 7] = 0
 
@@ -317,7 +127,6 @@ def timeseries_test(net):
 
 if __name__ == "__main__":
     try:
-        print("Running the heat consumer result extraction test.")
         net = initialize_test_net()
 
         print(net)

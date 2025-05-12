@@ -1,18 +1,10 @@
 """
 Filename: 06_example_simple_pandapipes.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-11-19
+Date: 2025-05-12
 Description: Script for testing the pandapipes net simulation functions.
 Usage: Run the script to generate a simple pandapipes network.
-Functions:
-    initialize_test_net(qext_w=np.array([50000, 100000]), return_temperature=60, supply_temperature=85, flow_pressure_pump=4, lift_pressure_pump=1.5, pipetype="KMR 100/250-2v",  pipe_creation_mode="type", v_max_m_s=1.5) -> None
-        Initializes a simple pandapipes network.
-    get_test_net() -> None
-        Initializes a simple pandapipes network and plots it.
-    initialize_test_net_two_pumps(qext_w=np.array([50000, 100000]), return_temperature=60, supply_temperature=85, flow_pressure_pump=4, lift_pressure_pump=1.5, pipetype="KMR 100/250-2v",  pipe_creation_mode="type", v_max_m_s=1.5, mass_pump_mass_flow=0.1) -> None
-        Initializes a simple pandapipes network with two pumps.
-    get_test_net_2() -> None
-        Initializes a simple pandapipes network with two pumps and plots it.
+
 Example:
     $ python 06_example_simple_pandapipes.py
 """
@@ -26,10 +18,8 @@ import numpy as np
 import traceback
 import pandapipes as pp
 import pandapipes.plotting as pp_plot
-from pandapipes.control.run_control import run_control
 
 from districtheatingsim.net_simulation_pandapipes.config_plot import config_plot
-
 from districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson import *
 from districtheatingsim.net_simulation_pandapipes.utilities import *
 from districtheatingsim.heat_requirement import heat_requirement_calculation_csv
@@ -38,6 +28,8 @@ from districtheatingsim.heat_requirement import heat_requirement_calculation_csv
 logging.basicConfig(level=logging.INFO)
 
 def test_heat_consumer_result_extraction():
+    print("Running the heat consumer result extraction script.")
+    # Create a simple pandapipes network
     net = pp.create_empty_network("net", add_stdtypes=False, fluid="water")
 
     juncs = pp.create_junctions(
@@ -79,9 +71,9 @@ def test_heat_consumer_result_extraction():
 
     return net
 
-def initialize_test_net(qext_w=np.array([20000, 0]), return_temperature=np.array([55, 60]), supply_temperature=85, 
-                        flow_pressure_pump=4, lift_pressure_pump=1.5, pipetype="KMR 100/250-2v", v_max_m_s=1.5):
-    
+def initialize_test_net(qext_w=np.array([100000, 200000]), return_temperature=np.array([55, 60]), supply_temperature=85, 
+                        flow_pressure_pump=4, lift_pressure_pump=1.5, pipetype="110/202 PLUS", v_max_m_s=1.5):
+    print("Running the test network initialization script.")
     net = pp.create_empty_network(fluid="water")
 
     k = 0.1 # roughness defaults to 0.1
@@ -127,8 +119,8 @@ def initialize_test_net(qext_w=np.array([20000, 0]), return_temperature=np.array
     
     net = create_controllers(net, qext_w, return_temperature)
     net = correct_flow_directions(net)
-    net = init_diameter_types(net, v_max_pipe=v_max_m_s, material_filter="KMR", k=k)
-    net = optimize_diameter_types(net, v_max=v_max_m_s, material_filter="KMR", k=k)
+    net = init_diameter_types(net, v_max_pipe=v_max_m_s, material_filter="PEXa", k=k)
+    net = optimize_diameter_types(net, v_max=v_max_m_s, material_filter="PEXa", k=k)
 
     return net
 
@@ -137,7 +129,8 @@ def initialize_complex_test_net(qext_w=np.array([20000, 15000, 10000, 25000]),
                                 return_temperature=np.array([55, 60, 50, 65]),
                                 supply_temperature=85,
                                 flow_pressure_pump=4, lift_pressure_pump=1.5,
-                                pipetype="KMR 100/250-2v", v_max_m_s=1.5):
+                                pipetype="110/202 PLUS", v_max_m_s=1.5):
+    print("Running the complex test network initialization script.")
     net = pp.create_empty_network(fluid="water")
     
     k = 0.1  # roughness
@@ -180,127 +173,123 @@ def initialize_complex_test_net(qext_w=np.array([20000, 15000, 10000, 25000]),
 
     # Placeholder functions for additional processing
     net = create_controllers(net, qext_w, return_temperature)
-    #net = correct_flow_directions(net)
-    net = init_diameter_types(net, v_max_pipe=v_max_m_s, material_filter="KMR", k=k)
-    net = optimize_diameter_types(net, v_max=v_max_m_s, material_filter="KMR", k=k)
+    net = correct_flow_directions(net)
+    net = init_diameter_types(net, v_max_pipe=v_max_m_s, material_filter="PEXa", k=k)
+    net = optimize_diameter_types(net, v_max=v_max_m_s, material_filter="PEXa", k=k)
 
     return net
 
-"""
-def initialize_test_net_two_pumps(qext_w=np.array([50000, 20000]), return_temperature=60, supply_temperature=85, flow_pressure_pump=4, lift_pressure_pump=1.5, 
-                        pipetype="KMR 100/250-2v",  pipe_creation_mode="type", v_max_m_s=1.5, mass_pump_mass_flow=0.1):
-    
+def initialize_test_net_two_pumps(qext_w=np.array([50000, 20000]), return_temperature=np.array([60,55]), supply_temperature=85, flow_pressure_pump=4, lift_pressure_pump=1.5, 
+                        pipetype="110/202 PLUS",  v_max_m_s=1.5, mass_pump_mass_flow=0.5):
+    print("Running the test network with two pumps initialization script.")
     net = pp.create_empty_network(fluid="water")
 
-    # List and filter standard types for pipes
-    pipe_std_types = pp.std_types.available_std_types(net, "pipe")
-
     ### get pipe properties
-    properties = pipe_std_types.loc[pipetype]
-    diameter_mm  = properties['inner_diameter_mm']
-    k = properties['RAU']
-    alpha = properties['WDZAHL']
+    k = 0.1
 
-
-    initial_mdot_guess_kg_s = qext_w / (4170*(supply_temperature-return_temperature))
-    initial_Vdot_guess_m3_s = initial_mdot_guess_kg_s/1000
-    area_m2 = initial_Vdot_guess_m3_s/v_max_m_s
-    initial_dimension_guess_m = np.round(np.sqrt(area_m2 *(4/np.pi)), 3)
+    supply_temperature_k = supply_temperature + 273.15  # convert to Kelvin
+    return_temperature_k = return_temperature + 273.15  # convert to Kelvin
 
     # Junctions for pump
-    j1 = pp.create_junction(net, pn_bar=1.05, tfluid_k=293.15, name="Junction 1", geodata=(0, 10))
-    j2 = pp.create_junction(net, pn_bar=1.05, tfluid_k=293.15, name="Junction 2", geodata=(0, 0))
+    j1 = pp.create_junction(net, pn_bar=1.05, tfluid_k=supply_temperature_k, name="Junction 1", geodata=(0, 10))
+    j2 = pp.create_junction(net, pn_bar=1.05, tfluid_k=supply_temperature_k, name="Junction 2", geodata=(0, 0))
 
     # Junctions for connection pipes forward line
-    j3 = pp.create_junction(net, pn_bar=1.05, tfluid_k=293.15, name="Junction 3", geodata=(10, 0))
-    j4 = pp.create_junction(net, pn_bar=1.05, tfluid_k=293.15, name="Junction 4", geodata=(60, 0))
+    j3 = pp.create_junction(net, pn_bar=1.05, tfluid_k=supply_temperature_k, name="Junction 3", geodata=(10, 0))
+    j4 = pp.create_junction(net, pn_bar=1.05, tfluid_k=supply_temperature_k, name="Junction 4", geodata=(60, 0))
 
     # Junctions for heat exchangers
-    j5 = pp.create_junction(net, pn_bar=1.05, tfluid_k=293.15, name="Junction 5", geodata=(85, 0))
-    j6 = pp.create_junction(net, pn_bar=1.05, tfluid_k=293.15, name="Junction 6", geodata=(85, 10))
+    j5 = pp.create_junction(net, pn_bar=1.05, tfluid_k=supply_temperature_k, name="Junction 5", geodata=(85, 0))
+    j6 = pp.create_junction(net, pn_bar=1.05, tfluid_k=supply_temperature_k, name="Junction 6", geodata=(85, 10))
     
     # Junctions for connection pipes return line
-    j7 = pp.create_junction(net, pn_bar=1.05, tfluid_k=293.15, name="Junction 7", geodata=(60, 10))
-    j8 = pp.create_junction(net, pn_bar=1.05, tfluid_k=293.15, name="Junction 8", geodata=(10, 10))
+    j7 = pp.create_junction(net, pn_bar=1.05, tfluid_k=supply_temperature_k, name="Junction 7", geodata=(60, 10))
+    j8 = pp.create_junction(net, pn_bar=1.05, tfluid_k=supply_temperature_k, name="Junction 8", geodata=(10, 10))
 
     pump1 = pp.create_circ_pump_const_pressure(net, j1, j2, p_flow_bar=flow_pressure_pump,
-                                               plift_bar=lift_pressure_pump, t_flow_k=273.15+supply_temperature,
+                                               plift_bar=lift_pressure_pump, t_flow_k=supply_temperature_k,
                                                type="auto", name="pump1")
 
-    pipe1 = pp.create_pipe(net, j2, j3, std_type=pipetype, length_km=0.01,
-                           k_mm=k, alpha_w_per_m2k=alpha, name="pipe1", sections=5,
-                           text_k=283)
-    pipe2 = pp.create_pipe(net, j3, j4, std_type=pipetype, length_km=0.05,
-                           k_mm=k, alpha_w_per_m2k=alpha, name="pipe2", sections=5,
-                           text_k=283)
-    pipe3 = pp.create_pipe(net, j4, j5, std_type=pipetype, length_km=0.025,
-                           k_mm=k, alpha_w_per_m2k=alpha, name="pipe3", sections=5,
-                           text_k=283)
-    
-    j10 = pp.create_junction(net, pn_bar=1.05, tfluid_k=293.15, name="Junction 10", geodata=(85, 5))
+    pipe1 = pp.create_pipe(net, j2, j3, std_type=pipetype, length_km=0.01, k_mm=k, name="pipe1", sections=5, text_k=283)
+    pipe2 = pp.create_pipe(net, j3, j4, std_type=pipetype, length_km=0.05, k_mm=k, name="pipe2", sections=5, text_k=283)
+    pipe3 = pp.create_pipe(net, j4, j5, std_type=pipetype, length_km=0.025, k_mm=k, name="pipe3", sections=5, text_k=283)
 
-    heat_exchanger1 = pp.create_heat_exchanger(net, j10, j6, diameter_m=initial_dimension_guess_m[0],
-                                               loss_coefficient=0, qext_w=qext_w[0],
-                                               name="heat_exchanger1")
+    pp.create_heat_consumer(net, from_junction=j5, to_junction=j6, qext_w=qext_w[0], treturn_k=return_temperature_k[0], name="Consumer A")
+    pp.create_heat_consumer(net, from_junction=j4, to_junction=j7, qext_w=qext_w[0], treturn_k=return_temperature_k[0], name="Consumer B")
     
-    flow_control2 = pp.create_flow_control(net, j5, j10, controlled_mdot_kg_per_s=initial_mdot_guess_kg_s[0], diameter_m=initial_dimension_guess_m[0])
-    
-    j9 = pp.create_junction(net, pn_bar=1.05, tfluid_k=293.15, name="Junction 9", geodata=(60, 5))
-    
-    heat_exchanger2 = pp.create_heat_exchanger(net, j9, j7, diameter_m=initial_dimension_guess_m[1],
-                                               loss_coefficient=0, qext_w=qext_w[1],
-                                               name="heat_exchanger1")
-    
-    flow_control1 = pp.create_flow_control(net, j4, j9, controlled_mdot_kg_per_s=initial_mdot_guess_kg_s[1], diameter_m=initial_dimension_guess_m[1])
-
-    pipe4 = pp.create_pipe(net, j6, j7, std_type=pipetype, length_km=0.25,
-                           k_mm=k, alpha_w_per_m2k=alpha, name="pipe4", sections=5,
-                           text_k=283)
-    pipe5 = pp.create_pipe(net, j7, j8, std_type=pipetype, length_km=0.05,
-                           k_mm=k, alpha_w_per_m2k=alpha, name="pipe5", sections=5,
-                           text_k=283)
-    pipe6 = pp.create_pipe(net, j8, j1, std_type=pipetype, length_km=0.01,
-                           k_mm=k, alpha_w_per_m2k=alpha, name="pipe6", sections=5,
-                           text_k=283)
+    pipe4 = pp.create_pipe(net, j6, j7, std_type=pipetype, length_km=0.25, k_mm=k, name="pipe4", sections=5, text_k=283)
+    pipe5 = pp.create_pipe(net, j7, j8, std_type=pipetype, length_km=0.05, k_mm=k, name="pipe5", sections=5, text_k=283)
+    pipe6 = pp.create_pipe(net, j8, j1, std_type=pipetype, length_km=0.01, k_mm=k, name="pipe6", sections=5, text_k=283)
     
     ### here comes the part with the additional circ_pump_const_mass_flow ###
     # first of, the junctions
-    j10 = pp.create_junction(net, pn_bar=1.05, tfluid_k=293.15, name="Junction 10", geodata=(100, 0))
-    j11 = pp.create_junction(net, pn_bar=1.05, tfluid_k=293.15, name="Junction 11", geodata=(100, 10))
+    j9 = pp.create_junction(net, pn_bar=1.05, tfluid_k=supply_temperature_k, name="Junction 9", geodata=(100, 0))
+    j10 = pp.create_junction(net, pn_bar=1.05, tfluid_k=supply_temperature_k, name="Junction 10", geodata=(100, 10))
+    j11 = pp.create_junction(net, pn_bar=1.05, tfluid_k=supply_temperature_k, name="Junction 11", geodata=(100, 5))
 
-    pipe7 = pp.create_pipe(net, j5, j10, std_type=pipetype, length_km=0.05,
-                           k_mm=k, alpha_w_per_m2k=alpha, name="pipe7", sections=5,
-                           text_k=283)
-    pipe8 = pp.create_pipe(net, j11, j6, std_type=pipetype, length_km=0.01,
-                           k_mm=k, alpha_w_per_m2k=alpha, name="pipe8", sections=5,
-                           text_k=283)
+    pipe7 = pp.create_pipe(net, j5, j9, std_type=pipetype, length_km=0.05, k_mm=k, name="pipe7", sections=5, text_k=283)
+    pipe8 = pp.create_pipe(net, j10, j6, std_type=pipetype, length_km=0.01, k_mm=k, name="pipe8", sections=5, text_k=283)
+
+    pump2 = pp.create_circ_pump_const_mass_flow(net, j10, j11, p_flow_bar=flow_pressure_pump, mdot_flow_kg_per_s=mass_pump_mass_flow, 
+                                                t_flow_k=supply_temperature_k, type="auto", name="pump2")
     
-    j12 = pp.create_junction(net, pn_bar=1.05, tfluid_k=293.15, name="Junction 11", geodata=(100, 5))
-
+    flow_control_pump2 = pp.create_flow_control(net, j11, j9, controlled_mdot_kg_per_s=mass_pump_mass_flow)
     
-    pump2 = pp.create_circ_pump_const_mass_flow(net, j11, j12, p_flow_bar=flow_pressure_pump, mdot_flow_kg_per_s=mass_pump_mass_flow, 
-                                                t_flow_k=273.15+supply_temperature, type="auto", name="pump2")
-    flow_control3 = pp.create_flow_control(net, j12, j10, controlled_mdot_kg_per_s=mass_pump_mass_flow, diameter_m=0.1)
+    pp_plot.simple_plot(net, junction_size=0.01, heat_consumer_size=0.1, pump_size=0.1,
+                    pump_color='green', pipe_color='black', heat_consumer_color="blue", show_plot=True)
 
+    # Simulate pipe flow
+    pp.pipeflow(net, mode="bidirectional", iter=100, alpha=0.2)
+
+    # Placeholder functions for additional processing
     net = create_controllers(net, qext_w, return_temperature)
     net = correct_flow_directions(net)
+    net = init_diameter_types(net, v_max_pipe=v_max_m_s, material_filter="PEXa", k=k)
+    net = optimize_diameter_types(net, v_max=v_max_m_s, material_filter="PEXa", k=k)
 
     return net
-"""
 
-def timeseries_test():
-    start = 0
-    end = 100 # 8760 hours in a year
+def test_profile_initiation():
+    print("Running the heat requirement script.")
+        
+    data = pd.read_csv("examples/data/data_ETRS89.csv", sep=";")
+    TRY_filename = "src/districtheatingsim/data/TRY/TRY_511676144222/TRY2015_511676144222_Jahr.dat"
+    calc_method = "Datensatz"
 
-    # needs to be implemented
-    pass
+    print(f"Data: {data}")
 
+    # if data in column "Subtyp" is just one digit, add a leading zero
+    data["Subtyp"] = data["Subtyp"].apply(lambda x: f"0{x}" if len(str(x)) == 1 else x)
+
+    yearly_time_steps, total_heat_W, heating_heat_W, warmwater_heat_W, max_heat_requirement_W, supply_temperature_curve, \
+        return_temperature_curve, hourly_air_temperatures = heat_requirement_calculation_csv.generate_profiles_from_csv(data, TRY_filename, calc_method)
+
+    print("Initializing Net:")
+
+    # qext_w is the max heat requirement in W
+    qext_w = max_heat_requirement_W
+    # return_temperature is the return temperature in °C, same size as qext_w array
+    # np.fill like qext_w with 55
+    return_temperature = np.full_like(qext_w, 55)
+    supply_temperature = 85
+    flow_pressure_pump = 4
+    lift_pressure_pump = 1.5
+    pipetype = "KMR 100/250-2v"
+    v_max_m_s = 1.5
+
+    net = initialize_test_net(qext_w=qext_w, return_temperature=return_temperature, supply_temperature=supply_temperature, 
+                            flow_pressure_pump=flow_pressure_pump, lift_pressure_pump=lift_pressure_pump, pipetype=pipetype, 
+                            v_max_m_s=v_max_m_s)
+
+    return net
 
 if __name__ == "__main__":
     try:
-        print("Running the heat consumer result extraction test.")
-        #net = initialize_test_net()
-        net = initialize_complex_test_net()
+        #net = test_heat_consumer_result_extraction()
+        net = initialize_test_net()
+        #net = initialize_complex_test_net()
+        #net = initialize_test_net_two_pumps()
+        #net = test_profile_initiation()
 
         print(net)
         print(net.junction)
@@ -313,58 +302,12 @@ if __name__ == "__main__":
         print(net.res_heat_consumer)
         print(net.res_circ_pump_pressure)
 
-        """
-        print("Running the heat requirement script.")
-        
-        data = pd.read_csv("examples/data/data_ETRS89.csv", sep=";")
-        TRY_filename = "src/districtheatingsim/data/TRY/TRY_511676144222/TRY2015_511676144222_Jahr.dat"
-        calc_method = "Datensatz"
-
-        print(f"Data: {data}")
-
-        # if data in column "Subtyp" is just one digit, add a leading zero
-        data["Subtyp"] = data["Subtyp"].apply(lambda x: f"0{x}" if len(str(x)) == 1 else x)
-
-        yearly_time_steps, total_heat_W, heating_heat_W, warmwater_heat_W, max_heat_requirement_W, supply_temperature_curve, \
-            return_temperature_curve, hourly_air_temperatures = heat_requirement_calculation_csv.generate_profiles_from_csv(data, TRY_filename, calc_method)
-
-        print("Initializing Net:")
-
-        # qext_w is the max heat requirement in W
-        qext_w = max_heat_requirement_W
-        # return_temperature is the return temperature in °C, same size as qext_w array
-        # np.fill like qext_w with 55
-        return_temperature = np.full_like(qext_w, 55)
-        supply_temperature = 85
-        flow_pressure_pump = 4
-        lift_pressure_pump = 1.5
-        pipetype = "KMR 100/250-2v"
-        v_max_m_s = 1.5
-
-        net = initialize_test_net(qext_w=qext_w, return_temperature=return_temperature, supply_temperature=supply_temperature, 
-                                flow_pressure_pump=flow_pressure_pump, lift_pressure_pump=lift_pressure_pump, pipetype=pipetype, 
-                                v_max_m_s=v_max_m_s)
-
-        print(net)
-        print(net.junction)
-        print(net.pipe)
-        print(net.heat_consumer)
-        print(net.circ_pump_pressure)
-
-        print(net.res_junction)
-        print(net.res_pipe)
-        print(net.res_heat_consumer)
-        print(net.res_circ_pump_pressure)
-        """
         # create ax for config_plot
         fig, ax = plt.subplots()  # Erstelle eine Figure und eine Achse
         #pp_plot.simple_plot(net, junction_size=0.01, heat_consumer_size=0.1, pump_size=0.1, 
         #                    pump_color='green', pipe_color='black', heat_consumer_color="blue", ax=ax, show_plot=True)
         
         config_plot(net, ax, show_junctions=True, show_pipes=True, show_heat_consumers=True, show_pump=True, show_plot=True)
-
-        #get_test_net()
-        #get_test_net_2()
 
     except Exception as e:
         print("An error occurred:")
