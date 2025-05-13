@@ -4,7 +4,7 @@ PyQtWebEngine
 folium
 scipy
 matplotlib
-pandapipes
+git+https://github.com/e2nIEE/pandapipes.git@develop
 geopy
 overpy
 geojson
