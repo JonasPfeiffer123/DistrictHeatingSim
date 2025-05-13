@@ -613,7 +613,7 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         Initialize the user interface, including the menu bar and tabs.
         """
-        self.setWindowTitle("DistrictHeatSim")
+        self.setWindowTitle("DistrictHeatingSim")
         self.setGeometry(100, 100, 800, 600)
 
         central_widget = QWidget(self)
