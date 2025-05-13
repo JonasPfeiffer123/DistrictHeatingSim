@@ -74,6 +74,8 @@ To install DistrictHeatingSim, follow the steps below. The software has been tes
     python src/districtheatingsim/DistrictHeatingSim.py
     ```
 
+Note that currently the pandapipes-develop branch is used. Reason for this are recent advancements in pandapipes. The current implementation is therefor not compatible with the pandapipes main branch. Further, additional pipetypes where added. These need to be include by replacing the Pipe.csv in "pandapipes\std_types\library" with the Pipe.csv in "DistrictHeatingSim\src\districtheatingsim\data\pandapipes\pipes".
+
 ### Troubleshooting
 - If you encounter errors during installation or while running the application, ensure that all required Python modules are installed. You can install the dependencies listed in the `requirements.txt` file:
     ```sh
@@ -205,6 +207,12 @@ Please ensure that your contributions align with the project's coding standards 
 ## License
 
 DistrictHeatSim is licensed under the MIT License. See the `LICENSE` file for more details.
+
+## Funding Notice
+
+This project is funded by the Free State of Saxony as part of the SMWK-NEUES TG70 initiative. The funding supports the development and testing of methods and tools for the conceptualization of sustainable heating networks.
+
+![Funding by Saxony](funding_saxony.jpg)
 
 ## Contact Information
 
