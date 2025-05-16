@@ -1,7 +1,7 @@
 """
 Filename: pp_net_time_series_simulation.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-12-06
+Date: 2024-05-15
 Description: Script with functions for the implemented time series calculation.
 """
 
@@ -15,7 +15,7 @@ import numpy as np
 
 from districtheatingsim.net_simulation_pandapipes.utilities import COP_WP, TemperatureController
 
-def update_const_controls(net, qext_w_profiles, time_steps, start, end):
+def update_heat_consumer_qext_controller(net, qext_w_profiles, time_steps, start, end):
     """Update constant controls with new data sources for time series simulation.
 
     Args:
@@ -53,8 +53,79 @@ def update_heat_consumer_temperature_controller(net, min_supply_temperature_heat
 
             ctrl.data_source = data_source_return_temp
             controller_count += 1
+
+def update_heat_consumer_return_temperature_controller(net, return_temperature_heat_consumer, time_steps, start, end):
+    """Update return temperature controllers with new data sources for time series simulation.
+
+    Args:
+        net (pandapipesNet): The pandapipes network.
+        return_temperature_heat_consumer (array): Return temperature profiles for heat consumers.
+        time_steps (range): Range of time steps for the simulation.
+        start (int): Start index for slicing the profiles.
+        end (int): End index for slicing the profiles.
+    """
+    for i, return_temp_profile in enumerate(return_temperature_heat_consumer):
+        # Create the DataFrame for the return temperature
+        df_return_temp = pd.DataFrame(index=time_steps, data={
+            f'treturn_k_{i}': return_temp_profile[start:end] + 273.15
+        })
+        data_source_return_temp = DFData(df_return_temp)
+
+        # Check whether a suitable ConstControl exists
+        control_exists = False
+        for ctrl in net.controller.object.values:
+            if (
+                isinstance(ctrl, ConstControl)
+                and ctrl.element == 'heat_consumer'
+                and ctrl.element_index == i
+                and ctrl.variable == 'treturn_k'
+            ):
+                control_exists = True
+                # Update the data source of the existing ConstControl
+                ctrl.data_source = data_source_return_temp
+                ctrl.profile_name = f'treturn_k_{i}'
+                break
+
+        # If no suitable ConstControl exists, create a new one
+        if not control_exists:
+            ConstControl(
+                net,
+                element='heat_consumer',
+                variable='treturn_k',
+                element_index=i,
+                data_source=data_source_return_temp,
+                profile_name=f'treturn_k_{i}'
+            )
+
+# Needs to be fully implemented, also fix create controllers
+def update_secondary_producer_controller(net, secondary_producers, time_steps, start, end):
+    """Update secondary producer controls with new data sources for time series simulation.
+
+    Args:
+        net (pandapipesNet): The pandapipes network.
+        secondary_producers (list of dict): List of secondary producer profiles.
+        time_steps (range): Range of time steps for the simulation.
+        start (int): Start index for slicing the profiles.
+        end (int): End index for slicing the profiles.
+    """
+    for producer in secondary_producers:
+        df_secondary_producer = pd.DataFrame(index=time_steps, data={
+            f'mdot_flow_kg_per_s_{producer["index"]}': [producer["mass_flow"]] * len(time_steps)
+        })
+        data_source_secondary_producer = DFData(df_secondary_producer)
+
+        df_secondary_producer_flow_control = pd.DataFrame(index=time_steps, data={
+            f'controlled_mdot_kg_per_s_{producer["index"]}': [producer["mass_flow"]] * len(time_steps)
+        })
+        data_source_secondary_producer_flow_control = DFData(df_secondary_producer_flow_control)
+
+        for ctrl in net.controller.object.values:
+            if isinstance(ctrl, ConstControl) and ctrl.element == 'circ_pump_mass' and ctrl.variable == 'mdot_flow_kg_per_s':
+                ctrl.data_source = data_source_secondary_producer
+            elif isinstance(ctrl, ConstControl) and ctrl.element == 'flow_control' and ctrl.variable == 'controlled_mdot_kg_per_s':
+                ctrl.data_source = data_source_secondary_producer_flow_control
             
-def update_supply_temperature_controls(net, supply_temperature, time_steps, start, end):
+def update_heat_generator_supply_temperature_controller(net, supply_temperature, time_steps, start, end):
     """Update supply temperature controls with new data sources for time series simulation.
 
     Args:
@@ -67,22 +138,11 @@ def update_supply_temperature_controls(net, supply_temperature, time_steps, star
     # Create the DataFrame for the supply temperature
     df_supply_temp = pd.DataFrame(index=time_steps, data={'supply_temperature': supply_temperature[start:end] + 273.15})
     data_source_supply_temp = DFData(df_supply_temp)
-
-    # Check whether a suitable ConstControl exists
-    control_exists = False
     for ctrl in net.controller.object.values:
-        if (isinstance(ctrl, ConstControl) and ctrl.element == 'circ_pump_pressure'):
-            control_exists = True
-            # Update the data source of the existing ConstControl
+        if isinstance(ctrl, ConstControl) and ctrl.element == 'circ_pump_pressure' and ctrl.variable == 't_flow_k':
             ctrl.data_source = data_source_supply_temp
-            ctrl.profile_name = 'supply_temperature'
-            break
-
-    # If no suitable ConstControl exists, create a new one
-    if not control_exists:
-        ConstControl(net, element='circ_pump_pressure', variable='t_flow_k', element_index=0, 
-                     data_source=data_source_supply_temp, profile_name='supply_temperature')
-
+        elif isinstance(ctrl, ConstControl) and ctrl.element == 'circ_pump_mass' and ctrl.variable == 't_flow_k':
+            ctrl.data_source = data_source_supply_temp
 
 def create_log_variables(net):
     """Create a list of variables to log during the time series simulation.
@@ -156,6 +216,9 @@ def time_series_preprocessing(supply_temperature, supply_temperature_heat_consum
     
     COP_file_values = np.genfromtxt(COP_filename, delimiter=';')
 
+    print(f"Building_temp_checked: {building_temp_checked}")
+    print(f"Netconfiguration: {netconfiguration}")
+
     if building_temp_checked == False and netconfiguration != "kaltes Netz":
         waerme_hast_ges_W = total_heat_W
         strom_hast_ges_W = np.zeros_like(waerme_hast_ges_W)
@@ -199,7 +262,9 @@ def time_series_preprocessing(supply_temperature, supply_temperature_heat_consum
 
     return waerme_hast_ges_W, strom_hast_ges_W, supply_temperature_heat_consumer, return_temperature_heat_consumer 
     
-def thermohydraulic_time_series_net(net, yearly_time_steps, qext_w_profiles, start, end, supply_temperature=85, min_supply_temperature_heat_consumer=65, return_temperature_heat_consumer=60):
+def thermohydraulic_time_series_net(net, yearly_time_steps, qext_w_profiles, start, end, supply_temperature=85, 
+                                    min_supply_temperature_heat_consumer=65, return_temperature_heat_consumer=60, 
+                                    secondary_producers=None):
     """Run a thermohydraulic time series simulation for the network.
 
     Args:
@@ -209,8 +274,9 @@ def thermohydraulic_time_series_net(net, yearly_time_steps, qext_w_profiles, sta
         start (int): Start index for the simulation.
         end (int): End index for the simulation.
         supply_temperature (float, optional): Supply temperature. Defaults to 85.
-        supply_temperature_heat_consumer (float, optional): Minimum supply temperature for heat consumers. Defaults to 75.
+        min_supply_temperature_heat_consumer (float, optional): Minimum supply temperature for heat consumers. Defaults to 65.
         return_temperature_heat_consumer (float, optional): Return temperature for heat consumers. Defaults to 60.
+        secondary_producers (list, optional): List of secondary producers. Defaults to None.
 
     Returns:
         tuple: Updated yearly time steps, network, and results.
@@ -219,19 +285,24 @@ def thermohydraulic_time_series_net(net, yearly_time_steps, qext_w_profiles, sta
     yearly_time_steps = yearly_time_steps[start:end]
 
     # Update the ConstControl
-    print(f"qext_w_profiles: {qext_w_profiles}") # Structure is two-dimensional array with shape (n_profiles, n_time_steps)
     time_steps = range(0, len(qext_w_profiles[0][start:end]))
+    update_heat_consumer_qext_controller(net, qext_w_profiles, time_steps, start, end)
 
-    update_const_controls(net, qext_w_profiles, time_steps, start, end)
+    # Update secondary producer controls
+    if secondary_producers:
+        update_secondary_producer_controller(net, secondary_producers, time_steps, start, end)
 
-    # If return_temperature data exists, update corresponding ReturnTemperatureController
+    # If return_temperature data exists, update corresponding TemperatureController
     if min_supply_temperature_heat_consumer is not None and isinstance(min_supply_temperature_heat_consumer, np.ndarray) and min_supply_temperature_heat_consumer.ndim == 2:
         update_heat_consumer_temperature_controller(net, min_supply_temperature_heat_consumer, time_steps, start, end)
+    
+    if return_temperature_heat_consumer is not None and isinstance(return_temperature_heat_consumer, np.ndarray) and return_temperature_heat_consumer.ndim == 2:
+        update_heat_consumer_return_temperature_controller(net, return_temperature_heat_consumer, time_steps, start, end)
 
-    # If supply_temperature data exists, update corresponding ReturnTemperatureController
+    # If supply_temperature data exists, update corresponding ConstControl
     if supply_temperature is not None and isinstance(supply_temperature, np.ndarray):
-        update_supply_temperature_controls(net, supply_temperature, time_steps, start, end)
-
+        update_heat_generator_supply_temperature_controller(net, supply_temperature, time_steps, start, end)
+    
     # Log variables and run time series calculation
     log_variables = create_log_variables(net)
     ow = OutputWriter(net, time_steps, output_path=None, log_variables=log_variables)

@@ -1,7 +1,7 @@
 """
 Filename: pp_net_initialisation_geojson.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-01-31
+    Date: 2025-05-15
 Description: Script for the net initialisation of geojson based net data.
 """
 
@@ -15,7 +15,7 @@ from districtheatingsim.net_simulation_pandapipes.utilities import create_contro
 
 def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, COP_filename, min_supply_temperature_building, return_temperature_heat_consumer, 
                        supply_temperature_net, flow_pressure_pump, lift_pressure_pump, netconfiguration, pipetype, dT_RL, v_max_pipe, material_filter, 
-                       k_mm=0.1, main_producer_location_index=0, secondary_producers=[{}]):
+                       k_mm=0.1, main_producer_location_index=0, secondary_producers=None):
     """Initialize the network using GeoJSON data and various parameters.
 
     Args:
@@ -84,7 +84,7 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, COP
     return_temperature_building_curve = np.array([results[str(i)]["rücklauftemperatur"] for i in range(len(results))])
     max_waerme_gebaeude_ges_W = np.array(results["0"]["max_last"])*1000
 
-    print(max_waerme_gebaeude_ges_W)
+    print(f"Maximum Wärme Gebäude gesamt (W): {max_waerme_gebaeude_ges_W}")
 
     ### Definition Soll-Rücklauftemperatur ###
     if return_temperature_heat_consumer == None:
@@ -99,6 +99,7 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, COP
     
     ### Definition Mindestvorlauftemperatur ###
     ### Ersetzten durch np.where, es gibt eine Mindestvorlauftemperatur an den Gebäuden (z.B. 65 °C für Warmwasserbereitung). Diese Temperatur muss Netzseitig auch ankommen###
+    print(f"MINDESTVORLAUFTEMPERATUR: {min_supply_temperature_building} °C")
     if min_supply_temperature_building == None:
         min_supply_temperature_building = np.zeros_like(supply_temperature_buildings)
         min_supply_temperature_heat_consumer = np.zeros_like(supply_temperature_buildings)
@@ -160,10 +161,16 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, COP
 
     # Calculate mass flow for secondary producers
     if secondary_producers:
-        # calculate mass flow of main producer with cp = 4.18 kJ/kgK from sum of max_waerme_hast_ges_W (in W)
-        cp = 4.18 # kJ/kgK
-        mass_flow = np.sum(max_waerme_hast_ges_W/1000) / (cp * (supply_temperature_net - return_temperature_heat_consumer)) # kW / (kJ/kgK * K) = kg/s
-        secondary_producers["mass_flow"] = [secondary_producer["percentage"] * mass_flow for secondary_producer in secondary_producers]
+        # Calculate mass flow of main producer with cp = 4.18 kJ/kgK from sum of max_waerme_hast_ges_W (in W)
+        cp = 4.18  # kJ/kgK
+        mass_flow = np.sum(max_waerme_hast_ges_W / 1000) / (cp * (supply_temperature_net - np.average(return_temperature_heat_consumer)))  # kW / (kJ/kgK * K) = kg/s
+
+        print(f"Mass flow of main producer: {mass_flow} kg/s")
+
+        # Update each secondary producer's dictionary with the calculated mass flow
+        for secondary_producer in secondary_producers:
+            secondary_producer["mass_flow"] = secondary_producer["percentage"]/100 * mass_flow
+            print(f"Mass flow of secondary producer {secondary_producer['index']}: {secondary_producer['mass_flow']} kg/s")
 
     producer_dict = {
         "supply_temperature": supply_temperature_net,
@@ -176,7 +183,7 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, COP
     net = create_network(gdf_dict, consumer_dict, pipe_dict, producer_dict)
     
     return net, yearly_time_steps, waerme_hast_ges_W, return_temperature_heat_consumer, supply_temperature_buildings, return_temperature_buildings, \
-        supply_temperature_building_curve, return_temperature_building_curve, strombedarf_hast_ges_W, max_el_leistung_hast_ges_W
+        supply_temperature_building_curve, return_temperature_building_curve, min_supply_temperature_heat_consumer, strombedarf_hast_ges_W, max_el_leistung_hast_ges_W
 
 def get_line_coords_and_lengths(gdf):
     """Extract line coordinates and lengths from a GeoDataFrame.
@@ -329,11 +336,11 @@ def create_network(gdf_dict, consumer_dict, pipe_dict, producer_dict):
         for i, coords in enumerate(all_coords, start=0):
             mid_coord = ((coords[0][0] + coords[1][0]) / 2, (coords[0][1] + coords[1][1]) / 2)
             mid_junction_idx = pp.create_junction(net_i, pn_bar=1.05, tfluid_k=supply_temperature_k, name=f"Junction {name_prefix}", geodata=mid_coord)
-
+            # Create the pump with constant mass flow
             pp.create_circ_pump_const_mass_flow(net_i, junction_dict[coords[1]], mid_junction_idx,
                                                p_flow_bar=flow_pressure_pump, mdot_flow_kg_per_s=mass_flow,
                                                t_flow_k=supply_temperature_k, type="auto",
-                                               name=f"{name_prefix} {i}")
+                                               name=f"{name_prefix} {i}", in_service=True)
             pp.create_flow_control(net, mid_junction_idx, junction_dict[coords[0]], controlled_mdot_kg_per_s=mass_flow)
 
     # Create the junction dictionaries for the forward and return lines
@@ -365,7 +372,8 @@ def create_network(gdf_dict, consumer_dict, pipe_dict, producer_dict):
     # Simulate pipe flow
     pp.pipeflow(net, mode="bidirectional", iter=100)
 
-    net = create_controllers(net, qext_w, min_supply_temperature_heat_consumer)
+    print(f"secondary_producers: {secondary_producers}")
+    net = create_controllers(net, qext_w, supply_temperature, min_supply_temperature_heat_consumer, return_temperature_heat_consumer, secondary_producers)
     net = correct_flow_directions(net)
     net = init_diameter_types(net, v_max_pipe=v_max_pipe, material_filter=material_filter, k=k_mm)
 
