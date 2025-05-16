@@ -300,7 +300,7 @@ class CalculationTab(QWidget):
         self.k_mm = k_mm
         self.main_producer_location_index = main_producer_location_index
         self.secondary_producers = secondary_producers
-        args = (vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, self.COP_filename, return_temperature_heat_consumer, supply_temperature_heat_consumer, supply_temperature, flow_pressure_pump, lift_pressure_pump, \
+        args = (vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, self.COP_filename, supply_temperature_heat_consumer, return_temperature_heat_consumer, supply_temperature, flow_pressure_pump, lift_pressure_pump, \
                 netconfiguration, pipetype, v_max_pipe, material_filter, self.dT_RL, self.DiameterOpt_ckecked, self.k_mm, self.main_producer_location_index, secondary_producers)
         kwargs = {"import_type": "GeoJSON"}
         self.initializationThread = NetInitializationThread(*args, **kwargs)
@@ -325,10 +325,10 @@ class CalculationTab(QWidget):
         self.progressBar.setRange(0, 1)
 
         self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature_heat_consumer, self.return_temperature_heat_consumer, self.supply_temperature_buildings, self.return_temperature_buildings, \
-            self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.strombedarf_hast_ges_W, self.max_el_leistung_hast_ges_W = results
+            self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.min_supply_temperature_heat_consumer, self.strombedarf_hast_ges_W, self.max_el_leistung_hast_ges_W = results
         
         self.net_data = self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature_heat_consumer, self.supply_temperature, self.return_temperature_heat_consumer, self.supply_temperature_buildings, self.return_temperature_buildings, \
-            self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.netconfiguration, self.dT_RL, self.building_temp_checked, self.strombedarf_hast_ges_W, \
+            self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.min_supply_temperature_heat_consumer, self.netconfiguration, self.dT_RL, self.building_temp_checked, self.strombedarf_hast_ges_W, \
             self.max_el_leistung_hast_ges_W, self.TRY_filename, self.COP_filename, self.main_producer_location_index, self.secondary_producers
         
         self.waerme_ges_kW = np.where(self.waerme_ges_W == 0, 0, self.waerme_ges_W / 1000)
@@ -497,13 +497,14 @@ class CalculationTab(QWidget):
             return
         
         self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature_heat_consumer, self.supply_temperature, self.return_temperature_heat_consumer, self.supply_temperature_buildings, \
-            self.return_temperature_buildings, self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.netconfiguration, self.dT_RL, self.building_temp_checked, \
+            self.return_temperature_buildings, self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.min_supply_temperature_heat_consumer, self.netconfiguration, self.dT_RL, self.building_temp_checked, \
                 self.strombedarf_hast_ges_W, self.max_el_leistung_hast_ges_W, self.TRY_filename, self.COP_filename, self.main_producer_location_index, self.secondary_producers = self.net_data
 
         try:
             self.calculationThread = NetCalculationThread(self.net, self.yearly_time_steps, self.waerme_ges_W, self.calc1, self.calc2, self.supply_temperature, self.supply_temperature_heat_consumer, \
                                                           self.return_temperature_heat_consumer, self.supply_temperature_buildings, self.return_temperature_buildings, self.supply_temperature_buildings_curve, \
-                                                            self.return_temperature_buildings_curve, self.dT_RL, self.netconfiguration, self.building_temp_checked, self.TRY_filename, self.COP_filename, self.secondary_producers)
+                                                            self.return_temperature_buildings_curve, self.min_supply_temperature_heat_consumer, self.dT_RL, self.netconfiguration, self.building_temp_checked,\
+                                                            self.TRY_filename, self.COP_filename, self.secondary_producers)
             self.calculationThread.calculation_done.connect(self.on_simulation_done)
             self.calculationThread.calculation_error.connect(self.on_simulation_error)
             self.calculationThread.start()
@@ -673,7 +674,7 @@ class CalculationTab(QWidget):
         if self.net_data:
             try:
                 self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature_heat_consumer, self.supply_temperature, self.return_temperature_heat_consumer, self.supply_temperature_buildings, self.return_temperature_buildings, \
-                self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.netconfiguration, self.dT_RL, self.building_temp_checked, self.strombedarf_hast_ges_W, \
+                self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.min_supply_temperature_heat_consumer, self.netconfiguration, self.dT_RL, self.building_temp_checked, self.strombedarf_hast_ges_W, \
                     self.max_el_leistung_hast_ges_W, self.TRY_filename, self.COP_filename, self.main_producer_location_index, self.secondary_producers = self.net_data
 
                 # Speichere relative Pfade relativ zum Datenpfad
@@ -699,6 +700,7 @@ class CalculationTab(QWidget):
                     'return_temperature_buildings': self.return_temperature_buildings.tolist(),
                     'supply_temperature_buildings_curve': self.supply_temperature_buildings_curve.tolist(),
                     'return_temperature_buildings_curve': self.return_temperature_buildings_curve.tolist(),
+                    'min_supply_temperature_heat_consumer': self.min_supply_temperature_heat_consumer.tolist(),
                     'netconfiguration': self.netconfiguration,
                     'dT_RL': self.dT_RL,
                     'building_temp_checked': self.building_temp_checked,
@@ -765,6 +767,7 @@ class CalculationTab(QWidget):
             self.return_temperature_buildings = np.array(additional_data['return_temperature_buildings'])
             self.supply_temperature_buildings_curve = np.array(additional_data['supply_temperature_buildings_curve'])
             self.return_temperature_buildings_curve = np.array(additional_data['return_temperature_buildings_curve'])
+            self.min_supply_temperature_heat_consumer = np.array(additional_data['min_supply_temperature_heat_consumer'])
             self.netconfiguration = additional_data['netconfiguration']
             self.dT_RL = additional_data['dT_RL']
             self.building_temp_checked = additional_data['building_temp_checked']
@@ -775,7 +778,7 @@ class CalculationTab(QWidget):
             self.secondary_producers = additional_data.get('secondary_producers', [{}])
             
             self.net_data = self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature_heat_consumer, self.supply_temperature, self.return_temperature_heat_consumer, self.supply_temperature_buildings, self.return_temperature_buildings, \
-                            self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.netconfiguration, self.dT_RL, self.building_temp_checked, self.strombedarf_hast_ges_W, \
+                            self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.min_supply_temperature_heat_consumer, self.netconfiguration, self.dT_RL, self.building_temp_checked, self.strombedarf_hast_ges_W, \
                             self.max_el_leistung_hast_ges_W, self.TRY_filename, self.COP_filename, self.main_producer_location_index, self.secondary_producers
             
             self.waerme_ges_kW = np.where(self.waerme_ges_W == 0, 0, self.waerme_ges_W / 1000)

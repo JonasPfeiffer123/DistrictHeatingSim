@@ -19,6 +19,7 @@ class ProducerOrderTab(QWidget):
         super().__init__(parent)
         self.parent = parent
         self.initUI()
+        self.percentage_inputs = []  # Liste für die QLineEdit-Widgets
 
     def initUI(self):
         layout = QVBoxLayout(self)
@@ -123,6 +124,7 @@ class ProducerOrderTab(QWidget):
         Updates the percentage input fields for secondary producers.
         """
         # Clear existing percentage inputs
+        self.percentage_inputs.clear()  # Leere die Liste
         while self.producer_percentage_inputs.count():
             item = self.producer_percentage_inputs.takeAt(0)
             widget = item.widget()
@@ -136,6 +138,7 @@ class ProducerOrderTab(QWidget):
                 percentage_input_layout = QHBoxLayout()
                 label = QLabel(f"Erzeuger {i+1} Prozentuale Erzeugung (%):")
                 line_edit = QLineEdit()
+                self.percentage_inputs.append(line_edit)  # Speichere das QLineEdit in der Liste
                 percentage_input_layout.addWidget(label)
                 percentage_input_layout.addWidget(line_edit)
                 self.producer_percentage_inputs.addLayout(percentage_input_layout)

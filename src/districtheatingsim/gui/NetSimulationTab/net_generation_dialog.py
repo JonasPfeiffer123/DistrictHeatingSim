@@ -86,7 +86,7 @@ class NetGenerationDialog(QDialog):
             secondary_producers = [
                 {
                     'index': self.producer_order_tab.producer_order_list_widget.item(i).data(Qt.UserRole)['index'],
-                    'percentage': float(self.producer_order_tab.producer_percentage_inputs[i-1].text())
+                    'percentage': float(self.producer_order_tab.percentage_inputs[i-1].text())  # Zugriff auf die Liste
                 }
                 for i in range(1, self.producer_order_tab.producer_order_list_widget.count())
             ]

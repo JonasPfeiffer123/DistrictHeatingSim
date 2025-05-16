@@ -1,14 +1,10 @@
 """
 Filename: 08_example_complex_pandapipes.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-11-19
-Description: Script for testing the pandapipes net simulation functions.
+Date: 2025-05-13
+Description: Script for testing the pandapipes net simulation functions. Aims to simulate a district heating network using GeoJSON files for the network layout and a JSON file for the building load profile. The script includes functions to create and initialize the network, perform time series calculations, and plot the results.
 Usage: Run the script in the main directory of the repository.
-Functions:
-    * initialize_net_geojson: Initializes a pandapipes network from geojson files and optimizes the network.
-    * initialize_net_geojson2: Initializes a pandapipes network from geojson files and optimizes the network.
-Usage:
-    $ python 08_example_complex_pandapipes.py
+
 
 """
 
@@ -24,7 +20,7 @@ from districtheatingsim.net_simulation_pandapipes.config_plot import config_plot
 def create_and_initialize_net_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, supply_temperature_heat_consumer, 
                                           return_temperature_heat_consumer, supply_temperature, flow_pressure_pump, lift_pressure_pump, 
                                           netconfiguration, dT_RL, building_temp_checked, pipetype, v_max_pipe, material_filter, 
-                                          DiameterOpt_ckecked, k_mm, mass_flow_secondary_producers, COP_filename, TRY_filename):
+                                          DiameterOpt_ckecked, k_mm, main_producer_location_index, secondary_producers, COP_filename, TRY_filename):
         """
         Creates and initializes the network from GeoJSON files.
 
@@ -52,11 +48,11 @@ def create_and_initialize_net_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen,
         results = (initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, COP_filename, 
                           supply_temperature_heat_consumer, return_temperature_heat_consumer, supply_temperature, 
                           flow_pressure_pump, lift_pressure_pump, netconfiguration, pipetype, dT_RL, 
-                          v_max_pipe, material_filter, mass_flow_secondary_producers, k_mm))
+                          v_max_pipe, material_filter, k_mm, main_producer_location_index, secondary_producers))
             
         net, yearly_time_steps, waerme_hast_ges_W, return_temperature_heat_consumer, supply_temperature_buildings, \
-        return_temperature_buildings, supply_temperature_buildings_curve, return_temperature_buildings_curve, strombedarf_hast_ges_W, \
-        max_el_leistung_hast_ges_W = results
+        return_temperature_buildings, supply_temperature_buildings_curve, return_temperature_buildings_curve, \
+            min_supply_temperature_heat_consumer, strombedarf_hast_ges_W, max_el_leistung_hast_ges_W = results
 
         # Common steps for both import types
         if DiameterOpt_ckecked == True:
@@ -64,7 +60,7 @@ def create_and_initialize_net_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen,
         
         # This equals the return from the NetInitializationThread
         net_data = net, yearly_time_steps, waerme_hast_ges_W, supply_temperature_heat_consumer, supply_temperature, return_temperature_heat_consumer, supply_temperature_buildings, return_temperature_buildings, \
-            supply_temperature_buildings_curve, return_temperature_buildings_curve, netconfiguration, dT_RL, building_temp_checked, strombedarf_hast_ges_W, \
+            supply_temperature_buildings_curve, return_temperature_buildings_curve, min_supply_temperature_heat_consumer, netconfiguration, dT_RL, building_temp_checked, strombedarf_hast_ges_W, \
             max_el_leistung_hast_ges_W, TRY_filename, COP_filename
 
         waerme_ges_kW = np.where(waerme_hast_ges_W == 0, 0, waerme_hast_ges_W / 1000)
@@ -106,9 +102,9 @@ def plot(net, time_steps, qext_kW, strom_kW):
 
     config_plot(net, ax2, show_junctions=True, show_pipes=True, show_heat_consumers=True, show_basemap=False, show_plot=True)
 
-def timeseries_calculation_net(net_data, start=0, end=100):
+def timeseries_calculation_net(net_data, start=0, end=100, secondary_producers=None):
     net, yearly_time_steps, total_heat_W, supply_temperature_heat_consumer, supply_temperature, return_temperature_heat_consumer, supply_temperature_buildings, \
-        return_temperature_buildings, supply_temperature_buildings_curve, return_temperature_buildings_curve, netconfiguration, dT_RL, building_temp_checked, \
+        return_temperature_buildings, supply_temperature_buildings_curve, return_temperature_buildings_curve, min_supply_temperature_heat_consumer, netconfiguration, dT_RL, building_temp_checked, \
         strombedarf_hast_ges_W, max_el_leistung_hast_ges_W, TRY_filename, COP_filename = net_data
 
     waerme_hast_ges_W, strom_hast_ges_W, supply_temperature_heat_consumer, return_temperature_heat_consumer = time_series_preprocessing(supply_temperature, supply_temperature_heat_consumer, \
@@ -117,9 +113,13 @@ def timeseries_calculation_net(net_data, start=0, end=100):
                                                                                                     netconfiguration, total_heat_W, \
                                                                                                     return_temperature_buildings_curve, dT_RL, \
                                                                                                     supply_temperature_buildings_curve, COP_filename)
-    
+
+    return_temperature_heat_consumer = np.array([np.full(end - start, temp) for temp in return_temperature_heat_consumer])
+    min_supply_temperature_heat_consumer = np.array([np.full(end - start, temp) for temp in min_supply_temperature_heat_consumer])
+
     time_steps, net, net_results = thermohydraulic_time_series_net(net, yearly_time_steps, waerme_hast_ges_W, start, \
-                                                                    end, supply_temperature, supply_temperature_heat_consumer, return_temperature_heat_consumer)
+                                                                    end, supply_temperature, min_supply_temperature_heat_consumer, \
+                                                                    return_temperature_heat_consumer, secondary_producers)
 
     return (time_steps, net, net_results, waerme_hast_ges_W, strom_hast_ges_W)
 
@@ -142,17 +142,23 @@ if __name__ == "__main__":
     #ruecklauf_path = "examples/data/Wärmenetz/Variante 1/Rücklauf.geojson"
     #hast_path = "examples/data/Wärmenetz/Variante 1/HAST.geojson"
     #erzeugeranlagen_path = "examples/data/Wärmenetz/Variante 1/Erzeugeranlagen.geojson"
+
     vorlauf_path = "examples/data/Wärmenetz/Variante 2/Vorlauf.geojson"
     ruecklauf_path = "examples/data/Wärmenetz/Variante 2/Rücklauf.geojson"
     hast_path = "examples/data/Wärmenetz/Variante 2/HAST.geojson"
     erzeugeranlagen_path = "examples/data/Wärmenetz/Variante 2/Erzeugeranlagen.geojson"
+
     json_path = "examples/data/Gebäude Lastgang.json"
+
     supply_temperature_heat_consumer = 60 # minimum supply temperature for heat consumers
     return_temperature_heat_consumer = 50 # return temperature for heat consumers
+
     supply_temperature = np.linspace(85, 70, 8760) # supply temperature for the network
     flow_pressure_pump = 4 # flow pressure of the pump
     lift_pressure_pump = 1.5 # lift pressure of the pump
+
     netconfiguration = "Niedertemperaturnetz" # network configuration ("kaltes Netz")
+
     dT_RL = 5 # temperature difference between heat consumer and net due to heat exchanger
     building_temp_checked = False # flag indicating if building temperatures are considered
     pipetype = "KMR 100/250-2v" # type of pipe
@@ -161,26 +167,27 @@ if __name__ == "__main__":
     DiameterOpt_ckecked = True # flag indicating if diameter optimization is checked
     k_mm = 0.1 # roughness of the pipe
 
-    mass_flow_secondary_producers = 1 # not really used currently
-
+    secondary_producers = [{"index": 1, "percentage": 5}] # secondary producers with index and percentage
+    main_producer_location_index = 0 # index of the main producer location
+    #secondary_producers = None
     TRY_filename = "examples/data/TRY/TRY_511676144222/TRY2015_511676144222_Jahr.dat"
     COP_filename = "examples/data/COP/Kennlinien WP.csv"
 
     net_data = create_and_initialize_net_geojson(vorlauf_path, ruecklauf_path, hast_path, erzeugeranlagen_path, json_path, supply_temperature_heat_consumer,
                                         return_temperature_heat_consumer, supply_temperature, flow_pressure_pump, lift_pressure_pump, netconfiguration, dT_RL,
-                                        building_temp_checked, pipetype, v_max_pipe, material_filter, DiameterOpt_ckecked, k_mm, mass_flow_secondary_producers, 
-                                        COP_filename, TRY_filename)
-    
-    print_net_results(net_data[0])
+                                        building_temp_checked, pipetype, v_max_pipe, material_filter, DiameterOpt_ckecked, k_mm, main_producer_location_index, 
+                                        secondary_producers, COP_filename, TRY_filename)
 
-    fig, ax2 = plt.subplots()
-    config_plot(net_data[0], ax2, show_junctions=True, show_pipes=True, show_heat_consumers=True, show_basemap=False, show_plot=True)
-    plt.show()
+    #print_net_results(net_data[0])
 
-    start_time_step = 1000 # start time step
-    end_time_step = 1100 # end time step
+    #fig, ax2 = plt.subplots()
+    #config_plot(net_data[0], ax2, show_junctions=True, show_pipes=True, show_heat_consumers=True, show_basemap=False, show_plot=True)
+    #plt.show()
+
+    start_time_step = 0 # start time step
+    end_time_step = 100 # end time step
     
-    time_steps, net, net_results, waerme_hast_ges_W, strom_hast_ges_W = timeseries_calculation_net(net_data, start_time_step, end_time_step)
+    time_steps, net, net_results, waerme_hast_ges_W, strom_hast_ges_W = timeseries_calculation_net(net_data, start_time_step, end_time_step, secondary_producers=secondary_producers)
 
     waerme_ges_kW = (np.sum(waerme_hast_ges_W, axis=0)/1000)[start_time_step:end_time_step]
     strom_wp_kW = (np.sum(strom_hast_ges_W, axis=0)/1000)[start_time_step:end_time_step]

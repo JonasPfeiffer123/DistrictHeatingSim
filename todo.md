@@ -90,3 +90,6 @@ SaisonalSpeicher in Optimierung mit einbeziehen, wirtschaftliche Faktoren defini
 
 Snakemake
 https://snakemake.readthedocs.io/en/stable/
+
+To dos pandapipes:
+Zeitreihen-Datenübergabe ist kompliziert, Vereinfachung?

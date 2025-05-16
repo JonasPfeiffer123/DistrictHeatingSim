@@ -6,6 +6,7 @@ Description: Contains the threaded functionality functions for network initializ
 """
 
 import traceback
+import numpy as np
 
 from PyQt5.QtCore import QThread, pyqtSignal
 
@@ -54,8 +55,8 @@ class NetInitializationThread(QThread):
                                                    self.v_max_pipe, self.material_filter, self.k_mm, self.main_producer_location_index, self.secondary_producers))
                 
                 self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.return_temperature_heat_consumer, self.supply_temperature_buildings, \
-                self.return_temperature_buildings, self.supply_temperature_building_curve,  self.return_temperature_building_curve, strombedarf_hast_ges_W, \
-                max_el_leistung_hast_ges_W = self.results 
+                self.return_temperature_buildings, self.supply_temperature_building_curve, self.return_temperature_building_curve, min_supply_temperature_heat_consumer, \
+                strombedarf_hast_ges_W, max_el_leistung_hast_ges_W = self.results 
             else:
                 raise ValueError("Unbekannter Importtyp")
 
@@ -65,7 +66,7 @@ class NetInitializationThread(QThread):
             
             self.calculation_done.emit((self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.supply_temperature_heat_consumer, self.return_temperature_heat_consumer, \
                                         self.supply_temperature_buildings, self.return_temperature_buildings, self.supply_temperature_building_curve, self.return_temperature_building_curve, \
-                                        strombedarf_hast_ges_W, max_el_leistung_hast_ges_W))
+                                        min_supply_temperature_heat_consumer, strombedarf_hast_ges_W, max_el_leistung_hast_ges_W))
 
         except Exception as e:
             self.calculation_error.emit(str(e) + "\n" + traceback.format_exc())
@@ -90,7 +91,7 @@ class NetCalculationThread(QThread):
     calculation_error = pyqtSignal(str)
 
     def __init__(self, net, yearly_time_steps, total_heat_W, calc1, calc2, supply_temperature, supply_temperature_heat_consumer, return_temperature_heat_consumer, supply_temperature_buildings, \
-                 return_temperature_buildings, supply_temperature_buildings_curve, return_temperature_buildings_curve, dT_RL=5, netconfiguration=None, building_temp_checked=False, \
+                 return_temperature_buildings, supply_temperature_buildings_curve, return_temperature_buildings_curve, min_supply_temperature_heat_consumer, dT_RL=5, netconfiguration=None, building_temp_checked=False, \
                     TRY_filename=None, COP_filename=None, secondary_producers=None):
         """
         Initializes the NetCalculationThread.
@@ -128,11 +129,13 @@ class NetCalculationThread(QThread):
         self.return_temperature_buildings = return_temperature_buildings
         self.supply_temperature_buildings_curve = supply_temperature_buildings_curve
         self.return_temperature_buildings_curve = return_temperature_buildings_curve
+        self.min_supply_temperature_heat_consumer = min_supply_temperature_heat_consumer
         self.dT_RL = dT_RL
         self.netconfiguration = netconfiguration
         self.building_temp_checked = building_temp_checked
         self.TRY_filename = TRY_filename
         self.COP_filename = COP_filename
+        self.secondary_producers = secondary_producers
     
     def run(self):
         """
@@ -145,9 +148,12 @@ class NetCalculationThread(QThread):
                                                                                                                                 self.netconfiguration, self.total_heat_W, \
                                                                                                                                 self.return_temperature_buildings_curve, self.dT_RL, \
                                                                                                                                 self.supply_temperature_buildings_curve, self.COP_filename)
-
+            self.return_temperature_heat_consumer = np.array([np.full(self.calc2 - self.calc1, temp) for temp in self.return_temperature_heat_consumer])
+            self.min_supply_temperature_heat_consumer = np.array([np.full(self.calc2 - self.calc1, temp) for temp in self.min_supply_temperature_heat_consumer])
+            
             self.time_steps, self.net, self.net_results = thermohydraulic_time_series_net(self.net, self.yearly_time_steps, self.waerme_hast_ges_W, self.calc1, \
-                                                                                          self.calc2, self.supply_temperature, self.supply_temperature_heat_consumer, self.return_temperature_heat_consumer)
+                                                                                          self.calc2, self.supply_temperature, self.min_supply_temperature_heat_consumer, \
+                                                                                        self.return_temperature_heat_consumer, self.secondary_producers)
 
             self.calculation_done.emit((self.time_steps, self.net, self.net_results, self.waerme_hast_ges_W, self.strom_hast_ges_W))
         except Exception as e:

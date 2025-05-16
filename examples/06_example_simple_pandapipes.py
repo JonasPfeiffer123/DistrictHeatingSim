@@ -71,8 +71,13 @@ def test_heat_consumer_result_extraction():
 
     return net
 
-def initialize_test_net(qext_w=np.array([100000, 200000]), return_temperature=np.array([55, 60]), supply_temperature=85, 
-                        flow_pressure_pump=4, lift_pressure_pump=1.5, pipetype="110/202 PLUS", v_max_m_s=1.5):
+def initialize_test_net(qext_w=np.array([100000, 200000]),
+                        return_temperature=np.array([55, 60]),
+                        supply_temperature=85, 
+                        flow_pressure_pump=4,
+                        lift_pressure_pump=1.5,
+                        pipetype="110/202 PLUS",
+                        v_max_m_s=1.5):
     print("Running the test network initialization script.")
     net = pp.create_empty_network(fluid="water")
 
@@ -117,7 +122,7 @@ def initialize_test_net(qext_w=np.array([100000, 200000]), return_temperature=np
 
     pp.pipeflow(net, mode="bidirectional", iter=100)
     
-    net = create_controllers(net, qext_w, return_temperature)
+    net = create_controllers(net, qext_w, supply_temperature, None, return_temperature, None)
     net = correct_flow_directions(net)
     net = init_diameter_types(net, v_max_pipe=v_max_m_s, material_filter="PEXa", k=k)
     net = optimize_diameter_types(net, v_max=v_max_m_s, material_filter="PEXa", k=k)
@@ -128,8 +133,10 @@ def initialize_test_net(qext_w=np.array([100000, 200000]), return_temperature=np
 def initialize_complex_test_net(qext_w=np.array([20000, 15000, 10000, 25000]),
                                 return_temperature=np.array([55, 60, 50, 65]),
                                 supply_temperature=85,
-                                flow_pressure_pump=4, lift_pressure_pump=1.5,
-                                pipetype="110/202 PLUS", v_max_m_s=1.5):
+                                flow_pressure_pump=4,
+                                lift_pressure_pump=1.5,
+                                pipetype="110/202 PLUS",
+                                v_max_m_s=1.5):
     print("Running the complex test network initialization script.")
     net = pp.create_empty_network(fluid="water")
     
@@ -172,15 +179,21 @@ def initialize_complex_test_net(qext_w=np.array([20000, 15000, 10000, 25000]),
     pp.pipeflow(net, mode="bidirectional", iter=100, alpha=0.2)
 
     # Placeholder functions for additional processing
-    net = create_controllers(net, qext_w, return_temperature)
+    net = create_controllers(net, qext_w, supply_temperature, None, return_temperature, None)
     net = correct_flow_directions(net)
     net = init_diameter_types(net, v_max_pipe=v_max_m_s, material_filter="PEXa", k=k)
     net = optimize_diameter_types(net, v_max=v_max_m_s, material_filter="PEXa", k=k)
 
     return net
 
-def initialize_test_net_two_pumps(qext_w=np.array([50000, 20000]), return_temperature=np.array([60,55]), supply_temperature=85, flow_pressure_pump=4, lift_pressure_pump=1.5, 
-                        pipetype="110/202 PLUS",  v_max_m_s=1.5, mass_pump_mass_flow=0.5):
+def initialize_test_net_two_pumps(qext_w=np.array([50000, 20000]),
+                                  return_temperature=np.array([60,55]),
+                                  supply_temperature=85,
+                                  flow_pressure_pump=4,
+                                  lift_pressure_pump=1.5,
+                                  pipetype="110/202 PLUS",
+                                  v_max_m_s=1.5,
+                                  mass_pump_mass_flow=0.5):
     print("Running the test network with two pumps initialization script.")
     net = pp.create_empty_network(fluid="water")
 
@@ -215,7 +228,7 @@ def initialize_test_net_two_pumps(qext_w=np.array([50000, 20000]), return_temper
     pipe3 = pp.create_pipe(net, j4, j5, std_type=pipetype, length_km=0.025, k_mm=k, name="pipe3", sections=5, text_k=283)
 
     pp.create_heat_consumer(net, from_junction=j5, to_junction=j6, qext_w=qext_w[0], treturn_k=return_temperature_k[0], name="Consumer A")
-    pp.create_heat_consumer(net, from_junction=j4, to_junction=j7, qext_w=qext_w[0], treturn_k=return_temperature_k[0], name="Consumer B")
+    pp.create_heat_consumer(net, from_junction=j4, to_junction=j7, qext_w=qext_w[1], treturn_k=return_temperature_k[1], name="Consumer B")
     
     pipe4 = pp.create_pipe(net, j6, j7, std_type=pipetype, length_km=0.25, k_mm=k, name="pipe4", sections=5, text_k=283)
     pipe5 = pp.create_pipe(net, j7, j8, std_type=pipetype, length_km=0.05, k_mm=k, name="pipe5", sections=5, text_k=283)
@@ -234,15 +247,12 @@ def initialize_test_net_two_pumps(qext_w=np.array([50000, 20000]), return_temper
                                                 t_flow_k=supply_temperature_k, type="auto", name="pump2")
     
     flow_control_pump2 = pp.create_flow_control(net, j11, j9, controlled_mdot_kg_per_s=mass_pump_mass_flow)
-    
-    pp_plot.simple_plot(net, junction_size=0.01, heat_consumer_size=0.1, pump_size=0.1,
-                    pump_color='green', pipe_color='black', heat_consumer_color="blue", show_plot=True)
 
     # Simulate pipe flow
-    pp.pipeflow(net, mode="bidirectional", iter=100, alpha=0.2)
+    pp.pipeflow(net, mode="bidirectional", iter=100)
 
     # Placeholder functions for additional processing
-    net = create_controllers(net, qext_w, return_temperature)
+    net = create_controllers(net, qext_w, supply_temperature, None, return_temperature, None)
     net = correct_flow_directions(net)
     net = init_diameter_types(net, v_max_pipe=v_max_m_s, material_filter="PEXa", k=k)
     net = optimize_diameter_types(net, v_max=v_max_m_s, material_filter="PEXa", k=k)
@@ -286,9 +296,9 @@ def test_profile_initiation():
 if __name__ == "__main__":
     try:
         #net = test_heat_consumer_result_extraction()
-        net = initialize_test_net()
+        #net = initialize_test_net()
         #net = initialize_complex_test_net()
-        #net = initialize_test_net_two_pumps()
+        net = initialize_test_net_two_pumps()
         #net = test_profile_initiation()
 
         print(net)
