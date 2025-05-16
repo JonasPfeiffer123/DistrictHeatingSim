@@ -1,7 +1,7 @@
 """
 Filename: utilities.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-03-10
+Date: 2025-05-15
 Description: Script with different functionalities used in the pandapipes functions.
 """
 
@@ -62,7 +62,7 @@ def COP_WP(VLT_L, QT, values=np.genfromtxt(get_resource_path('data/COP/Kennlinie
 
 class WorstPointPressureController(BasicCtrl):
     """
-    A controller for maintaining the pressure difference at the worst point in the network.
+    A controller for maintaining the pressure difference at the worst point (Differenzdruckregelung im Schlechtpunkt) in the network.
     
     Args:
         net (pandapipesNet): The pandapipes network.
@@ -368,46 +368,75 @@ class TemperatureController(BasicCtrl):
 
         return False
 
-def create_controllers(net, qext_w, min_supply_temperature_heat_consumer):
+def create_controllers(net, qext_w, supply_temperature_heat_generator, min_supply_temperature_heat_consumer, return_temperature_heat_consumer, secondary_producers=None):
     """Create controllers for the network to manage heat consumers.
 
     Args:
         net (pandapipesNet): The pandapipes network.
         qext_w (array-like): External heat values for heat consumers.
+        supply_temperature_heat_generator (array-like): Supply temperatures for heat generators.
         min_supply_temperature_heat_consumer (array-like): Minimum supply temperatures for heat consumers.
-
+        return_temperature_heat_consumer (array-like): Return temperatures for heat consumers.
+        secondary_producers (list, optional): List of secondary producers. Defaults to None.
     Returns:
         pandapipesNet: The pandapipes network with controllers added.
     """
-
-    # Creates controllers for the network
+    # Creates controllers for the heat consumers in the network
     for i in range(len(net.heat_consumer)):
         # Create a simple DFData object for qext_w with the specific value for this pass
-        placeholder_df = pd.DataFrame({f'qext_w_{i}': [qext_w[i]]})
-        placeholder_data_source = DFData(placeholder_df)
+        placeholder_df_qext = pd.DataFrame({f'qext_w_{i}': [qext_w[i]]})
+        placeholder_data_source_qext = DFData(placeholder_df_qext)
 
-        ConstControl(net, element='heat_consumer', variable='qext_w', element_index=i, data_source=placeholder_data_source, profile_name=f'qext_w_{i}')
+        ConstControl(net, element='heat_consumer', variable='qext_w', element_index=i, data_source=placeholder_data_source_qext, profile_name=f'qext_w_{i}')
 
-        # Adjustment for using return_temperature as an array
-        T_controller = TemperatureController(net, heat_consumer_idx=i, min_supply_temperature=min_supply_temperature_heat_consumer[i])
-        net.controller.loc[len(net.controller)] = [T_controller, True, -1, -1, False, False]
+        # Create a ConstControl for return temperature
+        placeholder_df_treturn = pd.DataFrame({f'treturn_k_{i}': [return_temperature_heat_consumer[i] + 273.15]})
+        placeholder_data_source_treturn = DFData(placeholder_df_treturn)
 
-    if hasattr(net, 'circ_pump_mass'):
-        for i in range(len(net.circ_pump_mass)):
-            # qext_w / number of circ_pump_mass + circ_pump_pressure --> equal heat distribution
-            # Calculate the mass flow from qext_w
-            qext_i = np.sum(qext_w) / (len(net.circ_pump_mass) + len(net.circ_pump_pressure))
-            cp = 4190  # Specific heat capacity in J/(kg K)
-            delta_T = 35  # Assumed temperature difference in K
-            mass_flow = qext_i / (cp * delta_T)  # Mass flow in kg/s
+        ConstControl(net, element='heat_consumer', variable='treturn_k', element_index=i, data_source=placeholder_data_source_treturn, profile_name=f'treturn_k_{i}')
 
-            print(f"Mass flow for circ_pump_mass_{i}: {mass_flow} kg/s")
+        if min_supply_temperature_heat_consumer is not None:
+            # Adjustment for using return_temperature as an array
+            T_controller = TemperatureController(net, heat_consumer_idx=i, min_supply_temperature=min_supply_temperature_heat_consumer[i])
+            net.controller.loc[len(net.controller)] = [T_controller, True, -1, -1, False, False]
 
-            placeholder_df = pd.DataFrame({f'mdot_kg_per_s_{i}': [mass_flow]})
+    # Create a controller for the heat generator supply temperature
+    placeholder_df_supply_temp = pd.DataFrame({'supply_temperature': [supply_temperature_heat_generator + 273.15]})
+    placeholder_data_source_supply_temp = DFData(placeholder_df_supply_temp)
+    ConstControl(net, element='circ_pump_pressure', variable='t_flow_k', element_index=0, data_source=placeholder_data_source_supply_temp, profile_name='supply_temperature')
+
+    # Create controllers for secondary producers in the network
+    if secondary_producers:
+        for producer in secondary_producers:
+            mass_flow = producer.get("mass_flow", 0)  # Default to 0 if not provided
+            placeholder_df = pd.DataFrame({f'mdot_flow_kg_per_s_{producer["index"]}': [mass_flow]})
             placeholder_data_source = DFData(placeholder_df)
 
-            ConstControl(net, element='circ_pump_mass', variable='mdot_kg_per_s', element_index=i, data_source=placeholder_data_source, profile_name=f'mdot_kg_per_s_{i}')
-            
+            ConstControl(
+                net,
+                element='circ_pump_mass',
+                variable='mdot_flow_kg_per_s',
+                element_index=0,
+                data_source=placeholder_data_source,
+                profile_name=f'mdot_flow_kg_per_s_{producer["index"]}'
+            )
+
+            # Add flow control for the producer
+            placeholder_df_flow = pd.DataFrame({f'controlled_mdot_kg_per_s_{producer["index"]}': [mass_flow]})
+            placeholder_data_source_flow = DFData(placeholder_df_flow)
+
+            ConstControl(
+                net,
+                element='flow_control',
+                variable='controlled_mdot_kg_per_s',
+                element_index=0,
+                data_source=placeholder_data_source_flow,
+                profile_name=f'controlled_mdot_kg_per_s_{producer["index"]}'
+            )
+
+            # supply temperature for secondary producers
+            ConstControl(net, element='circ_pump_mass', variable='t_flow_k', element_index=0, data_source=placeholder_data_source_supply_temp, profile_name='supply_temperature')
+
     dp_controller = WorstPointPressureController(net)
     net.controller.loc[len(net.controller)] = [dp_controller, True, -1, -1, False, False]
 
@@ -509,7 +538,7 @@ def init_diameter_types(net, v_max_pipe=1.0, material_filter="KMR", k=0.1):
         pandapipesNet: The pandapipes network with initialized diameters and types.
     """
     start_time_total = time.time()
-    pp.pipeflow(net, mode="bidirectional", iter=100, alpha=0.2)
+    pp.pipeflow(net, mode="bidirectional", iter=100)
     logging.info(f"Initial pipeflow calculation took {time.time() - start_time_total:.2f} seconds")
 
     pipe_std_types = pp.std_types.available_std_types(net, "pipe")

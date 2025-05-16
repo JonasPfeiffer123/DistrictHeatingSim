@@ -35,7 +35,8 @@ def initialize_test_net(qext_w=np.array([100000, 100000, 100000]),
                         supply_temperature=85,
                         flow_pressure_pump=4, 
                         lift_pressure_pump=1.5,
-                        pipetype="110/202 PLUS"):
+                        pipetype="110/202 PLUS",
+                        v_max_m_s=1.5):
     print("Initializing test network...")
     # Initialize the pandapipes network
     net = pp.create_empty_network(fluid="water")
@@ -79,7 +80,10 @@ def initialize_test_net(qext_w=np.array([100000, 100000, 100000]),
     pp.pipeflow(net, mode="bidirectional", iter=100, alpha=0.2)
 
     # Placeholder functions for additional processing
-    net = create_controllers(net, qext_w, return_temperature)
+    net = create_controllers(net, qext_w, supply_temperature, None, return_temperature, None)
+    net = correct_flow_directions(net)
+    net = init_diameter_types(net, v_max_pipe=v_max_m_s, material_filter="PEXa", k=k)
+    net = optimize_diameter_types(net, v_max=v_max_m_s, material_filter="PEXa", k=k)
 
     return net
 
@@ -98,23 +102,28 @@ def timeseries_test(net):
     # np.random.seed() is used to make the random numbers predictable
     np.random.seed(0)
     # for every time step for every heat consumer qext_w needs to be defined and saved in a two-dimensional array, not zeros random numbers in range 0 to 100000
-    qext_w_profiles = np.random.randint(0, 100000, size=(4, end)) # Structure is two-dimensional array with shape (n_profiles, n_time_steps)
+    qext_w_profiles = np.random.randint(0, 100000, size=(3, end)) # Structure is two-dimensional array with shape (n_profiles, n_time_steps)
     print(f"qext_w_profiles: {qext_w_profiles}") # Structure is two-dimensional array with shape (n_profiles, n_time_steps)
 
-    # set some time steps to zero
-    #qext_w_profiles[0, 7] = 0
-    #qext_w_profiles[1, 7] = 0
-    #qext_w_profiles[2, 7] = 0
+    return_temperature = np.linspace(50, 60, end).reshape(1, -1).repeat(3, axis=0)  # Generate time-dependent return temperatures as a linear gradient
+    if qext_w_profiles.shape != return_temperature.shape:
+        raise ValueError("The shape of return_temperature_profiles must match the shape of qext_w_profiles.")
+    supply_temperature = np.full_like(time_steps, 85)  # Supply temperature is constant
+    print(f"supply_temperature: {supply_temperature}") # Structure is one-dimensional array with shape (n_time_steps,)
+    
+    print(net.controller)
 
-    #qext_w_profiles[2, 306] = 1000
+    update_heat_consumer_qext_controller(net, qext_w_profiles, time_steps, start, end)
+    update_heat_consumer_return_temperature_controller(net, return_temperature, time_steps, start, end)
+    update_heat_generator_supply_temperature_controller(net, supply_temperature, time_steps, start, end)
 
-    print(f"qext_w_profiles: {qext_w_profiles}") # Structure is two-dimensional array with shape (n_profiles, n_time_steps)
-
-    print(f"qext_w_profiles[0][7]: {qext_w_profiles[0][7]}") # Structure is two-dimensional array with shape (n_profiles, n_time_steps)
-    print(f"qext_w_profiles[1][7]: {qext_w_profiles[1][7]}") # Structure is two-dimensional array with shape (n_profiles, n_time_steps)
-    print(f"qext_w_profiles[2][7]: {qext_w_profiles[2][7]}") # Structure is two-dimensional array with shape (n_profiles, n_time_steps)
-
-    update_const_controls(net, qext_w_profiles, time_steps, start, end)
+    print(net)
+    print(net.controller)
+    print(net.heat_consumer)
+    print(net.circ_pump_pressure)
+    #print(net.res_controller)
+    print(net.res_heat_consumer)
+    print(net.res_circ_pump_pressure)
 
     # Log variables and run time series calculation
     log_variables = create_log_variables(net)
