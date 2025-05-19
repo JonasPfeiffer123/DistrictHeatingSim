@@ -1,7 +1,7 @@
 """
 Filename: utilities.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-05-15
+Date: 2025-05-17
 Description: Script with different functionalities used in the pandapipes functions.
 """
 
@@ -247,7 +247,7 @@ class TemperatureController(BasicCtrl):
 
         # Check if a data source exists and get the target temperature for the current time step
         if self.data_source is not None:
-            self.min_supply_temperature = self.data_source.df.at[time_step, 'min_supply_temperature']
+            self.min_supply_temperature = self.data_source.df.at[time_step, f'min_supply_temperature']
         
         return time_step
 
@@ -395,9 +395,20 @@ def create_controllers(net, qext_w, supply_temperature_heat_generator, min_suppl
 
         ConstControl(net, element='heat_consumer', variable='treturn_k', element_index=i, data_source=placeholder_data_source_treturn, profile_name=f'treturn_k_{i}')
 
-        if min_supply_temperature_heat_consumer is not None:
-            # Adjustment for using return_temperature as an array
-            T_controller = TemperatureController(net, heat_consumer_idx=i, min_supply_temperature=min_supply_temperature_heat_consumer[i])
+        if min_supply_temperature_heat_consumer is not None and np.any(np.array(min_supply_temperature_heat_consumer) != 0):
+            print(f"Creating temperature controller for heat consumer {i} with min supply temperature {min_supply_temperature_heat_consumer[i]} °C")
+            # Create a DFData object for min_supply_temperature for all time steps (repeat the value for each time step)
+            min_supply_temp_profile = pd.DataFrame(
+            {f'min_supply_temperature': [min_supply_temperature_heat_consumer[i]]}
+            )
+            min_supply_temp_data_source = DFData(min_supply_temp_profile)
+            T_controller = TemperatureController(
+            net,
+            heat_consumer_idx=i,
+            min_supply_temperature=min_supply_temperature_heat_consumer[i],  # initial value
+            )
+            # Attach the data source to the controller for time-dependent min supply temp
+            T_controller.data_source = min_supply_temp_data_source
             net.controller.loc[len(net.controller)] = [T_controller, True, -1, -1, False, False]
 
     # Create a controller for the heat generator supply temperature
@@ -711,30 +722,6 @@ def export_net_geojson(net, filename):
         
         features.append(gdf_pumps)
 
-    if 'heat_exchanger' in net and not net.heat_exchanger.empty and 'flow_control' in net and not net.flow_control.empty:
-        # Iterate through each pair of heat_exchanger and flow_control
-        for idx, heat_exchanger in net.heat_exchanger.iterrows():
-            # Since flow_controls and heat_exchangers are created together, we assume that they
-            # have the same order or can be linked via logic that must be implemented here
-            flow_control = net.flow_control.loc[net.flow_control['to_junction'] == heat_exchanger['from_junction']].iloc[0]
-
-            # Get the coordinates for flow_control's start and heat_exchanger's end coordinates
-            start_coords = net.junction_geodata.loc[flow_control['from_junction']]
-            end_coords = net.junction_geodata.loc[heat_exchanger['to_junction']]
-
-            # Create a line between these points
-            line = LineString([(start_coords['x'], start_coords['y']), (end_coords['x'], end_coords['y'])])
-            
-            # Create a GeoDataFrame for this combined component
-            gdf_component = gpd.GeoDataFrame({
-                'name': "HAST",
-                'diameter_mm': f"{heat_exchanger['diameter_m']*1000:.1f}",
-                'qext_W': f"{heat_exchanger['qext_w']:.0f}",
-                'geometry': [line]
-            }, crs="EPSG:25833")  # Set crs to EPSG:25833
-            
-            features.append(gdf_component)
-
     if 'heat_consumer' in net and not net.heat_consumer.empty:
         # Iterate through each pair of heat_exchanger and flow_control
         for idx, heat_consumer in net.heat_consumer.iterrows():
@@ -747,8 +734,7 @@ def export_net_geojson(net, filename):
             
             # Create a GeoDataFrame for this combined component
             gdf_component = gpd.GeoDataFrame({
-                'name': "HAST",
-                'diameter_mm': f"{heat_consumer['diameter_m']*1000:.1f}",
+                'name': "HAST",            
                 'qext_W': f"{heat_consumer['qext_w']:.0f}",
                 'geometry': [line]
             }, crs="EPSG:25833")  # Set crs to EPSG:25833

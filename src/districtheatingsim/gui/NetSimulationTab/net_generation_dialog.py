@@ -1,7 +1,7 @@
 """
 Filename: net_generation_dialog.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-02-11
+Date: 2025-05-17
 Description: Contains the NetGenerationDialog class.
 """
 
@@ -12,6 +12,7 @@ from districtheatingsim.gui.NetSimulationTab.network_data_tab import NetworkData
 from districtheatingsim.gui.NetSimulationTab.producer_order_tab import ProducerOrderTab
 from districtheatingsim.gui.NetSimulationTab.network_config_tab import NetworkConfigTab
 from districtheatingsim.gui.NetSimulationTab.diameter_optimization_tab import DiameterOptimizationTab
+from districtheatingsim.gui.NetSimulationTab.NetworkDataClass import NetworkGenerationData, SecondaryProducer
         
 class NetGenerationDialog(QDialog):
     def __init__(self, generate_callback, base_path, parent=None):
@@ -68,15 +69,15 @@ class NetGenerationDialog(QDialog):
         flow_pressure_pump = float(self.network_config_tab.parameter_rows_net[5].itemAt(1).widget().text())
         lift_pressure_pump = float(self.network_config_tab.parameter_rows_net[6].itemAt(1).widget().text())
 
-        if self.network_config_tab.supply_temperature_heat_consumer_checked == True:
-            supply_temperature_heat_consumer = float(self.network_config_tab.parameter_rows_heat_consumer[0].itemAt(1).widget().text())
+        if self.network_config_tab.min_supply_temperature_building_checked == True:
+            min_supply_temperature_building = float(self.network_config_tab.parameter_rows_heat_consumer[0].itemAt(1).widget().text())
         else:
-            supply_temperature_heat_consumer = None  
+            min_supply_temperature_building = None  
               
         if self.network_config_tab.return_temp_checked == True:
-            rl_temp_heat_consumer = float(self.network_config_tab.parameter_rows_heat_consumer[1].itemAt(1).widget().text())
+            fixed_return_temperature_heat_consumer = float(self.network_config_tab.parameter_rows_heat_consumer[1].itemAt(1).widget().text())
         else:
-            rl_temp_heat_consumer = None
+            fixed_return_temperature_heat_consumer = None
 
         dT_RL = float(self.network_config_tab.parameter_rows_heat_consumer[2].itemAt(1).widget().text())
 
@@ -94,12 +95,32 @@ class NetGenerationDialog(QDialog):
             main_producer_location_index = 0
             secondary_producers = []
 
-        ### hier muss der path für die JSON mit den Lastgängen ergänzt werden ###
-        # Führen Sie die Netzgenerierung für GeoJSON durch
+        data = NetworkGenerationData(
+            flow_line_path=vorlauf_path, # Type: str
+            return_line_path=ruecklauf_path, # Type: str
+            heat_consumer_path=hast_path, # Type: str
+            heat_generator_path=erzeugeranlagen_path, # Type: str
+            heat_demand_json_path=json_path, # Type: str
+            min_supply_temperature_building=min_supply_temperature_building, # Type: float or None
+            fixed_return_temperature_heat_consumer=fixed_return_temperature_heat_consumer, # Type: float or None
+            supply_temperature_heat_generator=supply_temperature_net, # Type: float or numpy array with shape floats (length 8760)
+            flow_pressure_pump=flow_pressure_pump, # Type: float
+            lift_pressure_pump=lift_pressure_pump, # Type: float
+            netconfiguration=self.network_config_tab.netconfiguration, # Type: str
+            dT_RL=dT_RL, # Type: float
+            building_temperature_checked=self.network_config_tab.building_temp_checked, # Type: bool
+            pipetype=pipetype, # Type: str
+            max_velocity_pipe=v_max_pipe, # Type: float
+            material_filter_pipe=material_filter, # Type: str
+            diameter_optimization_pipe_checked=self.diameter_optimization_tab.DiameterOpt_ckecked, # Type: bool
+            k_mm_pipe=k_mm, # Type: float
+            main_producer_location_index=main_producer_location_index, # Type: int
+            secondary_producers=[SecondaryProducer(**sp) for sp in secondary_producers], # Type: list of SecondaryProducer
+            import_type=import_type, # Type: str
+        )
         if self.generate_callback:
-            self.generate_callback(vorlauf_path, ruecklauf_path, hast_path, erzeugeranlagen_path, json_path, supply_temperature_heat_consumer, 
-                                   rl_temp_heat_consumer, supply_temperature_net, flow_pressure_pump, lift_pressure_pump, self.network_config_tab.netconfiguration, 
-                                   dT_RL, self.network_config_tab.building_temp_checked, pipetype, v_max_pipe, material_filter, self.diameter_optimization_tab.DiameterOpt_ckecked, 
-                                   k_mm, main_producer_location_index, secondary_producers, import_type)
+            print("Calling generate_callback with data:", vars(data))
+            # Call the callback function with the generated data
+            self.generate_callback(data)
 
         self.accept()
