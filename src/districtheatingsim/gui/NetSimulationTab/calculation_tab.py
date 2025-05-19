@@ -20,7 +20,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
 from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction, QActionGroup, QPlainTextEdit
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction, QActionGroup, QPlainTextEdit, QLabel
 
 from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import save_results_csv, import_results_csv
 from districtheatingsim.net_simulation_pandapipes.config_plot import config_plot
@@ -39,13 +39,6 @@ class CalculationTab(QWidget):
 
     Attributes:
         data_added (pyqtSignal): Signal to indicate data addition.
-        data_manager: Data manager to handle project data.
-        parent: Parent widget.
-        calc_method (str): Calculation method.
-        show_map (bool): Flag to show map.
-        map_type (str): Type of map to be displayed.
-        net_data: Variable to store network data.
-        supply_temperature: Supply temperature for the network.
     """
 
     data_added = pyqtSignal(object)
@@ -56,7 +49,11 @@ class CalculationTab(QWidget):
 
         Args:
             data_manager: Data manager to handle project data.
-            parent: Parent widget.
+            config_manager: Configuration manager for the application.
+            folder_manager: Folder manager to handle project folders.
+            show_map (bool): Flag to show map.
+            map_type (str): Type of map to be displayed.
+            NetworkGenerationData: Data class for network generation.
         """
         super().__init__(parent)
         self.folder_manager = folder_manager
@@ -73,6 +70,15 @@ class CalculationTab(QWidget):
 
         self.NetworkGenerationData = None
 
+    def updateDefaultPath(self, new_base_path):
+        """
+        Updates the default path for the project.
+
+        Args:
+            new_base_path (str): The new base path.
+        """
+        self.base_path = new_base_path
+
     def initUI(self):
         """
         Initializes the user interface components of the CalculationTab.
@@ -88,13 +94,13 @@ class CalculationTab(QWidget):
         self.initMenuBar()
         self.setupPlotLayout()
 
-        self.main_layout = QHBoxLayout(self)
+        self.main_layout = QVBoxLayout(self)
         self.main_layout.addWidget(scroll_area)
 
         self.results_layout = QVBoxLayout()
         self.results_display = QPlainTextEdit()
         self.results_display.setReadOnly(True)
-        self.results_display.setFixedWidth(400)
+        self.results_display.setFixedHeight(250)
         self.results_layout.addWidget(self.results_display)
 
         self.main_layout.addLayout(self.results_layout)
@@ -162,33 +168,39 @@ class CalculationTab(QWidget):
 
     def setupPlotLayout(self):
         """
-        Sets up the layout for the plots.
+        Sets up the layout for the plots, placing them horizontally.
         """
         self.scrollArea = QScrollArea(self)
         self.scrollWidget = QWidget()
-        self.scrollLayout = QVBoxLayout(self.scrollWidget)
+        self.scrollLayout = QHBoxLayout(self.scrollWidget)  # Changed to QHBoxLayout for horizontal placement
 
-        self.figure3 = Figure()
-        self.canvas3 = FigureCanvas(self.figure3)
-        self.canvas3.setMinimumSize(700, 700)
-        self.toolbar3 = NavigationToolbar(self.canvas3, self)
+        # Left: Pandapipes net plot
+        self.pandapipes_net_figure = Figure()
+        self.pandapipes_net_canvas = FigureCanvas(self.pandapipes_net_figure)
+        self.pandapipes_net_canvas.setMinimumSize(250, 250)
+        self.pandapipes_net_figure_toolbar = NavigationToolbar(self.pandapipes_net_canvas, self)
 
-        self.figure4 = Figure()
-        self.canvas4 = FigureCanvas(self.figure4)
-        self.canvas4.setMinimumSize(700, 700)
-        self.toolbar4 = NavigationToolbar(self.canvas4, self)
+        # Right: Time series plot
+        self.time_series_figure = Figure()
+        self.time_series_canvas = FigureCanvas(self.time_series_figure)
+        self.time_series_canvas.setMinimumSize(250, 250)
+        self.time_series_toolbar = NavigationToolbar(self.time_series_canvas, self)
 
-        self.figure5 = Figure()
-        self.canvas5 = FigureCanvas(self.figure5)
-        self.canvas5.setMinimumSize(700, 700)
-        self.toolbar5 = NavigationToolbar(self.canvas5, self)
+        # Layout for left plot and toolbar
+        self.left_plot_layout = QVBoxLayout()
+        self.left_plot_layout.addWidget(self.pandapipes_net_canvas)
+        self.left_plot_layout.addWidget(self.pandapipes_net_figure_toolbar)
 
-        self.scrollLayout.addWidget(self.canvas5)
-        self.scrollLayout.addWidget(self.toolbar5)
-        self.scrollLayout.addWidget(self.canvas4)
-        self.scrollLayout.addWidget(self.toolbar4)
-        self.scrollLayout.addWidget(self.canvas3)
-        self.scrollLayout.addWidget(self.toolbar3)
+        # Layout for right plot and toolbar
+        self.right_plot_layout = QVBoxLayout()
+        self.dropdownLayout = QHBoxLayout()
+        self.right_plot_layout.addLayout(self.dropdownLayout)
+        self.right_plot_layout.addWidget(self.time_series_canvas)
+        self.right_plot_layout.addWidget(self.time_series_toolbar)
+
+        # Add both layouts horizontally
+        self.scrollLayout.addLayout(self.left_plot_layout)
+        self.scrollLayout.addLayout(self.right_plot_layout)
 
         self.scrollArea.setWidget(self.scrollWidget)
         self.scrollArea.setWidgetResizable(True)
@@ -199,7 +211,15 @@ class CalculationTab(QWidget):
         """
         Creates a dropdown for selecting which data to plot.
         """
-        self.dropdownLayout = QHBoxLayout()
+        # Remove existing dropdown if present
+        if hasattr(self, 'dropdownLayout'):
+            # Remove widgets from layout
+            while self.dropdownLayout.count():
+                item = self.dropdownLayout.takeAt(0)
+                widget = item.widget()
+                if widget is not None:
+                    widget.setParent(None)
+
         self.dataSelectionDropdown = CheckableComboBox(self)
 
         initial_checked = True
@@ -211,18 +231,7 @@ class CalculationTab(QWidget):
             initial_checked = False
 
         self.dropdownLayout.addWidget(self.dataSelectionDropdown)
-        self.scrollLayout.addLayout(self.dropdownLayout)
-
         self.dataSelectionDropdown.checkedStateChanged.connect(self.update_time_series_plot)
-
-    def updateDefaultPath(self, new_base_path):
-        """
-        Updates the default path for the project.
-
-        Args:
-            new_base_path (str): The new base path.
-        """
-        self.base_path = new_base_path
     
     def openNetGenerationDialog(self):
         """
@@ -296,7 +305,9 @@ class CalculationTab(QWidget):
         self.NetworkGenerationData = NetworkGenerationData        
         
         self.plot_pandapipes_net()
-        self.plot_building_heat_demand()
+        self.prepare_plot_data()
+        self.createPlotControlDropdown()
+        self.update_time_series_plot()
         self.display_results()
 
     def display_results(self):
@@ -391,37 +402,14 @@ class CalculationTab(QWidget):
 
         self.results_display.setPlainText(self.result_text)
 
-    def plot_building_heat_demand(self):
-        """
-        Plots the heat demand of the buildings.
-
-        """
-        yearly_time_steps, waerme_ges_kW, strombedarf_ges_kW = self.NetworkGenerationData.yearly_time_steps, self.NetworkGenerationData.waerme_ges_kW, self.NetworkGenerationData.strombedarf_ges_kW
-        self.figure4.clear()
-        ax1 = self.figure4.add_subplot(111)
-
-        if np.sum(strombedarf_ges_kW) == 0:
-            ax1.plot(yearly_time_steps, waerme_ges_kW, 'b-', label="Gesamtheizlast Gebäude in kW")
-
-        if np.sum(strombedarf_ges_kW) > 0:
-            ax1.plot(yearly_time_steps, waerme_ges_kW+strombedarf_ges_kW, 'b-', label="Gesamtheizlast Gebäude in kW")
-            ax1.plot(yearly_time_steps, strombedarf_ges_kW, 'g-', label="Gesamtstrombedarf Wärmepumpen Gebäude in kW")
-
-        ax1.set_xlabel("Zeit")
-        ax1.set_ylabel("Leistung in kW", color='b')
-        ax1.tick_params('y', colors='b')
-        ax1.legend(loc='upper center')
-        ax1.grid()
-        self.canvas4.draw()
-
     def plot_pandapipes_net(self):
         """
         Plots the pandapipes net.
         """
-        self.figure5.clear()
-        ax = self.figure5.add_subplot(111)
+        self.pandapipes_net_figure.clear()
+        ax = self.pandapipes_net_figure.add_subplot(111)
         config_plot(self.NetworkGenerationData.net, ax, show_junctions=True, show_pipes=True, show_heat_consumers=True, show_basemap=self.show_map, map_type=self.map_type)
-        self.canvas5.draw()
+        self.pandapipes_net_canvas.draw()
 
     def loadMap(self, map_type, action):
         """
@@ -470,11 +458,15 @@ class CalculationTab(QWidget):
         self.NetworkGenerationData = NetworkGenerationData
 
         self.prepare_plot_data()
-        self.plot_time_series_results()
-
+        self.createPlotControlDropdown()
+        self.update_time_series_plot()
         self.display_results()
 
-        save_results_csv(self.NetworkGenerationData.yearly_time_steps_start_end, self.NetworkGenerationData.waerme_ges_kW, self.NetworkGenerationData.strombedarf_ges_kW, self.NetworkGenerationData.pump_results, self.NetworkGenerationData.results_csv_filename)
+        save_results_csv(self.NetworkGenerationData.yearly_time_steps_start_end, 
+                         self.NetworkGenerationData.waerme_ges_kW[self.NetworkGenerationData.start_time_step:self.NetworkGenerationData.end_time_step], 
+                         self.NetworkGenerationData.strombedarf_ges_kW[self.NetworkGenerationData.start_time_step:self.NetworkGenerationData.end_time_step], 
+                         self.NetworkGenerationData.pump_results, 
+                         self.NetworkGenerationData.results_csv_filename)
 
         print("Simulation erfolgreich abgeschlossen.")
 
@@ -495,58 +487,88 @@ class CalculationTab(QWidget):
         """
         
         self.NetworkGenerationData.plot_data = {
-            "Gesamtwärmebedarf Wärmeübertrager": {"data": self.NetworkGenerationData.waerme_ges_kW, "label": "Wärmebedarf Wärmeübertrager in kW", "axis": "left"}
+            "Gesamtwärmebedarf Wärmeübertrager": {
+                "data": self.NetworkGenerationData.waerme_ges_kW,
+                "label": "Wärmebedarf Wärmeübertrager in kW",
+                "axis": "left",
+                "time": self.NetworkGenerationData.yearly_time_steps
+            }
         }
-        if np.sum(self.NetworkGenerationData.strombedarf_ges_kW) > 0:
-            self.NetworkGenerationData.plot_data["Gesamtheizlast Gebäude"] = {"data": self.NetworkGenerationData.waerme_ges_kW+self.NetworkGenerationData.strombedarf_ges_kW, "label": "Gesamtheizlast Gebäude in kW", "axis": "left"}
-            self.NetworkGenerationData.plot_data["Gesamtstrombedarf Wärmepumpen Gebäude"] = {"data": self.NetworkGenerationData.strombedarf_ges_kW, "label": "Gesamtstrombedarf Wärmepumpen Gebäude in kW", "axis": "left"}
 
-        for pump_type, pumps in self.NetworkGenerationData.pump_results.items():
-            for idx, pump_data in pumps.items():
-                self.NetworkGenerationData.plot_data[f"Wärmeerzeugung {pump_type} {idx+1}"] = {"data": pump_data['qext_kW'], "label": "Wärmeerzeugung in kW", "axis": "left"}
-                self.NetworkGenerationData.plot_data[f"Massenstrom {pump_type} {idx+1}"] = {"data": pump_data['mass_flow'], "label": "Massenstrom in kg/s", "axis": "right"}
-                self.NetworkGenerationData.plot_data[f"Delta p {pump_type} {idx+1}"] = {"data": pump_data['deltap'], "label": "Druckdifferenz in bar", "axis": "right"}
-                self.NetworkGenerationData.plot_data[f"Vorlauftemperatur {pump_type} {idx+1}"] = {"data": pump_data['flow_temp'], "label": "Temperatur in °C", "axis": "right"}
-                self.NetworkGenerationData.plot_data[f"Rücklauftemperatur {pump_type} {idx+1}"] = {"data": pump_data['return_temp'], "label": "Temperatur in °C", "axis": "right"}
-                self.NetworkGenerationData.plot_data[f"Vorlaufdruck {pump_type} {idx+1}"] = {"data": pump_data['flow_pressure'], "label": "Druck in bar", "axis": "right"}
-                self.NetworkGenerationData.plot_data[f"Rücklaufdruck {pump_type} {idx+1}"] = {"data": pump_data['return_pressure'], "label": "Druck in bar", "axis": "right"}
-    
-    def plot_time_series_results(self):
-        """
-        Plots the data for the second plot.
-        """
-        if not hasattr(self, 'dataSelectionDropdown'):
-            self.createPlotControlDropdown()
-        
-        self.update_time_series_plot()
+        if np.sum(self.NetworkGenerationData.strombedarf_ges_kW) > 0:
+            self.NetworkGenerationData.plot_data["Gesamtheizlast Gebäude"] = {
+                "data": self.NetworkGenerationData.waerme_ges_kW + self.NetworkGenerationData.strombedarf_ges_kW,
+                "label": "Gesamtheizlast Gebäude in kW",
+                "axis": "left",
+                "time": self.NetworkGenerationData.yearly_time_steps
+            }
+            self.NetworkGenerationData.plot_data["Gesamtstrombedarf Wärmepumpen Gebäude"] = {
+                "data": self.NetworkGenerationData.strombedarf_ges_kW,
+                "label": "Gesamtstrombedarf Wärmepumpen Gebäude in kW",
+                "axis": "left",
+                "time": self.NetworkGenerationData.yearly_time_steps
+            }
+
+        if self.NetworkGenerationData.pump_results is not None:
+            for pump_type, pumps in self.NetworkGenerationData.pump_results.items():
+                for idx, pump_data in pumps.items():
+                    self.NetworkGenerationData.plot_data[f"Wärmeerzeugung {pump_type} {idx+1}"] = {"data": pump_data['qext_kW'], "label": "Wärmeerzeugung in kW", "axis": "left", "time": self.NetworkGenerationData.yearly_time_steps_start_end}
+                    self.NetworkGenerationData.plot_data[f"Massenstrom {pump_type} {idx+1}"] = {"data": pump_data['mass_flow'], "label": "Massenstrom in kg/s", "axis": "right", "time": self.NetworkGenerationData.yearly_time_steps_start_end}
+                    self.NetworkGenerationData.plot_data[f"Delta p {pump_type} {idx+1}"] = {"data": pump_data['deltap'], "label": "Druckdifferenz in bar", "axis": "right", "time": self.NetworkGenerationData.yearly_time_steps_start_end}
+                    self.NetworkGenerationData.plot_data[f"Vorlauftemperatur {pump_type} {idx+1}"] = {"data": pump_data['flow_temp'], "label": "Temperatur in °C", "axis": "right", "time": self.NetworkGenerationData.yearly_time_steps_start_end}
+                    self.NetworkGenerationData.plot_data[f"Rücklauftemperatur {pump_type} {idx+1}"] = {"data": pump_data['return_temp'], "label": "Temperatur in °C", "axis": "right", "time": self.NetworkGenerationData.yearly_time_steps_start_end}
+                    self.NetworkGenerationData.plot_data[f"Vorlaufdruck {pump_type} {idx+1}"] = {"data": pump_data['flow_pressure'], "label": "Druck in bar", "axis": "right", "time": self.NetworkGenerationData.yearly_time_steps_start_end}
+                    self.NetworkGenerationData.plot_data[f"Rücklaufdruck {pump_type} {idx+1}"] = {"data": pump_data['return_pressure'], "label": "Druck in bar", "axis": "right", "time": self.NetworkGenerationData.yearly_time_steps_start_end}
 
     def update_time_series_plot(self):
         """
         Updates the plot based on the selected data.
         """
-        self.figure3.clear()
-        ax_left = self.figure3.add_subplot(111)
+
+        if not hasattr(self, 'dataSelectionDropdown'):
+            self.createPlotControlDropdown()
+
+        self.time_series_figure.clear()
+        ax_left = self.time_series_figure.add_subplot(111)
         ax_right = ax_left.twinx()
 
         left_labels = set()
         right_labels = set()
         color_cycle = itertools.cycle(['b', 'g', 'r', 'c', 'm', 'y', 'k'])
 
+        min_time, max_time = None, None
+
         for i in range(self.dataSelectionDropdown.model().rowCount()):
             if self.dataSelectionDropdown.itemChecked(i):
                 key = self.dataSelectionDropdown.itemText(i)
                 data_info = self.NetworkGenerationData.plot_data[key]
                 color = next(color_cycle)
+                time_steps = data_info.get("time", None)
+                if time_steps is None or len(time_steps) != len(data_info["data"]):
+                    print(f"Warnung: Zeitachse und Datenlänge passen nicht für {key}")
+                    continue
                 if data_info["axis"] == "left":
-                    ax_left.plot(self.NetworkGenerationData.yearly_time_steps_start_end, data_info["data"], label=key, color=color)
+                    ax_left.plot(time_steps, data_info["data"], label=key, color=color)
                     left_labels.add(data_info["label"])
                 elif data_info["axis"] == "right":
-                    ax_right.plot(self.NetworkGenerationData.yearly_time_steps_start_end, data_info["data"], label=key, color=color)
+                    ax_right.plot(time_steps, data_info["data"], label=key, color=color)
                     right_labels.add(data_info["label"])
+
+                tmin, tmax = time_steps[0], time_steps[-1]
+                min_time = tmin if min_time is None else max(min_time, tmin)
+                max_time = tmax if max_time is None else min(max_time, tmax)
 
         ax_left.set_xlabel("Zeit")
         ax_left.set_ylabel(", ".join(left_labels))
         ax_right.set_ylabel(", ".join(right_labels))
+
+        # X-Achse ggf. zoomen
+        if min_time is not None and max_time is not None:
+            ax_left.set_xlim(min_time, max_time)
+            ax_right.set_xlim(min_time, max_time)
+        else:
+            ax_left.set_xlim(auto=True)
+            ax_right.set_xlim(auto=True)
 
         lines_left, labels_left = ax_left.get_legend_handles_labels()
         lines_right, labels_right = ax_right.get_legend_handles_labels()
@@ -554,7 +576,7 @@ class CalculationTab(QWidget):
         ax_left.legend(by_label.values(), by_label.keys(), loc='upper center')
 
         ax_left.grid()
-        self.canvas3.draw()
+        self.time_series_canvas.draw()
 
     def get_data_path(self):
         """
@@ -670,7 +692,10 @@ class CalculationTab(QWidget):
             self.NetworkGenerationData.waerme_ges_kW = np.sum(self.NetworkGenerationData.waerme_hast_ges_kW, axis=0)
             self.NetworkGenerationData.strombedarf_ges_kW = np.sum(self.NetworkGenerationData.strombedarf_hast_ges_kW, axis=0)
             
-            self.plot_building_heat_demand(self.NetworkGenerationData.yearly_time_steps, self.NetworkGenerationData.waerme_ges_kW, self.NetworkGenerationData.strombedarf_ges_kW)
+            self.plot_pandapipes_net()
+            self.prepare_plot_data()
+            self.createPlotControlDropdown()
+            self.update_time_series_plot()
             self.display_results()
 
             QMessageBox.information(self, "Laden erfolgreich", "Daten erfolgreich geladen aus: {}, {} und {}.".format(csv_file_path, pickle_file_path, json_file_path))
@@ -688,7 +713,8 @@ class CalculationTab(QWidget):
             self.NetworkGenerationData.yearly_time_steps_start_end, self.NetworkGenerationData.waerme_ges_kW, self.NetworkGenerationData.strombedarf_ges_kW, self.NetworkGenerationData.pump_results = import_results_csv(results_csv_filepath)
             
             self.prepare_plot_data()
-            self.plot_time_series_results()
+            self.createPlotControlDropdown()
+            self.update_time_series_plot()
             self.display_results()
 
         else:
