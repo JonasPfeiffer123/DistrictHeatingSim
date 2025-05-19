@@ -1,7 +1,7 @@
 """
 Filename: pp_net_initialisation_geojson.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-    Date: 2025-05-15
+    Date: 2025-05-17
 Description: Script for the net initialisation of geojson based net data.
 """
 
@@ -13,117 +13,91 @@ import pandas as pd
 
 from districtheatingsim.net_simulation_pandapipes.utilities import create_controllers, correct_flow_directions, COP_WP, init_diameter_types
 
-def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, COP_filename, min_supply_temperature_building, return_temperature_heat_consumer, 
-                       supply_temperature_net, flow_pressure_pump, lift_pressure_pump, netconfiguration, pipetype, dT_RL, v_max_pipe, material_filter, 
-                       k_mm=0.1, main_producer_location_index=0, secondary_producers=None):
+def initialize_geojson(NetworkGenerationData):
     """Initialize the network using GeoJSON data and various parameters.
 
     Args:
-        vorlauf (str): Path to the GeoJSON file for the forward line.
-        ruecklauf (str): Path to the GeoJSON file for the return line.
-        hast (str): Path to the GeoJSON file for the heat exchangers.
-        erzeugeranlagen (str): Path to the GeoJSON file for the heat producers.
-        json_path (str): Path to the JSON file containing additional network data.
-        COP_filename (str): Path to the file with COP data.
-        min_supply_temperature_building (float): Minimum supply temperature for buildings.
-        return_temperature_heat_consumer (float): Return temperature for heat consumers.
-        supply_temperature_net (float): Supply temperature of the network.
-        flow_pressure_pump (float): Flow pressure of the pump.
-        lift_pressure_pump (float): Lift pressure of the pump.
-        netconfiguration (str): Network configuration type.
-        pipetype (str): Type of pipes used.
-        dT_RL (float): Temperature difference for the return line.
-        v_max_pipe (float): Maximum velocity in the pipes.
-        material_filter (str): Material filter for the pipes.
-        k_mm (float, optional): Roughness coefficient for pipes. Defaults to 0.1.
-        main_producer_location_index (int, optional): Index of the main producer location. Defaults to 0.
-        secondary_producers (dict, optional): Secondary producer data. Defaults to [{}].
+        NetworkGenerationData (object): Network generation data object containing all necessary parameters.
 
     Returns:
-        pandapipesNet: The initialized pandapipes network.
-        np.ndarray: Yearly time steps.
-        np.ndarray: Heat demand of heat exchangers.
-        np.ndarray: Return temperature of heat consumers.
-        np.ndarray: Supply temperature of buildings.
-        np.ndarray: Return temperature of buildings.
-        np.ndarray: Supply temperature curve of buildings.
-        np.ndarray: Return temperature curve of buildings.
-        np.ndarray: Power consumption of heat exchangers.
-        np.ndarray: Maximum electrical power demand of heat exchangers.
+
     """
 
     # Create the network, cluster information
     gdf_dict = {
-        "flow_line": gpd.read_file(vorlauf, driver='GeoJSON'),
-        "return_line": gpd.read_file(ruecklauf, driver='GeoJSON'),
-        "heat_consumer": gpd.read_file(hast, driver='GeoJSON'),
-        "heat_producer": gpd.read_file(erzeugeranlagen, driver='GeoJSON')
+        "flow_line": gpd.read_file(NetworkGenerationData.flow_line_path, driver='GeoJSON'),
+        "return_line": gpd.read_file(NetworkGenerationData.return_line_path, driver='GeoJSON'),
+        "heat_consumer": gpd.read_file(NetworkGenerationData.heat_consumer_path, driver='GeoJSON'),
+        "heat_producer": gpd.read_file(NetworkGenerationData.heat_generator_path, driver='GeoJSON')
     }
 
-    supply_temperature_net = np.max(supply_temperature_net)
-    print(f"Vorlauftemperatur Netz: {supply_temperature_net} °C")
+    # max supply temperature of the heat generator
+    max_supply_temperature_heat_generator = np.max(NetworkGenerationData.supply_temperature_heat_generator)
+    print(f"Max supply temperature heat generator: {max_supply_temperature_heat_generator} °C")
     
-    with open(json_path, 'r', encoding='utf-8') as f:
+    with open(NetworkGenerationData.heat_demand_json_path, 'r', encoding='utf-8') as f:
         loaded_data = json.load(f)
 
         # Ensure results contain the necessary keys
         results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and 'wärme' in v}
 
         # Process the loaded data to form a DataFrame
-        df = pd.DataFrame.from_dict({k: v for k, v in loaded_data.items() if k.isdigit()}, orient='index')
+        heat_demand_df = pd.DataFrame.from_dict({k: v for k, v in loaded_data.items() if k.isdigit()}, orient='index')
 
-    supply_temperature_buildings = df["VLT_max"].values.astype(float)
-    return_temperature_buildings = df["RLT_max"].values.astype(float)
+    # Extract supply and return temperatures from the DataFrame
+    supply_temperature_buildings = heat_demand_df["VLT_max"].values.astype(float)
+    return_temperature_buildings = heat_demand_df["RLT_max"].values.astype(float)
 
     # Extract data arrays
-    yearly_time_steps = np.array(df["zeitschritte"].values[0]).astype(np.datetime64)
-    waerme_gebaeude_ges_W = np.array([results[str(i)]["wärme"] for i in range(len(results))])*1000
-    heizwaerme_gebaeude_ges_W = np.array([results[str(i)]["heizwärme"] for i in range(len(results))])*1000
-    ww_waerme_gebaeude_ges_W = np.array([results[str(i)]["warmwasserwärme"] for i in range(len(results))])*1000
+    yearly_time_steps = np.array(heat_demand_df["zeitschritte"].values[0]).astype(np.datetime64)
+    total_building_heat_demand_W = np.array([results[str(i)]["wärme"] for i in range(len(results))])*1000
+    total_building_heating_demand_W = np.array([results[str(i)]["heizwärme"] for i in range(len(results))])*1000
+    total_building_hot_water_demand_W = np.array([results[str(i)]["warmwasserwärme"] for i in range(len(results))])*1000
     supply_temperature_building_curve = np.array([results[str(i)]["vorlauftemperatur"] for i in range(len(results))])
     return_temperature_building_curve = np.array([results[str(i)]["rücklauftemperatur"] for i in range(len(results))])
-    max_waerme_gebaeude_ges_W = np.array(results["0"]["max_last"])*1000
+    maximum_building_heat_load_W = np.array(results["0"]["max_last"])*1000
 
-    print(f"Maximum Wärme Gebäude gesamt (W): {max_waerme_gebaeude_ges_W}")
+    print(f"Max heat demand buildings (W): {maximum_building_heat_load_W}")
 
-    ### Definition Soll-Rücklauftemperatur ###
-    if return_temperature_heat_consumer == None:
-        return_temperature_heat_consumer = return_temperature_buildings + dT_RL
-        print(f"Rücklauftemperatur HAST: {return_temperature_heat_consumer} °C")
+    ### Definition of the return temperature of the heat_consumer ###
+    ### If the return temperature is not fixed, calculate it based on the return temperature of the buildings and the delta T ###
+    if NetworkGenerationData.fixed_return_temperature_heat_consumer == None:
+        return_temperature_heat_consumer = return_temperature_buildings + NetworkGenerationData.dT_RL
+        print(f"Return temperature heat consumers: {return_temperature_heat_consumer} °C")
+    ### If the return temperature is fixed, use the fixed value. Creare an array with the same size as the return temperature of the buildings ###
     else:
-        return_temperature_heat_consumer = np.full_like(return_temperature_buildings, return_temperature_heat_consumer)
-        print(f"Rücklauftemperatur HAST: {return_temperature_heat_consumer} °C")
+        return_temperature_heat_consumer = np.full_like(return_temperature_buildings, NetworkGenerationData.fixed_return_temperature_heat_consumer)
+        print(f"Return temperature heat consumers: {return_temperature_heat_consumer} °C")
 
-    if np.any(return_temperature_heat_consumer >= supply_temperature_net):
-        raise ValueError("Rücklauftemperatur darf nicht höher als die Vorlauftemperatur am Einspeisepunkt sein. Bitte überprüfen sie die Eingaben.")
+    ### Check if the return temperature is higher than the supply temperature of the heat generator ###
+    if np.any(return_temperature_heat_consumer >= max_supply_temperature_heat_generator):
+        raise ValueError("Return temperature must not be higher than the supply temperature at the injection point. Please check your inputs.")
     
-    ### Definition Mindestvorlauftemperatur ###
-    ### Ersetzten durch np.where, es gibt eine Mindestvorlauftemperatur an den Gebäuden (z.B. 65 °C für Warmwasserbereitung). Diese Temperatur muss Netzseitig auch ankommen###
-    print(f"MINDESTVORLAUFTEMPERATUR: {min_supply_temperature_building} °C")
-    if min_supply_temperature_building == None:
-        min_supply_temperature_building = np.zeros_like(supply_temperature_buildings)
-        min_supply_temperature_heat_consumer = np.zeros_like(supply_temperature_buildings)
-        print(f"Mindestvorlauftemperatur Gebäude: {min_supply_temperature_building} °C")
-        print(f"Mindestvorlauftemperatur HAST: {min_supply_temperature_heat_consumer} °C")
+    ### Definition of the minimum supply temperature of the heat consumer###
+    ### If the minimum supply temperature for the building is not set, set the values for the minimum supply temperature of the heat consumer to 0###
+    if NetworkGenerationData.min_supply_temperature_building == None:
+        min_supply_temperature_heat_consumer = np.zeros_like(supply_temperature_buildings, NetworkGenerationData.min_supply_temperature_building)
+        print(f"Minimum supply temperature heat consumers: {min_supply_temperature_heat_consumer} °C")
+    ### If the minimum supply temperature for the building is set, create an array with the same size as the supply temperature of the buildings using dT_RL ###
     else:
-        min_supply_temperature_building = np.full_like(supply_temperature_buildings, min_supply_temperature_building)
-        min_supply_temperature_heat_consumer = np.full_like(supply_temperature_buildings, min_supply_temperature_building + dT_RL)
-        print(f"Mindestvorlauftemperatur Gebäude: {min_supply_temperature_building} °C")
-        print(f"Mindestvorlauftemperatur HAST: {min_supply_temperature_heat_consumer} °C")
-
-    if np.any(min_supply_temperature_heat_consumer >= supply_temperature_net):
-        raise ValueError("Vorlauflauftemperatur an HAST kann nicht höher als die Vorlauftemperatur am Einspeisepunkt sein. Bitte überprüfen sie die Eingaben.")
+        min_supply_temperature_heat_consumer = np.full_like(supply_temperature_buildings, NetworkGenerationData.min_supply_temperature_building + NetworkGenerationData.dT_RL)
+        print(f"Minimum supply temperature heat consumers: {min_supply_temperature_heat_consumer} °C")
+    
+    ### Check if the minimum supply temperature is higher than the supply temperature of the heat generator ###
+    if np.any(min_supply_temperature_heat_consumer >= max_supply_temperature_heat_generator):
+        raise ValueError("Supply temperature at the heat consumer cannot be higher than the supply temperature at the injection point. Please check your inputs.")
 
     waerme_hast_ges_W = []
     max_waerme_hast_ges_W = []
     strombedarf_hast_ges_W = []
     max_el_leistung_hast_ges_W = []
-    if netconfiguration == "kaltes Netz":
-        COP_file_values = np.genfromtxt(COP_filename, delimiter=';')
+
+    if NetworkGenerationData.netconfiguration == "kaltes Netz":
+        COP_file_values = np.genfromtxt(NetworkGenerationData.COP_filename, delimiter=';')
         COP, _ = COP_WP(supply_temperature_buildings, return_temperature_heat_consumer, COP_file_values)
         print(f"COP dezentrale Wärmepumpen Gebäude: {COP}")
 
-        for waerme_gebaeude, leistung_gebaeude, cop in zip(waerme_gebaeude_ges_W, max_waerme_gebaeude_ges_W, COP):
+        for waerme_gebaeude, leistung_gebaeude, cop in zip(total_building_heat_demand_W, maximum_building_heat_load_W, COP):
             strombedarf_wp = waerme_gebaeude/cop
             waerme_hast = waerme_gebaeude - strombedarf_wp
             waerme_hast_ges_W.append(waerme_hast)
@@ -140,10 +114,10 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, COP
         max_el_leistung_hast_ges_W = np.array(max_el_leistung_hast_ges_W)
 
     else:
-        waerme_hast_ges_W = waerme_gebaeude_ges_W
-        max_waerme_hast_ges_W = max_waerme_gebaeude_ges_W
-        strombedarf_hast_ges_W = np.zeros_like(waerme_gebaeude_ges_W)
-        max_el_leistung_hast_ges_W = np.zeros_like(max_waerme_gebaeude_ges_W)
+        waerme_hast_ges_W = total_building_heat_demand_W
+        max_waerme_hast_ges_W = maximum_building_heat_load_W
+        strombedarf_hast_ges_W = np.zeros_like(total_building_heat_demand_W)
+        max_el_leistung_hast_ges_W = np.zeros_like(maximum_building_heat_load_W)
 
     consumer_dict = {
         "qext_w": max_waerme_hast_ges_W,
@@ -152,39 +126,72 @@ def initialize_geojson(vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, COP
     }
 
     pipe_dict = {
-        "pipetype": pipetype,
-        "v_max_pipe": v_max_pipe,
-        "material_filter": material_filter,
+        "pipetype": NetworkGenerationData.pipetype,
+        "v_max_pipe": NetworkGenerationData.max_velocity_pipe,
+        "material_filter": NetworkGenerationData.material_filter_pipe,
         "pipe_creation_mode": "type",
-        "k_mm": k_mm
+        "k_mm": NetworkGenerationData.k_mm_pipe
     }
 
     # Calculate mass flow for secondary producers
-    if secondary_producers:
+    if NetworkGenerationData.secondary_producers:
         # Calculate mass flow of main producer with cp = 4.18 kJ/kgK from sum of max_waerme_hast_ges_W (in W)
         cp = 4.18  # kJ/kgK
-        mass_flow = np.sum(max_waerme_hast_ges_W / 1000) / (cp * (supply_temperature_net - np.average(return_temperature_heat_consumer)))  # kW / (kJ/kgK * K) = kg/s
+        mass_flow = np.sum(max_waerme_hast_ges_W / 1000) / (cp * (max_supply_temperature_heat_generator - np.average(return_temperature_heat_consumer)))  # kW / (kJ/kgK * K) = kg/s
 
         print(f"Mass flow of main producer: {mass_flow} kg/s")
 
         # Update each secondary producer's dictionary with the calculated mass flow
-        for secondary_producer in secondary_producers:
+        for secondary_producer in NetworkGenerationData.secondary_producers:
             secondary_producer["mass_flow"] = secondary_producer["percentage"]/100 * mass_flow
             print(f"Mass flow of secondary producer {secondary_producer['index']}: {secondary_producer['mass_flow']} kg/s")
 
     producer_dict = {
-        "supply_temperature": supply_temperature_net,
-        "flow_pressure_pump": flow_pressure_pump,
-        "lift_pressure_pump": lift_pressure_pump,
-        "main_producer_location_index": main_producer_location_index,
-        "secondary_producers": secondary_producers
+        "supply_temperature": max_supply_temperature_heat_generator,
+        "flow_pressure_pump": NetworkGenerationData.flow_pressure_pump,
+        "lift_pressure_pump": NetworkGenerationData.lift_pressure_pump,
+        "main_producer_location_index": NetworkGenerationData.main_producer_location_index,
+        "secondary_producers": NetworkGenerationData.secondary_producers
     }
 
     net = create_network(gdf_dict, consumer_dict, pipe_dict, producer_dict)
-    
-    return net, yearly_time_steps, waerme_hast_ges_W, return_temperature_heat_consumer, supply_temperature_buildings, return_temperature_buildings, \
-        supply_temperature_building_curve, return_temperature_building_curve, min_supply_temperature_heat_consumer, strombedarf_hast_ges_W, max_el_leistung_hast_ges_W
 
+    # Save calculated variables in NetworkGenerationData
+    NetworkGenerationData.max_supply_temperature_heat_generator = max_supply_temperature_heat_generator
+    NetworkGenerationData.supply_temperature_buildings = supply_temperature_buildings
+    NetworkGenerationData.return_temperature_buildings = return_temperature_buildings
+    NetworkGenerationData.yearly_time_steps = yearly_time_steps
+    NetworkGenerationData.waerme_gebaeude_ges_W = total_building_heat_demand_W
+    NetworkGenerationData.heizwaerme_gebaeude_ges_W = total_building_heating_demand_W
+    NetworkGenerationData.ww_waerme_gebaeude_ges_W = total_building_hot_water_demand_W
+    NetworkGenerationData.supply_temperature_building_curve = supply_temperature_building_curve
+    NetworkGenerationData.return_temperature_building_curve = return_temperature_building_curve
+    NetworkGenerationData.max_waerme_gebaeude_ges_W = maximum_building_heat_load_W
+    NetworkGenerationData.return_temperature_heat_consumer = return_temperature_heat_consumer
+    NetworkGenerationData.min_supply_temperature_heat_consumer = min_supply_temperature_heat_consumer
+    NetworkGenerationData.waerme_hast_ges_W = waerme_hast_ges_W
+    NetworkGenerationData.max_waerme_hast_ges_W = max_waerme_hast_ges_W
+    NetworkGenerationData.strombedarf_hast_ges_W = strombedarf_hast_ges_W
+    NetworkGenerationData.max_el_leistung_hast_ges_W = max_el_leistung_hast_ges_W
+    NetworkGenerationData.net = net
+
+    # replace all values in NetworkGenerationData.waerme_hast_ges_W with 2 % of the maximum value if the value is smaller than 2 % of the maximum value
+    max_heat = np.max(NetworkGenerationData.waerme_hast_ges_W)
+    max_power = np.max(NetworkGenerationData.strombedarf_hast_ges_W)
+    NetworkGenerationData.waerme_hast_ges_W = np.where(NetworkGenerationData.waerme_hast_ges_W < 0.02 * max_heat, 0.02 * max_heat, NetworkGenerationData.waerme_hast_ges_W)
+    NetworkGenerationData.strombedarf_hast_ges_W = np.where(NetworkGenerationData.waerme_hast_ges_W < 0.02 * max_heat, 0.02 * max_power, NetworkGenerationData.strombedarf_hast_ges_W)
+
+
+    # Convert all values in NetworkGenerationData.waerme_hast_ges_W and NetworkGenerationData.strombedarf_hast_ges_W to kW
+    NetworkGenerationData.waerme_hast_ges_kW = np.where(NetworkGenerationData.waerme_hast_ges_W == 0, 0, NetworkGenerationData.waerme_hast_ges_W / 1000)
+    NetworkGenerationData.strombedarf_hast_ges_kW = np.where(NetworkGenerationData.strombedarf_hast_ges_W == 0, 0, NetworkGenerationData.strombedarf_hast_ges_W / 1000)
+
+    # Calculate the total heat and electricity demand profiles
+    NetworkGenerationData.waerme_ges_kW = np.sum(NetworkGenerationData.waerme_hast_ges_kW, axis=0)
+    NetworkGenerationData.strombedarf_ges_kW = np.sum(NetworkGenerationData.strombedarf_hast_ges_kW, axis=0)
+
+    return NetworkGenerationData
+    
 def get_line_coords_and_lengths(gdf):
     """Extract line coordinates and lengths from a GeoDataFrame.
 

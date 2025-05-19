@@ -45,12 +45,20 @@ def update_heat_consumer_temperature_controller(net, min_supply_temperature_heat
     controller_count = 0
     for ctrl in net.controller.object.values:
         if isinstance(ctrl, TemperatureController):
-            # Create the DataFrame for the return temperature
+            profile = min_supply_temperature_heat_consumer[controller_count]
+            # Prüfe, ob statisch oder zeitabhängig
+            if np.isscalar(profile) or (isinstance(profile, np.ndarray) and profile.ndim == 0):
+                # Einzelwert: für alle Zeitschritte wiederholen
+                values = np.full(len(time_steps), profile)
+            elif isinstance(profile, np.ndarray) and profile.ndim == 1 and len(profile) == 1:
+                values = np.full(len(time_steps), profile[0])
+            else:
+                # Zeitreihe: richtigen Ausschnitt nehmen
+                values = profile[start:end]
             df_return_temp = pd.DataFrame(index=time_steps, data={
-                'min_supply_temperature': min_supply_temperature_heat_consumer[controller_count][start:end]
+                'min_supply_temperature': values
             })
             data_source_return_temp = DFData(df_return_temp)
-
             ctrl.data_source = data_source_return_temp
             controller_count += 1
 
@@ -65,37 +73,26 @@ def update_heat_consumer_return_temperature_controller(net, return_temperature_h
         end (int): End index for slicing the profiles.
     """
     for i, return_temp_profile in enumerate(return_temperature_heat_consumer):
-        # Create the DataFrame for the return temperature
+        # Prüfe, ob statisch oder zeitabhängig
+        if np.isscalar(return_temp_profile) or (isinstance(return_temp_profile, np.ndarray) and return_temp_profile.ndim == 0):
+            # Einzelwert: für alle Zeitschritte wiederholen
+            values = np.full(len(time_steps), return_temp_profile + 273.15)
+        elif isinstance(return_temp_profile, np.ndarray) and return_temp_profile.ndim == 1 and len(return_temp_profile) == 1:
+            values = np.full(len(time_steps), return_temp_profile[0] + 273.15)
+        else:
+            # Zeitreihe: richtigen Ausschnitt nehmen und umrechnen
+            values = return_temp_profile[start:end] + 273.15
+
+        # DataFrame für alle Zeitschritte bauen
         df_return_temp = pd.DataFrame(index=time_steps, data={
-            f'treturn_k_{i}': return_temp_profile[start:end] + 273.15
+            f'treturn_k_{i}': values
         })
         data_source_return_temp = DFData(df_return_temp)
 
-        # Check whether a suitable ConstControl exists
-        control_exists = False
         for ctrl in net.controller.object.values:
-            if (
-                isinstance(ctrl, ConstControl)
-                and ctrl.element == 'heat_consumer'
-                and ctrl.element_index == i
-                and ctrl.variable == 'treturn_k'
-            ):
-                control_exists = True
+            if (isinstance(ctrl, ConstControl) and ctrl.element == 'heat_consumer' and ctrl.element_index == i and ctrl.variable == 'treturn_k'):
                 # Update the data source of the existing ConstControl
                 ctrl.data_source = data_source_return_temp
-                ctrl.profile_name = f'treturn_k_{i}'
-                break
-
-        # If no suitable ConstControl exists, create a new one
-        if not control_exists:
-            ConstControl(
-                net,
-                element='heat_consumer',
-                variable='treturn_k',
-                element_index=i,
-                data_source=data_source_return_temp,
-                profile_name=f'treturn_k_{i}'
-            )
 
 # Needs to be fully implemented, also fix create controllers
 def update_secondary_producer_controller(net, secondary_producers, time_steps, start, end):
@@ -177,139 +174,116 @@ def create_log_variables(net):
 
     return log_variables
 
-def time_series_preprocessing(supply_temperature, supply_temperature_heat_consumer, return_temperature_heat_consumer, \
-                              supply_temperature_buildings, return_temperature_buildings, building_temp_checked, \
-                              netconfiguration, total_heat_W, return_temperature_buildings_curve, dT_RL, 
-                              supply_temperature_buildings_curve, COP_filename):
+def time_series_preprocessing(NetworkGenerationData):
     """Preprocess time series data for the thermal and hydraulic network simulation.
 
     Args:
-        supply_temperature (float): Supply temperature of the network.
-        supply_temperature_heat_consumer (float): Minimum supply temperature for heat consumers.
-        return_temperature_heat_consumer (float): Return temperature for heat consumers.
-        supply_temperature_buildings (float): Supply temperature for buildings.
-        return_temperature_buildings (float): Return temperature for buildings.
-        building_temp_checked (bool): Flag indicating if building temperatures are time-varying.
-        netconfiguration (str): Network configuration type.
-        total_heat_W (array): Total heat demand.
-        return_temperature_buildings_curve (array): Time-varying return temperature for buildings.
-        dT_RL (float): Temperature difference for the return line.
-        supply_temperature_buildings_curve (array): Time-varying supply temperature for buildings.
-        COP_filename (str): Path to the COP data file.
+        NetworkGenerationData (object): Network generation data object containing all necessary parameters.
 
     Returns:
-        tuple: Preprocessed heat demand, power consumption, supply temperature, and return temperature.
+        NetworkGenerationData: Updated NetworkGenerationData object with preprocessed data.
     """
-    print(f"Vorlauftemperatur Netz: {supply_temperature} °C")
-    print(f"Mindestvorlauftemperatur HAST: {supply_temperature_heat_consumer} °C")
-    print(f"Rücklauftemperatur HAST: {return_temperature_heat_consumer} °C")
-    print(f"Vorlauftemperatur Gebäude: {supply_temperature_buildings} °C")
-    print(f"Rücklauftemperatur Gebäude: {return_temperature_buildings} °C")
 
-    #print(len(total_heat_W))
-    # replace all values in total_heat_W with 2 % of the maximum value if the value is smaller than 2 % of the maximum value
-    max_heat = np.max(total_heat_W)
-    total_heat_W = np.where(total_heat_W < 0.02 * max_heat, 0.02 * max_heat, total_heat_W)
+    print(f"Vorlauftemperatur Netz: {NetworkGenerationData.supply_temperature_heat_generator} °C")
+    print(f"Mindestvorlauftemperatur HAST: {NetworkGenerationData.min_supply_temperature_heat_consumer} °C")
+    print(f"Rücklauftemperatur HAST: {NetworkGenerationData.return_temperature_heat_consumer} °C")
+    print(f"Vorlauftemperatur Gebäude: {NetworkGenerationData.supply_temperature_buildings} °C")
+    print(f"Rücklauftemperatur Gebäude: {NetworkGenerationData.return_temperature_buildings} °C")
+    print(f"building_temperature_checked: {NetworkGenerationData.building_temperature_checked}")
+    print(f"Netconfiguration: {NetworkGenerationData.netconfiguration}")
 
-    waerme_hast_ges_W = []
-    strom_hast_ges_W = []
+    COP_file_values = np.genfromtxt(NetworkGenerationData.COP_filename, delimiter=';')
+
+    ### if building_temperature_checked is True, the time dependent building temperatures are used
+    ### if netconfiguration is not "kaltes Netz", no changes are made to the heat demand and no power consumption is calculated
+    if NetworkGenerationData.building_temperature_checked == True and NetworkGenerationData.netconfiguration != "kaltes Netz":
+        NetworkGenerationData.min_supply_temperature_heat_consumer = NetworkGenerationData.supply_temperature_buildings_curve + NetworkGenerationData.dT_RL
+        NetworkGenerationData.return_temperature_heat_consumer = NetworkGenerationData.return_temperature_buildings_curve + NetworkGenerationData.dT_RL
+
+    ### if building_temperature_checked is True, the time dependent building temperatures are used
+    ### if netconfiguration is "kaltes Netz", the heat demand and power consumption are calculated using the COP calculation
+    elif NetworkGenerationData.building_temperature_checked == True and NetworkGenerationData.netconfiguration == "kaltes Netz":
+        NetworkGenerationData.min_supply_temperature_heat_consumer = NetworkGenerationData.return_temperature_heat_consumer + NetworkGenerationData.dT_RL
+        NetworkGenerationData.return_temperature_heat_consumer = NetworkGenerationData.return_temperature_buildings_curve + NetworkGenerationData.dT_RL
+
+        # Calculate COP, strom_wp, and waerme_hast as arrays
+        cop, _ = COP_WP(NetworkGenerationData.supply_temperature_buildings_curve, NetworkGenerationData.return_temperature_heat_consumer, COP_file_values)
+        strom_wp = NetworkGenerationData.waerme_hast_ges_W / cop
+        waerme_hast = NetworkGenerationData.waerme_hast_ges_W - strom_wp
+
+        NetworkGenerationData.waerme_hast_ges_W = waerme_hast
+        NetworkGenerationData.strombedarf_hast_ges_W = strom_wp
+    ### if building_temperature_checked is False, the time dependent building temperatures are not used
+    ### if netconfiguration is not "kaltes Netz", the heat demand and power consumption are calculated using the COP calculation
+    elif NetworkGenerationData.building_temperature_checked == False and NetworkGenerationData.netconfiguration == "kaltes Netz":
+        cop, _ = COP_WP(NetworkGenerationData.supply_temperature_buildings, NetworkGenerationData.return_temperature_heat_consumer, COP_file_values)
+
+        strom_wp = NetworkGenerationData.waerme_hast_ges_W / cop
+        waerme_hast = NetworkGenerationData.waerme_hast_ges_W - strom_wp
+
+        NetworkGenerationData.waerme_hast_ges_W = waerme_hast
+        NetworkGenerationData.strombedarf_hast_ges_W = strom_wp
+
+    # replace all values in NetworkGenerationData.waerme_hast_ges_W with 2 % of the maximum value if the value is smaller than 2 % of the maximum value
+    max_heat = np.max(NetworkGenerationData.waerme_hast_ges_W)
+    max_power = np.max(NetworkGenerationData.strombedarf_hast_ges_W)
+    NetworkGenerationData.waerme_hast_ges_W = np.where(NetworkGenerationData.waerme_hast_ges_W < 0.02 * max_heat, 0.02 * max_heat, NetworkGenerationData.waerme_hast_ges_W)
+    NetworkGenerationData.strombedarf_hast_ges_W = np.where(NetworkGenerationData.waerme_hast_ges_W < 0.02 * max_heat, 0.02 * max_power, NetworkGenerationData.strombedarf_hast_ges_W)
+
+    # Convert all values in NetworkGenerationData.waerme_hast_ges_W and NetworkGenerationData.strombedarf_hast_ges_W to kW
+    NetworkGenerationData.waerme_hast_ges_kW = np.where(NetworkGenerationData.waerme_hast_ges_W == 0, 0, NetworkGenerationData.waerme_hast_ges_W / 1000)
+    NetworkGenerationData.strombedarf_hast_ges_kW = np.where(NetworkGenerationData.strombedarf_hast_ges_W == 0, 0, NetworkGenerationData.strombedarf_hast_ges_W / 1000)
+
+    # Calculate the total heat and electricity demand profiles
+    NetworkGenerationData.waerme_ges_kW = np.sum(NetworkGenerationData.waerme_hast_ges_kW, axis=0)
+    NetworkGenerationData.strombedarf_ges_kW = np.sum(NetworkGenerationData.strombedarf_hast_ges_kW, axis=0)
+
+    return NetworkGenerationData
     
-    COP_file_values = np.genfromtxt(COP_filename, delimiter=';')
-
-    print(f"Building_temp_checked: {building_temp_checked}")
-    print(f"Netconfiguration: {netconfiguration}")
-
-    if building_temp_checked == False and netconfiguration != "kaltes Netz":
-        waerme_hast_ges_W = total_heat_W
-        strom_hast_ges_W = np.zeros_like(waerme_hast_ges_W)
-
-    elif building_temp_checked == False and netconfiguration == "kaltes Netz":
-        supply_temperature_heat_consumer = return_temperature_heat_consumer + dT_RL
-        COP, _ = COP_WP(supply_temperature_buildings, return_temperature_heat_consumer, COP_file_values)
-        print(f"COP dezentrale Wärmepumpen Gebäude: {COP}")
-
-        for waerme_gebaeude, cop in zip(total_heat_W, COP):
-            strom_wp = waerme_gebaeude/cop
-            waerme_hast = waerme_gebaeude - strom_wp
-
-            waerme_hast_ges_W.append(waerme_hast)
-            strom_hast_ges_W.append(strom_wp)
-
-        waerme_hast_ges_W = np.array(waerme_hast_ges_W)
-        strom_hast_ges_W = np.array(strom_hast_ges_W)
-    
-    if building_temp_checked == True and netconfiguration != "kaltes Netz":
-        supply_temperature_heat_consumer = supply_temperature_buildings_curve + dT_RL
-        return_temperature_heat_consumer = return_temperature_buildings_curve + dT_RL
-        waerme_hast_ges_W = total_heat_W
-        strom_hast_ges_W = np.zeros_like(waerme_hast_ges_W)
-
-    elif building_temp_checked == True and netconfiguration == "kaltes Netz":
-        supply_temperature_heat_consumer = return_temperature_heat_consumer + dT_RL
-        for st, rt, waerme_gebaeude in zip(supply_temperature_buildings_curve, return_temperature_heat_consumer, total_heat_W):
-            cop, _ = COP_WP(st, rt, COP_file_values)
-
-            strom_wp = waerme_gebaeude/cop
-            waerme_hast = waerme_gebaeude - strom_wp
-
-            waerme_hast_ges_W.append(waerme_hast)
-            strom_hast_ges_W.append(strom_wp)
-
-        waerme_hast_ges_W = np.array(waerme_hast_ges_W)
-        strom_hast_ges_W = np.array(strom_hast_ges_W)
-
-        print(f"Rücklauftemperatur HAST: {return_temperature_heat_consumer} °C")
-
-    return waerme_hast_ges_W, strom_hast_ges_W, supply_temperature_heat_consumer, return_temperature_heat_consumer 
-    
-def thermohydraulic_time_series_net(net, yearly_time_steps, qext_w_profiles, start, end, supply_temperature=85, 
-                                    min_supply_temperature_heat_consumer=65, return_temperature_heat_consumer=60, 
-                                    secondary_producers=None):
+def thermohydraulic_time_series_net(NetworkGenerationData):
     """Run a thermohydraulic time series simulation for the network.
 
     Args:
-        net (pandapipesNet): The pandapipes network.
-        yearly_time_steps (array): Array of yearly time steps.
-        qext_w_profiles (list of arrays): List of external heat profiles.
-        start (int): Start index for the simulation.
-        end (int): End index for the simulation.
-        supply_temperature (float, optional): Supply temperature. Defaults to 85.
-        min_supply_temperature_heat_consumer (float, optional): Minimum supply temperature for heat consumers. Defaults to 65.
-        return_temperature_heat_consumer (float, optional): Return temperature for heat consumers. Defaults to 60.
-        secondary_producers (list, optional): List of secondary producers. Defaults to None.
+        NetworkGenerationData (object): Network generation data object containing all necessary parameters.
 
     Returns:
-        tuple: Updated yearly time steps, network, and results.
+        NetworkGenerationData: Updated NetworkGenerationData object with simulation results.
     """
     # Prepare time series calculation
-    yearly_time_steps = yearly_time_steps[start:end]
+    NetworkGenerationData.yearly_time_steps_start_end = NetworkGenerationData.yearly_time_steps[NetworkGenerationData.start_time_step:NetworkGenerationData.end_time_step]
 
     # Update the ConstControl
-    time_steps = range(0, len(qext_w_profiles[0][start:end]))
-    update_heat_consumer_qext_controller(net, qext_w_profiles, time_steps, start, end)
+    time_steps = range(0, len(NetworkGenerationData.waerme_hast_ges_W[0][NetworkGenerationData.start_time_step:NetworkGenerationData.end_time_step]))
+    update_heat_consumer_qext_controller(NetworkGenerationData.net, NetworkGenerationData.waerme_hast_ges_W, time_steps, NetworkGenerationData.start_time_step, NetworkGenerationData.end_time_step)
 
     # Update secondary producer controls
-    if secondary_producers:
-        update_secondary_producer_controller(net, secondary_producers, time_steps, start, end)
+    if NetworkGenerationData.secondary_producers:
+        update_secondary_producer_controller(NetworkGenerationData.net, NetworkGenerationData.secondary_producers, time_steps, NetworkGenerationData.start_time_step, NetworkGenerationData.end_time_step)
 
     # If return_temperature data exists, update corresponding TemperatureController
-    if min_supply_temperature_heat_consumer is not None and isinstance(min_supply_temperature_heat_consumer, np.ndarray) and min_supply_temperature_heat_consumer.ndim == 2:
-        update_heat_consumer_temperature_controller(net, min_supply_temperature_heat_consumer, time_steps, start, end)
+    if NetworkGenerationData.min_supply_temperature_heat_consumer is not None and np.any(np.array(NetworkGenerationData.min_supply_temperature_heat_consumer) != 0) and isinstance(NetworkGenerationData.min_supply_temperature_heat_consumer, np.ndarray):
+        print("Update TemperatureController")
+        update_heat_consumer_temperature_controller(NetworkGenerationData.net, NetworkGenerationData.min_supply_temperature_heat_consumer, time_steps, NetworkGenerationData.start_time_step, NetworkGenerationData.end_time_step)
     
-    if return_temperature_heat_consumer is not None and isinstance(return_temperature_heat_consumer, np.ndarray) and return_temperature_heat_consumer.ndim == 2:
-        update_heat_consumer_return_temperature_controller(net, return_temperature_heat_consumer, time_steps, start, end)
+    if NetworkGenerationData.return_temperature_heat_consumer is not None and isinstance(NetworkGenerationData.return_temperature_heat_consumer, np.ndarray):
+        print("Update Return Temperature Const Control")
+        update_heat_consumer_return_temperature_controller(NetworkGenerationData.net, NetworkGenerationData.return_temperature_heat_consumer, time_steps, NetworkGenerationData.start_time_step, NetworkGenerationData.end_time_step)
 
-    # If supply_temperature data exists, update corresponding ConstControl
-    if supply_temperature is not None and isinstance(supply_temperature, np.ndarray):
-        update_heat_generator_supply_temperature_controller(net, supply_temperature, time_steps, start, end)
+    # If supply_temperature data exists and is an numpy array, update corresponding ConstControl (could also be a float (constant), therefore updating would not be necessary)
+    if NetworkGenerationData.supply_temperature_heat_generator is not None and isinstance(NetworkGenerationData.supply_temperature_heat_generator, np.ndarray):
+        update_heat_generator_supply_temperature_controller(NetworkGenerationData.net, NetworkGenerationData.supply_temperature_heat_generator, time_steps, NetworkGenerationData.start_time_step, NetworkGenerationData.end_time_step)
     
     # Log variables and run time series calculation
-    log_variables = create_log_variables(net)
-    ow = OutputWriter(net, time_steps, output_path=None, log_variables=log_variables)
+    log_variables = create_log_variables(NetworkGenerationData.net)
+    ow = OutputWriter(NetworkGenerationData.net, time_steps, output_path=None, log_variables=log_variables)
 
-    run_time_series.run_timeseries(net, time_steps, mode="bidirectional", iter=100)
+    run_time_series.run_timeseries(NetworkGenerationData.net, time_steps, mode="bidirectional", iter=100)
+    
+    NetworkGenerationData.net_results = ow.np_results
 
-    return yearly_time_steps, net, ow.np_results
+    NetworkGenerationData.pump_results = calculate_results(NetworkGenerationData.net, NetworkGenerationData.net_results)
+    
+    return NetworkGenerationData
 
 def calculate_results(net, net_results, cp_kJ_kgK=4.2):
     """Calculate and structure the simulation results.

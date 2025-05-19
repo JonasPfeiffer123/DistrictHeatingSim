@@ -1,7 +1,7 @@
 """
 Filename: network_config_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-02-11
+Date: 2025-05-17
 Description: Contains the NetworkConfigTab class.
 """
 
@@ -78,10 +78,10 @@ class NetworkConfigTab(QWidget):
         layout = QVBoxLayout()
         layout.addWidget(QLabel("Temperaturregelung HAST:"))
 
-        self.supplyTempCheckbox = QCheckBox("Mindestvorlauftemperatur für die Gebäude berücksichtigen.")
-        self.supplyTempCheckbox.setToolTip("""Aktivieren Sie diese Option, um eine Mindestvorlauftemperatur für alle Gebäude festzulegen.\nDas können beispielsweise 60 °C sein um die Warmwasserbereitung zu gewährleisten.\nÜber die Temperaturdifferenz zwischen HAST und Netz ergibt sich dann eine Mindestvorlauftemperatur welche in der Simulation erreicht werden muss.\nWenn nicht definiert, wird keine Mindesttemperatur berücksichtigt.""")
-        layout.addWidget(self.supplyTempCheckbox)
-        self.supplyTempCheckbox.stateChanged.connect(self.updateInputFieldsVisibility)
+        self.minSupplyTempCheckbox = QCheckBox("Mindestvorlauftemperatur für die Gebäude berücksichtigen.")
+        self.minSupplyTempCheckbox.setToolTip("""Aktivieren Sie diese Option, um eine Mindestvorlauftemperatur für alle Gebäude festzulegen.\nDas können beispielsweise 60 °C sein um die Warmwasserbereitung zu gewährleisten.\nÜber die Temperaturdifferenz zwischen HAST und Netz ergibt sich dann eine Mindestvorlauftemperatur welche in der Simulation erreicht werden muss.\nWenn nicht definiert, wird keine Mindesttemperatur berücksichtigt.""")
+        layout.addWidget(self.minSupplyTempCheckbox)
+        self.minSupplyTempCheckbox.stateChanged.connect(self.updateInputFieldsVisibility)
         return layout
 
     def createReturnTemperatureCheckbox(self):
@@ -140,9 +140,9 @@ class NetworkConfigTab(QWidget):
         layout = QVBoxLayout()
         self.parameter_rows_heat_consumer = []
 
-        self.supply_temperature_heat_consumer_row = self.createParameterRow("Minimale Vorlauftemperatur Gebäude:", "60")
-        self.parameter_rows_heat_consumer.append(self.supply_temperature_heat_consumer_row)
-        layout.addLayout(self.supply_temperature_heat_consumer_row)
+        self.min_supply_temperature_building_row = self.createParameterRow("Minimale Vorlauftemperatur Gebäude:", "60")
+        self.parameter_rows_heat_consumer.append(self.min_supply_temperature_building_row)
+        layout.addLayout(self.min_supply_temperature_building_row)
 
         self.return_temp_row = self.createParameterRow("Soll-Rücklauftemperatur HAST:", "50")
         self.parameter_rows_heat_consumer.append(self.return_temp_row)
@@ -271,8 +271,8 @@ class NetworkConfigTab(QWidget):
                     if widget:
                         widget.setVisible(True)
 
-        self.supply_temperature_heat_consumer_checked = self.supplyTempCheckbox.isChecked()
-        self.set_layout_visibility(self.supply_temperature_heat_consumer_row, self.supply_temperature_heat_consumer_checked)
+        self.min_supply_temperature_building_checked = self.minSupplyTempCheckbox.isChecked()
+        self.set_layout_visibility(self.min_supply_temperature_building_row, self.min_supply_temperature_building_checked)
 
         self.return_temp_checked = self.returnTempCheckbox.isChecked()
         self.set_layout_visibility(self.return_temp_row, self.return_temp_checked)
