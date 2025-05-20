@@ -18,9 +18,10 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
 class NetworkDataTab(QWidget):
-    def __init__(self, base_path, parent=None):
+    def __init__(self, base_path, dialog_config, parent=None):
         super().__init__(parent)
         self.base_path = base_path
+        self.dialog_config = dialog_config
         self.parent = parent
         self.initUI()
 

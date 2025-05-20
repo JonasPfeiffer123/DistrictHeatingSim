@@ -5,16 +5,14 @@ Date: 2025-05-17
 Description: Contains the NetworkConfigTab class.
 """
 
-import numpy as np
 import pandapipes as pp
 
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QComboBox, QWidget, QHBoxLayout, QCheckBox, QGroupBox
 
-from districtheatingsim.utilities.test_reference_year import import_TRY
-
 class NetworkConfigTab(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, dialog_config, parent=None):
         super().__init__(parent)
+        self.dialog_config = dialog_config
         self.parent = parent
         self.initUI()
 
@@ -60,18 +58,18 @@ class NetworkConfigTab(QWidget):
         layout = QVBoxLayout()
         layout.addWidget(QLabel("Netzkonfiguration:"))
         self.netconfigurationControlInput = QComboBox(self)
-        self.netconfigurationControlInput.addItems(["Niedertemperaturnetz", "kaltes Netz"])
+        self.netconfigurationControlInput.addItems(self.dialog_config["netconfiguration"])
         layout.addWidget(self.netconfigurationControlInput)
         self.netconfigurationControlInput.currentIndexChanged.connect(self.updateInputFieldsVisibility)
         return layout
 
     def createTemperatureControlInput(self):
         layout = QVBoxLayout()
-        self.temperatureControlInput = QComboBox(self)
-        self.temperatureControlInput.addItems(["Gleitend", "Statisch"])
+        self.supplyTemperatureControlInput = QComboBox(self)
+        self.supplyTemperatureControlInput.addItems(self.dialog_config["supply_temperature_control"])
         layout.addWidget(QLabel("Vorlauftemperatur-Regelung:"))
-        layout.addWidget(self.temperatureControlInput)
-        self.temperatureControlInput.currentIndexChanged.connect(self.updateInputFieldsVisibility)
+        layout.addWidget(self.supplyTemperatureControlInput)
+        self.supplyTemperatureControlInput.currentIndexChanged.connect(self.updateInputFieldsVisibility)
         return layout
 
     def createSupplyTemperatureCheckbox(self):
@@ -104,35 +102,35 @@ class NetworkConfigTab(QWidget):
         layout = QVBoxLayout()
         self.parameter_rows_net = []
 
-        self.supply_temp_row = self.createParameterRow("Vorlauftemperatur Heizzentrale:", "85")
-        self.parameter_rows_net.append(self.supply_temp_row)
-        layout.addLayout(self.supply_temp_row)
+        # Hole die aktuelle Netzkonfiguration aus dem Dialog (oder nimm die erste als Fallback)
+        netconfig = self.netconfigurationControlInput.currentText() if hasattr(self, 'netconfigurationControlInput') else self.dialog_config["netconfiguration"][0]
+        std = self.dialog_config["standardwerte"][netconfig]
 
-        self.max_supply_temp_row = self.createParameterRow("Maximale Vorlauftemperatur Heizzentrale:", "85")
+        self.max_supply_temp_row = self.createParameterRow("Maximale Vorlauftemperatur Heizzentrale:", str(std["max_supply_temp"]))
         self.parameter_rows_net.append(self.max_supply_temp_row)
         layout.addLayout(self.max_supply_temp_row)
 
-        self.min_supply_temp_row = self.createParameterRow("Minimale Vorlauftemperatur Heizzentrale:", "70")
+        self.min_supply_temp_row = self.createParameterRow("Minimale Vorlauftemperatur Heizzentrale:", str(std["min_supply_temp"]))
         self.parameter_rows_net.append(self.min_supply_temp_row)
         layout.addLayout(self.min_supply_temp_row)
 
-        self.max_air_temp_row = self.createParameterRow("Obere Grenze der Lufttemperatur:", "15")
+        self.max_air_temp_row = self.createParameterRow("Obere Grenze der Lufttemperatur:", str(std["max_air_temp"]))
         self.parameter_rows_net.append(self.max_air_temp_row)
         layout.addLayout(self.max_air_temp_row)
 
-        self.min_air_temp_row = self.createParameterRow("Untere Grenze der Lufttemperatur:", "-10")
+        self.min_air_temp_row = self.createParameterRow("Untere Grenze der Lufttemperatur:", str(std["min_air_temp"]))
         self.parameter_rows_net.append(self.min_air_temp_row)
         layout.addLayout(self.min_air_temp_row)
 
         layout.addWidget(QLabel("Druckregelung Heizzentrale:"))
 
-        self.flow_pressure_row = self.createParameterRow("Vorlaufdruck:", "4")
+        self.flow_pressure_row = self.createParameterRow("Vorlaufdruck:", str(std["flow_pressure"]))
         self.parameter_rows_net.append(self.flow_pressure_row)
         layout.addLayout(self.flow_pressure_row)
 
-        lift_pressure_row = self.createParameterRow("Druckdifferenz Vorlauf/Rücklauf:", "1.5")
-        self.parameter_rows_net.append(lift_pressure_row)
-        layout.addLayout(lift_pressure_row)
+        self.lift_pressure_row = self.createParameterRow("Druckdifferenz Vorlauf/Rücklauf:", str(std["lift_pressure"]))
+        self.parameter_rows_net.append(self.lift_pressure_row)
+        layout.addLayout(self.lift_pressure_row)
 
         return layout
 
@@ -140,17 +138,21 @@ class NetworkConfigTab(QWidget):
         layout = QVBoxLayout()
         self.parameter_rows_heat_consumer = []
 
-        self.min_supply_temperature_building_row = self.createParameterRow("Minimale Vorlauftemperatur Gebäude:", "60")
+        # Hole die aktuelle Netzkonfiguration aus dem Dialog (oder nimm die erste als Fallback)
+        netconfig = self.netconfigurationControlInput.currentText() if hasattr(self, 'netconfigurationControlInput') else self.dialog_config["netconfiguration"][0]
+        std = self.dialog_config["standardwerte"][netconfig]
+
+        self.min_supply_temperature_building_row = self.createParameterRow("Minimale Vorlauftemperatur Gebäude:", str(std["min_supply_temp_building"]))
         self.parameter_rows_heat_consumer.append(self.min_supply_temperature_building_row)
         layout.addLayout(self.min_supply_temperature_building_row)
 
-        self.return_temp_row = self.createParameterRow("Soll-Rücklauftemperatur HAST:", "50")
+        self.return_temp_row = self.createParameterRow("Soll-Rücklauftemperatur HAST:", str(std["return_temp"]))
         self.parameter_rows_heat_consumer.append(self.return_temp_row)
         layout.addLayout(self.return_temp_row)
 
-        dT_RL = self.createParameterRow("Temperaturdifferenz Netz/HAST:", "5")
-        self.parameter_rows_heat_consumer.append(dT_RL)
-        layout.addLayout(dT_RL)
+        self.dT_RL_row = self.createParameterRow("Temperaturdifferenz Netz/HAST:", str(std["dT_RL"]))
+        self.parameter_rows_heat_consumer.append(self.dT_RL_row)
+        layout.addLayout(self.dT_RL_row)
 
         return layout
 
@@ -168,8 +170,12 @@ class NetworkConfigTab(QWidget):
         pipetypes = pp.std_types.available_std_types(pp.create_empty_network(fluid="water"), "pipe").index.tolist()
         self.initialpipetypeInput.addItems(pipetypes)
         layout.addWidget(self.initialpipetypeInput)
+
+        # Hole die aktuelle Netzkonfiguration aus dem Dialog (oder nimm die erste als Fallback)
+        netconfig = self.netconfigurationControlInput.currentText() if hasattr(self, 'netconfigurationControlInput') else self.dialog_config["netconfiguration"][0]
+        std = self.dialog_config["standardwerte"][netconfig]
         
-        default_pipe_type = "KMR 100/250-2v"
+        default_pipe_type = std["default_pipe_type"]
         if default_pipe_type in pipetypes:
             self.initialpipetypeInput.setCurrentText(default_pipe_type)
         else:
@@ -213,33 +219,13 @@ class NetworkConfigTab(QWidget):
         Updates the visibility of input fields based on the selected options.
         """
         self.netconfiguration = self.netconfigurationControlInput.currentText()
-        is_low_temp_net = self.netconfigurationControlInput.currentText() == "Niedertemperaturnetz"
-        #is_changing_temp_net = self.netconfigurationControlInput.currentText() == "wechselwarmes Netz"
-        is_cold_temp_net = self.netconfigurationControlInput.currentText() == "kaltes Netz"
+        std = self.dialog_config["standardwerte"][self.netconfiguration]
+        self.set_default_value(self.max_supply_temp_row, str(std["max_supply_temp"]))
+        self.set_default_value(self.min_supply_temp_row, str(std["min_supply_temp"]))
+        self.set_default_value(self.return_temp_row, str(std["return_temp"]))
 
-        if is_low_temp_net:
-            # Setze neue Standardwerte für das Niedertemperaturnetz
-            self.set_default_value(self.supply_temp_row, "85")
-            self.set_default_value(self.max_supply_temp_row, "85")
-            self.set_default_value(self.min_supply_temp_row, "70")
-            self.set_default_value(self.return_temp_row, "60")
-
-        elif is_cold_temp_net:
-            # Setze neue Standardwerte für das kalte Netz
-            self.set_default_value(self.supply_temp_row, "10")
-            self.set_default_value(self.max_supply_temp_row, "10")
-            self.set_default_value(self.min_supply_temp_row, "5")
-            self.set_default_value(self.return_temp_row, "3")
-
-        """elif is_changing_temp_net:
-            # Setze neue Standardwerte für das wechselwarme Netz
-            self.set_default_value(self.supply_temp_row, "45")
-            self.set_default_value(self.max_supply_temp_row, "45")
-            self.set_default_value(self.min_supply_temp_row, "30")
-            self.set_default_value(self.return_temp_row, "20")"""
-
-        is_control_mode_static = self.temperatureControlInput.currentText() == "Statisch"
-        is_control_mode_dynamic = self.temperatureControlInput.currentText() == "Gleitend"
+        is_control_mode_static = self.supplyTemperatureControlInput.currentText() == "Statisch"
+        is_control_mode_dynamic = self.supplyTemperatureControlInput.currentText() == "Gleitend"
 
         if is_control_mode_static:
             # Zeige die Widgets für Vorlauftemperatur (Index 0)
@@ -250,7 +236,7 @@ class NetworkConfigTab(QWidget):
             
             # Blende die Widgets für Maximale Vorlauftemperatur, Minimale Vorlauftemperatur,
             # Obere Grenze der Lufttemperatur und Untere Grenze der Lufttemperatur (Index 1 bis 4) aus
-            for parameter_row in self.parameter_rows_net[1:5]:
+            for parameter_row in self.parameter_rows_net[1:4]:
                 for i in range(parameter_row.count()):
                     widget = parameter_row.itemAt(i).widget()
                     if widget:
@@ -261,11 +247,11 @@ class NetworkConfigTab(QWidget):
             for i in range(self.parameter_rows_net[0].count()):
                 widget = self.parameter_rows_net[0].itemAt(i).widget()
                 if widget:
-                    widget.setVisible(False)
+                    widget.setVisible(True)
 
             # Zeige die Widgets für Maximale Vorlauftemperatur, Minimale Vorlauftemperatur,
             # Obere Grenze der Lufttemperatur und Untere Grenze der Lufttemperatur (Index 1 bis 4)
-            for parameter_row in self.parameter_rows_net[1:5]:
+            for parameter_row in self.parameter_rows_net[1:4]:
                 for i in range(parameter_row.count()):
                     widget = parameter_row.itemAt(i).widget()
                     if widget:
@@ -280,38 +266,22 @@ class NetworkConfigTab(QWidget):
         self.building_temp_checked =  self.buildingTempCheckbox.isChecked()
 
     ### Hier vielleicht noch Funktionalitäten auslagern
-    def calculateTemperatureCurve(self):
+    def getSupplyTemperatureHeatGenerator(self):
         """
         Calculates the temperature curve based on the selected control mode.
 
         Returns:
             float or np.ndarray: The calculated temperature curve.
         """
-        control_mode = self.temperatureControlInput.currentText()
-        if control_mode == "Statisch":
-            return float(self.parameter_rows_net[0].itemAt(1).widget().text())
-        elif control_mode == "Gleitend":
-            max_supply_temperature = float(self.parameter_rows_net[1].itemAt(1).widget().text())
-            min_supply_temperature = float(self.parameter_rows_net[2].itemAt(1).widget().text())
-            max_air_temperature = float(self.parameter_rows_net[3].itemAt(1).widget().text())
-            min_air_temperature = float(self.parameter_rows_net[4].itemAt(1).widget().text())
+        self.supply_temperature_control = self.supplyTemperatureControlInput.currentText()
+        if self.supply_temperature_control == "Statisch":
+            self.max_supply_temperature = float(self.parameter_rows_net[0].itemAt(1).widget().text())
+            self.min_supply_temperature = None
+            self.max_air_temperature = None
+            self.min_air_temperature = None
 
-            air_temperature_data, _, _, _, _ = import_TRY(self.parent.parent.data_manager.get_try_filename())
-
-            # Berechnung der Temperaturkurve basierend auf den ausgewählten Einstellungen
-            temperature_curve = []
-
-            # Berechnen der Steigung der linearen Gleichung
-            slope = (max_supply_temperature - min_supply_temperature) / (min_air_temperature - max_air_temperature)
-
-            for air_temperature in air_temperature_data:
-                if air_temperature <= min_air_temperature:
-                    temperature_curve.append(max_supply_temperature)
-                elif air_temperature >= max_air_temperature:
-                    temperature_curve.append(min_supply_temperature)
-                else:
-                    # Anwendung der linearen Gleichung für die Temperaturberechnung
-                    temperature = max_supply_temperature + slope * (air_temperature - min_air_temperature)
-                    temperature_curve.append(temperature)
-
-            return np.array(temperature_curve)
+        elif self.supply_temperature_control == "Gleitend":
+            self.max_supply_temperature = float(self.parameter_rows_net[0].itemAt(1).widget().text())
+            self.min_supply_temperature = float(self.parameter_rows_net[1].itemAt(1).widget().text())
+            self.max_air_temperature = float(self.parameter_rows_net[2].itemAt(1).widget().text())
+            self.min_air_temperature = float(self.parameter_rows_net[3].itemAt(1).widget().text())

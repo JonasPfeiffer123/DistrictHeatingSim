@@ -8,8 +8,9 @@ Description: Contains the DiameterOptimizationTab class.
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QComboBox, QWidget,  QHBoxLayout, QCheckBox, QGroupBox
 
 class DiameterOptimizationTab(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, dialog_config, parent=None):
         super().__init__(parent)
+        self.dialog_config = dialog_config
         self.initUI()
 
     def initUI(self):
@@ -40,18 +41,18 @@ class DiameterOptimizationTab(QWidget):
 
         row_layout = QHBoxLayout()
         self.v_max_pipelabel = QLabel("Maximale Strömungsgeschwindigkeit Leitungen:")
-        self.v_max_pipeInput = QLineEdit("1.0")
+        self.v_max_pipeInput = QLineEdit(str(self.dialog_config["diameter_optimization"]["v_max_pipe"]))
         row_layout.addWidget(self.v_max_pipelabel)
         row_layout.addWidget(self.v_max_pipeInput)
         layout.addLayout(row_layout)
 
         self.material_filterInput = QComboBox(self)
-        self.material_filterInput.addItems(["KMR", "FL", "HK"])
+        self.material_filterInput.addItems(self.dialog_config["diameter_optimization"]["material_filter"])
         layout.addWidget(self.material_filterInput)
         self.material_filterInput.currentIndexChanged.connect(self.updateInputFieldsVisibility)
 
         self.k_mm_Label = QLabel("Rauigkeit der Rohrleitungen:")
-        self.k_mm_Input = QLineEdit("0.1")
+        self.k_mm_Input = QLineEdit(str(self.dialog_config["diameter_optimization"]["k_mm"]))
         row_layout.addWidget(self.k_mm_Label)
         row_layout.addWidget(self.k_mm_Input)
         layout.addLayout(row_layout)

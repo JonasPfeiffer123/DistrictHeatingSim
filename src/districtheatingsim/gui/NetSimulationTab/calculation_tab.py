@@ -20,7 +20,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
 from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction, QActionGroup, QPlainTextEdit, QLabel
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction, QActionGroup, QPlainTextEdit
 
 from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import save_results_csv, import_results_csv
 from districtheatingsim.net_simulation_pandapipes.config_plot import config_plot
@@ -280,6 +280,7 @@ class CalculationTab(QWidget):
         # uses the dataclass to get the values
         # add COP filename
         self.NetworkGenerationData.COP_filename = self.data_manager.get_cop_filename()
+        self.NetworkGenerationData.TRY_filename = self.data_manager.get_try_filename()
         
         self.initializationThread = NetInitializationThread(self.NetworkGenerationData)
         self.common_thread_initialization()
@@ -305,7 +306,7 @@ class CalculationTab(QWidget):
         self.NetworkGenerationData = NetworkGenerationData        
         
         self.plot_pandapipes_net()
-        self.prepare_plot_data()
+        self.NetworkGenerationData.prepare_plot_data()
         self.createPlotControlDropdown()
         self.update_time_series_plot()
         self.display_results()
@@ -319,87 +320,23 @@ class CalculationTab(QWidget):
             self.results_display.setPlainText(self.result_text)
             return
 
-        self.NetworkGenerationData.Anzahl_Gebäude = len(self.NetworkGenerationData.net.heat_consumer) if hasattr(self.NetworkGenerationData.net, 'heat_consumer') else None
-
-        if hasattr(self.NetworkGenerationData.net, 'circ_pump_pressure'):
-            if hasattr(self.NetworkGenerationData.net, 'circ_pump_mass'):
-                self.NetworkGenerationData.Anzahl_Heizzentralen = len(self.NetworkGenerationData.net.circ_pump_pressure) + len(self.NetworkGenerationData.net.circ_pump_mass)
+        results = self.NetworkGenerationData.calculate_results()
+        result_text_parts = []
+        for key, value in results.items():
+            if value is None:
+                result_text_parts.append(f"{key}: N/A\n")
+            elif isinstance(value, float):
+                # Formatierung je nach Einheit
+                if "%" in key:
+                    result_text_parts.append(f"{key}: {value:.2f} %\n")
+                elif "kW" in key or "MWh" in key or "m" in key:
+                    result_text_parts.append(f"{key}: {value:.2f}\n")
+                else:
+                    result_text_parts.append(f"{key}: {value}\n")
             else:
-                self.NetworkGenerationData.Anzahl_Heizzentralen = len(self.NetworkGenerationData.net.circ_pump_pressure)
-        else:
-            self.NetworkGenerationData.Anzahl_Heizzentralen = None
-
-        self.NetworkGenerationData.Gesamtwärmebedarf_Gebäude_MWh = np.sum(self.NetworkGenerationData.waerme_ges_kW) / 1000 if hasattr(self.NetworkGenerationData, 'waerme_ges_kW') else None
-        self.NetworkGenerationData.Gesamtheizlast_Gebäude_kW = np.max(self.NetworkGenerationData.waerme_ges_kW) if hasattr(self.NetworkGenerationData, 'waerme_ges_kW') else None
-
-        if hasattr(self.NetworkGenerationData.net.pipe, 'length_km'):
-            self.NetworkGenerationData.Trassenlänge_m = self.NetworkGenerationData.net.pipe.length_km.sum() * 1000 / 2
-        else:
-            self.NetworkGenerationData.Trassenlänge_m = None
-
-        self.NetworkGenerationData.Wärmebedarfsdichte_MWh_a_m = self.NetworkGenerationData.Gesamtwärmebedarf_Gebäude_MWh / self.NetworkGenerationData.Trassenlänge_m if self.NetworkGenerationData.Gesamtwärmebedarf_Gebäude_MWh is not None and self.NetworkGenerationData.Trassenlänge_m is not None else None
-        self.NetworkGenerationData.Anschlussdichte_kW_m = self.NetworkGenerationData.Gesamtheizlast_Gebäude_kW / self.NetworkGenerationData.Trassenlänge_m if self.NetworkGenerationData.Gesamtheizlast_Gebäude_kW is not None and self.NetworkGenerationData.Trassenlänge_m is not None else None
-
-        self.NetworkGenerationData.Jahreswärmeerzeugung_MWh = 0
-        self.NetworkGenerationData.Pumpenstrombedarf_MWh = 0
-        if hasattr(self.NetworkGenerationData, 'pump_results'):
-            for pump_type, pumps in self.NetworkGenerationData.pump_results.items() if self.NetworkGenerationData.pump_results is not None else {}:
-                for idx, pump_data in pumps.items():
-                    self.NetworkGenerationData.Jahreswärmeerzeugung_MWh += np.sum(pump_data['qext_kW']) / 1000
-                    self.NetworkGenerationData.Pumpenstrombedarf_MWh += np.sum((pump_data['mass_flow']/1000)*(pump_data['deltap']*100)) / 1000
-
-        self.NetworkGenerationData.Verteilverluste_kW = self.NetworkGenerationData.Jahreswärmeerzeugung_MWh - self.NetworkGenerationData.Gesamtwärmebedarf_Gebäude_MWh if self.NetworkGenerationData.Gesamtwärmebedarf_Gebäude_MWh is not None and self.NetworkGenerationData.Jahreswärmeerzeugung_MWh is not None and self.NetworkGenerationData.Jahreswärmeerzeugung_MWh != 0 else None
-        self.NetworkGenerationData.rel_Verteilverluste_percent = (self.NetworkGenerationData.Verteilverluste_kW / self.NetworkGenerationData.Jahreswärmeerzeugung_MWh) * 100 if self.NetworkGenerationData.Verteilverluste_kW is not None and self.NetworkGenerationData.Jahreswärmeerzeugung_MWh is not None and self.NetworkGenerationData.Jahreswärmeerzeugung_MWh != 0 else None
-
-        result_text_parts = [
-            f"Anzahl angeschlossene Gebäude: {self.NetworkGenerationData.Anzahl_Gebäude if self.NetworkGenerationData.Anzahl_Gebäude is not None else 'N/A'}\n",
-            f"Anzahl Heizzentralen: {self.NetworkGenerationData.Anzahl_Heizzentralen if self.NetworkGenerationData.Anzahl_Heizzentralen is not None else 'N/A'}\n\n"
-        ]
-
-        if self.NetworkGenerationData.Gesamtwärmebedarf_Gebäude_MWh is not None:
-            result_text_parts.append(f"Jahresgesamtwärmebedarf Gebäude: {self.NetworkGenerationData.Gesamtwärmebedarf_Gebäude_MWh:.2f} MWh/a\n")
-        else:
-            result_text_parts.append("Jahresgesamtwärmebedarf Gebäude: N/A\n")
-
-        if self.NetworkGenerationData.Gesamtheizlast_Gebäude_kW is not None:
-            result_text_parts.append(f"max. Heizlast Gebäude: {self.NetworkGenerationData.Gesamtheizlast_Gebäude_kW:.2f} kW\n")
-        else:
-            result_text_parts.append("max. Heizlast Gebäude: N/A\n")
-
-        if self.NetworkGenerationData.Trassenlänge_m is not None:
-            result_text_parts.append(f"Trassenlänge Wärmenetz: {self.NetworkGenerationData.Trassenlänge_m:.2f} m\n\n")
-        else:
-            result_text_parts.append("Trassenlänge Wärmenetz: N/A\n\n")
-
-        if self.NetworkGenerationData.Wärmebedarfsdichte_MWh_a_m is not None:
-            result_text_parts.append(f"Wärmebedarfsdichte: {self.NetworkGenerationData.Wärmebedarfsdichte_MWh_a_m:.2f} MWh/(a*m)\n")
-        else:
-            result_text_parts.append("Wärmebedarfsdichte: N/A\n")
-
-        if self.NetworkGenerationData.Anschlussdichte_kW_m is not None:
-            result_text_parts.append(f"Anschlussdichte: {self.NetworkGenerationData.Anschlussdichte_kW_m:.2f} kW/m\n\n")
-        else:
-            result_text_parts.append("Anschlussdichte: N/A\n\n")
-
-        if self.NetworkGenerationData.Jahreswärmeerzeugung_MWh is not None and self.NetworkGenerationData.Jahreswärmeerzeugung_MWh != 0:
-            result_text_parts.append(f"Jahreswärmeerzeugung: {self.NetworkGenerationData.Jahreswärmeerzeugung_MWh:.2f} MWh\n")
-        else:
-            result_text_parts.append("Jahreswärmeerzeugung: N/A\n")
-
-        if self.NetworkGenerationData.Verteilverluste_kW is not None:
-            result_text_parts.append(f"Verteilverluste: {self.NetworkGenerationData.Verteilverluste_kW:.2f} MWh\n")
-        else:
-            result_text_parts.append("Verteilverluste: N/A\n")
-
-        if self.NetworkGenerationData.rel_Verteilverluste_percent is not None:
-            result_text_parts.append(f"rel. Verteilverluste: {self.NetworkGenerationData.rel_Verteilverluste_percent:.2f} %\n\n")
-        else:
-            result_text_parts.append("rel. Verteilverluste: N/A\n\n")
-
-        result_text_parts.append(f"Pumpenstrom: {self.NetworkGenerationData.Pumpenstrombedarf_MWh:.2f} MWh\n")
+                result_text_parts.append(f"{key}: {value}\n")
 
         self.result_text = ''.join(result_text_parts)
-
         self.results_display.setPlainText(self.result_text)
 
     def plot_pandapipes_net(self):
@@ -457,7 +394,7 @@ class CalculationTab(QWidget):
         self.progressBar.setRange(0, 1)
         self.NetworkGenerationData = NetworkGenerationData
 
-        self.prepare_plot_data()
+        self.NetworkGenerationData.prepare_plot_data()
         self.createPlotControlDropdown()
         self.update_time_series_plot()
         self.display_results()
@@ -479,46 +416,6 @@ class CalculationTab(QWidget):
         """
         QMessageBox.critical(self, "Berechnungsfehler", error_message)
         self.progressBar.setRange(0, 1)
-
-    def prepare_plot_data(self):
-        """
-        Prepares data for plotting.
-
-        """
-        
-        self.NetworkGenerationData.plot_data = {
-            "Gesamtwärmebedarf Wärmeübertrager": {
-                "data": self.NetworkGenerationData.waerme_ges_kW,
-                "label": "Wärmebedarf Wärmeübertrager in kW",
-                "axis": "left",
-                "time": self.NetworkGenerationData.yearly_time_steps
-            }
-        }
-
-        if np.sum(self.NetworkGenerationData.strombedarf_ges_kW) > 0:
-            self.NetworkGenerationData.plot_data["Gesamtheizlast Gebäude"] = {
-                "data": self.NetworkGenerationData.waerme_ges_kW + self.NetworkGenerationData.strombedarf_ges_kW,
-                "label": "Gesamtheizlast Gebäude in kW",
-                "axis": "left",
-                "time": self.NetworkGenerationData.yearly_time_steps
-            }
-            self.NetworkGenerationData.plot_data["Gesamtstrombedarf Wärmepumpen Gebäude"] = {
-                "data": self.NetworkGenerationData.strombedarf_ges_kW,
-                "label": "Gesamtstrombedarf Wärmepumpen Gebäude in kW",
-                "axis": "left",
-                "time": self.NetworkGenerationData.yearly_time_steps
-            }
-
-        if self.NetworkGenerationData.pump_results is not None:
-            for pump_type, pumps in self.NetworkGenerationData.pump_results.items():
-                for idx, pump_data in pumps.items():
-                    self.NetworkGenerationData.plot_data[f"Wärmeerzeugung {pump_type} {idx+1}"] = {"data": pump_data['qext_kW'], "label": "Wärmeerzeugung in kW", "axis": "left", "time": self.NetworkGenerationData.yearly_time_steps_start_end}
-                    self.NetworkGenerationData.plot_data[f"Massenstrom {pump_type} {idx+1}"] = {"data": pump_data['mass_flow'], "label": "Massenstrom in kg/s", "axis": "right", "time": self.NetworkGenerationData.yearly_time_steps_start_end}
-                    self.NetworkGenerationData.plot_data[f"Delta p {pump_type} {idx+1}"] = {"data": pump_data['deltap'], "label": "Druckdifferenz in bar", "axis": "right", "time": self.NetworkGenerationData.yearly_time_steps_start_end}
-                    self.NetworkGenerationData.plot_data[f"Vorlauftemperatur {pump_type} {idx+1}"] = {"data": pump_data['flow_temp'], "label": "Temperatur in °C", "axis": "right", "time": self.NetworkGenerationData.yearly_time_steps_start_end}
-                    self.NetworkGenerationData.plot_data[f"Rücklauftemperatur {pump_type} {idx+1}"] = {"data": pump_data['return_temp'], "label": "Temperatur in °C", "axis": "right", "time": self.NetworkGenerationData.yearly_time_steps_start_end}
-                    self.NetworkGenerationData.plot_data[f"Vorlaufdruck {pump_type} {idx+1}"] = {"data": pump_data['flow_pressure'], "label": "Druck in bar", "axis": "right", "time": self.NetworkGenerationData.yearly_time_steps_start_end}
-                    self.NetworkGenerationData.plot_data[f"Rücklaufdruck {pump_type} {idx+1}"] = {"data": pump_data['return_pressure'], "label": "Druck in bar", "axis": "right", "time": self.NetworkGenerationData.yearly_time_steps_start_end}
 
     def update_time_series_plot(self):
         """
@@ -693,7 +590,7 @@ class CalculationTab(QWidget):
             self.NetworkGenerationData.strombedarf_ges_kW = np.sum(self.NetworkGenerationData.strombedarf_hast_ges_kW, axis=0)
             
             self.plot_pandapipes_net()
-            self.prepare_plot_data()
+            self.NetworkGenerationData.prepare_plot_data()
             self.createPlotControlDropdown()
             self.update_time_series_plot()
             self.display_results()
@@ -712,7 +609,7 @@ class CalculationTab(QWidget):
             
             self.NetworkGenerationData.yearly_time_steps_start_end, self.NetworkGenerationData.waerme_ges_kW, self.NetworkGenerationData.strombedarf_ges_kW, self.NetworkGenerationData.pump_results = import_results_csv(results_csv_filepath)
             
-            self.prepare_plot_data()
+            self.NetworkGenerationData.prepare_plot_data()
             self.createPlotControlDropdown()
             self.update_time_series_plot()
             self.display_results()
