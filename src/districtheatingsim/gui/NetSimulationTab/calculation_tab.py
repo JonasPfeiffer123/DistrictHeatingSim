@@ -29,7 +29,7 @@ from districtheatingsim.net_simulation_pandapipes.utilities import export_net_ge
 from districtheatingsim.gui.NetSimulationTab.timeseries_dialog import TimeSeriesCalculationDialog
 from districtheatingsim.gui.NetSimulationTab.net_generation_dialog import NetGenerationDialog
 from districtheatingsim.gui.NetSimulationTab.net_calculation_threads import NetInitializationThread, NetCalculationThread
-from districtheatingsim.gui.NetSimulationTab.NetworkDataClass import NetworkGenerationData
+from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import NetworkGenerationData
 
 from districtheatingsim.gui.utilities import CheckableComboBox
 
