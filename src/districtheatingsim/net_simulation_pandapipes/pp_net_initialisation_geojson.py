@@ -136,7 +136,7 @@ def initialize_geojson(NetworkGenerationData):
     if NetworkGenerationData.secondary_producers:
         # Calculate mass flow of main producer with cp = 4.18 kJ/kgK from sum of max_waerme_hast_ges_W (in W)
         cp = 4.18  # kJ/kgK
-        mass_flow = np.sum(max_waerme_hast_ges_W / 1000) / (cp * (NetworkGenerationData.max_supply_temperature_heat_generator - np.average(return_temperature_heat_consumer)))  # kW / (kJ/kgK * K) = kg/s
+        mass_flow = np.sum(total_building_heat_demand_W / 1000) / (cp * (NetworkGenerationData.max_supply_temperature_heat_generator - np.average(return_temperature_heat_consumer)))  # kW / (kJ/kgK * K) = kg/s
 
         print(f"Mass flow of main producer: {mass_flow} kg/s")
 
@@ -156,22 +156,21 @@ def initialize_geojson(NetworkGenerationData):
     net = create_network(gdf_dict, consumer_dict, pipe_dict, producer_dict)
 
     # Save calculated variables in NetworkGenerationData
-    NetworkGenerationData.supply_temperature_buildings = supply_temperature_buildings
-    NetworkGenerationData.return_temperature_buildings = return_temperature_buildings
-    NetworkGenerationData.yearly_time_steps = yearly_time_steps
-    NetworkGenerationData.waerme_gebaeude_ges_W = total_building_heat_demand_W
-    NetworkGenerationData.heizwaerme_gebaeude_ges_W = total_building_heating_demand_W
-    NetworkGenerationData.ww_waerme_gebaeude_ges_W = total_building_hot_water_demand_W
-    NetworkGenerationData.supply_temperature_building_curve = supply_temperature_building_curve
-    NetworkGenerationData.return_temperature_building_curve = return_temperature_building_curve
-    NetworkGenerationData.max_waerme_gebaeude_ges_W = maximum_building_heat_load_W
-    NetworkGenerationData.return_temperature_heat_consumer = return_temperature_heat_consumer
-    NetworkGenerationData.min_supply_temperature_heat_consumer = min_supply_temperature_heat_consumer
-    NetworkGenerationData.waerme_hast_ges_W = waerme_hast_ges_W
-    NetworkGenerationData.max_waerme_hast_ges_W = max_waerme_hast_ges_W
-    NetworkGenerationData.strombedarf_hast_ges_W = strombedarf_hast_ges_W
-    NetworkGenerationData.max_el_leistung_hast_ges_W = max_el_leistung_hast_ges_W
-    NetworkGenerationData.net = net
+    NetworkGenerationData.supply_temperature_buildings = supply_temperature_buildings # supply temperature of the buildings from the heat demand json file, 1D array with floats
+    NetworkGenerationData.return_temperature_buildings = return_temperature_buildings # return temperature of the buildings from the heat demand json file, 1D array with floats
+    NetworkGenerationData.supply_temperature_building_curve = supply_temperature_building_curve # supply temperature of the buildings from the heat demand json file, 2D array (time dependent) with floats
+    NetworkGenerationData.return_temperature_building_curve = return_temperature_building_curve # return temperature of the buildings from the heat demand json file, 2D array (time dependent) with floats
+    NetworkGenerationData.yearly_time_steps = yearly_time_steps # yearly time steps from the heat demand json file, 1D array with datetime64
+    NetworkGenerationData.waerme_gebaeude_ges_W = total_building_heat_demand_W # total heat demand of the buildings from the heat demand json file, 2D array (time dependent) with floats
+    NetworkGenerationData.heizwaerme_gebaeude_ges_W = total_building_heating_demand_W # total heating demand of the buildings from the heat demand json file, 2D array (time dependent) with floats
+    NetworkGenerationData.ww_waerme_gebaeude_ges_W = total_building_hot_water_demand_W  # total hot water demand of the buildings from the heat demand json file, 2D array (time dependent) with floats
+    NetworkGenerationData.max_waerme_gebaeude_ges_W = maximum_building_heat_load_W # maximum heat load of the buildings from the heat demand json file, 1D array with floats
+    NetworkGenerationData.return_temperature_heat_consumer = return_temperature_heat_consumer # return temperature of the heat consumers, 1D array with floats
+    NetworkGenerationData.min_supply_temperature_heat_consumer = min_supply_temperature_heat_consumer # minimum supply temperature of the heat consumers, 1D array with floats
+    NetworkGenerationData.waerme_hast_ges_W = waerme_hast_ges_W # heat demand of the heat consumers (different from waerme_gebaeude_ges_W if heat pump), 2D array (time dependent) with floats
+    NetworkGenerationData.strombedarf_hast_ges_W = strombedarf_hast_ges_W # electricity demand of the heat consumers (not 0 if heat pump), 2D array (time dependent) with floats
+    NetworkGenerationData.max_waerme_hast_ges_W = max_waerme_hast_ges_W # maximum heat load of the heat consumers (different from max_waerme_gebaeude_ges_W if heat pump), 1D array with floats
+    NetworkGenerationData.max_el_leistung_hast_ges_W = max_el_leistung_hast_ges_W # maximum electricity load of the heat consumers (not 0 if heat pump), 1D array with floats
 
     # replace all values in NetworkGenerationData.waerme_hast_ges_W with 2 % of the maximum value if the value is smaller than 2 % of the maximum value
     max_heat = np.max(NetworkGenerationData.waerme_hast_ges_W)
@@ -186,6 +185,8 @@ def initialize_geojson(NetworkGenerationData):
     # Calculate the total heat and electricity demand profiles
     NetworkGenerationData.waerme_ges_kW = np.sum(NetworkGenerationData.waerme_hast_ges_kW, axis=0)
     NetworkGenerationData.strombedarf_ges_kW = np.sum(NetworkGenerationData.strombedarf_hast_ges_kW, axis=0)
+
+    NetworkGenerationData.net = net # pandapipes network object
 
     return NetworkGenerationData
     

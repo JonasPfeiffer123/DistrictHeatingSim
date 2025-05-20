@@ -95,7 +95,6 @@ def update_heat_consumer_return_temperature_controller(net, return_temperature_h
                 # Update the data source of the existing ConstControl
                 ctrl.data_source = data_source_return_temp
 
-# Needs to be fully implemented, also fix create controllers
 def update_secondary_producer_controller(net, secondary_producers, time_steps, start, end):
     """Update secondary producer controls with new data sources for time series simulation.
 
@@ -108,12 +107,12 @@ def update_secondary_producer_controller(net, secondary_producers, time_steps, s
     """
     for producer in secondary_producers:
         df_secondary_producer = pd.DataFrame(index=time_steps, data={
-            f'mdot_flow_kg_per_s_{producer["index"]}': [producer["mass_flow"]] * len(time_steps)
+            f'mdot_flow_kg_per_s_{producer["index"]}': [producer["mass_flow"][start:end]]
         })
         data_source_secondary_producer = DFData(df_secondary_producer)
 
         df_secondary_producer_flow_control = pd.DataFrame(index=time_steps, data={
-            f'controlled_mdot_kg_per_s_{producer["index"]}': [producer["mass_flow"]] * len(time_steps)
+            f'controlled_mdot_kg_per_s_{producer["index"]}': [producer["mass_flow"][start:end]]
         })
         data_source_secondary_producer_flow_control = DFData(df_secondary_producer_flow_control)
 
@@ -260,6 +259,19 @@ def time_series_preprocessing(NetworkGenerationData):
     NetworkGenerationData.waerme_ges_kW = np.sum(NetworkGenerationData.waerme_hast_ges_kW, axis=0)
     NetworkGenerationData.strombedarf_ges_kW = np.sum(NetworkGenerationData.strombedarf_hast_ges_kW, axis=0)
 
+    # Calculate mass flow for secondary producers
+    if NetworkGenerationData.secondary_producers:
+        # Calculate mass flow of main producer with cp = 4.18 kJ/kgK from sum of max_waerme_hast_ges_W (in W)
+        cp = 4.18  # kJ/kgK
+        mass_flow = NetworkGenerationData.waerme_ges_kW / (cp * (NetworkGenerationData.supply_temperature_heat_generator - NetworkGenerationData.return_temperature_heat_consumer))  # kW / (kJ/kgK * K) = kg/s
+
+        print(f"Mass flow of main producer: {mass_flow} kg/s")
+
+        # Update each secondary producer's dictionary with the calculated mass flow
+        for secondary_producer in NetworkGenerationData.secondary_producers:
+            secondary_producer["mass_flow"] = secondary_producer["percentage"]/100 * mass_flow
+            print(f"Mass flow of secondary producer {secondary_producer['index']}: {secondary_producer['mass_flow']} kg/s")
+
     return NetworkGenerationData
     
 def thermohydraulic_time_series_net(NetworkGenerationData):
@@ -271,11 +283,9 @@ def thermohydraulic_time_series_net(NetworkGenerationData):
     Returns:
         NetworkGenerationData: Updated NetworkGenerationData object with simulation results.
     """
-    # Prepare time series calculation
-    NetworkGenerationData.yearly_time_steps_start_end = NetworkGenerationData.yearly_time_steps[NetworkGenerationData.start_time_step:NetworkGenerationData.end_time_step]
-
     # Update the ConstControl
     time_steps = range(0, len(NetworkGenerationData.waerme_hast_ges_W[0][NetworkGenerationData.start_time_step:NetworkGenerationData.end_time_step]))
+    
     update_heat_consumer_qext_controller(NetworkGenerationData.net, NetworkGenerationData.waerme_hast_ges_W, time_steps, NetworkGenerationData.start_time_step, NetworkGenerationData.end_time_step)
 
     # Update secondary producer controls
