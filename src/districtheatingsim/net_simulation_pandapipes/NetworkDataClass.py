@@ -57,36 +57,36 @@ class NetworkGenerationData:
     TRY_filename: Optional[str] = None
 
     # Results 
-    supply_temperature_buildings: Optional[float] = None  # int / float
-    return_temperature_buildings: Optional[float] = None  # int / float
-    yearly_time_steps: Optional[np.ndarray] = None
-    waerme_gebaeude_ges_W: Optional[np.ndarray] = None
-    heizwaerme_gebaeude_ges_W: Optional[np.ndarray] = None
-    ww_waerme_gebaeude_ges_W: Optional[np.ndarray] = None
-    supply_temperature_building_curve: Optional[np.ndarray] = None
-    return_temperature_building_curve: Optional[np.ndarray] = None
-    max_waerme_gebaeude_ges_W: Optional[np.ndarray] = None
-    return_temperature_heat_consumer: Optional[np.ndarray] = None
-    min_supply_temperature_heat_consumer: Optional[np.ndarray] = None
-    waerme_hast_ges_W: Optional[np.ndarray] = None
-    max_waerme_hast_ges_W: Optional[np.ndarray] = None
-    strombedarf_hast_ges_W: Optional[np.ndarray] = None
-    max_el_leistung_hast_ges_W: Optional[np.ndarray] = None
+    supply_temperature_buildings: Optional[float] = None  # 1D array with floats
+    return_temperature_buildings: Optional[float] = None  # 1D array with floats
+    supply_temperature_building_curve: Optional[np.ndarray] = None # 1D array with floats
+    return_temperature_building_curve: Optional[np.ndarray] = None # 1D array with floats
+    yearly_time_steps: Optional[np.ndarray] = None # 1D array datetime64
+    waerme_gebaeude_ges_W: Optional[np.ndarray] = None # 2 array with floats
+    heizwaerme_gebaeude_ges_W: Optional[np.ndarray] = None # 2 array with floats
+    ww_waerme_gebaeude_ges_W: Optional[np.ndarray] = None # 2 array with floats
+    max_waerme_gebaeude_ges_W: Optional[np.ndarray] = None # 1D array with floats
+    return_temperature_heat_consumer: Optional[np.ndarray] = None # 1D array with floats
+    min_supply_temperature_heat_consumer: Optional[np.ndarray] = None # 1D array with floats
+    waerme_hast_ges_W: Optional[np.ndarray] = None # 2D array with floats
+    max_waerme_hast_ges_W: Optional[np.ndarray] = None # 1D array with floats
+    strombedarf_hast_ges_W: Optional[np.ndarray] = None # 2D array with floats
+    max_el_leistung_hast_ges_W: Optional[np.ndarray] = None # 1D array with floats
+
+    waerme_hast_ges_kW: Optional[np.ndarray] = None # 2D array with floats
+    strombedarf_hast_ges_kW: Optional[np.ndarray] = None # 2D array with floats
+    waerme_ges_kW: Optional[np.ndarray] = None # 1D array with floats
+    strombedarf_ges_kW: Optional[np.ndarray] = None # 1D array with floats
+
     net: Optional[Any] = None  # pandapipesNet
 
-    # after initialization
-    waerme_hast_ges_kW: Optional[np.ndarray] = None
-    strombedarf_hast_ges_kW: Optional[np.ndarray] = None
-    waerme_ges_kW: Optional[np.ndarray] = None
-    strombedarf_ges_kW: Optional[np.ndarray] = None
-
-    # time series data
+    # time series init data
     start_time_step: Optional[int] = None
     end_time_step: Optional[int] = None
     results_csv_filename: Optional[str] = None
 
+    # time series result data
     supply_temperature_heat_generator: Optional[float | np.ndarray] = None# supply temperature of the heat generator in °C, could be a float or a numpy array of floats with the length of 8760 (8760 hours in a year)
-    yearly_time_steps_start_end: Optional[np.ndarray] = None
     net_results: Optional[Dict[str, Any]] = None
     pump_results: Optional[Dict[str, Any]] = None
     plot_data: Optional[Dict[str, Any]] = None
@@ -172,42 +172,42 @@ class NetworkGenerationData:
                         "data": pump_data['qext_kW'],
                         "label": "Wärmeerzeugung in kW",
                         "axis": "left",
-                        "time": self.yearly_time_steps_start_end
+                        "time": self.yearly_time_steps[self.start_time_step:self.end_time_step]
                     }
                     self.plot_data[f"Massenstrom {pump_type} {idx+1}"] = {
                         "data": pump_data['mass_flow'],
                         "label": "Massenstrom in kg/s",
                         "axis": "right",
-                        "time": self.yearly_time_steps_start_end
+                        "time": self.yearly_time_steps[self.start_time_step:self.end_time_step]
                     }
                     self.plot_data[f"Delta p {pump_type} {idx+1}"] = {
                         "data": pump_data['deltap'],
                         "label": "Druckdifferenz in bar",
                         "axis": "right",
-                        "time": self.yearly_time_steps_start_end
+                        "time": self.yearly_time_steps[self.start_time_step:self.end_time_step]
                     }
                     self.plot_data[f"Vorlauftemperatur {pump_type} {idx+1}"] = {
                         "data": pump_data['flow_temp'],
                         "label": "Temperatur in °C",
                         "axis": "right",
-                        "time": self.yearly_time_steps_start_end
+                        "time": self.yearly_time_steps[self.start_time_step:self.end_time_step]
                     }
                     self.plot_data[f"Rücklauftemperatur {pump_type} {idx+1}"] = {
                         "data": pump_data['return_temp'],
                         "label": "Temperatur in °C",
                         "axis": "right",
-                        "time": self.yearly_time_steps_start_end
+                        "time": self.yearly_time_steps[self.start_time_step:self.end_time_step]
                     }
                     self.plot_data[f"Vorlaufdruck {pump_type} {idx+1}"] = {
                         "data": pump_data['flow_pressure'],
                         "label": "Druck in bar",
                         "axis": "right",
-                        "time": self.yearly_time_steps_start_end
+                        "time": self.yearly_time_steps[self.start_time_step:self.end_time_step]
                     }
                     self.plot_data[f"Rücklaufdruck {pump_type} {idx+1}"] = {
                         "data": pump_data['return_pressure'],
                         "label": "Druck in bar",
                         "axis": "right",
-                        "time": self.yearly_time_steps_start_end
+                        "time": self.yearly_time_steps[self.start_time_step:self.end_time_step]
                     }
 

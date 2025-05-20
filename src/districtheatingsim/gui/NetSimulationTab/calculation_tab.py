@@ -399,7 +399,7 @@ class CalculationTab(QWidget):
         self.update_time_series_plot()
         self.display_results()
 
-        save_results_csv(self.NetworkGenerationData.yearly_time_steps_start_end, 
+        save_results_csv(self.NetworkGenerationData.yearly_time_steps[self.NetworkGenerationData.start_time_step:self.NetworkGenerationData.end_time_step], 
                          self.NetworkGenerationData.waerme_ges_kW[self.NetworkGenerationData.start_time_step:self.NetworkGenerationData.end_time_step], 
                          self.NetworkGenerationData.strombedarf_ges_kW[self.NetworkGenerationData.start_time_step:self.NetworkGenerationData.end_time_step], 
                          self.NetworkGenerationData.pump_results, 
@@ -607,7 +607,7 @@ class CalculationTab(QWidget):
         if self.NetworkGenerationData:
             results_csv_filepath = os.path.join(self.base_path, self.config_manager.get_relative_path('load_profile_path'))
             
-            self.NetworkGenerationData.yearly_time_steps_start_end, self.NetworkGenerationData.waerme_ges_kW, self.NetworkGenerationData.strombedarf_ges_kW, self.NetworkGenerationData.pump_results = import_results_csv(results_csv_filepath)
+            _, self.NetworkGenerationData.waerme_ges_kW, self.NetworkGenerationData.strombedarf_ges_kW, self.NetworkGenerationData.pump_results = import_results_csv(results_csv_filepath)
             
             self.NetworkGenerationData.prepare_plot_data()
             self.createPlotControlDropdown()
