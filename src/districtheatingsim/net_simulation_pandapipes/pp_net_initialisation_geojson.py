@@ -32,8 +32,7 @@ def initialize_geojson(NetworkGenerationData):
     }
 
     # max supply temperature of the heat generator
-    max_supply_temperature_heat_generator = np.max(NetworkGenerationData.supply_temperature_heat_generator)
-    print(f"Max supply temperature heat generator: {max_supply_temperature_heat_generator} °C")
+    print(f"Max supply temperature heat generator: {NetworkGenerationData.max_supply_temperature_heat_generator} °C")
     
     with open(NetworkGenerationData.heat_demand_json_path, 'r', encoding='utf-8') as f:
         loaded_data = json.load(f)
@@ -70,7 +69,7 @@ def initialize_geojson(NetworkGenerationData):
         print(f"Return temperature heat consumers: {return_temperature_heat_consumer} °C")
 
     ### Check if the return temperature is higher than the supply temperature of the heat generator ###
-    if np.any(return_temperature_heat_consumer >= max_supply_temperature_heat_generator):
+    if np.any(return_temperature_heat_consumer >= NetworkGenerationData.max_supply_temperature_heat_generator):
         raise ValueError("Return temperature must not be higher than the supply temperature at the injection point. Please check your inputs.")
     
     ### Definition of the minimum supply temperature of the heat consumer###
@@ -84,7 +83,7 @@ def initialize_geojson(NetworkGenerationData):
         print(f"Minimum supply temperature heat consumers: {min_supply_temperature_heat_consumer} °C")
     
     ### Check if the minimum supply temperature is higher than the supply temperature of the heat generator ###
-    if np.any(min_supply_temperature_heat_consumer >= max_supply_temperature_heat_generator):
+    if np.any(min_supply_temperature_heat_consumer >= NetworkGenerationData.max_supply_temperature_heat_generator):
         raise ValueError("Supply temperature at the heat consumer cannot be higher than the supply temperature at the injection point. Please check your inputs.")
 
     waerme_hast_ges_W = []
@@ -137,7 +136,7 @@ def initialize_geojson(NetworkGenerationData):
     if NetworkGenerationData.secondary_producers:
         # Calculate mass flow of main producer with cp = 4.18 kJ/kgK from sum of max_waerme_hast_ges_W (in W)
         cp = 4.18  # kJ/kgK
-        mass_flow = np.sum(max_waerme_hast_ges_W / 1000) / (cp * (max_supply_temperature_heat_generator - np.average(return_temperature_heat_consumer)))  # kW / (kJ/kgK * K) = kg/s
+        mass_flow = np.sum(max_waerme_hast_ges_W / 1000) / (cp * (NetworkGenerationData.max_supply_temperature_heat_generator - np.average(return_temperature_heat_consumer)))  # kW / (kJ/kgK * K) = kg/s
 
         print(f"Mass flow of main producer: {mass_flow} kg/s")
 
@@ -147,7 +146,7 @@ def initialize_geojson(NetworkGenerationData):
             print(f"Mass flow of secondary producer {secondary_producer['index']}: {secondary_producer['mass_flow']} kg/s")
 
     producer_dict = {
-        "supply_temperature": max_supply_temperature_heat_generator,
+        "supply_temperature": NetworkGenerationData.max_supply_temperature_heat_generator,
         "flow_pressure_pump": NetworkGenerationData.flow_pressure_pump,
         "lift_pressure_pump": NetworkGenerationData.lift_pressure_pump,
         "main_producer_location_index": NetworkGenerationData.main_producer_location_index,
@@ -157,7 +156,6 @@ def initialize_geojson(NetworkGenerationData):
     net = create_network(gdf_dict, consumer_dict, pipe_dict, producer_dict)
 
     # Save calculated variables in NetworkGenerationData
-    NetworkGenerationData.max_supply_temperature_heat_generator = max_supply_temperature_heat_generator
     NetworkGenerationData.supply_temperature_buildings = supply_temperature_buildings
     NetworkGenerationData.return_temperature_buildings = return_temperature_buildings
     NetworkGenerationData.yearly_time_steps = yearly_time_steps
@@ -180,7 +178,6 @@ def initialize_geojson(NetworkGenerationData):
     max_power = np.max(NetworkGenerationData.strombedarf_hast_ges_W)
     NetworkGenerationData.waerme_hast_ges_W = np.where(NetworkGenerationData.waerme_hast_ges_W < 0.02 * max_heat, 0.02 * max_heat, NetworkGenerationData.waerme_hast_ges_W)
     NetworkGenerationData.strombedarf_hast_ges_W = np.where(NetworkGenerationData.waerme_hast_ges_W < 0.02 * max_heat, 0.02 * max_power, NetworkGenerationData.strombedarf_hast_ges_W)
-
 
     # Convert all values in NetworkGenerationData.waerme_hast_ges_W and NetworkGenerationData.strombedarf_hast_ges_W to kW
     NetworkGenerationData.waerme_hast_ges_kW = np.where(NetworkGenerationData.waerme_hast_ges_W == 0, 0, NetworkGenerationData.waerme_hast_ges_W / 1000)

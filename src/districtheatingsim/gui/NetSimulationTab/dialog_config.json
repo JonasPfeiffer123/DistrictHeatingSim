@@ -1,0 +1,35 @@
+{
+  "netconfiguration": ["Niedertemperaturnetz", "kaltes Netz"],
+  "supply_temperature_control": ["Gleitend", "Statisch"],
+  "standardwerte": {
+    "Niedertemperaturnetz": {
+      "max_supply_temp": 85,
+      "min_supply_temp": 70,
+      "max_air_temp": 15,
+      "min_air_temp": -10,
+      "flow_pressure": 4,
+      "lift_pressure": 1.5,
+      "min_supply_temp_building": 60,
+      "return_temp": 50,
+      "dT_RL": 5,
+      "default_pipe_type": "KMR 100/250-2v"
+    },
+    "kaltes Netz": {
+      "max_supply_temp": 10,
+      "min_supply_temp": 5,
+      "max_air_temp": 15,
+      "min_air_temp": -10,
+      "flow_pressure": 4,
+      "lift_pressure": 1.5,
+      "min_supply_temp_building": 30,
+      "return_temp": 20,
+      "dT_RL": 5,
+      "default_pipe_type": "KMR 100/250-2v"
+    }
+  },
+  "diameter_optimization": {
+    "v_max_pipe": 1.0,
+    "material_filter": ["KMR", "FL", "HK"],
+    "k_mm": 0.1
+  }
+}

@@ -14,6 +14,7 @@ import pandas as pd
 import numpy as np
 
 from districtheatingsim.net_simulation_pandapipes.utilities import COP_WP, TemperatureController
+from districtheatingsim.utilities.test_reference_year import import_TRY
 
 def update_heat_consumer_qext_controller(net, qext_w_profiles, time_steps, start, end):
     """Update constant controls with new data sources for time series simulation.
@@ -184,7 +185,7 @@ def time_series_preprocessing(NetworkGenerationData):
         NetworkGenerationData: Updated NetworkGenerationData object with preprocessed data.
     """
 
-    print(f"Vorlauftemperatur Netz: {NetworkGenerationData.supply_temperature_heat_generator} °C")
+    print(f"Maximale Vorlauftemperatur Netz: {NetworkGenerationData.max_supply_temperature_heat_generator} °C")
     print(f"Mindestvorlauftemperatur HAST: {NetworkGenerationData.min_supply_temperature_heat_consumer} °C")
     print(f"Rücklauftemperatur HAST: {NetworkGenerationData.return_temperature_heat_consumer} °C")
     print(f"Vorlauftemperatur Gebäude: {NetworkGenerationData.supply_temperature_buildings} °C")
@@ -193,6 +194,27 @@ def time_series_preprocessing(NetworkGenerationData):
     print(f"Netconfiguration: {NetworkGenerationData.netconfiguration}")
 
     COP_file_values = np.genfromtxt(NetworkGenerationData.COP_filename, delimiter=';')
+
+    if NetworkGenerationData.supply_temperature_control == "Statisch":
+        NetworkGenerationData.supply_temperature_heat_generator = NetworkGenerationData.max_supply_temperature_heat_generator # Type: float in °C
+    
+    if NetworkGenerationData.supply_temperature_control == "Gleitend":
+        air_temperature_data, _, _, _, _ = import_TRY(NetworkGenerationData.TRY_filename)
+
+        # Berechnung der Steigung der linearen Gleichung
+        slope = (NetworkGenerationData.max_supply_temperature_heat_generator - NetworkGenerationData.min_supply_temperature_heat_generator) / (NetworkGenerationData.min_air_temperature_heat_generator - NetworkGenerationData.max_air_temperature_heat_generator)
+
+        air_temperature_data = np.array(air_temperature_data)
+        NetworkGenerationData.supply_temperature_heat_generator = np.where(
+            air_temperature_data <= NetworkGenerationData.min_air_temperature_heat_generator,
+            NetworkGenerationData.max_supply_temperature_heat_generator,
+            np.where(
+                air_temperature_data >= NetworkGenerationData.max_air_temperature_heat_generator,
+                NetworkGenerationData.min_supply_temperature_heat_generator,
+                NetworkGenerationData.max_supply_temperature_heat_generator + slope * (air_temperature_data - NetworkGenerationData.min_air_temperature_heat_generator)
+            )
+        )
+    print(f"Vorlauftemperatur Netz: {NetworkGenerationData.supply_temperature_heat_generator} °C")
 
     ### if building_temperature_checked is True, the time dependent building temperatures are used
     ### if netconfiguration is not "kaltes Netz", no changes are made to the heat demand and no power consumption is calculated
