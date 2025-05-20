@@ -14,7 +14,7 @@ from districtheatingsim.gui.NetSimulationTab.network_data_tab import NetworkData
 from districtheatingsim.gui.NetSimulationTab.producer_order_tab import ProducerOrderTab
 from districtheatingsim.gui.NetSimulationTab.network_config_tab import NetworkConfigTab
 from districtheatingsim.gui.NetSimulationTab.diameter_optimization_tab import DiameterOptimizationTab
-from districtheatingsim.gui.NetSimulationTab.NetworkDataClass import NetworkGenerationData, SecondaryProducer
+from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import NetworkGenerationData, SecondaryProducer
 
 def load_dialog_config(config_path="dialog_config.json"):
     # Join the config_path with the directory of this file if it's a relative path

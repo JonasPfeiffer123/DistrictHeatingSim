@@ -17,7 +17,7 @@ from districtheatingsim.net_simulation_pandapipes.utilities import *
 
 from districtheatingsim.net_simulation_pandapipes.config_plot import config_plot
 
-from districtheatingsim.gui.NetSimulationTab.NetworkDataClass import NetworkGenerationData
+from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import NetworkGenerationData
 
 def plot(net, time_steps, qext_kW, strom_kW):
     """
