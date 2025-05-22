@@ -5,6 +5,7 @@ Date: 2024-07-26
 Description: Imports the spatial data and processes them into layers.
 """
 
+import traceback
 import geopandas as gpd
 import pandas as pd
 from shapely.geometry import LineString, Point
@@ -44,6 +45,8 @@ def generate_lines(layer, distance, angle_degrees, df=None):
     """
     lines = []
     attributes = []
+
+    print(layer)
 
     for point in layer.geometry:
         # Converting Shapely geometry to coordinates
@@ -109,6 +112,7 @@ def load_layers(osm_street_layer_geojson_file, data_csv_file_name, coordinates):
     try:
         # Load the street layer as a GeoDataFrame
         street_layer = gpd.read_file(osm_street_layer_geojson_file)
+        print(f"Street layer successfully loaded. Layer: {street_layer}")
         # Load the data as a DataFrame
         data_df = pd.read_csv(data_csv_file_name, sep=';')
         print(f"Data successfully loaded. Data: {data_df}")
@@ -117,12 +121,16 @@ def load_layers(osm_street_layer_geojson_file, data_csv_file_name, coordinates):
         print(f"Data layer successfully created. Data layer: {data_layer}")
         # Create the producer location as a GeoDataFrame
         points = [Point(x, y) for x, y in coordinates]
+        print(f"Points: {points}")
+        # Create a GeoDataFrame for the producer location
         producer_location = gpd.GeoDataFrame(geometry=points, crs="EPSG:4326")
+        print(f"Producer location successfully created. Producer location: {producer_location}")
 
         return street_layer, data_layer, producer_location, data_df
-    
+
     except Exception as e:
         print(f"Error loading the layers: {e}")
+        traceback.print_exc()
         return None, None, None, None
 
 def generate_and_export_layers(osm_street_layer_geojson_file_name, data_csv_file_name, coordinates, base_path, fixed_angle=0, fixed_distance=1, algorithm="MST"):
@@ -153,7 +161,7 @@ def generate_and_export_layers(osm_street_layer_geojson_file_name, data_csv_file
     vl_heat_producer = vl_heat_producer.set_crs("EPSG:25833")
     
     # Export the GeoDataFrames as GeoJSON
-    vl_heat_exchanger.to_file(f"{base_path}/Wärmenetz/HAST.geojson", driver="GeoJSON")
-    vl_return_lines.to_file(f"{base_path}/Wärmenetz/Rücklauf.geojson", driver="GeoJSON")
-    vl_flow_lines.to_file(f"{base_path}/Wärmenetz/Vorlauf.geojson", driver="GeoJSON")
-    vl_heat_producer.to_file(f"{base_path}/Wärmenetz/Erzeugeranlagen.geojson", driver="GeoJSON")
+    vl_heat_exchanger.to_file(f"{base_path}\\Wärmenetz\\HAST.geojson", driver="GeoJSON")
+    vl_return_lines.to_file(f"{base_path}\\Wärmenetz\\Rücklauf.geojson", driver="GeoJSON")
+    vl_flow_lines.to_file(f"{base_path}\\Wärmenetz\\Vorlauf.geojson", driver="GeoJSON")
+    vl_heat_producer.to_file(f"{base_path}\\Wärmenetz\\Erzeugeranlagen.geojson", driver="GeoJSON")

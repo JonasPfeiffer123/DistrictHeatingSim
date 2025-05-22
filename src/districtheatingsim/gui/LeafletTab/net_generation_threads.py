@@ -41,6 +41,7 @@ class NetGenerationThread(QThread):
         Runs the network generation.
         """
         try:
+            print(self.inputs["coordinates"])
             generate_and_export_layers(self.inputs["streetLayer"], self.inputs["dataCsv"], self.inputs["coordinates"], self.base_path, algorithm=self.inputs["generation_mode"])
 
             self.calculation_done.emit(())
