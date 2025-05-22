@@ -10,8 +10,8 @@ speicher_stand = 0  # Anfangsstand des Speichers in kWh
 gaspreis = 50  # EUR/MWh
 
 # Pfad zu den CSV-Daten
-strom_data = "currently_not_used/Strompreise_day_ahead_2023.csv"
-lastgang_data = "currently_not_used/Lastgang_85C_70C_60C.csv"
+strom_data = "feature_develop/Strompreise_day_ahead_2023.csv"
+lastgang_data = "feature_develop/Lastgang.csv"
 
 def einlesen_strompreise(dateipfad):
     df = pd.read_csv(dateipfad, header=[0, 1], index_col=0)
@@ -37,7 +37,7 @@ def berechne_daten(df, bhkw_kapazitaet, bhkw_zustand, speicher_kapazitaet, speic
     df['Wärmegestehungskosten_EUR_MWh'] = 0
 
     for zeitpunkt, row in df.iterrows():
-        heizlast = row['Heizlast_Netz_kW']
+        heizlast = row['Wärmeerzeugung_Heizentrale Haupteinspeisung_1_kW']
         speicher_leistung = 0
         aktueller_strompreis = strompreis[df.index.get_loc(zeitpunkt)]  # Zugriff auf den aktuellen Strompreis
 
@@ -123,7 +123,7 @@ def haupt():
     df_berechnet = berechne_daten(df_lastgang, bhkw_kapazitaet, bhkw_zustand, speicher_kapazitaet, speicher_stand, gaspreis, strompreis)
     
     daten_zum_plotten = {
-        'Heizlast (Netz) in kW': 'Heizlast_Netz_kW',
+        'Heizlast (Netz) in kW': 'Wärmeerzeugung_Heizentrale Haupteinspeisung_1_kW',
         'BHKW Erzeugung in kW': 'BHKW_Erzeugung_Waerme_kW',
         'Stromerzeugung BHKW in kW': 'BHKW_Erzeugung_Strom_kW',
         'Brennstoffbedarf BHKW in kW': 'BHKW_Brennstoffbedarf_kW',

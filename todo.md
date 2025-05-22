@@ -46,19 +46,12 @@
 - Ausbau Erzeuger / Speicher
     - Großwärmespeicher, Wasserstoff (Brennstoffzelle / Elektrolyseur --> Abwärme)
 
-### Einzelversorgungslösung:
-- weitere Ergebnisse?
-- was braucht man eigentlich?
-
-## Neue Features
 ### Betrachtung Stromsektor:
-- Stromprofile zur Sektorkopplung
+- Stromprofile zur Sektorkopplung / variable Strompreise
     - Implementierung von Stromprofilen sowohl auf Verbraucher- als auch auf Erzeugerseite zur Unterstützung der Sektorkopplung.
 
 ### Calculate button for all process steps
 - define the project and then press one button to calculate everything
-
-### variable electricity prices
 
 ## Testing
 Test Projekte durcharbeiten:
@@ -84,4 +77,4 @@ Snakemake
 https://snakemake.readthedocs.io/en/stable/
 
 To dos pandapipes:
-Zeitreihen-Datenübergabe ist kompliziert, Vereinfachung?
+Was sollte jetzt kurzfristig noch geändert werden um eine "fertige" Version zu erhalten. --> sytematisch durchtesten in verschiedenen Varianten --> Beispiele zu systematischen Tests --> benchmarking --> verschieden große Netze?
