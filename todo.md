@@ -20,9 +20,6 @@
 - Versionierung überdenken
 - LOD2-Daten laden --> Exception-Handling bei timeout Nominatim geocoding
 
-### Wärmenetzgenerierung:
-- Dateistruktur überdenken
-
 ### Einzelversorgungslösungen
 - UI-Integration
 
@@ -35,14 +32,12 @@
 - Berechnungsvorgehen überprüfen, Vereinfachungen Herausheben, Detaillierungen vorschlagen
 
 ### Wärmenetzgenerierung:
+- Dateistruktur überdenken
 - GeoJSON für Netzbestandteile
     - Festlegen, ob eine geoJSON-Datei für die Speicherung aller Netzbestandteile genutzt werden soll.
     - Implementierung der Datenhaltung in geoJSON-Format, falls entschieden.
-- bestehende Netze Laden?
+- bestehende Netze Laden? --> STANET
     - Ausbauszenarien? 
-
-### Wärmenetzberechnung:
-- Sekundäre Erzeuger überarbeiten
 
 ### Wirtschaftlichkeitsberechnung:
 - Kostendefinitionen weiter recherchieren und einarbeiten
@@ -59,9 +54,6 @@
 ### Betrachtung Stromsektor:
 - Stromprofile zur Sektorkopplung
     - Implementierung von Stromprofilen sowohl auf Verbraucher- als auch auf Erzeugerseite zur Unterstützung der Sektorkopplung.
-
-### MILP based energy system calculation and optimization
-- include flixOpt or similar approaches for system optimization
 
 ### Calculate button for all process steps
 - define the project and then press one button to calculate everything
