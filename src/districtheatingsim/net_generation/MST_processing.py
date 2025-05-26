@@ -29,7 +29,7 @@ def adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf, threshol
     changes_made = True
 
     while changes_made:
-        print(f"Iteration {iteration}")
+        #print(f"Iteration {iteration}")
 
         adjusted_lines = []
         changes_made = False
@@ -45,7 +45,7 @@ def adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf, threshol
             point_on_street = nearest_points(midpoint, nearest_street)[1]
 
             distance_to_street = midpoint.distance(point_on_street)
-            print(f"Distance to nearest street: {distance_to_street}")
+            #print(f"Distance to nearest street: {distance_to_street}")
 
             if distance_to_street > threshold:
                 if point_on_street.equals(Point(line.coords[0])) or point_on_street.equals(Point(line.coords[1])):
@@ -67,12 +67,12 @@ def adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf, threshol
                     print(f"Invalid new_line2: {new_line2}")
                 
                 changes_made = True
-                print("Adjusting line segment")
+                #print("Adjusting line segment")
             else:
                 adjusted_lines.append(line)
 
         if not changes_made:
-            print("No changes made, breaking out of the loop.")
+            #print("No changes made, breaking out of the loop.")
             break
 
         mst_gdf = gpd.GeoDataFrame(geometry=adjusted_lines)

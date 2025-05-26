@@ -1,7 +1,7 @@
 """
 Filename: simple_MST.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-31
+Date: 2025-05-26
 Description: Contains the functions to process the spatial data to generate the MST.
 """
 
@@ -11,9 +11,10 @@ import math
 import networkx as nx
 from shapely.geometry import LineString, Point
 
-from districtheatingsim.net_generation.A_Star_algorithm_net_generation import *
 from districtheatingsim.net_generation.MST_processing import *
 from districtheatingsim.net_generation.steiner_tree import generate_steiner_tree_network
+
+import matplotlib.pyplot as plt
 
 def create_offset_points(point, distance, angle_degrees):
     """
@@ -31,6 +32,24 @@ def create_offset_points(point, distance, angle_degrees):
     dx = distance * math.cos(angle_radians)
     dy = distance * math.sin(angle_radians)
     return Point(point.x + dx, point.y + dy)
+
+def offset_lines_by_angle(lines_gdf, distance, angle_degrees):
+    """
+    Verschiebt alle Punkte jeder LineString-Geometrie im GeoDataFrame um einen festen Abstand und Winkel.
+    Args:
+        lines_gdf (gpd.GeoDataFrame): GeoDataFrame mit LineStrings.
+        distance (float): Abstand in Metern.
+        angle_degrees (float): Winkel in Grad (0 = x-Achse, 90 = y-Achse).
+    Returns:
+        gpd.GeoDataFrame: Neues GeoDataFrame mit verschobenen Linien.
+    """
+    def offset_line(line):
+        return LineString([
+            create_offset_points(Point(x, y), distance, angle_degrees)
+            for x, y in line.coords
+        ])
+    offset_lines = [offset_line(line) for line in lines_gdf.geometry]
+    return gpd.GeoDataFrame(geometry=offset_lines, crs=lines_gdf.crs)
 
 def find_nearest_line(point, line_layer):
     """
@@ -75,154 +94,138 @@ def process_layer_points(layer, layer_lines):
         layer_lines (geopandas.GeoDataFrame): The layer of lines to find the nearest lines from.
 
     Returns:
+        list: A list of perpendicular lines created from the points.
         set: A set of end points from the created perpendicular lines.
     """
+    # Initialize a list to store the perpendicular lines
+    perpendicular_lines = []
+    # Create a set to store unique end points
     street_end_points = set()
     for point in layer.geometry:
         nearest_line = find_nearest_line(point, layer_lines)
         if nearest_line is not None:
             perpendicular_line = create_perpendicular_line(point, nearest_line)
+            perpendicular_lines.append(perpendicular_line)
             end_point = perpendicular_line.coords[1]  # End point of the vertical line
             street_end_points.add(Point(end_point))
-    return street_end_points
 
-def generate_return_lines(layer, distance, angle_degrees, street_layer):
+    return perpendicular_lines, street_end_points
+
+def generate_network(heat_consumer_layer, heat_generator_layer, osm_street_layer, algorithm="MST", offset_distance=0.5, offset_angle=0):
     """
-    Generates return lines by creating offset points and finding their nearest lines.
+    Generates the heat network using specified algorithms.
 
     Args:
-        layer (geopandas.GeoDataFrame): The layer of points to process.
-        distance (float): The distance to offset the points.
-        angle_degrees (float): The angle in degrees to offset the points.
-        street_layer (geopandas.GeoDataFrame): The layer of street lines to find the nearest lines from.
-
-    Returns:
-        set: A set of end points from the created perpendicular lines.
-    """
-    street_end_points = set()
-    for point in layer.geometry:
-        offset_point = create_offset_points(point, distance, angle_degrees)
-        nearest_line = find_nearest_line(offset_point, street_layer)
-        if nearest_line is not None:
-            street_end_point = create_perpendicular_line(offset_point, nearest_line).coords[1]
-            street_end_points.add(Point(street_end_point))
-    return street_end_points
-
-def generate_network_fl(layer_points_fl, layer_wea, street_layer, algorithm="MST"):
-    """
-    Generates the flow line network using specified algorithms.
-
-    Args:
-        layer_points_fl (geopandas.GeoDataFrame): The layer of flow line points.
-        layer_wea (geopandas.GeoDataFrame): The layer of additional points (e.g., heat exchangers).
-        street_layer (geopandas.GeoDataFrame): The layer of street lines.
+        heat_consumer_layer (geopandas.GeoDataFrame): The layer of heat consumers.
+        heat_generator_layer (geopandas.GeoDataFrame): The layer of heat generators.
+        osm_street_layer (geopandas.GeoDataFrame): The layer of street lines.
         algorithm (str, optional): The algorithm to use for network generation. Defaults to "MST".
 
-    Returns:
-        geopandas.GeoDataFrame: The generated network as a GeoDataFrame.
     """
-    perpendicular_lines = []
-    
-    # Creating the offset points and vertical lines for the flow lines from layer_points_fl
-    points_end_points = process_layer_points(layer_points_fl, street_layer)
-    for point in layer_points_fl.geometry:
-        nearest_line = find_nearest_line(point, street_layer)
-        if nearest_line is not None:
-            perpendicular_line = create_perpendicular_line(point, nearest_line)
-            perpendicular_lines.append(perpendicular_line)
 
-    # Creating the offset points and vertical lines for the flow lines from layer_wea
-    wea_end_points = process_layer_points(layer_wea, street_layer)
-    for point in layer_wea.geometry:
-        nearest_line = find_nearest_line(point, street_layer)
-        if nearest_line is not None:
-            perpendicular_line = create_perpendicular_line(point, nearest_line)
-            perpendicular_lines.append(perpendicular_line)
+    # 2. Get the perpendicular lines and endpoints for heat consumers and generators
+    perpendicular_lines_heat_consumer, heat_consumer_endpoints = process_layer_points(heat_consumer_layer, osm_street_layer)
+    perpendicular_lines_heat_generator, heat_generator_endpoints = process_layer_points(heat_generator_layer, osm_street_layer)
+    all_perpendicular_lines = perpendicular_lines_heat_consumer + perpendicular_lines_heat_generator
+    all_endpoints = heat_consumer_endpoints.union(heat_generator_endpoints)
+    all_endpoints_gdf = gpd.GeoDataFrame(geometry=list(all_endpoints))
 
-    # Combining the endpoints and converting them into a GeoDataFrame
-    all_end_points = points_end_points.union(wea_end_points)
-    all_end_points_gdf = gpd.GeoDataFrame(geometry=list(all_end_points))
-
+    # 3. Create the final GeoDataFrame for the flow lines
     if algorithm == "MST":
         # Creating the MST network from the endpoints
-        mst_gdf = generate_mst(all_end_points_gdf)
+        flow_line_mst_gdf = generate_mst(all_endpoints_gdf)
         # Adding the vertical lines to the MST GeoDataFrame
-        final_gdf = gpd.GeoDataFrame(pd.concat([mst_gdf, gpd.GeoDataFrame(geometry=perpendicular_lines)], ignore_index=True))
+        final_flow_line_gdf = gpd.GeoDataFrame(pd.concat([flow_line_mst_gdf, gpd.GeoDataFrame(geometry=all_perpendicular_lines)], ignore_index=True))
 
-    if algorithm == "Advanced MST":
+    elif algorithm == "Advanced MST":
         # Creating the MST network from the endpoints
-        mst_gdf = generate_mst(all_end_points_gdf)
-        adjusted_mst = adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf)
-        final_gdf = gpd.GeoDataFrame(pd.concat([adjusted_mst, gpd.GeoDataFrame(geometry=perpendicular_lines)], ignore_index=True))
+        flow_line_mst_gdf = generate_mst(all_endpoints_gdf)
+        adjusted_mst = adjust_segments_to_roads(flow_line_mst_gdf, osm_street_layer, all_endpoints_gdf)
+        final_flow_line_gdf = gpd.GeoDataFrame(pd.concat([adjusted_mst, gpd.GeoDataFrame(geometry=all_perpendicular_lines)], ignore_index=True))
 
-    if algorithm == "Steiner":
+    elif algorithm == "Steiner":
         # Creating the Steiner tree network from the endpoints
-        steiner_gdf = generate_steiner_tree_network(street_layer, all_end_points_gdf)
-        final_gdf = gpd.GeoDataFrame(pd.concat([steiner_gdf, gpd.GeoDataFrame(geometry=perpendicular_lines)], ignore_index=True))
+        flow_line_steiner_gdf = generate_steiner_tree_network(osm_street_layer, all_endpoints_gdf)
+        final_flow_line_gdf = gpd.GeoDataFrame(pd.concat([flow_line_steiner_gdf, gpd.GeoDataFrame(geometry=all_perpendicular_lines)], ignore_index=True))
 
-    return final_gdf
+    else:
+        raise ValueError("Unknown algorithm: " + str(algorithm))
+    
+    # 4. Calculate parallel offset lines for the flow lines as return lines
+    final_return_line_gdf = offset_lines_by_angle(final_flow_line_gdf, offset_distance, offset_angle)
 
-def generate_network_rl(layer_points_rl, layer_wea, fixed_distance_rl, fixed_angle_rl, street_layer, algorithm="MST"):
+    # Plotting the flow and return lines using GeoDataFrame's plot method
+    ax = final_flow_line_gdf.plot(color='red', linewidth=1, label='Flow Lines')
+    final_return_line_gdf.plot(ax=ax, color='blue', linewidth=1, label='Return Lines')
+    plt.legend()
+    plt.show()
+
+    return final_flow_line_gdf, final_return_line_gdf
+
+def generate_connection_lines(layer, offset_distance, offset_angle, df=None):
     """
-    Generates the return line network using specified algorithms.
+    Generates lines offset from the given points by a specified distance and angle.
 
     Args:
-        layer_points_rl (geopandas.GeoDataFrame): The layer of return line points.
-        layer_wea (geopandas.GeoDataFrame): The layer of additional points (e.g., heat exchangers).
-        fixed_distance_rl (float): The fixed distance for creating offset points.
-        fixed_angle_rl (float): The fixed angle in degrees for creating offset points.
-        street_layer (geopandas.GeoDataFrame): The layer of street lines.
-        algorithm (str, optional): The algorithm to use for network generation. Defaults to "MST".
+        layer (geopandas.GeoDataFrame): GeoDataFrame containing the points to offset.
+        offset_distance (float): Distance to offset the points.
+        offset_angle (float): Angle in degrees to offset the points.
+        df (pandas.DataFrame, optional): DataFrame containing additional attributes for the points. Defaults to None.
 
     Returns:
-        geopandas.GeoDataFrame: The generated network as a GeoDataFrame.
+        geopandas.GeoDataFrame: GeoDataFrame with the generated lines and attributes.
     """
-    # Initialize lists to store the generated lines and perpendicular lines
-    perpendicular_lines = []
-    offset_points_rl = []  # Stores the generated offset points for layer_points_rl
-    offset_points_wea = []  # Stores the generated offset points for layer_wea
+    lines = []
+    attributes = []
 
-    # Creating the offset points and vertical lines for the return lines from layer_points_rl
-    points_end_points = generate_return_lines(layer_points_rl, fixed_distance_rl, fixed_angle_rl, street_layer)
-    for point in layer_points_rl.geometry:
-        offset_point = create_offset_points(point, fixed_distance_rl, fixed_angle_rl)
-        offset_points_rl.append(offset_point)  # Store the offset point
-        nearest_line = find_nearest_line(offset_point, street_layer)
-        if nearest_line is not None:
-            perpendicular_line = create_perpendicular_line(offset_point, nearest_line)
-            perpendicular_lines.append(perpendicular_line)
+    for point in layer.geometry:
+        # Converting Shapely geometry to coordinates
+        original_point = (point.x, point.y)
 
-    # Creating the offset points and vertical lines for the return lines from layer_wea
-    wea_end_points = generate_return_lines(layer_wea, fixed_distance_rl, fixed_angle_rl, street_layer)
-    for point in layer_wea.geometry:
-        offset_point = create_offset_points(point, fixed_distance_rl, fixed_angle_rl)
-        offset_points_wea.append(offset_point)  # Store the offset point
-        nearest_line = find_nearest_line(offset_point, street_layer)
-        if nearest_line is not None:
-            perpendicular_line = create_perpendicular_line(offset_point, nearest_line)
-            perpendicular_lines.append(perpendicular_line)
+        # Initialize all attributes with default values or None
+        attr = {
+            'Land': None,
+            'Bundesland': None,
+            'Stadt': None,
+            'Adresse': None,
+            'Wärmebedarf': None,
+            'Gebäudetyp': None,
+            'Subtyp': None,
+            'WW_Anteil': None,
+            'Typ_Heizflächen': None,
+            'VLT_max': None,
+            'Steigung_Heizkurve': None,
+            'RLT_max': None,
+            'Normaußentemperatur': None
+        }
 
-    # Combining the endpoints and converting them into a GeoDataFrame
-    all_end_points = points_end_points.union(wea_end_points)
-    all_end_points_gdf = gpd.GeoDataFrame(geometry=list(all_end_points))
+        if df is not None:
+            # Determine attributes based on coordinates
+            match = df[(df['UTM_X'] == original_point[0]) & (df['UTM_Y'] == original_point[1])]
+            if not match.empty:
+                attr['Land'] = match['Land'].iloc[0]
+                attr['Bundesland'] = match['Bundesland'].iloc[0]
+                attr['Stadt'] = match['Stadt'].iloc[0]
+                attr['Adresse'] = match['Adresse'].iloc[0]
+                attr['Wärmebedarf'] = match['Wärmebedarf'].iloc[0]
+                attr['Gebäudetyp'] = match['Gebäudetyp'].iloc[0]
+                attr['Subtyp'] = match['Subtyp'].iloc[0]
+                attr['WW_Anteil'] = match['WW_Anteil'].iloc[0]
+                attr['Typ_Heizflächen'] = match['Typ_Heizflächen'].iloc[0]
+                attr['VLT_max'] = match['VLT_max'].iloc[0]
+                attr['Steigung_Heizkurve'] = match['Steigung_Heizkurve'].iloc[0]
+                attr['RLT_max'] = match['RLT_max'].iloc[0]
+                attr['Normaußentemperatur'] = match['Normaußentemperatur'].iloc[0]
 
-    if algorithm == "MST":
-        # Creating the MST network from the endpoints
-        mst_gdf = generate_mst(all_end_points_gdf)
-        final_gdf = gpd.GeoDataFrame(pd.concat([mst_gdf, gpd.GeoDataFrame(geometry=perpendicular_lines)], ignore_index=True))
-    
-    if algorithm == "Advanced MST":
-        # Creating the MST network from the endpoints
-        mst_gdf = generate_mst(all_end_points_gdf)
-        adjusted_mst = adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf)
-        final_gdf = gpd.GeoDataFrame(pd.concat([adjusted_mst, gpd.GeoDataFrame(geometry=perpendicular_lines)], ignore_index=True))
+        offset_point = create_offset_points(point, offset_distance, offset_angle)
+        line = LineString([point, offset_point])
+        
+        lines.append(line)
+        attributes.append(attr)
 
-    if algorithm == "Steiner":
-        # Creating the Steiner tree network from the endpoints
-        steiner_gdf = generate_steiner_tree_network(street_layer, all_end_points_gdf)
-        final_gdf = gpd.GeoDataFrame(pd.concat([steiner_gdf, gpd.GeoDataFrame(geometry=perpendicular_lines)], ignore_index=True))
-
-    return final_gdf
+    # Creation of a GeoDataFrame with the lines and attributes
+    lines_gdf = gpd.GeoDataFrame(attributes, geometry=lines)
+    return lines_gdf
 
 def generate_mst(points):
     """
