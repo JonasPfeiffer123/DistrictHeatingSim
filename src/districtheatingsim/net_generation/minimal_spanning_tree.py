@@ -1,8 +1,8 @@
 """
-Filename: MST_processing.py
+Filename: minimal_spanning_tree.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-05-26
-Description: Contains the functions needed to post-process the MST-results
+Description: Contains the functions to generate a Minimal Spanning Tree (MST) from a set of points and adjust the segments to follow street lines.
 """
 
 import geopandas as gpd
@@ -11,6 +11,27 @@ from shapely.ops import nearest_points
 import networkx as nx
 from collections import defaultdict
 import numpy as np
+
+def generate_mst(points):
+    """
+    Generates a Minimal Spanning Tree (MST) from a set of points.
+
+    Args:
+        points (geopandas.GeoDataFrame): The set of points to generate the MST from.
+
+    Returns:
+        geopandas.GeoDataFrame: The generated MST as a GeoDataFrame.
+    """
+    g = nx.Graph()
+    for i, point1 in points.iterrows():
+        for j, point2 in points.iterrows():
+            if i != j:
+                distance = point1.geometry.distance(point2.geometry)
+                g.add_edge(i, j, weight=distance)
+    mst = nx.minimum_spanning_tree(g)
+    lines = [LineString([points.geometry[edge[0]], points.geometry[edge[1]]]) for edge in mst.edges()]
+    mst_gdf = gpd.GeoDataFrame(geometry=lines)
+    return mst_gdf
 
 def adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf, threshold=5):
     """
