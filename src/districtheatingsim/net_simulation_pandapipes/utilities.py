@@ -60,9 +60,9 @@ def COP_WP(VLT_L, QT, values=np.genfromtxt(get_resource_path('data/COP/Kennlinie
 
     return COP_L, VLT_L
 
-class WorstPointPressureController(BasicCtrl):
+class BadPointPressureLiftController(BasicCtrl):
     """
-    A controller for maintaining the pressure difference at the worst point (Differenzdruckregelung im Schlechtpunkt) in the network.
+    A controller for maintaining the pressure difference at the worst point (German: Differenzdruckregelung im Schlechtpunkt) in the network.
     
     Args:
         net (pandapipesNet): The pandapipes network.
@@ -70,10 +70,12 @@ class WorstPointPressureController(BasicCtrl):
         target_dp_min_bar (float, optional): Target minimum pressure difference in bar. Defaults to 1.
         tolerance (float, optional): Tolerance for pressure difference. Defaults to 0.2.
         proportional_gain (float, optional): Proportional gain for the controller. Defaults to 0.2.
+        min_plift (float, optional): Minimum lift pressure in bar. Defaults to 1.5.
+        min_pflow (float, optional): Minimum flow pressure in bar. Defaults to 3.5.
         **kwargs: Additional keyword arguments.
     """
     def __init__(self, net, circ_pump_pressure_idx=0, target_dp_min_bar=1, tolerance=0.2, proportional_gain=0.2, min_plift=1.5, min_pflow=3.5, **kwargs):
-        super(WorstPointPressureController, self).__init__(net, **kwargs)
+        super(BadPointPressureLiftController, self).__init__(net, **kwargs)
         self.circ_pump_pressure_idx = circ_pump_pressure_idx
         self.target_dp_min_bar = target_dp_min_bar
         self.tolerance = tolerance
@@ -162,7 +164,7 @@ class WorstPointPressureController(BasicCtrl):
             print("No heat flow detected. Switching to standby mode.")
             net.circ_pump_pressure["plift_bar"].iloc[:] = self.min_plift  # Minimum lift pressure
             net.circ_pump_pressure["p_flow_bar"].iloc[:] = self.min_pflow  # Minimum flow pressure
-            return super(WorstPointPressureController, self).control_step(net)
+            return super(BadPointPressureLiftController, self).control_step(net)
 
         # Check whether the heat flow in the heat exchanger is zero
         current_dp_bar = net.res_heat_consumer["p_from_bar"].at[self.heat_consumer_idx] - net.res_heat_consumer["p_to_bar"].at[self.heat_consumer_idx]
@@ -180,9 +182,9 @@ class WorstPointPressureController(BasicCtrl):
         net.circ_pump_pressure["plift_bar"].at[self.circ_pump_pressure_idx] = new_plift
         net.circ_pump_pressure["p_flow_bar"].at[self.circ_pump_pressure_idx] = new_pflow
 
-        return super(WorstPointPressureController, self).control_step(net)
+        return super(BadPointPressureLiftController, self).control_step(net)
     
-class TemperatureController(BasicCtrl):
+class MinimumSupplyTemperatureController(BasicCtrl):
     """
     A controller for maintaining the min supply temperature of the heat consumers in the network.
     
@@ -190,37 +192,24 @@ class TemperatureController(BasicCtrl):
         net (pandapipesNet): The pandapipes network.
         heat_consumer_idx (int): Index of the heat consumer.
         min_supply_temperature (float, optional): Minimum supply temperature. Defaults to 65.
-        kp (float, optional): Proportional gain. Defaults to 0.95.
-        ki (float, optional): Integral gain. Defaults to 0.0.
-        kd (float, optional): Derivative gain. Defaults to 0.0.
         tolerance (float, optional): Tolerance for temperature difference. Defaults to 2.
-        min_velocity (float, optional): Minimum velocity in m/s. Defaults to 0.01.
-        max_velocity (float, optional): Maximum velocity in m/s. Defaults to 2.
         max_iterations (int, optional): Maximum number of iterations. Defaults to 100.
         temperature_adjustment_step (float, optional): Step to adjust the target return temperature. Defaults to 1.
         debug (bool, optional): Flag to enable debug output. Defaults to False.
         **kwargs: Additional keyword arguments.
     """
-    def __init__(self, net, heat_consumer_idx, min_supply_temperature=65, kp=0.95, ki=0.0, kd=0.0, tolerance=2, max_iterations=100, temperature_adjustment_step=1, debug=False, **kwargs):
-        super(TemperatureController, self).__init__(net, **kwargs)
+    def __init__(self, net, heat_consumer_idx, min_supply_temperature=65, tolerance=2, max_iterations=100, temperature_adjustment_step=1, debug=False, **kwargs):
+        super(MinimumSupplyTemperatureController, self).__init__(net, **kwargs)
         self.heat_consumer_idx = heat_consumer_idx
         self.min_supply_temperature = min_supply_temperature
-        self.kp = kp
-        self.ki = ki
-        self.kd = kd
-        self.integral = 0
-        self.last_error = None
-        self.cp = 4190  # Specific heat capacity in J/(kg K)
         self.tolerance = tolerance
         self.max_iterations = max_iterations
-
-        self.iteration = 0  # Add iteration counter
-        self.previous_temperatures = []  # Use a list to store previous temperatures
-
-        self.data_source = None
+        self.temperature_adjustment_step = temperature_adjustment_step  # Step to adjust the target return temperature
         self.debug = debug
 
-        self.temperature_adjustment_step = temperature_adjustment_step  # Step to adjust the target return temperature
+        self.data_source = None
+        self.iteration = 0  # Add iteration counter
+        self.previous_temperatures = []  # Use a list to store previous temperatures
 
     def time_step(self, net, time_step):
         """Reset the controller parameters at the start of each time step.
@@ -234,8 +223,6 @@ class TemperatureController(BasicCtrl):
         """
         self.iteration = 0  # reset iteration counter
         self.previous_temperatures = []  # Reset to an empty list
-        self.integral = 0
-        self.last_error = None
 
         if time_step == 0:
             # Store the standard return temperature for the heat consumer
@@ -250,30 +237,6 @@ class TemperatureController(BasicCtrl):
             self.min_supply_temperature = self.data_source.df.at[time_step, f'min_supply_temperature']
         
         return time_step
-
-    def update_integral(self, error):
-        """Update the integral component of the PID controller.
-
-        Args:
-            error (float): The current error.
-        """
-        self.integral += error
-
-    def calculate_derivative(self, error):
-        """Calculate the derivative component of the PID controller.
-
-        Args:
-            error (float): The current error.
-
-        Returns:
-            float: The derivative of the error.
-        """
-        if self.last_error is None:
-            derivative = 0
-        else:
-            derivative = error - self.last_error
-        self.last_error = error
-        return derivative
 
     def get_weighted_average_temperature(self):
         """Calculate the weighted average of the previous temperatures.
@@ -299,7 +262,7 @@ class TemperatureController(BasicCtrl):
         if all(net.heat_consumer["qext_w"] == 0):
             # Switch to standby mode
             print("No heat flow detected. Switching to standby mode.")
-            return super(TemperatureController, self).control_step(net)
+            return super(MinimumSupplyTemperatureController, self).control_step(net)
 
         # Calculate new mass flow
         current_T_out = net.res_heat_consumer["t_to_k"].at[self.heat_consumer_idx] - 273.15
@@ -318,7 +281,7 @@ class TemperatureController(BasicCtrl):
             
             if self.debug:
                 print(f"Minimum supply temperature not met. Adjusted target output temperature to {new_T_out} °C.")
-            return super(TemperatureController, self).control_step(net)
+            return super(MinimumSupplyTemperatureController, self).control_step(net)
 
     def is_converged(self, net):
         """Check if the controller has converged.
@@ -402,7 +365,7 @@ def create_controllers(net, qext_w, supply_temperature_heat_generator, min_suppl
             {f'min_supply_temperature': [min_supply_temperature_heat_consumer[i]]}
             )
             min_supply_temp_data_source = DFData(min_supply_temp_profile)
-            T_controller = TemperatureController(
+            T_controller = MinimumSupplyTemperatureController(
             net,
             heat_consumer_idx=i,
             min_supply_temperature=min_supply_temperature_heat_consumer[i],  # initial value
@@ -448,7 +411,7 @@ def create_controllers(net, qext_w, supply_temperature_heat_generator, min_suppl
             # supply temperature for secondary producers
             ConstControl(net, element='circ_pump_mass', variable='t_flow_k', element_index=0, data_source=placeholder_data_source_supply_temp, profile_name='supply_temperature')
 
-    dp_controller = WorstPointPressureController(net)
+    dp_controller = BadPointPressureLiftController(net)
     net.controller.loc[len(net.controller)] = [dp_controller, True, -1, -1, False, False]
 
     return net

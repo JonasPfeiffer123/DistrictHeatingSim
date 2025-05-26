@@ -13,7 +13,7 @@ from pandapower.timeseries import DFData
 import pandas as pd
 import numpy as np
 
-from districtheatingsim.net_simulation_pandapipes.utilities import COP_WP, TemperatureController
+from districtheatingsim.net_simulation_pandapipes.utilities import COP_WP, MinimumSupplyTemperatureController
 from districtheatingsim.utilities.test_reference_year import import_TRY
 
 def update_heat_consumer_qext_controller(net, qext_w_profiles, time_steps, start, end):
@@ -45,7 +45,7 @@ def update_heat_consumer_temperature_controller(net, min_supply_temperature_heat
     """
     controller_count = 0
     for ctrl in net.controller.object.values:
-        if isinstance(ctrl, TemperatureController):
+        if isinstance(ctrl, MinimumSupplyTemperatureController):
             profile = min_supply_temperature_heat_consumer[controller_count]
             # Prüfe, ob statisch oder zeitabhängig
             if np.isscalar(profile) or (isinstance(profile, np.ndarray) and profile.ndim == 0):
