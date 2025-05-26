@@ -1,17 +1,16 @@
 """
-Filename: simple_MST.py
+Filename: net_generation.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-05-26
-Description: Contains the functions to process the spatial data to generate the MST.
+Description: Contains the functions to generate the heat network based on the given layers.
 """
 
 import pandas as pd
 import geopandas as gpd
 import math
-import networkx as nx
 from shapely.geometry import LineString, Point
 
-from districtheatingsim.net_generation.MST_processing import *
+from districtheatingsim.net_generation.minimal_spanning_tree import generate_mst, adjust_segments_to_roads
 from districtheatingsim.net_generation.steiner_tree import generate_steiner_tree_network
 
 import matplotlib.pyplot as plt
@@ -155,10 +154,10 @@ def generate_network(heat_consumer_layer, heat_generator_layer, osm_street_layer
     final_return_line_gdf = offset_lines_by_angle(final_flow_line_gdf, offset_distance, offset_angle)
 
     # Plotting the flow and return lines using GeoDataFrame's plot method
-    ax = final_flow_line_gdf.plot(color='red', linewidth=1, label='Flow Lines')
-    final_return_line_gdf.plot(ax=ax, color='blue', linewidth=1, label='Return Lines')
-    plt.legend()
-    plt.show()
+    #ax = final_flow_line_gdf.plot(color='red', linewidth=1, label='Flow Lines')
+    #final_return_line_gdf.plot(ax=ax, color='blue', linewidth=1, label='Return Lines')
+    #plt.legend()
+    #plt.show()
 
     return final_flow_line_gdf, final_return_line_gdf
 
@@ -226,24 +225,3 @@ def generate_connection_lines(layer, offset_distance, offset_angle, df=None):
     # Creation of a GeoDataFrame with the lines and attributes
     lines_gdf = gpd.GeoDataFrame(attributes, geometry=lines)
     return lines_gdf
-
-def generate_mst(points):
-    """
-    Generates a Minimal Spanning Tree (MST) from a set of points.
-
-    Args:
-        points (geopandas.GeoDataFrame): The set of points to generate the MST from.
-
-    Returns:
-        geopandas.GeoDataFrame: The generated MST as a GeoDataFrame.
-    """
-    g = nx.Graph()
-    for i, point1 in points.iterrows():
-        for j, point2 in points.iterrows():
-            if i != j:
-                distance = point1.geometry.distance(point2.geometry)
-                g.add_edge(i, j, weight=distance)
-    mst = nx.minimum_spanning_tree(g)
-    lines = [LineString([points.geometry[edge[0]], points.geometry[edge[1]]]) for edge in mst.edges()]
-    mst_gdf = gpd.GeoDataFrame(geometry=lines)
-    return mst_gdf

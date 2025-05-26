@@ -10,7 +10,7 @@ import geopandas as gpd
 import pandas as pd
 from shapely.geometry import Point
 
-from districtheatingsim.net_generation.simple_MST import generate_network, generate_connection_lines
+from districtheatingsim.net_generation.net_generation import generate_network, generate_connection_lines
 
 def import_osm_street_layer(osm_street_layer_geojson_file):
     """
