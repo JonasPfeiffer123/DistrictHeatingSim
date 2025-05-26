@@ -149,27 +149,13 @@ def generate_network_fl(layer_points_fl, layer_wea, street_layer, algorithm="MST
         # Adding the vertical lines to the MST GeoDataFrame
         final_gdf = gpd.GeoDataFrame(pd.concat([mst_gdf, gpd.GeoDataFrame(geometry=perpendicular_lines)], ignore_index=True))
 
-    if algorithm == "pre_MST":
-        # Creating the MST network from the endpoints
-        all_points = add_intermediate_points(all_end_points_gdf, street_layer)
-        mst_gdf = generate_mst(all_points)
-        final_gdf = gpd.GeoDataFrame(pd.concat([mst_gdf, gpd.GeoDataFrame(geometry=perpendicular_lines)], ignore_index=True))
-
     if algorithm == "Advanced MST":
         # Creating the MST network from the endpoints
         mst_gdf = generate_mst(all_end_points_gdf)
         adjusted_mst = adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf)
         final_gdf = gpd.GeoDataFrame(pd.concat([adjusted_mst, gpd.GeoDataFrame(geometry=perpendicular_lines)], ignore_index=True))
 
-    if algorithm == "A*-Star":
-        # Creating the A*-Star network from the endpoints
-        road_graph = create_road_graph(street_layer)  # Created once and reused
-        a_star_gdf = generate_a_star_network(road_graph, all_end_points_gdf)
-        final_gdf = gpd.GeoDataFrame(pd.concat([a_star_gdf, gpd.GeoDataFrame(geometry=perpendicular_lines)], ignore_index=True))
-        final_gdf = simplify_network(final_gdf)
-
     if algorithm == "Steiner":
-        print("Steiner tree generation")
         # Creating the Steiner tree network from the endpoints
         steiner_gdf = generate_steiner_tree_network(street_layer, all_end_points_gdf)
         final_gdf = gpd.GeoDataFrame(pd.concat([steiner_gdf, gpd.GeoDataFrame(geometry=perpendicular_lines)], ignore_index=True))
@@ -191,7 +177,6 @@ def generate_network_rl(layer_points_rl, layer_wea, fixed_distance_rl, fixed_ang
     Returns:
         geopandas.GeoDataFrame: The generated network as a GeoDataFrame.
     """
-    print(f"Algorithm: {algorithm}")
     # Initialize lists to store the generated lines and perpendicular lines
     perpendicular_lines = []
     offset_points_rl = []  # Stores the generated offset points for layer_points_rl
@@ -226,26 +211,13 @@ def generate_network_rl(layer_points_rl, layer_wea, fixed_distance_rl, fixed_ang
         mst_gdf = generate_mst(all_end_points_gdf)
         final_gdf = gpd.GeoDataFrame(pd.concat([mst_gdf, gpd.GeoDataFrame(geometry=perpendicular_lines)], ignore_index=True))
     
-    if algorithm == "pre_MST":
-        # Creating the MST network from the endpoints
-        all_points = add_intermediate_points(all_end_points_gdf, street_layer)
-        mst_gdf = generate_mst(all_points)
-        final_gdf = gpd.GeoDataFrame(pd.concat([mst_gdf, gpd.GeoDataFrame(geometry=perpendicular_lines)], ignore_index=True))
-    
     if algorithm == "Advanced MST":
         # Creating the MST network from the endpoints
         mst_gdf = generate_mst(all_end_points_gdf)
         adjusted_mst = adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf)
         final_gdf = gpd.GeoDataFrame(pd.concat([adjusted_mst, gpd.GeoDataFrame(geometry=perpendicular_lines)], ignore_index=True))
-    
-    if algorithm == "A*-Star":
-        road_graph = create_road_graph(street_layer)
-        a_star_gdf = generate_a_star_network(road_graph, all_end_points_gdf)
-        final_gdf = gpd.GeoDataFrame(pd.concat([a_star_gdf, gpd.GeoDataFrame(geometry=perpendicular_lines)], ignore_index=True))
-        final_gdf = simplify_network(final_gdf)
 
     if algorithm == "Steiner":
-        print("Steiner tree generation")
         # Creating the Steiner tree network from the endpoints
         steiner_gdf = generate_steiner_tree_network(street_layer, all_end_points_gdf)
         final_gdf = gpd.GeoDataFrame(pd.concat([steiner_gdf, gpd.GeoDataFrame(geometry=perpendicular_lines)], ignore_index=True))

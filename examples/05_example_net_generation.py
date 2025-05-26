@@ -46,10 +46,8 @@ except Exception as e:
 
 # Choose the algorithm to generate the network
 # mode = "MST"
-# mode = "pre_MST"
-# mode = "Advanced MST"
-# mode = "A*-Star"
-mode = "Steiner" 
+mode = "Advanced MST"
+# mode = "Steiner" 
 
 base_path = "examples\data\Wärmenetz\Variante 1"
 
@@ -68,9 +66,9 @@ print(f"Vorlauf: {vorlauf}")
 
 # Plotten der geographischen Daten
 fig, ax = plt.subplots(figsize=(10, 10))  # Größe des Plots anpassen
-#hast.plot(ax=ax, color='green')  # Farbe und weitere Parameter anpassen
-#rücklauf.plot(ax=ax, color='blue')  # Farbe und weitere Parameter anpassen
+hast.plot(ax=ax, color='green')  # Farbe und weitere Parameter anpassen
+rücklauf.plot(ax=ax, color='blue')  # Farbe und weitere Parameter anpassen
 vorlauf.plot(ax=ax, color='red')  # Farbe und weitere Parameter anpassen
-#erzeuger.plot(ax=ax, color='black')  # Farbe und weitere Parameter anpassen
+erzeuger.plot(ax=ax, color='black')  # Farbe und weitere Parameter anpassen
 plt.title('Wärmenetz')
 plt.show()
