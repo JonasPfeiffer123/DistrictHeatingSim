@@ -64,7 +64,7 @@ class LayerGenerationDialog(QDialog):
         self.coordSystemComboBox.addItems(["EPSG:25833", "WGS84"])
 
         self.coordInput = QLineEdit(self)
-        self.coordInput.setText("480198.58,5711044.00")
+        self.coordInput.setText("499827.8585093066,55666161.599635682") # Görlitz
         self.coordInput.setToolTip("Eingabe in folgender Form: 'X-Koordinate, Y-Koordinate'")
         self.addCoordButton = QPushButton("Koordinate hinzufügen", self)
         self.addCoordButton.clicked.connect(self.addCoordFromInput)

@@ -1,62 +1,37 @@
 """
-Filename: MST_processing.py
+Filename: minimal_spanning_tree.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-31
-Description: Contains the functions needed to post-process the MST-results
+Date: 2025-05-26
+Description: Contains the functions to generate a Minimal Spanning Tree (MST) from a set of points and adjust the segments to follow street lines.
 """
 
 import geopandas as gpd
 from shapely.geometry import LineString, Point
 from shapely.ops import nearest_points
-import pandas as pd
 import networkx as nx
 from collections import defaultdict
 import numpy as np
 
-def add_intermediate_points(points_gdf, street_layer, max_distance=200, point_interval=10):
+def generate_mst(points):
     """
-    Adds intermediate points between the given points and the nearest street lines.
+    Generates a Minimal Spanning Tree (MST) from a set of points.
 
     Args:
-        points_gdf (geopandas.GeoDataFrame): GeoDataFrame containing the points.
-        street_layer (geopandas.GeoDataFrame): GeoDataFrame containing the street lines.
-        max_distance (int, optional): Maximum distance to consider for adding intermediate points. Defaults to 200.
-        point_interval (int, optional): Interval distance between intermediate points. Defaults to 10.
+        points (geopandas.GeoDataFrame): The set of points to generate the MST from.
 
     Returns:
-        geopandas.GeoDataFrame: Updated GeoDataFrame with added intermediate points.
+        geopandas.GeoDataFrame: The generated MST as a GeoDataFrame.
     """
-    new_points = []
-    for point in points_gdf.geometry:
-        # Ensure the point is a valid geometry
-        if point.is_empty:
-            continue
-        # Find the nearest street
-        distances = street_layer.distance(point)
-        nearest_street_index = distances.idxmin()
-        nearest_street = street_layer.iloc[nearest_street_index].geometry
-
-        # Ensure the nearest street is a valid geometry
-        if nearest_street.is_empty:
-            continue
-
-        # Compute the nearest point on the street
-        nearest_point_on_street = nearest_points(point, nearest_street)[1]
-
-        print(nearest_point_on_street)
-
-        # Add intermediate points if the point is within the specified distance
-        if point.distance(nearest_point_on_street) <= max_distance:
-            line = LineString([point, nearest_point_on_street])
-            num_points = int(line.length / point_interval)
-            for i in range(1, num_points):
-                intermediate_point = line.interpolate(point_interval * i)
-                print(intermediate_point)
-                new_points.append(intermediate_point)
-    
-    # Create a GeoDataFrame with all new points
-    new_points_gdf = gpd.GeoDataFrame(geometry=new_points)
-    return pd.concat([points_gdf, new_points_gdf], ignore_index=True)
+    g = nx.Graph()
+    for i, point1 in points.iterrows():
+        for j, point2 in points.iterrows():
+            if i != j:
+                distance = point1.geometry.distance(point2.geometry)
+                g.add_edge(i, j, weight=distance)
+    mst = nx.minimum_spanning_tree(g)
+    lines = [LineString([points.geometry[edge[0]], points.geometry[edge[1]]]) for edge in mst.edges()]
+    mst_gdf = gpd.GeoDataFrame(geometry=lines)
+    return mst_gdf
 
 def adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf, threshold=5):
     """
@@ -75,7 +50,7 @@ def adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf, threshol
     changes_made = True
 
     while changes_made:
-        print(f"Iteration {iteration}")
+        #print(f"Iteration {iteration}")
 
         adjusted_lines = []
         changes_made = False
@@ -91,7 +66,7 @@ def adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf, threshol
             point_on_street = nearest_points(midpoint, nearest_street)[1]
 
             distance_to_street = midpoint.distance(point_on_street)
-            print(f"Distance to nearest street: {distance_to_street}")
+            #print(f"Distance to nearest street: {distance_to_street}")
 
             if distance_to_street > threshold:
                 if point_on_street.equals(Point(line.coords[0])) or point_on_street.equals(Point(line.coords[1])):
@@ -113,12 +88,12 @@ def adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf, threshol
                     print(f"Invalid new_line2: {new_line2}")
                 
                 changes_made = True
-                print("Adjusting line segment")
+                #print("Adjusting line segment")
             else:
                 adjusted_lines.append(line)
 
         if not changes_made:
-            print("No changes made, breaking out of the loop.")
+            #print("No changes made, breaking out of the loop.")
             break
 
         mst_gdf = gpd.GeoDataFrame(geometry=adjusted_lines)
