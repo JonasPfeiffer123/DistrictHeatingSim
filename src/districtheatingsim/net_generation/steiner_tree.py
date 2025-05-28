@@ -34,12 +34,20 @@ def create_road_graph(street_layer, precision=4):
 
 def map_points_to_graph_nodes(road_graph, points_gdf, precision=4):
     """
-    Mappt die Punkte auf die nächsten Kanten im Straßengraphen.
-    Fügt den projizierten Punkt als Knoten ein und ersetzt die Kante durch zwei neue Kanten.
-    Achtung: Fügt Kanten nur ein, wenn Start- und Endpunkt verschieden sind.
+    Ensures all given points are nodes in the road graph.
+    If a point is already a node, it is used directly.
+    If not, it is projected onto the nearest edge, inserted as a new node, and the edge is split.
+    Returns a list of terminal node coordinates (rounded).
     """
     terminals = []
     for point in points_gdf.geometry:
+        rounded = (round(point.x, precision), round(point.y, precision))
+        if rounded in road_graph.nodes:
+            # Point is already a node in the graph
+            terminals.append(rounded)
+            continue
+
+        # Find the nearest edge and project the point onto it
         min_dist = float('inf')
         nearest_edge = None
         nearest_proj = None
@@ -52,46 +60,24 @@ def map_points_to_graph_nodes(road_graph, points_gdf, precision=4):
                 nearest_edge = (u, v)
                 nearest_proj = proj
 
-        # Runde die Koordinaten, um Floating-Point-Probleme zu vermeiden
+        # Round projected coordinates for stability
         proj_coords = (round(nearest_proj.x, precision), round(nearest_proj.y, precision))
         u_rounded = (round(nearest_edge[0][0], precision), round(nearest_edge[0][1], precision))
         v_rounded = (round(nearest_edge[1][0], precision), round(nearest_edge[1][1], precision))
 
-        # Prüfe, ob der projizierte Punkt schon Knoten ist
+        # Insert the projected point as a node if not already present
         if proj_coords not in road_graph.nodes:
-            # Entferne die alte Kante (achte auf Rundung!)
+            # Remove the original edge
             if road_graph.has_edge(u_rounded, v_rounded):
                 road_graph.remove_edge(u_rounded, v_rounded)
-            # Füge den projizierten Punkt als Knoten ein
+            # Add the projected point as a node
             road_graph.add_node(proj_coords)
-            # Füge zwei neue Kanten ein, aber nur wenn die Punkte verschieden sind
+            # Add two new edges, only if endpoints are different
             if u_rounded != proj_coords and not road_graph.has_edge(u_rounded, proj_coords):
                 road_graph.add_edge(u_rounded, proj_coords, weight=Point(u_rounded).distance(Point(proj_coords)))
             if v_rounded != proj_coords and not road_graph.has_edge(proj_coords, v_rounded):
                 road_graph.add_edge(proj_coords, v_rounded, weight=Point(v_rounded).distance(Point(proj_coords)))
         terminals.append(proj_coords)
-
-    # Debug: Prüfe, ob alle Terminals im Graphen sind
-    """
-    for t in terminals:
-        if t not in road_graph.nodes:
-            print(f"Terminal NICHT im Graphen: {t}")
-        else:
-            print(f"Terminal korrekt im Graphen: {t}")
-
-    # Prüfe, ob der Graph zusammenhängend ist und in welchen Komponenten die Terminals liegen
-    if not nx.is_connected(road_graph):
-        print("WARNUNG: Der Graph ist nicht zusammenhängend!")
-        components = list(nx.connected_components(road_graph))
-        for i, comp in enumerate(components):
-            print(f"Komponente {i}: {len(comp)} Knoten")
-        for t in terminals:
-            for i, comp in enumerate(components):
-                if t in comp:
-                    print(f"Terminal {t} liegt in Komponente {i}")
-    else:
-        print("Graph ist zusammenhängend.")
-    """
 
     return terminals
 
@@ -117,8 +103,9 @@ def generate_steiner_tree_network(street_layer, points_gdf):
         raise ValueError("Zu wenige Terminals in der größten Komponente!")
 
     # Berechnung des Steinerbaums
-    steiner_subgraph = steiner_tree(road_graph, terminals, weight='weight')
-
+    steiner_subgraph = steiner_tree(road_graph, terminals, weight='weight', method='mehlhorn')
+    
+    """"
     # plotten des Steinerbaums (optional)
     fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -137,7 +124,8 @@ def generate_steiner_tree_network(street_layer, points_gdf):
     # Plot Terminals (blaue Kreuze)
     for t in terminals:
         ax.plot(t[0], t[1], marker='x', color='blue', markersize=10, label='Terminal', zorder=3)
-
+    """
+    
     # Umwandlung in GeoDataFrame:
     lines = [LineString([Point(u), Point(v)]) for u, v in steiner_subgraph.edges()]
     return gpd.GeoDataFrame(geometry=lines)

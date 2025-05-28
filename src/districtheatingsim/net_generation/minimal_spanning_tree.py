@@ -33,7 +33,7 @@ def generate_mst(points):
     mst_gdf = gpd.GeoDataFrame(geometry=lines)
     return mst_gdf
 
-def adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf, threshold=5, min_improvement=0.5):
+def adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf, threshold=5, min_improvement=0.5, generator_coords=None):
     """
     Iteratively adjusts the MST segments so that they follow the street network more closely.
     The goal is to "snap" the MST lines to the nearest street if their midpoint is further than `threshold` away.
@@ -134,7 +134,7 @@ def adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf, threshol
 
     print("\nAdjustment finished. Now simplifying and rebuilding MST...")
     mst_gdf = simplify_network(mst_gdf)
-    mst_gdf = extract_unique_points_and_create_mst(mst_gdf, all_end_points_gdf)
+    mst_gdf = extract_unique_points_and_create_mst(mst_gdf, all_end_points_gdf, generator_coords)
 
     print("Adjustment and MST rebuild complete.")
     return mst_gdf
@@ -183,7 +183,7 @@ def simplify_network(gdf, threshold=10):
 
     return gpd.GeoDataFrame(geometry=simplified_lines)
 
-def extract_unique_points_and_create_mst(gdf, all_end_points_gdf):
+def extract_unique_points_and_create_mst(gdf, all_end_points_gdf, generator_coords=None):
     """
     Extracts unique points from the network segments and creates a new MST.
 
@@ -212,7 +212,10 @@ def extract_unique_points_and_create_mst(gdf, all_end_points_gdf):
     # Create a GeoDataFrame from the unique points
     points_gdf = gpd.GeoDataFrame(geometry=unique_points)
     
-    mst_gdf = generate_mst(points_gdf)
+    if generator_coords is not None:
+        mst_gdf = multi_root_shortest_path_tree(points_gdf, generator_coords)
+    else:
+        mst_gdf = generate_mst(points_gdf)
     
     return mst_gdf
 
@@ -234,5 +237,30 @@ def generate_mst(points):
                 g.add_edge(i, j, weight=distance)
     mst = nx.minimum_spanning_tree(g)
     lines = [LineString([points.geometry[edge[0]], points.geometry[edge[1]]]) for edge in mst.edges()]
+    mst_gdf = gpd.GeoDataFrame(geometry=lines)
+    return mst_gdf
+
+def multi_root_shortest_path_tree(points, generator_indices):
+    """
+    points: GeoDataFrame mit allen Punkten (Verbraucher + Erzeuger)
+    generator_indices: Liste der Indizes der Erzeuger im points-GDF
+    """
+    G = nx.Graph()
+    for i, point1 in points.iterrows():
+        for j, point2 in points.iterrows():
+            if i != j:
+                distance = point1.geometry.distance(point2.geometry)
+                G.add_edge(i, j, weight=distance)
+    # Super-Root hinzufügen
+    super_root = -1
+    for idx in generator_indices:
+        G.add_edge(super_root, idx, weight=0)
+    # SPT berechnen
+    spt = nx.minimum_spanning_tree(G, algorithm='prim', weight='weight')
+    # Entferne Super-Root und seine Kanten
+    if super_root in spt:
+        spt.remove_node(super_root)
+    # Linien extrahieren
+    lines = [LineString([points.geometry[edge[0]], points.geometry[edge[1]]]) for edge in spt.edges() if edge[0] != super_root and edge[1] != super_root]
     mst_gdf = gpd.GeoDataFrame(geometry=lines)
     return mst_gdf

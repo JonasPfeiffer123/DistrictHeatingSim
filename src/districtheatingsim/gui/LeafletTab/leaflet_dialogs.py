@@ -64,7 +64,7 @@ class LayerGenerationDialog(QDialog):
         self.coordSystemComboBox.addItems(["EPSG:25833", "WGS84"])
 
         self.coordInput = QLineEdit(self)
-        self.coordInput.setText("499827.8585093066,55666161.599635682") # Görlitz
+        self.coordInput.setText("499800.0886870429,5666147.366196365") # Görlitz Brückenstraße 10
         self.coordInput.setToolTip("Eingabe in folgender Form: 'X-Koordinate, Y-Koordinate'")
         self.addCoordButton = QPushButton("Koordinate hinzufügen", self)
         self.addCoordButton.clicked.connect(self.addCoordFromInput)
@@ -86,7 +86,7 @@ class LayerGenerationDialog(QDialog):
         self.coordTable.setHorizontalHeaderLabels(["X-Koordinate", "Y-Koordinate"])
 
         self.generationModeComboBox = QComboBox(self)
-        self.generationModeComboBox.addItems(["Advanced MST", "MST"])
+        self.generationModeComboBox.addItems(["Advanced MST", "MST", "Steiner", "Rooted MST"])
         self.generationModeComboBox.currentIndexChanged.connect(self.toggleLocationInputMode)
 
         formLayout.addRow("GeoJSON-Straßen-Layer:", self.createFileInputLayout(self.fileInput, self.fileButton))

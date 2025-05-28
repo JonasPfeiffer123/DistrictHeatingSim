@@ -18,6 +18,8 @@ base_data_dir = "examples\\data\\synthetic_gis_data"
 output_base_dir = "examples\\benchmark_output"
 coordinates = [(498823.8,5667017.8)]  # Dummy heat source in UTM (passt zum synthetischen Kataster)
 algorithm = "Advanced MST"  # oder "MST", "Steiner", etc.
+#algorithm = "Steiner"  # oder "MST", "Advanced MST", etc.
+#algorithm = "MST"  # oder "Advanced MST", "Steiner", etc.
 
 building_counts = [25, 50, 75, 100, 150, 200, 250, 300]
 

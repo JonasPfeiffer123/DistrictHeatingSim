@@ -10,7 +10,7 @@ import geopandas as gpd
 import math
 from shapely.geometry import LineString, Point
 
-from districtheatingsim.net_generation.minimal_spanning_tree import generate_mst, adjust_segments_to_roads
+from districtheatingsim.net_generation.minimal_spanning_tree import generate_mst, adjust_segments_to_roads, multi_root_shortest_path_tree
 from districtheatingsim.net_generation.steiner_tree import generate_steiner_tree_network
 
 import matplotlib.pyplot as plt
@@ -146,7 +146,15 @@ def generate_network(heat_consumer_layer, heat_generator_layer, osm_street_layer
         # Creating the Steiner tree network from the endpoints
         flow_line_steiner_gdf = generate_steiner_tree_network(osm_street_layer, all_endpoints_gdf)
         final_flow_line_gdf = gpd.GeoDataFrame(pd.concat([flow_line_steiner_gdf, gpd.GeoDataFrame(geometry=all_perpendicular_lines)], ignore_index=True))
-
+    
+    elif algorithm == "Rooted MST":
+        # all_endpoints_gdf enthält alle Endpunkte (Verbraucher + Erzeuger)
+        # heat_generator_endpoints ist ein Set von shapely.Points
+        generator_coords = [ (pt.x, pt.y) for pt in heat_generator_endpoints ]
+        flow_line_mst_gdf = multi_root_shortest_path_tree(all_endpoints_gdf, generator_coords)
+        adjusted_mst = adjust_segments_to_roads(flow_line_mst_gdf, osm_street_layer, all_endpoints_gdf, generator_coords=generator_coords)
+        final_flow_line_gdf = gpd.GeoDataFrame(pd.concat([flow_line_mst_gdf, gpd.GeoDataFrame(geometry=all_perpendicular_lines)], ignore_index=True))
+    
     else:
         raise ValueError("Unknown algorithm: " + str(algorithm))
     

@@ -51,8 +51,9 @@ print(f"Using default coordinates: {coordinates}")
 
 # Choose the algorithm to generate the network
 # mode = "MST"
-mode = "Advanced MST"
+#mode = "Advanced MST"
 # mode = "Steiner" 
+mode = "Rooted MST"
 
 base_path = "examples\data\Wärmenetz\Variante 1"
 print(f"Starte die Generierung des Wärmenetzes in {base_path} mit dem Algorithmus {mode}...")
