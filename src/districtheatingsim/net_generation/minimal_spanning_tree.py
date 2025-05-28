@@ -33,14 +33,15 @@ def generate_mst(points):
     mst_gdf = gpd.GeoDataFrame(geometry=lines)
     return mst_gdf
 
-def adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf, threshold=5):
+def adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf, threshold=5, min_improvement=0.5):
     """
-    Adjusts the MST segments to follow the street lines more closely.
+    Iteratively adjusts the MST segments so that they follow the street network more closely.
+    The goal is to "snap" the MST lines to the nearest street if their midpoint is further than `threshold` away.
 
     Args:
-        mst_gdf (geopandas.GeoDataFrame): GeoDataFrame containing the MST segments.
+        mst_gdf (geopandas.GeoDataFrame): GeoDataFrame containing the MST segments (LineStrings).
         street_layer (geopandas.GeoDataFrame): GeoDataFrame containing the street lines.
-        all_end_points_gdf (geopandas.GeoDataFrame): GeoDataFrame containing all end points.
+        all_end_points_gdf (geopandas.GeoDataFrame): GeoDataFrame containing all end points (for later MST rebuild).
         threshold (int, optional): Distance threshold for adjustment. Defaults to 5.
 
     Returns:
@@ -49,63 +50,93 @@ def adjust_segments_to_roads(mst_gdf, street_layer, all_end_points_gdf, threshol
     iteration = 0
     changes_made = True
 
-    while changes_made:
-        #print(f"Iteration {iteration}")
+    # Track how often each segment (by its hash) is adjusted
+    segment_change_counter = {}
+    blacklist = set()  # Segments that should not be changed anymore
 
+    def line_hash(line):
+        # Hash based on rounded coordinates for stability
+        coords = tuple((round(x, 3), round(y, 3)) for x, y in line.coords)
+        return hash(coords)
+
+    # Main loop: repeat until no more changes or iteration limit reached
+    while changes_made:
+        print(f"\n--- Iteration {iteration} ---")
         adjusted_lines = []
         changes_made = False
+        changed_this_iter = set()
 
-        for line in mst_gdf.geometry:
+        for idx, line in enumerate(mst_gdf.geometry):
             if not line.is_valid:
-                print(f"Invalid line geometry: {line}")
+                print(f"  [!] Invalid line geometry: {line}")
+                continue
+
+            seg_id = line_hash(line)
+            if seg_id in blacklist:
+                adjusted_lines.append(line)
                 continue
 
             midpoint = line.interpolate(0.5, normalized=True)
             nearest_line = street_layer.distance(midpoint).idxmin()
             nearest_street = street_layer.iloc[nearest_line].geometry
             point_on_street = nearest_points(midpoint, nearest_street)[1]
-
             distance_to_street = midpoint.distance(point_on_street)
-            #print(f"Distance to nearest street: {distance_to_street}")
 
             if distance_to_street > threshold:
                 if point_on_street.equals(Point(line.coords[0])) or point_on_street.equals(Point(line.coords[1])):
-                    print(f"Skipping adjustment due to identical points: {point_on_street}")
+                    print(f"    Skipping adjustment (projected point is endpoint): {point_on_street}")
                     adjusted_lines.append(line)
                     continue
-                
+
+                # Calculate original distance for improvement check
+                orig_distance = distance_to_street
+
                 new_line1 = LineString([line.coords[0], point_on_street.coords[0]])
                 new_line2 = LineString([point_on_street.coords[0], line.coords[1]])
-                
-                if new_line1.is_valid and not new_line1.is_empty:
-                    adjusted_lines.append(new_line1)
-                else:
-                    print(f"Invalid new_line1: {new_line1}")
-                
-                if new_line2.is_valid and not new_line2.is_empty:
-                    adjusted_lines.append(new_line2)
-                else:
-                    print(f"Invalid new_line2: {new_line2}")
-                
+
+                for new_line in [new_line1, new_line2]:
+                    if new_line.is_valid and not new_line.is_empty:
+                        new_midpoint = new_line.interpolate(0.5, normalized=True)
+                        nearest_line_new = street_layer.distance(new_midpoint).idxmin()
+                        nearest_street_new = street_layer.iloc[nearest_line_new].geometry
+                        point_on_street_new = nearest_points(new_midpoint, nearest_street_new)[1]
+                        new_distance = new_midpoint.distance(point_on_street_new)
+                        improvement = orig_distance - new_distance
+                        if improvement < min_improvement:
+                            print(f"    Improvement only {improvement:.2f} m (< {min_improvement} m), accepting line as is and blacklisting.")
+                            blacklist.add(line_hash(new_line))
+                        adjusted_lines.append(new_line)
+                    else:
+                        print(f"    [!] Invalid new_line: {new_line}")
+
                 changes_made = True
-                #print("Adjusting line segment")
+                changed_this_iter.add(seg_id)
+                segment_change_counter[seg_id] = segment_change_counter.get(seg_id, 0) + 1
+                print(f"    Adjusted line {idx} (ID {seg_id}), total adjustments: {segment_change_counter[seg_id]}")
             else:
                 adjusted_lines.append(line)
 
+        print(f"  Adjusted {len(changed_this_iter)} segments this iteration.")
+        if changed_this_iter:
+            print(f"    Changed segment IDs: {list(changed_this_iter)}")
+            most_changed = sorted(segment_change_counter.items(), key=lambda x: -x[1])[:3]
+            print(f"    Most changed segments so far: {most_changed}")
+
         if not changes_made:
-            #print("No changes made, breaking out of the loop.")
+            print("No changes made, breaking out of the loop.")
             break
 
         mst_gdf = gpd.GeoDataFrame(geometry=adjusted_lines)
-    
         iteration += 1
-        if iteration > 1000:
+        if iteration > 50:
             print("Reached iteration limit, breaking out of the loop.")
             break
 
+    print("\nAdjustment finished. Now simplifying and rebuilding MST...")
     mst_gdf = simplify_network(mst_gdf)
     mst_gdf = extract_unique_points_and_create_mst(mst_gdf, all_end_points_gdf)
 
+    print("Adjustment and MST rebuild complete.")
     return mst_gdf
 
 def simplify_network(gdf, threshold=10):
