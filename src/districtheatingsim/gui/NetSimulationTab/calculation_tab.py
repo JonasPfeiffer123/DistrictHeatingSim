@@ -1,7 +1,7 @@
 """
 Filename: calculation_tab.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-02-11
+Date: 2025-05-17
 Description: Contains the CalculationTab class.
 """
 
@@ -13,6 +13,7 @@ import pandas as pd
 import itertools
 import json
 import os
+import traceback
 
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -21,13 +22,15 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction, QActionGroup, QPlainTextEdit
 
-from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import calculate_results, save_results_csv, import_results_csv
+from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import save_results_csv, import_results_csv
 from districtheatingsim.net_simulation_pandapipes.config_plot import config_plot
 from districtheatingsim.net_simulation_pandapipes.utilities import export_net_geojson
 
 from districtheatingsim.gui.NetSimulationTab.timeseries_dialog import TimeSeriesCalculationDialog
 from districtheatingsim.gui.NetSimulationTab.net_generation_dialog import NetGenerationDialog
 from districtheatingsim.gui.NetSimulationTab.net_calculation_threads import NetInitializationThread, NetCalculationThread
+from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import NetworkGenerationData
+
 from districtheatingsim.gui.utilities import CheckableComboBox
 
 class CalculationTab(QWidget):
@@ -36,13 +39,6 @@ class CalculationTab(QWidget):
 
     Attributes:
         data_added (pyqtSignal): Signal to indicate data addition.
-        data_manager: Data manager to handle project data.
-        parent: Parent widget.
-        calc_method (str): Calculation method.
-        show_map (bool): Flag to show map.
-        map_type (str): Type of map to be displayed.
-        net_data: Variable to store network data.
-        supply_temperature: Supply temperature for the network.
     """
 
     data_added = pyqtSignal(object)
@@ -53,20 +49,35 @@ class CalculationTab(QWidget):
 
         Args:
             data_manager: Data manager to handle project data.
-            parent: Parent widget.
+            config_manager: Configuration manager for the application.
+            folder_manager: Folder manager to handle project folders.
+            show_map (bool): Flag to show map.
+            map_type (str): Type of map to be displayed.
+            NetworkGenerationData: Data class for network generation.
         """
         super().__init__(parent)
         self.folder_manager = folder_manager
         self.data_manager = data_manager
         self.config_manager = config_manager
-        self.calc_method = "Datensatz"
+
         self.folder_manager.project_folder_changed.connect(self.updateDefaultPath)
         self.updateDefaultPath(self.folder_manager.variant_folder)
+
         self.show_map = False
         self.map_type = None
+
         self.initUI()
-        self.net_data = None
-        self.supply_temperature = None
+
+        self.NetworkGenerationData = None
+
+    def updateDefaultPath(self, new_base_path):
+        """
+        Updates the default path for the project.
+
+        Args:
+            new_base_path (str): The new base path.
+        """
+        self.base_path = new_base_path
 
     def initUI(self):
         """
@@ -83,13 +94,13 @@ class CalculationTab(QWidget):
         self.initMenuBar()
         self.setupPlotLayout()
 
-        self.main_layout = QHBoxLayout(self)
+        self.main_layout = QVBoxLayout(self)
         self.main_layout.addWidget(scroll_area)
 
         self.results_layout = QVBoxLayout()
         self.results_display = QPlainTextEdit()
         self.results_display.setReadOnly(True)
-        self.results_display.setFixedWidth(400)
+        self.results_display.setFixedHeight(250)
         self.results_layout.addWidget(self.results_display)
 
         self.main_layout.addLayout(self.results_layout)
@@ -157,33 +168,39 @@ class CalculationTab(QWidget):
 
     def setupPlotLayout(self):
         """
-        Sets up the layout for the plots.
+        Sets up the layout for the plots, placing them horizontally.
         """
         self.scrollArea = QScrollArea(self)
         self.scrollWidget = QWidget()
-        self.scrollLayout = QVBoxLayout(self.scrollWidget)
+        self.scrollLayout = QHBoxLayout(self.scrollWidget)  # Changed to QHBoxLayout for horizontal placement
 
-        self.figure3 = Figure()
-        self.canvas3 = FigureCanvas(self.figure3)
-        self.canvas3.setMinimumSize(700, 700)
-        self.toolbar3 = NavigationToolbar(self.canvas3, self)
+        # Left: Pandapipes net plot
+        self.pandapipes_net_figure = Figure()
+        self.pandapipes_net_canvas = FigureCanvas(self.pandapipes_net_figure)
+        self.pandapipes_net_canvas.setMinimumSize(250, 250)
+        self.pandapipes_net_figure_toolbar = NavigationToolbar(self.pandapipes_net_canvas, self)
 
-        self.figure4 = Figure()
-        self.canvas4 = FigureCanvas(self.figure4)
-        self.canvas4.setMinimumSize(700, 700)
-        self.toolbar4 = NavigationToolbar(self.canvas4, self)
+        # Right: Time series plot
+        self.time_series_figure = Figure()
+        self.time_series_canvas = FigureCanvas(self.time_series_figure)
+        self.time_series_canvas.setMinimumSize(250, 250)
+        self.time_series_toolbar = NavigationToolbar(self.time_series_canvas, self)
 
-        self.figure5 = Figure()
-        self.canvas5 = FigureCanvas(self.figure5)
-        self.canvas5.setMinimumSize(700, 700)
-        self.toolbar5 = NavigationToolbar(self.canvas5, self)
+        # Layout for left plot and toolbar
+        self.left_plot_layout = QVBoxLayout()
+        self.left_plot_layout.addWidget(self.pandapipes_net_canvas)
+        self.left_plot_layout.addWidget(self.pandapipes_net_figure_toolbar)
 
-        self.scrollLayout.addWidget(self.canvas5)
-        self.scrollLayout.addWidget(self.toolbar5)
-        self.scrollLayout.addWidget(self.canvas4)
-        self.scrollLayout.addWidget(self.toolbar4)
-        self.scrollLayout.addWidget(self.canvas3)
-        self.scrollLayout.addWidget(self.toolbar3)
+        # Layout for right plot and toolbar
+        self.right_plot_layout = QVBoxLayout()
+        self.dropdownLayout = QHBoxLayout()
+        self.right_plot_layout.addLayout(self.dropdownLayout)
+        self.right_plot_layout.addWidget(self.time_series_canvas)
+        self.right_plot_layout.addWidget(self.time_series_toolbar)
+
+        # Add both layouts horizontally
+        self.scrollLayout.addLayout(self.left_plot_layout)
+        self.scrollLayout.addLayout(self.right_plot_layout)
 
         self.scrollArea.setWidget(self.scrollWidget)
         self.scrollArea.setWidgetResizable(True)
@@ -194,30 +211,27 @@ class CalculationTab(QWidget):
         """
         Creates a dropdown for selecting which data to plot.
         """
-        self.dropdownLayout = QHBoxLayout()
+        # Remove existing dropdown if present
+        if hasattr(self, 'dropdownLayout'):
+            # Remove widgets from layout
+            while self.dropdownLayout.count():
+                item = self.dropdownLayout.takeAt(0)
+                widget = item.widget()
+                if widget is not None:
+                    widget.setParent(None)
+
         self.dataSelectionDropdown = CheckableComboBox(self)
 
         initial_checked = True
 
-        for label in self.plot_data.keys():
+        for label in self.NetworkGenerationData.plot_data.keys():
             self.dataSelectionDropdown.addItem(label)
             item = self.dataSelectionDropdown.model().item(self.dataSelectionDropdown.count() - 1, 0)
             item.setCheckState(Qt.Checked if initial_checked else Qt.Unchecked)
             initial_checked = False
 
         self.dropdownLayout.addWidget(self.dataSelectionDropdown)
-        self.scrollLayout.addLayout(self.dropdownLayout)
-
-        self.dataSelectionDropdown.checkedStateChanged.connect(self.updatePlot)
-
-    def updateDefaultPath(self, new_base_path):
-        """
-        Updates the default path for the project.
-
-        Args:
-            new_base_path (str): The new base path.
-        """
-        self.base_path = new_base_path
+        self.dataSelectionDropdown.checkedStateChanged.connect(self.update_time_series_plot)
     
     def openNetGenerationDialog(self):
         """
@@ -234,18 +248,17 @@ class CalculationTab(QWidget):
             logging.error(f"Fehler beim öffnen des Dialogs aufgetreten: {e}")
             QMessageBox.critical(self, "Fehler", f"Fehler beim öffnen des Dialogs aufgetreten: {e}")
 
-    def generateNetworkCallback(self, *args):
+    def generateNetworkCallback(self, NetworkGenerationData):
         """
         Callback function for generating the network.
 
         Args:
-            *args: Arguments for network generation.
+            NetWorkGenerationData: Data class for network generation.
         """
-        import_type = args[-1]
+        self.NetworkGenerationData = NetworkGenerationData
 
-        if import_type == "GeoJSON":
-            print(*args)
-            self.create_and_initialize_net_geojson(*args[:-1])
+        if self.NetworkGenerationData.import_type == "GeoJSON":
+            self.create_and_initialize_net_geojson()
 
     def opencalculateNetDialog(self):
         """
@@ -254,56 +267,22 @@ class CalculationTab(QWidget):
         dialog = TimeSeriesCalculationDialog(self.base_path, self)
         if dialog.exec_():
             netCalcInputs = dialog.getValues()
-            self.calc1 = netCalcInputs["start"]
-            self.calc2 = netCalcInputs["end"]
-            self.output_filename = netCalcInputs["results_filename"]
-            self.simulate_net()
+            self.NetworkGenerationData.start_time_step = netCalcInputs["start"]
+            self.NetworkGenerationData.end_time_step = netCalcInputs["end"]
+            self.NetworkGenerationData.results_csv_filename = netCalcInputs["results_filename"]
+            self.time_series_simulation()
       
-    def create_and_initialize_net_geojson(self, vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, supply_temperature_heat_consumer, 
-                                          return_temperature_heat_consumer, supply_temperature, flow_pressure_pump, lift_pressure_pump, 
-                                          netconfiguration, dT_RL, building_temp_checked, pipetype, v_max_pipe, material_filter, 
-                                          DiameterOpt_ckecked, k_mm, main_producer_location_index, secondary_producers):
+    def create_and_initialize_net_geojson(self):
         """
         Creates and initializes the network from GeoJSON files.
 
-        Args:
-            vorlauf: Path to the Vorlauf GeoJSON file.
-            ruecklauf: Path to the Rücklauf GeoJSON file.
-            hast: Path to the HAST GeoJSON file.
-            erzeugeranlagen: Path to the Erzeugeranlagen GeoJSON file.
-            json_path: Path to the JSON file.
-            supply_temperature_heat_consumer: Supply temperature for heat consumers.
-            return_temperature_heat_consumer: Return temperature for heat consumers.
-            supply_temperature: Supply temperature for the network.
-            flow_pressure_pump: Flow pressure of the pump.
-            lift_pressure_pump: Lift pressure of the pump.
-            netconfiguration: Network configuration.
-            dT_RL: Temperature difference between supply and return lines.
-            building_temp_checked: Flag indicating if building temperatures are considered.
-            pipetype: Type of pipe.
-            v_max_pipe: Maximum flow velocity in the pipes.
-            material_filter: Material filter for pipes.
-            DiameterOpt_ckecked: Flag indicating if diameter optimization is checked.
-            k_mm: Roughness of the pipe.
-            main_producer_location_index: Index of the main producer.
-            secondary_producers: Dictionary of secondary producers with percentages for generation.
         """
-        self.supply_temperature_heat_consumer = supply_temperature_heat_consumer
-        self.return_temperature_heat_consumer = return_temperature_heat_consumer
-        self.supply_temperature = supply_temperature
-        self.netconfiguration = netconfiguration
-        self.dT_RL = dT_RL
-        self.building_temp_checked = building_temp_checked
-        self.DiameterOpt_ckecked = DiameterOpt_ckecked
-        self.TRY_filename = self.data_manager.get_try_filename()
-        self.COP_filename = self.data_manager.get_cop_filename()
-        self.k_mm = k_mm
-        self.main_producer_location_index = main_producer_location_index
-        self.secondary_producers = secondary_producers
-        args = (vorlauf, ruecklauf, hast, erzeugeranlagen, json_path, self.COP_filename, supply_temperature_heat_consumer, return_temperature_heat_consumer, supply_temperature, flow_pressure_pump, lift_pressure_pump, \
-                netconfiguration, pipetype, v_max_pipe, material_filter, self.dT_RL, self.DiameterOpt_ckecked, self.k_mm, self.main_producer_location_index, secondary_producers)
-        kwargs = {"import_type": "GeoJSON"}
-        self.initializationThread = NetInitializationThread(*args, **kwargs)
+        # uses the dataclass to get the values
+        # add COP filename
+        self.NetworkGenerationData.COP_filename = self.data_manager.get_cop_filename()
+        self.NetworkGenerationData.TRY_filename = self.data_manager.get_try_filename()
+        
+        self.initializationThread = NetInitializationThread(self.NetworkGenerationData)
         self.common_thread_initialization()
 
     def common_thread_initialization(self):
@@ -311,164 +290,63 @@ class CalculationTab(QWidget):
         Common initialization for threads.
         """
         self.initializationThread.calculation_done.connect(self.on_initialization_done)
-        self.initializationThread.calculation_error.connect(self.on_simulation_error)
+        self.initializationThread.calculation_error.connect(self.on_time_series_simulation_error)
         self.initializationThread.start()
         self.progressBar.setRange(0, 0)
 
-    def on_initialization_done(self, results):
+    def on_initialization_done(self, NetworkGenerationData):
         """
         Callback function when initialization is done.
 
         Args:
-            results: Results of the initialization.
+            NetworkGenerationData: Data class for network generation.
         """
         self.progressBar.setRange(0, 1)
 
-        self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature_heat_consumer, self.return_temperature_heat_consumer, self.supply_temperature_buildings, self.return_temperature_buildings, \
-            self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.min_supply_temperature_heat_consumer, self.strombedarf_hast_ges_W, self.max_el_leistung_hast_ges_W = results
+        self.NetworkGenerationData = NetworkGenerationData        
         
-        self.net_data = self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature_heat_consumer, self.supply_temperature, self.return_temperature_heat_consumer, self.supply_temperature_buildings, self.return_temperature_buildings, \
-            self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.min_supply_temperature_heat_consumer, self.netconfiguration, self.dT_RL, self.building_temp_checked, self.strombedarf_hast_ges_W, \
-            self.max_el_leistung_hast_ges_W, self.TRY_filename, self.COP_filename, self.main_producer_location_index, self.secondary_producers
-        
-        self.waerme_ges_kW = np.where(self.waerme_ges_W == 0, 0, self.waerme_ges_W / 1000)
-        self.strombedarf_hast_ges_kW = np.where(self.strombedarf_hast_ges_W == 0, 0, self.strombedarf_hast_ges_W / 1000)
-        self.max_el_leistung_hast_ges_W = self.max_el_leistung_hast_ges_W
-
-        self.waerme_ges_kW = np.sum(self.waerme_ges_kW, axis=0)
-        self.strombedarf_hast_ges_kW = np.sum(self.strombedarf_hast_ges_kW, axis=0)
-
-        self.plot(self.yearly_time_steps, self.waerme_ges_kW, self.strombedarf_hast_ges_kW)
+        self.plot_pandapipes_net()
+        self.NetworkGenerationData.prepare_plot_data()
+        self.createPlotControlDropdown()
+        self.update_time_series_plot()
         self.display_results()
 
     def display_results(self):
         """
         Displays the results of the network simulation.
         """
-        if not hasattr(self, 'net'):
+        if not hasattr(self.NetworkGenerationData, 'net'):
             self.result_text = "Netzdaten nicht verfügbar."
             self.results_display.setPlainText(self.result_text)
             return
 
-        Anzahl_Gebäude = len(self.net.heat_consumer) if hasattr(self.net, 'heat_consumer') else None
-
-        if hasattr(self.net, 'circ_pump_pressure'):
-            if hasattr(self.net, 'circ_pump_mass'):
-                Anzahl_Heizzentralen = len(self.net.circ_pump_pressure) + len(self.net.circ_pump_mass)
+        results = self.NetworkGenerationData.calculate_results()
+        result_text_parts = []
+        for key, value in results.items():
+            if value is None:
+                result_text_parts.append(f"{key}: N/A\n")
+            elif isinstance(value, float):
+                # Formatierung je nach Einheit
+                if "%" in key:
+                    result_text_parts.append(f"{key}: {value:.2f} %\n")
+                elif "kW" in key or "MWh" in key or "m" in key:
+                    result_text_parts.append(f"{key}: {value:.2f}\n")
+                else:
+                    result_text_parts.append(f"{key}: {value}\n")
             else:
-                Anzahl_Heizzentralen = len(self.net.circ_pump_pressure)
-        else:
-            Anzahl_Heizzentralen = None
-
-        self.Gesamtwärmebedarf_Gebäude_MWh = np.sum(self.waerme_ges_kW) / 1000 if hasattr(self, 'waerme_ges_kW') else None
-        Gesamtheizlast_Gebäude_kW = np.max(self.waerme_ges_kW) if hasattr(self, 'waerme_ges_kW') else None
-
-        if hasattr(self.net.pipe, 'length_km'):
-            Trassenlänge_m = self.net.pipe.length_km.sum() * 1000 / 2
-        else:
-            Trassenlänge_m = None
-
-        Wärmebedarfsdichte_MWh_a_m = self.Gesamtwärmebedarf_Gebäude_MWh / Trassenlänge_m if self.Gesamtwärmebedarf_Gebäude_MWh is not None and Trassenlänge_m is not None else None
-        Anschlussdichte_kW_m = Gesamtheizlast_Gebäude_kW / Trassenlänge_m if Gesamtheizlast_Gebäude_kW is not None and Trassenlänge_m is not None else None
-
-        Jahreswärmeerzeugung_MWh = 0
-        Pumpenstrombedarf_MWh = 0
-        if hasattr(self, 'pump_results'):
-            for pump_type, pumps in self.pump_results.items():
-                for idx, pump_data in pumps.items():
-                    Jahreswärmeerzeugung_MWh += np.sum(pump_data['qext_kW']) / 1000
-                    Pumpenstrombedarf_MWh += np.sum((pump_data['mass_flow']/1000)*(pump_data['deltap']*100)) / 1000
-
-        Verteilverluste_kW = Jahreswärmeerzeugung_MWh - self.Gesamtwärmebedarf_Gebäude_MWh if self.Gesamtwärmebedarf_Gebäude_MWh is not None and Jahreswärmeerzeugung_MWh is not None and Jahreswärmeerzeugung_MWh != 0 else None
-        rel_Verteilverluste_percent = (Verteilverluste_kW / Jahreswärmeerzeugung_MWh) * 100 if Verteilverluste_kW is not None and Jahreswärmeerzeugung_MWh is not None and Jahreswärmeerzeugung_MWh != 0 else None
-
-        result_text_parts = [
-            f"Anzahl angeschlossene Gebäude: {Anzahl_Gebäude if Anzahl_Gebäude is not None else 'N/A'}\n",
-            f"Anzahl Heizzentralen: {Anzahl_Heizzentralen if Anzahl_Heizzentralen is not None else 'N/A'}\n\n"
-        ]
-
-        if self.Gesamtwärmebedarf_Gebäude_MWh is not None:
-            result_text_parts.append(f"Jahresgesamtwärmebedarf Gebäude: {self.Gesamtwärmebedarf_Gebäude_MWh:.2f} MWh/a\n")
-        else:
-            result_text_parts.append("Jahresgesamtwärmebedarf Gebäude: N/A\n")
-
-        if Gesamtheizlast_Gebäude_kW is not None:
-            result_text_parts.append(f"max. Heizlast Gebäude: {Gesamtheizlast_Gebäude_kW:.2f} kW\n")
-        else:
-            result_text_parts.append("max. Heizlast Gebäude: N/A\n")
-
-        if Trassenlänge_m is not None:
-            result_text_parts.append(f"Trassenlänge Wärmenetz: {Trassenlänge_m:.2f} m\n\n")
-        else:
-            result_text_parts.append("Trassenlänge Wärmenetz: N/A\n\n")
-
-        if Wärmebedarfsdichte_MWh_a_m is not None:
-            result_text_parts.append(f"Wärmebedarfsdichte: {Wärmebedarfsdichte_MWh_a_m:.2f} MWh/(a*m)\n")
-        else:
-            result_text_parts.append("Wärmebedarfsdichte: N/A\n")
-
-        if Anschlussdichte_kW_m is not None:
-            result_text_parts.append(f"Anschlussdichte: {Anschlussdichte_kW_m:.2f} kW/m\n\n")
-        else:
-            result_text_parts.append("Anschlussdichte: N/A\n\n")
-
-        if Jahreswärmeerzeugung_MWh is not None and Jahreswärmeerzeugung_MWh != 0:
-            result_text_parts.append(f"Jahreswärmeerzeugung: {Jahreswärmeerzeugung_MWh:.2f} MWh\n")
-        else:
-            result_text_parts.append("Jahreswärmeerzeugung: N/A\n")
-
-        if Verteilverluste_kW is not None:
-            result_text_parts.append(f"Verteilverluste: {Verteilverluste_kW:.2f} MWh\n")
-        else:
-            result_text_parts.append("Verteilverluste: N/A\n")
-
-        if rel_Verteilverluste_percent is not None:
-            result_text_parts.append(f"rel. Verteilverluste: {rel_Verteilverluste_percent:.2f} %\n\n")
-        else:
-            result_text_parts.append("rel. Verteilverluste: N/A\n\n")
-
-        result_text_parts.append(f"Pumpenstrom: {Pumpenstrombedarf_MWh:.2f} MWh\n")
+                result_text_parts.append(f"{key}: {value}\n")
 
         self.result_text = ''.join(result_text_parts)
-
         self.results_display.setPlainText(self.result_text)
 
-    def plot(self, time_steps, qext_kW, strom_kW):
+    def plot_pandapipes_net(self):
         """
-        Plots the network data.
-
-        Args:
-            time_steps: Array of time steps.
-            qext_kW: Array of external heat demand in kW.
-            strom_kW: Array of power demand in kW.
+        Plots the pandapipes net.
         """
-        self.figure4.clear()
-        ax1 = self.figure4.add_subplot(111)
-
-        if np.sum(strom_kW) == 0:
-            ax1.plot(time_steps, qext_kW, 'b-', label="Gesamtheizlast Gebäude in kW")
-
-        if np.sum(strom_kW) > 0:
-            ax1.plot(time_steps, qext_kW+strom_kW, 'b-', label="Gesamtheizlast Gebäude in kW")
-            ax1.plot(time_steps, strom_kW, 'g-', label="Gesamtstrombedarf Wärmepumpen Gebäude in kW")
-
-        ax1.set_xlabel("Zeit")
-        ax1.set_ylabel("Leistung in kW", color='b')
-        ax1.tick_params('y', colors='b')
-        ax1.legend(loc='upper center')
-        ax1.grid()
-        self.canvas4.draw()
-
-        self.plotNet()
-
-    def plotNet(self):
-        """
-        Plots the network configuration.
-        """
-        self.figure5.clear()
-        ax = self.figure5.add_subplot(111)
-        config_plot(self.net, ax, show_junctions=True, show_pipes=True, show_heat_consumers=True, show_basemap=self.show_map, map_type=self.map_type)
-        self.canvas5.draw()
+        self.pandapipes_net_figure.clear()
+        ax = self.pandapipes_net_figure.add_subplot(111)
+        config_plot(self.NetworkGenerationData.net, ax, show_junctions=True, show_pipes=True, show_heat_consumers=True, show_basemap=self.show_map, map_type=self.map_type)
+        self.pandapipes_net_canvas.draw()
 
     def loadMap(self, map_type, action):
         """
@@ -488,96 +366,48 @@ class CalculationTab(QWidget):
             self.show_map = False
             self.map_type = None
 
-    def simulate_net(self):
+    def time_series_simulation(self):
         """
-        Simulates the network.
+        Performs the time series simulation.
         """
-        if self.net_data is None:
+        if self.NetworkGenerationData is None:
             QMessageBox.warning(self, "Keine Netzdaten", "Bitte generieren Sie zuerst ein Netz.")
             return
-        
-        self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature_heat_consumer, self.supply_temperature, self.return_temperature_heat_consumer, self.supply_temperature_buildings, \
-            self.return_temperature_buildings, self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.min_supply_temperature_heat_consumer, self.netconfiguration, self.dT_RL, self.building_temp_checked, \
-                self.strombedarf_hast_ges_W, self.max_el_leistung_hast_ges_W, self.TRY_filename, self.COP_filename, self.main_producer_location_index, self.secondary_producers = self.net_data
 
         try:
-            self.calculationThread = NetCalculationThread(self.net, self.yearly_time_steps, self.waerme_ges_W, self.calc1, self.calc2, self.supply_temperature, self.supply_temperature_heat_consumer, \
-                                                          self.return_temperature_heat_consumer, self.supply_temperature_buildings, self.return_temperature_buildings, self.supply_temperature_buildings_curve, \
-                                                            self.return_temperature_buildings_curve, self.min_supply_temperature_heat_consumer, self.dT_RL, self.netconfiguration, self.building_temp_checked,\
-                                                            self.TRY_filename, self.COP_filename, self.secondary_producers)
-            self.calculationThread.calculation_done.connect(self.on_simulation_done)
-            self.calculationThread.calculation_error.connect(self.on_simulation_error)
+            self.calculationThread = NetCalculationThread(self.NetworkGenerationData)
+            self.calculationThread.calculation_done.connect(self.on_time_series_simulation_done)
+            self.calculationThread.calculation_error.connect(self.on_time_series_simulation_error)
             self.calculationThread.start()
             self.progressBar.setRange(0, 0)
 
         except ValueError as e:
             QMessageBox.warning("Ungültige Eingabe", str(e))
 
-    def on_simulation_done(self, results):
+    def on_time_series_simulation_done(self, NetworkGenerationData):
         """
         Callback function when simulation is done.
 
         Args:
-            results: Results of the simulation.
+            NetworkGenerationData: Data class for network generation.
         """
         self.progressBar.setRange(0, 1)
-        self.time_steps, self.net, self.net_results, self.waerme_ges_W, self.strom_wp_W = results
+        self.NetworkGenerationData = NetworkGenerationData
 
-        self.waerme_ges_kW = (np.sum(self.waerme_ges_W, axis=0)/1000)[self.calc1:self.calc2]
-        self.strom_wp_kW = (np.sum(self.strom_wp_W, axis=0)/1000)[self.calc1:self.calc2]
-
-        self.pump_results = calculate_results(self.net, self.net_results)
-
-        self.plot_data =  self.time_steps, self.waerme_ges_kW, self.strom_wp_kW, self.pump_results
-        self.plot_data_func(self.plot_data)
-        self.plot2()
+        self.NetworkGenerationData.prepare_plot_data()
+        self.createPlotControlDropdown()
+        self.update_time_series_plot()
         self.display_results()
-        save_results_csv(self.time_steps, self.waerme_ges_kW, self.strom_wp_kW, self.pump_results, self.output_filename)
 
-        self.print_net_results(self.net)
+        save_results_csv(self.NetworkGenerationData.yearly_time_steps[self.NetworkGenerationData.start_time_step:self.NetworkGenerationData.end_time_step], 
+                         self.NetworkGenerationData.waerme_ges_kW[self.NetworkGenerationData.start_time_step:self.NetworkGenerationData.end_time_step], 
+                         self.NetworkGenerationData.strombedarf_ges_kW[self.NetworkGenerationData.start_time_step:self.NetworkGenerationData.end_time_step], 
+                         self.NetworkGenerationData.pump_results, 
+                         self.NetworkGenerationData.results_csv_filename)
+
         print("Simulation erfolgreich abgeschlossen.")
 
-    def print_net_results(self, net):
-        print("Netzdaten:")
-        print(f"Junctions: {net.junction}")
-        print(f"Results Junctions: {net.res_junction}")
-        print(f"Pipes: {net.pipe}")
-        print(f"Results Pipes: {net.res_pipe}")
-        print(f"Heat Consumers: {net.heat_consumer}")
-        print(f"Results Heat Consumers: {net.res_heat_consumer}")
-        print(f"Circ Pump Pressure: {net.circ_pump_pressure}")
-        print(f"Results Circ Pump Pressure: {net.res_circ_pump_pressure}")
-        if hasattr(net, 'circ_pump_mass'):
-            print(f"Circ Pump Mass: {net.circ_pump_mass}")
-            print(f"Results Circ Pump Mass: {net.res_circ_pump_mass}")
-
-    def plot_data_func(self, plot_data):
-        """
-        Prepares data for plotting.
-
-        Args:
-            plot_data: Data to plot.
-        """
-        self.time_steps, self.waerme_ges_kW, self.strom_wp_kW, pump_results = plot_data
-        
-        self.plot_data = {
-            "Gesamtwärmebedarf Wärmeübertrager": {"data": self.waerme_ges_kW, "label": "Wärmebedarf Wärmeübertrager in kW", "axis": "left"}
-        }
-        if np.sum(self.strom_wp_kW) > 0:
-            self.plot_data["Gesamtheizlast Gebäude"] = {"data": self.waerme_ges_kW+self.strom_wp_kW, "label": "Gesamtheizlast Gebäude in kW", "axis": "left"}
-            self.plot_data["Gesamtstrombedarf Wärmepumpen Gebäude"] = {"data": self.strom_wp_kW, "label": "Gesamtstrombedarf Wärmepumpen Gebäude in kW", "axis": "left"}
-
-        for pump_type, pumps in pump_results.items():
-            for idx, pump_data in pumps.items():
-                self.plot_data[f"Wärmeerzeugung {pump_type} {idx+1}"] = {"data": pump_data['qext_kW'], "label": "Wärmeerzeugung in kW", "axis": "left"}
-                self.plot_data[f"Massenstrom {pump_type} {idx+1}"] = {"data": pump_data['mass_flow'], "label": "Massenstrom in kg/s", "axis": "right"}
-                self.plot_data[f"Delta p {pump_type} {idx+1}"] = {"data": pump_data['deltap'], "label": "Druckdifferenz in bar", "axis": "right"}
-                self.plot_data[f"Vorlauftemperatur {pump_type} {idx+1}"] = {"data": pump_data['flow_temp'], "label": "Temperatur in °C", "axis": "right"}
-                self.plot_data[f"Rücklauftemperatur {pump_type} {idx+1}"] = {"data": pump_data['return_temp'], "label": "Temperatur in °C", "axis": "right"}
-                self.plot_data[f"Vorlaufdruck {pump_type} {idx+1}"] = {"data": pump_data['flow_pressure'], "label": "Druck in bar", "axis": "right"}
-                self.plot_data[f"Rücklaufdruck {pump_type} {idx+1}"] = {"data": pump_data['return_pressure'], "label": "Druck in bar", "axis": "right"}
-
-    def on_simulation_error(self, error_message):
+    def on_time_series_simulation_error(self, error_message):
         """
         Callback function when there is a simulation error.
 
@@ -587,62 +417,55 @@ class CalculationTab(QWidget):
         QMessageBox.critical(self, "Berechnungsfehler", error_message)
         self.progressBar.setRange(0, 1)
 
-    def closeEvent(self, event):
-        """
-        Handles the close event for the CalculationTab.
-
-        Args:
-            event: Close event.
-        """
-        if hasattr(self, 'calculationThread') and self.calculationThread.isRunning():
-            reply = QMessageBox.question(self, 'Thread läuft noch',
-                                         "Eine Berechnung läuft noch. Wollen Sie wirklich beenden?",
-                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-
-            if reply == QMessageBox.Yes:
-                self.calculationThread.stop()
-                event.accept()
-            else:
-                event.ignore()
-        else:
-            event.accept()
-    
-    def plot2(self):
-        """
-        Plots the data for the second plot.
-        """
-        if not hasattr(self, 'dataSelectionDropdown'):
-            self.createPlotControlDropdown()
-        
-        self.updatePlot()
-
-    def updatePlot(self):
+    def update_time_series_plot(self):
         """
         Updates the plot based on the selected data.
         """
-        self.figure3.clear()
-        ax_left = self.figure3.add_subplot(111)
+
+        if not hasattr(self, 'dataSelectionDropdown'):
+            self.createPlotControlDropdown()
+
+        self.time_series_figure.clear()
+        ax_left = self.time_series_figure.add_subplot(111)
         ax_right = ax_left.twinx()
 
         left_labels = set()
         right_labels = set()
         color_cycle = itertools.cycle(['b', 'g', 'r', 'c', 'm', 'y', 'k'])
 
+        min_time, max_time = None, None
+
         for i in range(self.dataSelectionDropdown.model().rowCount()):
             if self.dataSelectionDropdown.itemChecked(i):
                 key = self.dataSelectionDropdown.itemText(i)
-                data_info = self.plot_data[key]
+                data_info = self.NetworkGenerationData.plot_data[key]
                 color = next(color_cycle)
+                time_steps = data_info.get("time", None)
+                if time_steps is None or len(time_steps) != len(data_info["data"]):
+                    print(f"Warnung: Zeitachse und Datenlänge passen nicht für {key}")
+                    continue
                 if data_info["axis"] == "left":
-                    ax_left.plot(self.time_steps, data_info["data"], label=key, color=color)
+                    ax_left.plot(time_steps, data_info["data"], label=key, color=color)
                     left_labels.add(data_info["label"])
                 elif data_info["axis"] == "right":
-                    ax_right.plot(self.time_steps, data_info["data"], label=key, color=color)
+                    ax_right.plot(time_steps, data_info["data"], label=key, color=color)
                     right_labels.add(data_info["label"])
+
+                tmin, tmax = time_steps[0], time_steps[-1]
+                min_time = tmin if min_time is None else max(min_time, tmin)
+                max_time = tmax if max_time is None else min(max_time, tmax)
 
         ax_left.set_xlabel("Zeit")
         ax_left.set_ylabel(", ".join(left_labels))
         ax_right.set_ylabel(", ".join(right_labels))
+
+        # X-Achse ggf. zoomen
+        if min_time is not None and max_time is not None:
+            ax_left.set_xlim(min_time, max_time)
+            ax_right.set_xlim(min_time, max_time)
+        else:
+            ax_left.set_xlim(auto=True)
+            ax_right.set_xlim(auto=True)
 
         lines_left, labels_left = ax_left.get_legend_handles_labels()
         lines_right, labels_right = ax_right.get_legend_handles_labels()
@@ -650,7 +473,7 @@ class CalculationTab(QWidget):
         ax_left.legend(by_label.values(), by_label.keys(), loc='upper center')
 
         ax_left.grid()
-        self.canvas3.draw()
+        self.time_series_canvas.draw()
 
     def get_data_path(self):
         """
@@ -666,53 +489,49 @@ class CalculationTab(QWidget):
         """
         Saves the network to a file.
         """
-        data_path = self.get_data_path()  # Hole den Datenpfad
-        pickle_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('pp_pickle_file_path'))
-        csv_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('csv_net_init_file_path'))
-        json_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('json_net_init_file_path'))
-        
-        if self.net_data:
+    
+        if self.NetworkGenerationData:
             try:
-                self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature_heat_consumer, self.supply_temperature, self.return_temperature_heat_consumer, self.supply_temperature_buildings, self.return_temperature_buildings, \
-                self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.min_supply_temperature_heat_consumer, self.netconfiguration, self.dT_RL, self.building_temp_checked, self.strombedarf_hast_ges_W, \
-                    self.max_el_leistung_hast_ges_W, self.TRY_filename, self.COP_filename, self.main_producer_location_index, self.secondary_producers = self.net_data
-
-                # Speichere relative Pfade relativ zum Datenpfad
-                relative_try_filename = os.path.relpath(self.TRY_filename, data_path)
-                relative_cop_filename = os.path.relpath(self.COP_filename, data_path)
-
-                pp.to_pickle(self.net, pickle_file_path)
+                pickle_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('pp_pickle_file_path'))
+                csv_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('csv_net_init_file_path'))
+                json_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('json_net_init_file_path'))
                 
-                waerme_data = np.column_stack([self.waerme_ges_W[i] for i in range(self.waerme_ges_W.shape[0])])
-                waerme_df = pd.DataFrame(waerme_data, index=self.yearly_time_steps, columns=[f'waerme_ges_W_{i+1}' for i in range(self.waerme_ges_W.shape[0])])
+                # Speichere den relativen Pfad für die COP-Datei relativ zum Datenpfad
+                data_path = self.get_data_path()  # Hole den Datenpfad
+                self.NetworkGenerationData.COP_filename = os.path.relpath(self.NetworkGenerationData.COP_filename, data_path)
 
-                strom_data = np.column_stack([self.strombedarf_hast_ges_W[i] for i in range(self.strombedarf_hast_ges_W.shape[0])])
-                strom_df = pd.DataFrame(strom_data, index=self.yearly_time_steps, columns=[f'strombedarf_hast_ges_W_{i+1}' for i in range(self.strombedarf_hast_ges_W.shape[0])])
+                # Speichere die Pandapipes-Netzwerkdaten mit der pandapipes-Funktion, das Netzwerk wird in pickle_file_path gespeichert
+                # Das Format kann auch allein mit pandapipes wieder geladen werden
+                pp.to_pickle(self.NetworkGenerationData.net, pickle_file_path)
+                
+                # Hier müsste man nochmal die Formate überarbeiten
+                # Die mehrschichtigen Daten für Wärme und Strom werden in einer CSV-Datei gespeichert
+                waerme_data = np.column_stack([self.NetworkGenerationData.waerme_hast_ges_W[i] for i in range(self.NetworkGenerationData.waerme_hast_ges_W.shape[0])])
+                waerme_df = pd.DataFrame(waerme_data, index=self.NetworkGenerationData.yearly_time_steps, columns=[f'waerme_hast_ges_W_{i+1}' for i in range(self.NetworkGenerationData.waerme_hast_ges_W.shape[0])])
+
+                strom_data = np.column_stack([self.NetworkGenerationData.strombedarf_hast_ges_W[i] for i in range(self.NetworkGenerationData.strombedarf_hast_ges_W.shape[0])])
+                strom_df = pd.DataFrame(strom_data, index=self.NetworkGenerationData.yearly_time_steps, columns=[f'strombedarf_hast_ges_W_{i+1}' for i in range(self.NetworkGenerationData.strombedarf_hast_ges_W.shape[0])])
 
                 combined_df = pd.concat([waerme_df, strom_df], axis=1)
                 combined_df.to_csv(csv_file_path, sep=';', date_format='%Y-%m-%dT%H:%M:%S')
 
-                additional_data = {
-                    'supply_temperature': self.supply_temperature.tolist(),
-                    'supply_temperature_heat_consumers': self.supply_temperature_heat_consumer,
-                    'return_temperature': self.return_temperature_heat_consumer.tolist(),
-                    'supply_temperature_buildings': self.supply_temperature_buildings.tolist(),
-                    'return_temperature_buildings': self.return_temperature_buildings.tolist(),
-                    'supply_temperature_buildings_curve': self.supply_temperature_buildings_curve.tolist(),
-                    'return_temperature_buildings_curve': self.return_temperature_buildings_curve.tolist(),
-                    'min_supply_temperature_heat_consumer': self.min_supply_temperature_heat_consumer.tolist(),
-                    'netconfiguration': self.netconfiguration,
-                    'dT_RL': self.dT_RL,
-                    'building_temp_checked': self.building_temp_checked,
-                    'max_el_leistung_hast_ges_W': self.max_el_leistung_hast_ges_W.tolist(),
-                    'TRY_filename': relative_try_filename, 
-                    'COP_filename': relative_cop_filename,
-                    'main_producer_location_index': self.main_producer_location_index,
-                    'secondary_producers': self.secondary_producers
-                }
-                
+                # Metadaten/Parameter speichern
+                meta_dict = self.NetworkGenerationData.__dict__.copy()
+                # Entferne große/unnötige Felder bzw. bereits gespeicherte Daten
+                meta_dict.pop('net', None)
+                meta_dict.pop('waerme_hast_ges_W', None)
+                meta_dict.pop('strombedarf_hast_ges_W', None)
+                meta_dict.pop('waerme_hast_ges_kW', None)
+                meta_dict.pop('strombedarf_hast_ges_kW', None)
+                meta_dict.pop('waerme_ges_kW', None)
+                meta_dict.pop('strombedarf_ges_kW', None)
+                meta_dict.pop('yearly_time_steps', None)#
+                meta_dict.pop('pump_results', None)
+                meta_dict.pop('plot_data', None)
+
+                # ggf. weitere Felder entfernen oder anpassen
                 with open(json_file_path, 'w') as json_file:
-                    json.dump(additional_data, json_file, indent=4)
+                    json.dump(meta_dict, json_file, indent=4, default=str)
                 
                 QMessageBox.information(self, "Speichern erfolgreich", f"Pandapipes Netz erfolgreich gespeichert in: {pickle_file_path}, Daten erfolgreich gespeichert in: {csv_file_path} und {json_file_path}")
             except Exception as e:
@@ -724,97 +543,88 @@ class CalculationTab(QWidget):
         """
         Loads the network from a file.
         """
-        data_path = self.get_data_path()  # Hole den Datenpfad
-        pickle_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('pp_pickle_file_path'))
-        csv_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('csv_net_init_file_path'))
-        json_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('json_net_init_file_path'))
-        
         try:
-            self.net = pp.from_pickle(pickle_file_path)
+            data_path = self.get_data_path()
+            pickle_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('pp_pickle_file_path'))
+            csv_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('csv_net_init_file_path'))
+            json_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('json_net_init_file_path'))
+
+            # Lade die Pandapipes-Netzwerkdaten
+            net = pp.from_pickle(pickle_file_path)
             
             with open(csv_file_path, newline='') as csvfile:
                 reader = csv.reader(csvfile, delimiter=';')
                 headers = next(reader)
-                num_waerme_cols = len([h for h in headers if h.startswith('waerme_ges_W')])
+                num_waerme_cols = len([h for h in headers if h.startswith('waerme_hast_ges_W')])
                 num_strom_cols = len([h for h in headers if h.startswith('strombedarf_hast_ges_W')])
 
                 formatted_time_steps = []
-                waerme_ges_W_data = []
+                waerme_hast_ges_W_data = []
                 strombedarf_hast_ges_W_data = []
                 
                 for row in reader:
                     formatted_time_steps.append(np.datetime64(row[0]))
-                    waerme_ges_W_data.append([float(value) for value in row[1:num_waerme_cols + 1]])
+                    waerme_hast_ges_W_data.append([float(value) for value in row[1:num_waerme_cols + 1]])
                     strombedarf_hast_ges_W_data.append([float(value) for value in row[num_waerme_cols + 1:num_waerme_cols + num_strom_cols + 1]])
                 
-                self.yearly_time_steps = np.array(formatted_time_steps)
-                self.waerme_ges_W = np.array(waerme_ges_W_data).transpose()
-                self.strombedarf_hast_ges_W = np.array(strombedarf_hast_ges_W_data).transpose()
+                yearly_time_steps = np.array(formatted_time_steps)
+                waerme_hast_ges_W = np.array(waerme_hast_ges_W_data).transpose()
+                strombedarf_hast_ges_W = np.array(strombedarf_hast_ges_W_data).transpose()
 
-
-                
+            # Metadaten/Parameter laden
             with open(json_file_path, 'r') as json_file:
-                additional_data = json.load(json_file)
+                meta_dict = json.load(json_file)
 
-            # Lade relative Pfade und konvertiere sie in absolute Pfade
-            self.TRY_filename = os.path.join(data_path, additional_data['TRY_filename'])
-            self.COP_filename = os.path.join(data_path, additional_data['COP_filename'])
-                
-            self.supply_temperature = np.array(additional_data['supply_temperature'])
-            self.supply_temperature_heat_consumer = np.array(additional_data['supply_temperature_heat_consumers'])
-            self.return_temperature_heat_consumer = np.array(additional_data['return_temperature'])
-            self.supply_temperature_buildings = np.array(additional_data['supply_temperature_buildings'])
-            self.return_temperature_buildings = np.array(additional_data['return_temperature_buildings'])
-            self.supply_temperature_buildings_curve = np.array(additional_data['supply_temperature_buildings_curve'])
-            self.return_temperature_buildings_curve = np.array(additional_data['return_temperature_buildings_curve'])
-            self.min_supply_temperature_heat_consumer = np.array(additional_data['min_supply_temperature_heat_consumer'])
-            self.netconfiguration = additional_data['netconfiguration']
-            self.dT_RL = additional_data['dT_RL']
-            self.building_temp_checked = additional_data['building_temp_checked']
-            self.max_el_leistung_hast_ges_W = np.array(additional_data['max_el_leistung_hast_ges_W'])
+            # DataClass rekonstruieren
+            self.NetworkGenerationData = NetworkGenerationData(**meta_dict)
+            self.NetworkGenerationData.COP_filename = os.path.join(data_path, self.NetworkGenerationData.COP_filename)
+            self.NetworkGenerationData.net = net
+            self.NetworkGenerationData.waerme_hast_ges_W = waerme_hast_ges_W
+            self.NetworkGenerationData.strombedarf_hast_ges_W = strombedarf_hast_ges_W
+            self.NetworkGenerationData.yearly_time_steps = yearly_time_steps
 
-            # new data, handle if not present in old files
-            self.main_producer_location_index = additional_data.get('main_producer_location_index', 0)
-            self.secondary_producers = additional_data.get('secondary_producers', [{}])
+            self.NetworkGenerationData.waerme_hast_ges_kW = np.where(self.NetworkGenerationData.waerme_hast_ges_W == 0, 0, self.NetworkGenerationData.waerme_hast_ges_W / 1000)
+            self.NetworkGenerationData.strombedarf_hast_ges_kW = np.where(self.NetworkGenerationData.strombedarf_hast_ges_W == 0, 0, self.NetworkGenerationData.strombedarf_hast_ges_W / 1000)
             
-            self.net_data = self.net, self.yearly_time_steps, self.waerme_ges_W, self.supply_temperature_heat_consumer, self.supply_temperature, self.return_temperature_heat_consumer, self.supply_temperature_buildings, self.return_temperature_buildings, \
-                            self.supply_temperature_buildings_curve, self.return_temperature_buildings_curve, self.min_supply_temperature_heat_consumer, self.netconfiguration, self.dT_RL, self.building_temp_checked, self.strombedarf_hast_ges_W, \
-                            self.max_el_leistung_hast_ges_W, self.TRY_filename, self.COP_filename, self.main_producer_location_index, self.secondary_producers
+            self.NetworkGenerationData.waerme_ges_kW = np.sum(self.NetworkGenerationData.waerme_hast_ges_kW, axis=0)
+            self.NetworkGenerationData.strombedarf_ges_kW = np.sum(self.NetworkGenerationData.strombedarf_hast_ges_kW, axis=0)
             
-            self.waerme_ges_kW = np.where(self.waerme_ges_W == 0, 0, self.waerme_ges_W / 1000)
-            self.strombedarf_hast_ges_kW = np.where(self.strombedarf_hast_ges_W == 0, 0, self.strombedarf_hast_ges_W / 1000)
-            
-            self.waerme_ges_kW = np.sum(self.waerme_ges_kW, axis=0)
-            self.strombedarf_hast_ges_kW = np.sum(self.strombedarf_hast_ges_kW, axis=0)
-
-            self.plot(self.yearly_time_steps, self.waerme_ges_kW, self.strombedarf_hast_ges_kW)
+            self.plot_pandapipes_net()
+            self.NetworkGenerationData.prepare_plot_data()
+            self.createPlotControlDropdown()
+            self.update_time_series_plot()
             self.display_results()
 
             QMessageBox.information(self, "Laden erfolgreich", "Daten erfolgreich geladen aus: {}, {} und {}.".format(csv_file_path, pickle_file_path, json_file_path))
         except Exception as e:
-            QMessageBox.critical(self, "Laden fehlgeschlagen", "Fehler beim Laden der Daten: {}".format(e))
+            tb = traceback.format_exc()
+            QMessageBox.critical(self, "Laden fehlgeschlagen", f"Fehler beim Laden der Daten: {e}\n\n{tb}")
 
     def load_net_results(self):
         """
         Loads the network results from a file.
         """
-        results_csv_filepath = os.path.join(self.base_path, self.config_manager.get_relative_path('load_profile_path'))
-        plot_data = import_results_csv(results_csv_filepath)
-        self.time_steps, self.waerme_ges_kW, self.strom_wp_kW, self.pump_results = plot_data
-        self.plot_data_func(plot_data)
-        self.plot2()
-        self.display_results()
+        if self.NetworkGenerationData:
+            results_csv_filepath = os.path.join(self.base_path, self.config_manager.get_relative_path('load_profile_path'))
+            
+            _, self.NetworkGenerationData.waerme_ges_kW, self.NetworkGenerationData.strombedarf_ges_kW, self.NetworkGenerationData.pump_results = import_results_csv(results_csv_filepath)
+            
+            self.NetworkGenerationData.prepare_plot_data()
+            self.createPlotControlDropdown()
+            self.update_time_series_plot()
+            self.display_results()
+
+        else:
+            QMessageBox.warning(self, "Keine Daten", "Kein Pandapipes-Netzwerk zum Laden vorhanden.")
     
     def exportNetGeoJSON(self):
         """
         Exports the network to a GeoJSON file.
         """
         geoJSON_filepath = os.path.join(self.base_path, self.config_manager.get_relative_path('dimensioned_net_path'))
-        if self.net_data:
-            net = self.net_data[0]
-            
+        if self.NetworkGenerationData:   
             try:
-                export_net_geojson(net, geoJSON_filepath)
+                export_net_geojson(self.NetworkGenerationData.net, geoJSON_filepath)
                 
                 QMessageBox.information(self, "Speichern erfolgreich", f"Pandapipes Wärmenetz erfolgreich als geoJSON gespeichert in: {geoJSON_filepath}")
             except Exception as e:

@@ -908,6 +908,7 @@ class HeatSystemDesignGUI(QMainWindow):
         mix design tab: load mix design results json
         
         """
+        self.projectTab.presenter.load_csv(os.path.join(self.base_path, self.presenter.config_manager.get_relative_path("current_building_data_path")))
         self.buildingTab.presenter.load_csv(os.path.join(self.base_path, self.presenter.config_manager.get_relative_path("current_building_data_path")))
         self.buildingTab.presenter.load_json(os.path.join(self.base_path, self.presenter.config_manager.get_relative_path("building_load_profile_path")))
         self.calcTab.loadNet()

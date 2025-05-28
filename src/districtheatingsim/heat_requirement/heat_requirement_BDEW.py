@@ -114,12 +114,12 @@ def get_weekday_factor(daily_weekdays, profiletype, subtype, daily_data):
         raise ValueError("Profile not found")
     return np.array([profile_row.iloc[0][str(day)] for day in daily_weekdays]).astype(float)
 
-def calculate(JWB_kWh, profiletype, subtype, TRY, year, real_ww_share):
+def calculate(JWB_kWh, profiletype, subtype, TRY_file_path, year, real_ww_share=None):
     """
     Calculate load profiles based on the BDEW SLP methods.
 
     Args:
-        TRY (str): Path to the TRY data file.
+        TRY_file_path (str): Path to the TRY data file.
         JWB_kWh (float): Yearly heat demand in kWh.
         profiletype (str): The profile type.
         subtype (str): The profile subtype.
@@ -130,7 +130,7 @@ def calculate(JWB_kWh, profiletype, subtype, TRY, year, real_ww_share):
         tuple: Arrays of hourly intervals, total heat demand, heating demand, warm water demand, and temperature.
     """
     days_of_year, months, days, daily_weekdays = generate_year_months_days_weekdays(year)
-    hourly_temperature, _, _, _, _ = import_TRY(TRY)
+    hourly_temperature, _, _, _, _ = import_TRY(TRY_file_path)
     daily_avg_temperature = np.round(calculate_daily_averages(hourly_temperature), 1)
     daily_reference_temperature = np.round((daily_avg_temperature + 2.5) * 2, -1) / 2 - 2.5
 

@@ -15,9 +15,10 @@ from PyQt5.QtWidgets import QVBoxLayout, QWidget, QGroupBox, QListWidget, QPushB
 from PyQt5.QtCore import Qt
 
 class ProducerOrderTab(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, dialog_config, parent=None):
         super().__init__(parent)
         self.parent = parent
+        self.dialog_config = dialog_config
         self.initUI()
         self.percentage_inputs = []  # Liste für die QLineEdit-Widgets
 
