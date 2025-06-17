@@ -184,9 +184,9 @@ class SolarThermal(BaseHeatGenerator):
 
     def init_operation(self, hours):
         self.betrieb_mask = np.array([False] * hours)
-        self.Wärmeleistung_kW = np.zeros(hours)
-        self.Speicherinhalt = np.zeros(hours)
-        self.Speicherfüllstand = np.zeros(hours)
+        self.Wärmeleistung_kW = np.zeros(hours, dtype=float)
+        self.Speicherinhalt = np.zeros(hours, dtype=float)
+        self.Speicherfüllstand = np.zeros(hours, dtype=float)
         self.Wärmemenge_MWh = 0
         self.Anzahl_Starts = 0
         self.Betriebsstunden = 0
@@ -195,21 +195,21 @@ class SolarThermal(BaseHeatGenerator):
         self.calculated = False  # Flag to indicate if the calculation is done
 
         # Initialisierung der Arrays für die Ergebnisse
-        self.Tm_a_L = np.zeros(hours)
-        self.Pkoll_a_L = np.zeros(hours)
-        self.Pkoll_b_L = np.zeros(hours)
-        self.T_koll_a_L = np.zeros(hours)
-        self.T_koll_b_L = np.zeros(hours)
-        self.Tgkoll_a_L = np.zeros(hours)
-        self.Tgkoll_L = np.zeros(hours)
-        self.Tm_koll_L = np.zeros(hours)
-        self.Tm_L = np.zeros(hours)
-        self.Kollektorfeldertrag_L = np.zeros(hours)
-        self.Zieltemperatur_Solaranlage_L = np.zeros(hours)
-        self.TRL_Solar_L = np.zeros(hours)
-        self.TS_unten_L = np.zeros(hours)
-        self.Verlustwärmestrom_Speicher_L = np.zeros(hours)
-        self.Stagnation_L = np.zeros(hours)
+        self.Tm_a_L = np.zeros(hours, dtype=float)
+        self.Pkoll_a_L = np.zeros(hours, dtype=float)
+        self.Pkoll_b_L = np.zeros(hours, dtype=float)
+        self.T_koll_a_L = np.zeros(hours, dtype=float)
+        self.T_koll_b_L = np.zeros(hours, dtype=float)
+        self.Tgkoll_a_L = np.zeros(hours, dtype=float)
+        self.Tgkoll_L = np.zeros(hours, dtype=float)
+        self.Tm_koll_L = np.zeros(hours, dtype=float)
+        self.Tm_L = np.zeros(hours, dtype=float)
+        self.Kollektorfeldertrag_L = np.zeros(hours, dtype=float)
+        self.Zieltemperatur_Solaranlage_L = np.zeros(hours, dtype=float)
+        self.TRL_Solar_L = np.zeros(hours, dtype=float)
+        self.TS_unten_L = np.zeros(hours, dtype=float)
+        self.Verlustwärmestrom_Speicher_L = np.zeros(hours, dtype=float)
+        self.Stagnation_L = np.zeros(hours, dtype=float)
 
     def calculate_heat_generation_costs(self, economic_parameters):
         """

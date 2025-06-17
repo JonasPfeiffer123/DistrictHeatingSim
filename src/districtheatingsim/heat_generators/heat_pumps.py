@@ -43,6 +43,8 @@ class HeatPump(BaseHeatGenerator):
         self.co2_factor_electricity = 0.4 # tCO2/MWh electricity
         self.primärenergiefaktor = 2.4
 
+        self.Anteil_Förderung_BEW = 0.4  # Anteil der Förderung, standardmäßig 0
+
         self.strategy = HeatPumpStrategy(75, 70)
         
         self.init_operation(8760)
@@ -121,13 +123,13 @@ class HeatPump(BaseHeatGenerator):
         return COP_L, VLT_L
 
     
-    def calculate_heat_generation_costs(self, Wärmeleistung, Wärmemenge, Strombedarf, spez_Investitionskosten_WQ, economic_parameters):
+    def calculate_heat_generation_costs(self, Wärmeleistung, Wärmemenge_MWh, Strombedarf, spez_Investitionskosten_WQ, economic_parameters):
         """
         Calculates the heat generation costs (WGK) of the heat pump.
 
         Args:
             Wärmeleistung (float): Heat output of the heat pump.
-            Wärmemenge (float): Amount of heat produced.
+            Wärmemenge_MWh (float): Amount of heat produced.
             Strombedarf (float): Electricity demand.
             spez_Investitionskosten_WQ (float): Specific investment costs for the heat source.
             economic_parameters (dict): Economic parameters dictionary containing fuel costs, capital interest rate, inflation rate, time period, and operational costs.
@@ -145,7 +147,7 @@ class HeatPump(BaseHeatGenerator):
         self.BEW = economic_parameters['subsidy_eligibility']
         self.stundensatz = economic_parameters['hourly_rate']
 
-        if Wärmemenge == 0:
+        if Wärmemenge_MWh == 0:
             return 0
         # Kosten Wärmepumpe: Viessmann Vitocal 350 HT-Pro: 140.000 €, 350 kW Nennleistung; 120 kW bei 10/85
         # Annahme Kosten Wärmepumpe: 1000 €/kW; Vereinfachung
@@ -153,7 +155,13 @@ class HeatPump(BaseHeatGenerator):
         Investitionskosten_WP = spezifische_Investitionskosten_WP * round(Wärmeleistung, 0)
         E1_WP = self.annuity(Investitionskosten_WP, self.Nutzungsdauer_WP, self.f_Inst_WP, self.f_W_Insp_WP, self.Bedienaufwand_WP, self.q, self.r, self.T,
                             Strombedarf, self.Strompreis, hourly_rate=self.stundensatz)
-        WGK_WP_a = E1_WP / Wärmemenge
+        WGK_WP = E1_WP / Wärmemenge_MWh
+
+        Eigenanteil = 1 - self.Anteil_Förderung_BEW
+        Investitionskosten_WP_BEW = Investitionskosten_WP * Eigenanteil
+        Annuität_WP_BEW = self.annuity(Investitionskosten_WP_BEW, self.Nutzungsdauer_WP, self.f_Inst_WP, self.f_W_Insp_WP, self.Bedienaufwand_WP, self.q, self.r, self.T,
+                            Strombedarf, self.Strompreis, hourly_rate=self.stundensatz)
+        WGK_WP_BEW = Annuität_WP_BEW / Wärmemenge_MWh
 
         # Extrahieren des Basisnamens aus dem Namen des Erzeugers
         base_name = self.name.split('_')[0]
@@ -165,11 +173,21 @@ class HeatPump(BaseHeatGenerator):
         Investitionskosten_WQ = spez_Investitionskosten_WQ * Wärmeleistung
         E1_WQ = self.annuity(Investitionskosten_WQ, self.Nutzungsdauer_WQ_dict[base_name], self.f_Inst_WQ, self.f_W_Insp_WQ,
                             self.Bedienaufwand_WQ, self.q, self.r, self.T, hourly_rate=self.stundensatz)
-        WGK_WQ_a = E1_WQ / Wärmemenge
+        WGK_WQ = E1_WQ / Wärmemenge_MWh
 
-        WGK_Gesamt_a = WGK_WP_a + WGK_WQ_a
+        Eigenanteil = 1 - self.Anteil_Förderung_BEW
+        Investitionskosten_WQ_BEW = Investitionskosten_WQ * Eigenanteil
+        Annuität_WQ_BEW = self.annuity(Investitionskosten_WQ_BEW, self.Nutzungsdauer_WQ_dict[base_name], self.f_Inst_WQ, self.f_W_Insp_WQ,
+                            self.Bedienaufwand_WQ, self.q, self.r, self.T, hourly_rate=self.stundensatz)
+        WGK_WQ_BEW = Annuität_WQ_BEW / Wärmemenge_MWh
 
-        return WGK_Gesamt_a
+        WGK = WGK_WP + WGK_WQ
+        WGK_BEW = WGK_WP_BEW + WGK_WQ_BEW
+        
+        if self.BEW == "Nein":
+            return WGK
+        elif self.BEW == "Ja":
+            return WGK_BEW
     
     def calculate_environmental_impact(self):
         # CO2 emissions due to fuel usage
@@ -328,7 +346,7 @@ class RiverHeatPump(HeatPump):
         results = {
             'tech_name': self.name,
             'Wärmemenge': self.Wärmemenge_MWh,
-            'self.Wärmeleistung_kW': self.Wärmeleistung_kW,
+            'Wärmeleistung_L': self.Wärmeleistung_kW,
             'Strombedarf': self.Strommenge_MWh,
             'el_Leistung_L': self.el_Leistung_kW,
             'WGK': self.WGK,
@@ -365,8 +383,15 @@ class RiverHeatPump(HeatPump):
         return initial_values, variables_order, bounds
 
     def get_display_text(self):
+        if isinstance(self.Temperatur_FW_WP, np.ndarray):
+            # If Temperatur_FW_WP is an array, format it as a string with the first value
+            text_temperture = f"Datensatz Temperaturen geladen. "
+        else:
+            # If Temperatur_FW_WP is a single value, format it directly 
+            text_temperture = f"Temperatur FW WP: {self.Temperatur_FW_WP:.1f} °C, "
+
         return (f"{self.name}: Wärmeleistung FW WP: {self.Wärmeleistung_FW_WP:.1f} kW, "
-                f"Temperatur FW WP: {self.Temperatur_FW_WP:.1f} °C, dT: {self.dT:.1f} K, "
+                f"{text_temperture} dT: {self.dT:.1f} K, "
                 f"spez. Investitionskosten Flusswärme: {self.spez_Investitionskosten_Flusswasser:.1f} €/kW, "
                 f"spez. Investitionskosten Wärmepumpe: {self.spezifische_Investitionskosten_WP:.1f} €/kW")
     
@@ -526,7 +551,7 @@ class WasteHeatPump(HeatPump):
         results = {
             'tech_name': self.name,
             'Wärmemenge': self.Wärmemenge_MWh,
-            'self.Wärmeleistung_kW': self.Wärmeleistung_kW,
+            'Wärmeleistung_L': self.Wärmeleistung_kW,
             'Strombedarf': self.Strommenge_MWh,
             'el_Leistung_L': self.el_Leistung_kW,
             'WGK': self.WGK,
@@ -743,7 +768,7 @@ class Geothermal(HeatPump):
         results = {
             'tech_name': self.name,
             'Wärmemenge': self.Wärmemenge_MWh,
-            'Wärmeleistung_kW': self.Wärmeleistung_kW,
+            'Wärmeleistung_L': self.Wärmeleistung_kW,
             'Strombedarf': self.Strommenge_MWh,
             'el_Leistung_L': self.el_Leistung_kW,
             'WGK': self.WGK,
@@ -916,7 +941,7 @@ class AqvaHeat(HeatPump):
         results = {
             'tech_name': self.name,
             'Wärmemenge': self.Wärmemenge_AqvaHeat,  # heat energy for whole duration
-            'self.Wärmeleistung_kW': self.Wärmeleistung_kW,  # vector length time steps with actual power supplied
+            'Wärmeleistung_L': self.Wärmeleistung_kW,  # vector length time steps with actual power supplied
             'Strombedarf': self.Strombedarf_AqvaHeat,  # electrical energy consumed during whole duration
             'el_Leistung_L': self.el_Leistung_kW,  # vector length time steps with actual electrical power consumed
             'WGK': WGK_Abwärme,

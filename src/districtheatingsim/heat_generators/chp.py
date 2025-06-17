@@ -90,14 +90,16 @@ class CHP(BaseHeatGenerator):
             self.primärenergiefaktor = 0.2 # Pellets
         self.co2_factor_electricity = 0.4 # tCO2/MWh electricity
 
+        self.Anteil_Förderung_BEW = 0.4  # Anteil Förderung bei BEW
+
         self.strategy = CHPStrategy(75, 70)
 
         self.init_operation(8760)
 
     def init_operation(self, hours):
         self.betrieb_mask = np.array([False] * hours)
-        self.Wärmeleistung_kW = np.array([0] * hours)
-        self.el_Leistung_kW = np.array([0] * hours)
+        self.Wärmeleistung_kW = np.zeros(hours, dtype=float)
+        self.el_Leistung_kW = np.zeros(hours, dtype=float)
         self.Wärmemenge_MWh = 0
         self.Strommenge_MWh = 0
         self.Brennstoffbedarf_MWh = 0
@@ -246,8 +248,22 @@ class CHP(BaseHeatGenerator):
 
         self.Stromeinnahmen = self.Strommenge_MWh * self.Strompreis
 
-        self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T, self.Brennstoffbedarf_MWh, self.Brennstoffpreis, self.Stromeinnahmen, self.stundensatz)
+        self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, 
+                                self.Bedienaufwand, self.q, self.r, self.T, self.Brennstoffbedarf_MWh,
+                                self.Brennstoffpreis, self.Stromeinnahmen, self.stundensatz)
         self.WGK = self.A_N / self.Wärmemenge_MWh
+
+        self.Eigenanteil = 1 - self.Anteil_Förderung_BEW
+        self.Investitionskosten_Gesamt_BEW = self.Investitionskosten * self.Eigenanteil
+        self.Annuität_BEW = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp,
+                                         self.Bedienaufwand, self.q, self.r, self.T, self.Brennstoffbedarf_MWh,
+                                         self.Brennstoffpreis, self.Stromeinnahmen, self.stundensatz)
+        self.WGK_BEW = self.Annuität_BEW / self.Wärmemenge_MWh
+
+        if self.BEW == "Nein":
+            return self.WGK
+        elif self.BEW == "Ja":
+            return self.WGK_BEW
 
     def calculate_environmental_impact(self):
         # CO2 emissions due to fuel usage
@@ -281,7 +297,7 @@ class CHP(BaseHeatGenerator):
                 self.simulate_operation(load_profile)
         
         self.calculate_results(duration)        
-        self.calculate_heat_generation_costs(economic_parameters)
+        WGK = self.calculate_heat_generation_costs(economic_parameters)
         self.calculate_environmental_impact()
      
         results = {
@@ -289,7 +305,7 @@ class CHP(BaseHeatGenerator):
             'Wärmemenge': self.Wärmemenge_MWh,
             'Wärmeleistung_L': self.Wärmeleistung_kW,
             'Brennstoffbedarf': self.Brennstoffbedarf_MWh,
-            'WGK': self.WGK,
+            'WGK': WGK,
             'Strommenge': self.Strommenge_MWh,
             'el_Leistung_L': self.el_Leistung_kW,
             'Anzahl_Starts': self.Anzahl_Starts,
