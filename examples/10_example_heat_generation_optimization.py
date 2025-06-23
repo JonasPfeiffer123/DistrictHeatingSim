@@ -3,6 +3,8 @@ Filename: 10_example_heat_generation_optimization.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-11-19
 Description: Example for the optimization of a heat generator mix
+
+# Not up-to-date: This script is not up-to-date with the latest version of all heat generator classes.
 """
 
 from districtheatingsim.heat_generators import solar_thermal

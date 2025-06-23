@@ -1,7 +1,7 @@
 """
-Filename: geocodingETRS89.py
+Filename: geocoding.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-23
+Date: 2025-06-23
 Description: Contains the geocoding functions necessary to geocode adresses.
 """
 
@@ -13,7 +13,7 @@ import shutil
 from geopy.geocoders import Nominatim
 from pyproj import Transformer
 
-def get_coordinates(address):
+def get_coordinates(address, from_crs="epsg:4326", to_crs="epsg:25833"):
     """Geocoding the Adress to coordinates and transforming them from EPSG:4326 to EPSG:25833 for higher accuracy
 
     Args:
@@ -23,11 +23,11 @@ def get_coordinates(address):
         tuple: (UTM_X, UMT_Y) Koordinates
     """
     # Initialize the Geolocator
-    geolocator = Nominatim(user_agent="district_heating")
+    geolocator = Nominatim(user_agent="DistrictHeatingSim")
 
     # Initialize the Transformer function with PyProj
     # This transforms coordinates from WGS84 (GPS) to ETRS89 / UTM Zone 33N
-    transformer = Transformer.from_crs("epsg:4326", "epsg:25833", always_xy=True)
+    transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
 
     try:
         # Attempt to geocode the address
@@ -104,7 +104,7 @@ def process_data(input_csv):
 
 if __name__ == '__main__':
     # file name of the data file with adresses
-    input_csv = "data/data_ETRS89.csv"
+    input_csv = "data/data_geocoded.csv"
 
     # Calling the process_data function to read from input_csv and write to output_csv
     process_data(input_csv)

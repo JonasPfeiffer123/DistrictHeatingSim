@@ -4,6 +4,7 @@ Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-11-19
 Description: Script for testing the heat generator functions.
 
+# Not up-to-date: This script is not up-to-date with the latest version of all heat generator classes.
 """
 
 from districtheatingsim.heat_generators import solar_thermal
