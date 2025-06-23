@@ -25,6 +25,8 @@ from districtheatingsim.heat_generators import TECH_CLASS_REGISTRY
 from districtheatingsim.heat_generators.STES import TemperatureStratifiedThermalStorage
 
 from districtheatingsim.gui.EnergySystemTab._10_utilities import CustomJSONEncoder
+import itertools
+from matplotlib import cm
 
 class EnergySystem:
     def __init__(self, time_steps, load_profile, VLT_L, RLT_L, TRY_data, COP_data, economic_parameters):
@@ -244,6 +246,9 @@ class EnergySystem:
                                         TRY_data=self.TRY_data,
                                         COP_data=self.COP_data,
                                         time_steps=self.time_steps)
+            
+            print(f"Technology: {tech.name}")
+            print(f"Results: {tech_results}")
                 
             if tech_results['Wärmemenge'] > 1e-6:
                 self.aggregate_results(tech_results)
@@ -320,8 +325,8 @@ class EnergySystem:
 
         # Initiale Auswahl
         self.initial_vars = [var_name for var_name in self.extracted_data.keys() if "_Wärmeleistung" in var_name]
-        if "Ungedeckter_Bedarf_kW" in self.extracted_data:
-            self.initial_vars.append("Ungedeckter_Bedarf_kW")
+        #if "Ungedeckter_Bedarf_kW" in self.extracted_data:
+        #    self.initial_vars.append("Ungedeckter_Bedarf_kW")
         self.initial_vars.append("Last_L")
         if self.storage:
             self.initial_vars.append("Speicherbeladung_kW")
@@ -345,6 +350,8 @@ class EnergySystem:
             selected_vars = self.initial_vars
 
         ax1 = figure.add_subplot(111)
+        # set color cycle for the stackplot
+        ax1.set_prop_cycle(color=cm.tab10.colors)
 
         # Speicherbeladung und -entladung priorisieren
         stackplot_vars = []
@@ -372,7 +379,7 @@ class EnergySystem:
             if var == "Speicherbeladung_kW" and var in self.extracted_data:
                 # Speicherbeladung als negative Werte darstellen, aber nicht in den Stackplot integrieren
                 ax1.fill_between(
-                    self.results["time_steps"],
+                    self.time_steps,
                     0,
                     self.extracted_data[var],
                     label=var,
@@ -386,7 +393,7 @@ class EnergySystem:
         # Zeichne den Stackplot für die restlichen Variablen
         if stackplot_data:
             ax1.stackplot(
-                self.results["time_steps"],
+                self.time_steps,
                 stackplot_data,
                 labels=[var for var in stackplot_vars if var != "Speicherbeladung_kW"],
                 step="mid"
@@ -394,16 +401,25 @@ class EnergySystem:
 
         # Linienplot
         ax2 = ax1.twinx() if second_y_axis else None
-        for var_name in line_vars:
-            if var_name in self.extracted_data:
-                if ax2:
-                    ax2.plot(self.results["time_steps"], self.extracted_data[var_name], label=var_name)
-                else:
-                    ax1.plot(self.results["time_steps"], self.extracted_data[var_name], label=var_name)
+        if ax2:
+            # Use a different color cycle for ax2
+            color_cycle = itertools.cycle(cm.Dark2.colors)
+            for var_name in line_vars:
+                if var_name in self.extracted_data:
+                    ax2.plot(
+                        self.time_steps,
+                        self.extracted_data[var_name],
+                        label=var_name,
+                        color=next(color_cycle)
+                    )
+        else:
+            for var_name in line_vars:
+                if var_name in self.extracted_data:
+                    ax1.plot(self.time_steps, self.extracted_data[var_name], label=var_name)
 
         # Lastprofil
         if "Last_L" in selected_vars:
-            ax1.plot(self.results["time_steps"], self.results["Last_L"], color='blue', label='Last', linewidth=0.25)
+            ax1.plot(self.time_steps, self.results["Last_L"], color='blue', label='Last', linewidth=0.25)
 
         # Axis titles and legend (English, larger font sizes)
         ax1.set_title("Annual Load Curve", fontsize=16)
@@ -423,7 +439,7 @@ class EnergySystem:
 
     def plot_pie_chart(self, figure=None):
         """
-        Plot a pie chart showing the contribution of each technology.
+        Plot a pie chart showing the contribution of each technology, with percentages in the legend.
 
         Args:
             figure (matplotlib.figure.Figure, optional): Figure object for the plot. Defaults to None.
@@ -431,21 +447,29 @@ class EnergySystem:
         if figure is None:
             figure = plt.figure()
 
+        # clear the figure if it already exists
+        if figure.axes:
+            for ax in figure.axes:
+                ax.clear()
+
         ax = figure.add_subplot(111)
         labels = self.results['techs']
         Anteile = self.results['Anteile']
         colors = self.results['colors']
 
-        ax.pie(
+        # Create the pie chart without percentage labels on the chart
+        wedges, _ = ax.pie(
             Anteile,
-            labels=labels,
+            labels=None,
             colors=colors,
-            autopct='%1.1f%%',
-            startangle=90,
-            pctdistance=0.85
+            startangle=90
         )
         ax.set_title("Anteile Wärmeerzeugung")
         ax.axis("equal")  # Ensure the pie chart is circular
+
+        # Prepare legend labels with percentages
+        percent_labels = [f"{label}: {100 * anteil:.1f}%" for label, anteil in zip(labels, Anteile)]
+        ax.legend(wedges, percent_labels, loc="center left")
     
     def copy(self):
         """

@@ -202,11 +202,13 @@ class ResultsTab(QWidget):
     def showResultsInTable(self):
         """
         Displays the results in the results table, including calculated operational metrics.
+        Resets the table rows before populating to avoid leftover rows from previous calculations.
         """
 
         results = self.energy_system.results
 
-
+        # Reset the table to the correct number of rows
+        self.resultsTable.setRowCount(0)
         self.resultsTable.setRowCount(len(results['techs']))
 
         # Iterate over each technology and calculate operational metrics
@@ -214,7 +216,7 @@ class ResultsTab(QWidget):
                 zip(results['techs'], results['Wärmemengen'], results['WGK'], 
                     results['Anteile'], results['specific_emissions_L'], results['primärenergie_L'], results['Wärmeleistung_L'])):
 
-            # Ensure wärmemenge is treated as a NumPy array for consistency
+            # Ensure wärmeleistung is treated as a NumPy array for consistency
             if not isinstance(wärmeleistung, (list, np.ndarray)):
                 wärmeleistung = [wärmeleistung]  # Convert scalar to list for single value cases
             wärmeleistung = np.array(wärmeleistung)

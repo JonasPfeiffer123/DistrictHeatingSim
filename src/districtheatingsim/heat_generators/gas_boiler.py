@@ -53,7 +53,7 @@ class GasBoiler(BaseHeatGenerator):
 
     def init_operation(self, hours):
         self.betrieb_mask = np.array([False] * hours)
-        self.Wärmeleistung_kW = np.array([0] * hours)
+        self.Wärmeleistung_kW = np.zeros(hours, dtype=float)
         self.Wärmemenge_MWh = 0
         self.Brennstoffbedarf_MWh = 0
         self.Anzahl_Starts = 0
@@ -219,7 +219,9 @@ class GasBoiler(BaseHeatGenerator):
         return [], [], []
 
     def get_display_text(self):
-        return f"{self.name}: spez. Investitionskosten: {self.spez_Investitionskosten:.1f} €/kW"
+        return (f"{self.name}: Nennleistung: {self.thermal_capacity_kW:.1f} kW, "
+                f"Nutzungsgrad: {self.Nutzungsgrad:.2f}, "
+                f"spez. Investitionskosten: {self.spez_Investitionskosten:.1f} €/kW")
     
     def extract_tech_data(self):
         dimensions = f"th. Leistung: {self.thermal_capacity_kW:.1f} kW"

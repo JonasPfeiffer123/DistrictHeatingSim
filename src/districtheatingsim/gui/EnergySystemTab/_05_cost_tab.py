@@ -490,6 +490,7 @@ class CostTab(QWidget):
         Args:
             tech_objects (list): List of technology objects.
         """
+        self.individual_costs = []  # Reset individual costs
         self.techDataTable.setRowCount(len(tech_objects))
 
         self.summe_tech_kosten = 0
@@ -572,6 +573,7 @@ class CostTab(QWidget):
     def plotCostComposition(self):
         """
         Plots the cost composition with two separate figures: a bar chart and a pie chart.
+        Clears the diagrams before replotting.
         """
 
         # Combine costs from self.data (excluding the summary row) and individual costs
@@ -581,13 +583,13 @@ class CostTab(QWidget):
             if index != 'Summe Infrastruktur'  # Exclude the summary row
         ]
         combined_costs = data_costs + self.individual_costs
-        
+
         # Data for the charts
         labels = [cost[0] for cost in combined_costs]
         sizes = [cost[1] for cost in combined_costs]
 
         ### Bar Chart
-        self.bar_chart_figure.clear()
+        self.bar_chart_figure.clf()  # Clear the figure before plotting
         ax1 = self.bar_chart_figure.add_subplot(111)  # Full plot for bar chart
         bar_colors = ax1.barh(labels, sizes, height=0.5)  # Bar chart with default colors
         ax1.set_title('Kostenzusammensetzung (Absolut in €)')
@@ -600,12 +602,17 @@ class CostTab(QWidget):
             ax1.text(size, i, formatted_size, va='center')
 
         ### Pie Chart
-        self.pie_chart_figure.clear()
+        self.pie_chart_figure.clf()  # Clear the figure before plotting
         ax2 = self.pie_chart_figure.add_subplot(111)  # Full plot for pie chart
-        wedges, _, _ = ax2.pie(
+
+        # Calculate percentages for legend
+        total = sum(sizes)
+        percent_labels = [f"{label} ({size / total * 100:.1f}%)" for label, size in zip(labels, sizes)]
+
+        wedges, _ = ax2.pie(
             sizes,
-            labels=None,
-            autopct='%1.1f%%',
+            labels=None,  # No labels on the pie itself
+            autopct=None,  # No percentage labels on the pie
             startangle=140,
             explode=[0.1 if label == "Wärmenetz" else 0 for label in labels],
             labeldistance=1.1,
@@ -614,7 +621,7 @@ class CostTab(QWidget):
         # Extract colors from pie chart for consistency
         pie_colors = [wedge.get_facecolor() for wedge in wedges]
         ax2.set_title('Kostenzusammensetzung (Relativ in %)')
-        ax2.legend(labels, loc="best", bbox_to_anchor=(1, 0.5))
+        ax2.legend(wedges, percent_labels, loc="best", bbox_to_anchor=(1, 0.5))
 
         # Apply consistent colors to the bar chart
         for bar, color in zip(bar_colors, pie_colors):
