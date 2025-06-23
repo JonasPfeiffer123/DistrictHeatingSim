@@ -17,7 +17,7 @@ Example:
 import pandas as pd
 import traceback
 
-from districtheatingsim.geocoding.geocodingETRS89 import process_data
+from districtheatingsim.geocoding.geocoding import process_data
 
 if __name__ == '__main__':
     try:

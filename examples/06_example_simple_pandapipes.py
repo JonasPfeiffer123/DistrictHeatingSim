@@ -293,31 +293,39 @@ def test_profile_initiation():
 
     return net
 
+def print_results(net):
+    print(net)
+    print(net.junction)
+    print(net.pipe)
+    print(net.heat_consumer)
+    print(net.circ_pump_pressure)
+
+    print(net.res_junction)
+    print(net.res_pipe)
+    print(net.res_heat_consumer)
+    print(net.res_circ_pump_pressure)
+
 if __name__ == "__main__":
     try:
-        #net = test_heat_consumer_result_extraction()
-        #net = initialize_test_net()
-        #net = initialize_complex_test_net()
-        net = initialize_test_net_two_pumps()
-        #net = test_profile_initiation()
-
-        print(net)
-        print(net.junction)
-        print(net.pipe)
-        print(net.heat_consumer)
-        print(net.circ_pump_pressure)
-
-        print(net.res_junction)
-        print(net.res_pipe)
-        print(net.res_heat_consumer)
-        print(net.res_circ_pump_pressure)
-
-        # create ax for config_plot
-        fig, ax = plt.subplots()  # Erstelle eine Figure und eine Achse
-        #pp_plot.simple_plot(net, junction_size=0.01, heat_consumer_size=0.1, pump_size=0.1, 
-        #                    pump_color='green', pipe_color='black', heat_consumer_color="blue", ax=ax, show_plot=True)
+        nets = [
+            test_heat_consumer_result_extraction(),
+            initialize_test_net(),
+            initialize_complex_test_net(),
+            initialize_test_net_two_pumps(),
+            test_profile_initiation()]
         
-        config_plot(net, ax, show_junctions=True, show_pipes=True, show_heat_consumers=True, show_pump=True, show_plot=True)
+        for net in nets:
+            print_results(net)
+
+            # create ax for config_plot
+            fig, ax = plt.subplots()  # Erstelle eine Figure und eine Achse
+            #pp_plot.simple_plot(net, junction_size=0.01, heat_consumer_size=0.1, pump_size=0.1, 
+            #                    pump_color='green', pipe_color='black', heat_consumer_color="blue", ax=ax, show_plot=True)
+            
+            config_plot(net, ax, show_junctions=True, show_pipes=True, show_heat_consumers=True, show_pump=True, show_plot=False)
+
+        # Show the plot
+        plt.show()
 
     except Exception as e:
         print("An error occurred:")
