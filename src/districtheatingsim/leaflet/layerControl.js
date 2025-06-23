@@ -249,13 +249,35 @@ function updateLayerOpacity() {
 // Funktion zum Exportieren eines einzelnen Layers als GeoJSON und Senden an PyQt5
 function exportSingleLayer(layer) {
     if (layer) {
-        const singleLayerGeoJSON = layer.toGeoJSON();
-        singleLayerGeoJSON.properties = {
-            name: layer.options.name,
-            color: layer.options.color,
-            opacity: layer.options.opacity
-        };
-        const geojsonString = JSON.stringify(singleLayerGeoJSON);
+        let singleLayerGeoJSON = layer.toGeoJSON();
+
+        // Prüfe, ob das Ergebnis ein FeatureCollection oder ein einzelnes Feature ist
+        let geojsonToSend;
+        if (singleLayerGeoJSON.type === "FeatureCollection") {
+            // Füge die Properties zu jedem Feature hinzu
+            geojsonToSend = singleLayerGeoJSON;
+            geojsonToSend.features.forEach(feature => {
+                feature.properties = feature.properties || {};
+                feature.properties.name = layer.options.name;
+                feature.properties.color = layer.options.color;
+                feature.properties.opacity = layer.options.opacity;
+            });
+        } else if (singleLayerGeoJSON.type === "Feature") {
+            // Wandle in FeatureCollection um
+            geojsonToSend = {
+                type: "FeatureCollection",
+                features: [singleLayerGeoJSON]
+            };
+            geojsonToSend.features[0].properties = geojsonToSend.features[0].properties || {};
+            geojsonToSend.features[0].properties.name = layer.options.name;
+            geojsonToSend.features[0].properties.color = layer.options.color;
+            geojsonToSend.features[0].properties.opacity = layer.options.opacity;
+        } else {
+            console.error("Unbekannter GeoJSON-Typ:", singleLayerGeoJSON.type);
+            return;
+        }
+
+        const geojsonString = JSON.stringify(geojsonToSend);
 
         // Senden der GeoJSON-Daten an PyQt5
         if (window.pywebview) {

@@ -455,9 +455,15 @@ class CalculationTab(QWidget):
                 min_time = tmin if min_time is None else max(min_time, tmin)
                 max_time = tmax if max_time is None else min(max_time, tmax)
 
-        ax_left.set_xlabel("Zeit")
-        ax_left.set_ylabel(", ".join(left_labels))
-        ax_right.set_ylabel(", ".join(right_labels))
+        label_fontsize = 14
+        legend_fontsize = 12
+
+        ax_left.set_xlabel("Time", fontsize=label_fontsize)
+        ax_left.set_ylabel(", ".join(left_labels), fontsize=label_fontsize)
+        ax_right.set_ylabel(", ".join(right_labels), fontsize=label_fontsize)
+
+        ax_left.tick_params(axis='both', labelsize=label_fontsize)
+        ax_right.tick_params(axis='both', labelsize=label_fontsize)
 
         # X-Achse ggf. zoomen
         if min_time is not None and max_time is not None:
@@ -470,9 +476,14 @@ class CalculationTab(QWidget):
         lines_left, labels_left = ax_left.get_legend_handles_labels()
         lines_right, labels_right = ax_right.get_legend_handles_labels()
         by_label = dict(zip(labels_left + labels_right, lines_left + lines_right))
-        ax_left.legend(by_label.values(), by_label.keys(), loc='upper center')
+        ax_left.legend(by_label.values(), by_label.keys(), loc='upper center', fontsize=legend_fontsize)
 
         ax_left.grid()
+
+        # Prevent x-axis label overlap
+        self.time_series_figure.autofmt_xdate(rotation=30)
+        self.time_series_figure.tight_layout()
+        
         self.time_series_canvas.draw()
 
     def get_data_path(self):
