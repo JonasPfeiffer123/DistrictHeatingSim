@@ -405,14 +405,21 @@ class EnergySystem:
         if "Last_L" in selected_vars:
             ax1.plot(self.results["time_steps"], self.results["Last_L"], color='blue', label='Last', linewidth=0.25)
 
-        # Achsentitel und Legende
-        ax1.set_title("Jahresganglinie")
-        ax1.set_xlabel("Jahresstunden")
-        ax1.set_ylabel("thermische Leistung in kW")
+        # Axis titles and legend (English, larger font sizes)
+        ax1.set_title("Annual Load Curve", fontsize=16)
+        ax1.set_xlabel("Hour of Year", fontsize=14)
+        ax1.set_ylabel("Thermal Power [kW]", fontsize=14)
         ax1.grid()
-        ax1.legend(loc='upper left' if ax2 else 'upper center')
+        ax1.legend(loc='upper left' if ax2 else 'upper center', fontsize=14)
         if ax2:
-            ax2.legend(loc='upper right', ncol=2)
+            ax2.legend(loc='upper right', ncol=2, fontsize=12)
+
+        # --- Prevent x-axis label overlap ---
+        figure.autofmt_xdate(rotation=30)
+        # Remove all padding between plot and axes
+        figure.subplots_adjust(left=0, right=1, top=1, bottom=0)
+        # Optional: set tight layout for better spacing
+        figure.tight_layout()
 
     def plot_pie_chart(self, figure=None):
         """

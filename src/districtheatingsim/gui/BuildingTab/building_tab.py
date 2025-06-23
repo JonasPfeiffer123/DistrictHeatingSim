@@ -630,32 +630,39 @@ class BuildingTabView(QWidget):
         selected_data_types = self.data_type_combobox.checkedItems()
         selected_buildings = self.building_combobox.checkedItems()
 
+        label_fontsize = 14
+        legend_fontsize = 12
+
         for building in selected_buildings:
             key = building.split()[-1]
             value = results[key]
 
             if "Wärmebedarf" in selected_data_types:
-                ax1.plot(value["wärme"], label=f'Gebäude {key} Wärmebedarf')
+                ax1.plot(value["wärme"], label=f'Building {key} Heat Demand')
             if "Heizwärmebedarf" in selected_data_types:
-                ax1.plot(value["heizwärme"], label=f'Gebäude{key} Heizwärmebedarf', linestyle='--')
+                ax1.plot(value["heizwärme"], label=f'Building {key} Space Heating', linestyle='--')
             if "Warmwasserbedarf" in selected_data_types:
-                ax1.plot(value["warmwasserwärme"], label=f'Gebäude {key} Warmwasserbedarf', linestyle=':')
+                ax1.plot(value["warmwasserwärme"], label=f'Building {key} Hot Water', linestyle=':')
             if "Vorlauftemperatur" in selected_data_types:
-                ax2.plot(value["vorlauftemperatur"], label=f'Gebäude {key} Vorlauftemperatur', linestyle='-.')
+                ax2.plot(value["vorlauftemperatur"], label=f'Building {key} Supply Temp.', linestyle='-.')
             if "Rücklauftemperatur" in selected_data_types:
-                ax2.plot(value["rücklauftemperatur"], label=f'Gebäude {key} Rücklauftemperatur', linestyle='-.')
+                ax2.plot(value["rücklauftemperatur"], label=f'Building {key} Return Temp.', linestyle='-.')
 
-        ax1.set_xlabel('Jahresstunden')
-        ax1.set_ylabel('Wärmebedarf (kW)')
-        ax2.set_ylabel('Temperatur (°C)')
+        ax1.set_xlabel('Annual Hours', fontsize=label_fontsize)
+        ax1.set_ylabel('Heat Demand (kW)', fontsize=label_fontsize)
+        ax2.set_ylabel('Temperature (°C)', fontsize=label_fontsize)
 
         # Legend for ax1 on the left
-        ax1.legend(loc='center right', bbox_to_anchor=(-0.2, 0.5))  # Left of the plot
+        #ax1.legend(loc='center right', bbox_to_anchor=(-0.2, 0.5), fontsize=legend_fontsize)
+        ax1.legend(loc='upper center', fontsize=legend_fontsize)
         # Legend for ax2 on the right
-        ax2.legend(loc='center left', bbox_to_anchor=(1.2, 0.5))  # Right of the plot
+        ax2.legend(loc='center left', bbox_to_anchor=(1.2, 0.5), fontsize=legend_fontsize)
 
         # Adjust layout to ensure the legends do not overlap the plot
-        self.figure.subplots_adjust(left=0.25, right=0.75, top=0.9, bottom=0.1)
+        #self.figure.subplots_adjust(left=0.25, right=0.75, top=0.9, bottom=0.1)
+        # Prevent x-axis label overlap
+        self.figure.autofmt_xdate(rotation=30)
+        self.figure.tight_layout()
 
         ax1.grid()
 
