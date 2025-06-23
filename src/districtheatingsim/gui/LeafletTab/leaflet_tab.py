@@ -52,20 +52,48 @@ class GeoJsonReceiver(QObject):
         fileName, _ = QFileDialog.getSaveFileName(None, "Save GeoJSON File", "", "GeoJSON Files (*.geojson);;All Files (*)")
         if fileName:
             geojson_data = json.loads(geojsonString)
-            
-            # Erstelle ein GeoDataFrame aus dem GeoJSON
-            gdf = gpd.GeoDataFrame.from_features(geojson_data['features'])
-            
-            # Setze das ursprüngliche CRS (EPSG:4326)
-            gdf.set_crs(epsg=4326, inplace=True)
-            
-            # Konvertiere das CRS in das gewünschte Ziel-CRS (z.B. EPSG:25833)
-            target_crs = 'EPSG:25833'
-            gdf.to_crs(target_crs, inplace=True)
-            
-            # Speichere die Daten als GeoJSON
-            gdf.to_file(fileName, driver="GeoJSON")
-            print(f"GeoJSON-Datei gespeichert: {fileName}")
+
+            # Robust: FeatureCollection oder einzelnes Feature akzeptieren
+            if geojson_data.get("type") == "FeatureCollection":
+                features = geojson_data["features"]
+            elif geojson_data.get("type") == "Feature":
+                features = [geojson_data]
+            else:
+                print("Unbekannter GeoJSON-Typ:", geojson_data.get("type"))
+                return
+
+            # Debug: Zeige die Geometrie-Typen und Koordinaten
+            for i, feature in enumerate(features):
+                print(f"Feature {i}: type={feature['geometry']['type']}, coords={feature['geometry']['coordinates']}")
+
+            # Optional: Korrigiere fehlerhafte Geometrien
+            for feature in features:
+                geom_type = feature["geometry"]["type"]
+                coords = feature["geometry"]["coordinates"]
+                # Beispiel: LineString mit verschachtelten Koordinaten (sollte flach sein)
+                if geom_type == "LineString" and any(isinstance(c, list) and isinstance(c[0], list) for c in coords):
+                    # Flache Liste erzeugen
+                    feature["geometry"]["coordinates"] = [pt for sub in coords for pt in sub]
+                if geom_type == "LineString":
+                    feature["geometry"]["coordinates"] = [c[:2] if len(c) > 2 else c for c in feature["geometry"]["coordinates"]]
+                elif geom_type == "Point":
+                    feature["geometry"]["coordinates"] = feature["geometry"]["coordinates"][:2]
+                elif geom_type == "Polygon":
+                    feature["geometry"]["coordinates"] = [
+                        [c[:2] if len(c) > 2 else c for c in ring]
+                        for ring in feature["geometry"]["coordinates"]
+                    ]
+            try:
+                gdf = gpd.GeoDataFrame.from_features(features)
+                gdf.set_crs(epsg=4326, inplace=True)
+                target_crs = 'EPSG:25833'
+                gdf.to_crs(target_crs, inplace=True)
+                gdf.to_file(fileName, driver="GeoJSON")
+                print(f"GeoJSON-Datei gespeichert: {fileName}")
+            except Exception as e:
+                print("Fehler beim Erstellen des GeoDataFrame:", e)
+                import traceback
+                traceback.print_exc()
         else:
             print("Speichern abgebrochen.")
 
