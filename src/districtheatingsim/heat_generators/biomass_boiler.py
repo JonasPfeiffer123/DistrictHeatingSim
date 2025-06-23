@@ -70,6 +70,7 @@ class BiomassBoiler(BaseHeatGenerator):
         self.f_Inst, self.f_W_Insp, self.Bedienaufwand = 3, 3, 0
         self.co2_factor_fuel = 0.036 # tCO2/MWh pellets
         self.primärenergiefaktor = 0.2 # Pellets
+        self.Anteil_Förderung_BEW = 0.4  # Anteil der Förderung bei BEW
 
         self.strategy = BiomassBoilerStrategy(75, 70)
 
@@ -77,7 +78,7 @@ class BiomassBoiler(BaseHeatGenerator):
 
     def init_operation(self, hours):
         self.betrieb_mask = np.array([False] * hours)
-        self.Wärmeleistung_kW = np.array([0] * hours)
+        self.Wärmeleistung_kW = np.zeros(hours, dtype=float)
         self.Wärmemenge_MWh = 0
         self.Brennstoffbedarf_MWh = 0
         self.Anzahl_Starts = 0
@@ -213,6 +214,17 @@ class BiomassBoiler(BaseHeatGenerator):
         
         self.WGK = self.A_N / self.Wärmemenge_MWh
 
+        self.Eigenanteil = 1 - self.Anteil_Förderung_BEW
+        self.Investitionskosten_Gesamt_BEW = self.Investitionskosten * self.Eigenanteil
+        self.Annuität_BEW = self.annuity(self.Investitionskosten_Gesamt_BEW, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, 
+                                         self.q, self.r, self.T, self.Brennstoffbedarf_MWh, self.Holzpreis, hourly_rate=self.stundensatz)
+        self.WGK_BEW = self.Annuität_BEW / self.Wärmemenge_MWh
+
+        if self.BEW == "Nein":
+            return self.WGK
+        elif self.BEW == "Ja":
+            return self.WGK_BEW
+
     def calculate_environmental_impact(self):
         """
         Calculates the environmental impact of the biomass boiler system.
@@ -220,7 +232,7 @@ class BiomassBoiler(BaseHeatGenerator):
         """
 
         # CO2 emissions due to fuel usage
-        self.co2_emissions = self.Brennstoffbedarf_MWh * self.co2_factor_fuel # tCO2
+        self.co2_emissions = self.Brennstoffbedarf_MWh * self.co2_factor_fuel  # tCO2
         # specific emissions heat
         self.spec_co2_total = self.co2_emissions / self.Wärmemenge_MWh if self.Wärmemenge_MWh > 0 else 0 # tCO2/MWh_heat
 
@@ -247,7 +259,7 @@ class BiomassBoiler(BaseHeatGenerator):
                 self.simulate_operation(load_profile)
             
         self.calculate_results(duration)
-        self.calculate_heat_generation_costs(economic_parameters)
+        WGK = self.calculate_heat_generation_costs(economic_parameters)
         self.calculate_environmental_impact()
 
         results = {
@@ -255,7 +267,7 @@ class BiomassBoiler(BaseHeatGenerator):
             'Wärmemenge': self.Wärmemenge_MWh,
             'Wärmeleistung_L': self.Wärmeleistung_kW,
             'Brennstoffbedarf': self.Brennstoffbedarf_MWh,
-            'WGK': self.WGK,
+            'WGK': WGK,
             'Anzahl_Starts': self.Anzahl_Starts,
             'Betriebsstunden': self.Betriebsstunden,
             'Betriebsstunden_pro_Start': self.Betriebsstunden_pro_Start,
