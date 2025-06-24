@@ -209,15 +209,36 @@ class BiomassBoiler(BaseHeatGenerator):
         self.Investitionskosten_Speicher = self.spez_Investitionskosten_Speicher * self.Speicher_Volumen
         self.Investitionskosten = self.Investitionskosten_Kessel + self.Investitionskosten_Holzlager + self.Investitionskosten_Speicher
 
-        self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T, 
-                                self.Brennstoffbedarf_MWh, self.Holzpreis, hourly_rate=self.stundensatz)
+        self.A_N = self.annuity(initial_investment_cost=self.Investitionskosten,
+                                asset_lifespan_years=self.Nutzungsdauer,
+                                installation_factor=self.f_Inst,
+                                maintenance_inspection_factor=self.f_W_Insp,
+                                operational_effort_h=self.Bedienaufwand,
+                                interest_rate_factor=self.q,
+                                inflation_rate_factor=self.r,
+                                consideration_time_period_years=self.T, 
+                                annual_energy_demand=self.Brennstoffbedarf_MWh,
+                                energy_cost_per_unit=self.Holzpreis,
+                                annual_revenue=0,
+                                hourly_rate=self.stundensatz)
         
         self.WGK = self.A_N / self.Wärmemenge_MWh
 
         self.Eigenanteil = 1 - self.Anteil_Förderung_BEW
         self.Investitionskosten_Gesamt_BEW = self.Investitionskosten * self.Eigenanteil
-        self.Annuität_BEW = self.annuity(self.Investitionskosten_Gesamt_BEW, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, 
-                                         self.q, self.r, self.T, self.Brennstoffbedarf_MWh, self.Holzpreis, hourly_rate=self.stundensatz)
+        self.Annuität_BEW = self.annuity(initial_investment_cost=self.Investitionskosten_Gesamt_BEW,
+                                        asset_lifespan_years=self.Nutzungsdauer,
+                                        installation_factor=self.f_Inst,
+                                        maintenance_inspection_factor=self.f_W_Insp,
+                                        operational_effort_h=self.Bedienaufwand,
+                                        interest_rate_factor=self.q,
+                                        inflation_rate_factor=self.r,
+                                        consideration_time_period_years=self.T, 
+                                        annual_energy_demand=self.Brennstoffbedarf_MWh,
+                                        energy_cost_per_unit=self.Holzpreis,
+                                        annual_revenue=0,
+                                        hourly_rate=self.stundensatz)
+        
         self.WGK_BEW = self.Annuität_BEW / self.Wärmemenge_MWh
 
         if self.BEW == "Nein":

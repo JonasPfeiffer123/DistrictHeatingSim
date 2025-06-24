@@ -1,68 +1,98 @@
 """
 Filename: annuity.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-10
+Date: 2025-06-24
 Description: Contains the annuity calculation function for technical installations according to VDI 2067.
-
 """
 
-# Wirtschaftlichkeitsberechnung für technische Anlagen nach VDI 2067
-def annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand=0, q=1.05, r=1.03, T=20, Energiebedarf=0, Energiekosten=0, E1=0, stundensatz=45):
+def annuity(
+    initial_investment_cost,
+    asset_lifespan_years,
+    installation_factor,
+    maintenance_inspection_factor,
+    operational_effort_h=0,
+    interest_rate_factor=1.05,
+    inflation_rate_factor=1.03,
+    consideration_time_period_years=20,
+    annual_energy_demand=0,
+    energy_cost_per_unit=0,
+    annual_revenue=0,
+    hourly_rate=45
+):
     """
-    Calculate the annuity for a given set of parameters over a specified period.
+    Calculates the annuity for technical installations according to VDI 2067.
 
-    Args:
-        A0 (float): Initial investment cost.
-        TN (int): Useful life of the investment.
-        f_Inst (float): Installation factor.
-        f_W_Insp (float): Maintenance and inspection factor.
-        Bedienaufwand (float, optional): Operating effort in hours. Defaults to 0.
-        q (float, optional): Interest rate factor. Defaults to 1.05.
-        r (float, optional): Inflation rate factor. Defaults to 1.03.
-        T (int, optional): Consideration period in years. Defaults to 20.
-        Energiebedarf (float, optional): Energy demand in kWh. Defaults to 0.
-        Energiekosten (float, optional): Energy costs in €/kWh. Defaults to 0.
-        E1 (float, optional): Annual revenue. Defaults to 0.
-        stundensatz (float, optional): Hourly rate for labor in €/h. Defaults to 45.
+    Parameters
+    ----------
+    initial_investment_cost : float
+        Initial investment cost.
+    asset_lifespan_years : int
+        Useful life of the investment (years).
+    installation_factor : float
+        Installation factor (percentage).
+    maintenance_inspection_factor : float
+        Maintenance and inspection factor (percentage).
+    operational_effort_h : float, optional
+        Operating effort in hours per year. Default is 0.
+    interest_rate_factor : float, optional
+        Interest rate factor (e.g., 1.05 for 5%). Default is 1.05.
+    inflation_rate_factor : float, optional
+        Inflation rate factor (e.g., 1.03 for 3%). Default is 1.03.
+    consideration_time_period_years : int, optional
+        Consideration period in years. Default is 20.
+    annual_energy_demand : float, optional
+        Annual energy demand in unit. Default is 0. Use MWh or kWh as appropriate.
+    energy_cost_per_unit : float, optional
+        Energy costs in €/unit. Default is 0. Use €/MWh or €/kWh as appropriate.
+    annual_revenue : float, optional
+        Annual revenue (Erlöse). Default is 0.
+    hourly_rate : float, optional
+        Hourly rate for labor in €/h. Default is 45.
 
-    Returns:
-        float: Calculated annuity value.
+    Returns
+    -------
+    float
+        Calculated annuity value.
+
+    Notes
+    -----
+    The calculation follows the methodology of VDI 2067 for the economic
+    evaluation of technical installations. All monetary values are in Euros.
     """
-
     # make sure T and TN are integers
-    T = int(T)
-    TN = int(TN)
+    consideration_time_period_years = int(consideration_time_period_years)
+    asset_lifespan_years = int(asset_lifespan_years)
     
-    n = max(T // TN, 0)
+    n = max(consideration_time_period_years // asset_lifespan_years, 0)
 
-    a = (q - 1) / (1 - (q ** (-T)))  # Annuitätsfaktor
-    b = (1 - (r / q) ** T) / (q - r)  # preisdynamischer Barwertfaktor
-    b_v = b_B = b_IN = b_s = b_E = b
+    a = (interest_rate_factor - 1) / (1 - (interest_rate_factor ** (-consideration_time_period_years)))  # Annuity factor
+    b = (1 - (inflation_rate_factor / interest_rate_factor) ** consideration_time_period_years) / (interest_rate_factor - inflation_rate_factor)  # Price-dynamic present value factor
+    b_v = b_B = b_IN = b_s = b_E = b  # Present value factors for different cost types
 
-    # kapitalgebundene Kosten
-    AN = A0 + sum(A0 * (r ** (i * TN)) / (q ** (i * TN)) for i in range(1, n + 1)) # Barwert der Investitionskosten
+    # Capital-bound costs
+    AN = initial_investment_cost + sum(initial_investment_cost * (inflation_rate_factor ** (i * asset_lifespan_years)) / (interest_rate_factor ** (i * asset_lifespan_years)) for i in range(1, n + 1)) # Present value of investment costs
 
-    R_W = A0 * (r**(n*TN)) * (((n+1)*TN-T)/TN) * 1/(q**T) # Restwert
-    A_N_K = (AN - R_W) * a # Annuität der kapitalgebundenen Kosten
+    R_W = initial_investment_cost * (inflation_rate_factor**(n*asset_lifespan_years)) * (((n+1)*asset_lifespan_years-consideration_time_period_years)/asset_lifespan_years) * 1/(interest_rate_factor**consideration_time_period_years) # Residual value
+    A_N_K = (AN - R_W) * a # Annuity of capital-bound costs
 
-    # bedarfsgebundene Kosten
-    A_V1 = Energiebedarf * Energiekosten # Energiekosten erste Periode
-    A_N_V = A_V1 * a * b_v # Annuität der bedarfsgebundenen Kosten
+    # Demand-bound costs
+    A_V1 = annual_energy_demand * energy_cost_per_unit # Energy costs in the first period
+    A_N_V = A_V1 * a * b_v # Annuity of demand-bound costs
 
-    # betriebsgebundene Kosten
-    A_B1 = Bedienaufwand * stundensatz # Betriebskosten erste Periode
-    A_IN = A0 * (f_Inst + f_W_Insp)/100 # Instandhaltungskosten
-    A_N_B = A_B1 * a * b_B + A_IN * a * b_IN # Annuität der betriebsgebundenen Kosten
+    # Operation-bound costs
+    A_B1 = operational_effort_h * hourly_rate # Operating costs in the first period
+    A_IN = initial_investment_cost * (installation_factor + maintenance_inspection_factor)/100 # Maintenance costs
+    A_N_B = A_B1 * a * b_B + A_IN * a * b_IN # Annuity of operation-bound costs
 
-    # sonstige Kosten
-    A_S1 = 0 # sonstige Kosten erste Periode
-    A_N_S = A_S1 * a * b_s # Annuität der sonstigen Kosten
+    # Other costs
+    A_S1 = 0 # Other costs in the first period
+    A_N_S = A_S1 * a * b_s # Annuity of other costs
 
-    A_N = - (A_N_K + A_N_V + A_N_B + A_N_S)  # Annuität
+    A_N = - (A_N_K + A_N_V + A_N_B + A_N_S)  # Annuity of costs
 
-    # Erlöse
-    A_NE = E1 * a * b_E # Annuität der Erlöse
+    # Revenues
+    A_NE = annual_revenue * a * b_E # Annuity of revenues
 
-    A_N += A_NE # Annuität mit Erlösen
+    A_N += A_NE # Annuity including revenues
 
-    return -A_N
+    return -A_N  # Return the positive annuity value

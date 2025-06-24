@@ -238,12 +238,36 @@ class SolarThermal(BaseHeatGenerator):
         self.Investitionskosten_STA = self.bruttofläche_STA * self.Kosten_STA_spez
         self.Investitionskosten = self.Investitionskosten_Speicher + self.Investitionskosten_STA
 
-        self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T, hourly_rate=self.stundensatz)
+        self.A_N = self.annuity(initial_investment_cost=self.Investitionskosten,
+                                asset_lifespan_years=self.Nutzungsdauer,
+                                installation_factor=self.f_Inst,
+                                maintenance_inspection_factor=self.f_W_Insp,
+                                operational_effort_h=self.Bedienaufwand,
+                                interest_rate_factor=self.q,
+                                inflation_rate_factor=self.r,
+                                consideration_time_period_years=self.T, 
+                                annual_energy_demand=0,
+                                energy_cost_per_unit=0,
+                                annual_revenue=0,
+                                hourly_rate=self.stundensatz)
+        
         self.WGK = self.A_N / self.Wärmemenge_MWh
 
         self.Eigenanteil = 1 - self.Anteil_Förderung_BEW
         self.Investitionskosten_Gesamt_BEW = self.Investitionskosten * self.Eigenanteil
-        self.Annuität_BEW = self.annuity(self.Investitionskosten_Gesamt_BEW, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T, hourly_rate=self.stundensatz)
+        self.Annuität_BEW = self.annuity(initial_investment_cost=self.Investitionskosten_Gesamt_BEW,
+                                asset_lifespan_years=self.Nutzungsdauer,
+                                installation_factor=self.f_Inst,
+                                maintenance_inspection_factor=self.f_W_Insp,
+                                operational_effort_h=self.Bedienaufwand,
+                                interest_rate_factor=self.q,
+                                inflation_rate_factor=self.r,
+                                consideration_time_period_years=self.T, 
+                                annual_energy_demand=0,
+                                energy_cost_per_unit=0,
+                                annual_revenue=0,
+                                hourly_rate=self.stundensatz)
+        
         self.WGK_BEW = self.Annuität_BEW / self.Wärmemenge_MWh
 
         self.WGK_BEW_BKF = self.WGK_BEW - self.Betriebskostenförderung_BEW

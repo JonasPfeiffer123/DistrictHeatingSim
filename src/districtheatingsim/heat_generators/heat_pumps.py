@@ -139,8 +139,6 @@ class HeatPump(BaseHeatGenerator):
         """
 
         self.Strompreis = economic_parameters['electricity_price']
-        self.Gaspreis = economic_parameters['gas_price']
-        self.Holzpreis = economic_parameters['wood_price']
         self.q = economic_parameters['capital_interest_rate']
         self.r = economic_parameters['inflation_rate']
         self.T = economic_parameters['time_period']
@@ -153,14 +151,35 @@ class HeatPump(BaseHeatGenerator):
         # Annahme Kosten Wärmepumpe: 1000 €/kW; Vereinfachung
         spezifische_Investitionskosten_WP = self.spezifische_Investitionskosten_WP
         Investitionskosten_WP = spezifische_Investitionskosten_WP * round(Wärmeleistung, 0)
-        E1_WP = self.annuity(Investitionskosten_WP, self.Nutzungsdauer_WP, self.f_Inst_WP, self.f_W_Insp_WP, self.Bedienaufwand_WP, self.q, self.r, self.T,
-                            Strombedarf, self.Strompreis, hourly_rate=self.stundensatz)
+        E1_WP = self.annuity(initial_investment_cost=Investitionskosten_WP,
+                            asset_lifespan_years=self.Nutzungsdauer_WP,
+                            installation_factor=self.f_Inst_WP,
+                            maintenance_inspection_factor=self.f_W_Insp_WP,
+                            operational_effort_h=self.Bedienaufwand_WP,
+                            interest_rate_factor=self.q,
+                            inflation_rate_factor=self.r,
+                            consideration_time_period_years=self.T, 
+                            annual_energy_demand=self.Brennstoffbedarf_MWh,
+                            energy_cost_per_unit=self.Strompreis,
+                            annual_revenue=0,
+                            hourly_rate=self.stundensatz)
+        
         WGK_WP = E1_WP / Wärmemenge_MWh
 
         Eigenanteil = 1 - self.Anteil_Förderung_BEW
         Investitionskosten_WP_BEW = Investitionskosten_WP * Eigenanteil
-        Annuität_WP_BEW = self.annuity(Investitionskosten_WP_BEW, self.Nutzungsdauer_WP, self.f_Inst_WP, self.f_W_Insp_WP, self.Bedienaufwand_WP, self.q, self.r, self.T,
-                            Strombedarf, self.Strompreis, hourly_rate=self.stundensatz)
+        Annuität_WP_BEW = self.annuity(initial_investment_cost=Investitionskosten_WP_BEW,
+                                        asset_lifespan_years=self.Nutzungsdauer_WP,
+                                        installation_factor=self.f_Inst_WP,
+                                        maintenance_inspection_factor=self.f_W_Insp_WP,
+                                        operational_effort_h=self.Bedienaufwand_WP,
+                                        interest_rate_factor=self.q,
+                                        inflation_rate_factor=self.r,
+                                        consideration_time_period_years=self.T, 
+                                        annual_energy_demand=self.Brennstoffbedarf_MWh,
+                                        energy_cost_per_unit=self.Strompreis,
+                                        annual_revenue=0,
+                                        hourly_rate=self.stundensatz)
         WGK_WP_BEW = Annuität_WP_BEW / Wärmemenge_MWh
 
         # Extrahieren des Basisnamens aus dem Namen des Erzeugers
@@ -171,14 +190,36 @@ class HeatPump(BaseHeatGenerator):
             raise KeyError(f"{base_name} ist kein gültiger Schlüssel in Nutzungsdauer_WQ_dict")
         
         Investitionskosten_WQ = spez_Investitionskosten_WQ * Wärmeleistung
-        E1_WQ = self.annuity(Investitionskosten_WQ, self.Nutzungsdauer_WQ_dict[base_name], self.f_Inst_WQ, self.f_W_Insp_WQ,
-                            self.Bedienaufwand_WQ, self.q, self.r, self.T, hourly_rate=self.stundensatz)
+        E1_WQ = self.annuity(initial_investment_cost=Investitionskosten_WQ,
+                            asset_lifespan_years=self.Nutzungsdauer_WQ_dict[base_name],
+                            installation_factor=self.f_Inst_WQ,
+                            maintenance_inspection_factor=self.f_W_Insp_WQ,
+                            operational_effort_h=self.Bedienaufwand_WQ,
+                            interest_rate_factor=self.q,
+                            inflation_rate_factor=self.r,
+                            consideration_time_period_years=self.T, 
+                            annual_energy_demand=self.Brennstoffbedarf_MWh,
+                            energy_cost_per_unit=self.Strompreis,
+                            annual_revenue=0,
+                            hourly_rate=self.stundensatz)
+        
         WGK_WQ = E1_WQ / Wärmemenge_MWh
 
         Eigenanteil = 1 - self.Anteil_Förderung_BEW
         Investitionskosten_WQ_BEW = Investitionskosten_WQ * Eigenanteil
-        Annuität_WQ_BEW = self.annuity(Investitionskosten_WQ_BEW, self.Nutzungsdauer_WQ_dict[base_name], self.f_Inst_WQ, self.f_W_Insp_WQ,
-                            self.Bedienaufwand_WQ, self.q, self.r, self.T, hourly_rate=self.stundensatz)
+        Annuität_WQ_BEW = self.annuity(initial_investment_cost=Investitionskosten_WQ_BEW,
+                                        asset_lifespan_years=self.Nutzungsdauer_WQ_dict[base_name],
+                                        installation_factor=self.f_Inst_WQ,
+                                        maintenance_inspection_factor=self.f_W_Insp_WQ,
+                                        operational_effort_h=self.Bedienaufwand_WQ,
+                                        interest_rate_factor=self.q,
+                                        inflation_rate_factor=self.r,
+                                        consideration_time_period_years=self.T, 
+                                        annual_energy_demand=self.Brennstoffbedarf_MWh,
+                                        energy_cost_per_unit=self.Strompreis,
+                                        annual_revenue=0,
+                                        hourly_rate=self.stundensatz)
+
         WGK_WQ_BEW = Annuität_WQ_BEW / Wärmemenge_MWh
 
         WGK = WGK_WP + WGK_WQ
