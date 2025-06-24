@@ -1,8 +1,8 @@
 """
 Filename: geocoding.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-06-23
-Description: Contains the geocoding functions necessary to geocode adresses.
+Date: 2025-06-24
+Description: Contains the geocoding functions necessary to geocode addresses.
 """
 
 import os
@@ -14,26 +14,32 @@ from geopy.geocoders import Nominatim
 from pyproj import Transformer
 
 def get_coordinates(address, from_crs="epsg:4326", to_crs="epsg:25833"):
-    """Geocoding the Adress to coordinates and transforming them from EPSG:4326 to EPSG:25833 for higher accuracy
-
-    Args:
-        address (str): Adress of the Building that is being geocoded
-
-    Returns:
-        tuple: (UTM_X, UMT_Y) Koordinates
     """
-    # Initialize the Geolocator
-    geolocator = Nominatim(user_agent="DistrictHeatingSim")
+    Geocode an address and transform coordinates from EPSG:4326 to EPSG:25833.
 
-    # Initialize the Transformer function with PyProj
-    # This transforms coordinates from WGS84 (GPS) to ETRS89 / UTM Zone 33N
+    Uses the Nominatim geocoder to obtain WGS84 coordinates and transforms them
+    to ETRS89 / UTM Zone 33N for higher accuracy.
+
+    Parameters
+    ----------
+    address : str
+        Address of the building to be geocoded.
+    from_crs : str, optional
+        Source coordinate reference system (default is "epsg:4326").
+    to_crs : str, optional
+        Target coordinate reference system (default is "epsg:25833").
+
+    Returns
+    -------
+    tuple of float or (None, None)
+        (UTM_X, UTM_Y) coordinates if successful, otherwise (None, None).
+    """
+    geolocator = Nominatim(user_agent="DistrictHeatingSim")
     transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
 
     try:
-        # Attempt to geocode the address
         location = geolocator.geocode(address)
         if location:
-            # Transform the coordinates from WGS84 to ETRS89 / UTM Zone 33N
             utm_x, utm_y = transformer.transform(location.longitude, location.latitude)
             return (utm_x, utm_y)
         else:
@@ -45,10 +51,22 @@ def get_coordinates(address, from_crs="epsg:4326", to_crs="epsg:25833"):
 
 
 def process_data(input_csv):
-    """Processes the CSV file to add or update UTM_X and UTM_Y columns.
+    """
+    Process a CSV file to add or update UTM_X and UTM_Y columns using geocoding.
 
-    Args:
-        input_csv (str): Path to the input CSV file.
+    Reads a CSV file with address information, geocodes each address, transforms
+    the coordinates to UTM, and writes the results back to the file. If the columns
+    ``UTM_X`` and ``UTM_Y`` already exist, they are updated; otherwise, they are added.
+
+    Parameters
+    ----------
+    input_csv : str
+        Path to the input CSV file. The file must use ``;`` as delimiter and contain
+        at least the columns: country, state, city, address (in this order).
+
+    Returns
+    -------
+    None
     """
     temp_fd, temp_path = tempfile.mkstemp()
     os.close(temp_fd)
@@ -103,8 +121,7 @@ def process_data(input_csv):
             pass
 
 if __name__ == '__main__':
-    # file name of the data file with adresses
+    # File name of the data file with addresses
     input_csv = "data/data_geocoded.csv"
 
-    # Calling the process_data function to read from input_csv and write to output_csv
-    process_data(input_csv)
+    # Call the process_data function to read from input_csv and write to

@@ -44,7 +44,7 @@ def test_annuität():
     # Erlöse, könnte z.B. Stromverkauf aus BHKW sein oder auch Wärmeverkauf, kann auf 0 gesetzt werden, dann nur Aussage über Höhe der Kosten
     E1 = 0
 
-    A_N = annuity.annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand, q, r, T, Energiebedarf, Energiekosten, E1)
+    A_N = annuity.annuity(A0, TN, f_Inst, f_W_Insp, Bedienaufwand, q, r, T, Energiebedarf, Energiekosten, E1)
 
     print(f"Annuität: {A_N:.2f} €")
 

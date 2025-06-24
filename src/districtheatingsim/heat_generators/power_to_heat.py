@@ -143,9 +143,18 @@ class PowerToHeat(BaseHeatGenerator):
         if self.Wärmemenge_MWh > 0:
             self.Investitionskosten = self.spez_Investitionskosten * self.thermal_capacity_kW
 
-            self.A_N = self.annuity(self.Investitionskosten, self.Nutzungsdauer, self.f_Inst, self.f_W_Insp, self.Bedienaufwand, self.q, self.r, self.T,
-                                self.Strommenge_MWh, self.Strompreis, hourly_rate=self.stundensatz)
-            
+            self.A_N = self.annuity(initial_investment_cost=self.Investitionskosten,
+                                    asset_lifespan_years=self.Nutzungsdauer,
+                                    installation_factor=self.f_Inst,
+                                    maintenance_inspection_factor=self.f_W_Insp,
+                                    operational_effort_h=self.Bedienaufwand,
+                                    interest_rate_factor=self.q,
+                                    inflation_rate_factor=self.r,
+                                    consideration_time_period_years=self.T, 
+                                    annual_energy_demand=self.Strommenge_MWh,
+                                    energy_cost_per_unit=self.Strompreis,
+                                    annual_revenue=0,
+                                    hourly_rate=self.stundensatz)
             # wenn die Wärmemenge 0 ist, dann ist die WGK unendlich
             self.WGK = self.A_N / self.Wärmemenge_MWh
         
