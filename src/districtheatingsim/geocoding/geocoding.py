@@ -1,7 +1,7 @@
 """
 Filename: geocoding.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-06-24
+Date: 2025-06-25
 Description: Contains the geocoding functions necessary to geocode addresses.
 """
 
@@ -122,6 +122,7 @@ def process_data(input_csv):
 
 if __name__ == '__main__':
     # File name of the data file with addresses
-    input_csv = "data/data_geocoded.csv"
+    input_csv = "data/data_geocoded.csv" # dummy file name, replace with actual file path
 
     # Call the process_data function to read from input_csv and write to
+    #process_data(input_csv)
