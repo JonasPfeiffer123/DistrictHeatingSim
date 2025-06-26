@@ -1,9 +1,6 @@
 districtheatingsim.gui.LOD2Tab package
 ======================================
 
-Submodules
-----------
-
 districtheatingsim.gui.LOD2Tab.lod2\_3d\_plot\_matplotlib module
 ----------------------------------------------------------------
 
@@ -56,14 +53,6 @@ districtheatingsim.gui.LOD2Tab.lod2\_visualization module
 ---------------------------------------------------------
 
 .. automodule:: districtheatingsim.gui.LOD2Tab.lod2_visualization
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-Module contents
----------------
-
-.. automodule:: districtheatingsim.gui.LOD2Tab
    :members:
    :show-inheritance:
    :undoc-members:

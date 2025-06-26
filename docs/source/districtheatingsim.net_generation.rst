@@ -1,9 +1,6 @@
 districtheatingsim.net\_generation package
 ==========================================
 
-Submodules
-----------
-
 districtheatingsim.net\_generation.import\_and\_create\_layers module
 ---------------------------------------------------------------------
 
@@ -32,14 +29,6 @@ districtheatingsim.net\_generation.steiner\_tree module
 -------------------------------------------------------
 
 .. automodule:: districtheatingsim.net_generation.steiner_tree
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-Module contents
----------------
-
-.. automodule:: districtheatingsim.net_generation
    :members:
    :show-inheritance:
    :undoc-members:

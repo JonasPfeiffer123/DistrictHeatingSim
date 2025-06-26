@@ -1,10 +1,5 @@
-.. DistrictHeatingSim documentation master file, created by
-   sphinx-quickstart on Wed Jul 31 14:43:22 2024.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 DistrictHeatingSim Documentation
-===============================
+=================================
 
 .. image:: https://img.shields.io/badge/version-0.1.0-blue.svg
    :alt: Version
@@ -15,7 +10,7 @@ DistrictHeatingSim Documentation
 **DistrictHeatingSim** ist ein umfassendes Simulationswerkzeug für Fernwärmesysteme mit GUI-basierter Benutzeroberfläche und fortschrittlichen Berechnungsalgorithmen.
 
 🚀 Quick Start
---------------
+----------------
 
 .. code-block:: python
 
@@ -26,7 +21,7 @@ DistrictHeatingSim Documentation
    app.run()
 
 📋 Hauptfunktionen
-------------------
+---------------------
 
 .. grid:: 2
 
@@ -51,7 +46,7 @@ DistrictHeatingSim Documentation
       Thermisch-hydraulische Simulation mit pandapipes
 
 🛠️ Installation
----------------
+-----------------
 
 .. code-block:: bash
 
@@ -63,7 +58,13 @@ DistrictHeatingSim Documentation
    pip install -e .
 
 📚 Dokumentation
-----------------
+--------------------
+
+.. toctree::
+   :maxdepth: 3
+   :caption: districtheatingsim package
+
+   districtheatingsim
 
 .. toctree::
    :maxdepth: 2
@@ -75,44 +76,6 @@ DistrictHeatingSim Documentation
    gui_reference
 
 .. toctree::
-   :maxdepth: 2
-   :caption: ⚡ Wärmeerzeugung
-
-   districtheatingsim.heat_generators
-
-.. toctree::
-   :maxdepth: 2
-   :caption: 🏗️ Netzgenerierung & Simulation
-
-   districtheatingsim.net_generation
-   districtheatingsim.net_simulation_pandapipes
-   districtheatingsim.geocoding
-
-.. toctree::
-   :maxdepth: 2
-   :caption: 🖥️ GUI Komponenten
-
-   districtheatingsim.gui.BuildingTab
-   districtheatingsim.gui.ComparisonTab
-   districtheatingsim.gui.EnergySystemTab
-   districtheatingsim.gui.IndividualTab
-   districtheatingsim.gui.LeafletTab
-   districtheatingsim.gui.LOD2Tab
-   districtheatingsim.gui.NetSimulationTab
-   districtheatingsim.gui.ProjectTab
-   districtheatingsim.gui.RenovationTab
-   districtheatingsim.gui
-
-.. toctree::
-   :maxdepth: 2
-   :caption: 🔧 Hilfsfunktionen
-
-   districtheatingsim.utilities
-   districtheatingsim.heat_requirement
-   districtheatingsim.lod2
-   districtheatingsim.osm
-
-.. toctree::
    :maxdepth: 1
    :caption: 👩‍💻 Entwicklung
 
@@ -120,16 +83,8 @@ DistrictHeatingSim Documentation
    changelog
    license
 
-.. toctree::
-   :maxdepth: 1
-   :caption: 📋 Vollständige API
-   :hidden:
-
-   districtheatingsim
-   modules
-
 💡 Beispiele
-------------
+--------------
 
 .. grid:: 3
 
@@ -152,13 +107,13 @@ DistrictHeatingSim Documentation
       Systemoptimierung und Vergleich
 
 🤝 Community & Support
----------------------
+-----------------------
 
 - 🐛 **Bug Reports**: `GitHub Issues <https://github.com/jonaspfeiffer123/DistrictHeatingSim/issues>`_
 - 💬 **Diskussionen**: `GitHub Discussions <https://github.com/jonaspfeiffer123/DistrictHeatingSim/discussions>`_
 
 Indizes und Tabellen
-====================
+=====================
 
 * :ref:`genindex`
 * :ref:`modindex`

@@ -1,9 +1,6 @@
 districtheatingsim.heat\_generators package
 ===========================================
 
-Submodules
-----------
-
 districtheatingsim.heat\_generators.STES module
 -----------------------------------------------
 
@@ -152,14 +149,6 @@ districtheatingsim.heat\_generators.waste\_heat\_pump module
 ------------------------------------------------------------
 
 .. automodule:: districtheatingsim.heat_generators.waste_heat_pump
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-Module contents
----------------
-
-.. automodule:: districtheatingsim.heat_generators
    :members:
    :show-inheritance:
    :undoc-members:
