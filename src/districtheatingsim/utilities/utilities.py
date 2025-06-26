@@ -7,6 +7,11 @@ Description: Script with utility functions. get_resource_path() is used to get t
 
 import os
 import sys
+import time
+
+import traceback
+
+from PyQt5.QtWidgets import QMessageBox
 
 def get_resource_path(relative_path):
     """
@@ -62,3 +67,35 @@ def get_resource_path(relative_path):
         base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     return os.path.join(base_path, relative_path)
+
+def handle_global_exception(exc_type, exc_value, exc_traceback):
+    """
+    Global exception handler to display errors in a QMessageBox.
+    """
+    if issubclass(exc_type, KeyboardInterrupt):
+        # Standardverhalten für KeyboardInterrupt beibehalten
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+
+    # Erstelle die Fehlermeldung
+    error_message = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+    print(error_message)  # Optional: Logge die Fehlermeldung in die Konsole
+
+    # Zeige die Fehlermeldung in einem Dialogfenster
+    msg_box = QMessageBox()
+    msg_box.setIcon(QMessageBox.Critical)
+    msg_box.setWindowTitle("Fehler")
+    msg_box.setText("Ein unerwarteter Fehler ist aufgetreten:")
+    msg_box.setDetailedText(error_message)
+    msg_box.setStandardButtons(QMessageBox.Ok)
+    msg_box.exec_()
+
+def get_stylesheet_based_on_time():
+    """
+    Return the stylesheet path based on the current system time.
+    """
+    current_hour = time.localtime().tm_hour
+    if 6 <= current_hour < 18:  # Wenn es zwischen 6:00 und 18:00 Uhr ist
+        return "light_theme_style_path"  # Pfad zum hellen Stylesheet
+    else:
+        return "dark_theme_style_path"   # Pfad zum dunklen Stylesheet

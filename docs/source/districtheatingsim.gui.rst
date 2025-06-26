@@ -7,6 +7,7 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
+   districtheatingsim.gui.MainTab
    districtheatingsim.gui.BuildingTab
    districtheatingsim.gui.ComparisonTab
    districtheatingsim.gui.EnergySystemTab
