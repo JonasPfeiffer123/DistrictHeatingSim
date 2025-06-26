@@ -1,9 +1,6 @@
 districtheatingsim.gui.ComparisonTab package
 ============================================
 
-Submodules
-----------
-
 districtheatingsim.gui.ComparisonTab.building\_heat\_demand\_comparison\_tab module
 -----------------------------------------------------------------------------------
 
@@ -32,14 +29,6 @@ districtheatingsim.gui.ComparisonTab.stat\_comparison\_tab module
 -----------------------------------------------------------------
 
 .. automodule:: districtheatingsim.gui.ComparisonTab.stat_comparison_tab
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-Module contents
----------------
-
-.. automodule:: districtheatingsim.gui.ComparisonTab
    :members:
    :show-inheritance:
    :undoc-members:

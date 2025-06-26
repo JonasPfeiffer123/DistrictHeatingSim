@@ -1,9 +1,6 @@
 districtheatingsim.gui.LeafletTab package
 =========================================
 
-Submodules
-----------
-
 districtheatingsim.gui.LeafletTab.leaflet\_dialogs module
 ---------------------------------------------------------
 
@@ -24,14 +21,6 @@ districtheatingsim.gui.LeafletTab.net\_generation\_threads module
 -----------------------------------------------------------------
 
 .. automodule:: districtheatingsim.gui.LeafletTab.net_generation_threads
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-Module contents
----------------
-
-.. automodule:: districtheatingsim.gui.LeafletTab
    :members:
    :show-inheritance:
    :undoc-members:
