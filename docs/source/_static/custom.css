@@ -1,9 +1,117 @@
-/* Wider content area */
+/* Improved layout */
 .wy-nav-content {
-    max-width: 1200px;
+    max-width: 1400px;
+    margin: 0 auto;
 }
 
-/* Custom sidebar width */
 .wy-nav-side {
-    width: 300px;
+    width: 320px;
+}
+
+.wy-nav-content-wrap {
+    margin-left: 320px;
+}
+
+/* Homepage styling */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.grid-item-card {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: transform 0.2s;
+}
+
+.grid-item-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Better code blocks */
+.highlight {
+    background: #f8f9fa;
+    border-left: 4px solid #007acc;
+    border-radius: 4px;
+    padding: 1rem;
+    margin: 1rem 0;
+    overflow-x: auto;
+}
+
+/* Navigation improvements */
+.wy-menu-vertical li.current a {
+    border-right: 3px solid #007acc;
+    background: #e7f2fa;
+}
+
+.wy-menu-vertical a {
+    padding: 0.8rem 1rem;
+}
+
+/* Headers */
+.section h1 {
+    border-bottom: 3px solid #007acc;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1.5rem;
+    color: #2c3e50;
+}
+
+.section h2 {
+    border-left: 4px solid #007acc;
+    padding-left: 1rem;
+    margin-top: 2rem;
+    color: #34495e;
+}
+
+/* Badges */
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    background: #007acc;
+    color: white;
+    border-radius: 4px;
+    margin: 0.2rem;
+}
+
+/* Tables */
+.wy-table-responsive table {
+    border: 1px solid #e1e4e5;
+}
+
+.wy-table-responsive table th {
+    background: #f3f6f6;
+    border-bottom: 2px solid #007acc;
+}
+
+/* Sidebar search */
+.wy-side-nav-search {
+    background: #007acc;
+}
+
+.wy-side-nav-search input[type="text"] {
+    border-radius: 20px;
+    border: none;
+    padding: 0.5rem 1rem;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .wy-nav-side {
+        width: 100%;
+    }
+    
+    .wy-nav-content-wrap {
+        margin-left: 0;
+    }
+    
+    .grid {
+        grid-template-columns: 1fr;
+    }
 }

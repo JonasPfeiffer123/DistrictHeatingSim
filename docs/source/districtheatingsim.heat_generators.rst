@@ -28,10 +28,26 @@ districtheatingsim.heat\_generators.annuity module
    :show-inheritance:
    :undoc-members:
 
+districtheatingsim.heat\_generators.aqvaheat\_heat\_pump module
+---------------------------------------------------------------
+
+.. automodule:: districtheatingsim.heat_generators.aqvaheat_heat_pump
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 districtheatingsim.heat\_generators.base\_heat\_generator module
 ----------------------------------------------------------------
 
 .. automodule:: districtheatingsim.heat_generators.base_heat_generator
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+districtheatingsim.heat\_generators.base\_heat\_pumps module
+------------------------------------------------------------
+
+.. automodule:: districtheatingsim.heat_generators.base_heat_pumps
    :members:
    :show-inheritance:
    :undoc-members:
@@ -68,10 +84,10 @@ districtheatingsim.heat\_generators.gas\_boiler module
    :show-inheritance:
    :undoc-members:
 
-districtheatingsim.heat\_generators.heat\_pumps module
-------------------------------------------------------
+districtheatingsim.heat\_generators.geothermal\_heat\_pump module
+-----------------------------------------------------------------
 
-.. automodule:: districtheatingsim.heat_generators.heat_pumps
+.. automodule:: districtheatingsim.heat_generators.geothermal_heat_pump
    :members:
    :show-inheritance:
    :undoc-members:
@@ -92,6 +108,22 @@ districtheatingsim.heat\_generators.power\_to\_heat module
    :show-inheritance:
    :undoc-members:
 
+districtheatingsim.heat\_generators.river\_heat\_pump module
+------------------------------------------------------------
+
+.. automodule:: districtheatingsim.heat_generators.river_heat_pump
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+districtheatingsim.heat\_generators.simple\_thermal\_storage module
+-------------------------------------------------------------------
+
+.. automodule:: districtheatingsim.heat_generators.simple_thermal_storage
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 districtheatingsim.heat\_generators.solar\_radiation module
 -----------------------------------------------------------
 
@@ -104,6 +136,22 @@ districtheatingsim.heat\_generators.solar\_thermal module
 ---------------------------------------------------------
 
 .. automodule:: districtheatingsim.heat_generators.solar_thermal
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+districtheatingsim.heat\_generators.stratified\_thermal\_storage module
+-----------------------------------------------------------------------
+
+.. automodule:: districtheatingsim.heat_generators.stratified_thermal_storage
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+districtheatingsim.heat\_generators.waste\_heat\_pump module
+------------------------------------------------------------
+
+.. automodule:: districtheatingsim.heat_generators.waste_heat_pump
    :members:
    :show-inheritance:
    :undoc-members:
