@@ -12,15 +12,7 @@ import json
 import numpy as np
 import pandas as pd
 
-from districtheatingsim.heat_generators.heat_pumps import RiverHeatPump, WasteHeatPump, Geothermal, AqvaHeat
-from districtheatingsim.heat_generators.gas_boiler import GasBoiler
-from districtheatingsim.heat_generators.biomass_boiler import BiomassBoiler
-from districtheatingsim.heat_generators.solar_thermal import SolarThermal
-from districtheatingsim.heat_generators.chp import CHP
-from districtheatingsim.heat_generators.power_to_heat import PowerToHeat
-
-from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
-from districtheatingsim.heat_generators.STES import TemperatureStratifiedThermalStorage
+from districtheatingsim.heat_generators import *
 
 class CheckableComboBox(QComboBox):
     """
@@ -177,7 +169,7 @@ class CustomJSONEncoder(json.JSONEncoder):
             if isinstance(obj, pd.DataFrame):
                 # Use 'split' format for DataFrame serialization
                 return obj.to_dict(orient='split')
-            if isinstance(obj, (BaseHeatGenerator, BaseStrategy, TemperatureStratifiedThermalStorage)):
+            if isinstance(obj, (BaseHeatGenerator, BaseStrategy, STES)):
                 return obj.to_dict()
             return super().default(obj)
         except TypeError as e:

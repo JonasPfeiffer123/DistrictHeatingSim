@@ -202,6 +202,8 @@ The Code is documented with docstrings which are readable by [Sphinx](https://ww
     make html
     ```
 
+The current version of the documentation can be found under https://districtheatingsim.readthedocs.io/en/latest/. The Sphinx-compatible documentation was created with Copilot using Claude Sonnet 4 (Preview).
+
 ## Contribution Guidelines
 
 I welcome contributions from the community. To contribute:
