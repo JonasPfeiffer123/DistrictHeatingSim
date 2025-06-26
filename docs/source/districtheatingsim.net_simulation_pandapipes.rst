@@ -1,9 +1,6 @@
 districtheatingsim.net\_simulation\_pandapipes package
 ======================================================
 
-Submodules
-----------
-
 districtheatingsim.net\_simulation\_pandapipes.NetworkDataClass module
 ----------------------------------------------------------------------
 
@@ -48,14 +45,6 @@ districtheatingsim.net\_simulation\_pandapipes.utilities module
 ---------------------------------------------------------------
 
 .. automodule:: districtheatingsim.net_simulation_pandapipes.utilities
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-Module contents
----------------
-
-.. automodule:: districtheatingsim.net_simulation_pandapipes
    :members:
    :show-inheritance:
    :undoc-members:

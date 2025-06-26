@@ -1,9 +1,6 @@
 districtheatingsim.gui.NetSimulationTab package
 ===============================================
 
-Submodules
-----------
-
 districtheatingsim.gui.NetSimulationTab.calculation\_tab module
 ---------------------------------------------------------------
 
@@ -64,14 +61,6 @@ districtheatingsim.gui.NetSimulationTab.timeseries\_dialog module
 -----------------------------------------------------------------
 
 .. automodule:: districtheatingsim.gui.NetSimulationTab.timeseries_dialog
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-Module contents
----------------
-
-.. automodule:: districtheatingsim.gui.NetSimulationTab
    :members:
    :show-inheritance:
    :undoc-members:

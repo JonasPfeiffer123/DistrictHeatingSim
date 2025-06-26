@@ -17,9 +17,6 @@ Subpackages
    districtheatingsim.gui.ProjectTab
    districtheatingsim.gui.RenovationTab
 
-Submodules
-----------
-
 districtheatingsim.gui.dialogs module
 -------------------------------------
 
@@ -40,14 +37,6 @@ districtheatingsim.gui.utilities module
 ---------------------------------------
 
 .. automodule:: districtheatingsim.gui.utilities
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-Module contents
----------------
-
-.. automodule:: districtheatingsim.gui
    :members:
    :show-inheritance:
    :undoc-members:

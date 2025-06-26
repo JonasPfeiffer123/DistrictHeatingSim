@@ -1,9 +1,6 @@
 districtheatingsim.lod2 package
 ===============================
 
-Submodules
-----------
-
 districtheatingsim.lod2.filter\_LOD2 module
 -------------------------------------------
 
@@ -40,14 +37,6 @@ districtheatingsim.lod2.process\_lod2 module
 --------------------------------------------
 
 .. automodule:: districtheatingsim.lod2.process_lod2
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-Module contents
----------------
-
-.. automodule:: districtheatingsim.lod2
    :members:
    :show-inheritance:
    :undoc-members:
