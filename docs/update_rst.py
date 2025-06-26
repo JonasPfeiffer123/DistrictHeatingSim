@@ -16,7 +16,7 @@ def update_rst_files(directory, prefix):
 
 if __name__ == "__main__":
     rst_directory = "./docs/source"
-    module_prefix = "districtheatsim."
+    module_prefix = "districtheatingsim."
 
     update_rst_files(rst_directory, module_prefix)
     print("Die rst-Dateien wurden erfolgreich aktualisiert.")
