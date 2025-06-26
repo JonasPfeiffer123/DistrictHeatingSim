@@ -9,13 +9,13 @@ districtheatingsim.gui.BuildingTab.building\_tab module
 
 .. automodule:: districtheatingsim.gui.BuildingTab.building_tab
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: districtheatingsim.gui.BuildingTab
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

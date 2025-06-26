@@ -25,13 +25,13 @@ districtheatingsim.DistrictHeatingSim module
 
 .. automodule:: districtheatingsim.DistrictHeatingSim
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: districtheatingsim
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
