@@ -18,7 +18,6 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.coverage',
     'sphinx.ext.githubpages',
-    'sphinx_design',
     'sphinx_copybutton',
     'sphinx_tabs.tabs',
 ]
