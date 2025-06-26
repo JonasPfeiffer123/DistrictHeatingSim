@@ -20,9 +20,7 @@ import pandas as pd
 
 from scipy.optimize import minimize as scipy_minimize
 
-from districtheatingsim.heat_generators import TECH_CLASS_REGISTRY
-
-from districtheatingsim.heat_generators.STES import TemperatureStratifiedThermalStorage
+from districtheatingsim.heat_generators import *
 
 from districtheatingsim.gui.EnergySystemTab._10_utilities import CustomJSONEncoder
 import itertools
@@ -170,7 +168,7 @@ class EnergySystem:
         self.set_optimization_variables(variables, variables_order)
         
         for tech in self.technologies:
-            if isinstance(tech, TemperatureStratifiedThermalStorage):
+            if isinstance(tech, STES):
                 self.storage = tech
                 # remove the storage from the technologies list
                 self.technologies.remove(tech)
@@ -564,7 +562,7 @@ class EnergySystem:
 
         # Restore storage
         if data.get('storage'):
-            obj.storage = TemperatureStratifiedThermalStorage.from_dict(data['storage'])
+            obj.storage = STES.from_dict(data['storage'])
 
         # Restore results (if available)
         obj.results = {}

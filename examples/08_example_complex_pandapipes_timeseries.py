@@ -5,7 +5,7 @@ Date: 2025-05-13
 Description: Script for testing the pandapipes net simulation functions. Aims to simulate a district heating network using GeoJSON files for the network layout and a JSON file for the building load profile. The script includes functions to create and initialize the network, perform time series calculations, and plot the results.
 Usage: Run the script in the main directory of the repository.
 
-
+# Not up-to-date: This script is not up-to-date with the latest version of the NetworkGenerationData class.
 """
 
 import matplotlib.pyplot as plt

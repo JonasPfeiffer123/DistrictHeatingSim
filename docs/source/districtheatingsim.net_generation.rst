@@ -4,42 +4,42 @@ districtheatingsim.net\_generation package
 Submodules
 ----------
 
-districtheatingsim.net\_generation.A\_Star\_algorithm\_net\_generation module
------------------------------------------------------------------------------
-
-.. automodule:: districtheatingsim.net_generation.A_Star_algorithm_net_generation
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-districtheatingsim.net\_generation.MST\_processing module
----------------------------------------------------------
-
-.. automodule:: districtheatingsim.net_generation.MST_processing
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 districtheatingsim.net\_generation.import\_and\_create\_layers module
 ---------------------------------------------------------------------
 
 .. automodule:: districtheatingsim.net_generation.import_and_create_layers
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
-districtheatingsim.net\_generation.simple\_MST module
------------------------------------------------------
+districtheatingsim.net\_generation.minimal\_spanning\_tree module
+-----------------------------------------------------------------
 
-.. automodule:: districtheatingsim.net_generation.simple_MST
+.. automodule:: districtheatingsim.net_generation.minimal_spanning_tree
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
+
+districtheatingsim.net\_generation.net\_generation module
+---------------------------------------------------------
+
+.. automodule:: districtheatingsim.net_generation.net_generation
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+districtheatingsim.net\_generation.steiner\_tree module
+-------------------------------------------------------
+
+.. automodule:: districtheatingsim.net_generation.steiner_tree
+   :members:
+   :show-inheritance:
+   :undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: districtheatingsim.net_generation
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

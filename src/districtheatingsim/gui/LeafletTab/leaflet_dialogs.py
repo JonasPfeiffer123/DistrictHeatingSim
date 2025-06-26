@@ -24,7 +24,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from pyproj import Transformer
 
 from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread
-from districtheatingsim.geocoding.geocodingETRS89 import get_coordinates
+from districtheatingsim.geocoding.geocoding import get_coordinates
 from districtheatingsim.osm.import_osm_data_geojson import build_query, download_data, save_to_file
    
 class LayerGenerationDialog(QDialog):

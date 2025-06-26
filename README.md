@@ -176,21 +176,33 @@ Pyinstaller installation works with specific definitions. Reach out to the autho
 ## Documentation
 The Code is documented with docstrings which are readable by [Sphinx](https://www.sphinx-doc.org/en/master/) and therefore a documentation can be created by running
 
-1. **Directing to the docs folder**:
+1. **Install Sphinx**:
+    ```sh
+    pip install sphinx
+    ```
+
+2. ***Install "readthedocs" theme**:
+    ```sh
+    pip install sphinx_rtd_theme
+    ```
+
+3. **Directing to the docs folder**:
     ```sh
     cd docs
     ```
 
-2. **Generating the .rst-files**:
+4. **Generating the .rst-files**:
     ```sh
     sphinx-apidoc -f -o source/ ../src/districtheatingsim
     ```
 
-3. **Generate the htmls**:
+5. **Generate the htmls**:
     ```sh
     make clean
     make html
     ```
+
+The current version of the documentation can be found under https://districtheatingsim.readthedocs.io/en/latest/. The Sphinx-compatible documentation was created with Copilot using Claude Sonnet 4 (Preview).
 
 ## Contribution Guidelines
 
