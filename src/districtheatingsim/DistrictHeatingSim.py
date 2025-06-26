@@ -93,7 +93,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QTabWidget, QMenuBar, QAction, 
                              QFileDialog, QLabel, QMessageBox, QInputDialog)
 from PyQt5.QtCore import QObject, pyqtSignal, QTimer
-from PyQt5.QtGui import QIcon, QPixmap
+from PyQt5.QtGui import QIcon
 
 from districtheatingsim.gui.ProjectTab.project_tab import ProjectTab
 from districtheatingsim.gui.LOD2Tab.lod2_main_tab import LOD2Tab
@@ -625,6 +625,8 @@ class HeatSystemDesignGUI(QMainWindow):
 
         self.initTabs()
 
+        self.initLogo()
+
         # Initialize the folderLabel
         self.folderLabel = QLabel("Kein Projektordner ausgewählt")
         self.layout1.addWidget(self.folderLabel)
@@ -753,22 +755,43 @@ class HeatSystemDesignGUI(QMainWindow):
 
     def initLogo(self):
         """
-        Initialize the logo in the GUI. Doesn't work with currently.
+        Initialize the logo in the GUI.
         """
-        
-        """logoLabel = QLabel(self)
-        pixmap = QPixmap('styles\\logo.JPG')
-        logoLabel.setPixmap(pixmap)
-        logoLabel.setGeometry(10, 10, 100, 100)
-        logoLabel.show()"""	
-
-        """# Set the window icon, if available
-        icon = QIcon("styles\\logo.JPG")
-        if icon.isNull():
-            print("Icon could not be loaded.")
-        self.setWindowIcon(icon)"""
-
-        self.setWindowIcon(QIcon('styles\\logo.png'))
+        try:
+            # Verwende den ConfigManager für den korrekten Pfad
+            logo_path = self.presenter.config_manager.get_resource_path('logo_path')
+            
+            # Setze das Window-Icon
+            icon = QIcon(logo_path)
+            if not icon.isNull():
+                self.setWindowIcon(icon)
+                print(f"Logo erfolgreich geladen: {logo_path}")
+            else:
+                print(f"Logo konnte nicht geladen werden: {logo_path}")
+                
+        except Exception as e:
+            print(f"Fehler beim Laden des Logos: {e}")
+            # Fallback: Versuche relative Pfade
+            try:
+                fallback_paths = [
+                    'styles/logo.png',
+                    'styles\\logo.png',
+                    os.path.join('styles', 'logo.png'),
+                    os.path.join(os.path.dirname(__file__), 'styles', 'logo.png')
+                ]
+                
+                for path in fallback_paths:
+                    if os.path.exists(path):
+                        icon = QIcon(path)
+                        if not icon.isNull():
+                            self.setWindowIcon(icon)
+                            print(f"Logo erfolgreich geladen (Fallback): {path}")
+                            return
+                            
+                print("Kein Logo gefunden - verwende Standard-Icon")
+                
+            except Exception as fallback_error:
+                print(f"Auch Fallback-Logo konnte nicht geladen werden: {fallback_error}")
 
     def update_project_folder_label(self, base_path):
         """
@@ -1045,6 +1068,15 @@ if __name__ == '__main__':
     
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
+
+    # Für Windows: Taskleisten-Gruppierung mit eigenem Icon
+    try:
+        import ctypes
+        myappid = 'districtheatingsim.main.1.0'  # Eindeutige App-ID
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    except:
+        print("Fehler beim Setzen der App-ID für Windows Taskleiste.")
+        pass  # Ignoriere Fehler auf Nicht-Windows-Systemen
 
     # Initialize the managers
     config_manager = ProjectConfigManager()

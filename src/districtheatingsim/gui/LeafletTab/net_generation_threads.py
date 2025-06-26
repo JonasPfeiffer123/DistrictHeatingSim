@@ -11,7 +11,7 @@ import traceback
 from PyQt5.QtCore import QThread, pyqtSignal
 
 from districtheatingsim.net_generation.import_and_create_layers import generate_and_export_layers
-from districtheatingsim.geocoding.geocodingETRS89 import process_data
+from districtheatingsim.geocoding.geocoding import process_data
 
 class NetGenerationThread(QThread):
     """

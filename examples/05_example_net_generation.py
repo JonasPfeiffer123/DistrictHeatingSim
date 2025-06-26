@@ -14,7 +14,7 @@ Example:
 import geopandas as gpd
 import matplotlib.pyplot as plt
 
-from districtheatingsim.geocoding.geocodingETRS89 import get_coordinates
+from districtheatingsim.geocoding.geocoding import get_coordinates
 from districtheatingsim.net_generation.import_and_create_layers import generate_and_export_layers
 
 ### this is an example on how to use the net generation features ###

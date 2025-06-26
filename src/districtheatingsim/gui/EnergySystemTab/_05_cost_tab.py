@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QScrollArea, QTableWi
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QFont
 
-from districtheatingsim.heat_generators.annuity import annuität
+from districtheatingsim.heat_generators.annuity import annuity
 from districtheatingsim.gui.EnergySystemTab._10_utilities import CollapsibleHeader
 from districtheatingsim.gui.EnergySystemTab._02_energy_system_dialogs import KostenBerechnungDialog
 
@@ -418,7 +418,7 @@ class CostTab(QWidget):
         t = int(self.parent.economic_parameters["time_period"])
         stundensatz = self.parent.economic_parameters["hourly_rate"]
 
-        return annuität(A0, TN, f_Inst, f_W_Insp, Bedienaufwand, q=q, r=r, T=t, stundensatz=stundensatz)
+        return annuity(A0, TN, f_Inst, f_W_Insp, Bedienaufwand, interest_rate_factor=q, inflation_rate_factor=r, consideration_time_period_years=t, hourly_rate=stundensatz)
     
     def updateSummaryRow(self):
         """

@@ -3,13 +3,15 @@ Filename: 10_example_heat_generation_optimization.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-11-19
 Description: Example for the optimization of a heat generator mix
+
+# Not up-to-date: This script is not up-to-date with the latest version of all heat generator classes.
 """
 
 from districtheatingsim.heat_generators import solar_thermal
 from districtheatingsim.heat_generators import gas_boiler
 from districtheatingsim.heat_generators import biomass_boiler
 from districtheatingsim.heat_generators import chp
-from districtheatingsim.heat_generators import heat_pumps
+from districtheatingsim.heat_generators import base_heat_pumps
 from districtheatingsim.heat_generators import power_to_heat
 from districtheatingsim.heat_generators import energy_system
 from districtheatingsim.utilities.test_reference_year import import_TRY
@@ -75,13 +77,13 @@ def test_berechnung_erzeugermix(optimize=False, plot=True, opt_method="SLSQP"):
                           min_fill=0.2, max_fill=0.8, spez_Investitionskosten_Speicher=750, active=True, opt_BHKW_min=0, opt_BHKW_max=1000, opt_BHKW_Speicher_min=0, 
                           opt_BHKW_Speicher_max=100)
 
-    riverHeatPump = heat_pumps.WasteHeatPump(name="Abwärme_1", Kühlleistung_Abwärme=50, Temperatur_Abwärme=30, spez_Investitionskosten_Abwärme=500, 
+    riverHeatPump = base_heat_pumps.WasteHeatPump(name="Abwärme_1", Kühlleistung_Abwärme=50, Temperatur_Abwärme=30, spez_Investitionskosten_Abwärme=500, 
                                              spezifische_Investitionskosten_WP=1000, min_Teillast=0.2)
 
-    riverHeatPump = heat_pumps.RiverHeatPump(name="Flusswasser_1", Wärmeleistung_FW_WP=200, Temperatur_FW_WP=10, dT=0, spez_Investitionskosten_Flusswasser=1000, 
+    riverHeatPump = base_heat_pumps.RiverHeatPump(name="Flusswasser_1", Wärmeleistung_FW_WP=200, Temperatur_FW_WP=10, dT=0, spez_Investitionskosten_Flusswasser=1000, 
                                              spezifische_Investitionskosten_WP=1000, min_Teillast=0.2)
 
-    geothermal_heat_pump = heat_pumps.Geothermal(name="Geothermie_1", Fläche=200, Bohrtiefe=100, Temperatur_Geothermie=10, spez_Bohrkosten=100, spez_Entzugsleistung=50,
+    geothermal_heat_pump = base_heat_pumps.Geothermal(name="Geothermie_1", Fläche=200, Bohrtiefe=100, Temperatur_Geothermie=10, spez_Bohrkosten=100, spez_Entzugsleistung=50,
                                                 Vollbenutzungsstunden=2400, Abstand_Sonden=10, spezifische_Investitionskosten_WP=1000, min_Teillast=0.2)
     
     # not implemented yet

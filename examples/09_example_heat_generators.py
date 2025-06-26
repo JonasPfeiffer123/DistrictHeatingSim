@@ -4,13 +4,14 @@ Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-11-19
 Description: Script for testing the heat generator functions.
 
+# Not up-to-date: This script is not up-to-date with the latest version of all heat generator classes.
 """
 
 from districtheatingsim.heat_generators import solar_thermal
 from districtheatingsim.heat_generators import gas_boiler
 from districtheatingsim.heat_generators import biomass_boiler
 from districtheatingsim.heat_generators import chp
-from districtheatingsim.heat_generators import heat_pumps
+from districtheatingsim.heat_generators import base_heat_pumps
 from districtheatingsim.heat_generators import power_to_heat
 from districtheatingsim.utilities.test_reference_year import import_TRY
 
@@ -234,7 +235,7 @@ def test_chp_storage(Last_L, duration, economic_parameters, chp=chp.CHP(name="BH
     print(f"spezifische CO2-Emissionen BHKW mit Speicher: {results['spec_co2_total']:.2f} tCO2/MWh")
     print(f"Primärenergiebedarf BHKW mit Speicher: {results['primärenergie']:.2f} MWh")
 
-def test_waste_heat_pump(Last_L, duration, economic_parameters, VLT_L, COP_data, wasteHeatPump=heat_pumps.WasteHeatPump(name="Abwärme", Kühlleistung_Abwärme=50, Temperatur_Abwärme=30, spez_Investitionskosten_Abwärme=500, spezifische_Investitionskosten_WP=1000, min_Teillast=0.2)):
+def test_waste_heat_pump(Last_L, duration, economic_parameters, VLT_L, COP_data, wasteHeatPump=base_heat_pumps.WasteHeatPump(name="Abwärme", Kühlleistung_Abwärme=50, Temperatur_Abwärme=30, spez_Investitionskosten_Abwärme=500, spezifische_Investitionskosten_WP=1000, min_Teillast=0.2)):
 
     wasteHeatPump.calculate_operation(Last_L, VLT_L, COP_data, duration)
     WGK = wasteHeatPump.calculate_heat_generation_costs(wasteHeatPump.max_Wärmeleistung, wasteHeatPump.Wärmemenge_MWh, wasteHeatPump.Strommenge_MWh, wasteHeatPump.spez_Investitionskosten_Abwärme, economic_parameters)
@@ -259,7 +260,7 @@ def test_waste_heat_pump(Last_L, duration, economic_parameters, VLT_L, COP_data,
     print(f"spezifische CO2-Emissionen Abwärme-WP: {results['spec_co2_total']:.2f} tCO2/MWh")
     print(f"Primärenergiebedarf Abwärme-WP: {results['primärenergie']:.2f} MWh")
 
-def test_river_heat_pump(Last_L, duration, economic_parameters, VLT_L, COP_data, riverHeatPump=heat_pumps.RiverHeatPump(name="Flusswasser", Wärmeleistung_FW_WP=200, Temperatur_FW_WP=10, dT=0, spez_Investitionskosten_Flusswasser=1000, spezifische_Investitionskosten_WP=1000, min_Teillast=0.2)):   
+def test_river_heat_pump(Last_L, duration, economic_parameters, VLT_L, COP_data, riverHeatPump=base_heat_pumps.RiverHeatPump(name="Flusswasser", Wärmeleistung_FW_WP=200, Temperatur_FW_WP=10, dT=0, spez_Investitionskosten_Flusswasser=1000, spezifische_Investitionskosten_WP=1000, min_Teillast=0.2)):   
     
     riverHeatPump.calculate_operation(Last_L, VLT_L, COP_data, duration)
     WGK = riverHeatPump.calculate_heat_generation_costs(riverHeatPump.Wärmeleistung_FW_WP, riverHeatPump.Wärmemenge_MWh, riverHeatPump.Strommenge_MWh, riverHeatPump.spez_Investitionskosten_Flusswasser, economic_parameters)
@@ -284,7 +285,7 @@ def test_river_heat_pump(Last_L, duration, economic_parameters, VLT_L, COP_data,
     print(f"spezifische CO2-Emissionen Fluss-WP: {results['spec_co2_total']:.2f} tCO2/MWh")
     print(f"Primärenergiebedarf Fluss-WP: {results['primärenergie']:.2f} MWh")
 
-def test_geothermal_heat_pump(Last_L, duration, economic_parameters, VLT_L, COP_data, geothermalHeatPump=heat_pumps.Geothermal(name="Geothermie", Fläche=200, Bohrtiefe=100, Temperatur_Geothermie=10, spez_Bohrkosten=100, spez_Entzugsleistung=50, Vollbenutzungsstunden=2400, Abstand_Sonden=10, spezifische_Investitionskosten_WP=1000, min_Teillast=0.2)):
+def test_geothermal_heat_pump(Last_L, duration, economic_parameters, VLT_L, COP_data, geothermalHeatPump=base_heat_pumps.Geothermal(name="Geothermie", Fläche=200, Bohrtiefe=100, Temperatur_Geothermie=10, spez_Bohrkosten=100, spez_Entzugsleistung=50, Vollbenutzungsstunden=2400, Abstand_Sonden=10, spezifische_Investitionskosten_WP=1000, min_Teillast=0.2)):
     
     geothermalHeatPump.calculate_operation(Last_L, VLT_L, COP_data, duration)
     geothermalHeatPump.spez_Investitionskosten_Erdsonden = geothermalHeatPump.Investitionskosten_Sonden / geothermalHeatPump.max_Wärmeleistung
@@ -310,7 +311,7 @@ def test_geothermal_heat_pump(Last_L, duration, economic_parameters, VLT_L, COP_
     print(f"spezifische CO2-Emissionen Geothermie-WP: {results['spec_co2_total']:.2f} tCO2/MWh")
     print(f"Primärenergiebedarf Geothermie-WP: {results['primärenergie']:.2f} MWh")
     
-def test_aqva_heat(Last_L, duration, economic_parameters, VLT_L, COP_data, aqva_heat=heat_pumps.AqvaHeat(name="AqvaHeat", nominal_power=100, temperature_difference=0)):
+def test_aqva_heat(Last_L, duration, economic_parameters, VLT_L, COP_data, aqva_heat=base_heat_pumps.AqvaHeat(name="AqvaHeat", nominal_power=100, temperature_difference=0)):
     # not implemented yet
 
     Wärmemenge, Strombedarf, Wärmeleistung_L, el_Leistung_L = aqva_heat.calculate(Last_L, VLT_L, COP_data, duration)
@@ -434,15 +435,15 @@ if __name__ == "__main__":
                           opt_BHKW_Speicher_max=100)
     test_chp_storage(Last_L, duration, economic_parameters, CHP_storage)
 
-    riverHeatPump = heat_pumps.WasteHeatPump(name="Abwärme", Kühlleistung_Abwärme=50, Temperatur_Abwärme=30, spez_Investitionskosten_Abwärme=500, 
+    riverHeatPump = base_heat_pumps.WasteHeatPump(name="Abwärme", Kühlleistung_Abwärme=50, Temperatur_Abwärme=30, spez_Investitionskosten_Abwärme=500, 
                                              spezifische_Investitionskosten_WP=1000, min_Teillast=0.2)
     test_waste_heat_pump(Last_L, duration, economic_parameters, VLT_L, COP_data, riverHeatPump)
 
-    riverHeatPump = heat_pumps.RiverHeatPump(name="Flusswasser", Wärmeleistung_FW_WP=200, Temperatur_FW_WP=10, dT=0, spez_Investitionskosten_Flusswasser=1000, 
+    riverHeatPump = base_heat_pumps.RiverHeatPump(name="Flusswasser", Wärmeleistung_FW_WP=200, Temperatur_FW_WP=10, dT=0, spez_Investitionskosten_Flusswasser=1000, 
                                              spezifische_Investitionskosten_WP=1000, min_Teillast=0.2)
     test_river_heat_pump(Last_L, duration, economic_parameters, VLT_L, COP_data, riverHeatPump) 
 
-    geothermal_heat_pump = heat_pumps.Geothermal(name="Geothermie", Fläche=200, Bohrtiefe=100, Temperatur_Geothermie=10, spez_Bohrkosten=100, spez_Entzugsleistung=50,
+    geothermal_heat_pump = base_heat_pumps.Geothermal(name="Geothermie", Fläche=200, Bohrtiefe=100, Temperatur_Geothermie=10, spez_Bohrkosten=100, spez_Entzugsleistung=50,
                                                 Vollbenutzungsstunden=2400, Abstand_Sonden=10, spezifische_Investitionskosten_WP=1000, min_Teillast=0.2)
     test_geothermal_heat_pump(Last_L, duration, economic_parameters, VLT_L, COP_data, geothermal_heat_pump)
     

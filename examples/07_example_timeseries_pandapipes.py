@@ -133,34 +133,37 @@ def timeseries_test(net):
 
     return yearly_time_steps, net, ow.np_results
 
+def print_results(net):
+    print(net)
+    print(net.junction)
+    print(net.pipe)
+    print(net.heat_consumer)
+    print(net.circ_pump_pressure)
+
+    print(net.res_junction)
+    print(net.res_pipe)
+    print(net.res_heat_consumer)
+    print(net.res_circ_pump_pressure)
+
 
 if __name__ == "__main__":
     try:
         net = initialize_test_net()
 
-        print(net)
-        print(net.junction)
-        print(net.pipe)
-        print(net.heat_consumer)
-        print(net.circ_pump_pressure)
+        print_results(net)
 
-        print(net.res_junction)
-        print(net.res_pipe)
-        print(net.res_heat_consumer)
-        print(net.res_circ_pump_pressure)
+        print("Test network initialized successfully."
+              " Running time series simulation..." )
+        
 
         yearly_time_steps, net, np_results = timeseries_test(net)
 
-        print(net)
-        print(net.junction)
-        print(net.pipe)
-        print(net.heat_consumer)
-        print(net.circ_pump_pressure)
+        print_results(net)
 
-        print(net.res_junction)
-        print(net.res_pipe)
-        print(net.res_heat_consumer)
-        print(net.res_circ_pump_pressure)
+        print("Time series simulation completed successfully.")
+        print("Results:")
+        print(yearly_time_steps)
+        print(np_results)
 
         fig, ax = plt.subplots()
         

@@ -4,9 +4,9 @@ from districtheatingsim.heat_generators.chp import CHP, CHPStrategy
 from districtheatingsim.heat_generators.gas_boiler import GasBoiler, GasBoilerStrategy
 from districtheatingsim.heat_generators.power_to_heat import PowerToHeat, PowerToHeatStrategy
 from districtheatingsim.heat_generators.biomass_boiler import BiomassBoiler, BiomassBoilerStrategy
-from districtheatingsim.heat_generators.heat_pumps import RiverHeatPump, WasteHeatPump, Geothermal, HeatPumpStrategy
+from districtheatingsim.heat_generators.base_heat_pumps import RiverHeatPump, WasteHeatPump, Geothermal, HeatPumpStrategy
 from districtheatingsim.heat_generators.solar_thermal import SolarThermal, SolarThermalStrategy
-from districtheatingsim.heat_generators.STES import TemperatureStratifiedThermalStorage
+from districtheatingsim.heat_generators.STES import STES
 
 from districtheatingsim.utilities.test_reference_year import import_TRY
 
@@ -62,7 +62,7 @@ storage_params = {
 energy_system = EnergySystem(time_steps, load_profile, VLT_L, RLT_L, TRY_data, COP_data, economic_parameters)
 
 # Initialisiere den Speicher
-storage = TemperatureStratifiedThermalStorage(name="Saisonalspeicher", **storage_params)
+storage = STES(name="Saisonalspeicher", **storage_params)
 energy_system.add_storage(storage)
 
 # Füge Generatoren hinzu

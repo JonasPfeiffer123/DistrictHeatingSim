@@ -20,13 +20,8 @@ from PyQt5.QtCore import pyqtSignal, Qt
 
 from districtheatingsim.gui.utilities import CheckableComboBox  # Assuming you have this implemented
 from districtheatingsim.gui.EnergySystemTab._04_technology_dialogs import TechInputDialog  # Import your dialogs
+from districtheatingsim.heat_generators import *
 from districtheatingsim.heat_generators.energy_system import *
-from districtheatingsim.heat_generators.biomass_boiler import BiomassBoiler
-from districtheatingsim.heat_generators.gas_boiler import GasBoiler
-from districtheatingsim.heat_generators.chp import CHP
-from districtheatingsim.heat_generators.solar_thermal import SolarThermal
-from districtheatingsim.heat_generators.heat_pumps import Geothermal, WasteHeatPump, RiverHeatPump, AqvaHeat
-from districtheatingsim.heat_generators.power_to_heat import PowerToHeat
 from districtheatingsim.gui.IndividualTab.building_thread import CalculateBuildingMixThread
 from districtheatingsim.utilities.test_reference_year import import_TRY
 
