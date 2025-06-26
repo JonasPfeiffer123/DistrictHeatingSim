@@ -4,18 +4,18 @@ districtheatingsim.geocoding package
 Submodules
 ----------
 
-districtheatingsim.geocoding.geocodingETRS89 module
----------------------------------------------------
+districtheatingsim.geocoding.geocoding module
+---------------------------------------------
 
-.. automodule:: districtheatingsim.geocoding.geocodingETRS89
+.. automodule:: districtheatingsim.geocoding.geocoding
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: districtheatingsim.geocoding
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
