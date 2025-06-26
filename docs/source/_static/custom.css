@@ -1,0 +1,9 @@
+/* Wider content area */
+.wy-nav-content {
+    max-width: 1200px;
+}
+
+/* Custom sidebar width */
+.wy-nav-side {
+    width: 300px;
+}
