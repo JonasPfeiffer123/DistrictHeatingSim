@@ -1,9 +1,6 @@
 districtheatingsim.utilities package
 ====================================
 
-Submodules
-----------
-
 districtheatingsim.utilities.renovation\_analysis module
 --------------------------------------------------------
 
@@ -24,14 +21,6 @@ districtheatingsim.utilities.utilities module
 ---------------------------------------------
 
 .. automodule:: districtheatingsim.utilities.utilities
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-Module contents
----------------
-
-.. automodule:: districtheatingsim.utilities
    :members:
    :show-inheritance:
    :undoc-members:
