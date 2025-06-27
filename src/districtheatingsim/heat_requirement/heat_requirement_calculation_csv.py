@@ -1,11 +1,14 @@
 """
-Filename: heat_requirement_calculation_csv.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-09
-Description: CSV-based heat demand calculation for district heating applications.
+Heat Requirement Calculation from CSV
+=====================================
 
 This module provides comprehensive heat demand profile generation for buildings
-using CSV-based input data. It integrates multiple calculation methodologies
+using CSV-based input data.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-09-09
+
+It integrates multiple calculation methodologies
 (VDI 4655, BDEW) and automatically selects appropriate methods based on building
 types. The module supports batch processing of building portfolios with
 temperature curve calculation for district heating network design.

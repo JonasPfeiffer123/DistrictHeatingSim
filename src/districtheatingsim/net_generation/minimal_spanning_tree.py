@@ -1,11 +1,14 @@
 """
-Filename: minimal_spanning_tree.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-05-26
-Description: Minimum Spanning Tree generation and road alignment optimization for district heating networks.
+Minimal Spanning Tree Generation and Road Alignment Optimization
+================================================================
 
 This module implements advanced Minimum Spanning Tree (MST) algorithms for district heating
-network layout optimization. It provides functions to generate cost-optimal tree topologies
+network layout optimization.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2025-05-26
+
+It provides functions to generate cost-optimal tree topologies
 from building locations and iteratively adjust network segments to follow existing street
 infrastructure while maintaining connectivity and minimizing total construction costs.
 

@@ -1,8 +1,11 @@
 """
-Filename: network_data_tab.py
+Network Data Tab Module
+=======================
+
+Tab for network data file selection and preview visualization.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-02-11
-Description: Contains the NetworkDataTab class.
 """
 
 import os
@@ -18,7 +21,23 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
 class NetworkDataTab(QWidget):
+    """
+    Widget for selecting network data files and previewing GeoJSON data.
+    """
+    
     def __init__(self, base_path, dialog_config, parent=None):
+        """
+        Initialize network data tab.
+
+        Parameters
+        ----------
+        base_path : str
+            Base path for file operations.
+        dialog_config : dict
+            Configuration data.
+        parent : QWidget, optional
+            Parent widget.
+        """
         super().__init__(parent)
         self.base_path = base_path
         self.dialog_config = dialog_config
@@ -26,6 +45,7 @@ class NetworkDataTab(QWidget):
         self.initUI()
 
     def initUI(self):
+        """Initialize user interface components."""
         layout = QVBoxLayout(self)
 
         importGroup = QGroupBox("Import Netzdaten und Wärmebedarfsrechnung")
@@ -74,6 +94,14 @@ class NetworkDataTab(QWidget):
         self.update_plot()
 
     def createGeojsonInputs(self):
+        """
+        Create GeoJSON file input layouts.
+
+        Returns
+        -------
+        list
+            List of input layouts.
+        """
         default_paths = {
             'Erzeugeranlagen': os.path.join(self.base_path, self.parent.parent.config_manager.get_relative_path("net_heat_sources_path")),
             'HAST': os.path.join(self.base_path, self.parent.parent.config_manager.get_relative_path("net_building_transfer_station_path")),
@@ -89,6 +117,19 @@ class NetworkDataTab(QWidget):
         return inputs
 
     def createFileInputsGeoJSON(self, default_paths):
+        """
+        Create file input widgets for GeoJSON files.
+
+        Parameters
+        ----------
+        default_paths : dict
+            Default file paths.
+
+        Returns
+        -------
+        QVBoxLayout
+            Layout containing file inputs.
+        """
         layout = QVBoxLayout()
         self.vorlaufInput = self.createFileInput("Vorlauf GeoJSON:", default_paths['Vorlauf'])
         layout.addLayout(self.vorlaufInput)
@@ -105,6 +146,21 @@ class NetworkDataTab(QWidget):
         return layout
 
     def createFileInput(self, label_text, default_text):
+        """
+        Create file input row with label, text field, and browse button.
+
+        Parameters
+        ----------
+        label_text : str
+            Label text.
+        default_text : str
+            Default file path.
+
+        Returns
+        -------
+        QHBoxLayout
+            Layout containing file input components.
+        """
         layout = QHBoxLayout()
         label = QLabel(label_text)
         line_edit = QLineEdit(default_text)
@@ -116,20 +172,27 @@ class NetworkDataTab(QWidget):
         return layout
 
     def browseJsonFile(self):
+        """Open file dialog for JSON file selection."""
         fname, _ = QFileDialog.getOpenFileName(self, 'Select JSON File', os.path.join(self.base_path, self.parent.parent.config_manager.get_relative_path('building_load_profile_path')), 'JSON Files (*.json);;All Files (*)')
         if fname:
             self.jsonLineEdit.setText(fname)
 
     def selectFilename(self, line_edit):
+        """
+        Open file dialog and update line edit with selected file.
+
+        Parameters
+        ----------
+        line_edit : QLineEdit
+            Line edit widget to update.
+        """
         fname, _ = QFileDialog.getOpenFileName(self, 'Datei auswählen', '', 'All Files (*);;CSV Files (*.csv);;GeoJSON Files (*.geojson)')
         if fname:
             line_edit.setText(fname)
             self.update_plot()
 
     def update_plot(self):
-        """
-        Updates the plot based on the selected GeoJSON files.
-        """
+        """Update plot visualization based on selected GeoJSON files."""
         try:
             # Pfade auslesen
             vorlauf_path = self.vorlaufInput.itemAt(1).widget().text()
@@ -216,11 +279,14 @@ class NetworkDataTab(QWidget):
 
     def set_layout_visibility(self, layout, visible):
         """
-        Sets the visibility of all widgets in a layout.
+        Set visibility of all widgets in a layout.
 
-        Args:
-            layout (QLayout): The layout to update.
-            visible (bool): Whether the widgets should be visible.
+        Parameters
+        ----------
+        layout : QLayout
+            Layout to update.
+        visible : bool
+            Visibility state.
         """
         for i in range(layout.count()):
             item = layout.itemAt(i)
@@ -232,11 +298,14 @@ class NetworkDataTab(QWidget):
 
     def set_default_value(self, parameter_row, value):
         """
-        Sets the default value for a parameter row.
+        Set default value for a parameter row.
 
-        Args:
-            parameter_row (QHBoxLayout): The parameter row layout.
-            value (str): The default value to set.
+        Parameters
+        ----------
+        parameter_row : QHBoxLayout
+            Parameter row layout.
+        value : str
+            Default value to set.
         """
         # Zugriff auf das QLineEdit Widget in der Parameterzeile und Aktualisieren des Textes
         for i in range(parameter_row.count()):
@@ -246,9 +315,7 @@ class NetworkDataTab(QWidget):
                 break  # Beendet die Schleife, sobald das QLineEdit gefunden und aktualisiert wurde
 
     def updateInputFieldsVisibility(self):
-        """
-        Updates the visibility of input fields based on the selected options.
-        """
+        """Update visibility of input fields based on selected options."""
         is_geojson = self.importTypeComboBox.currentText() == "GeoJSON"
 
         # GeoJSON-spezifische Eingabefelder

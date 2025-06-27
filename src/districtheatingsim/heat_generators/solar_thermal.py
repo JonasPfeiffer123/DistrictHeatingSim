@@ -1,11 +1,14 @@
 """
-Filename: solar_thermal.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-11
-Description: Solar thermal collector system modeling for district heating applications.
+Solar Thermal Collector System Module
+=====================================
 
 This module provides comprehensive solar thermal collector system modeling capabilities
-for district heating applications. The implementation includes detailed thermal performance
+for district heating applications.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-09-11
+
+The implementation includes detailed thermal performance
 modeling, economic analysis, and environmental impact assessment for solar thermal energy
 generation with integrated thermal storage systems.
 

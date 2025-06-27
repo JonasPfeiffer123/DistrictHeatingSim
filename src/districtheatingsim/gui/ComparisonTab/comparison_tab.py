@@ -1,8 +1,11 @@
 """
-Filename: comparison_tab.py
+Comparison Tab Module
+====================
+
+Main tab widget containing multiple comparison sub-tabs for project analysis.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-08-30
-Description: This class is responsible for creating the main tab that holds the different comparison tabs.
 """
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QScrollArea, QTabWidget)
@@ -12,7 +15,25 @@ from districtheatingsim.gui.ComparisonTab.cost_comparison_tab import CostCompari
 from districtheatingsim.gui.ComparisonTab.building_heat_demand_comparison_tab import BuildingHeatDemandComparisonTab
 
 class ComparisonTab(QWidget):
+    """
+    Main tab widget for project comparison and analysis.
+    """
+    
     def __init__(self, folder_manager, data_manager, config_manager, parent=None):
+        """
+        Initialize comparison tab with sub-tabs.
+
+        Parameters
+        ----------
+        folder_manager : FolderManager
+            Project folder manager.
+        data_manager : DataManager
+            Application data manager.
+        config_manager : ConfigManager
+            Configuration manager.
+        parent : QWidget, optional
+            Parent widget.
+        """
         super().__init__(parent)
         self.folder_manager = folder_manager
         self.data_manager = data_manager
@@ -25,9 +46,18 @@ class ComparisonTab(QWidget):
         self.initUI()
 
     def updateDefaultPath(self, new_base_path):
+        """
+        Update base path when project folder changes.
+
+        Parameters
+        ----------
+        new_base_path : str
+            New base path.
+        """
         self.base_path = new_base_path
 
     def initUI(self):
+        """Initialize user interface with comparison sub-tabs."""
         self.mainLayout = QVBoxLayout(self)
 
         # Create a QTabWidget to hold the different comparison tabs
@@ -50,6 +80,14 @@ class ComparisonTab(QWidget):
         self.setLayout(self.mainLayout)
 
     def createSubTab(self, title):
+        """
+        Create scrollable sub-tab widget.
+
+        Parameters
+        ----------
+        title : str
+            Tab title.
+        """
         subTab = QWidget()
         subTabLayout = QVBoxLayout(subTab)
 

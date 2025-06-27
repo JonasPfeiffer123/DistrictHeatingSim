@@ -1,8 +1,11 @@
 """
-Filename: building_heat_demand_comparison_tab.py
+Building Heat Demand Comparison Tab Module
+==========================================
+
+Tab widget for comparing heat demand between different building datasets.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-08-30
-Description: This class is responsible for creating the tab that compares the heat demand of different buildings.
 """
 
 import os
@@ -13,7 +16,23 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5.QtWidgets import (QVBoxLayout, QFileDialog, QWidget, QMessageBox, QHBoxLayout, QPushButton)
 
 class BuildingHeatDemandComparisonTab(QWidget):
+    """
+    Widget for comparing building heat demand across different datasets.
+    """
+    
     def __init__(self, folder_manager, config_manager, parent=None):
+        """
+        Initialize building heat demand comparison tab.
+
+        Parameters
+        ----------
+        folder_manager : FolderManager
+            Project folder manager.
+        config_manager : ConfigManager
+            Configuration manager.
+        parent : QWidget, optional
+            Parent widget.
+        """
         super().__init__(parent)
         self.folder_manager = folder_manager
         self.config_manager = config_manager
@@ -27,9 +46,18 @@ class BuildingHeatDemandComparisonTab(QWidget):
         self.initUI()
 
     def updateDefaultPath(self, new_base_path):
+        """
+        Update base path when project folder changes.
+
+        Parameters
+        ----------
+        new_base_path : str
+            New base path.
+        """
         self.base_path = new_base_path
 
     def initUI(self):
+        """Initialize user interface with plot canvas and control buttons."""
         self.layout = QVBoxLayout(self)
 
         # Add buttons to load and remove data
@@ -54,7 +82,7 @@ class BuildingHeatDemandComparisonTab(QWidget):
         self.setLayout(self.layout)
 
     def addData(self):
-        # Open a file dialog to select the base path for the data
+        """Load CSV data file and add to comparison plot."""
         path, _ = QFileDialog.getOpenFileName(self, "Öffnen", self.base_path, "CSV-Dateien (*.csv)")
         if path:
             try:
@@ -66,6 +94,7 @@ class BuildingHeatDemandComparisonTab(QWidget):
                 self.show_error_message("Fehler beim Hinzufügen des Datensatzes", f"Es ist ein Fehler aufgetreten: {str(e)}")
 
     def removeData(self):
+        """Remove last loaded dataset from comparison."""
         if self.loaded_data:
             self.loaded_data.pop()
             self.loaded_filenames.pop()
@@ -74,6 +103,7 @@ class BuildingHeatDemandComparisonTab(QWidget):
             QMessageBox.warning(self, "Keine Daten", "Keine Daten zum Entfernen vorhanden.")
 
     def update_plot(self):
+        """Update comparison plot with current datasets."""
         if not self.loaded_data:
             self.figure.clear()
             self.canvas.draw()
@@ -105,4 +135,14 @@ class BuildingHeatDemandComparisonTab(QWidget):
         self.canvas.draw()
 
     def show_error_message(self, title, message):
+        """
+        Show error message dialog.
+
+        Parameters
+        ----------
+        title : str
+            Dialog title.
+        message : str
+            Error message.
+        """
         QMessageBox.critical(self, title, message)

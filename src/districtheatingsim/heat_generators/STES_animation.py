@@ -1,12 +1,15 @@
 """
-Filename: STES_animation.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-04-04
-Description: Interactive 3D visualization and animation of STES temperature stratification.
+STES Animation Module
+================================
 
 This module provides comprehensive interactive 3D visualization capabilities for Seasonal
 Thermal Energy Storage (STES) systems with advanced animation controls, real-time parameter
-adjustment, and detailed temperature stratification analysis. It enables dynamic exploration
+adjustment, and detailed temperature stratification analysis.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2025-04-04
+
+It enables dynamic exploration
 of thermal behavior patterns throughout seasonal storage cycles for research, design
 optimization, and educational purposes.
 

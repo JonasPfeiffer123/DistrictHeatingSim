@@ -1,8 +1,11 @@
 """
-Filename: calculate_mix_thread.py
+Calculate Energy System Thread Module
+=====================================
+
+This module contains the CalculateEnergySystemThread class, which is responsible for calculating the heat generation mix in a district heating simulation application. It runs the calculation in a separate thread to avoid blocking the main GUI thread.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-05-03
-Description: Contains the threaded functionality function for calculating the heat generation mix.
 """
 
 import traceback

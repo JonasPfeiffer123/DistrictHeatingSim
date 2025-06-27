@@ -1,11 +1,14 @@
 """
-Filename: chp.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-12-11
-Description: Combined Heat and Power (CHP) system modeling for district heating applications.
+Combined Heat and Power (CHP) System Module
+============================================
 
 This module provides comprehensive Combined Heat and Power (CHP) system modeling
-capabilities for district heating applications. The implementation includes detailed
+capabilities for district heating applications.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-12-11
+
+The implementation includes detailed
 thermal and electrical performance modeling, storage system integration, economic
 analysis, and environmental impact assessment for gas-fired and biomass-fired
 CHP systems.

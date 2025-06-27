@@ -1,8 +1,11 @@
 """
-Filename: leaflet_tab.py
+Leaflet Tab Module
+==================
+
+Leaflet map integration for district heating network visualization.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-01-26
-Description: Contains the LeafTab class for displaying a Leaflet map in a PyQt5 application.
 """
 
 import os
@@ -25,8 +28,20 @@ from districtheatingsim.gui.LeafletTab.net_generation_threads import NetGenerati
 from shapely.geometry import Point
 
 class GeoJsonReceiver(QObject):
+    """
+    Bridge for receiving GeoJSON data from JavaScript.
+    """
+    
     @pyqtSlot(str)
     def sendGeoJSONToPython(self, geojson_str):
+        """
+        Receive GeoJSON from JavaScript and save to file.
+
+        Parameters
+        ----------
+        geojson_str : str
+            GeoJSON data as string.
+        """
         print("Received GeoJSON from JavaScript")
         
         # Konvertiere den JSON-String in ein Python-Objekt
@@ -49,6 +64,14 @@ class GeoJsonReceiver(QObject):
 
     @pyqtSlot(str)
     def exportGeoJSON(self, geojsonString):
+        """
+        Export GeoJSON with file dialog.
+
+        Parameters
+        ----------
+        geojsonString : str
+            GeoJSON data as string.
+        """
         fileName, _ = QFileDialog.getSaveFileName(None, "Save GeoJSON File", "", "GeoJSON Files (*.geojson);;All Files (*)")
         if fileName:
             geojson_data = json.loads(geojsonString)
@@ -99,53 +122,62 @@ class GeoJsonReceiver(QObject):
 
 class VisualizationModel:
     """
-    The VisualizationModel class is responsible for handling all data-related operations
-    such as loading and saving GeoJSON files, generating GeoJSON from CSV files, 
-    and calculating the center and zoom level of the map.
+    Data model for map visualization operations.
     """
 
     def __init__(self):
-        """Initializes the VisualizationModel with empty layers and base path."""
+        """Initialize model with empty layers and base path."""
         self.layers = {}
         self.base_path = ""
 
     def set_base_path(self, base_path):
         """
-        Sets the base path for file operations.
+        Set base path for file operations.
 
-        Args:
-            base_path (str): The base path to be set.
+        Parameters
+        ----------
+        base_path : str
+            Base path to set.
         """
         self.base_path = base_path
 
     def get_base_path(self):
         """
-        Returns the current base path.
+        Get current base path.
 
-        Returns:
-            str: The current base path.
+        Returns
+        -------
+        str
+            Current base path.
         """
         return self.base_path
 
     def load_geojson(self, file_path):
         """
-        Loads a GeoJSON file and returns it as a GeoDataFrame.
+        Load GeoJSON file as GeoDataFrame.
 
-        Args:
-            file_path (str): The path to the GeoJSON file.
+        Parameters
+        ----------
+        file_path : str
+            Path to GeoJSON file.
 
-        Returns:
-            GeoDataFrame: The loaded GeoJSON as a GeoDataFrame.
+        Returns
+        -------
+        GeoDataFrame
+            Loaded GeoJSON data.
         """
         return gpd.read_file(file_path)
 
     def create_geojson_from_csv(self, csv_file_path, geojson_file_path):
         """
-        Creates a GeoJSON file from a CSV file containing coordinates.
+        Create GeoJSON from CSV with coordinates.
 
-        Args:
-            csv_file_path (str): The path to the CSV file.
-            geojson_file_path (str): The path where the GeoJSON file will be saved.
+        Parameters
+        ----------
+        csv_file_path : str
+            Path to CSV file.
+        geojson_file_path : str
+            Output GeoJSON path.
         """
         df = pd.read_csv(csv_file_path, delimiter=';')
         gdf = gpd.GeoDataFrame(
@@ -158,13 +190,17 @@ class VisualizationModel:
 
     def get_resource_path(self, relative_path):
         """
-        Get the absolute path to the resource, works for development and for PyInstaller.
+        Get absolute path to resource.
 
-        Args:
-            relative_path (str): The relative path to the resource.
+        Parameters
+        ----------
+        relative_path : str
+            Relative path to resource.
 
-        Returns:
-            str: The absolute path to the resource.
+        Returns
+        -------
+        str
+            Absolute path to resource.
         """
         if getattr(sys, 'frozen', False):
             base_path = sys._MEIPASS
@@ -174,26 +210,27 @@ class VisualizationModel:
 
 class VisualizationPresenter(QObject):
     """
-    The VisualizationPresenter class acts as the mediator between the model and the view.
-    It handles user input, updates the model, and refreshes the view accordingly.
-
-    Attributes:
-        layers_imported (pyqtSignal): Signal emitted when layers are imported.
-        model (VisualizationModel): The model instance containing the data logic.
-        view (VisualizationTabView): The view instance containing the UI logic.
-        data_manager (DataManager): The data manager that handles project-related data.
+    Presenter mediating between model and view for map visualization.
     """
 
     layers_imported = pyqtSignal(dict)
 
     def __init__(self, model, view, folder_manager, data_manager, config_manager):
         """
-        Initializes the VisualizationPresenter with the given model, view, and data manager.
+        Initialize presenter with model, view, and managers.
 
-        Args:
-            model (VisualizationModel): The model instance.
-            view (VisualizationTabView): The view instance.
-            data_manager (DataManager): The data manager instance.
+        Parameters
+        ----------
+        model : VisualizationModel
+            Model instance.
+        view : VisualizationTabView
+            View instance.
+        folder_manager : FolderManager
+            Folder manager instance.
+        data_manager : DataManager
+            Data manager instance.
+        config_manager : ConfigManager
+            Configuration manager instance.
         """
         super().__init__()
         self.model = model
@@ -220,30 +257,31 @@ class VisualizationPresenter(QObject):
         self.map_file_path = self.model.get_resource_path("leaflet\\map.html")
         self.view.web_view.setUrl(QUrl.fromLocalFile(self.map_file_path))
 
-
     def on_project_folder_changed(self, new_base_path):
         """
-        Updates the base path in the model when the project folder changes.
+        Update base path when project folder changes.
 
-        Args:
-            new_base_path (str): The new base path.
+        Parameters
+        ----------
+        new_base_path : str
+            New base path.
         """
         self.model.set_base_path(new_base_path)
 
     def open_geocode_addresses_dialog(self):
-        """
-        Open a dialog to select a CSV file for geocoding addresses.
-        """
+        """Open dialog to select CSV file for geocoding addresses."""
         fname, _ = QFileDialog.getOpenFileName(self.view, 'CSV-Koordinaten laden', self.model.get_base_path(), 'CSV Files (*.csv);;All Files (*)')
         if fname:
             self.geocode_addresses(fname)
 
     def geocode_addresses(self, inputfilename):
         """
-        Starts the geocoding process for the provided CSV file.
+        Start geocoding process for CSV file.
 
-        Args:
-            inputfilename (str): The path to the CSV file.
+        Parameters
+        ----------
+        inputfilename : str
+            Path to CSV file.
         """
         if hasattr(self, 'geocodingThread') and self.geocodingThread.isRunning():
             self.geocodingThread.terminate()
@@ -256,27 +294,36 @@ class VisualizationPresenter(QObject):
 
     def on_geocode_done(self, fname):
         """
-        Handles successful completion of geocoding and loads the resulting CSV coordinates.
+        Handle successful geocoding completion.
 
-        Args:
-            fname (str): The path to the generated CSV file.
+        Parameters
+        ----------
+        fname : str
+            Path to generated CSV file.
         """
         self.view.progressBar.setRange(0, 1)
         self.load_csv_coordinates(fname)
 
     def on_geocode_error(self, error_message):
         """
-        Handles errors that occur during the geocoding process.
+        Handle geocoding errors.
 
-        Args:
-            error_message (str): The error message to display.
+        Parameters
+        ----------
+        error_message : str
+            Error message.
         """
         self.view.show_error_message("Fehler beim Geocoding", error_message)
         self.view.progressBar.setRange(0, 1)
 
     def load_csv_coordinates(self, fname=None):
         """
-        Loads coordinates from a CSV file and adds them as a GeoJSON layer to the map.
+        Load coordinates from CSV and add to map.
+
+        Parameters
+        ----------
+        fname : str, optional
+            CSV file path.
         """
         try:
             if not fname:
@@ -290,9 +337,7 @@ class VisualizationPresenter(QObject):
             self.view.show_error_message("Fehler beim Importieren von GeoJSON", error_message)
 
     def import_geojson(self):
-        """
-        Imports GeoJSON files and adds them as layers to the map.
-        """
+        """Import GeoJSON files and add to map."""
         try:
             fnames, _ = QFileDialog.getOpenFileNames(self.view, 'Netzdaten importieren', self.model.get_base_path(), 'GeoJSON Files (*.geojson);;All Files (*)')
             if fnames:
@@ -303,11 +348,12 @@ class VisualizationPresenter(QObject):
 
     def add_geojson_layer(self, filenames):
         """
-        Adds GeoJSON layers to the map.
+        Add GeoJSON layers to map.
 
-        Args:
-            filenames (list): A list of GeoJSON file paths.
-            color (str, optional): The color to use for the layer.
+        Parameters
+        ----------
+        filenames : list
+            List of GeoJSON file paths.
         """
         try:
             for filename in filenames:
@@ -327,9 +373,7 @@ class VisualizationPresenter(QObject):
             self.view.show_error_message("Fehler beim Hinzufügen einer GeoJSON-Schicht", error_message)
 
     def open_layer_generation_dialog(self):
-        """
-        Opens the dialog for generating layers from data.
-        """
+        """Open dialog for generating layers from data."""
         dialog = LayerGenerationDialog(self.model.get_base_path(), self.config_manager, self.view)
         dialog.setVisualizationTab(self)
         dialog.accepted_inputs.connect(self.generate_and_import_layers)
@@ -342,10 +386,12 @@ class VisualizationPresenter(QObject):
 
     def generate_and_import_layers(self, inputs):
         """
-        Starts the process of generating and importing layers based on user inputs.
+        Start layer generation process.
 
-        Args:
-            inputs (dict): The inputs for generating layers.
+        Parameters
+        ----------
+        inputs : dict
+            Generation inputs.
         """
         if hasattr(self, 'netgenerationThread') and self.netgenerationThread.isRunning():
             self.netgenerationThread.terminate()
@@ -358,10 +404,12 @@ class VisualizationPresenter(QObject):
 
     def on_generation_done(self, results):
         """
-        Handles successful layer generation and updates the map view.
+        Handle successful layer generation.
 
-        Args:
-            results (dict): The results of the layer generation.
+        Parameters
+        ----------
+        results : dict
+            Generation results.
         """
         self.view.progressBar.setRange(0, 1)
         filenames = [os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("net_building_transfer_station_path")), 
@@ -382,51 +430,47 @@ class VisualizationPresenter(QObject):
 
     def on_generation_error(self, error_message):
         """
-        Handles errors that occur during the layer generation process.
+        Handle layer generation errors.
 
-        Args:
-            error_message (str): The error message to display.
+        Parameters
+        ----------
+        error_message : str
+            Error message.
         """
         self.view.show_error_message("Berechnungsfehler", error_message)
         self.view.progressBar.setRange(0, 1)
 
     def open_osm_data_dialog(self):
-        """
-        Opens the dialog for downloading OSM data.
-        """
+        """Open dialog for downloading OSM data."""
         dialog = DownloadOSMDataDialog(self.model.get_base_path(), self.config_manager, self.view, self)
         if dialog.exec_() == QDialog.Accepted:
             pass  # Handle accepted case if necessary
 
     def open_osm_building_query_dialog(self):
-        """
-        Opens the dialog for querying OSM building data.
-        """
+        """Open dialog for querying OSM building data."""
         dialog = OSMBuildingQueryDialog(self.model.get_base_path(), self.config_manager, self.view, self)
         if dialog.exec_() == QDialog.Accepted:
             pass  # Handle accepted case if necessary
 
 class VisualizationTabView(QWidget):
     """
-    The VisualizationTabView class is responsible for managing the user interface components
-    such as the map display, menus, buttons, and progress bar.
-
-    Attributes:
-        web_view (QWebEngineView): The web view used to render the map.
-        menuBar (QMenuBar): The menu bar containing various actions.
-        layerList (QListWidget): The list widget displaying the layers.
-        removeLayerButton (QPushButton): The button to remove selected layers.
-        changeColorButton (QPushButton): The button to change the color of a selected layer.
-        progressBar (QProgressBar): The progress bar used to display the progress of operations.
+    View component for map visualization interface.
     """
 
     def __init__(self, parent=None):
-        """Initializes the VisualizationTabView with the necessary UI components."""
+        """
+        Initialize view with UI components.
+
+        Parameters
+        ----------
+        parent : QWidget, optional
+            Parent widget.
+        """
         super().__init__(parent)
         self.initUI()
 
     def initUI(self):
-        """Initializes the user interface components."""
+        """Initialize user interface components."""
         self.main_layout = QVBoxLayout()
 
         self.initMenuBar()
@@ -438,6 +482,7 @@ class VisualizationTabView(QWidget):
         self.setLayout(self.main_layout)
 
     def initMenuBar(self):
+        """Initialize menu bar with actions."""
         self.menuBar = QMenuBar(self)
         self.menuBar.setFixedHeight(30)
         fileMenu = self.menuBar.addMenu('Datei')
@@ -463,9 +508,7 @@ class VisualizationTabView(QWidget):
         self.main_layout.addWidget(self.menuBar)
 
     def initMapView(self):
-        """
-        Initializes the map view with the WebEngine and sets up the WebChannel.
-        """
+        """Initialize map view with WebEngine and WebChannel."""
         self.web_view = QWebEngineView()
         
         # Erstelle den WebChannel und registriere das Python-Objekt
@@ -479,7 +522,12 @@ class VisualizationTabView(QWidget):
 
     def update_map_view(self, map_obj):
         """
-        Updates the map view by reloading the WebEngine with new map data.
+        Update map view with new data.
+
+        Parameters
+        ----------
+        map_obj : object
+            Map object to display.
         """
         # Verwende eine temporäre Datei für die HTML-Karte, falls es notwendig ist
         with tempfile.NamedTemporaryFile(suffix=".html", delete=False) as temp_file:
@@ -490,34 +538,36 @@ class VisualizationTabView(QWidget):
 
     def show_error_message(self, title, message):
         """
-        Displays an error message in a message box.
+        Show error message dialog.
 
-        Args:
-            title (str): The title of the error message box.
-            message (str): The error message to display.
+        Parameters
+        ----------
+        title : str
+            Dialog title.
+        message : str
+            Error message.
         """
         QMessageBox.critical(self, title, message)
 
 class VisualizationTabLeaflet(QMainWindow):
     """
-    The VisualizationTab class integrates the model, view, and presenter
-    into a single main window for the application.
-
-    Attributes:
-        model (VisualizationModel): The model instance containing the data logic.
-        view (VisualizationTabView): The view instance containing the UI logic.
-        presenter (VisualizationPresenter): The presenter instance handling the interaction between model and view.
+    Main window integrating model, view, and presenter for map visualization.
     """
 
     def __init__(self, folder_manager, data_manager, config_manager, parent=None):
         """
-        Initializes the VisualizationTab with the given data manager.
+        Initialize visualization tab with managers.
 
-        Args:
-            folder_manager (FolderManager): The folder manager instance handling project paths.
-            data_manager (DataManager): The data manager instance handling project-related data.
-            config_manager (ConfigManager): The config manager instance managing configuration settings.
-            parent (QWidget, optional): The parent widget. Defaults to None.
+        Parameters
+        ----------
+        folder_manager : FolderManager
+            Folder manager instance.
+        data_manager : DataManager
+            Data manager instance.
+        config_manager : ConfigManager
+            Configuration manager instance.
+        parent : QWidget, optional
+            Parent widget.
         """
         super().__init__(parent)
 

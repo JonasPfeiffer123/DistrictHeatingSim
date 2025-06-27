@@ -1,11 +1,14 @@
 """
-Filename: gas_boiler.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-12-11
-Description: Gas boiler system modeling for district heating applications.
+Gas Boiler System Module
+========================
 
 This module provides comprehensive gas-fired boiler system modeling capabilities
-for district heating applications. The implementation includes detailed thermal
+for district heating applications.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-12-11
+
+The implementation includes detailed thermal
 modeling, economic analysis, and environmental impact assessment for natural
 gas-fired heating systems with focus on efficiency optimization and cost-effective
 heat generation.

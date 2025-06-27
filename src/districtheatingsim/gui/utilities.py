@@ -1,8 +1,11 @@
 """
-Filename: checkable_comboboxes.py
+GUI Utilities Module
+====================
+
+This module provides custom GUI widgets and utility functions for the DistrictHeatingSim application.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-07-23
-Description: Contains a custom class for checkable comboboxes.
 """
 
 import pandas as pd
@@ -15,20 +18,34 @@ from PyQt5.QtCore import Qt, pyqtSignal
 
 class CheckableComboBox(QComboBox):
     """
-    A custom QComboBox widget that allows multiple selections through checkboxes.
+    A custom combo box widget with checkable items for multiple selection.
 
-    Attributes:
-        checkedStateChanged (:class:`pyqtSignal`): Signal emitted when the checked state of an item changes.
+    Extends QComboBox to provide checkbox functionality for each item,
+    enabling users to select multiple options from a dropdown list.
+
+    Signals
+    -------
+    checkedStateChanged : pyqtSignal
+        Emitted when any item's checked state changes.
+
+    Examples
+    --------
+    >>> combo = CheckableComboBox()
+    >>> combo.addItem("Option 1")
+    >>> combo.addItem("Option 2")
+    >>> selected = combo.checkedItems()
     """
 
     checkedStateChanged = pyqtSignal()
 
     def __init__(self, parent=None):
         """
-        Initializes the CheckableComboBox.
+        Initialize the checkable combo box.
 
-        Args:
-            parent: The parent widget.
+        Parameters
+        ----------
+        parent : QWidget, optional
+            Parent widget.
         """
         super(CheckableComboBox, self).__init__(parent)
         self.setView(QListView(self))
@@ -37,10 +54,12 @@ class CheckableComboBox(QComboBox):
 
     def handleItemPressed(self, index):
         """
-        Handles the item pressed event. Toggles the check state of the item.
+        Toggle item's check state when pressed.
 
-        Args:
-            index (QModelIndex): The index of the pressed item.
+        Parameters
+        ----------
+        index : QModelIndex
+            Index of the pressed item.
         """
         item = self.model().itemFromIndex(index)
         if item.checkState() == Qt.Checked:
@@ -52,24 +71,31 @@ class CheckableComboBox(QComboBox):
 
     def itemChecked(self, index):
         """
-        Checks if the item at the given index is checked.
+        Check if item at given index is checked.
 
-        Args:
-            index (int): The index of the item to check.
+        Parameters
+        ----------
+        index : int
+            Item index to check.
 
-        Returns:
-            bool: True if the item is checked, False otherwise.
+        Returns
+        -------
+        bool
+            True if item is checked.
         """
         item = self.model().item(index)
         return item.checkState() == Qt.Checked
 
     def addItem(self, text, data=None):
         """
-        Adds an item to the combo box with a checkbox.
+        Add a checkable item to the combo box.
 
-        Args:
-            text (str): The text of the item.
-            data: Optional user data for the item.
+        Parameters
+        ----------
+        text : str
+            Item text to display.
+        data : any, optional
+            Optional user data for the item.
         """
         item = QStandardItem(text)
         item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
@@ -78,10 +104,12 @@ class CheckableComboBox(QComboBox):
 
     def checkedItems(self):
         """
-        Returns a list of checked items.
+        Get list of checked item texts.
 
-        Returns:
-            list: List of checked items.
+        Returns
+        -------
+        list of str
+            Text of all checked items.
         """
         checked_items = []
         for index in range(self.count()):
@@ -92,13 +120,28 @@ class CheckableComboBox(QComboBox):
 
 def convert_to_serializable(obj):
     """
-    Converts an object to a serializable format.
+    Convert various data types to JSON-serializable format.
     
-    Args:
-        obj: The object to convert.
+    Handles pandas objects, numpy arrays, and datetime objects
+    for JSON serialization compatibility.
     
-    Returns:
-        The serializable format of the object.
+    Parameters
+    ----------
+    obj : any
+        Object to convert.
+    
+    Returns
+    -------
+    any
+        JSON-serializable representation of the object.
+        
+    Examples
+    --------
+    >>> import numpy as np
+    >>> convert_to_serializable(np.int64(42))
+    42
+    >>> convert_to_serializable(np.array([1, 2, 3]))
+    [1, 2, 3]
     """
     if isinstance(obj, np.integer):
         return int(obj)

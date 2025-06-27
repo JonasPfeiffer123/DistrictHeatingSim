@@ -1,12 +1,14 @@
 """
-Filename: lod2_landkreise_laden.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-02-07
-Description: Web scraper for Saxon district and municipality data.
+LOD2 District Download Module
+=============================
 
 This module provides functionality to scrape district (Landkreise) and municipality
-(Gemeinden) data from the Saxon geodata portal. It uses Selenium WebDriver to 
-interact with dynamic web content and extract administrative boundary information
+(Gemeinden) data from the Saxon geodata portal.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2025-02-07
+
+It uses Selenium WebDriver to interact with dynamic web content and extract administrative boundary information
 for LOD2 building data downloads.
 """
 

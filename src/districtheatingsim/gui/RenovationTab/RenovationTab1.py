@@ -1,8 +1,11 @@
 """
-Filename: RenovationTab1.py
+Renovation Tab 1 Module
+=======================
+
+District renovation analysis tab for LOD2 data based renovation cost analysis.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-08-01
-Description: Contains the RenovationTab1, the Tab for LOD2 data based renovation cost analysis.
 """
 
 import sys
@@ -21,17 +24,22 @@ from districtheatingsim.utilities.renovation_analysis import SanierungsAnalyse
 
 class PlotCanvas(FigureCanvas):
     """
-    Custom QWidget for rendering Matplotlib plots in a PyQt5 application.
+    Custom matplotlib canvas for rendering renovation analysis plots.
     """
     def __init__(self, parent=None, width=5, height=4, dpi=100):
         """
-        Initializes the PlotCanvas.
+        Initialize plot canvas.
 
-        Args:
-            parent (QWidget, optional): The parent widget. Defaults to None.
-            width (int, optional): The width of the canvas. Defaults to 5.
-            height (int, optional): The height of the canvas. Defaults to 4.
-            dpi (int, optional): The resolution of the canvas. Defaults to 100.
+        Parameters
+        ----------
+        parent : QWidget, optional
+            Parent widget.
+        width : int, optional
+            Canvas width.
+        height : int, optional
+            Canvas height.
+        dpi : int, optional
+            Canvas resolution.
         """
         fig = Figure(figsize=(width, height), dpi=dpi)
         self.axes = fig.add_subplot(111)
@@ -40,17 +48,23 @@ class PlotCanvas(FigureCanvas):
 
     def plot(self, data_ist, data_saniert, title, xlabel, ylabel):
         """
-        Plots bar charts for the given data.
+        Plot bar charts for renovation analysis data.
 
-        Args:
-            data_ist (dict): Data for the IST state.
-            data_saniert (dict): Data for the saniert state.
-            title (str): The title of the plot.
-            xlabel (str): The label for the x-axis.
-            ylabel (str): The label for the y-axis.
+        Parameters
+        ----------
+        data_ist : dict
+            Current state data.
+        data_saniert : dict
+            Renovated state data.
+        title : str
+            Plot title.
+        xlabel : str
+            X-axis label.
+        ylabel : str
+            Y-axis label.
         """
         self.axes.clear()
-        width = 0.35  # the width of the bars
+        width = 0.35
 
         y = list(range(len(data_ist)))
         y_labels = list(data_ist.keys())
@@ -67,55 +81,44 @@ class PlotCanvas(FigureCanvas):
         self.axes.legend()
         self.draw()
 
-
 class RenovationTab1(QWidget):
     """
-    The RenovationTab1 class, responsible for the LOD2 data based renovation cost analysis.
-
-    Attributes:
-        data_added (pyqtSignal): Signal that emits data as an object.
-        data_manager (object): The data manager object.
-        base_path (str): The base path for the project.
-        ist_geojson (GeoDataFrame): GeoDataFrame containing IST state data.
-        saniert_geojson (GeoDataFrame): GeoDataFrame containing saniert state data.
-        results (dict): Dictionary to store analysis results.
-        input_fields (dict): Dictionary to store input fields.
-        RELEVANT_FIELDS (list): List of relevant fields to extract from GeoJSON.
+    District renovation analysis tab for LOD2 building data.
+    
+    Provides functionality for analyzing renovation costs and savings
+    for building districts using GeoJSON data input.
     """
-    data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
+    data_added = pyqtSignal(object)
 
     def __init__(self, folder_manager, parent=None):
         """
-        Initializes the RenovationTab1.
+        Initialize renovation tab.
 
-        Args:
-            data_manager (object): The data manager.
-            parent (QWidget, optional): The parent widget. Defaults to None.
+        Parameters
+        ----------
+        folder_manager : object
+            Project folder manager.
+        parent : QWidget, optional
+            Parent widget.
         """
         super().__init__(parent)
         self.folder_manager = folder_manager
         
-        # Connect to the data manager signal
+        # Connect to folder manager signals
         self.folder_manager.project_folder_changed.connect(self.updateDefaultPath)
-        # Update the base path immediately with the current project folder
         self.updateDefaultPath(self.folder_manager.project_folder)
 
         self.initUI()
     
     def initUI(self):
-        """
-        Initializes the UI components of the RenovationTab1.
-        """
+        """Initialize user interface components."""
         self.setWindowTitle("Sanierungsanalyse")
-        #self.setGeometry(100, 100, 1200, 800)
-
+        
         main_layout = QVBoxLayout()
-
-        # Main splitter to divide the UI into input and result sections
         splitter = QSplitter(Qt.Horizontal)
         main_layout.addWidget(splitter)
 
-        # Creating input sections
+        # Input section
         input_widget = QWidget()
         input_layout = QVBoxLayout(input_widget)
         self.input_fields = {}
@@ -123,26 +126,23 @@ class RenovationTab1(QWidget):
         tab_widget = QTabWidget()
         self.create_input_tabs(tab_widget)
         input_layout.addWidget(tab_widget)
-
-        #scroll = QScrollArea()
-        #scroll.setWidgetResizable(True)
-        #scroll.setWidget(input_widget)
         splitter.addWidget(input_widget)
 
-        # Creating results and plotting sections
+        # Results section
         result_widget = QWidget()
         result_layout = QVBoxLayout(result_widget)
         self.create_result_section(result_layout)
         splitter.addWidget(result_widget)
 
-        splitter.setSizes([800, 800])  # Balance the splitter sections
-
+        splitter.setSizes([800, 800])
         self.setLayout(main_layout)
+        
+        # Initialize data containers
         self.results = {}
         self.ist_geojson = None
         self.saniert_geojson = None
-
-        # Liste der relevanten Felder
+        
+        # Define relevant GeoJSON fields
         self.RELEVANT_FIELDS = [
             'ID', 'Land', 'Bundesland', 'Stadt', 'Adresse', 'Wärmebedarf',
             'Gebäudetyp', 'Subtyp', 'Warmwasseranteil', 'Typ_Heizflächen', 'VLT_max', 
@@ -155,7 +155,8 @@ class RenovationTab1(QWidget):
         ]
 
     def create_input_tabs(self, tab_widget):
-        # Adding a new tab for file loading
+        """Create input parameter tabs with organized field groups."""
+        # File loading tab
         file_tab = QWidget()
         file_layout = QVBoxLayout()
 
@@ -176,7 +177,7 @@ class RenovationTab1(QWidget):
         file_tab.setLayout(file_layout)
         tab_widget.addTab(file_tab, "Dateien laden")
 
-        # Grouping input fields into additional tabs for better organization
+        # Parameter groups
         groups = {
             "Kosten": [("Kosten Boden (€/m²)", "100"), ("Kosten Fassade (€/m²)", "100"),
                         ("Kosten Dach (€/m²)", "150"), ("Kosten Fenster (€/m²)", "200"),
@@ -212,6 +213,7 @@ class RenovationTab1(QWidget):
             tab_widget.addTab(group_widget, group_name)
 
     def create_result_section(self, layout):
+        """Create results display section with plot and controls."""
         self.run_button = QPushButton("Analyse durchführen")
         self.run_button.clicked.connect(self.run_analysis)
         layout.addWidget(self.run_button)
@@ -222,7 +224,7 @@ class RenovationTab1(QWidget):
         self.combo_box.currentIndexChanged.connect(self.update_plot)
         layout.addWidget(self.combo_box)
 
-        self.canvas = PlotCanvas(self, width=12, height=6)  # Increased the canvas size
+        self.canvas = PlotCanvas(self, width=12, height=6)
         layout.addWidget(self.canvas)
 
         self.result_label = QLabel("Ergebnisse werden hier angezeigt")
@@ -230,24 +232,25 @@ class RenovationTab1(QWidget):
 
     def updateDefaultPath(self, new_base_path):
         """
-        Updates the default path for the project.
+        Update project default path.
 
-        Args:
-            new_base_path (str): The new base path for the project.
+        Parameters
+        ----------
+        new_base_path : str
+            New base path for file operations.
         """
         self.base_path = new_base_path
         
     def load_ist_geojson(self):
-        """
-        Loads the IST state GeoJSON file and populates the IST table with its data.
-        """
+        """Load current state GeoJSON file and populate table."""
         path, _ = QFileDialog.getOpenFileName(self, "IST-Stand GeoJSON laden", self.base_path, "GeoJSON-Dateien (*.geojson)")
         if path:
             try:
                 self.ist_geojson = gpd.read_file(path)
                 if self.ist_geojson is None:
                     raise ValueError("Die GeoJSON-Datei konnte nicht geladen werden.")
-                # Filtern der Parent-Objekte und Duplikate nach ID entfernen
+                
+                # Filter parent objects and remove duplicates
                 self.ist_geojson = self.ist_geojson[self.ist_geojson['Obj_Parent'].isnull()]
                 self.ist_geojson = self.ist_geojson.drop_duplicates(subset='ID')
                 self.populate_table(self.ist_geojson, self.ist_table)
@@ -257,16 +260,15 @@ class RenovationTab1(QWidget):
                 QMessageBox.critical(self, "Fehler", f"Fehler beim Laden der IST-Stand GeoJSON:\n{''.join(tb_str)}")
 
     def load_saniert_geojson(self):
-        """
-        Loads the saniert state GeoJSON file and populates the saniert table with its data.
-        """
+        """Load renovated state GeoJSON file and populate table."""
         path, _ = QFileDialog.getOpenFileName(self, "Sanierten Stand GeoJSON laden", self.base_path, "GeoJSON-Dateien (*.geojson)")
         if path:
             try:
                 self.saniert_geojson = gpd.read_file(path)
                 if self.saniert_geojson is None:
                     raise ValueError("Die GeoJSON-Datei konnte nicht geladen werden.")
-                # Filtern der Parent-Objekte und Duplikate nach ID entfernen
+                
+                # Filter parent objects and remove duplicates
                 self.saniert_geojson = self.saniert_geojson[self.saniert_geojson['Obj_Parent'].isnull()]
                 self.saniert_geojson = self.saniert_geojson.drop_duplicates(subset='ID')
                 self.populate_table(self.saniert_geojson, self.saniert_table)
@@ -277,18 +279,21 @@ class RenovationTab1(QWidget):
 
     def populate_table(self, gdf, table_widget):
         """
-        Populates the given table widget with data from the GeoDataFrame.
+        Populate table widget with GeoDataFrame data.
 
-        Args:
-            gdf (GeoDataFrame): The GeoDataFrame containing the data.
-            table_widget (QTableWidget): The table widget to populate.
+        Parameters
+        ----------
+        gdf : GeoDataFrame
+            Source data.
+        table_widget : QTableWidget
+            Target table widget.
         """
         try:
             properties_list = gdf.drop(columns='geometry').to_dict(orient='records')
             if not properties_list:
                 raise ValueError("Die GeoJSON-Datei enthält keine gültigen 'properties'.")
             
-            # Filter properties to only include relevant fields
+            # Filter to relevant fields only
             filtered_properties_list = [
                 {key: value for key, value in properties.items() if key in self.RELEVANT_FIELDS}
             for properties in properties_list]
@@ -309,13 +314,17 @@ class RenovationTab1(QWidget):
 
     def extract_building_info(self, gdf):
         """
-        Extracts building information from the given GeoDataFrame.
+        Extract building information from GeoDataFrame.
 
-        Args:
-            gdf (GeoDataFrame): The GeoDataFrame containing the data.
+        Parameters
+        ----------
+        gdf : GeoDataFrame
+            Source GeoDataFrame.
 
-        Returns:
-            list: A list of dictionaries containing building information.
+        Returns
+        -------
+        list
+            List of building information dictionaries.
         """
         buildings = []
         for _, properties in gdf.drop(columns='geometry').iterrows():
@@ -336,9 +345,7 @@ class RenovationTab1(QWidget):
 
     @pyqtSlot()
     def run_analysis(self):
-        """
-        Runs the renovation analysis using the loaded GeoJSON data and input parameters.
-        """
+        """Run renovation analysis with loaded data and input parameters."""
         try:
             if self.ist_geojson is None or self.saniert_geojson is None:
                 QMessageBox.critical(self, "Fehler", "Beide GeoJSON-Dateien müssen geladen werden.")
@@ -347,6 +354,7 @@ class RenovationTab1(QWidget):
             ist_buildings = self.extract_building_info(self.ist_geojson)
             saniert_buildings = self.extract_building_info(self.saniert_geojson)
 
+            # Extract input parameters
             energy_price_ist = float(self.input_fields["Energiepreis vor Sanierung (€/kWh)"].text())
             energy_price_saniert = float(self.input_fields["Energiepreis nach Sanierung (€/kWh)"].text())
             discount_rate = float(self.input_fields["Diskontierungsrate (%)"].text()) / 100
@@ -359,7 +367,7 @@ class RenovationTab1(QWidget):
             cost_door = float(self.input_fields["Kosten Tür (€/m²)"].text())
             foerderquote = float(self.input_fields["Förderquote"].text())
 
-            # Betriebskosten und Instandhaltungskosten
+            # Operating and maintenance costs
             betriebskosten = {
                 'ground_u': float(self.input_fields["Betriebskosten Boden (€/Jahr)"].text()),
                 'wall_u': float(self.input_fields["Betriebskosten Fassade (€/Jahr)"].text()),
@@ -386,12 +394,15 @@ class RenovationTab1(QWidget):
 
             results = {}
 
+            # Perform analysis for each building pair
             for ist_building, saniert_building in zip(ist_buildings, saniert_buildings):
                 ist_heat_demand = ist_building['Wärmebedarf']
                 saniert_heat_demand = saniert_building['Wärmebedarf']
 
                 analyse = SanierungsAnalyse(ist_heat_demand, saniert_heat_demand, energy_price_ist, energy_price_saniert, discount_rate, years)
                 kosteneinsparung = analyse.berechne_kosteneinsparungen()
+                
+                # Calculate investment costs
                 investitionskosten = {
                     'ground_u': cost_ground * ist_building["ground_area"],
                     'wall_u': cost_wall * ist_building["wall_area"],
@@ -400,15 +411,16 @@ class RenovationTab1(QWidget):
                     'door_u': cost_door * ist_building["wall_area"] * ist_building["fracture_doors"]
                 }
 
-                # Gesamtinvestitionskosten und Förderquote berücksichtigen
                 gesamt_investitionskosten = sum(investitionskosten.values())
                 effektive_investitionskosten = gesamt_investitionskosten * (1 - foerderquote)
 
+                # Calculate financial metrics
                 amortisationszeit = analyse.berechne_amortisationszeit(gesamt_investitionskosten, foerderquote)
                 npv = analyse.berechne_npv(gesamt_investitionskosten, foerderquote)
                 lcca = analyse.lcca(gesamt_investitionskosten, sum(betriebskosten.values()), sum(instandhaltungskosten.values()), sum(restwert_anteile.values()), foerderquote)
                 roi = analyse.berechne_roi(gesamt_investitionskosten, foerderquote)
 
+                # Calculate rent impacts
                 neue_kaltmiete_pro_m2 = cold_rent + effektive_investitionskosten / (amortisationszeit * 12 * ist_building['ground_area']) if amortisationszeit != 0 else 0
                 neue_warmmiete_pro_m2 = neue_kaltmiete_pro_m2 + ((saniert_heat_demand / 12) / ist_building['ground_area']) * energy_price_saniert
 
@@ -440,37 +452,19 @@ class RenovationTab1(QWidget):
 
     @pyqtSlot()
     def update_plot(self):
-        """
-        Updates the plot based on the selected item in the combo box.
-        """
+        """Update plot display based on selected analysis parameter."""
         if not self.results:
             return
 
         selected_plot = self.combo_box.currentText()
-        result_text = f"{selected_plot}:\n"
         
         if selected_plot in ["Gesamtenergiebedarf in kWh/a", "Kaltmieten in €/m²", "Warmmieten in €/m²"]:
             data_ist = {adresse: values[f"{selected_plot} (IST)"] for adresse, values in self.results.items()}
             data_saniert = {adresse: values[f"{selected_plot} (Saniert)"] for adresse, values in self.results.items()}
-            
-            # Plot IST und Saniert Zustand
             self.canvas.plot(data_ist, data_saniert, f"{selected_plot}", "Adresse", "Wert")
-            
-            for k in data_ist.keys():
-                result_text += f"{k} (IST): {data_ist[k]:.2f}\n"
-                result_text += f"{k} (Saniert): {data_saniert[k]:.2f}\n"
         else:
             data = {adresse: values[selected_plot] for adresse, values in self.results.items()}
-            title = selected_plot
-            xlabel = "Adresse"
-            ylabel = "Wert"
-            
-            self.canvas.plot(data, {}, title, xlabel, ylabel)  # Empty dictionary for saniert to avoid plotting errors
-            
-            for k, v in data.items():
-                result_text += f"{k}: {v:.2f}\n"
-        
-        #self.result_label.setText(result_text)
+            self.canvas.plot(data, {}, selected_plot, "Adresse", "Wert")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

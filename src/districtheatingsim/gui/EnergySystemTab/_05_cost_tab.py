@@ -1,8 +1,10 @@
 """
-Filename: _05_cost_tab.py
+Cost Tab Module
+===============
+
+This module contains the CostTab class, which is responsible for displaying and managing cost-related data for different components in a heat generation project.
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-12-11
-Description: Contains the CostTab.
 """
 
 import pandas as pd

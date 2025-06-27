@@ -1,8 +1,11 @@
 """
-Filename: producer_order_tab.py
+Producer Order Tab Module
+=========================
+
+Tab for selecting and ordering heat producers in district heating networks.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-02-11
-Description: Contains the ProducerOrderTab class.
 """
 
 import os
@@ -15,14 +18,29 @@ from PyQt5.QtWidgets import QVBoxLayout, QWidget, QGroupBox, QListWidget, QPushB
 from PyQt5.QtCore import Qt
 
 class ProducerOrderTab(QWidget):
+    """
+    Widget for configuring heat producer selection and priority order.
+    """
+    
     def __init__(self, dialog_config, parent=None):
+        """
+        Initialize producer order tab.
+
+        Parameters
+        ----------
+        dialog_config : dict
+            Configuration data.
+        parent : QWidget, optional
+            Parent widget.
+        """
         super().__init__(parent)
         self.parent = parent
         self.dialog_config = dialog_config
         self.initUI()
-        self.percentage_inputs = []  # Liste für die QLineEdit-Widgets
+        self.percentage_inputs = []
 
     def initUI(self):
+        """Initialize user interface components."""
         layout = QVBoxLayout(self)
 
         producerGroup = QGroupBox("Erzeugerauswahl")
@@ -35,6 +53,14 @@ class ProducerOrderTab(QWidget):
         self.load_producers()
     
     def create_producer_selection(self):
+        """
+        Create producer selection interface components.
+
+        Returns
+        -------
+        QVBoxLayout
+            Layout containing producer selection widgets.
+        """
         layout = QVBoxLayout()
 
         self.producer_list_widget = QListWidget()
@@ -59,9 +85,7 @@ class ProducerOrderTab(QWidget):
         return layout
 
     def load_producers(self):
-        """
-        Loads the producers from the GeoJSON file and populates the producer list widget.
-        """
+        """Load producers from GeoJSON file and populate list widget."""
         filepath = self.parent.network_data_tab.erzeugeranlagenInput.itemAt(1).widget().text()
         try:
             producers = self.read_producers_from_geojson(filepath)
@@ -75,13 +99,22 @@ class ProducerOrderTab(QWidget):
 
     def read_producers_from_geojson(self, filepath):
         """
-        Reads the producers from the GeoJSON file.
+        Read producer data from GeoJSON file.
 
-        Args:
-            filepath (str): Path to the GeoJSON file.
+        Parameters
+        ----------
+        filepath : str
+            Path to GeoJSON file.
 
-        Returns:
-            list: List of producers with their properties.
+        Returns
+        -------
+        list
+            List of producer dictionaries.
+
+        Raises
+        ------
+        FileNotFoundError
+            If GeoJSON file not found.
         """
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"GeoJSON file not found: {filepath}")
@@ -96,9 +129,7 @@ class ProducerOrderTab(QWidget):
         return producers
 
     def add_producer_to_order(self):
-        """
-        Adds the selected producer to the order list.
-        """
+        """Add selected producer to the order list."""
         selected_items = self.producer_list_widget.selectedItems()
         for item in selected_items:
             producer = item.data(Qt.UserRole)
@@ -111,9 +142,7 @@ class ProducerOrderTab(QWidget):
         self.update_producer_percentage_inputs()
 
     def remove_producer_from_order(self):
-        """
-        Removes the selected producer from the order list.
-        """
+        """Remove selected producer from the order list."""
         selected_items = self.producer_order_list_widget.selectedItems()
         for item in selected_items:
             self.producer_order_list_widget.takeItem(self.producer_order_list_widget.row(item))
@@ -121,11 +150,9 @@ class ProducerOrderTab(QWidget):
         self.update_producer_percentage_inputs()
 
     def update_producer_percentage_inputs(self):
-        """
-        Updates the percentage input fields for secondary producers.
-        """
+        """Update percentage input fields for secondary producers."""
         # Clear existing percentage inputs
-        self.percentage_inputs.clear()  # Leere die Liste
+        self.percentage_inputs.clear()
         while self.producer_percentage_inputs.count():
             item = self.producer_percentage_inputs.takeAt(0)
             widget = item.widget()
@@ -139,7 +166,7 @@ class ProducerOrderTab(QWidget):
                 percentage_input_layout = QHBoxLayout()
                 label = QLabel(f"Erzeuger {i+1} Prozentuale Erzeugung (%):")
                 line_edit = QLineEdit()
-                self.percentage_inputs.append(line_edit)  # Speichere das QLineEdit in der Liste
+                self.percentage_inputs.append(line_edit)
                 percentage_input_layout.addWidget(label)
                 percentage_input_layout.addWidget(line_edit)
                 self.producer_percentage_inputs.addLayout(percentage_input_layout)

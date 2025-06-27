@@ -1,8 +1,11 @@
 """
-Filename: lod2_visualization.py
+LOD2 Visualization Module
+========================
+
+Widget for visualizing and editing LOD2 building data with tabbed interface.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-02-02
-Description: Contains the view class for LOD2 data visualization.
 """
 
 import matplotlib.pyplot as plt
@@ -18,20 +21,22 @@ from districtheatingsim.gui.LOD2Tab.lod2_pv_tab import PVDataVisualizationTab
 
 class LOD2DataVisualization(QWidget):
     """
-    The view class for LOD2 data visualization.
+    Widget for visualizing and editing LOD2 building data with tabbed interface.
     """
     data_selected = pyqtSignal(int)
     building_type_changed = pyqtSignal(int, str, str)
-    building_state_changed = pyqtSignal(int, str, str)  # Neu: Signal für Änderungen am Gebäudezustand
-    combobox_changed = pyqtSignal(int, str, str)  # Zeile, Key, Wert für ComboBoxen
-    data_changed = pyqtSignal(int, str, object)  # Zeile, Key, Wert
+    building_state_changed = pyqtSignal(int, str, str)
+    combobox_changed = pyqtSignal(int, str, str)
+    data_changed = pyqtSignal(int, str, object)
 
     def __init__(self, parent=None):
         """
-        Initializes the LOD2DataVisualization with UI components.
+        Initialize LOD2 data visualization widget.
 
-        Args:
-            parent (QWidget, optional): The parent widget.
+        Parameters
+        ----------
+        parent : QWidget, optional
+            Parent widget.
         """
         super().__init__(parent)
         self.comboBoxBuildingTypesItems = []
@@ -40,7 +45,7 @@ class LOD2DataVisualization(QWidget):
         
         self.initUI()
 
-        self.visualization_3d = LOD2Visualization3D(self.canvas_3d)  # Initialize the 3D visualization handler
+        self.visualization_3d = LOD2Visualization3D(self.canvas_3d)
 
         self.COLUMN_MAPPING = {
             "Adresse": "Adresse",
@@ -76,9 +81,7 @@ class LOD2DataVisualization(QWidget):
         }
 
     def initUI(self):
-        """
-        Initializes the UI components of the LOD2DataVisualization.
-        """
+        """Initialize user interface components."""
         main_layout = QVBoxLayout(self)
         data_vis_layout = QHBoxLayout()
         main_layout.addLayout(data_vis_layout)
@@ -100,11 +103,11 @@ class LOD2DataVisualization(QWidget):
             "Lage und Geometrie": ['Adresse', 'UTM_X (m)', 'UTM_Y (m)', 'Grundfläche (m²)', 'Wandfläche (m²)', 'Dachfläche (m²)', 'Volumen (m³)', 'Stockwerke'],
             "Energiebedarf und Nutzung": ['Adresse', 'Gebäudetyp SLP', 'Subtyp SLP', 'WW-Bedarf (kWh/m²)', 'Typ Heizflächen', 'VLT max (°C)', 'Steigung Heizkurve', 'RLT max (°C)', 'Normaußentemperatur (°C)'],
             "Gebäudehülle und Typ": ['Adresse', 'Gebäudetyp TABULA', 'Gebäudezustand TABULA', 'U-Wert Wand (W/m²K)', 'U-Wert Dach (W/m²K)', 'U-Wert Fenster (W/m²K)', 'U-Wert Tür (W/m²K)', 'U-Wert Boden (W/m²K)'],
-            "Zusätzliche Eingaben": ['Adresse', 'Luftwechselrate (1/h)', 'Fensteranteil (%)', 'Türanteil (%)', 'Raumtemperatur (°C)', 'Heizgrenztemperatur (°C)'], # umbennen in Heizgrenztempertur
+            "Zusätzliche Eingaben": ['Adresse', 'Luftwechselrate (1/h)', 'Fensteranteil (%)', 'Türanteil (%)', 'Raumtemperatur (°C)', 'Heizgrenztemperatur (°C)'],
             "Ergebnisse Wärmebedarfe": ['Adresse', 'Wärmebedarf (kWh)', 'Warmwasseranteil (%)']
         }
 
-    	# Tabellen für die Kategorien erstellen
+        # Tabellen für die Kategorien erstellen
         self.tables = {}
         for category, headers in self.categories.items():
             table = QTableWidget()
@@ -115,7 +118,6 @@ class LOD2DataVisualization(QWidget):
             table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
             table.setSortingEnabled(False)
 
-            # Verbindung zu itemChanged, damit Änderungen im UI direkt ins Datenmodell übernommen werden
             table.itemChanged.connect(self.on_item_changed)
 
             self.tables[category] = table
@@ -137,29 +139,29 @@ class LOD2DataVisualization(QWidget):
         data_vis_layout.addWidget(self.canvas_3d)
 
     def on_table_row_select(self):
-        """
-        Handles the event when a table row is selected.
-        """
+        """Handle table row selection events."""
         for category, table in self.tables.items():
             selected_rows = table.selectionModel().selectedRows()
             if selected_rows:
                 row = selected_rows[0].row()
-                self.data_selected.emit(row)  # Emit the signal to inform the presenter
+                self.data_selected.emit(row)
 
     def on_item_changed(self, item):
         """
-        Synchronisiert Änderungen aus der Tabelle mit dem internen Datenmodell.
+        Synchronize table changes with data model.
 
-        Args:
-            item (QTableWidgetItem): Das geänderte Item.
+        Parameters
+        ----------
+        item : QTableWidgetItem
+            Changed table item.
         """
         if self.updating_table:
-            return  # Ignoriere Änderungen, wenn die Tabelle aktualisiert wird
+            return
         
         table = item.tableWidget()
         category = next((cat for cat, tbl in self.tables.items() if tbl == table), None)
         if not category:
-            return  # Sollte nicht passieren
+            return
 
         row = item.row()
         col = item.column()
@@ -171,44 +173,52 @@ class LOD2DataVisualization(QWidget):
 
         value = item.text()
 
-        # Konvertiere numerische Werte in den passenden Typ
         try:
             if "." in value:
-                value = float(value)  # 🔹 Wandelt in `float` um
+                value = float(value)
             else:
-                value = int(value)  # 🔹 Wandelt in `int` um
+                value = int(value)
         except ValueError:
-            pass  # 🔹 Falls kein numerischer Wert, bleibt es `str`
+            pass
 
-        self.data_changed.emit(row, internal_key, value)  # Jetzt mit `object` als dritten Parameter
+        self.data_changed.emit(row, internal_key, value)
 
     def on_combobox_changed(self, row, key, comboBox):
         """
-        Synchronisiert Änderungen aus der ComboBox mit dem Presenter.
+        Synchronize ComboBox changes with presenter.
 
-        Args:
-            row (int): Die Zeilenindex des Gebäudes.
-            key (str): Der interne Schlüssel im Datenmodell.
-            comboBox (QComboBox): Die ComboBox, die geändert wurde.
+        Parameters
+        ----------
+        row : int
+            Building row index.
+        key : str
+            Internal data key.
+        comboBox : QComboBox
+            Changed ComboBox widget.
         """
         value = comboBox.currentText()
-        self.combobox_changed.emit(row, key, value)  # Signal an Presenter senden
+        self.combobox_changed.emit(row, key, value)
 
     def update_table(self, building_info, comboBoxBuildingTypesItems, building_types, building_subtypes):
         """
-        Update the table with new data.
+        Update table with building data.
 
-        Args:
-            building_info (dict): A dictionary containing building information.
-            comboBoxBuildingTypesItems (list): A list of items for the building types ComboBox.
-            building_types (list): A list of building types.
-            building_subtypes (dict): A dictionary mapping building types to their subtypes.
+        Parameters
+        ----------
+        building_info : dict
+            Building information dictionary.
+        comboBoxBuildingTypesItems : list
+            Building type ComboBox items.
+        building_types : list
+            Available building types.
+        building_subtypes : dict
+            Building subtypes by type.
         """
         self.comboBoxBuildingTypesItems = comboBoxBuildingTypesItems
         self.building_types = building_types
         self.building_subtypes = building_subtypes
 
-        self.updating_table = True  # Setze die Flagge, bevor die Tabelle aktualisiert wird
+        self.updating_table = True
         for category, table in self.tables.items():
             table.setRowCount(len(building_info))
             table.setVerticalHeaderLabels([str(i + 1) for i in range(len(building_info))])
@@ -216,45 +226,40 @@ class LOD2DataVisualization(QWidget):
         for row, (parent_id, info) in enumerate(building_info.items()):
             self.update_table_row(row, info)
 
-        self.updating_table = False  # Setze die Flagge zurück, nachdem die Tabelle aktualisiert wurde        
+        self.updating_table = False
 
     def update_table_row(self, row, info):
         """
-        Aktualisiert eine Zeile in den Tabellen mit den korrekten Spaltennamen.
+        Update single table row with building information.
 
-        Args:
-            row (int): Die Zeilenindex des Gebäudes.
-            info (dict): Das Gebäudeinformations-Dictionary.
+        Parameters
+        ----------
+        row : int
+            Row index to update.
+        info : dict
+            Building information dictionary.
         """
         for category, table in self.tables.items():
             for col in range(table.columnCount()):
                 gui_label = table.horizontalHeaderItem(col).text()
-
-                # Suche das passende interne Datenfeld mit dem Mapping
                 internal_key = next((key for key, value in self.COLUMN_MAPPING.items() if value == gui_label), None)
 
                 if internal_key:
                     value = info.get(internal_key, "-")
 
-
-                    # **Gebäudetyp SLP → Subtyp anpassen**
                     if gui_label == "Gebäudetyp SLP":
                         comboBoxSLPTypes = QComboBox()
                         comboBoxSLPTypes.addItems(self.comboBoxBuildingTypesItems)
-                        # if value is none, set to HMF as default
                         if value is None or '':
                             value = "HMF"
                         else:
                             comboBoxSLPTypes.setCurrentText(str(value))
                         
-                        # Signal für Änderung Gebäudetyp SLP → ruft update_building_subtypes() im Presenter auf
                         comboBoxSLPTypes.currentIndexChanged.connect(lambda idx, r=row, k=internal_key: self.building_type_changed.emit(r, k, comboBoxSLPTypes.currentText()))
-                        
                         table.setCellWidget(row, col, comboBoxSLPTypes)
 
                     elif gui_label == "Subtyp SLP":
                         comboBoxSLPSubtypes = QComboBox()
-                        # Die verfügbaren Subtypen basieren auf dem Gebäudetyp SLP
                         geb_typ = info.get("Gebäudetyp", "")
                         comboBoxSLPSubtypes.addItems(self.building_subtypes.get(geb_typ, []))
                         if value is None or '':
@@ -262,41 +267,27 @@ class LOD2DataVisualization(QWidget):
                         else:
                             comboBoxSLPSubtypes.setCurrentText(str(value))
 
-                        # Änderungen sofort speichern
                         comboBoxSLPSubtypes.currentIndexChanged.connect(lambda idx, r=row, k=internal_key: self.combobox_changed.emit(r, k, comboBoxSLPSubtypes.currentText()))
-
                         table.setCellWidget(row, col, comboBoxSLPSubtypes)
 
-                    # **TABULA-Gebäudetyp → U-Werte aktualisieren**
                     elif gui_label == "Gebäudetyp TABULA":
                         comboBoxBuildingTypes = QComboBox()
                         comboBoxBuildingTypes.addItems(self.building_types)
                         comboBoxBuildingTypes.setCurrentText(str(value))
-
-                        # Signal für Änderung Gebäudetyp TABULA → ruft update_u_values() im Presenter auf
                         comboBoxBuildingTypes.currentIndexChanged.connect(lambda idx, r=row, k=internal_key: self.building_state_changed.emit(r, k, comboBoxBuildingTypes.currentText()))
-                        
                         table.setCellWidget(row, col, comboBoxBuildingTypes)
 
-                    # **Gebäudezustand TABULA → U-Werte aktualisieren**
                     elif gui_label == "Gebäudezustand TABULA":
                         comboBoxBuildingState = QComboBox()
                         comboBoxBuildingState.addItems(["Existing_state", "Usual_Refurbishment", "Advanced_Refurbishment", "Individuell"])
                         comboBoxBuildingState.setCurrentText(str(value))
-
-                        # Signal für Änderung Gebäudezustand → ruft update_u_values() im Presenter auf
                         comboBoxBuildingState.currentIndexChanged.connect(lambda idx, r=row, k=internal_key: self.building_state_changed.emit(r, k, comboBoxBuildingState.currentText()))
-                        
                         table.setCellWidget(row, col, comboBoxBuildingState)
 
-                    # **Numerische Werte**
-
                     elif gui_label == "Warmwasseranteil (%)" and isinstance(value, float) and isinstance(value, int):
-                        # formate as percentage
                         table.setItem(row, col, QTableWidgetItem(f"{value*100:.2f}"))
 
                     else:
-                        # Setze reguläre Werte
                         if isinstance(value, float):
                             table.setItem(row, col, QTableWidgetItem(f"{value:.2f}"))
                         else:
@@ -304,22 +295,25 @@ class LOD2DataVisualization(QWidget):
 
     def display_data(self, building_info):
         """
-        Display the loaded building data in the Tree View.
+        Display building data in PV tab.
         
-        Args:
-            building_info (dict): A dictionary containing building information.
+        Parameters
+        ----------
+        building_info : dict
+            Building information dictionary.
         """
         self.pv_tab.display_data(building_info)
 
     def update_pv_tab(self, pv_results):
         """
-        Update the PV tab with the calculated PV results.
+        Update PV tab with calculation results.
 
-        Args:
-            pv_results (list): A list of dictionaries containing PV calculation results.
+        Parameters
+        ----------
+        pv_results : list
+            PV calculation results.
         """
         self.pv_tab.treeWidget.clear()
-        # Cluster the PV results by building
         building_clusters = {}
         for result in pv_results:
             building = result['Building']
@@ -327,7 +321,6 @@ class LOD2DataVisualization(QWidget):
                 building_clusters[building] = []
                 building_clusters[building].append(result)
 
-        # Add clustered results to the PV tab
         for building, results in building_clusters.items():
             building_item = self.pv_tab.add_building(building, results[0]['Latitude'], results[0]['Longitude'])
             for result in results:
@@ -335,11 +328,14 @@ class LOD2DataVisualization(QWidget):
         
     def update_subtype_combobox(self, row, subtypes):
         """
-        Update the subtype ComboBox with the new subtypes.
+        Update subtype ComboBox with new options.
 
-        Args:
-            col (int): The row index of the ComboBox.
-            subtypes (list): A list of subtypes to populate the ComboBox.
+        Parameters
+        ----------
+        row : int
+            Row index of ComboBox.
+        subtypes : list
+            Available subtypes.
         """
         comboBoxSubtypes = self.tables["Energiebedarf und Nutzung"].cellWidget(row, 2)
         comboBoxSubtypes.clear()
@@ -347,64 +343,89 @@ class LOD2DataVisualization(QWidget):
 
     def get_tabula_building_type(self, row):
         """
-        Returns the currently selected TABULA building type from the ComboBox.
+        Get selected TABULA building type.
 
-        Args:
-            row (int): The row index of the building type ComboBox.
+        Parameters
+        ----------
+        row : int
+            Row index.
 
-        Returns:
-            str: The selected TABULA building type.
+        Returns
+        -------
+        str
+            Selected building type.
         """
         return self.tables["Gebäudehülle und Typ"].cellWidget(row, 1).currentText()
 
     def get_building_state(self, row):
         """
-        Returns the currently selected building state from the ComboBox.
+        Get selected building state.
 
-        Args:
-            row (int): The row index of the building state ComboBox.
+        Parameters
+        ----------
+        row : int
+            Row index.
 
-        Returns:
-            str: The selected building state.
+        Returns
+        -------
+        str
+            Selected building state.
         """
         return self.tables["Gebäudehülle und Typ"].cellWidget(row, 2).currentText()
 
     def get_combobox_building_type(self, row):
         """
-        Returns the current building type from the ComboBox.
+        Get selected building type from ComboBox.
 
-        Args:
-            row (int): The row index of the building type ComboBox.
+        Parameters
+        ----------
+        row : int
+            Row index.
 
-        Returns:
-            str: The current building type selected in the ComboBox.
+        Returns
+        -------
+        str
+            Selected building type.
         """
         return self.tables["Energiebedarf und Nutzung"].cellWidget(row, 1).currentText()
 
     def update_3d_view(self, building_info):
         """
-        Delegate the update of the 3D view to the LOD2Visualization3D class.
+        Update 3D visualization with building data.
 
-        Args:
-            building_info (dict): A dictionary containing building information.
+        Parameters
+        ----------
+        building_info : dict
+            Building information dictionary.
         """
         self.visualization_3d.update_3d_view(building_info)
 
     def highlight_building_3d(self, parent_id, roof=False, roof_id=None, roof_info=None):
         """
-        Highlights a building in the 3D plot.
+        Highlight building in 3D plot.
 
-        Args:
-            parent_id (str): The ID of the building to highlight.
+        Parameters
+        ----------
+        parent_id : str
+            Building ID to highlight.
+        roof : bool, optional
+            Whether to highlight roof.
+        roof_id : str, optional
+            Roof ID to highlight.
+        roof_info : dict, optional
+            Roof information.
         """
         self.visualization_3d.highlight_building_3d(parent_id, roof, roof_id, roof_info)
 
     def show_info_message(self, title, message):
         """
-        Displays an informational message box.
+        Display information message dialog.
 
-        Args:
-            title (str): The title of the message box.
-            message (str): The message to be displayed.
+        Parameters
+        ----------
+        title : str
+            Dialog title.
+        message : str
+            Message text.
         """
         QMessageBox.information(self, title, message)

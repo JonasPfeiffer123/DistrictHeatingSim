@@ -1,8 +1,11 @@
 """
-Filename: utilities.py
+Utilities Module
+===================
+
+This module provides utility functions for the DistrictHeatingSim application.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-03-10
-Description: Script with utility functions. get_resource_path() is used to get the absolute path to a resource.
 """
 
 import os

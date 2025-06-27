@@ -1,8 +1,11 @@
 """
-Filename: _08_sensitivity_tab.py
+Sensitivity Tab Module
+======================
+
+This module contains the SensitivityTab class, which is responsible for performing sensitivity analysis on the heat generation costs based on varying input parameters such as gas, electricity, and wood prices. It provides a user interface for inputting ranges for these parameters and visualizes the results in 3D plots.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-08-01
-Description: Contains the SensitivityTab.
 """
 
 from matplotlib.figure import Figure

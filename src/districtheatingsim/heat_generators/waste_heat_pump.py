@@ -1,11 +1,14 @@
 """
-Filename: waste_heat_pump.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-12-11
-Description: Waste heat pump implementation for district heating applications.
+Waste Heat Pump Module
+================================
 
 This module provides comprehensive modeling capabilities for waste heat pump systems
-in district heating applications. Waste heat pumps utilize thermal energy from
+in district heating applications.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-12-11
+
+Waste heat pumps utilize thermal energy from
 industrial processes, data centers, wastewater treatment plants, and other waste
 heat sources, providing highly efficient heating solutions with excellent economic
 performance and environmental benefits.

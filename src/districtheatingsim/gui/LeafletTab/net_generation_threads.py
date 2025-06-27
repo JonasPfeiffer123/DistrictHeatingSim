@@ -1,8 +1,11 @@
 """
-Filename: net_generation_thread.py
+Net Generation Threads Module
+=============================
+
+Threading classes for network generation, file import, and geocoding operations.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-09-10
-Description: Contains the threaded functionality function for generating the network.
 """
 
 import geopandas as gpd
@@ -15,31 +18,28 @@ from districtheatingsim.geocoding.geocoding import process_data
 
 class NetGenerationThread(QThread):
     """
-    Thread for generating the network.
-
-    Signals:
-        calculation_done (object): Emitted when the calculation is done.
-        calculation_error (str): Emitted when an error occurs during the calculation.
+    Thread for generating district heating networks.
     """
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(str)
 
     def __init__(self, inputs, base_path):
         """
-        Initializes the NetGenerationThread.
+        Initialize network generation thread.
 
-        Args:
-            inputs (dict): Input parameters for generating the network.
-            base_path (str): Base path for file operations.
+        Parameters
+        ----------
+        inputs : dict
+            Input parameters for network generation.
+        base_path : str
+            Base path for file operations.
         """
         super().__init__()
         self.inputs = inputs
         self.base_path = base_path
 
     def run(self):
-        """
-        Runs the network generation.
-        """
+        """Run network generation process."""
         try:
             print(self.inputs["coordinates"])
             generate_and_export_layers(self.inputs["streetLayer"], self.inputs["dataCsv"], self.inputs["coordinates"], self.base_path, algorithm=self.inputs["generation_mode"])
@@ -49,32 +49,30 @@ class NetGenerationThread(QThread):
             self.calculation_error.emit(str(e) + "\n" + traceback.format_exc())
 
     def stop(self):
-        """
-        Stops the thread.
-        """
+        """Stop thread execution."""
         if self.isRunning():
             self.requestInterruption()
-            self.wait()  # Wait for the thread to safely terminate
+            self.wait()
 
 class FileImportThread(QThread):
     """
-    Thread for importing files.
-
-    Signals:
-        calculation_done (object): Emitted when the calculation is done.
-        calculation_error (str): Emitted when an error occurs during the calculation.
+    Thread for importing geospatial files.
     """
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(str)
 
     def __init__(self, m, filenames, color):
         """
-        Initializes the FileImportThread.
+        Initialize file import thread.
 
-        Args:
-            m: Map object for visualizing the imported files.
-            filenames (list): List of filenames to import.
-            color (str): Color for visualizing the imported files.
+        Parameters
+        ----------
+        m : object
+            Map object for visualization.
+        filenames : list
+            List of filenames to import.
+        color : str
+            Color for visualization styling.
         """
         super().__init__()
         self.m = m
@@ -82,9 +80,7 @@ class FileImportThread(QThread):
         self.color = color
 
     def run(self):
-        """
-        Runs the file import.
-        """
+        """Run file import process."""
         try:
             results = {}
             for filename in self.filenames:
@@ -104,50 +100,42 @@ class FileImportThread(QThread):
             self.calculation_error.emit(str(e) + "\n" + traceback.format_exc())
 
     def stop(self):
-        """
-        Stops the thread.
-        """
+        """Stop thread execution."""
         if self.isRunning():
             self.requestInterruption()
-            self.wait()  # Wait for the thread to safely terminate
+            self.wait()
 
 class GeocodingThread(QThread):
     """
-    Thread for geocoding.
-
-    Signals:
-        calculation_done (object): Emitted when the calculation is done.
-        calculation_error (Exception): Emitted when an error occurs during the calculation.
+    Thread for geocoding address data.
     """
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(Exception)
 
     def __init__(self, inputfilename):
         """
-        Initializes the GeocodingThread.
+        Initialize geocoding thread.
 
-        Args:
-            inputfilename (str): Filename for the input data to be geocoded.
+        Parameters
+        ----------
+        inputfilename : str
+            Input filename for geocoding data.
         """
         super().__init__()
         self.inputfilename = inputfilename
 
     def run(self):
-        """
-        Runs the geocoding process.
-        """
+        """Run geocoding process."""
         try:
             process_data(self.inputfilename)
             self.calculation_done.emit((self.inputfilename))
         except Exception as e:
-            tb = traceback.format_exc()  # Returns the full traceback as a string
+            tb = traceback.format_exc()
             error_message = f"Ein Fehler ist aufgetreten: {e}\n{tb}"
             self.calculation_error.emit(Exception(error_message))
 
     def stop(self):
-        """
-        Stops the thread.
-        """
+        """Stop thread execution."""
         if self.isRunning():
             self.requestInterruption()
-            self.wait()  # Wait for the thread to safely terminate
+            self.wait()

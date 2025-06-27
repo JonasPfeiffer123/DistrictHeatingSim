@@ -1,13 +1,15 @@
 """
-Filename: heat_requirement_BDEW.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-03-10
-Description: BDEW Standard Load Profile (SLP) calculation for commercial and public buildings.
+Heat Requirement BDEW Module
+============================
 
 This module implements the BDEW (German Association of Energy and Water Industries)
 Standard Load Profile methodology for calculating realistic heat demand profiles
-for commercial, public, and industrial buildings. It provides temperature-dependent
-load profiles with weekday variations for district heating system planning and
+for commercial, public, and industrial buildings.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2025-03-10
+
+It provides temperature-dependent load profiles with weekday variations for district heating system planning and
 energy demand forecasting.
 
 The BDEW SLP method uses standardized coefficients and hourly factors to generate

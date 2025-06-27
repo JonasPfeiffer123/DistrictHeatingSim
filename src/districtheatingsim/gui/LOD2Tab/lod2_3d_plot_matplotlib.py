@@ -1,8 +1,11 @@
 """
-Filename: lod2_3d_plot_matplotlib.py
+LOD2 3D Plot Module
+==================
+
+3D visualization widget for LOD2 building data using Matplotlib.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-02-02
-Description: Contains the 3D visualization for LOD2 data.
 """
 
 import numpy as np
@@ -19,28 +22,35 @@ import matplotlib.pyplot as plt
 
 class LOD2Visualization3D:
     """
-    A class for handling 3D visualization of LOD2 building data.
+    Widget for 3D visualization of LOD2 building data.
     """
 
     def __init__(self, canvas_3d):
         """
-        Initialize with the 3D canvas.
+        Initialize 3D visualization widget.
 
-        Args:
-            canvas_3d (FigureCanvas): The canvas for rendering 3D plots.
+        Parameters
+        ----------
+        canvas_3d : FigureCanvas
+            Canvas for rendering 3D plots.
         """
         self.figure_3d = canvas_3d.figure
         self.canvas_3d = canvas_3d
-        self.building_data = {}  # To keep track of all buildings
-        self.roof_data = {}  # To keep track of all roofs
-        self.highlighted_building_id = None  # To keep track of the highlighted building
-        self.roof = False  # To keep track of the highlighted roof
-        self.highlighted_roof_id = None  # To keep track of the highlighted roof
+        self.building_data = {}
+        self.roof_data = {}
+        self.highlighted_building_id = None
+        self.roof = False
+        self.highlighted_roof_id = None
         self.utm_epsg = "EPSG:25833"
 
     def update_3d_view(self, building_info):
         """
-        Update the 3D view with new building data.
+        Update 3D view with building data.
+
+        Parameters
+        ----------
+        building_info : dict
+            Building information dictionary.
         """
         self.building_data = building_info
         self.figure_3d.clear()
@@ -85,21 +95,25 @@ class LOD2Visualization3D:
 
     def plot_building_parts(self, ax, info, min_x, min_y, min_z, max_x, max_y, max_z, building_color):
         """
-        Plots the building parts in the 3D plot and updates the bounds.
+        Plot building parts and update bounding box.
 
-        Args:
-            ax (Axes3D): The 3D axes object.
-            info (dict): A dictionary containing building information.
-            min_x (float): The minimum X value for bounding the plot.
-            min_y (float): The minimum Y value for bounding the plot.
-            min_z (float): The minimum Z value for bounding the plot.
-            max_x (float): The maximum X value for bounding the plot.
-            max_y (float): The maximum Y value for bounding the plot.
-            max_z (float): The maximum Z value for bounding the plot.
-            building_color (str): The color to use for the building parts.
+        Parameters
+        ----------
+        ax : Axes3D
+            3D axes object.
+        info : dict
+            Building information dictionary.
+        min_x, min_y, min_z : float
+            Minimum bounding values.
+        max_x, max_y, max_z : float
+            Maximum bounding values.
+        building_color : tuple
+            RGBA color for building parts.
 
-        Returns:
-            tuple: Updated bounding box values (min_x, min_y, min_z, max_x, max_y, max_z).
+        Returns
+        -------
+        tuple
+            Updated bounding box values.
         """
         min_x, min_y, min_z, max_x, max_y, max_z = self.plot_geometry(
             ax, info.get('Ground', []), building_color, min_x, min_y, min_z, max_x, max_y, max_z)
@@ -123,21 +137,25 @@ class LOD2Visualization3D:
 
     def plot_geometry(self, ax, geoms, color, min_x, min_y, min_z, max_x, max_y, max_z):
         """
-        Plots the geometry in the 3D plot and updates the bounds.
+        Plot geometry and update bounding box.
 
-        Args:
-            ax (Axes3D): The 3D axes object.
-            geoms (list or shapely.geometry): A list of geometries or a single geometry.
-            color (str): The color to use for the geometry.
-            min_x (float): The minimum X value for bounding the plot.
-            min_y (float): The minimum Y value for bounding the plot.
-            min_z (float): The minimum Z value for bounding the plot.
-            max_x (float): The maximum X value for bounding the plot.
-            max_y (float): The maximum Y value for bounding the plot.
-            max_z (float): The maximum Z value for bounding the plot.
+        Parameters
+        ----------
+        ax : Axes3D
+            3D axes object.
+        geoms : list or shapely.geometry
+            Geometries to plot.
+        color : tuple
+            RGBA color for geometry.
+        min_x, min_y, min_z : float
+            Minimum bounding values.
+        max_x, max_y, max_z : float
+            Maximum bounding values.
 
-        Returns:
-            tuple: Updated bounding box values (min_x, min_y, min_z, max_x, max_y, max_z).
+        Returns
+        -------
+        tuple
+            Updated bounding box values.
         """
         if isinstance(geoms, (Polygon, MultiPolygon)):
             geoms = [geoms]
@@ -169,10 +187,18 @@ class LOD2Visualization3D:
 
     def highlight_building_3d(self, parent_id, roof=False, roof_id=None, roof_info=None):
         """
-        Highlights a specific building in the 3D plot.
+        Highlight specific building in 3D plot.
 
-        Args:
-            parent_id (str): The ID of the building to highlight.
+        Parameters
+        ----------
+        parent_id : str
+            Building ID to highlight.
+        roof : bool, optional
+            Whether to highlight roof.
+        roof_id : int, optional
+            Roof index to highlight.
+        roof_info : dict, optional
+            Roof information dictionary.
         """
         self.roof = roof
         self.highlighted_roof_id = roof_id
@@ -188,14 +214,18 @@ class LOD2Visualization3D:
 
     def set_equal_axes(self, ax, min_x, max_x, min_y, max_y, min_z, max_z):
         """
-        Stellt sicher, dass alle Achsen denselben Maßstab haben, 
-        aber die Z-Achse proportional zur größten X- oder Y-Spanne bleibt.
-        
-        Args:
-            ax (Axes3D): Matplotlib 3D-Achse.
-            min_x, max_x (float): X-Grenzen.
-            min_y, max_y (float): Y-Grenzen.
-            min_z, max_z (float): Z-Grenzen.
+        Set equal aspect ratio for all axes with proportional Z scaling.
+
+        Parameters
+        ----------
+        ax : Axes3D
+            3D axes object.
+        min_x, max_x : float
+            X axis bounds.
+        min_y, max_y : float
+            Y axis bounds.
+        min_z, max_z : float
+            Z axis bounds.
         """
         range_x = max_x - min_x
         range_y = max_y - min_y
@@ -224,13 +254,20 @@ class LOD2Visualization3D:
 
     def add_osm_background(self, ax, xmin, xmax, ymin, ymax, zmin, zmax, resolution=400):
         """
-        Fügt eine OSM-Karte als Hintergrund für das 3D-Plot ein.
-        
-        Args:
-            ax (Axes3D): Matplotlib 3D-Achse
-            xmin, ymin (float): Untere linke Ecke der Bounding Box
-            xmax, ymax (float): Obere rechte Ecke der Bounding Box
-            resolution (int): Max. Anzahl an Punkten pro Achse (Standard: 200)
+        Add OSM map as 3D plot background.
+
+        Parameters
+        ----------
+        ax : Axes3D
+            3D axes object.
+        xmin, ymin : float
+            Lower left corner of bounding box.
+        xmax, ymax : float
+            Upper right corner of bounding box.
+        zmin, zmax : float
+            Z bounds for background placement.
+        resolution : int, optional
+            Maximum points per axis for performance.
         """
 
         print(f"Bounding Box berechnen... xmin={xmin}, xmax={xmax}, ymin={ymin}, ymax={ymax}")
