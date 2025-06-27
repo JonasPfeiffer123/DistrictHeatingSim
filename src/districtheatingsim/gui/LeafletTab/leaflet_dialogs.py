@@ -1,11 +1,12 @@
 """
-Filename: visualization_dialogs.py
+Leaflet Dialogs Module
+=====================
+
+Dialog widgets for network generation, OSM data download, and building queries.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-09-10
-Description: Contains the Dialogs for the VisualizationTab.
 """
-
-# To do: Optimize file naming
 
 import os
 
@@ -29,11 +30,23 @@ from districtheatingsim.osm.import_osm_data_geojson import build_query, download
    
 class LayerGenerationDialog(QDialog):
     """
-    Dialog for generating layers for the heat network visualization.
+    Dialog for generating layers for heat network visualization.
     """
     accepted_inputs = pyqtSignal(dict)
 
     def __init__(self, base_path, config_manager, parent=None):
+        """
+        Initialize layer generation dialog.
+
+        Parameters
+        ----------
+        base_path : str
+            Base path for file operations.
+        config_manager : ConfigManager
+            Configuration manager instance.
+        parent : QWidget, optional
+            Parent widget.
+        """
         super().__init__(parent)
         self.base_path = base_path
         self.visualization_tab = None
@@ -42,9 +55,7 @@ class LayerGenerationDialog(QDialog):
         self.initUI()
 
     def initUI(self):
-        """
-        Initialize the user interface for the dialog.
-        """
+        """Initialize user interface components."""
         self.setWindowTitle('Wärmenetzgenerierung')
         self.setGeometry(300, 300, 700, 400)
 
@@ -128,19 +139,23 @@ class LayerGenerationDialog(QDialog):
 
     def setVisualizationTab(self, visualization_tab):
         """
-        Set the reference to the VisualizationTab.
+        Set visualization tab reference.
 
-        Args:
-            visualization_tab: The VisualizationTab instance.
+        Parameters
+        ----------
+        visualization_tab : QWidget
+            VisualizationTab instance.
         """
         self.visualization_tab = visualization_tab
 
     def toggleLocationInputMode(self, index):
         """
-        Toggle input fields based on the selected location input mode.
+        Toggle input fields based on location mode.
 
-        Args:
-            index: The selected index of the location input mode.
+        Parameters
+        ----------
+        index : int
+            Selected mode index.
         """
         self.coordSystemComboBox.setEnabled(index == 0)
         self.coordInput.setEnabled(index == 0)
@@ -151,14 +166,19 @@ class LayerGenerationDialog(QDialog):
 
     def createFileInputLayout(self, lineEdit, button):
         """
-        Create a layout for file input.
+        Create file input layout.
 
-        Args:
-            lineEdit: The QLineEdit widget.
-            button: The QPushButton widget.
+        Parameters
+        ----------
+        lineEdit : QLineEdit
+            File path input widget.
+        button : QPushButton
+            Browse button widget.
 
-        Returns:
-            QHBoxLayout: The layout containing the file input widgets.
+        Returns
+        -------
+        QHBoxLayout
+            Layout containing file input widgets.
         """
         layout = QHBoxLayout()
         layout.addWidget(lineEdit)
@@ -167,14 +187,17 @@ class LayerGenerationDialog(QDialog):
 
     def createFileInput(self, default_path):
         """
-        Create a file input field with a browse button.
+        Create file input widget with browse button.
 
-        Args:
-            default_path: The default file path.
+        Parameters
+        ----------
+        default_path : str
+            Default file path.
 
-        Returns:
-            QLineEdit: The line edit for file path input.
-            QPushButton: The browse button.
+        Returns
+        -------
+        tuple
+            Line edit and button widgets.
         """
         lineEdit = QLineEdit(default_path)
         button = QPushButton("Durchsuchen")
@@ -183,19 +206,19 @@ class LayerGenerationDialog(QDialog):
 
     def openFileDialog(self, lineEdit):
         """
-        Open a file dialog to select a file.
+        Open file dialog and update line edit.
 
-        Args:
-            lineEdit: The QLineEdit widget to set the selected file path.
+        Parameters
+        ----------
+        lineEdit : QLineEdit
+            Widget to update with selected file path.
         """
         filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", f"{self.base_path}", "All Files (*)")
         if filename:
             lineEdit.setText(filename)
 
     def addCoordFromInput(self):
-        """
-        Add coordinates from the input field to the table.
-        """
+        """Add coordinates from input field to table."""
         coords = self.coordInput.text().split(',')
         if len(coords) == 2:
             x, y = map(str.strip, coords)
@@ -204,9 +227,7 @@ class LayerGenerationDialog(QDialog):
             self.insertRowInTable(x_transformed, y_transformed)
 
     def geocodeAndAdd(self):
-        """
-        Geocode the address and add the coordinates to the table.
-        """
+        """Geocode address and add coordinates to table."""
         address = self.addressInput.text()
         if address:
             x, y = get_coordinates(address)
@@ -214,9 +235,7 @@ class LayerGenerationDialog(QDialog):
                 self.insertRowInTable(str(x), str(y))
 
     def importCoordsFromCSV(self):
-        """
-        Import coordinates from a CSV file.
-        """
+        """Import coordinates from CSV file."""
         filename, _ = QFileDialog.getOpenFileName(self, "CSV-Datei auswählen", f"{self.base_path}", "CSV Files (*.csv)")
         if filename:
             data = pd.read_csv(filename, delimiter=';', usecols=['UTM_X', 'UTM_Y'])
@@ -225,15 +244,21 @@ class LayerGenerationDialog(QDialog):
 
     def transform_coordinates(self, x, y, source_crs):
         """
-        Transform coordinates from the source CRS to EPSG:25833.
+        Transform coordinates to EPSG:25833.
 
-        Args:
-            x: The x-coordinate.
-            y: The y-coordinate.
-            source_crs: The source coordinate reference system.
+        Parameters
+        ----------
+        x : float
+            X-coordinate.
+        y : float
+            Y-coordinate.
+        source_crs : str
+            Source coordinate system.
 
-        Returns:
-            tuple: The transformed coordinates.
+        Returns
+        -------
+        tuple
+            Transformed coordinates.
         """
         if source_crs == "WGS84":
             transformer = Transformer.from_crs("EPSG:4326", "EPSG:25833", always_xy=True)
@@ -244,11 +269,14 @@ class LayerGenerationDialog(QDialog):
 
     def insertRowInTable(self, x, y):
         """
-        Insert a row in the coordinates table.
+        Insert coordinate row in table.
 
-        Args:
-            x: The x-coordinate.
-            y: The y-coordinate.
+        Parameters
+        ----------
+        x : str
+            X-coordinate.
+        y : str
+            Y-coordinate.
         """
         row_count = self.coordTable.rowCount()
         self.coordTable.insertRow(row_count)
@@ -256,19 +284,19 @@ class LayerGenerationDialog(QDialog):
         self.coordTable.setItem(row_count, 1, QTableWidgetItem(str(y)))
 
     def deleteSelectedRow(self):
-        """
-        Delete the selected row from the coordinates table.
-        """
+        """Delete selected row from coordinates table."""
         selected_row = self.coordTable.currentRow()
         if selected_row >= 0:
             self.coordTable.removeRow(selected_row)
 
     def getInputs(self):
         """
-        Get the inputs from the dialog.
+        Get dialog inputs.
 
-        Returns:
-            dict: The inputs from the dialog.
+        Returns
+        -------
+        dict
+            Dictionary containing input values.
         """
         coordinates = []
         for row in range(self.coordTable.rowCount()):
@@ -285,9 +313,7 @@ class LayerGenerationDialog(QDialog):
         }
 
     def onAccept(self):
-        """
-        Handle the accept event.
-        """
+        """Handle accept event."""
         inputs = self.getInputs()
         self.accepted_inputs.emit(inputs)
         self.accept()
@@ -297,6 +323,20 @@ class DownloadOSMDataDialog(QDialog):
     Dialog for downloading OSM data.
     """
     def __init__(self, base_path, config_manager, parent, parent_pres):
+        """
+        Initialize OSM data download dialog.
+
+        Parameters
+        ----------
+        base_path : str
+            Base path for file operations.
+        config_manager : ConfigManager
+            Configuration manager instance.
+        parent : QWidget
+            Parent widget.
+        parent_pres : object
+            Parent presenter instance.
+        """
         super().__init__(parent)
         self.base_path = base_path
         self.config_manager = config_manager
@@ -316,9 +356,7 @@ class DownloadOSMDataDialog(QDialog):
         self.initUI()
 
     def initUI(self):
-        """
-        Initialize the user interface for the dialog.
-        """
+        """Initialize user interface components."""
         self.setWindowTitle("Download OSM-Data")
         self.setGeometry(300, 300, 400, 400)
 
@@ -376,14 +414,17 @@ class DownloadOSMDataDialog(QDialog):
 
     def createFileInput(self, default_path):
         """
-        Create a file input field with a browse button.
+        Create file input widget with browse button.
 
-        Args:
-            default_path: The default file path.
+        Parameters
+        ----------
+        default_path : str
+            Default file path.
 
-        Returns:
-            QLineEdit: The line edit for file path input.
-            QPushButton: The browse button.
+        Returns
+        -------
+        tuple
+            Line edit and button widgets.
         """
         lineEdit = QLineEdit(default_path)
         button = QPushButton("Durchsuchen")
@@ -392,14 +433,19 @@ class DownloadOSMDataDialog(QDialog):
 
     def createFileInputLayout(self, lineEdit, button):
         """
-        Create a layout for file input.
+        Create file input layout.
 
-        Args:
-            lineEdit: The QLineEdit widget.
-            button: The QPushButton widget.
+        Parameters
+        ----------
+        lineEdit : QLineEdit
+            File path input widget.
+        button : QPushButton
+            Browse button widget.
 
-        Returns:
-            QHBoxLayout: The layout containing the file input widgets.
+        Returns
+        -------
+        QHBoxLayout
+            Layout containing file input widgets.
         """
         layout = QHBoxLayout()
         layout.addWidget(lineEdit)
@@ -408,10 +454,12 @@ class DownloadOSMDataDialog(QDialog):
 
     def selectFile(self, lineEdit):
         """
-        Open a file dialog to select a file.
+        Open file dialog and update line edit.
 
-        Args:
-            lineEdit: The QLineEdit widget to set the selected file path.
+        Parameters
+        ----------
+        lineEdit : QLineEdit
+            Widget to update with selected file path.
         """
         filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", "", "All Files (*)")
         if filename:
@@ -419,11 +467,14 @@ class DownloadOSMDataDialog(QDialog):
 
     def addTagField(self, key="", value=""):
         """
-        Add a tag field to the tags layout.
+        Add tag field to layout.
 
-        Args:
-            key: The tag key.
-            value: The tag value.
+        Parameters
+        ----------
+        key : str, optional
+            Tag key.
+        value : str, optional
+            Tag value.
         """
         key = str(key) if key is not None else ""
         value = str(value) if value is not None else ""
@@ -437,9 +488,7 @@ class DownloadOSMDataDialog(QDialog):
         print(self.tags_to_download)
 
     def removeTagField(self):
-        """
-        Remove the last tag field from the tags layout.
-        """
+        """Remove last tag field from layout."""
         if self.tags_to_download:
             keyLineEdit, valueLineEdit = self.tagsLayoutList.pop()
             self.tags_to_download.pop()
@@ -447,18 +496,14 @@ class DownloadOSMDataDialog(QDialog):
             print(self.tags_to_download)
 
     def loadAllStandardTags(self):
-        """
-        Load all standard tags into the tags layout.
-        """
+        """Load all standard tags into layout."""
         for tag in self.standard_tags:
             key = next(iter(tag))
             value = tag[key]
             self.addTagField(key, value)
 
     def loadSelectedStandardTag(self):
-        """
-        Load the selected standard tag into the tags layout.
-        """
+        """Load selected standard tag into layout."""
         selected_tag_index = self.standardTagsComboBox.currentIndex()
         tag = self.standard_tags[selected_tag_index]
         key = next(iter(tag))
@@ -466,9 +511,7 @@ class DownloadOSMDataDialog(QDialog):
         self.addTagField(key, value)
     
     def startQuery(self):
-        """
-        Start the query to download OSM data based on the selected tags and city name.
-        """
+        """Start OSM data query and download."""
         self.filename = self.filenameLineEdit.text()
         city_name = self.cityLineEdit.text()
 
@@ -487,6 +530,20 @@ class OSMBuildingQueryDialog(QDialog):
     Dialog for querying OSM building data.
     """
     def __init__(self, base_path, config_manager, parent, parent_pres):
+        """
+        Initialize OSM building query dialog.
+
+        Parameters
+        ----------
+        base_path : str
+            Base path for file operations.
+        config_manager : ConfigManager
+            Configuration manager instance.
+        parent : QWidget
+            Parent widget.
+        parent_pres : object
+            Parent presenter instance.
+        """
         super().__init__(parent)
         self.base_path = base_path
         self.config_manager = config_manager
@@ -494,9 +551,7 @@ class OSMBuildingQueryDialog(QDialog):
         self.initUI()
 
     def initUI(self):
-        """
-        Initialize the user interface for the dialog.
-        """
+        """Initialize user interface components."""
         layout = QVBoxLayout(self)
         self.setWindowTitle("OSM Gebäudeabfrage")
 
@@ -587,14 +642,17 @@ class OSMBuildingQueryDialog(QDialog):
 
     def createFileInput(self, default_path):
         """
-        Create a file input field with a browse button.
+        Create file input widget with browse button.
 
-        Args:
-            default_path: The default file path.
+        Parameters
+        ----------
+        default_path : str
+            Default file path.
 
-        Returns:
-            QLineEdit: The line edit for file path input.
-            QPushButton: The browse button.
+        Returns
+        -------
+        tuple
+            Line edit and button widgets.
         """
         lineEdit = QLineEdit(default_path)
         button = QPushButton("Durchsuchen")
@@ -603,10 +661,12 @@ class OSMBuildingQueryDialog(QDialog):
 
     def selectFile(self, lineEdit):
         """
-        Open a file dialog to select a file.
+        Open file dialog and update line edit.
 
-        Args:
-            lineEdit: The QLineEdit widget to set the selected file path.
+        Parameters
+        ----------
+        lineEdit : QLineEdit
+            Widget to update with selected file path.
         """
         filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", "", "All Files (*)")
         if filename:
@@ -614,14 +674,19 @@ class OSMBuildingQueryDialog(QDialog):
 
     def createFileInputLayout(self, lineEdit, button):
         """
-        Create a layout for file input.
+        Create file input layout.
 
-        Args:
-            lineEdit: The QLineEdit widget.
-            button: The QPushButton widget.
+        Parameters
+        ----------
+        lineEdit : QLineEdit
+            File path input widget.
+        button : QPushButton
+            Browse button widget.
 
-        Returns:
-            QHBoxLayout: The layout containing the file input widgets.
+        Returns
+        -------
+        QHBoxLayout
+            Layout containing file input widgets.
         """
         layout = QHBoxLayout()
         layout.addWidget(lineEdit)
@@ -629,9 +694,7 @@ class OSMBuildingQueryDialog(QDialog):
         return layout
 
     def showSelectedFilter(self):
-        """
-        Show the selected filter options based on the filter type.
-        """
+        """Show selected filter options based on filter type."""
         selected_filter = self.filterComboBox.currentText()
         self.coordWidget.setVisible(selected_filter == "Filtern mit Koordinatenbereich")
         self.coordRadiusWidget.setVisible(selected_filter == "Filtern mit zentralen Koordinaten und Radius als Abstand")
@@ -640,16 +703,23 @@ class OSMBuildingQueryDialog(QDialog):
 
     def haversine(self, lat1, lon1, lat2, lon2):
         """
-        Calculate the great-circle distance between two points on the Earth.
+        Calculate great-circle distance between two points.
 
-        Args:
-            lat1: Latitude of the first point.
-            lon1: Longitude of the first point.
-            lat2: Latitude of the second point.
-            lon2: Longitude of the second point.
+        Parameters
+        ----------
+        lat1 : float
+            Latitude of first point.
+        lon1 : float
+            Longitude of first point.
+        lat2 : float
+            Latitude of second point.
+        lon2 : float
+            Longitude of second point.
 
-        Returns:
-            float: The distance between the two points in meters.
+        Returns
+        -------
+        float
+            Distance in meters.
         """
         earth_radius = 6371000.0
         lat1, lon1, lat2, lon2 = map(radians, [float(lat1), float(lon1), float(lat2), float(lon2)])
@@ -661,9 +731,7 @@ class OSMBuildingQueryDialog(QDialog):
         return distance
 
     def startQuery(self):
-        """
-        Start the query to download and filter OSM building data.
-        """
+        """Start OSM building data query and download."""
         city_name = self.cityLineEdit.text()
         filename = self.filenameLineEdit.text()
         selected_filter = self.filterComboBox.currentText()
@@ -693,13 +761,17 @@ class OSMBuildingQueryDialog(QDialog):
 
     def prepare_gdf(self, geojson_data):
         """
-        Prepare a GeoDataFrame from the GeoJSON data.
+        Prepare GeoDataFrame from GeoJSON data.
 
-        Args:
-            geojson_data: The GeoJSON data.
+        Parameters
+        ----------
+        geojson_data : dict
+            GeoJSON data.
 
-        Returns:
-            GeoDataFrame: The prepared GeoDataFrame.
+        Returns
+        -------
+        GeoDataFrame
+            Prepared GeoDataFrame.
         """
         gdf = gpd.GeoDataFrame.from_features(geojson_data['features'])
         gdf.crs = "EPSG:4326"
@@ -707,11 +779,14 @@ class OSMBuildingQueryDialog(QDialog):
 
     def filter_with_bbox(self, gdf, filename):
         """
-        Filter the GeoDataFrame using a bounding box.
+        Filter GeoDataFrame using bounding box.
 
-        Args:
-            gdf: The GeoDataFrame to filter.
-            filename: The output file name.
+        Parameters
+        ----------
+        gdf : GeoDataFrame
+            GeoDataFrame to filter.
+        filename : str
+            Output filename.
         """
         min_lat = float(self.minLatLineEdit.text())
         min_lon = float(self.minLonLineEdit.text())
@@ -731,11 +806,14 @@ class OSMBuildingQueryDialog(QDialog):
 
     def filter_with_central_coords_and_radius(self, gdf, filename):
         """
-        Filter the GeoDataFrame using central coordinates and a radius.
+        Filter GeoDataFrame using central coordinates and radius.
 
-        Args:
-            gdf: The GeoDataFrame to filter.
-            filename: The output file name.
+        Parameters
+        ----------
+        gdf : GeoDataFrame
+            GeoDataFrame to filter.
+        filename : str
+            Output filename.
         """
         center_lat = float(self.centerLatLineEdit.text())
         center_lon = float(self.centerLonLineEdit.text())
@@ -755,11 +833,14 @@ class OSMBuildingQueryDialog(QDialog):
 
     def filter_with_csv_addresses(self, gdf, filename):
         """
-        Filter the GeoDataFrame using addresses from a CSV file.
+        Filter GeoDataFrame using addresses from CSV file.
 
-        Args:
-            gdf: The GeoDataFrame to filter.
-            filename: The output file name.
+        Parameters
+        ----------
+        gdf : GeoDataFrame
+            GeoDataFrame to filter.
+        filename : str
+            Output filename.
         """
         address_csv_file = self.addressCsvLineEdit.text()
         if address_csv_file:
@@ -771,11 +852,14 @@ class OSMBuildingQueryDialog(QDialog):
 
     def filter_with_polygon(self, gdf, filename):
         """
-        Filter the GeoDataFrame using a polygon from a geoJSON file.
+        Filter GeoDataFrame using polygon from GeoJSON file.
 
-        Args:
-            gdf: The GeoDataFrame to filter.
-            filename: The output file name.
+        Parameters
+        ----------
+        gdf : GeoDataFrame
+            GeoDataFrame to filter.
+        filename : str
+            Output filename.
         """
         geoJSON_file = self.geoJSONLineEdit.text()
         if geoJSON_file:

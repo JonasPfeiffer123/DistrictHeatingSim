@@ -1,12 +1,14 @@
 """
-Filename: stratified_thermal_storage.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-06-26
-Description: Advanced stratified thermal energy storage modeling for district heating systems.
+Stratified Thermal Storage Module
+==================================
 
 This module implements sophisticated stratified thermal energy storage (STES) systems
-with multi-layer temperature distribution modeling. It extends the base thermal storage
-functionality to include thermal stratification effects, layer-specific heat losses,
+with multi-layer temperature distribution modeling.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2025-06-26
+
+It extends the base thermal storage functionality to include thermal stratification effects, layer-specific heat losses,
 and inter-layer heat conduction for realistic seasonal thermal energy storage simulation.
 
 The implementation is based on validated research methods for district heating applications

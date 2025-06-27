@@ -1,8 +1,11 @@
 """
-Filename: RenovationTab2.py
+Renovation Tab 2 Module
+=======================
+
+Individual building renovation analysis tab with parameter-based cost calculation.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-08-01
-Description: Contains the RenovationTab2, the Tab for individual renovation cost analysis.
 """
 
 import sys
@@ -17,9 +20,23 @@ from districtheatingsim.utilities.renovation_analysis import calculate_all_resul
 
 class PlotCanvas(FigureCanvas):
     """
-    A canvas for plotting bar charts using matplotlib.
+    Custom matplotlib canvas for bar chart visualization.
     """
     def __init__(self, parent=None, width=5, height=4, dpi=100):
+        """
+        Initialize plot canvas.
+
+        Parameters
+        ----------
+        parent : QWidget, optional
+            Parent widget.
+        width : int, optional
+            Canvas width.
+        height : int, optional
+            Canvas height.
+        dpi : int, optional
+            Canvas resolution.
+        """
         fig = Figure(figsize=(width, height), dpi=dpi)
         self.axes = fig.add_subplot(111)
         super().__init__(fig)
@@ -27,13 +44,18 @@ class PlotCanvas(FigureCanvas):
 
     def plot(self, data, title, xlabel, ylabel):
         """
-        Plots a bar chart with the given data.
+        Plot bar chart with given data.
 
-        Args:
-            data (dict): The data to plot.
-            title (str): The title of the plot.
-            xlabel (str): The label for the x-axis.
-            ylabel (str): The label for the y-axis.
+        Parameters
+        ----------
+        data : dict
+            Data to plot.
+        title : str
+            Plot title.
+        xlabel : str
+            X-axis label.
+        ylabel : str
+            Y-axis label.
         """
         self.axes.clear()
         self.axes.bar(data.keys(), data.values())
@@ -44,37 +66,46 @@ class PlotCanvas(FigureCanvas):
 
 class RenovationTab2(QWidget):
     """
-    The RenovationTab2 class provides a tab for performing individual renovation cost analysis.
+    Individual building renovation analysis tab.
+    
+    Provides functionality for analyzing renovation costs and savings
+    for individual buildings using parameter-based input.
     """
-    data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
+    data_added = pyqtSignal(object)
 
     def __init__(self, folder_manager, data_manager, parent=None):
+        """
+        Initialize renovation tab for individual buildings.
+
+        Parameters
+        ----------
+        folder_manager : object
+            Project folder manager.
+        data_manager : object
+            Application data manager.
+        parent : QWidget, optional
+            Parent widget.
+        """
         super().__init__(parent)
         self.folder_manager = folder_manager
         self.data_manager = data_manager
         self.parent = parent
 
-        # Connect to the data manager signal
+        # Connect to folder manager signals
         self.folder_manager.project_folder_changed.connect(self.updateDefaultPath)
-        # Update the base path immediately with the current project folder
         self.updateDefaultPath(self.folder_manager.project_folder)
 
         self.initUI()
     
     def initUI(self):
-        """
-        Initializes the user interface.
-        """
+        """Initialize user interface components."""
         self.setWindowTitle("Sanierungsanalyse")
-        #self.setGeometry(100, 100, 1200, 800)
 
-        main_layout = QVBoxLayout(self)  # Set the layout directly to 'self'
-
-        # Main splitter to divide the UI into input and result sections
+        main_layout = QVBoxLayout(self)
         splitter = QSplitter(Qt.Horizontal)
         main_layout.addWidget(splitter)
 
-        # Creating input sections
+        # Input section
         input_widget = QWidget()
         input_layout = QVBoxLayout(input_widget)
         self.input_fields = {}
@@ -82,25 +113,20 @@ class RenovationTab2(QWidget):
         tab_widget = QTabWidget()
         self.create_input_tabs(tab_widget)
         input_layout.addWidget(tab_widget)
-
-        #scroll = QScrollArea()
-        #scroll.setWidgetResizable(True)
-        #scroll.setWidget(input_widget)
         splitter.addWidget(input_widget)
 
-        # Creating results and plotting sections
+        # Results section
         result_widget = QWidget()
         result_layout = QVBoxLayout(result_widget)
         self.create_result_section(result_layout)
         splitter.addWidget(result_widget)
 
-        splitter.setSizes([800, 800])  # Balance the splitter sections
-
+        splitter.setSizes([800, 800])
         self.setLayout(main_layout)
         self.results = {}
 
     def create_input_tabs(self, tab_widget):
-        # Grouping input fields into tabs for better organization
+        """Create input parameter tabs with organized field groups."""
         groups = {
             "Gebäudedaten": [("Länge (m)", "10"), ("Breite (m)", "15"), ("Anzahl Stockwerke", "2"), ("Stockwerkshöhe (m)", "3")],
             "U-Werte": [("U-Wert Boden (W/m²K)", "0.77"), ("U-Wert Fassade (W/m²K)", "1.0"), 
@@ -145,6 +171,7 @@ class RenovationTab2(QWidget):
             tab_widget.addTab(group_widget, group_name)
 
     def create_result_section(self, layout):
+        """Create results display section with plot and controls."""
         self.run_button = QPushButton("Analyse durchführen")
         self.run_button.clicked.connect(self.run_analysis)
         layout.addWidget(self.run_button)
@@ -163,18 +190,18 @@ class RenovationTab2(QWidget):
 
     def updateDefaultPath(self, new_base_path):
         """
-        Updates the default path for the project.
+        Update project default path.
 
-        Args:
-            new_base_path (str): The new base path for the project.
+        Parameters
+        ----------
+        new_base_path : str
+            New base path for file operations.
         """
         self.base_path = new_base_path
 
     @pyqtSlot()
     def run_analysis(self):
-        """
-        Runs the renovation analysis based on the input parameters.
-        """
+        """Run renovation analysis based on input parameters."""
         try:
             # Extract values from input fields
             length = float(self.input_fields["Länge (m)"].text())
@@ -252,9 +279,7 @@ class RenovationTab2(QWidget):
 
     @pyqtSlot()
     def update_plot(self):
-        """
-        Updates the plot based on the selected item in the combo box.
-        """
+        """Update plot display based on selected analysis parameter."""
         if not self.results:
             return
 
@@ -266,7 +291,7 @@ class RenovationTab2(QWidget):
 
         self.canvas.plot(data, title, xlabel, ylabel)
 
-        # Anzeige der berechneten Ergebnisse im result_label
+        # Display calculated results in result label
         result_text = f"{title}:\n"
         for k, v in data.items():
             result_text += f"{k}: {v:.2f}\n"

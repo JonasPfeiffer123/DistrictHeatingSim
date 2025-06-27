@@ -1,12 +1,14 @@
 """
-Filename: net_generation.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-05-26
-Description: Network generation algorithms for district heating system layout optimization.
+Net Generation Module
+=====================
 
 This module provides comprehensive network generation capabilities for district heating
-systems using various graph algorithms and geospatial analysis techniques. It implements
-multiple optimization strategies including Minimum Spanning Tree (MST), advanced MST
+systems using various graph algorithms and geospatial analysis techniques.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2025-05-26
+
+It implements multiple optimization strategies including Minimum Spanning Tree (MST), advanced MST
 with road alignment, and Steiner tree algorithms to create cost-optimal network topologies.
 
 The module handles complete network generation workflows from building location processing

@@ -1,8 +1,11 @@
 """
-Filename: stat_comparison_tab.py
+Stat Comparison Tab Module
+=========================
+
+Tab widget for comparing network statistics across project variants.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-08-30
-Description: Contains the StatComparisonTab.
 """
 
 import os
@@ -17,7 +20,23 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QTableWidget, QTa
 from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import import_results_csv
 
 class StatComparisonTab(QWidget):
+    """
+    Widget for comparing network statistics across project variants.
+    """
+    
     def __init__(self, folder_manager, config_manager, parent=None):
+        """
+        Initialize statistics comparison tab.
+
+        Parameters
+        ----------
+        folder_manager : FolderManager
+            Project folder manager.
+        config_manager : ConfigManager
+            Configuration manager.
+        parent : QWidget, optional
+            Parent widget.
+        """
         super().__init__(parent)
         self.folder_manager = folder_manager
         self.config_manager = config_manager
@@ -31,9 +50,18 @@ class StatComparisonTab(QWidget):
         self.initUI()
 
     def updateDefaultPath(self, new_base_path):
+        """
+        Update base path when project folder changes.
+
+        Parameters
+        ----------
+        new_base_path : str
+            New base path.
+        """
         self.base_path = new_base_path
 
     def initUI(self):
+        """Initialize user interface with comparison table and controls."""
         self.layout = QVBoxLayout(self)
 
         # Add buttons to load and remove data
@@ -56,6 +84,7 @@ class StatComparisonTab(QWidget):
         self.setLayout(self.layout)
 
     def addData(self):
+        """Load project data from selected folder and add to comparison."""
         # Open a file dialog to select the base path for the data
         folder_path = QFileDialog.getExistingDirectory(self, "Ordner auswählen", self.base_path)
 
@@ -67,6 +96,7 @@ class StatComparisonTab(QWidget):
                 self.display_data_in_table()
 
     def removeData(self):
+        """Remove last loaded project data from comparison."""
         if self.variant_data:
             self.variant_data.pop()
             self.folder_paths.pop()
@@ -75,6 +105,19 @@ class StatComparisonTab(QWidget):
             QMessageBox.warning(self, "Keine Daten", "Keine Daten zum entfernen vorhanden.")
 
     def load_variant_data(self, folder_path):
+        """
+        Load and process network data from project folder.
+
+        Parameters
+        ----------
+        folder_path : str
+            Path to project folder.
+
+        Returns
+        -------
+        dict
+            Processed network statistics.
+        """
         try:
             # Load network data
             self.loadNet(folder_path)
@@ -141,7 +184,12 @@ class StatComparisonTab(QWidget):
 
     def loadNet(self, folder_path):
         """
-        Loads the network from a file, similar to the provided example.
+        Load network from project files.
+
+        Parameters
+        ----------
+        folder_path : str
+            Path to project folder.
         """
         try:
             # Load different components
@@ -168,17 +216,26 @@ class StatComparisonTab(QWidget):
 
     def load_pickle_file(self, folder_path):
         """
-        Loads the network data from a pickle file.
+        Load network data from pickle file.
+
+        Parameters
+        ----------
+        folder_path : str
+            Path to project folder.
         """
         pickle_file_path = os.path.join(folder_path, self.config_manager.get_relative_path("pp_pickle_file_path"))
         self.net = pp.from_pickle(pickle_file_path)
 
     def load_csv_file(self, folder_path):
         """
-        Loads the heat and electricity demand data from a CSV file.
+        Load heat and electricity demand data from CSV file.
+
+        Parameters
+        ----------
+        folder_path : str
+            Path to project folder.
         """
         csv_file_path = os.path.join(folder_path, self.config_manager.get_relative_path("csv_net_init_file_path"))
-
 
         with open(csv_file_path, newline='') as csvfile:
             reader = csv.reader(csvfile, delimiter=';')
@@ -201,7 +258,12 @@ class StatComparisonTab(QWidget):
 
     def load_json_file(self, folder_path):
         """
-        Loads additional configuration data from a JSON file.
+        Load configuration data from JSON file.
+
+        Parameters
+        ----------
+        folder_path : str
+            Path to project folder.
         """
         json_file_path = os.path.join(folder_path, self.config_manager.get_relative_path("json_net_init_file_path"))
 
@@ -223,9 +285,7 @@ class StatComparisonTab(QWidget):
         self.COP_filename = additional_data['COP_filename']
 
     def process_loaded_data(self):
-        """
-        Processes the data after loading, converting units and summing where necessary.
-        """
+        """Process data after loading, converting units and summing values."""
         self.net_data = (self.net, self.yearly_time_steps, self.waerme_ges_W,
                         self.supply_temperature_heat_consumer, self.supply_temperature, 
                         self.return_temperature_heat_consumer, self.supply_temperature_buildings, 
@@ -242,13 +302,19 @@ class StatComparisonTab(QWidget):
 
     def load_net_results(self, folder_path):
         """
-        Loads the network results from a file.
+        Load network simulation results from CSV file.
+
+        Parameters
+        ----------
+        folder_path : str
+            Path to project folder.
         """
         results_csv_filepath = os.path.join(folder_path, self.config_manager.get_relative_path("load_profile_path"))
         plot_data = import_results_csv(results_csv_filepath)
         self.time_steps, self.waerme_ges_kW, self.strom_wp_kW, self.pump_results = plot_data
 
     def display_data_in_table(self):
+        """Display loaded variant data in comparison table."""
         # Clear the table first
         self.tableWidget.clear()
 

@@ -1,8 +1,11 @@
 """
-Filename: net_calculation_threads.py
+Network Calculation Threads Module
+==================================
+
+Threaded network initialization and calculation functionality.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-05-17
-Description: Contains the threaded functionality functions for network initialization and calculation.
 """
 
 import traceback
@@ -16,33 +19,29 @@ from districtheatingsim.net_simulation_pandapipes.utilities import optimize_diam
 
 class NetInitializationThread(QThread):
     """
-    Thread for initializing the network.
-
-    Signals:
-        calculation_done (object): Emitted when the calculation is done.
-        calculation_error (str): Emitted when an error occurs during the calculation.
+    Thread for network initialization tasks.
     """
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(str)
 
     def __init__(self, NetworkGenerationData):
         """
-        Initializes the NetInitializationThread.
+        Initialize network initialization thread.
 
-        Args:
-            NetworkGenerationData (object): Network generation data object containing all necessary parameters.
+        Parameters
+        ----------
+        NetworkGenerationData : object
+            Network generation data object.
         """
         super().__init__()
         self.NetworkGenerationData = NetworkGenerationData
 
     def run(self):
-        """
-        Runs the network initialization.
-        """
+        """Run network initialization process."""
         try:
             self.NetworkGenerationData = initialize_geojson(self.NetworkGenerationData)      
 
-            # Common steps for both import types
+            # Diameter optimization if enabled
             if self.NetworkGenerationData.diameter_optimization_pipe_checked == True:
                 self.NetworkGenerationData.net = optimize_diameter_types(self.NetworkGenerationData.net, self.NetworkGenerationData.max_velocity_pipe, self.NetworkGenerationData.material_filter_pipe, self.NetworkGenerationData.k_mm_pipe)
             
@@ -52,38 +51,32 @@ class NetInitializationThread(QThread):
             self.calculation_error.emit(str(e) + "\n" + traceback.format_exc())
     
     def stop(self):
-        """
-        Stops the thread.
-        """
+        """Stop thread execution."""
         if self.isRunning():
             self.requestInterruption()
             self.wait()
 
 class NetCalculationThread(QThread):
     """
-    Thread for network calculations.
-
-    Signals:
-        calculation_done (object): Emitted when the calculation is done.
-        calculation_error (str): Emitted when an error occurs during the calculation.
+    Thread for network time series calculations.
     """
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(str)
 
     def __init__(self, NetworkGenerationData):
         """
-        Initializes the NetCalculationThread.
+        Initialize calculation thread.
 
-        Args:
-            NetworkGenerationData (object): Network generation data object containing all necessary parameters.
-            """
+        Parameters
+        ----------
+        NetworkGenerationData : object
+            Network generation data object.
+        """
         super().__init__()
         self.NetworkGenerationData = NetworkGenerationData
     
     def run(self):
-        """
-        Runs the network calculation.
-        """
+        """Run time series calculation process."""
         try:
             self.NetworkGenerationData = time_series_preprocessing(self.NetworkGenerationData)
             
@@ -94,9 +87,7 @@ class NetCalculationThread(QThread):
             self.calculation_error.emit(str(e) + "\n" + traceback.format_exc())
 
     def stop(self):
-        """
-        Stops the thread.
-        """
+        """Stop thread execution."""
         if self.isRunning():
             self.requestInterruption()
-            self.wait()  # Wait for the thread to safely terminate
+            self.wait()

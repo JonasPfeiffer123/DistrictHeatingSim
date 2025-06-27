@@ -1,11 +1,14 @@
 """
-Filename: pp_net_initialisation_geojson.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-05-17
-Description: Script for the net initialisation of geojson based net data.
+Pandapipes Network Initialization Module
+=========================================
 
 This module provides comprehensive network initialization capabilities for district heating
-systems using GeoJSON-based geographic data. It handles the complete workflow from GeoJSON
+systems using GeoJSON-based geographic data.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2025-05-17
+
+It handles the complete workflow from GeoJSON
 data processing to pandapipes network creation, including heat demand integration, temperature
 calculation, and multi-producer system configuration.
 

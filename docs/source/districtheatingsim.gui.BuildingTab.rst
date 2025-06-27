@@ -1,8 +1,5 @@
-districtheatingsim.gui.BuildingTab package
+BuildingTab package
 ==========================================
-
-districtheatingsim.gui.BuildingTab.building\_tab module
--------------------------------------------------------
 
 .. automodule:: districtheatingsim.gui.BuildingTab.building_tab
    :members:

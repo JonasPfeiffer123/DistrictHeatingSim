@@ -1,12 +1,14 @@
 """
-Filename: solar_radiation.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-24
-Description: Solar radiation calculation module for district heating solar thermal systems.
+Solar Radiation Calculation Module
+==================================
 
 This module provides comprehensive solar radiation calculations based on Test Reference Year
-data for solar thermal collectors in district heating applications. It implements advanced
-solar geometry algorithms, incidence angle modeling, and radiation component separation
+data for solar thermal collectors in district heating applications.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-09-24
+
+It implements advanced solar geometry algorithms, incidence angle modeling, and radiation component separation
 for accurate assessment of solar thermal energy potential.
 
 The calculations follow established solar engineering standards and are specifically adapted

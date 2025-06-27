@@ -1,8 +1,11 @@
 """
-Filename: _02_energy_system_dialogs.py
+Energy System Dialogs Module
+=============================
+
+This module contains the dialogs for the Energy System Tab, including economic parameters input, cost calculation based on geoJSON files, and weight settings for optimization.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-05-02
-Description: Contains the Dialogs for the Energy System Tab.
 """
 
 import os

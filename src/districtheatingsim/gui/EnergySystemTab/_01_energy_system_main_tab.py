@@ -1,8 +1,11 @@
 """
-Filename: _01_energy_system_main_tab.py
+Energy System Main Tab Module
+=============================
+
+This module contains the main tab for managing the energy system design, including technology definitions, cost calculations, and results display.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-04-19
-Description: Contains the MixdesignTab.
 """
 
 import traceback

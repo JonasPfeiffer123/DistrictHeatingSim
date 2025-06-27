@@ -128,7 +128,6 @@ from districtheatingsim.gui.RenovationTab.RenovationTab import RenovationTab
 from districtheatingsim.gui.NetSimulationTab.calculation_tab import CalculationTab
 from districtheatingsim.gui.EnergySystemTab._01_energy_system_main_tab import EnergySystemTab
 from districtheatingsim.gui.ComparisonTab.comparison_tab import ComparisonTab
-from districtheatingsim.gui.IndividualTab.individual_tab import IndividualTab
 from districtheatingsim.gui.results_pdf import create_pdf
 from districtheatingsim.gui.dialogs import TemperatureDataDialog, HeatPumpDataDialog
 
@@ -809,13 +808,6 @@ class HeatSystemDesignGUI(QMainWindow):
             self.presenter.data_manager, 
             self.presenter.config_manager
         )
-        
-        self.individualTab = IndividualTab(
-            self.presenter.folder_manager, 
-            self.presenter.data_manager, 
-            self.presenter.config_manager, 
-            self
-        )
 
         # Add tabs to interface with proper German localization
         self.add_tab_to_menu(self.projectTab, "Projektdefinition")
@@ -826,7 +818,6 @@ class HeatSystemDesignGUI(QMainWindow):
         self.add_tab_to_menu(self.comparisonTab, "Variantenvergleich")
         self.add_tab_to_menu(self.lod2Tab, "Verarbeitung LOD2-Daten")
         self.add_tab_to_menu(self.renovationTab, "Gebäudesanierung")
-        self.add_tab_to_menu(self.individualTab, "Einzelversorgungslösung")
 
         # Define default visible tabs for standard workflow
         self.default_visible_tabs = [

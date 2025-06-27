@@ -1,8 +1,11 @@
 """
-Filename: _07_results_tab.py
+Results Tab Module
+==================
+
+This module contains the ResultsTab class, which is responsible for displaying the results of the energy system calculations in a district heating simulation application. It includes various diagrams and tables to visualize the results, such as stack plots, pie charts, and detailed result tables.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-08-01
-Description: Contains the ResultsTab.
 """
 
 import sys

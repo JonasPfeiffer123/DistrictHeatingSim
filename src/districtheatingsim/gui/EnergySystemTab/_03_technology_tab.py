@@ -1,8 +1,11 @@
 """
-Filename: _03_technology_tab.py
+Technology Tab Module
+=====================
+
+This module contains the TechnologyTab class, which is responsible for managing and displaying various technologies in a district heating simulation application. It allows users to add, edit, and remove technologies, as well as visualize them in a schematic view.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-12-11
-Description: Contains the TechnologyTab.
 """
 
 import os

@@ -1,8 +1,11 @@
 """
-Filename: _09_sankey_dialog.py
+Sankey Dialog Module
+====================
+
+This module contains the SankeyDialog class, which is responsible for displaying a Sankey diagram using Plotly in a PyQt5 application. The dialog visualizes energy flows in a district heating system based on provided results data.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-04-19
-Description: Contains the SankeyDialog class for displaying a Sankey diagram using Plotly in a PyQt5 application.
 """
 
 import sys

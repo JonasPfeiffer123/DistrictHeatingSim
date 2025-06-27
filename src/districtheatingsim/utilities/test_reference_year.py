@@ -1,11 +1,14 @@
 """
-Filename: test_reference_year.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-31
-Description: Import function for the Test Reference Year (TRY) files.
+Test Reference Year (TRY) Import Module
+=======================================
 
 This module provides functionality to import and parse German Test Reference Year (TRY) 
-weather data files. TRY files contain standardized meteorological data used for building 
+weather data files.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-31
+
+TRY files contain standardized meteorological data used for building 
 energy simulations and district heating system calculations.
 """
 

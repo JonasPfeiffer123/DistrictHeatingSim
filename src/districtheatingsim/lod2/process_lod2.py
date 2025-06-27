@@ -1,11 +1,14 @@
 """
-Filename: process_lod2.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-03-07
-Description: LOD2 building data processing and conversion for district heating applications.
+Process LOD2 Building Data Module
+=================================
 
 This module provides comprehensive processing capabilities for Level of Detail 2 (LOD2)
-building data from German cadastral sources. It handles the conversion of Shapefile data
+building data from German cadastral sources.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2025-03-07
+
+It handles the conversion of Shapefile data
 to standardized GeoJSON format with proper coordinate reference system transformation
 and geometry validation for district heating network planning applications.
 

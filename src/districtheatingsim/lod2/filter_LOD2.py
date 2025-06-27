@@ -1,11 +1,14 @@
 """
-Filename: filter_LOD2.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-31
-Description: LOD2 building data filtering, spatial analysis, and 3D geometry processing.
+Filter LOD2 Building Data Module
+================================
 
 This module provides comprehensive filtering and processing capabilities for Level of Detail 2 (LOD2)
-building data from German cadastral sources. It handles spatial filtering operations, address-based
+building data from German cadastral sources.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-31
+
+It handles spatial filtering operations, address-based
 matching with OpenStreetMap data, coordinate-based filtering, and complex 3D geometry calculations
 including surface area computation, volume estimation, and roof orientation analysis.
 
