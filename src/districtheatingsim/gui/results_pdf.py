@@ -1,8 +1,12 @@
 """
-Filename: results_pdf.py
+Results PDF Generation Module
+=============================
+
+This module provides PDF generation functionality for district heating calculation results
+using ReportLab for professional report output.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-09-05
-Description: Script for generating the results PDF of the calculation results.
 """
 
 import numpy as np
@@ -25,7 +29,12 @@ from districtheatingsim.gui.dialogs import PDFSelectionDialog
 
 def get_custom_table_style():
     """
-    Returns a custom TableStyle for styling tables in the PDF.
+    Get custom table styling for PDF reports.
+    
+    Returns
+    -------
+    TableStyle
+        ReportLab table style with grey header and beige body.
     """
     return TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
@@ -41,13 +50,23 @@ def get_custom_table_style():
 
 def add_figure_to_story(figure, story, max_width=6.5 * inch, figures_per_row=2):
     """
-    Adds a matplotlib figure to the PDF story with a black border and arranges figures in a grid.
+    Add matplotlib figure to PDF with border.
+    
+    Parameters
+    ----------
+    figure : matplotlib.figure.Figure
+        Figure to add.
+    story : list
+        PDF story elements list.
+    max_width : float, optional
+        Maximum figure width in inches.
+    figures_per_row : int, optional
+        Number of figures per row (unused currently).
     """
     img_buffer = BytesIO()
     figure.savefig(img_buffer, format='png', bbox_inches='tight', dpi=300)
     img_buffer.seek(0)
 
-    # Use Platypus Image for compatibility
     img = PlatypusImage(img_buffer)
     aspect_ratio = img.drawWidth / img.drawHeight
 
@@ -55,24 +74,29 @@ def add_figure_to_story(figure, story, max_width=6.5 * inch, figures_per_row=2):
         img.drawWidth = max_width
         img.drawHeight = img.drawWidth / aspect_ratio
 
-    # Add border and wrap image in a table cell
     cell = [[img]]
     table = Table(cell, colWidths=[img.drawWidth + 4], rowHeights=[img.drawHeight + 4])
     table.setStyle(
         TableStyle([
-            ('BOX', (0, 0), (-1, -1), 1, colors.black),  # Add black border
+            ('BOX', (0, 0), (-1, -1), 1, colors.black),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ])
     )
 
-    # Add the table (image with border) to the story
     story.append(table)
     story.append(Spacer(1, 12))
 
 def add_net_structure_section(story, calcTab):
     """
-    Adds the network structure section to the PDF story.
+    Add network structure section to PDF.
+    
+    Parameters
+    ----------
+    story : list
+        PDF story elements list.
+    calcTab : object
+        Calculation tab containing network figures.
     """
     try:
         story.append(Paragraph("Netzstruktur", getSampleStyleSheet()['Heading2']))
@@ -87,7 +111,14 @@ def add_net_structure_section(story, calcTab):
 
 def add_economic_conditions_section(story, mixDesignTab):
     """
-    Adds the economic conditions section to the PDF story.
+    Add economic conditions table to PDF.
+    
+    Parameters
+    ----------
+    story : list
+        PDF story elements list.
+    mixDesignTab : object
+        Mix design tab containing economic parameters.
     """
     try:
         story.append(Paragraph("Wirtschaftliche Randbedingungen", getSampleStyleSheet()['Heading2']))
@@ -109,7 +140,14 @@ def add_economic_conditions_section(story, mixDesignTab):
 
 def add_technologies_section(story, mixDesignTab):
     """
-    Adds the energy technologies section to the PDF story.
+    Add energy technologies section to PDF.
+    
+    Parameters
+    ----------
+    story : list
+        PDF story elements list.
+    mixDesignTab : object
+        Mix design tab containing technology data.
     """
     try:
         if not hasattr(mixDesignTab, 'techTab') or not mixDesignTab.techTab.tech_objects:
@@ -131,26 +169,31 @@ def add_technologies_section(story, mixDesignTab):
 
 def export_scene_to_image(scene):
     """
-    Converts the QGraphicsScene to an image (QPixmap) and returns it as a BytesIO object.
+    Convert QGraphicsScene to BytesIO image.
+    
+    Parameters
+    ----------
+    scene : QGraphicsScene
+        Qt graphics scene to export.
+        
+    Returns
+    -------
+    BytesIO
+        Image data as BytesIO stream.
     """
-    # Erzeuge ein QPixmap mit der gleichen Größe wie die Szene
     scene_rect = scene.sceneRect()
     image = QPixmap(int(scene_rect.width()), int(scene_rect.height()))
 
-    # Erzeuge ein QPainter und male die Szene auf das Bild
     painter = QPainter(image)
     scene.render(painter)
     painter.end()
 
-    # Konvertiere das QPixmap in ein QImage
     qimage = image.toImage()
 
-    # Speichere das Bild in einen QBuffer als PNG
     buffer = QBuffer()
     buffer.open(QBuffer.ReadWrite)
     qimage.save(buffer, "PNG")
 
-    # Konvertiere den QBuffer in BytesIO, damit es mit ReportLab funktioniert
     buffer.seek(0)
     byte_array = buffer.data()
     
@@ -161,13 +204,20 @@ def export_scene_to_image(scene):
 
 def add_schematic_scene_section(story, scene, max_width=6.5 * inch):
     """
-    Adds the schematic scene as an image to the PDF story with a black border.
+    Add schematic scene image to PDF.
+    
+    Parameters
+    ----------
+    story : list
+        PDF story elements list.
+    scene : QGraphicsScene
+        Qt graphics scene to add.
+    max_width : float, optional
+        Maximum image width in inches.
     """
     try:
-        # Konvertiere die Szene in ein Bild und erhalte einen BytesIO-Stream
         img_buffer = export_scene_to_image(scene)
 
-        # Nutze PlatypusImage für Kompatibilität
         img = PlatypusImage(img_buffer)
         aspect_ratio = img.drawWidth / img.drawHeight
 
@@ -175,20 +225,17 @@ def add_schematic_scene_section(story, scene, max_width=6.5 * inch):
             img.drawWidth = max_width
             img.drawHeight = img.drawWidth / aspect_ratio
 
-        # Füge einen schwarzen Rahmen hinzu und bette die Szene in eine Tabelle ein
         cell = [[img]]
         table = Table(cell, colWidths=[img.drawWidth + 4], rowHeights=[img.drawHeight + 4])
         table.setStyle(
             TableStyle([
-                ('BOX', (0, 0), (-1, -1), 1, colors.black),  # Schwarzer Rahmen
+                ('BOX', (0, 0), (-1, -1), 1, colors.black),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ])
         )
 
-        # Abschnittsüberschrift hinzufügen
         story.append(Paragraph("Schematische Darstellung", getSampleStyleSheet()['Heading2']))
-        # Die Tabelle mit dem Bild zur Story hinzufügen
         story.append(table)
         story.append(Spacer(1, 12))
 
@@ -200,10 +247,16 @@ def add_schematic_scene_section(story, scene, max_width=6.5 * inch):
 
 def add_costs_net_infrastructure_section(story, mixDesignTab):
     """
-    Adds the network infrastructure section to the PDF story using costTab.data.
+    Add network infrastructure costs table to PDF.
+    
+    Parameters
+    ----------
+    story : list
+        PDF story elements list.
+    mixDesignTab : object
+        Mix design tab containing cost data.
     """
     try:
-        # Überprüfen, ob die notwendigen Daten vorhanden sind
         if not hasattr(mixDesignTab, 'costTab') or mixDesignTab.costTab.data.empty:
             story.append(Paragraph("Fehlende Daten: Netzinfrastruktur", getSampleStyleSheet()['Normal']))
             story.append(Spacer(1, 12))
@@ -211,16 +264,12 @@ def add_costs_net_infrastructure_section(story, mixDesignTab):
 
         story.append(Paragraph("Netzinfrastruktur", getSampleStyleSheet()['Heading2']))
 
-        # DataFrame aus costTab abrufen
         data = mixDesignTab.costTab.data
-
-        # Spaltennamen und Daten für die Tabelle vorbereiten
         columns = ['Beschreibung'] + data.columns.tolist()
-        infra_data = [columns]  # Tabellenkopf hinzufügen
+        infra_data = [columns]
 
-        # Zeilen aus dem DataFrame hinzufügen
         for index, row in data.iterrows():
-            formatted_row = [index]  # Zeilenname (Beschreibung)
+            formatted_row = [index]
             for col_name in data.columns:
                 value = row[col_name]
                 if col_name == 'Kosten' or col_name == 'Annuität':
@@ -235,7 +284,6 @@ def add_costs_net_infrastructure_section(story, mixDesignTab):
                     formatted_row.append(str(value) if pd.notna(value) else "")
             infra_data.append(formatted_row)
 
-        # Tabelle erstellen und formatieren
         infra_table = Table(infra_data)
         infra_table.setStyle(get_custom_table_style())
         story.append(KeepTogether(infra_table))
@@ -247,10 +295,16 @@ def add_costs_net_infrastructure_section(story, mixDesignTab):
         story.append(Spacer(1, 12))
         print(error_message)
 
-
 def add_costs_heat_generators_section(story, mixDesignTab):
     """
-    Adds the costs section to the PDF story.
+    Add heat generator costs table to PDF.
+    
+    Parameters
+    ----------
+    story : list
+        PDF story elements list.
+    mixDesignTab : object
+        Mix design tab containing generator cost data.
     """
     try:
         story.append(Paragraph("Kosten Erzeuger", getSampleStyleSheet()['Heading2']))
@@ -278,16 +332,19 @@ def add_costs_heat_generators_section(story, mixDesignTab):
 
 def add_costs_total_section(story, mixDesignTab):
     """
-    Adds the total costs section to the PDF story.
-    Shows the plots from MixDesignTab.costTab if available.
+    Add total costs charts to PDF.
+    
+    Parameters
+    ----------
+    story : list
+        PDF story elements list.
+    mixDesignTab : object
+        Mix design tab containing cost charts.
     """
     try:
         story.append(Paragraph("Gesamtkosten", getSampleStyleSheet()['Heading2']))
 
-        # Add Bar Chart as a separate plot
         add_figure_to_story(mixDesignTab.costTab.bar_chart_figure, story)
-
-        # Add Pie Chart as a separate plot
         add_figure_to_story(mixDesignTab.costTab.pie_chart_figure, story)
 
     except Exception as e:
@@ -298,7 +355,14 @@ def add_costs_total_section(story, mixDesignTab):
 
 def add_results_section(story, mixDesignTab):
     """
-    Adds the results section to the PDF story.
+    Add calculation results with charts and table to PDF.
+    
+    Parameters
+    ----------
+    story : list
+        PDF story elements list.
+    mixDesignTab : object
+        Mix design tab containing results data.
     """
     try:
         story.append(Paragraph("Berechnungsergebnisse", getSampleStyleSheet()['Heading2']))
@@ -332,28 +396,28 @@ def add_results_section(story, mixDesignTab):
 
 def add_combined_results_section(story, mixDesignTab):
     """
-    Adds the combined results section to the PDF story.
+    Add combined results summary table to PDF.
     
-    Args:
-        story (list): The list of PDF elements to be added.
-        mixDesignTab: The object containing the resultTab with data for combined results.
+    Parameters
+    ----------
+    story : list
+        PDF story elements list.
+    mixDesignTab : object
+        Mix design tab containing combined results data.
     """
     try:
-        # Hinzufügen des Abschnittstitels
         story.append(Paragraph("Kombinierte Ergebnisse", getSampleStyleSheet()['Heading2']))
         
-        # Holen der Resultate aus dem resultTab
         results = mixDesignTab.resultTab.energy_system.results
         waerme_ges_kW = np.sum(results["waerme_ges_kW"])
         strom_wp_kW = np.sum(results["strom_wp_kW"])
         if 'Summe Infrastruktur' in mixDesignTab.costTab.data.index:
             WGK_Infra = mixDesignTab.costTab.data.at['Summe Infrastruktur', 'Annuität'] / results['Jahreswärmebedarf']
         else:
-            WGK_Infra = 0  # Fallback-Wert
+            WGK_Infra = 0
         wgk_heat_pump_electricity = ((strom_wp_kW / 1000) * mixDesignTab.economic_parameters["electricity_price"]) / ((strom_wp_kW + waerme_ges_kW) / 1000)
         WGK_Gesamt = results['WGK_Gesamt'] + WGK_Infra + wgk_heat_pump_electricity
         
-        # Definieren der Daten für die Tabelle
         combined_results_data = [("Parameter", "Wert", "Einheit")]
         combined_results_data.extend([
             ("Jahreswärmebedarf", round(results['Jahreswärmebedarf'], 1), "MWh"),
@@ -368,11 +432,9 @@ def add_combined_results_section(story, mixDesignTab):
             ("Primärenergiefaktor", round(results["primärenergiefaktor_Gesamt"], 4), "-")
         ])
         
-        # Erstellen der Tabelle für die kombinierten Ergebnisse
         combined_results_table = Table(combined_results_data, colWidths=[2 * inch, 1.5 * inch, 1.2 * inch])
         combined_results_table.setStyle(get_custom_table_style())
         
-        # Hinzufügen der Tabelle zur PDF-Geschichte
         story.append(KeepTogether(combined_results_table))
         story.append(Spacer(1, 12))
     
@@ -384,16 +446,24 @@ def add_combined_results_section(story, mixDesignTab):
 
 def create_pdf(HeatSystemDesignGUI, filename):
     """
-    Creates a PDF with the results of the calculation, basierend auf der Auswahl der Abschnitte.
+    Create PDF report with selected sections.
+    
+    Main function to generate a comprehensive PDF report from calculation results.
+    Shows selection dialog for report sections and generates PDF with chosen content.
+    
+    Parameters
+    ----------
+    HeatSystemDesignGUI : object
+        Main GUI object containing all analysis tabs and data.
+    filename : str
+        Output filename for the PDF report.
     """
     mixDesignTab = HeatSystemDesignGUI.mixDesignTab
     calcTab = HeatSystemDesignGUI.calcTab
-    schematic_scene = mixDesignTab.techTab.schematic_scene  # Nimm an, dass dies die Szene ist
+    schematic_scene = mixDesignTab.techTab.schematic_scene
 
-
-    # Zeige den Abschnitts-Auswahldialog
     dialog = PDFSelectionDialog()
-    if not dialog.exec_():  # Wenn der Benutzer den Dialog abbricht
+    if not dialog.exec_():
         return
 
     selected_sections = dialog.get_selected_sections()
@@ -402,13 +472,11 @@ def create_pdf(HeatSystemDesignGUI, filename):
     story = []
     styles = getSampleStyleSheet()
 
-    # Title
     story.append(Paragraph("Ergebnisse Variante 1", styles['Heading1']))
     description_text = "Beschreibung: ..."
     story.append(Paragraph(description_text, styles['Normal']))
     story.append(Spacer(1, 12))
 
-    # Add sections basierend auf der Auswahl
     if selected_sections['net_structure']:
         add_net_structure_section(story, calcTab)
     if selected_sections['economic_conditions']:
@@ -428,5 +496,4 @@ def create_pdf(HeatSystemDesignGUI, filename):
     if selected_sections['combined_results']:
         add_combined_results_section(story, mixDesignTab)
 
-    # Build the PDF
     doc.build(story)

@@ -1,8 +1,11 @@
 """
-Filename: import_osm_data_geojson.py
+Import OSM Data to GeoJSON Module
+=================================
+
+This module provides functionality to download OpenStreetMap (OSM) data for specific cities and convert it into GeoJSON format.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-07-31
-Description: Script with OSM download functionality.
 """
 
 import overpy

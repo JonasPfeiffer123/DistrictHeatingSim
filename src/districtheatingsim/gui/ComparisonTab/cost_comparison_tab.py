@@ -1,8 +1,11 @@
 """
-Filename: cost_comparison_tab.py
+Cost Comparison Tab Module
+=========================
+
+Tab widget for comparing costs and energy metrics across project variants.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-08-30
-Description: Contains the CostComparisonTab.
 """
 
 import os
@@ -19,7 +22,23 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 class CostComparisonTab(QWidget):
+    """
+    Widget for comparing costs and energy metrics across project variants.
+    """
+    
     def __init__(self, folder_manager, config_manager, parent=None):
+        """
+        Initialize cost comparison tab.
+
+        Parameters
+        ----------
+        folder_manager : FolderManager
+            Project folder manager.
+        config_manager : ConfigManager
+            Configuration manager.
+        parent : QWidget, optional
+            Parent widget.
+        """
         super().__init__(parent)
         self.folder_manager = folder_manager
         self.config_manager = config_manager
@@ -33,9 +52,18 @@ class CostComparisonTab(QWidget):
         self.initUI()
 
     def updateDefaultPath(self, new_base_path):
+        """
+        Update base path when project folder changes.
+
+        Parameters
+        ----------
+        new_base_path : str
+            New base path.
+        """
         self.base_path = new_base_path
 
     def initUI(self):
+        """Initialize user interface with tables and charts."""
         self.layout = QVBoxLayout(self)
 
         # Add buttons to load and remove data
@@ -72,6 +100,7 @@ class CostComparisonTab(QWidget):
         self.setLayout(self.layout)
 
     def addData(self):
+        """Load project data from selected folder."""
         # Open a file dialog to select the base path for the data
         folder_path = QFileDialog.getExistingDirectory(self, "Ordner auswählen", self.base_path)
 
@@ -85,6 +114,7 @@ class CostComparisonTab(QWidget):
                 self.updatePieCharts()
 
     def removeData(self):
+        """Remove last loaded project data from comparison."""
         if self.variant_data:
             self.variant_data.pop()
             self.folder_paths.pop()
@@ -98,13 +128,24 @@ class CostComparisonTab(QWidget):
             QMessageBox.warning(self, "Keine Daten", "Keine Daten zum Entfernen vorhanden.")
 
     def clearAllTables(self):
-        """
-        Clears all tables and pie charts when no data is available.
-        """
+        """Clear all tables and charts when no data available."""
         self.tableLayout.takeAt(0).widget().deleteLater()
         self.pieChartLayout.takeAt(0).widget().deleteLater()
 
     def load_variant_data(self, folder_path):
+        """
+        Load variant data from JSON file.
+
+        Parameters
+        ----------
+        folder_path : str
+            Path to project folder.
+
+        Returns
+        -------
+        dict
+            Processed variant data.
+        """
         try:
             # Load the JSON file
             json_file_path = os.path.join(folder_path, self.config_manager.get_relative_path("results_path"))  # Assuming the results are stored in 'results.json'
@@ -126,7 +167,17 @@ class CostComparisonTab(QWidget):
 
     def process_results(self, results):
         """
-        Processes the loaded results for comparison.
+        Process raw results for comparison display.
+
+        Parameters
+        ----------
+        results : dict
+            Raw results data.
+
+        Returns
+        -------
+        dict
+            Processed results.
         """
         try:
             # Handle primärenergiefaktor_Gesamt which can be a float or a list
@@ -161,13 +212,12 @@ class CostComparisonTab(QWidget):
             raise ValueError(f"Error processing results: {e}")
         
     def setupAdditionalResultsTable(self):
-        """
-        Sets up the additional results table.
-        """
+        """Set up additional results table widget."""
         self.additionalResultsTable = QTableWidget()
         self.scrollLayout.addWidget(self.additionalResultsTable)
 
     def display_data_in_table(self):
+        """Display loaded variant data in comparison table."""
         try:
             # Clear previous tables
             for i in reversed(range(self.tableLayout.count())):
@@ -218,6 +268,7 @@ class CostComparisonTab(QWidget):
                 f"Ein unerwarteter Fehler ist aufgetreten:\n\n{str(e)}\n\nTraceback:\n{tb_str}")
 
     def display_additional_results(self):
+        """Display summary results in additional table."""
         try:
             # Clear the table first
             self.additionalResultsTable.clear()
@@ -261,9 +312,7 @@ class CostComparisonTab(QWidget):
                 f"Ein unerwarteter Fehler ist aufgetreten:\n\n{str(e)}\n\nTraceback:\n{tb_str}")
 
     def updatePieCharts(self):
-        """
-        Updates the pie charts for all loaded variants.
-        """
+        """Update pie charts for all loaded variants."""
         try:
             # Clear previous pie charts
             for i in reversed(range(self.pieChartLayout.count())):
@@ -283,7 +332,17 @@ class CostComparisonTab(QWidget):
 
     def create_pie_chart_widget(self, data):
         """
-        Creates a QWidget containing a pie chart for the given data.
+        Create pie chart widget for given data.
+
+        Parameters
+        ----------
+        data : dict
+            Variant data for chart.
+
+        Returns
+        -------
+        QWidget
+            Widget containing pie chart.
         """
         pieChartFigure = Figure()
         pieChartCanvas = FigureCanvas(pieChartFigure)

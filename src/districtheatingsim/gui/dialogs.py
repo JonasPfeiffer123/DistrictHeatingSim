@@ -1,12 +1,12 @@
 """
-Filename: Dialogs.py
+GUI Dialogs Module
+==================
+
+This module contains dialog windows for user input and configuration.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-03-10
-Description: Contains the Dialogs of the main GUI
 """
-
-import sys
-import os
 
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QPushButton, QHBoxLayout, QFileDialog, QCheckBox, QDialogButtonBox, QHBoxLayout
 from PyQt5.QtCore import Qt
@@ -15,32 +15,31 @@ from districtheatingsim.utilities.utilities import get_resource_path
 
 class TemperatureDataDialog(QDialog):
     """
-    Dialog for managing temperature data.
-
-    Attributes:
-        temperatureDataFileLabel (QLabel): Label for the TRY file input.
-        temperatureDataFileInput (QLineEdit): Input field for the TRY file path.
-        selectTRYFileButton (QPushButton): Button to open file dialog for selecting TRY file.
+    Dialog for selecting TRY (Test Reference Year) weather data files.
+    
+    Simple file selection dialog for weather data input with default path.
     """
 
     def __init__(self, parent=None):
         """
-        Initializes the TemperatureDataDialog.
-
-        Args:
-            parent: The parent widget.
+        Initialize temperature data dialog.
+        
+        Parameters
+        ----------
+        parent : QWidget, optional
+            Parent widget.
         """
         super().__init__(parent)
         self.initUI()
 
     def initUI(self):
-        """Initializes the user interface."""
+        """Initialize the user interface components."""
         self.setWindowTitle("Testreferenzjahr-Datei auswählen")
-        self.resize(600, 200)  # Larger and resizable window
+        self.resize(600, 200)
 
         self.main_layout = QVBoxLayout(self)
 
-        # Short description of the dialog
+        # Description label with DWD link
         self.descriptionLabel = QLabel(
             "Bitte wählen Sie die Datei des Testreferenzjahres (TRY) aus, die Sie verwenden möchten.<br>"
             "Testreferenzjahre können unter <a href='https://www.dwd.de/DE/leistungen/testreferenzjahre/testreferenzjahre.html'>"
@@ -50,7 +49,7 @@ class TemperatureDataDialog(QDialog):
         self.descriptionLabel.setAlignment(Qt.AlignCenter)
         self.main_layout.addWidget(self.descriptionLabel)
 
-        # Data fields and label
+        # File input controls
         self.input_layout = QHBoxLayout()
 
         self.temperatureDataFileLabel = QLabel("TRY-Datei:", self)
@@ -65,7 +64,7 @@ class TemperatureDataDialog(QDialog):
 
         self.main_layout.addLayout(self.input_layout)
         
-        # Button layout for OK and Cancel
+        # OK/Cancel buttons
         self.buttonLayout = QHBoxLayout()
         okButton = QPushButton("OK", self)
         cancelButton = QPushButton("Abbrechen", self)
@@ -80,10 +79,12 @@ class TemperatureDataDialog(QDialog):
 
     def selectFilename(self, lineEdit):
         """
-        Opens a file dialog to select a file and sets the selected file path to the given QLineEdit.
-
-        Args:
-            lineEdit (QLineEdit): The QLineEdit to set the file path.
+        Open file dialog and set selected path to line edit.
+        
+        Parameters
+        ----------
+        lineEdit : QLineEdit
+            Target line edit widget.
         """
         filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen")
         if filename:
@@ -91,10 +92,12 @@ class TemperatureDataDialog(QDialog):
 
     def getValues(self):
         """
-        Returns the values from the dialog for further processing.
-
-        Returns:
-            dict: A dictionary with the TRY filename.
+        Get dialog values.
+        
+        Returns
+        -------
+        dict
+            Dictionary with TRY filename.
         """
         return {
             'TRY-filename': self.temperatureDataFileInput.text()
@@ -102,34 +105,32 @@ class TemperatureDataDialog(QDialog):
 
 class HeatPumpDataDialog(QDialog):
     """
-    Dialog for managing heat pump data.
-
-    Attributes:
-        heatPumpDataFileLabel (QLabel): Label for the heat pump data file input.
-        heatPumpDataFileInput (QLineEdit): Input field for the heat pump data file path.
-        selectCOPFileButton (QPushButton): Button to open file dialog for selecting COP data file.
+    Dialog for selecting heat pump COP data files.
+    
+    Simple file selection dialog for heat pump performance data.
     """
 
     def __init__(self, parent=None):
         """
-        Initializes the HeatPumpDataDialog.
-
-        Args:
-            parent: The parent widget.
+        Initialize heat pump data dialog.
+        
+        Parameters
+        ----------
+        parent : QWidget, optional
+            Parent widget.
         """
         super().__init__(parent)
         self.setWindowTitle("Wärmepumpendaten")
         self.initUI()
 
     def initUI(self):
-        """Initializes the user interface."""
+        """Initialize the user interface components."""
         self.setWindowTitle("COP-Daten-Verwaltung")
-        self.resize(400, 200)  # Larger and resizable window
+        self.resize(400, 200)
         
-        # Main layout
         mainLayout = QVBoxLayout(self)
 
-        # Data fields and label
+        # File input controls
         dataLayout = QVBoxLayout()
         self.heatPumpDataFileLabel = QLabel("csv-Datei mit Wärmepumpenkennfeld:")
         self.heatPumpDataFileInput = QLineEdit()
@@ -143,7 +144,7 @@ class HeatPumpDataDialog(QDialog):
 
         mainLayout.addLayout(dataLayout)
 
-        # Button layout for OK and Cancel
+        # OK/Cancel buttons
         buttonLayout = QHBoxLayout()
         okButton = QPushButton("OK")
         cancelButton = QPushButton("Abbrechen")
@@ -159,10 +160,12 @@ class HeatPumpDataDialog(QDialog):
 
     def selectFilename(self, lineEdit):
         """
-        Opens a file dialog to select a file and sets the selected file path to the given QLineEdit.
-
-        Args:
-            lineEdit (QLineEdit): The QLineEdit to set the file path.
+        Open file dialog and set selected path to line edit.
+        
+        Parameters
+        ----------
+        lineEdit : QLineEdit
+            Target line edit widget.
         """
         filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", "", "CSV-Dateien (*.csv)")
         if filename:
@@ -170,24 +173,40 @@ class HeatPumpDataDialog(QDialog):
 
     def getValues(self):
         """
-        Returns the values from the dialog for further processing.
-
-        Returns:
-            dict: A dictionary with the COP filename.
+        Get dialog values.
+        
+        Returns
+        -------
+        dict
+            Dictionary with COP filename.
         """
         return {
             'COP-filename': self.heatPumpDataFileInput.text()
         }
 
 class PDFSelectionDialog(QDialog):
+    """
+    Dialog for selecting PDF report sections.
+    
+    Checkbox dialog for choosing which sections to include in PDF reports.
+    """
+    
     def __init__(self, parent=None):
+        """
+        Initialize PDF selection dialog.
+        
+        Parameters
+        ----------
+        parent : QWidget, optional
+            Parent widget.
+        """
         super().__init__(parent)
         self.setWindowTitle("PDF Abschnittsauswahl")
         self.resize(300, 200)
 
         layout = QVBoxLayout()
 
-        # Checkboxen für die verschiedenen Abschnitte
+        # Section checkboxes
         self.net_structure_cb = QCheckBox("Netzstruktur")
         self.net_structure_cb.setChecked(True)
         self.economic_conditions_cb = QCheckBox("Wirtschaftliche Randbedingungen")
@@ -207,7 +226,7 @@ class PDFSelectionDialog(QDialog):
         self.combined_results_cb = QCheckBox("Wirtschaftlichkeit")
         self.combined_results_cb.setChecked(True)
 
-        # Checkboxen zum Layout hinzufügen
+        # Add checkboxes to layout
         layout.addWidget(self.net_structure_cb)
         layout.addWidget(self.economic_conditions_cb)
         layout.addWidget(self.technologies_cb)
@@ -218,7 +237,7 @@ class PDFSelectionDialog(QDialog):
         layout.addWidget(self.results_cb)
         layout.addWidget(self.combined_results_cb)
 
-        # Dialogbuttons (OK/Cancel)
+        # OK/Cancel buttons
         buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
@@ -228,7 +247,12 @@ class PDFSelectionDialog(QDialog):
 
     def get_selected_sections(self):
         """
-        Gibt die vom Benutzer ausgewählten Abschnitte zurück.
+        Get selected PDF sections.
+        
+        Returns
+        -------
+        dict
+            Dictionary with checkbox states for each section.
         """
         return {
             'net_structure': self.net_structure_cb.isChecked(),

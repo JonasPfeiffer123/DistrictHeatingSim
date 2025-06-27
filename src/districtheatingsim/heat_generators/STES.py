@@ -1,12 +1,15 @@
 """
-Filename: STES.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-06-26
-Description: Advanced STES (Seasonal Thermal Energy Storage) system with mass flow modeling.
+STES Simulation Module
+================================
 
 This module implements sophisticated Seasonal Thermal Energy Storage (STES) systems
 with detailed mass flow calculations, temperature-dependent storage operations, and
-realistic hydraulic behavior modeling. It extends stratified thermal storage to include
+realistic hydraulic behavior modeling.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2025-06-26
+
+It extends stratified thermal storage to include
 mass flow dynamics, charging/discharging controls, and operational constraints for
 district heating applications.
 

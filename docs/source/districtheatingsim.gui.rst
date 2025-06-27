@@ -1,11 +1,8 @@
-districtheatingsim.gui package
+GUI package
 ==============================
 
-Subpackages
------------
-
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 1
 
    districtheatingsim.gui.MainTab
    districtheatingsim.gui.BuildingTab
@@ -18,24 +15,15 @@ Subpackages
    districtheatingsim.gui.ProjectTab
    districtheatingsim.gui.RenovationTab
 
-districtheatingsim.gui.dialogs module
--------------------------------------
-
 .. automodule:: districtheatingsim.gui.dialogs
    :members:
    :show-inheritance:
    :undoc-members:
 
-districtheatingsim.gui.results\_pdf module
-------------------------------------------
-
 .. automodule:: districtheatingsim.gui.results_pdf
    :members:
    :show-inheritance:
    :undoc-members:
-
-districtheatingsim.gui.utilities module
----------------------------------------
 
 .. automodule:: districtheatingsim.gui.utilities
    :members:

@@ -1,11 +1,14 @@
 """
-Filename: photovoltaics.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-24
-Description: Photovoltaic system modeling for district heating applications.
+Photovoltaics Module
+====================
 
 This module provides comprehensive photovoltaic (PV) power generation modeling
-capabilities for district heating systems. The implementation is based on the
+capabilities for district heating systems.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-09-24
+
+The implementation is based on the
 EU PVGIS methodology and includes detailed solar irradiation calculations,
 temperature-dependent efficiency modeling, and system-level performance analysis.
 

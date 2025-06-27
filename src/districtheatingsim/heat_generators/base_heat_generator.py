@@ -1,8 +1,11 @@
 """
-Filename: base_heat_generator.py
+Base Heat Generator Module
+==========================
+
+This module provides the abstract base class for all heat generation technologies in district heating systems.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-06-24
-Description: Base classes for heat generators and control strategies in district heating systems.
 
 This module provides the foundational framework for all heat generation technologies and
 control strategies in district heating simulations. It implements common interfaces,

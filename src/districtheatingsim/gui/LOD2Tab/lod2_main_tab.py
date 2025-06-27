@@ -1,8 +1,11 @@
 """
-Filename: lod2_main_tab.py
+LOD2 Main Tab Module
+===================
+
+Main tab for LOD2 building data visualization and processing.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-02-07
-Description: Contains the main tab for the LOD2 data visualization.
 """
 
 import os
@@ -16,7 +19,25 @@ from districtheatingsim.gui.LOD2Tab.lod2_visualization import LOD2DataVisualizat
 from districtheatingsim.gui.LOD2Tab.lod2_dialogs import LOD2DownloadDialog
 
 class LOD2Tab(QWidget):
+    """
+    Main tab widget for LOD2 building data visualization and processing.
+    """
+    
     def __init__(self, folder_manager, data_manager, config_manager, parent=None):
+        """
+        Initialize LOD2 main tab.
+
+        Parameters
+        ----------
+        folder_manager : FolderManager
+            Project folder manager.
+        data_manager : DataManager
+            Application data manager.
+        config_manager : ConfigManager
+            Configuration manager.
+        parent : QWidget, optional
+            Parent widget.
+        """
         super().__init__(parent)
 
         self.folder_manager = folder_manager
@@ -51,27 +72,39 @@ class LOD2Tab(QWidget):
 
     def on_project_folder_changed(self, new_base_path):
         """
-        Updates the base path in the model when the project folder changes.
+        Update base path when project folder changes.
 
-        Args:
-            new_base_path (str): The new base path.
+        Parameters
+        ----------
+        new_base_path : str
+            New base path.
         """
         self.set_base_path(new_base_path)
 
     def set_base_path(self, base_path):
         """
-        Set the base path for file operations.
+        Set base path for file operations.
+
+        Parameters
+        ----------
+        base_path : str
+            Base path to set.
         """
         self.base_path = base_path
 
     def get_base_path(self):
         """
-        Get the current base path.
+        Get current base path.
+
+        Returns
+        -------
+        str
+            Current base path.
         """
         return self.base_path
 
     def initMenuBar(self):
-        """Initializes the menu bar with actions."""
+        """Initialize menu bar with file and processing actions."""
         self.menubar = QMenuBar(self)
         self.menubar.setFixedHeight(30)
         fileMenu = self.menubar.addMenu('Datei')
@@ -109,14 +142,12 @@ class LOD2Tab(QWidget):
         self.main_layout.setMenuBar(self.menubar)
 
     def open_lod2_download_dialog(self):
-        """Öffnet den Dialog zum Download von LOD2-Daten."""
+        """Open LOD2 data download dialog."""
         dialog = LOD2DownloadDialog(self.folder_manager, self.config_manager, self)
         dialog.exec_()
     
     def pv_file_dialog(self):
-        """
-        Opens a file dialog to select the PV data file.
-        """
+        """Open file dialog for PV data calculation output."""
         try:
             # Get the output file name
             output_filename, _ = QFileDialog.getSaveFileName(

@@ -1,11 +1,14 @@
 """
-Filename: config_plot.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-31
-Description: Interactive visualization module for pandapipes district heating networks.
+Config Plot Module
+==================
 
 This module provides comprehensive visualization capabilities for district heating network
-analysis and presentation. It combines pandapipes network plotting with interactive features,
+analysis and presentation.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-07-31
+
+It combines pandapipes network plotting with interactive features,
 contextual basemaps, and detailed component annotations to create professional-quality
 network visualizations for engineering analysis and stakeholder presentations.
 

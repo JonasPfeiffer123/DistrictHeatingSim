@@ -1,11 +1,14 @@
 """
-Filename: geothermal_heat_pump.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-12-11
-Description: Geothermal heat pump implementation for district heating applications.
+Geothermal Heat Pump System Module
+==================================
 
 This module provides comprehensive modeling capabilities for geothermal heat pump systems
-in district heating applications. Geothermal heat pumps utilize the stable thermal energy
+in district heating applications.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-12-11
+
+Geothermal heat pumps utilize the stable thermal energy
 stored in the earth through vertical ground source heat exchangers (boreholes), offering
 highly efficient and sustainable heating solutions with excellent seasonal performance.
 

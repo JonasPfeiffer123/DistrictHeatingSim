@@ -1,8 +1,10 @@
 """
-Filename: base_heat_pump.py
+Base Heat Pump Classes
+========================
+
+This module provides base classes for heat pump modeling in district heating applications.
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-12-11
-Description: Base heat pump classes for district heating applications with performance modeling.
 
 This module provides comprehensive heat pump modeling capabilities for district heating systems,
 including performance calculations, economic analysis, and environmental impact assessment.

@@ -1,11 +1,14 @@
 """
-Filename: controllers.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-06-25
-Description: Custom control systems for district heating network simulation and optimization.
+Controllers Module
+==================
 
 This module provides specialized controllers for district heating network operation using
-the pandapipes framework. It implements advanced control strategies for pressure management,
+the pandapipes framework.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2025-06-25
+
+It implements advanced control strategies for pressure management,
 temperature regulation, and system optimization to ensure efficient and reliable network
 operation under varying load conditions.
 

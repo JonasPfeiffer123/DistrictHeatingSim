@@ -1,12 +1,13 @@
 """
-Filename: biomass_boiler.py
+Biomass Boiler System Module
+============================
+
+This module provides comprehensive biomass boiler system modeling capabilities.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-12-11
-Description: Biomass boiler system modeling for district heating applications.
 
-This module provides comprehensive biomass boiler system modeling capabilities
-for district heating applications. The implementation includes detailed thermal
-modeling, storage system integration, economic analysis, and environmental
+The implementation includes detailed thermal modeling, storage system integration, economic analysis, and environmental
 impact assessment for wood pellet and biomass-fired heating systems.
 
 The module supports both standalone boiler operation and boiler-storage

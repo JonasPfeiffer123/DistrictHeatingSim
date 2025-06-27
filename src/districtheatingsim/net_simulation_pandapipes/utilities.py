@@ -1,11 +1,14 @@
 """
-Filename: utilities.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-05-17
-Description: Utility functions for pandapipes district heating network simulation and optimization.
+Pandapipes Network Utility Functions
+========================================
 
 This module provides essential utility functions for district heating network simulation,
-optimization, and analysis using the pandapipes framework. It includes heat pump performance
+optimization, and analysis using the pandapipes framework.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2025-05-17
+
+It includes heat pump performance
 calculations, network controller creation, pipe diameter optimization, flow direction
 correction, and GeoJSON export capabilities.
 

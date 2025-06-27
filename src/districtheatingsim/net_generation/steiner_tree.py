@@ -1,12 +1,14 @@
 """
-Filename: steiner_tree.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-05-26
-Description: Steiner tree generation for optimal district heating network layout.
+Steiner Tree Generation Module
+==============================
 
 This module implements Steiner tree algorithms for generating cost-optimal district heating
-network topologies based on existing street infrastructure. It creates minimal-cost
-network connections between heat producers, consumers, and connection points while
+network topologies based on existing street infrastructure.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2025-05-26
+
+It creates minimal-cost network connections between heat producers, consumers, and connection points while
 respecting geographical constraints and street layout requirements.
 
 The module integrates NetworkX graph algorithms with geospatial analysis to generate

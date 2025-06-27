@@ -1,8 +1,11 @@
 """
-Filename: RenovationTab.py
+Renovation Tab Module
+=====================
+
+Main container for renovation analysis tabs using MVP architecture.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-08-29
-Description: Contains the main RenovationTab, container of RenovationTab1 and RenovationTab2.
 """
 
 from PyQt5.QtWidgets import QVBoxLayout, QProgressBar, QWidget, QTabWidget
@@ -12,9 +15,23 @@ from districtheatingsim.gui.RenovationTab.RenovationTab2 import RenovationTab2
 
 class RenovationTabPresenter:
     """
-    The Presenter class for the RenovationTab, managing interaction between the Model and View.
+    Presenter for renovation tab, managing interaction between model and view.
     """
     def __init__(self, folder_manager, data_manager, config_manager, view):
+        """
+        Initialize renovation tab presenter.
+        
+        Parameters
+        ----------
+        folder_manager : object
+            Project folder manager.
+        data_manager : object
+            Application data manager.
+        config_manager : object
+            Configuration manager.
+        view : RenovationTabView
+            Associated view component.
+        """
         self.folder_manager = folder_manager
         self.data_manager = data_manager
         self.config_manager = config_manager
@@ -27,10 +44,7 @@ class RenovationTabPresenter:
         self.initTabs()
 
     def initTabs(self):
-        """
-        Initialize the tabs with the appropriate views.
-        """
-
+        """Initialize renovation analysis sub-tabs."""
         renovation_tab1 = RenovationTab1(self.folder_manager)
         renovation_tab2 = RenovationTab2(self.folder_manager, self.data_manager)
 
@@ -39,49 +53,77 @@ class RenovationTabPresenter:
 
     def updateDefaultPath(self, new_base_path):
         """
-        Update the default path for the project.
+        Update project default path.
 
-        Args:
-            new_base_path (str): The new base path for the project.
+        Parameters
+        ----------
+        new_base_path : str
+            New base path for the project.
         """
         self.view.base_path = new_base_path
 
 class RenovationTabView(QWidget):
     """
-    The View class for the RenovationTab, responsible for displaying the UI.
+    View component for renovation tab UI display.
     """
     def __init__(self, parent=None):
+        """
+        Initialize renovation tab view.
+        
+        Parameters
+        ----------
+        parent : QWidget, optional
+            Parent widget.
+        """
         super().__init__(parent)
         self.initUI()
 
     def initUI(self):
-        """
-        Initialize the UI components of the RenovationTab.
-        """
+        """Initialize UI components."""
         main_layout = QVBoxLayout(self)
 
         # Create tabs
         self.tabs = QTabWidget(self)
-        main_layout.addWidget(self.tabs, stretch=1)  # Set stretch to 1 to use available space
+        main_layout.addWidget(self.tabs, stretch=1)
 
         self.progressBar = QProgressBar(self)
         main_layout.addWidget(self.progressBar)
 
     def addTab(self, widget, title):
         """
-        Add a tab to the tab widget.
+        Add tab to tab widget.
 
-        Args:
-            widget (QWidget): The widget to be added as a tab.
-            title (str): The title of the tab.
+        Parameters
+        ----------
+        widget : QWidget
+            Widget to add as tab.
+        title : str
+            Tab title.
         """
         self.tabs.addTab(widget, title)
 
 class RenovationTab(QWidget):
     """
-    The main entry point for the RenovationTab, initializing the MVP components.
+    Main renovation tab widget with MVP architecture.
+    
+    Entry point for renovation analysis functionality containing
+    district and individual building renovation tabs.
     """
     def __init__(self, folder_manager, data_manager, config_manager, parent=None):
+        """
+        Initialize renovation tab with MVP components.
+        
+        Parameters
+        ----------
+        folder_manager : object
+            Project folder manager.
+        data_manager : object
+            Application data manager.
+        config_manager : object
+            Configuration manager.
+        parent : QWidget, optional
+            Parent widget.
+        """
         super().__init__(parent)
 
         # Initialize View

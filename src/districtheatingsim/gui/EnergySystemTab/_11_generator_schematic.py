@@ -1,8 +1,11 @@
 """
-Filename: _11_generator_schematic.py
+Generator Schematic Module
+==========================
+
+This module contains custom QGraphicsScene and QGraphicsView classes for a generator schematic. It also includes generator schematic items such as ComponentItem and Pipe, providing a complex example for a schematic editor with custom items and connections.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-09-28
-Description: Custom QGraphicsScene and QGraphicsView classes for a generator schematic. Also includes generator schematic items (ComponentItem, Pipe). Complex example for a schematic editor with custom items and connections.
 """
 
 from PyQt5.QtWidgets import (QGraphicsScene, QGraphicsPathItem, QGraphicsLineItem, QGraphicsItem, QGraphicsView, QGraphicsRectItem, QGraphicsTextItem)

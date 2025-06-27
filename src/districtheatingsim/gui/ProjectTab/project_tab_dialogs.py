@@ -1,8 +1,11 @@
 """
-Filename: project_tab_dialogs.py
+Project Tab Dialogs Module
+==========================
+
+Dialog windows for project tab functionality including data input and progress display.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-09-20
-Description: Contains the ProjectTab-Dialogs.
 """
 
 from PyQt5.QtWidgets import (QVBoxLayout, QLabel, QDialog, QLineEdit, QDialogButtonBox, 
@@ -10,13 +13,19 @@ from PyQt5.QtWidgets import (QVBoxLayout, QLabel, QDialog, QLineEdit, QDialogBut
 
 class RowInputDialog(QDialog):
     """
-    Dialog for adding a new row in a table.
-
-    Args:
-        headers (list): List of headers for the table columns.
-        parent (QWidget, optional): The parent widget. Defaults to None.
+    Dialog for adding new table rows with input fields.
     """
     def __init__(self, headers, parent=None):
+        """
+        Initialize row input dialog.
+
+        Parameters
+        ----------
+        headers : list
+            Column headers for input fields.
+        parent : QWidget, optional
+            Parent widget.
+        """
         super().__init__(parent)
         self.setWindowTitle("Neue Zeile hinzufügen")
         self.layout = QGridLayout(self)
@@ -39,21 +48,28 @@ class RowInputDialog(QDialog):
 
     def get_input_data(self):
         """
-        Retrieve the input data from the dialog.
+        Get input data from dialog fields.
 
-        Returns:
-            dict: A dictionary mapping headers to input field values.
+        Returns
+        -------
+        dict
+            Mapping of headers to input values.
         """
         return {header: field.text() for header, field in self.fields.items()}
     
 class OSMImportDialog(QDialog):
     """
-    Dialog for importing OSM data with user-defined default values.
-
-    Args:
-        parent (QWidget, optional): The parent widget. Defaults to None.
+    Dialog for OSM data import with default building parameters.
     """
     def __init__(self, parent=None):
+        """
+        Initialize OSM import dialog.
+
+        Parameters
+        ----------
+        parent : QWidget, optional
+            Parent widget.
+        """
         super().__init__(parent)
         self.setWindowTitle("OSM-Daten importieren")
         self.layout = QGridLayout(self)
@@ -93,21 +109,30 @@ class OSMImportDialog(QDialog):
 
     def get_input_data(self):
         """
-        Retrieve the input data from the dialog.
+        Get OSM import parameters.
 
-        Returns:
-            dict: A dictionary mapping headers to input field values.
+        Returns
+        -------
+        dict
+            Mapping of parameters to input values.
         """
         return {header: field.text() for header, field in self.fields.items()}
     
 class ProcessDetailsDialog(QDialog):
     """
-    Dialog to show detailed progress information about each process step.
-    
-    Args:
-        process_steps (list): List of process steps with detailed information.
+    Dialog displaying detailed project progress information.
     """
     def __init__(self, process_steps, parent=None):
+        """
+        Initialize process details dialog.
+
+        Parameters
+        ----------
+        process_steps : list
+            List of process step dictionaries with progress info.
+        parent : QWidget, optional
+            Parent widget.
+        """
         super().__init__(parent)
         self.setWindowTitle("Projektfortschritt - Details")
         self.setMinimumSize(800, 800)
@@ -180,7 +205,17 @@ class ProcessDetailsDialog(QDialog):
 
     def get_step_progress(self, step):
         """
-        Calculate the completion percentage for a step based on its required files.
+        Calculate step completion percentage based on required files.
+
+        Parameters
+        ----------
+        step : dict
+            Process step information.
+
+        Returns
+        -------
+        float
+            Completion percentage (0-100).
         """
         total_files = len(step["required_files"])
         missing_files = len(step.get("missing_files", []))

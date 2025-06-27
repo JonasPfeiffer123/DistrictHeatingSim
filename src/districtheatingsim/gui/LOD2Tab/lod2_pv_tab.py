@@ -1,31 +1,35 @@
 """
-Filename: lod2_pv_tab.py
+LOD2 PV Tab Module
+==================
+
+Tab for visualizing PV data in tree view format.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-03-03
-Description: Contains the LOD2PVTab as MVP structure.
 """
 
 from PyQt5.QtWidgets import (
     QVBoxLayout, QFileDialog, QWidget, QHeaderView, QHBoxLayout, QScrollArea, QMessageBox, QTreeWidget, QTreeWidgetItem)
+
 class PVDataVisualizationTab(QWidget):
     """
-    The view class for PV data visualization.
+    Widget for PV data visualization in tree view format.
     """
 
     def __init__(self, parent=None):
         """
-        Initializes the PVDataVisualizationTab with UI components.
+        Initialize PV data visualization tab.
 
-        Args:
-            parent (QWidget, optional): The parent widget.
+        Parameters
+        ----------
+        parent : QWidget, optional
+            Parent widget.
         """
         super().__init__(parent)
-        self.initUI()#
+        self.initUI()
 
     def initUI(self):
-        """
-        Initializes the UI components of the PVDataVisualizationTab.
-        """
+        """Initialize user interface components."""
         main_layout = QVBoxLayout(self)
         data_vis_layout = QHBoxLayout()
         main_layout.addLayout(data_vis_layout)
@@ -40,19 +44,51 @@ class PVDataVisualizationTab(QWidget):
 
         self.treeWidget = QTreeWidget(self)
         self.treeWidget.setHeaderLabels(['Gebäude/Dach', 'Dachfläche (m²)', 'Dachneigung (°)', 'Dachausrichtung (°)', 'Yield (MWh)', 'Max Power (kW)'])
-        # Automatically resize columns to fit their content
         self.treeWidget.header().setSectionResizeMode(QHeaderView.ResizeToContents)
         scroll_layout.addWidget(self.treeWidget)
 
     def add_building(self, adresse, koordinate_x, koordinate_y):
-        """Add a building entry to the tree view."""
+        """
+        Add building entry to tree view.
+
+        Parameters
+        ----------
+        adresse : str
+            Building address.
+        koordinate_x : float
+            X coordinate.
+        koordinate_y : float
+            Y coordinate.
+
+        Returns
+        -------
+        QTreeWidgetItem
+            Building tree item.
+        """
         building_item = QTreeWidgetItem(self.treeWidget)
         building_item.setText(0, adresse)
         building_item.setText(1, f'UTM_X: {koordinate_x}, UTM_Y: {koordinate_y}')
         return building_item
 
     def add_roof(self, building_item, roof_area, roof_slope, roof_orientation, yield_MWh, max_power):
-        """Add a roof entry under a building in the tree view."""
+        """
+        Add roof entry under building in tree view.
+
+        Parameters
+        ----------
+        building_item : QTreeWidgetItem
+            Parent building item.
+        roof_area : float
+            Roof area in m².
+        roof_slope : float
+            Roof slope in degrees.
+        roof_orientation : float
+            Roof orientation in degrees.
+        yield_MWh : float
+            PV yield in MWh.
+        max_power : float
+            Maximum power in kW.
+        """
         roof_item = QTreeWidgetItem(building_item)
         roof_item.setText(0, 'Dach')
         roof_item.setText(1, f'{roof_area:.2f}')
@@ -63,10 +99,12 @@ class PVDataVisualizationTab(QWidget):
 
     def display_data(self, building_info):
         """
-        Display the loaded building data in the Tree View.
+        Display building data in tree view.
         
-        Args:
-            building_info (dict): A dictionary containing building information.
+        Parameters
+        ----------
+        building_info : dict
+            Building information dictionary.
         """
         self.treeWidget.clear()
 
@@ -79,4 +117,4 @@ class PVDataVisualizationTab(QWidget):
                     roof_orientations = roof['Roof_Orientation'] if isinstance(roof['Roof_Orientation'], list) else [roof['Roof_Orientation']]
 
                     for i in range(len(roof_areas)):
-                        self.add_roof(building_item, roof_areas[i], roof_slopes[i], roof_orientations[i], 0, 0)  # Initial yield and max power set to 0
+                        self.add_roof(building_item, roof_areas[i], roof_slopes[i], roof_orientations[i], 0, 0)

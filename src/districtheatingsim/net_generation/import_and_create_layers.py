@@ -1,11 +1,14 @@
 """
-Filename: import_and_create_layers.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-05-26
-Description: Data import and layer processing for district heating network generation.
+Import and Create Layers Module
+===============================
 
 This module provides comprehensive data import and layer processing capabilities for
-district heating network generation workflows. It handles the integration of multiple
+district heating network generation workflows.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2025-05-26
+
+It handles the integration of multiple
 data sources including OpenStreetMap street networks, building location data, and
 heat generator coordinates to create geospatial layers for network optimization.
 

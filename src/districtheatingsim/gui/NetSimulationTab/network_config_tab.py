@@ -1,8 +1,11 @@
 """
-Filename: network_config_tab.py
+Network Configuration Tab Module
+================================
+
+Tab for network configuration parameters in district heating systems.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-05-17
-Description: Contains the NetworkConfigTab class.
 """
 
 import pandapipes as pp
@@ -10,13 +13,28 @@ import pandapipes as pp
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QComboBox, QWidget, QHBoxLayout, QCheckBox, QGroupBox
 
 class NetworkConfigTab(QWidget):
+    """
+    Widget for configuring district heating network parameters.
+    """
+    
     def __init__(self, dialog_config, parent=None):
+        """
+        Initialize network configuration tab.
+
+        Parameters
+        ----------
+        dialog_config : dict
+            Configuration data.
+        parent : QWidget, optional
+            Parent widget.
+        """
         super().__init__(parent)
         self.dialog_config = dialog_config
         self.parent = parent
         self.initUI()
 
     def initUI(self):
+        """Initialize user interface components."""
         layout = QVBoxLayout(self)
 
         netConfigGroup = QGroupBox("Netzkonfiguration")
@@ -55,6 +73,14 @@ class NetworkConfigTab(QWidget):
         self.updateInputFieldsVisibility()
 
     def createNetconfigurationControlInput(self):
+        """
+        Create network configuration selection input.
+
+        Returns
+        -------
+        QVBoxLayout
+            Layout containing configuration controls.
+        """
         layout = QVBoxLayout()
         layout.addWidget(QLabel("Netzkonfiguration:"))
         self.netconfigurationControlInput = QComboBox(self)
@@ -64,6 +90,14 @@ class NetworkConfigTab(QWidget):
         return layout
 
     def createTemperatureControlInput(self):
+        """
+        Create temperature control selection input.
+
+        Returns
+        -------
+        QVBoxLayout
+            Layout containing temperature controls.
+        """
         layout = QVBoxLayout()
         self.supplyTemperatureControlInput = QComboBox(self)
         self.supplyTemperatureControlInput.addItems(self.dialog_config["supply_temperature_control"])
@@ -73,6 +107,14 @@ class NetworkConfigTab(QWidget):
         return layout
 
     def createSupplyTemperatureCheckbox(self):
+        """
+        Create supply temperature configuration checkbox.
+
+        Returns
+        -------
+        QVBoxLayout
+            Layout containing supply temperature checkbox.
+        """
         layout = QVBoxLayout()
         layout.addWidget(QLabel("Temperaturregelung HAST:"))
 
@@ -83,6 +125,14 @@ class NetworkConfigTab(QWidget):
         return layout
 
     def createReturnTemperatureCheckbox(self):
+        """
+        Create return temperature configuration checkbox.
+
+        Returns
+        -------
+        QVBoxLayout
+            Layout containing return temperature checkbox.
+        """
         layout = QVBoxLayout()
         self.returnTempCheckbox = QCheckBox("Rücklauftemperatur für alle HA-Stationen festlegen.")
         self.returnTempCheckbox.setToolTip("""Aktivieren Sie diese Option, um die Rücklauftemperatur für alle HA-Stationen zentral festzulegen.\nStandardmäßig erfolgt die Berechung der Rücklauftemperaturen der HA-Station aus den Rücklauftemperaturen der Gebäude sowie der vorgegebenen Temperaturdifferenz zwischen Netz und HAST.""")
@@ -91,6 +141,14 @@ class NetworkConfigTab(QWidget):
         return layout
 
     def createBuildingTemperatureCheckbox(self):
+        """
+        Create building temperature configuration checkbox.
+
+        Returns
+        -------
+        QVBoxLayout
+            Layout containing building temperature checkbox.
+        """
         layout = QVBoxLayout()
         self.buildingTempCheckbox = QCheckBox("Gebäudeheizungstemperaturen im zeitlichen Verlauf berücksichtigen.")
         self.buildingTempCheckbox.setToolTip("""Aktivieren Sie diese Option, um die Vor- und Rücklauftemperaturen in den Gebäuden mittels Temperaturregelung entsprechend der definierten Temperaturen und der Steigung in Abhängigkeit der Außentemperatur zu berechnen.\nIst eine Mindestvorlauftemperatur vorgegeben wird diese berücksichtigt.\nDie vorgabe einer zentralen Rücklauftemperatur ergibt nur bei einem kalten Netz Sinn.""")
@@ -99,6 +157,14 @@ class NetworkConfigTab(QWidget):
         return layout
 
     def createNetParameterInputs(self):
+        """
+        Create network parameter input fields.
+
+        Returns
+        -------
+        QVBoxLayout
+            Layout containing parameter inputs.
+        """
         layout = QVBoxLayout()
         self.parameter_rows_net = []
 
@@ -135,6 +201,14 @@ class NetworkConfigTab(QWidget):
         return layout
 
     def createHeatConsumerParameterInputs(self):
+        """
+        Create heat consumer parameter input fields.
+
+        Returns
+        -------
+        QVBoxLayout
+            Layout containing heat consumer inputs.
+        """
         layout = QVBoxLayout()
         self.parameter_rows_heat_consumer = []
 
@@ -157,6 +231,21 @@ class NetworkConfigTab(QWidget):
         return layout
 
     def createParameterRow(self, label_text, default_text):
+        """
+        Create a parameter input row with label and text field.
+
+        Parameters
+        ----------
+        label_text : str
+            Label text.
+        default_text : str
+            Default input value.
+
+        Returns
+        -------
+        QHBoxLayout
+            Layout containing label and input field.
+        """
         row_layout = QHBoxLayout()
         label = QLabel(label_text)
         line_edit = QLineEdit(default_text)
@@ -165,6 +254,14 @@ class NetworkConfigTab(QWidget):
         return row_layout
 
     def createinitialpipetypeInput(self):
+        """
+        Create pipe type selection input.
+
+        Returns
+        -------
+        QVBoxLayout
+            Layout containing pipe type selection.
+        """
         layout = QVBoxLayout()
         self.initialpipetypeInput = QComboBox(self)
         pipetypes = pp.std_types.available_std_types(pp.create_empty_network(fluid="water"), "pipe").index.tolist()
@@ -185,11 +282,14 @@ class NetworkConfigTab(QWidget):
     
     def set_layout_visibility(self, layout, visible):
         """
-        Sets the visibility of all widgets in a layout.
+        Set visibility of all widgets in a layout.
 
-        Args:
-            layout (QLayout): The layout to update.
-            visible (bool): Whether the widgets should be visible.
+        Parameters
+        ----------
+        layout : QLayout
+            Layout to update.
+        visible : bool
+            Visibility state.
         """
         for i in range(layout.count()):
             item = layout.itemAt(i)
@@ -201,11 +301,14 @@ class NetworkConfigTab(QWidget):
 
     def set_default_value(self, parameter_row, value):
         """
-        Sets the default value for a parameter row.
+        Set default value for a parameter row.
 
-        Args:
-            parameter_row (QHBoxLayout): The parameter row layout.
-            value (str): The default value to set.
+        Parameters
+        ----------
+        parameter_row : QHBoxLayout
+            Parameter row layout.
+        value : str
+            Default value to set.
         """
         # Zugriff auf das QLineEdit Widget in der Parameterzeile und Aktualisieren des Textes
         for i in range(parameter_row.count()):
@@ -215,9 +318,7 @@ class NetworkConfigTab(QWidget):
                 break  # Beendet die Schleife, sobald das QLineEdit gefunden und aktualisiert wurde
 
     def updateInputFieldsVisibility(self):
-        """
-        Updates the visibility of input fields based on the selected options.
-        """
+        """Update visibility of input fields based on selected options."""
         self.netconfiguration = self.netconfigurationControlInput.currentText()
         std = self.dialog_config["standardwerte"][self.netconfiguration]
         self.set_default_value(self.max_supply_temp_row, str(std["max_supply_temp"]))
@@ -265,14 +366,8 @@ class NetworkConfigTab(QWidget):
 
         self.building_temp_checked =  self.buildingTempCheckbox.isChecked()
 
-    ### Hier vielleicht noch Funktionalitäten auslagern
     def getSupplyTemperatureHeatGenerator(self):
-        """
-        Calculates the temperature curve based on the selected control mode.
-
-        Returns:
-            float or np.ndarray: The calculated temperature curve.
-        """
+        """Calculate temperature curve based on selected control mode."""
         self.supply_temperature_control = self.supplyTemperatureControlInput.currentText()
         if self.supply_temperature_control == "Statisch":
             self.max_supply_temperature = float(self.parameter_rows_net[0].itemAt(1).widget().text())

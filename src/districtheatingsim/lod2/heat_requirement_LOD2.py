@@ -1,12 +1,14 @@
 """
-Filename: heat_requirement_LOD2.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-03-10
-Description: Building heat demand calculation using LOD2 data and TABULA building typology.
+Heat Requirement Calculation for LOD2 Buildings Module
+======================================================
 
 This module implements comprehensive building energy demand calculation for district heating
-applications using Level of Detail 2 (LOD2) building geometry data. It combines 3D building
-information with thermal building physics, Test Reference Year (TRY) weather data, and
+applications using Level of Detail 2 (LOD2) building geometry data.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2025-03-10
+
+It combines 3D building information with thermal building physics, Test Reference Year (TRY) weather data, and
 TABULA building typology standards to calculate heating and domestic hot water demands.
 
 The module provides automated heat demand assessment for entire building stocks using
