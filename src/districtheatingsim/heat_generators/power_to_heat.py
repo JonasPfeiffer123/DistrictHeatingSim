@@ -1,11 +1,14 @@
 """
-Filename: power_to_heat.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-12-11
-Description: Power-to-heat system implementation for district heating applications.
+Power-to-Heat System Module
+===========================
 
 This module provides comprehensive modeling capabilities for power-to-heat (P2H) systems
-in district heating applications. Power-to-heat systems convert electrical energy directly
+in district heating applications.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-12-11
+
+Power-to-heat systems convert electrical energy directly
 into thermal energy using electric heating elements, providing flexible heating solutions
 with excellent controllability and grid integration capabilities.
 

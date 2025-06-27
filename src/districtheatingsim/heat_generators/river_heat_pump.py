@@ -1,11 +1,14 @@
 """
-Filename: river_heat_pump.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-12-11
-Description: River water heat pump implementation for district heating applications.
+River Water Heat Pump System Module
+===================================
 
 This module provides comprehensive modeling capabilities for river water heat pump systems
-in district heating applications. River water heat pumps utilize the thermal energy stored
+in district heating applications.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-12-11
+
+River water heat pumps utilize the thermal energy stored
 in rivers and water bodies as a renewable heat source, offering sustainable heating solutions
 with high efficiency and environmental benefits.
 

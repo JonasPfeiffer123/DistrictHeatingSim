@@ -1,8 +1,11 @@
 """
-Filename: lod2_presenter.py
+LOD2 Presenter Module
+====================
+
+Presenter class for managing LOD2 data visualization model-view interactions.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-02-03
-Description: Contains the presenter class for the LOD2 data visualization.
 """
 
 from PyQt5.QtWidgets import ( QFileDialog, QDialog, QMessageBox, QTreeWidgetItem)
@@ -14,19 +17,26 @@ import traceback
 
 class DataVisualizationPresenter(QObject):
     """
-    The presenter class for managing the interaction between the model and the view in the LOD2 data visualization.
+    Presenter class for managing LOD2 data visualization model-view interactions.
     """
     data_loaded = pyqtSignal(dict)
 
     def __init__(self, model, view, folder_manager, data_manager, config_manager):
         """
-        Initializes the DataVisualizationPresenter with references to the model, view, folder manager, and data manager.
+        Initialize LOD2 data visualization presenter.
 
-        Args:
-            model (LOD2DataModel): The data model.
-            view (LOD2DataVisualizationTab): The view component.
-            folder_manager (FolderManager): The folder manager.
-            data_manager (DataManager): The data manager.
+        Parameters
+        ----------
+        model : LOD2DataModel
+            Data model instance.
+        view : LOD2DataVisualizationTab
+            View component instance.
+        folder_manager : FolderManager
+            Folder manager instance.
+        data_manager : DataManager
+            Data manager instance.
+        config_manager : ConfigManager
+            Configuration manager instance.
         """
         super().__init__()
         self.model = model
@@ -42,41 +52,43 @@ class DataVisualizationPresenter(QObject):
 
     def on_project_folder_changed(self, new_base_path):
         """
-        Updates the base path in the model when the project folder changes.
+        Update model base path when project folder changes.
 
-        Args:
-            new_base_path (str): The new base path.
+        Parameters
+        ----------
+        new_base_path : str
+            New base path.
         """
         self.model.set_base_path(new_base_path)
-        self.model.populateComboBoxes()  # Populate ComboBox data
+        self.model.populateComboBoxes()
 
     def connect_signals(self):
-        """
-        Connects view signals to presenter slots.
-        """
+        """Connect view signals to presenter slots."""
         self.view.data_selected.connect(self.highlight_building_3d)
         self.view.building_type_changed.connect(self.update_building_subtypes)
         self.view.building_state_changed.connect(self.update_data_value)
         self.view.combobox_changed.connect(self.update_data_value)
         self.view.data_changed.connect(self.update_data_value)
         self.view.pv_tab.treeWidget.itemSelectionChanged.connect(self.on_tree_item_selected)
-        self.model.data_updated.connect(self.refresh_view)  # Reaktion auf Model-Änderungen
+        self.model.data_updated.connect(self.refresh_view)
 
     def update_data_value(self, row, key, value):
         """
-        Aktualisiert das Model mit neuen Werten aus der View.
+        Update model with new values from view.
 
-        Args:
-            row (int): Die Zeilenindex des Gebäudes.
-            key (str): Der interne Key im Model.
-            value (str): Der neue Wert.
+        Parameters
+        ----------
+        row : int
+            Building row index.
+        key : str
+            Internal model key.
+        value : str
+            New value.
         """
         self.model.update_data_value(row, key, value)
 
     def refresh_view(self):
-        """
-        Aktualisiert die View nach einer Änderung im Model.
-        """
+        """Refresh view after model changes."""
         self.view.update_table(
             self.model.building_info, 
             self.model.get_building_types(), 
@@ -85,9 +97,7 @@ class DataVisualizationPresenter(QObject):
         )
 
     def show_filter_dialog(self):
-        """
-        Shows the filter dialog for LOD2 data filtering.
-        """
+        """Show LOD2 data filter dialog."""
         dialog = FilterDialog(self.model.get_base_path(), self.config_manager, self.view)
         if dialog.exec_() == QDialog.Accepted:
             filter_method = dialog.filterMethodComboBox.currentText()
@@ -102,64 +112,63 @@ class DataVisualizationPresenter(QObject):
 
             self.model.filter_data(filter_method, lod_geojson_path, filter_file_path, output_geojson_path)
             self.model.process_data(output_geojson_path)
-
-            # Überprüfen und Laden der U-Werte direkt nach dem Laden der Daten
             self.model.check_and_load_u_values()
 
             self.view.update_table(
                 self.model.building_info, 
                 self.model.get_building_types(), 
-                self.model.tabula_building_types,  # Dieser Wert war vorher ausgelassen
+                self.model.tabula_building_types,
                 self.model.building_subtypes
             )
             self.view.update_3d_view(self.model.building_info)
 
     def calculate_heat_demand(self):
-        """
-        Calculates the heat demand for each building.
-        """
-        # takes the TRY file from the data manager, could also be implemented as a file dialog
+        """Calculate heat demand for each building."""
         self.model.try_filename = self.data_manager.get_try_filename()
         self.model.calculate_heat_demand()
         self.view.update_table(self.model.building_info, self.model.get_building_types(), self.model.tabula_building_types, self.model.building_subtypes)
 
     def create_building_csv(self):
-        """
-        Creates a CSV file for building data.
-        """
+        """Create CSV file for building data."""
         path, _ = QFileDialog.getSaveFileName(self.view, "Speichern unter", self.model.get_base_path(), "CSV-Dateien (*.csv)")
         if path:
             self.model.create_building_csv(path)
 
     def highlight_building_3d(self, col):
         """
-        Highlight the selected building in the 3D view.
+        Highlight selected building in 3D view.
 
-        Args:
-            col (int): The column index of the selected building.
+        Parameters
+        ----------
+        col : int
+            Column index of selected building.
         """
         parent_id = list(self.model.building_info.keys())[col]
         self.view.highlight_building_3d(parent_id)
 
     def update_building_subtypes(self, row):
         """
-        Aktualisiert die Subtypen-ComboBox basierend auf dem gewählten Gebäudetyp SLP.
+        Update subtype ComboBox based on selected building type.
 
-        Args:
-            row (int): Die Zeilenindex des Gebäudes.
+        Parameters
+        ----------
+        row : int
+            Building row index.
         """
         building_type = self.view.get_combobox_building_type(row)
         subtypes = self.model.get_building_subtypes(building_type)
 
-        # **Subtypen-Liste in der View aktualisieren**
         self.view.update_subtype_combobox(row, subtypes)
-
-        # **Den neuen Gebäudetyp SLP auch im Modell speichern**
         self.model.update_data_value(row, "Gebäudetyp", building_type)
 
     def calculate_pv_data(self, output_filename):
         """
         Calculate PV data for each building and roof.
+
+        Parameters
+        ----------
+        output_filename : str
+            Output file path for PV results.
         """
         try:
             self.model.try_filename = self.data_manager.get_try_filename()
@@ -170,43 +179,47 @@ class DataVisualizationPresenter(QObject):
             self.view.show_info_message("Fehler", f"Fehler bei der Berechnung: {str(e)}\n{traceback.format_exc()}")
 
     def on_tree_item_selected(self):
+        """Handle tree item selection events."""
         selected_items = self.view.pv_tab.treeWidget.selectedItems()
         if selected_items:
             self.highlight_roof_3d(selected_items[0])
 
     def highlight_roof_3d(self, item):
         """
-        Highlights a specific building or roof in the 3D plot based on the selected Tree View item.
+        Highlight specific building or roof in 3D plot based on selected tree item.
 
-        Args:
-            item (QTreeWidgetItem): The selected item in the Tree View.
+        Parameters
+        ----------
+        item : QTreeWidgetItem
+            Selected tree item.
         """
         if isinstance(item, QTreeWidgetItem):
             if item.parent() is None:
-                # It's a building
                 roof_name = item.text(0)
                 parent_id = self.find_parent_id(roof_name)
                 self.view.highlight_building_3d(parent_id, True, None, self.model.roof_info)
             else:
-                # It's a roof under a building
                 parent_item = item.parent()
                 roof_name = parent_item.text(0)
                 roof_index = parent_item.indexOfChild(item)
                 parent_id = self.find_parent_id(roof_name)
                 self.view.highlight_building_3d(parent_id, True, roof_index, self.model.roof_info)
         else:
-            # Wenn es ein String ist (also die parent_id)
             self.view.highlight_building_3d(item, True, None, self.model.roof_info)
 
     def find_parent_id(self, roof_name):
         """
-        Finds the parent ID associated with a roof name.
+        Find parent ID associated with roof name.
 
-        Args:
-            roof_name (str): The name of the roof.
+        Parameters
+        ----------
+        roof_name : str
+            Name of the roof.
 
-        Returns:
-            str: The parent ID corresponding to the roof.
+        Returns
+        -------
+        str
+            Parent ID corresponding to the roof.
         """
         for parent_id, info in self.model.roof_info.items():
             if info['Adresse'] == roof_name:
@@ -214,30 +227,22 @@ class DataVisualizationPresenter(QObject):
         return None
     
     def save_data_as_geojson(self):
-        """
-        Collects data from the view and passes it to the model for saving.
-        """
+        """Save building data as GeoJSON file."""
         path, _ = QFileDialog.getSaveFileName(self.view, "Speichern unter", self.model.output_geojson_path, "GeoJSON-Dateien (*.geojson)")
         if path:
             try:
-                # Übergabe der Daten an das Model zur Speicherung
                 self.model.save_data_as_geojson(path)
-
                 QMessageBox.information(self.view, "Speichern erfolgreich", f"Daten wurden erfolgreich gespeichert unter: {path}")
             except Exception as e:
                 QMessageBox.critical(self.view, "Fehler beim Speichern", f"Ein Fehler ist beim Speichern aufgetreten: {str(e)}")
 
     def load_data_from_file(self):
-        """
-        Loads data from a GeoJSON file.
-        """
+        """Load building data from GeoJSON file."""
         path, _ = QFileDialog.getOpenFileName(self.view, "Öffnen", self.model.get_base_path(), "GeoJSON-Dateien (*.geojson)")
         if path:
             try:
-                # Process the data (this includes functions like process_lod2 and calculate_centroid_and_geocode)
                 self.model.process_data(path)
                 
-                # Update the view with the processed data
                 self.view.update_table(
                     self.model.building_info, 
                     self.model.get_building_types(), 
@@ -245,11 +250,9 @@ class DataVisualizationPresenter(QObject):
                     self.model.building_subtypes
                 )
 
-                self.view.display_data(self.model.roof_info)  # Update the PV tab with the roof data
-
+                self.view.display_data(self.model.roof_info)
                 self.view.update_3d_view(self.model.building_info)
             
             except Exception as e:
-                # add traceback to error message
                 error_message = f"Failed to load or process data: {str(e)}\n\n{traceback.format_exc()}"
                 self.view.show_info_message("Error", error_message)

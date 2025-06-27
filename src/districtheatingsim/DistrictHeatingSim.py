@@ -1,5 +1,5 @@
 """
-DistrictHeatingSim - Main Application Entry Point
+DistrictHeatingSim - Main Application Module
 ================================================
 
 This module serves as the main entry point for the DistrictHeatingSim application,

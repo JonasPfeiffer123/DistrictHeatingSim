@@ -1,8 +1,11 @@
 """
-Filename: annuity.py
+Annuity Calculation Module
+==========================
+
+Economic evaluation module for technical installations according to VDI 2067.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-06-24
-Description: Economic evaluation module for technical installations according to VDI 2067.
 
 This module provides comprehensive economic analysis capabilities for district heating
 systems following the German VDI 2067 standard for economic evaluation of technical

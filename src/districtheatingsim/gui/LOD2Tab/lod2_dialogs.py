@@ -1,8 +1,11 @@
 """
-Filename: lod2_dialogs.py
+LOD2 Dialogs Module
+==================
+
+Dialog widgets for LOD2 data download and filtering operations.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-03-07
-Description: Contains the Dialogs for the LOD2Tab. These are the LOD2DownloadDialog and FilterDialog.
 """
 
 import os
@@ -17,7 +20,23 @@ from districtheatingsim.lod2.process_lod2 import convert_shapefiles_to_geojson, 
 from districtheatingsim.utilities.utilities import get_resource_path
 
 class LOD2DownloadDialog(QDialog):
+    """
+    Dialog for downloading and processing LOD2 building data.
+    """
+    
     def __init__(self, folder_manager, config_manager, parent=None):
+        """
+        Initialize LOD2 download dialog.
+
+        Parameters
+        ----------
+        folder_manager : FolderManager
+            Project folder manager.
+        config_manager : ConfigManager
+            Configuration manager.
+        parent : QWidget, optional
+            Parent widget.
+        """
         super().__init__(parent)
         self.setWindowTitle("LOD2 Daten herunterladen")
         self.setGeometry(300, 200, 400, 250)
@@ -64,14 +83,21 @@ class LOD2DownloadDialog(QDialog):
         self.setLayout(self.layout)
 
     def update_gemeinde_dropdown(self, landkreis):
-        """ Aktualisiert das Dropdown der Gemeinden basierend auf dem Landkreis. """
+        """
+        Update municipality dropdown based on selected district.
+
+        Parameters
+        ----------
+        landkreis : str
+            Selected district name.
+        """
         self.gemeinde_dropdown.clear()
         if landkreis in self.lod2_data:
             gemeinden = self.lod2_data[landkreis]["gemeinden"]
             self.gemeinde_dropdown.addItems(sorted(gemeinden.keys()))
 
     def start_download(self):
-        """ Startet den Download und verarbeitet die LOD2-Daten weiter. """
+        """Start LOD2 data download and processing workflow."""
         landkreis = self.landkreis_dropdown.currentText()
         gemeinde = self.gemeinde_dropdown.currentText()
 
@@ -104,27 +130,21 @@ class LOD2DownloadDialog(QDialog):
 
 class FilterDialog(QDialog):
     """
-    A dialog window for filtering LOD2 data based on different input files and methods.
-
-    Attributes:
-        base_path (str): The base path for default file locations.
-        inputLOD2geojsonLineEdit (QLineEdit): Line edit for input LOD2 geojson file path.
-        inputLOD2geojsonButton (QPushButton): Button to browse for input LOD2 geojson file.
-        inputfilterPolygonLineEdit (QLineEdit): Line edit for input filter polygon file path.
-        inputfilterPolygonButton (QPushButton): Button to browse for input filter polygon file.
-        inputfilterBuildingDataLineEdit (QLineEdit): Line edit for input filter building data csv file path.
-        inputfilterBuildingDataButton (QPushButton): Button to browse for input filter building data csv file.
-        outputLOD2geojsonLineEdit (QLineEdit): Line edit for output LOD2 geojson file path.
-        outputLOD2geojsonButton (QPushButton): Button to browse for output LOD2 geojson file.
-        filterMethodComboBox (QComboBox): Combo box to select the filter method.
+    Dialog for filtering LOD2 data based on different input methods.
     """
+    
     def __init__(self, base_path, config_manager, parent=None):
         """
-        Initializes the FilterDialog.
+        Initialize filter dialog.
 
-        Args:
-            base_path (str): The base path for default file locations.
-            parent (QWidget, optional): The parent widget. Defaults to None.
+        Parameters
+        ----------
+        base_path : str
+            Base path for default file locations.
+        config_manager : ConfigManager
+            Configuration manager.
+        parent : QWidget, optional
+            Parent widget.
         """
         super().__init__(parent)
         self.base_path = base_path
@@ -133,6 +153,7 @@ class FilterDialog(QDialog):
         self.initUI()
 
     def initUI(self):
+        """Initialize user interface components."""
         self.setWindowTitle("LOD2-Daten filtern")
         self.setGeometry(300, 300, 600, 400)
         
@@ -170,14 +191,19 @@ class FilterDialog(QDialog):
 
     def createFileInput(self, default_path, font):
         """
-        Creates a file input widget with a QLineEdit and a QPushButton.
+        Create file input widget with line edit and browse button.
 
-        Args:
-            default_path (str): The default path to be displayed in the QLineEdit.
-            font (QFont): The font to be used for the widgets.
+        Parameters
+        ----------
+        default_path : str
+            Default file path.
+        font : QFont
+            Font for widgets.
 
-        Returns:
-            tuple: A tuple containing the QLineEdit and QPushButton.
+        Returns
+        -------
+        tuple
+            Line edit and button widgets.
         """
         lineEdit = QLineEdit(default_path)
         lineEdit.setFont(font)
@@ -188,16 +214,23 @@ class FilterDialog(QDialog):
 
     def createFileInputLayout(self, label_text, lineEdit, button, font):
         """
-        Creates a horizontal layout for the file input widgets.
+        Create horizontal layout for file input widgets.
 
-        Args:
-            label_text (str): The text for the QLabel.
-            lineEdit (QLineEdit): The QLineEdit for file input.
-            button (QPushButton): The QPushButton for browsing files.
-            font (QFont): The font to be used for the QLabel.
+        Parameters
+        ----------
+        label_text : str
+            Label text.
+        lineEdit : QLineEdit
+            File input line edit.
+        button : QPushButton
+            Browse button.
+        font : QFont
+            Font for label.
 
-        Returns:
-            QHBoxLayout: The horizontal layout containing the label, line edit, and button.
+        Returns
+        -------
+        QHBoxLayout
+            Horizontal layout with label, line edit, and button.
         """
         layout = QHBoxLayout()
         label = QLabel(label_text)
@@ -209,19 +242,19 @@ class FilterDialog(QDialog):
 
     def selectFile(self, lineEdit):
         """
-        Opens a file dialog to select a file and sets the selected file path to the QLineEdit.
+        Open file dialog and update line edit with selected file path.
 
-        Args:
-            lineEdit (QLineEdit): The QLineEdit to set the selected file path.
+        Parameters
+        ----------
+        lineEdit : QLineEdit
+            Line edit to update with selected file path.
         """
         filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", lineEdit.text(), "All Files (*)")
         if filename:
             lineEdit.setText(filename)
 
     def updateFilterInputVisibility(self):
-        """
-        Updates the visibility of the file input widgets based on the selected filter method.
-        """
+        """Update visibility of file input widgets based on selected filter method."""
         filter_method = self.filterMethodComboBox.currentText()
         if filter_method == "Filter by Polygon":
             self.inputfilterPolygonLineEdit.show()

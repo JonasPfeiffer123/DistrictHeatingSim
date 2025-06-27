@@ -1,9 +1,11 @@
 """
-Filename: heat_pumps.py
+AqvaHeat Heat Pump Module
+=========================
+
+Contains the `AqvaHeat` class, which models a vacuum ice slurry generator with an attached heat pump. This class provides methods to calculate performance metrics such as cooling load, electric power consumption, and economic metrics based on various parameters.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-12-11
-Description: Contains classes for different types of heat pumps and methods to calculate performance and economic metrics.
-
 """
 
 import numpy as np

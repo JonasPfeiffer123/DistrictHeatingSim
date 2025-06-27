@@ -1,11 +1,14 @@
 """
-Filename: pp_net_time_series_simulation.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-05-15
-Description: Script with functions for the implemented time series calculation.
+Pandapipes Time Series Simulation Module
+========================================
 
 This module provides comprehensive time series simulation capabilities for district heating
-networks using the pandapipes framework. It handles the complete workflow of thermohydraulic
+networks using the pandapipes framework.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-05-15
+
+It handles the complete workflow of thermohydraulic
 network simulation including controller updates, temperature control, pump operations, and
 result processing for both static and dynamic network configurations.
 

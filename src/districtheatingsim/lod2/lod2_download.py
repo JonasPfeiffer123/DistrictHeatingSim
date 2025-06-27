@@ -1,12 +1,14 @@
 """
-Filename: lod2_download.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-02-07
-Description: LOD2 building data download automation for Saxon geodata portal.
+LOD2 Download Module
+====================
 
 This module provides automated download functionality for LOD2 (Level of Detail 2) 
-building data from the Saxon geodata portal. It uses Selenium WebDriver to interact 
-with the dynamic web interface and handles the complete download and extraction 
+building data from the Saxon geodata portal.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2025-02-07
+
+It uses Selenium WebDriver to interact with the dynamic web interface and handles the complete download and extraction 
 workflow for 3D building models in Shape format.
 
 The module supports batch downloads for entire municipalities and automatically 

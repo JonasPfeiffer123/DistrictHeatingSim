@@ -1,6 +1,4 @@
-Das Hauptpaket von DistrictHeatingSim enthält alle Komponenten für die Simulation und Analyse von Fernwärmesystemen.
-
-Hauptanwendung
+Main application
 ==========================
 
 .. automodule:: districtheatingsim.DistrictHeatingSim
@@ -8,43 +6,11 @@ Hauptanwendung
    :show-inheritance:
    :undoc-members:
 
-GUI Komponenten
-==========================
-
 .. toctree::
    :maxdepth: 2
-   :caption: 🖥️ Benutzeroberfläche
+   :caption: Core Components
 
-   districtheatingsim.gui
-
-Netzgenerierung & Simulation
-=============================
-
-.. toctree::
-   :maxdepth: 2
-   :caption: 🏗️ Netzwerk
-
-   districtheatingsim.net_generation
-   districtheatingsim.net_simulation_pandapipes
-   districtheatingsim.geocoding
-
-Wärmeerzeugung
-==========================
-
-.. toctree::
-   :maxdepth: 2
-   :caption: ⚡ Energiesysteme
-
-   districtheatingsim.heat_generators
-
-Hilfsfunktionen
-==========================
-
-.. toctree::
-   :maxdepth: 2
-   :caption: 🔧 Utilities
-
-   districtheatingsim.utilities
-   districtheatingsim.heat_requirement
-   districtheatingsim.lod2
-   districtheatingsim.osm
+   gui_framework
+   network_analysis
+   energy_systems
+   utilities_analysis

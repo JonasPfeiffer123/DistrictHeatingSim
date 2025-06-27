@@ -1,11 +1,14 @@
 """
-Filename: NetworkDataClass.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-05-17
-Description: Contains the data class for network generation data.
+Network Generation Data Class Module
+================================================
 
 This module provides data structures for comprehensive district heating network simulation
-and analysis. It defines the core data classes used throughout the simulation workflow,
+and analysis.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2025-05-17
+
+It defines the core data classes used throughout the simulation workflow,
 including network configuration parameters, input/output data management, and result
 processing capabilities.
 

@@ -1,12 +1,14 @@
 """
-Filename: renovation_analysis.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-09
-Description: Contains the calculation model for the renovation cost analysis.
+Renovation Analysis Module
+================================
 
 This module provides comprehensive tools for analyzing the economic viability of building
-renovations from an energy efficiency perspective. It includes building energy modeling,
-financial analysis, and life-cycle cost assessment capabilities for various renovation
+renovations from an energy efficiency perspective.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2024-09-09
+
+It includes building energy modeling, financial analysis, and life-cycle cost assessment capabilities for various renovation
 scenarios including individual component upgrades and complete building renovations.
 
 The module implements standardized calculation methods according to German building energy

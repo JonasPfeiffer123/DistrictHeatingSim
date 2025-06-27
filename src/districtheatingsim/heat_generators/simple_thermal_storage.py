@@ -1,11 +1,14 @@
 """
-Filename: simple_thermal_storage.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-06-26
-Description: Advanced thermal energy storage modeling for district heating systems.
+Simple Thermal Storage Module
+=============================
 
 This module provides comprehensive modeling capabilities for Seasonal Thermal Energy Storage (STES)
-systems in district heating applications. It implements sophisticated heat transfer calculations,
+systems in district heating applications.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2025-06-26
+
+It implements sophisticated heat transfer calculations,
 geometric modeling for various storage configurations, and performance analysis tools for
 large-scale thermal storage design and optimization.
 

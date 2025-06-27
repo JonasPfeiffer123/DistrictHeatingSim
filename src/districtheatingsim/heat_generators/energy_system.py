@@ -1,11 +1,14 @@
 """
-Filename: energy_system.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-05-04
-Description: Energy system modeling and optimization for district heating applications.
+Energy System Module
+=====================
 
 This module provides comprehensive energy system modeling capabilities for district heating
-applications. The implementation includes multi-technology system integration, energy
+applications.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2025-05-04
+
+The implementation includes multi-technology system integration, energy
 generation mix optimization, economic analysis, and advanced visualization tools for
 complex district heating system analysis and design.
 

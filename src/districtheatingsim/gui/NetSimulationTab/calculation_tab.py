@@ -1,8 +1,11 @@
 """
-Filename: calculation_tab.py
+Network Simulation Tab Module
+=============================
+
+District heating network simulation and calculation interface with pandapipes integration.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-05-17
-Description: Contains the CalculationTab class.
 """
 
 import logging
@@ -35,25 +38,28 @@ from districtheatingsim.gui.utilities import CheckableComboBox
 
 class CalculationTab(QWidget):
     """
-    The CalculationTab class represents a tab in the application where users can perform various calculations related to network simulation.
-
-    Attributes:
-        data_added (pyqtSignal): Signal to indicate data addition.
+    Network simulation tab for district heating system calculations.
+    
+    Provides interface for network generation, time series simulation,
+    and visualization of heating network data using pandapipes.
     """
 
     data_added = pyqtSignal(object)
 
     def __init__(self, folder_manager, data_manager, config_manager, parent=None):
         """
-        Initializes the CalculationTab with the given data manager and parent widget.
+        Initialize calculation tab.
 
-        Args:
-            data_manager: Data manager to handle project data.
-            config_manager: Configuration manager for the application.
-            folder_manager: Folder manager to handle project folders.
-            show_map (bool): Flag to show map.
-            map_type (str): Type of map to be displayed.
-            NetworkGenerationData: Data class for network generation.
+        Parameters
+        ----------
+        folder_manager : object
+            Project folder manager.
+        data_manager : object
+            Application data manager.
+        config_manager : object
+            Configuration manager.
+        parent : QWidget, optional
+            Parent widget.
         """
         super().__init__(parent)
         self.folder_manager = folder_manager
@@ -72,17 +78,17 @@ class CalculationTab(QWidget):
 
     def updateDefaultPath(self, new_base_path):
         """
-        Updates the default path for the project.
+        Update project base path.
 
-        Args:
-            new_base_path (str): The new base path.
+        Parameters
+        ----------
+        new_base_path : str
+            New base path.
         """
         self.base_path = new_base_path
 
     def initUI(self):
-        """
-        Initializes the user interface components of the CalculationTab.
-        """
+        """Initialize user interface components."""
         scroll_area = QScrollArea(self)
         scroll_area.setWidgetResizable(True)
 
@@ -110,9 +116,7 @@ class CalculationTab(QWidget):
         self.container_layout.addWidget(self.progressBar)
 
     def initMenuBar(self):
-        """
-        Initializes the menu bar with various actions.
-        """
+        """Initialize menu bar with file and calculation actions."""
         self.menubar = QMenuBar(self)
         self.menubar.setFixedHeight(30)
 
@@ -167,12 +171,10 @@ class CalculationTab(QWidget):
         TopologyMapAction.triggered.connect(lambda: self.loadMap("Topology", TopologyMapAction))
 
     def setupPlotLayout(self):
-        """
-        Sets up the layout for the plots, placing them horizontally.
-        """
+        """Setup horizontal layout for network and time series plots."""
         self.scrollArea = QScrollArea(self)
         self.scrollWidget = QWidget()
-        self.scrollLayout = QHBoxLayout(self.scrollWidget)  # Changed to QHBoxLayout for horizontal placement
+        self.scrollLayout = QHBoxLayout(self.scrollWidget)
 
         # Left: Pandapipes net plot
         self.pandapipes_net_figure = Figure()
@@ -208,9 +210,7 @@ class CalculationTab(QWidget):
         self.container_layout.addWidget(self.scrollArea)
     
     def createPlotControlDropdown(self):
-        """
-        Creates a dropdown for selecting which data to plot.
-        """
+        """Create dropdown for selecting plot data types."""
         # Remove existing dropdown if present
         if hasattr(self, 'dropdownLayout'):
             # Remove widgets from layout
@@ -234,9 +234,7 @@ class CalculationTab(QWidget):
         self.dataSelectionDropdown.checkedStateChanged.connect(self.update_time_series_plot)
     
     def openNetGenerationDialog(self):
-        """
-        Opens the dialog for network generation.
-        """
+        """Open network generation dialog."""
         try:
             dialog = NetGenerationDialog(
                 self.generateNetworkCallback,
@@ -250,10 +248,12 @@ class CalculationTab(QWidget):
 
     def generateNetworkCallback(self, NetworkGenerationData):
         """
-        Callback function for generating the network.
+        Handle network generation callback.
 
-        Args:
-            NetWorkGenerationData: Data class for network generation.
+        Parameters
+        ----------
+        NetworkGenerationData : object
+            Network generation data.
         """
         self.NetworkGenerationData = NetworkGenerationData
 
@@ -261,9 +261,7 @@ class CalculationTab(QWidget):
             self.create_and_initialize_net_geojson()
 
     def opencalculateNetDialog(self):
-        """
-        Opens the dialog for time series calculation.
-        """
+        """Open time series calculation dialog."""
         dialog = TimeSeriesCalculationDialog(self.base_path, self)
         if dialog.exec_():
             netCalcInputs = dialog.getValues()
@@ -273,10 +271,7 @@ class CalculationTab(QWidget):
             self.time_series_simulation()
       
     def create_and_initialize_net_geojson(self):
-        """
-        Creates and initializes the network from GeoJSON files.
-
-        """
+        """Create and initialize network from GeoJSON files."""
         # uses the dataclass to get the values
         # add COP filename
         self.NetworkGenerationData.COP_filename = self.data_manager.get_cop_filename()
@@ -286,9 +281,7 @@ class CalculationTab(QWidget):
         self.common_thread_initialization()
 
     def common_thread_initialization(self):
-        """
-        Common initialization for threads.
-        """
+        """Initialize common thread connections and progress."""
         self.initializationThread.calculation_done.connect(self.on_initialization_done)
         self.initializationThread.calculation_error.connect(self.on_time_series_simulation_error)
         self.initializationThread.start()
@@ -296,10 +289,12 @@ class CalculationTab(QWidget):
 
     def on_initialization_done(self, NetworkGenerationData):
         """
-        Callback function when initialization is done.
+        Handle initialization completion.
 
-        Args:
-            NetworkGenerationData: Data class for network generation.
+        Parameters
+        ----------
+        NetworkGenerationData : object
+            Network generation data.
         """
         self.progressBar.setRange(0, 1)
 
@@ -312,9 +307,7 @@ class CalculationTab(QWidget):
         self.display_results()
 
     def display_results(self):
-        """
-        Displays the results of the network simulation.
-        """
+        """Display network simulation results in text area."""
         if not hasattr(self.NetworkGenerationData, 'net'):
             self.result_text = "Netzdaten nicht verfügbar."
             self.results_display.setPlainText(self.result_text)
@@ -340,9 +333,7 @@ class CalculationTab(QWidget):
         self.results_display.setPlainText(self.result_text)
 
     def plot_pandapipes_net(self):
-        """
-        Plots the pandapipes net.
-        """
+        """Plot pandapipes network visualization."""
         self.pandapipes_net_figure.clear()
         ax = self.pandapipes_net_figure.add_subplot(111)
         config_plot(self.NetworkGenerationData.net, ax, show_junctions=True, show_pipes=True, show_heat_consumers=True, show_basemap=self.show_map, map_type=self.map_type)
@@ -350,11 +341,14 @@ class CalculationTab(QWidget):
 
     def loadMap(self, map_type, action):
         """
-        Loads the map based on the selected type.
+        Load background map for network visualization.
 
-        Args:
-            map_type (str): Type of map to load.
-            action: The action triggering the map load.
+        Parameters
+        ----------
+        map_type : str
+            Type of map to load.
+        action : QAction
+            Action triggering map load.
         """
         if action.isChecked():
             self.show_map = True
@@ -367,9 +361,7 @@ class CalculationTab(QWidget):
             self.map_type = None
 
     def time_series_simulation(self):
-        """
-        Performs the time series simulation.
-        """
+        """Perform time series simulation."""
         if self.NetworkGenerationData is None:
             QMessageBox.warning(self, "Keine Netzdaten", "Bitte generieren Sie zuerst ein Netz.")
             return
@@ -386,10 +378,12 @@ class CalculationTab(QWidget):
 
     def on_time_series_simulation_done(self, NetworkGenerationData):
         """
-        Callback function when simulation is done.
+        Handle time series simulation completion.
 
-        Args:
-            NetworkGenerationData: Data class for network generation.
+        Parameters
+        ----------
+        NetworkGenerationData : object
+            Network generation data with results.
         """
         self.progressBar.setRange(0, 1)
         self.NetworkGenerationData = NetworkGenerationData
@@ -409,19 +403,18 @@ class CalculationTab(QWidget):
 
     def on_time_series_simulation_error(self, error_message):
         """
-        Callback function when there is a simulation error.
+        Handle simulation errors.
 
-        Args:
-            error_message (str): Error message.
+        Parameters
+        ----------
+        error_message : str
+            Error message to display.
         """
         QMessageBox.critical(self, "Berechnungsfehler", error_message)
         self.progressBar.setRange(0, 1)
 
     def update_time_series_plot(self):
-        """
-        Updates the plot based on the selected data.
-        """
-
+        """Update time series plot based on selected data."""
         if not hasattr(self, 'dataSelectionDropdown'):
             self.createPlotControlDropdown()
 
@@ -488,7 +481,12 @@ class CalculationTab(QWidget):
 
     def get_data_path(self):
         """
-        Returns the absolute path to the data directory.
+        Get absolute path to data directory.
+
+        Returns
+        -------
+        str
+            Data directory path.
         """
         # Gehe zwei Ebenen über base_path hinaus, um den Projektpfad zu erhalten
         project_base_path = os.path.dirname(os.path.dirname(self.base_path))
@@ -497,10 +495,7 @@ class CalculationTab(QWidget):
         return os.path.join(project_base_path, "src", "districtheatingsim", "data")
 
     def saveNet(self):
-        """
-        Saves the network to a file.
-        """
-    
+        """Save network data to pickle, CSV, and JSON files."""
         if self.NetworkGenerationData:
             try:
                 pickle_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('pp_pickle_file_path'))
@@ -551,9 +546,7 @@ class CalculationTab(QWidget):
             QMessageBox.warning(self, "Keine Daten", "Kein Pandapipes-Netzwerk zum Speichern vorhanden.")
 
     def loadNet(self):
-        """
-        Loads the network from a file.
-        """
+        """Load network data from saved files."""
         try:
             data_path = self.get_data_path()
             pickle_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('pp_pickle_file_path'))
@@ -612,9 +605,7 @@ class CalculationTab(QWidget):
             QMessageBox.critical(self, "Laden fehlgeschlagen", f"Fehler beim Laden der Daten: {e}\n\n{tb}")
 
     def load_net_results(self):
-        """
-        Loads the network results from a file.
-        """
+        """Load network simulation results from CSV file."""
         if self.NetworkGenerationData:
             results_csv_filepath = os.path.join(self.base_path, self.config_manager.get_relative_path('load_profile_path'))
             
@@ -629,9 +620,7 @@ class CalculationTab(QWidget):
             QMessageBox.warning(self, "Keine Daten", "Kein Pandapipes-Netzwerk zum Laden vorhanden.")
     
     def exportNetGeoJSON(self):
-        """
-        Exports the network to a GeoJSON file.
-        """
+        """Export network to GeoJSON format."""
         geoJSON_filepath = os.path.join(self.base_path, self.config_manager.get_relative_path('dimensioned_net_path'))
         if self.NetworkGenerationData:   
             try:

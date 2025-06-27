@@ -1,8 +1,5 @@
-districtheatingsim.geocoding package
+Geocoding package
 ====================================
-
-districtheatingsim.geocoding.geocoding module
----------------------------------------------
 
 .. automodule:: districtheatingsim.geocoding.geocoding
    :members:

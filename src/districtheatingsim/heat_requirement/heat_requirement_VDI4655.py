@@ -1,12 +1,14 @@
 """
-Filename: heat_requirement_VDI4655.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-03-10
-Description: Heat demand profile calculation using VDI 4655 standardized load profile methodology.
+Heat Requirement VDI 4655 Module
 
 This module implements the VDI 4655 standard for calculating realistic heat and electricity
-demand profiles for buildings in district heating applications. It provides functions to
-generate quarter-hourly load profiles based on annual energy consumption, building types,
+demand profiles for buildings in district heating applications.
+
+Author: Dipl.-Ing. (FH) Jonas Pfeiffer
+Date: 2025-03-10
+
+
+It provides functions to generate quarter-hourly load profiles based on annual energy consumption, building types,
 occupancy patterns, and meteorological data from Test Reference Years (TRY).
 
 The module supports comprehensive energy demand modeling for different building types and

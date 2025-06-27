@@ -1,8 +1,11 @@
 """
-Filename: _04_technology_dialogs.py
+Technology Input Dialogs Module
+===============================
+
+This module contains the dialogs for inputting technology-specific data in the Energy System Tab of the District Heating Simulation application.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-08-01
-Description: Contains the heat generator Dialogs for the EnergySystemTab.
 """
 
 from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QComboBox, QCheckBox, QGroupBox, \

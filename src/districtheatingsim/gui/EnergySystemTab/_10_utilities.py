@@ -1,8 +1,11 @@
 """
-Filename: _10_utilities.py
+Energy System Tab Utilities Module
+==================================
+
+This module contains the CollapsibleHeader class, which is used to create collapsible sections in the GUI. It allows for better organization of content by enabling users to expand or collapse sections as needed.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-11-06
-Description: Contains the CollapsibleHeader class for creating collapsible sections in the GUI.
 """
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QSizePolicy, QComboBox)

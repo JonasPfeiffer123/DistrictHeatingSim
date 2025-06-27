@@ -1,8 +1,11 @@
 """
-Filename: building_tab.py
+Building Tab Module
+===================
+
+Building data management and heat demand calculation with MVP architecture.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-09-09
-Description: Contains the BuildingTab for managing building data and displaying results.
 """
 
 import os
@@ -25,17 +28,12 @@ from districtheatingsim.gui.utilities import CheckableComboBox, convert_to_seria
 import traceback
 import logging
 
-# Konfiguriere das Logging
+# Configure logging
 logging.basicConfig(filename='error_log.txt', level=logging.ERROR)
 
 class BuildingModel:
     """
-    The BuildingModel class manages the data for the BuildingTab.
-
-    Attributes:
-        base_path (str): The base path for saving/loading files.
-        data (pd.DataFrame): The data loaded from a CSV file.
-        results (dict): The results from heat demand calculations.
+    Data model for building information and heat demand calculations.
     """
 
     def __init__(self):
@@ -47,67 +45,78 @@ class BuildingModel:
 
     def set_base_path(self, base_path):
         """
-        Sets the base path for saving/loading files.
+        Set base path for file operations.
 
-        Args:
-            base_path (str): The base path.
+        Parameters
+        ----------
+        base_path : str
+            Base directory path.
         """
         self.base_path = base_path
 
     def get_base_path(self):
         """
-        Gets the base path for saving/loading files.
+        Get base path.
 
-        Returns:
-            str: The base path.
+        Returns
+        -------
+        str
+            Current base path.
         """
         return self.base_path
     
     def set_csv_path(self, csv_path):
         """
-        Sets the path to the CSV file.
+        Set CSV file path.
 
-        Args:
-            csv_path (str): The path to the CSV file.
+        Parameters
+        ----------
+        csv_path : str
+            Path to CSV file.
         """
         self.csv_path = csv_path
 
     def get_csv_path(self):
         """
-        Gets the path to the CSV file.
+        Get CSV file path.
 
-        Returns:
-            str: The path to the CSV file.
+        Returns
+        -------
+        str
+            Current CSV file path.
         """
         return self.csv_path
 
     def set_json_path(self, json_path):
         """
-        Sets the path to the JSON file.
+        Set JSON file path.
 
-        Args:
-            json_path (str): The path to the JSON file.
+        Parameters
+        ----------
+        json_path : str
+            Path to JSON file.
         """
         self.json_path = json_path
 
     def get_json_path(self):
         """
-        Gets the path to the JSON file.
+        Get JSON file path.
 
-        Returns:
-            str: The absolute path to the JSON file.
+        Returns
+        -------
+        str
+            Current JSON file path.
         """
         return self.json_path
 
     def load_csv(self):
         """
-        Loads data from a CSV file into a DataFrame.
+        Load CSV data into DataFrame.
 
-        Args:
-            None
-
-        Raises:
-            Exception: If there is an error loading the CSV file.
+        Raises
+        ------
+        Exception
+            If CSV loading fails.
         """
         try:
             self.data = pd.read_csv(self.get_csv_path(), delimiter=';', dtype={'Subtyp': str})
@@ -116,13 +125,12 @@ class BuildingModel:
 
     def save_csv(self):
         """
-        Saves the DataFrame to a CSV file.
+        Save DataFrame to CSV file.
 
-        Args:
-            None
-
-        Raises:
-            Exception: If there is an error saving the CSV file.
+        Raises
+        ------
+        Exception
+            If CSV saving fails.
         """
         if self.data is not None:
             try:
@@ -132,13 +140,12 @@ class BuildingModel:
 
     def load_json(self):
         """
-        Loads results data from a JSON file.
+        Load results from JSON file.
 
-        Args:
-            None
-
-        Raises:
-            Exception: If there is an error loading the JSON file.
+        Raises
+        ------
+        Exception
+            If JSON loading fails.
         """
         try:
             with open(self.get_json_path(), 'r', encoding='utf-8') as f:
@@ -149,13 +156,17 @@ class BuildingModel:
 
     def save_json(self, combined_data):
         """
-        Saves results data to a JSON file.
+        Save results to JSON file.
 
-        Args:
-            combined_data (dict): The data to save.
+        Parameters
+        ----------
+        combined_data : dict
+            Data to save.
 
-        Raises:
-            Exception: If there is an error saving the JSON file.
+        Raises
+        ------
+        Exception
+            If JSON saving fails.
         """
         try:
             with open(self.get_json_path(), 'w', encoding='utf-8') as f:
@@ -165,29 +176,38 @@ class BuildingModel:
 
     def calculate_heat_demand(self, data, try_filename):
         """
-        Calculates heat demand profiles from the data.
+        Calculate heat demand profiles from building data.
 
-        Args:
-            data (pd.DataFrame): The input data for the calculation.
-            try_filename (str): The TRY (Test Reference Year) filename for climate data.
+        Parameters
+        ----------
+        data : pd.DataFrame
+            Building input data.
+        try_filename : str
+            Climate data filename.
 
-        Returns:
-            tuple: A tuple containing the calculated profiles.
+        Returns
+        -------
+        tuple
+            Calculated heat demand profiles in kW.
         """
         yearly_time_steps, total_heat_W, heating_heat_W, warmwater_heat_W, max_heat_requirement_W, supply_temperature_curve, return_temperature_curve, hourly_air_temperatures = generate_profiles_from_csv(data=data, TRY=try_filename, calc_method="Datensatz")
 
-        # not sure if thats the best way to return the data in kW, but it works for now
+        # Convert from W to kW
         return yearly_time_steps, total_heat_W/1000, heating_heat_W/1000, warmwater_heat_W/1000, max_heat_requirement_W/1000, supply_temperature_curve, return_temperature_curve, hourly_air_temperatures
 
     def get_resource_path(self, relative_path):
         """
-        Get the absolute path to the resource, works for development and for PyInstaller.
+        Get absolute resource path for dev and PyInstaller.
 
-        Args:
-            relative_path (str): The relative path to the resource.
+        Parameters
+        ----------
+        relative_path : str
+            Relative path to resource.
 
-        Returns:
-            str: The absolute path to the resource.
+        Returns
+        -------
+        str
+            Absolute resource path.
         """
         if getattr(sys, 'frozen', False):
             base_path = sys._MEIPASS
@@ -197,43 +217,53 @@ class BuildingModel:
 
 class BuildingPresenter:
     """
-    The BuildingPresenter class handles the interaction between the model and the view.
-
-    Args:
-        model (BuildingModel): The data model.
-        view (BuildingTabView): The view for the BuildingTab.
-        data_manager (object): The data manager for the application.
+    Presenter managing interaction between BuildingModel and BuildingTabView.
     """
 
     def __init__(self, model, view, folder_manager, data_manager, config_manager):
+        """
+        Initialize building presenter.
+
+        Parameters
+        ----------
+        model : BuildingModel
+            Data model.
+        view : BuildingTabView
+            View component.
+        folder_manager : object
+            Folder manager.
+        data_manager : object
+            Data manager.
+        config_manager : object
+            Configuration manager.
+        """
         self.model = model
         self.view = view
         self.folder_manager = folder_manager
         self.data_manager = data_manager
         self.config_manager = config_manager
 
-        # Connect to the data_manager's signal to update the base path
+        # Connect signals
         self.folder_manager.project_folder_changed.connect(self.standard_path)
-        # Initialize the base path
         self.standard_path(self.folder_manager.variant_folder)
 
-        # Connect UI signals to their respective slots
         self.view.load_csv_signal.connect(self.load_csv)
         self.view.save_csv_signal.connect(self.save_csv)
         self.view.load_json_signal.connect(self.load_json)
         self.view.save_json_signal.connect(self.save_json)
         self.view.calculate_heat_demand_signal.connect(self.calculate_heat_demand)
 
-        # Handle combobox changes and plotting
         self.view.data_type_combobox.view().pressed.connect(self.on_combobox_selection_changed)
         self.view.building_combobox.view().pressed.connect(self.on_combobox_selection_changed)
 
     def standard_path(self, path):
         """
-        Updates the default path for saving files and updates the view.
+        Update default file paths.
 
-        Args:
-            path (str): The new default path.
+        Parameters
+        ----------
+        path : str
+            New base path.
         """
         self.model.set_base_path(path)
         self.model.set_csv_path(os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("current_building_data_path")))
@@ -241,12 +271,14 @@ class BuildingPresenter:
 
     def load_csv(self, fname=None):
         """
-        Opens a file dialog to load a CSV file and updates the model and view.
+        Load CSV file with file dialog.
 
-        Args:
-            _: Placeholder for the signal argument.
+        Parameters
+        ----------
+        fname : str, optional
+            Filename to load.
         """
-        if fname is None  or fname == "":
+        if fname is None or fname == "":
             fname, _ = QFileDialog.getOpenFileName(self.view, 'Select CSV File', self.model.get_csv_path(), 'CSV Files (*.csv);;All Files (*)')
         if fname:
             try:
@@ -259,12 +291,14 @@ class BuildingPresenter:
 
     def save_csv(self, fname=None):
         """
-        Opens a file dialog to save a CSV file and updates the model and view.
+        Save CSV file with file dialog.
 
-        Args:
-            _: Placeholder for the signal argument.
+        Parameters
+        ----------
+        fname : str, optional
+            Filename to save.
         """
-        if fname is None  or fname == "":
+        if fname is None or fname == "":
             fname, _ = QFileDialog.getSaveFileName(self.view, 'Save CSV File', self.model.get_csv_path(), 'CSV Files (*.csv);;All Files (*)')
         if fname:
             try:
@@ -276,10 +310,12 @@ class BuildingPresenter:
 
     def load_json(self, fname=None):
         """
-        Opens a file dialog to load a JSON file and updates the model and view.
+        Load JSON results with file dialog.
 
-        Args:
-            _: Placeholder for the signal argument.
+        Parameters
+        ----------
+        fname : str, optional
+            Filename to load.
         """
         if fname is None or fname == "":
             fname, _ = QFileDialog.getOpenFileName(self.view, 'Select JSON File', self.model.get_json_path(), 'JSON Files (*.json);;All Files (*)')
@@ -294,10 +330,12 @@ class BuildingPresenter:
 
     def save_json(self, fname=None):
         """
-        Opens a file dialog to save a JSON file and updates the model and view.
+        Save JSON results with file dialog.
 
-        Args:
-            _: Placeholder for the signal argument.
+        Parameters
+        ----------
+        fname : str, optional
+            Filename to save.
         """
         if self.combined_data is None:
             self.view.show_error_message("Fehler", "Es sind keine Daten zum Speichern vorhanden.")
@@ -314,12 +352,7 @@ class BuildingPresenter:
                 self.view.show_error_message("Fehler", str(e))
 
     def calculate_heat_demand(self, _=None):
-        """
-        Calculates heat demand profiles and saves the results to a JSON file.
-
-        Args:
-            output_path (str): The path to the output JSON file.
-        """
+        """Calculate heat demand profiles and save results."""
         self.data = self.view.get_table_data()
         if self.data.empty:
             self.view.show_error_message("Fehler", "Die Tabelle enthält keine Daten.")
@@ -327,7 +360,7 @@ class BuildingPresenter:
 
         try:
             try_filename = self.data_manager.get_try_filename()
-            results = self.model.calculate_heat_demand(self.data, try_filename) # returns yearly_time_steps, total_heat_W, heating_heat_W, warmwater_heat_W, max_heat_requirement_W, supply_temperature_curve, return_temperature_curve, hourly_air_temperatures
+            results = self.model.calculate_heat_demand(self.data, try_filename)
             self.model.results = self.format_results(results, self.data)
 
             self.view.populate_building_combobox(self.model.results)
@@ -338,23 +371,25 @@ class BuildingPresenter:
 
             self.view.show_message("Erfolg", f"Berechnung der Gebäudelastgänge abgeschlossen und in {self.model.get_json_path()} gespeichert.")
         except Exception as e:
-            # Erfasse den vollständigen Traceback
             tb_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-            # Logge den Fehler in eine Datei
             logging.error(f"Ein Fehler ist aufgetreten:\n{tb_str}")
-            # Zeige die Fehlermeldung mit dem vollständigen Traceback
             self.view.show_error_message("Fehler", f"Es ist ein Fehler aufgetreten: {str(e)}\n\nDetails:\n{tb_str}")
 
     def format_results(self, results, data):
         """
-        Formats the calculated results for saving to JSON.
+        Format calculation results for JSON storage.
 
-        Args:
-            results (tuple): The calculated profiles.
-            data (pd.DataFrame): The input data.
+        Parameters
+        ----------
+        results : tuple
+            Raw calculation results.
+        data : pd.DataFrame
+            Input building data.
 
-        Returns:
-            dict: The formatted results.
+        Returns
+        -------
+        dict
+            Formatted results dictionary.
         """
         formatted_results = {}
         for idx in range(len(data)):
@@ -375,14 +410,19 @@ class BuildingPresenter:
 
     def combine_data_with_results(self, data, results):
         """
-        Combines the input data with the calculated results.
+        Combine input data with calculation results.
 
-        Args:
-            data (pd.DataFrame): The input data.
-            results (dict): The calculated results.
+        Parameters
+        ----------
+        data : pd.DataFrame
+            Input data.
+        results : dict
+            Calculation results.
 
-        Returns:
-            dict: The combined data and results.
+        Returns
+        -------
+        dict
+            Combined data dictionary.
         """
         data.reset_index(drop=True, inplace=True)
         data_dict = data.applymap(convert_to_serializable).to_dict(orient='index')
@@ -390,21 +430,12 @@ class BuildingPresenter:
         return combined_data
 
     def on_combobox_selection_changed(self):
-        """
-        Updates the plot based on the selected combobox items.
-        """
+        """Update plot when combobox selection changes."""
         self.view.plot(self.model.results)
 
 class BuildingTabView(QWidget):
     """
-    The BuildingTabView class manages the UI components for the BuildingTab.
-
-    Signals:
-        load_csv_signal (str): Emitted when a CSV file is loaded.
-        save_csv_signal (str): Emitted when a CSV file is saved.
-        calculate_heat_demand_signal (str): Emitted when heat demand calculation is requested.
-        load_json_signal (str): Emitted when a JSON file is loaded.
-        update_path_signal (str): Emitted when the output path is updated.
+    View component for building tab UI with table and plotting functionality.
     """
 
     load_csv_signal = pyqtSignal(str)
@@ -414,13 +445,19 @@ class BuildingTabView(QWidget):
     calculate_heat_demand_signal = pyqtSignal(str)
 
     def __init__(self, parent=None):
+        """
+        Initialize building tab view.
+
+        Parameters
+        ----------
+        parent : QWidget, optional
+            Parent widget.
+        """
         super().__init__(parent)
         self.initUI()
 
     def initUI(self):
-        """
-        Initializes the optimized UI components with improved layout and functionality.
-        """
+        """Initialize UI components."""
         self.main_layout = QVBoxLayout(self)
         self.initMenuBar()
         self.initDataTable()
@@ -429,9 +466,7 @@ class BuildingTabView(QWidget):
         self.initializeComboboxes()
 
     def initMenuBar(self):
-        """
-        Initializes a cleaner menu bar with distinct separation from the rest of the layout.
-        """
+        """Initialize menu bar with file operations."""
         self.menubar = QMenuBar(self)
         self.menubar.setFixedHeight(30)
 
@@ -458,31 +493,26 @@ class BuildingTabView(QWidget):
         self.main_layout.setMenuBar(self.menubar)
 
     def initDataTable(self):
-        """
-        Initializes the data table area.
-        """
+        """Initialize data table widget."""
         self.table_widget = QTableWidget(self)
-        self.table_widget.setMinimumSize(1200, 300)  # Set minimum width and height for the table
-        self.table_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # Allow it to expand
+        self.table_widget.setMinimumSize(1200, 300)
+        self.table_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.main_layout.addWidget(self.table_widget)
 
     def initPlotAndComboboxes(self):
-        """
-        Initializes the plot area and data selection comboboxes in a horizontal layout.
-        """
+        """Initialize plot area and data selection controls."""
         plot_and_combobox_layout = QHBoxLayout()
 
         # Plot area
         self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)
-        self.canvas.setMinimumSize(800, 500)  # Set minimum width and height for the plot
-        self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # Allow it to expand
+        self.canvas.setMinimumSize(800, 500)
+        self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.toolbar = NavigationToolbar(self.canvas, self)
         
         plot_layout = QVBoxLayout()
         plot_layout.addWidget(self.canvas)
 
-        # Center the toolbar
         toolbar_layout = QHBoxLayout()
         toolbar_layout.addStretch(1)
         toolbar_layout.addWidget(self.toolbar)
@@ -507,49 +537,37 @@ class BuildingTabView(QWidget):
         self.main_layout.addLayout(plot_and_combobox_layout)
 
     def initializeComboboxes(self):
-        """
-        Initializes the comboboxes with default selections.
-        """
+        """Initialize default combobox selections."""
         self.data_type_combobox.model().item(0).setCheckState(Qt.Checked)
-        # Initialize the building combobox for the first time with the first item checked (Building 0)
-        # self.building_combobox.model().item(0).setCheckState(Qt.Checked)
 
     def loadCsvFile(self):
-        """
-        Emits a signal to load a CSV file.
-        """
+        """Emit signal to load CSV file."""
         self.load_csv_signal.emit(None)
     
     def saveCsvFile(self):
-        """
-        Emits a signal to save a CSV file.
-        """
+        """Emit signal to save CSV file."""
         self.save_csv_signal.emit(None)
 
     def loadJsonFile(self):
-        """
-        Emits a signal to load a JSON file.
-        """
+        """Emit signal to load JSON file."""
         self.load_json_signal.emit(None)
     
     def saveJsonFile(self):
-        """
-        Emits a signal to save a JSON file.
-        """
+        """Emit signal to save JSON file."""
         self.save_json_signal.emit(None)
 
     def calculateHeatDemand(self):
-        """
-        Emits a signal to calculate heat demand.
-        """
+        """Emit signal to calculate heat demand."""
         self.calculate_heat_demand_signal.emit(None)
 
     def populate_table(self, data):
         """
-        Populates the table widget with data.
+        Populate table with DataFrame data.
 
-        Args:
-            data (pd.DataFrame): The data to populate the table with.
+        Parameters
+        ----------
+        data : pd.DataFrame
+            Data to display in table.
         """
         self.table_widget.setColumnCount(len(data.columns))
         self.table_widget.setRowCount(len(data.index))
@@ -564,10 +582,12 @@ class BuildingTabView(QWidget):
 
     def get_table_data(self):
         """
-        Retrieves the data from the table widget.
+        Extract data from table widget.
 
-        Returns:
-            pd.DataFrame: The data from the table widget.
+        Returns
+        -------
+        pd.DataFrame
+            Table data as DataFrame.
         """
         rows = self.table_widget.rowCount()
         columns = self.table_widget.columnCount()
@@ -578,13 +598,11 @@ class BuildingTabView(QWidget):
             for column in range(columns):
                 widget = self.table_widget.cellWidget(row, column)
                 if widget:
-                    # Check if the widget is a QComboBox (for example) or QLineEdit and handle accordingly
                     if isinstance(widget, QComboBox):
                         row_data.append(widget.currentText())
                     elif isinstance(widget, QLineEdit):
                         row_data.append(widget.text())
                 else:
-                    # If no widget, get the text from the item directly
                     item = self.table_widget.item(row, column)
                     if item and item.text():
                         row_data.append(item.text())
@@ -594,7 +612,6 @@ class BuildingTabView(QWidget):
 
         df = pd.DataFrame(data, columns=[self.table_widget.horizontalHeaderItem(i).text() for i in range(columns)])
 
-        # Spezifische Spalten in Strings konvertieren, wenn nötig
         if 'Subtyp' in df.columns:
             df['Subtyp'] = df['Subtyp'].astype(str)
 
@@ -602,10 +619,12 @@ class BuildingTabView(QWidget):
 
     def populate_building_combobox(self, results):
         """
-        Populates the building combobox with the results data.
+        Populate building selection combobox.
 
-        Args:
-            results (dict): The results data to populate the combobox with.
+        Parameters
+        ----------
+        results : dict
+            Results data for building selection.
         """
         self.building_combobox.clear()
         for key in results.keys():
@@ -615,10 +634,12 @@ class BuildingTabView(QWidget):
 
     def plot(self, results=None):
         """
-        Plots the selected data types for the selected buildings, adjusting the figure size for the legend outside.
+        Plot selected data types for selected buildings.
         
-        Args:
-            results (dict, optional): The results data to plot. Defaults to None.
+        Parameters
+        ----------
+        results : dict, optional
+            Results data to plot.
         """
         if results is None:
             return
@@ -652,52 +673,63 @@ class BuildingTabView(QWidget):
         ax1.set_ylabel('Heat Demand (kW)', fontsize=label_fontsize)
         ax2.set_ylabel('Temperature (°C)', fontsize=label_fontsize)
 
-        # Legend for ax1 on the left
-        #ax1.legend(loc='center right', bbox_to_anchor=(-0.2, 0.5), fontsize=legend_fontsize)
         ax1.legend(loc='upper center', fontsize=legend_fontsize)
-        # Legend for ax2 on the right
         ax2.legend(loc='center left', bbox_to_anchor=(1.2, 0.5), fontsize=legend_fontsize)
 
-        # Adjust layout to ensure the legends do not overlap the plot
-        #self.figure.subplots_adjust(left=0.25, right=0.75, top=0.9, bottom=0.1)
-        # Prevent x-axis label overlap
         self.figure.autofmt_xdate(rotation=30)
         self.figure.tight_layout()
 
         ax1.grid()
-
         self.canvas.draw()
 
     def show_error_message(self, title, message):
         """
-        Displays an error message in a message box.
+        Display error message dialog.
 
-        Args:
-            title (str): The title of the message box.
-            message (str): The message content.
+        Parameters
+        ----------
+        title : str
+            Dialog title.
+        message : str
+            Error message.
         """
         QMessageBox.critical(self, title, message)
 
     def show_message(self, title, message):
         """
-        Displays an information message in a message box.
+        Display information message dialog.
 
-        Args:
-            title (str): The title of the message box.
-            message (str): The message content.
+        Parameters
+        ----------
+        title : str
+            Dialog title.
+        message : str
+            Information message.
         """
         QMessageBox.information(self, title, message)
 
 class BuildingTab(QMainWindow):
     """
-    The BuildingTab class is the main window for the BuildingTab UI.
-
-    Args:
-        data_manager (object): The data manager for the application.
-        parent (QWidget, optional): The parent widget. Defaults to None.
+    Main building tab window integrating MVP components.
+    
+    Central interface for building data management and heat demand analysis.
     """
 
     def __init__(self, folder_manager, data_manager, config_manager, parent=None):
+        """
+        Initialize building tab with MVP architecture.
+
+        Parameters
+        ----------
+        folder_manager : object
+            Folder manager.
+        data_manager : object
+            Data manager.
+        config_manager : object
+            Configuration manager.
+        parent : QWidget, optional
+            Parent widget.
+        """
         super().__init__(parent)
         self.setWindowTitle("Gebäudetab")
         self.setGeometry(100, 100, 800, 600)

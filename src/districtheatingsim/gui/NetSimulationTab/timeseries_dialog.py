@@ -1,8 +1,11 @@
 """
-Filename: calculation_dialogs.py
+Time Series Dialog Module
+=========================
+
+Dialog for configuring time series calculation parameters.
+
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-02-11
-Description: Contains the Dialogs for the CalculationTab.
 """
 
 import os
@@ -11,23 +14,27 @@ from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog,  \
 
 class TimeSeriesCalculationDialog(QDialog):
     """
-    Dialog for time series calculation based on user inputs.
-    
-    Attributes:
-        base_path (str): Base path for file dialogs.
-        parent (QWidget): Parent widget.
+    Dialog for time series calculation configuration.
     """
 
     def __init__(self, base_path, parent=None):
+        """
+        Initialize time series calculation dialog.
+
+        Parameters
+        ----------
+        base_path : str
+            Base path for file dialogs.
+        parent : QWidget, optional
+            Parent widget.
+        """
         super().__init__(parent)
         self.base_path = base_path
         self.parent = parent
         self.initUI()
 
     def initUI(self):
-        """
-        Initializes the user interface for the dialog.
-        """
+        """Initialize user interface components."""
         self.setWindowTitle("Zeitreihenrechnung")
         self.resize(400, 200)
 
@@ -72,18 +79,18 @@ class TimeSeriesCalculationDialog(QDialog):
         self.layout.addLayout(buttonLayout)
 
     def onAccept(self):
-        """
-        Validates the inputs and accepts the dialog if valid.
-        """
+        """Validate inputs and accept dialog if valid."""
         if self.validateInputs():
             self.accept()
 
     def validateInputs(self):
         """
-        Validates the start and end time steps.
+        Validate start and end time steps.
 
-        Returns:
-            bool: True if inputs are valid, False otherwise.
+        Returns
+        -------
+        bool
+            True if inputs are valid.
         """
         start = int(self.StartTimeStepInput.text())
         end = int(self.EndTimeStepInput.text())
@@ -98,10 +105,12 @@ class TimeSeriesCalculationDialog(QDialog):
 
     def selectFilename(self, lineEdit):
         """
-        Opens a file dialog to select a file and updates the line edit with the selected file path.
+        Open file dialog and update line edit with selected file.
 
-        Args:
-            lineEdit (QLineEdit): The line edit to update with the selected file path.
+        Parameters
+        ----------
+        lineEdit : QLineEdit
+            Line edit widget to update.
         """
         filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen")
         if filename:
@@ -109,10 +118,12 @@ class TimeSeriesCalculationDialog(QDialog):
 
     def getValues(self):
         """
-        Gets the values from the dialog.
+        Get dialog values.
 
-        Returns:
-            dict: Dictionary containing the results filename, start time step, and end time step.
+        Returns
+        -------
+        dict
+            Dictionary containing results filename, start and end time steps.
         """
         return {
             'results_filename': self.resultsFileInput.text(),

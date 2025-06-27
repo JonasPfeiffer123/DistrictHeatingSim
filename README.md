@@ -204,6 +204,14 @@ The Code is documented with docstrings which are readable by [Sphinx](https://ww
 
 The current version of the documentation can be found under https://districtheatingsim.readthedocs.io/en/latest/. The Sphinx-compatible documentation was created with Copilot using Claude Sonnet 4 (Preview).
 
+## Publication
+
+**Supporting the Transformation of Heat Supply: Development of a Software Solution for Sustainable Heating Networks**  
+Jonas Pfeiffer, Matthias Kunick
+**Published in:** *Proceedings of the 25th Young Scientists Conference*  
+Hochschule Merseburg, 2025, pp. 128–132  
+[📎 View PDF](https://www.hs-merseburg.de/fileadmin/Forschung/Nachwuchswissenschaftlerkonferenz/NWK25/NWK25_Tagungsband.pdf)
+
 ## Contribution Guidelines
 
 I welcome contributions from the community. To contribute:
