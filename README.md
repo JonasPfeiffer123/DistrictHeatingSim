@@ -212,6 +212,11 @@ Jonas Pfeiffer, Matthias Kunick
 Hochschule Merseburg, 2025, pp. 128–132  
 [📎 View PDF](https://www.hs-merseburg.de/fileadmin/Forschung/Nachwuchswissenschaftlerkonferenz/NWK25/NWK25_Tagungsband.pdf)
 
+**Development of an integrated software workflow for district heating network planning: A structured methodological approach**  
+Jonas Pfeiffer, Matthias Kunick  
+**Published in:** *ACC Journal*, 31(1), 48–63, 2025  
+[https://doi.org/10.2478/acc-2025-0004](https://doi.org/10.2478/acc-2025-0004)
+
 ## Contribution Guidelines
 
 I welcome contributions from the community. To contribute:
