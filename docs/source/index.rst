@@ -9,6 +9,15 @@ DistrictHeatingSim Documentation
 
 **DistrictHeatingSim** is a comprehensive simulation tool for district heating systems with GUI-based user interface and advanced calculation algorithms.
 
+.. figure:: _static/images/workflow_chart.png
+   :alt: DistrictHeatingSim Workflow
+   :width: 80%
+   :align: center
+   :name: fig-workflow
+
+   **Figure 1:** DistrictHeatingSim software workflow showing the integrated approach
+   for district heating network planning and analysis.
+
 📋 Key Features
 ---------------------
 
@@ -33,6 +42,46 @@ DistrictHeatingSim Documentation
       :text-align: center
       
       Thermo-hydraulic simulation with pandapipes
+
+.. figure:: _static/images/project_management.png
+   :alt: Project Management
+   :width: 80%
+   :align: center
+   :name: fig-project-management
+
+   **Figure 2:** Project management interface for organizing and managing district heating projects.
+
+.. figure:: _static/images/building_load_profiles.png
+   :alt: Building Load Profiles
+   :width: 80%
+   :align: center
+   :name: fig-building-load-profiles
+
+   **Figure 3:** Building load profiles based on building data and weather conditions.
+
+.. figure:: _static/images/leaflet_map.png
+   :alt: Leaflet Map
+   :width: 80%
+   :align: center
+   :name: fig-leaflet-map
+
+   **Figure 4:** Interactive map visualization of district heating networks using Leaflet.
+
+.. figure:: _static/images/net_simulation_pandapipes_2.png
+   :alt: Network Simulation with pandapipes
+   :width: 80%
+   :align: center
+   :name: fig-net-simulation-pandapipes
+
+   **Figure 5:** Thermo-hydraulic simulation of district heating networks using pandapipes.
+
+.. figure:: _static/images/heat_generator_definition.png
+   :alt: Heat Generation Definition
+   :width: 80%
+   :align: center
+   :name: fig-heat-generation-definition
+
+   **Figure 6:** Definition of heat generation systems including heat pumps and CHP units.
 
 🛠️ Installation
 -----------------
@@ -64,24 +113,11 @@ To start the application directly, run the following in the terminal:
 
    districtheatingsim
 
-.. toctree::
-   :maxdepth: 3
-   :caption: Development
-
-   references
-
 💡 Examples
 --------------
 
 The following examples demonstrate various aspects of the DistrictHeatingSim application. 
 All example files are located in the ``examples/`` directory of the project repository.
-
-.. toctree::
-   :maxdepth: 3
-   :caption: 📚 Examples
-   :glob:
-   
-   examples/*
 
 .. grid:: 3
 
@@ -127,76 +163,12 @@ All example files are located in the ``examples/`` directory of the project repo
       
       See: ``12_example_renovation_analysis.py``, ``15_example_annuity.py``
 
-📁 Available Examples
-----------------------
-
-The examples are organized by functionality:
-
-**Data Processing & Import:**
-
-- ``01_example_geocoding.py`` - Geocoding addresses to coordinates
-- ``02_example_import_osm_data_geojson.py`` - Import OpenStreetMap data in GeoJSON format
-- ``11_example_lod2.py`` - Processing LOD2 building data
-
-**Heat Demand Calculations:**
-
-- ``03_example_simple_heat_requirement.py`` - Basic heat demand calculation
-- ``04_example_data_heat_requirement.py`` - Data-driven heat demand analysis
-
-**Network Design & Generation:**
-
-- ``05_example_net_generation.py`` - Automated network topology generation
-- ``10_example_heat_generation_optimization.py`` - Heat generation system optimization
-
-**Simulation & Analysis:**
-
-- ``06_example_simple_pandapipes.py`` - Basic pandapipes simulation
-- ``07_example_timeseries_pandapipes.py`` - Time series simulation with pandapipes  
-- ``08_example_complex_pandapipes_timeseries.py`` - Complex time series analysis
-
-**Energy Systems:**
-
-- ``09_example_heat_generators.py`` - Heat generator configuration and analysis
-- ``17_energy_system_seasonal_storage.py`` - Seasonal energy storage systems
-
-**Economic Analysis:**
-
-- ``12_example_renovation_analysis.py`` - Building renovation economic analysis
-- ``15_example_annuity.py`` - Annuity and financial calculations
-
-**Visualization & Tools:**
-
-- ``14_example_photovoltaics.py`` - Photovoltaic system integration
-- ``16_interactive_matplotlib.py`` - Interactive plotting and visualization
-- ``18_stanet_to_pandapipes.py`` - STANET to pandapipes conversion
-- ``19_generator_schematic_test_window.py`` - Generator schematic testing
-- ``20_leaflet_test.py`` - Interactive map visualization with Leaflet
-
-🔗 Running Examples
---------------------
-
-To run the examples, navigate to the project root directory and execute:
-
-.. code-block:: bash
-
-   # Navigate to project root
-   cd DistrictHeatingSim
+.. toctree::
+   :maxdepth: 3
+   :caption: Examples
+   :glob:
    
-   # Run a specific example
-   python examples/01_example_geocoding.py
-   
-   # Run heat demand calculation example
-   python examples/03_example_simple_heat_requirement.py
-   
-   # Run network generation example
-   python examples/05_example_net_generation.py
-
-.. note::
-   Make sure you have installed DistrictHeatingSim in development mode before running examples:
-   
-   .. code-block:: bash
-   
-      pip install -e .
+   examples
 
 📋 Example Data
 ----------------
@@ -217,6 +189,12 @@ Some examples generate their own test data, while others may require external da
 - 🐛 **Bug Reports**: `GitHub Issues <https://github.com/jonaspfeiffer123/DistrictHeatingSim/issues>`_
 - 💬 **Discussions**: `GitHub Discussions <https://github.com/jonaspfeiffer123/DistrictHeatingSim/discussions>`_
 - 📖 **Examples**: `GitHub Examples <https://github.com/jonaspfeiffer123/DistrictHeatingSim/tree/main/examples>`_
+
+.. toctree::
+   :maxdepth: 3
+   :caption: Development
+
+   references
 
 Indices and Tables
 ==================

@@ -20,7 +20,8 @@ extensions = [
     'sphinx.ext.githubpages',
     'sphinx_design',
     'sphinx_copybutton',
-    'sphinx_tabs.tabs'
+    'sphinx_tabs.tabs',
+    'sphinxcontrib.bibtex'
 ]
 
 templates_path = ['_templates']
@@ -98,3 +99,7 @@ todo_include_todos = True
 # -- Copy button configuration -----------------------------------------------
 copybutton_prompt_text = r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: "
 copybutton_prompt_is_regexp = True
+
+# Bibtex-Files
+# -----------------------------------------------------------------------------
+bibtex_bibfiles = ['refs.bib']
