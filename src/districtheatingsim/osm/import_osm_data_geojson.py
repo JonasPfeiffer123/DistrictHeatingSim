@@ -187,13 +187,6 @@ def save_to_file(geojson_data, filename):
     -------
     None
 
-    Raises
-    ------
-    IOError
-        If the file cannot be written to the specified location.
-    PermissionError
-        If there are insufficient permissions to write to the file.
-
     Examples
     --------
     >>> geojson_data = geojson.FeatureCollection([])
