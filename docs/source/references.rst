@@ -4,16 +4,50 @@ References
 This document contains the bibliographic references for the DistrictHeatingSim project and related research.
 
 Publications
----------------------
+------------
 
-.. [Pfeiffer2025] Pfeiffer, J., & Kunick, M. (2025). Supporting the Transformation of Heat Supply: Development of a Software Solution for Sustainable Heating Networks. In *Hochschule Merseburg (Ed.), Proceedings of the 25th Young Scientists Conference* (pp. 128–135). Hochschule Merseburg. 
-   
-   Available online: https://www.hs-merseburg.de/fileadmin/Forschung/Nachwuchswissenschaftlerkonferenz/NWK25/NWK25_Tagungsband.pdf
+DistrictHeatingSim is based on research published in peer-reviewed journals and conference proceedings. 
+The software implements methodologies and approaches described in the following publications:
 
-   Note: This publication is written in German and gives an overview of the DistrictHeatingSim project, its objectives, and its contributions to sustainable heating networks.
+.. bibliography::
+   :filter: docname in docnames
+   :style: unsrt
+   :all:
 
-.. [Pfeiffer2025b] Pfeiffer, J., & Kunick, M. (2025). Development of an integrated software workflow for district heating network planning: A structured methodological approach. *ACC Journal, 31*(1), 48–63. https://doi.org/10.2478/acc-2025-0004
+Key Publications
+----------------
 
-   Available online: https://acc-ern.tul.cz/archiv/PDF/ACC_2025_1_04.pdf
+**Conference Proceedings**
 
-   Note: This paper presents the structured methodological approach for the development of an integrated software workflow for district heating network planning, highlighting the contributions of DistrictHeatingSim to this field.
+The initial concept and development of DistrictHeatingSim was presented at the Young Scientists Conference :cite:`Pfeiffer2025`.
+
+**Journal Articles**
+
+The structured methodological approach for integrated district heating network planning workflows 
+is detailed in :cite:`Pfeiffer2025b`.
+
+Citation Information
+--------------------
+
+If you use DistrictHeatingSim in your research, please cite the relevant publications:
+
+**For the software concept and development:**
+
+.. bibliography::
+   :filter: key == "Pfeiffer2025"
+   :style: unsrt
+
+**For the methodological approach:**
+
+.. bibliography::
+   :filter: key == "Pfeiffer2025b"
+   :style: unsrt
+
+BibTeX Entries
+--------------
+
+You can also use the following BibTeX entries for citations:
+
+.. literalinclude:: refs.bib
+   :language: bibtex
+   :caption: BibTeX entries for DistrictHeatingSim references

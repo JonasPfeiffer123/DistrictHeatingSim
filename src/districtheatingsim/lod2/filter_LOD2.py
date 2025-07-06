@@ -71,12 +71,6 @@ def filter_LOD2_with_OSM_and_adress(csv_file_path: str,
         - **LOD2 Data**: 3D building models with parent-child relationships
         - **Coordinate Alignment**: All datasets must use compatible CRS
 
-    Applications:
-        - Address-based building selection for energy audits
-        - Targeted LOD2 analysis for specific building lists
-        - Integration of planning data with 3D building models
-        - Quality control for address geocoding accuracy
-
     Examples
     --------
     >>> # Filter buildings for energy audit project
@@ -95,15 +89,6 @@ def filter_LOD2_with_OSM_and_adress(csv_file_path: str,
     ...         addr_file, "osm_buildings.geojson", 
     ...         "lod2_complete.shp", output_name
     ...     )
-
-    Raises
-    ------
-    FileNotFoundError
-        If any input file cannot be found or accessed.
-    KeyError
-        If required address columns are missing from CSV or OSM data.
-    ValueError
-        If coordinate reference systems are incompatible.
 
     See Also
     --------
@@ -182,12 +167,6 @@ def filter_LOD2_with_coordinates(lod_geojson_path: str,
         - **Geometry Types**: Ground polygons for spatial testing
         - **CRS Compatibility**: Coordinate systems must align
 
-    Applications:
-        - Building selection for energy monitoring installations
-        - LOD2 extraction for heat pump site analysis
-        - Building model retrieval for specific measurement locations
-        - Integration of field survey data with 3D building models
-
     Examples
     --------
     >>> # Filter buildings containing measurement points
@@ -209,15 +188,6 @@ def filter_LOD2_with_coordinates(lod_geojson_path: str,
     >>> filtered_buildings = gpd.read_file("buildings_with_measurements.geojson")
     >>> print(f"Buildings found: {len(filtered_buildings['parent_id'].unique())}")
     >>> print(f"Components: {filtered_buildings['Geometr_3D'].value_counts()}")
-
-    Raises
-    ------
-    FileNotFoundError
-        If LOD2 or CSV files cannot be found.
-    KeyError
-        If required coordinate columns (UTM_X, UTM_Y) are missing.
-    ValueError
-        If coordinate data cannot be converted to valid geometries.
 
     See Also
     --------
@@ -313,12 +283,6 @@ def spatial_filter_with_polygon(lod_geojson_path: str,
         - 2D spatial operations on 3D geometry projections
         - Unary union for multiple polygon boundaries
 
-    Applications:
-        - District heating network planning area extraction
-        - Municipal building stock analysis
-        - Urban development impact assessment
-        - Building energy audit area definition
-
     Examples
     --------
     >>> # Extract buildings within district boundary
@@ -344,15 +308,6 @@ def spatial_filter_with_polygon(lod_geojson_path: str,
     >>> component_stats = buildings['Geometr_3D'].value_counts()
     >>> print(f"Filtered area contains {building_count} buildings")
     >>> print(f"Components: {component_stats.to_dict()}")
-
-    Raises
-    ------
-    FileNotFoundError
-        If LOD2 or polygon files cannot be found.
-    ValueError
-        If polygon geometry is invalid or coordinate systems incompatible.
-    GeometryError
-        If spatial operations fail due to geometry issues.
 
     See Also
     --------
@@ -424,12 +379,6 @@ def calculate_polygon_area_3d(polygon: Polygon) -> Optional[float]:
         - Uses first vertex as triangulation origin
         - Handles both convex and simple concave polygons
         - Requires minimum 3 vertices for valid calculation
-
-    Applications:
-        - Roof surface area calculation for solar potential
-        - Wall area computation for thermal analysis
-        - Material quantity estimation for building components
-        - Heat transfer surface area determination
 
     Examples
     --------
@@ -526,12 +475,6 @@ def calculate_triangle_area_3d(p1: Tuple[float, float, float],
         - Handles extreme aspect ratios and small angles
         - Provides stable results for building geometry calculations
 
-    Applications:
-        - Building surface area computation
-        - Roof and wall area calculation
-        - Solar panel area estimation
-        - Thermal surface area determination
-
     Examples
     --------
     >>> # Horizontal triangle
@@ -596,12 +539,6 @@ def calculate_distance_3d(point1: Tuple[float, float, float],
     -----
     Distance Formula:
         distance = √((x₂-x₁)² + (y₂-y₁)² + (z₂-z₁)²)
-
-    Applications:
-        - Edge length calculation for 3D triangles
-        - Building dimension measurement
-        - Geometric validation and quality control
-        - Spatial relationship analysis
 
     Numerical Considerations:
         - Standard floating-point precision
@@ -670,12 +607,6 @@ def calculate_area_3d_for_feature(geometry: Union[Polygon, MultiPolygon]) -> flo
         Uses triangulation-based 3D area calculation for each polygon
         component to ensure accurate surface area measurement regardless
         of polygon orientation or slope in 3D space.
-
-    Applications:
-        - Building envelope surface area calculation
-        - Roof area computation for solar analysis
-        - Wall area determination for thermal calculations
-        - Material quantity estimation
 
     Geometry Requirements:
         - Valid polygon geometries with 3D coordinates
@@ -767,12 +698,6 @@ def calculate_area_from_wall_coordinates(wall_geometries: List[Union[Polygon, Mu
         - May not work correctly for complex building shapes
         - Requires wall geometries to properly define perimeter
         - No validation of coordinate point ordering
-
-    Applications:
-        - Fallback method when ground geometry is missing
-        - Building volume calculation when ground area needed
-        - Quality control for LOD2 data completeness
-        - Area estimation for buildings with incomplete geometry
 
     Examples
     --------
@@ -899,15 +824,6 @@ def process_lod2(file_path: str, STANDARD_VALUES: Optional[Dict[str, Any]] = Non
     >>> total_volume = sum(info.get('Volume', 0) for info in building_data.values() if info.get('Volume'))
     >>> print(f"Total ground area: {total_ground_area:.0f} m²")
     >>> print(f"Total volume: {total_volume:.0f} m³")
-
-    Raises
-    ------
-    FileNotFoundError
-        If LOD2 file cannot be found or accessed.
-    ValueError
-        If geometry data is invalid or coordinate calculations fail.
-    KeyError
-        If required LOD2 data structure is incomplete.
 
     See Also
     --------
@@ -1053,12 +969,6 @@ def normalize_subtype(subtype: Union[str, int, float]) -> str:
         - Decimal values truncated to integer (1.0 → "01")
         - Consistent string output format for database integration
 
-    Applications:
-        - Building typology database integration
-        - TABULA building type standardization
-        - Data quality assurance for building classifications
-        - Consistent identifier formatting across datasets
-
     Examples
     --------
     >>> # Various input formats
@@ -1155,13 +1065,6 @@ def geocode(lat: float, lon: float) -> str:
     ...     address = geocode(lat, lon)
     ...     print(f"({lat}, {lon}): {address}")
     ...     time.sleep(1)  # Respect rate limits
-
-    Raises
-    ------
-    GeopyError
-        If geocoding service encounters errors.
-    TimeoutError
-        If service request times out.
 
     See Also
     --------
@@ -1263,13 +1166,6 @@ def calculate_centroid_and_geocode(building_info: Dict[str, Dict[str, Any]]) -> 
         - Geocoding failures are logged and handled gracefully
         - Invalid geometries are skipped with warning messages
         - Network errors during geocoding are captured
-
-    Raises
-    ------
-    ValueError
-        If coordinate transformation fails.
-    GeometryError
-        If ground geometry union operation fails.
 
     See Also
     --------
@@ -1391,12 +1287,6 @@ def calculate_normal_and_angles(roof_geom: Union[Polygon, MultiPolygon]) -> List
         - 30° = Typical residential roof pitch
         - 45° = Steep roof surface
         - 90° = Vertical surface (wall)
-
-    Applications:
-        - **Solar PV Analysis**: Optimal panel placement and energy yield estimation
-        - **Thermal Modeling**: Heat transfer calculations for building envelope
-        - **Rainwater Management**: Drainage pattern analysis and capacity planning
-        - **Wind Load Assessment**: Aerodynamic force calculations for structural design
 
     Examples
     --------
@@ -1585,12 +1475,6 @@ def process_roof(file_path: str) -> Dict[str, Dict[str, Any]]:
         - Error handling for incomplete or invalid geometries
         - Preservation of all original geometry data
 
-    Applications:
-        - **Solar PV Planning**: Roof surface analysis for panel placement
-        - **Building Energy Modeling**: Envelope surface area calculations
-        - **Urban Planning**: Building stock renewable energy potential
-        - **Architectural Analysis**: Roof design and orientation assessment
-
     Examples
     --------
     >>> # Process LOD2 building data for PV analysis
@@ -1654,15 +1538,6 @@ def process_roof(file_path: str) -> Dict[str, Dict[str, Any]]:
         - Invalid roof geometries skipped with logging
         - Fallback calculations for missing ground areas
         - Address data integration with null value handling
-
-    Raises
-    ------
-    FileNotFoundError
-        If LOD2 file cannot be found or accessed.
-    ValueError
-        If geometry data is invalid or coordinate calculations fail.
-    KeyError
-        If required LOD2 data structure is incomplete.
 
     See Also
     --------
