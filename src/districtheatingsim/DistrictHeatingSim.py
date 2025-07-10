@@ -59,15 +59,11 @@ Key Features
 
 **Data Management**:
     - Standardized data formats for interoperability
-    - Automatic data validation and consistency checking
     - Import/export capabilities for external tools
-    - Version control for project data
 
 **User Experience**:
     - Intuitive workflow-based interface design
-    - Context-sensitive help and documentation
     - Customizable themes (light/dark mode)
-    - Professional report generation capabilities
 
 Technical Implementation
 ------------------------
@@ -90,10 +86,7 @@ Technical Implementation
 **Error Handling**:
     Comprehensive error handling includes:
     
-    - Global exception handling with user-friendly error messages
-    - Graceful degradation for missing data or files
-    - Validation feedback for user inputs
-    - Logging and debugging capabilities
+    - Global exception handling with error messages
 
 **Cross-Platform Support**:
     The application is designed for cross-platform deployment:
@@ -112,17 +105,6 @@ Application Lifecycle
     4. **Presenter Linking**: Connect business logic to view components
     5. **Theme Application**: Apply time-based or user-selected theme
     6. **Project Loading**: Load last project or show default state
-
-**Runtime Operations**:
-    - Event-driven user interactions through Qt signal-slot mechanism
-    - Asynchronous calculations with progress feedback
-    - Real-time data validation and consistency checking
-    - Automatic saving of configuration and project state
-
-**Shutdown Sequence**:
-    - Save current project state and user preferences
-    - Clean up temporary files and resources
-    - Graceful application termination
 
 Examples
 --------
@@ -196,28 +178,9 @@ Configuration and Customization
     The modular architecture supports easy extension:
     
     - New tabs can be added by implementing the base tab interface
-    - Additional heating technologies through plugin architecture
-    - Custom data formats through adapter patterns
-    - External tool integration through defined APIs
-
-Performance Considerations
---------------------------
-**Memory Management**:
-    - Lazy loading of tab content and data
-    - Efficient data structures for large building datasets
-    - Garbage collection optimization for long-running sessions
 
 **Calculation Performance**:
-    - Multi-threading for complex network calculations
     - Progress feedback for long-running operations
-    - Caching mechanisms for repeated calculations
-    - Optimization algorithms for large-scale problems
-
-**User Interface Responsiveness**:
-    - Asynchronous operations to prevent GUI freezing
-    - Real-time validation with minimal computational overhead
-    - Efficient rendering for large datasets and maps
-    - Smooth animations and transitions
 
 Dependencies
 ------------
@@ -244,19 +207,13 @@ Deployment and Distribution
 **Development Environment**:
     - Direct execution from source code
     - Debug mode with detailed logging
-    - Hot reloading for development efficiency
 
 **Production Deployment**:
     - PyInstaller packaging for standalone executables
     - Resource bundling and path resolution
-    - Windows installer creation
-    - Cross-platform distribution packages
 
 **System Requirements**:
-    - Python 3.7+ for development
-    - 4GB RAM minimum, 8GB recommended
-    - 1GB disk space for installation
-    - OpenGL support for advanced visualizations
+    - Tested on Windows with Python 3.11
 
 See Also
 --------
@@ -332,9 +289,7 @@ def main():
     The application implements comprehensive error handling:
     
     - Global exception handler for unhandled exceptions
-    - User-friendly error messages and recovery options
     - Logging and debugging information for troubleshooting
-    - Graceful degradation for missing resources or features
     
     Theme Management
     ----------------
