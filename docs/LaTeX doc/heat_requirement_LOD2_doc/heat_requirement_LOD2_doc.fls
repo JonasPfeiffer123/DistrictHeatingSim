@@ -1,7 +1,0 @@
-PWD c:\Users\jp66tyda\DistrictHeatingSim\docs\LaTeX doc\heat_requirement_LOD2_doc
-INPUT C:\Users\jp66tyda\AppData\Local\MiKTeX\miktex\data\le\pdftex\pdflatex.fmt
-INPUT c:\Users\jp66tyda\DistrictHeatingSim\docs\LaTeX doc\heat_requirement_LOD2_doc\heat_requirement_LOD2_doc.tex
-OUTPUT heat_requirement_LOD2_doc.log
-INPUT C:\Users\jp66tyda\AppData\Local\Programs\MiKTeX\fonts\tfm\jknappen\ec\tcrm1000.tfm
-OUTPUT heat_requirement_LOD2_doc.pdf
-INPUT C:\Users\jp66tyda\AppData\Local\MiKTeX\fonts\map\pdftex\pdftex.map
