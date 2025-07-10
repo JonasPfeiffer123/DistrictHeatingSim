@@ -8,8 +8,7 @@ optimization, and analysis using the pandapipes framework.
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-05-17
 
-It includes heat pump performance
-calculations, network controller creation, pipe diameter optimization, flow direction
+It includes heat pump performance calculations, network controller creation, pipe diameter optimization, flow direction
 correction, and GeoJSON export capabilities.
 
 The module supports various network optimization strategies including automatic pipe sizing,
@@ -337,10 +336,7 @@ def correct_flow_directions(net) -> pp.pandapipesNet:
         - Consistent result interpretation
 
     Technical Background:
-        - pandapipes uses directed graph representation
-        - Negative velocities indicate flow opposite to pipe orientation
         - Junction swapping aligns pipe orientation with actual flow
-        - Bidirectional mode allows initial flow calculation regardless of orientation
 
     Examples
     --------
@@ -431,8 +427,8 @@ def optimize_diameter_parameters(net, element: str = "pipe", v_max: float = 2.0,
         - Accounts for actual flow conditions
 
     Design Considerations:
-        - Higher velocities: Lower material costs, higher pressure losses
-        - Lower velocities: Higher material costs, lower pressure losses
+        - Higher velocities: Lower material costs, higher pressure losses, lower thermal losses
+        - Lower velocities: Higher material costs, lower pressure losses, higher thermal losses
         - Safety factor prevents operation too close to limits
 
     Examples
