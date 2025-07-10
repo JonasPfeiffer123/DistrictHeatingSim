@@ -189,7 +189,7 @@ class ProjectConfigManager:
 
         >>> # Initialize with custom configuration files
         >>> custom_config = ProjectConfigManager(
-        ...     config_path="/custom/path/config.json",
+        ...     config_path="/custom/path/recent_projects.json",
         ...     file_paths_path="/custom/path/file_paths.json"
         ... )
 
@@ -234,7 +234,7 @@ class ProjectConfigManager:
         as this module, ensuring consistent access across different
         deployment scenarios.
         """
-        return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+        return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'recent_projects.json')
 
     def get_default_file_paths_path(self) -> str:
         """

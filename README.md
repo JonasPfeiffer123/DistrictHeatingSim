@@ -90,7 +90,7 @@ By following these steps, you should be able to successfully install and run Dis
 
 Start DistrictHeatingSim by running DistrictHeatingSim.py within src/districtheatingsim/
 
-![Project Management](images\project_management.png)
+![Project Management](images/project_management.png)
 
 ### Building Heat Demand Profile Calculation
 
@@ -99,7 +99,7 @@ Start DistrictHeatingSim by running DistrictHeatingSim.py within src/districthea
 3. **Calculate Profiles**: Calculate the profiles based on weather data.
 4. **View in Diagram**: Results are shown in the diagramm and saved as JSON
 
-![Building Load Profiles](images\building_load_profiles.png)
+![Building Load Profiles](images/building_load_profiles.png)
 
 ### Spatial Analysis
 
@@ -108,7 +108,7 @@ Start DistrictHeatingSim by running DistrictHeatingSim.py within src/districthea
 3. **OSM Data**: Download and integrate street and building data from OpenStreetMap.
 4. **Heat Network Generation**: Automatically generate a heat network based on building and generator locations.
 
-![Leaflet Map](images\leaflet_map.png)
+![Leaflet Map](images/leaflet_map.png)
 
 ### LOD2-Data Processing
 
@@ -124,7 +124,7 @@ Start DistrictHeatingSim by running DistrictHeatingSim.py within src/districthea
 3. **Optimization**: Optimize the network for cost efficiency and operational performance.
 4. **Results**: Visualize the results, including flow rates, pressures, and temperatures.
 
-![Net Simulation Pandapipes](images\net_simulation_pandapipes_2.png)
+![Net Simulation Pandapipes](images/net_simulation_pandapipes_2.png)
 
 ### Generator Sizing and Economic Analysis
 
@@ -133,7 +133,7 @@ Start DistrictHeatingSim by running DistrictHeatingSim.py within src/districthea
 3. **Simulation**: Simulate the performance and cost of different heating scenarios.
 4. **Report Generation**: Generate a PDF report with the simulation results, economic analysis, and recommendations.
 
-![Heat Generator Definition](images\heat_generator_definition.png)
+![Heat Generator Definition](images/heat_generator_definition.png)
 ### Buidling Renovation Cost Calculation
 
 1. **Load Renovation Variants**: Load LOD2 results from LOD2 processing.
