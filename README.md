@@ -32,7 +32,6 @@ DistrictHeatingSim is developed by Dipl.-Ing. (FH) Jonas Pfeiffer as part of a p
 - **Thermohydraulic Network Calculation**: Simulate the generated heat networks with [pandapipes](https://github.com/e2nIEE/pandapipes).
 - **Cost Calculation**: Calculate heat generation costs based on [VDI 2067](https://www.vdi.de/richtlinien/details/vdi-2067-blatt-1-wirtschaftlichkeit-gebaeudetechnischer-anlagen-grundlagen-und-kostenberechnung-1) methodology and various cost inputs.
 - **Renovation Calculation**: Calculate the cost of building renovation based on calculated renovation variants.
-- **Individual supply calculation**: Besides to district heating variants, individual supply options can be calculated
 - **PDF Report Generation**: Create detailed PDF reports with economic and technical results.
 - **Save/Load Project Results**: Integrated options to save and load calculated results in main parts of the software
 
@@ -172,12 +171,10 @@ Start DistrictHeatingSim by running DistrictHeatingSim.py within src/districthea
 
 - **src/districtheatingsim**: Source code for DistrictHeatingSim
 - **docs/**: Documentation for DistrictHeatingSim
-- **flow_chart**: Shows two flow charts describing data processing in DistrictHeatingSim
+- **examples/**: Contains multiple Examples for the various base functionalities of the software.
+- **images/**: Contains examples of the GUI
 - **requirements.txt**: List of dependencies
 - **README.md**: This README file
-- **examples/**: Contains multiple Examples for the various base functionalities of the software.
-
-- **feature_develop**: Contains multiple python files with various functionality which are not yet integrated in DistrictHeatingSim
 
 ## PyInstaller
 Pyinstaller installation works with specific definitions. Reach out to the author for further intructions.
@@ -246,7 +243,7 @@ DistrictHeatSim is licensed under the MIT License. See the `LICENSE` file for mo
 
 This project is funded by the Free State of Saxony as part of the SMWK-NEUES TG70 initiative. The funding supports the development and testing of methods and tools for the conceptualization of sustainable heating networks.
 
-![Funding by Saxony](funding_saxony.jpg)
+![Funding by Saxony](images/funding_saxony.jpg)
 
 ## Contact Information
 
