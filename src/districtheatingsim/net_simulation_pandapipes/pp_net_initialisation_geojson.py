@@ -215,13 +215,19 @@ def initialize_geojson(NetworkGenerationData) -> Any:
     # Calculate mass flows for secondary producers
     if NetworkGenerationData.secondary_producers:
         cp = 4.18  # kJ/kgK - specific heat capacity of water
-        mass_flow = np.sum(total_building_heat_demand_W / 1000) / (cp * (NetworkGenerationData.max_supply_temperature_heat_generator - np.average(return_temperature_heat_consumer)))
+        print(f"Specific heat capacity of water: {cp} kJ/kgK")
+        print(f"maximum_building_heat_load_W: {maximum_building_heat_load_W}")
+        sum_maximum_building_heat_load_W = np.sum(maximum_building_heat_load_W)
+        print(f"sum_maximum_building_heat_load_W: {sum_maximum_building_heat_load_W}")
+        print(f"Max supply temperature heat generator: {NetworkGenerationData.max_supply_temperature_heat_generator} °C")
+        print(f"Return temperature heat consumer: {np.average(return_temperature_heat_consumer)} °C")
+        mass_flow = (sum_maximum_building_heat_load_W / 1000) / (cp * (NetworkGenerationData.max_supply_temperature_heat_generator - np.average(return_temperature_heat_consumer)))
 
         print(f"Mass flow of main producer: {mass_flow} kg/s")
 
         for secondary_producer in NetworkGenerationData.secondary_producers:
-            secondary_producer["mass_flow"] = secondary_producer["percentage"]/100 * mass_flow
-            print(f"Mass flow of secondary producer {secondary_producer['index']}: {secondary_producer['mass_flow']} kg/s")
+            secondary_producer.mass_flow = secondary_producer.load_percentage/100 * mass_flow
+            print(f"Mass flow of secondary producer {secondary_producer.index}: {secondary_producer.mass_flow} kg/s")
 
     producer_dict = {
         "supply_temperature": NetworkGenerationData.max_supply_temperature_heat_generator,
@@ -601,8 +607,8 @@ def create_network(gdf_dict: Dict[str, gpd.GeoDataFrame], consumer_dict: Dict[st
 
         # Secondary producers (mass flow controlled)
         if secondary_producers:
-            mass_flows = [producer["mass_flow"] for producer in secondary_producers]
-            secondary_coords = [all_heat_producer_coords[producer["index"]] for producer in secondary_producers]
+            mass_flows = [producer.mass_flow for producer in secondary_producers]
+            secondary_coords = [all_heat_producer_coords[producer.index] for producer in secondary_producers]
             create_circulation_pump_mass_flow(net, secondary_coords, {**junction_dict_vl, **junction_dict_rl}, 
                                             "heat source slave", mass_flows)
 
