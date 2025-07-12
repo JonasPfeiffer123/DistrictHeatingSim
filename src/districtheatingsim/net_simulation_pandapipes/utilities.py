@@ -176,11 +176,12 @@ def create_controllers(net, qext_w: np.ndarray, supply_temperature_heat_generato
     return_temperature_heat_consumer : np.ndarray
         Return temperature setpoints for heat consumers [°C].
         Array length must match the number of heat consumers.
-    secondary_producers : Optional[List[Dict[str, Any]]], optional
-        List of secondary producer configurations, each containing:
-        
-        - **"index"** (int) : Producer identification index
-        - **"mass_flow"** (float) : Design mass flow rate [kg/s]
+    secondary_producers : Optional[List[SecondaryProducer]], optional
+    List of secondary producer objects, each containing:
+
+        - **index** (int) : Producer identification index
+        - **mass_flow** (float) : Design mass flow rate [kg/s]
+        - **load_percentage** (float) : Load percentage of total demand [%]
 
     Returns
     -------
@@ -279,23 +280,26 @@ def create_controllers(net, qext_w: np.ndarray, supply_temperature_heat_generato
     # Secondary producer controllers
     if secondary_producers:
         for producer in secondary_producers:
-            mass_flow = producer.get("mass_flow", 0)
+            # KORRIGIERT: Verwende Attribut-Zugriff statt Dictionary-Zugriff
+            mass_flow = producer.mass_flow if hasattr(producer, 'mass_flow') else 0
+            producer_index = producer.index if hasattr(producer, 'index') else 0
             
             # Mass flow controller for circulation pump
-            placeholder_df = pd.DataFrame({f'mdot_flow_kg_per_s_{producer["index"]}': [mass_flow]})
+            placeholder_df = pd.DataFrame({f'mdot_flow_kg_per_s_{producer_index}': [mass_flow]})
             placeholder_data_source = DFData(placeholder_df)
             ConstControl(net, element='circ_pump_mass', variable='mdot_flow_kg_per_s', element_index=0,
-                        data_source=placeholder_data_source, profile_name=f'mdot_flow_kg_per_s_{producer["index"]}')
+                        data_source=placeholder_data_source, profile_name=f'mdot_flow_kg_per_s_{producer_index}')
 
             # Flow control for producer
-            placeholder_df_flow = pd.DataFrame({f'controlled_mdot_kg_per_s_{producer["index"]}': [mass_flow]})
+            placeholder_df_flow = pd.DataFrame({f'controlled_mdot_kg_per_s_{producer_index}': [mass_flow]})
             placeholder_data_source_flow = DFData(placeholder_df_flow)
             ConstControl(net, element='flow_control', variable='controlled_mdot_kg_per_s', element_index=0,
-                        data_source=placeholder_data_source_flow, profile_name=f'controlled_mdot_kg_per_s_{producer["index"]}')
+                        data_source=placeholder_data_source_flow, profile_name=f'controlled_mdot_kg_per_s_{producer_index}')
 
             # Supply temperature for secondary producers
             ConstControl(net, element='circ_pump_mass', variable='t_flow_k', element_index=0, 
                         data_source=placeholder_data_source_supply_temp, profile_name='supply_temperature')
+
 
     # System pressure management controller
     dp_controller = BadPointPressureLiftController(net)
