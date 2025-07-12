@@ -1,11 +1,11 @@
 """
-Filename: 08_example_complex_pandapipes.py
+Filename: 08_example_complex_pandapipes_timeseries.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-05-13
+Date: 2025-01-12
 Description: Script for testing the pandapipes net simulation functions. Aims to simulate a district heating network using GeoJSON files for the network layout and a JSON file for the building load profile. The script includes functions to create and initialize the network, perform time series calculations, and plot the results.
 Usage: Run the script in the main directory of the repository.
 
-# Not up-to-date: This script is not up-to-date with the latest version of the NetworkGenerationData class.
+Updated to work with the current NetworkGenerationData class structure.
 """
 
 import matplotlib.pyplot as plt
@@ -17,7 +17,7 @@ from districtheatingsim.net_simulation_pandapipes.utilities import *
 
 from districtheatingsim.net_simulation_pandapipes.config_plot import config_plot
 
-from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import NetworkGenerationData
+from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import NetworkGenerationData, SecondaryProducer
 
 def plot(net, time_steps, qext_kW, strom_kW):
     """
@@ -62,83 +62,160 @@ def print_net_results(net):
         print(f"Results Circ Pump Mass: {net.res_circ_pump_mass}")
 
 if __name__ == "__main__":
-    #vorlauf_path = "examples/data/Wärmenetz/Variante 1/Vorlauf.geojson"
-    #ruecklauf_path = "examples/data/Wärmenetz/Variante 1/Rücklauf.geojson"
-    #hast_path = "examples/data/Wärmenetz/Variante 1/HAST.geojson"
-    #erzeugeranlagen_path = "examples/data/Wärmenetz/Variante 1/Erzeugeranlagen.geojson"
-
+    # File paths
     vorlauf_path = "examples/data/Wärmenetz/Variante 2/Vorlauf.geojson"
     ruecklauf_path = "examples/data/Wärmenetz/Variante 2/Rücklauf.geojson"
     hast_path = "examples/data/Wärmenetz/Variante 2/HAST.geojson"
     erzeugeranlagen_path = "examples/data/Wärmenetz/Variante 2/Erzeugeranlagen.geojson"
-
     json_path = "examples/data/Gebäude Lastgang.json"
-
-    supply_temperature = np.linspace(85, 70, 8760) # supply temperature for the network
-    flow_pressure_pump = 4 # flow pressure of the pump
-    lift_pressure_pump = 1.5 # lift pressure of the pump
-
-    netconfiguration = "Niedertemperaturnetz" # network configuration ("kaltes Netz")
-
-    dT_RL = 5 # temperature difference between heat consumer and net due to heat exchanger
-    building_temp_checked = False # flag indicating if building temperatures are considered
-    pipetype = "KMR 100/250-2v" # type of pipe
-    v_max_pipe = 2 # maximum flow velocity in the pipes
-    material_filter = "KMR" # material filter for pipes
-    DiameterOpt_ckecked = True # flag indicating if diameter optimization is checked
-    k_mm = 0.1 # roughness of the pipe
-    main_producer_location_index = 0 # index of the main producer location
-    secondary_producers = [{"index": 1, "percentage": 5}] # secondary producers with index and percentage
-    import_type = "geoJSON" # type of import, currently only geoJSON
-    supply_temperature_heat_consumer = 60 # minimum supply temperature for heat consumers
-    return_temperature_heat_consumer = 50 # return temperature for heat consumers
     
+    # Optional external data files
     TRY_filename = "examples/data/TRY/TRY_511676144222/TRY2015_511676144222_Jahr.dat"
     COP_filename = "examples/data/COP/Kennlinien WP.csv"
 
-    NetworkGenerationData = NetworkGenerationData(
+    # Network configuration parameters
+    netconfiguration = "Niedertemperaturnetz"  # or "kaltes Netz"
+    supply_temperature_control = "Statisch"  # or "Gleitend"
+    
+    # Temperature control parameters
+    max_supply_temperature_heat_generator = 85.0  # °C
+    min_supply_temperature_heat_generator = 70.0  # °C (for sliding control)
+    max_air_temperature_heat_generator = 15.0     # °C
+    min_air_temperature_heat_generator = -12.0    # °C
+    
+    # Pump parameters
+    flow_pressure_pump = 4.0      # bar
+    lift_pressure_pump = 1.5      # bar
+    
+    # Building temperature parameters
+    min_supply_temperature_building_checked = False
+    min_supply_temperature_building = None # 60.0  # °C
+    fixed_return_temperature_heat_consumer_checked = False
+    fixed_return_temperature_heat_consumer = None # 50.0  # °C
+    dT_RL = 5.0  # K - temperature difference between heat consumer and net due to heat exchanger
+    building_temperature_checked = False  # flag indicating if building temperatures are considered
+    
+    # Pipe parameters
+    pipetype = "KMR 100/250-2v"  # type of pipe
+    diameter_optimization_pipe_checked = True  # flag indicating if diameter optimization is checked
+    max_velocity_pipe = 2.0  # m/s - maximum flow velocity in the pipes
+    material_filter_pipe = "KMR"  # material filter for pipes
+    k_mm_pipe = 0.1  # mm - roughness of the pipe
+    
+    # Producer configuration
+    main_producer_location_index = 0  # index of the main producer location
+    #secondary_producers = []  # list of secondary producers, can be empty or contain multiple producers
+    secondary_producers = [
+        SecondaryProducer(index=1, load_percentage=5.0)  # secondary producer with 5% load
+    ]
+    
+    # Import type
+    import_type = "geoJSON"  # currently only geoJSON
+
+    # Create NetworkGenerationData object with all required parameters
+    network_data = NetworkGenerationData(
+        # Required input data paths
+        import_type=import_type,
         flow_line_path=vorlauf_path,
         return_line_path=ruecklauf_path,
         heat_consumer_path=hast_path,
         heat_generator_path=erzeugeranlagen_path,
         heat_demand_json_path=json_path,
-        supply_temperature_heat_generator=supply_temperature,
+        
+        # Network configuration data
+        netconfiguration=netconfiguration,
+        supply_temperature_control=supply_temperature_control,
+        max_supply_temperature_heat_generator=max_supply_temperature_heat_generator,
+        min_supply_temperature_heat_generator=min_supply_temperature_heat_generator,
+        max_air_temperature_heat_generator=max_air_temperature_heat_generator,
+        min_air_temperature_heat_generator=min_air_temperature_heat_generator,
         flow_pressure_pump=flow_pressure_pump,
         lift_pressure_pump=lift_pressure_pump,
-        netconfiguration=netconfiguration,
+        min_supply_temperature_building_checked=min_supply_temperature_building_checked,
+        min_supply_temperature_building=min_supply_temperature_building,
+        fixed_return_temperature_heat_consumer_checked=fixed_return_temperature_heat_consumer_checked,
+        fixed_return_temperature_heat_consumer=fixed_return_temperature_heat_consumer,
         dT_RL=dT_RL,
-        building_temperature_checked=building_temp_checked,
+        building_temperature_checked=building_temperature_checked,
         pipetype=pipetype,
-        max_velocity_pipe=v_max_pipe,
-        material_filter_pipe=material_filter,
-        diameter_optimization_pipe_checked=DiameterOpt_ckecked,
-        k_mm_pipe=k_mm,
+        
+        # Optimization variables
+        diameter_optimization_pipe_checked=diameter_optimization_pipe_checked,
+        max_velocity_pipe=max_velocity_pipe,
+        material_filter_pipe=material_filter_pipe,
+        k_mm_pipe=k_mm_pipe,
+        
+        # Producer configuration
         main_producer_location_index=main_producer_location_index,
         secondary_producers=secondary_producers,
-        import_type=import_type,
-        min_supply_temperature_building=supply_temperature_heat_consumer,
-        fixed_return_temperature_heat_consumer=return_temperature_heat_consumer,
-        COP_filename=COP_filename
+        
+        # Optional external data files
+        COP_filename=COP_filename,
+        TRY_filename=TRY_filename
     )
 
-    NetworkGenerationData = initialize_geojson(NetworkGenerationData)      
+    # Initialize network from GeoJSON data
+    network_data = initialize_geojson(network_data)      
 
-    # Common steps for both import types
-    if NetworkGenerationData.diameter_optimization_pipe_checked == True:
-        NetworkGenerationData.net = optimize_diameter_types(NetworkGenerationData.net, NetworkGenerationData.max_velocity_pipe, NetworkGenerationData.material_filter_pipe, NetworkGenerationData.k_mm_pipe)
+    # Optimize pipe diameters if requested
+    if network_data.diameter_optimization_pipe_checked:
+        network_data.net = optimize_diameter_types(
+            network_data.net, 
+            network_data.max_velocity_pipe, 
+            network_data.material_filter_pipe, 
+            network_data.k_mm_pipe
+        )
     
-    NetworkGenerationData.start_time_step = 0
-    NetworkGenerationData.end_time_step = 100
-    #NetworkGenerationData.results_csv_filename = netCalcInputs["results_filename"]
-
-    NetworkGenerationData = time_series_preprocessing(NetworkGenerationData)
-            
-    NetworkGenerationData = thermohydraulic_time_series_net(NetworkGenerationData)
+    # Set simulation time range
+    network_data.start_time_step = 0
+    network_data.end_time_step = 10
+    
+    # Preprocess time series data
+    network_data = time_series_preprocessing(network_data)
+    
+    # Run thermohydraulic time series simulation
+    network_data = thermohydraulic_time_series_net(network_data)
 
     print("Simulation erfolgreich abgeschlossen.")
 
-    print_net_results(NetworkGenerationData.net)
-    plot(NetworkGenerationData.net, 
-         NetworkGenerationData.yearly_time_steps_start_end, 
-         NetworkGenerationData.waerme_ges_kW[NetworkGenerationData.start_time_step:NetworkGenerationData.end_time_step], 
-         NetworkGenerationData.strombedarf_ges_kW[NetworkGenerationData.start_time_step:NetworkGenerationData.end_time_step])
+    # Print network results
+    print_net_results(network_data.net)
+    
+    # Calculate and display key performance indicators
+    results = network_data.calculate_results()
+    print("\nKennzahlen:")
+    for key, value in results.items():
+        if value is not None:
+            if isinstance(value, float):
+                print(f"{key}: {value:.2f}")
+            else:
+                print(f"{key}: {value}")
+        else:
+            print(f"{key}: Nicht verfügbar")
+    
+    # Prepare plot data
+    network_data.prepare_plot_data()
+    
+    # Plot results
+    plot(network_data.net, 
+         network_data.yearly_time_steps[network_data.start_time_step:network_data.end_time_step], 
+         network_data.waerme_ges_kW[network_data.start_time_step:network_data.end_time_step], 
+         network_data.strombedarf_ges_kW[network_data.start_time_step:network_data.end_time_step])
+    
+    # Show additional plots using prepared plot data
+    if network_data.plot_data:
+        print("\nVerfügbare Plot-Daten:")
+        for key in network_data.plot_data.keys():
+            print(f"  - {key}")
+        
+        # Example: Plot heat demand over time
+        heat_demand_data = network_data.plot_data["Gesamtwärmebedarf Wärmeübertrager"]
+        fig, ax = plt.subplots(figsize=(12, 6))
+        ax.plot(heat_demand_data['time'], heat_demand_data['data'], 'b-')
+        ax.set_xlabel('Zeit')
+        ax.set_ylabel(heat_demand_data['label'])
+        ax.set_title('Wärmebedarf über Zeit')
+        ax.grid(True)
+        plt.show()
+
+    plt.show()

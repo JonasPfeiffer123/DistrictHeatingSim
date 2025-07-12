@@ -206,7 +206,7 @@ def update_heat_consumer_return_temperature_controller(net, return_temperature_h
                 # Update the data source of the existing ConstControl
                 ctrl.data_source = data_source_return_temp
 
-def update_secondary_producer_controller(net, secondary_producers: List[Dict[str, Any]], 
+def update_secondary_producer_controller(net, secondary_producers: List[Any], 
                                        time_steps: range, start: int, end: int) -> None:
     """
     Update secondary producer controls with new data sources for time series simulation.
@@ -250,13 +250,26 @@ def update_secondary_producer_controller(net, secondary_producers: List[Dict[str
     time_series_preprocessing : Calculates mass flow for secondary producers
     """
     for producer in secondary_producers:
+        producer_index = producer.index if hasattr(producer, 'index') else 0
+        mass_flow_data = producer.mass_flow if hasattr(producer, 'mass_flow') else np.zeros(len(time_steps))
+        
+        # Stelle sicher, dass mass_flow_data die richtige Form hat
+        if np.isscalar(mass_flow_data):
+            mass_flow_slice = np.full(len(time_steps), mass_flow_data)
+        elif isinstance(mass_flow_data, np.ndarray):
+            mass_flow_slice = mass_flow_data[start:end]
+        else:
+            mass_flow_slice = np.full(len(time_steps), mass_flow_data)
+
+        print(f"Mass flow for secondary producer {producer_index}: {mass_flow_slice}")
+        
         df_secondary_producer = pd.DataFrame(index=time_steps, data={
-            f'mdot_flow_kg_per_s_{producer["index"]}': [producer["mass_flow"][start:end]]
+            f'mdot_flow_kg_per_s_{producer_index}': mass_flow_slice
         })
         data_source_secondary_producer = DFData(df_secondary_producer)
 
         df_secondary_producer_flow_control = pd.DataFrame(index=time_steps, data={
-            f'controlled_mdot_kg_per_s_{producer["index"]}': [producer["mass_flow"][start:end]]
+            f'controlled_mdot_kg_per_s_{producer_index}': mass_flow_slice
         })
         data_source_secondary_producer_flow_control = DFData(df_secondary_producer_flow_control)
 
@@ -305,6 +318,10 @@ def update_heat_generator_supply_temperature_controller(net, supply_temperature:
     --------
     time_series_preprocessing : Calculates supply temperature profiles
     """
+    if np.isscalar(supply_temperature):
+        # If a single value is provided, repeat it for all time steps
+        supply_temperature = np.full(len(time_steps), supply_temperature)
+
     # Create the DataFrame for the supply temperature
     df_supply_temp = pd.DataFrame(index=time_steps, data={'supply_temperature': supply_temperature[start:end] + 273.15})
     data_source_supply_temp = DFData(df_supply_temp)
@@ -511,14 +528,15 @@ def time_series_preprocessing(NetworkGenerationData) -> Any:
     if NetworkGenerationData.secondary_producers:
         # Calculate mass flow with cp = 4.18 kJ/kgK
         cp = 4.18  # kJ/kgK
-        mass_flow = NetworkGenerationData.waerme_ges_kW / (cp * (NetworkGenerationData.supply_temperature_heat_generator - NetworkGenerationData.return_temperature_heat_consumer))  # kW / (kJ/kgK * K) = kg/s
+        avg_return_temperature = np.mean(NetworkGenerationData.return_temperature_heat_consumer)
+        mass_flow = NetworkGenerationData.waerme_ges_kW / (cp * (NetworkGenerationData.supply_temperature_heat_generator - avg_return_temperature))  # kW / (kJ/kgK * K) = kg/s
 
         print(f"Mass flow of main producer: {mass_flow} kg/s")
 
         # Update each secondary producer's dictionary with calculated mass flow
         for secondary_producer in NetworkGenerationData.secondary_producers:
-            secondary_producer["mass_flow"] = secondary_producer["percentage"]/100 * mass_flow
-            print(f"Mass flow of secondary producer {secondary_producer['index']}: {secondary_producer['mass_flow']} kg/s")
+            secondary_producer.mass_flow = secondary_producer.load_percentage/100 * mass_flow
+            print(f"Mass flow of secondary producer {secondary_producer.index}: {secondary_producer.mass_flow} kg/s")
 
     return NetworkGenerationData
     
@@ -594,6 +612,13 @@ def thermohydraulic_time_series_net(NetworkGenerationData) -> Any:
     if NetworkGenerationData.supply_temperature_heat_generator is not None and isinstance(NetworkGenerationData.supply_temperature_heat_generator, np.ndarray):
         update_heat_generator_supply_temperature_controller(NetworkGenerationData.net, NetworkGenerationData.supply_temperature_heat_generator, time_steps, NetworkGenerationData.start_time_step, NetworkGenerationData.end_time_step)
     
+    if NetworkGenerationData.supply_temperature_control == "Statisch":
+        # Erstelle Array für statische Temperatur
+        static_temp_array = np.full(len(time_steps), NetworkGenerationData.supply_temperature_heat_generator)
+        update_heat_generator_supply_temperature_controller(NetworkGenerationData.net, 
+                                            static_temp_array, 
+                                            time_steps, NetworkGenerationData.start_time_step, NetworkGenerationData.end_time_step)
+
     # Configure logging and run simulation
     log_variables = create_log_variables(NetworkGenerationData.net)
     ow = OutputWriter(NetworkGenerationData.net, time_steps, output_path=None, log_variables=log_variables)
