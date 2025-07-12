@@ -61,7 +61,9 @@ class SecondaryProducer:
     """
     index: int
     load_percentage: float
-    # beliebig erweiterbar (extensible for future parameters)
+    mass_flow: Optional[float] = None
+
+    # could be extended with additional parameters as needed
 
 @dataclass
 class NetworkGenerationData:
