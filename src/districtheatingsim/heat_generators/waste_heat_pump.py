@@ -1045,6 +1045,6 @@ class WasteHeatPump(HeatPump):
                 f"Investitionskosten Wärmepumpe: {hp_cost:.1f} €")
         
         # Total investment costs
-        full_costs = f"{waste_heat_cost + hp_cost:.1f} €"
+        full_costs = f"{waste_heat_cost + hp_cost:.1f}"
         
         return self.name, dimensions, costs, full_costs

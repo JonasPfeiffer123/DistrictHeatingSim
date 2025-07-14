@@ -826,6 +826,7 @@ class EnergySystem:
         
         for tech in self.technologies:
             # Perform technology-specific calculation
+            print(self.results["Restlast_L"])
             tech_results = tech.calculate(economic_parameters=self.economic_parameters,
                                         duration=self.duration,
                                         load_profile=self.results["Restlast_L"],
