@@ -833,7 +833,7 @@ class HolzgasCHPDialog(QDialog):
         chp_layout = QFormLayout()
 
         self.PBHKWInput = QLineEdit(self)
-        self.PBHKWInput.setText(str(self.tech_data.get('th_Leistung_BHKW', "100")))
+        self.PBHKWInput.setText(str(self.tech_data.get('th_Leistung_kW', "100")))
         chp_layout.addRow(QLabel("thermische Leistung"), self.PBHKWInput)
 
         # Eingabe für elektrischen Wirkungsgrad BHKW
@@ -940,7 +940,7 @@ class HolzgasCHPDialog(QDialog):
             dict: A dictionary containing the input values.
         """
         inputs = {
-            'th_Leistung_BHKW': float(self.PBHKWInput.text()),
+            'th_Leistung_kW': float(self.PBHKWInput.text()),
             'el_Wirkungsgrad': float(self.BHKWeleffInput.text()),
             'spez_Investitionskosten_HBHKW': float(self.BHKWcostInput.text()),
             'KWK_Wirkungsgrad': float(self.KWKeffInput.text()),

@@ -1119,7 +1119,7 @@ class CHP(BaseHeatGenerator):
                 Total investment costs
         """
         dimensions = f"th. Leistung: {self.th_Leistung_kW:.1f} kW, el. Leistung: {self.el_Leistung_Soll:.1f} kW"
-        costs = f"Investitionskosten: {self.Investitionskosten:.1f}"
+        costs = f"Investitionskosten: {self.Investitionskosten:.1f} €"
         full_costs = f"{self.Investitionskosten:.1f}"
         return self.name, dimensions, costs, full_costs
 
