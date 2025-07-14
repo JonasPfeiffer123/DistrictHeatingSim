@@ -78,3 +78,5 @@ https://snakemake.readthedocs.io/en/stable/
 
 To dos pandapipes:
 Was sollte jetzt kurzfristig noch geändert werden um eine "fertige" Version zu erhalten. --> sytematisch durchtesten in verschiedenen Varianten --> Beispiele zu systematischen Tests --> benchmarking --> verschieden große Netze?
+
+Fix problem with solar thermal with calculation problem after loading

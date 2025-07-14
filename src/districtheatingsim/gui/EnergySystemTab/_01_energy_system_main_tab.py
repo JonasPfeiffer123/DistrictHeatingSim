@@ -144,7 +144,7 @@ class EnergySystemTab(QWidget):
 
         addHeatGeneratorMenu = self.menuBar.addMenu('Wärmeerzeuger hinzufügen')
 
-        heatGenerators = ["Solarthermie", "BHKW", "Holzgas-BHKW", "Geothermie", "Abwärmepumpe", "Flusswärmepumpe", "AqvaHeat", "Biomassekessel", "Gaskessel", "Power-to-Heat"]
+        heatGenerators = ["Solarthermie", "BHKW", "Holzgas-BHKW", "Geothermie", "Abwärmepumpe", "Flusswärmepumpe", "Biomassekessel", "Gaskessel", "Power-to-Heat"] # AqvaHeat could be added here
         for generator in heatGenerators:
             action = QAction(generator, self)
             action.triggered.connect(lambda checked, gen=generator: self.techTab.addTech(gen, None))
