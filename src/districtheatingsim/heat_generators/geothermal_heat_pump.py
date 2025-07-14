@@ -477,6 +477,10 @@ class Geothermal(HeatPump):
             # Calculate COP for all time steps
             self.COP, self.VLT_WP = self.calculate_COP(VLT_L, self.Temperatur_Geothermie, COP_data)
 
+            self.Wärmeleistung_kW = np.zeros_like(Last_L)
+            self.el_Leistung_kW = np.zeros_like(Last_L)
+            self.betrieb_mask = np.zeros_like(Last_L, dtype=bool)
+
             # Iterative calculation for thermal sustainability
             # Find optimal operating hours that balance extraction with sustainability
             B_min = 1
@@ -490,27 +494,29 @@ class Geothermal(HeatPump):
                 Entzugsleistung = self.Entzugswärmemenge * 1000 / B  # kW
                 
                 # Calculate corresponding heat pump capacity
-                self.Wärmeleistung_kW = Entzugsleistung / (1 - (1 / self.COP))
-                
+                Wärmeleistung_kW = Entzugsleistung / (1 - (1 / self.COP))
+
                 # Determine when heat pump can operate
-                self.betrieb_mask = Last_L >= self.Wärmeleistung_kW * self.min_Teillast
-                
+                can_operate = Last_L >= Wärmeleistung_kW * self.min_Teillast
+            
+                # Reset arrays for this iteration
+                Wärmeleistung_temp = np.zeros_like(Last_L)
+                el_Leistung_temp = np.zeros_like(Last_L)
+
                 # Calculate actual operation within constraints
-                self.Wärmeleistung_kW[self.betrieb_mask] = np.minimum(
-                    Last_L[self.betrieb_mask], 
-                    self.Wärmeleistung_kW[self.betrieb_mask]
-                )
-                self.el_Leistung_kW[self.betrieb_mask] = (
-                    self.Wärmeleistung_kW[self.betrieb_mask] - 
-                    (Entzugsleistung * np.ones_like(Last_L))[self.betrieb_mask]
-                )
+                for i in range(len(Last_L)):
+                    if can_operate[i]:
+                        if Last_L[i] >= Wärmeleistung_kW[i]:
+                            # Vollast
+                            Wärmeleistung_temp[i] = Wärmeleistung_kW[i]
+                            el_Leistung_temp[i] = Wärmeleistung_kW[i] / self.COP[i]
+                        else:
+                            # Teillast
+                            Wärmeleistung_temp[i] = Last_L[i]
+                            el_Leistung_temp[i] = Last_L[i] / self.COP[i]
                 
                 # Calculate actual thermal extraction
-                Entzugsleistung_tat_L = np.zeros_like(Last_L)
-                Entzugsleistung_tat_L[self.betrieb_mask] = (
-                    self.Wärmeleistung_kW[self.betrieb_mask] - 
-                    self.el_Leistung_kW[self.betrieb_mask]
-                )
+                Entzugsleistung_tat_L = Wärmeleistung_temp - el_Leistung_temp
                 Entzugswärme = np.sum(Entzugsleistung_tat_L) / 1000  # MWh
                 
                 # Adjust operating hours based on thermal balance
@@ -518,6 +524,12 @@ class Geothermal(HeatPump):
                     B_min = B  # Need more operating hours (less extraction per hour)
                 else:
                     B_max = B  # Can use fewer operating hours (more extraction per hour)
+
+            # Speichere finale Werte
+            self.Wärmeleistung_kW = Wärmeleistung_temp
+            self.el_Leistung_kW = el_Leistung_temp
+            self.betrieb_mask = can_operate
+            
         else:
             # No geothermal system available - set all outputs to zero
             self.betrieb_mask = np.zeros_like(Last_L, dtype=bool)
@@ -1106,6 +1118,6 @@ class Geothermal(HeatPump):
                 f"Investitionskosten Wärmepumpe: {hp_cost:.1f} €")
         
         # Total investment costs
-        full_costs = f"{borehole_cost + hp_cost:.1f} €"
+        full_costs = f"{borehole_cost + hp_cost:.1f}"
         
         return self.name, dimensions, costs, full_costs
