@@ -50,47 +50,61 @@ def create_pressure_plot(net, ax: Optional[plt.Axes] = None, show_colorbar: bool
         pressure_norm = plt.Normalize(vmin=p_min, vmax=p_max)
         
         # Plot junctions with pressure-based colors
-        for idx, junction in net.junction.iterrows():
-            if hasattr(junction, 'geodata') and junction.geodata is not None:
-                x, y = junction.geodata
-                pressure = net.res_junction.loc[idx, 'p_bar']
-                color = pressure_cmap(pressure_norm(pressure))
-                ax.scatter(x, y, c=[color], s=100, edgecolors='black', linewidth=1, zorder=5)
+        if hasattr(net, 'junction_geodata') and not net.junction_geodata.empty:
+            for idx, junction in net.junction.iterrows():
+                if idx in net.junction_geodata.index:
+                    x = net.junction_geodata.loc[idx, 'x']
+                    y = net.junction_geodata.loc[idx, 'y']
+                    pressure = net.res_junction.loc[idx, 'p_bar']
+                    color = pressure_cmap(pressure_norm(pressure))
+                    ax.scatter(x, y, c=[color], s=100, edgecolors='black', linewidth=1, zorder=5)
         
         # Plot pipes with pressure gradient colors
-        if hasattr(net, 'res_pipe') and not net.res_pipe.empty:
+        if hasattr(net, 'res_pipe') and not net.res_pipe.empty and hasattr(net, 'junction_geodata'):
             for idx, pipe in net.pipe.iterrows():
-                from_geo = net.junction.loc[pipe['from_junction'], 'geodata']
-                to_geo = net.junction.loc[pipe['to_junction'], 'geodata']
-                if from_geo is not None and to_geo is not None:
+                from_junction = pipe['from_junction']
+                to_junction = pipe['to_junction']
+                if from_junction in net.junction_geodata.index and to_junction in net.junction_geodata.index:
+                    from_x = net.junction_geodata.loc[from_junction, 'x']
+                    from_y = net.junction_geodata.loc[from_junction, 'y']
+                    to_x = net.junction_geodata.loc[to_junction, 'x']
+                    to_y = net.junction_geodata.loc[to_junction, 'y']
                     # Use average pressure of connected junctions
-                    p_from = net.res_junction.loc[pipe['from_junction'], 'p_bar']
-                    p_to = net.res_junction.loc[pipe['to_junction'], 'p_bar']
+                    p_from = net.res_junction.loc[from_junction, 'p_bar']
+                    p_to = net.res_junction.loc[to_junction, 'p_bar']
                     avg_pressure = (p_from + p_to) / 2
                     pipe_color = pressure_cmap(pressure_norm(avg_pressure))
                     
-                    ax.plot([from_geo[0], to_geo[0]], [from_geo[1], to_geo[1]], 
+                    ax.plot([from_x, to_x], [from_y, to_y], 
                            color=pipe_color, linewidth=4, alpha=0.8, zorder=2)
         
         # Plot heat consumers
-        if hasattr(net, 'heat_consumer') and len(net.heat_consumer) > 0:
+        if hasattr(net, 'heat_consumer') and len(net.heat_consumer) > 0 and hasattr(net, 'junction_geodata'):
             for idx, consumer in net.heat_consumer.iterrows():
-                from_geo = net.junction.loc[consumer['from_junction'], 'geodata']
-                to_geo = net.junction.loc[consumer['to_junction'], 'geodata']
-                if from_geo is not None and to_geo is not None:
-                    mid_x = (from_geo[0] + to_geo[0]) / 2
-                    mid_y = (from_geo[1] + to_geo[1]) / 2
+                from_junction = consumer['from_junction']
+                to_junction = consumer['to_junction']
+                if from_junction in net.junction_geodata.index and to_junction in net.junction_geodata.index:
+                    from_x = net.junction_geodata.loc[from_junction, 'x']
+                    from_y = net.junction_geodata.loc[from_junction, 'y']
+                    to_x = net.junction_geodata.loc[to_junction, 'x']
+                    to_y = net.junction_geodata.loc[to_junction, 'y']
+                    mid_x = (from_x + to_x) / 2
+                    mid_y = (from_y + to_y) / 2
                     ax.scatter(mid_x, mid_y, c='green', s=200, marker='s', 
                              edgecolors='black', linewidth=2, zorder=6)
         
         # Plot pumps
-        if hasattr(net, 'circ_pump_const_pressure') and len(net.circ_pump_const_pressure) > 0:
+        if hasattr(net, 'circ_pump_const_pressure') and len(net.circ_pump_const_pressure) > 0 and hasattr(net, 'junction_geodata'):
             for idx, pump in net.circ_pump_const_pressure.iterrows():
-                from_geo = net.junction.loc[pump['from_junction'], 'geodata']
-                to_geo = net.junction.loc[pump['to_junction'], 'geodata']
-                if from_geo is not None and to_geo is not None:
-                    mid_x = (from_geo[0] + to_geo[0]) / 2
-                    mid_y = (from_geo[1] + to_geo[1]) / 2
+                from_junction = pump['from_junction']
+                to_junction = pump['to_junction']
+                if from_junction in net.junction_geodata.index and to_junction in net.junction_geodata.index:
+                    from_x = net.junction_geodata.loc[from_junction, 'x']
+                    from_y = net.junction_geodata.loc[from_junction, 'y']
+                    to_x = net.junction_geodata.loc[to_junction, 'x']
+                    to_y = net.junction_geodata.loc[to_junction, 'y']
+                    mid_x = (from_x + to_x) / 2
+                    mid_y = (from_y + to_y) / 2
                     ax.scatter(mid_x, mid_y, c='orange', s=200, marker='o', 
                              edgecolors='black', linewidth=2, zorder=6)
         
@@ -149,19 +163,25 @@ def create_temperature_plot(net, ax: Optional[plt.Axes] = None):
         temp_norm = plt.Normalize(vmin=t_min, vmax=t_max)
         
         # Plot junctions with temperature-based colors
-        for idx, junction in net.junction.iterrows():
-            if hasattr(junction, 'geodata') and junction.geodata is not None:
-                x, y = junction.geodata
-                temp_c = net.res_junction.loc[idx, 't_k'] - 273.15
-                color = temp_cmap(temp_norm(temp_c))
-                ax.scatter(x, y, c=[color], s=100, edgecolors='black', linewidth=1, zorder=5)
+        if hasattr(net, 'junction_geodata') and not net.junction_geodata.empty:
+            for idx, junction in net.junction.iterrows():
+                if idx in net.junction_geodata.index:
+                    x = net.junction_geodata.loc[idx, 'x']
+                    y = net.junction_geodata.loc[idx, 'y']
+                    temp_c = net.res_junction.loc[idx, 't_k'] - 273.15
+                    color = temp_cmap(temp_norm(temp_c))
+                    ax.scatter(x, y, c=[color], s=100, edgecolors='black', linewidth=1, zorder=5)
         
         # Plot pipes with temperature gradient colors
-        if hasattr(net, 'res_pipe') and not net.res_pipe.empty:
+        if hasattr(net, 'res_pipe') and not net.res_pipe.empty and hasattr(net, 'junction_geodata'):
             for idx, pipe in net.pipe.iterrows():
-                from_geo = net.junction.loc[pipe['from_junction'], 'geodata']
-                to_geo = net.junction.loc[pipe['to_junction'], 'geodata']
-                if from_geo is not None and to_geo is not None:
+                from_junction = pipe['from_junction']
+                to_junction = pipe['to_junction']
+                if from_junction in net.junction_geodata.index and to_junction in net.junction_geodata.index:
+                    from_x = net.junction_geodata.loc[from_junction, 'x']
+                    from_y = net.junction_geodata.loc[from_junction, 'y']
+                    to_x = net.junction_geodata.loc[to_junction, 'x']
+                    to_y = net.junction_geodata.loc[to_junction, 'y']
                     # Use pipe temperature data if available
                     if 't_from_k' in net.res_pipe.columns and 't_to_k' in net.res_pipe.columns:
                         t_from = net.res_pipe.loc[idx, 't_from_k'] - 273.15
@@ -169,33 +189,41 @@ def create_temperature_plot(net, ax: Optional[plt.Axes] = None):
                         avg_temp = (t_from + t_to) / 2
                     else:
                         # Fallback: use junction temperatures
-                        t_from = net.res_junction.loc[pipe['from_junction'], 't_k'] - 273.15
-                        t_to = net.res_junction.loc[pipe['to_junction'], 't_k'] - 273.15
+                        t_from = net.res_junction.loc[from_junction, 't_k'] - 273.15
+                        t_to = net.res_junction.loc[to_junction, 't_k'] - 273.15
                         avg_temp = (t_from + t_to) / 2
                     
                     pipe_color = temp_cmap(temp_norm(avg_temp))
-                    ax.plot([from_geo[0], to_geo[0]], [from_geo[1], to_geo[1]], 
+                    ax.plot([from_x, to_x], [from_y, to_y], 
                            color=pipe_color, linewidth=4, alpha=0.8, zorder=2)
         
         # Plot heat consumers (blue = cooling effect)
-        if hasattr(net, 'heat_consumer') and len(net.heat_consumer) > 0:
+        if hasattr(net, 'heat_consumer') and len(net.heat_consumer) > 0 and hasattr(net, 'junction_geodata'):
             for idx, consumer in net.heat_consumer.iterrows():
-                from_geo = net.junction.loc[consumer['from_junction'], 'geodata']
-                to_geo = net.junction.loc[consumer['to_junction'], 'geodata']
-                if from_geo is not None and to_geo is not None:
-                    mid_x = (from_geo[0] + to_geo[0]) / 2
-                    mid_y = (from_geo[1] + to_geo[1]) / 2
+                from_junction = consumer['from_junction']
+                to_junction = consumer['to_junction']
+                if from_junction in net.junction_geodata.index and to_junction in net.junction_geodata.index:
+                    from_x = net.junction_geodata.loc[from_junction, 'x']
+                    from_y = net.junction_geodata.loc[from_junction, 'y']
+                    to_x = net.junction_geodata.loc[to_junction, 'x']
+                    to_y = net.junction_geodata.loc[to_junction, 'y']
+                    mid_x = (from_x + to_x) / 2
+                    mid_y = (from_y + to_y) / 2
                     ax.scatter(mid_x, mid_y, c='blue', s=200, marker='s', 
                              edgecolors='white', linewidth=2, zorder=6)
         
         # Plot pumps
-        if hasattr(net, 'circ_pump_const_pressure') and len(net.circ_pump_const_pressure) > 0:
+        if hasattr(net, 'circ_pump_const_pressure') and len(net.circ_pump_const_pressure) > 0 and hasattr(net, 'junction_geodata'):
             for idx, pump in net.circ_pump_const_pressure.iterrows():
-                from_geo = net.junction.loc[pump['from_junction'], 'geodata']
-                to_geo = net.junction.loc[pump['to_junction'], 'geodata']
-                if from_geo is not None and to_geo is not None:
-                    mid_x = (from_geo[0] + to_geo[0]) / 2
-                    mid_y = (from_geo[1] + to_geo[1]) / 2
+                from_junction = pump['from_junction']
+                to_junction = pump['to_junction']
+                if from_junction in net.junction_geodata.index and to_junction in net.junction_geodata.index:
+                    from_x = net.junction_geodata.loc[from_junction, 'x']
+                    from_y = net.junction_geodata.loc[from_junction, 'y']
+                    to_x = net.junction_geodata.loc[to_junction, 'x']
+                    to_y = net.junction_geodata.loc[to_junction, 'y']
+                    mid_x = (from_x + to_x) / 2
+                    mid_y = (from_y + to_y) / 2
                     ax.scatter(mid_x, mid_y, c='green', s=200, marker='o', 
                              edgecolors='black', linewidth=2, zorder=6)
         
@@ -245,13 +273,15 @@ def create_velocity_plot(net, ax: Optional[plt.Axes] = None):
         import matplotlib.cm as cm
         
         # Plot junctions in neutral color
-        for idx, junction in net.junction.iterrows():
-            if hasattr(junction, 'geodata') and junction.geodata is not None:
-                x, y = junction.geodata
-                ax.scatter(x, y, c='black', s=80, edgecolors='gray', linewidth=1, zorder=5)
+        if hasattr(net, 'junction_geodata') and not net.junction_geodata.empty:
+            for idx, junction in net.junction.iterrows():
+                if idx in net.junction_geodata.index:
+                    x = net.junction_geodata.loc[idx, 'x']
+                    y = net.junction_geodata.loc[idx, 'y']
+                    ax.scatter(x, y, c='black', s=80, edgecolors='gray', linewidth=1, zorder=5)
         
         # Plot pipes with velocity-based colors
-        if 'v_mean_m_per_s' in net.res_pipe.columns:
+        if 'v_mean_m_per_s' in net.res_pipe.columns and hasattr(net, 'junction_geodata'):
             velocities = net.res_pipe['v_mean_m_per_s']
             v_min, v_max = velocities.min(), velocities.max()
             
@@ -260,14 +290,18 @@ def create_velocity_plot(net, ax: Optional[plt.Axes] = None):
             vel_norm = plt.Normalize(vmin=v_min, vmax=v_max)
             
             for idx, pipe in net.pipe.iterrows():
-                from_geo = net.junction.loc[pipe['from_junction'], 'geodata']
-                to_geo = net.junction.loc[pipe['to_junction'], 'geodata']
-                if from_geo is not None and to_geo is not None:
+                from_junction = pipe['from_junction']
+                to_junction = pipe['to_junction']
+                if from_junction in net.junction_geodata.index and to_junction in net.junction_geodata.index:
+                    from_x = net.junction_geodata.loc[from_junction, 'x']
+                    from_y = net.junction_geodata.loc[from_junction, 'y']
+                    to_x = net.junction_geodata.loc[to_junction, 'x']
+                    to_y = net.junction_geodata.loc[to_junction, 'y']
                     velocity = net.res_pipe.loc[idx, 'v_mean_m_per_s']
                     pipe_color = vel_cmap(vel_norm(velocity))
                     # Thicker lines for higher velocities
                     line_width = 2 + (velocity / v_max) * 6
-                    ax.plot([from_geo[0], to_geo[0]], [from_geo[1], to_geo[1]], 
+                    ax.plot([from_x, to_x], [from_y, to_y], 
                            color=pipe_color, linewidth=line_width, alpha=0.8, zorder=2)
             
             # Add colorbar
@@ -284,32 +318,45 @@ def create_velocity_plot(net, ax: Optional[plt.Axes] = None):
                     verticalalignment='top')
         else:
             # Fallback if no velocity data
-            for idx, pipe in net.pipe.iterrows():
-                from_geo = net.junction.loc[pipe['from_junction'], 'geodata']
-                to_geo = net.junction.loc[pipe['to_junction'], 'geodata']
-                if from_geo is not None and to_geo is not None:
-                    ax.plot([from_geo[0], to_geo[0]], [from_geo[1], to_geo[1]], 
-                           'purple', linewidth=3, alpha=0.7, zorder=1)
+            if hasattr(net, 'junction_geodata'):
+                for idx, pipe in net.pipe.iterrows():
+                    from_junction = pipe['from_junction']
+                    to_junction = pipe['to_junction']
+                    if from_junction in net.junction_geodata.index and to_junction in net.junction_geodata.index:
+                        from_x = net.junction_geodata.loc[from_junction, 'x']
+                        from_y = net.junction_geodata.loc[from_junction, 'y']
+                        to_x = net.junction_geodata.loc[to_junction, 'x']
+                        to_y = net.junction_geodata.loc[to_junction, 'y']
+                        ax.plot([from_x, to_x], [from_y, to_y], 
+                               'purple', linewidth=3, alpha=0.7, zorder=1)
         
         # Plot heat consumers
-        if hasattr(net, 'heat_consumer') and len(net.heat_consumer) > 0:
+        if hasattr(net, 'heat_consumer') and len(net.heat_consumer) > 0 and hasattr(net, 'junction_geodata'):
             for idx, consumer in net.heat_consumer.iterrows():
-                from_geo = net.junction.loc[consumer['from_junction'], 'geodata']
-                to_geo = net.junction.loc[consumer['to_junction'], 'geodata']
-                if from_geo is not None and to_geo is not None:
-                    mid_x = (from_geo[0] + to_geo[0]) / 2
-                    mid_y = (from_geo[1] + to_geo[1]) / 2
+                from_junction = consumer['from_junction']
+                to_junction = consumer['to_junction']
+                if from_junction in net.junction_geodata.index and to_junction in net.junction_geodata.index:
+                    from_x = net.junction_geodata.loc[from_junction, 'x']
+                    from_y = net.junction_geodata.loc[from_junction, 'y']
+                    to_x = net.junction_geodata.loc[to_junction, 'x']
+                    to_y = net.junction_geodata.loc[to_junction, 'y']
+                    mid_x = (from_x + to_x) / 2
+                    mid_y = (from_y + to_y) / 2
                     ax.scatter(mid_x, mid_y, c='blue', s=150, marker='s', 
                              edgecolors='white', linewidth=2, zorder=6)
         
         # Plot pumps
-        if hasattr(net, 'circ_pump_const_pressure') and len(net.circ_pump_const_pressure) > 0:
+        if hasattr(net, 'circ_pump_const_pressure') and len(net.circ_pump_const_pressure) > 0 and hasattr(net, 'junction_geodata'):
             for idx, pump in net.circ_pump_const_pressure.iterrows():
-                from_geo = net.junction.loc[pump['from_junction'], 'geodata']
-                to_geo = net.junction.loc[pump['to_junction'], 'geodata']
-                if from_geo is not None and to_geo is not None:
-                    mid_x = (from_geo[0] + to_geo[0]) / 2
-                    mid_y = (from_geo[1] + to_geo[1]) / 2
+                from_junction = pump['from_junction']
+                to_junction = pump['to_junction']
+                if from_junction in net.junction_geodata.index and to_junction in net.junction_geodata.index:
+                    from_x = net.junction_geodata.loc[from_junction, 'x']
+                    from_y = net.junction_geodata.loc[from_junction, 'y']
+                    to_x = net.junction_geodata.loc[to_junction, 'x']
+                    to_y = net.junction_geodata.loc[to_junction, 'y']
+                    mid_x = (from_x + to_x) / 2
+                    mid_y = (from_y + to_y) / 2
                     ax.scatter(mid_x, mid_y, c='orange', s=150, marker='o', 
                              edgecolors='black', linewidth=2, zorder=6)
         
