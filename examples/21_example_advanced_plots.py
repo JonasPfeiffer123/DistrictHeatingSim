@@ -113,8 +113,8 @@ def test_single_plots(net):
     create_pressure_profile(net, ax=axes[1,1])
     
     plt.tight_layout()
-    plt.savefig('results/advanced_plots_single.png', dpi=150, bbox_inches='tight')
-    print("Einzelplots gespeichert als 'results/advanced_plots_single.png'")
+    plt.savefig('examples/results/advanced_plots_single.png', dpi=150, bbox_inches='tight')
+    print("Einzelplots gespeichert als 'examples/results/advanced_plots_single.png'")
     return fig
 
 
@@ -124,8 +124,8 @@ def test_dashboard(net):
     
     fig, axes = create_comparison_dashboard(net)
     
-    plt.savefig('results/advanced_plots_dashboard.png', dpi=150, bbox_inches='tight')
-    print("Dashboard gespeichert als 'results/advanced_plots_dashboard.png'")
+    plt.savefig('examples/results/advanced_plots_dashboard.png', dpi=150, bbox_inches='tight')
+    print("Dashboard gespeichert als 'examples/results/advanced_plots_dashboard.png'")
     return fig
 
 
@@ -151,8 +151,8 @@ def test_enhanced_config_plot_replacement(net):
         axes[i//3, i%3].remove()
     
     plt.tight_layout()
-    plt.savefig('results/advanced_plots_config_modes.png', dpi=150, bbox_inches='tight')
-    print("Erweiterte config_plot Tests gespeichert als 'results/advanced_plots_config_modes.png'")
+    plt.savefig('examples/results/advanced_plots_config_modes.png', dpi=150, bbox_inches='tight')
+    print("Erweiterte config_plot Tests gespeichert als 'examples/results/advanced_plots_config_modes.png'")
     return fig
 
 
@@ -185,9 +185,9 @@ def main():
         print("\n" + "=" * 60)
         print("Alle Tests erfolgreich abgeschlossen!")
         print("Ergebnisse gespeichert in:")
-        print("- results/advanced_plots_single.png")
-        print("- results/advanced_plots_dashboard.png") 
-        print("- results/advanced_plots_config_modes.png")
+        print("- examples/results/advanced_plots_single.png")
+        print("- examples/results/advanced_plots_dashboard.png") 
+        print("- examples/results/advanced_plots_config_modes.png")
         print("=" * 60)
         
         # Show plots
