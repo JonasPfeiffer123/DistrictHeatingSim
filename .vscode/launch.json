@@ -6,6 +6,10 @@
       "request": "launch",
       "name": "Run Example Script",
       "program": "${workspaceFolder}/examples/${input:exampleScript}",
+      "env": {
+        "DEBUG": "1",
+        "PYTHONPATH": "${workspaceRoot}/src",
+      },
       "console": "integratedTerminal"
     },
     {
