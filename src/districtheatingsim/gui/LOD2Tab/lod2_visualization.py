@@ -9,13 +9,13 @@ Date: 2025-02-02
 """
 
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QVBoxLayout, QComboBox, QWidget, QTableWidget, QTableWidgetItem, 
     QHeaderView, QHBoxLayout, QScrollArea, QMessageBox, QTabWidget
 )
-from PyQt5.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal
 from districtheatingsim.gui.LOD2Tab.lod2_3d_plot_matplotlib import LOD2Visualization3D
 from districtheatingsim.gui.LOD2Tab.lod2_pv_tab import PVDataVisualizationTab
 
@@ -114,8 +114,8 @@ class LOD2DataVisualization(QWidget):
             table.setColumnCount(len(headers))
             table.setRowCount(0)
             table.setHorizontalHeaderLabels(headers)
-            table.verticalHeader().setSectionResizeMode(QHeaderView.Interactive)
-            table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+            table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+            table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
             table.setSortingEnabled(False)
 
             table.itemChanged.connect(self.on_item_changed)

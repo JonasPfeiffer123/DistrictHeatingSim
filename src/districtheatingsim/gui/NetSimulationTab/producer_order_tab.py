@@ -12,10 +12,10 @@ import os
 
 import geopandas as gpd
 
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QGroupBox, QListWidget, QPushButton, \
+from PyQt6.QtWidgets import QVBoxLayout, QWidget, QGroupBox, QListWidget, QPushButton, \
     QMessageBox, QAbstractItemView, QListWidgetItem, QHBoxLayout, QLabel, QLineEdit
 
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 
 class ProducerOrderTab(QWidget):
     """
@@ -64,7 +64,7 @@ class ProducerOrderTab(QWidget):
         layout = QVBoxLayout()
 
         self.producer_list_widget = QListWidget()
-        self.producer_list_widget.setSelectionMode(QAbstractItemView.MultiSelection)
+        self.producer_list_widget.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
         layout.addWidget(self.producer_list_widget)
 
         self.add_producer_button = QPushButton("Erzeuger hinzufügen")
@@ -76,7 +76,7 @@ class ProducerOrderTab(QWidget):
         layout.addWidget(self.remove_producer_button)
 
         self.producer_order_list_widget = QListWidget()
-        self.producer_order_list_widget.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.producer_order_list_widget.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         layout.addWidget(self.producer_order_list_widget)
 
         self.producer_percentage_inputs = QVBoxLayout()

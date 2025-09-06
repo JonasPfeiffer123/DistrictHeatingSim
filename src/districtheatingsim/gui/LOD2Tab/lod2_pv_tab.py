@@ -8,7 +8,7 @@ Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-03-03
 """
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QVBoxLayout, QFileDialog, QWidget, QHeaderView, QHBoxLayout, QScrollArea, QMessageBox, QTreeWidget, QTreeWidgetItem)
 
 class PVDataVisualizationTab(QWidget):
@@ -44,7 +44,7 @@ class PVDataVisualizationTab(QWidget):
 
         self.treeWidget = QTreeWidget(self)
         self.treeWidget.setHeaderLabels(['Gebäude/Dach', 'Dachfläche (m²)', 'Dachneigung (°)', 'Dachausrichtung (°)', 'Yield (MWh)', 'Max Power (kW)'])
-        self.treeWidget.header().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.treeWidget.header().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         scroll_layout.addWidget(self.treeWidget)
 
     def add_building(self, adresse, koordinate_x, koordinate_y):

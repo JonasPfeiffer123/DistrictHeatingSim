@@ -13,12 +13,12 @@ import json
 import numpy as np
 import traceback
 
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QTableWidget, QTableWidgetItem, 
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QTableWidget, QTableWidgetItem, 
                              QFileDialog, QHBoxLayout, QMessageBox, QHeaderView, QScrollArea, 
                              QGridLayout, QLabel)
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 class CostComparisonTab(QWidget):

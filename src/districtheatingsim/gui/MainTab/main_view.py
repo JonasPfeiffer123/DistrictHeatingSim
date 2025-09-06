@@ -3,7 +3,7 @@ DistrictHeatingSim Main GUI View Module
 =======================================
 
 This module implements the main graphical user interface for the DistrictHeatingSim
-application, providing a comprehensive PyQt5-based interface for district heating
+application, providing a comprehensive PyQt6-based interface for district heating
 system simulation and analysis. The module follows the Model-View-Presenter (MVP)
 architectural pattern as the View component, managing all user interface elements
 and interactions.
@@ -50,7 +50,7 @@ Architecture Integration
     - **External Components**: Specialized tab modules and dialogs
 
 **Signal-Slot Architecture**:
-    Utilizes PyQt5's signal-slot mechanism for:
+    Utilizes PyQt6's signal-slot mechanism for:
     
     - Inter-component communication
     - Event propagation and handling
@@ -79,7 +79,7 @@ engineering applications in district heating system planning and analysis.
 Dependencies
 ------------
 **Core GUI Framework**:
-    - PyQt5: Primary GUI framework for widgets and layouts
+    - PyQt6: Primary GUI framework for widgets and layouts
     - QtWidgets: Main widget classes and containers
     - QtGui: Icons, themes, and visual elements
 
@@ -116,10 +116,10 @@ import os
 import traceback
 from typing import Optional, List, Dict, Any
 
-from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QTabWidget, QMenuBar, QAction, 
+from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QTabWidget, QMenuBar, 
                              QFileDialog, QLabel, QMessageBox, QInputDialog)
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import pyqtSlot
+from PyQt6.QtGui import QIcon, QAction
+from PyQt6.QtCore import pyqtSlot
 
 from districtheatingsim.gui.ProjectTab.project_tab import ProjectTab
 from districtheatingsim.gui.LOD2Tab.lod2_main_tab import LOD2Tab
@@ -269,7 +269,7 @@ class HeatSystemDesignGUI(QMainWindow):
 
         >>> from districtheatingsim.gui.MainTab.main_data_manager import *
         >>> from districtheatingsim.gui.MainTab.main_presenter import HeatSystemPresenter
-        >>> from PyQt5.QtWidgets import QApplication
+        >>> from PyQt6.QtWidgets import QApplication
         >>> import sys
         >>> 
         >>> # Initialize Qt application
@@ -289,7 +289,7 @@ class HeatSystemDesignGUI(QMainWindow):
         >>> 
         >>> # Show window and start application
         >>> main_window.show()
-        >>> sys.exit(app.exec_())
+        >>> sys.exit(app.exec())
 
     **Project Management Example**:
 
@@ -349,7 +349,7 @@ class HeatSystemDesignGUI(QMainWindow):
 
     References
     ----------
-    .. [1] PyQt5 Documentation, "Model/View Programming"
+    .. [1] PyQt6 Documentation, "Model/View Programming"
     .. [2] Qt Documentation, "Application Windows and Dialogs"
     .. [3] GUI Design Principles for Engineering Applications
     """
@@ -1620,7 +1620,7 @@ class HeatSystemDesignGUI(QMainWindow):
             - Integration with energy system performance calculations
             - Consistency maintenance across all analysis modules
         """
-        if self.temperatureDataDialog.exec_():
+        if self.temperatureDataDialog.exec():
             self.updateTemperatureData()
 
     def openCOPDataSelection(self) -> None:
@@ -1647,7 +1647,7 @@ class HeatSystemDesignGUI(QMainWindow):
             - Proper handling of part-load and seasonal performance variations
             - Consistency with industry standards and certification data
         """
-        if self.heatPumpDataDialog.exec_():
+        if self.heatPumpDataDialog.exec():
             self.updateHeatPumpData()
 
     def updateTemperatureData(self) -> None:

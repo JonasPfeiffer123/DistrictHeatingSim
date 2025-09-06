@@ -11,7 +11,7 @@ Date: 2024-09-10
 import geopandas as gpd
 import traceback
 
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal
 
 from districtheatingsim.net_generation.import_and_create_layers import generate_and_export_layers
 from districtheatingsim.geocoding.geocoding import process_data

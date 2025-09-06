@@ -17,10 +17,10 @@ from shapely.geometry import box, Point
 from shapely.ops import transform
 import pyproj
 
-from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QDialog, QComboBox, QPushButton, \
+from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QDialog, QComboBox, QPushButton, \
     QFormLayout, QHBoxLayout, QFileDialog, QMessageBox, QLabel, QWidget, \
     QTableWidget, QTableWidgetItem
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal
 
 from pyproj import Transformer
 
@@ -51,7 +51,7 @@ class LayerGenerationDialog(QDialog):
         self.base_path = base_path
         self.visualization_tab = None
         self.config_manager = config_manager
-        self.setWindowFlags(Qt.Tool | Qt.WindowTitleHint | Qt.CustomizeWindowHint)
+        self.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.WindowTitleHint | Qt.CustomizeWindowHint)
         self.initUI()
 
     def initUI(self):

@@ -14,7 +14,7 @@ import time
 
 import traceback
 
-from PyQt5.QtWidgets import QMessageBox
+from PyQt6.QtWidgets import QMessageBox
 
 def get_resource_path(relative_path):
     """
@@ -86,12 +86,12 @@ def handle_global_exception(exc_type, exc_value, exc_traceback):
 
     # Zeige die Fehlermeldung in einem Dialogfenster
     msg_box = QMessageBox()
-    msg_box.setIcon(QMessageBox.Critical)
+    msg_box.setIcon(QMessageBox.Icon.Critical)
     msg_box.setWindowTitle("Fehler")
     msg_box.setText("Ein unerwarteter Fehler ist aufgetreten:")
     msg_box.setDetailedText(error_message)
-    msg_box.setStandardButtons(QMessageBox.Ok)
-    msg_box.exec_()
+    msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+    msg_box.exec()
 
 def get_stylesheet_based_on_time():
     """

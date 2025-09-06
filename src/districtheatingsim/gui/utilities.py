@@ -12,9 +12,9 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 
-from PyQt5.QtWidgets import QComboBox, QListView
-from PyQt5.QtGui import QStandardItemModel, QStandardItem
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import QComboBox, QListView
+from PyQt6.QtGui import QStandardItemModel, QStandardItem
+from PyQt6.QtCore import Qt, pyqtSignal
 
 class CheckableComboBox(QComboBox):
     """
@@ -62,10 +62,10 @@ class CheckableComboBox(QComboBox):
             Index of the pressed item.
         """
         item = self.model().itemFromIndex(index)
-        if item.checkState() == Qt.Checked:
-            item.setCheckState(Qt.Unchecked)
+        if item.checkState() == Qt.CheckState.Checked:
+            item.setCheckState(Qt.CheckState.Unchecked)
         else:
-            item.setCheckState(Qt.Checked)
+            item.setCheckState(Qt.CheckState.Checked)
         
         self.checkedStateChanged.emit()
 
@@ -84,7 +84,7 @@ class CheckableComboBox(QComboBox):
             True if item is checked.
         """
         item = self.model().item(index)
-        return item.checkState() == Qt.Checked
+        return item.checkState() == Qt.CheckState.Checked
 
     def addItem(self, text, data=None):
         """
@@ -98,8 +98,8 @@ class CheckableComboBox(QComboBox):
             Optional user data for the item.
         """
         item = QStandardItem(text)
-        item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
-        item.setData(Qt.Unchecked, Qt.CheckStateRole)
+        item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
+        item.setCheckState(Qt.CheckState.Unchecked)
         self.model().appendRow(item)
 
     def checkedItems(self):
@@ -114,7 +114,7 @@ class CheckableComboBox(QComboBox):
         checked_items = []
         for index in range(self.count()):
             item = self.model().item(index)
-            if item.checkState() == Qt.Checked:
+            if item.checkState() == Qt.CheckState.Checked:
                 checked_items.append(item.text())
         return checked_items
 

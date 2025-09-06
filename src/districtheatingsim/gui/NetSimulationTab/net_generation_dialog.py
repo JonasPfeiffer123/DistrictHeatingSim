@@ -10,8 +10,8 @@ Date: 2025-05-20
 
 import json
 import os
-from PyQt5.QtWidgets import QVBoxLayout, QDialog, QPushButton, QTabWidget
-from PyQt5.QtCore import Qt
+from PyQt6.QtWidgets import QVBoxLayout, QDialog, QPushButton, QTabWidget
+from PyQt6.QtCore import Qt
 
 from districtheatingsim.gui.NetSimulationTab.network_data_tab import NetworkDataTab
 from districtheatingsim.gui.NetSimulationTab.producer_order_tab import ProducerOrderTab

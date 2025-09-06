@@ -19,11 +19,12 @@ import os
 import traceback
 
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 
-from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QMessageBox, QProgressBar, QMenuBar, QAction, QActionGroup, QPlainTextEdit
+from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QMessageBox, QProgressBar, QMenuBar, QPlainTextEdit
+from PyQt6.QtGui import QAction, QActionGroup
 
 from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import save_results_csv, import_results_csv
 from districtheatingsim.net_simulation_pandapipes.config_plot import config_plot
@@ -227,7 +228,7 @@ class CalculationTab(QWidget):
         for label in self.NetworkGenerationData.plot_data.keys():
             self.dataSelectionDropdown.addItem(label)
             item = self.dataSelectionDropdown.model().item(self.dataSelectionDropdown.count() - 1, 0)
-            item.setCheckState(Qt.Checked if initial_checked else Qt.Unchecked)
+            item.setCheckState(Qt.CheckState.Checked if initial_checked else Qt.CheckState.Unchecked)
             initial_checked = False
 
         self.dropdownLayout.addWidget(self.dataSelectionDropdown)
@@ -241,7 +242,7 @@ class CalculationTab(QWidget):
                 self.base_path,
                 self
             )
-            dialog.exec_()
+            dialog.exec()
         except Exception as e:
             logging.error(f"Fehler beim öffnen des Dialogs aufgetreten: {e}")
             QMessageBox.critical(self, "Fehler", f"Fehler beim öffnen des Dialogs aufgetreten: {e}")
@@ -263,7 +264,7 @@ class CalculationTab(QWidget):
     def opencalculateNetDialog(self):
         """Open time series calculation dialog."""
         dialog = TimeSeriesCalculationDialog(self.base_path, self)
-        if dialog.exec_():
+        if dialog.exec():
             netCalcInputs = dialog.getValues()
             self.NetworkGenerationData.start_time_step = netCalcInputs["start"]
             self.NetworkGenerationData.end_time_step = netCalcInputs["end"]

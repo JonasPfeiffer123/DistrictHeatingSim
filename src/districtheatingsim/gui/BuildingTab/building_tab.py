@@ -14,13 +14,14 @@ import json
 import pandas as pd
 
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QFileDialog, QLabel, QMessageBox,
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QFileDialog, QLabel, QMessageBox,
                              QMainWindow, QTableWidget, QTableWidgetItem, QComboBox, 
-                             QMenuBar, QAction, QLineEdit, QAbstractScrollArea, QHBoxLayout, QSizePolicy)
-from PyQt5.QtCore import pyqtSignal, Qt
+                             QMenuBar, QLineEdit, QAbstractScrollArea, QHBoxLayout, QSizePolicy)
+from PyQt6.QtGui import QAction
+from PyQt6.QtCore import pyqtSignal, Qt
 
 from districtheatingsim.heat_requirement.heat_requirement_calculation_csv import generate_profiles_from_csv
 from districtheatingsim.gui.utilities import CheckableComboBox, convert_to_serializable
@@ -496,7 +497,7 @@ class BuildingTabView(QWidget):
         """Initialize data table widget."""
         self.table_widget = QTableWidget(self)
         self.table_widget.setMinimumSize(1200, 300)
-        self.table_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.table_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.main_layout.addWidget(self.table_widget)
 
     def initPlotAndComboboxes(self):
@@ -507,7 +508,7 @@ class BuildingTabView(QWidget):
         self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)
         self.canvas.setMinimumSize(800, 500)
-        self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.canvas.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.toolbar = NavigationToolbar(self.canvas, self)
         
         plot_layout = QVBoxLayout()
@@ -538,7 +539,7 @@ class BuildingTabView(QWidget):
 
     def initializeComboboxes(self):
         """Initialize default combobox selections."""
-        self.data_type_combobox.model().item(0).setCheckState(Qt.Checked)
+        self.data_type_combobox.model().item(0).setCheckState(Qt.CheckState.Checked)
 
     def loadCsvFile(self):
         """Emit signal to load CSV file."""
@@ -630,7 +631,7 @@ class BuildingTabView(QWidget):
         for key in results.keys():
             self.building_combobox.addItem(f'Gebäude {key}')
             item = self.building_combobox.model().item(self.building_combobox.count() - 1, 0)
-            item.setCheckState(Qt.Checked)
+            item.setCheckState(Qt.CheckState.Checked)
 
     def plot(self, results=None):
         """

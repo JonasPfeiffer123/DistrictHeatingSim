@@ -18,8 +18,8 @@ import traceback
 from pyproj import Transformer
 import traceback
 
-from PyQt5.QtWidgets import QMessageBox
-from PyQt5.QtCore import pyqtSignal, QObject
+from PyQt6.QtWidgets import QMessageBox
+from PyQt6.QtCore import pyqtSignal, QObject
 
 from districtheatingsim.lod2.filter_LOD2 import (
     spatial_filter_with_polygon, filter_LOD2_with_coordinates, 

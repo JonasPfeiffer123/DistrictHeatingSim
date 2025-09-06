@@ -11,7 +11,7 @@ Date: 2025-05-17
 import traceback
 import numpy as np
 
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal
 
 from districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson import initialize_geojson
 from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import thermohydraulic_time_series_net, time_series_preprocessing

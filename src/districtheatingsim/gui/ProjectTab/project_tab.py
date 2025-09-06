@@ -13,10 +13,11 @@ import sys
 import csv
 import json
 
-from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QTableWidgetItem, QWidget, QVBoxLayout, QHBoxLayout,
-                             QMenuBar, QAction, QProgressBar, QLabel, QTableWidget, QFileSystemModel,
+from PyQt6.QtWidgets import (QMainWindow, QFileDialog, QTableWidgetItem, QWidget, QVBoxLayout, QHBoxLayout,
+                             QMenuBar, QProgressBar, QLabel, QTableWidget,
                              QTreeView, QSplitter, QMessageBox, QDialog, QMenu, QPushButton, QInputDialog, QSizePolicy)
-from PyQt5.QtCore import Qt, QTimer
+from PyQt6.QtGui import QAction, QFileSystemModel
+from PyQt6.QtCore import Qt, QTimer
 
 from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread
 from districtheatingsim.gui.ProjectTab.project_tab_dialogs import RowInputDialog, OSMImportDialog, ProcessDetailsDialog
@@ -410,7 +411,7 @@ class ProjectPresenter:
         geojson_file_path, _ = QFileDialog.getOpenFileName(self.view, "geoJSON auswählen", standard_path, "All Files (*)")
         if geojson_file_path:
             dialog = OSMImportDialog(self.view)
-            if dialog.exec_() == QDialog.Accepted:
+            if dialog.exec() == QDialog.Accepted:
                 default_values = dialog.get_input_data()
                 try:
                     standard_output_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("OSM_building_data_path"))
@@ -513,7 +514,7 @@ class ProjectTabView(QWidget):
         self.treeView = QTreeView()
         self.treeView.setModel(self.model)
         self.treeView.setMinimumWidth(500)
-        self.treeView.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.treeView.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         leftWidget = QWidget()
         leftWidget.setLayout(self.leftLayout)
@@ -539,8 +540,8 @@ class ProjectTabView(QWidget):
         self.initMenuBar()
 
         self.csvTable = QTableWidget()
-        self.csvTable.setEditTriggers(QTableWidget.DoubleClicked | QTableWidget.EditKeyPressed)
-        self.csvTable.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.csvTable.setEditTriggers(QTableWidget.EditTrigger.DoubleClicked | QTableWidget.EditTrigger.EditKeyPressed)
+        self.csvTable.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.csvTable.customContextMenuRequested.connect(self.show_context_menu)
         self.rightLayout.addWidget(self.csvTable)
 
@@ -629,7 +630,7 @@ class ProjectTabView(QWidget):
         """Add new table row with input dialog."""
         headers = [self.csvTable.horizontalHeaderItem(i).text() for i in range(self.csvTable.columnCount())]
         dialog = RowInputDialog(headers, self)
-        if dialog.exec_() == QDialog.Accepted:
+        if dialog.exec() == QDialog.Accepted:
             row_data = dialog.get_input_data()
             row = self.csvTable.rowCount()
             self.csvTable.insertRow(row)
@@ -733,7 +734,7 @@ class ProjectTabView(QWidget):
     def showDetailsDialog(self):
         """Show process step details dialog."""
         dialog = ProcessDetailsDialog(self.process_steps, self)
-        dialog.exec_()
+        dialog.exec()
 
     def set_process_steps(self, process_steps):
         """

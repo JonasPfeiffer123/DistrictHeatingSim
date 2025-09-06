@@ -9,7 +9,7 @@ Date: 2025-02-11
 """
 
 import os
-from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog,  \
+from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog,  \
     QPushButton, QHBoxLayout, QFileDialog, QMessageBox
 
 class TimeSeriesCalculationDialog(QDialog):

@@ -1,6 +1,6 @@
-PyQt5
+PyQt6
+PyQt6-WebEngine
 geopandas
-PyQtWebEngine
 folium
 scipy
 matplotlib

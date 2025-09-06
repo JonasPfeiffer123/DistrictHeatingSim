@@ -8,7 +8,7 @@ Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-08-30
 """
 
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QScrollArea, QTabWidget)
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QScrollArea, QTabWidget)
 
 from districtheatingsim.gui.ComparisonTab.stat_comparison_tab import StatComparisonTab
 from districtheatingsim.gui.ComparisonTab.cost_comparison_tab import CostComparisonTab

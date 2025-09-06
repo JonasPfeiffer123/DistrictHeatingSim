@@ -12,12 +12,12 @@ import sys
 import numpy as np
 
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QHBoxLayout, QTableWidget, QTableWidgetItem, 
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QHBoxLayout, QTableWidget, QTableWidgetItem, 
                              QHeaderView, QScrollArea, QCheckBox, QApplication)
-from PyQt5.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal
 
 from districtheatingsim.gui.EnergySystemTab._10_utilities import CheckableComboBox, CollapsibleHeader
 
@@ -166,7 +166,7 @@ class ResultsTab(QWidget):
             'Anzahl Starts', 'Betriebsstunden/Start', 'Kosten (€/MWh)', 
             'Anteil (%)', 'CO2-eq (t_CO2/MWh_th)', 'Primärenergiefaktor'
         ])
-        self.resultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.resultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
     def setupAdditionalResultsTable(self):
         """
@@ -175,7 +175,7 @@ class ResultsTab(QWidget):
         self.additionalResultsTable = QTableWidget()
         self.additionalResultsTable.setColumnCount(3)
         self.additionalResultsTable.setHorizontalHeaderLabels(['Ergebnis', 'Wert', 'Einheit'])
-        self.additionalResultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.additionalResultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
     def adjustTableSize(self, table):
         """
@@ -337,4 +337,4 @@ if __name__ == "__main__":
     data_manager = None  # Sie müssen hier ein geeignetes Datenmanager-Objekt übergeben
     main = ResultsTab(data_manager)
     main.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

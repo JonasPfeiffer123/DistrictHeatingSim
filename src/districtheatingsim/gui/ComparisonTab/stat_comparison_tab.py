@@ -15,7 +15,7 @@ import json
 import numpy as np
 import traceback
 
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QTableWidget, QTableWidgetItem, QFileDialog, QHBoxLayout, QMessageBox
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QTableWidget, QTableWidgetItem, QFileDialog, QHBoxLayout, QMessageBox
 
 from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import import_results_csv
 

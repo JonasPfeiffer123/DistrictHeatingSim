@@ -65,7 +65,7 @@ professional district heating system analysis and planning workflows.
 Dependencies
 ------------
 **Core Framework**:
-    - PyQt5.QtCore: Signal-slot architecture and Qt object model
+    - PyQt6.QtCore: Signal-slot architecture and Qt object model
     - json: Configuration serialization and deserialization
     - os: File system operations and path management
 
@@ -94,7 +94,7 @@ import os
 import json
 from typing import Dict, List, Optional, Any
 
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt6.QtCore import QObject, pyqtSignal
 
 from districtheatingsim.utilities.utilities import get_resource_path
         
