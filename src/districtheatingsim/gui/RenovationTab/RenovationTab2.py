@@ -10,11 +10,11 @@ Date: 2024-08-01
 
 import sys
 
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-from PyQt5.QtWidgets import QApplication, QVBoxLayout, QWidget, QPushButton, QLabel, QLineEdit, QComboBox, QFormLayout, QSplitter, QTabWidget
-from PyQt5.QtCore import pyqtSlot, pyqtSignal, Qt
+from PyQt6.QtWidgets import QApplication, QVBoxLayout, QWidget, QPushButton, QLabel, QLineEdit, QComboBox, QFormLayout, QSplitter, QTabWidget
+from PyQt6.QtCore import pyqtSlot, pyqtSignal, Qt
 
 from districtheatingsim.utilities.renovation_analysis import calculate_all_results
 
@@ -102,7 +102,7 @@ class RenovationTab2(QWidget):
         self.setWindowTitle("Sanierungsanalyse")
 
         main_layout = QVBoxLayout(self)
-        splitter = QSplitter(Qt.Horizontal)
+        splitter = QSplitter(Qt.Orientation.Horizontal)
         main_layout.addWidget(splitter)
 
         # Input section
@@ -303,4 +303,4 @@ if __name__ == "__main__":
     renovation_tab = RenovationTab2()
     main_window.setCentralWidget(renovation_tab)
     main_window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

@@ -8,8 +8,8 @@ Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-03-10
 """
 
-from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QPushButton, QHBoxLayout, QFileDialog, QCheckBox, QDialogButtonBox, QHBoxLayout
-from PyQt5.QtCore import Qt
+from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QPushButton, QHBoxLayout, QFileDialog, QCheckBox, QDialogButtonBox, QHBoxLayout
+from PyQt6.QtCore import Qt
 
 from districtheatingsim.utilities.utilities import get_resource_path
 
@@ -46,7 +46,7 @@ class TemperatureDataDialog(QDialog):
             "https://www.dwd.de/DE/leistungen/testreferenzjahre/testreferenzjahre.html</a> bezogen werden.<br>"
             "Es ist jedoch eine Registrierung beim DWD notwendig", self)
         self.descriptionLabel.setWordWrap(True)
-        self.descriptionLabel.setAlignment(Qt.AlignCenter)
+        self.descriptionLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.main_layout.addWidget(self.descriptionLabel)
 
         # File input controls

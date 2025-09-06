@@ -13,12 +13,12 @@ import traceback
 
 import geopandas as gpd
 
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-from PyQt5.QtWidgets import (QApplication, QVBoxLayout, QWidget, QPushButton, QLabel, QLineEdit, QComboBox, 
+from PyQt6.QtWidgets import (QApplication, QVBoxLayout, QWidget, QPushButton, QLabel, QLineEdit, QComboBox, 
                              QFormLayout, QFileDialog, QMessageBox, QTableWidget, QTableWidgetItem, QSplitter, QTabWidget)
-from PyQt5.QtCore import pyqtSlot, pyqtSignal, Qt
+from PyQt6.QtCore import pyqtSlot, pyqtSignal, Qt
 
 from districtheatingsim.utilities.renovation_analysis import SanierungsAnalyse
 
@@ -115,7 +115,7 @@ class RenovationTab1(QWidget):
         self.setWindowTitle("Sanierungsanalyse")
         
         main_layout = QVBoxLayout()
-        splitter = QSplitter(Qt.Horizontal)
+        splitter = QSplitter(Qt.Orientation.Horizontal)
         main_layout.addWidget(splitter)
 
         # Input section
@@ -474,4 +474,4 @@ if __name__ == "__main__":
     main_layout.addWidget(renovation_tab)
     main_window.setLayout(main_layout)
     main_window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

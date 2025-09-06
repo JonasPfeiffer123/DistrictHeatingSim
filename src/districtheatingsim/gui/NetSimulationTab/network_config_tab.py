@@ -10,7 +10,7 @@ Date: 2025-05-17
 
 import pandapipes as pp
 
-from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QComboBox, QWidget, QHBoxLayout, QCheckBox, QGroupBox
+from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QComboBox, QWidget, QHBoxLayout, QCheckBox, QGroupBox
 
 class NetworkConfigTab(QWidget):
     """

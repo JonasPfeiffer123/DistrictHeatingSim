@@ -10,7 +10,7 @@ Date: 2025-05-03
 
 import traceback
 
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal
 
 class CalculateEnergySystemThread(QThread):
     """

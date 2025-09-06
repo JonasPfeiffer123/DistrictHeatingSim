@@ -12,8 +12,9 @@ import traceback
 import numpy as np
 import os
 
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMessageBox, QMenuBar, QScrollArea, QAction, QDialog)
-from PyQt5.QtCore import pyqtSignal, QEventLoop
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMessageBox, QMenuBar, QScrollArea, QDialog)
+from PyQt6.QtGui import QAction
+from PyQt6.QtCore import pyqtSignal, QEventLoop
 
 from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import import_results_csv
 from districtheatingsim.utilities.test_reference_year import import_TRY
@@ -236,7 +237,7 @@ class EnergySystemTab(QWidget):
         """
         Opens the economic parameters dialog.
         """
-        if self.economicParametersDialog.exec_():
+        if self.economicParametersDialog.exec():
             self.updateEconomicParameters()
 
     ### Calculation Functions ###
@@ -342,7 +343,7 @@ class EnergySystemTab(QWidget):
         Opens the optimization dialog and starts the optimization process.
         """
         dialog = WeightDialog()
-        if dialog.exec_() == QDialog.Accepted:
+        if dialog.exec() == QDialog.Accepted:
             weights = dialog.get_weights()
             self.calculate_energy_system(True, weights)
 
@@ -491,7 +492,7 @@ class EnergySystemTab(QWidget):
         self.calculationThread.calculation_error.connect(calculation_error)
         self.calculationThread.start()
         self.progressBar.setRange(0, 0)
-        calculation_done_event.exec_()  # Wait for the thread to finish
+        calculation_done_event.exec()  # Wait for the thread to finish
 
         # Ensure the thread has finished before returning
         self.calculationThread.wait()
@@ -505,7 +506,7 @@ class EnergySystemTab(QWidget):
         """
         if self.techTab.tech_objects and self.energy_system.results:
             dialog = SankeyDialog(results=self.energy_system.results, parent=self)
-            dialog.exec_()
+            dialog.exec()
         else:
             if not self.techTab.tech_objects:
                 QMessageBox.information(self, "Keine Erzeugeranlagen", "Es wurden keine Erzeugeranlagen definiert. Keine Berechnung möglich.")

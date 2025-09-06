@@ -11,7 +11,8 @@ Date: 2025-02-07
 import os
 import traceback
 
-from PyQt5.QtWidgets import (QAction, QWidget, QVBoxLayout, QMenuBar, QMessageBox, QFileDialog)
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QMenuBar, QMessageBox, QFileDialog)
+from PyQt6.QtGui import QAction
 
 from districtheatingsim.gui.LOD2Tab.lod2_data_model import LOD2DataModel
 from districtheatingsim.gui.LOD2Tab.lod2_presenter import DataVisualizationPresenter
@@ -144,7 +145,7 @@ class LOD2Tab(QWidget):
     def open_lod2_download_dialog(self):
         """Open LOD2 data download dialog."""
         dialog = LOD2DownloadDialog(self.folder_manager, self.config_manager, self)
-        dialog.exec_()
+        dialog.exec()
     
     def pv_file_dialog(self):
         """Open file dialog for PV data calculation output."""

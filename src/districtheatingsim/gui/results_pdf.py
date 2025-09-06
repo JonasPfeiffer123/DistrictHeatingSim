@@ -22,8 +22,8 @@ from reportlab.graphics import renderPDF
 from reportlab.graphics.shapes import Drawing, Rect, Group
 from reportlab.platypus import Image as PlatypusImage
 
-from PyQt5.QtCore import QBuffer
-from PyQt5.QtGui import QPainter, QPixmap
+from PyQt6.QtCore import QBuffer
+from PyQt6.QtGui import QPainter, QPixmap
 
 from districtheatingsim.gui.dialogs import PDFSelectionDialog
 
@@ -463,7 +463,7 @@ def create_pdf(HeatSystemDesignGUI, filename):
     schematic_scene = mixDesignTab.techTab.schematic_scene
 
     dialog = PDFSelectionDialog()
-    if not dialog.exec_():
+    if not dialog.exec():
         return
 
     selected_sections = dialog.get_selected_sections()

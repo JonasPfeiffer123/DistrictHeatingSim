@@ -8,7 +8,7 @@ Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-08-29
 """
 
-from PyQt5.QtWidgets import QVBoxLayout, QProgressBar, QWidget, QTabWidget
+from PyQt6.QtWidgets import QVBoxLayout, QProgressBar, QWidget, QTabWidget
 
 from districtheatingsim.gui.RenovationTab.RenovationTab1 import RenovationTab1
 from districtheatingsim.gui.RenovationTab.RenovationTab2 import RenovationTab2

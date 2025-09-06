@@ -8,16 +8,16 @@ Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-09-28
 """
 
-from PyQt5.QtWidgets import (QGraphicsScene, QGraphicsPathItem, QGraphicsLineItem, QGraphicsItem, QGraphicsView, QGraphicsRectItem, QGraphicsTextItem)
-from PyQt5.QtCore import Qt, QPointF, QRectF, QLineF, pyqtSignal
-from PyQt5.QtGui import QPen, QColor, QPainterPath, QFont, QPainter
+from PyQt6.QtWidgets import (QGraphicsScene, QGraphicsPathItem, QGraphicsLineItem, QGraphicsItem, QGraphicsView, QGraphicsRectItem, QGraphicsTextItem)
+from PyQt6.QtCore import Qt, QPointF, QRectF, QLineF, pyqtSignal
+from PyQt6.QtGui import QPen, QColor, QPainterPath, QFont, QPainter
 
 class CustomGraphicsView(QGraphicsView):
     def __init__(self, scene):
         super().__init__(scene)
-        self.setRenderHint(QPainter.Antialiasing)  # Use QPainter.Antialiasing instead of QPainterPath
-        self.setDragMode(QGraphicsView.ScrollHandDrag)  # Activate scroll drag mode
-        self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)  # Anchor zoom to mouse position
+        self.setRenderHint(QPainter.RenderHint.Antialiasing)  # Use QPainter.RenderHint.Antialiasing
+        self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)  # Activate scroll drag mode
+        self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)  # Anchor zoom to mouse position
 
         # Automatically fit the scene when initializing
         self.fit_to_scene()
@@ -25,7 +25,7 @@ class CustomGraphicsView(QGraphicsView):
     def fit_to_scene(self):
         """Fit the entire scene into the view, considering the current window size."""
         # Use fitInView to scale the scene so that it fits entirely within the view
-        self.fitInView(self.sceneRect(), Qt.KeepAspectRatio)
+        self.fitInView(self.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
 
     def resizeEvent(self, event):
         """Ensure the scene fits into the view whenever the window is resized."""
@@ -42,14 +42,14 @@ class CustomGraphicsView(QGraphicsView):
 
     def mousePressEvent(self, event):
         """Activate panning on middle mouse button press"""
-        if event.button() == Qt.MiddleButton:
-            self.setDragMode(QGraphicsView.ScrollHandDrag)  # Allow panning with middle mouse button
+        if event.button() == Qt.MouseButton.MiddleButton:
+            self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)  # Allow panning with middle mouse button
         super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
         """Deactivate panning when middle mouse button is released"""
-        if event.button() == Qt.MiddleButton:
-            self.setDragMode(QGraphicsView.NoDrag)  # Stop panning
+        if event.button() == Qt.MouseButton.MiddleButton:
+            self.setDragMode(QGraphicsView.DragMode.NoDrag)  # Stop panning
         super().mouseReleaseEvent(event)
 
 class CustomGraphicsScene(QGraphicsScene):
@@ -75,9 +75,9 @@ class SchematicScene(CustomGraphicsScene):
     LINE_Y_OFFSET_GENERATOR = 100
     GENERATOR_X_START = 20
     LINE_THICKNESS = 3
-    FLOW_LINE_COLOR = Qt.red
-    RETURN_LINE_COLOR = Qt.blue
-    TEXT_FONT = QFont("Arial", 12, QFont.Bold)
+    FLOW_LINE_COLOR = Qt.GlobalColor.red
+    RETURN_LINE_COLOR = Qt.GlobalColor.blue
+    TEXT_FONT = QFont("Arial", 12, QFont.Weight.Bold)
 
     # Define the objects that can be added to the scene
     # Color codes: yellow for Solar, blue for CHP, purple for Storage, green for Consumer
@@ -396,8 +396,8 @@ class SchematicScene(CustomGraphicsScene):
             self.update_label(self.consumer, item_name)  # Update the label for the consumer
 
             # Deaktiviere Bewegung und Auswahl für den Consumer
-            self.consumer.setFlag(QGraphicsItem.ItemIsMovable, False)
-            self.consumer.setFlag(QGraphicsItem.ItemIsSelectable, False)
+            self.consumer.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
+            self.consumer.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, False)
 
             # Aktualisiere die Position für den nächsten Generator (platziere ihn rechts)
             self.GENERATOR_X_START += self.GENERATOR_SPACING  # Verschiebe um eine feste Distanz
@@ -483,7 +483,7 @@ class SchematicScene(CustomGraphicsScene):
             background_rect = QGraphicsRectItem(background_rect_x, background_rect_y, background_rect_width, background_rect_height)
             background_color = QColor(255, 255, 255, 150)  # Weiß mit Alpha-Wert von 150 für halbe Transparenz
             background_rect.setBrush(background_color)  # Setze die halbtransparente Farbe
-            background_rect.setPen(QPen(Qt.NoPen))  # Keine Umrandung für den Hintergrund
+            background_rect.setPen(QPen(Qt.PenStyle.NoPen))  # Keine Umrandung für den Hintergrund
             background_rect.setZValue(9)  # Leicht unterhalb des Labels
             self.addItem(background_rect)  # Add the background to the scene
             item.background_rect = background_rect  # Link it to the item
@@ -685,7 +685,7 @@ class SchematicScene(CustomGraphicsScene):
         return None
 
 class ComponentItem(QGraphicsItem):
-    def __init__(self, position, item_type, item_name, color, geometry, flow_line_color=Qt.red, return_line_color=Qt.blue):
+    def __init__(self, position, item_type, item_name, color, geometry, flow_line_color=Qt.GlobalColor.red, return_line_color=Qt.GlobalColor.blue):
         """Create a general visual representation of a component"""
         super().__init__()
 
@@ -699,9 +699,9 @@ class ComponentItem(QGraphicsItem):
         self.setPos(position)
 
         # Set the flags for interaction
-        self.setFlag(QGraphicsItem.ItemIsMovable)
-        self.setFlag(QGraphicsItem.ItemSendsGeometryChanges)
-        self.setFlag(QGraphicsItem.ItemIsSelectable)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
 
         # Placeholder for connection points (ports)
         self.connection_points = []
@@ -718,10 +718,10 @@ class ComponentItem(QGraphicsItem):
         # Überprüfe, ob das Objekt ausgewählt ist
         if self.isSelected():
             # Wenn das Objekt ausgewählt ist, zeichne den Rahmen dicker und in einer auffälligen Farbe
-            painter.setPen(QPen(Qt.red, 3))  # Roter, dicker Rahmen für ausgewähltes Objekt
+            painter.setPen(QPen(Qt.GlobalColor.red, 3))  # Roter, dicker Rahmen für ausgewähltes Objekt
         else:
             # Normaler schwarzer Rahmen für nicht ausgewählte Objekte
-            painter.setPen(QPen(Qt.black, 1))  # Dünner schwarzer Rahmen
+            painter.setPen(QPen(Qt.GlobalColor.black, 1))  # Dünner schwarzer Rahmen
 
         # Drawing based on the shape type
         if self.shape == 'circle':
@@ -756,7 +756,7 @@ class ComponentItem(QGraphicsItem):
 
     def itemChange(self, change, value):
         """Update connected pipes, label, and background when the component moves."""
-        if change == QGraphicsItem.ItemPositionChange:
+        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
             # Call snap_to_grid on the scene to adjust the movement to the grid
             scene = self.scene()
             if isinstance(scene, SchematicScene):

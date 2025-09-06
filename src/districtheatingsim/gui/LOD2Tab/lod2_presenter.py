@@ -8,8 +8,8 @@ Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-02-03
 """
 
-from PyQt5.QtWidgets import ( QFileDialog, QDialog, QMessageBox, QTreeWidgetItem)
-from PyQt5.QtCore import pyqtSignal, QObject
+from PyQt6.QtWidgets import ( QFileDialog, QDialog, QMessageBox, QTreeWidgetItem)
+from PyQt6.QtCore import pyqtSignal, QObject
 
 from districtheatingsim.gui.LOD2Tab.lod2_dialogs import FilterDialog
 
@@ -99,7 +99,7 @@ class DataVisualizationPresenter(QObject):
     def show_filter_dialog(self):
         """Show LOD2 data filter dialog."""
         dialog = FilterDialog(self.model.get_base_path(), self.config_manager, self.view)
-        if dialog.exec_() == QDialog.Accepted:
+        if dialog.exec() == QDialog.Accepted:
             filter_method = dialog.filterMethodComboBox.currentText()
             lod_geojson_path = dialog.inputLOD2geojsonLineEdit.text()
 

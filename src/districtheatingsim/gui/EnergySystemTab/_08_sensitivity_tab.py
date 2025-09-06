@@ -9,9 +9,9 @@ Date: 2024-08-01
 """
 
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QPushButton, QLineEdit, QMessageBox
-from PyQt5.QtCore import pyqtSignal
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QPushButton, QLineEdit, QMessageBox
+from PyQt6.QtCore import pyqtSignal
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import griddata

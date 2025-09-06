@@ -68,7 +68,7 @@ Key Features
 Technical Implementation
 ------------------------
 **GUI Framework**:
-    The application uses PyQt5 for the graphical user interface, providing:
+    The application uses PyQt6 for the graphical user interface, providing:
     
     - Native look and feel across platforms
     - Rich widget set for complex data visualization
@@ -122,7 +122,7 @@ Examples
 **Programmatic Usage** (for testing or automation):
 
     >>> import sys
-    >>> from PyQt5.QtWidgets import QApplication
+    >>> from PyQt6.QtWidgets import QApplication
     >>> from districtheatingsim.gui.MainTab.main_data_manager import *
     >>> from districtheatingsim.gui.MainTab.main_presenter import HeatSystemPresenter
     >>> from districtheatingsim.gui.MainTab.main_view import HeatSystemDesignGUI
@@ -142,7 +142,7 @@ Examples
     >>> 
     >>> # Show application
     >>> view.show()
-    >>> sys.exit(app.exec_())
+    >>> sys.exit(app.exec())
 
 **Project Creation Example**:
 
@@ -185,7 +185,7 @@ Configuration and Customization
 Dependencies
 ------------
 **Core Dependencies**:
-    - PyQt5: GUI framework and widgets
+    - PyQt6: GUI framework and widgets
     - NumPy: Numerical computations and array operations
     - Pandas: Data manipulation and analysis
     - Matplotlib: Plotting and visualization
@@ -242,8 +242,8 @@ import os
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import QTimer
+from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import QTimer
 
 from districtheatingsim.utilities.utilities import handle_global_exception, get_stylesheet_based_on_time
 
@@ -393,7 +393,7 @@ def main():
     view.show()
     
     # Start the application event loop and handle clean shutdown
-    exit_code = app.exec_()
+    exit_code = app.exec()
     sys.exit(exit_code)
 
 

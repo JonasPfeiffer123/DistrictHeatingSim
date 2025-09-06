@@ -11,9 +11,9 @@ Date: 2025-03-07
 import os
 import json
 
-from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QFileDialog,
+from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QFileDialog,
                                 QFormLayout, QMessageBox)
-from PyQt5.QtGui import QFont
+from PyQt6.QtGui import QFont
 
 from districtheatingsim.lod2.lod2_download import get_lod2_links, download_lod2_files
 from districtheatingsim.lod2.process_lod2 import convert_shapefiles_to_geojson, merge_geojsons

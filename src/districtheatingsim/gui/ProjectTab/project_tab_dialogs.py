@@ -8,7 +8,7 @@ Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-09-20
 """
 
-from PyQt5.QtWidgets import (QVBoxLayout, QLabel, QDialog, QLineEdit, QDialogButtonBox, 
+from PyQt6.QtWidgets import (QVBoxLayout, QLabel, QDialog, QLineEdit, QDialogButtonBox, 
                              QGridLayout, QFrame, QScrollArea, QPushButton, QProgressBar)
 
 class RowInputDialog(QDialog):

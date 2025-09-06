@@ -10,10 +10,10 @@ Date: 2024-12-11
 import pandas as pd
 
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QScrollArea, QTableWidget, QTableWidgetItem, QHeaderView, QSizePolicy, QHBoxLayout, QPushButton, QLineEdit, QInputDialog, QMenu)
-from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtGui import QFont
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QScrollArea, QTableWidget, QTableWidgetItem, QHeaderView, QSizePolicy, QHBoxLayout, QPushButton, QLineEdit, QInputDialog, QMenu)
+from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtGui import QFont
 
 from districtheatingsim.heat_generators.annuity import annuity
 from districtheatingsim.gui.EnergySystemTab._10_utilities import CollapsibleHeader
@@ -142,7 +142,7 @@ class CostTab(QWidget):
         # Initialize and style total cost label as QLabel
         self.totalCostLabel = QLabel("Gesamtkosten: 0 €")
         self.totalCostLabel.setStyleSheet("font-weight: bold; font-size: 14px; margin-top: 10px;")
-        self.mainLayout.addWidget(self.totalCostLabel, alignment=Qt.AlignLeft)
+        self.mainLayout.addWidget(self.totalCostLabel, alignment=Qt.AlignmentFlag.AlignLeft)
 
         # Set the main layout to use all available space in the scroll area
         self.mainScrollArea.setWidget(self.mainWidget)
@@ -160,7 +160,7 @@ class CostTab(QWidget):
         self.mainWidget = QWidget()
         self.mainLayout = QVBoxLayout(self.mainWidget)
         self.mainScrollArea.setWidget(self.mainWidget)
-        self.mainScrollArea.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.mainScrollArea.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
     def createMainLayout(self):
         """
@@ -198,13 +198,13 @@ class CostTab(QWidget):
         self.infrastructureCostsTable.setRowCount(len(self.data))
         self.infrastructureCostsTable.setHorizontalHeaderLabels(self.data.columns.tolist())
         self.infrastructureCostsTable.setVerticalHeaderLabels(self.data.index.tolist())
-        self.infrastructureCostsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.infrastructureCostsTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.infrastructureCostsTable.setAlternatingRowColors(True)
 
         self.updateInfrastructureTable()
 
         self.infrastructureCostsTable.itemChanged.connect(self.updateDataFromTable)
-        self.infrastructureCostsTable.verticalHeader().setContextMenuPolicy(Qt.CustomContextMenu)
+        self.infrastructureCostsTable.verticalHeader().setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.infrastructureCostsTable.verticalHeader().customContextMenuRequested.connect(self.openHeaderContextMenu)
 
         self.infrastructure_layout.addWidget(self.infrastructureCostsTable)
@@ -262,7 +262,7 @@ class CostTab(QWidget):
 
         # Adjust table size and column widths
         self.infrastructureCostsTable.resizeColumnsToContents()
-        self.infrastructureCostsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.infrastructureCostsTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.adjustTableSize(self.infrastructureCostsTable)
 
     def format_cost(self, value):
@@ -392,7 +392,7 @@ class CostTab(QWidget):
         Args:
             row (int): The row index of the header item to rename.
         """
-        newName, okPressed = QInputDialog.getText(self, "Name ändern", "Neuer Name:", QLineEdit.Normal, "")
+        newName, okPressed = QInputDialog.getText(self, "Name ändern", "Neuer Name:", QLineEdit.EchoMode.Normal, "")
         if okPressed and newName:
             old_name = self.data.index[row]
             self.data.rename(index={old_name: newName}, inplace=True)
@@ -463,7 +463,7 @@ class CostTab(QWidget):
         """
         dialog = KostenBerechnungDialog(self, label="spez. Kosten Wärmenetz pro m_Trasse (inkl. Tiefbau) in €/m", value="1000", type="flow line")
         dialog.setWindowTitle("Kosten Wärmenetz berechnen")
-        if dialog.exec_():
+        if dialog.exec():
             cost_net = dialog.total_cost
             self.updateTableValue(row=0, column=0, value=cost_net)
 
@@ -473,7 +473,7 @@ class CostTab(QWidget):
         """
         dialog = KostenBerechnungDialog(self, label="spez. Kosten Hausanschlussstationen pro kW max. Wärmebedarf in €/kW", value="250", type="HAST")
         dialog.setWindowTitle("Kosten Hausanschlussstationen berechnen")
-        if dialog.exec_():
+        if dialog.exec():
             cost_net = dialog.total_cost
             self.updateTableValue(row=1, column=0, value=cost_net)
     
@@ -482,7 +482,7 @@ class CostTab(QWidget):
         self.techDataTable = QTableWidget()
         self.techDataTable.setColumnCount(4)
         self.techDataTable.setHorizontalHeaderLabels(['Name', 'Dimensionen', 'Kosten', 'Gesamtkosten'])
-        self.techDataTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.techDataTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.techDataTable.setAlternatingRowColors(True)
 
     def updateTechDataTable(self, tech_objects):

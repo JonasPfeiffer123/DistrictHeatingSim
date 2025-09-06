@@ -10,15 +10,15 @@ Date: 2024-12-11
 
 import os
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QLineEdit, 
     QListWidget, QDialog, QFileDialog, QScrollArea, QAbstractItemView,
     QSplitter
 )
-from PyQt5.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal
 import pandas as pd
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
 from districtheatingsim.heat_generators import TECH_CLASS_REGISTRY
 from districtheatingsim.gui.EnergySystemTab._04_technology_dialogs import TechInputDialog
@@ -198,7 +198,7 @@ class TechnologyTab(QWidget):
         """
         self.addLabel('Definierte Wärmeerzeuger')
         self.techList = CustomListWidget(self)
-        self.techList.setDragDropMode(QAbstractItemView.InternalMove)
+        self.techList.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         self.techList.itemDoubleClicked.connect(self.editTech)
         self.mainLayout.addWidget(self.techList)
         self.addButtonLayout()
@@ -244,7 +244,7 @@ class TechnologyTab(QWidget):
             tech_data (dict): The data for the technology.
         """
         dialog = TechInputDialog(tech_type, tech_data)
-        if dialog.exec_() == QDialog.Accepted:
+        if dialog.exec() == QDialog.Accepted:
             new_tech = self.createTechnology(tech_type, dialog.getInputs())
             # Speicheraktivität direkt vom Dialog abrufen und im tech-Objekt speichern
             new_tech.has_storage = dialog.getInputs().get('speicher_aktiv', False) # thats stupid af
@@ -264,7 +264,7 @@ class TechnologyTab(QWidget):
         tech_data = {k: v for k, v in selected_tech.__dict__.items() if not k.startswith('_')}
 
         dialog = TechInputDialog(selected_tech.name, tech_data)
-        if dialog.exec_() == QDialog.Accepted:
+        if dialog.exec() == QDialog.Accepted:
             updated_inputs = dialog.getInputs()
             updated_tech = self.createTechnology(selected_tech.name.split('_')[0], updated_inputs)
             updated_tech.name = selected_tech.name
