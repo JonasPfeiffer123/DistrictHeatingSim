@@ -90,8 +90,6 @@ Dependencies
 
 **External Integration**:
     - File system operations for project management
-    - Data persistence through various formats
-    - Cross-platform compatibility features
 
 See Also
 --------
@@ -123,13 +121,11 @@ from PyQt6.QtGui import QIcon, QAction, QFont
 from PyQt6.QtCore import pyqtSlot
 
 from districtheatingsim.gui.ProjectTab.project_tab import ProjectTab
-from districtheatingsim.gui.LOD2Tab.lod2_main_tab import LOD2Tab
 from districtheatingsim.gui.BuildingTab.building_tab import BuildingTab
-from districtheatingsim.gui.RenovationTab.RenovationTab import RenovationTab
 from districtheatingsim.gui.NetSimulationTab.calculation_tab import CalculationTab
 from districtheatingsim.gui.EnergySystemTab._01_energy_system_main_tab import EnergySystemTab
 from districtheatingsim.gui.ComparisonTab.comparison_tab import ComparisonTab
-from districtheatingsim.gui.results_pdf import create_pdf
+
 from districtheatingsim.gui.dialogs import TemperatureDataDialog, HeatPumpDataDialog
 from districtheatingsim.gui.welcome_screen import WelcomeScreen, ThemeToggleSwitch
 
@@ -400,13 +396,6 @@ class HeatSystemDesignGUI(QMainWindow):
         
         # Initialize UI components (created later in initUI)
         self.folderLabel: Optional[QLabel] = None
-        
-        # Tab management storage
-        self.hidden_tabs: Dict[str, tuple] = {}  # Maps tab names to (widget, index) tuples
-        self.tab_order: List[str] = []  # Maintains consistent tab ordering
-        
-        # Menu system storage
-        self.menu_actions: Dict[str, QAction] = {}  # Tab visibility control actions
 
     def set_presenter(self, presenter) -> None:
         """
@@ -850,20 +839,14 @@ class HeatSystemDesignGUI(QMainWindow):
 
         # Add data import/export actions to file menu
         importResultsAction = QAction('Projektstand / -ergebnisse Laden', self)
-        pdfExportAction = QAction('Ergebnis-PDF exportieren', self)
-        for dataAction in [importResultsAction, pdfExportAction]:
-            fileMenu.addAction(dataAction)
-        
+        fileMenu.addAction(importResultsAction)
+
         # Data Menu - External data configuration
         dataMenu = self.menubar.addMenu('Datenbasis')
         chooseTemperatureDataAction = QAction('Temperaturdaten festlegen', self)
         createCOPDataAction = QAction('COP-Kennfeld festlegen', self)
         dataMenu.addAction(chooseTemperatureDataAction)
         dataMenu.addAction(createCOPDataAction)
-
-        # Tabs Menu - Dynamic interface control
-        self.tabsMenu = self.menubar.addMenu('Tabs')
-        self.menu_actions: Dict[str, QAction] = {}  # Store tab control actions
 
         # Note: Menu bar will be added to layout in add_theme_toggle_to_main_interface()
 
@@ -876,7 +859,6 @@ class HeatSystemDesignGUI(QMainWindow):
         createVariantAction.triggered.connect(self.on_create_project_variant)
         createVariantCopyAction.triggered.connect(self.on_create_project_variant_copy)
         importResultsAction.triggered.connect(self.on_importResultsAction)
-        pdfExportAction.triggered.connect(self.on_pdf_export)
         chooseTemperatureDataAction.triggered.connect(self.openTemperatureDataSelection)
         createCOPDataAction.triggered.connect(self.openCOPDataSelection)
 
@@ -956,8 +938,7 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         # Create main tab widget with closeable tabs
         self.tabWidget = QTabWidget()
-        self.tabWidget.setTabsClosable(True)
-        self.tabWidget.tabCloseRequested.connect(self.hide_tab)
+        self.tabWidget.setTabsClosable(False)
         
         # Add tab widget to main layout
         self.layout1.addWidget(self.tabWidget)
@@ -1000,43 +981,13 @@ class HeatSystemDesignGUI(QMainWindow):
             self.presenter.data_manager, 
             self.presenter.config_manager
         )
-        
-        self.lod2Tab = LOD2Tab(
-            self.presenter.folder_manager, 
-            self.presenter.data_manager, 
-            self.presenter.config_manager
-        )
-        
-        self.renovationTab = RenovationTab(
-            self.presenter.folder_manager, 
-            self.presenter.data_manager, 
-            self.presenter.config_manager
-        )
-
         # Add tabs to interface with proper German localization
-        self.add_tab_to_menu(self.projectTab, "Projektdefinition")
-        self.add_tab_to_menu(self.buildingTab, "Wärmebedarf Gebäude")
-        self.add_tab_to_menu(self.visTab2, "Kartenansicht Wärmenetzgenerierung")
-        self.add_tab_to_menu(self.calcTab, "Wärmenetzberechnung")
-        self.add_tab_to_menu(self.energySystemTab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
-        self.add_tab_to_menu(self.comparisonTab, "Variantenvergleich")
-        self.add_tab_to_menu(self.lod2Tab, "Verarbeitung LOD2-Daten")
-        self.add_tab_to_menu(self.renovationTab, "Gebäudesanierung")
-
-        # Define default visible tabs for standard workflow
-        self.default_visible_tabs = [
-            "Projektdefinition", 
-            "Wärmebedarf Gebäude", 
-            "Kartenansicht Wärmenetzgenerierung",
-            "Wärmenetzberechnung", 
-            "Erzeugerauslegung und Wirtschaftlichkeitsrechnung", 
-            "Variantenvergleich"
-        ]
-
-        # Hide specialized tabs by default to simplify interface
-        for tab_name in self.tab_order:
-            if tab_name not in self.default_visible_tabs:
-                self.toggle_tab_visibility(tab_name)
+        self.tabWidget.addTab(self.projectTab, "Projektdefinition")
+        self.tabWidget.addTab(self.buildingTab, "Wärmebedarf Gebäude")
+        self.tabWidget.addTab(self.visTab2, "Kartenansicht Wärmenetzgenerierung")
+        self.tabWidget.addTab(self.calcTab, "Wärmenetzberechnung")
+        self.tabWidget.addTab(self.energySystemTab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
+        self.tabWidget.addTab(self.comparisonTab, "Variantenvergleich")
 
     def initLogo(self) -> None:
         """
@@ -1711,79 +1662,6 @@ class HeatSystemDesignGUI(QMainWindow):
             # Handle import errors with specific information
             self.show_error_message(f"Fehler beim Laden der Projektdaten: {str(e)}")
 
-    def on_pdf_export(self) -> None:
-        """
-        Handle professional PDF report generation with user file selection.
-
-        This method manages the complete PDF export workflow, including file
-        selection, report generation, and user feedback. It creates comprehensive
-        documentation of analysis results suitable for professional reporting
-        and project documentation requirements.
-
-        Export Process:
-            
-            1. **File Selection**: User chooses export location and filename
-            2. **Data Compilation**: Aggregates results from all analysis tabs
-            3. **Report Generation**: Creates professional PDF documentation
-            4. **Success Confirmation**: Provides user feedback and file location
-
-        Notes
-        -----
-        Professional Report Features:
-            
-            **Comprehensive Documentation**:
-            - Aggregates results from all active analysis tabs
-            - Includes charts, tables, and technical specifications
-            - Professional formatting suitable for client presentation
-            - Standardized layout and branding consistency
-            
-            **Error Handling**:
-            - Robust error handling with detailed error reporting
-            - Graceful failure with specific problem identification
-            - User-friendly error messages with troubleshooting guidance
-            - Detailed stack traces for development debugging
-            
-            **User Experience**:
-            - Intuitive file selection with appropriate defaults
-            - Clear success confirmation with file location
-            - Professional PDF quality suitable for official documentation
-            - Integration with project workflow and result management
-        """
-        # Determine default export path and filename
-        default_path = os.path.join(
-            self.base_path, 
-            self.presenter.config_manager.get_relative_path("results_PDF_path")
-        )
-        
-        # Present file save dialog to user
-        filename, _ = QFileDialog.getSaveFileName(
-            self, 
-            'PDF speichern als...', 
-            default_path, 
-            filter='PDF Files (*.pdf)'
-        )
-        
-        if filename:
-            try:
-                # Generate comprehensive PDF report
-                create_pdf(self, filename)
-                
-                # Provide success confirmation
-                QMessageBox.information(
-                    self, 
-                    "PDF erfolgreich erstellt", 
-                    f"Die Ergebnisse wurden erfolgreich in {filename} gespeichert."
-                )
-                
-            except Exception as e:
-                # Handle export errors with detailed information
-                error_message = traceback.format_exc()
-                QMessageBox.critical(
-                    self, 
-                    "Speicherfehler", 
-                    f"Fehler beim Speichern als PDF:\n{error_message}\n\n{str(e)}"
-                )
-
     # Theme and Appearance Methods
     # ============================
 
@@ -2046,336 +1924,3 @@ class HeatSystemDesignGUI(QMainWindow):
         QMessageBox.information : Underlying Qt message box functionality
         """
         QMessageBox.information(self, "Info", message)
-
-    def add_tab_to_menu(self, tab_widget: QWidget, tab_name: str) -> None:
-        """
-        Add a new analysis tab to the interface with integrated menu control system.
-
-        This method creates a new tab in the main interface while simultaneously
-        establishing menu-based visibility control. It maintains proper tab ordering,
-        creates corresponding menu actions, and ensures seamless integration with
-        the dynamic tab management system.
-
-        Parameters
-        ----------
-        tab_widget : QWidget
-            The widget instance representing the tab content.
-            Must be a properly initialized tab class with complete functionality.
-        tab_name : str
-            Display name for the tab and corresponding menu item.
-            Should be descriptive and follow German localization conventions.
-
-        Notes
-        -----
-        Tab Management Architecture:
-            
-            **Integrated Tab System**:
-            - Adds tab to main tab widget with proper labeling
-            - Creates corresponding menu action for visibility control
-            - Maintains tab ordering for consistent user experience
-            - Stores menu actions for dynamic tab management
-            
-            **Menu Integration**:
-            - Creates checkable menu action for each tab
-            - Connects menu action to tab visibility toggle functionality
-            - Maintains menu state synchronization with tab visibility
-            - Provides professional menu-based interface control
-
-        Dynamic Tab Control Features:
-            
-            **Visibility Management**:
-            - Tab visibility controlled through menu checkbox actions
-            - Maintains tab widget references for restoration
-            - Preserves tab ordering during hide/show operations
-            - Supports workflow customization through selective tab display
-            
-            **State Persistence**:
-            - Menu actions remain synchronized with tab visibility
-            - Tab ordering preserved across hide/show cycles
-            - Proper cleanup and restoration of tab states
-            - Integration with user preference systems
-
-        Implementation Details:
-            
-            **Tab Ordering System**:
-            - Maintains `self.tab_order` list for consistent tab sequence
-            - Prevents duplicate entries in tab ordering system
-            - Supports proper insertion during tab restoration
-            - Enables predictable tab layout for user familiarity
-            
-            **Menu Action Management**:
-            - Stores menu actions in `self.menu_actions` dictionary
-            - Enables programmatic menu state control
-            - Supports dynamic menu updates and modifications
-            - Facilitates integration with application configuration
-
-        Examples
-        --------
-        **Standard Tab Addition**:
-
-            >>> # Add building analysis tab to interface
-            >>> building_tab = BuildingTab(folder_manager, data_manager, config_manager)
-            >>> self.add_tab_to_menu(building_tab, "Wärmebedarf Gebäude")
-
-        **Energy System Tab Addition**:
-
-            >>> # Add energy system design tab
-            >>> energy_tab = EnergySystemTab(folder_manager, data_manager, config_manager, self)
-            >>> self.add_tab_to_menu(energy_tab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
-
-        **Specialized Analysis Tab**:
-
-            >>> # Add LOD2 processing tab (typically hidden by default)
-            >>> lod2_tab = LOD2Tab(folder_manager, data_manager, config_manager)
-            >>> self.add_tab_to_menu(lod2_tab, "Verarbeitung LOD2-Daten")
-
-        See Also
-        --------
-        toggle_tab_visibility : Toggle individual tab visibility state
-        hide_tab : Hide specific tab through user interface interaction
-        initTabs : Initialize complete tab system with all analysis modules
-        """
-        # Maintain consistent tab ordering across application sessions
-        if tab_name not in self.tab_order:
-            self.tab_order.append(tab_name)
-
-        # Add tab to main tab widget with proper labeling
-        self.tabWidget.addTab(tab_widget, tab_name)
-
-        # Create menu action for tab visibility control
-        action = QAction(tab_name, self)
-        action.setCheckable(True)  # Enable checkbox behavior
-        action.setChecked(True)    # Default to visible state
-        action.triggered.connect(lambda checked: self.toggle_tab_visibility(tab_name))
-        
-        # Add action to tabs menu for user access
-        self.tabsMenu.addAction(action)
-
-        # Store action reference for programmatic control
-        self.menu_actions[tab_name] = action
-
-    def toggle_tab_visibility(self, tab_name: str) -> None:
-        """
-        Toggle tab visibility state with preservation of tab content and ordering.
-
-        This method provides dynamic tab management by hiding or showing tabs
-        based on their current visibility state. It maintains tab content integrity,
-        preserves original ordering, and synchronizes menu states for consistent
-        user interface behavior.
-
-        Parameters
-        ----------
-        tab_name : str
-            Name of the tab to toggle visibility for.
-            Must match an existing tab name in the tab system.
-
-        Tab Visibility Management:
-            
-            **Hide Operation**:
-            - Removes tab from visible interface
-            - Preserves tab widget and original position information
-            - Updates menu action state to unchecked
-            - Stores tab reference for later restoration
-            
-            **Show Operation**:
-            - Restores tab to original position in tab sequence
-            - Maintains tab content and state integrity
-            - Updates menu action state to checked
-            - Activates restored tab for immediate user access
-
-        State Preservation System:
-            
-            **Hidden Tab Storage**:
-            - `self.hidden_tabs` dictionary maps tab names to (widget, index) tuples
-            - Preserves both tab content and original position information
-            - Enables perfect restoration of tab layout and ordering
-            - Supports multiple tabs hidden/shown simultaneously
-            
-            **Ordering Maintenance**:
-            - Uses `self.tab_order` list to determine proper insertion position
-            - Maintains consistent tab sequence regardless of hide/show operations
-            - Ensures predictable user interface behavior
-            - Supports user workflow customization through selective tab display
-
-        User Experience Benefits:
-            
-            **Workflow Customization**:
-            - Users can hide specialized tabs not relevant to their workflow
-            - Reduces interface complexity for focused analysis work
-            - Maintains full functionality while simplifying interface
-            - Supports both novice and expert user preferences
-            
-            **Professional Interface Management**:
-            - Smooth tab transitions without interface disruption
-            - Immediate visual feedback through menu state changes
-            - Consistent behavior across all tab types and content
-            - Integration with application theme and styling systems
-
-        Notes
-        -----
-        Technical Implementation:
-            
-            **Tab Widget Management**:
-            - Uses QTabWidget.insertTab() for proper position restoration
-            - Maintains tab index consistency during hide/show operations
-            - Handles tab activation for improved user experience
-            - Supports closeable tabs with proper restoration functionality
-            
-            **Menu Synchronization**:
-            - Automatically updates menu action checked state
-            - Maintains visual consistency between tabs and menu
-            - Supports programmatic tab control through menu actions
-            - Enables keyboard shortcuts and accessibility features
-
-        Examples
-        --------
-        **Hide Specialized Tab**:
-
-            >>> # Hide LOD2 processing tab for basic workflow
-            >>> self.toggle_tab_visibility("Verarbeitung LOD2-Daten")
-            >>> # Tab is hidden, menu unchecked, content preserved
-
-        **Show Previously Hidden Tab**:
-
-            >>> # Restore renovation analysis tab
-            >>> self.toggle_tab_visibility("Gebäudesanierung") 
-            >>> # Tab restored to original position, menu checked, tab activated
-
-        **Workflow Customization**:
-
-            >>> # Hide all specialized tabs for basic analysis workflow
-            >>> specialized_tabs = [
-            ...     "Verarbeitung LOD2-Daten",
-            ...     "Gebäudesanierung", 
-            ...     "Einzelversorgungslösung"
-            ... ]
-            >>> for tab_name in specialized_tabs:
-            ...     self.toggle_tab_visibility(tab_name)
-
-        See Also
-        --------
-        add_tab_to_menu : Add new tabs with menu integration
-        hide_tab : Hide tab through direct user interface interaction
-        initTabs : Complete tab system initialization with default visibility
-        """
-        # Check if tab is currently hidden
-        if tab_name in self.hidden_tabs:
-            # Restore previously hidden tab
-            restored_tab, original_index = self.hidden_tabs.pop(tab_name)
-
-            # Find proper insertion position based on tab ordering
-            insertion_index = 0
-            for i, name in enumerate(self.tab_order):
-                if name == tab_name:
-                    insertion_index = i
-                    break
-                
-            # Insert tab at correct position and activate
-            self.tabWidget.insertTab(insertion_index, restored_tab, tab_name)
-            self.tabWidget.setCurrentIndex(insertion_index)
-            
-            # Update menu action to checked state
-            self.menu_actions[tab_name].setChecked(True)
-            
-        else:
-            # Hide currently visible tab
-            for index in range(self.tabWidget.count()):
-                if self.tabWidget.tabText(index) == tab_name:
-                    # Remove tab and store reference with position
-                    tab_widget = self.tabWidget.widget(index)
-                    self.hidden_tabs[tab_name] = (tab_widget, index)
-                    self.tabWidget.removeTab(index)
-                    break
-                    
-            # Update menu action to unchecked state
-            self.menu_actions[tab_name].setChecked(False)
-
-    def hide_tab(self, tab_index: int) -> None:
-        """
-        Hide a specific tab through direct user interface interaction.
-
-        This method handles tab hiding when users click the close button (X) on
-        individual tabs. It serves as a bridge between direct user interaction
-        and the comprehensive tab visibility management system.
-
-        Parameters
-        ----------
-        tab_index : int
-            Index of the tab to hide in the current tab widget.
-            Corresponds to the visible position of the tab in the interface.
-
-        User Interaction Integration:
-            
-            **Close Button Handling**:
-            - Responds to user clicking the X button on tabs
-            - Provides immediate visual feedback for tab closure
-            - Maintains consistency with tab menu-based hiding
-            - Preserves tab content for later restoration
-            
-            **Interface Consistency**:
-            - Ensures consistent behavior between different hiding methods
-            - Maintains menu state synchronization with tab visibility
-            - Supports both close button and menu-based tab management
-            - Provides unified tab management experience
-
-        Technical Implementation:
-            
-            **Tab Index Resolution**:
-            - Converts tab index to tab name for system consistency
-            - Handles dynamic tab indexing during hide/show operations
-            - Maintains proper tab identification across interface changes
-            - Supports both programmatic and user-initiated tab management
-            
-            **System Integration**:
-            - Leverages existing toggle_tab_visibility infrastructure
-            - Maintains all state preservation and restoration capabilities
-            - Ensures consistent behavior across all tab management methods
-            - Supports comprehensive tab management features
-
-        Notes
-        -----
-        This method serves as an adapter between Qt's tab close signal and
-        the application's comprehensive tab management system. It ensures
-        that tabs closed via the close button receive the same treatment
-        as tabs hidden through menu actions.
-
-        User Experience Benefits:
-            
-            **Intuitive Interface**:
-            - Familiar close button behavior for immediate tab removal
-            - Consistent with standard GUI conventions
-            - Clear visual feedback for user actions
-            - Professional interface behavior expectations
-            
-            **Flexible Tab Management**:
-            - Multiple methods for tab visibility control
-            - User choice in tab management approach
-            - Support for different user preferences and workflows
-            - Comprehensive tab restoration capabilities
-
-        Examples
-        --------
-        **Tab Widget Configuration**:
-
-            >>> # Configure tab widget with closeable tabs
-            >>> self.tabWidget = QTabWidget()
-            >>> self.tabWidget.setTabsClosable(True)
-            >>> self.tabWidget.tabCloseRequested.connect(self.hide_tab)
-
-        **Direct Usage** (typically called internally):
-
-            >>> # Hide tab at index 2 (third visible tab)
-            >>> self.hide_tab(2)
-            >>> # Tab is hidden, content preserved, menu updated
-
-        See Also
-        --------
-        toggle_tab_visibility : Core tab visibility management functionality
-        add_tab_to_menu : Add tabs with integrated menu control
-        QTabWidget.setTabsClosable : Enable close buttons on tabs
-        """
-        # Convert tab index to tab name for system consistency
-        tab_name = self.tabWidget.tabText(tab_index)
-        
-        # Use existing toggle system for consistent behavior
-        self.toggle_tab_visibility(tab_name)
