@@ -545,13 +545,19 @@ class EnergySystemTab(QWidget):
             error_details = traceback.format_exc()
             QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der JSON-Datei: {e}\n\nDetails:\n{error_details}")
 
-    def load_results_JSON(self):
+    def load_results_JSON(self, show_dialog=True):
         """
         Loads the EnergySystem object and its results from a JSON file.
+        
+        Parameters
+        ----------
+        show_dialog : bool, optional
+            Whether to show success/error dialogs. Default is True.
         """
         json_filename = os.path.join(self.base_path, self.config_manager.get_relative_path("results_path"))
         if not json_filename:
-            QMessageBox.warning(self, "Fehler", "Pfad für Ergebnisse konnte nicht ermittelt werden.")
+            if show_dialog:
+                QMessageBox.warning(self, "Fehler", "Pfad für Ergebnisse konnte nicht ermittelt werden.")
             return
 
         try:
@@ -560,7 +566,9 @@ class EnergySystemTab(QWidget):
 
             self.process_data()
 
-            QMessageBox.information(self, "Erfolgreich geladen", f"Die Ergebnisse wurden erfolgreich aus {json_filename} geladen.")
+            if show_dialog:
+                QMessageBox.information(self, "Erfolgreich geladen", f"Die Ergebnisse wurden erfolgreich aus {json_filename} geladen.")
         except ValueError as e:
-            QMessageBox.critical(self, "Ladefehler", str(e))
+            if show_dialog:
+                QMessageBox.critical(self, "Ladefehler", str(e))
 

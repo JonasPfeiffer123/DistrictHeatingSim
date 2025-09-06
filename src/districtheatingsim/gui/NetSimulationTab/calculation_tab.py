@@ -546,8 +546,14 @@ class CalculationTab(QWidget):
         else:
             QMessageBox.warning(self, "Keine Daten", "Kein Pandapipes-Netzwerk zum Speichern vorhanden.")
 
-    def loadNet(self):
-        """Load network data from saved files."""
+    def loadNet(self, show_dialog=True):
+        """Load network data from saved files.
+        
+        Parameters
+        ----------
+        show_dialog : bool, optional
+            Whether to show success/error dialogs. Default is True.
+        """
         try:
             data_path = self.get_data_path()
             pickle_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('pp_pickle_file_path'))
@@ -600,13 +606,23 @@ class CalculationTab(QWidget):
             self.update_time_series_plot()
             self.display_results()
 
-            QMessageBox.information(self, "Laden erfolgreich", "Daten erfolgreich geladen aus: {}, {} und {}.".format(csv_file_path, pickle_file_path, json_file_path))
+            if show_dialog:
+                QMessageBox.information(self, "Laden erfolgreich", "Daten erfolgreich geladen aus: {}, {} und {}.".format(csv_file_path, pickle_file_path, json_file_path))
         except Exception as e:
             tb = traceback.format_exc()
-            QMessageBox.critical(self, "Laden fehlgeschlagen", f"Fehler beim Laden der Daten: {e}\n\n{tb}")
+            if show_dialog:
+                QMessageBox.critical(self, "Laden fehlgeschlagen", f"Fehler beim Laden der Daten: {e}\n\n{tb}")
+            else:
+                logging.error(f"Fehler beim Laden der Netzwerk-Daten: {e}\n{tb}")
 
-    def load_net_results(self):
-        """Load network simulation results from CSV file."""
+    def load_net_results(self, show_dialog=True):
+        """Load network simulation results from CSV file.
+        
+        Parameters
+        ----------
+        show_dialog : bool, optional
+            Whether to show warning dialogs. Default is True.
+        """
         if self.NetworkGenerationData:
             results_csv_filepath = os.path.join(self.base_path, self.config_manager.get_relative_path('load_profile_path'))
             
@@ -617,7 +633,7 @@ class CalculationTab(QWidget):
             self.update_time_series_plot()
             self.display_results()
 
-        else:
+        elif show_dialog:
             QMessageBox.warning(self, "Keine Daten", "Kein Pandapipes-Netzwerk zum Laden vorhanden.")
     
     def exportNetGeoJSON(self):

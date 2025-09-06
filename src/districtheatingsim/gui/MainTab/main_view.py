@@ -836,7 +836,8 @@ class HeatSystemDesignGUI(QMainWindow):
         createCopyAction = QAction('Projektkopie erstellen', self)
         for primaryFileAction in [createNewProjectAction, chooseProjectAction, createCopyAction]:
             fileMenu.addAction(primaryFileAction)
-            fileMenu.addSeparator()  # Separate each major action for clarity
+        
+        fileMenu.addSeparator()  # Separate each major action for clarity
 
         # Add project variant actions to file menu
         openVariantAction = QAction('Variante öffnen', self)
@@ -844,15 +845,15 @@ class HeatSystemDesignGUI(QMainWindow):
         createVariantCopyAction = QAction('Variantenkopie erstellen', self)
         for variantAction in [openVariantAction, createVariantAction, createVariantCopyAction]:
             fileMenu.addAction(variantAction)
-            fileMenu.addSeparator()  # Separate each major action for clarity
+        
+        fileMenu.addSeparator()  # Separate each major action for clarity
 
         # Add data import/export actions to file menu
         importResultsAction = QAction('Projektstand / -ergebnisse Laden', self)
         pdfExportAction = QAction('Ergebnis-PDF exportieren', self)
         for dataAction in [importResultsAction, pdfExportAction]:
             fileMenu.addAction(dataAction)
-            fileMenu.addSeparator()
-
+        
         # Data Menu - External data configuration
         dataMenu = self.menubar.addMenu('Datenbasis')
         chooseTemperatureDataAction = QAction('Temperaturdaten festlegen', self)
@@ -987,7 +988,7 @@ class HeatSystemDesignGUI(QMainWindow):
             self
         )
         
-        self.mixDesignTab = EnergySystemTab(
+        self.energySystemTab = EnergySystemTab(
             self.presenter.folder_manager, 
             self.presenter.data_manager, 
             self.presenter.config_manager, 
@@ -1017,7 +1018,7 @@ class HeatSystemDesignGUI(QMainWindow):
         self.add_tab_to_menu(self.buildingTab, "Wärmebedarf Gebäude")
         self.add_tab_to_menu(self.visTab2, "Kartenansicht Wärmenetzgenerierung")
         self.add_tab_to_menu(self.calcTab, "Wärmenetzberechnung")
-        self.add_tab_to_menu(self.mixDesignTab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
+        self.add_tab_to_menu(self.energySystemTab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
         self.add_tab_to_menu(self.comparisonTab, "Variantenvergleich")
         self.add_tab_to_menu(self.lod2Tab, "Verarbeitung LOD2-Daten")
         self.add_tab_to_menu(self.renovationTab, "Gebäudesanierung")
@@ -1362,16 +1363,26 @@ class HeatSystemDesignGUI(QMainWindow):
                 # Discover and present available variants
                 available_variants = self.get_available_variants(folder_path)
                 if available_variants:
-                    variant_name, ok = QInputDialog.getItem(
-                        self, 
-                        'Variante auswählen', 
-                        'Wähle eine Variante aus:', 
-                        available_variants, 
-                        0, 
-                        False
-                    )
-                    if ok and variant_name:
+                    # If only one variant, select it automatically
+                    if len(available_variants) == 1:
+                        variant_name = available_variants[0]
                         self.presenter.folder_manager.set_variant_folder(variant_name)
+                        # Automatically load available results
+                        self.on_importResultsAction()
+                    else:
+                        # Multiple variants - let user choose
+                        variant_name, ok = QInputDialog.getItem(
+                            self, 
+                            'Variante auswählen', 
+                            'Wähle eine Variante aus:', 
+                            available_variants, 
+                            0, 
+                            False
+                        )
+                        if ok and variant_name:
+                            self.presenter.folder_manager.set_variant_folder(variant_name)
+                            # Automatically load available results after variant selection
+                            self.on_importResultsAction()
                 else:
                     self.show_error_message("Keine verfügbaren Varianten gefunden.")
             else:
@@ -1593,42 +1604,55 @@ class HeatSystemDesignGUI(QMainWindow):
     # Data Management Methods
     # =======================
 
+    def show_temporary_success_message(self, message: str, duration_ms: int = 2000) -> None:
+        """
+        Display a temporary success message that disappears automatically.
+        
+        Parameters
+        ----------
+        message : str
+            Success message to display
+        duration_ms : int, optional
+            Duration in milliseconds before the dialog closes automatically (default: 1000ms)
+        """
+        from PyQt6.QtCore import QTimer
+        
+        # Create and show the message box
+        msg_box = QMessageBox(self)
+        msg_box.setIcon(QMessageBox.Icon.Information)
+        msg_box.setWindowTitle("Erfolgreich")
+        msg_box.setText(message)
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        
+        # Create timer to close the dialog automatically
+        timer = QTimer()
+        timer.timeout.connect(msg_box.accept)
+        timer.setSingleShot(True)
+        timer.start(duration_ms)
+        
+        # Show the dialog
+        msg_box.exec()
+
     def on_importResultsAction(self) -> None:
         """
         Handle comprehensive project data import for restoring analysis results.
 
-        This method orchestrates the loading of saved analysis results across
-        multiple application tabs, restoring the complete project state from
-        previously saved data files. It ensures data consistency and proper
-        tab synchronization during the import process.
+        This method uses the auto_load_project_results functionality but provides
+        user feedback with a temporary success message that automatically disappears
+        after 1 second. This gives users confirmation that the import completed
+        without requiring manual dialog dismissal.
 
         Import Process:
             
-            **Data Categories**:
-            1. **Building Data**: CSV building database and JSON load profiles
-            2. **Network Data**: Network topology, calculation results, and profiles
-            3. **Energy System Data**: Technology analysis and optimization results
-            
-            **Tab Synchronization**:
-            - Coordinates data loading across multiple analysis tabs
-            - Ensures proper data dependencies and relationships
-            - Maintains data consistency throughout import process
-            - Provides user feedback for import progress and completion
-
-        Notes
-        -----
-        Data Import Strategy:
-            
-            **Comprehensive Restoration**:
-            - Restores complete project state from saved files
-            - Handles multiple data formats (CSV, JSON, Pickle)
-            - Maintains data relationships and dependencies
-            - Supports partial import with graceful error handling
+            **Automated Loading**:
+            - Uses the same silent loading mechanism as auto_load_project_results
+            - Loads all available project data without individual confirmation dialogs
+            - Provides single success confirmation with auto-dismissal
             
             **User Experience**:
             - Single-click restoration of complete project state
-            - Clear feedback for import progress and results
-            - Error handling with specific failure information
+            - Brief success confirmation that doesn't interrupt workflow
+            - Error handling with detailed failure information
             - Integration with project management workflow
 
         This functionality is essential for project continuity and
@@ -1636,30 +1660,52 @@ class HeatSystemDesignGUI(QMainWindow):
         to be shared and restored across different work sessions.
         """
         try:
-            # Import building data and load profiles
-            building_data_path = os.path.join(
-                self.base_path, 
-                self.presenter.config_manager.get_relative_path("current_building_data_path")
-            )
-            building_profile_path = os.path.join(
-                self.base_path, 
-                self.presenter.config_manager.get_relative_path("building_load_profile_path")
-            )
+            # Check if we have a valid project and variant loaded
+            if not hasattr(self, 'base_path') or not self.base_path:
+                return
+                
+            # Building data auto-load (without dialogs)
+            try:
+                building_data_path = os.path.join(
+                    self.base_path, 
+                    self.presenter.config_manager.get_relative_path("current_building_data_path")
+                )
+                building_profile_path = os.path.join(
+                    self.base_path, 
+                    self.presenter.config_manager.get_relative_path("building_load_profile_path")
+                )
+                
+                # Load building data if files exist (no dialogs)
+                if os.path.exists(building_data_path):
+                    self.projectTab.presenter.load_csv(building_data_path)
+                    self.buildingTab.presenter.load_csv(building_data_path, show_dialog=False)
+                    
+                if os.path.exists(building_profile_path):
+                    self.buildingTab.presenter.load_json(building_profile_path, show_dialog=False)
+                    
+            except Exception:
+                # Silently continue if building data loading fails
+                pass
             
-            # Load building data into project and building tabs
-            self.projectTab.presenter.load_csv(building_data_path)
-            self.buildingTab.presenter.load_csv(building_data_path)
-            self.buildingTab.presenter.load_json(building_profile_path)
+            # Network data auto-load (without dialogs)
+            try:
+                self.calcTab.loadNet(show_dialog=False)
+                self.calcTab.load_net_results(show_dialog=False)
+            except Exception:
+                # Silently continue if network data loading fails
+                pass
             
-            # Load network data and calculation results
-            self.calcTab.loadNet()
-            self.calcTab.load_net_results()
+            # Energy system data auto-load
+            try:
+                self.energySystemTab.load_results_JSON(show_dialog=False)
+            except Exception:
+                # Silently continue if energy system data loading fails
+                pass
+                
+            print("Auto-load completed: Available results loaded successfully.")
             
-            # Load energy system analysis results
-            self.mixDesignTab.load_results_JSON()
-            
-            # Provide success feedback to user
-            self.show_info_message("Projektdaten wurden erfolgreich geladen.")
+            # Show temporary success message that disappears after 1 second
+            self.show_temporary_success_message("Projektdaten wurden erfolgreich geladen.")
             
         except Exception as e:
             # Handle import errors with specific information

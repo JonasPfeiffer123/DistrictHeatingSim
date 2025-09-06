@@ -270,7 +270,7 @@ class BuildingPresenter:
         self.model.set_csv_path(os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("current_building_data_path")))
         self.model.set_json_path(os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("building_load_profile_path")))
 
-    def load_csv(self, fname=None):
+    def load_csv(self, fname=None, show_dialog=True):
         """
         Load CSV file with file dialog.
 
@@ -278,6 +278,8 @@ class BuildingPresenter:
         ----------
         fname : str, optional
             Filename to load.
+        show_dialog : bool, optional
+            Whether to show success/error dialogs. Default is True.
         """
         if fname is None or fname == "":
             fname, _ = QFileDialog.getOpenFileName(self.view, 'Select CSV File', self.model.get_csv_path(), 'CSV Files (*.csv);;All Files (*)')
@@ -286,9 +288,11 @@ class BuildingPresenter:
                 self.model.set_csv_path(fname)
                 self.model.load_csv()
                 self.view.populate_table(self.model.data)
-                self.view.show_message("Erfolg", f"CSV-Datei {fname} wurde geladen.")
+                if show_dialog:
+                    self.view.show_message("Erfolg", f"CSV-Datei {fname} wurde geladen.")
             except Exception as e:
-                self.view.show_error_message("Fehler", str(e))
+                if show_dialog:
+                    self.view.show_error_message("Fehler", str(e))
 
     def save_csv(self, fname=None):
         """
@@ -309,17 +313,22 @@ class BuildingPresenter:
             except Exception as e:
                 self.view.show_error_message("Fehler", str(e))
 
-    def load_json(self, fname=None):
+    def load_json(self, fname=None, show_dialog=True):
         """
-        Load JSON results with file dialog.
+        Load JSON results with optional file dialog.
 
         Parameters
         ----------
         fname : str, optional
             Filename to load.
+        show_dialog : bool, optional
+            Whether to show file dialog if no filename provided. Default is True.
         """
         if fname is None or fname == "":
-            fname, _ = QFileDialog.getOpenFileName(self.view, 'Select JSON File', self.model.get_json_path(), 'JSON Files (*.json);;All Files (*)')
+            if show_dialog:
+                fname, _ = QFileDialog.getOpenFileName(self.view, 'Select JSON File', self.model.get_json_path(), 'JSON Files (*.json);;All Files (*)')
+            else:
+                return
         if fname:
             try:
                 self.model.set_json_path(fname)
