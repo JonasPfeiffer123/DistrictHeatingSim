@@ -117,8 +117,9 @@ import traceback
 from typing import Optional, List, Dict, Any
 
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QTabWidget, QMenuBar, 
-                             QFileDialog, QLabel, QMessageBox, QInputDialog)
-from PyQt6.QtGui import QIcon, QAction
+                             QFileDialog, QLabel, QMessageBox, QInputDialog, QStackedWidget,
+                             QHBoxLayout)
+from PyQt6.QtGui import QIcon, QAction, QFont
 from PyQt6.QtCore import pyqtSlot
 
 from districtheatingsim.gui.ProjectTab.project_tab import ProjectTab
@@ -130,6 +131,7 @@ from districtheatingsim.gui.EnergySystemTab._01_energy_system_main_tab import En
 from districtheatingsim.gui.ComparisonTab.comparison_tab import ComparisonTab
 from districtheatingsim.gui.results_pdf import create_pdf
 from districtheatingsim.gui.dialogs import TemperatureDataDialog, HeatPumpDataDialog
+from districtheatingsim.gui.welcome_screen import WelcomeScreen, ThemeToggleSwitch
 
 from districtheatingsim.gui.LeafletTab.leaflet_tab import VisualizationTabLeaflet
 
@@ -387,6 +389,15 @@ class HeatSystemDesignGUI(QMainWindow):
         self.folder_manager = folder_manager
         self.data_manager = data_manager
         
+        # UI state management
+        self.show_welcome_on_startup = True
+        self.welcome_screen: Optional[WelcomeScreen] = None
+        self.main_interface_widget: Optional[QWidget] = None
+        self.stacked_widget: Optional[QStackedWidget] = None
+        
+        # Theme tracking
+        self.current_theme_is_dark = False  # Track current theme state
+        
         # Initialize UI components (created later in initUI)
         self.folderLabel: Optional[QLabel] = None
         
@@ -445,92 +456,285 @@ class HeatSystemDesignGUI(QMainWindow):
 
     def initUI(self) -> None:
         """
-        Initialize the complete user interface including all components and layouts.
-
-        This method creates the full application interface including menu system,
-        tab management, dialogs, and all visual components. It establishes the
-        professional appearance and functionality expected from engineering software.
-
-        The initialization follows a structured approach:
-        
-        1. **Window Configuration**: Basic window properties and central widget
-        2. **Menu System**: Complete menu bar with all functional categories
-        3. **Tab Interface**: Multi-tab layout with all analysis modules
-        4. **Visual Elements**: Logo, styling, and professional appearance
-        5. **Status Display**: Project folder information and status updates
-        6. **Event Connections**: Signal-slot connections for reactive interface
-
-        Notes
-        -----
-        Interface Layout Structure:
-            
-            **Main Window Layout**:
-            ```
-            ┌─ DistrictHeatingSim ─────────────────────────────────────────┐
-            │ File | Data | Theme | Tabs                                 │
-            │ ├─ Project Definition ─────────────────────────────────────┤ │
-            │ │  [Project configuration and setup interface]           │ │
-            │ ├─ Building Heat Demand ───────────────────────────────────┤ │
-            │ │  [Building analysis and heat demand calculation]       │ │
-            │ ├─ Network Visualization ──────────────────────────────────┤ │
-            │ │  [Interactive map-based network design]                │ │
-            │ ├─ System Calculation ─────────────────────────────────────┤ │
-            │ │  [Hydraulic and thermal network simulation]            │ │
-            │ ├─ Energy System Design ───────────────────────────────────┤ │
-            │ │  [Technology selection and optimization]               │ │
-            │ └─ Economic Analysis ──────────────────────────────────────┤ │
-            │    [Cost analysis and variant comparison]                 │ │
-            │                                                           │
-            │ Current Project: /path/to/project/Variante 1              │
-            └───────────────────────────────────────────────────────────┘
-            ```
-            
-            **Menu System Organization**:
-            - **File Menu**: Project lifecycle management
-            - **Data Menu**: Temperature and heat pump data configuration
-            - **Theme Menu**: Light/dark mode selection
-            - **Tabs Menu**: Dynamic tab visibility control
-
-        Professional Interface Features:
-            
-            **Engineering Software Standards**:
-            - Clean, professional appearance suitable for technical work
-            - Consistent styling and layout across all components
-            - Intuitive workflow guidance through tab organization
-            - Context-sensitive help and user feedback
-            
-            **Responsive Design**:
-            - Adaptive layout for different screen sizes
-            - Proper widget sizing and scaling
-            - Efficient screen space utilization
-            - Professional typography and spacing
+        Initialize the user interface with stacked widget architecture.
         """
         # Configure main window properties
         self.setWindowTitle("DistrictHeatingSim")
-        self.setGeometry(100, 100, 800, 600)
+        self.setGeometry(100, 100, 1400, 1000)
+        
+        # Create central stacked widget to manage views
+        self.stacked_widget = QStackedWidget()
+        self.setCentralWidget(self.stacked_widget)
+        
+        # Create welcome screen
+        self.init_welcome_screen()
+        
+        # Create main interface widget  
+        self.init_main_interface()
+        
+        # Add both views to the stacked widget
+        self.stacked_widget.addWidget(self.welcome_screen)
+        self.stacked_widget.addWidget(self.main_interface_widget)
+        
+        # Show welcome screen by default if enabled
+        if self.show_welcome_on_startup:
+            self.show_welcome_screen()
+        else:
+            self.show_main_interface()
+        
+        # Apply theme (this will work on both views)
+        self.apply_theme()
 
-        # Create central widget and main layout
-        central_widget = QWidget(self)
-        self.setCentralWidget(central_widget)
-        self.layout1 = QVBoxLayout(central_widget)
+    def init_welcome_screen(self) -> None:
+        """Initialize the welcome screen widget."""
+        # Create welcome screen with config manager for recent projects
+        config_manager = None
+        if hasattr(self, 'presenter') and self.presenter:
+            config_manager = self.presenter.folder_manager.config_manager
+        
+        self.welcome_screen = WelcomeScreen(config_manager)
+        
+        # Connect welcome screen signals
+        self.welcome_screen.projectSelected.connect(self.on_project_selected)
+        self.welcome_screen.newProjectRequested.connect(self.on_new_project_requested)
+        self.welcome_screen.themeChangeRequested.connect(self.on_theme_change_requested)
+        
+        # Apply current application theme to welcome screen and sync toggle state
+        if hasattr(self, 'presenter') and self.presenter:
+            self.apply_current_theme_to_welcome_screen()
+            self.sync_theme_toggle_state()
+        
+        # Hide menu bar on welcome screen
+        self.menuBar().hide()
 
-        # Initialize major interface components
-        self.initMenuBar()
-        self.initTabs()
-        self.initLogo()
+    def init_main_interface(self) -> None:
+        """Initialize the main application interface widget."""        
+        # Create main interface widget if not exists
+        if self.main_interface_widget is None:
+            self.main_interface_widget = QWidget()
+            self.layout1 = QVBoxLayout(self.main_interface_widget)
 
-        # Create project status display
-        self.folderLabel = QLabel("Kein Projektordner ausgewählt")
-        self.layout1.addWidget(self.folderLabel)
+            # Initialize major interface components
+            self.initMenuBar()
+            self.initTabs()
+            self.initLogo()
+            
+            # Add theme toggle to the top-right corner
+            self.add_theme_toggle_to_main_interface()
 
-        # Ensure dialogs are properly initialized
-        self.temperatureDataDialog = TemperatureDataDialog(self)
-        self.heatPumpDataDialog = HeatPumpDataDialog(self)
+            # Create project status display
+            self.folderLabel = QLabel("Kein Projektordner ausgewählt")
+            self.layout1.addWidget(self.folderLabel)
 
-        # Connect model signals to view updates for reactive interface
-        self.folder_manager.project_folder_changed.connect(self.update_project_folder_label)
-        self.presenter.folder_manager.project_folder_changed.connect(self.updateTemperatureData)
-        self.presenter.folder_manager.project_folder_changed.connect(self.updateHeatPumpData)
+            # Ensure dialogs are properly initialized
+            self.temperatureDataDialog = TemperatureDataDialog(self)
+            self.heatPumpDataDialog = HeatPumpDataDialog(self)
+
+            # Connect model signals to view updates for reactive interface
+            # Disconnect first to avoid duplicate connections
+            try:
+                self.folder_manager.project_folder_changed.disconnect(self.update_project_folder_label)
+                self.presenter.folder_manager.project_folder_changed.disconnect(self.updateTemperatureData)
+                self.presenter.folder_manager.project_folder_changed.disconnect(self.updateHeatPumpData)
+            except:
+                pass  # Connections might not exist yet
+            
+            # Connect signals
+            self.folder_manager.project_folder_changed.connect(self.update_project_folder_label)
+            self.presenter.folder_manager.project_folder_changed.connect(self.updateTemperatureData)
+            self.presenter.folder_manager.project_folder_changed.connect(self.updateHeatPumpData)
+
+    def show_welcome_screen(self) -> None:
+        """Switch to showing the welcome screen."""
+        if self.stacked_widget and self.welcome_screen:
+            self.stacked_widget.setCurrentWidget(self.welcome_screen)
+            self.menuBar().hide()
+            
+    def show_main_interface(self) -> None:
+        """Switch to showing the main interface."""
+        if self.stacked_widget and self.main_interface_widget:
+            self.stacked_widget.setCurrentWidget(self.main_interface_widget)
+            self.menuBar().show()
+
+    def add_theme_toggle_to_main_interface(self):
+        """Add theme toggle switch to the main interface next to menu bar."""
+        # Create a horizontal layout for menu bar and theme toggle
+        top_bar_widget = QWidget()
+        top_bar_layout = QHBoxLayout()
+        top_bar_layout.setContentsMargins(0, 0, 0, 0)
+        top_bar_layout.setSpacing(0)  # No spacing between menu and toggle
+        
+        # Add menu bar to the left side - it will expand to fill available space
+        top_bar_layout.addWidget(self.menubar, 1)  # stretch factor 1
+        
+        # Create a compact widget for theme toggle elements
+        theme_widget = QWidget()
+        theme_widget.setFixedHeight(self.menubar.sizeHint().height())  # Match menu bar height
+        theme_layout = QHBoxLayout(theme_widget)
+        theme_layout.setContentsMargins(8, 0, 8, 0)  # Small padding on sides
+        theme_layout.setSpacing(5)
+        
+        # Theme toggle elements
+        theme_label = QLabel("☀️")
+        theme_label.setFont(QFont("Arial", 11))
+        theme_layout.addWidget(theme_label)
+        
+        # Create theme toggle for main interface
+        self.main_theme_toggle = ThemeToggleSwitch()
+        self.main_theme_toggle.setToolTip("Switch between Light and Dark theme")
+        self.main_theme_toggle.toggled.connect(self.on_main_theme_toggle)
+        theme_layout.addWidget(self.main_theme_toggle)
+        
+        dark_label = QLabel("🌙")
+        dark_label.setFont(QFont("Arial", 11))
+        theme_layout.addWidget(dark_label)
+        
+        # Add theme widget to the right side without stretch
+        top_bar_layout.addWidget(theme_widget, 0)  # no stretch factor
+        
+        top_bar_widget.setLayout(top_bar_layout)
+        
+        # Replace the menu bar with the combined top bar
+        self.layout1.removeWidget(self.menubar)
+        self.layout1.insertWidget(0, top_bar_widget)
+
+    def on_main_theme_toggle(self, checked):
+        """Handle theme toggle from main interface."""
+        self.current_theme_is_dark = checked
+        
+        if checked:
+            self.applyTheme('dark_theme_style_path')
+        else:
+            self.applyTheme('light_theme_style_path')
+            
+        # Sync welcome screen toggle if it exists
+        if self.welcome_screen:
+            self.welcome_screen.set_current_theme(checked)
+
+    def on_project_selected(self, project_path: str):
+        """Handle project selection from welcome screen."""
+        # Switch to main interface
+        self.show_main_interface()
+        
+        # Sync theme toggle state
+        self.sync_theme_toggle_state()
+        
+        # Use the existing project opening functionality
+        try:
+            # Call the existing method that handles project opening with all the proper logic
+            self.on_open_existing_project(project_path)
+        except Exception as e:
+            print(f"Warning: Could not load project from {project_path}: {e}")
+            # Fallback: just show the main interface
+            pass
+
+    def on_new_project_requested(self):
+        """Handle new project creation request from welcome screen."""
+        # Switch to main interface 
+        self.show_main_interface()
+        
+        # Sync theme toggle state
+        self.sync_theme_toggle_state()
+        
+        # Use the existing new project functionality
+        try:
+            self.on_create_new_project()
+        except Exception as e:
+            print(f"Warning: Could not create new project: {e}")
+            # Fallback: just show the main interface
+            pass
+
+    def on_back_to_welcome(self):
+        """Return to the welcome screen from main interface."""
+        # Simply switch to welcome screen view
+        self.show_welcome_screen()
+        
+        # Refresh the welcome screen with current data and sync theme toggle
+        if self.welcome_screen:
+            self.welcome_screen.refresh_recent_projects()
+            self.sync_theme_toggle_state()
+
+    def on_theme_change_requested(self, theme_path: str):
+        """Handle theme change request from welcome screen."""
+        # Update theme state tracking
+        self.current_theme_is_dark = 'dark' in theme_path.lower()
+        
+        # Apply theme to the entire application
+        self.applyTheme(theme_path)
+        
+        # Update the main interface toggle switch state to reflect the new theme
+        if hasattr(self, 'main_theme_toggle') and self.main_theme_toggle:
+            self.main_theme_toggle.toggled.disconnect(self.on_main_theme_toggle)
+            self.main_theme_toggle.setChecked(self.current_theme_is_dark)
+            self.main_theme_toggle.toggled.connect(self.on_main_theme_toggle)
+
+    def apply_theme(self):
+        """Apply the current theme to both welcome screen and main interface."""
+        try:
+            # Get the current theme from utilities
+            from districtheatingsim.utilities.utilities import get_stylesheet_based_on_time
+            theme_path = get_stylesheet_based_on_time()
+            
+            # Update our theme state tracking
+            self.current_theme_is_dark = 'dark' in theme_path.lower()
+            
+            # Apply theme to the main application
+            if os.path.exists(theme_path):
+                with open(theme_path, 'r', encoding='utf-8') as file:
+                    theme_content = file.read()
+                    self.setStyleSheet(theme_content)
+                    
+                    # Also apply to welcome screen if it exists
+                    if self.welcome_screen:
+                        self.welcome_screen.setStyleSheet(theme_content)
+                        
+            # Sync toggle states
+            self.sync_theme_toggle_state()
+        except Exception as e:
+            print(f"Warning: Could not apply theme: {e}")
+
+    def apply_current_theme_to_welcome_screen(self):
+        """Apply the current application theme to the welcome screen."""
+        if not self.welcome_screen:
+            return
+            
+        try:
+            # Get the current theme from utilities (same logic as main app startup)
+            from districtheatingsim.utilities.utilities import get_stylesheet_based_on_time
+            theme_path = get_stylesheet_based_on_time()
+            
+            # Apply theme to welcome screen
+            if os.path.exists(theme_path):
+                with open(theme_path, 'r', encoding='utf-8') as file:
+                    self.welcome_screen.setStyleSheet(file.read())
+        except Exception as e:
+            print(f"Warning: Could not apply current theme to welcome screen: {e}")
+
+    def sync_theme_toggle_state(self):
+        """Synchronize the theme toggle switch with the current theme."""        
+        try:
+            # First try to use our tracked theme state
+            is_dark_theme = self.current_theme_is_dark
+            
+            # If we don't have tracked state, determine from utilities as fallback
+            if not hasattr(self, 'current_theme_is_dark'):
+                from districtheatingsim.utilities.utilities import get_stylesheet_based_on_time
+                theme_path = get_stylesheet_based_on_time()
+                is_dark_theme = 'dark' in theme_path.lower()
+                self.current_theme_is_dark = is_dark_theme
+            
+            # Set welcome screen toggle state without triggering signals
+            if self.welcome_screen:
+                self.welcome_screen.set_current_theme(is_dark_theme)
+                
+            # Set main interface toggle state without triggering signals
+            if hasattr(self, 'main_theme_toggle') and self.main_theme_toggle:
+                self.main_theme_toggle.toggled.disconnect(self.on_main_theme_toggle)
+                self.main_theme_toggle.setChecked(is_dark_theme)
+                self.main_theme_toggle.toggled.connect(self.on_main_theme_toggle)
+                
+        except Exception as e:
+            print(f"Warning: Could not sync theme toggle state: {e}")
 
     def initMenuBar(self) -> None:
         """
@@ -605,6 +809,11 @@ class HeatSystemDesignGUI(QMainWindow):
         # File Menu - Project and data management
         fileMenu = self.menubar.addMenu('Datei')
 
+        # Back to Welcome Screen action
+        backToWelcomeAction = QAction('🏠 Zurück zum Start', self)
+        fileMenu.addAction(backToWelcomeAction)
+        fileMenu.addSeparator()  # Visual separation from project operations
+
         # Recent Projects submenu with dynamic content
         recentMenu = fileMenu.addMenu('Zuletzt geöffnet')
         recent_projects = self.presenter.folder_manager.config_manager.get_recent_projects()
@@ -621,25 +830,28 @@ class HeatSystemDesignGUI(QMainWindow):
             no_recent_action.setEnabled(False)
             recentMenu.addAction(no_recent_action)
 
-        # Primary file operations
+        # Add primary file actions to file menu
         createNewProjectAction = QAction('Neues Projekt erstellen', self)
         chooseProjectAction = QAction('Projekt öffnen', self)
         createCopyAction = QAction('Projektkopie erstellen', self)
-        
-        # Project variant management
+        for primaryFileAction in [createNewProjectAction, chooseProjectAction, createCopyAction]:
+            fileMenu.addAction(primaryFileAction)
+            fileMenu.addSeparator()  # Separate each major action for clarity
+
+        # Add project variant actions to file menu
         openVariantAction = QAction('Variante öffnen', self)
         createVariantAction = QAction('Variante erstellen', self)
         createVariantCopyAction = QAction('Variantenkopie erstellen', self)
-        
-        # Data management operations
+        for variantAction in [openVariantAction, createVariantAction, createVariantCopyAction]:
+            fileMenu.addAction(variantAction)
+            fileMenu.addSeparator()  # Separate each major action for clarity
+
+        # Add data import/export actions to file menu
         importResultsAction = QAction('Projektstand / -ergebnisse Laden', self)
         pdfExportAction = QAction('Ergebnis-PDF exportieren', self)
-
-        # Add actions to file menu
-        for action in [createNewProjectAction, chooseProjectAction, createCopyAction,
-                      openVariantAction, createVariantAction, createVariantCopyAction,
-                      importResultsAction, pdfExportAction]:
-            fileMenu.addAction(action)
+        for dataAction in [importResultsAction, pdfExportAction]:
+            fileMenu.addAction(dataAction)
+            fileMenu.addSeparator()
 
         # Data Menu - External data configuration
         dataMenu = self.menubar.addMenu('Datenbasis')
@@ -648,21 +860,14 @@ class HeatSystemDesignGUI(QMainWindow):
         dataMenu.addAction(chooseTemperatureDataAction)
         dataMenu.addAction(createCOPDataAction)
 
-        # Theme Menu - Visual appearance control
-        themeMenu = self.menubar.addMenu('Thema')
-        lightThemeAction = QAction('Lichtmodus', self)
-        darkThemeAction = QAction('Dunkelmodus', self)
-        themeMenu.addAction(lightThemeAction)
-        themeMenu.addAction(darkThemeAction)
-
         # Tabs Menu - Dynamic interface control
         self.tabsMenu = self.menubar.addMenu('Tabs')
         self.menu_actions: Dict[str, QAction] = {}  # Store tab control actions
 
-        # Add menu bar to layout
-        self.layout1.addWidget(self.menubar)
+        # Note: Menu bar will be added to layout in add_theme_toggle_to_main_interface()
 
         # Connect menu actions to handler methods
+        backToWelcomeAction.triggered.connect(self.on_back_to_welcome)
         createNewProjectAction.triggered.connect(self.on_create_new_project)
         chooseProjectAction.triggered.connect(self.on_open_existing_project)
         createCopyAction.triggered.connect(self.on_create_project_copy)
@@ -673,8 +878,6 @@ class HeatSystemDesignGUI(QMainWindow):
         pdfExportAction.triggered.connect(self.on_pdf_export)
         chooseTemperatureDataAction.triggered.connect(self.openTemperatureDataSelection)
         createCOPDataAction.triggered.connect(self.openCOPDataSelection)
-        lightThemeAction.triggered.connect(lambda: self.applyTheme('light_theme_style_path'))
-        darkThemeAction.triggered.connect(lambda: self.applyTheme('dark_theme_style_path'))
 
     def initTabs(self) -> None:
         """
@@ -967,11 +1170,16 @@ class HeatSystemDesignGUI(QMainWindow):
         # Store base path for other operations
         self.base_path = base_path
 
-        # Update status label with current project information
-        if base_path:
-            self.folderLabel.setText(f"Ausgewählter Projektordner: {base_path}")
-        else:
-            self.folderLabel.setText("Kein Projektordner ausgewählt")
+        # Update status label with current project information only if label exists and is valid
+        if self.folderLabel is not None:
+            try:
+                if base_path:
+                    self.folderLabel.setText(f"Ausgewählter Projektordner: {base_path}")
+                else:
+                    self.folderLabel.setText("Kein Projektordner ausgewählt")
+            except RuntimeError:
+                # QLabel has been deleted - reset reference
+                self.folderLabel = None
 
     def show_error_message(self, message: str) -> None:
         """
@@ -1585,7 +1793,13 @@ class HeatSystemDesignGUI(QMainWindow):
             if os.path.exists(qss_path):
                 # Load and apply stylesheet
                 with open(qss_path, 'r', encoding='utf-8') as file:
-                    self.setStyleSheet(file.read())
+                    theme_content = file.read()
+                    self.setStyleSheet(theme_content)
+                    
+                    # Also apply to welcome screen if it exists
+                    if self.welcome_screen:
+                        self.welcome_screen.setStyleSheet(theme_content)
+                        
                 print(f"Theme erfolgreich angewendet: {qss_path}")
             else:
                 self.show_error_message(f"Stylesheet {qss_path} nicht gefunden.")
