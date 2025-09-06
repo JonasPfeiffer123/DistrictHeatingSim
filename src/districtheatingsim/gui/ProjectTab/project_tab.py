@@ -624,7 +624,7 @@ class ProjectTabView(QWidget):
         deleteColumnAction.triggered.connect(self.delete_column)
         duplicatColumnAction.triggered.connect(self.duplicate_column)
 
-        contextMenu.exec_(self.csvTable.viewport().mapToGlobal(position))
+        contextMenu.exec(self.csvTable.viewport().mapToGlobal(position))
 
     def add_row(self):
         """Add new table row with input dialog."""

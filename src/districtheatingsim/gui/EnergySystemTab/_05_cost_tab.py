@@ -378,7 +378,7 @@ class CostTab(QWidget):
         """
         menu = QMenu()
         renameAction = menu.addAction("Umbenennen")
-        action = menu.exec_(self.infrastructureCostsTable.verticalHeader().mapToGlobal(position))
+        action = menu.exec(self.infrastructureCostsTable.verticalHeader().mapToGlobal(position))
 
         if action == renameAction:
             row = self.infrastructureCostsTable.verticalHeader().logicalIndexAt(position)
