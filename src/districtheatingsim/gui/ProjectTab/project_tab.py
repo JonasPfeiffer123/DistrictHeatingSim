@@ -291,13 +291,6 @@ class ProjectPresenter:
                     "Ergebnisse\\calculated_heat_generation.csv",
                     "Ergebnisse\\Ergebnisse.json"
                 ]
-            },
-            {
-                "name": "Schritt 6: Dokumentation erstellen",
-                "description": "Erstellen Sie die endgültige Dokumentation und PDF-Berichte.",
-                "required_files": [
-                    "Ergebnisse\\Ergebnisse.pdf"
-                ]
             }
         ]
 
