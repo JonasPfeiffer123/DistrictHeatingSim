@@ -16,21 +16,7 @@
 - Versionierung der Projektergebnisse --> wie erkenntlich machen, wenn Eingangsdaten verändert wurden? --> Auswirkungen auf Ergebnisse
 - Datenhaltung allgemein überdenken
 
-### LOD2-Datenverarbeitung:
-- Versionierung überdenken
-- LOD2-Daten laden --> Exception-Handling bei timeout Nominatim geocoding
-
-### Einzelversorgungslösungen
-- UI-Integration
-
-### Ergebnispräsentation:
-- Feedback welche Daten geladen sind und ausgegeben werden.
-- PDF-Ausgabe noch weiter ausarbeiten und visuell verbessern.
-
 ## Funktionalitäten:
-### LOD2-Datenverarbeitung:
-- Berechnungsvorgehen überprüfen, Vereinfachungen Herausheben, Detaillierungen vorschlagen
-
 ### Wärmenetzgenerierung:
 - Dateistruktur überdenken
 - GeoJSON für Netzbestandteile
