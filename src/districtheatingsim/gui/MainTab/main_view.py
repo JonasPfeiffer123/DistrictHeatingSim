@@ -534,7 +534,10 @@ class HeatSystemDesignGUI(QMainWindow):
             self.presenter.folder_manager.project_folder_changed.connect(self.updateHeatPumpData)
 
     def show_welcome_screen(self) -> None:
-        """Switch to showing the welcome screen."""
+        """
+        Zeige den Welcome Screen und setze base_path auf leer.
+        """
+        self.base_path = ""
         if self.stacked_widget and self.welcome_screen:
             self.stacked_widget.setCurrentWidget(self.welcome_screen)
             self.menuBar().hide()
@@ -554,7 +557,7 @@ class HeatSystemDesignGUI(QMainWindow):
         top_bar_layout.setSpacing(0)  # No spacing between menu and toggle
         
         # Add menu bar to the left side - it will expand to fill available space
-        top_bar_layout.addWidget(self.menubar, 1)  # stretch factor 1
+        top_bar_layout.addWidget(self.menubar, 1) # stretch factor 1
         
         # Create a compact widget for theme toggle elements
         theme_widget = QWidget()
@@ -634,10 +637,14 @@ class HeatSystemDesignGUI(QMainWindow):
             pass
 
     def on_back_to_welcome(self):
-        """Return to the welcome screen from main interface."""
-        # Simply switch to welcome screen view
+        """
+        Return to the welcome screen from main interface.
+        Save all project results before switching to welcome screen (if project loaded).
+        """
+        if hasattr(self, 'base_path') and self.base_path:
+            self.save_all_project_results()
+        self.base_path = ""
         self.show_welcome_screen()
-        
         # Refresh the welcome screen with current data and sync theme toggle
         if self.welcome_screen:
             self.welcome_screen.refresh_recent_projects()
@@ -1168,37 +1175,10 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         QMessageBox.critical(self, "Fehler", message)
 
-    def show_info_message(self, message: str) -> None:
-        """
-        Display informational messages with consistent professional styling.
-
-        This method provides standardized informational feedback to users,
-        complementing the error message system with positive confirmation
-        and status updates for successful operations.
-
-        Parameters
-        ----------
-        message : str
-            Informational message text to display to the user.
-            Typically used for success confirmations and status updates.
-
-        Notes
-        -----
-        Information Display Standards:
-            
-            **Positive User Feedback**:
-            - Success confirmation for completed operations
-            - Status updates for long-running processes
-            - Helpful tips and guidance messages
-            - Professional communication tone
-            
-            **Interface Consistency**:
-            - Standardized information dialog appearance
-            - Consistent with error message styling
-            - Proper modal behavior and user interaction
-            - Seamless integration with application theme
-        """
-        QMessageBox.information(self, "Info", message)
+    def show_message(self, title: str, message: str) -> None:
+        """Show a success/info message dialog."""
+        from PyQt6.QtWidgets import QMessageBox
+        QMessageBox.information(self, title, message)
 
     # Project Management Methods
     # ==========================
@@ -1262,6 +1242,7 @@ class HeatSystemDesignGUI(QMainWindow):
     def on_open_existing_project(self, folder_path: Optional[str] = None) -> None:
         """
         Handle opening existing projects with variant selection support.
+        Before switching, save all current project results.
 
         This method manages the complete project opening workflow, including
         folder selection, variant discovery, and user choice collection.
@@ -1307,6 +1288,9 @@ class HeatSystemDesignGUI(QMainWindow):
             )
 
         try:
+            if self.base_path is not None:
+                # Save current project before switching
+                self.save_all_project_results()
             # Validate project path and proceed with opening
             if folder_path and os.path.exists(folder_path):
                 self.presenter.open_existing_project(folder_path)
@@ -1435,6 +1419,7 @@ class HeatSystemDesignGUI(QMainWindow):
     def on_open_variant(self) -> None:
         """
         Handle opening specific variants within the current project context.
+        Before switching, save all current project results.
 
         This method provides variant switching functionality within an already
         open project, allowing users to easily navigate between different
@@ -1469,6 +1454,7 @@ class HeatSystemDesignGUI(QMainWindow):
             self.show_error_message("Kein Projektordner ausgewählt.")
             return
 
+        self.save_all_project_results()
         # Discover available variants in current project
         available_variants = self.get_available_variants(project_folder)
 
@@ -1662,6 +1648,63 @@ class HeatSystemDesignGUI(QMainWindow):
             # Handle import errors with specific information
             self.show_error_message(f"Fehler beim Laden der Projektdaten: {str(e)}")
 
+    def save_all_project_results(self) -> None:
+        """
+        Zentrale Speicherlogik für alle Projektergebnisse.
+        Ruft die jeweiligen Save-Methoden der einzelnen Tabs/Presenter auf.
+        Sollte vor dem Schließen der Anwendung und beim Wechsel des Projekts/Variante aufgerufen werden.
+        Vor dem Speichern wird ein Warn-Dialog angezeigt, der auf fehlende Versionierung und mögliche Überschreibung hinweist.
+        Bricht der Nutzer den Dialog ab, wird die Aktion abgebrochen.
+        """
+        reply = QMessageBox.warning(
+            self,
+            "Achtung: Daten werden überschrieben!",
+            "Mit dieser Aktion werden alle aktuellen Projektdaten überschrieben. Es ist noch keine Versionierung implementiert. Möchten Sie fortfahren?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Cancel
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            # Aktion abbrechen, falls der Nutzer abbricht
+            return
+
+        errors = []
+        try:
+            # Gebäudedaten speichern
+            if hasattr(self, 'projectTab') and hasattr(self.projectTab.presenter, 'save_csv'):
+                try:
+                    self.projectTab.presenter.save_csv(show_dialog=False)
+                except Exception as e:
+                    errors.append(f"ProjektTab: {str(e)}")
+            if hasattr(self, 'buildingTab') and hasattr(self.buildingTab.presenter, 'save_csv'):
+                try:
+                    self.buildingTab.presenter.save_csv(show_dialog=False)
+                except Exception as e:
+                    errors.append(f"BuildingTab: {str(e)}")
+            # Netzdaten speichern
+            if hasattr(self, 'calcTab') and hasattr(self.calcTab, 'saveNet'):
+                try:
+                    self.calcTab.saveNet(show_dialog=False)
+                except Exception as e:
+                    errors.append(f"CalcTab: {str(e)}")
+            if hasattr(self, 'calcTab') and hasattr(self.calcTab, 'exportNetGeoJSON'):
+                try:
+                    self.calcTab.exportNetGeoJSON(show_dialog=False)
+                except Exception as e:
+                    errors.append(f"CalcTab GeoJSON: {str(e)}")
+            # Energiesystem speichern
+            if hasattr(self, 'energySystemTab') and hasattr(self.energySystemTab, 'save_results_JSON'):
+                try:
+                    self.energySystemTab.save_results_JSON(show_dialog=False)
+                except Exception as e:
+                    errors.append(f"EnergySystemTab: {str(e)}")
+            # Weitere Tabs nach Bedarf ergänzen
+        except Exception as e:
+            errors.append(f"Allgemeiner Fehler: {str(e)}")
+        if errors:
+            self.show_error_message("Fehler beim Speichern der Projektdaten:\n" + "\n".join(errors))
+        else:
+            self.show_message("Erfolg", "Alle Projektdaten wurden erfolgreich gespeichert.")
+
     # Theme and Appearance Methods
     # ============================
 
@@ -1833,7 +1876,7 @@ class HeatSystemDesignGUI(QMainWindow):
         Data Update Process:
             
             **Performance Data Integration**:
-            - Extracts heat pump COP data selection from dialog
+            - Extracts heat pump COP data from dialog
             - Validates performance data format and completeness
             - Updates central data manager with new performance characteristics
             - Triggers recalculation of heat pump-dependent analyses
@@ -1924,3 +1967,12 @@ class HeatSystemDesignGUI(QMainWindow):
         QMessageBox.information : Underlying Qt message box functionality
         """
         QMessageBox.information(self, "Info", message)
+
+    def closeEvent(self, event):
+        """
+        Save all project results before closing the application.
+        Only if a project is loaded.
+        """
+        if hasattr(self, 'base_path') and self.base_path:
+            self.save_all_project_results()
+        event.accept()

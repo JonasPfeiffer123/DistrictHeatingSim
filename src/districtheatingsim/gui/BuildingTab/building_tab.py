@@ -246,7 +246,8 @@ class BuildingPresenter:
 
         # Connect signals
         self.folder_manager.project_folder_changed.connect(self.standard_path)
-        self.standard_path(self.folder_manager.variant_folder)
+        if self.folder_manager.variant_folder:
+            self.standard_path(self.folder_manager.variant_folder)
 
         self.view.load_csv_signal.connect(self.load_csv)
         self.view.save_csv_signal.connect(self.save_csv)
@@ -266,9 +267,10 @@ class BuildingPresenter:
         path : str
             New base path.
         """
-        self.model.set_base_path(path)
-        self.model.set_csv_path(os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("current_building_data_path")))
-        self.model.set_json_path(os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("building_load_profile_path")))
+        if path:
+            self.model.set_base_path(path)
+            self.model.set_csv_path(os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("current_building_data_path")))
+            self.model.set_json_path(os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("building_load_profile_path")))
 
     def load_csv(self, fname=None, show_dialog=True):
         """
@@ -294,7 +296,7 @@ class BuildingPresenter:
                 if show_dialog:
                     self.view.show_error_message("Fehler", str(e))
 
-    def save_csv(self, fname=None):
+    def save_csv(self, fname=None, show_dialog=True):
         """
         Save CSV file with file dialog.
 
@@ -304,14 +306,19 @@ class BuildingPresenter:
             Filename to save.
         """
         if fname is None or fname == "":
-            fname, _ = QFileDialog.getSaveFileName(self.view, 'Save CSV File', self.model.get_csv_path(), 'CSV Files (*.csv);;All Files (*)')
+            if show_dialog:
+                fname, _ = QFileDialog.getSaveFileName(self.view, 'Save CSV File', self.model.get_csv_path(), 'CSV Files (*.csv);;All Files (*)')
+            else:
+                fname = self.model.get_csv_path()
         if fname:
             try:
                 self.model.set_csv_path(fname)
                 self.model.save_csv()
-                self.view.show_message("Erfolg", f"CSV-Datei wurde in {fname} gespeichert.")
+                if show_dialog:
+                    self.view.show_message("Erfolg", f"CSV-Datei wurde in {fname} gespeichert.")
             except Exception as e:
-                self.view.show_error_message("Fehler", str(e))
+                if show_dialog:
+                    self.view.show_error_message("Fehler", str(e))
 
     def load_json(self, fname=None, show_dialog=True):
         """
@@ -338,7 +345,7 @@ class BuildingPresenter:
             except Exception as e:
                 self.view.show_error_message("Fehler", str(e))
 
-    def save_json(self, fname=None):
+    def save_json(self, fname=None, show_dialog=True):
         """
         Save JSON results with file dialog.
 
@@ -352,14 +359,19 @@ class BuildingPresenter:
             return
         
         if fname is None or fname == "":
-            fname, _ = QFileDialog.getSaveFileName(self.view, 'Save JSON File', self.model.get_json_path(), 'JSON Files (*.json);;All Files (*)')
+            if show_dialog:
+                fname, _ = QFileDialog.getSaveFileName(self.view, 'Save JSON File', self.model.get_json_path(), 'JSON Files (*.json);;All Files (*)')
+            else:
+                fname = self.model.get_json_path()
         if fname:
             try:
                 self.model.set_json_path(fname)
                 self.model.save_json(self.combined_data)
-                self.view.show_message("Erfolg", f"Ergebnisse wurden in {fname} gespeichert.")
+                if show_dialog:
+                    self.view.show_message("Erfolg", f"Ergebnisse wurden in {fname} gespeichert.")
             except Exception as e:
-                self.view.show_error_message("Fehler", str(e))
+                if show_dialog:
+                    self.view.show_error_message("Fehler", str(e))
 
     def calculate_heat_demand(self, _=None):
         """Calculate heat demand profiles and save results."""

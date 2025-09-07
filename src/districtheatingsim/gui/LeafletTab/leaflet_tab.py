@@ -253,7 +253,8 @@ class VisualizationPresenter(QObject):
         self.view.osmBuildingAction.triggered.connect(self.open_osm_building_query_dialog)
 
         # Initialize map view
-        self.on_project_folder_changed(self.folder_manager.variant_folder)
+        if self.folder_manager.variant_folder:
+            self.on_project_folder_changed(self.folder_manager.variant_folder)
 
         # HTML-Karte wird geladen (Annahme: HTML-Datei ist vorbereitet)
         self.map_file_path = self.model.get_resource_path("leaflet\\map.html")
@@ -268,7 +269,8 @@ class VisualizationPresenter(QObject):
         new_base_path : str
             New base path.
         """
-        self.model.set_base_path(new_base_path)
+        if new_base_path:
+            self.model.set_base_path(new_base_path)
 
     def open_geocode_addresses_dialog(self):
         """Open dialog to select CSV file for geocoding addresses."""

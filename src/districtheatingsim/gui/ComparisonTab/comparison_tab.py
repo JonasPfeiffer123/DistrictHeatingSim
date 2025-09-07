@@ -41,7 +41,8 @@ class ComparisonTab(QWidget):
 
         # Connect to the data manager signal
         self.folder_manager.project_folder_changed.connect(self.updateDefaultPath)
-        self.updateDefaultPath(self.folder_manager.variant_folder)
+        if self.folder_manager.variant_folder:
+            self.updateDefaultPath(self.folder_manager.variant_folder)
 
         self.initUI()
 
@@ -54,7 +55,8 @@ class ComparisonTab(QWidget):
         new_base_path : str
             New base path.
         """
-        self.base_path = new_base_path
+        if new_base_path:
+            self.base_path = new_base_path
 
     def initUI(self):
         """Initialize user interface with comparison sub-tabs."""
