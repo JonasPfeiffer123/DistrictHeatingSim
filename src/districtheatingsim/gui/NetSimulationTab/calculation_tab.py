@@ -495,7 +495,7 @@ class CalculationTab(QWidget):
         # Kombiniere den Projektpfad mit dem festen Datenpfad
         return os.path.join(project_base_path, "src", "districtheatingsim", "data")
 
-    def saveNet(self):
+    def saveNet(self, show_dialog=True):
         """Save network data to pickle, CSV, and JSON files."""
         if self.NetworkGenerationData:
             try:
@@ -540,11 +540,14 @@ class CalculationTab(QWidget):
                 with open(json_file_path, 'w') as json_file:
                     json.dump(meta_dict, json_file, indent=4, default=str)
                 
-                QMessageBox.information(self, "Speichern erfolgreich", f"Pandapipes Netz erfolgreich gespeichert in: {pickle_file_path}, Daten erfolgreich gespeichert in: {csv_file_path} und {json_file_path}")
+                if show_dialog:
+                    QMessageBox.information(self, "Speichern erfolgreich", f"Pandapipes Netz erfolgreich gespeichert in: {pickle_file_path}, Daten erfolgreich gespeichert in: {csv_file_path} und {json_file_path}")
             except Exception as e:
-                QMessageBox.critical(self, "Speichern fehlgeschlagen", f"Fehler beim Speichern der Daten: {e}")
+                if show_dialog:
+                    QMessageBox.critical(self, "Speichern fehlgeschlagen", f"Fehler beim Speichern der Daten: {e}")
         else:
-            QMessageBox.warning(self, "Keine Daten", "Kein Pandapipes-Netzwerk zum Speichern vorhanden.")
+            if show_dialog:
+                QMessageBox.warning(self, "Keine Daten", "Kein Pandapipes-Netzwerk zum Speichern vorhanden.")
 
     def loadNet(self, show_dialog=True):
         """Load network data from saved files.
@@ -636,13 +639,15 @@ class CalculationTab(QWidget):
         elif show_dialog:
             QMessageBox.warning(self, "Keine Daten", "Kein Pandapipes-Netzwerk zum Laden vorhanden.")
     
-    def exportNetGeoJSON(self):
+    def exportNetGeoJSON(self, show_dialog=True):
         """Export network to GeoJSON format."""
         geoJSON_filepath = os.path.join(self.base_path, self.config_manager.get_relative_path('dimensioned_net_path'))
         if self.NetworkGenerationData:   
             try:
                 export_net_geojson(self.NetworkGenerationData.net, geoJSON_filepath)
                 
-                QMessageBox.information(self, "Speichern erfolgreich", f"Pandapipes Wärmenetz erfolgreich als geoJSON gespeichert in: {geoJSON_filepath}")
+                if show_dialog:
+                    QMessageBox.information(self, "Speichern erfolgreich", f"Pandapipes Wärmenetz erfolgreich als geoJSON gespeichert in: {geoJSON_filepath}")
             except Exception as e:
-                QMessageBox.critical(self, "Speichern fehlgeschlagen", f"Fehler beim Speichern der Daten: {e}")
+                if show_dialog:
+                    QMessageBox.critical(self, "Speichern fehlgeschlagen", f"Fehler beim Speichern der Daten: {e}")

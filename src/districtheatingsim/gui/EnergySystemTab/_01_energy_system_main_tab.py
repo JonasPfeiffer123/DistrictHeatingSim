@@ -514,36 +514,42 @@ class EnergySystemTab(QWidget):
                 QMessageBox.information(self, "Keine Berechnungsergebnisse", "Es sind keine Berechnungsergebnisse verfügbar. Führen Sie zunächst eine Berechnung durch.")
             
     ### Save Calculation Results ###
-    def save_heat_generation_results_to_csv(self):
+    def save_heat_generation_results_to_csv(self, show_dialog=True):
         """
         Saves the heat generation results to a CSV file.
         """
         if not self.energy_system or not self.energy_system.results:
-            QMessageBox.warning(self, "Keine Daten vorhanden", "Es sind keine Berechnungsergebnisse vorhanden, die gespeichert werden könnten.")
+            if show_dialog:
+                QMessageBox.warning(self, "Keine Daten vorhanden", "Es sind keine Berechnungsergebnisse vorhanden, die gespeichert werden könnten.")
             return
 
         try:
             csv_filename = os.path.join(self.base_path, self.config_manager.get_relative_path('calculated_heat_generation_path'))
             self.energy_system.save_to_csv(csv_filename)
-            QMessageBox.information(self, "Erfolgreich gespeichert", f"Die Ergebnisse wurden erfolgreich unter {csv_filename} gespeichert.")
+            if show_dialog:
+                QMessageBox.information(self, "Erfolgreich gespeichert", f"Die Ergebnisse wurden erfolgreich unter {csv_filename} gespeichert.")
         except Exception as e:
-            QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der CSV-Datei: {e}")
+            if show_dialog:
+                QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der CSV-Datei: {e}")
 
-    def save_results_JSON(self):
+    def save_results_JSON(self, show_dialog=True):
         """
         Saves the results and technology objects to a JSON file.
         """
         if not self.energy_system or not self.energy_system.results:
-            QMessageBox.warning(self, "Keine Daten vorhanden", "Es sind keine Berechnungsergebnisse vorhanden, die gespeichert werden könnten.")
+            if show_dialog:
+                QMessageBox.warning(self, "Keine Daten vorhanden", "Es sind keine Berechnungsergebnisse vorhanden, die gespeichert werden könnten.")
             return
 
         try:
             json_filename = os.path.join(self.base_path, self.config_manager.get_relative_path("results_path"))
             self.energy_system.save_to_json(json_filename)
-            QMessageBox.information(self, "Erfolgreich gespeichert", f"Die Ergebnisse wurden erfolgreich unter {json_filename} gespeichert.")
+            if show_dialog:
+                QMessageBox.information(self, "Erfolgreich gespeichert", f"Die Ergebnisse wurden erfolgreich unter {json_filename} gespeichert.")
         except Exception as e:
             error_details = traceback.format_exc()
-            QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der JSON-Datei: {e}\n\nDetails:\n{error_details}")
+            if show_dialog:
+                QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der JSON-Datei: {e}\n\nDetails:\n{error_details}")
 
     def load_results_JSON(self, show_dialog=True):
         """

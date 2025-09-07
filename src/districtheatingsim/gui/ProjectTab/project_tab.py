@@ -303,7 +303,8 @@ class ProjectPresenter:
         self.view.createCSVfromgeojsonAction.triggered.connect(self.create_csv_from_geojson)
         self.view.downloadAction.triggered.connect(self.open_geocode_addresses_dialog)
 
-        self.on_variant_folder_changed(self.folder_manager.variant_folder)
+        if self.folder_manager.variant_folder:
+            self.on_variant_folder_changed(self.folder_manager.variant_folder)
         self.update_progress_tracker()
 
         # Progress update timer
@@ -320,8 +321,9 @@ class ProjectPresenter:
         path : str
             New project folder path.
         """
-        self.model.set_base_path(path)
-        self.view.update_tree_view(os.path.dirname(path))
+        if path:
+            self.model.set_base_path(path)
+            self.view.update_tree_view(os.path.dirname(path))
         self.update_progress_tracker()
 
     def on_tree_view_double_clicked(self, index):
@@ -364,16 +366,23 @@ class ProjectPresenter:
                 item = QTableWidgetItem(data)
                 self.view.csvTable.setItem(row, column, item)
 
-    def save_csv(self):
-        """Save current table data to CSV file."""
+    def save_csv(self, show_dialog=True):
+        """Save current table data to CSV file. If show_dialog is False, use default path and suppress messages."""
         headers = [self.view.csvTable.horizontalHeaderItem(i).text() for i in range(self.view.csvTable.columnCount())]
         data = [[self.view.csvTable.item(row, column).text() if self.view.csvTable.item(row, column) else '' 
                 for column in range(self.view.csvTable.columnCount())] for row in range(self.view.csvTable.rowCount())]
         file_path = self.model.current_file_path
-        if file_path:
+        if not file_path:
+            # Use default path if no file is open
+            file_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("current_building_data_path"))
+            self.model.current_file_path = file_path
+        try:
             self.model.save_csv(file_path, headers, data)
-        else:
-            self.view.show_error_message("Warnung", "Es wurde keine Datei zum Speichern ausgewählt oder erstellt. Zum Speichern muss eine Datei geöffnet oder erstellt werden.")
+            if show_dialog:
+                self.view.show_message("Erfolg", f"CSV-Datei wurde in {file_path} gespeichert.")
+        except Exception as e:
+            if show_dialog:
+                self.view.show_error_message("Fehler", str(e))
 
     def add_row(self):
         """Add new empty row to table."""
@@ -387,16 +396,21 @@ class ProjectPresenter:
         else:
             self.view.show_error_message("Warnung", "Bitte wählen Sie eine Zeile zum Löschen aus.")
 
-    def create_csv(self, fname=None):
-        """Create new CSV file with default building data headers."""
+    def create_csv(self, fname=None, show_dialog=True):
+        """Create new CSV file with default building data headers. If show_dialog is False, use default path and suppress dialog."""
         headers = ['Land', 'Bundesland', 'Stadt', 'Adresse', 'Wärmebedarf', 'Gebäudetyp', "Subtyp", 'WW_Anteil', 'Typ_Heizflächen', 'VLT_max', 'Steigung_Heizkurve', 'RLT_max', "Normaußentemperatur"]
         default_data = ['']*len(headers)
         if not fname:
-            standard_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("current_building_data_path"))
-            fname, _ = QFileDialog.getSaveFileName(self.view, 'Gebäude-CSV erstellen', standard_path, 'CSV Files (*.csv);;All Files (*)')
+            fname = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("current_building_data_path"))
+            if show_dialog:
+                fname_dialog, _ = QFileDialog.getSaveFileName(self.view, 'Gebäude-CSV erstellen', fname, 'CSV Files (*.csv);;All Files (*)')
+                if fname_dialog:
+                    fname = fname_dialog
         if fname:
             self.model.create_csv(fname, headers, default_data)
             self.load_csv(fname)
+            if show_dialog:
+                self.view.show_message("Erfolg", f"CSV-Datei wurde in {fname} erstellt.")
 
     def create_csv_from_geojson(self):
         """Create CSV from GeoJSON with user-defined building parameters."""
@@ -466,11 +480,16 @@ class ProjectPresenter:
         """Update project progress based on file existence."""
         base_path = self.model.get_base_path()
 
-        for step in self.process_steps:
-            full_paths = [os.path.join(base_path, path) for path in step['required_files']]
-            generated_files = [file for file in full_paths if os.path.exists(file)]
-            step['completed'] = len(generated_files) == len(full_paths)
-            step['missing_files'] = [path for path in full_paths if not os.path.exists(path)]
+        if base_path:
+            for step in self.process_steps:
+                full_paths = [os.path.join(base_path, path) for path in step['required_files']]
+                generated_files = [file for file in full_paths if os.path.exists(file)]
+                step['completed'] = len(generated_files) == len(full_paths)
+                step['missing_files'] = [path for path in full_paths if not os.path.exists(path)]
+        else:
+            for step in self.process_steps:
+                step['completed'] = False
+                step['missing_files'] = step['required_files']
 
         total_steps = len(self.process_steps)
         completed_steps = sum(1 for step in self.process_steps if step['completed'])

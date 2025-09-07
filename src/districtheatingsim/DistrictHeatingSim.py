@@ -330,12 +330,6 @@ def main():
         # 3. Display the main window in maximized state
         # 4. Apply appropriate theme based on current time
     
-    **Debug Mode Launch**:
-    
-        >>> import os
-        >>> os.environ['DEBUG'] = '1'  # Enable debug logging
-        >>> main()  # Launch with additional debugging information
-    
     See Also
     --------
     handle_global_exception : Global exception handling function

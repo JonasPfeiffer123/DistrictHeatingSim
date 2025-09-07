@@ -86,7 +86,8 @@ class TechnologyTab(QWidget):
         self.initUI()
 
         self.data_manager.project_folder_changed.connect(self.updateDefaultPath)
-        self.updateDefaultPath(self.data_manager.variant_folder)
+        if self.data_manager.variant_folder:
+            self.updateDefaultPath(self.data_manager.variant_folder)
         self.loadFileAndPlot()
 
     def initFileInputs(self):
@@ -104,10 +105,11 @@ class TechnologyTab(QWidget):
         Args:
             new_base_path (str): The new base path.
         """
-        self.base_path = new_base_path
-        new_output_path = os.path.join(self.base_path, self.config_manager.get_relative_path('load_profile_path'))
-        self.FilenameInput.setText(new_output_path)
-        self.loadFileAndPlot()
+        if new_base_path:
+            self.base_path = new_base_path
+            new_output_path = os.path.join(self.base_path, self.config_manager.get_relative_path('load_profile_path'))
+            self.FilenameInput.setText(new_output_path)
+            self.loadFileAndPlot()
 
     def initUI(self):
         """
