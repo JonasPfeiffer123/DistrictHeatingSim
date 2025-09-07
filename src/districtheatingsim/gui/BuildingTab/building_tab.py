@@ -13,13 +13,15 @@ import sys
 import json
 import pandas as pd
 
+import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
+import matplotlib.gridspec as gridspec
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QFileDialog, QLabel, QMessageBox,
                              QMainWindow, QTableWidget, QTableWidgetItem, QComboBox, 
-                             QMenuBar, QLineEdit, QAbstractScrollArea, QHBoxLayout, QSizePolicy)
+                             QMenuBar, QLineEdit, QAbstractScrollArea, QHBoxLayout, QSizePolicy, QGroupBox)
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import pyqtSignal, Qt
 
@@ -258,6 +260,8 @@ class BuildingPresenter:
         self.view.data_type_combobox.view().pressed.connect(self.on_combobox_selection_changed)
         self.view.building_combobox.view().pressed.connect(self.on_combobox_selection_changed)
 
+        self.view.plot(self.model.results)  # Initial plot
+
     def standard_path(self, path):
         """
         Update default file paths.
@@ -485,7 +489,6 @@ class BuildingTabView(QWidget):
         self.initDataTable()
         self.initPlotAndComboboxes()
         self.setLayout(self.main_layout)
-        self.initializeComboboxes()
 
     def initMenuBar(self):
         """Initialize menu bar with file operations."""
@@ -523,44 +526,45 @@ class BuildingTabView(QWidget):
 
     def initPlotAndComboboxes(self):
         """Initialize plot area and data selection controls."""
-        plot_and_combobox_layout = QHBoxLayout()
-
-        # Plot area
-        self.figure = Figure()
+        # Plot area oben
+        plot_layout = QVBoxLayout()
+        self.figure = Figure(constrained_layout=True)
         self.canvas = FigureCanvas(self.figure)
-        self.canvas.setMinimumSize(800, 500)
+        self.canvas.setMinimumSize(1200, 600)
         self.canvas.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.toolbar = NavigationToolbar(self.canvas, self)
-        
-        plot_layout = QVBoxLayout()
         plot_layout.addWidget(self.canvas)
-
         toolbar_layout = QHBoxLayout()
         toolbar_layout.addStretch(1)
         toolbar_layout.addWidget(self.toolbar)
         toolbar_layout.addStretch(1)
-
         plot_layout.addLayout(toolbar_layout)
-        plot_and_combobox_layout.addLayout(plot_layout)
+        self.main_layout.addLayout(plot_layout)
 
-        # Data selection comboboxes
-        combobox_layout = QVBoxLayout()
+        
+        combobox_group = QGroupBox()
+        combobox_group.setTitle("Auswahl")
+        combobox_group_layout = QHBoxLayout()
+
+        # Daten auswählen
+        data_label = QLabel("<b>Daten auswählen:</b>")
+        data_label.setStyleSheet("font-size: 15px; margin-right: 10px;")
         self.data_type_combobox = CheckableComboBox(self)
         for data_type in ["Wärmebedarf", "Heizwärmebedarf", "Warmwasserbedarf", "Vorlauftemperatur", "Rücklauftemperatur"]:
             self.data_type_combobox.addItem(data_type)
-        combobox_layout.addWidget(QLabel("Daten auswählen:"))
-        combobox_layout.addWidget(self.data_type_combobox)
-
-        self.building_combobox = CheckableComboBox(self)
-        combobox_layout.addWidget(QLabel("Gebäude auswählen:"))
-        combobox_layout.addWidget(self.building_combobox)
-
-        plot_and_combobox_layout.addLayout(combobox_layout)
-        self.main_layout.addLayout(plot_and_combobox_layout)
-
-    def initializeComboboxes(self):
-        """Initialize default combobox selections."""
         self.data_type_combobox.model().item(0).setCheckState(Qt.CheckState.Checked)
+        combobox_group_layout.addWidget(data_label)
+        combobox_group_layout.addWidget(self.data_type_combobox)
+
+        # Gebäude auswählen
+        building_label = QLabel("<b>Gebäude auswählen:</b>")
+        building_label.setStyleSheet("font-size: 15px; margin-left: 30px; margin-right: 10px;")
+        self.building_combobox = CheckableComboBox(self)
+        combobox_group_layout.addWidget(building_label)
+        combobox_group_layout.addWidget(self.building_combobox)
+
+        combobox_group.setLayout(combobox_group_layout)
+        self.main_layout.addWidget(combobox_group)
 
     def loadCsvFile(self):
         """Emit signal to load CSV file."""
@@ -658,8 +662,7 @@ class BuildingTabView(QWidget):
     def plot(self, results=None):
         """
         Modernisiertes Matplotlib-Design für ausgewählte Gebäude und Datentypen.
-        """
-        import matplotlib.pyplot as plt
+        """        
         if results is None:
             return
 
@@ -667,8 +670,8 @@ class BuildingTabView(QWidget):
         plt.style.use('seaborn-v0_8-darkgrid')
 
         self.figure.clear()
-        import matplotlib.gridspec as gridspec
-        gs = gridspec.GridSpec(1, 3, width_ratios=[0.18, 0.64, 0.18])
+        
+        gs = gridspec.GridSpec(1, 3, width_ratios=[0.18, 0.64, 0.18], figure=self.figure)
         ax_legend_left = self.figure.add_subplot(gs[0, 0])
         ax_main = self.figure.add_subplot(gs[0, 1])
         ax_legend_right = self.figure.add_subplot(gs[0, 2])
@@ -678,7 +681,7 @@ class BuildingTabView(QWidget):
         selected_buildings = self.building_combobox.checkedItems()
 
         label_fontsize = 16
-        legend_fontsize = 14
+        legend_fontsize = 12
         line_width = 2
 
         color_map = plt.get_cmap('tab10')
@@ -732,16 +735,33 @@ class BuildingTabView(QWidget):
         # Legenden als eigene Achsen
         ax_legend_left.axis('off')
         ax_legend_right.axis('off')
+
+        # Dynamische Spaltenanzahl für Legenden
+        def get_ncol(n):
+            if n <= 18:
+                return 1
+            else:
+                return 2
+
         if lines_ax1:
-            ax_legend_left.legend(lines_ax1, labels_ax1, loc='center', fontsize=legend_fontsize, frameon=False)
+            ncol_left = get_ncol(len(lines_ax1))
+            ax_legend_left.legend(lines_ax1, labels_ax1, loc='center', fontsize=legend_fontsize, frameon=False, ncol=ncol_left)
+
         if lines_ax2:
-            ax_legend_right.legend(lines_ax2, labels_ax2, loc='center', fontsize=legend_fontsize, frameon=False)
+            ncol_right = get_ncol(len(lines_ax2))
+            ax_legend_right.legend(lines_ax2, labels_ax2, loc='center', fontsize=legend_fontsize, frameon=False, ncol=ncol_right)
 
         self.figure.suptitle('Building Heat Demand & Temperatures', fontsize=18)
-        self.figure.tight_layout()
         ax_main.grid(True, alpha=0.3)
-
         self.canvas.draw()
+
+    # Füge in BuildingTabView hinzu:
+    def showEvent(self, event):
+        super().showEvent(event)
+        from PyQt6.QtCore import QTimer
+        # Initiales Plotten nach Layout-Finish
+        if hasattr(self, 'results') and self.results:
+            QTimer.singleShot(0, lambda: self.plot(self.results))
 
     def show_error_message(self, title, message):
         """
