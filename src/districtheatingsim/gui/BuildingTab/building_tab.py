@@ -654,54 +654,93 @@ class BuildingTabView(QWidget):
             item = self.building_combobox.model().item(self.building_combobox.count() - 1, 0)
             item.setCheckState(Qt.CheckState.Checked)
 
+
     def plot(self, results=None):
         """
-        Plot selected data types for selected buildings.
-        
-        Parameters
-        ----------
-        results : dict, optional
-            Results data to plot.
+        Modernisiertes Matplotlib-Design für ausgewählte Gebäude und Datentypen.
         """
+        import matplotlib.pyplot as plt
         if results is None:
             return
 
+        # Modernes Theme
+        plt.style.use('seaborn-v0_8-darkgrid')
+
         self.figure.clear()
-        ax1 = self.figure.add_subplot(111)
-        ax2 = ax1.twinx()
+        import matplotlib.gridspec as gridspec
+        gs = gridspec.GridSpec(1, 3, width_ratios=[0.18, 0.64, 0.18])
+        ax_legend_left = self.figure.add_subplot(gs[0, 0])
+        ax_main = self.figure.add_subplot(gs[0, 1])
+        ax_legend_right = self.figure.add_subplot(gs[0, 2])
+        ax2 = ax_main.twinx()
 
         selected_data_types = self.data_type_combobox.checkedItems()
         selected_buildings = self.building_combobox.checkedItems()
 
-        label_fontsize = 14
-        legend_fontsize = 12
+        label_fontsize = 16
+        legend_fontsize = 14
+        line_width = 2
+
+        color_map = plt.get_cmap('tab10')
+        temp_color_map = plt.get_cmap('Set2')
+        color_idx = 0
+        temp_color_idx = 0
+
+        lines_ax1 = []
+        labels_ax1 = []
+        lines_ax2 = []
+        labels_ax2 = []
 
         for building in selected_buildings:
             key = building.split()[-1]
             value = results[key]
+            x = list(range(len(value["wärme"])))
 
             if "Wärmebedarf" in selected_data_types:
-                ax1.plot(value["wärme"], label=f'Building {key} Heat Demand')
+                line, = ax_main.plot(x, value["wärme"], label=f'Building {key} Heat Demand', color=color_map(color_idx % 10), linewidth=line_width)
+                lines_ax1.append(line)
+                labels_ax1.append(f'Building {key} Heat Demand')
+                color_idx += 1
             if "Heizwärmebedarf" in selected_data_types:
-                ax1.plot(value["heizwärme"], label=f'Building {key} Space Heating', linestyle='--')
+                line, = ax_main.plot(x, value["heizwärme"], label=f'Building {key} Space Heating', color=color_map(color_idx % 10), linestyle='--', linewidth=line_width)
+                lines_ax1.append(line)
+                labels_ax1.append(f'Building {key} Space Heating')
+                color_idx += 1
             if "Warmwasserbedarf" in selected_data_types:
-                ax1.plot(value["warmwasserwärme"], label=f'Building {key} Hot Water', linestyle=':')
+                line, = ax_main.plot(x, value["warmwasserwärme"], label=f'Building {key} Hot Water', color=color_map(color_idx % 10), linestyle=':', linewidth=line_width)
+                lines_ax1.append(line)
+                labels_ax1.append(f'Building {key} Hot Water')
+                color_idx += 1
             if "Vorlauftemperatur" in selected_data_types:
-                ax2.plot(value["vorlauftemperatur"], label=f'Building {key} Supply Temp.', linestyle='-.')
+                line, = ax2.plot(x, value["vorlauftemperatur"], label=f'Building {key} Supply Temp.', color=temp_color_map(temp_color_idx % 8), linestyle='-.', linewidth=line_width)
+                lines_ax2.append(line)
+                labels_ax2.append(f'Building {key} Supply Temp.')
+                temp_color_idx += 1
             if "Rücklauftemperatur" in selected_data_types:
-                ax2.plot(value["rücklauftemperatur"], label=f'Building {key} Return Temp.', linestyle='-.')
+                line, = ax2.plot(x, value["rücklauftemperatur"], label=f'Building {key} Return Temp.', color=temp_color_map(temp_color_idx % 8), linestyle='-.', linewidth=line_width)
+                lines_ax2.append(line)
+                labels_ax2.append(f'Building {key} Return Temp.')
+                temp_color_idx += 1
 
-        ax1.set_xlabel('Annual Hours', fontsize=label_fontsize)
-        ax1.set_ylabel('Heat Demand (kW)', fontsize=label_fontsize)
+        ax_main.set_xlabel('Annual Hours', fontsize=label_fontsize)
+        ax_main.set_ylabel('Heat Demand (kW)', fontsize=label_fontsize)
         ax2.set_ylabel('Temperature (°C)', fontsize=label_fontsize)
 
-        ax1.legend(loc='upper center', fontsize=legend_fontsize)
-        ax2.legend(loc='center left', bbox_to_anchor=(1.2, 0.5), fontsize=legend_fontsize)
+        ax_main.tick_params(axis='both', labelsize=14)
+        ax2.tick_params(axis='y', labelsize=14)
 
-        self.figure.autofmt_xdate(rotation=30)
+        # Legenden als eigene Achsen
+        ax_legend_left.axis('off')
+        ax_legend_right.axis('off')
+        if lines_ax1:
+            ax_legend_left.legend(lines_ax1, labels_ax1, loc='center', fontsize=legend_fontsize, frameon=False)
+        if lines_ax2:
+            ax_legend_right.legend(lines_ax2, labels_ax2, loc='center', fontsize=legend_fontsize, frameon=False)
+
+        self.figure.suptitle('Building Heat Demand & Temperatures', fontsize=18)
         self.figure.tight_layout()
+        ax_main.grid(True, alpha=0.3)
 
-        ax1.grid()
         self.canvas.draw()
 
     def show_error_message(self, title, message):
@@ -761,3 +800,27 @@ class BuildingTab(QMainWindow):
         self.presenter = BuildingPresenter(self.model, self.view, folder_manager, data_manager, config_manager)
 
         self.setCentralWidget(self.view)
+        
+if __name__ == "__main__":
+    import sys
+    from PyQt6.QtWidgets import QApplication
+
+    app = QApplication(sys.argv)
+    window = BuildingTabView()
+    window.resize(1400, 900)
+    window.show()
+
+    # Simuliere das Laden einer JSON wie im Model/Presenter
+    json_path = os.path.join(os.path.dirname(__file__), "..", "..", "project_data", "Görlitz", "Variante 1", "Lastgang", "Gebäude Lastgang.json")
+    json_path = os.path.abspath(json_path)
+    import json
+    with open(json_path, "r", encoding="utf-8") as f:
+        loaded_data = json.load(f)
+        # Filter wie im Model: nur dicts mit 'wärme'
+        results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and 'wärme' in v}
+
+    # Simuliere Presenter: populate_building_combobox und plot
+    window.populate_building_combobox(results)
+    window.plot(results)
+
+    sys.exit(app.exec())
