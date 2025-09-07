@@ -530,7 +530,7 @@ class BuildingTabView(QWidget):
         plot_layout = QVBoxLayout()
         self.figure = Figure(constrained_layout=True)
         self.canvas = FigureCanvas(self.figure)
-        self.canvas.setMinimumSize(1200, 600)
+        self.canvas.setMinimumSize(1200, 500)
         self.canvas.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.toolbar = NavigationToolbar(self.canvas, self)
         plot_layout.addWidget(self.canvas)
