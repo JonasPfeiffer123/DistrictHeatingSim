@@ -140,11 +140,11 @@ class NetGenerationDialog(QDialog):
 
         # Determine main producer index and secondary producer order
         if self.producer_order_tab.producer_order_list_widget.count() > 0:
-            main_producer_location_index = self.producer_order_tab.producer_order_list_widget.item(0).data(Qt.UserRole)['index']
+            main_producer_location_index = self.producer_order_tab.producer_order_list_widget.item(0).data(Qt.ItemDataRole.UserRole)['index']
             
             secondary_producers = [
             {
-                'index': self.producer_order_tab.producer_order_list_widget.item(i).data(Qt.UserRole)['index'],
+                'index': self.producer_order_tab.producer_order_list_widget.item(i).data(Qt.ItemDataRole.UserRole)['index'],
                 'load_percentage': float(self.producer_order_tab.percentage_inputs[i-1].text())
             }
             for i in range(1, self.producer_order_tab.producer_order_list_widget.count())
