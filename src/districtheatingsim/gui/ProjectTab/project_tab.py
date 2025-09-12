@@ -244,10 +244,12 @@ class ProjectPresenter:
         self.process_steps = [
             {
                 "name": "Schritt 1: Gebäudedaten Quartier definieren",
-                "description": "Erstellen Sie die Gebäude-CSV hier im Tab 'Projektdefinition'.",
+                "description": "Erstellen Sie die Gebäude-CSV hier im Tab 'Projektdefinition'. Die CSV kann manuell erstellt, aus GeoJSON importiert oder durch Geocoding mit Koordinaten angereichert werden.",
                 "required_files": [
                     "..\\Definition Quartier IST\\Quartier IST.csv"
-                ]
+                ],
+                "csv_creation_status": "not_checked",  # Will be updated dynamically
+                "geocoding_status": "not_checked"      # Will be updated dynamically
             },
             {
                 "name": "Schritt 2: Gebäude-Lastgang generieren",
@@ -476,6 +478,13 @@ class ProjectPresenter:
             Output filename.
         """
         self.view.progressBar.setRange(0, 1)
+        
+        # Automatically reload the updated CSV file to show the new coordinates
+        if fname and os.path.exists(fname):
+            self.load_csv(fname)
+            # Update the progress tracker to refresh CSV status (should now show "mit Koordinaten")
+            self.update_progress_tracker()
+            self.view.show_message("Erfolg", "Geocoding abgeschlossen. CSV-Datei wurde automatisch aktualisiert.")
 
     def on_geocode_error(self, error_message):
         """
@@ -570,6 +579,20 @@ class ProjectPresenter:
             first_step = self.process_steps[0]
             csv_file_path = os.path.join(base_path, first_step['required_files'][0])
             csv_status = self.check_csv_status(csv_file_path)
+            
+            # Update CSV creation and geocoding status for first step
+            if os.path.exists(csv_file_path):
+                first_step['csv_creation_status'] = 'completed'
+                # Check if CSV has coordinates (UTM_X and UTM_Y columns)
+                if csv_status == 'mit Koordinaten':
+                    first_step['geocoding_status'] = 'completed'
+                elif csv_status == 'ist vorhanden':
+                    first_step['geocoding_status'] = 'pending'
+                else:
+                    first_step['geocoding_status'] = 'not_applicable'
+            else:
+                first_step['csv_creation_status'] = 'pending'
+                first_step['geocoding_status'] = 'not_applicable'
             
             # Update all process steps
             for step in self.process_steps:

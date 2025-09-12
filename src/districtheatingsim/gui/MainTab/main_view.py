@@ -665,15 +665,28 @@ class HeatSystemDesignGUI(QMainWindow):
         msgBox.setText('Es ist ein Projekt geöffnet.')
         msgBox.setInformativeText(info_text)
         
+        # Set minimum size explicitly before styling
+        msgBox.resize(550, 250)
+        
         # Force larger dialog size with stylesheet
         msgBox.setStyleSheet("""
             QMessageBox {
                 min-width: 550px;
-                min-height: 200px;
+                min-height: 250px;
+                max-width: 800px;
             }
             QMessageBox QLabel {
-                min-width: 525x;
+                min-width: 525px;
                 font-size: 11pt;
+                padding: 10px;
+                word-wrap: true;
+            }
+            QMessageBox QPushButton {
+                min-width: 120px;
+                min-height: 30px;
+                font-size: 10pt;
+                padding: 5px 10px;
+                margin: 2px;
             }
         """)
         
