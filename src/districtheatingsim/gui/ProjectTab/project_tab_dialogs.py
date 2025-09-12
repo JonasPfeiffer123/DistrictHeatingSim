@@ -168,6 +168,22 @@ class ProcessDetailsDialog(QDialog):
             description_label = QLabel(f"Beschreibung: {step['description']}")
             step_layout.addWidget(description_label)
 
+            # Show CSV creation and geocoding status for first step
+            if 'csv_creation_status' in step and 'geocoding_status' in step:
+                # CSV Creation Status
+                csv_status_text = self.get_status_text(step['csv_creation_status'])
+                csv_status_color = self.get_status_color(step['csv_creation_status'])
+                csv_label = QLabel(f"CSV-Erstellung: {csv_status_text}")
+                csv_label.setStyleSheet(f"color: {csv_status_color}; font-weight: bold;")
+                step_layout.addWidget(csv_label)
+                
+                # Geocoding Status
+                geocoding_status_text = self.get_status_text(step['geocoding_status'])
+                geocoding_status_color = self.get_status_color(step['geocoding_status'])
+                geocoding_label = QLabel(f"Geocoding: {geocoding_status_text}")
+                geocoding_label.setStyleSheet(f"color: {geocoding_status_color}; font-weight: bold;")
+                step_layout.addWidget(geocoding_label)
+
             # Show missing files if any
             if len(step.get("missing_files", [])) > 0:
                 for missing_file in step["missing_files"]:
@@ -221,6 +237,50 @@ class ProcessDetailsDialog(QDialog):
         total_files = len(step["required_files"])
         missing_files = len(step.get("missing_files", []))
         return ((total_files - missing_files) / total_files) * 100
+
+    def get_status_text(self, status):
+        """
+        Get human-readable status text.
+
+        Parameters
+        ----------
+        status : str
+            Status code.
+
+        Returns
+        -------
+        str
+            Human-readable status text.
+        """
+        status_mapping = {
+            'completed': 'Abgeschlossen',
+            'pending': 'Ausstehend',
+            'not_applicable': 'Nicht verfügbar',
+            'not_checked': 'Nicht geprüft'
+        }
+        return status_mapping.get(status, 'Unbekannt')
+
+    def get_status_color(self, status):
+        """
+        Get color for status display.
+
+        Parameters
+        ----------
+        status : str
+            Status code.
+
+        Returns
+        -------
+        str
+            CSS color value.
+        """
+        color_mapping = {
+            'completed': 'green',
+            'pending': 'orange',
+            'not_applicable': 'gray',
+            'not_checked': 'gray'
+        }
+        return color_mapping.get(status, 'black')
 
 class BuildingCSVDialog(QDialog):
     """

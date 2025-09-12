@@ -134,7 +134,7 @@ class RecentProjectWidget(QFrame):
         
         # Last modified
         if 'last_modified' in self.project_info:
-            modified_label = QLabel(f"Modified: {self.project_info['last_modified']}")
+            modified_label = QLabel(f"Geändert: {self.project_info['last_modified']}")
             # Styling handled by central QSS themes
             layout.addWidget(modified_label)
         
@@ -210,7 +210,7 @@ class WelcomeScreen(QWidget):
         header_layout.setSpacing(15)
         
         # Main title
-        title_label = QLabel("Welcome to DistrictHeatingSim")
+        title_label = QLabel("Willkommen bei DistrictHeatingSim")
         title_font = QFont()
         title_font.setPointSize(28)
         title_font.setBold(True)
@@ -219,7 +219,7 @@ class WelcomeScreen(QWidget):
         header_layout.addWidget(title_label)
         
         # Subtitle with better description
-        subtitle_label = QLabel("Professional District Heating System Planning and Analysis")
+        subtitle_label = QLabel("Professionelle Fernwärmesystem-Planung und -Analyse")
         subtitle_font = QFont()
         subtitle_font.setPointSize(14)
         subtitle_label.setFont(subtitle_font)
@@ -228,8 +228,8 @@ class WelcomeScreen(QWidget):
         
         # Add introduction text
         intro_text = QLabel(
-            "Plan, analyze and optimize district heating networks with comprehensive tools for "
-            "energy system design, economic evaluation, and technical simulation."
+            "Planen, analysieren und optimieren Sie Fernwärmenetze mit umfassenden Werkzeugen für "
+            "Energiesystem-Design, wirtschaftliche Bewertung und technische Simulation."
         )
         intro_text.setWordWrap(True)
         intro_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -256,7 +256,7 @@ class WelcomeScreen(QWidget):
         
         # Modern toggle switch
         self.theme_toggle = ThemeToggleSwitch()
-        self.theme_toggle.setToolTip("Switch between Light and Dark theme")
+        self.theme_toggle.setToolTip("Zwischen hellem und dunklem Design wechseln")
         self.theme_toggle.toggled.connect(self.on_theme_toggle)
         theme_layout.addWidget(self.theme_toggle)
         
@@ -277,7 +277,7 @@ class WelcomeScreen(QWidget):
         
         # Section title with project count
         title_layout = QHBoxLayout()
-        recent_title = QLabel("Recent Projects")
+        recent_title = QLabel("Aktuelle Projekte")
         recent_font = QFont()
         recent_font.setPointSize(18)
         recent_font.setBold(True)
@@ -336,7 +336,7 @@ class WelcomeScreen(QWidget):
     
     def create_quick_actions(self, parent_layout):
         """Create the quick actions section with enhanced buttons."""
-        actions_title = QLabel("Quick Actions")
+        actions_title = QLabel("Schnellaktionen")
         actions_font = QFont()
         actions_font.setPointSize(18)
         actions_font.setBold(True)
@@ -349,8 +349,8 @@ class WelcomeScreen(QWidget):
         
         # New Project button with description
         new_project_container = self.create_action_button(
-            "🆕 Create New Project",
-            "Start a new district heating analysis from scratch",
+            "🆕 Neues Projekt erstellen",
+            "Beginnen Sie eine neue Fernwärmeanalyse von Grund auf",
             "primaryButton",
             self.new_project_clicked
         )
@@ -358,8 +358,8 @@ class WelcomeScreen(QWidget):
         
         # Open Project button with description  
         open_project_container = self.create_action_button(
-            "📂 Open Existing Project",
-            "Continue working on a saved project",
+            "📂 Bestehendes Projekt öffnen",
+            "Arbeiten Sie an einem gespeicherten Projekt weiter",
             "secondaryButton", 
             self.open_project_clicked
         )
@@ -395,7 +395,7 @@ class WelcomeScreen(QWidget):
     
     def create_getting_started(self, parent_layout):
         """Create the getting started section with tutorials and resources."""
-        started_title = QLabel("Getting Started")
+        started_title = QLabel("Schnellstart")
         started_font = QFont()
         started_font.setPointSize(18)
         started_font.setBold(True)
@@ -407,21 +407,21 @@ class WelcomeScreen(QWidget):
         started_layout.setSpacing(15)
         
         # Documentation link
-        doc_btn = QPushButton("📖 View Documentation")
+        doc_btn = QPushButton("📖 Dokumentation öffnen")
         doc_btn.setMinimumHeight(40)
         doc_btn.setObjectName("linkButton")
         doc_btn.clicked.connect(self.open_documentation)
         started_layout.addWidget(doc_btn)
         
         # Examples
-        examples_btn = QPushButton("🔧 Examples")
+        examples_btn = QPushButton("🔧 Beispiele")
         examples_btn.setMinimumHeight(40)
         examples_btn.setObjectName("linkButton")
         examples_btn.clicked.connect(self.open_examples)
         started_layout.addWidget(examples_btn)
         
         # Support
-        support_btn = QPushButton("💬 Get Support")
+        support_btn = QPushButton("💬 Unterstützung")
         support_btn.setMinimumHeight(40)
         support_btn.setObjectName("linkButton")
         support_btn.clicked.connect(self.open_support)
@@ -436,18 +436,18 @@ class WelcomeScreen(QWidget):
         features_layout.setContentsMargins(15, 15, 15, 15)
         features_layout.setSpacing(8)
         
-        features_title = QLabel("Key Features:")
+        features_title = QLabel("Wichtige Funktionen:")
         features_title_font = QFont()
         features_title_font.setBold(True)
         features_title.setFont(features_title_font)
         features_layout.addWidget(features_title)
         
         features = [
-            "🏗️ Network topology generation",
-            "🔥 Heat demand calculation", 
-            "💰 Economic analysis",
-            "⚡ Energy system optimization",
-            "📊 Comprehensive reporting"
+            "🏗️ Netzwerktopologie-Generierung",
+            "🔥 Wärmebedarfsberechnung",
+            "💰 Wirtschaftlichkeitsanalyse",
+            "⚡ Energiesystem-Optimierung",
+            "📊 Umfassende Berichterstattung"
         ]
         
         for feature in features:
@@ -492,7 +492,7 @@ class WelcomeScreen(QWidget):
             no_projects_layout.setContentsMargins(20, 30, 20, 30)
             no_projects_layout.setSpacing(15)
             
-            no_projects_label = QLabel("No recent projects found")
+            no_projects_label = QLabel("Keine aktuellen Projekte gefunden")
             no_projects_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             no_projects_label.setObjectName("noProjectsTitle")
             font = QFont()
@@ -501,7 +501,7 @@ class WelcomeScreen(QWidget):
             no_projects_label.setFont(font)
             no_projects_layout.addWidget(no_projects_label)
             
-            tip_label = QLabel("Create a new project or open an existing one to get started!")
+            tip_label = QLabel("Erstellen Sie ein neues Projekt oder öffnen Sie ein bestehendes, um zu beginnen!")
             tip_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             tip_label.setWordWrap(True)
             tip_label.setObjectName("noProjectsTip")
@@ -606,7 +606,7 @@ class WelcomeScreen(QWidget):
             info['last_modified_timestamp'] = stat.st_mtime
             info['last_modified'] = datetime.fromtimestamp(stat.st_mtime).strftime("%d.%m.%Y %H:%M")
         except (OSError, PermissionError):
-            info['last_modified'] = "Unknown"
+            info['last_modified'] = "Unbekannt"
             info['last_modified_timestamp'] = 0
         
         return info
@@ -618,7 +618,7 @@ class WelcomeScreen(QWidget):
         
         folder = QFileDialog.getExistingDirectory(
             self,
-            "Select folder for new project",
+            "Ordner für neues Projekt auswählen",
             start_dir
         )
         
@@ -633,7 +633,7 @@ class WelcomeScreen(QWidget):
         
         folder = QFileDialog.getExistingDirectory(
             self,
-            "Select project folder",
+            "Projektordner auswählen",
             start_dir
         )
         
