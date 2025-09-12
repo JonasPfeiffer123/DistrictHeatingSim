@@ -32,31 +32,73 @@ QTableWidget {
     gridline-color: #404040;
     selection-background-color: #4a148c;
     selection-color: #bb86fc;
+    font-size: 10pt;
 }
 
 QTableWidget::item {
-    padding: 8px 12px;
+    padding: 10px 15px;
+    border-right: 1px solid #404040;
     border-bottom: 1px solid #404040;
     color: #e4e4e4;
+    background-color: #2d2d2d;
 }
 
 QTableWidget::item:selected {
     background-color: #4a148c;
     color: #bb86fc;
+    border: 2px solid #7b1fa2;
+}
+
+QTableWidget::item:hover {
+    background-color: #383838;
+}
+
+QTableWidget::item:focus {
+    background-color: #3e2723;
+    border: 2px solid #ff9800;
 }
 
 QHeaderView::section {
     background-color: #383838;
     color: #b0b0b0;
-    min-height: 32px;
+    min-height: 35px;
     border: none;
+    border-right: 1px solid #505050;
     border-bottom: 2px solid #505050;
     font-weight: 600;
     font-size: 10pt;
+    padding: 5px 10px;
+    text-align: center;
 }
 
 QHeaderView::section:hover {
     background-color: #454545;
+    color: #bb86fc;
+}
+
+QHeaderView::section:first {
+    border-top-left-radius: 8px;
+}
+
+QHeaderView::section:last {
+    border-top-right-radius: 8px;
+}
+
+/* Table Edit Widget Styling */
+QTableWidget QLineEdit {
+    background-color: #2d2d2d;
+    border: 2px solid #bb86fc;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 10pt;
+    min-height: 20px;
+    color: #e4e4e4;
+    selection-background-color: #4a148c;
+}
+
+QTableWidget QLineEdit:focus {
+    border: 2px solid #7b1fa2;
+    background-color: #383838;
 }
 
 /* Modern Dark Tabs */
