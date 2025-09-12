@@ -636,19 +636,96 @@ class HeatSystemDesignGUI(QMainWindow):
             # Fallback: just show the main interface
             pass
 
+    def show_save_dialog(self, title: str, info_text: str, accept_text: str) -> str:
+        """
+        Show a standardized save dialog for project operations.
+        
+        Parameters
+        ----------
+        title : str
+            Dialog window title
+        info_text : str 
+            Informative text explaining the operation
+        accept_text : str
+            Text for the accept button (e.g., "Speichern und wechseln")
+            
+        Returns
+        -------
+        str
+            'save', 'discard', or 'cancel'
+        """
+        if not hasattr(self, 'base_path') or not self.base_path:
+            return 'continue'  # No project loaded, continue operation
+            
+        from PyQt6.QtWidgets import QMessageBox
+        
+        # Create custom message box with three options
+        msgBox = QMessageBox(self)
+        msgBox.setWindowTitle(title)
+        msgBox.setText('Es ist ein Projekt geöffnet.')
+        msgBox.setInformativeText(info_text)
+        
+        # Force larger dialog size with stylesheet
+        msgBox.setStyleSheet("""
+            QMessageBox {
+                min-width: 550px;
+                min-height: 200px;
+            }
+            QMessageBox QLabel {
+                min-width: 525x;
+                font-size: 11pt;
+            }
+        """)
+        
+        # Add custom buttons
+        saveButton = msgBox.addButton(accept_text, QMessageBox.ButtonRole.AcceptRole)
+        discardButton = msgBox.addButton('Ohne Speichern fortfahren', QMessageBox.ButtonRole.DestructiveRole)
+        cancelButton = msgBox.addButton('Abbrechen', QMessageBox.ButtonRole.RejectRole)
+        
+        msgBox.setDefaultButton(saveButton)  # Default to save for safety
+        msgBox.exec()
+        
+        if msgBox.clickedButton() == saveButton:
+            return 'save'
+        elif msgBox.clickedButton() == discardButton:
+            return 'discard'
+        else:
+            return 'cancel'
+
     def on_back_to_welcome(self):
         """
         Return to the welcome screen from main interface.
-        Save all project results before switching to welcome screen (if project loaded).
+        Give user choice to save, discard, or cancel if project is loaded.
         """
-        if hasattr(self, 'base_path') and self.base_path:
-            self.save_all_project_results()
-        self.base_path = ""
-        self.show_welcome_screen()
-        # Refresh the welcome screen with current data and sync theme toggle
-        if self.welcome_screen:
-            self.welcome_screen.refresh_recent_projects()
-            self.sync_theme_toggle_state()
+        dialog_result = self.show_save_dialog(
+            'Zurück zum Start',
+            'Möchten Sie Ihre Änderungen vor dem Wechsel zum Startbildschirm speichern?',
+            'Speichern und zum Start'
+        )
+        
+        if dialog_result == 'save':
+            # Save and go to welcome
+            if not self.save_all_project_results():
+                return  # User cancelled save operation
+            self.base_path = ""
+            self.show_welcome_screen()
+            if self.welcome_screen:
+                self.welcome_screen.refresh_recent_projects()
+                self.sync_theme_toggle_state()
+        elif dialog_result == 'discard':
+            # Go to welcome without saving
+            self.base_path = ""
+            self.show_welcome_screen()
+            if self.welcome_screen:
+                self.welcome_screen.refresh_recent_projects()
+                self.sync_theme_toggle_state()
+        elif dialog_result == 'continue':
+            # No project loaded, go to welcome normally
+            self.show_welcome_screen()
+            if self.welcome_screen:
+                self.welcome_screen.refresh_recent_projects()
+                self.sync_theme_toggle_state()
+        # If 'cancel', do nothing
 
     def on_theme_change_requested(self, theme_path: str):
         """Handle theme change request from welcome screen."""
@@ -1217,6 +1294,20 @@ class HeatSystemDesignGUI(QMainWindow):
             - Automatic project activation after creation
             - Integration with recent projects system
         """
+        # Check if user wants to save current project before creating new one
+        dialog_result = self.show_save_dialog(
+            'Neues Projekt erstellen',
+            'Möchten Sie Ihre Änderungen vor dem Erstellen eines neuen Projekts speichern?',
+            'Speichern und neues Projekt erstellen'
+        )
+        
+        if dialog_result == 'cancel':
+            return  # User cancelled operation
+        elif dialog_result == 'save':
+            if not self.save_all_project_results():
+                return  # User cancelled save operation
+        # If 'discard' or 'continue', proceed without saving
+        
         # Determine parent directory for new project
         folder_path = os.path.dirname(os.path.dirname(self.base_path))
         
@@ -1288,9 +1379,20 @@ class HeatSystemDesignGUI(QMainWindow):
             )
 
         try:
-            if self.base_path is not None:
-                # Save current project before switching
-                self.save_all_project_results()
+            # Check if user wants to save before switching projects
+            dialog_result = self.show_save_dialog(
+                'Projekt öffnen',
+                'Möchten Sie Ihre Änderungen vor dem Öffnen eines anderen Projekts speichern?',
+                'Speichern und Projekt öffnen'
+            )
+            
+            if dialog_result == 'cancel':
+                return  # User cancelled operation
+            elif dialog_result == 'save':
+                if not self.save_all_project_results():
+                    return  # User cancelled save operation
+            # If 'discard' or 'continue', proceed without saving
+            
             # Validate project path and proceed with opening
             if folder_path and os.path.exists(folder_path):
                 self.presenter.open_existing_project(folder_path)
@@ -1408,6 +1510,20 @@ class HeatSystemDesignGUI(QMainWindow):
             - Integration with project management workflow
             - Support for project versioning and backup strategies
         """
+        # Check if user wants to save current changes before creating copy
+        dialog_result = self.show_save_dialog(
+            'Projektkopie erstellen',
+            'Möchten Sie Ihre Änderungen vor dem Erstellen der Projektkopie speichern?',
+            'Speichern und Kopie erstellen'
+        )
+        
+        if dialog_result == 'cancel':
+            return  # User cancelled operation
+        elif dialog_result == 'save':
+            if not self.save_all_project_results():
+                return  # User cancelled save operation
+        # If 'discard', proceed without saving
+            
         success = self.presenter.create_project_copy()
         if success:
             QMessageBox.information(
@@ -1454,7 +1570,20 @@ class HeatSystemDesignGUI(QMainWindow):
             self.show_error_message("Kein Projektordner ausgewählt.")
             return
 
-        self.save_all_project_results()
+        # Check if user wants to save current changes before opening variant
+        dialog_result = self.show_save_dialog(
+            'Variante öffnen',
+            'Möchten Sie Ihre Änderungen vor dem Öffnen der Variante speichern?',
+            'Speichern und Variante öffnen'
+        )
+        
+        if dialog_result == 'cancel':
+            return  # User cancelled operation
+        elif dialog_result == 'save':
+            if not self.save_all_project_results():
+                return  # User cancelled save operation
+        # If 'discard', proceed without saving
+            
         # Discover available variants in current project
         available_variants = self.get_available_variants(project_folder)
 
@@ -1498,6 +1627,20 @@ class HeatSystemDesignGUI(QMainWindow):
             - Clear success feedback and next steps guidance
             - Error handling for creation failures
         """
+        # Check if user wants to save current changes before creating variant
+        dialog_result = self.show_save_dialog(
+            'Projektvariante erstellen',
+            'Möchten Sie Ihre Änderungen vor dem Erstellen der Projektvariante speichern?',
+            'Speichern und Variante erstellen'
+        )
+        
+        if dialog_result == 'cancel':
+            return  # User cancelled operation
+        elif dialog_result == 'save':
+            if not self.save_all_project_results():
+                return  # User cancelled save operation
+        # If 'discard', proceed without saving
+            
         success = self.presenter.create_project_variant()
         if success:
             QMessageBox.information(
@@ -1530,6 +1673,20 @@ class HeatSystemDesignGUI(QMainWindow):
             - Facilitates sensitivity analysis and parameter studies
             - Provides backup functionality for variant protection
         """
+        # Check if user wants to save current changes before creating variant copy
+        dialog_result = self.show_save_dialog(
+            'Projektvariantenkopie erstellen',
+            'Möchten Sie Ihre Änderungen vor dem Erstellen der Projektvariantenkopie speichern?',
+            'Speichern und Kopie erstellen'
+        )
+        
+        if dialog_result == 'cancel':
+            return  # User cancelled operation
+        elif dialog_result == 'save':
+            if not self.save_all_project_results():
+                return  # User cancelled save operation
+        # If 'discard', proceed without saving
+            
         success = self.presenter.create_project_variant_copy()
         if success:
             QMessageBox.information(
@@ -1648,13 +1805,18 @@ class HeatSystemDesignGUI(QMainWindow):
             # Handle import errors with specific information
             self.show_error_message(f"Fehler beim Laden der Projektdaten: {str(e)}")
 
-    def save_all_project_results(self) -> None:
+    def save_all_project_results(self) -> bool:
         """
         Zentrale Speicherlogik für alle Projektergebnisse.
         Ruft die jeweiligen Save-Methoden der einzelnen Tabs/Presenter auf.
         Sollte vor dem Schließen der Anwendung und beim Wechsel des Projekts/Variante aufgerufen werden.
         Vor dem Speichern wird ein Warn-Dialog angezeigt, der auf fehlende Versionierung und mögliche Überschreibung hinweist.
         Bricht der Nutzer den Dialog ab, wird die Aktion abgebrochen.
+        
+        Returns
+        -------
+        bool
+            True wenn erfolgreich gespeichert, False wenn abgebrochen
         """
         reply = QMessageBox.warning(
             self,
@@ -1665,7 +1827,7 @@ class HeatSystemDesignGUI(QMainWindow):
         )
         if reply != QMessageBox.StandardButton.Yes:
             # Aktion abbrechen, falls der Nutzer abbricht
-            return
+            return False
 
         errors = []
         try:
@@ -1702,8 +1864,10 @@ class HeatSystemDesignGUI(QMainWindow):
             errors.append(f"Allgemeiner Fehler: {str(e)}")
         if errors:
             self.show_error_message("Fehler beim Speichern der Projektdaten:\n" + "\n".join(errors))
+            return False  # Fehler beim Speichern
         else:
             self.show_message("Erfolg", "Alle Projektdaten wurden erfolgreich gespeichert.")
+            return True  # Erfolgreich gespeichert
 
     # Theme and Appearance Methods
     # ============================
@@ -1971,8 +2135,24 @@ class HeatSystemDesignGUI(QMainWindow):
     def closeEvent(self, event):
         """
         Save all project results before closing the application.
-        Only if a project is loaded.
+        Only if a project is loaded. Allows user to cancel application closure.
         """
         if hasattr(self, 'base_path') and self.base_path:
-            self.save_all_project_results()
+            # Check if user wants to save current changes before closing
+            dialog_result = self.show_save_dialog(
+                'Anwendung schließen',
+                'Möchten Sie Ihre Änderungen vor dem Schließen der Anwendung speichern?',
+                'Speichern und schließen'
+            )
+            
+            if dialog_result == 'cancel':
+                # User cancelled, prevent application closure
+                event.ignore()
+                return
+            elif dialog_result == 'save':
+                if not self.save_all_project_results():
+                    # User cancelled save operation, prevent closure
+                    event.ignore()
+                    return
+            # If 'discard', proceed with closing without saving
         event.accept()
