@@ -9,7 +9,8 @@ Date: 2024-09-20
 """
 
 from PyQt6.QtWidgets import (QVBoxLayout, QLabel, QDialog, QLineEdit, QDialogButtonBox, 
-                             QGridLayout, QFrame, QScrollArea, QPushButton, QProgressBar)
+                             QGridLayout, QFrame, QScrollArea, QPushButton, QProgressBar, 
+                             QTableWidget, QTableWidgetItem, QHBoxLayout)
 
 class RowInputDialog(QDialog):
     """
@@ -41,7 +42,7 @@ class RowInputDialog(QDialog):
             self.fields[header] = lineEdit
 
         # Dialog buttons
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
         self.layout.addWidget(buttonBox, len(headers), 0, 1, 2)
@@ -102,7 +103,7 @@ class OSMImportDialog(QDialog):
             self.fields[header] = lineEdit
 
         # Dialog buttons
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
         self.layout.addWidget(buttonBox, len(self.default_values), 0, 1, 2)
@@ -220,3 +221,88 @@ class ProcessDetailsDialog(QDialog):
         total_files = len(step["required_files"])
         missing_files = len(step.get("missing_files", []))
         return ((total_files - missing_files) / total_files) * 100
+
+class BuildingCSVDialog(QDialog):
+    """
+    Dialog for tabular input and editing of Quartier IST.csv building data.
+    """
+    def __init__(self, headers, data=None, parent=None):
+        """
+        Initialize dialog for building CSV creation/editing.
+
+        Parameters
+        ----------
+        headers : list
+            Column headers for table.
+        data : list of lists, optional
+            Initial table data.
+        parent : QWidget, optional
+            Parent widget.
+        """
+        super().__init__(parent)
+        self.setWindowTitle("Gebäudedaten bearbeiten")
+        self.resize(1200, 600)
+        self.headers = headers
+        self.data = data if data is not None else []
+        self.initUI()
+
+    def initUI(self):
+        layout = QVBoxLayout(self)
+        label = QLabel("Geben Sie die Gebäudedaten für das Quartier ein:")
+        layout.addWidget(label)
+
+        self.table = QTableWidget(self)
+        self.table.setColumnCount(len(self.headers))
+        self.table.setHorizontalHeaderLabels(self.headers)
+        self.table.setRowCount(len(self.data))
+        
+        # Enhanced table formatting
+        self.table.setAlternatingRowColors(True)
+        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.table.setSortingEnabled(True)
+        self.table.horizontalHeader().setStretchLastSection(True)
+        
+        for row_idx, row_data in enumerate(self.data):
+            for col_idx, value in enumerate(row_data):
+                item = QTableWidgetItem(str(value))
+                self.table.setItem(row_idx, col_idx, item)
+        layout.addWidget(self.table)
+
+        # Buttons for row operations
+        button_layout = QHBoxLayout()
+        add_row_btn = QPushButton("Zeile hinzufügen")
+        del_row_btn = QPushButton("Zeile löschen")
+        add_row_btn.clicked.connect(self.add_row)
+        del_row_btn.clicked.connect(self.del_row)
+        button_layout.addWidget(add_row_btn)
+        button_layout.addWidget(del_row_btn)
+        layout.addLayout(button_layout)
+
+        # Dialog buttons
+        buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+        layout.addWidget(buttonBox)
+
+    def add_row(self):
+        self.table.insertRow(self.table.rowCount())
+
+    def del_row(self):
+        currentRow = self.table.currentRow()
+        if currentRow > -1:
+            self.table.removeRow(currentRow)
+
+    def get_table_data(self):
+        """
+        Get table data as list of lists.
+        """
+        rows = self.table.rowCount()
+        cols = self.table.columnCount()
+        data = []
+        for r in range(rows):
+            row_data = []
+            for c in range(cols):
+                item = self.table.item(r, c)
+                row_data.append(item.text() if item else "")
+            data.append(row_data)
+        return data
