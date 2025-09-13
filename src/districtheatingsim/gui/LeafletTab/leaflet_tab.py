@@ -447,13 +447,13 @@ class VisualizationPresenter(QObject):
     def open_osm_data_dialog(self):
         """Open dialog for downloading OSM data."""
         dialog = DownloadOSMDataDialog(self.model.get_base_path(), self.config_manager, self.view, self)
-        if dialog.exec() == QDialog.Accepted:
+        if dialog.exec() == QDialog.DialogCode.Accepted:
             pass  # Handle accepted case if necessary
 
     def open_osm_building_query_dialog(self):
         """Open dialog for querying OSM building data."""
         dialog = OSMBuildingQueryDialog(self.model.get_base_path(), self.config_manager, self.view, self)
-        if dialog.exec() == QDialog.Accepted:
+        if dialog.exec() == QDialog.DialogCode.Accepted:
             pass  # Handle accepted case if necessary
 
 class VisualizationTabView(QWidget):

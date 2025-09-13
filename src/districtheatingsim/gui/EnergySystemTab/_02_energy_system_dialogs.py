@@ -356,7 +356,7 @@ class WeightDialog(QDialog):
         form_layout.addRow("Spezifische Emissionen", self.co2_input)
         form_layout.addRow("Primärenergiefaktor", self.pe_input)
 
-        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
 

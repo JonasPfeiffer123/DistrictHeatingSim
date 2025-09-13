@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import pyqtSignal
 import pandas as pd
+import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
@@ -246,7 +247,7 @@ class TechnologyTab(QWidget):
             tech_data (dict): The data for the technology.
         """
         dialog = TechInputDialog(tech_type, tech_data)
-        if dialog.exec() == QDialog.Accepted:
+        if dialog.exec() == QDialog.DialogCode.Accepted:
             new_tech = self.createTechnology(tech_type, dialog.getInputs())
             # Speicheraktivität direkt vom Dialog abrufen und im tech-Objekt speichern
             new_tech.has_storage = dialog.getInputs().get('speicher_aktiv', False) # thats stupid af
@@ -266,7 +267,7 @@ class TechnologyTab(QWidget):
         tech_data = {k: v for k, v in selected_tech.__dict__.items() if not k.startswith('_')}
 
         dialog = TechInputDialog(selected_tech.name, tech_data)
-        if dialog.exec() == QDialog.Accepted:
+        if dialog.exec() == QDialog.DialogCode.Accepted:
             updated_inputs = dialog.getInputs()
             updated_tech = self.createTechnology(selected_tech.name.split('_')[0], updated_inputs)
             updated_tech.name = selected_tech.name
@@ -456,7 +457,7 @@ class TechnologyTab(QWidget):
 
     def plotData(self, data):
         """
-        Plots the data on the plot canvas.
+        Plots the data on the plot canvas with modern styling and hour-based x-axis.
 
         Args:
             data (DataFrame): The data to plot.
@@ -468,6 +469,10 @@ class TechnologyTab(QWidget):
             return
 
         self.createPlotCanvas()
+        
+        # Apply modern matplotlib styling
+        plt.style.use('seaborn-v0_8-darkgrid')
+        
         ax = self.plotFigure.add_subplot(111)
 
         # Identifiziere alle Spalten, die Wärmeerzeugung enthalten
@@ -477,27 +482,67 @@ class TechnologyTab(QWidget):
             # Summiere alle Wärmeerzeugungsspalten
             data['Summenlastgang'] = data[heat_generation_columns].sum(axis=1) * scale_factor
 
-            # Plotten des Summenlastgangs
-            ax.plot(pd.to_datetime(data['Zeit']), data['Summenlastgang'], label='Gesamtwärmebedarf')
-            ax.set_title("Jahresganglinie Wärmeerzeugung (Summe)")
-            ax.set_xlabel("Zeit")
-            ax.set_ylabel("Wärmebedarf (kW)")
-            ax.legend()
+            # Convert datetime to hours of year (0-8760)
+            time_data = pd.to_datetime(data['Zeit'])
+            if len(time_data) > 0:
+                start_of_year = pd.Timestamp(time_data.iloc[0].year, 1, 1)
+                hours_of_year = [(t - start_of_year).total_seconds() / 3600 for t in time_data]
+            else:
+                hours_of_year = list(range(len(data)))
+
+            # Modern plot styling
+            ax.plot(hours_of_year, data['Summenlastgang'], 
+                   label='Gesamtwärmebedarf', color='#3498db', linewidth=1.5)
+            
+            # Modern styling
+            ax.set_title("Jahresganglinie Wärmeerzeugung (Summe)", fontsize=16, fontweight='bold', color='#2c3e50')
+            ax.set_xlabel("Jahresstunden [h]", fontsize=14, color='#2c3e50')
+            ax.set_ylabel("Wärmebedarf [kW]", fontsize=14, color='#2c3e50')
+            
+            # Grid and styling
+            ax.grid(True, alpha=0.3)
+            ax.tick_params(axis='both', labelsize=12, colors='#2c3e50')
+            
+            # Legend styling
+            legend = ax.legend(fontsize=12, frameon=True, fancybox=True, shadow=True)
+            legend.get_frame().set_facecolor('#ffffff')
+            legend.get_frame().set_alpha(0.9)
+            
+            # X-axis ticks for better readability
+            max_hours = max(hours_of_year) if hours_of_year else 8760
+            if max_hours > 8760:  # More than one year
+                ax.set_xticks(range(0, int(max_hours), 2000))
+            elif max_hours > 4000:  # More than half year
+                ax.set_xticks(range(0, int(max_hours), 1000))
+            elif max_hours > 2000:  # More than ~3 months
+                ax.set_xticks(range(0, int(max_hours), 500))
+            else:
+                ax.set_xticks(range(0, int(max_hours), 500))
+            
+            # Tight layout for better appearance
+            self.plotFigure.tight_layout()
             self.plotCanvas.draw()
         else:
             self.showErrorMessage("Die Datei enthält nicht die erforderlichen Spalten 'Zeit' und 'Wärmeerzeugung'.")
     
     def showInfoMessageOnPlot(self, message):
         """
-        Displays an information message on the plot canvas.
+        Displays an information message on the plot canvas with modern styling.
 
         Args:
             message (str): The message to display.
         """
         self.createPlotCanvas()
+        
+        # Apply modern matplotlib styling
+        plt.style.use('seaborn-v0_8-darkgrid')
+        
         ax = self.plotFigure.add_subplot(111)
-        ax.text(0.5, 0.5, message, ha='center', va='center', transform=ax.transAxes)
+        ax.text(0.5, 0.5, message, ha='center', va='center', transform=ax.transAxes,
+                fontsize=14, color='#7f8c8d', bbox=dict(boxstyle="round,pad=0.5", 
+                facecolor='#ecf0f1', edgecolor='#bdc3c7', alpha=0.8))
         ax.set_axis_off()
+        self.plotFigure.tight_layout()
         self.plotCanvas.draw()
 
     def addTechToScene(self, tech): # der Mist muss mal refactored werden
