@@ -281,14 +281,17 @@ class SchematicScene(CustomGraphicsScene):
         scene_width = end_x - start_x
         center_x = start_x + scene_width / 2
 
+        # Definiere gut lesbare Textfarbe (dunkelgrau statt rot/blau)
+        label_text_color = QColor(60, 60, 60)  # Dunkelgrau für bessere Lesbarkeit
+
         # Füge Label für Vorlauf (oberhalb der roten Linie) hinzu
         vorlauf_label = self.addText("Vorlauf", self.TEXT_FONT)
-        vorlauf_label.setDefaultTextColor(self.FLOW_LINE_COLOR)
+        vorlauf_label.setDefaultTextColor(label_text_color)
         vorlauf_label.setPos(center_x - vorlauf_label.boundingRect().width() / 2, self.generator_y - self.LINE_Y_OFFSET_GENERATOR - 30)
 
         # Füge Label für Rücklauf (unterhalb der blauen Linie) hinzu
         ruecklauf_label = self.addText("Rücklauf", self.TEXT_FONT)
-        ruecklauf_label.setDefaultTextColor(self.RETURN_LINE_COLOR)
+        ruecklauf_label.setDefaultTextColor(label_text_color)
         ruecklauf_label.setPos(center_x - ruecklauf_label.boundingRect().width() / 2, self.generator_y + self.LINE_Y_OFFSET_GENERATOR + 10)
 
     def update_pipes_connected_to_lines(self):
@@ -331,6 +334,9 @@ class SchematicScene(CustomGraphicsScene):
 
         # Update the scene size after adding the generator
         self.update_scene_size()
+
+        # Update all label positions to avoid collisions after adding components
+        self.update_all_label_positions()
 
         return generator
 
@@ -378,6 +384,9 @@ class SchematicScene(CustomGraphicsScene):
 
         # Update the scene size after adding the generator
         self.update_scene_size()
+
+        # Update all label positions to avoid collisions after adding components
+        self.update_all_label_positions()
 
         return generator
 
@@ -437,6 +446,83 @@ class SchematicScene(CustomGraphicsScene):
 
         return storage
     
+    def check_label_collision(self, new_label_rect):
+        """Check if a new label would collide with existing component labels."""
+        for item in self.items():
+            if isinstance(item, ComponentItem) and item.label and item.label.isVisible():
+                existing_rect = item.label.sceneBoundingRect()
+                if new_label_rect.intersects(existing_rect):
+                    return True
+        return False
+    
+    def find_optimal_label_position(self, item, label):
+        """Find optimal position for label to avoid collisions."""
+        padding = 12
+        base_y_below = item.pos().y() + item.boundingRect().height() + padding
+        base_y_above = item.pos().y() - item.boundingRect().height() - padding - label.boundingRect().height()
+        
+        # Try different Y offsets to find non-colliding position
+        for y_offset in range(0, 60, 15):  # Try offsets up to 60px in 15px steps
+            # Try below first (preferred for non-storage items)
+            if item.item_type != 'Storage':
+                test_y = base_y_below + y_offset
+                test_x = item.pos().x() - label.boundingRect().width() / 2
+                test_rect = QRectF(test_x, test_y, label.boundingRect().width(), label.boundingRect().height())
+                
+                if not self.check_label_collision(test_rect):
+                    return QPointF(test_x, test_y)
+                
+                # Try above as fallback
+                test_y = base_y_above - y_offset
+                test_rect = QRectF(test_x, test_y, label.boundingRect().width(), label.boundingRect().height())
+                
+                if not self.check_label_collision(test_rect):
+                    return QPointF(test_x, test_y)
+            else:
+                # For storage items, try above first
+                test_y = base_y_above - y_offset
+                test_x = item.pos().x() - label.boundingRect().width() / 2
+                test_rect = QRectF(test_x, test_y, label.boundingRect().width(), label.boundingRect().height())
+                
+                if not self.check_label_collision(test_rect):
+                    return QPointF(test_x, test_y)
+                
+                # Try below as fallback
+                test_y = base_y_below + y_offset
+                test_rect = QRectF(test_x, test_y, label.boundingRect().width(), label.boundingRect().height())
+                
+                if not self.check_label_collision(test_rect):
+                    return QPointF(test_x, test_y)
+        
+        # If no collision-free position found, return default position
+        if item.item_type == 'Storage':
+            return QPointF(item.pos().x() - label.boundingRect().width() / 2, base_y_above)
+        else:
+            return QPointF(item.pos().x() - label.boundingRect().width() / 2, base_y_below)
+    
+    def update_all_label_positions(self):
+        """Update positions of all component labels to avoid collisions."""
+        components = [item for item in self.items() if isinstance(item, ComponentItem) and item.label]
+        
+        # Sort components by X position to process from left to right
+        components.sort(key=lambda c: c.pos().x())
+        
+        for component in components:
+            if component.label:
+                optimal_position = self.find_optimal_label_position(component, component.label)
+                component.label.setPos(optimal_position)
+                
+                # Update background rect if it exists
+                if hasattr(component, 'background_rect') and component.background_rect:
+                    padding = 12
+                    label_rect = component.label.boundingRect()
+                    scene_label_pos = component.label.scenePos()
+                    background_rect_x = scene_label_pos.x() - padding / 2
+                    background_rect_y = scene_label_pos.y() - padding / 2
+                    background_rect_width = label_rect.width() + padding
+                    background_rect_height = label_rect.height() + padding
+                    component.background_rect.setRect(background_rect_x, background_rect_y, background_rect_width, background_rect_height)
+    
     def update_label(self, item, new_text):
         """Update the label of a given item with new text."""
         if item.label:
@@ -445,25 +531,19 @@ class SchematicScene(CustomGraphicsScene):
         else:
             # If no label exists, create a new one
             label = self.addText(new_text, self.TEXT_FONT)
+            # Setze eine gut lesbare dunkle Textfarbe
+            label.setDefaultTextColor(QColor(50, 50, 50))  # Dunkelgrau für bessere Lesbarkeit
             item.label = label  # Link the label to the item
 
         # Ensure the label is always on top
         item.label.setZValue(10)  # Make sure label is displayed above everything else
 
-        # Add padding for better visibility
-        padding = 10  
+        # Find optimal position to avoid collisions
+        optimal_position = self.find_optimal_label_position(item, item.label)
+        item.label.setPos(optimal_position)  # Set the optimized label position
 
-        # Update the position of the label based on the item type
-        if item.item_type == 'Storage':
-            # Position the label above the storage item
-            label_x = item.pos().x() - item.boundingRect().width() / 2 + padding
-            label_y = item.pos().y() - item.boundingRect().height() - padding
-        else:
-            # Position the label below the item for other types
-            label_x = item.pos().x() - item.boundingRect().width() / 2 + padding
-            label_y = item.pos().y() + item.boundingRect().height() + padding
-
-        item.label.setPos(label_x, label_y)  # Set the label position manually
+        # Add padding for background calculation
+        padding = 12
 
         # Get the updated bounding rect of the label
         label_rect = item.label.boundingRect()
@@ -479,15 +559,16 @@ class SchematicScene(CustomGraphicsScene):
         if hasattr(item, 'background_rect') and item.background_rect:  # Check if background_rect exists
             item.background_rect.setRect(background_rect_x, background_rect_y, background_rect_width, background_rect_height)
         else:
-            # Erstelle ein halbtransparentes Rechteck um das Label
+            # Erstelle ein kontrastreiches Rechteck um das Label
             background_rect = QGraphicsRectItem(background_rect_x, background_rect_y, background_rect_width, background_rect_height)
-            background_color = QColor(255, 255, 255, 150)  # Weiß mit Alpha-Wert von 150 für halbe Transparenz
-            background_rect.setBrush(background_color)  # Setze die halbtransparente Farbe
-            background_rect.setPen(QPen(Qt.PenStyle.NoPen))  # Keine Umrandung für den Hintergrund
+            # Verwende hellgrauen Hintergrund mit dunklem Rand für bessere Lesbarkeit
+            background_color = QColor(240, 240, 240, 220)  # Hellgrau mit hoher Deckkraft
+            border_color = QColor(100, 100, 100)  # Dunkler Rahmen für besseren Kontrast
+            background_rect.setBrush(background_color)  # Setze die kontrastreichere Farbe
+            background_rect.setPen(QPen(border_color, 1))  # Dünner dunkler Rahmen
             background_rect.setZValue(9)  # Leicht unterhalb des Labels
             self.addItem(background_rect)  # Add the background to the scene
             item.background_rect = background_rect  # Link it to the item
-            item.label.setParentItem(background_rect)  # Ensure the label is on top of the background
 
     def connect_generator_to_storage(self, generator, storage):
         """Connect two items (generator, storage, or consumer) using their connection points"""
@@ -768,21 +849,20 @@ class ComponentItem(QGraphicsItem):
                     if isinstance(pipe, Pipe):
                         pipe.update_path()  # Update the path of all pipes
 
-                # Aktualisiere die Position des Labels
+                # Aktualisiere die Position des Labels mit intelligenter Kollisionsvermeidung
                 if self.label:
-                    padding = 10  # Padding für die Positionierung
-
-                    if self.item_type == 'Storage':
-                        # Label über dem Speicher platzieren
-                        label_x = value.x() - self.boundingRect().width() / 2 + padding
-                        label_y = value.y() - self.boundingRect().height() - padding
-                    else:
-                        # Label unter anderen Komponenten platzieren
-                        label_x = value.x() - self.boundingRect().width() / 2 + padding
-                        label_y = value.y() + self.boundingRect().height() + padding
-
-                    # Setze die Position des Labels
-                    self.label.setPos(label_x, label_y)
+                    # Temporär die neue Position setzen für die Kollisionsprüfung
+                    old_pos = self.pos()
+                    self.setPos(value)  # Temporär neue Position setzen
+                    
+                    # Finde optimale Label-Position
+                    optimal_position = self.scene().find_optimal_label_position(self, self.label)
+                    self.label.setPos(optimal_position)
+                    
+                    # Position zurücksetzen (wird von PyQt automatisch auf 'value' gesetzt)
+                    self.setPos(old_pos)
+                    
+                    padding = 12
 
                     # Aktualisiere die Position und Größe der Hintergrundbox (background_rect)
                     if hasattr(self, 'background_rect') and self.background_rect:
