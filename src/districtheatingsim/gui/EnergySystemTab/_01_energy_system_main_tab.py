@@ -343,7 +343,7 @@ class EnergySystemTab(QWidget):
         Opens the optimization dialog and starts the optimization process.
         """
         dialog = WeightDialog()
-        if dialog.exec() == QDialog.Accepted:
+        if dialog.exec() == QDialog.DialogCode.Accepted:
             weights = dialog.get_weights()
             self.calculate_energy_system(True, weights)
 
