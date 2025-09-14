@@ -280,6 +280,9 @@ class NetworkGenerationData:
     net_results: Optional[Dict[str, Any]] = None
     pump_results: Optional[Dict[str, Any]] = None
     plot_data: Optional[Dict[str, Any]] = None
+    
+    # KPI results
+    kpi_results: Optional[Dict[str, Union[int, float, None]]] = None
 
     def calculate_results(self) -> Dict[str, Union[int, float, None]]:
         """
@@ -427,6 +430,7 @@ class NetworkGenerationData:
             results["Verteilverluste [MWh]"] = None
             results["rel. Verteilverluste [%]"] = None
 
+        self.kpi_results = results
         return results
     
     def prepare_plot_data(self) -> None:
@@ -570,3 +574,23 @@ class NetworkGenerationData:
                         "axis": "right",
                         "time": time_series
                     }
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize the network data including KPIs for saving.
+        """
+        data = self.__dict__.copy()
+        # Only include serializable fields
+        if hasattr(self, 'kpi_results') and self.kpi_results is not None:
+            data['kpi_results'] = self.kpi_results
+        return data
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'NetworkGenerationData':
+        """
+        Deserialize network data including KPIs from saved dict.
+        """
+        obj = cls(**{k: v for k, v in data.items() if k != 'kpi_results'})
+        if 'kpi_results' in data:
+            obj.kpi_results = data['kpi_results']
+        return obj
