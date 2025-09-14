@@ -44,5 +44,18 @@
     "end_time_step": null,
     "results_csv_filename": null,
     "supply_temperature_heat_generator": null,
-    "net_results": null
+    "net_results": null,
+    "kpi_results": {
+        "Anzahl angeschlossene Geb\u00e4ude": 9,
+        "Anzahl Heizzentralen": 1,
+        "Jahresgesamtw\u00e4rmebedarf Geb\u00e4ude [MWh/a]": 4443.605958513105,
+        "max. Heizlast Geb\u00e4ude [kW]": 2107.769833990385,
+        "Trassenl\u00e4nge W\u00e4rmenetz [m]": 1090.967271956561,
+        "W\u00e4rmebedarfsdichte [MWh/(a*m)]": 4.073088233475473,
+        "Anschlussdichte [kW/m]": 1.932019308159695,
+        "Jahresw\u00e4rmeerzeugung [MWh]": 4685.970093618148,
+        "Pumpenstrom [MWh]": 12.009131663533708,
+        "Verteilverluste [MWh]": 242.3641351050428,
+        "rel. Verteilverluste [%]": 5.172122959878042
+    }
 }

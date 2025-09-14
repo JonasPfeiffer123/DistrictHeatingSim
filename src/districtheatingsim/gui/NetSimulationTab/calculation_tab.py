@@ -819,7 +819,7 @@ class CalculationTab(QWidget):
                 combined_df.to_csv(csv_file_path, sep=';', date_format='%Y-%m-%dT%H:%M:%S')
 
                 # Metadaten/Parameter speichern
-                meta_dict = self.NetworkGenerationData.__dict__.copy()
+                meta_dict = self.NetworkGenerationData.to_dict()
                 # Entferne große/unnötige Felder bzw. bereits gespeicherte Daten
                 meta_dict.pop('net', None)
                 meta_dict.pop('waerme_hast_ges_W', None)
@@ -886,7 +886,7 @@ class CalculationTab(QWidget):
                 meta_dict = json.load(json_file)
 
             # DataClass rekonstruieren
-            self.NetworkGenerationData = NetworkGenerationData(**meta_dict)
+            self.NetworkGenerationData = NetworkGenerationData.from_dict(meta_dict)
             self.NetworkGenerationData.COP_filename = os.path.join(data_path, self.NetworkGenerationData.COP_filename)
             self.NetworkGenerationData.net = net
             self.NetworkGenerationData.waerme_hast_ges_W = waerme_hast_ges_W

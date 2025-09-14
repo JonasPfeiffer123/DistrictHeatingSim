@@ -64,5 +64,18 @@
         "res_circ_pump_mass.p_from_bar": "[[2.62004959]\n [2.58320664]\n [2.56640759]\n ...\n [2.60061483]\n [2.5985081 ]\n [2.58019624]]",
         "res_circ_pump_mass.t_to_k": "[[350.95]\n [350.47]\n [350.23]\n ...\n [352.93]\n [352.33]\n [351.73]]",
         "res_circ_pump_mass.t_from_k": "[[332.88960436]\n [332.83967659]\n [332.80446937]\n ...\n [332.86890195]\n [332.86385083]\n [332.8319807 ]]"
+    },
+    "kpi_results": {
+        "Anzahl angeschlossene Geb\u00e4ude": 9,
+        "Anzahl Heizzentralen": 2,
+        "Jahresgesamtw\u00e4rmebedarf Geb\u00e4ude [MWh/a]": 4443.605958513105,
+        "max. Heizlast Geb\u00e4ude [kW]": 2107.769833990385,
+        "Trassenl\u00e4nge W\u00e4rmenetz [m]": 1222.7903993452944,
+        "W\u00e4rmebedarfsdichte [MWh/(a*m)]": 3.633988262332038,
+        "Anschlussdichte [kW/m]": 1.7237376373897977,
+        "Jahresw\u00e4rmeerzeugung [MWh]": 4700.688652442187,
+        "Pumpenstrom [MWh]": 12.446862469191277,
+        "Verteilverluste [MWh]": 257.08269392908187,
+        "rel. Verteilverluste [%]": 5.469043217646793
     }
 }

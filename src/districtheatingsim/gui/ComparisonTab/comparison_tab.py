@@ -48,23 +48,69 @@ class ProjectExplorer(QWidget):
         
         # Header
         header_label = QLabel("Projekt-Explorer")
-        header_label.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        header_label.setFont(QFont("Arial", 13, QFont.Weight.Bold))
+        header_label.setStyleSheet("color: #fff; background: #222; padding: 8px 12px; border-radius: 6px; margin-bottom: 4px;")
         self.layout.addWidget(header_label)
-        
+
         # Refresh button
         self.refresh_btn = QPushButton("Projekte aktualisieren")
         self.refresh_btn.clicked.connect(self.discover_projects)
+        self.refresh_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: #fff;
+                border-radius: 8px;
+                padding: 8px 16px;
+                font-weight: bold;
+                font-size: 12px;
+                margin-bottom: 8px;
+            }
+            QPushButton:hover {
+                background-color: #217dbb;
+            }
+        """)
         self.layout.addWidget(self.refresh_btn)
-        
+
         # Project tree
         self.project_tree = QTreeWidget()
         self.project_tree.setHeaderLabel("Verfügbare Projekte")
         self.project_tree.itemChanged.connect(self.on_selection_changed)
+        self.project_tree.setStyleSheet("""
+            QTreeWidget {
+                background: #181818;
+                color: #eee;
+                border-radius: 6px;
+                font-size: 12px;
+            }
+            QTreeWidget::item {
+                padding: 4px 8px;
+                border-radius: 4px;
+            }
+            QTreeWidget::item:selected {
+                background: #2d3a4a;
+                color: #fff;
+                border: 1px solid #3498db;
+            }
+            QTreeWidget::item:hover {
+                background: #232323;
+            }
+            QHeaderView::section {
+                background: #222;
+                color: #fff;
+                font-weight: bold;
+                border-radius: 4px;
+                padding: 4px 8px;
+            }
+            QCheckBox {
+                spacing: 6px;
+                font-size: 12px;
+            }
+        """)
         self.layout.addWidget(self.project_tree)
-        
+
         # Selection info
         self.info_label = QLabel("Keine Varianten ausgewählt")
-        self.info_label.setStyleSheet("color: #666; font-style: italic;")
+        self.info_label.setStyleSheet("color: #aaa; font-style: italic; margin-top: 6px;")
         self.layout.addWidget(self.info_label)
         
     def discover_projects(self):
@@ -290,11 +336,6 @@ class ComparisonDashboard(QWidget):
         self.cost_canvas = FigureCanvas(self.cost_figure)
         economic_layout.addWidget(self.cost_canvas, 0, 0)
         
-        # Investment costs chart (new)
-        self.investment_figure = Figure(figsize=(8, 5))
-        self.investment_canvas = FigureCanvas(self.investment_figure)
-        economic_layout.addWidget(self.investment_canvas, 0, 1)
-        
         charts_tab_widget.addTab(economic_tab, "💰 Wirtschaftlich")
         
         # Energy Analysis Tab (new)
@@ -306,11 +347,6 @@ class ComparisonDashboard(QWidget):
         self.energy_figure = Figure(figsize=(8, 5))
         self.energy_canvas = FigureCanvas(self.energy_figure)
         energy_layout.addWidget(self.energy_canvas, 0, 0)
-        
-        # Energy metrics chart (new)
-        self.energy_metrics_figure = Figure(figsize=(8, 5))
-        self.energy_metrics_canvas = FigureCanvas(self.energy_metrics_figure)
-        energy_layout.addWidget(self.energy_metrics_canvas, 0, 1)
         
         charts_tab_widget.addTab(energy_tab, "⚡ Energie")
         
@@ -367,14 +403,14 @@ class ComparisonDashboard(QWidget):
         # Calculate averages or ranges for KPIs
         try:
             # Extract metrics from variant data
-            wgk_values = [v.get('WGK_Gesamt', 0) for v in self.variant_data if v.get('WGK_Gesamt', 0) > 0]
-            co2_values = [v.get('specific_emissions_Gesamt', 0) for v in self.variant_data if v.get('specific_emissions_Gesamt', 0) > 0]
-            pe_values = [v.get('primärenergiefaktor_Gesamt', 0) for v in self.variant_data if v.get('primärenergiefaktor_Gesamt', 0) > 0]
-            heat_values = [v.get('Jahreswärmebedarf', 0) for v in self.variant_data if v.get('Jahreswärmebedarf', 0) > 0]
-            
+            wgk_values = [v.get('WGK_Gesamt', 0) for v in self.variant_data if v.get('WGK_Gesamt', 0) not in (None, 0)]
+            co2_values = [v.get('specific_emissions_Gesamt', 0) for v in self.variant_data if v.get('specific_emissions_Gesamt', 0) not in (None, 0)]
+            pe_values = [v.get('primärenergiefaktor_Gesamt', 0) for v in self.variant_data if v.get('primärenergiefaktor_Gesamt', 0) not in (None, 0)]
+            heat_values = [v.get('Jahreswärmebedarf', 0) for v in self.variant_data if v.get('Jahreswärmebedarf', 0) not in (None, 0)]
+
             # New: Extract network metrics
-            trassenlänge_values = [v.get('Trassenlänge', 0) for v in self.variant_data if v.get('Trassenlänge', 0) > 0]
-            verluste_values = [v.get('Verteilverluste', 0) for v in self.variant_data if v.get('Verteilverluste', 0) > 0]
+            trassenlänge_values = [v.get('Trassenlänge', 0) for v in self.variant_data if v.get('Trassenlänge', 0) not in (None, 0)]
+            verluste_values = [v.get('Verteilverluste', 0) for v in self.variant_data if v.get('Verteilverluste', 0) not in (None, 0)]
             
             # Update KPI widgets with proper formatting
             # Wärmegestehungskosten
@@ -447,9 +483,7 @@ class ComparisonDashboard(QWidget):
         """Update all comparison charts."""
         try:
             self.update_cost_chart()
-            self.update_investment_chart()
             self.update_energy_chart()
-            self.update_energy_metrics_chart()
             self.update_co2_chart()
             self.update_pe_chart()
             self.update_network_chart()
@@ -493,58 +527,6 @@ class ComparisonDashboard(QWidget):
         self.cost_figure.tight_layout()
         self.cost_canvas.draw()
         
-    def update_investment_chart(self):
-        """Update investment costs comparison chart."""            
-        ax = self.investment_figure.add_subplot(111)
-        
-        # Use shorter, cleaner names for charts
-        names = [self.get_clean_variant_name(v.get('name', f'Variante {i+1}')) for i, v in enumerate(self.variant_data)]
-        
-        # Try to extract investment costs from variant data
-        investment_costs = []
-        for v in self.variant_data:
-            # Look for investment costs in different possible keys
-            inv_cost = (v.get('Investitionskosten', 0) or 
-                       v.get('investment_costs', 0) or 
-                       v.get('CAPEX', 0) or 
-                       v.get('total_investment', 0))
-            investment_costs.append(inv_cost)
-        
-        bars = ax.bar(names, investment_costs, color='#f39c12', alpha=0.8, edgecolor='#e67e22', linewidth=1)
-        
-        ax.set_title('Investitionskosten Vergleich', fontweight='bold', fontsize=14)
-        ax.set_ylabel('Investitionskosten (€)', fontweight='bold', fontsize=12)
-        ax.set_xlabel('Varianten', fontweight='bold', fontsize=12)
-        
-        # Improve tick label sizes
-        ax.tick_params(axis='both', which='major', labelsize=11)
-        
-        # Rotate labels if needed
-        if len(names) > 3:
-            ax.tick_params(axis='x', rotation=45)
-        
-        # Add value labels on bars with better formatting
-        for bar, cost in zip(bars, investment_costs):
-            height = bar.get_height()
-            if cost > 0:
-                # Format large numbers with K/M suffixes
-                if cost >= 1e6:
-                    label = f'{cost/1e6:.1f}M€'
-                elif cost >= 1e3:
-                    label = f'{cost/1e3:.0f}K€'
-                else:
-                    label = f'{cost:.0f}€'
-                    
-                ax.text(bar.get_x() + bar.get_width()/2., height + height*0.02,
-                       label, ha='center', va='bottom', fontweight='bold', fontsize=10)
-        
-        # Improve layout
-        ax.grid(True, alpha=0.3, axis='y')
-        ax.set_axisbelow(True)
-        
-        self.investment_figure.tight_layout()
-        self.investment_canvas.draw()
-        
     def get_clean_variant_name(self, full_name):
         """Extract clean variant name from full project path name."""
         if ' - ' in full_name:
@@ -554,11 +536,9 @@ class ComparisonDashboard(QWidget):
     def update_energy_chart(self):
         """Update energy mix comparison chart."""
         self.energy_figure.clear()
-        
         if not self.variant_data:
             return
-            
-        # Create subplots for energy mix comparison
+
         n_variants = len(self.variant_data)
         if n_variants == 0:
             return
@@ -577,121 +557,37 @@ class ComparisonDashboard(QWidget):
         
         for i, variant in enumerate(self.variant_data):
             ax = fig.add_subplot(rows, cols, i + 1)
-            
             techs = variant.get('techs', [])
             anteile = variant.get('Anteile', [])
             colors = variant.get('colors', plt.cm.Set3.colors[:len(techs)])
-            
+
             if techs and anteile:
-                # Filter out very small values for better readability
                 filtered_data = [(tech, anteil, color) for tech, anteil, color in zip(techs, anteile, colors) if anteil > 1.0]
-                
                 if filtered_data:
                     techs_filtered, anteile_filtered, colors_filtered = zip(*filtered_data)
                 else:
                     techs_filtered, anteile_filtered, colors_filtered = techs, anteile, colors
-                
                 wedges, texts = ax.pie(
-                    anteile_filtered, 
-                    labels=None,  # No labels on pie chart
-                    colors=colors_filtered, 
-                    autopct=None,  # Remove percentage text from pie chart
+                    anteile_filtered,
+                    labels=None,
+                    colors=colors_filtered,
+                    autopct=None,
                     startangle=90
                 )
-                    
-                # Create legend with technology names and percentages outside the pie
                 legend_labels = [f"{tech}: {anteil:.1f}%" for tech, anteil in zip(techs_filtered, anteile_filtered)]
-                
-                # Improved legend positioning for larger charts
-                if len(techs_filtered) <= 4:  # Few items - use right side
-                    ax.legend(wedges, legend_labels, loc='center left', bbox_to_anchor=(1.1, 0.5), 
-                             fontsize=9, frameon=True, fancybox=True, shadow=True)
-                elif len(techs_filtered) <= 8:  # Medium items - use bottom
-                    ax.legend(wedges, legend_labels, loc='upper center', bbox_to_anchor=(0.5, -0.05), 
-                             ncol=2, fontsize=8, frameon=True, fancybox=True, shadow=True)
-                else:  # Many items - use compact bottom layout
-                    ax.legend(wedges, legend_labels, loc='upper center', bbox_to_anchor=(0.5, -0.1), 
-                             ncol=3, fontsize=7, frameon=True)
-                    
+                # Always show legend, right for 1-2, below for more
+                if cols == 1 or (cols == 2 and n_variants <= 2):
+                    ax.legend(wedges, legend_labels, loc='center left', bbox_to_anchor=(1.1, 0.5),
+                              fontsize=9, frameon=True, fancybox=True, shadow=True)
+                else:
+                    ax.legend(wedges, legend_labels, loc='upper center', bbox_to_anchor=(0.5, -0.1),
+                              ncol=2, fontsize=8, frameon=True, fancybox=True, shadow=True)
             clean_name = self.get_clean_variant_name(variant.get('name', f'Variante {i+1}'))
             ax.set_title(clean_name, fontsize=10, fontweight='bold', pad=10)
-            
+
         fig.suptitle('Energiemix Vergleich', fontsize=12, fontweight='bold', y=0.98)
-        fig.tight_layout()
+        fig.tight_layout(rect=[0, 0, 1, 0.97])
         self.energy_canvas.draw()
-        
-    def update_energy_metrics_chart(self):
-        """Update energy metrics comparison chart."""
-        self.energy_metrics_figure.clear()
-        
-        if not self.variant_data:
-            return
-            
-        ax = self.energy_metrics_figure.add_subplot(111)
-        
-        names = [self.get_clean_variant_name(v.get('name', f'Variante {i+1}')) for i, v in enumerate(self.variant_data)]
-        
-        # Extract energy metrics
-        jahreswaermebedarf = [v.get('Jahreswärmebedarf', 0) for v in self.variant_data]
-        energy_efficiency = []
-        renewable_share = []
-        
-        for v in self.variant_data:
-            # Calculate renewable energy share from technology mix
-            techs = v.get('techs', [])
-            anteile = v.get('Anteile', [])
-            
-            renewable_techs = ['Solarthermie', 'Geothermie', 'Biomasse', 'Holzkessel', 'Pellets']
-            renewable_pct = 0
-            
-            for tech, anteil in zip(techs, anteile):
-                if any(renewable in tech for renewable in renewable_techs):
-                    renewable_pct += anteil
-                    
-            renewable_share.append(renewable_pct)
-            
-            # Energy efficiency placeholder (could be calculated from losses, etc.)
-            efficiency = 100 - v.get('Verteilverluste', 0)  # Simple efficiency estimation
-            energy_efficiency.append(efficiency)
-        
-        # Create grouped bar chart
-        x = np.arange(len(names))
-        width = 0.35
-        
-        bars1 = ax.bar(x - width/2, renewable_share, width, label='Erneuerbare Energien (%)', 
-                      color='#27ae60', alpha=0.8, edgecolor='#229954')
-        bars2 = ax.bar(x + width/2, energy_efficiency, width, label='Effizienz (%)', 
-                      color='#3498db', alpha=0.8, edgecolor='#2980b9')
-        
-        ax.set_title('Energie-Kennzahlen Vergleich', fontweight='bold', fontsize=14)
-        ax.set_ylabel('Anteil/Effizienz (%)', fontweight='bold', fontsize=12)
-        ax.set_xlabel('Varianten', fontweight='bold', fontsize=12)
-        ax.set_xticks(x)
-        ax.set_xticklabels(names, rotation=45 if len(names) > 3 else 0)
-        
-        # Improve tick label sizes
-        ax.tick_params(axis='both', which='major', labelsize=11)
-        
-        # Add value labels
-        for bar, value in zip(bars1, renewable_share):
-            if value > 0:
-                height = bar.get_height()
-                ax.text(bar.get_x() + bar.get_width()/2., height + height*0.02,
-                       f'{value:.1f}%', ha='center', va='bottom', fontweight='bold', fontsize=9)
-                       
-        for bar, value in zip(bars2, energy_efficiency):
-            if value > 0:
-                height = bar.get_height()
-                ax.text(bar.get_x() + bar.get_width()/2., height + height*0.02,
-                       f'{value:.1f}%', ha='center', va='bottom', fontweight='bold', fontsize=9)
-        
-        # Improve grid and styling
-        ax.grid(True, alpha=0.3, axis='y')
-        ax.set_axisbelow(True)
-        ax.legend(frameon=True, fancybox=True, shadow=True)
-        
-        self.energy_metrics_figure.tight_layout()
-        self.energy_metrics_canvas.draw()
         
     def update_co2_chart(self):
         """Update CO2 emissions comparison chart."""
@@ -868,11 +764,11 @@ class ComparisonDashboard(QWidget):
             
         # Clear charts
         for figure in [self.cost_figure, self.investment_figure, self.energy_figure, 
-                      self.energy_metrics_figure, self.co2_figure, self.pe_figure, self.network_figure]:
+                      self.co2_figure, self.pe_figure, self.network_figure]:
             figure.clear()
             
         for canvas in [self.cost_canvas, self.investment_canvas, self.energy_canvas, 
-                      self.energy_metrics_canvas, self.co2_canvas, self.pe_canvas, self.network_canvas]:
+                      self.co2_canvas, self.pe_canvas, self.network_canvas]:
             canvas.draw()
 
 class ComparisonTab(QWidget):
@@ -928,6 +824,8 @@ class ComparisonTab(QWidget):
         main_splitter.setStretchFactor(1, 1)  # Content stretches
         
         self.mainLayout.addWidget(main_splitter)
+
+        self.project_explorer.update_selected_variants()  # Initial update to load any pre-selected variants
         
     def create_comparison_content(self):
         """Create the main comparison content area."""
@@ -940,11 +838,6 @@ class ComparisonTab(QWidget):
         # Dashboard tab
         self.dashboard = ComparisonDashboard()
         self.tab_widget.addTab(self.dashboard, "📊 Dashboard")
-        
-        # Detailed comparison tabs will be added later
-        # self.tab_widget.addTab(EnergySystemComparison(), "🔥 Energiesystem")
-        # self.tab_widget.addTab(NetworkComparison(), "🚰 Wärmenetz") 
-        # self.tab_widget.addTab(EconomicsComparison(), "💰 Wirtschaftlichkeit")
         
         content_layout.addWidget(self.tab_widget)
         
@@ -996,119 +889,27 @@ class ComparisonTab(QWidget):
         self.dashboard.update_dashboard(self.variant_data)
         
     def load_network_data(self, variant_path):
-        """Load network statistics from variant files using NetworkDataClass patterns."""
+        """Instantiate NetworkGenerationData for the variant, load its data, and calculate KPIs."""
         network_data = {
             'Trassenlänge': 0,
             'Verteilverluste': 0,
             'Pumpenenergie': 0,
             'Anzahl_Gebäude': 0
         }
-        
         try:
-            # First, try to load any existing network results from the NetworkDataClass
-            results_path = os.path.join(variant_path, "Ergebnisse", "Ergebnisse.json")
-            if os.path.exists(results_path):
-                with open(results_path, 'r', encoding='utf-8') as f:
-                    results_data = json.load(f)
-                    
-                # Debug: Print available keys to understand data structure
-                print(f"DEBUG: Available keys in results: {list(results_data.keys())}")
-                if 'results' in results_data:
-                    print(f"DEBUG: Results keys: {list(results_data['results'].keys())}")
-                    
-                # Check if network results exist in the JSON structure - try different paths
-                network_results = (results_data.get('network_results', {}) or 
-                                 results_data.get('results', {}).get('network_results', {}) or
-                                 results_data.get('network', {}))
-                                 
-                if network_results:
-                    print(f"DEBUG: Found network results: {network_results}")
-                    # Extract NetworkDataClass calculated results
-                    network_data['Trassenlänge'] = network_results.get('Trassenlänge Wärmenetz [m]', 0)
-                    network_data['Verteilverluste'] = network_results.get('rel. Verteilverluste [%]', 0)
-                    network_data['Pumpenenergie'] = network_results.get('Pumpenstrom [MWh]', 0)
-                else:
-                    print(f"DEBUG: No network results found in {results_path}")
-                    # Try to extract from main results if available
-                    main_results = results_data.get('results', results_data)
-                    for key, value in main_results.items():
-                        if 'trasse' in key.lower() or 'länge' in key.lower():
-                            print(f"DEBUG: Potential Trassenlänge key: {key} = {value}")
-                        if 'verlust' in key.lower():
-                            print(f"DEBUG: Potential Verluste key: {key} = {value}")
-                        if 'pump' in key.lower():
-                            print(f"DEBUG: Potential Pumpen key: {key} = {value}")
-                    network_data['Verteilverluste'] = network_results.get('rel. Verteilverluste [%]', 0)
-                    network_data['Pumpenenergie'] = network_results.get('Pumpenstrom [MWh]', 0)
-                    
-            # Alternative: Try to load pandapipes network files directly
-            if network_data['Trassenlänge'] == 0:  # Fallback if no results in JSON
-                # Look for pandapipes network files
-                net_path = os.path.join(variant_path, "Wärmenetz", "pandapipes_network.json")
-                if os.path.exists(net_path):
-                    try:
-                        import pandapipes as pp
-                        net = pp.from_json(net_path)
-                        
-                        # Calculate Trassenlänge using NetworkDataClass pattern
-                        # Trassenlänge = total pipe length / 2 (for supply and return)
-                        if hasattr(net, 'pipe') and not net.pipe.empty:
-                            total_length_km = net.pipe['length_km'].sum() if 'length_km' in net.pipe.columns else 0
-                            network_data['Trassenlänge'] = round(total_length_km * 1000 / 2, 0)  # Convert to meters, divide by 2
-                            
-                        # For Verteilverluste and Pumpenenergie, we would need simulation results
-                        # These would come from NetworkDataClass.calculate_results() method
-                        
-                    except ImportError:
-                        pass  # pandapipes not available
-                    except Exception as e:
-                        print(f"Warning: Could not load pandapipes network from {net_path}: {e}")
-                        
-            # Try to load Lastgang data for estimated network statistics
-            lastgang_path = os.path.join(variant_path, "Lastgang", "Lastgang.csv")
-            if os.path.exists(lastgang_path):
-                try:
-                    df = pd.read_csv(lastgang_path, sep=';')
-                    
-                    # Calculate network statistics from load profile data
-                    if 'waerme_ges_kW' in df.columns:
-                        total_heat_demand = df['waerme_ges_kW'].sum() / 1000  # Convert to MWh
-                        network_data['Jahreswärmebedarf_Netz'] = round(total_heat_demand, 1)
-                        
-                    # Estimate losses if generation and demand data available
-                    if 'waerme_erzeugung_kW' in df.columns and 'waerme_ges_kW' in df.columns and network_data['Verteilverluste'] == 0:
-                        total_generation = df['waerme_erzeugung_kW'].sum() / 1000
-                        total_demand = df['waerme_ges_kW'].sum() / 1000
-                        if total_generation > 0:
-                            losses_percent = ((total_generation - total_demand) / total_generation) * 100
-                            network_data['Verteilverluste'] = round(max(0, losses_percent), 1)
-                except Exception as e:
-                    print(f"Warning: Could not process Lastgang data: {e}")
-                        
-            # Try to load building data to count buildings
-            building_paths = [
-                os.path.join(variant_path, "Gebäudedaten", "Quartier IST.geojson"),
-                os.path.join(variant_path, "Gebäudedaten", "LOD2.csv")
-            ]
-            
-            for building_path in building_paths:
-                if os.path.exists(building_path):
-                    try:
-                        if building_path.endswith('.csv'):
-                            df = pd.read_csv(building_path, sep=';')
-                            network_data['Anzahl_Gebäude'] = len(df)
-                            break
-                        elif building_path.endswith('.geojson'):
-                            import geopandas as gpd
-                            gdf = gpd.read_file(building_path)
-                            network_data['Anzahl_Gebäude'] = len(gdf)
-                            break
-                    except Exception as e:
-                        print(f"Warning: Could not load building data from {building_path}: {e}")
-                    
+            config_path = os.path.join(variant_path, "Wärmenetz", "Konfiguration Netzinitialisierung.json")
+            if not os.path.exists(config_path):
+                print(f"Config not found for {variant_path}")
+                return network_data
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            kpi_results = config.get('kpi_results', {})
+            network_data['Trassenlänge'] = kpi_results.get('Trassenlänge Wärmenetz [m]', 0)
+            network_data['Verteilverluste'] = kpi_results.get('rel. Verteilverluste [%]', 0)
+            network_data['Pumpenenergie'] = kpi_results.get('Pumpenstrom [MWh]', 0)
+            network_data['Anzahl_Gebäude'] = kpi_results.get('Anzahl angeschlossene Gebäude', 0)
         except Exception as e:
-            print(f"Warning: Could not load network data for {variant_path}: {e}")
-            
+            print(f"Error loading KPIs for {variant_path}: {e}")
         return network_data
         
     def process_variant_results(self, results):
