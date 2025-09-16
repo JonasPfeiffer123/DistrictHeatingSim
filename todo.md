@@ -66,3 +66,10 @@ To dos pandapipes:
 Was sollte jetzt kurzfristig noch geändert werden um eine "fertige" Version zu erhalten. --> sytematisch durchtesten in verschiedenen Varianten --> Beispiele zu systematischen Tests --> benchmarking --> verschieden große Netze?
 
 Fix problem with solar thermal with calculation problem after loading
+
+To dos before PyQt6 migration push:
+Check Documentation for unneccacary details, gui documentation can be reduced
+
+check if data needs to be in geojson of generated files
+
+Check functionality from beginning to end for multiple variants

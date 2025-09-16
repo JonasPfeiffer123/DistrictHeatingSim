@@ -1,7 +1,3 @@
-Zukünftige Projektstruktur
-
-Brainstorming
-
 # Projektstruktur
 
 ## Einleitung
