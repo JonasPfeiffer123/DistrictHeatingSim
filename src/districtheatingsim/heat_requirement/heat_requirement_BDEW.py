@@ -19,6 +19,7 @@ types, and meteorological conditions from Test Reference Year (TRY) data.
 
 import pandas as pd
 import numpy as np
+import math
 import os
 import sys
 from typing import Tuple, Optional, Union
@@ -978,13 +979,10 @@ def calculate(JWB_kWh: float,
         (hourly_daily_heat_demand_warmwater * hour_factor_interpolation) / 100
     ).astype(float)
 
-    # Normalize to match annual consumption target
-    hourly_heat_demand_heating_normed = np.nan_to_num(
-        (hourly_heat_demand_heating / np.sum(hourly_heat_demand_heating)) * JWB_kWh
-    )
-    hourly_heat_demand_warmwater_normed = np.nan_to_num(
-        (hourly_heat_demand_warmwater / np.sum(hourly_heat_demand_warmwater)) * JWB_kWh
-    )
+    total = hourly_heat_demand_heating + hourly_heat_demand_warmwater
+    scale_factor = JWB_kWh / np.sum(total) if np.sum(total) > 0 else 1
+    hourly_heat_demand_heating_normed = hourly_heat_demand_heating * scale_factor
+    hourly_heat_demand_warmwater_normed = hourly_heat_demand_warmwater * scale_factor
 
     # Calculate initial hot water share
     initial_ww_share = (
@@ -993,7 +991,9 @@ def calculate(JWB_kWh: float,
     )
 
     # Apply hot water share correction if specified
-    if real_ww_share is not None:
+    #print(f"Initial DHW share: {initial_ww_share:.3f}")
+    #print(f"real_ww_share: {real_ww_share}")
+    if real_ww_share is not None and not math.isnan(real_ww_share):
         if 0 <= real_ww_share <= 1:
             # Calculate correction factors
             ww_correction_factor = real_ww_share / initial_ww_share if initial_ww_share > 0 else 1
@@ -1013,6 +1013,11 @@ def calculate(JWB_kWh: float,
 
     # Calculate total heat demand
     hourly_heat_demand_total_normed = hourly_heat_demand_heating_normed + hourly_heat_demand_warmwater_normed
+
+    #print(f"BDEW calculation complete for {profiletype} ({subtype}) in {year}")
+    #print(f"  Annual total demand: {hourly_heat_demand_total_normed.sum():.0f} kWh (target: {JWB_kWh})")
+    #print(f"  Annual heating demand: {hourly_heat_demand_heating_normed.sum():.0f} kWh")
+    #print(f"  Annual DHW demand: {hourly_heat_demand_warmwater_normed.sum():.0f} kWh") 
     
     # Generate hourly time intervals
     hourly_intervals = calculate_hourly_intervals(year)
