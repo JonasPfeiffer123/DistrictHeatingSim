@@ -1,3 +1,7 @@
+import traceback
+
+def debug_print(msg):
+    print(f"[ProjectExplorer DEBUG] {msg}")
 """
 Comparison Tab Module
 ====================
@@ -38,9 +42,16 @@ class ProjectExplorer(QWidget):
         self.folder_manager = folder_manager
         self.config_manager = config_manager
         self.selected_variants = []
-        
+        self.base_path = None
         self.initUI()
-        self.discover_projects()
+        # Connect to folder_manager signal for project path changes
+        if hasattr(self.folder_manager, 'project_folder_changed'):
+            self.folder_manager.project_folder_changed.connect(self.set_base_path)
+        # Initialize base_path if available
+        if hasattr(self.folder_manager, 'project_data_path') and self.folder_manager.project_data_path:
+            self.set_base_path(self.folder_manager.project_data_path)
+        else:
+            self.set_base_path(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "project_data"))
         
     def initUI(self):
         """Initialize project explorer UI."""
@@ -113,51 +124,49 @@ class ProjectExplorer(QWidget):
         self.info_label.setStyleSheet("color: #aaa; font-style: italic; margin-top: 6px;")
         self.layout.addWidget(self.info_label)
         
+    def set_base_path(self, base_path):
+        """Set the base path and refresh project list."""
+        self.base_path = base_path
+        debug_print(f"set_base_path called with: {base_path}")
+        self.discover_projects()
+
     def discover_projects(self):
         """Discover and populate project variants."""
         self.project_tree.clear()
-        
         try:
-            # Get base project data path
-            project_data_path = os.path.join(
-                os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
-                "project_data"
-            )
-            
-            if not os.path.exists(project_data_path):
+            debug_print(f"discover_projects: base_path={self.base_path}")
+            if not self.base_path or not os.path.exists(self.base_path):
+                debug_print("Projekt-Datenordner nicht gefunden!")
                 self.info_label.setText("Projekt-Datenordner nicht gefunden")
                 return
-                
-            # Scan for projects
-            for project_name in os.listdir(project_data_path):
-                project_path = os.path.join(project_data_path, project_name)
-                if os.path.isdir(project_path):
-                    project_item = QTreeWidgetItem([project_name])
-                    project_item.setExpanded(True)
-                    
-                    # Scan for variants
-                    variant_count = 0
-                    for item_name in os.listdir(project_path):
-                        item_path = os.path.join(project_path, item_name)
-                        if (os.path.isdir(item_path) and 
-                            item_name.startswith("Variante") and
-                            self.validate_variant(item_path)):
-                            
-                            variant_item = QTreeWidgetItem([item_name])
-                            variant_item.setCheckState(0, Qt.CheckState.Checked)  # Auto-select all variants
-                            variant_item.setData(0, Qt.ItemDataRole.UserRole, item_path)
-                            project_item.addChild(variant_item)
-                            variant_count += 1
-                    
-                    if variant_count > 0:
-                        project_item.setText(0, f"{project_name} ({variant_count} Varianten)")
-                        self.project_tree.addTopLevelItem(project_item)
-                        
-            # Auto-load selected variants after discovering projects
+            # Use parent directory of base_path to find all variants
+            parent_dir = os.path.dirname(self.base_path)
+            debug_print(f"Using parent_dir for variants: {parent_dir}")
+            variants = [d for d in os.listdir(parent_dir) if os.path.isdir(os.path.join(parent_dir, d)) and d.startswith("Variante")]
+            debug_print(f"Found variant folders: {variants}")
+            # Add all valid variants as top-level items
+            variant_count = 0
+            for variant_name in variants:
+                variant_path = os.path.join(parent_dir, variant_name)
+                if self.validate_variant(variant_path):
+                    debug_print(f"Valid variant: {variant_name} at {variant_path}")
+                    variant_item = QTreeWidgetItem([variant_name])
+                    variant_item.setCheckState(0, Qt.CheckState.Checked)
+                    variant_item.setData(0, Qt.ItemDataRole.UserRole, variant_path)
+                    self.project_tree.addTopLevelItem(variant_item)
+                    variant_count += 1
+                else:
+                    debug_print(f"Skipped (invalid): {variant_name} at {variant_path}")
+            if variant_count == 0:
+                self.info_label.setText("Keine gültigen Varianten gefunden")
+            else:
+                self.info_label.setText(f"{variant_count} Varianten gefunden")
             self.update_selected_variants()
-                        
         except Exception as e:
+            debug_print(f"Exception in discover_projects: {e}\n{traceback.format_exc()}")
             QMessageBox.warning(self, "Fehler", f"Fehler beim Laden der Projekte: {str(e)}")
+
+    # No longer needed, replaced by set_base_path
             
     def validate_variant(self, variant_path):
         """Validate if variant contains required data files."""
@@ -166,8 +175,9 @@ class ProjectExplorer(QWidget):
             os.path.join("Lastgang", "Lastgang.csv"),
             os.path.join("Wärmenetz", "Konfiguration Netzinitialisierung.json")
         ]
-        
-        return all(os.path.exists(os.path.join(variant_path, file)) for file in required_files)
+        valid = all(os.path.exists(os.path.join(variant_path, file)) for file in required_files)
+        debug_print(f"validate_variant: {variant_path} valid={valid}")
+        return valid
         
     def on_selection_changed(self, item, column):
         """Handle variant selection changes."""
@@ -177,19 +187,15 @@ class ProjectExplorer(QWidget):
     def update_selected_variants(self):
         """Update list of selected variants and emit signal."""
         self.selected_variants = []
-        
         for i in range(self.project_tree.topLevelItemCount()):
-            project_item = self.project_tree.topLevelItem(i)
-            for j in range(project_item.childCount()):
-                variant_item = project_item.child(j)
-                if variant_item.checkState(0) == Qt.CheckState.Checked:
-                    variant_path = variant_item.data(0, Qt.ItemDataRole.UserRole)
-                    variant_name = f"{project_item.text(0).split(' (')[0]} - {variant_item.text(0)}"
-                    self.selected_variants.append({
-                        'name': variant_name,
-                        'path': variant_path
-                    })
-        
+            variant_item = self.project_tree.topLevelItem(i)
+            if variant_item.checkState(0) == Qt.CheckState.Checked:
+                variant_path = variant_item.data(0, Qt.ItemDataRole.UserRole)
+                variant_name = variant_item.text(0)
+                self.selected_variants.append({
+                    'name': variant_name,
+                    'path': variant_path
+                })
         # Update info label
         count = len(self.selected_variants)
         if count == 0:
@@ -198,12 +204,8 @@ class ProjectExplorer(QWidget):
             self.info_label.setText("1 Variante ausgewählt")
         else:
             self.info_label.setText(f"{count} Varianten ausgewählt")
-            
         # Emit signal
         self.variants_changed.emit(self.selected_variants)
-        
-        # Immediately load data for selected variants (triggers KPI calculation and dashboard update)
-        # Removed direct call to load_variant_data, relying on variants_changed signal for updates.
 
 class ComparisonDashboard(QWidget):
     """
@@ -763,11 +765,11 @@ class ComparisonDashboard(QWidget):
             widget.value_label.setText("--")
             
         # Clear charts
-        for figure in [self.cost_figure, self.investment_figure, self.energy_figure, 
+        for figure in [self.cost_figure, self.energy_figure, 
                       self.co2_figure, self.pe_figure, self.network_figure]:
             figure.clear()
             
-        for canvas in [self.cost_canvas, self.investment_canvas, self.energy_canvas, 
+        for canvas in [self.cost_canvas, self.energy_canvas, 
                       self.co2_canvas, self.pe_canvas, self.network_canvas]:
             canvas.draw()
 
