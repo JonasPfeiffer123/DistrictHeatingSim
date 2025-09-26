@@ -377,7 +377,7 @@ class HeatPump(BaseHeatGenerator):
             "Geothermie": 30
         }
         self.co2_factor_electricity = 0.4  # tCO2/MWh electricity
-        self.primärenergiefaktor = 2.4
+        self.primärenergiefaktor = 1.8
 
         self.Anteil_Förderung_BEW = 0.4  # 40% subsidy for BEW program
 
@@ -408,7 +408,6 @@ class HeatPump(BaseHeatGenerator):
         self.COP = np.zeros(hours, dtype=float)
         self.Wärmemenge_MWh = 0
         self.Strommenge_MWh = 0
-        self.Brennstoffbedarf_MWh = 0
         self.Anzahl_Starts = 0
         self.Betriebsstunden = 0
         self.Betriebsstunden_pro_Start = 0
@@ -734,7 +733,7 @@ class HeatPump(BaseHeatGenerator):
             interest_rate_factor=self.q,
             inflation_rate_factor=self.r,
             consideration_time_period_years=self.T, 
-            annual_energy_demand=self.Brennstoffbedarf_MWh,
+            annual_energy_demand=self.Strommenge_MWh,
             energy_cost_per_unit=self.Strompreis,
             annual_revenue=0,
             hourly_rate=self.stundensatz
@@ -754,7 +753,7 @@ class HeatPump(BaseHeatGenerator):
             interest_rate_factor=self.q,
             inflation_rate_factor=self.r,
             consideration_time_period_years=self.T, 
-            annual_energy_demand=self.Brennstoffbedarf_MWh,
+            annual_energy_demand=self.Strommenge_MWh,
             energy_cost_per_unit=self.Strompreis,
             annual_revenue=0,
             hourly_rate=self.stundensatz
@@ -779,7 +778,7 @@ class HeatPump(BaseHeatGenerator):
             interest_rate_factor=self.q,
             inflation_rate_factor=self.r,
             consideration_time_period_years=self.T, 
-            annual_energy_demand=self.Brennstoffbedarf_MWh,
+            annual_energy_demand=0,
             energy_cost_per_unit=self.Strompreis,
             annual_revenue=0,
             hourly_rate=self.stundensatz
@@ -798,7 +797,7 @@ class HeatPump(BaseHeatGenerator):
             interest_rate_factor=self.q,
             inflation_rate_factor=self.r,
             consideration_time_period_years=self.T, 
-            annual_energy_demand=self.Brennstoffbedarf_MWh,
+            annual_energy_demand=0,
             energy_cost_per_unit=self.Strompreis,
             annual_revenue=0,
             hourly_rate=self.stundensatz

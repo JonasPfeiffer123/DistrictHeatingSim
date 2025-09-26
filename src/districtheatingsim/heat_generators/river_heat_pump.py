@@ -331,7 +331,7 @@ class RiverHeatPump(HeatPump):
         """
         super().__init__(name, spezifische_Investitionskosten_WP=spezifische_Investitionskosten_WP)
         self.Wärmeleistung_FW_WP = Wärmeleistung_FW_WP
-        self.Temperatur_FW_WP = Temperatur_FW_WP
+        self.Temperatur_FW_WP = np.array(Temperatur_FW_WP)
         self.dT = dT
         self.spez_Investitionskosten_Flusswasser = spez_Investitionskosten_Flusswasser
         self.min_Teillast = min_Teillast
@@ -424,6 +424,8 @@ class RiverHeatPump(HeatPump):
         ...           f"Cooling={cooling[i]:.1f}kW")
         """
         # Calculate COP based on river water temperature and flow temperature
+        if isinstance(self.Temperatur_FW_WP, list):
+            self.Temperatur_FW_WP = np.array(self.Temperatur_FW_WP)
         COP_L, VLT_WP_L = self.calculate_COP(VLT_L, self.Temperatur_FW_WP, COP_data)
         
         # Calculate heat extraction from river (cooling load)
@@ -986,12 +988,14 @@ class RiverHeatPump(HeatPump):
         >>> #          spez. Investitionskosten Wärmepumpe: 900.0 €/kW"
         """
         # Handle temperature display based on data type
-        if isinstance(self.Temperatur_FW_WP, np.ndarray):
+        if isinstance(self.Temperatur_FW_WP, (np.ndarray, list)):
             # Array data - indicate dataset is loaded
             text_temperture = "Datensatz Temperaturen geladen. "
-        else:
+        elif isinstance(self.Temperatur_FW_WP, (float, int)):
             # Single value - display actual temperature
             text_temperture = f"Temperatur FW WP: {self.Temperatur_FW_WP:.1f} °C, "
+        else:
+            text_temperture = f"Fehlerhaftes Datenformat: {type(self.Temperatur_FW_WP)} "
 
         return (f"{self.name}: Wärmeleistung FW WP: {self.Wärmeleistung_FW_WP:.1f} kW, "
                 f"{text_temperture}dT: {self.dT:.1f} K, "
