@@ -252,9 +252,12 @@ class ResultsTab(QWidget):
         """
 
         # The following calculations really need to be done in the energy system class
+        # Big Problem that needs to be addressed, as BEW-subsidies are not included in the current results if available
         self.waerme_ges_kW, self.strom_wp_kW = np.sum(self.energy_system.results["waerme_ges_kW"]), np.sum(self.energy_system.results["strom_wp_kW"])
         if 'Summe Infrastruktur' in self.parent.costTab.data.index:
             self.WGK_Infra = self.parent.costTab.data.at['Summe Infrastruktur', 'Annuität'] / self.energy_system.results['Jahreswärmebedarf']
+            if self.energy_system.economic_parameters["subsidy_eligibility"] == "Ja":
+                self.WGK_Infra = (self.parent.costTab.data.at['Summe Infrastruktur', 'Annuität'] * 0.6) / self.energy_system.results['Jahreswärmebedarf']
         else:
             self.WGK_Infra = 0  # Fallback-Wert
         self.wgk_heat_pump_electricity = ((self.strom_wp_kW/1000) * self.parent.economic_parameters["electricity_price"]) / ((self.strom_wp_kW+self.waerme_ges_kW)/1000)
