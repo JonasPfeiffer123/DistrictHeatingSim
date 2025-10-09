@@ -702,7 +702,10 @@ class BiomassBoiler(BaseHeatGenerator):
         # Calculate component investment costs
         self.Investitionskosten_Kessel = self.spez_Investitionskosten * self.thermal_capacity_kW
         self.Investitionskosten_Holzlager = self.spez_Investitionskosten_Holzlager * self.Größe_Holzlager
-        self.Investitionskosten_Speicher = self.spez_Investitionskosten_Speicher * self.Speicher_Volumen
+        if self.speicher_aktiv:
+            self.Investitionskosten_Speicher = self.spez_Investitionskosten_Speicher * self.Speicher_Volumen
+        else:
+            self.Investitionskosten_Speicher = 0
         self.Investitionskosten = (self.Investitionskosten_Kessel + 
                                   self.Investitionskosten_Holzlager + 
                                   self.Investitionskosten_Speicher)

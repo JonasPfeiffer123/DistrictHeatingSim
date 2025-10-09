@@ -13,12 +13,12 @@ import os
 import geopandas as gpd
 from shapely import Point
 
-from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QComboBox, QWidget, \
+from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QComboBox, QWidget, \
     QPushButton, QHBoxLayout, QFileDialog, QMessageBox, QGroupBox
 
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 
 class NetworkDataTab(QWidget):
     """
@@ -262,20 +262,20 @@ class NetworkDataTab(QWidget):
             self.canvas1.draw()
 
             msg = QMessageBox()
-            msg.setIcon(QMessageBox.Warning)
+            msg.setIcon(QMessageBox.Icon.Warning)
             msg.setText("Dateien nicht gefunden")
             msg.setInformativeText(str(e))
             msg.setWindowTitle("Fehler")
-            msg.exec_()
+            msg.exec()
 
         except Exception as e:
             # Allgemeine Fehlermeldung bei anderen Fehlern
             msg = QMessageBox()
-            msg.setIcon(QMessageBox.Critical)
+            msg.setIcon(QMessageBox.Icon.Critical)
             msg.setText("Ein Fehler ist aufgetreten")
             msg.setInformativeText(str(e))
             msg.setWindowTitle("Fehler")
-            msg.exec_()
+            msg.exec()
 
     def set_layout_visibility(self, layout, visible):
         """

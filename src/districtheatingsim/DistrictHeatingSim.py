@@ -17,7 +17,6 @@ The DistrictHeatingSim application provides a complete environment for:
 - **Network Simulation**: Perform hydraulic and thermal network calculations
 - **Energy System Design**: Design and optimize heating system configurations
 - **Economic Analysis**: Comprehensive economic evaluation and comparison
-- **Results Documentation**: Generate professional reports and documentation
 
 Architecture
 ------------
@@ -53,9 +52,6 @@ Key Features
     - **Network Calculation**: Hydraulic and thermal network simulation
     - **Energy System Design**: Heating technology selection and sizing
     - **Variant Comparison**: Economic and technical comparison of alternatives
-    - **LOD2 Processing**: Advanced building geometry processing
-    - **Renovation Analysis**: Building renovation scenario evaluation
-    - **Individual Solutions**: Decentralized heating system analysis
 
 **Data Management**:
     - Standardized data formats for interoperability
@@ -68,7 +64,7 @@ Key Features
 Technical Implementation
 ------------------------
 **GUI Framework**:
-    The application uses PyQt5 for the graphical user interface, providing:
+    The application uses PyQt6 for the graphical user interface, providing:
     
     - Native look and feel across platforms
     - Rich widget set for complex data visualization
@@ -119,109 +115,6 @@ Examples
     # 3. Apply theme based on current time
     # 4. Display the main window maximized
 
-**Programmatic Usage** (for testing or automation):
-
-    >>> import sys
-    >>> from PyQt5.QtWidgets import QApplication
-    >>> from districtheatingsim.gui.MainTab.main_data_manager import *
-    >>> from districtheatingsim.gui.MainTab.main_presenter import HeatSystemPresenter
-    >>> from districtheatingsim.gui.MainTab.main_view import HeatSystemDesignGUI
-    >>> 
-    >>> # Initialize application
-    >>> app = QApplication(sys.argv)
-    >>> 
-    >>> # Create managers
-    >>> config_manager = ProjectConfigManager()
-    >>> folder_manager = ProjectFolderManager(config_manager)
-    >>> data_manager = DataManager()
-    >>> 
-    >>> # Create GUI and presenter
-    >>> view = HeatSystemDesignGUI(folder_manager, data_manager)
-    >>> presenter = HeatSystemPresenter(view, folder_manager, data_manager, config_manager)
-    >>> view.set_presenter(presenter)
-    >>> 
-    >>> # Show application
-    >>> view.show()
-    >>> sys.exit(app.exec_())
-
-**Project Creation Example**:
-
-    >>> # Create a new district heating project
-    >>> project_path = "/path/to/projects"
-    >>> project_name = "District_Heating_Munich"
-    >>> 
-    >>> # This creates the complete folder structure:
-    >>> # District_Heating_Munich/
-    >>> #   ├── Eingangsdaten allgemein/
-    >>> #   ├── Definition Quartier IST/
-    >>> #   └── Variante 1/
-    >>> #       ├── Ergebnisse/
-    >>> #       ├── Gebäudedaten/
-    >>> #       ├── Lastgang/
-    >>> #       └── Wärmenetz/
-
-Configuration and Customization
--------------------------------
-**Configuration Files**:
-    - `config.json`: User preferences and application settings
-    - `file_paths.json`: Resource paths and file locations
-    - Theme files: Light and dark mode stylesheets
-
-**Resource Management**:
-    The application uses a centralized resource management system:
-    
-    - Automatic path resolution for development and packaged versions
-    - Support for relative and absolute path configurations
-    - Fallback mechanisms for missing resources
-
-**Extensibility**:
-    The modular architecture supports easy extension:
-    
-    - New tabs can be added by implementing the base tab interface
-
-**Calculation Performance**:
-    - Progress feedback for long-running operations
-
-Dependencies
-------------
-**Core Dependencies**:
-    - PyQt5: GUI framework and widgets
-    - NumPy: Numerical computations and array operations
-    - Pandas: Data manipulation and analysis
-    - Matplotlib: Plotting and visualization
-    - JSON: Configuration and data serialization
-
-**Optional Dependencies**:
-    - ctypes: Windows-specific system integration
-    - PyInstaller: Application packaging and distribution
-    - Additional scientific libraries for specialized calculations
-
-**Internal Modules**:
-    - :mod:`districtheatingsim.utilities`: Common utilities and helpers
-    - :mod:`districtheatingsim.gui`: GUI components and interfaces
-    - :mod:`districtheatingsim.heat_generators`: Heating system models
-    - :mod:`districtheatingsim.network`: Network simulation and analysis
-
-Deployment and Distribution
----------------------------
-**Development Environment**:
-    - Direct execution from source code
-    - Debug mode with detailed logging
-
-**Production Deployment**:
-    - PyInstaller packaging for standalone executables
-    - Resource bundling and path resolution
-
-**System Requirements**:
-    - Tested on Windows with Python 3.11
-
-See Also
---------
-:mod:`districtheatingsim.gui.MainTab.main_view` : Main GUI implementation
-:mod:`districtheatingsim.gui.MainTab.main_presenter` : Business logic controller
-:mod:`districtheatingsim.gui.MainTab.main_data_manager` : Data management classes
-:mod:`districtheatingsim.utilities.utilities` : Common utility functions
-
 Notes
 -----
 The application is designed for professional use in district heating system
@@ -242,8 +135,8 @@ import os
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import QTimer
+from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import QTimer
 
 from districtheatingsim.utilities.utilities import handle_global_exception, get_stylesheet_based_on_time
 
@@ -330,12 +223,6 @@ def main():
         # 3. Display the main window in maximized state
         # 4. Apply appropriate theme based on current time
     
-    **Debug Mode Launch**:
-    
-        >>> import os
-        >>> os.environ['DEBUG'] = '1'  # Enable debug logging
-        >>> main()  # Launch with additional debugging information
-    
     See Also
     --------
     handle_global_exception : Global exception handling function
@@ -393,7 +280,7 @@ def main():
     view.show()
     
     # Start the application event loop and handle clean shutdown
-    exit_code = app.exec_()
+    exit_code = app.exec()
     sys.exit(exit_code)
 
 

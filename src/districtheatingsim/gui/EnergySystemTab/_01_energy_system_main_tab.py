@@ -12,8 +12,9 @@ import traceback
 import numpy as np
 import os
 
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMessageBox, QMenuBar, QScrollArea, QAction, QDialog)
-from PyQt5.QtCore import pyqtSignal, QEventLoop
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMessageBox, QMenuBar, QScrollArea, QDialog)
+from PyQt6.QtGui import QAction
+from PyQt6.QtCore import pyqtSignal, QEventLoop
 
 from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import import_results_csv
 from districtheatingsim.utilities.test_reference_year import import_TRY
@@ -236,7 +237,7 @@ class EnergySystemTab(QWidget):
         """
         Opens the economic parameters dialog.
         """
-        if self.economicParametersDialog.exec_():
+        if self.economicParametersDialog.exec():
             self.updateEconomicParameters()
 
     ### Calculation Functions ###
@@ -342,7 +343,7 @@ class EnergySystemTab(QWidget):
         Opens the optimization dialog and starts the optimization process.
         """
         dialog = WeightDialog()
-        if dialog.exec_() == QDialog.Accepted:
+        if dialog.exec() == QDialog.DialogCode.Accepted:
             weights = dialog.get_weights()
             self.calculate_energy_system(True, weights)
 
@@ -491,7 +492,7 @@ class EnergySystemTab(QWidget):
         self.calculationThread.calculation_error.connect(calculation_error)
         self.calculationThread.start()
         self.progressBar.setRange(0, 0)
-        calculation_done_event.exec_()  # Wait for the thread to finish
+        calculation_done_event.exec()  # Wait for the thread to finish
 
         # Ensure the thread has finished before returning
         self.calculationThread.wait()
@@ -505,7 +506,7 @@ class EnergySystemTab(QWidget):
         """
         if self.techTab.tech_objects and self.energy_system.results:
             dialog = SankeyDialog(results=self.energy_system.results, parent=self)
-            dialog.exec_()
+            dialog.exec()
         else:
             if not self.techTab.tech_objects:
                 QMessageBox.information(self, "Keine Erzeugeranlagen", "Es wurden keine Erzeugeranlagen definiert. Keine Berechnung möglich.")
@@ -513,44 +514,56 @@ class EnergySystemTab(QWidget):
                 QMessageBox.information(self, "Keine Berechnungsergebnisse", "Es sind keine Berechnungsergebnisse verfügbar. Führen Sie zunächst eine Berechnung durch.")
             
     ### Save Calculation Results ###
-    def save_heat_generation_results_to_csv(self):
+    def save_heat_generation_results_to_csv(self, show_dialog=True):
         """
         Saves the heat generation results to a CSV file.
         """
         if not self.energy_system or not self.energy_system.results:
-            QMessageBox.warning(self, "Keine Daten vorhanden", "Es sind keine Berechnungsergebnisse vorhanden, die gespeichert werden könnten.")
+            if show_dialog:
+                QMessageBox.warning(self, "Keine Daten vorhanden", "Es sind keine Berechnungsergebnisse vorhanden, die gespeichert werden könnten.")
             return
 
         try:
             csv_filename = os.path.join(self.base_path, self.config_manager.get_relative_path('calculated_heat_generation_path'))
             self.energy_system.save_to_csv(csv_filename)
-            QMessageBox.information(self, "Erfolgreich gespeichert", f"Die Ergebnisse wurden erfolgreich unter {csv_filename} gespeichert.")
+            if show_dialog:
+                QMessageBox.information(self, "Erfolgreich gespeichert", f"Die Ergebnisse wurden erfolgreich unter {csv_filename} gespeichert.")
         except Exception as e:
-            QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der CSV-Datei: {e}")
+            if show_dialog:
+                QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der CSV-Datei: {e}")
 
-    def save_results_JSON(self):
+    def save_results_JSON(self, show_dialog=True):
         """
         Saves the results and technology objects to a JSON file.
         """
         if not self.energy_system or not self.energy_system.results:
-            QMessageBox.warning(self, "Keine Daten vorhanden", "Es sind keine Berechnungsergebnisse vorhanden, die gespeichert werden könnten.")
+            if show_dialog:
+                QMessageBox.warning(self, "Keine Daten vorhanden", "Es sind keine Berechnungsergebnisse vorhanden, die gespeichert werden könnten.")
             return
 
         try:
             json_filename = os.path.join(self.base_path, self.config_manager.get_relative_path("results_path"))
             self.energy_system.save_to_json(json_filename)
-            QMessageBox.information(self, "Erfolgreich gespeichert", f"Die Ergebnisse wurden erfolgreich unter {json_filename} gespeichert.")
+            if show_dialog:
+                QMessageBox.information(self, "Erfolgreich gespeichert", f"Die Ergebnisse wurden erfolgreich unter {json_filename} gespeichert.")
         except Exception as e:
             error_details = traceback.format_exc()
-            QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der JSON-Datei: {e}\n\nDetails:\n{error_details}")
+            if show_dialog:
+                QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der JSON-Datei: {e}\n\nDetails:\n{error_details}")
 
-    def load_results_JSON(self):
+    def load_results_JSON(self, show_dialog=True):
         """
         Loads the EnergySystem object and its results from a JSON file.
+        
+        Parameters
+        ----------
+        show_dialog : bool, optional
+            Whether to show success/error dialogs. Default is True.
         """
         json_filename = os.path.join(self.base_path, self.config_manager.get_relative_path("results_path"))
         if not json_filename:
-            QMessageBox.warning(self, "Fehler", "Pfad für Ergebnisse konnte nicht ermittelt werden.")
+            if show_dialog:
+                QMessageBox.warning(self, "Fehler", "Pfad für Ergebnisse konnte nicht ermittelt werden.")
             return
 
         try:
@@ -559,7 +572,9 @@ class EnergySystemTab(QWidget):
 
             self.process_data()
 
-            QMessageBox.information(self, "Erfolgreich geladen", f"Die Ergebnisse wurden erfolgreich aus {json_filename} geladen.")
+            if show_dialog:
+                QMessageBox.information(self, "Erfolgreich geladen", f"Die Ergebnisse wurden erfolgreich aus {json_filename} geladen.")
         except ValueError as e:
-            QMessageBox.critical(self, "Ladefehler", str(e))
+            if show_dialog:
+                QMessageBox.critical(self, "Ladefehler", str(e))
 

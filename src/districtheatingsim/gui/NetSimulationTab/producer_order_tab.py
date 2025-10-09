@@ -12,10 +12,10 @@ import os
 
 import geopandas as gpd
 
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QGroupBox, QListWidget, QPushButton, \
+from PyQt6.QtWidgets import QVBoxLayout, QWidget, QGroupBox, QListWidget, QPushButton, \
     QMessageBox, QAbstractItemView, QListWidgetItem, QHBoxLayout, QLabel, QLineEdit
 
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 
 class ProducerOrderTab(QWidget):
     """
@@ -64,7 +64,7 @@ class ProducerOrderTab(QWidget):
         layout = QVBoxLayout()
 
         self.producer_list_widget = QListWidget()
-        self.producer_list_widget.setSelectionMode(QAbstractItemView.MultiSelection)
+        self.producer_list_widget.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
         layout.addWidget(self.producer_list_widget)
 
         self.add_producer_button = QPushButton("Erzeuger hinzufügen")
@@ -76,7 +76,7 @@ class ProducerOrderTab(QWidget):
         layout.addWidget(self.remove_producer_button)
 
         self.producer_order_list_widget = QListWidget()
-        self.producer_order_list_widget.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.producer_order_list_widget.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         layout.addWidget(self.producer_order_list_widget)
 
         self.producer_percentage_inputs = QVBoxLayout()
@@ -92,7 +92,7 @@ class ProducerOrderTab(QWidget):
             self.producer_list_widget.clear()
             for producer in producers:
                 item = QListWidgetItem(producer['name'])
-                item.setData(Qt.UserRole, producer)
+                item.setData(Qt.ItemDataRole.UserRole, producer)
                 self.producer_list_widget.addItem(item)
         except FileNotFoundError as e:
             QMessageBox.warning(self, "Datei nicht gefunden", str(e))
@@ -132,11 +132,11 @@ class ProducerOrderTab(QWidget):
         """Add selected producer to the order list."""
         selected_items = self.producer_list_widget.selectedItems()
         for item in selected_items:
-            producer = item.data(Qt.UserRole)
+            producer = item.data(Qt.ItemDataRole.UserRole)
             # Check if the producer is already in the order list
-            if not any(self.producer_order_list_widget.item(i).data(Qt.UserRole)['index'] == self.producer_list_widget.row(item) for i in range(self.producer_order_list_widget.count())):
+            if not any(self.producer_order_list_widget.item(i).data(Qt.ItemDataRole.UserRole)['index'] == self.producer_list_widget.row(item) for i in range(self.producer_order_list_widget.count())):
                 order_item = QListWidgetItem(producer['name'])
-                order_item.setData(Qt.UserRole, {'name': producer['name'], 'index': self.producer_list_widget.row(item)})
+                order_item.setData(Qt.ItemDataRole.UserRole, {'name': producer['name'], 'index': self.producer_list_widget.row(item)})
                 self.producer_order_list_widget.addItem(order_item)
 
         self.update_producer_percentage_inputs()

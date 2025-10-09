@@ -1056,37 +1056,41 @@ class EnergySystem:
         if selected_vars is None:
             selected_vars = self.initial_vars
 
-        ax1 = figure.add_subplot(111)
-        # set color cycle for the stackplot
-        ax1.set_prop_cycle(color=cm.tab10.colors)
+        # X-Achse: Jahresstunden als int
+        n_steps = len(self.time_steps)
+        x = np.arange(n_steps)
+        import matplotlib.gridspec as gridspec
+        figure.clear()
+        # Breitere Legenden-Spalten für lange Namen
+        gs = gridspec.GridSpec(1, 3, width_ratios=[0.22, 0.56, 0.22], figure=figure)
+        ax_legend_left = figure.add_subplot(gs[0, 0])
+        ax_main = figure.add_subplot(gs[0, 1])
+        ax_legend_right = figure.add_subplot(gs[0, 2])
+        ax_legend_left.axis('off')
+        ax_legend_right.axis('off')
+        ax_main.set_prop_cycle(color=cm.tab10.colors)
 
-        # Prioritize storage charging and discharging
+        # Stackplot- und Linienplot-Logik auf ax_main
         stackplot_vars = []
         if "Speicherbeladung_kW" in selected_vars:
             stackplot_vars.append("Speicherbeladung_kW")
         if "Speicherentladung_kW" in selected_vars:
             stackplot_vars.append("Speicherentladung_kW")
-
-        # Add remaining variables
         stackplot_vars += [var for var in selected_vars if var not in stackplot_vars and "_Wärmeleistung" in var]
         if "Ungedeckter_Bedarf_kW" in selected_vars:
             stackplot_vars.append("Ungedeckter_Bedarf_kW")
-
-        # Move storage discharging to end
         if "Speicherentladung_kW" in stackplot_vars:
             stackplot_vars.remove("Speicherentladung_kW")
             stackplot_vars.append("Speicherentladung_kW")
 
-        # Line variables (e.g. load profile)
         line_vars = [var for var in selected_vars if var not in stackplot_vars and var != "Last_L"]
 
-        # Prepare stackplot data
         stackplot_data = []
+        stackplot_labels = []
         for var in stackplot_vars:
             if var == "Speicherbeladung_kW" and var in self.extracted_data:
-                # Display storage charging as negative values, but not integrated in stackplot
-                ax1.fill_between(
-                    self.time_steps,
+                ax_main.fill_between(
+                    x,
                     0,
                     self.extracted_data[var],
                     label=var,
@@ -1096,53 +1100,102 @@ class EnergySystem:
                 )
             elif var in self.extracted_data:
                 stackplot_data.append(self.extracted_data[var])
+                stackplot_labels.append(var)
 
-        # Draw stackplot for remaining variables
         if stackplot_data:
-            ax1.stackplot(
-                self.time_steps,
+            ax_main.stackplot(
+                x,
                 stackplot_data,
-                labels=[var for var in stackplot_vars if var != "Speicherbeladung_kW"],
-                step="mid"
+                labels=stackplot_labels,
+                step="mid",
+                edgecolor='none'
             )
 
-        # Line plot
-        ax2 = ax1.twinx() if second_y_axis else None
-        if ax2:
-            # Use a different color cycle for ax2
-            color_cycle = itertools.cycle(cm.Dark2.colors)
-            for var_name in line_vars:
-                if var_name in self.extracted_data:
-                    ax2.plot(
-                        self.time_steps,
+        ax2 = ax_main.twinx() if second_y_axis else None
+        lines_ax1 = []
+        labels_ax1 = []
+        lines_ax2 = []
+        labels_ax2 = []
+        import itertools
+        color_cycle = itertools.cycle(cm.Dark2.colors)
+        for var_name in line_vars:
+            if var_name in self.extracted_data:
+                if ax2:
+                    line, = ax2.plot(
+                        x,
                         self.extracted_data[var_name],
                         label=var_name,
                         color=next(color_cycle)
                     )
-        else:
+                    lines_ax2.append(line)
+                    labels_ax2.append(var_name)
+                else:
+                    line, = ax_main.plot(x, self.extracted_data[var_name], label=var_name)
+                    lines_ax1.append(line)
+                    labels_ax1.append(var_name)
+
+        if "Last_L" in selected_vars:
+            line, = ax_main.plot(x, self.results["Last_L"], color='blue', label='Last', linewidth=0.25)
+            lines_ax1.append(line)
+            labels_ax1.append('Last')
+
+        # Achsenbeschriftung und Grid
+        ax_main.set_title("Jahresganglinie", fontsize=16)
+        ax_main.set_xlabel("Jahresstunden", fontsize=14)
+        ax_main.set_ylabel("Wärmeleistung [kW]", fontsize=14)
+        ax_main.grid()
+        if ax2:
+            ax2.set_ylabel('Temperatur (°C)', fontsize=14)
+            ax2.tick_params(axis='y', labelsize=14)
+
+        step = 1000
+        ax_main.set_xticks(np.arange(0, n_steps+step, step))
+        ax_main.set_xticklabels([str(i) for i in np.arange(0, n_steps+step, step)])
+
+        # Legenden in eigenen Achsen
+        def get_ncol(n):
+            return 1 if n <= 18 else 2
+
+        if lines_ax1 or stackplot_labels:
+            ncol_left = get_ncol(len(lines_ax1) + len(stackplot_labels))
+            ax_legend_left.legend(
+                ax_main.get_legend_handles_labels()[0],
+                ax_main.get_legend_handles_labels()[1],
+                loc='best',
+                fontsize=12,
+                frameon=False,
+                ncol=ncol_left
+            )
+        if lines_ax2:
+            ncol_right = get_ncol(len(lines_ax2))
+            ax_legend_right.legend(lines_ax2, labels_ax2, loc='best', fontsize=12, frameon=False, ncol=ncol_right)
+
+        # Weniger Rand, damit die Daten direkt an den Achsen anliegen
+        figure.subplots_adjust(left=0.08, right=0.92, wspace=0.18)
+        # X-Achse: min/max exakt an Daten
+        ax_main.set_xlim(x[0], x[-1])
+        # Y-Achse: min/max exakt an Daten
+        y_data_ax1 = []
+        for arr in stackplot_data:
+            y_data_ax1.append(np.asarray(arr))
+        for var_name in line_vars:
+            if var_name in self.extracted_data:
+                y_data_ax1.append(np.asarray(self.extracted_data[var_name]))
+        if "Last_L" in selected_vars:
+            y_data_ax1.append(np.asarray(self.results["Last_L"]))
+        if y_data_ax1:
+            y_min = min(arr.min() for arr in y_data_ax1)
+            y_max = max(arr.max() for arr in y_data_ax1)
+            ax_main.set_ylim(y_min, y_max)
+        if ax2:
+            y_data_ax2 = []
             for var_name in line_vars:
                 if var_name in self.extracted_data:
-                    ax1.plot(self.time_steps, self.extracted_data[var_name], label=var_name)
-
-        # Load profile
-        if "Last_L" in selected_vars:
-            ax1.plot(self.time_steps, self.results["Last_L"], color='blue', label='Last', linewidth=0.25)
-
-        # Axis titles and legend (English, larger font sizes)
-        ax1.set_title("Annual Load Curve", fontsize=16)
-        ax1.set_xlabel("Hour of Year", fontsize=14)
-        ax1.set_ylabel("Thermal Power [kW]", fontsize=14)
-        ax1.grid()
-        ax1.legend(loc='upper left' if ax2 else 'upper center', fontsize=14)
-        if ax2:
-            ax2.legend(loc='upper right', ncol=2, fontsize=12)
-
-        # Prevent x-axis label overlap
-        figure.autofmt_xdate(rotation=30)
-        # Remove all padding between plot and axes
-        figure.subplots_adjust(left=0, right=1, top=1, bottom=0)
-        # Optional: set tight layout for better spacing
-        figure.tight_layout()
+                    y_data_ax2.append(np.asarray(self.extracted_data[var_name]))
+            if y_data_ax2:
+                y2_min = min(arr.min() for arr in y_data_ax2)
+                y2_max = max(arr.max() for arr in y_data_ax2)
+                ax2.set_ylim(y2_min, y2_max)
 
     def plot_pie_chart(self, figure=None) -> None:
         """

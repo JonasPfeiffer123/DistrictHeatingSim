@@ -8,8 +8,8 @@ Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2024-11-06
 """
 
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QSizePolicy, QComboBox)
-from PyQt5.QtCore import QSize, Qt
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QSizePolicy, QComboBox)
+from PyQt6.QtCore import QSize, Qt
 
 import json
 import numpy as np
@@ -42,11 +42,11 @@ class CheckableComboBox(QComboBox):
             index (QModelIndex): The index of the pressed item.
         """
         item = self.model().itemFromIndex(index)
-        if item.checkState() == Qt.Checked:
-            item.setCheckState(Qt.Unchecked)
+        if item.checkState() == Qt.CheckState.Checked:
+            item.setCheckState(Qt.CheckState.Unchecked)
             self.checked_items.remove(item.text())
         else:
-            item.setCheckState(Qt.Checked)
+            item.setCheckState(Qt.CheckState.Checked)
             self.checked_items.append(item.text())
         self.updateText()
 
@@ -69,7 +69,7 @@ class CheckableComboBox(QComboBox):
         """
         super(CheckableComboBox, self).addItem(text, data)
         item = self.model().item(self.count() - 1)
-        item.setCheckState(Qt.Unchecked)
+        item.setCheckState(Qt.CheckState.Unchecked)
 
     def addItems(self, texts):
         """
@@ -92,7 +92,7 @@ class CheckableComboBox(QComboBox):
         index = self.findText(text)
         if index != -1:
             item = self.model().item(index)
-            item.setCheckState(Qt.Checked if checked else Qt.Unchecked)
+            item.setCheckState(Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
             if checked:
                 if text not in self.checked_items:
                     self.checked_items.append(text)
@@ -139,8 +139,8 @@ class CollapsibleHeader(QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)  # Reduce margins for a compact look
 
         # Adjust size policies for proper behavior when collapsed
-        self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)
-        self.content_widget.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)
+        self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Minimum)
+        self.content_widget.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Minimum)
 
     def toggle_content(self):
         self.is_expanded = not self.is_expanded

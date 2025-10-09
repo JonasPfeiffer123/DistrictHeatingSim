@@ -12,12 +12,12 @@ import sys
 import numpy as np
 
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QHBoxLayout, QTableWidget, QTableWidgetItem, 
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QHBoxLayout, QTableWidget, QTableWidgetItem, 
                              QHeaderView, QScrollArea, QCheckBox, QApplication)
-from PyQt5.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal
 
 from districtheatingsim.gui.EnergySystemTab._10_utilities import CheckableComboBox, CollapsibleHeader
 
@@ -166,7 +166,7 @@ class ResultsTab(QWidget):
             'Anzahl Starts', 'Betriebsstunden/Start', 'Kosten (€/MWh)', 
             'Anteil (%)', 'CO2-eq (t_CO2/MWh_th)', 'Primärenergiefaktor'
         ])
-        self.resultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.resultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
     def setupAdditionalResultsTable(self):
         """
@@ -175,7 +175,7 @@ class ResultsTab(QWidget):
         self.additionalResultsTable = QTableWidget()
         self.additionalResultsTable.setColumnCount(3)
         self.additionalResultsTable.setHorizontalHeaderLabels(['Ergebnis', 'Wert', 'Einheit'])
-        self.additionalResultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.additionalResultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
     def adjustTableSize(self, table):
         """
@@ -252,9 +252,12 @@ class ResultsTab(QWidget):
         """
 
         # The following calculations really need to be done in the energy system class
+        # Big Problem that needs to be addressed, as BEW-subsidies are not included in the current results if available
         self.waerme_ges_kW, self.strom_wp_kW = np.sum(self.energy_system.results["waerme_ges_kW"]), np.sum(self.energy_system.results["strom_wp_kW"])
         if 'Summe Infrastruktur' in self.parent.costTab.data.index:
             self.WGK_Infra = self.parent.costTab.data.at['Summe Infrastruktur', 'Annuität'] / self.energy_system.results['Jahreswärmebedarf']
+            if self.energy_system.economic_parameters["subsidy_eligibility"] == "Ja":
+                self.WGK_Infra = (self.parent.costTab.data.at['Summe Infrastruktur', 'Annuität'] * 0.6) / self.energy_system.results['Jahreswärmebedarf']
         else:
             self.WGK_Infra = 0  # Fallback-Wert
         self.wgk_heat_pump_electricity = ((self.strom_wp_kW/1000) * self.parent.economic_parameters["electricity_price"]) / ((self.strom_wp_kW+self.waerme_ges_kW)/1000)
@@ -337,4 +340,4 @@ if __name__ == "__main__":
     data_manager = None  # Sie müssen hier ein geeignetes Datenmanager-Objekt übergeben
     main = ResultsTab(data_manager)
     main.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
