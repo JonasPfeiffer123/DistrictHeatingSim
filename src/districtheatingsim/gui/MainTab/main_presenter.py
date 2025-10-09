@@ -98,7 +98,7 @@ professional district heating system analysis and planning workflows.
 Dependencies
 ------------
 **Core Framework**:
-    - PyQt5: GUI framework for dialogs and user interaction
+    - PyQt6: GUI framework for dialogs and user interaction
     - Python Standard Library: os, shutil for file operations
 
 **Internal Modules**:
@@ -128,7 +128,7 @@ import os
 import shutil
 from typing import Optional, Tuple
 
-from PyQt5.QtWidgets import QInputDialog
+from PyQt6.QtWidgets import QInputDialog
 
 class HeatSystemPresenter:
     """

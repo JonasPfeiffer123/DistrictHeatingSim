@@ -72,4 +72,4 @@ if __name__ == "__main__":
     values = [0.8, 0.6, 0.9, 0.4, 0.7]  # Normierte Werte (zwischen 0 und 1)
     window = SpiderDiagram(labels, values)
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

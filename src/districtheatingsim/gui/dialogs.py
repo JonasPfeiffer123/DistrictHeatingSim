@@ -8,8 +8,8 @@ Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-03-10
 """
 
-from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QPushButton, QHBoxLayout, QFileDialog, QCheckBox, QDialogButtonBox, QHBoxLayout
-from PyQt5.QtCore import Qt
+from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QPushButton, QHBoxLayout, QFileDialog, QCheckBox, QDialogButtonBox, QHBoxLayout
+from PyQt6.QtCore import Qt
 
 from districtheatingsim.utilities.utilities import get_resource_path
 
@@ -46,7 +46,7 @@ class TemperatureDataDialog(QDialog):
             "https://www.dwd.de/DE/leistungen/testreferenzjahre/testreferenzjahre.html</a> bezogen werden.<br>"
             "Es ist jedoch eine Registrierung beim DWD notwendig", self)
         self.descriptionLabel.setWordWrap(True)
-        self.descriptionLabel.setAlignment(Qt.AlignCenter)
+        self.descriptionLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.main_layout.addWidget(self.descriptionLabel)
 
         # File input controls
@@ -182,86 +182,4 @@ class HeatPumpDataDialog(QDialog):
         """
         return {
             'COP-filename': self.heatPumpDataFileInput.text()
-        }
-
-class PDFSelectionDialog(QDialog):
-    """
-    Dialog for selecting PDF report sections.
-    
-    Checkbox dialog for choosing which sections to include in PDF reports.
-    """
-    
-    def __init__(self, parent=None):
-        """
-        Initialize PDF selection dialog.
-        
-        Parameters
-        ----------
-        parent : QWidget, optional
-            Parent widget.
-        """
-        super().__init__(parent)
-        self.setWindowTitle("PDF Abschnittsauswahl")
-        self.resize(300, 200)
-
-        layout = QVBoxLayout()
-
-        # Section checkboxes
-        self.net_structure_cb = QCheckBox("Netzstruktur")
-        self.net_structure_cb.setChecked(True)
-        self.economic_conditions_cb = QCheckBox("Wirtschaftliche Randbedingungen")
-        self.economic_conditions_cb.setChecked(True)
-        self.technologies_cb = QCheckBox("Erzeugertechnologien")
-        self.technologies_cb.setChecked(True)
-        self.technolgies_scene_cb = QCheckBox("Schaltbild Erzeugertechnologien")
-        self.technolgies_scene_cb.setChecked(True)
-        self.costs_net_infrastructure_cb = QCheckBox("Kosten Netzinfrastruktur")
-        self.costs_net_infrastructure_cb.setChecked(True)
-        self.costs_heat_generators_cb = QCheckBox("Kosten Wärmeerzeuger")
-        self.costs_heat_generators_cb.setChecked(True)
-        self.costs_total_cb = QCheckBox("Gesamtkosten")
-        self.costs_total_cb.setChecked(True)
-        self.results_cb = QCheckBox("Berechnungsergebnisse")
-        self.results_cb.setChecked(True)
-        self.combined_results_cb = QCheckBox("Wirtschaftlichkeit")
-        self.combined_results_cb.setChecked(True)
-
-        # Add checkboxes to layout
-        layout.addWidget(self.net_structure_cb)
-        layout.addWidget(self.economic_conditions_cb)
-        layout.addWidget(self.technologies_cb)
-        layout.addWidget(self.technolgies_scene_cb)
-        layout.addWidget(self.costs_net_infrastructure_cb)
-        layout.addWidget(self.costs_heat_generators_cb)
-        layout.addWidget(self.costs_total_cb)
-        layout.addWidget(self.results_cb)
-        layout.addWidget(self.combined_results_cb)
-
-        # OK/Cancel buttons
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        buttonBox.accepted.connect(self.accept)
-        buttonBox.rejected.connect(self.reject)
-        layout.addWidget(buttonBox)
-
-        self.setLayout(layout)
-
-    def get_selected_sections(self):
-        """
-        Get selected PDF sections.
-        
-        Returns
-        -------
-        dict
-            Dictionary with checkbox states for each section.
-        """
-        return {
-            'net_structure': self.net_structure_cb.isChecked(),
-            'economic_conditions': self.economic_conditions_cb.isChecked(),
-            'technologies': self.technologies_cb.isChecked(),
-            'technologies_scene': self.technolgies_scene_cb.isChecked(),
-            'costs_net_infrastructure': self.costs_net_infrastructure_cb.isChecked(),
-            'costs_heat_generators': self.costs_heat_generators_cb.isChecked(),
-            'costs_total': self.costs_total_cb.isChecked(),
-            'results': self.results_cb.isChecked(),
-            'combined_results': self.combined_results_cb.isChecked()
         }

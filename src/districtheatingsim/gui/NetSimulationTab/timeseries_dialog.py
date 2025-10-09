@@ -9,7 +9,7 @@ Date: 2025-02-11
 """
 
 import os
-from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog,  \
+from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog,  \
     QPushButton, QHBoxLayout, QFileDialog, QMessageBox
 
 class TimeSeriesCalculationDialog(QDialog):
@@ -38,7 +38,8 @@ class TimeSeriesCalculationDialog(QDialog):
         self.setWindowTitle("Zeitreihenrechnung")
         self.resize(400, 200)
 
-        self.layout = QVBoxLayout(self)
+        self.layout = QVBoxLayout()
+        self.setLayout(self.layout)
 
         # Zeitschritte
         self.StartTimeStepLabel = QLabel("Zeitschritt Simulationsstart (min 0):", self)
@@ -52,7 +53,7 @@ class TimeSeriesCalculationDialog(QDialog):
         self.layout.addWidget(self.EndTimeStepInput)
 
         # Dateiauswahl
-        self.fileInputlayout = QHBoxLayout(self)
+        self.fileInputlayout = QHBoxLayout()
 
         self.resultsFileLabel = QLabel("Ausgabedatei Lastgang:", self)
         self.resultsFileInput = QLineEdit(os.path.join(self.base_path, self.parent.config_manager.get_relative_path('load_profile_path')), self)

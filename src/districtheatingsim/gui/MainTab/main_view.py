@@ -3,7 +3,7 @@ DistrictHeatingSim Main GUI View Module
 =======================================
 
 This module implements the main graphical user interface for the DistrictHeatingSim
-application, providing a comprehensive PyQt5-based interface for district heating
+application, providing a comprehensive PyQt6-based interface for district heating
 system simulation and analysis. The module follows the Model-View-Presenter (MVP)
 architectural pattern as the View component, managing all user interface elements
 and interactions.
@@ -50,7 +50,7 @@ Architecture Integration
     - **External Components**: Specialized tab modules and dialogs
 
 **Signal-Slot Architecture**:
-    Utilizes PyQt5's signal-slot mechanism for:
+    Utilizes PyQt6's signal-slot mechanism for:
     
     - Inter-component communication
     - Event propagation and handling
@@ -79,7 +79,7 @@ engineering applications in district heating system planning and analysis.
 Dependencies
 ------------
 **Core GUI Framework**:
-    - PyQt5: Primary GUI framework for widgets and layouts
+    - PyQt6: Primary GUI framework for widgets and layouts
     - QtWidgets: Main widget classes and containers
     - QtGui: Icons, themes, and visual elements
 
@@ -90,8 +90,6 @@ Dependencies
 
 **External Integration**:
     - File system operations for project management
-    - Data persistence through various formats
-    - Cross-platform compatibility features
 
 See Also
 --------
@@ -116,20 +114,20 @@ import os
 import traceback
 from typing import Optional, List, Dict, Any
 
-from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QTabWidget, QMenuBar, QAction, 
-                             QFileDialog, QLabel, QMessageBox, QInputDialog)
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import pyqtSlot
+from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QTabWidget, QMenuBar, 
+                             QFileDialog, QLabel, QMessageBox, QInputDialog, QStackedWidget,
+                             QHBoxLayout)
+from PyQt6.QtGui import QIcon, QAction, QFont
+from PyQt6.QtCore import pyqtSlot
 
 from districtheatingsim.gui.ProjectTab.project_tab import ProjectTab
-from districtheatingsim.gui.LOD2Tab.lod2_main_tab import LOD2Tab
 from districtheatingsim.gui.BuildingTab.building_tab import BuildingTab
-from districtheatingsim.gui.RenovationTab.RenovationTab import RenovationTab
 from districtheatingsim.gui.NetSimulationTab.calculation_tab import CalculationTab
 from districtheatingsim.gui.EnergySystemTab._01_energy_system_main_tab import EnergySystemTab
 from districtheatingsim.gui.ComparisonTab.comparison_tab import ComparisonTab
-from districtheatingsim.gui.results_pdf import create_pdf
+
 from districtheatingsim.gui.dialogs import TemperatureDataDialog, HeatPumpDataDialog
+from districtheatingsim.gui.welcome_screen import WelcomeScreen, ThemeToggleSwitch
 
 from districtheatingsim.gui.LeafletTab.leaflet_tab import VisualizationTabLeaflet
 
@@ -269,7 +267,7 @@ class HeatSystemDesignGUI(QMainWindow):
 
         >>> from districtheatingsim.gui.MainTab.main_data_manager import *
         >>> from districtheatingsim.gui.MainTab.main_presenter import HeatSystemPresenter
-        >>> from PyQt5.QtWidgets import QApplication
+        >>> from PyQt6.QtWidgets import QApplication
         >>> import sys
         >>> 
         >>> # Initialize Qt application
@@ -289,7 +287,7 @@ class HeatSystemDesignGUI(QMainWindow):
         >>> 
         >>> # Show window and start application
         >>> main_window.show()
-        >>> sys.exit(app.exec_())
+        >>> sys.exit(app.exec())
 
     **Project Management Example**:
 
@@ -349,7 +347,7 @@ class HeatSystemDesignGUI(QMainWindow):
 
     References
     ----------
-    .. [1] PyQt5 Documentation, "Model/View Programming"
+    .. [1] PyQt6 Documentation, "Model/View Programming"
     .. [2] Qt Documentation, "Application Windows and Dialogs"
     .. [3] GUI Design Principles for Engineering Applications
     """
@@ -387,15 +385,17 @@ class HeatSystemDesignGUI(QMainWindow):
         self.folder_manager = folder_manager
         self.data_manager = data_manager
         
+        # UI state management
+        self.show_welcome_on_startup = True
+        self.welcome_screen: Optional[WelcomeScreen] = None
+        self.main_interface_widget: Optional[QWidget] = None
+        self.stacked_widget: Optional[QStackedWidget] = None
+        
+        # Theme tracking
+        self.current_theme_is_dark = False  # Track current theme state
+        
         # Initialize UI components (created later in initUI)
         self.folderLabel: Optional[QLabel] = None
-        
-        # Tab management storage
-        self.hidden_tabs: Dict[str, tuple] = {}  # Maps tab names to (widget, index) tuples
-        self.tab_order: List[str] = []  # Maintains consistent tab ordering
-        
-        # Menu system storage
-        self.menu_actions: Dict[str, QAction] = {}  # Tab visibility control actions
 
     def set_presenter(self, presenter) -> None:
         """
@@ -445,92 +445,376 @@ class HeatSystemDesignGUI(QMainWindow):
 
     def initUI(self) -> None:
         """
-        Initialize the complete user interface including all components and layouts.
-
-        This method creates the full application interface including menu system,
-        tab management, dialogs, and all visual components. It establishes the
-        professional appearance and functionality expected from engineering software.
-
-        The initialization follows a structured approach:
-        
-        1. **Window Configuration**: Basic window properties and central widget
-        2. **Menu System**: Complete menu bar with all functional categories
-        3. **Tab Interface**: Multi-tab layout with all analysis modules
-        4. **Visual Elements**: Logo, styling, and professional appearance
-        5. **Status Display**: Project folder information and status updates
-        6. **Event Connections**: Signal-slot connections for reactive interface
-
-        Notes
-        -----
-        Interface Layout Structure:
-            
-            **Main Window Layout**:
-            ```
-            ┌─ DistrictHeatingSim ─────────────────────────────────────────┐
-            │ File | Data | Theme | Tabs                                 │
-            │ ├─ Project Definition ─────────────────────────────────────┤ │
-            │ │  [Project configuration and setup interface]           │ │
-            │ ├─ Building Heat Demand ───────────────────────────────────┤ │
-            │ │  [Building analysis and heat demand calculation]       │ │
-            │ ├─ Network Visualization ──────────────────────────────────┤ │
-            │ │  [Interactive map-based network design]                │ │
-            │ ├─ System Calculation ─────────────────────────────────────┤ │
-            │ │  [Hydraulic and thermal network simulation]            │ │
-            │ ├─ Energy System Design ───────────────────────────────────┤ │
-            │ │  [Technology selection and optimization]               │ │
-            │ └─ Economic Analysis ──────────────────────────────────────┤ │
-            │    [Cost analysis and variant comparison]                 │ │
-            │                                                           │
-            │ Current Project: /path/to/project/Variante 1              │
-            └───────────────────────────────────────────────────────────┘
-            ```
-            
-            **Menu System Organization**:
-            - **File Menu**: Project lifecycle management
-            - **Data Menu**: Temperature and heat pump data configuration
-            - **Theme Menu**: Light/dark mode selection
-            - **Tabs Menu**: Dynamic tab visibility control
-
-        Professional Interface Features:
-            
-            **Engineering Software Standards**:
-            - Clean, professional appearance suitable for technical work
-            - Consistent styling and layout across all components
-            - Intuitive workflow guidance through tab organization
-            - Context-sensitive help and user feedback
-            
-            **Responsive Design**:
-            - Adaptive layout for different screen sizes
-            - Proper widget sizing and scaling
-            - Efficient screen space utilization
-            - Professional typography and spacing
+        Initialize the user interface with stacked widget architecture.
         """
         # Configure main window properties
         self.setWindowTitle("DistrictHeatingSim")
-        self.setGeometry(100, 100, 800, 600)
+        self.setGeometry(100, 100, 1400, 1000)
+        
+        # Create central stacked widget to manage views
+        self.stacked_widget = QStackedWidget()
+        self.setCentralWidget(self.stacked_widget)
+        
+        # Create welcome screen
+        self.init_welcome_screen()
+        
+        # Create main interface widget  
+        self.init_main_interface()
+        
+        # Add both views to the stacked widget
+        self.stacked_widget.addWidget(self.welcome_screen)
+        self.stacked_widget.addWidget(self.main_interface_widget)
+        
+        # Show welcome screen by default if enabled
+        if self.show_welcome_on_startup:
+            self.show_welcome_screen()
+        else:
+            self.show_main_interface()
+        
+        # Apply theme (this will work on both views)
+        self.apply_theme()
 
-        # Create central widget and main layout
-        central_widget = QWidget(self)
-        self.setCentralWidget(central_widget)
-        self.layout1 = QVBoxLayout(central_widget)
+    def init_welcome_screen(self) -> None:
+        """Initialize the welcome screen widget."""
+        # Create welcome screen with config manager for recent projects
+        config_manager = None
+        if hasattr(self, 'presenter') and self.presenter:
+            config_manager = self.presenter.folder_manager.config_manager
+        
+        self.welcome_screen = WelcomeScreen(config_manager)
+        
+        # Connect welcome screen signals
+        self.welcome_screen.projectSelected.connect(self.on_project_selected)
+        self.welcome_screen.newProjectRequested.connect(self.on_new_project_requested)
+        self.welcome_screen.themeChangeRequested.connect(self.on_theme_change_requested)
+        
+        # Apply current application theme to welcome screen and sync toggle state
+        if hasattr(self, 'presenter') and self.presenter:
+            self.apply_current_theme_to_welcome_screen()
+            self.sync_theme_toggle_state()
+        
+        # Hide menu bar on welcome screen
+        self.menuBar().hide()
 
-        # Initialize major interface components
-        self.initMenuBar()
-        self.initTabs()
-        self.initLogo()
+    def init_main_interface(self) -> None:
+        """Initialize the main application interface widget."""        
+        # Create main interface widget if not exists
+        if self.main_interface_widget is None:
+            self.main_interface_widget = QWidget()
+            self.layout1 = QVBoxLayout(self.main_interface_widget)
 
-        # Create project status display
-        self.folderLabel = QLabel("Kein Projektordner ausgewählt")
-        self.layout1.addWidget(self.folderLabel)
+            # Initialize major interface components
+            self.initMenuBar()
+            self.initTabs()
+            self.initLogo()
+            
+            # Add theme toggle to the top-right corner
+            self.add_theme_toggle_to_main_interface()
 
-        # Ensure dialogs are properly initialized
-        self.temperatureDataDialog = TemperatureDataDialog(self)
-        self.heatPumpDataDialog = HeatPumpDataDialog(self)
+            # Create project status display
+            self.folderLabel = QLabel("Kein Projektordner ausgewählt")
+            self.layout1.addWidget(self.folderLabel)
 
-        # Connect model signals to view updates for reactive interface
-        self.folder_manager.project_folder_changed.connect(self.update_project_folder_label)
-        self.presenter.folder_manager.project_folder_changed.connect(self.updateTemperatureData)
-        self.presenter.folder_manager.project_folder_changed.connect(self.updateHeatPumpData)
+            # Ensure dialogs are properly initialized
+            self.temperatureDataDialog = TemperatureDataDialog(self)
+            self.heatPumpDataDialog = HeatPumpDataDialog(self)
+
+            # Connect model signals to view updates for reactive interface
+            # Disconnect first to avoid duplicate connections
+            try:
+                self.folder_manager.project_folder_changed.disconnect(self.update_project_folder_label)
+                self.presenter.folder_manager.project_folder_changed.disconnect(self.updateTemperatureData)
+                self.presenter.folder_manager.project_folder_changed.disconnect(self.updateHeatPumpData)
+            except:
+                pass  # Connections might not exist yet
+            
+            # Connect signals
+            self.folder_manager.project_folder_changed.connect(self.update_project_folder_label)
+            self.presenter.folder_manager.project_folder_changed.connect(self.updateTemperatureData)
+            self.presenter.folder_manager.project_folder_changed.connect(self.updateHeatPumpData)
+
+    def show_welcome_screen(self) -> None:
+        """
+        Zeige den Welcome Screen und setze base_path auf leer.
+        """
+        self.base_path = ""
+        if self.stacked_widget and self.welcome_screen:
+            self.stacked_widget.setCurrentWidget(self.welcome_screen)
+            self.menuBar().hide()
+            
+    def show_main_interface(self) -> None:
+        """Switch to showing the main interface."""
+        if self.stacked_widget and self.main_interface_widget:
+            self.stacked_widget.setCurrentWidget(self.main_interface_widget)
+            self.menuBar().show()
+
+    def add_theme_toggle_to_main_interface(self):
+        """Add theme toggle switch to the main interface next to menu bar."""
+        # Create a horizontal layout for menu bar and theme toggle
+        top_bar_widget = QWidget()
+        top_bar_layout = QHBoxLayout()
+        top_bar_layout.setContentsMargins(0, 0, 0, 0)
+        top_bar_layout.setSpacing(0)  # No spacing between menu and toggle
+        
+        # Add menu bar to the left side - it will expand to fill available space
+        top_bar_layout.addWidget(self.menubar, 1) # stretch factor 1
+        
+        # Create a compact widget for theme toggle elements
+        theme_widget = QWidget()
+        theme_widget.setFixedHeight(self.menubar.sizeHint().height())  # Match menu bar height
+        theme_layout = QHBoxLayout(theme_widget)
+        theme_layout.setContentsMargins(8, 0, 8, 0)  # Small padding on sides
+        theme_layout.setSpacing(5)
+        
+        # Theme toggle elements
+        theme_label = QLabel("☀️")
+        theme_label.setFont(QFont("Arial", 11))
+        theme_layout.addWidget(theme_label)
+        
+        # Create theme toggle for main interface
+        self.main_theme_toggle = ThemeToggleSwitch()
+        self.main_theme_toggle.setToolTip("Switch between Light and Dark theme")
+        self.main_theme_toggle.toggled.connect(self.on_main_theme_toggle)
+        theme_layout.addWidget(self.main_theme_toggle)
+        
+        dark_label = QLabel("🌙")
+        dark_label.setFont(QFont("Arial", 11))
+        theme_layout.addWidget(dark_label)
+        
+        # Add theme widget to the right side without stretch
+        top_bar_layout.addWidget(theme_widget, 0)  # no stretch factor
+        
+        top_bar_widget.setLayout(top_bar_layout)
+        
+        # Replace the menu bar with the combined top bar
+        self.layout1.removeWidget(self.menubar)
+        self.layout1.insertWidget(0, top_bar_widget)
+
+    def on_main_theme_toggle(self, checked):
+        """Handle theme toggle from main interface."""
+        self.current_theme_is_dark = checked
+        
+        if checked:
+            self.applyTheme('dark_theme_style_path')
+        else:
+            self.applyTheme('light_theme_style_path')
+            
+        # Sync welcome screen toggle if it exists
+        if self.welcome_screen:
+            self.welcome_screen.set_current_theme(checked)
+
+    def on_project_selected(self, project_path: str):
+        """Handle project selection from welcome screen."""
+        # Switch to main interface
+        self.show_main_interface()
+        
+        # Sync theme toggle state
+        self.sync_theme_toggle_state()
+        
+        # Use the existing project opening functionality
+        try:
+            # Call the existing method that handles project opening with all the proper logic
+            self.on_open_existing_project(project_path)
+        except Exception as e:
+            print(f"Warning: Could not load project from {project_path}: {e}")
+            # Fallback: just show the main interface
+            pass
+
+    def on_new_project_requested(self):
+        """Handle new project creation request from welcome screen."""
+        # Switch to main interface 
+        self.show_main_interface()
+        
+        # Sync theme toggle state
+        self.sync_theme_toggle_state()
+        
+        # Use the existing new project functionality
+        try:
+            self.on_create_new_project()
+        except Exception as e:
+            print(f"Warning: Could not create new project: {e}")
+            # Fallback: just show the main interface
+            pass
+
+    def show_save_dialog(self, title: str, info_text: str, accept_text: str) -> str:
+        """
+        Show a standardized save dialog for project operations.
+        
+        Parameters
+        ----------
+        title : str
+            Dialog window title
+        info_text : str 
+            Informative text explaining the operation
+        accept_text : str
+            Text for the accept button (e.g., "Speichern und wechseln")
+            
+        Returns
+        -------
+        str
+            'save', 'discard', or 'cancel'
+        """
+        if not hasattr(self, 'base_path') or not self.base_path:
+            return 'continue'  # No project loaded, continue operation
+            
+        from PyQt6.QtWidgets import QMessageBox
+        
+        # Create custom message box with three options
+        msgBox = QMessageBox(self)
+        msgBox.setWindowTitle(title)
+        msgBox.setText('Es ist ein Projekt geöffnet.')
+        msgBox.setInformativeText(info_text)
+        
+        # Force larger dialog size with stylesheet
+        msgBox.setStyleSheet("""
+            QMessageBox {
+                min-width: 550px;
+                min-height: 250px;
+            }
+            QMessageBox QLabel {
+                min-width: 525px;
+                font-size: 11pt;
+            }
+            QMessageBox QPushButton {
+                min-width: 120px;
+                min-height: 30px;
+                font-size: 10pt;
+                padding: 5px 10px;
+                margin: 2px;
+            }
+        """)
+        
+        # Add custom buttons
+        saveButton = msgBox.addButton(accept_text, QMessageBox.ButtonRole.AcceptRole)
+        discardButton = msgBox.addButton('Ohne Speichern fortfahren', QMessageBox.ButtonRole.DestructiveRole)
+        cancelButton = msgBox.addButton('Abbrechen', QMessageBox.ButtonRole.RejectRole)
+        
+        msgBox.setDefaultButton(saveButton)  # Default to save for safety
+        msgBox.exec()
+        
+        if msgBox.clickedButton() == saveButton:
+            return 'save'
+        elif msgBox.clickedButton() == discardButton:
+            return 'discard'
+        else:
+            return 'cancel'
+
+    def on_back_to_welcome(self):
+        """
+        Return to the welcome screen from main interface.
+        Give user choice to save, discard, or cancel if project is loaded.
+        """
+        dialog_result = self.show_save_dialog(
+            'Zurück zum Start',
+            'Möchten Sie Ihre Änderungen vor dem Wechsel zum Startbildschirm speichern?',
+            'Speichern und zum Start'
+        )
+        
+        if dialog_result == 'save':
+            # Save and go to welcome
+            if not self.save_all_project_results():
+                return  # User cancelled save operation
+            self.base_path = ""
+            self.show_welcome_screen()
+            if self.welcome_screen:
+                self.welcome_screen.refresh_recent_projects()
+                self.sync_theme_toggle_state()
+        elif dialog_result == 'discard':
+            # Go to welcome without saving
+            self.base_path = ""
+            self.show_welcome_screen()
+            if self.welcome_screen:
+                self.welcome_screen.refresh_recent_projects()
+                self.sync_theme_toggle_state()
+        elif dialog_result == 'continue':
+            # No project loaded, go to welcome normally
+            self.show_welcome_screen()
+            if self.welcome_screen:
+                self.welcome_screen.refresh_recent_projects()
+                self.sync_theme_toggle_state()
+        # If 'cancel', do nothing
+
+    def on_theme_change_requested(self, theme_path: str):
+        """Handle theme change request from welcome screen."""
+        # Update theme state tracking
+        self.current_theme_is_dark = 'dark' in theme_path.lower()
+        
+        # Apply theme to the entire application
+        self.applyTheme(theme_path)
+        
+        # Update the main interface toggle switch state to reflect the new theme
+        if hasattr(self, 'main_theme_toggle') and self.main_theme_toggle:
+            self.main_theme_toggle.toggled.disconnect(self.on_main_theme_toggle)
+            self.main_theme_toggle.setChecked(self.current_theme_is_dark)
+            self.main_theme_toggle.toggled.connect(self.on_main_theme_toggle)
+
+    def apply_theme(self):
+        """Apply the current theme to both welcome screen and main interface."""
+        try:
+            # Get the current theme from utilities
+            from districtheatingsim.utilities.utilities import get_stylesheet_based_on_time
+            theme_path = get_stylesheet_based_on_time()
+            
+            # Update our theme state tracking
+            self.current_theme_is_dark = 'dark' in theme_path.lower()
+            
+            # Apply theme to the main application
+            if os.path.exists(theme_path):
+                with open(theme_path, 'r', encoding='utf-8') as file:
+                    theme_content = file.read()
+                    self.setStyleSheet(theme_content)
+                    
+                    # Also apply to welcome screen if it exists
+                    if self.welcome_screen:
+                        self.welcome_screen.setStyleSheet(theme_content)
+                        
+            # Sync toggle states
+            self.sync_theme_toggle_state()
+        except Exception as e:
+            print(f"Warning: Could not apply theme: {e}")
+
+    def apply_current_theme_to_welcome_screen(self):
+        """Apply the current application theme to the welcome screen."""
+        if not self.welcome_screen:
+            return
+            
+        try:
+            # Get the current theme from utilities (same logic as main app startup)
+            from districtheatingsim.utilities.utilities import get_stylesheet_based_on_time
+            theme_path = get_stylesheet_based_on_time()
+            
+            # Apply theme to welcome screen
+            if os.path.exists(theme_path):
+                with open(theme_path, 'r', encoding='utf-8') as file:
+                    self.welcome_screen.setStyleSheet(file.read())
+        except Exception as e:
+            print(f"Warning: Could not apply current theme to welcome screen: {e}")
+
+    def sync_theme_toggle_state(self):
+        """Synchronize the theme toggle switch with the current theme."""        
+        try:
+            # First try to use our tracked theme state
+            is_dark_theme = self.current_theme_is_dark
+            
+            # If we don't have tracked state, determine from utilities as fallback
+            if not hasattr(self, 'current_theme_is_dark'):
+                from districtheatingsim.utilities.utilities import get_stylesheet_based_on_time
+                theme_path = get_stylesheet_based_on_time()
+                is_dark_theme = 'dark' in theme_path.lower()
+                self.current_theme_is_dark = is_dark_theme
+            
+            # Set welcome screen toggle state without triggering signals
+            if self.welcome_screen:
+                self.welcome_screen.set_current_theme(is_dark_theme)
+                
+            # Set main interface toggle state without triggering signals
+            if hasattr(self, 'main_theme_toggle') and self.main_theme_toggle:
+                self.main_theme_toggle.toggled.disconnect(self.on_main_theme_toggle)
+                self.main_theme_toggle.setChecked(is_dark_theme)
+                self.main_theme_toggle.toggled.connect(self.on_main_theme_toggle)
+                
+        except Exception as e:
+            print(f"Warning: Could not sync theme toggle state: {e}")
 
     def initMenuBar(self) -> None:
         """
@@ -605,6 +889,11 @@ class HeatSystemDesignGUI(QMainWindow):
         # File Menu - Project and data management
         fileMenu = self.menubar.addMenu('Datei')
 
+        # Back to Welcome Screen action
+        backToWelcomeAction = QAction('🏠 Zurück zum Start', self)
+        fileMenu.addAction(backToWelcomeAction)
+        fileMenu.addSeparator()  # Visual separation from project operations
+
         # Recent Projects submenu with dynamic content
         recentMenu = fileMenu.addMenu('Zuletzt geöffnet')
         recent_projects = self.presenter.folder_manager.config_manager.get_recent_projects()
@@ -621,25 +910,27 @@ class HeatSystemDesignGUI(QMainWindow):
             no_recent_action.setEnabled(False)
             recentMenu.addAction(no_recent_action)
 
-        # Primary file operations
+        # Add primary file actions to file menu
         createNewProjectAction = QAction('Neues Projekt erstellen', self)
         chooseProjectAction = QAction('Projekt öffnen', self)
         createCopyAction = QAction('Projektkopie erstellen', self)
+        for primaryFileAction in [createNewProjectAction, chooseProjectAction, createCopyAction]:
+            fileMenu.addAction(primaryFileAction)
         
-        # Project variant management
+        fileMenu.addSeparator()  # Separate each major action for clarity
+
+        # Add project variant actions to file menu
         openVariantAction = QAction('Variante öffnen', self)
         createVariantAction = QAction('Variante erstellen', self)
         createVariantCopyAction = QAction('Variantenkopie erstellen', self)
+        for variantAction in [openVariantAction, createVariantAction, createVariantCopyAction]:
+            fileMenu.addAction(variantAction)
         
-        # Data management operations
-        importResultsAction = QAction('Projektstand / -ergebnisse Laden', self)
-        pdfExportAction = QAction('Ergebnis-PDF exportieren', self)
+        fileMenu.addSeparator()  # Separate each major action for clarity
 
-        # Add actions to file menu
-        for action in [createNewProjectAction, chooseProjectAction, createCopyAction,
-                      openVariantAction, createVariantAction, createVariantCopyAction,
-                      importResultsAction, pdfExportAction]:
-            fileMenu.addAction(action)
+        # Add data import/export actions to file menu
+        importResultsAction = QAction('Projektstand / -ergebnisse Laden', self)
+        fileMenu.addAction(importResultsAction)
 
         # Data Menu - External data configuration
         dataMenu = self.menubar.addMenu('Datenbasis')
@@ -648,21 +939,10 @@ class HeatSystemDesignGUI(QMainWindow):
         dataMenu.addAction(chooseTemperatureDataAction)
         dataMenu.addAction(createCOPDataAction)
 
-        # Theme Menu - Visual appearance control
-        themeMenu = self.menubar.addMenu('Thema')
-        lightThemeAction = QAction('Lichtmodus', self)
-        darkThemeAction = QAction('Dunkelmodus', self)
-        themeMenu.addAction(lightThemeAction)
-        themeMenu.addAction(darkThemeAction)
-
-        # Tabs Menu - Dynamic interface control
-        self.tabsMenu = self.menubar.addMenu('Tabs')
-        self.menu_actions: Dict[str, QAction] = {}  # Store tab control actions
-
-        # Add menu bar to layout
-        self.layout1.addWidget(self.menubar)
+        # Note: Menu bar will be added to layout in add_theme_toggle_to_main_interface()
 
         # Connect menu actions to handler methods
+        backToWelcomeAction.triggered.connect(self.on_back_to_welcome)
         createNewProjectAction.triggered.connect(self.on_create_new_project)
         chooseProjectAction.triggered.connect(self.on_open_existing_project)
         createCopyAction.triggered.connect(self.on_create_project_copy)
@@ -670,11 +950,8 @@ class HeatSystemDesignGUI(QMainWindow):
         createVariantAction.triggered.connect(self.on_create_project_variant)
         createVariantCopyAction.triggered.connect(self.on_create_project_variant_copy)
         importResultsAction.triggered.connect(self.on_importResultsAction)
-        pdfExportAction.triggered.connect(self.on_pdf_export)
         chooseTemperatureDataAction.triggered.connect(self.openTemperatureDataSelection)
         createCOPDataAction.triggered.connect(self.openCOPDataSelection)
-        lightThemeAction.triggered.connect(lambda: self.applyTheme('light_theme_style_path'))
-        darkThemeAction.triggered.connect(lambda: self.applyTheme('dark_theme_style_path'))
 
     def initTabs(self) -> None:
         """
@@ -752,8 +1029,7 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         # Create main tab widget with closeable tabs
         self.tabWidget = QTabWidget()
-        self.tabWidget.setTabsClosable(True)
-        self.tabWidget.tabCloseRequested.connect(self.hide_tab)
+        self.tabWidget.setTabsClosable(False)
         
         # Add tab widget to main layout
         self.layout1.addWidget(self.tabWidget)
@@ -784,7 +1060,7 @@ class HeatSystemDesignGUI(QMainWindow):
             self
         )
         
-        self.mixDesignTab = EnergySystemTab(
+        self.energySystemTab = EnergySystemTab(
             self.presenter.folder_manager, 
             self.presenter.data_manager, 
             self.presenter.config_manager, 
@@ -796,43 +1072,13 @@ class HeatSystemDesignGUI(QMainWindow):
             self.presenter.data_manager, 
             self.presenter.config_manager
         )
-        
-        self.lod2Tab = LOD2Tab(
-            self.presenter.folder_manager, 
-            self.presenter.data_manager, 
-            self.presenter.config_manager
-        )
-        
-        self.renovationTab = RenovationTab(
-            self.presenter.folder_manager, 
-            self.presenter.data_manager, 
-            self.presenter.config_manager
-        )
-
         # Add tabs to interface with proper German localization
-        self.add_tab_to_menu(self.projectTab, "Projektdefinition")
-        self.add_tab_to_menu(self.buildingTab, "Wärmebedarf Gebäude")
-        self.add_tab_to_menu(self.visTab2, "Kartenansicht Wärmenetzgenerierung")
-        self.add_tab_to_menu(self.calcTab, "Wärmenetzberechnung")
-        self.add_tab_to_menu(self.mixDesignTab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
-        self.add_tab_to_menu(self.comparisonTab, "Variantenvergleich")
-        self.add_tab_to_menu(self.lod2Tab, "Verarbeitung LOD2-Daten")
-        self.add_tab_to_menu(self.renovationTab, "Gebäudesanierung")
-
-        # Define default visible tabs for standard workflow
-        self.default_visible_tabs = [
-            "Projektdefinition", 
-            "Wärmebedarf Gebäude", 
-            "Kartenansicht Wärmenetzgenerierung",
-            "Wärmenetzberechnung", 
-            "Erzeugerauslegung und Wirtschaftlichkeitsrechnung", 
-            "Variantenvergleich"
-        ]
-
-        # Hide specialized tabs by default to simplify interface
-        for tab_name in self.tab_order:
-            if tab_name not in self.default_visible_tabs:
-                self.toggle_tab_visibility(tab_name)
+        self.tabWidget.addTab(self.projectTab, "Projektdefinition")
+        self.tabWidget.addTab(self.buildingTab, "Wärmebedarf Gebäude")
+        self.tabWidget.addTab(self.visTab2, "Kartenansicht Wärmenetzgenerierung")
+        self.tabWidget.addTab(self.calcTab, "Wärmenetzberechnung")
+        self.tabWidget.addTab(self.energySystemTab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
+        self.tabWidget.addTab(self.comparisonTab, "Variantenvergleich")
 
     def initLogo(self) -> None:
         """
@@ -967,11 +1213,16 @@ class HeatSystemDesignGUI(QMainWindow):
         # Store base path for other operations
         self.base_path = base_path
 
-        # Update status label with current project information
-        if base_path:
-            self.folderLabel.setText(f"Ausgewählter Projektordner: {base_path}")
-        else:
-            self.folderLabel.setText("Kein Projektordner ausgewählt")
+        # Update status label with current project information only if label exists and is valid
+        if self.folderLabel is not None:
+            try:
+                if base_path:
+                    self.folderLabel.setText(f"Ausgewählter Projektordner: {base_path}")
+                else:
+                    self.folderLabel.setText("Kein Projektordner ausgewählt")
+            except RuntimeError:
+                # QLabel has been deleted - reset reference
+                self.folderLabel = None
 
     def show_error_message(self, message: str) -> None:
         """
@@ -1008,37 +1259,10 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         QMessageBox.critical(self, "Fehler", message)
 
-    def show_info_message(self, message: str) -> None:
-        """
-        Display informational messages with consistent professional styling.
-
-        This method provides standardized informational feedback to users,
-        complementing the error message system with positive confirmation
-        and status updates for successful operations.
-
-        Parameters
-        ----------
-        message : str
-            Informational message text to display to the user.
-            Typically used for success confirmations and status updates.
-
-        Notes
-        -----
-        Information Display Standards:
-            
-            **Positive User Feedback**:
-            - Success confirmation for completed operations
-            - Status updates for long-running processes
-            - Helpful tips and guidance messages
-            - Professional communication tone
-            
-            **Interface Consistency**:
-            - Standardized information dialog appearance
-            - Consistent with error message styling
-            - Proper modal behavior and user interaction
-            - Seamless integration with application theme
-        """
-        QMessageBox.information(self, "Info", message)
+    def show_message(self, title: str, message: str) -> None:
+        """Show a success/info message dialog."""
+        from PyQt6.QtWidgets import QMessageBox
+        QMessageBox.information(self, title, message)
 
     # Project Management Methods
     # ==========================
@@ -1077,6 +1301,20 @@ class HeatSystemDesignGUI(QMainWindow):
             - Automatic project activation after creation
             - Integration with recent projects system
         """
+        # Check if user wants to save current project before creating new one
+        dialog_result = self.show_save_dialog(
+            'Neues Projekt erstellen',
+            'Möchten Sie Ihre Änderungen vor dem Erstellen eines neuen Projekts speichern?',
+            'Speichern und neues Projekt erstellen'
+        )
+        
+        if dialog_result == 'cancel':
+            return  # User cancelled operation
+        elif dialog_result == 'save':
+            if not self.save_all_project_results():
+                return  # User cancelled save operation
+        # If 'discard' or 'continue', proceed without saving
+        
         # Determine parent directory for new project
         folder_path = os.path.dirname(os.path.dirname(self.base_path))
         
@@ -1102,6 +1340,7 @@ class HeatSystemDesignGUI(QMainWindow):
     def on_open_existing_project(self, folder_path: Optional[str] = None) -> None:
         """
         Handle opening existing projects with variant selection support.
+        Before switching, save all current project results.
 
         This method manages the complete project opening workflow, including
         folder selection, variant discovery, and user choice collection.
@@ -1147,6 +1386,20 @@ class HeatSystemDesignGUI(QMainWindow):
             )
 
         try:
+            # Check if user wants to save before switching projects
+            dialog_result = self.show_save_dialog(
+                'Projekt öffnen',
+                'Möchten Sie Ihre Änderungen vor dem Öffnen eines anderen Projekts speichern?',
+                'Speichern und Projekt öffnen'
+            )
+            
+            if dialog_result == 'cancel':
+                return  # User cancelled operation
+            elif dialog_result == 'save':
+                if not self.save_all_project_results():
+                    return  # User cancelled save operation
+            # If 'discard' or 'continue', proceed without saving
+            
             # Validate project path and proceed with opening
             if folder_path and os.path.exists(folder_path):
                 self.presenter.open_existing_project(folder_path)
@@ -1154,16 +1407,26 @@ class HeatSystemDesignGUI(QMainWindow):
                 # Discover and present available variants
                 available_variants = self.get_available_variants(folder_path)
                 if available_variants:
-                    variant_name, ok = QInputDialog.getItem(
-                        self, 
-                        'Variante auswählen', 
-                        'Wähle eine Variante aus:', 
-                        available_variants, 
-                        0, 
-                        False
-                    )
-                    if ok and variant_name:
+                    # If only one variant, select it automatically
+                    if len(available_variants) == 1:
+                        variant_name = available_variants[0]
                         self.presenter.folder_manager.set_variant_folder(variant_name)
+                        # Automatically load available results
+                        self.on_importResultsAction()
+                    else:
+                        # Multiple variants - let user choose
+                        variant_name, ok = QInputDialog.getItem(
+                            self, 
+                            'Variante auswählen', 
+                            'Wähle eine Variante aus:', 
+                            available_variants, 
+                            0, 
+                            False
+                        )
+                        if ok and variant_name:
+                            self.presenter.folder_manager.set_variant_folder(variant_name)
+                            # Automatically load available results after variant selection
+                            self.on_importResultsAction()
                 else:
                     self.show_error_message("Keine verfügbaren Varianten gefunden.")
             else:
@@ -1254,6 +1517,20 @@ class HeatSystemDesignGUI(QMainWindow):
             - Integration with project management workflow
             - Support for project versioning and backup strategies
         """
+        # Check if user wants to save current changes before creating copy
+        dialog_result = self.show_save_dialog(
+            'Projektkopie erstellen',
+            'Möchten Sie Ihre Änderungen vor dem Erstellen der Projektkopie speichern?',
+            'Speichern und Kopie erstellen'
+        )
+        
+        if dialog_result == 'cancel':
+            return  # User cancelled operation
+        elif dialog_result == 'save':
+            if not self.save_all_project_results():
+                return  # User cancelled save operation
+        # If 'discard', proceed without saving
+            
         success = self.presenter.create_project_copy()
         if success:
             QMessageBox.information(
@@ -1265,6 +1542,7 @@ class HeatSystemDesignGUI(QMainWindow):
     def on_open_variant(self) -> None:
         """
         Handle opening specific variants within the current project context.
+        Before switching, save all current project results.
 
         This method provides variant switching functionality within an already
         open project, allowing users to easily navigate between different
@@ -1299,6 +1577,20 @@ class HeatSystemDesignGUI(QMainWindow):
             self.show_error_message("Kein Projektordner ausgewählt.")
             return
 
+        # Check if user wants to save current changes before opening variant
+        dialog_result = self.show_save_dialog(
+            'Variante öffnen',
+            'Möchten Sie Ihre Änderungen vor dem Öffnen der Variante speichern?',
+            'Speichern und Variante öffnen'
+        )
+        
+        if dialog_result == 'cancel':
+            return  # User cancelled operation
+        elif dialog_result == 'save':
+            if not self.save_all_project_results():
+                return  # User cancelled save operation
+        # If 'discard', proceed without saving
+            
         # Discover available variants in current project
         available_variants = self.get_available_variants(project_folder)
 
@@ -1342,6 +1634,20 @@ class HeatSystemDesignGUI(QMainWindow):
             - Clear success feedback and next steps guidance
             - Error handling for creation failures
         """
+        # Check if user wants to save current changes before creating variant
+        dialog_result = self.show_save_dialog(
+            'Projektvariante erstellen',
+            'Möchten Sie Ihre Änderungen vor dem Erstellen der Projektvariante speichern?',
+            'Speichern und Variante erstellen'
+        )
+        
+        if dialog_result == 'cancel':
+            return  # User cancelled operation
+        elif dialog_result == 'save':
+            if not self.save_all_project_results():
+                return  # User cancelled save operation
+        # If 'discard', proceed without saving
+            
         success = self.presenter.create_project_variant()
         if success:
             QMessageBox.information(
@@ -1374,6 +1680,20 @@ class HeatSystemDesignGUI(QMainWindow):
             - Facilitates sensitivity analysis and parameter studies
             - Provides backup functionality for variant protection
         """
+        # Check if user wants to save current changes before creating variant copy
+        dialog_result = self.show_save_dialog(
+            'Projektvariantenkopie erstellen',
+            'Möchten Sie Ihre Änderungen vor dem Erstellen der Projektvariantenkopie speichern?',
+            'Speichern und Kopie erstellen'
+        )
+        
+        if dialog_result == 'cancel':
+            return  # User cancelled operation
+        elif dialog_result == 'save':
+            if not self.save_all_project_results():
+                return  # User cancelled save operation
+        # If 'discard', proceed without saving
+            
         success = self.presenter.create_project_variant_copy()
         if success:
             QMessageBox.information(
@@ -1385,42 +1705,55 @@ class HeatSystemDesignGUI(QMainWindow):
     # Data Management Methods
     # =======================
 
+    def show_temporary_success_message(self, message: str, duration_ms: int = 2000) -> None:
+        """
+        Display a temporary success message that disappears automatically.
+        
+        Parameters
+        ----------
+        message : str
+            Success message to display
+        duration_ms : int, optional
+            Duration in milliseconds before the dialog closes automatically (default: 1000ms)
+        """
+        from PyQt6.QtCore import QTimer
+        
+        # Create and show the message box
+        msg_box = QMessageBox(self)
+        msg_box.setIcon(QMessageBox.Icon.Information)
+        msg_box.setWindowTitle("Erfolgreich")
+        msg_box.setText(message)
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        
+        # Create timer to close the dialog automatically
+        timer = QTimer()
+        timer.timeout.connect(msg_box.accept)
+        timer.setSingleShot(True)
+        timer.start(duration_ms)
+        
+        # Show the dialog
+        msg_box.exec()
+
     def on_importResultsAction(self) -> None:
         """
         Handle comprehensive project data import for restoring analysis results.
 
-        This method orchestrates the loading of saved analysis results across
-        multiple application tabs, restoring the complete project state from
-        previously saved data files. It ensures data consistency and proper
-        tab synchronization during the import process.
+        This method uses the auto_load_project_results functionality but provides
+        user feedback with a temporary success message that automatically disappears
+        after 1 second. This gives users confirmation that the import completed
+        without requiring manual dialog dismissal.
 
         Import Process:
             
-            **Data Categories**:
-            1. **Building Data**: CSV building database and JSON load profiles
-            2. **Network Data**: Network topology, calculation results, and profiles
-            3. **Energy System Data**: Technology analysis and optimization results
-            
-            **Tab Synchronization**:
-            - Coordinates data loading across multiple analysis tabs
-            - Ensures proper data dependencies and relationships
-            - Maintains data consistency throughout import process
-            - Provides user feedback for import progress and completion
-
-        Notes
-        -----
-        Data Import Strategy:
-            
-            **Comprehensive Restoration**:
-            - Restores complete project state from saved files
-            - Handles multiple data formats (CSV, JSON, Pickle)
-            - Maintains data relationships and dependencies
-            - Supports partial import with graceful error handling
+            **Automated Loading**:
+            - Uses the same silent loading mechanism as auto_load_project_results
+            - Loads all available project data without individual confirmation dialogs
+            - Provides single success confirmation with auto-dismissal
             
             **User Experience**:
             - Single-click restoration of complete project state
-            - Clear feedback for import progress and results
-            - Error handling with specific failure information
+            - Brief success confirmation that doesn't interrupt workflow
+            - Error handling with detailed failure information
             - Integration with project management workflow
 
         This functionality is essential for project continuity and
@@ -1428,107 +1761,120 @@ class HeatSystemDesignGUI(QMainWindow):
         to be shared and restored across different work sessions.
         """
         try:
-            # Import building data and load profiles
-            building_data_path = os.path.join(
-                self.base_path, 
-                self.presenter.config_manager.get_relative_path("current_building_data_path")
-            )
-            building_profile_path = os.path.join(
-                self.base_path, 
-                self.presenter.config_manager.get_relative_path("building_load_profile_path")
-            )
+            # Check if we have a valid project and variant loaded
+            if not hasattr(self, 'base_path') or not self.base_path:
+                return
+                
+            # Building data auto-load (without dialogs)
+            try:
+                building_data_path = os.path.join(
+                    self.base_path, 
+                    self.presenter.config_manager.get_relative_path("current_building_data_path")
+                )
+                building_profile_path = os.path.join(
+                    self.base_path, 
+                    self.presenter.config_manager.get_relative_path("building_load_profile_path")
+                )
+                
+                # Load building data if files exist (no dialogs)
+                if os.path.exists(building_data_path):
+                    self.projectTab.presenter.load_csv(building_data_path)
+                    self.buildingTab.presenter.load_csv(building_data_path, show_dialog=False)
+                    
+                if os.path.exists(building_profile_path):
+                    self.buildingTab.presenter.load_json(building_profile_path, show_dialog=False)
+                    
+            except Exception:
+                # Silently continue if building data loading fails
+                pass
             
-            # Load building data into project and building tabs
-            self.projectTab.presenter.load_csv(building_data_path)
-            self.buildingTab.presenter.load_csv(building_data_path)
-            self.buildingTab.presenter.load_json(building_profile_path)
+            # Network data auto-load (without dialogs)
+            try:
+                self.calcTab.loadNet(show_dialog=False)
+                self.calcTab.load_net_results(show_dialog=False)
+            except Exception:
+                # Silently continue if network data loading fails
+                pass
             
-            # Load network data and calculation results
-            self.calcTab.loadNet()
-            self.calcTab.load_net_results()
+            # Energy system data auto-load
+            try:
+                self.energySystemTab.load_results_JSON(show_dialog=False)
+            except Exception:
+                # Silently continue if energy system data loading fails
+                pass
+                
+            print("Auto-load completed: Available results loaded successfully.")
             
-            # Load energy system analysis results
-            self.mixDesignTab.load_results_JSON()
-            
-            # Provide success feedback to user
-            self.show_info_message("Projektdaten wurden erfolgreich geladen.")
+            # Show temporary success message that disappears after 1 second
+            self.show_temporary_success_message("Projektdaten wurden erfolgreich geladen.")
             
         except Exception as e:
             # Handle import errors with specific information
             self.show_error_message(f"Fehler beim Laden der Projektdaten: {str(e)}")
 
-    def on_pdf_export(self) -> None:
+    def save_all_project_results(self) -> bool:
         """
-        Handle professional PDF report generation with user file selection.
-
-        This method manages the complete PDF export workflow, including file
-        selection, report generation, and user feedback. It creates comprehensive
-        documentation of analysis results suitable for professional reporting
-        and project documentation requirements.
-
-        Export Process:
-            
-            1. **File Selection**: User chooses export location and filename
-            2. **Data Compilation**: Aggregates results from all analysis tabs
-            3. **Report Generation**: Creates professional PDF documentation
-            4. **Success Confirmation**: Provides user feedback and file location
-
-        Notes
-        -----
-        Professional Report Features:
-            
-            **Comprehensive Documentation**:
-            - Aggregates results from all active analysis tabs
-            - Includes charts, tables, and technical specifications
-            - Professional formatting suitable for client presentation
-            - Standardized layout and branding consistency
-            
-            **Error Handling**:
-            - Robust error handling with detailed error reporting
-            - Graceful failure with specific problem identification
-            - User-friendly error messages with troubleshooting guidance
-            - Detailed stack traces for development debugging
-            
-            **User Experience**:
-            - Intuitive file selection with appropriate defaults
-            - Clear success confirmation with file location
-            - Professional PDF quality suitable for official documentation
-            - Integration with project workflow and result management
+        Zentrale Speicherlogik für alle Projektergebnisse.
+        Ruft die jeweiligen Save-Methoden der einzelnen Tabs/Presenter auf.
+        Sollte vor dem Schließen der Anwendung und beim Wechsel des Projekts/Variante aufgerufen werden.
+        Vor dem Speichern wird ein Warn-Dialog angezeigt, der auf fehlende Versionierung und mögliche Überschreibung hinweist.
+        Bricht der Nutzer den Dialog ab, wird die Aktion abgebrochen.
+        
+        Returns
+        -------
+        bool
+            True wenn erfolgreich gespeichert, False wenn abgebrochen
         """
-        # Determine default export path and filename
-        default_path = os.path.join(
-            self.base_path, 
-            self.presenter.config_manager.get_relative_path("results_PDF_path")
+        reply = QMessageBox.warning(
+            self,
+            "Achtung: Daten werden überschrieben!",
+            "Mit dieser Aktion werden alle aktuellen Projektdaten überschrieben. Es ist noch keine Versionierung implementiert. Möchten Sie fortfahren?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Cancel
         )
-        
-        # Present file save dialog to user
-        filename, _ = QFileDialog.getSaveFileName(
-            self, 
-            'PDF speichern als...', 
-            default_path, 
-            filter='PDF Files (*.pdf)'
-        )
-        
-        if filename:
-            try:
-                # Generate comprehensive PDF report
-                create_pdf(self, filename)
-                
-                # Provide success confirmation
-                QMessageBox.information(
-                    self, 
-                    "PDF erfolgreich erstellt", 
-                    f"Die Ergebnisse wurden erfolgreich in {filename} gespeichert."
-                )
-                
-            except Exception as e:
-                # Handle export errors with detailed information
-                error_message = traceback.format_exc()
-                QMessageBox.critical(
-                    self, 
-                    "Speicherfehler", 
-                    f"Fehler beim Speichern als PDF:\n{error_message}\n\n{str(e)}"
-                )
+        if reply != QMessageBox.StandardButton.Yes:
+            # Aktion abbrechen, falls der Nutzer abbricht
+            return False
+
+        errors = []
+        try:
+            # Gebäudedaten speichern
+            if hasattr(self, 'projectTab') and hasattr(self.projectTab.presenter, 'save_csv'):
+                try:
+                    self.projectTab.presenter.save_csv(show_dialog=False)
+                except Exception as e:
+                    errors.append(f"ProjektTab: {str(e)}")
+            if hasattr(self, 'buildingTab') and hasattr(self.buildingTab.presenter, 'save_csv'):
+                try:
+                    self.buildingTab.presenter.save_csv(show_dialog=False)
+                except Exception as e:
+                    errors.append(f"BuildingTab: {str(e)}")
+            # Netzdaten speichern
+            if hasattr(self, 'calcTab') and hasattr(self.calcTab, 'saveNet'):
+                try:
+                    self.calcTab.saveNet(show_dialog=False)
+                except Exception as e:
+                    errors.append(f"CalcTab: {str(e)}")
+            if hasattr(self, 'calcTab') and hasattr(self.calcTab, 'exportNetGeoJSON'):
+                try:
+                    self.calcTab.exportNetGeoJSON(show_dialog=False)
+                except Exception as e:
+                    errors.append(f"CalcTab GeoJSON: {str(e)}")
+            # Energiesystem speichern
+            if hasattr(self, 'energySystemTab') and hasattr(self.energySystemTab, 'save_results_JSON'):
+                try:
+                    self.energySystemTab.save_results_JSON(show_dialog=False)
+                except Exception as e:
+                    errors.append(f"EnergySystemTab: {str(e)}")
+            # Weitere Tabs nach Bedarf ergänzen
+        except Exception as e:
+            errors.append(f"Allgemeiner Fehler: {str(e)}")
+        if errors:
+            self.show_error_message("Fehler beim Speichern der Projektdaten:\n" + "\n".join(errors))
+            return False  # Fehler beim Speichern
+        else:
+            self.show_message("Erfolg", "Alle Projektdaten wurden erfolgreich gespeichert.")
+            return True  # Erfolgreich gespeichert
 
     # Theme and Appearance Methods
     # ============================
@@ -1585,7 +1931,13 @@ class HeatSystemDesignGUI(QMainWindow):
             if os.path.exists(qss_path):
                 # Load and apply stylesheet
                 with open(qss_path, 'r', encoding='utf-8') as file:
-                    self.setStyleSheet(file.read())
+                    theme_content = file.read()
+                    self.setStyleSheet(theme_content)
+                    
+                    # Also apply to welcome screen if it exists
+                    if self.welcome_screen:
+                        self.welcome_screen.setStyleSheet(theme_content)
+                        
                 print(f"Theme erfolgreich angewendet: {qss_path}")
             else:
                 self.show_error_message(f"Stylesheet {qss_path} nicht gefunden.")
@@ -1620,7 +1972,7 @@ class HeatSystemDesignGUI(QMainWindow):
             - Integration with energy system performance calculations
             - Consistency maintenance across all analysis modules
         """
-        if self.temperatureDataDialog.exec_():
+        if self.temperatureDataDialog.exec():
             self.updateTemperatureData()
 
     def openCOPDataSelection(self) -> None:
@@ -1647,7 +1999,7 @@ class HeatSystemDesignGUI(QMainWindow):
             - Proper handling of part-load and seasonal performance variations
             - Consistency with industry standards and certification data
         """
-        if self.heatPumpDataDialog.exec_():
+        if self.heatPumpDataDialog.exec():
             self.updateHeatPumpData()
 
     def updateTemperatureData(self) -> None:
@@ -1695,7 +2047,7 @@ class HeatSystemDesignGUI(QMainWindow):
         Data Update Process:
             
             **Performance Data Integration**:
-            - Extracts heat pump COP data selection from dialog
+            - Extracts heat pump COP data from dialog
             - Validates performance data format and completeness
             - Updates central data manager with new performance characteristics
             - Triggers recalculation of heat pump-dependent analyses
@@ -1787,335 +2139,27 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         QMessageBox.information(self, "Info", message)
 
-    def add_tab_to_menu(self, tab_widget: QWidget, tab_name: str) -> None:
+    def closeEvent(self, event):
         """
-        Add a new analysis tab to the interface with integrated menu control system.
-
-        This method creates a new tab in the main interface while simultaneously
-        establishing menu-based visibility control. It maintains proper tab ordering,
-        creates corresponding menu actions, and ensures seamless integration with
-        the dynamic tab management system.
-
-        Parameters
-        ----------
-        tab_widget : QWidget
-            The widget instance representing the tab content.
-            Must be a properly initialized tab class with complete functionality.
-        tab_name : str
-            Display name for the tab and corresponding menu item.
-            Should be descriptive and follow German localization conventions.
-
-        Notes
-        -----
-        Tab Management Architecture:
-            
-            **Integrated Tab System**:
-            - Adds tab to main tab widget with proper labeling
-            - Creates corresponding menu action for visibility control
-            - Maintains tab ordering for consistent user experience
-            - Stores menu actions for dynamic tab management
-            
-            **Menu Integration**:
-            - Creates checkable menu action for each tab
-            - Connects menu action to tab visibility toggle functionality
-            - Maintains menu state synchronization with tab visibility
-            - Provides professional menu-based interface control
-
-        Dynamic Tab Control Features:
-            
-            **Visibility Management**:
-            - Tab visibility controlled through menu checkbox actions
-            - Maintains tab widget references for restoration
-            - Preserves tab ordering during hide/show operations
-            - Supports workflow customization through selective tab display
-            
-            **State Persistence**:
-            - Menu actions remain synchronized with tab visibility
-            - Tab ordering preserved across hide/show cycles
-            - Proper cleanup and restoration of tab states
-            - Integration with user preference systems
-
-        Implementation Details:
-            
-            **Tab Ordering System**:
-            - Maintains `self.tab_order` list for consistent tab sequence
-            - Prevents duplicate entries in tab ordering system
-            - Supports proper insertion during tab restoration
-            - Enables predictable tab layout for user familiarity
-            
-            **Menu Action Management**:
-            - Stores menu actions in `self.menu_actions` dictionary
-            - Enables programmatic menu state control
-            - Supports dynamic menu updates and modifications
-            - Facilitates integration with application configuration
-
-        Examples
-        --------
-        **Standard Tab Addition**:
-
-            >>> # Add building analysis tab to interface
-            >>> building_tab = BuildingTab(folder_manager, data_manager, config_manager)
-            >>> self.add_tab_to_menu(building_tab, "Wärmebedarf Gebäude")
-
-        **Energy System Tab Addition**:
-
-            >>> # Add energy system design tab
-            >>> energy_tab = EnergySystemTab(folder_manager, data_manager, config_manager, self)
-            >>> self.add_tab_to_menu(energy_tab, "Erzeugerauslegung und Wirtschaftlichkeitsrechnung")
-
-        **Specialized Analysis Tab**:
-
-            >>> # Add LOD2 processing tab (typically hidden by default)
-            >>> lod2_tab = LOD2Tab(folder_manager, data_manager, config_manager)
-            >>> self.add_tab_to_menu(lod2_tab, "Verarbeitung LOD2-Daten")
-
-        See Also
-        --------
-        toggle_tab_visibility : Toggle individual tab visibility state
-        hide_tab : Hide specific tab through user interface interaction
-        initTabs : Initialize complete tab system with all analysis modules
+        Save all project results before closing the application.
+        Only if a project is loaded. Allows user to cancel application closure.
         """
-        # Maintain consistent tab ordering across application sessions
-        if tab_name not in self.tab_order:
-            self.tab_order.append(tab_name)
-
-        # Add tab to main tab widget with proper labeling
-        self.tabWidget.addTab(tab_widget, tab_name)
-
-        # Create menu action for tab visibility control
-        action = QAction(tab_name, self)
-        action.setCheckable(True)  # Enable checkbox behavior
-        action.setChecked(True)    # Default to visible state
-        action.triggered.connect(lambda checked: self.toggle_tab_visibility(tab_name))
-        
-        # Add action to tabs menu for user access
-        self.tabsMenu.addAction(action)
-
-        # Store action reference for programmatic control
-        self.menu_actions[tab_name] = action
-
-    def toggle_tab_visibility(self, tab_name: str) -> None:
-        """
-        Toggle tab visibility state with preservation of tab content and ordering.
-
-        This method provides dynamic tab management by hiding or showing tabs
-        based on their current visibility state. It maintains tab content integrity,
-        preserves original ordering, and synchronizes menu states for consistent
-        user interface behavior.
-
-        Parameters
-        ----------
-        tab_name : str
-            Name of the tab to toggle visibility for.
-            Must match an existing tab name in the tab system.
-
-        Tab Visibility Management:
+        if hasattr(self, 'base_path') and self.base_path:
+            # Check if user wants to save current changes before closing
+            dialog_result = self.show_save_dialog(
+                'Anwendung schließen',
+                'Möchten Sie Ihre Änderungen vor dem Schließen der Anwendung speichern?',
+                'Speichern und schließen'
+            )
             
-            **Hide Operation**:
-            - Removes tab from visible interface
-            - Preserves tab widget and original position information
-            - Updates menu action state to unchecked
-            - Stores tab reference for later restoration
-            
-            **Show Operation**:
-            - Restores tab to original position in tab sequence
-            - Maintains tab content and state integrity
-            - Updates menu action state to checked
-            - Activates restored tab for immediate user access
-
-        State Preservation System:
-            
-            **Hidden Tab Storage**:
-            - `self.hidden_tabs` dictionary maps tab names to (widget, index) tuples
-            - Preserves both tab content and original position information
-            - Enables perfect restoration of tab layout and ordering
-            - Supports multiple tabs hidden/shown simultaneously
-            
-            **Ordering Maintenance**:
-            - Uses `self.tab_order` list to determine proper insertion position
-            - Maintains consistent tab sequence regardless of hide/show operations
-            - Ensures predictable user interface behavior
-            - Supports user workflow customization through selective tab display
-
-        User Experience Benefits:
-            
-            **Workflow Customization**:
-            - Users can hide specialized tabs not relevant to their workflow
-            - Reduces interface complexity for focused analysis work
-            - Maintains full functionality while simplifying interface
-            - Supports both novice and expert user preferences
-            
-            **Professional Interface Management**:
-            - Smooth tab transitions without interface disruption
-            - Immediate visual feedback through menu state changes
-            - Consistent behavior across all tab types and content
-            - Integration with application theme and styling systems
-
-        Notes
-        -----
-        Technical Implementation:
-            
-            **Tab Widget Management**:
-            - Uses QTabWidget.insertTab() for proper position restoration
-            - Maintains tab index consistency during hide/show operations
-            - Handles tab activation for improved user experience
-            - Supports closeable tabs with proper restoration functionality
-            
-            **Menu Synchronization**:
-            - Automatically updates menu action checked state
-            - Maintains visual consistency between tabs and menu
-            - Supports programmatic tab control through menu actions
-            - Enables keyboard shortcuts and accessibility features
-
-        Examples
-        --------
-        **Hide Specialized Tab**:
-
-            >>> # Hide LOD2 processing tab for basic workflow
-            >>> self.toggle_tab_visibility("Verarbeitung LOD2-Daten")
-            >>> # Tab is hidden, menu unchecked, content preserved
-
-        **Show Previously Hidden Tab**:
-
-            >>> # Restore renovation analysis tab
-            >>> self.toggle_tab_visibility("Gebäudesanierung") 
-            >>> # Tab restored to original position, menu checked, tab activated
-
-        **Workflow Customization**:
-
-            >>> # Hide all specialized tabs for basic analysis workflow
-            >>> specialized_tabs = [
-            ...     "Verarbeitung LOD2-Daten",
-            ...     "Gebäudesanierung", 
-            ...     "Einzelversorgungslösung"
-            ... ]
-            >>> for tab_name in specialized_tabs:
-            ...     self.toggle_tab_visibility(tab_name)
-
-        See Also
-        --------
-        add_tab_to_menu : Add new tabs with menu integration
-        hide_tab : Hide tab through direct user interface interaction
-        initTabs : Complete tab system initialization with default visibility
-        """
-        # Check if tab is currently hidden
-        if tab_name in self.hidden_tabs:
-            # Restore previously hidden tab
-            restored_tab, original_index = self.hidden_tabs.pop(tab_name)
-
-            # Find proper insertion position based on tab ordering
-            insertion_index = 0
-            for i, name in enumerate(self.tab_order):
-                if name == tab_name:
-                    insertion_index = i
-                    break
-                
-            # Insert tab at correct position and activate
-            self.tabWidget.insertTab(insertion_index, restored_tab, tab_name)
-            self.tabWidget.setCurrentIndex(insertion_index)
-            
-            # Update menu action to checked state
-            self.menu_actions[tab_name].setChecked(True)
-            
-        else:
-            # Hide currently visible tab
-            for index in range(self.tabWidget.count()):
-                if self.tabWidget.tabText(index) == tab_name:
-                    # Remove tab and store reference with position
-                    tab_widget = self.tabWidget.widget(index)
-                    self.hidden_tabs[tab_name] = (tab_widget, index)
-                    self.tabWidget.removeTab(index)
-                    break
-                    
-            # Update menu action to unchecked state
-            self.menu_actions[tab_name].setChecked(False)
-
-    def hide_tab(self, tab_index: int) -> None:
-        """
-        Hide a specific tab through direct user interface interaction.
-
-        This method handles tab hiding when users click the close button (X) on
-        individual tabs. It serves as a bridge between direct user interaction
-        and the comprehensive tab visibility management system.
-
-        Parameters
-        ----------
-        tab_index : int
-            Index of the tab to hide in the current tab widget.
-            Corresponds to the visible position of the tab in the interface.
-
-        User Interaction Integration:
-            
-            **Close Button Handling**:
-            - Responds to user clicking the X button on tabs
-            - Provides immediate visual feedback for tab closure
-            - Maintains consistency with tab menu-based hiding
-            - Preserves tab content for later restoration
-            
-            **Interface Consistency**:
-            - Ensures consistent behavior between different hiding methods
-            - Maintains menu state synchronization with tab visibility
-            - Supports both close button and menu-based tab management
-            - Provides unified tab management experience
-
-        Technical Implementation:
-            
-            **Tab Index Resolution**:
-            - Converts tab index to tab name for system consistency
-            - Handles dynamic tab indexing during hide/show operations
-            - Maintains proper tab identification across interface changes
-            - Supports both programmatic and user-initiated tab management
-            
-            **System Integration**:
-            - Leverages existing toggle_tab_visibility infrastructure
-            - Maintains all state preservation and restoration capabilities
-            - Ensures consistent behavior across all tab management methods
-            - Supports comprehensive tab management features
-
-        Notes
-        -----
-        This method serves as an adapter between Qt's tab close signal and
-        the application's comprehensive tab management system. It ensures
-        that tabs closed via the close button receive the same treatment
-        as tabs hidden through menu actions.
-
-        User Experience Benefits:
-            
-            **Intuitive Interface**:
-            - Familiar close button behavior for immediate tab removal
-            - Consistent with standard GUI conventions
-            - Clear visual feedback for user actions
-            - Professional interface behavior expectations
-            
-            **Flexible Tab Management**:
-            - Multiple methods for tab visibility control
-            - User choice in tab management approach
-            - Support for different user preferences and workflows
-            - Comprehensive tab restoration capabilities
-
-        Examples
-        --------
-        **Tab Widget Configuration**:
-
-            >>> # Configure tab widget with closeable tabs
-            >>> self.tabWidget = QTabWidget()
-            >>> self.tabWidget.setTabsClosable(True)
-            >>> self.tabWidget.tabCloseRequested.connect(self.hide_tab)
-
-        **Direct Usage** (typically called internally):
-
-            >>> # Hide tab at index 2 (third visible tab)
-            >>> self.hide_tab(2)
-            >>> # Tab is hidden, content preserved, menu updated
-
-        See Also
-        --------
-        toggle_tab_visibility : Core tab visibility management functionality
-        add_tab_to_menu : Add tabs with integrated menu control
-        QTabWidget.setTabsClosable : Enable close buttons on tabs
-        """
-        # Convert tab index to tab name for system consistency
-        tab_name = self.tabWidget.tabText(tab_index)
-        
-        # Use existing toggle system for consistent behavior
-        self.toggle_tab_visibility(tab_name)
+            if dialog_result == 'cancel':
+                # User cancelled, prevent application closure
+                event.ignore()
+                return
+            elif dialog_result == 'save':
+                if not self.save_all_project_results():
+                    # User cancelled save operation, prevent closure
+                    event.ignore()
+                    return
+            # If 'discard', proceed with closing without saving
+        event.accept()

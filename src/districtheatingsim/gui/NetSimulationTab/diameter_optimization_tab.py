@@ -8,7 +8,7 @@ Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-02-11
 """
 
-from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QComboBox, QWidget,  QHBoxLayout, QCheckBox, QGroupBox
+from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QComboBox, QWidget,  QHBoxLayout, QCheckBox, QGroupBox
 
 class DiameterOptimizationTab(QWidget):
     """

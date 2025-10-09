@@ -65,7 +65,7 @@ professional district heating system analysis and planning workflows.
 Dependencies
 ------------
 **Core Framework**:
-    - PyQt5.QtCore: Signal-slot architecture and Qt object model
+    - PyQt6.QtCore: Signal-slot architecture and Qt object model
     - json: Configuration serialization and deserialization
     - os: File system operations and path management
 
@@ -94,7 +94,7 @@ import os
 import json
 from typing import Dict, List, Optional, Any
 
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt6.QtCore import QObject, pyqtSignal
 
 from districtheatingsim.utilities.utilities import get_resource_path
         
@@ -1427,15 +1427,15 @@ class ProjectFolderManager(QObject):
             Configuration manager instance for settings access.
             If None, creates a new ProjectConfigManager instance.
         """
+    def __init__(self, config_manager: Optional[ProjectConfigManager] = None):
         super(ProjectFolderManager, self).__init__()
         self.config_manager = config_manager or ProjectConfigManager()
 
-        # Initialize project and variant folders from configuration
-        self.project_folder = self.config_manager.get_resource_path("standard_folder_path")
-        self.variant_folder = self.config_manager.get_resource_path("standard_variant_path")
+        # Do not set project_folder or variant_folder until a project is selected or loaded
+        self.project_folder = None
+        self.variant_folder = None
 
-        # Emit initial folder change signal
-        self.emit_project_and_variant_folder()
+        # Do not emit initial folder change signal; will be emitted after project selection
 
     def emit_project_and_variant_folder(self) -> None:
         """

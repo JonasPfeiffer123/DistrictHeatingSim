@@ -13,10 +13,10 @@ import os
 import numpy as np
 import geopandas as gpd
 
-from PyQt5.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QComboBox, \
+from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QComboBox, \
     QPushButton, QHBoxLayout, QMessageBox, QFormLayout, QDialogButtonBox
 
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
 
 class EconomicParametersDialog(QDialog):
@@ -217,10 +217,10 @@ class EconomicParametersDialog(QDialog):
             message (str): The message to display.
         """
         msgBox = QMessageBox()
-        msgBox.setIcon(QMessageBox.Warning)
+        msgBox.setIcon(QMessageBox.Icon.Warning)
         msgBox.setText(message)
         msgBox.setWindowTitle("Fehler")
-        msgBox.exec_()
+        msgBox.exec()
 
     def plotPriceDevelopment(self):
         """
@@ -356,7 +356,7 @@ class WeightDialog(QDialog):
         form_layout.addRow("Spezifische Emissionen", self.co2_input)
         form_layout.addRow("Primärenergiefaktor", self.pe_input)
 
-        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
 

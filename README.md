@@ -4,7 +4,7 @@
 
 Welcome to the DistrictHeatingSim project, a comprehensive tool for planning and optimizing sustainable district heating networks. This README provides an overview of the project's functionality, installation instructions, and usage guidelines. 
 
-DistrictHeatingSim is developed by Dipl.-Ing. (FH) Jonas Pfeiffer as part of a preliminary research SMWK-NEUES TG70 project, which focuses on the development and testing of methods and tools for the conceptualization of sustainable heating networks. The software integrates technical and economic simulations to support the design and evaluation of district heating systems. Besides the technical methods for calculations, a huge focus lies on implementing a GUI for this process steps. The Tool is implemented as an PyQt5-GUI.
+DistrictHeatingSim is developed by Dipl.-Ing. (FH) Jonas Pfeiffer as part of a preliminary research SMWK-NEUES TG70 project, which focuses on the development and testing of methods and tools for the conceptualization of sustainable heating networks. The software integrates technical and economic simulations to support the design and evaluation of district heating systems. Besides the technical methods for calculations, a huge focus lies on implementing a GUI for this process steps. The Tool is implemented as an PyQt6-GUI. The project was recently migrated from PyQt5 to PyQt6 and huge structural changes were made to the UI and the project management. It is possible that errors can occur because of that. The backend calculation functions are working properly.
 
 ## Table of Contents
 1. [Features](#features)
@@ -28,11 +28,8 @@ DistrictHeatingSim is developed by Dipl.-Ing. (FH) Jonas Pfeiffer as part of a p
 - **OSM Data Integration**: Download and process OpenStreetMap data for streets and buildings.
 - **Automatic Heat Network Generation**: Generate heating networks based on building and generator locations.
 - **GIS Data Handling**: Uniformly manage and store GIS data in the GeoJSON format.
-- **LOD2 Data Processing**: Work with detailed 3D building data to analyze heating demands and simulate renovation options.
 - **Thermohydraulic Network Calculation**: Simulate the generated heat networks with [pandapipes](https://github.com/e2nIEE/pandapipes).
 - **Cost Calculation**: Calculate heat generation costs based on [VDI 2067](https://www.vdi.de/richtlinien/details/vdi-2067-blatt-1-wirtschaftlichkeit-gebaeudetechnischer-anlagen-grundlagen-und-kostenberechnung-1) methodology and various cost inputs.
-- **Renovation Calculation**: Calculate the cost of building renovation based on calculated renovation variants.
-- **PDF Report Generation**: Create detailed PDF reports with economic and technical results.
 - **Save/Load Project Results**: Integrated options to save and load calculated results in main parts of the software
 
 ### Technical Capabilities
@@ -109,13 +106,6 @@ Start DistrictHeatingSim by running DistrictHeatingSim.py within src/districthea
 
 ![Leaflet Map](images/leaflet_map.png)
 
-### LOD2-Data Processing
-
-1. **Filter LOD2 Data**: Filter LOD2 3D building data based on polygon or adresses
-2. **Process LOD2 Data**: Process detailed 3D building data for heat demand analysis. Calculating building areas.
-2. **Load TABULA Data**: Combine LOD2 data with [TABULA](https://webtool.building-typology.eu/#bm) building data.
-2. **Calculate Heat Demand**: Use the LOD2 and TABULA data to calculate heat demands for different renovation options.
-
 ### Heat Network Calculation
 
 1. **Load Data**: Import the generated heat network data into Pandapipes.
@@ -133,11 +123,6 @@ Start DistrictHeatingSim by running DistrictHeatingSim.py within src/districthea
 4. **Report Generation**: Generate a PDF report with the simulation results, economic analysis, and recommendations.
 
 ![Heat Generator Definition](images/heat_generator_definition.png)
-### Buidling Renovation Cost Calculation
-
-1. **Load Renovation Variants**: Load LOD2 results from LOD2 processing.
-2. **Cost definition**: Define specifc renovation costs.
-3. **Simulation**: Calculate total costs of renovation options. 
 
 ## Requirements
 

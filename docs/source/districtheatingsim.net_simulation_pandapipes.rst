@@ -30,3 +30,8 @@ Net simulation pandapipes package
    :members:
    :show-inheritance:
    :undoc-members:
+
+.. automodule:: districtheatingsim.net_simulation_pandapipes.advanced_plots
+   :members:
+   :show-inheritance:
+   :undoc-members:

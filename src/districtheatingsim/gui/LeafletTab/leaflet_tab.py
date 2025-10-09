@@ -17,10 +17,12 @@ import traceback
 import os
 import tempfile
 
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QFileDialog, QMenuBar, QAction, QProgressBar, QMessageBox, QMainWindow, QDialog
-from PyQt5.QtWebEngineWidgets import QWebEngineView
-from PyQt5.QtCore import QUrl, QObject, pyqtSlot, pyqtSignal
-from PyQt5.QtWebChannel import QWebChannel
+from PyQt6.QtWidgets import QVBoxLayout, QWidget, QFileDialog, QMenuBar, QProgressBar, QMessageBox, QMainWindow, QDialog
+from PyQt6.QtGui import QAction
+from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PyQt6.QtWebEngineCore import QWebEngineSettings
+from PyQt6.QtCore import QUrl, QObject, pyqtSlot, pyqtSignal
+from PyQt6.QtWebChannel import QWebChannel
 
 from districtheatingsim.gui.LeafletTab.leaflet_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog
 from districtheatingsim.gui.LeafletTab.net_generation_threads import NetGenerationThread, FileImportThread, GeocodingThread
@@ -251,7 +253,8 @@ class VisualizationPresenter(QObject):
         self.view.osmBuildingAction.triggered.connect(self.open_osm_building_query_dialog)
 
         # Initialize map view
-        self.on_project_folder_changed(self.folder_manager.variant_folder)
+        if self.folder_manager.variant_folder:
+            self.on_project_folder_changed(self.folder_manager.variant_folder)
 
         # HTML-Karte wird geladen (Annahme: HTML-Datei ist vorbereitet)
         self.map_file_path = self.model.get_resource_path("leaflet\\map.html")
@@ -266,7 +269,8 @@ class VisualizationPresenter(QObject):
         new_base_path : str
             New base path.
         """
-        self.model.set_base_path(new_base_path)
+        if new_base_path:
+            self.model.set_base_path(new_base_path)
 
     def open_geocode_addresses_dialog(self):
         """Open dialog to select CSV file for geocoding addresses."""
@@ -443,13 +447,13 @@ class VisualizationPresenter(QObject):
     def open_osm_data_dialog(self):
         """Open dialog for downloading OSM data."""
         dialog = DownloadOSMDataDialog(self.model.get_base_path(), self.config_manager, self.view, self)
-        if dialog.exec_() == QDialog.Accepted:
+        if dialog.exec() == QDialog.DialogCode.Accepted:
             pass  # Handle accepted case if necessary
 
     def open_osm_building_query_dialog(self):
         """Open dialog for querying OSM building data."""
         dialog = OSMBuildingQueryDialog(self.model.get_base_path(), self.config_manager, self.view, self)
-        if dialog.exec_() == QDialog.Accepted:
+        if dialog.exec() == QDialog.DialogCode.Accepted:
             pass  # Handle accepted case if necessary
 
 class VisualizationTabView(QWidget):
@@ -510,6 +514,13 @@ class VisualizationTabView(QWidget):
     def initMapView(self):
         """Initialize map view with WebEngine and WebChannel."""
         self.web_view = QWebEngineView()
+        
+        # Configure WebEngine settings to allow mixed content and local requests
+        settings = self.web_view.page().settings()
+        settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, True)
+        settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls, True)
+        settings.setAttribute(QWebEngineSettings.WebAttribute.AllowRunningInsecureContent, True)
+        settings.setAttribute(QWebEngineSettings.WebAttribute.AllowWindowActivationFromJavaScript, True)
         
         # Erstelle den WebChannel und registriere das Python-Objekt
         self.channel = QWebChannel()

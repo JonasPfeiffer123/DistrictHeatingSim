@@ -16,21 +16,7 @@
 - Versionierung der Projektergebnisse --> wie erkenntlich machen, wenn Eingangsdaten verändert wurden? --> Auswirkungen auf Ergebnisse
 - Datenhaltung allgemein überdenken
 
-### LOD2-Datenverarbeitung:
-- Versionierung überdenken
-- LOD2-Daten laden --> Exception-Handling bei timeout Nominatim geocoding
-
-### Einzelversorgungslösungen
-- UI-Integration
-
-### Ergebnispräsentation:
-- Feedback welche Daten geladen sind und ausgegeben werden.
-- PDF-Ausgabe noch weiter ausarbeiten und visuell verbessern.
-
 ## Funktionalitäten:
-### LOD2-Datenverarbeitung:
-- Berechnungsvorgehen überprüfen, Vereinfachungen Herausheben, Detaillierungen vorschlagen
-
 ### Wärmenetzgenerierung:
 - Dateistruktur überdenken
 - GeoJSON für Netzbestandteile
@@ -79,4 +65,6 @@ https://snakemake.readthedocs.io/en/stable/
 To dos pandapipes:
 Was sollte jetzt kurzfristig noch geändert werden um eine "fertige" Version zu erhalten. --> sytematisch durchtesten in verschiedenen Varianten --> Beispiele zu systematischen Tests --> benchmarking --> verschieden große Netze?
 
-Fix problem with solar thermal with calculation problem after loading
+check if data needs to be in geojson of generated files
+
+Check functionality from beginning to end for multiple variants
