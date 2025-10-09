@@ -30,7 +30,6 @@ DistrictHeatingSim is developed by Dipl.-Ing. (FH) Jonas Pfeiffer as part of a p
 - **GIS Data Handling**: Uniformly manage and store GIS data in the GeoJSON format.
 - **Thermohydraulic Network Calculation**: Simulate the generated heat networks with [pandapipes](https://github.com/e2nIEE/pandapipes).
 - **Cost Calculation**: Calculate heat generation costs based on [VDI 2067](https://www.vdi.de/richtlinien/details/vdi-2067-blatt-1-wirtschaftlichkeit-gebaeudetechnischer-anlagen-grundlagen-und-kostenberechnung-1) methodology and various cost inputs.
-- **PDF Report Generation**: Create detailed PDF reports with economic and technical results.
 - **Save/Load Project Results**: Integrated options to save and load calculated results in main parts of the software
 
 ### Technical Capabilities
