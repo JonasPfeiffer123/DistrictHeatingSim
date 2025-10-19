@@ -129,27 +129,23 @@ Start DistrictHeatingSim by running DistrictHeatingSim.py within src/districthea
 - Python 3.11 ; some libraries currently not working in 3.12 ; only tested in 3.11
 - Required Python packages listed in `requirements.txt`:
     ```text
-    PyQt5
+    PyQt6
+    PyQt6-WebEngine
+    matplotlib
+    pandapipes==0.12.0.dev1
+    pandapower
     geopandas
-    PyQtWebEngine
     folium
     scipy
-    matplotlib
-    pandapipes
     geopy
     overpy
     geojson
     scikit-learn
-    PyPDF2
-    reportlab
-    numpy_financial
-    pyomo
     requests
-    selenium
-    webdriver-manager
     CoolProp
     contextily
     plotly
+    seaborn
     ```
 
 ## Project Structure
