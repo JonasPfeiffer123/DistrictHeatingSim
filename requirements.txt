@@ -1,11 +1,11 @@
 PyQt6
 PyQt6-WebEngine
-geopandas
-folium
-scipy
 matplotlib
 pandapipes==0.12.0.dev1
 pandapower
+geopandas
+folium
+scipy
 geopy
 overpy
 geojson
