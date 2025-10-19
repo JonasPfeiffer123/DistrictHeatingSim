@@ -1608,6 +1608,8 @@ class HeatSystemDesignGUI(QMainWindow):
             # Activate selected variant
             if ok and variant_name:
                 self.presenter.folder_manager.set_variant_folder(variant_name)
+                # Automatically load available results after variant selection
+                self.on_importResultsAction()
         else:
             self.show_error_message("Keine Varianten im Projekt gefunden.")
 
