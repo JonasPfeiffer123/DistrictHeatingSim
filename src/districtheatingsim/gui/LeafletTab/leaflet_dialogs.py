@@ -51,7 +51,7 @@ class LayerGenerationDialog(QDialog):
         self.base_path = base_path
         self.visualization_tab = None
         self.config_manager = config_manager
-        self.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.WindowTitleHint | Qt.CustomizeWindowHint)
+        self.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.WindowTitleHint | Qt.WindowType.CustomizeWindowHint)
         self.initUI()
 
     def initUI(self):
