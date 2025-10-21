@@ -7,6 +7,7 @@ projects, quick actions, and access to documentation.
 """
 
 import os
+import sys
 import json
 import webbrowser
 from pathlib import Path
@@ -480,9 +481,11 @@ class WelcomeScreen(QWidget):
             except Exception as e:
                 print(f"Could not load recent projects: {e}")
         
-        # Fallback: scan for projects if no config manager or no recent projects
+        # Always add the bundled example project (Görlitz) if no recent projects exist
         if not self.recent_projects:
-            self.recent_projects = self.scan_for_projects()
+            example_project = self.get_bundled_example_project()
+            if example_project:
+                self.recent_projects.append(example_project)
         
         if not self.recent_projects:
             # Show "no projects" message with helpful tips
@@ -525,6 +528,66 @@ class WelcomeScreen(QWidget):
                 self.project_count_label.setText(str(min(len(self.recent_projects), 10)))
         
         self.projects_layout.addStretch()
+    
+    def get_bundled_example_project(self) -> Optional[tuple]:
+        """
+        Get the bundled Görlitz example project path.
+        
+        This method locates the Görlitz example project that is bundled with
+        the application in the project_data directory. Works both in development
+        and in frozen (PyInstaller) deployments.
+        
+        Returns:
+            Optional[tuple]: (project_path, project_info) if found, None otherwise
+        """
+        try:
+            # Import utilities to get resource path
+            from districtheatingsim.utilities.utilities import get_resource_path
+            
+            # Try to get the standard folder path from config
+            standard_project_path = None
+            
+            if self.config_manager:
+                try:
+                    # Get from file_paths.json configuration
+                    standard_relative = self.config_manager.get_relative_path('standard_folder_path')
+                    # Convert to absolute path using resource path resolution
+                    standard_project_path = get_resource_path(standard_relative)
+                except Exception as e:
+                    print(f"Could not get standard project path from config: {e}")
+            
+            # Fallback: try common locations
+            if not standard_project_path or not os.path.exists(standard_project_path):
+                # Get application base directory
+                if getattr(sys, 'frozen', False):
+                    # Running as compiled executable
+                    base_path = sys._MEIPASS
+                else:
+                    # Running in development
+                    base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                
+                # Try different possible locations
+                possible_paths = [
+                    os.path.join(base_path, 'project_data', 'Görlitz'),
+                    os.path.join(base_path, 'districtheatingsim', 'project_data', 'Görlitz'),
+                    os.path.join(os.path.dirname(base_path), 'project_data', 'Görlitz'),
+                ]
+                
+                for path in possible_paths:
+                    if os.path.exists(path) and os.path.isdir(path):
+                        standard_project_path = path
+                        break
+            
+            # Check if we found a valid example project
+            if standard_project_path and os.path.exists(standard_project_path):
+                project_info = self.get_project_info(standard_project_path)
+                project_info['name'] = '📚 Görlitz Beispielprojekt'  # Add icon to indicate it's the example
+                return (standard_project_path, project_info)
+            
+        except Exception as e:
+            print(f"Error locating bundled example project: {e}")
+        
+        return None
     
     def scan_for_projects(self) -> List[tuple]:
         """
