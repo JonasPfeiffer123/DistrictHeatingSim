@@ -201,6 +201,10 @@ class WelcomeScreen(QWidget):
         self.create_actions_section(content_layout)
         
         main_layout.addLayout(content_layout, 1)  # Stretch factor 1
+        
+        # Funding/Project Information Footer
+        self.create_funding_footer(main_layout)
+        
         main_layout.addStretch(0)  # No extra stretch at bottom
         
         self.setLayout(main_layout)
@@ -461,6 +465,72 @@ class WelcomeScreen(QWidget):
         
         parent_layout.addLayout(started_layout)
     
+    def create_funding_footer(self, parent_layout):
+        """Create the funding notice footer with logo and project information."""
+        footer_container = QFrame()
+        footer_container.setFrameStyle(QFrame.Shape.Box)
+        footer_container.setObjectName("fundingFooter")
+        
+        footer_layout = QHBoxLayout()
+        footer_layout.setContentsMargins(20, 15, 20, 15)
+        footer_layout.setSpacing(20)
+        
+        # Funding logo
+        try:
+            from districtheatingsim.utilities.utilities import get_resource_path
+            
+            # Logo is in src/districtheatingsim/images/
+            logo_path = get_resource_path('images/funding_saxony.jpg')
+            
+            if os.path.exists(logo_path):
+                logo_label = QLabel()
+                pixmap = QPixmap(logo_path)
+                # Scale the logo to a reasonable size (max height 80px)
+                scaled_pixmap = pixmap.scaledToHeight(80, Qt.TransformationMode.SmoothTransformation)
+                logo_label.setPixmap(scaled_pixmap)
+                logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                footer_layout.addWidget(logo_label)
+            else:
+                print(f"Funding logo not found at: {logo_path}")
+        except Exception as e:
+            print(f"Could not load funding logo: {e}")
+        
+        # Project information text
+        info_layout = QVBoxLayout()
+        info_layout.setSpacing(5)
+        
+        # Title
+        project_title = QLabel("Gefördert durch das Sächsische Staatsministerium für Wissenschaft, Kultur und Tourismus")
+        project_title.setWordWrap(True)
+        project_title.setObjectName("fundingTitle")
+        project_font = QFont()
+        project_font.setBold(True)
+        project_font.setPointSize(10)
+        project_title.setFont(project_font)
+        info_layout.addWidget(project_title)
+        
+        # Project name and details
+        project_details = QLabel(
+            "Projekt: SMWK-NEUES TG70 – Entwicklung und Erprobung von Methoden und Werkzeugen zur Konzeptionierung nachhaltiger Wärmenetze"
+        )
+        project_details.setWordWrap(True)
+        project_details.setObjectName("fundingDetails")
+        details_font = QFont()
+        details_font.setPointSize(9)
+        project_details.setFont(details_font)
+        info_layout.addWidget(project_details)
+        
+        # Developer info
+        developer_info = QLabel("Entwickelt von Dipl.-Ing. (FH) Jonas Pfeiffer, Hochschule Zittau/Görlitz")
+        developer_info.setObjectName("fundingDetails")
+        developer_info.setFont(details_font)
+        info_layout.addWidget(developer_info)
+        
+        footer_layout.addLayout(info_layout, 1)  # Let text take remaining space
+        
+        footer_container.setLayout(footer_layout)
+        parent_layout.addWidget(footer_container)
+    
     def load_recent_projects(self):
         """Load and display recent projects from config manager."""
         # Clear existing projects
@@ -562,12 +632,18 @@ class WelcomeScreen(QWidget):
                 if getattr(sys, 'frozen', False):
                     # Running as compiled executable
                     base_path = sys._MEIPASS
+                    # Also check directory where exe is located (for user-accessible folders)
+                    exe_dir = os.path.dirname(sys.executable)
                 else:
                     # Running in development
                     base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                    exe_dir = base_path
                 
                 # Try different possible locations
                 possible_paths = [
+                    # First check next to exe (user-accessible location)
+                    os.path.join(exe_dir, 'project_data', 'Görlitz'),
+                    # Then check in _MEIPASS (internal location)
                     os.path.join(base_path, 'project_data', 'Görlitz'),
                     os.path.join(base_path, 'districtheatingsim', 'project_data', 'Görlitz'),
                     os.path.join(os.path.dirname(base_path), 'project_data', 'Görlitz'),
