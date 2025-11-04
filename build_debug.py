@@ -159,5 +159,66 @@ def cleanup_device_specific_files():
         print(f"  ✓ Cleaned up {removed_count} device-specific file(s)")
 
 
+def move_user_data_outside():
+    """
+    Move data and project_data folders outside _internal for user accessibility.
+    
+    These folders contain user-editable data and example projects that should
+    be easily accessible and modifiable by users.
+    """
+    import os
+    import shutil
+    
+    dist_root = 'dist/DistrictHeatingSim'
+    internal = os.path.join(dist_root, '_internal')
+    
+    # Folders to move (these should be user-accessible)
+    folders_to_move = [
+        'data',           # TRY, COP data files
+        'project_data'    # Example projects (Görlitz, etc.)
+    ]
+    
+    moved_count = 0
+    
+    for folder in folders_to_move:
+        # Check various possible locations in _internal
+        possible_sources = [
+            os.path.join(internal, folder),
+            os.path.join(internal, 'districtheatingsim', folder)
+        ]
+        
+        target = os.path.join(dist_root, folder)
+        
+        for source in possible_sources:
+            if os.path.exists(source):
+                try:
+                    # Remove target if it already exists
+                    if os.path.exists(target):
+                        shutil.rmtree(target)
+                    
+                    # Move folder to root level
+                    shutil.move(source, target)
+                    print(f"  ✓ Moved: {folder}/ from _internal to root")
+                    moved_count += 1
+                    break  # Found and moved, don't check other sources
+                    
+                except Exception as e:
+                    print(f"  ⚠ Could not move {folder}: {e}")
+    
+    if moved_count == 0:
+        print("  ℹ No user-data folders found to move")
+    else:
+        print(f"  ✓ Moved {moved_count} user-data folder(s) to root level")
+        print(f"  → Users can now easily access and modify these folders")
+
+
 if __name__ == '__main__':
-    sys.exit(build_with_debug())
+    exit_code = build_with_debug()
+    
+    if exit_code == 0:
+        print("\n" + "="*70)
+        print("Post-Build Optimization: Moving user-accessible data...")
+        print("="*70)
+        move_user_data_outside()
+    
+    sys.exit(exit_code)
