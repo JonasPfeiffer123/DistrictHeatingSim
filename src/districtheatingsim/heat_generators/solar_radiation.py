@@ -506,15 +506,20 @@ def calculate_solar_radiation(
             """
             # Find lower bound incidence angles (rounded down to nearest 10°)
             sverweis_1 = np.abs(Incidence_angle) - np.abs(Incidence_angle) % 10
-            # Get IAM values for lower bounds
-            sverweis_2 = np.vectorize(iam_data.get)(sverweis_1)
+            # Get IAM values for lower bounds (default to 0.0 if key not found)
+            sverweis_2 = np.vectorize(lambda x: iam_data.get(x, 0.0))(sverweis_1)
             # Find upper bound incidence angles (rounded up to nearest 10°)
             sverweis_3 = (np.abs(Incidence_angle) + 10) - (np.abs(Incidence_angle) + 10) % 10
-            # Get IAM values for upper bounds
-            sverweis_4 = np.vectorize(iam_data.get)(sverweis_3)
+            # Get IAM values for upper bounds (default to 0.0 if key not found)
+            sverweis_4 = np.vectorize(lambda x: iam_data.get(x, 0.0))(sverweis_3)
 
             # Perform linear interpolation between bounds
-            result = sverweis_2 + (np.abs(Incidence_angle) - sverweis_1) / (sverweis_3 - sverweis_1) * (sverweis_4 - sverweis_2)
+            # Handle division by zero for same angle bounds
+            denominator = sverweis_3 - sverweis_1
+            numerator = sverweis_4 - sverweis_2
+            result = np.where(denominator != 0, 
+                            sverweis_2 + (np.abs(Incidence_angle) - sverweis_1) / denominator * numerator,
+                            sverweis_2)
             return result
 
         # Calculate IAM factors for both directions

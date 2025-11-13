@@ -93,7 +93,7 @@ Solar thermal modeling based on:
 
 import numpy as np
 from math import pi, exp, log, sqrt
-from typing import Dict, Tuple, List, Optional, Union
+from typing import Dict, Tuple, List, Optional, Union, Any
 
 from districtheatingsim.heat_generators.solar_radiation import calculate_solar_radiation
 from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
@@ -1729,11 +1729,6 @@ class SolarThermal(BaseHeatGenerator):
             # Mark calculation as completed
             self.calculated = True
 
-        # Display calculation completion summary
-        print(f"Solar thermal system calculation completed: {self.name}")
-        print(f"Total heat generation: {self.Wärmemenge_MWh:.2f} MWh")
-        print(f"Collector output profile calculated: {len(self.Wärmeleistung_kW)} time steps")
-
         # Calculate operational statistics
         betrieb_mask = self.Wärmeleistung_kW > 0
         starts = np.diff(betrieb_mask.astype(int)) > 0
@@ -1741,11 +1736,6 @@ class SolarThermal(BaseHeatGenerator):
         self.Betriebsstunden = np.sum(betrieb_mask) * duration
         self.Betriebsstunden_pro_Start = (self.Betriebsstunden / self.Anzahl_Starts 
                                         if self.Anzahl_Starts > 0 else 0)
-
-        # Display operational statistics
-        print(f"Operational starts: {self.Anzahl_Starts}")
-        print(f"Operating hours: {self.Betriebsstunden:.2f} h/year")
-        print(f"Hours per start: {self.Betriebsstunden_pro_Start:.2f} h/start")
 
         # Calculate economic performance
         self.WGK = self.calculate_heat_generation_costs(economic_parameters)
@@ -2031,6 +2021,36 @@ class SolarThermal(BaseHeatGenerator):
         full_costs = f"{self.Investitionskosten:.1f}"
         
         return self.name, dimensions, costs, full_costs
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'SolarThermal':
+        """
+        Create SolarThermal object from dictionary representation.
+        
+        This override ensures that IAM dictionaries are properly restored
+        when loading saved SolarThermal objects.
+        
+        Parameters
+        ----------
+        data : dict
+            Dictionary containing SolarThermal attributes.
+            
+        Returns
+        -------
+        SolarThermal
+            Restored SolarThermal object with all attributes.
+        """
+        # Create object using base class method
+        obj = super().from_dict(data)
+        
+        # Ensure IAM dictionaries exist and are valid
+        # If they are missing or empty, reinitialize calculation constants
+        if not hasattr(obj, 'IAM_W') or not obj.IAM_W or not isinstance(obj.IAM_W, dict):
+            obj.init_calculation_constants()
+        elif not hasattr(obj, 'IAM_N') or not obj.IAM_N or not isinstance(obj.IAM_N, dict):
+            obj.init_calculation_constants()
+        
+        return obj
 
 class SolarThermalStrategy(BaseStrategy):
     """

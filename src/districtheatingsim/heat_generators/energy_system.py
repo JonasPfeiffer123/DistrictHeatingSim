@@ -825,7 +825,6 @@ class EnergySystem:
         
         for tech in self.technologies:
             # Perform technology-specific calculation
-            print(self.results["Restlast_L"])
             tech_results = tech.calculate(economic_parameters=self.economic_parameters,
                                         duration=self.duration,
                                         load_profile=self.results["Restlast_L"],
@@ -834,9 +833,6 @@ class EnergySystem:
                                         TRY_data=self.TRY_data,
                                         COP_data=self.COP_data,
                                         time_steps=self.time_steps)
-            
-            print(f"Technology: {tech.name}")
-            print(f"Results: {tech_results}")
                 
             if tech_results['Wärmemenge'] > 1e-6:
                 self.aggregate_results(tech_results)
@@ -977,7 +973,6 @@ class EnergySystem:
         # Add storage data
         if self.storage:
             Q_net_storage_flow = self.storage.Q_net_storage_flow
-            print(f"Storage results: {Q_net_storage_flow[8000]}")
 
             # Separate storage charging (negative values) and discharging (positive values)
             Q_net_positive = np.maximum(Q_net_storage_flow, 0)  # Storage discharging
@@ -991,12 +986,15 @@ class EnergySystem:
             # Find index of "Ungedeckter Bedarf" in technology list
             if isinstance(self.results['techs'], list):
                 unmet_demand_index = self.results['techs'].index("Ungedeckter Bedarf")
-            if isinstance(self.results['techs'], np.ndarray):
+            elif isinstance(self.results['techs'], np.ndarray):
                 unmet_demand_index = np.where(self.results['techs'] == "Ungedeckter Bedarf")[0][0]
             else:
-                print(f"Unknown data type: {type(self.results['techs'])}")
-            # Add unmet demand to extracted data structure
-            self.extracted_data['Ungedeckter_Bedarf_kW'] = self.results["Wärmeleistung_L"][unmet_demand_index]
+                # Skip unmet demand if data type is unknown
+                unmet_demand_index = None
+            
+            # Add unmet demand to extracted data structure if index was found
+            if unmet_demand_index is not None:
+                self.extracted_data['Ungedeckter_Bedarf_kW'] = self.results["Wärmeleistung_L"][unmet_demand_index]
 
         # Initial selection
         self.initial_vars = [var_name for var_name in self.extracted_data.keys() if "_Wärmeleistung" in var_name]

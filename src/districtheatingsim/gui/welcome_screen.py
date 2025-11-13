@@ -7,6 +7,7 @@ projects, quick actions, and access to documentation.
 """
 
 import os
+import sys
 import json
 import webbrowser
 from pathlib import Path
@@ -200,6 +201,10 @@ class WelcomeScreen(QWidget):
         self.create_actions_section(content_layout)
         
         main_layout.addLayout(content_layout, 1)  # Stretch factor 1
+        
+        # Funding/Project Information Footer
+        self.create_funding_footer(main_layout)
+        
         main_layout.addStretch(0)  # No extra stretch at bottom
         
         self.setLayout(main_layout)
@@ -460,6 +465,72 @@ class WelcomeScreen(QWidget):
         
         parent_layout.addLayout(started_layout)
     
+    def create_funding_footer(self, parent_layout):
+        """Create the funding notice footer with logo and project information."""
+        footer_container = QFrame()
+        footer_container.setFrameStyle(QFrame.Shape.Box)
+        footer_container.setObjectName("fundingFooter")
+        
+        footer_layout = QHBoxLayout()
+        footer_layout.setContentsMargins(20, 15, 20, 15)
+        footer_layout.setSpacing(20)
+        
+        # Funding logo
+        try:
+            from districtheatingsim.utilities.utilities import get_resource_path
+            
+            # Logo is in src/districtheatingsim/images/
+            logo_path = get_resource_path('images/funding_saxony.jpg')
+            
+            if os.path.exists(logo_path):
+                logo_label = QLabel()
+                pixmap = QPixmap(logo_path)
+                # Scale the logo to a reasonable size (max height 80px)
+                scaled_pixmap = pixmap.scaledToHeight(80, Qt.TransformationMode.SmoothTransformation)
+                logo_label.setPixmap(scaled_pixmap)
+                logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                footer_layout.addWidget(logo_label)
+            else:
+                print(f"Funding logo not found at: {logo_path}")
+        except Exception as e:
+            print(f"Could not load funding logo: {e}")
+        
+        # Project information text
+        info_layout = QVBoxLayout()
+        info_layout.setSpacing(5)
+        
+        # Title
+        project_title = QLabel("Gefördert durch das Sächsische Staatsministerium für Wissenschaft, Kultur und Tourismus")
+        project_title.setWordWrap(True)
+        project_title.setObjectName("fundingTitle")
+        project_font = QFont()
+        project_font.setBold(True)
+        project_font.setPointSize(10)
+        project_title.setFont(project_font)
+        info_layout.addWidget(project_title)
+        
+        # Project name and details
+        project_details = QLabel(
+            "Projekt: SMWK-NEUES TG70 – Entwicklung und Erprobung von Methoden und Werkzeugen zur Konzeptionierung nachhaltiger Wärmenetze"
+        )
+        project_details.setWordWrap(True)
+        project_details.setObjectName("fundingDetails")
+        details_font = QFont()
+        details_font.setPointSize(9)
+        project_details.setFont(details_font)
+        info_layout.addWidget(project_details)
+        
+        # Developer info
+        developer_info = QLabel("Entwickelt von Dipl.-Ing. (FH) Jonas Pfeiffer, Hochschule Zittau/Görlitz")
+        developer_info.setObjectName("fundingDetails")
+        developer_info.setFont(details_font)
+        info_layout.addWidget(developer_info)
+        
+        footer_layout.addLayout(info_layout, 1)  # Let text take remaining space
+        
+        footer_container.setLayout(footer_layout)
+        parent_layout.addWidget(footer_container)
+    
     def load_recent_projects(self):
         """Load and display recent projects from config manager."""
         # Clear existing projects
@@ -480,9 +551,11 @@ class WelcomeScreen(QWidget):
             except Exception as e:
                 print(f"Could not load recent projects: {e}")
         
-        # Fallback: scan for projects if no config manager or no recent projects
+        # Always add the bundled example project (Görlitz) if no recent projects exist
         if not self.recent_projects:
-            self.recent_projects = self.scan_for_projects()
+            example_project = self.get_bundled_example_project()
+            if example_project:
+                self.recent_projects.append(example_project)
         
         if not self.recent_projects:
             # Show "no projects" message with helpful tips
@@ -525,6 +598,72 @@ class WelcomeScreen(QWidget):
                 self.project_count_label.setText(str(min(len(self.recent_projects), 10)))
         
         self.projects_layout.addStretch()
+    
+    def get_bundled_example_project(self) -> Optional[tuple]:
+        """
+        Get the bundled Görlitz example project path.
+        
+        This method locates the Görlitz example project that is bundled with
+        the application in the project_data directory. Works both in development
+        and in frozen (PyInstaller) deployments.
+        
+        Returns:
+            Optional[tuple]: (project_path, project_info) if found, None otherwise
+        """
+        try:
+            # Import utilities to get resource path
+            from districtheatingsim.utilities.utilities import get_resource_path
+            
+            # Try to get the standard folder path from config
+            standard_project_path = None
+            
+            if self.config_manager:
+                try:
+                    # Get from file_paths.json configuration
+                    standard_relative = self.config_manager.get_relative_path('standard_folder_path')
+                    # Convert to absolute path using resource path resolution
+                    standard_project_path = get_resource_path(standard_relative)
+                except Exception as e:
+                    print(f"Could not get standard project path from config: {e}")
+            
+            # Fallback: try common locations
+            if not standard_project_path or not os.path.exists(standard_project_path):
+                # Get application base directory
+                if getattr(sys, 'frozen', False):
+                    # Running as compiled executable
+                    base_path = sys._MEIPASS
+                    # Also check directory where exe is located (for user-accessible folders)
+                    exe_dir = os.path.dirname(sys.executable)
+                else:
+                    # Running in development
+                    base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                    exe_dir = base_path
+                
+                # Try different possible locations
+                possible_paths = [
+                    # First check next to exe (user-accessible location)
+                    os.path.join(exe_dir, 'project_data', 'Görlitz'),
+                    # Then check in _MEIPASS (internal location)
+                    os.path.join(base_path, 'project_data', 'Görlitz'),
+                    os.path.join(base_path, 'districtheatingsim', 'project_data', 'Görlitz'),
+                    os.path.join(os.path.dirname(base_path), 'project_data', 'Görlitz'),
+                ]
+                
+                for path in possible_paths:
+                    if os.path.exists(path) and os.path.isdir(path):
+                        standard_project_path = path
+                        break
+            
+            # Check if we found a valid example project
+            if standard_project_path and os.path.exists(standard_project_path):
+                project_info = self.get_project_info(standard_project_path)
+                project_info['name'] = '📚 Görlitz Beispielprojekt'  # Add icon to indicate it's the example
+                return (standard_project_path, project_info)
+            
+        except Exception as e:
+            print(f"Error locating bundled example project: {e}")
+        
+        return None
     
     def scan_for_projects(self) -> List[tuple]:
         """
