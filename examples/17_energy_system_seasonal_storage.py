@@ -4,9 +4,13 @@ from districtheatingsim.heat_generators.chp import CHP, CHPStrategy
 from districtheatingsim.heat_generators.gas_boiler import GasBoiler, GasBoilerStrategy
 from districtheatingsim.heat_generators.power_to_heat import PowerToHeat, PowerToHeatStrategy
 from districtheatingsim.heat_generators.biomass_boiler import BiomassBoiler, BiomassBoilerStrategy
-from districtheatingsim.heat_generators.base_heat_pumps import RiverHeatPump, WasteHeatPump, Geothermal, HeatPumpStrategy
+from districtheatingsim.heat_generators.base_heat_pumps import HeatPumpStrategy
+from districtheatingsim.heat_generators.river_heat_pump import RiverHeatPump
+from districtheatingsim.heat_generators.waste_heat_pump import WasteHeatPump
+from districtheatingsim.heat_generators.geothermal_heat_pump import Geothermal
 from districtheatingsim.heat_generators.solar_thermal import SolarThermal, SolarThermalStrategy
 from districtheatingsim.heat_generators.STES import STES
+from districtheatingsim.heat_generators.simple_thermal_storage import SimpleThermalStorage
 
 from districtheatingsim.utilities.test_reference_year import import_TRY
 
@@ -18,17 +22,17 @@ import os
 # Testparameter
 time_steps = pd.date_range(start="2023-01-01", end="2023-12-31 23:00:00", freq="h").to_numpy()
 
-file_path = os.path.abspath('feature_develop/STES/Lastgang.csv')
+file_path = os.path.abspath('examples/data/Lastgang/Lastgang.csv')
 
 df = pd.read_csv(file_path, delimiter=';', encoding='utf-8')
 load_profile = df['Gesamtwärmebedarf_Gebäude_kW'].values
 VLT_L = np.random.uniform(85, 85, 8760)
 RLT_L = np.random.uniform(50, 50, 8760)
 
-TRY_filename = os.path.abspath('src/districtheatingsim/data/TRY/TRY_511676144222/TRY2015_511676144222_Jahr.dat')
+TRY_filename = os.path.abspath('examples/data/TRY/TRY_511676144222/TRY2015_511676144222_Jahr.dat')
 TRY_data = import_TRY(TRY_filename)
 
-COP_filename = os.path.abspath('src/districtheatingsim/data/COP/Kennlinien WP.csv')
+COP_filename = os.path.abspath('examples/data/COP/Kennlinien WP.csv')
 COP_data = np.genfromtxt(COP_filename, delimiter=';')
 
 economic_parameters = {"gas_price": 50, "wood_price": 40, "electricity_price": 120, "capital_interest_rate": 0.05, 
@@ -112,11 +116,9 @@ results = energy_system.calculate_mix()
 # Ergebnisse anzeigen
 print("Simulationsergebnisse:")
 print(f"Speicherwirkungsgrad: {results['storage_class'].efficiency*100:.2f}%")
-print(f"Betriebskosten: {results['storage_class'].operational_costs:.2f} €")
 print(f"Überschüssige Wärme durch Stagnation: {results['storage_class'].excess_heat:.2f} kWh")
 print(f"Nicht gedeckter Bedarf aufgrund von Speicherentleerung: {results['storage_class'].unmet_demand:.2f} kWh")
 print(f"Stagnationsdauer: {results['storage_class'].stagnation_time} h")
-
 
 # Ergebnisse plotten
 results['storage_class'].plot_results(results["Wärmeleistung_L"][0], load_profile, VLT_L, RLT_L)

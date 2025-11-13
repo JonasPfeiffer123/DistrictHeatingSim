@@ -6,7 +6,7 @@ This module provides comprehensive modeling capabilities for Seasonal Thermal En
 systems in district heating applications.
 
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-06-26
+Date: 2025-10-09
 
 It implements sophisticated heat transfer calculations,
 geometric modeling for various storage configurations, and performance analysis tools for
@@ -16,8 +16,8 @@ The module is based on validated simulation methods from scientific literature a
 multiple storage geometries including cylindrical tanks, pit thermal energy storage (PTES)
 with truncated cone and trapezoid configurations, both above-ground and underground installations.
 
-References
-----------
+External References
+-------------------
 Simulation method for assessing hourly energy flows in district heating system with seasonal thermal energy storage
 Authors: Kapil Narula, Fleury de Oliveira Filho, Willy Villasmil, Martin K. Patel
 Journal: Renewable Energy, Volume 151, May 2020, Pages 1250-1268
@@ -152,105 +152,6 @@ class ThermalStorage(BaseHeatGenerator):
         - **Cylindrical**: Simple construction, uniform heat distribution
         - **Truncated cone**: Optimal for large-scale PTES, natural stratification
         - **Truncated trapezoid**: Flexible shape adaptation to site constraints
-        
-        **Insulation Design**:
-        - Top insulation most critical due to convective losses
-        - Side insulation thickness depends on storage size and economics
-        - Bottom insulation can be reduced for underground installations
-        
-        **Material Properties**:
-        - Water preferred for high heat capacity and low cost
-        - Glycol mixtures for freeze protection in cold climates
-        - Thermal conductivity affects internal temperature gradients
-
-    Heat Transfer Mechanisms:
-        
-        **Conductive Losses**:
-        - Through insulation materials to ambient environment
-        - To surrounding soil for underground installations
-        - Internal conduction affects temperature stratification
-        
-        **Thermal Resistance Networks**:
-        - Series resistances through insulation layers
-        - Parallel heat paths for complex geometries
-        - Soil thermal resistance for underground storage
-
-    Examples
-    --------
-    >>> # Create cylindrical hot water storage tank
-    >>> tank_storage = ThermalStorage(
-    ...     name="District_Tank_01",
-    ...     storage_type="cylindrical",
-    ...     dimensions=(5.0, 10.0),  # 5m radius, 10m height
-    ...     rho=1000,  # Water density
-    ...     cp=4186,   # Water heat capacity
-    ...     T_ref=0,   # Reference temperature
-    ...     lambda_top=0.03,    # Insulation conductivity
-    ...     lambda_side=0.03,
-    ...     lambda_bottom=0.03,
-    ...     lambda_soil=1.5,    # Soil conductivity
-    ...     T_amb=10,   # Ambient temperature
-    ...     T_soil=8,   # Soil temperature
-    ...     T_max=95,   # Maximum temperature
-    ...     T_min=5,    # Minimum temperature
-    ...     initial_temp=60,  # Initial temperature
-    ...     dt_top=0.2,   # Insulation thickness
-    ...     ds_side=0.15,
-    ...     db_bottom=0.1
-    ... )
-
-    >>> # Display storage characteristics
-    >>> print(f"Storage volume: {tank_storage.volume:.1f} m³")
-    >>> print(f"Heat capacity: {tank_storage.volume * tank_storage.rho * tank_storage.cp / 1e9:.1f} GJ/K")
-
-    >>> # Create large-scale PTES with truncated cone geometry
-    >>> ptes_storage = ThermalStorage(
-    ...     name="PTES_Seasonal_01",
-    ...     storage_type="truncated_cone",
-    ...     dimensions=(25.0, 35.0, 15.0),  # top_r, bottom_r, height
-    ...     rho=1000,
-    ...     cp=4186,
-    ...     T_ref=0,
-    ...     lambda_top=0.025,
-    ...     lambda_side=0.035,
-    ...     lambda_bottom=0.04,
-    ...     lambda_soil=2.0,
-    ...     T_amb=8,
-    ...     T_soil=10,
-    ...     T_max=90,
-    ...     T_min=15,
-    ...     initial_temp=45,
-    ...     dt_top=0.3,
-    ...     ds_side=0.5,
-    ...     db_bottom=0.3,
-    ...     hours=8760  # Full year simulation
-    ... )
-
-    >>> # Storage capacity analysis
-    >>> max_energy = ptes_storage.volume * ptes_storage.rho * ptes_storage.cp * (ptes_storage.T_max - ptes_storage.T_min) / 3.6e9
-    >>> print(f"PTES maximum energy capacity: {max_energy:.0f} GWh")
-
-    >>> # Create flexible trapezoid PTES for constrained site
-    >>> site_storage = ThermalStorage(
-    ...     name="Site_Adapted_PTES",
-    ...     storage_type="truncated_trapezoid",
-    ...     dimensions=(40, 30, 50, 40, 12),  # Adapted to site boundaries
-    ...     rho=1000,
-    ...     cp=4186,
-    ...     T_ref=0,
-    ...     lambda_top=0.03,
-    ...     lambda_side=0.04,
-    ...     lambda_bottom=0.04,
-    ...     lambda_soil=1.8,
-    ...     T_amb=8,
-    ...     T_soil=9,
-    ...     T_max=85,
-    ...     T_min=20,
-    ...     initial_temp=50,
-    ...     dt_top=0.25,
-    ...     ds_side=0.4,
-    ...     db_bottom=0.25
-    ... )
 
     See Also
     --------
@@ -259,6 +160,7 @@ class ThermalStorage(BaseHeatGenerator):
     calculate_operational_costs : Economic analysis of storage operation
     calculate_efficiency : Performance evaluation methods
     """
+
     def __init__(self, name: str, storage_type: str, dimensions: Tuple[float, ...], 
                  rho: float, cp: float, T_ref: float, lambda_top: float, 
                  lambda_side: float, lambda_bottom: float, lambda_soil: float, 
@@ -280,6 +182,7 @@ class ThermalStorage(BaseHeatGenerator):
         self.T_soil = T_soil
         self.T_max = T_max
         self.T_min = T_min
+        self.initial_temp = initial_temp
         self.dt_top = dt_top
         self.ds_side = ds_side
         self.db_bottom = db_bottom
@@ -292,7 +195,7 @@ class ThermalStorage(BaseHeatGenerator):
         self.T_sto[0] = initial_temp
         
         # Calculate geometry-dependent properties
-        if storage_type == "cylindrical":
+        if storage_type == "cylindrical_overground" or storage_type == "cylindrical_underground":
             self.volume, self.S_top, self.S_side, self.S_bottom = self.calculate_cylindrical_geometry(dimensions)
         elif storage_type == "truncated_cone":
             self.volume, self.S_top, self.S_side, self.S_bottom = self.calculate_truncated_cone_geometry(dimensions)
@@ -331,67 +234,13 @@ class ThermalStorage(BaseHeatGenerator):
             - **S_side** (float) : Cylindrical side surface area [m²]
             - **S_bottom** (float) : Bottom surface area [m²]
 
-        Notes
-        -----
-        Cylindrical Storage Applications:
-            
-            **Short-term Storage (Hours to Days)**:
-            - Buffer tanks for load balancing
-            - Peak shaving applications
-            - CHP plant integration
-            
-            **Medium-term Storage (Days to Weeks)**:
-            - Weekly load shifting
-            - Industrial process heat storage
-            - Solar thermal integration
-
-        Design Considerations:
-            
-            **Aspect Ratio**:
-            - Height/Diameter ratio affects thermal stratification
-            - Tall tanks (H/D > 2) promote better stratification
-            - Wide tanks (H/D < 1) suitable for large volumes with limited height
-            
-            **Surface Area Optimization**:
-            - Minimize surface-to-volume ratio to reduce heat losses
-            - Spherical shape optimal but impractical for large storage
-            - Cylindrical provides good compromise between efficiency and constructability
-
-        Heat Loss Considerations:
-            - Top surface: Critical for insulation due to buoyancy effects
-            - Side surface: Largest area, significant for tall tanks
-            - Bottom surface: Can benefit from soil insulation for underground tanks
-
-        Examples
-        --------
-        >>> # Small buffer tank for residential district heating
-        >>> radius, height = 1.5, 3.0  # 1.5m radius, 3m height
-        >>> storage = ThermalStorage("Buffer_Tank", "cylindrical", (radius, height), ...)
-        >>> volume, S_top, S_side, S_bottom = storage.calculate_cylindrical_geometry((radius, height))
-        >>> print(f"Buffer tank volume: {volume:.1f} m³")
-        >>> print(f"Surface areas - Top: {S_top:.1f}, Side: {S_side:.1f}, Bottom: {S_bottom:.1f} m²")
-
-        >>> # Large district heating storage tank
-        >>> radius, height = 15.0, 20.0  # 15m radius, 20m height
-        >>> volume, S_top, S_side, S_bottom = storage.calculate_cylindrical_geometry((radius, height))
-        >>> total_surface = S_top + S_side + S_bottom
-        >>> surface_to_volume = total_surface / volume
-        >>> print(f"Large tank volume: {volume:.0f} m³")
-        >>> print(f"Surface-to-volume ratio: {surface_to_volume:.3f} m²/m³")
-
-        >>> # Aspect ratio analysis for stratification
-        >>> for h_d_ratio in [0.5, 1.0, 2.0, 3.0]:
-        ...     radius = 10.0
-        ...     height = h_d_ratio * 2 * radius
-        ...     volume, _, S_side, _ = storage.calculate_cylindrical_geometry((radius, height))
-        ...     print(f"H/D={h_d_ratio:.1f}: Volume={volume:.0f}m³, Side area={S_side:.0f}m²")
-
         See Also
         --------
         calculate_truncated_cone_geometry : Conical pit storage geometry
         calculate_truncated_trapezoid_geometry : Trapezoidal pit storage geometry
         SimpleThermalStorage.calculate_heat_loss : Heat loss calculations using surface areas
         """
+
         radius, height = dimensions
         volume = np.pi * radius**2 * height
         S_top = np.pi * radius**2
@@ -427,76 +276,13 @@ class ThermalStorage(BaseHeatGenerator):
             - **S_side** (float) : Conical side surface area [m²]
             - **S_bottom** (float) : Bottom surface area [m²]
 
-        Notes
-        -----
-        PTES Design Principles:
-            
-            **Seasonal Storage Applications**:
-            - Summer heat collection and winter discharge
-            - Solar thermal seasonal storage
-            - Industrial waste heat recovery
-            - CHP plant seasonal buffering
-            
-            **Geometric Advantages**:
-            - Natural thermal stratification with hot water at top
-            - Structural stability against soil pressure
-            - Optimal surface-to-volume ratio for large capacities
-            - Reduced excavation costs compared to cylindrical pits
-
-        Thermal Stratification:
-            
-            **Cone Shape Benefits**:
-            - Wider bottom provides stable cold water reservoir
-            - Narrower top minimizes surface heat losses
-            - Sloped sides reduce mixing and maintain stratification
-            - Natural convection patterns enhance performance
-
-        Construction Considerations:
-            
-            **Excavation**:
-            - Sloped sides reduce soil stability requirements
-            - Natural angle of repose for various soil types
-            - Reduced liner material compared to cylindrical design
-            
-            **Liner Systems**:
-            - Flexible liners conform to cone geometry
-            - Reduced stress concentrations at corners
-            - Improved durability and leak resistance
-
-        Examples
-        --------
-        >>> # Medium-scale PTES for district heating
-        >>> top_r, bottom_r, height = 20.0, 30.0, 15.0
-        >>> storage = ThermalStorage("PTES_Medium", "truncated_cone", (top_r, bottom_r, height), ...)
-        >>> volume, S_top, S_side, S_bottom = storage.calculate_truncated_cone_geometry((top_r, bottom_r, height))
-        >>> 
-        >>> # Calculate storage capacity
-        >>> capacity_GWh = volume * 1000 * 4186 * (85-15) / 3.6e9  # 85°C to 15°C
-        >>> print(f"PTES volume: {volume:.0f} m³")
-        >>> print(f"Energy capacity: {capacity_GWh:.1f} GWh")
-
-        >>> # Large-scale seasonal storage
-        >>> top_r, bottom_r, height = 35.0, 50.0, 25.0
-        >>> volume, S_top, S_side, S_bottom = storage.calculate_truncated_cone_geometry((top_r, bottom_r, height))
-        >>> 
-        >>> # Surface area analysis for heat loss
-        >>> total_surface = S_top + S_side + S_bottom
-        >>> side_fraction = S_side / total_surface
-        >>> print(f"Large PTES volume: {volume:.0f} m³")
-        >>> print(f"Side surface fraction: {side_fraction:.2f}")
-
-        >>> # Geometry optimization for different cone angles
-        >>> for bottom_r in [25, 30, 35, 40]:
-        ...     volume, _, S_side, _ = storage.calculate_truncated_cone_geometry((20, bottom_r, 15))
-        ...     cone_angle = np.arctan(15 / (bottom_r - 20)) * 180 / np.pi
-        ...     print(f"Bottom radius {bottom_r}m: Angle={cone_angle:.1f}°, Volume={volume:.0f}m³")
-
         See Also
         --------
         calculate_cylindrical_geometry : Cylindrical tank geometry
         calculate_truncated_trapezoid_geometry : Alternative pit storage geometry
         SimpleThermalStorage.calculate_heat_loss : PTES-specific heat loss calculations
         """
+
         top_radius, bottom_radius, height = dimensions
         
         # Volume using truncated cone formula
@@ -542,83 +328,13 @@ class ThermalStorage(BaseHeatGenerator):
             - **S_side** (float) : Total trapezoidal side surface area [m²]
             - **S_bottom** (float) : Bottom rectangular surface area [m²]
 
-        Notes
-        -----
-        Trapezoidal PTES Applications:
-            
-            **Site Adaptation Advantages**:
-            - Rectangular shapes fit urban plot boundaries
-            - Flexible aspect ratios for constrained sites
-            - Integration with existing building infrastructure
-            - Optimal use of available land area
-            
-            **Construction Benefits**:
-            - Straight side walls simplify construction
-            - Standard excavation equipment compatibility
-            - Easier access for maintenance and monitoring
-            - Modular construction possibilities
-
-        Thermal Performance:
-            
-            **Stratification Characteristics**:
-            - Rectangular geometry provides uniform horizontal temperature layers
-            - Aspect ratio affects mixing and stratification quality
-            - Corner effects may create local circulation patterns
-            - Baffles can enhance stratification performance
-
-        Design Considerations:
-            
-            **Geometric Optimization**:
-            - Bottom area larger than top for structural stability
-            - Sloped sides prevent soil collapse during construction
-            - Corner radii can reduce stress concentrations
-            - Access provisions for inlet/outlet positioning
-
-        Examples
-        --------
-        >>> # Medium-scale rectangular PTES
-        >>> dimensions = (30, 20, 40, 30, 12)  # top_l, top_w, bottom_l, bottom_w, height
-        >>> storage = ThermalStorage("Rect_PTES", "truncated_trapezoid", dimensions, ...)
-        >>> volume, S_top, S_side, S_bottom = storage.calculate_truncated_trapezoid_geometry(dimensions)
-        >>> 
-        >>> print(f"Rectangular PTES volume: {volume:.0f} m³")
-        >>> print(f"Top area: {S_top:.0f} m², Bottom area: {S_bottom:.0f} m²")
-        >>> print(f"Side surface area: {S_side:.0f} m²")
-
-        >>> # Large-scale seasonal storage for district heating
-        >>> dimensions = (50, 40, 70, 60, 20)
-        >>> volume, S_top, S_side, S_bottom = storage.calculate_truncated_trapezoid_geometry(dimensions)
-        >>> 
-        >>> # Calculate energy density and surface ratios
-        >>> energy_density = volume / (S_top)  # m³/m² - volume per surface area
-        >>> surface_to_volume = (S_top + S_side + S_bottom) / volume
-        >>> print(f"Large PTES energy density: {energy_density:.1f} m³/m²")
-        >>> print(f"Surface-to-volume ratio: {surface_to_volume:.3f} m²/m³")
-
-        >>> # Site constraint analysis - narrow vs wide configurations
-        >>> narrow_config = (60, 20, 80, 30, 15)  # Long and narrow
-        >>> wide_config = (40, 40, 50, 50, 15)    # Square-like
-        >>> 
-        >>> for name, config in [("Narrow", narrow_config), ("Wide", wide_config)]:
-        ...     vol, _, _, _ = storage.calculate_truncated_trapezoid_geometry(config)
-        ...     aspect_ratio = config[0] / config[1]  # length/width at top
-        ...     print(f"{name}: Volume={vol:.0f}m³, Aspect ratio={aspect_ratio:.1f}")
-
-        >>> # Construction slope analysis
-        >>> dimensions = (30, 25, 40, 35, 12)
-        >>> _, _, S_side, _ = storage.calculate_truncated_trapezoid_geometry(dimensions)
-        >>> 
-        >>> # Calculate side slopes for construction planning
-        >>> length_slope = np.arctan(12 / ((40-30)/2)) * 180 / np.pi
-        >>> width_slope = np.arctan(12 / ((35-25)/2)) * 180 / np.pi
-        >>> print(f"Side slopes - Length: {length_slope:.1f}°, Width: {width_slope:.1f}°")
-
         See Also
         --------
         calculate_cylindrical_geometry : Cylindrical storage geometry
         calculate_truncated_cone_geometry : Conical pit storage geometry
         SimpleThermalStorage.calculate_heat_loss : Heat loss calculations for pit storage
         """
+
         top_length, top_width, bottom_length, bottom_width, height = dimensions
         
         # Calculate areas of top and bottom rectangles
@@ -645,7 +361,7 @@ class ThermalStorage(BaseHeatGenerator):
         S_side = S_side_length + S_side_width
         
         return volume, S_top, S_side, S_bottom
-
+    
     def calculate_efficiency(self, Q_in: np.ndarray) -> None:
         """
         Calculate overall thermal storage efficiency.
@@ -672,56 +388,6 @@ class ThermalStorage(BaseHeatGenerator):
             - E_input: Total energy charged to storage
             - E_losses: Total thermal losses during storage period
             - η: Storage efficiency (0-1)
-
-        Efficiency Factors:
-            
-            **Thermal Losses**:
-            - Conductive losses through insulation
-            - Heat transfer to soil and ambient environment
-            - Temperature-dependent loss rates
-            - Seasonal variations in external conditions
-            
-            **Storage Duration**:
-            - Short-term storage: 85-95% efficiency
-            - Medium-term storage: 70-85% efficiency  
-            - Seasonal storage: 50-70% efficiency
-
-        Performance Benchmarks:
-            
-            **Storage Type Comparisons**:
-            - Hot water tanks: 90-98% (daily cycles)
-            - PTES systems: 60-80% (seasonal cycles)
-            - Underground storage: 65-85% (reduced ambient losses)
-            - Above-ground storage: 55-75% (higher ambient losses)
-
-        Examples
-        --------
-        >>> # Calculate efficiency after simulation
-        >>> Q_in_profile = np.random.uniform(0, 1000, 8760)  # Example input profile
-        >>> Q_out_profile = np.random.uniform(0, 800, 8760)   # Example output profile
-        >>> 
-        >>> storage.simulate(Q_in_profile, Q_out_profile)
-        >>> storage.calculate_efficiency(Q_in_profile)
-        >>> 
-        >>> print(f"Storage efficiency: {storage.efficiency:.1%}")
-        >>> print(f"Total input: {np.sum(Q_in_profile):.0f} kWh")
-        >>> print(f"Total losses: {storage.total_energy_loss_kWh:.0f} kWh")
-
-        >>> # Seasonal efficiency analysis
-        >>> winter_months = range(0, 2160) + range(6552, 8760)  # Nov-Feb
-        >>> summer_months = range(2880, 6552)  # Apr-Sep
-        >>> 
-        >>> winter_losses = np.sum(storage.Q_loss[winter_months])
-        >>> summer_losses = np.sum(storage.Q_loss[summer_months])
-        >>> 
-        >>> winter_input = np.sum(Q_in_profile[winter_months])
-        >>> summer_input = np.sum(Q_in_profile[summer_months])
-        >>> 
-        >>> if winter_input > 0 and summer_input > 0:
-        ...     winter_eff = 1 - (winter_losses / winter_input)
-        ...     summer_eff = 1 - (summer_losses / summer_input)
-        ...     print(f"Winter efficiency: {winter_eff:.1%}")
-        ...     print(f"Summer efficiency: {summer_eff:.1%}")
 
         See Also
         --------
@@ -756,15 +422,10 @@ class ThermalStorage(BaseHeatGenerator):
             - Simulation result archiving
             - Parameter optimization workflows
             - Model sharing and reproduction
-
-        Examples
-        --------
-        >>> storage_dict = storage.to_dict()
-        >>> print("Storage configuration saved")
         """
+
         data = self.__dict__.copy()
         data.pop('scene_item', None)
-        print("Storage saved")
         return data
 
     @classmethod
@@ -782,14 +443,10 @@ class ThermalStorage(BaseHeatGenerator):
         ThermalStorage
             Reconstructed storage object with attributes from dictionary.
 
-        Examples
-        --------
-        >>> restored_storage = ThermalStorage.from_dict(storage_dict)
-        >>> print("Storage loaded")
         """
+
         obj = cls.__new__(cls)
         obj.__dict__.update(data)
-        print("Storage loaded")
         return obj
     
     def __deepcopy__(self, memo: Dict[int, Any]) -> 'ThermalStorage':
@@ -806,6 +463,7 @@ class ThermalStorage(BaseHeatGenerator):
         ThermalStorage
             Deep copy of the thermal storage object.
         """
+
         return self.from_dict(self.to_dict())
 
 class SimpleThermalStorage(ThermalStorage):
@@ -870,53 +528,6 @@ class SimpleThermalStorage(ThermalStorage):
         - Logarithmic resistance correlations for pit geometry
         - No top surface losses (covered storage)
 
-    Examples
-    --------
-    >>> # Create simple cylindrical storage tank
-    >>> simple_storage = SimpleThermalStorage(
-    ...     name="Simple_Tank",
-    ...     storage_type="cylindrical_overground",
-    ...     dimensions=(3.0, 6.0),  # 3m radius, 6m height
-    ...     rho=1000,  # Water
-    ...     cp=4186,
-    ...     T_ref=0,
-    ...     lambda_top=0.03,
-    ...     lambda_side=0.03,
-    ...     lambda_bottom=0.03,
-    ...     lambda_soil=1.5,
-    ...     T_amb=10,
-    ...     T_soil=8,
-    ...     T_max=90,
-    ...     T_min=10,
-    ...     initial_temp=60,
-    ...     dt_top=0.15,
-    ...     ds_side=0.10,
-    ...     db_bottom=0.10
-    ... )
-
-    >>> # Define operation profile
-    >>> hours = 8760
-    >>> Q_in = np.zeros(hours)
-    >>> Q_out = np.zeros(hours)
-    >>> 
-    >>> # Summer charging profile (May-August)
-    >>> Q_in[3000:6000] = 500  # 500 kW charging rate
-    >>> 
-    >>> # Winter discharging profile (November-February)
-    >>> Q_out[7000:8760] = 200  # 200 kW discharge rate
-    >>> Q_out[0:1500] = 200
-
-    >>> # Run simulation
-    >>> simple_storage.simulate(Q_in, Q_out)
-    >>> 
-    >>> # Analyze results
-    >>> print(f"Storage efficiency: {simple_storage.efficiency:.1%}")
-    >>> print(f"Maximum temperature: {np.max(simple_storage.T_sto):.1f}°C")
-    >>> print(f"Minimum temperature: {np.min(simple_storage.T_sto):.1f}°C")
-
-    >>> # Plot results
-    >>> simple_storage.plot_results()
-
     See Also
     --------
     ThermalStorage : Base class with complete parameter documentation
@@ -924,9 +535,89 @@ class SimpleThermalStorage(ThermalStorage):
     calculate_heat_loss : Detailed heat loss calculation methods
     simulate : Main simulation workflow
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
+        # Check Biot number validity for lumped capacitance assumption
+        self._check_biot_number()
 
+    def _check_biot_number(self) -> None:
+        """
+        Check Biot number to validate lumped capacitance assumption.
+        
+        The Biot number (Bi) indicates whether internal temperature gradients
+        are negligible. For lumped capacitance to be valid, Bi should be < 0.1.
+        
+        Biot Number:
+            Bi = (h × L_c) / k
+            
+        Where:
+            - h: Heat transfer coefficient [W/(m²·K)]
+            - L_c: Characteristic length [m] = V / A_surface
+            - k: Thermal conductivity of storage medium [W/(m·K)]
+            
+        This method calculates Bi and issues a warning if it exceeds 0.1,
+        suggesting that StratifiedThermalStorage may be more appropriate.
+        """
+        import warnings
+        
+        # Calculate characteristic length: L_c = Volume / Surface Area
+        total_surface_area = self.S_top + self.S_side + self.S_bottom
+        L_c = self.volume / total_surface_area
+        
+        # Estimate effective heat transfer coefficient at storage boundary
+        # The Biot number compares internal vs external thermal resistance
+        # For well-insulated storage, the dominant resistance is the insulation
+        # 
+        # Bi = h_eff × L_c / k_medium
+        # 
+        # Where h_eff is the overall heat transfer coefficient through insulation:
+        # h_eff ≈ λ_ins / δ_ins (for well-insulated storage)
+        
+        # Use average insulation properties
+        avg_insulation_thickness = (self.dt_top + self.ds_side + self.db_bottom) / 3
+        avg_insulation_conductivity = (self.lambda_top + self.lambda_side + self.lambda_bottom) / 3
+        
+        # Effective heat transfer coefficient (dominated by insulation resistance)
+        # This represents heat flow from storage interior through insulation
+        h_eff = avg_insulation_conductivity / avg_insulation_thickness
+        
+        # Calculate Biot number
+        k_medium = self.thermal_conductivity  # Water: ~0.6 W/(m·K)
+        Bi = (h_eff * L_c) / k_medium
+        
+        # Store for reference
+        self.biot_number = Bi
+        self.characteristic_length = L_c
+        
+        # Issue warning if Bi > 0.1 (lumped capacitance assumption questionable)
+        if Bi > 0.1:
+            warnings.warn(
+                f"\n{'='*70}\n"
+                f"LUMPED CAPACITANCE VALIDITY WARNING\n"
+                f"{'='*70}\n"
+                f"Biot number (Bi = {Bi:.3f}) exceeds 0.1 for this storage configuration.\n\n"
+                f"Storage properties:\n"
+                f"  - Volume: {self.volume:.1f} m³\n"
+                f"  - Characteristic length: {L_c:.2f} m\n"
+                f"  - Effective heat transfer coefficient: {h_eff:.2f} W/(m²·K)\n"
+                f"  - Medium thermal conductivity: {k_medium:.2f} W/(m·K)\n\n"
+                f"Interpretation:\n"
+                f"  Bi < 0.1  : Lumped capacitance valid (uniform temperature)\n"
+                f"  Bi > 0.1  : Internal temperature gradients significant\n"
+                f"  Bi > 1.0  : Temperature highly non-uniform\n\n"
+                f"Recommendation:\n"
+                f"  For Bi > 0.1, consider using 'StratifiedThermalStorage'\n"
+                f"  for improved accuracy with temperature stratification modeling.\n"
+                f"{'='*70}",
+                UserWarning,
+                stacklevel=3
+            )
+        else:
+            # Confirmation message for valid lumped capacitance
+            print(f"✓ Biot number check: Bi = {Bi:.4f} < 0.1 - Lumped capacitance valid")
+    
     def calculate_heat_loss(self, T_sto_last: float) -> float:
         """
         Calculate temperature-dependent heat losses for various storage configurations.
@@ -980,42 +671,13 @@ class SimpleThermalStorage(ThermalStorage):
             - Thermal bridges through structural elements
             - Edge effects at geometry transitions
 
-        Examples
-        --------
-        >>> # Calculate heat loss for different temperatures
-        >>> storage_temps = [20, 40, 60, 80]
-        >>> for temp in storage_temps:
-        ...     heat_loss = simple_storage.calculate_heat_loss(temp)
-        ...     print(f"T={temp}°C: Heat loss = {heat_loss:.1f} kW")
-
-        >>> # Analyze temperature dependence
-        >>> temp_range = np.linspace(10, 90, 81)
-        >>> losses = [simple_storage.calculate_heat_loss(T) for T in temp_range]
-        >>> 
-        >>> import matplotlib.pyplot as plt
-        >>> plt.plot(temp_range, losses)
-        >>> plt.xlabel('Storage Temperature [°C]')
-        >>> plt.ylabel('Heat Loss [kW]')
-        >>> plt.title('Temperature-Dependent Heat Losses')
-
-        >>> # Compare different storage types
-        >>> storage_types = ["cylindrical_overground", "cylindrical_underground"]
-        >>> for stype in storage_types:
-        ...     storage = SimpleThermalStorage(..., storage_type=stype, ...)
-        ...     loss = storage.calculate_heat_loss(60)  # At 60°C
-        ...     print(f"{stype}: {loss:.1f} kW at 60°C")
-
-        Raises
-        ------
-        ValueError
-            If insulation thickness is insufficient for underground storage.
-
         See Also
         --------
         simulate : Main simulation using heat loss calculations
         ThermalStorage.calculate_cylindrical_geometry : Geometry calculations
         plot_results : Visualization of heat loss results
         """
+
         if self.storage_type == "cylindrical_overground":
             # Heat loss from top to ambient air
             Q_t = (T_sto_last - self.T_amb) * (self.lambda_top / self.dt_top) * self.S_top
@@ -1097,24 +759,39 @@ class SimpleThermalStorage(ThermalStorage):
         Parameters
         ----------
         Q_in : numpy.ndarray
-            Time series of heat input to storage [kWh/h].
+            Time series of heat input power to storage [kW].
             Positive values represent charging (heat addition).
+            Array length must match the number of simulation hours.
         Q_out : numpy.ndarray
-            Time series of heat output from storage [kWh/h].  
+            Time series of heat output power from storage [kW].  
             Positive values represent discharging (heat extraction).
+            Array length must match the number of simulation hours.
 
         Notes
         -----
+        Timestep Assumption:
+            **This simulation assumes hourly timesteps (Δt = 1 hour).**
+            
+            The energy balance integrates power over 1-hour intervals:
+            E[t] = E[t-1] + (Q_in[t] - Q_out[t] - Q_loss[t]) × Δt
+            
+            Since Δt = 1 h, energy in kWh equals power in kW numerically:
+            Energy [kWh] = Power [kW] × 1 [h]
+
         Simulation Methodology:
             
             **Energy Balance Equation**:
-            dE/dt = Q_in - Q_out - Q_loss
+            dE/dt = Q̇_in - Q̇_out - Q̇_loss
+            
+            **Discrete Form (hourly timesteps)**:
+            E[t] = E[t-1] + (Q̇_in[t] - Q̇_out[t] - Q̇_loss[t]) × Δt
             
             Where:
-            - dE/dt: Rate of change of stored energy
-            - Q_in: Heat input rate [kW]
-            - Q_out: Heat output rate [kW] 
-            - Q_loss: Heat loss rate [kW]
+            - E: Stored thermal energy [kWh]
+            - Q̇_in: Heat input power [kW]
+            - Q̇_out: Heat output power [kW] 
+            - Q̇_loss: Heat loss power [kW]
+            - Δt: Time step = 1 hour
 
             **Temperature Calculation**:
             T_storage = (E_stored / (m × cp)) + T_ref
@@ -1125,106 +802,107 @@ class SimpleThermalStorage(ThermalStorage):
             - cp: Specific heat capacity [J/(kg·K)]
             - T_ref: Reference temperature [°C]
 
+        Lumped Capacitance Method:
+            
+            **Assumptions**:
+            - Uniform temperature throughout storage volume
+            - Negligible internal temperature gradients (Bi << 0.1)
+            - Instantaneous thermal equilibrium within storage
+            - Valid for small storage or slow thermal processes
+            
+            **Validity Criterion (Biot Number)**:
+            Bi = (h × L_c) / k < 0.1
+            
+            Where:
+            - h: Heat transfer coefficient [W/(m²·K)]
+            - L_c: Characteristic length [m] = V/A
+            - k: Thermal conductivity of medium [W/(m·K)]
+            
+            For large seasonal storage (>1000 m³), consider using
+            StratifiedThermalStorage for improved accuracy.
+
         Simulation Features:
             
             **Temperature Limits**:
             - Maximum temperature constraint (T_max)
             - Minimum temperature constraint (T_min)
             - Physical boundary enforcement
+            - Automatic energy recalculation at limits
 
             **Heat Loss Calculation**:
             - Temperature-dependent losses at each time step
-            - Previous time step temperature for loss calculation
+            - Uses previous time step temperature (explicit scheme)
             - Multiple storage configuration support
+            - Accounts for insulation and soil thermal resistances
 
             **Energy Balance Verification**:
             - Total energy input tracking
             - Cumulative loss calculation
             - Storage efficiency determination
 
-        Examples
-        --------
-        >>> # Define annual operation profile
-        >>> hours = 8760
-        >>> Q_in = np.zeros(hours)
-        >>> Q_out = np.zeros(hours)
-        >>> 
-        >>> # Summer solar charging (June-August: hours 4000-6000)
-        >>> Q_in[4000:6000] = 800  # 800 kW charging rate
-        >>> 
-        >>> # Winter heating demand (December-February: hours 0-1500, 7500-8760)
-        >>> Q_out[0:1500] = 400   # 400 kW discharge rate
-        >>> Q_out[7500:8760] = 400
-
-        >>> # Execute simulation
-        >>> simple_storage.simulate(Q_in, Q_out)
-        >>> 
-        >>> # Analyze simulation results
-        >>> print(f"Simulation completed for {hours} hours")
-        >>> print(f"Initial temperature: {simple_storage.T_sto[0]:.1f}°C")
-        >>> print(f"Final temperature: {simple_storage.T_sto[-1]:.1f}°C")
-        >>> print(f"Maximum temperature: {np.max(simple_storage.T_sto):.1f}°C")
-        >>> print(f"Minimum temperature: {np.min(simple_storage.T_sto):.1f}°C")
-
-        >>> # Energy balance verification
-        >>> total_input = np.sum(Q_in)
-        >>> total_output = np.sum(Q_out) 
-        >>> total_losses = np.sum(simple_storage.Q_loss)
-        >>> energy_change = simple_storage.Q_sto[-1] - simple_storage.Q_sto[0]
-        >>> 
-        >>> balance_check = total_input - total_output - total_losses - energy_change
-        >>> print(f"Energy balance check: {balance_check:.1f} kWh (should be ~0)")
-
-        >>> # Seasonal analysis
-        >>> charging_period = np.sum(Q_in[4000:6000])
-        >>> discharging_period = np.sum(Q_out[0:1500]) + np.sum(Q_out[7500:8760])
-        >>> print(f"Total charged: {charging_period:.0f} kWh")
-        >>> print(f"Total discharged: {discharging_period:.0f} kWh")
-        >>> print(f"Round-trip efficiency: {discharging_period/charging_period:.1%}")
-
         See Also
         --------
         calculate_heat_loss : Heat loss calculation method
         plot_results : Visualization of simulation results
         calculate_efficiency : Overall efficiency calculation
+        StratifiedThermalStorage : Advanced model for large storage with stratification
         """
         self.Q_in = Q_in
         self.Q_out = Q_out
+        
+        # Timestep for energy integration (hours)
+        dt = 1.0  # [h] - hourly timesteps assumed
+        
+        # Pre-calculate constants for computational efficiency
+        # (Avoid repeated calculations inside loop)
+        V_rho_cp = self.volume * self.rho * self.cp  # Thermal capacity [J/K]
+        conversion_factor = 3.6e6  # Conversion factor J ↔ kWh
+        E_max = V_rho_cp * (self.T_max - self.T_ref) / conversion_factor  # Max energy [kWh]
+        E_min = V_rho_cp * (self.T_min - self.T_ref) / conversion_factor  # Min energy [kWh]
 
+        # Explicit time-stepping loop (Forward Euler method)
+        # 
+        # Why a for-loop?
+        # - Each timestep depends on previous temperature T[t-1]
+        # - Heat losses are nonlinear (temperature-dependent)
+        # - Full vectorization not possible due to temperature feedback
+        # - For-loop is standard approach for such coupled ODEs
+        #
+        # Alternative methods (if needed for performance):
+        # - Numba JIT compilation: 50-100x speedup
+        # - scipy.integrate.odeint: Higher accuracy, adaptive timesteps
+        # - Implicit methods: Better stability for stiff systems
         for t in range(self.hours):
-            # Calculate heat loss based on previous time step temperature
             if t == 0:
-                # Use initial temperature for first time step loss calculation
-                self.Q_loss[t] = self.calculate_heat_loss(self.T_sto[0])
-                
-                # Calculate initial stored energy relative to reference temperature
-                initial_energy_J = self.volume * self.rho * self.cp * (self.T_sto[0] - self.T_ref)
-                self.Q_sto[t] = initial_energy_J / 3.6e6  # Convert J to kWh
+                # Initialize first timestep
+                # No heat losses applied at t=0 (initial condition, not a time interval)
+                self.Q_loss[0] = 0.0
+                self.Q_sto[0] = V_rho_cp * (self.T_sto[0] - self.T_ref) / conversion_factor
             else:
-                # Use previous time step temperature for heat loss
+                # Calculate heat loss based on previous timestep temperature (explicit scheme)
+                # Q_loss[t] = f(T[t-1]) ensures numerical stability for dt=1h
                 self.Q_loss[t] = self.calculate_heat_loss(self.T_sto[t-1])
                 
-                # Energy balance: Q_stored(t) = Q_stored(t-1) + Q_in - Q_out - Q_loss
-                # All terms in kWh (Q_in and Q_out are kWh/h, Q_loss converted to kW and multiplied by 1h)
-                self.Q_sto[t] = self.Q_sto[t-1] + (Q_in[t] - Q_out[t] - self.Q_loss[t])
+                # Energy balance equation (discrete form):
+                # E[t] = E[t-1] + (Q̇_in - Q̇_out - Q̇_loss) × Δt
+                # 
+                # Units: kWh = kWh + (kW - kW - kW) × 1h
+                # For Δt=1h: numerically, kW equals kWh (integral over 1 hour)
+                self.Q_sto[t] = self.Q_sto[t-1] + (Q_in[t] - Q_out[t] - self.Q_loss[t]) * dt
 
-            # Convert stored energy back to temperature
-            if t > 0:
-                stored_energy_J = self.Q_sto[t] * 3.6e6  # Convert kWh to J
-                self.T_sto[t] = (stored_energy_J / (self.volume * self.rho * self.cp)) + self.T_ref
+                # Convert stored energy to temperature
+                # From: E = m × cp × (T - T_ref) → T = E/(m×cp) + T_ref
+                self.T_sto[t] = (self.Q_sto[t] * conversion_factor / V_rho_cp) + self.T_ref
 
-            # Apply temperature limits
-            if self.T_sto[t] > self.T_max:
-                self.T_sto[t] = self.T_max
-                # Recalculate stored energy based on limited temperature
-                limited_energy_J = self.volume * self.rho * self.cp * (self.T_max - self.T_ref)
-                self.Q_sto[t] = limited_energy_J / 3.6e6
-                
-            elif self.T_sto[t] < self.T_min:
-                self.T_sto[t] = self.T_min
-                # Recalculate stored energy based on limited temperature
-                limited_energy_J = self.volume * self.rho * self.cp * (self.T_min - self.T_ref)
-                self.Q_sto[t] = limited_energy_J / 3.6e6
+                # Apply physical temperature constraints
+                # (Prevent unphysical temperatures, e.g., boiling or freezing)
+                if self.T_sto[t] > self.T_max:
+                    self.T_sto[t] = self.T_max
+                    self.Q_sto[t] = E_max  # Recalculate energy consistently
+                    
+                elif self.T_sto[t] < self.T_min:
+                    self.T_sto[t] = self.T_min
+                    self.Q_sto[t] = E_min  # Recalculate energy consistently
         
         # Calculate overall storage efficiency
         self.calculate_efficiency(Q_in)
@@ -1267,29 +945,6 @@ class SimpleThermalStorage(ThermalStorage):
             - Clear axis labels and units
             - Legends for data interpretation
             - Tight layout for optimal presentation
-
-        Examples
-        --------
-        >>> # Run simulation and generate plots
-        >>> simple_storage.simulate(Q_in, Q_out)
-        >>> simple_storage.plot_results()
-        >>> 
-        >>> # The plot window will display four subplots showing:
-        >>> # - Heat input/output flows
-        >>> # - Stored energy evolution  
-        >>> # - Storage temperature profile
-        >>> # - Heat loss characteristics
-
-        >>> # Save plot to file
-        >>> import matplotlib.pyplot as plt
-        >>> simple_storage.plot_results()
-        >>> plt.savefig('storage_simulation_results.png', dpi=300, bbox_inches='tight')
-        >>> plt.show()
-
-        >>> # Customize plot appearance
-        >>> simple_storage.plot_results()
-        >>> plt.suptitle(f'Thermal Storage Simulation: {simple_storage.name}', fontsize=16)
-        >>> plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 
         See Also
         --------
@@ -1348,3 +1003,4 @@ class SimpleThermalStorage(ThermalStorage):
 
         # Adjust layout for better spacing
         plt.tight_layout()
+    

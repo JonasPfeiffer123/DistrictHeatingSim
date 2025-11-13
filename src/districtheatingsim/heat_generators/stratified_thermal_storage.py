@@ -125,90 +125,6 @@ class StratifiedThermalStorage(ThermalStorage):
         Heat extraction from top layers first (hot water outlet)
         Preserves cold water reserve in bottom layers
 
-    Examples
-    --------
-    >>> # Create stratified PTES with detailed layer analysis
-    >>> stratified_ptes = StratifiedThermalStorage(
-    ...     name="Stratified_PTES_01",
-    ...     storage_type="truncated_cone",
-    ...     dimensions=(20.0, 30.0, 12.0),  # top_r, bottom_r, height
-    ...     rho=1000,  # Water density
-    ...     cp=4186,   # Water heat capacity
-    ...     T_ref=0,   # Reference temperature
-    ...     lambda_top=0.025,    # Top insulation
-    ...     lambda_side=0.035,   # Side insulation
-    ...     lambda_bottom=0.04,  # Bottom insulation
-    ...     lambda_soil=2.0,     # Soil conductivity
-    ...     T_amb=8,    # Ambient temperature
-    ...     T_soil=10,  # Soil temperature
-    ...     T_max=85,   # Maximum temperature
-    ...     T_min=15,   # Minimum temperature
-    ...     initial_temp=40,  # Initial temperature
-    ...     dt_top=0.3,      # Top insulation thickness
-    ...     ds_side=0.5,     # Side insulation thickness
-    ...     db_bottom=0.3,   # Bottom insulation thickness
-    ...     hours=8760,      # Full year simulation
-    ...     num_layers=10,   # Detailed stratification
-    ...     thermal_conductivity=0.6  # Water conductivity
-    ... )
-
-    >>> # Display layer characteristics
-    >>> print(f"Layer thickness: {stratified_ptes.layer_thickness:.2f} m")
-    >>> print(f"Layer volumes: {stratified_ptes.layer_volume}")
-    >>> print(f"Total volume: {stratified_ptes.layer_volume.sum():.1f} m³")
-
-    >>> # Generate seasonal charging/discharging pattern
-    >>> import numpy as np
-    >>> hours = 8760
-    >>> time = np.arange(hours)
-    >>> 
-    >>> # Summer charging (high solar/waste heat input)
-    >>> summer_charging = 500 * np.sin(2 * np.pi * time / 8760) ** 2  # kW
-    >>> summer_charging[time < 2000] *= 0.3  # Winter reduction
-    >>> summer_charging[time > 6000] *= 0.3  # Winter reduction
-    >>> 
-    >>> # Winter discharging (district heating demand)
-    >>> winter_demand = 200 + 300 * np.cos(2 * np.pi * time / 8760)  # kW
-    >>> winter_demand = np.maximum(winter_demand, 0)  # No negative demand
-    >>> 
-    >>> # Run stratified simulation
-    >>> stratified_ptes.simulate_stratified(summer_charging, winter_demand)
-
-    >>> # Analyze stratification effectiveness
-    >>> final_temps = stratified_ptes.T_sto_layers[-1, :]  # Final layer temperatures
-    >>> temp_gradient = final_temps.max() - final_temps.min()
-    >>> print(f"Final temperature stratification: {temp_gradient:.1f} K")
-
-    >>> # Calculate layer-specific performance
-    >>> top_layer_avg = stratified_ptes.T_sto_layers[:, 0].mean()
-    >>> bottom_layer_avg = stratified_ptes.T_sto_layers[:, -1].mean()
-    >>> stratification_ratio = top_layer_avg / bottom_layer_avg
-    >>> print(f"Average top layer: {top_layer_avg:.1f}°C")
-    >>> print(f"Average bottom layer: {bottom_layer_avg:.1f}°C")
-    >>> print(f"Stratification ratio: {stratification_ratio:.2f}")
-
-    >>> # Energy distribution analysis
-    >>> layer_energies = []
-    >>> for i in range(stratified_ptes.num_layers):
-    ...     layer_energy = (stratified_ptes.T_sto_layers[:, i] * 
-    ...                    stratified_ptes.layer_volume[i] * 
-    ...                    stratified_ptes.rho * stratified_ptes.cp / 3.6e9)  # GWh
-    ...     layer_energies.append(layer_energy.mean())
-    >>> 
-    >>> print("Average energy content by layer [GWh]:")
-    >>> for i, energy in enumerate(layer_energies):
-    ...     print(f"  Layer {i+1}: {energy:.2f} GWh")
-
-    >>> # Thermal efficiency analysis
-    >>> initial_energy = stratified_ptes.Q_sto[0]
-    >>> final_energy = stratified_ptes.Q_sto[-1]
-    >>> annual_losses = stratified_ptes.Q_loss.sum()
-    >>> 
-    >>> print(f"Initial stored energy: {initial_energy:.0f} kWh")
-    >>> print(f"Final stored energy: {final_energy:.0f} kWh")
-    >>> print(f"Annual heat losses: {annual_losses:.0f} kWh")
-    >>> print(f"Storage efficiency: {stratified_ptes.efficiency:.1%}")
-
     See Also
     --------
     ThermalStorage : Base thermal storage class with fundamental calculations
@@ -266,54 +182,8 @@ class StratifiedThermalStorage(ThermalStorage):
             - Volume calculations ensure mass conservation
             - Geometric interpolation preserves shape continuity
             - Layer volumes used for thermal capacity calculations
-
-        Raises
-        ------
-        ValueError
-            If storage_type is not supported for layer calculations.
-        IndexError
-            If dimensions array doesn't contain required geometric parameters.
-
-        Examples
-        --------
-        >>> # Cylindrical storage layer analysis
-        >>> cylinder_storage = StratifiedThermalStorage(
-        ...     name="Cylinder_Test",
-        ...     storage_type="cylindrical",
-        ...     dimensions=(3.0, 8.0),  # radius, height
-        ...     # ... other parameters
-        ...     num_layers=5
-        ... )
-        >>> print(f"Layer thickness: {cylinder_storage.layer_thickness:.2f} m")
-        >>> print(f"Layer volumes: {cylinder_storage.layer_volume}")
-
-        >>> # Truncated cone PTES layer analysis
-        >>> cone_storage = StratifiedThermalStorage(
-        ...     name="Cone_PTES",
-        ...     storage_type="truncated_cone",
-        ...     dimensions=(15.0, 25.0, 10.0),  # top_r, bottom_r, height
-        ...     # ... other parameters
-        ...     num_layers=8
-        ... )
-        >>> 
-        >>> # Analyze volume distribution
-        >>> volume_variation = cone_storage.layer_volume.max() / cone_storage.layer_volume.min()
-        >>> print(f"Volume variation factor: {volume_variation:.2f}")
-
-        >>> # Trapezoid storage with site constraints
-        >>> trap_storage = StratifiedThermalStorage(
-        ...     name="Trapezoid_Site",
-        ...     storage_type="truncated_trapezoid", 
-        ...     dimensions=(30, 25, 40, 35, 8),  # top_l, top_w, bottom_l, bottom_w, height
-        ...     # ... other parameters
-        ...     num_layers=6
-        ... )
-        >>> 
-        >>> # Calculate layer area progression
-        >>> for i, vol in enumerate(trap_storage.layer_volume):
-        ...     layer_area = vol / trap_storage.layer_thickness
-        ...     print(f"Layer {i+1} area: {layer_area:.1f} m²")
         """
+
         # Extract height dimension (common for all non-cylindrical geometries)
         if self.storage_type == "cylindrical":
             height = self.dimensions[1]  # radius, height
@@ -432,47 +302,8 @@ class StratifiedThermalStorage(ThermalStorage):
             - Geometry-specific resistance calculations
             - Physical boundary condition validation
             - Layer position identification for appropriate heat transfer models
-
-        Examples
-        --------
-        >>> # Calculate heat losses for stratified storage
-        >>> import numpy as np
-        >>> 
-        >>> # Example layer temperatures (hot top, cold bottom)
-        >>> layer_temps = np.array([80, 75, 65, 50, 35])  # °C
-        >>> 
-        >>> # Calculate total heat loss
-        >>> total_loss = stratified_storage.calculate_stratified_heat_loss(layer_temps)
-        >>> print(f"Total heat loss: {total_loss:.2f} kW")
-
-        >>> # Analyze layer-specific losses
-        >>> print("Layer-specific heat losses:")
-        >>> for i, loss in enumerate(stratified_storage.Q_loss_layers):
-        ...     print(f"  Layer {i+1}: {loss:.2f} kW")
-
-        >>> # Heat loss distribution analysis
-        >>> top_layer_loss = stratified_storage.Q_loss_layers[0]
-        >>> side_layers_loss = stratified_storage.Q_loss_layers[1:-1].sum()
-        >>> bottom_layer_loss = stratified_storage.Q_loss_layers[-1]
-        >>> 
-        >>> print(f"Top layer loss: {top_layer_loss:.1f} kW ({top_layer_loss/total_loss:.1%})")
-        >>> print(f"Side layers loss: {side_layers_loss:.1f} kW ({side_layers_loss/total_loss:.1%})")
-        >>> print(f"Bottom layer loss: {bottom_layer_loss:.1f} kW ({bottom_layer_loss/total_loss:.1%})")
-
-        >>> # Temperature sensitivity analysis
-        >>> temp_variations = [layer_temps + i for i in [-5, 0, 5]]  # ±5°C variation
-        >>> 
-        >>> for i, temps in enumerate(temp_variations):
-        ...     loss = stratified_storage.calculate_stratified_heat_loss(temps)
-        ...     print(f"Temperature +{(i-1)*5}°C: {loss:.2f} kW")
-
-        Raises
-        ------
-        ValueError
-            If insulation thickness is below minimum requirements for underground storage.
-        IndexError
-            If T_sto_layers length doesn't match num_layers.
         """
+
         # Initialize heat loss array for each layer
         self.Q_loss_layers = np.zeros(len(T_sto_layers))
         
@@ -522,15 +353,22 @@ class StratifiedThermalStorage(ThermalStorage):
                 # PTES heat losses with geometry-dependent soil thermal resistance
                 H = self.dimensions[2]  # Storage height
                 
-                # Side thermal resistance calculation
+                # Side thermal resistance calculation (logarithmic correlation)
                 a = self.ds_side / self.lambda_side + np.pi * H / (2 * self.lambda_soil)
                 b = np.pi / self.lambda_soil
                 K_s = (1 / (b * H)) * np.log((a + b * H) / a)
                 
                 # Bottom thermal resistance calculation
-                bottom_radius = self.dimensions[1] if self.storage_type == "truncated_cone" else np.sqrt(self.dimensions[2] * self.dimensions[3] / np.pi)
+                # Characteristic length for bottom heat transfer
+                if self.storage_type == "truncated_cone":
+                    # Use bottom radius for cone
+                    L_char = self.dimensions[1]  # r_bottom
+                else:
+                    # For trapezoid: use minimum bottom dimension (more conservative)
+                    L_char = min(self.dimensions[2], self.dimensions[3])  # min(length, width)
+                
                 c = self.db_bottom / self.lambda_bottom + np.pi * H / (2 * self.lambda_soil)
-                K_b = (1 / (2 * b * bottom_radius)) * np.log((c + b * bottom_radius) / c)
+                K_b = (1 / (2 * b * L_char)) * np.log((c + b * L_char) / c)
 
                 if i == 0:  # Top layer - atmospheric exposure
                     Q_loss_top = (self.lambda_top / self.dt_top) * self.S_top * (T_layer - self.T_amb) / 1000
@@ -545,6 +383,99 @@ class StratifiedThermalStorage(ThermalStorage):
                     self.Q_loss_layers[i] = Q_loss_side
 
         return np.sum(self.Q_loss_layers)
+
+    def _calculate_interface_areas(self) -> np.ndarray:
+        """
+        Calculate cross-sectional areas between layers for inter-layer heat conduction.
+        
+        This method computes the correct horizontal interface areas for heat conduction
+        between adjacent layers. For vertical heat transfer, the cross-sectional area
+        perpendicular to the direction of heat flow must be used, not the side surface area.
+        
+        Returns
+        -------
+        numpy.ndarray
+            Array of interface areas [m²] between layers.
+            Length: num_layers - 1 (n-1 interfaces for n layers)
+        
+        Notes
+        -----
+        Physical Correctness:
+            The area used in Fourier's law for vertical conduction must be the
+            horizontal cross-sectional area (perpendicular to heat flow direction),
+            not the vertical side surface area.
+            
+            Q_conduction = λ × A_interface × ΔT / δ_layer
+            
+        Geometry-Specific Calculations:
+            - **Cylindrical**: Constant cross-section A = πr²
+            - **Truncated Cone**: Variable radius at each interface
+            - **Truncated Trapezoid**: Variable rectangular cross-section
+        """
+        A_interface = np.zeros(self.num_layers - 1)
+        
+        if self.storage_type == "cylindrical" or self.storage_type == "cylindrical_underground":
+            # Constant cross-sectional area
+            radius = self.dimensions[0]
+            A_interface[:] = np.pi * radius**2
+            
+        elif self.storage_type == "truncated_cone":
+            # Variable cross-sectional area - radius changes with height
+            r1, r2 = self.dimensions[0], self.dimensions[1]  # top, bottom radii
+            for i in range(self.num_layers - 1):
+                # Radius at interface between layers i and i+1
+                r_interface = r1 + (r2 - r1) * ((i + 1) / self.num_layers)
+                A_interface[i] = np.pi * r_interface**2
+                
+        elif self.storage_type == "truncated_trapezoid":
+            # Variable rectangular cross-section
+            a1, b1 = self.dimensions[0], self.dimensions[1]  # top length, width
+            a2, b2 = self.dimensions[2], self.dimensions[3]  # bottom length, width
+            for i in range(self.num_layers - 1):
+                # Dimensions at interface
+                a = a1 + (a2 - a1) * ((i + 1) / self.num_layers)
+                b = b1 + (b2 - b1) * ((i + 1) / self.num_layers)
+                A_interface[i] = a * b
+        
+        return A_interface
+
+    def _calculate_total_energy(self, T_layers: np.ndarray) -> float:
+        """
+        Calculate total stored energy from layer temperatures.
+        
+        This method provides a consistent way to compute total stored energy
+        based on the current temperature distribution across all layers.
+        It ensures energy and temperature remain synchronized.
+        
+        Parameters
+        ----------
+        T_layers : numpy.ndarray
+            Temperature of each layer [°C].
+            
+        Returns
+        -------
+        float
+            Total stored energy [kWh] relative to reference temperature.
+        
+        Notes
+        -----
+        Energy Calculation:
+            E_total = Σ(V_i × ρ × cp × (T_i - T_ref)) / 3.6e6
+            
+            Where:
+            - V_i: Volume of layer i [m³]
+            - ρ: Density [kg/m³]
+            - cp: Specific heat capacity [J/(kg·K)]
+            - T_i: Temperature of layer i [°C]
+            - T_ref: Reference temperature [°C]
+            - 3.6e6: Conversion factor J to kWh
+        """
+        total_energy = 0.0
+        for i, T in enumerate(T_layers):
+            layer_energy = (self.layer_volume[i] * self.rho * self.cp * 
+                           (T - self.T_ref) / 3.6e6)  # kWh
+            total_energy += layer_energy
+        return total_energy
 
     def simulate_stratified(self, Q_in: np.ndarray, Q_out: np.ndarray) -> None:
         """
@@ -605,70 +536,7 @@ class StratifiedThermalStorage(ThermalStorage):
             - Energy conservation verification
             - Physical heat transfer limits
             - Numerical stability monitoring
-
-        Examples
-        --------
-        >>> # Create realistic seasonal energy patterns
-        >>> import numpy as np
-        >>> 
-        >>> # Annual simulation parameters
-        >>> hours = 8760
-        >>> time = np.arange(hours)
-        >>> 
-        >>> # Summer solar energy input pattern
-        >>> solar_input = 400 * np.maximum(0, np.sin(2 * np.pi * (time - 2000) / 8760))  # kW
-        >>> summer_boost = 200 * np.maximum(0, np.sin(2 * np.pi * time / 8760)) ** 4  # Peak summer
-        >>> Q_in = solar_input + summer_boost
-        >>> 
-        >>> # Winter heating demand pattern
-        >>> base_demand = 150  # Base load [kW]
-        >>> seasonal_demand = 300 * np.maximum(0, -np.cos(2 * np.pi * time / 8760))  # Winter peak
-        >>> daily_variation = 50 * np.sin(2 * np.pi * time / 24)  # Daily pattern
-        >>> Q_out = base_demand + seasonal_demand + daily_variation
-        >>> Q_out = np.maximum(Q_out, 0)  # No negative demand
-
-        >>> # Run stratified simulation
-        >>> stratified_storage.simulate_stratified(Q_in, Q_out)
-
-        >>> # Analyze stratification performance
-        >>> print("Stratification Analysis:")
-        >>> print(f"  Simulation period: {hours} hours")
-        >>> print(f"  Total energy input: {Q_in.sum():.0f} kWh")
-        >>> print(f"  Total energy output: {Q_out.sum():.0f} kWh")
-        >>> print(f"  Storage efficiency: {stratified_storage.efficiency:.1%}")
-
-        >>> # Temperature distribution analysis
-        >>> final_layers = stratified_storage.T_sto_layers[-1, :]
-        >>> temp_gradient = final_layers.max() - final_layers.min()
-        >>> print(f"  Final temperature gradient: {temp_gradient:.1f} K")
-        >>> print(f"  Top layer final temp: {final_layers[0]:.1f}°C")
-        >>> print(f"  Bottom layer final temp: {final_layers[-1]:.1f}°C")
-
-        >>> # Seasonal performance metrics
-        >>> winter_months = np.concatenate([time[:2160], time[6570:]])  # Dec-Feb
-        >>> summer_months = time[3648:5832]  # May-Aug
-        >>> 
-        >>> winter_avg_temp = stratified_storage.T_sto[winter_months].mean()
-        >>> summer_avg_temp = stratified_storage.T_sto[summer_months].mean()
-        >>> print(f"  Winter average temperature: {winter_avg_temp:.1f}°C")
-        >>> print(f"  Summer average temperature: {summer_avg_temp:.1f}°C")
-
-        >>> # Heat loss distribution
-        >>> annual_losses = stratified_storage.Q_loss.sum()
-        >>> layer_loss_distribution = [
-        ...     stratified_storage.Q_loss_layers.sum() / len(stratified_storage.Q_loss_layers)
-        ...     for _ in range(stratified_storage.num_layers)
-        ... ]
-        >>> print(f"  Annual heat losses: {annual_losses:.0f} kWh")
-        >>> print(f"  Average loss per layer: {np.mean(layer_loss_distribution):.2f} kW")
-
-        Raises
-        ------
-        ValueError
-            If Q_in and Q_out arrays have different lengths or invalid values.
-        RuntimeError
-            If simulation encounters numerical instability or convergence issues.
-
+        
         See Also
         --------
         calculate_stratified_heat_loss : Layer-specific heat loss calculations
@@ -682,118 +550,128 @@ class StratifiedThermalStorage(ThermalStorage):
         if len(self.Q_in) != len(self.Q_out):
             raise ValueError("Q_in and Q_out must have the same length")
         
-        # Initialize simulation arrays
+        # Initialize simulation arrays - temperature is the PRIMARY state variable
         self.T_sto_layers = np.full((self.hours, self.num_layers), self.initial_temp)
-        heat_stored_per_layer = np.zeros(self.num_layers)
+        
+        # Calculate interface areas for inter-layer conduction (correct cross-sectional areas)
+        self.A_interface = self._calculate_interface_areas()
+        
+        # Pre-calculate constants for performance optimization
+        dt = 1.0  # hours (explicit for clarity)
+        conversion_factor = 3.6e6  # J/kWh conversion
+        
+        # Pre-calculate layer thermal capacities [J/K]
+        layer_thermal_capacity = self.layer_volume * self.rho * self.cp  # [m³ × kg/m³ × J/(kg·K)] = [J/K]
+        
+        # Pre-calculate conduction coefficients [K/W] for inter-layer heat transfer
+        # Q_cond [W] = (λ × A_interface / δ_layer) × ΔT
+        # Energy [kWh] = (Q_cond / 1000) × dt
+        conduction_coeff = self.thermal_conductivity * self.A_interface / self.layer_thickness  # [W/K]
 
         # Main simulation loop
         for t in range(self.hours):
-            # Calculate heat losses based on current layer temperatures
-            if t == 0:
-                self.Q_loss[t] = self.calculate_stratified_heat_loss(self.T_sto_layers[t])
-            else:
-                self.Q_loss[t] = self.calculate_stratified_heat_loss(self.T_sto_layers[t-1])
             
             if t == 0:
-                # Initialize stored energy distribution
-                self.Q_sto[t] = self.volume * self.rho * self.cp * (self.initial_temp - self.T_ref) / 3.6e6
-                heat_stored_per_layer[:] = self.Q_sto[t] / self.num_layers
-
+                # Initialize at t=0: Calculate initial stored energy from initial temperature
+                self.Q_sto[t] = self._calculate_total_energy(self.T_sto_layers[t])
+                
+                # Calculate initial heat loss (and store layer-specific losses)
+                self.Q_loss[t] = self.calculate_stratified_heat_loss(self.T_sto_layers[t])
+                # Note: Q_loss_layers is set by calculate_stratified_heat_loss()
+                
             else:
+                # Start with previous timestep temperatures
+                T_new = self.T_sto_layers[t-1, :].copy()
+                
+                # STEP 1: Apply heat losses (energy loss over dt = 1 hour)
+                # Calculate layer-specific heat losses at current temperatures
+                self.Q_loss[t] = self.calculate_stratified_heat_loss(T_new)
+                
                 # Apply heat losses to each layer
                 for i in range(self.num_layers):
-                    Q_loss_layer = self.Q_loss_layers[i]  # Heat loss in kW
-                    heat_stored_per_layer[i] -= Q_loss_layer / 1000  # Convert to kWh
+                    Q_loss_layer = self.Q_loss_layers[i]  # kW
+                    # Energy loss over dt [kWh]
+                    energy_loss = Q_loss_layer * dt
                     
-                    # Update temperature based on heat loss
+                    # Update temperature based on heat loss (using pre-calculated capacity)
                     if self.layer_volume[i] > 0:
-                        delta_T = (Q_loss_layer * 3.6e6) / (self.layer_volume[i] * self.rho * self.cp)
-                        self.T_sto_layers[t, i] = self.T_sto_layers[t-1, i] - delta_T
-                    else:
-                        self.T_sto_layers[t, i] = self.T_sto_layers[t-1, i]
-
-                # Calculate inter-layer heat conduction
+                        delta_T_loss = (energy_loss * conversion_factor) / layer_thermal_capacity[i]
+                        T_new[i] -= delta_T_loss
+                
+                # STEP 2: Inter-layer heat conduction (using correct cross-sectional areas)
+                # Physical correctness: Uses horizontal interface areas (perpendicular to heat flow)
+                # NOT the vertical side surface area - this is critical for accurate modeling
                 for i in range(self.num_layers - 1):
-                    delta_T = self.T_sto_layers[t-1, i] - self.T_sto_layers[t-1, i+1]
-                    if abs(delta_T) > 1e-6:  # Avoid numerical issues
-                        heat_transfer = (self.thermal_conductivity * self.S_side * delta_T / 
-                                       self.layer_thickness)  # W
-                        heat_transfer_kWh = heat_transfer / 1000  # kWh per hour
+                    delta_T = T_new[i] - T_new[i+1]
+                    if abs(delta_T) > 1e-6:  # Avoid numerical issues with negligible gradients
+                        # Heat transfer rate [W] using pre-calculated conduction coefficient
+                        # Q_cond = (λ × A_interface / δ_layer) × ΔT
+                        Q_cond = conduction_coeff[i] * delta_T
                         
-                        # Transfer heat between layers
-                        heat_stored_per_layer[i] -= heat_transfer_kWh
-                        heat_stored_per_layer[i+1] += heat_transfer_kWh
-
-                # Calculate net energy balance for this timestep
-                remaining_heat = self.Q_in[t] - self.Q_out[t]  # Net energy [kW]
-
-                # Discharge logic (negative remaining_heat)
+                        # Energy transfer over dt [kWh]
+                        energy_transfer = (Q_cond / 1000) * dt
+                        
+                        # Temperature changes in both layers (using pre-calculated capacities)
+                        delta_T_upper = (energy_transfer * conversion_factor) / layer_thermal_capacity[i]
+                        delta_T_lower = (energy_transfer * conversion_factor) / layer_thermal_capacity[i+1]
+                        
+                        T_new[i] -= delta_T_upper
+                        T_new[i+1] += delta_T_lower
+                
+                # STEP 3: Charging/discharging
+                # Net energy balance: positive = charging, negative = discharging
+                remaining_heat = (self.Q_in[t] - self.Q_out[t]) * dt  # Net energy [kWh]
+                
+                # Discharge logic (negative remaining_heat, extract from top layers first)
                 if remaining_heat < 0:
                     heat_needed = abs(remaining_heat)
-                    for i in range(self.num_layers):  # Discharge from top to bottom
-                        if heat_needed > 1e-6 and self.T_sto_layers[t, i] > self.T_min:
-                            available_heat = ((self.T_sto_layers[t, i] - self.T_min) * 
-                                            self.layer_volume[i] * self.rho * self.cp / 3.6e6)
+                    for i in range(self.num_layers):  # Top to bottom (hot to cold)
+                        if heat_needed > 1e-6 and T_new[i] > self.T_min:
+                            # Available energy above T_min [kWh] (using pre-calculated capacity)
+                            available_energy = ((T_new[i] - self.T_min) * 
+                                              layer_thermal_capacity[i] / conversion_factor)
                             
-                            if heat_needed >= available_heat:
-                                # Fully discharge this layer
-                                heat_stored_per_layer[i] -= available_heat
-                                self.T_sto_layers[t, i] = self.T_min
-                                heat_needed -= available_heat
+                            if heat_needed >= available_energy:
+                                # Fully discharge this layer to T_min
+                                T_new[i] = self.T_min
+                                heat_needed -= available_energy
                             else:
                                 # Partially discharge this layer
-                                heat_stored_per_layer[i] -= heat_needed
-                                temp_drop = (heat_needed * 3.6e6) / (self.layer_volume[i] * self.rho * self.cp)
-                                self.T_sto_layers[t, i] -= temp_drop
+                                temp_drop = (heat_needed * conversion_factor) / layer_thermal_capacity[i]
+                                T_new[i] -= temp_drop
                                 heat_needed = 0
-
-                # Charge logic (positive remaining_heat)
+                                break  # Discharge complete
+                
+                # Charge logic (positive remaining_heat, add to top layers first)
                 elif remaining_heat > 0:
-                    for i in range(self.num_layers):  # Charge from top to bottom
-                        if remaining_heat > 1e-6 and self.T_sto_layers[t, i] < self.T_max:
-                            max_heat_capacity = ((self.T_max - self.T_sto_layers[t, i]) * 
-                                               self.layer_volume[i] * self.rho * self.cp / 3.6e6)
+                    for i in range(self.num_layers):  # Top to bottom (maintain stratification)
+                        if remaining_heat > 1e-6 and T_new[i] < self.T_max:
+                            # Available capacity to T_max [kWh] (using pre-calculated capacity)
+                            max_energy_capacity = ((self.T_max - T_new[i]) * 
+                                                  layer_thermal_capacity[i] / conversion_factor)
                             
-                            if remaining_heat >= max_heat_capacity:
-                                # Fully charge this layer
-                                heat_stored_per_layer[i] += max_heat_capacity
-                                self.T_sto_layers[t, i] = self.T_max
-                                remaining_heat -= max_heat_capacity
+                            if remaining_heat >= max_energy_capacity:
+                                # Fully charge this layer to T_max
+                                T_new[i] = self.T_max
+                                remaining_heat -= max_energy_capacity
                             else:
                                 # Partially charge this layer
-                                heat_stored_per_layer[i] += remaining_heat
-                                temp_rise = (remaining_heat * 3.6e6) / (self.layer_volume[i] * self.rho * self.cp)
-                                self.T_sto_layers[t, i] += temp_rise
+                                temp_rise = (remaining_heat * conversion_factor) / layer_thermal_capacity[i]
+                                T_new[i] += temp_rise
                                 remaining_heat = 0
+                                break  # Charging complete
+                
+                # STEP 4: Apply temperature limits
+                T_new = np.clip(T_new, self.T_min, self.T_max)
+                
+                # STEP 5: Store results
+                self.T_sto_layers[t, :] = T_new
+                self.T_sto[t] = np.mean(T_new)
+                self.Q_sto[t] = self._calculate_total_energy(T_new)
 
-                # Final inter-layer heat conduction after charging/discharging
-                for i in range(self.num_layers - 1):
-                    delta_T = self.T_sto_layers[t, i] - self.T_sto_layers[t, i+1]
-                    if abs(delta_T) > 1e-6:
-                        heat_transfer = (self.thermal_conductivity * self.S_side * delta_T / 
-                                       self.layer_thickness)  # W
-                        heat_transfer_kWh = heat_transfer / 1000  # kWh per hour
-                        
-                        # Apply heat transfer with temperature update
-                        heat_stored_per_layer[i] -= heat_transfer_kWh
-                        heat_stored_per_layer[i+1] += heat_transfer_kWh
-                        
-                        # Update temperatures based on new energy content
-                        if self.layer_volume[i] > 0:
-                            self.T_sto_layers[t, i] = ((heat_stored_per_layer[i] * 3.6e6) / 
-                                                     (self.layer_volume[i] * self.rho * self.cp) + self.T_ref)
-                        if self.layer_volume[i+1] > 0:
-                            self.T_sto_layers[t, i+1] = ((heat_stored_per_layer[i+1] * 3.6e6) / 
-                                                       (self.layer_volume[i+1] * self.rho * self.cp) + self.T_ref)
-
-                # Enforce temperature limits
-                self.T_sto_layers[t, :] = np.clip(self.T_sto_layers[t, :], self.T_min, self.T_max)
-
-                # Calculate total stored energy
-                self.Q_sto[t] = np.sum(heat_stored_per_layer)
-
-            # Update average storage temperature
-            self.T_sto[t] = np.average(self.T_sto_layers[t])
+            # Note: For t==0, T_sto[0] already set above, just update average
+            if t == 0:
+                self.T_sto[t] = np.mean(self.T_sto_layers[t])
 
         # Calculate overall efficiency
         self.calculate_efficiency(self.Q_in)
@@ -845,52 +723,6 @@ class StratifiedThermalStorage(ThermalStorage):
             - Optimized mesh resolution for balance between quality and performance
             - Efficient color calculation and application
             - Memory-conscious surface generation for large layer counts
-
-        Examples
-        --------
-        >>> import matplotlib.pyplot as plt
-        >>> from mpl_toolkits.mplot3d import Axes3D
-        >>> 
-        >>> # Create 3D visualization
-        >>> fig = plt.figure(figsize=(12, 8))
-        >>> ax = fig.add_subplot(111, projection='3d')
-        >>> 
-        >>> # Visualize at mid-simulation point
-        >>> mid_time = len(stratified_storage.T_sto_layers) // 2
-        >>> stratified_storage.plot_3d_temperature_distribution(ax, mid_time)
-        >>> 
-        >>> # Add custom title and formatting
-        >>> ax.set_title(f'Temperature Distribution at Hour {mid_time}')
-        >>> plt.tight_layout()
-        >>> plt.show()
-
-        >>> # Create time-lapse visualization
-        >>> time_points = [0, 2190, 4380, 6570, 8760]  # Seasonal snapshots
-        >>> fig, axes = plt.subplots(1, 5, figsize=(20, 4), subplot_kw={'projection': '3d'})
-        >>> 
-        >>> for i, t in enumerate(time_points):
-        ...     if t < len(stratified_storage.T_sto_layers):
-        ...         stratified_storage.plot_3d_temperature_distribution(axes[i], t)
-        ...         axes[i].set_title(f'Hour {t}')
-        >>> plt.tight_layout()
-
-        >>> # Analyze temperature distribution
-        >>> time_step = 4000  # Mid-year analysis
-        >>> temps = stratified_storage.T_sto_layers[time_step]
-        >>> 
-        >>> print(f"Temperature distribution at hour {time_step}:")
-        >>> for i, temp in enumerate(temps):
-        ...     print(f"  Layer {i+1}: {temp:.1f}°C")
-        >>> 
-        >>> gradient = temps.max() - temps.min()
-        >>> print(f"Temperature gradient: {gradient:.1f} K")
-
-        Raises
-        ------
-        ValueError
-            If storage_type is not supported for 3D visualization.
-        IndexError
-            If time_step is outside valid simulation range.
 
         See Also
         --------
@@ -1056,21 +888,6 @@ class StratifiedThermalStorage(ThermalStorage):
             2×3 subplot arrangement for comprehensive overview
             Professional formatting with appropriate scales and legends
             Color coordination across related plots
-
-        Examples
-        --------
-        >>> # Generate complete results visualization
-        >>> stratified_storage.plot_results()
-        >>> plt.show()
-
-        >>> # Save high-resolution figure
-        >>> stratified_storage.plot_results()
-        >>> plt.savefig('stratified_storage_results.png', dpi=300, bbox_inches='tight')
-
-        >>> # Customize visualization time range
-        >>> # Modify internal time arrays before plotting for focused analysis
-        >>> start_hour, end_hour = 4000, 6000  # Focus on specific period
-        >>> # Note: This would require internal modification for time range selection
         """
         fig = plt.figure(figsize=(16, 10))
         

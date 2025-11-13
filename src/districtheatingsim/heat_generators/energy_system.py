@@ -821,7 +821,6 @@ class EnergySystem:
 
             # Calculate storage results
             self.storage.calculate_efficiency(self.load_profile)
-            self.storage.calculate_operational_costs(0.10) # needs to be changed to a parameter
             self.results['storage_class'] = self.storage
         
         for tech in self.technologies:

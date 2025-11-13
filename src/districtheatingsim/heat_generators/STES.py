@@ -147,88 +147,6 @@ class STES(StratifiedThermalStorage):
         - Layer-specific mixing calculations
         - Temperature-dependent flow distribution
 
-    Examples
-    --------
-    >>> # Create STES system for district heating
-    >>> import numpy as np
-    >>> 
-    >>> stes_params = {
-    ...     "storage_type": "truncated_cone",
-    ...     "dimensions": (25.0, 35.0, 15.0),  # Large-scale PTES
-    ...     "rho": 1000,  # Water density
-    ...     "cp": 4186,   # Water heat capacity
-    ...     "T_ref": 10,  # Reference temperature
-    ...     "lambda_top": 0.025,     # Insulation properties
-    ...     "lambda_side": 0.035,
-    ...     "lambda_bottom": 0.04,
-    ...     "lambda_soil": 2.0,      # Soil conductivity
-    ...     "dt_top": 0.3,           # Insulation thickness
-    ...     "ds_side": 0.5,
-    ...     "db_bottom": 0.3,
-    ...     "T_amb": 8,    # Ambient conditions
-    ...     "T_soil": 10,
-    ...     "T_max": 90,   # Operating temperature range
-    ...     "T_min": 20,
-    ...     "initial_temp": 45,  # Initial condition
-    ...     "hours": 8760,       # Annual simulation
-    ...     "num_layers": 10,    # Detailed stratification
-    ...     "thermal_conductivity": 0.6
-    ... }
-
-    >>> # Initialize STES system
-    >>> seasonal_storage = STES(name="District_STES_01", **stes_params)
-
-    >>> # Load realistic demand profile
-    >>> # Assume hourly district heating demand data
-    >>> Q_out_profile = np.array([...])  # Load from CSV or database
-
-    >>> # Define supply conditions
-    >>> T_supply_profile = np.full(8760, 85.0)     # Solar collector supply
-    >>> T_return_profile = np.full(8760, 45.0)     # Consumer return
-
-    >>> # Create seasonal heat input pattern
-    >>> time = np.arange(8760)
-    >>> solar_input = 500 * np.maximum(0, np.sin(2 * np.pi * (time - 2000) / 8760))
-    >>> Q_in_profile = solar_input  # kW
-
-    >>> # Run detailed STES simulation
-    >>> for hour in range(8760):
-    ...     seasonal_storage.simulate_stratified_temperature_mass_flows(
-    ...         hour, 
-    ...         Q_in_profile[hour], 
-    ...         Q_out_profile[hour],
-    ...         T_supply_profile[hour], 
-    ...         T_return_profile[hour]
-    ...     )
-
-    >>> # Analyze seasonal performance
-    >>> print(f"Annual efficiency: {seasonal_storage.efficiency:.1%}")
-    >>> print(f"Excess heat (stagnation): {seasonal_storage.excess_heat:.0f} kWh")
-    >>> print(f"Unmet demand: {seasonal_storage.unmet_demand:.0f} kWh")
-    >>> print(f"Stagnation hours: {seasonal_storage.stagnation_time}")
-
-    >>> # Storage utilization analysis
-    >>> max_energy = seasonal_storage.volume * seasonal_storage.rho * seasonal_storage.cp * (90-20) / 3.6e9
-    >>> utilization = seasonal_storage.Q_sto.max() / (max_energy * 1e6)  # Convert to kWh
-    >>> print(f"Peak storage utilization: {utilization:.1%}")
-
-    >>> # Mass flow analysis
-    >>> avg_flow_in = seasonal_storage.mass_flow_in[seasonal_storage.mass_flow_in > 0].mean()
-    >>> avg_flow_out = seasonal_storage.mass_flow_out[seasonal_storage.mass_flow_out > 0].mean()
-    >>> print(f"Average charging flow: {avg_flow_in:.2f} kg/s")
-    >>> print(f"Average discharging flow: {avg_flow_out:.2f} kg/s")
-
-    >>> # Generate comprehensive results visualization
-    >>> seasonal_storage.plot_results(
-    ...     Q_in_profile, Q_out_profile, 
-    ...     T_supply_profile, T_return_profile
-    ... )
-
-    >>> # Interactive 3D visualization
-    >>> from districtheatingsim.heat_generators.STES_animation import STESAnimation
-    >>> animation = STESAnimation(seasonal_storage)
-    >>> animation.show()
-
     See Also
     --------
     StratifiedThermalStorage : Base stratified storage implementation
@@ -357,57 +275,6 @@ class STES(StratifiedThermalStorage):
             - Mass flow physical limits
             - Stratification preservation
 
-        Examples
-        --------
-        >>> # Single time step simulation example
-        >>> import numpy as np
-        >>> 
-        >>> # Initialize STES system
-        >>> stes = STES(name="Example_STES", **stes_params)
-        >>> 
-        >>> # Simulate charging operation
-        >>> stes.simulate_stratified_temperature_mass_flows(
-        ...     t=100,              # Time step
-        ...     Q_in=750,           # Heat input [kW]
-        ...     Q_out=200,          # Heat demand [kW]
-        ...     T_Q_in_flow=85,     # Supply temperature [°C]
-        ...     T_Q_out_return=45   # Return temperature [°C]
-        ... )
-
-        >>> # Check operational status
-        >>> print(f"Mass flow in: {stes.mass_flow_in[100]:.2f} kg/s")
-        >>> print(f"Mass flow out: {stes.mass_flow_out[100]:.2f} kg/s")
-        >>> print(f"Net storage flow: {stes.Q_net_storage_flow[100]:.1f} kW")
-
-        >>> # Analyze layer temperatures
-        >>> temps = stes.T_sto_layers[100, :]
-        >>> print(f"Top layer: {temps[0]:.1f}°C")
-        >>> print(f"Bottom layer: {temps[-1]:.1f}°C")
-        >>> print(f"Temperature gradient: {temps[0] - temps[-1]:.1f} K")
-
-        >>> # Seasonal simulation loop
-        >>> for hour in range(8760):
-        ...     # Define time-varying inputs
-        ...     solar_available = 500 * max(0, np.sin(2 * np.pi * hour / 8760))
-        ...     heating_demand = 300 + 200 * np.cos(2 * np.pi * hour / 8760)
-        ...     
-        ...     # Simulate time step
-        ...     stes.simulate_stratified_temperature_mass_flows(
-        ...         hour, solar_available, heating_demand, 85.0, 45.0
-        ...     )
-
-        >>> # Performance analysis
-        >>> print(f"Total excess heat: {stes.excess_heat:.0f} kWh")
-        >>> print(f"Total unmet demand: {stes.unmet_demand:.0f} kWh")
-        >>> print(f"Stagnation duration: {stes.stagnation_time} hours")
-
-        Raises
-        ------
-        ValueError
-            If time step is outside valid simulation range.
-        RuntimeError
-            If mass flow calculations result in non-physical values.
-
         See Also
         --------
         current_storage_state : Calculate storage charge level
@@ -424,82 +291,112 @@ class STES(StratifiedThermalStorage):
         self.T_Q_in_flow = T_Q_in_flow_copy   # Generator supply temperature
         self.T_Q_out_return = T_Q_out_return_copy  # Consumer return temperature
         
+        # Pre-calculate constants for performance optimization (inherited from StratifiedThermalStorage)
+        if not hasattr(self, '_constants_initialized'):
+            # Calculate interface areas for inter-layer conduction (CRITICAL: horizontal cross-sections!)
+            self.A_interface = self._calculate_interface_areas()
+            
+            # Pre-calculate layer thermal capacities [J/K]
+            self.layer_thermal_capacity = self.layer_volume * self.rho * self.cp
+            
+            # Pre-calculate conduction coefficients [W/K] for inter-layer heat transfer
+            self.conduction_coeff = self.thermal_conductivity * self.A_interface / self.layer_thickness
+            
+            # Conversion factor J/kWh
+            self.conversion_factor = 3.6e6
+            
+            # Mark as initialized
+            self._constants_initialized = True
+        
         if t == 0:
-            # Initialize stratified storage conditions
+            # Initialize stratified storage conditions - temperature is PRIMARY state variable
             self.T_sto_layers = np.full((self.hours, self.num_layers), self.T_sto[0])
+            
+            # Calculate initial heat loss (and store layer-specific losses in Q_loss_layers)
             self.Q_loss[t] = self.calculate_stratified_heat_loss(self.T_sto_layers[t])
             
-            # Initialize energy content per layer [kWh]
-            self.heat_stored_per_layer = (self.layer_volume * self.rho * self.cp * 
-                                        (self.T_sto[0] - T_Q_out_return) / 3.6e6)
-            self.Q_sto[t] = np.sum(self.heat_stored_per_layer)
+            # Calculate initial stored energy from temperature distribution [kWh]
+            self.Q_sto[t] = np.sum([
+                self.layer_volume[i] * self.rho * self.cp * 
+                (self.T_sto_layers[t, i] - self.T_ref) / self.conversion_factor
+                for i in range(self.num_layers)
+            ])
 
         else:
-            # Calculate heat losses and inter-layer conduction
-            self.Q_loss[t] = self.calculate_stratified_heat_loss(self.T_sto_layers[t - 1])
-
-            # Apply heat losses to each layer
+            # Start with previous timestep temperatures (temperature is primary state variable)
+            T_new = self.T_sto_layers[t - 1, :].copy()
+            
+            # STEP 1: Apply heat losses to each layer
+            # Calculate layer-specific heat losses at current temperatures
+            self.Q_loss[t] = self.calculate_stratified_heat_loss(T_new)
+            
             for i in range(self.num_layers):
-                Q_loss_layer = self.Q_loss_layers[i]  # Layer-specific loss [kW]
-                self.heat_stored_per_layer[i] -= Q_loss_layer / 3600  # Convert to kWh
+                Q_loss_layer = self.Q_loss_layers[i]  # kW
+                # Energy loss over dt = 1 hour [kWh]
+                energy_loss = Q_loss_layer * 1.0  # dt = 1h
                 
-                # Temperature drop due to heat loss
+                # Update temperature based on heat loss (using pre-calculated capacity)
                 if self.layer_volume[i] > 0:
-                    delta_T = (Q_loss_layer * 3.6e6) / (self.layer_volume[i] * self.rho * self.cp)
-                    self.T_sto_layers[t, i] = self.T_sto_layers[t - 1, i] - delta_T
-
-            # Inter-layer heat conduction
+                    delta_T_loss = (energy_loss * self.conversion_factor) / self.layer_thermal_capacity[i]
+                    T_new[i] -= delta_T_loss
+            
+            # STEP 2: Inter-layer heat conduction (using correct horizontal interface areas)
+            # Physical correctness: Uses horizontal cross-sectional areas perpendicular to heat flow
+            # NOT the vertical side surface area - critical for accurate modeling!
             for i in range(self.num_layers - 1):
-                delta_T = self.T_sto_layers[t - 1, i] - self.T_sto_layers[t - 1, i + 1]
-                if abs(delta_T) > 1e-6:  # Avoid numerical issues
-                    # Conductive heat transfer [W]
-                    heat_transfer = (self.thermal_conductivity * self.S_side * delta_T / 
-                                   self.layer_thickness)
-                    heat_transfer_kWh = heat_transfer / 3.6e6 * 3600  # Convert to kWh
-
-                    # Transfer heat between adjacent layers
-                    self.heat_stored_per_layer[i] -= heat_transfer_kWh
-                    self.heat_stored_per_layer[i + 1] += heat_transfer_kWh
-
-                    # Update temperatures based on energy transfer
-                    if self.layer_volume[i] > 0:
-                        delta_T_transfer = (heat_transfer_kWh * 3.6e6 / 
-                                          (self.layer_volume[i] * self.rho * self.cp))
-                        self.T_sto_layers[t, i] -= delta_T_transfer
-                        self.T_sto_layers[t, i + 1] += delta_T_transfer
-
+                delta_T = T_new[i] - T_new[i + 1]
+                if abs(delta_T) > 1e-6:  # Avoid numerical issues with negligible gradients
+                    # Heat transfer rate [W] using pre-calculated conduction coefficient
+                    # Q_cond = (λ × A_interface / δ_layer) × ΔT
+                    Q_cond = self.conduction_coeff[i] * delta_T
+                    
+                    # Energy transfer over dt = 1 hour [kWh]
+                    energy_transfer = (Q_cond / 1000) * 1.0  # dt = 1h
+                    
+                    # Temperature changes in both layers (using pre-calculated capacities)
+                    delta_T_upper = (energy_transfer * self.conversion_factor) / self.layer_thermal_capacity[i]
+                    delta_T_lower = (energy_transfer * self.conversion_factor) / self.layer_thermal_capacity[i + 1]
+                    
+                    T_new[i] -= delta_T_upper
+                    T_new[i + 1] += delta_T_lower
+            
+            # Store updated temperatures (before charging/discharging)
+            self.T_sto_layers[t, :] = T_new
+            
             # Update average storage temperature
             self.T_sto[t] = np.average(self.T_sto_layers[t])
 
-            # Charging operation constraints
+            # STEP 3: Charging operation constraints (check BEFORE mass flow calculation)
             if self.T_sto_layers[t, -1] < self.T_max_rücklauf:
-                # Charging is possible - bottom layer temperature acceptable
+                # Charging is possible - bottom layer temperature acceptable for generator protection
                 self.Q_in[t] = Q_in
-                if T_Q_in_flow > self.T_sto_layers[t, -1]:
+                # Calculate required mass flow for heat input
+                if T_Q_in_flow > self.T_sto_layers[t, -1] + 1e-3:  # Minimum ΔT for heat transfer
                     self.mass_flow_in[t] = ((self.Q_in[t] * 1000) / 
                                           (self.cp * (T_Q_in_flow - self.T_sto_layers[t, -1])))
                 else:
-                    self.mass_flow_in[t] = 0
+                    self.mass_flow_in[t] = 0  # Insufficient temperature difference
             else:
-                # Storage overheating - cannot accept additional heat
+                # Storage overheating - cannot accept additional heat (stagnation)
                 self.mass_flow_in[t] = 0
-                self.excess_heat += Q_in
+                self.excess_heat += Q_in  # Track rejected heat
                 self.stagnation_time += 1
                 self.Q_in[t] = 0
 
-            # Discharging operation constraints
+            # STEP 4: Discharging operation constraints (check supply temperature quality)
             if self.T_sto_layers[t, 0] > T_Q_in_flow - self.dT_VLT:
-                # Discharging is possible - sufficient supply temperature
+                # Discharging is possible - sufficient supply temperature for consumers
                 self.Q_out[t] = Q_out
-                if self.T_sto_layers[t, 0] > T_Q_out_return:
+                # Calculate available mass flow for heat extraction
+                if self.T_sto_layers[t, 0] > T_Q_out_return + 1e-3:  # Minimum ΔT for heat transfer
                     self.mass_flow_out[t] = ((self.Q_out[t] * 1000) / 
                                            (self.cp * (self.T_sto_layers[t, 0] - T_Q_out_return)))
                 else:
-                    self.mass_flow_out[t] = 0
+                    self.mass_flow_out[t] = 0  # Insufficient temperature difference
             else:
                 # Storage too cold - cannot meet supply requirements
                 self.mass_flow_out[t] = 0
-                self.unmet_demand += Q_out
+                self.unmet_demand += Q_out  # Track unmet demand
                 self.Q_out[t] = 0
 
             # Calculate net storage flow (positive for discharge, negative for charge)
@@ -507,55 +404,65 @@ class STES(StratifiedThermalStorage):
 
             # Debug output for verification
             if t == 100:
-                print(f"Mass flow in: {self.mass_flow_in[t]:.3f} kg/s, "
-                      f"Mass flow out: {self.mass_flow_out[t]:.3f} kg/s, "
-                      f"Q_in: {self.Q_in[t]:.1f} kW, Q_out: {self.Q_out[t]:.1f} kW, "
+                print(f"t={t}: Mass flow in: {self.mass_flow_in[t]:.3f} kg/s, "
+                      f"Mass flow out: {self.mass_flow_out[t]:.3f} kg/s")
+                print(f"       Q_in: {self.Q_in[t]:.1f} kW, Q_out: {self.Q_out[t]:.1f} kW, "
                       f"Q_net: {self.Q_net_storage_flow[t]:.1f} kW")
+                print(f"       T_top: {self.T_sto_layers[t, 0]:.2f}°C, "
+                      f"T_bottom: {self.T_sto_layers[t, -1]:.2f}°C")
 
-            # Heat input distribution (top to bottom charging)
+            # STEP 5: Heat input distribution (top to bottom charging with mass flow mixing)
+            # Physical model: Incoming flow mixes with layer content
             T_flow_current = T_Q_in_flow_copy
             for i in range(self.num_layers):
                 if self.mass_flow_in[t] > 0 and self.layer_volume[i] > 0:
-                    # Calculate mixing temperature in Kelvin for accuracy
+                    # Layer mass [kg]
                     layer_mass = self.layer_volume[i] * self.rho
+                    # Flow mass per hour [kg]
                     flow_mass_per_hour = self.mass_flow_in[t] * 3600
                     
-                    mix_temp_K = ((flow_mass_per_hour * self.cp * (T_flow_current + 273.15)) +
-                                  (layer_mass * self.cp * (self.T_sto_layers[t, i] + 273.15))) / \
-                                 ((flow_mass_per_hour * self.cp) + (layer_mass * self.cp))
+                    # Mixing temperature calculation (energy balance)
+                    # (m_flow × cp × T_flow + m_layer × cp × T_layer) / (m_total × cp)
+                    T_new_layer = ((flow_mass_per_hour * T_flow_current + 
+                                   layer_mass * self.T_sto_layers[t, i]) /
+                                  (flow_mass_per_hour + layer_mass))
+                    
+                    # Update layer temperature
+                    self.T_sto_layers[t, i] = T_new_layer
+                    # Flow continues to next layer at current layer temperature
+                    T_flow_current = T_new_layer
 
-                    # Calculate added heat energy
-                    added_heat = (self.mass_flow_in[t] * self.cp * 
-                                (T_flow_current - self.T_sto_layers[t, i]) * 3600)
-                    self.heat_stored_per_layer[i] += added_heat / 3.6e6
-
-                    # Update layer temperature and flow temperature
-                    self.T_sto_layers[t, i] = mix_temp_K - 273.15
-                    T_flow_current = self.T_sto_layers[t, i]
-
-            # Heat extraction (bottom to top return flow)
+            # STEP 6: Heat extraction (bottom to top return flow with mass flow mixing)
+            # Physical model: Return flow enters bottom, mixes upward
             T_return_current = T_Q_out_return_copy
-            for i in range(self.num_layers - 1, -1, -1):
+            for i in range(self.num_layers - 1, -1, -1):  # Bottom to top
                 if self.mass_flow_out[t] > 0 and self.layer_volume[i] > 0:
-                    # Calculate mixing temperature with return flow
+                    # Layer mass [kg]
                     layer_mass = self.layer_volume[i] * self.rho
+                    # Flow mass per hour [kg]
                     flow_mass_per_hour = self.mass_flow_out[t] * 3600
                     
-                    mix_temp_K = ((flow_mass_per_hour * self.cp * (T_return_current + 273.15)) +
-                                  (layer_mass * self.cp * (self.T_sto_layers[t, i] + 273.15))) / \
-                                 ((flow_mass_per_hour * self.cp) + (layer_mass * self.cp))
-
-                    # Calculate removed heat energy
-                    removed_heat = (self.mass_flow_out[t] * self.cp * 
-                                  (self.T_sto_layers[t, i] - T_return_current) * 3600)
-                    self.heat_stored_per_layer[i] -= removed_heat / 3.6e6
-
-                    # Update layer temperature and return temperature
-                    self.T_sto_layers[t, i] = mix_temp_K - 273.15
-                    T_return_current = self.T_sto_layers[t, i]
-
-            # Update total stored energy and average temperature
-            self.Q_sto[t] = np.sum(self.heat_stored_per_layer)
+                    # Mixing temperature calculation (energy balance)
+                    T_new_layer = ((flow_mass_per_hour * T_return_current + 
+                                   layer_mass * self.T_sto_layers[t, i]) /
+                                  (flow_mass_per_hour + layer_mass))
+                    
+                    # Update layer temperature
+                    self.T_sto_layers[t, i] = T_new_layer
+                    # Return flow continues to next layer at current layer temperature
+                    T_return_current = T_new_layer
+            
+            # STEP 7: Apply temperature limits and calculate total stored energy
+            self.T_sto_layers[t, :] = np.clip(self.T_sto_layers[t, :], self.T_min, self.T_max)
+            
+            # Calculate total stored energy from temperature distribution [kWh]
+            self.Q_sto[t] = np.sum([
+                self.layer_volume[i] * self.rho * self.cp * 
+                (self.T_sto_layers[t, i] - self.T_ref) / self.conversion_factor
+                for i in range(self.num_layers)
+            ])
+            
+            # Update average storage temperature
             self.T_sto[t] = np.average(self.T_sto_layers[t])
 
         # Set system interface temperatures
@@ -612,33 +519,6 @@ class STES(StratifiedThermalStorage):
             - System integration with heat sources and loads
             - Performance monitoring and optimization
             - Predictive control strategies
-
-        Examples
-        --------
-        >>> # Calculate storage state during operation
-        >>> state, available, maximum = stes.current_storage_state(
-        ...     t=1000,
-        ...     T_Q_out_return=45.0,
-        ...     T_Q_in_flow=85.0
-        ... )
-        >>> 
-        >>> print(f"Storage charge level: {state:.1%}")
-        >>> print(f"Available energy: {available:.0f} kWh")
-        >>> print(f"Maximum capacity: {maximum:.0f} kWh")
-        >>> print(f"Energy utilization: {available/maximum:.1%}")
-
-        >>> # Monitor storage state over time
-        >>> states = []
-        >>> for hour in range(8760):
-        ...     state, _, _ = stes.current_storage_state(hour, 45.0, 85.0)
-        ...     states.append(state)
-        >>> 
-        >>> # Analyze storage utilization patterns
-        >>> import matplotlib.pyplot as plt
-        >>> plt.plot(states)
-        >>> plt.ylabel('Storage Charge State')
-        >>> plt.xlabel('Time (hours)')
-        >>> plt.title('Annual Storage State Evolution')
         """
         # Determine reference storage temperature
         if t == 0:

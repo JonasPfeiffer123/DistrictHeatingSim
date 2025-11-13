@@ -1,12 +1,7 @@
 Heat generators package
 ===========================================
 
-.. automodule:: districtheatingsim.heat_generators.STES
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-.. automodule:: districtheatingsim.heat_generators.STES_animation
+.. autodoc:: districtheatingsim._thermal_storage_architecture
    :members:
    :show-inheritance:
    :undoc-members:
@@ -71,22 +66,12 @@ Heat generators package
    :show-inheritance:
    :undoc-members:
 
-.. automodule:: districtheatingsim.heat_generators.simple_thermal_storage
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
 .. automodule:: districtheatingsim.heat_generators.solar_radiation
    :members:
    :show-inheritance:
    :undoc-members:
 
 .. automodule:: districtheatingsim.heat_generators.solar_thermal
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-.. automodule:: districtheatingsim.heat_generators.stratified_thermal_storage
    :members:
    :show-inheritance:
    :undoc-members:

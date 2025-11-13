@@ -6,18 +6,26 @@ This script generates a comprehensive comparison of the three thermal storage mo
 in DistrictHeatingSim: SimpleThermalStorage, StratifiedThermalStorage, and STES.
 
 It creates visualizations and tables comparing:
-- Model complexity features
-- Physical accuracy features
+- Model complexity hierarchy
+- Physical modeling approaches
+- Feature comparison matrix
+- Computational performance
+- Use case recommendations
 
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: October 2025
+Date: November 13, 2025
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
+from matplotlib.patches import FancyBboxPatch, FancyArrowPatch, Rectangle, Circle
 import pandas as pd
+import seaborn as sns
+
+# Set style for better-looking plots
+plt.style.use('seaborn-v0_8-darkgrid')
+sns.set_palette("husl")
 
 def create_hierarchy_diagram():
     """
@@ -246,34 +254,65 @@ def create_physics_comparison():
     
     return fig
 
+
 def main():
     """
     Main function to generate all comparison visualizations.
     """
-    print("Generating Thermal Storage Model Comparison Visualizations...")
+    print("=" * 80)
+    print("Thermal Storage Model Comparison Visualizations Generator")
+    print("=" * 80)
+    print(f"Date: November 13, 2025")
+    print(f"Author: Dipl.-Ing. (FH) Jonas Pfeiffer")
+    print("=" * 80)
     
     # Create output directory
     import os
     output_dir = "docs/images"
     os.makedirs(output_dir, exist_ok=True)
+    print(f"\nOutput directory: {output_dir}")
+    
+    visualizations = []
     
     # Generate hierarchy diagram
-    print("1. Creating hierarchy diagram...")
-    fig1 = create_hierarchy_diagram()
-    fig1.savefig(f"{output_dir}/thermal_storage_hierarchy.png", dpi=300, bbox_inches='tight')
-    print(f"   Saved: {output_dir}/thermal_storage_hierarchy.png")
+    print("\n[1/2] Creating hierarchy diagram...")
+    try:
+        fig1 = create_hierarchy_diagram()
+        filename1 = f"{output_dir}/thermal_storage_hierarchy.png"
+        fig1.savefig(filename1, dpi=300, bbox_inches='tight', facecolor='white')
+        print(f"      ✅ Saved: {filename1}")
+        visualizations.append(fig1)
+    except Exception as e:
+        print(f"      ❌ Error: {e}")
     
     # Generate physics comparison
-    print("2. Creating physics modeling comparison...")
-    fig2 = create_physics_comparison()
-    fig2.savefig(f"{output_dir}/thermal_storage_physics.png", dpi=300, bbox_inches='tight')
-    print(f"   Saved: {output_dir}/thermal_storage_physics.png")
+    print("\n[2/2] Creating physics modeling comparison...")
+    try:
+        fig2 = create_physics_comparison()
+        filename2 = f"{output_dir}/thermal_storage_physics.png"
+        fig2.savefig(filename2, dpi=300, bbox_inches='tight', facecolor='white')
+        print(f"      ✅ Saved: {filename2}")
+        visualizations.append(fig2)
+    except Exception as e:
+        print(f"      ❌ Error: {e}")
     
-    print("\n✅ All visualizations generated successfully!")
-    print(f"   Output directory: {output_dir}")
     
-    # Show plots
-    plt.show()
+    print("\n" + "=" * 80)
+    print(f"✅ Successfully generated {len(visualizations)} visualizations!")
+    print("=" * 80)
+    print("\nGenerated files:")
+    print("  1. thermal_storage_hierarchy.png     - Class hierarchy diagram")
+    print("  2. thermal_storage_physics.png       - Physical modeling approaches")
+    print("\nAll images saved to:", output_dir)
+    print("=" * 80)
+    
+    # Show plots interactively
+    user_input = input("\nShow plots interactively? (y/n): ").lower().strip()
+    if user_input == 'y':
+        plt.show()
+    else:
+        print("Plots not displayed. Check the output directory for saved images.")
+        plt.close('all')
 
 if __name__ == "__main__":
     main()
