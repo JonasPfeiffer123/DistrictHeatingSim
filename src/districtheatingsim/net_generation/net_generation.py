@@ -24,9 +24,6 @@ from shapely.geometry import LineString, Point
 from typing import Optional, Tuple, List, Dict, Any, Union
 
 from districtheatingsim.net_generation.minimal_spanning_tree import generate_mst, adjust_segments_to_roads
-from districtheatingsim.net_generation.steiner_tree import generate_steiner_tree_network
-
-import matplotlib.pyplot as plt
 
 def create_offset_points(point: Point, distance: float, angle_degrees: float) -> Point:
     """
@@ -610,15 +607,7 @@ def generate_network(heat_consumer_layer: gpd.GeoDataFrame,
             pd.concat([adjusted_mst, gpd.GeoDataFrame(geometry=all_perpendicular_lines)], 
                      ignore_index=True)
         )
-
-    elif algorithm == "Steiner":
-        # Steiner tree for optimal network length
-        flow_line_steiner_gdf = generate_steiner_tree_network(osm_street_layer, all_endpoints_gdf)
-        final_flow_line_gdf = gpd.GeoDataFrame(
-            pd.concat([flow_line_steiner_gdf, gpd.GeoDataFrame(geometry=all_perpendicular_lines)], 
-                     ignore_index=True)
-        )
-
+        
     else:
         raise ValueError(f"Unknown algorithm: {algorithm}")
     
