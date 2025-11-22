@@ -269,7 +269,8 @@ def create_controllers(net, qext_w: np.ndarray, supply_temperature_heat_generato
                 min_supply_temperature=min_supply_temperature_heat_consumer[i]
             )
             T_controller.data_source = min_supply_temp_data_source
-            net.controller.loc[len(net.controller)] = [T_controller, True, -1, -1, False, False]
+            # Manual registration required (BasicCtrl doesn't auto-register)
+            net.controller.loc[len(net.controller)] = [T_controller, True, -1, -1, False, False, None]
 
     # Main heat generator supply temperature controller
     placeholder_df_supply_temp = pd.DataFrame({'supply_temperature': [supply_temperature_heat_generator + 273.15]})
@@ -303,7 +304,8 @@ def create_controllers(net, qext_w: np.ndarray, supply_temperature_heat_generato
 
     # System pressure management controller
     dp_controller = BadPointPressureLiftController(net)
-    net.controller.loc[len(net.controller)] = [dp_controller, True, -1, -1, False, False]
+    # Manual registration required (BasicCtrl doesn't auto-register)
+    net.controller.loc[len(net.controller)] = [dp_controller, True, -1, -1, False, False, None]
 
     return net
 
@@ -364,7 +366,7 @@ def correct_flow_directions(net) -> pp.pandapipesNet:
     create_network : Network creation where this function is typically applied
     """
     # Initial pipeflow calculation to determine actual flow directions
-    pp.pipeflow(net, mode="bidirectional")
+    pp.pipeflow(net, mode="bidirectional", iter=100)
 
     # Identify and correct pipes with reverse flow
     corrections_made = 0
@@ -378,7 +380,7 @@ def correct_flow_directions(net) -> pp.pandapipesNet:
             corrections_made += 1
 
     # Recalculate with corrected flow directions
-    pp.pipeflow(net, mode="bidirectional")
+    pp.pipeflow(net, mode="bidirectional", iter=100)
     
     if corrections_made > 0:
         logging.info(f"Corrected flow directions for {corrections_made} pipes")
@@ -460,7 +462,7 @@ def optimize_diameter_parameters(net, element: str = "pipe", v_max: float = 2.0,
     effective_v_max = v_max / safety_factor
     
     # Initial flow calculation
-    pp.pipeflow(net, mode="bidirectional")
+    run_control(net, mode="bidirectional", iter=100)
     element_df = getattr(net, element)
     res_df = getattr(net, f"res_{element}")
             
@@ -486,7 +488,7 @@ def optimize_diameter_parameters(net, element: str = "pipe", v_max: float = 2.0,
                 element_df.at[idx, 'diameter_m'] -= dx
                 
                 # Validate reduction doesn't violate constraints
-                pp.pipeflow(net, mode="bidirectional")
+                run_control(net, mode="bidirectional", iter=100)
                 element_df = getattr(net, element)
                 res_df = getattr(net, f"res_{element}")
                 
@@ -500,7 +502,7 @@ def optimize_diameter_parameters(net, element: str = "pipe", v_max: float = 2.0,
         
         # Recalculate only if changes were made
         if change_made:
-            pp.pipeflow(net, mode="bidirectional")
+            run_control(net, mode="bidirectional", iter=100)
             element_df = getattr(net, element)
             res_df = getattr(net, f"res_{element}")
 
@@ -578,7 +580,7 @@ def init_diameter_types(net, v_max_pipe: float = 1.0, material_filter: str = "KM
     start_time = time.time()
     
     # Initial hydraulic calculation
-    pp.pipeflow(net, mode="bidirectional", iter=100)
+    run_control(net, mode="bidirectional", iter=100)
     logging.info(f"Initial pipeflow calculation took {time.time() - start_time:.2f} seconds")
 
     # Load and filter standard pipe types
@@ -609,7 +611,7 @@ def init_diameter_types(net, v_max_pipe: float = 1.0, material_filter: str = "KM
         net.pipe.at[pipe_idx, 'k_mm'] = k
 
     # Final hydraulic calculation with updated pipe properties
-    pp.pipeflow(net, mode="bidirectional")
+    run_control(net, mode="bidirectional", iter=100)
     
     total_time = time.time() - start_time
     logging.info(f"Pipe diameter initialization completed in {total_time:.2f} seconds")
@@ -702,8 +704,7 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "KMR
     start_time = time.time()
 
     # Initial system state calculation
-    run_control(net, mode="bidirectional")
-    pp.pipeflow(net, mode="bidirectional")
+    run_control(net, mode="bidirectional", iter=100)
     logging.info(f"Initial pipeflow calculation took {time.time() - start_time:.2f} seconds")
 
     # Load and filter standard pipe types
@@ -735,7 +736,7 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "KMR
         net.pipe.at[pipe_idx, 'k_mm'] = k
 
     # Recalculate with initial sizing
-    pp.pipeflow(net, mode="bidirectional")
+    run_control(net, mode="bidirectional", iter=100)
     logging.info(f"Post-initial sizing calculation took {time.time() - start_time:.2f} seconds")
 
     # Initialize optimization tracking
@@ -784,7 +785,7 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "KMR
                 net.pipe.at[pipe_idx, 'k_mm'] = k
 
                 # Validate downsizing doesn't violate constraints
-                pp.pipeflow(net, mode="bidirectional")
+                run_control(net, mode="bidirectional", iter=100)
                 new_velocity = net.res_pipe.v_mean_m_per_s[pipe_idx]
 
                 if new_velocity <= v_max:
@@ -808,7 +809,7 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "KMR
         
         # Recalculate if changes were made
         if change_made:
-            pp.pipeflow(net, mode="bidirectional")
+            run_control(net, mode="bidirectional", iter=100)
         
         iteration_time = time.time() - iteration_start
         logging.info(f"Iteration {iteration_count}: {pipes_within_target} pipes within target, "
