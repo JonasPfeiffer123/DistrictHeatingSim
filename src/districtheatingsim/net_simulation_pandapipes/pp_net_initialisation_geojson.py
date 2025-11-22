@@ -612,10 +612,12 @@ def create_network(gdf_dict: Dict[str, gpd.GeoDataFrame], consumer_dict: Dict[st
             create_circulation_pump_mass_flow(net, secondary_coords, {**junction_dict_vl, **junction_dict_rl}, 
                                             "heat source slave", mass_flows)
 
-    # Initial simulation and network optimization
-    pp.pipeflow(net, mode="bidirectional", iter=100)
-    
     print(f"secondary_producers: {secondary_producers}")
+
+    # Intial flow simulation
+    pp.pipeflow(net, mode="bidirectional", iter=100)
+
+    # Network optimization
     net = create_controllers(net, qext_w, supply_temperature, min_supply_temperature_heat_consumer, 
                            return_temperature_heat_consumer, secondary_producers)
     net = correct_flow_directions(net)

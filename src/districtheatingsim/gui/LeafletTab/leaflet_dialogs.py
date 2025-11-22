@@ -97,7 +97,7 @@ class LayerGenerationDialog(QDialog):
         self.coordTable.setHorizontalHeaderLabels(["X-Koordinate", "Y-Koordinate"])
 
         self.generationModeComboBox = QComboBox(self)
-        self.generationModeComboBox.addItems(["Advanced MST", "MST"])
+        self.generationModeComboBox.addItems(["OSMnx", "Advanced MST", "MST"])
         self.generationModeComboBox.currentIndexChanged.connect(self.toggleLocationInputMode)
 
         formLayout.addRow("GeoJSON-Straßen-Layer:", self.createFileInputLayout(self.fileInput, self.fileButton))

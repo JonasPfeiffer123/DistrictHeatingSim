@@ -13,6 +13,7 @@ import traceback
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
+from districtheatingsim.net_generation.osmnx_steiner_network import generate_and_export_osmnx_layers
 from districtheatingsim.net_generation.import_and_create_layers import generate_and_export_layers
 from districtheatingsim.geocoding.geocoding import process_data
 
@@ -41,12 +42,42 @@ class NetGenerationThread(QThread):
     def run(self):
         """Run network generation process."""
         try:
-            print(self.inputs["coordinates"])
-            generate_and_export_layers(self.inputs["streetLayer"], self.inputs["dataCsv"], self.inputs["coordinates"], self.base_path, algorithm=self.inputs["generation_mode"])
+            print("Starting network generation thread...")
+            print(f"Generation mode: {self.inputs['generation_mode']}")
+            print(f"Coordinates: {self.inputs['coordinates']}")
+            
+            if self.inputs["generation_mode"] == "OSMnx":
+                # Use OSMnx-based network generation
+                generate_and_export_osmnx_layers(
+                    osm_street_layer_geojson_file_name=self.inputs.get("streetLayer", ""),
+                    data_csv_file_name=self.inputs["dataCsv"],
+                    coordinates=self.inputs["coordinates"],
+                    base_path=self.base_path,
+                    algorithm=self.inputs["generation_mode"],
+                    offset_angle=self.inputs.get("offset_angle", 0),
+                    offset_distance=self.inputs.get("offset_distance", 0.5),
+                    buffer_meters=self.inputs.get("buffer_meters", 500.0),
+                    network_type=self.inputs.get("network_type", "drive_service"),
+                    custom_filter=self.inputs.get("custom_filter", None),
+                    node_threshold=self.inputs.get("node_threshold", 0.1),
+                    remove_dead_ends_flag=self.inputs.get("remove_dead_ends", True),
+                    target_crs=self.inputs.get("target_crs", "EPSG:25833")
+                )
+            else:
+                # Use traditional MST/Steiner algorithms
+                generate_and_export_layers(
+                    osm_street_layer_geojson_file_name=self.inputs["streetLayer"],
+                    data_csv_file_name=self.inputs["dataCsv"],
+                    coordinates=self.inputs["coordinates"],
+                    base_path=self.base_path,
+                    algorithm=self.inputs["generation_mode"]
+                )
 
             self.calculation_done.emit(())
         except Exception as e:
-            self.calculation_error.emit(str(e) + "\n" + traceback.format_exc())
+            error_msg = f"{str(e)}\n{traceback.format_exc()}"
+            print(f"ERROR in network generation: {error_msg}")
+            self.calculation_error.emit(error_msg)
 
     def stop(self):
         """Stop thread execution."""

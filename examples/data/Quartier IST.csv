@@ -1,0 +1,74 @@
+﻿Land;Bundesland;Stadt;Adresse;Wärmebedarf;Gebäudetyp;Subtyp;WW_Anteil;Typ_Heizflächen;VLT_max;Steigung_Heizkurve;RLT_max;Normaußentemperatur;UTM_X;UTM_Y
+Deutschland;Sachsen;Bad Muskau;Clara-Zetkin-Straße 3;54809.7;HMF;03;0.2;HK;70;1.5;55;-15;480815.2245;5710343.2
+Deutschland;Sachsen;Bad Muskau;Berliner Straße 22;520000;HMF;03;0.2;HK;70;1.5;55;-15;480524.8854;5710855.408
+Deutschland;Sachsen;Bad Muskau;Berliner Straße 23;88321.8;HMF;03;0.2;HK;70;1.5;55;-15;480489.3849;5710801.054
+Deutschland;Sachsen;Bad Muskau;Berliner Straße 21;46631;HMF;03;0.2;HK;70;1.5;55;-15;480493.0788;5710793.766
+Deutschland;Sachsen;Bad Muskau;Berliner Straße 19;54349;HMF;03;0.2;HK;70;1.5;55;-15;480501.9802;5710781.943
+Deutschland;Sachsen;Bad Muskau;Berliner Straße 17;47506.5;HMF;03;0.2;HK;70;1.5;55;-15;480505.2927;5710769.714
+Deutschland;Sachsen;Bad Muskau;Berliner Straße 15;33898;HMF;03;0.2;HK;70;1.5;55;-15;480507.5258;5710761.931
+Deutschland;Sachsen;Bad Muskau;Berliner Straße 13;36176;HMF;03;0.2;HK;70;1.5;55;-15;480522.1487;5710752.449
+Deutschland;Sachsen;Bad Muskau;Berliner Straße 11;39006.5;HMF;03;0.2;HK;70;1.5;55;-15;480530.9692;5710738.069
+Deutschland;Sachsen;Bad Muskau;Berliner Straße 9;35037.85;HMF;03;0.2;HK;70;1.5;55;-15;480539.4558;5710723.4
+Deutschland;Sachsen;Bad Muskau;Berliner Straße 7;81237.9;HMF;03;0.2;HK;70;1.5;55;-15;480549.4893;5710708.848
+Deutschland;Sachsen;Bad Muskau;Mittelstraße 16;17833;HMF;03;0.2;HK;70;1.5;55;-15;480562.2395;5710806.497
+Deutschland;Sachsen;Bad Muskau;Mittelstraße 12;33728;HMF;03;0.2;HK;70;1.5;55;-15;480586.5397;5710789.666
+Deutschland;Sachsen;Bad Muskau;Mittelstraße 10;36150.5;HMF;03;0.2;HK;70;1.5;55;-15;480575.0579;5710782.87
+Deutschland;Sachsen;Bad Muskau;Mittelstraße 8;32912;HMF;03;0.2;HK;70;1.5;55;-15;480563.5805;5710776.063
+Deutschland;Sachsen;Bad Muskau;Mittelstraße 6;35678.75;HMF;03;0.2;HK;70;1.5;55;-15;480608.2714;5710752.642
+Deutschland;Sachsen;Bad Muskau;Mittelstraße 4;33915;HMF;03;0.2;HK;70;1.5;55;-15;480596.866;5710745.724
+Deutschland;Sachsen;Bad Muskau;Mittelstraße 2;35785;HMF;03;0.2;HK;70;1.5;55;-15;480585.4607;5710738.811
+Deutschland;Sachsen;Bad Muskau;Markt 11;31875;HMF;03;0.2;HK;70;1.5;55;-15;480608.5656;5710702.622
+Deutschland;Sachsen;Bad Muskau;Markt 13;37060;HMF;03;0.2;HK;70;1.5;55;-15;480622.0455;5710710.739
+Deutschland;Sachsen;Bad Muskau;Markt 15;34272;HMF;03;0.2;HK;70;1.5;55;-15;480635.5253;5710718.851
+Deutschland;Sachsen;Bad Muskau;Markt 21;67009.75;GBD;03;0.2;HK;70;1.5;55;-15;480664.1678;5710695.442
+Deutschland;Sachsen;Bad Muskau;Schlossstraße 8;309081.25;GBH;03;0.2;HK;70;1.5;55;-15;480650.4062;5710642.072
+Deutschland;Sachsen;Bad Muskau;Schlossstraße 2;258732.35;GHD;03;0.2;HK;70;1.5;55;-15;480783.0871;5710759.784
+Deutschland;Sachsen;Bad Muskau;Schlossstraße 4;43928;GHD;03;0.2;HK;70;1.5;55;-15;480756.8895;5710681.805
+Deutschland;Sachsen;Bad Muskau;Schlossstraße 9;272000;GHD;03;0.2;HK;70;1.5;55;-15;480841.9761;5710848.578
+Deutschland;Sachsen;Bad Muskau;Kirchstraße 34;159705.65;GHD;03;0.2;HK;70;1.5;55;-15;480621.809;5710629.942
+Deutschland;Sachsen;Bad Muskau;Kirchstraße 43;15770.9;GHD;03;0.2;HK;70;1.5;55;-15;480642.072;5710533.619
+Deutschland;Sachsen;Bad Muskau;Kirchstraße 18;73321;HMF;03;0.2;HK;70;1.5;55;-15;480686.715;5710529.278
+Deutschland;Sachsen;Bad Muskau;Kirchstraße 16;30813.35;HMF;03;0.2;HK;70;1.5;55;-15;480695.4421;5710515.009
+Deutschland;Sachsen;Bad Muskau;Kirchstraße 14;29404.05;HMF;03;0.2;HK;70;1.5;55;-15;480704.1537;5710502.136
+Deutschland;Sachsen;Bad Muskau;Kirchstraße 12;33532.5;HMF;03;0.2;HK;70;1.5;55;-15;480714.1487;5710490.031
+Deutschland;Sachsen;Bad Muskau;Kirchstraße 8;153742.05;HMF;03;0.2;HK;70;1.5;55;-15;480766.9937;5710412.364
+Deutschland;Sachsen;Bad Muskau;Kirchplatz 1;35343;HMF;03;0.2;HK;70;1.5;55;-15;480735.8281;5710493.358
+Deutschland;Sachsen;Bad Muskau;Kirchplatz 3;33082;HMF;03;0.2;HK;70;1.5;55;-15;480750.8176;5710503.432
+Deutschland;Sachsen;Bad Muskau;Kirchplatz 5;14837.6;GBD;03;0.2;HK;70;1.5;55;-15;480803.9951;5710513.068
+Deutschland;Sachsen;Bad Muskau;Kirchplatz 7;28612.7;HEF;03;0.2;HK;70;1.5;55;-15;480805.8334;5710500.794
+Deutschland;Sachsen;Bad Muskau;Kirchplatz 9;230969.65;GBD;03;0.2;HK;70;1.5;55;-15;480813.6605;5710483.17
+Deutschland;Sachsen;Bad Muskau;Kirchplatz 4;56204.55;HMF;03;0.2;HK;70;1.5;55;-15;480777.2652;5710431.982
+Deutschland;Sachsen;Bad Muskau;Kirchplatz 6;35611.6;HMF;03;0.2;HK;70;1.5;55;-15;480790.7437;5710440.539
+Deutschland;Sachsen;Bad Muskau;Parkstraße 2;126202.05;HMF;03;0.2;HK;70;1.5;55;-15;480670.7977;5710560.59
+Deutschland;Sachsen;Bad Muskau;Parkstraße 20;45603.35;HMF;03;0.2;HK;70;1.5;55;-15;480807.7372;5710416.752
+Deutschland;Sachsen;Bad Muskau;Parkstraße 22;36459.05;HMF;03;0.2;HK;70;1.5;55;-15;480816.8967;5710402.237
+Deutschland;Sachsen;Bad Muskau;Parkstraße 24;33903.95;HMF;03;0.2;HK;70;1.5;55;-15;480826.4735;5710389.25
+Deutschland;Sachsen;Bad Muskau;Parkstraße 26;34220.15;HMF;03;0.2;HK;70;1.5;55;-15;480834.9507;5710376.017
+Deutschland;Sachsen;Bad Muskau;Berliner Straße 34;10676;HEF;03;0.2;HK;70;1.5;55;-15;480291.645;5711076.86
+Deutschland;Sachsen;Bad Muskau;Berliner Straße 36;115549.85;GHD;03;0.2;HK;70;1.5;55;-15;480274.8506;5711093.146
+Deutschland;Sachsen;Bad Muskau;Berliner Straße 45;41087.3;HMF;03;0.2;HK;70;1.5;55;-15;480283.2302;5711040.67
+Deutschland;Sachsen;Bad Muskau;Berliner Straße 47;54274.2;GHD;03;0.2;HK;70;1.5;55;-15;480256.8839;5711073.286
+Deutschland;Sachsen;Bad Muskau;Berliner Chaussee 10;83402;HMF;03;0.2;HK;70;1.5;55;-15;480202.3084;5711138.927
+Deutschland;Sachsen;Bad Muskau;Berliner Chaussee 12;17068.85;HEF;03;0.2;HK;70;1.5;55;-15;480152.9813;5711164.349
+Deutschland;Sachsen;Bad Muskau;Berliner Chaussee 18;103361.7;GHD;03;0.2;HK;70;1.5;55;-15;480038.2535;5711260.829
+Deutschland;Sachsen;Bad Muskau;Berliner Chaussee 20;3524.1;HMF;03;0.2;HK;70;1.5;55;-15;480015.8363;5711236.783
+Deutschland;Sachsen;Bad Muskau;Berliner Chaussee 24;92662.75;HMF;03;0.2;HK;70;1.5;55;-15;479946.5026;5711303.608
+Deutschland;Sachsen;Bad Muskau;Gablenzer Straße 4a;247614.35;HMF;03;0.2;HK;70;1.5;55;-15;480177.7023;5711070.12
+Deutschland;Sachsen;Bad Muskau;Gablenzer Straße 11;70512.6;HMF;03;0.2;HK;70;1.5;55;-15;480144.7291;5710941.65
+Deutschland;Sachsen;Bad Muskau;Gablenzer Straße 15;63131.2;HMF;03;0.2;HK;70;1.5;55;-15;480104.4338;5710909.35
+Deutschland;Sachsen;Bad Muskau;Köbelner Str. 9;33561.4;HMF;03;0.2;HK;70;1.5;55;-15;480132.8694;5711237.235
+Deutschland;Sachsen;Bad Muskau;Köbelner Str. 11;33299.6;HMF;03;0.2;HK;70;1.5;55;-15;480126.16;5711248.45
+Deutschland;Sachsen;Bad Muskau;Köbelner Str. 13;32791.3;HMF;03;0.2;HK;70;1.5;55;-15;480119.4032;5711259.798
+Deutschland;Sachsen;Bad Muskau;Köbelner Str. 15;30311;HMF;03;0.2;HK;70;1.5;55;-15;480112.532;5711271.153
+Deutschland;Sachsen;Bad Muskau;Köbelner Str. 17;30576.2;HMF;03;0.2;HK;70;1.5;55;-15;480105.748;5711282.451
+Deutschland;Sachsen;Bad Muskau;Köbelner Str. 19;44180.45;HMF;03;0.2;HK;70;1.5;55;-15;480093.5095;5711309.035
+Deutschland;Sachsen;Bad Muskau;Köbelner Str. 21;32680.8;HMF;03;0.2;HK;70;1.5;55;-15;480084.2229;5711323.274
+Deutschland;Sachsen;Bad Muskau;Köbelner Str. 23;48648.05;HMF;03;0.2;HK;70;1.5;55;-15;480075.071;5711337.362
+Deutschland;Sachsen;Bad Muskau;Köbelner Str. 25;25046.1;HMF;03;0.2;HK;70;1.5;55;-15;480063.2991;5711365.407
+Deutschland;Sachsen;Bad Muskau;Köbelner Str. 27;34000;HMF;03;0.2;HK;70;1.5;55;-15;480052.7337;5711378.004
+Deutschland;Sachsen;Bad Muskau;Köbelner Str. 29;42123.45;HMF;03;0.2;HK;70;1.5;55;-15;480042.1685;5711390.613
+Deutschland;Sachsen;Bad Muskau;Köbelner Str. 31;176911.35;HMF;03;0.2;HK;70;1.5;55;-15;480024.6375;5711414.327
+Deutschland;Sachsen;Bad Muskau;Köbelner Str. 37;45475.85;HMF;03;0.2;HK;70;1.5;55;-15;480001.1703;5711437.641
+Deutschland;Sachsen;Bad Muskau;Köbelner Str. 20;16099.85;HMF;03;0.2;HK;70;1.5;55;-15;480156.1634;5711276.709
+Deutschland;Sachsen;Bad Muskau;Jahnstraße 2;25016.35;HMF;03;0.2;HK;70;1.5;55;-15;480208.3686;5711215.871
+Deutschland;Sachsen;Bad Muskau;Jahnstraße 3;17927.35;HMF;03;0.2;HK;70;1.5;55;-15;480222.3171;5711251.405
