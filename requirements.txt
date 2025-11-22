@@ -15,3 +15,6 @@ CoolProp
 contextily
 plotly
 seaborn
+osmnx
+networkx
+numpy<2.0
