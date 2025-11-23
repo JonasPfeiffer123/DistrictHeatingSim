@@ -33,6 +33,18 @@ class GeoJsonReceiver(QObject):
     """
     Bridge for receiving GeoJSON data from JavaScript.
     """
+    coordinate_picked = pyqtSignal(float, float)
+    
+    def __init__(self, base_path=""):
+        """Initialize GeoJsonReceiver with base path.
+        
+        Parameters
+        ----------
+        base_path : str, optional
+            Base path for file dialogs.
+        """
+        super().__init__()
+        self.base_path = base_path
     
     @pyqtSlot(str)
     def sendGeoJSONToPython(self, geojson_str):
@@ -74,7 +86,7 @@ class GeoJsonReceiver(QObject):
         geojsonString : str
             GeoJSON data as string.
         """
-        fileName, _ = QFileDialog.getSaveFileName(None, "Save GeoJSON File", "", "GeoJSON Files (*.geojson);;All Files (*)")
+        fileName, _ = QFileDialog.getSaveFileName(None, "Save GeoJSON File", self.base_path, "GeoJSON Files (*.geojson);;All Files (*)")
         if fileName:
             geojson_data = json.loads(geojsonString)
 
@@ -109,8 +121,21 @@ class GeoJsonReceiver(QObject):
                         for ring in feature["geometry"]["coordinates"]
                     ]
             try:
-                gdf = gpd.GeoDataFrame.from_features(features)
-                gdf.set_crs(epsg=4326, inplace=True)
+                # Erstelle GeoDataFrame mit expliziter Geometrie
+                from shapely.geometry import shape
+                geometries = [shape(feature['geometry']) for feature in features]
+                
+                # Stelle sicher dass jedes Feature properties hat
+                properties_list = []
+                for feature in features:
+                    props = feature.get('properties', {})
+                    if props is None:
+                        props = {}
+                    properties_list.append(props)
+                
+                gdf = gpd.GeoDataFrame(properties_list, geometry=geometries, crs='EPSG:4326')
+                
+                # Transformiere zu Ziel-CRS
                 target_crs = 'EPSG:25833'
                 gdf.to_crs(target_crs, inplace=True)
                 gdf.to_file(fileName, driver="GeoJSON")
@@ -119,8 +144,20 @@ class GeoJsonReceiver(QObject):
                 print("Fehler beim Erstellen des GeoDataFrame:", e)
                 import traceback
                 traceback.print_exc()
-        else:
-            print("Speichern abgebrochen.")
+
+    @pyqtSlot(float, float)
+    def receiveCoordinateFromMap(self, lat, lon):
+        """Receive coordinate from map click.
+        
+        Parameters
+        ----------
+        lat : float
+            Latitude (WGS84).
+        lon : float
+            Longitude (WGS84).
+        """
+        print(f"Received coordinates from map: Lat={lat}, Lon={lon}")
+        self.coordinate_picked.emit(lat, lon)
 
 class VisualizationModel:
     """
@@ -271,6 +308,7 @@ class VisualizationPresenter(QObject):
         """
         if new_base_path:
             self.model.set_base_path(new_base_path)
+            self.view.set_base_path(new_base_path)
 
     def open_geocode_addresses_dialog(self):
         """Open dialog to select CSV file for geocoding addresses."""
@@ -381,6 +419,11 @@ class VisualizationPresenter(QObject):
         dialog = LayerGenerationDialog(self.model.get_base_path(), self.config_manager, self.view)
         dialog.setVisualizationTab(self)
         dialog.accepted_inputs.connect(self.generate_and_import_layers)
+        
+        # Connect map picker signals
+        dialog.request_map_coordinate.connect(self.activate_map_coordinate_picker)
+        self.view.geoJsonReceiver.coordinate_picked.connect(dialog.receiveMapCoordinates)
+        
         self.currentLayerDialog = dialog
         dialog.show()
         dialog.raise_()
@@ -443,6 +486,10 @@ class VisualizationPresenter(QObject):
         """
         self.view.show_error_message("Berechnungsfehler", error_message)
         self.view.progressBar.setRange(0, 1)
+
+    def activate_map_coordinate_picker(self):
+        """Activate map coordinate picker mode by calling JavaScript."""
+        self.view.web_view.page().runJavaScript("activateCoordinatePicker();")
 
     def open_osm_data_dialog(self):
         """Open dialog for downloading OSM data."""
@@ -547,6 +594,17 @@ class VisualizationTabView(QWidget):
 
         self.web_view.load(QUrl.fromLocalFile(temp_file_path))
 
+    def set_base_path(self, base_path):
+        """Set base path for GeoJsonReceiver.
+        
+        Parameters
+        ----------
+        base_path : str
+            Base path for file dialogs.
+        """
+        if hasattr(self, 'geoJsonReceiver'):
+            self.geoJsonReceiver.base_path = base_path
+    
     def show_error_message(self, title, message):
         """
         Show error message dialog.
@@ -556,7 +614,7 @@ class VisualizationTabView(QWidget):
         title : str
             Dialog title.
         message : str
-            Error message.
+            Error message text.
         """
         QMessageBox.critical(self, title, message)
 
@@ -586,6 +644,20 @@ class VisualizationTabLeaflet(QMainWindow):
         self.model = VisualizationModel()
         self.view = VisualizationTabView()
         self.presenter = VisualizationPresenter(self.model, self.view, folder_manager, data_manager, config_manager)
+        
+        # Set base path for GeoJsonReceiver after presenter is initialized
+        self.view.set_base_path(self.model.get_base_path())
 
         # Set the central widget to the view
         self.setCentralWidget(self.view)
+    
+    def update_base_path(self, base_path):
+        """Update base path in model and view.
+        
+        Parameters
+        ----------
+        base_path : str
+            New base path for project.
+        """
+        self.model.set_base_path(base_path)
+        self.view.set_base_path(base_path)

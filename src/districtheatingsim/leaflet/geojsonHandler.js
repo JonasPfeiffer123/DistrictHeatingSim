@@ -36,30 +36,42 @@ function importGeoJSON(geojsonData, fileName) {
     // Generiere eine zufällige Farbe
     const randomColor = getRandomColor();
 
-    // Erstelle eine einzelne Layer-Gruppe aus allen Features im GeoJSON
-    const layerGroup = L.geoJSON(geojsonData, {
+    // Erstelle einen FeatureGroup (nicht nur geoJSON) für bessere Verwaltung
+    const layerGroup = L.featureGroup();
+    
+    // Füge alle Features als separate Layer hinzu
+    const geoJsonLayer = L.geoJSON(geojsonData, {
         style: (feature) => ({
             color: randomColor,
             fillOpacity: feature.properties.opacity ? feature.properties.opacity * 0.5 : 0.5,
             opacity: feature.properties.opacity || 1.0
-        })
+        }),
+        onEachFeature: (feature, layer) => {
+            layerGroup.addLayer(layer);
+        }
     });
 
     // Setze Gruppenoptionen und Namen
-    layerGroup.options.name = fileName || "Imported Layer";
-    layerGroup.options.color = randomColor;
-    layerGroup.options.opacity = geojsonData.features[0].properties.opacity || 1.0;
+    layerGroup.options = {
+        name: fileName || "Imported Layer",
+        color: randomColor,
+        opacity: (geojsonData.features.length > 0 && geojsonData.features[0].properties) 
+            ? (geojsonData.features[0].properties.opacity || 1.0) 
+            : 1.0,
+        visible: true,
+        locked: false
+    };
 
-    addLayerToList(layerGroup); // Zur Layer-Liste hinzufügen, aber nur als ein Eintrag
+    addLayerToList(layerGroup); // Zur Layer-Liste hinzufügen
+    allLayers.addLayer(layerGroup);
     map.addLayer(layerGroup);
 
     // Layer in den Kartenausschnitt anpassen
-    if (layerGroup.getBounds().isValid()) {
+    if (layerGroup.getBounds && layerGroup.getBounds().isValid()) {
         map.fitBounds(layerGroup.getBounds());
     }
 
-    console.log("Layer-Gruppe importiert:", layerGroup.options.name);
-    console.log("Anzahl der Layer in allLayers nach dem Hinzufügen:", allLayers.getLayers().length);
+    console.log("Layer-Gruppe importiert:", layerGroup.options.name, "Features:", layerGroup.getLayers().length);
 }
 
 // Funktion zur Transformation von Koordinaten

@@ -54,14 +54,7 @@ class NetGenerationThread(QThread):
                     coordinates=self.inputs["coordinates"],
                     base_path=self.base_path,
                     algorithm=self.inputs["generation_mode"],
-                    offset_angle=self.inputs.get("offset_angle", 0),
-                    offset_distance=self.inputs.get("offset_distance", 0.5),
-                    buffer_meters=self.inputs.get("buffer_meters", 500.0),
-                    network_type=self.inputs.get("network_type", "drive_service"),
-                    custom_filter=self.inputs.get("custom_filter", None),
-                    node_threshold=self.inputs.get("node_threshold", 0.1),
-                    remove_dead_ends_flag=self.inputs.get("remove_dead_ends", True),
-                    target_crs=self.inputs.get("target_crs", "EPSG:25833")
+                    custom_filter=self.inputs.get("custom_filter", None)
                 )
             else:
                 # Use traditional MST/Steiner algorithms

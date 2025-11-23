@@ -77,6 +77,7 @@ ox.settings.log_console = False
 
 def download_street_graph(
     buildings: gpd.GeoDataFrame,
+    generator_coords: List[Tuple[float, float]],
     buffer_meters: float = 500.0,
     network_type: str = 'drive_service',
     target_crs: str = 'EPSG:25833',
@@ -93,6 +94,9 @@ def download_street_graph(
     ----------
     buildings : gpd.GeoDataFrame
         GeoDataFrame containing building geometries (Point) in projected CRS.
+    generator_coords : list of tuple of float
+        List of (x, y) coordinate tuples for heat generator locations in same CRS as buildings.
+        Example: [(480219, 5711597)] or [(480219, 5711597), (480500, 5712000)]
     buffer_meters : float, optional
         Buffer distance in meters around buildings for network download.
         Default is 500.0 meters.
@@ -155,10 +159,12 @@ def download_street_graph(
     Examples
     --------
     >>> buildings = gpd.read_file('buildings.shp')
+    >>> generator_coords = [(480219, 5711597)]
     >>> 
     >>> # Using network_type (simple)
     >>> street_graph = download_street_graph(
     ...     buildings=buildings,
+    ...     generator_coords=generator_coords,
     ...     buffer_meters=800.0,
     ...     network_type='drive'
     ... )
@@ -166,6 +172,7 @@ def download_street_graph(
     >>> # Using custom_filter (precise control)
     >>> street_graph = download_street_graph(
     ...     buildings=buildings,
+    ...     generator_coords=generator_coords,
     ...     buffer_meters=800.0,
     ...     custom_filter='["highway"~"primary|secondary|tertiary|residential|living_street|service"]'
     ... )
@@ -182,12 +189,20 @@ def download_street_graph(
     
     logger.info(f"Downloading street network with {buffer_meters}m buffer")
     
-    # Convert to WGS84 for OSMnx
+    # Convert buildings to WGS84 for OSMnx
     buildings_wgs84 = buildings.to_crs('EPSG:4326')
+    
+    # Convert generator coordinates to WGS84
+    generator_points = [Point(coords[0], coords[1]) for coords in generator_coords]
+    generator_gdf = gpd.GeoDataFrame(geometry=generator_points, crs=target_crs)
+    generator_gdf_wgs84 = generator_gdf.to_crs('EPSG:4326')
+    
+    # Combine buildings and generators for polygon creation
+    all_points_wgs84 = pd.concat([buildings_wgs84, generator_gdf_wgs84], ignore_index=True)
     
     # Create buffer polygon (convert meters to degrees approximately)
     buffer_degrees = buffer_meters / 111000.0
-    area_polygon = buildings_wgs84.union_all().buffer(buffer_degrees)
+    area_polygon = all_points_wgs84.union_all().buffer(buffer_degrees)
     
     # Download street graph
     if custom_filter:
@@ -1199,6 +1214,7 @@ def generate_osmnx_network(
     logger.info("Step 1/12: Downloading street network")
     street_graph = download_street_graph(
         buildings=buildings,
+        generator_coords=generator_coords,
         buffer_meters=buffer_meters,
         network_type=network_type,
         target_crs=target_crs,
