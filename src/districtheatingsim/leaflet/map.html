@@ -35,28 +35,43 @@
         #mainContent {
             display: flex;
             flex-grow: 1;
-            height: calc(100% - 50px); /* Platz für die Konsole */
+            height: 100%; /* Volle Höhe ohne Konsole */
         }
 
         /* Layer Control links */
         #layerControl {
-            width: 25%; /* Layer Control nimmt 25% der Breite ein */
+            width: 300px; /* Feste Breite für bessere Kontrolle */
             background-color: #f8f9fa;
-            padding: 15px;
+            padding: 12px;
             border-right: 1px solid #ddd;
             box-shadow: 2px 0 5px rgba(0,0,0,0.1);
             overflow-y: auto; /* Scrollen nur innerhalb des LayerControl */
+            display: flex;
+            flex-direction: column;
         }
 
         /* Karte rechts */
         #map {
-            width: 75%; /* Karte nimmt 75% der Breite ein */
+            flex: 1; /* Nimmt den restlichen Platz ein */
             height: 100%;
         }
 
         #layerControl h3, #layerControl h4 {
             font-family: Arial, sans-serif;
             color: #333;
+            margin: 0 0 12px 0;
+        }
+
+        #layerControl h3 {
+            font-size: 16px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+        }
+
+        #layerControl h4 {
+            font-size: 14px;
+            margin-top: 15px;
             margin-bottom: 10px;
         }
 
@@ -76,9 +91,15 @@
             background-color: #007bff;
             color: white;
             border: none;
-            padding: 8px 12px;
+            padding: 10px 12px;
             cursor: pointer;
             font-family: Arial, sans-serif;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            width: 100%;
+            transition: background-color 0.2s;
         }
 
         #layerControl button:hover {
@@ -88,12 +109,16 @@
         #layerList {
             list-style-type: none;
             padding: 0;
+            margin: 0;
+            flex: 1;
+            overflow-y: auto;
         }
 
         #layerList li {
-            margin: 5px 0;
+            margin: 4px 0;
             font-family: Arial, sans-serif;
             color: #333;
+            font-size: 13px;
         }
 
         /* Layer-Liste Darstellung */
@@ -101,24 +126,68 @@
             display: flex;
             align-items: center;
             cursor: pointer;
-            padding: 8px;
-            margin: 4px 0;
+            padding: 6px 8px;
+            margin: 2px 0;
             border: 1px solid #ddd;
-            background-color: #f9f9f9;
-            border-radius: 4px;
+            background-color: #ffffff;
+            border-radius: 3px;
+            transition: all 0.2s ease;
+            font-size: 13px;
         }
 
         .layer-item.selected-layer {
             background-color: #e0f7fa;
             border-color: #00796b;
-            font-weight: bold;
+            font-weight: 500;
+        }
+
+        .layer-item.active-layer {
+            background-color: #c8e6c9;
+            border: 2px solid #4CAF50;
+            font-weight: 600;
+            box-shadow: 0 1px 3px rgba(76, 175, 80, 0.3);
+        }
+
+        .layer-item:hover {
+            background-color: #f5f5f5;
+            border-color: #999;
+        }
+
+        .layer-visibility {
+            margin-right: 6px;
+            cursor: pointer;
+            width: 14px;
+            height: 14px;
         }
 
         .color-indicator {
-            width: 15px;
-            height: 15px;
-            margin-right: 10px;
+            width: 12px;
+            height: 12px;
+            margin-right: 8px;
             border-radius: 50%;
+            border: 1px solid #999;
+            flex-shrink: 0;
+        }
+
+        .layer-name {
+            flex-grow: 1;
+            margin-right: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .lock-icon {
+            margin-right: 6px;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .feature-count {
+            font-size: 11px;
+            color: #666;
+            margin-left: 4px;
+            flex-shrink: 0;
         }
 
         /* Kontextmenü Styling */
@@ -139,18 +208,6 @@
 
         .context-menu div:hover {
             background-color: #f0f0f0;
-        }
-
-        /* Konsole am unteren Rand */
-        #console {
-            height: 50px;
-            background-color: white;
-            opacity: 0.9;
-            width: 100%;
-            border-top: 1px solid black;
-            font-family: monospace;
-            padding: 5px;
-            overflow-y: auto;
         }
 
         .overlay {
@@ -191,9 +248,6 @@
             </div>
             <div id="map"></div>
         </div>
-
-        <!-- Konsole am unteren Rand -->
-        <div id="console"></div>
     </div>
 
     <!-- Leaflet JS - Latest Version -->
@@ -218,25 +272,7 @@
     <script src="layerControl.js"></script>
     <script src="geojsonHandler.js"></script>
 
-    <script>
-        // Funktion zum Logging in der eingebauten Konsole
-        function logToConsole(message) {
-            var consoleDiv = document.getElementById('console');
-            consoleDiv.innerHTML += message + "<br>";
-            consoleDiv.scrollTop = consoleDiv.scrollHeight; // Automatisch nach unten scrollen
-        }
 
-        // Passt console.log so an, dass mehrere Argumente verarbeitet werden
-        console.log = function(...args) {  // Verwendet rest-Parameter, um mehrere Argumente zu akzeptieren
-            const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ');
-            logToConsole(message);
-        };
-
-        const test = "Test 1";
-
-        logToConsole("Test message from inline script.", test);  // Dies sollte im Konsolenbereich angezeigt werden
-
-    </script>
 
     <!-- WebChannel-Code für die Kommunikation mit Python -->
     <script src="qwebchannel.js"></script>
