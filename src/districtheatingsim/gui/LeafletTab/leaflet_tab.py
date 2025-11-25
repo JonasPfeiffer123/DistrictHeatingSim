@@ -34,6 +34,8 @@ class GeoJsonReceiver(QObject):
     Bridge for receiving GeoJSON data from JavaScript.
     """
     coordinate_picked = pyqtSignal(float, float)
+    polygon_drawn = pyqtSignal(dict)
+    polygon_ready = pyqtSignal()
     
     def __init__(self, base_path=""):
         """Initialize GeoJsonReceiver with base path.
@@ -158,6 +160,28 @@ class GeoJsonReceiver(QObject):
         """
         print(f"Received coordinates from map: Lat={lat}, Lon={lon}")
         self.coordinate_picked.emit(lat, lon)
+
+    @pyqtSlot()
+    def polygonReadyForCapture(self):
+        """Signal that polygon has been drawn and is ready for capture."""
+        self.polygon_ready.emit()
+
+
+    @pyqtSlot(str)
+    def receivePolygonFromMap(self, geojson_str):
+        """Receive polygon GeoJSON from map drawing.
+        
+        Parameters
+        ----------
+        geojson_str : str
+            GeoJSON string of the drawn polygon.
+        """
+        print(f"Received polygon from map")
+        try:
+            geojson_data = json.loads(geojson_str)
+            self.polygon_drawn.emit(geojson_data)
+        except Exception as e:
+            print(f"Error parsing polygon GeoJSON: {e}")
 
 class VisualizationModel:
     """
@@ -494,14 +518,23 @@ class VisualizationPresenter(QObject):
     def open_osm_data_dialog(self):
         """Open dialog for downloading OSM data."""
         dialog = DownloadOSMDataDialog(self.model.get_base_path(), self.config_manager, self.view, self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            pass  # Handle accepted case if necessary
+        dialog.setVisualizationTab(self)
+        dialog.show()  # Non-modal dialog - allows map interaction
+        dialog.raise_()
+        dialog.activateWindow()
 
     def open_osm_building_query_dialog(self):
         """Open dialog for querying OSM building data."""
-        dialog = OSMBuildingQueryDialog(self.model.get_base_path(), self.config_manager, self.view, self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            pass  # Handle accepted case if necessary
+        dialog = OSMBuildingQueryDialog(
+            self.model.get_base_path(), 
+            self.config_manager, 
+            self.view, 
+            self, 
+            visualization_tab=self
+        )
+        dialog.show()  # Non-modal dialog - allows map interaction
+        dialog.raise_()
+        dialog.activateWindow()
 
 class VisualizationTabView(QWidget):
     """
