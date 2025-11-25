@@ -271,9 +271,7 @@ function updateDrawHint() {
         hint = document.createElement('div');
         hint.id = 'draw-hint';
         hint.style.cssText = `
-            position: absolute;
-            top: 10px;
-            left: 320px;
+            position: relative;
             background: rgba(255, 255, 255, 0.95);
             padding: 8px 12px;
             border-radius: 4px;
@@ -281,9 +279,14 @@ function updateDrawHint() {
             font-size: 12px;
             font-weight: bold;
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            z-index: 1000;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            text-align: center;
         `;
-        document.body.appendChild(hint);
+        // Insert before the "Neuen Layer erstellen" button
+        const layerControl = document.getElementById('layerControl');
+        const createButton = document.getElementById('createLayerButton');
+        layerControl.insertBefore(hint, createButton);
     }
     
     if (activeLayer) {

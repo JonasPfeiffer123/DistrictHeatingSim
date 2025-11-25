@@ -9,8 +9,8 @@ if (document.getElementById('map')._leaflet_id) {
 } else {
     console.log('Initializing map from main.js...');
     
-    // Initialize Leaflet map
-    const map = L.map('map').setView([51.1657, 10.4515], 6);
+    // Initialize Leaflet map centered on Landkreis Görlitz
+    const map = L.map('map').setView([51.158677, 14.740906], 10);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: 'OpenStreetMap', maxZoom: 22
     }).addTo(map);
@@ -269,7 +269,48 @@ if (document.getElementById('map')._leaflet_id) {
         map.on('pm:create', (e) => {
             const layer = e.layer;
 
-            // Füge Layer nur zum aktiven Layer hinzu
+            // Check if we're in polygon capture mode for dialogs
+            if (window.polygonCaptureMode && layer instanceof L.Polygon) {
+                console.log('Polygon captured for dialog - keeping it visible and editable');
+                
+                // Store the polygon layer globally so we can access it later
+                window.capturedPolygonLayer = layer;
+                
+                // Add to map (keep it visible)
+                layer.addTo(map);
+                
+                // Style it to show it's a temporary selection
+                layer.setStyle({
+                    color: '#ff6b6b',
+                    fillColor: '#ff6b6b',
+                    fillOpacity: 0.3,
+                    opacity: 0.8,
+                    weight: 3,
+                    dashArray: '10, 10'
+                });
+                
+                // Enable editing on the polygon
+                if (layer.pm) {
+                    layer.pm.enable({
+                        allowSelfIntersection: false,
+                        snappable: true,
+                        snapDistance: 20
+                    });
+                }
+                
+                // Disable drawing mode but keep polygon visible
+                window.disablePolygonCaptureMode();
+                
+                // Notify Python that polygon is ready (but don't send it yet)
+                if (typeof window.pywebview !== 'undefined') {
+                    // Send a signal that polygon is drawn and ready
+                    window.pywebview.polygonReadyForCapture();
+                }
+                
+                return; // Don't add to active layer
+            }
+
+            // Normal drawing mode - add to active layer
             if (window.activeLayer && !window.activeLayer.options.locked) {
                 window.activeLayer.addLayer(layer);
                 // Setze Layer-Eigenschaften
@@ -344,3 +385,50 @@ if (document.getElementById('map')._leaflet_id) {
 
     console.log('Main.js initialization completed');
 }
+
+// Global function to enable polygon capture mode for dialogs
+window.enablePolygonCaptureMode = function() {
+    console.log('Polygon capture mode enabled');
+    window.polygonCaptureMode = true;
+    
+    // Show info message
+    if (map.pm) {
+        // Enable polygon drawing
+        map.pm.enableDraw('Polygon', {
+            snappable: true,
+            snapDistance: 20,
+            finishOn: 'dblclick'
+        });
+    }
+};
+
+// Global function to disable polygon capture mode
+window.disablePolygonCaptureMode = function() {
+    console.log('Polygon capture mode disabled');
+    window.polygonCaptureMode = false;
+    
+    if (map.pm) {
+        map.pm.disableDraw();
+    }
+};
+
+// Global function to get captured polygon as GeoJSON
+window.getCapturedPolygon = function() {
+    if (window.capturedPolygonLayer) {
+        console.log('Getting captured polygon');
+        return window.capturedPolygonLayer.toGeoJSON();
+    }
+    console.warn('No polygon captured');
+    return null;
+};
+
+// Global function to clear captured polygon from map
+window.clearCapturedPolygon = function() {
+    if (window.capturedPolygonLayer) {
+        console.log('Clearing captured polygon');
+        map.removeLayer(window.capturedPolygonLayer);
+        window.capturedPolygonLayer = null;
+        return true;
+    }
+    return false;
+};
