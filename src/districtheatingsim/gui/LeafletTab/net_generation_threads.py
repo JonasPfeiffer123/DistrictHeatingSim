@@ -54,14 +54,7 @@ class NetGenerationThread(QThread):
                     coordinates=self.inputs["coordinates"],
                     base_path=self.base_path,
                     algorithm=self.inputs["generation_mode"],
-                    offset_angle=self.inputs.get("offset_angle", 0),
-                    offset_distance=self.inputs.get("offset_distance", 0.5),
-                    buffer_meters=self.inputs.get("buffer_meters", 500.0),
-                    network_type=self.inputs.get("network_type", "drive_service"),
-                    custom_filter=self.inputs.get("custom_filter", None),
-                    node_threshold=self.inputs.get("node_threshold", 0.1),
-                    remove_dead_ends_flag=self.inputs.get("remove_dead_ends", True),
-                    target_crs=self.inputs.get("target_crs", "EPSG:25833")
+                    custom_filter=self.inputs.get("custom_filter", None)
                 )
             else:
                 # Use traditional MST/Steiner algorithms
@@ -77,13 +70,85 @@ class NetGenerationThread(QThread):
         except Exception as e:
             error_msg = f"{str(e)}\n{traceback.format_exc()}"
             print(f"ERROR in network generation: {error_msg}")
-            self.calculation_error.emit(error_msg)
+            self.calculation_error.emit(Exception(error_msg))
 
     def stop(self):
         """Stop thread execution."""
         if self.isRunning():
             self.requestInterruption()
             self.wait()
+
+
+class OSMStreetDownloadThread(QThread):
+    """
+    Thread for downloading OSM street data.
+    """
+    download_done = pyqtSignal(str)  # Emits filepath when done
+    download_error = pyqtSignal(str)
+    
+    def __init__(self, download_func, *args, **kwargs):
+        """
+        Initialize OSM street download thread.
+        
+        Parameters
+        ----------
+        download_func : callable
+            The download function to execute.
+        *args : tuple
+            Positional arguments for download_func.
+        **kwargs : dict
+            Keyword arguments for download_func.
+        """
+        super().__init__()
+        self.download_func = download_func
+        self.args = args
+        self.kwargs = kwargs
+    
+    def run(self):
+        """Run download process."""
+        try:
+            filepath = self.download_func(*self.args, **self.kwargs)
+            self.download_done.emit(filepath)
+        except Exception as e:
+            tb = traceback.format_exc()
+            error_message = f"Fehler beim Download:\n{str(e)}\n\n{tb}"
+            self.download_error.emit(error_message)
+
+
+class OSMBuildingDownloadThread(QThread):
+    """
+    Thread for downloading OSM building data.
+    """
+    download_done = pyqtSignal(str, int)  # Emits filepath and building count when done
+    download_error = pyqtSignal(str)
+    
+    def __init__(self, download_func, *args, **kwargs):
+        """
+        Initialize OSM building download thread.
+        
+        Parameters
+        ----------
+        download_func : callable
+            The download function to execute.
+        *args : tuple
+            Positional arguments for download_func.
+        **kwargs : dict
+            Keyword arguments for download_func.
+        """
+        super().__init__()
+        self.download_func = download_func
+        self.args = args
+        self.kwargs = kwargs
+    
+    def run(self):
+        """Run download process."""
+        try:
+            filepath, building_count = self.download_func(*self.args, **self.kwargs)
+            self.download_done.emit(filepath, building_count)
+        except Exception as e:
+            tb = traceback.format_exc()
+            error_message = f"Fehler beim Download:\n{str(e)}\n\n{tb}"
+            self.download_error.emit(error_message)
 
 class FileImportThread(QThread):
     """
