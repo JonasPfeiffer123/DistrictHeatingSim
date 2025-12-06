@@ -24,13 +24,21 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 
-from PyQt6.QtCore import pyqtSignal, Qt, QTimer
+# Plotly imports for interactive network visualization
+try:
+    from PyQt6.QtWebEngineWidgets import QWebEngineView
+    WEBENGINE_AVAILABLE = True
+except ImportError:
+    WEBENGINE_AVAILABLE = False
+    logging.warning("PyQt6.QtWebEngineWidgets not available. Interactive plot will use HTML export.")
+
+from PyQt6.QtCore import pyqtSignal, Qt, QTimer, QUrl
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QMessageBox, 
                             QProgressBar, QMenuBar, QPlainTextEdit, QLabel, QFrame, QGridLayout)
 from PyQt6.QtGui import QAction, QActionGroup, QFont
 
 from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import save_results_csv, import_results_csv
-from districtheatingsim.net_simulation_pandapipes.config_plot import config_plot
+from districtheatingsim.net_simulation_pandapipes.interactive_network_plot import InteractiveNetworkPlot
 from districtheatingsim.net_simulation_pandapipes.utilities import export_net_geojson
 
 from districtheatingsim.gui.NetSimulationTab.timeseries_dialog import TimeSeriesCalculationDialog
@@ -73,8 +81,8 @@ class CalculationTab(QWidget):
         self.folder_manager.project_folder_changed.connect(self.updateDefaultPath)
         self.updateDefaultPath(self.folder_manager.variant_folder)
 
-        self.show_map = False
-        self.map_type = None
+        # Initialize cache for HTML plot
+        self._plot_html_path = None
 
         self.initUI()
 
@@ -116,7 +124,6 @@ class CalculationTab(QWidget):
         fileMenu = self.menubar.addMenu('Datei')
         networkMenu = self.menubar.addMenu('Wärmenetz generieren')
         calcMenu = self.menubar.addMenu('Zeitreihenberechnung durchführen')
-        mapMenu = self.menubar.addMenu('Hintergrundkarte laden')
 
         saveppnetAction = QAction('Pandapipes Netz speichern', self)
         loadppnetAction = QAction('Pandapipes Netz laden', self)
@@ -133,24 +140,6 @@ class CalculationTab(QWidget):
         calculateNetAction = QAction('Zeitreihenberechnung', self)
         calcMenu.addAction(calculateNetAction)
 
-        OSMAction = QAction('OpenStreetMap laden', self)
-        SatelliteMapAction = QAction('Satellitenbild Laden', self)
-        TopologyMapAction = QAction('Topologiekarte laden', self)
-
-        OSMAction.setCheckable(True)
-        SatelliteMapAction.setCheckable(True)
-        TopologyMapAction.setCheckable(True)
-
-        mapActionGroup = QActionGroup(self)
-        mapActionGroup.setExclusive(True)
-        mapActionGroup.addAction(OSMAction)
-        mapActionGroup.addAction(SatelliteMapAction)
-        mapActionGroup.addAction(TopologyMapAction)
-
-        mapMenu.addAction(OSMAction)
-        mapMenu.addAction(SatelliteMapAction)
-        mapMenu.addAction(TopologyMapAction)
-
         self.container_layout.addWidget(self.menubar)
 
         generateNetAction.triggered.connect(self.openNetGenerationDialog)
@@ -159,9 +148,6 @@ class CalculationTab(QWidget):
         loadresultsppAction.triggered.connect(self.load_net_results)
         exportppnetGeoJSONAction.triggered.connect(self.exportNetGeoJSON)
         calculateNetAction.triggered.connect(self.opencalculateNetDialog)
-        OSMAction.triggered.connect(lambda: self.loadMap("OSM", OSMAction))
-        SatelliteMapAction.triggered.connect(lambda: self.loadMap("Satellite", SatelliteMapAction))
-        TopologyMapAction.triggered.connect(lambda: self.loadMap("Topology", TopologyMapAction))
 
     def setupPlotLayout(self):
         """Setup layout with network plot and info on top, time series full width below."""
@@ -177,15 +163,50 @@ class CalculationTab(QWidget):
         # Left: Network plot container
         self.network_plot_container = QWidget()
         self.network_plot_layout = QVBoxLayout(self.network_plot_container)
+        self.network_plot_layout.setSpacing(5)
+        self.network_plot_layout.setContentsMargins(0, 0, 0, 0)
         
-        # Network plot
-        self.pandapipes_net_figure = Figure()
-        self.pandapipes_net_canvas = FigureCanvas(self.pandapipes_net_figure)
-        self.pandapipes_net_canvas.setMinimumSize(500, 500)  # Erhöht von 350 auf 450
-        self.pandapipes_net_figure_toolbar = NavigationToolbar(self.pandapipes_net_canvas, self)
+        # Parameter selection dropdown - native PyQt6 control
+        from PyQt6.QtWidgets import QComboBox
+        self.network_param_dropdown = QComboBox()
+        self.network_param_dropdown.setFixedHeight(35)
+        self.network_param_dropdown.setStyleSheet("""
+            QComboBox {
+                padding: 5px;
+                border: 2px solid #3498db;
+                border-radius: 5px;
+                background-color: white;
+                font-size: 12px;
+            }
+            QComboBox:hover {
+                border-color: #2980b9;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 30px;
+            }
+        """)
+        self.network_param_dropdown.addItem("Standard (ohne Parameter)", userData=None)
+        self.network_param_dropdown.currentIndexChanged.connect(self._on_network_param_changed)
+        self.network_plot_layout.addWidget(self.network_param_dropdown)
+        
+        # Network plot - Interactive Plotly visualization
+        if WEBENGINE_AVAILABLE:
+            self.pandapipes_net_canvas = QWebEngineView()
+            self.pandapipes_net_canvas.setMinimumSize(500, 500)
+            
+            # Configure WebEngine settings to allow local resources
+            from PyQt6.QtWebEngineCore import QWebEngineSettings
+            settings = self.pandapipes_net_canvas.settings()
+            settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, True)
+            settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls, True)
+        else:
+            # Fallback to label with message
+            self.pandapipes_net_canvas = QLabel("Interactive plot requires PyQt6-WebEngine")
+            self.pandapipes_net_canvas.setMinimumSize(500, 500)
+            self.pandapipes_net_canvas.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         self.network_plot_layout.addWidget(self.pandapipes_net_canvas)
-        self.network_plot_layout.addWidget(self.pandapipes_net_figure_toolbar)
         
         # Right: Network information panel with height matching network plot + toolbar
         self.info_container = QWidget()
@@ -380,6 +401,13 @@ class CalculationTab(QWidget):
 
         self.NetworkGenerationData = NetworkGenerationData        
         
+        # Invalidate plot cache to regenerate with new data
+        self._invalidate_plot_cache()
+        
+        # Populate parameter dropdown with available parameters
+        self._populate_network_param_dropdown()
+        
+        # Generate initial plot
         self.plot_pandapipes_net()
         self.NetworkGenerationData.prepare_plot_data()
         self.createPlotControlDropdown()
@@ -491,33 +519,148 @@ class CalculationTab(QWidget):
         # Compact stretch
         self.info_cards_layout.addStretch()
 
-    def plot_pandapipes_net(self):
-        """Plot pandapipes network visualization."""
-        self.pandapipes_net_figure.clear()
-        ax = self.pandapipes_net_figure.add_subplot(111)
-        config_plot(self.NetworkGenerationData.net, ax, show_junctions=True, show_pipes=True, show_heat_consumers=True, show_basemap=self.show_map, map_type=self.map_type)
-        self.pandapipes_net_canvas.draw()
+    def _invalidate_plot_cache(self):
+        """Invalidate and clean up old plot cache."""
+        if self._plot_html_path and os.path.exists(self._plot_html_path):
+            try:
+                os.remove(self._plot_html_path)
+            except Exception as e:
+                logging.warning(f"Could not remove old plot file: {e}")
+        self._plot_html_path = None
+    
+    def _populate_network_param_dropdown(self):
+        """Populate dropdown with available network parameters."""
+        if not hasattr(self.NetworkGenerationData, 'net'):
+            logging.warning("Cannot populate dropdown: NetworkGenerationData.net not found")
+            return
+        
+        logging.info("Populating network parameter dropdown...")
+        
+        # Clear existing items (keep first "Standard" item)
+        self.network_param_dropdown.blockSignals(True)
+        self.network_param_dropdown.clear()
+        self.network_param_dropdown.addItem("Standard (ohne Parameter)", userData=None)
+        
+        try:
+            # Get available parameters from network
+            from districtheatingsim.net_simulation_pandapipes.interactive_network_plot import InteractiveNetworkPlot
+            plotter = InteractiveNetworkPlot(self.NetworkGenerationData.net)
+            available_params = plotter._get_available_parameters()
+            
+            logging.info(f"Available parameters: {available_params}")
+            
+            # Add junction parameters
+            if 'junction' in available_params and available_params['junction']:
+                for param in available_params['junction']:
+                    label = f"Junction: {plotter._get_parameter_label(param)}"
+                    self.network_param_dropdown.addItem(label, userData={'component': 'junction', 'parameter': param})
+                    logging.debug(f"Added junction parameter: {label}")
+            
+            # Add pipe parameters
+            if 'pipe' in available_params and available_params['pipe']:
+                for param in available_params['pipe']:
+                    label = f"Pipe: {plotter._get_parameter_label(param)}"
+                    self.network_param_dropdown.addItem(label, userData={'component': 'pipe', 'parameter': param})
+                    logging.debug(f"Added pipe parameter: {label}")
+            
+            # Add heat consumer parameters
+            if 'heat_consumer' in available_params and available_params['heat_consumer']:
+                for param in available_params['heat_consumer']:
+                    label = f"Heat Consumer: {plotter._get_parameter_label(param)}"
+                    self.network_param_dropdown.addItem(label, userData={'component': 'heat_consumer', 'parameter': param})
+                    logging.debug(f"Added heat consumer parameter: {label}")
+            
+            # Add pump parameters
+            if 'pump' in available_params and available_params['pump']:
+                for param in available_params['pump']:
+                    label = f"Pump: {plotter._get_parameter_label(param)}"
+                    self.network_param_dropdown.addItem(label, userData={'component': 'pump', 'parameter': param})
+                    logging.debug(f"Added pump parameter: {label}")
+            
+            # Add flow control parameters
+            if 'flow_control' in available_params and available_params['flow_control']:
+                for param in available_params['flow_control']:
+                    label = f"Flow Control: {plotter._get_parameter_label(param)}"
+                    self.network_param_dropdown.addItem(label, userData={'component': 'flow_control', 'parameter': param})
+                    logging.debug(f"Added flow control parameter: {label}")
+            
+            logging.info(f"Dropdown populated with {self.network_param_dropdown.count()} options")
+            
+        except Exception as e:
+            logging.error(f"Error populating dropdown: {e}")
+            import traceback
+            logging.error(traceback.format_exc())
+        finally:
+            self.network_param_dropdown.blockSignals(False)
+    
+    def _on_network_param_changed(self, index):
+        """Handle network parameter selection change."""
+        # Invalidate cache to force regeneration with new parameter
+        self._invalidate_plot_cache()
+        # Regenerate plot with selected parameter
+        self.plot_pandapipes_net(force_refresh=True)
 
-    def loadMap(self, map_type, action):
-        """
-        Load background map for network visualization.
-
+    def plot_pandapipes_net(self, force_refresh: bool = False):
+        """Plot pandapipes network visualization using interactive Plotly.
+        
         Parameters
         ----------
-        map_type : str
-            Type of map to load.
-        action : QAction
-            Action triggering map load.
+        force_refresh : bool
+            If True, regenerate the plot even if cached version exists
         """
-        if action.isChecked():
-            self.show_map = True
-            self.map_type = map_type
-            for act in action.parent().actions():
-                if act != action:
-                    act.setChecked(False)
-        else:
-            self.show_map = False
-            self.map_type = None
+        if not hasattr(self.NetworkGenerationData, 'net'):
+            return
+        
+        try:
+            # Use cached HTML if available and not forcing refresh
+            if not force_refresh and self._plot_html_path and os.path.exists(self._plot_html_path):
+                if WEBENGINE_AVAILABLE:
+                    self.pandapipes_net_canvas.setUrl(QUrl.fromLocalFile(self._plot_html_path))
+                return
+            
+            # Get selected parameter from dropdown
+            selected_data = self.network_param_dropdown.currentData()
+            component_type = selected_data['component'] if selected_data else None
+            parameter = selected_data['parameter'] if selected_data else None
+            
+            # Create interactive plot for selected parameter (FAST - only one view)
+            plotter = InteractiveNetworkPlot(self.NetworkGenerationData.net)
+            fig = plotter.create_plot(
+                parameter=parameter,
+                component_type=component_type,
+                basemap_style='carto-positron',
+                colorscale='RdYlBu_r'
+            )
+            
+            if WEBENGINE_AVAILABLE:
+                # Export to HTML with embedded Plotly.js (no CDN needed)
+                import tempfile
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8') as f:
+                    # Use 'inline' to embed full Plotly.js library (~3MB) directly in HTML
+                    # This avoids CDN issues in QWebEngineView
+                    fig.write_html(
+                        f.name,
+                        include_plotlyjs='inline',  # Embed Plotly.js directly - no external dependencies
+                        config={'displayModeBar': True, 'displaylogo': False}
+                    )
+                    self._plot_html_path = f.name
+                
+                # Load HTML in WebEngineView
+                self.pandapipes_net_canvas.setUrl(QUrl.fromLocalFile(self._plot_html_path))
+            else:
+                # Fallback message
+                if isinstance(self.pandapipes_net_canvas, QLabel):
+                    self.pandapipes_net_canvas.setText(
+                        "Interactive visualization requires PyQt6-WebEngine.\n"
+                        "Please install: pip install PyQt6-WebEngine"
+                    )
+        except Exception as e:
+            logging.error(f"Error creating interactive plot: {e}")
+            logging.error(traceback.format_exc())
+            if WEBENGINE_AVAILABLE:
+                self.pandapipes_net_canvas.setHtml(
+                    f"<html><body><h3>Error creating plot:</h3><p>{str(e)}</p></body></html>"
+                )
 
     def time_series_simulation(self):
         """Perform time series simulation."""
@@ -546,6 +689,12 @@ class CalculationTab(QWidget):
         """
         self.progressBar.setRange(0, 1)
         self.NetworkGenerationData = NetworkGenerationData
+
+        # Invalidate plot cache to regenerate with simulation results
+        self._invalidate_plot_cache()
+        
+        # Update parameter dropdown (in case new parameters available after simulation)
+        self._populate_network_param_dropdown()
 
         self.NetworkGenerationData.prepare_plot_data()
         self.createPlotControlDropdown()
@@ -898,6 +1047,9 @@ class CalculationTab(QWidget):
             
             self.NetworkGenerationData.waerme_ges_kW = np.sum(self.NetworkGenerationData.waerme_hast_ges_kW, axis=0)
             self.NetworkGenerationData.strombedarf_ges_kW = np.sum(self.NetworkGenerationData.strombedarf_hast_ges_kW, axis=0)
+            
+            # Populate parameter dropdown with loaded network
+            self._populate_network_param_dropdown()
             
             self.plot_pandapipes_net()
             self.NetworkGenerationData.prepare_plot_data()
