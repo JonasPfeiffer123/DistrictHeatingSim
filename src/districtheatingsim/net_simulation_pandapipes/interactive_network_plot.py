@@ -97,6 +97,12 @@ class InteractiveNetworkPlot:
             if 't_to_k' in res_pipe.columns:
                 available_pipe_params.append('t_to_k')              # To temperature [K]
             
+            # Calculated parameters (dT, dp)
+            if 't_from_k' in res_pipe.columns and 't_to_k' in res_pipe.columns:
+                available_pipe_params.append('dt_k')                # Temperature difference [K]
+            if 'p_from_bar' in res_pipe.columns and 'p_to_bar' in res_pipe.columns:
+                available_pipe_params.append('dp_bar')              # Pressure loss [bar]
+            
             params['pipe'] = available_pipe_params
             
         # Heat consumer parameters - Mass flow, Heat demand, Temperatures
@@ -116,6 +122,12 @@ class InteractiveNetworkPlot:
                 available_hc_params.append('p_from_bar')            # From pressure [bar]
             if 'p_to_bar' in res_hc.columns:
                 available_hc_params.append('p_to_bar')              # To pressure [bar]
+            
+            # Calculated parameters (dT, dp)
+            if 't_from_k' in res_hc.columns and 't_to_k' in res_hc.columns:
+                available_hc_params.append('dt_k')                  # Temperature difference [K]
+            if 'p_from_bar' in res_hc.columns and 'p_to_bar' in res_hc.columns:
+                available_hc_params.append('dp_bar')                # Pressure drop [bar]
             
             params['heat_consumer'] = available_hc_params
             
@@ -138,6 +150,12 @@ class InteractiveNetworkPlot:
                     available_pump_params.append('p_from_bar')          # From pressure [bar]
                 if 'p_to_bar' in res_pump.columns:
                     available_pump_params.append('p_to_bar')            # To pressure [bar]
+                
+                # Calculated parameters (dT, dp)
+                if 't_from_k' in res_pump.columns and 't_to_k' in res_pump.columns:
+                    available_pump_params.append('dt_k')                # Temperature difference [K]
+                if 'p_from_bar' in res_pump.columns and 'p_to_bar' in res_pump.columns:
+                    available_pump_params.append('dp_bar')              # Pressure increase [bar]
             
             # Mass pump results (if exists)
             if hasattr(self.net, 'res_circ_pump_mass') and len(self.net.res_circ_pump_mass) > 0:
@@ -523,23 +541,34 @@ class InteractiveNetworkPlot:
         
         # Get parameter values for color mapping if needed
         if parameter and hasattr(self.net, 'res_pipe'):
-            param_values = self.net.res_pipe[parameter].values
-            vmin, vmax = param_values.min(), param_values.max()
-            if vmax - vmin < 1e-10:
-                vmax = vmin + 1  # Avoid division by zero
+            # Calculate parameter values (including derived ones like dt_k, dp_bar)
+            param_values = []
+            for idx in self.net.pipe.index:
+                val = self._get_parameter_value(self.net.res_pipe, idx, parameter)
+                if val is not None:
+                    param_values.append(val)
             
-            # Add dummy marker for colorbar
-            self.fig.add_trace(go.Scattermapbox(
-                lat=[gdf_junctions.geometry.y.mean()],
-                lon=[gdf_junctions.geometry.x.mean()],
-                mode='markers',
-                marker=dict(
-                    size=0.1,
-                    color=[vmin],
-                    colorscale=colorscale,
-                    showscale=True,
-                    cmin=vmin,
-                    cmax=vmax,
+            if param_values:
+                param_values = np.array(param_values)
+                vmin, vmax = param_values.min(), param_values.max()
+                if vmax - vmin < 1e-10:
+                    vmax = vmin + 1  # Avoid division by zero
+            else:
+                vmin, vmax = None, None
+            
+            # Add dummy marker for colorbar only if we have values
+            if vmin is not None:
+                self.fig.add_trace(go.Scattermapbox(
+                    lat=[gdf_junctions.geometry.y.mean()],
+                    lon=[gdf_junctions.geometry.x.mean()],
+                    mode='markers',
+                    marker=dict(
+                        size=0.1,
+                        color=[vmin],
+                        colorscale=colorscale,
+                        showscale=True,
+                        cmin=vmin,
+                        cmax=vmax,
                     colorbar=dict(
                         title=dict(
                             text=self._get_parameter_label(parameter),
@@ -573,11 +602,15 @@ class InteractiveNetworkPlot:
                 continue
             
             # Calculate color and parameter value
-            if parameter and hasattr(self.net, 'res_pipe'):
-                value = self.net.res_pipe.loc[idx, parameter]
-                norm_value = (value - vmin) / (vmax - vmin)
-                color = px.colors.sample_colorscale(colorscale, [norm_value])[0]
-                hover_text = build_pipe_hover_text(idx, pipe_data, param_value=value)
+            if parameter and hasattr(self.net, 'res_pipe') and vmin is not None:
+                value = self._get_parameter_value(self.net.res_pipe, idx, parameter)
+                if value is not None:
+                    norm_value = (value - vmin) / (vmax - vmin)
+                    color = px.colors.sample_colorscale(colorscale, [norm_value])[0]
+                    hover_text = build_pipe_hover_text(idx, pipe_data, param_value=value)
+                else:
+                    color = '#2c3e50'  # Default if value not available
+                    hover_text = build_pipe_hover_text(idx, pipe_data)
             else:
                 color = '#2c3e50'  # Default dark gray
                 hover_text = build_pipe_hover_text(idx, pipe_data)
@@ -609,11 +642,18 @@ class InteractiveNetworkPlot:
         
         # Get parameter values for color mapping if needed
         vmin, vmax = None, None
-        if parameter and hasattr(self.net, 'res_heat_consumer') and parameter in self.net.res_heat_consumer.columns:
-            param_values = self.net.res_heat_consumer[parameter].values
-            vmin, vmax = param_values.min(), param_values.max()
-            if vmax - vmin < 1e-10:
-                vmax = vmin + 1
+        if parameter and hasattr(self.net, 'res_heat_consumer'):
+            # Collect parameter values using helper method (handles calculated parameters)
+            param_values = []
+            for idx in self.net.heat_consumer.index:
+                value = self._get_parameter_value(self.net.res_heat_consumer, idx, parameter)
+                if value is not None:
+                    param_values.append(value)
+            
+            if param_values:
+                vmin, vmax = min(param_values), max(param_values)
+                if vmax - vmin < 1e-10:
+                    vmax = vmin + 1
             
             # Add dummy trace for colorbar
             self.fig.add_trace(go.Scattermapbox(
@@ -686,10 +726,13 @@ class InteractiveNetworkPlot:
             
             # Color based on parameter
             if parameter and vmin is not None:
-                value = self.net.res_heat_consumer.loc[idx, parameter]
-                norm_value = (value - vmin) / (vmax - vmin) if (vmax - vmin) > 0 else 0
-                color = px.colors.sample_colorscale(colorscale, [norm_value])[0]
-                hover_text += f"{self._get_parameter_label(parameter)}: {value:.2f}<br>"
+                value = self._get_parameter_value(self.net.res_heat_consumer, idx, parameter)
+                if value is not None:
+                    norm_value = (value - vmin) / (vmax - vmin) if (vmax - vmin) > 0 else 0
+                    color = px.colors.sample_colorscale(colorscale, [norm_value])[0]
+                    hover_text += f"{self._get_parameter_label(parameter)}: {value:.2f}<br>"
+                else:
+                    color = '#e74c3c'  # Default if value not available
             else:
                 color = '#e74c3c'  # Red for heat consumers
             
@@ -725,13 +768,16 @@ class InteractiveNetworkPlot:
         # Check if we need to show colorbar for parameter
         vmin, vmax = None, None
         if parameter:
-            # Collect all parameter values from all pump types
+            # Collect all parameter values from all pump types using helper method
             all_values = []
             for pump_table, res_table in pump_types:
                 if hasattr(self.net, res_table):
                     res_df = getattr(self.net, res_table)
-                    if parameter in res_df.columns:
-                        all_values.extend(res_df[parameter].values)
+                    pump_df = getattr(self.net, pump_table)
+                    for idx in pump_df.index:
+                        value = self._get_parameter_value(res_df, idx, parameter)
+                        if value is not None:
+                            all_values.append(value)
             
             if all_values:
                 vmin, vmax = min(all_values), max(all_values)
@@ -828,9 +874,9 @@ class InteractiveNetworkPlot:
                 # Color based on parameter
                 if parameter and vmin is not None:
                     try:
-                        res = getattr(self.net, res_table).loc[idx]
-                        if parameter in res.index:
-                            value = res[parameter]
+                        res_df = getattr(self.net, res_table)
+                        value = self._get_parameter_value(res_df, idx, parameter)
+                        if value is not None:
                             norm_value = (value - vmin) / (vmax - vmin) if (vmax - vmin) > 0 else 0
                             pump_color = px.colors.sample_colorscale(colorscale, [norm_value])[0]
                             hover_text += f"{self._get_parameter_label(parameter)}: {value:.2f}<br>"
@@ -1001,6 +1047,36 @@ class InteractiveNetworkPlot:
                 activecolor='#3498db'
             )
         )
+    
+    def _get_parameter_value(self, res_df, idx, parameter):
+        """Get parameter value, calculating if needed for dt_k or dp_bar.
+        
+        Parameters
+        ----------
+        res_df : DataFrame
+            Result DataFrame
+        idx : int
+            Component index
+        parameter : str
+            Parameter name
+            
+        Returns
+        -------
+        float or None
+            Parameter value
+        """
+        if parameter == 'dt_k':
+            # Calculate temperature difference
+            if 't_from_k' in res_df.columns and 't_to_k' in res_df.columns:
+                return res_df.loc[idx, 't_from_k'] - res_df.loc[idx, 't_to_k']
+        elif parameter == 'dp_bar':
+            # Calculate pressure difference
+            if 'p_from_bar' in res_df.columns and 'p_to_bar' in res_df.columns:
+                return res_df.loc[idx, 'p_from_bar'] - res_df.loc[idx, 'p_to_bar']
+        elif parameter in res_df.columns:
+            # Direct column access
+            return res_df.loc[idx, parameter]
+        return None
     
     def _calculate_zoom(self, lat_range: float, lon_range: float) -> int:
         """Calculate appropriate zoom level."""
