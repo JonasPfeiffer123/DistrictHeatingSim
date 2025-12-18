@@ -355,7 +355,6 @@ class WelcomeScreen(QWidget):
         # New Project button with description
         new_project_container = self.create_action_button(
             "🆕 Neues Projekt erstellen",
-            "Beginnen Sie eine neue Fernwärmeanalyse von Grund auf",
             "primaryButton",
             self.new_project_clicked
         )
@@ -364,7 +363,6 @@ class WelcomeScreen(QWidget):
         # Open Project button with description  
         open_project_container = self.create_action_button(
             "📂 Bestehendes Projekt öffnen",
-            "Arbeiten Sie an einem gespeicherten Projekt weiter",
             "secondaryButton", 
             self.open_project_clicked
         )
