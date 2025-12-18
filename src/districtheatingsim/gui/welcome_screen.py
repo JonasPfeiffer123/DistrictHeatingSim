@@ -370,8 +370,8 @@ class WelcomeScreen(QWidget):
         
         parent_layout.addLayout(actions_layout)
     
-    def create_action_button(self, title: str, description: str, style_class: str, callback):
-        """Create an action button with title and description."""
+    def create_action_button(self, title: str, style_class: str, callback):
+        """Create an action button with title."""
         container = QFrame()
         container.setFrameStyle(QFrame.Shape.Box)
         container.setObjectName("actionButtonContainer")
@@ -386,12 +386,6 @@ class WelcomeScreen(QWidget):
         button.setObjectName(style_class)
         button.clicked.connect(callback)
         layout.addWidget(button)
-        
-        # Description
-        desc_label = QLabel(description)
-        desc_label.setWordWrap(True)
-        desc_label.setObjectName("actionDescription")
-        layout.addWidget(desc_label)
         
         container.setLayout(layout)
         return container
