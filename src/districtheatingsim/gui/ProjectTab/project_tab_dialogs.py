@@ -10,7 +10,10 @@ Date: 2024-09-20
 
 from PyQt6.QtWidgets import (QVBoxLayout, QLabel, QDialog, QLineEdit, QDialogButtonBox, 
                              QGridLayout, QFrame, QScrollArea, QPushButton, QProgressBar, 
-                             QTableWidget, QTableWidgetItem, QHBoxLayout)
+                             QTableWidget, QTableWidgetItem, QHBoxLayout, QCheckBox)
+from PyQt6.QtCore import Qt
+from geopy.geocoders import Nominatim
+from pyproj import Transformer
 
 class RowInputDialog(QDialog):
     """
@@ -62,7 +65,7 @@ class OSMImportDialog(QDialog):
     """
     Dialog for OSM data import with default building parameters.
     """
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, sample_utm_coords=None):
         """
         Initialize OSM import dialog.
 
@@ -70,11 +73,14 @@ class OSMImportDialog(QDialog):
         ----------
         parent : QWidget, optional
             Parent widget.
+        sample_utm_coords : tuple, optional
+            Sample (UTM_X, UTM_Y) coordinates for reverse geocoding.
         """
         super().__init__(parent)
         self.setWindowTitle("OSM-Daten importieren")
         self.layout = QGridLayout(self)
         self.fields = {}
+        self.sample_utm_coords = sample_utm_coords
 
         # Define the default values for the fields
         self.default_values = {
@@ -93,20 +99,93 @@ class OSMImportDialog(QDialog):
             "Normaußentemperatur": "-15"
         }
 
+        # Add checkbox for auto-fill
+        if sample_utm_coords:
+            self.auto_fill_checkbox = QCheckBox("Adressdaten automatisch aus Koordinaten ermitteln")
+            self.auto_fill_checkbox.setChecked(True)
+            self.auto_fill_checkbox.stateChanged.connect(self._on_auto_fill_changed)
+            self.layout.addWidget(self.auto_fill_checkbox, 0, 0, 1, 2)
+            row_offset = 1
+        else:
+            row_offset = 0
+
         # Create input fields with labels and default values
         for i, (header, value) in enumerate(self.default_values.items()):
             label = QLabel(header)
             lineEdit = QLineEdit(value)
             lineEdit.setPlaceholderText(f"Geben Sie {header} ein")
-            self.layout.addWidget(label, i, 0)
-            self.layout.addWidget(lineEdit, i, 1)
+            self.layout.addWidget(label, i + row_offset, 0)
+            self.layout.addWidget(lineEdit, i + row_offset, 1)
             self.fields[header] = lineEdit
+
+        # Auto-fill address fields if coordinates provided
+        if sample_utm_coords and self.auto_fill_checkbox.isChecked():
+            self._reverse_geocode_and_fill()
 
         # Dialog buttons
         buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
-        self.layout.addWidget(buttonBox, len(self.default_values), 0, 1, 2)
+        self.layout.addWidget(buttonBox, len(self.default_values) + row_offset, 0, 1, 2)
+
+    def _on_auto_fill_changed(self, state):
+        """Handle auto-fill checkbox state change."""
+        if state == Qt.CheckState.Checked.value and self.sample_utm_coords:
+            self._reverse_geocode_and_fill()
+        elif state == Qt.CheckState.Unchecked.value:
+            # Clear address fields
+            self.fields["Land"].setText("Deutschland")
+            self.fields["Bundesland"].setText("")
+            self.fields["Stadt"].setText("")
+            self.fields["Adresse"].setText("")
+
+    def _reverse_geocode_and_fill(self):
+        """Reverse geocode UTM coordinates and fill address fields."""
+        if not self.sample_utm_coords:
+            return
+
+        try:
+            utm_x, utm_y = self.sample_utm_coords
+            
+            # Transform UTM to WGS84
+            transformer = Transformer.from_crs("epsg:25833", "epsg:4326", always_xy=True)
+            lon, lat = transformer.transform(utm_x, utm_y)
+            
+            # Reverse geocode
+            geolocator = Nominatim(user_agent="DistrictHeatingSim")
+            location = geolocator.reverse(f"{lat}, {lon}", language="de")
+            
+            if location and location.raw.get('address'):
+                address = location.raw['address']
+                
+                # Fill fields from geocoding result
+                if 'country' in address:
+                    self.fields["Land"].setText(address['country'])
+                
+                if 'state' in address:
+                    self.fields["Bundesland"].setText(address['state'])
+                
+                # Try different keys for city
+                city = address.get('city') or address.get('town') or address.get('village') or address.get('municipality') or ""
+                if city:
+                    self.fields["Stadt"].setText(city)
+                
+                # Build street address
+                street_parts = []
+                if 'road' in address:
+                    street_parts.append(address['road'])
+                if 'house_number' in address:
+                    street_parts.append(address['house_number'])
+                
+                if street_parts:
+                    self.fields["Adresse"].setText(" ".join(street_parts))
+                
+                print(f"Reverse geocoding erfolgreich: {location.address}")
+            else:
+                print("Keine Adressinformationen gefunden")
+                
+        except Exception as e:
+            print(f"Fehler beim Reverse Geocoding: {e}")
 
     def get_input_data(self):
         """

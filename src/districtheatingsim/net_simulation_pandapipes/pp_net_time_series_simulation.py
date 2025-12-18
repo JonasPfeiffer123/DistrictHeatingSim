@@ -802,7 +802,7 @@ def save_results_csv(time_steps: np.ndarray, total_heat_KW: np.ndarray, strom_wp
             df[f"Rücklaufdruck_{pump_type}_{idx+1}_bar"] = pump_data['return_pressure']
 
     # Save DataFrame as CSV with German formatting
-    df.to_csv(filename, sep=';', date_format='%Y-%m-%d %H:%M:%S', index=False)
+    df.to_csv(filename, sep=';', date_format='%Y-%m-%d %H:%M:%S', index=False, encoding='utf-8-sig')
 
 def import_results_csv(filename: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray, Dict]:
     """

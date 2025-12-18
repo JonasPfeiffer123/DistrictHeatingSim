@@ -668,7 +668,7 @@ def calculate_building(TRY_data: str, building_data: str, output_filename: str) 
 
     # Save comprehensive results to CSV file
     try:
-        df.to_csv(output_filename, index=False, sep=';')
+        df.to_csv(output_filename, index=False, sep=';', encoding='utf-8-sig')
         print(f"\nResults successfully saved to: {output_filename}")
         
         # Calculate and display summary statistics

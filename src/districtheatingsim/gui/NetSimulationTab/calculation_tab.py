@@ -965,7 +965,7 @@ class CalculationTab(QWidget):
                 strom_df = pd.DataFrame(strom_data, index=self.NetworkGenerationData.yearly_time_steps, columns=[f'strombedarf_hast_ges_W_{i+1}' for i in range(self.NetworkGenerationData.strombedarf_hast_ges_W.shape[0])])
 
                 combined_df = pd.concat([waerme_df, strom_df], axis=1)
-                combined_df.to_csv(csv_file_path, sep=';', date_format='%Y-%m-%dT%H:%M:%S')
+                combined_df.to_csv(csv_file_path, sep=';', date_format='%Y-%m-%dT%H:%M:%S', encoding='utf-8-sig')
 
                 # Metadaten/Parameter speichern
                 meta_dict = self.NetworkGenerationData.to_dict()

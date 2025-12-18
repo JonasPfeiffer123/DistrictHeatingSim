@@ -19,7 +19,10 @@ from PyQt6.QtWidgets import (QMainWindow, QFileDialog, QTableWidgetItem, QWidget
 from PyQt6.QtGui import QAction, QFileSystemModel
 from PyQt6.QtCore import Qt, QTimer
 
-from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread
+from geopy.geocoders import Nominatim
+from pyproj import Transformer
+
+from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, GeoJSONToCSVThread
 from districtheatingsim.gui.ProjectTab.project_tab_dialogs import RowInputDialog, OSMImportDialog, ProcessDetailsDialog
 
 class ProjectModel:
@@ -86,7 +89,7 @@ class ProjectModel:
         data : list of lists
             Table data.
         """
-        with open(file_path, 'w', newline='', encoding='utf-8') as file:
+        with open(file_path, 'w', newline='', encoding='utf-8-sig') as file:
             writer = csv.writer(file, delimiter=';')
             writer.writerow(headers)
             writer.writerows(data)
@@ -104,7 +107,7 @@ class ProjectModel:
         default_data : list
             Default row data.
         """
-        with open(file_path, 'w', newline='', encoding='utf-8') as file:
+        with open(file_path, 'w', newline='', encoding='utf-8-sig') as file:
             writer = csv.writer(file, delimiter=';')
             writer.writerow(headers)
             writer.writerow(default_data)
@@ -130,18 +133,61 @@ class ProjectModel:
         try:
             with open(geojson_file_path, 'r') as geojson_file:
                 data = json.load(geojson_file)
-            with open(output_file_path, 'w', encoding='utf-8', newline='') as csvfile:
+            
+            # Initialize geocoder and transformer once
+            geolocator = Nominatim(user_agent="DistrictHeatingSim")
+            transformer = Transformer.from_crs("epsg:25833", "epsg:4326", always_xy=True)
+            
+            with open(output_file_path, 'w', encoding='utf-8-sig', newline='') as csvfile:
                 fieldnames = ["Land", "Bundesland", "Stadt", "Adresse", "Wärmebedarf", "Gebäudetyp", "Subtyp", "WW_Anteil", "Typ_Heizflächen", 
                               "VLT_max", "Steigung_Heizkurve", "RLT_max", "Normaußentemperatur", "UTM_X", "UTM_Y"]
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter=";")
                 writer.writeheader()
-                for feature in data['features']:
+                
+                for i, feature in enumerate(data['features']):
                     centroid = self.calculate_centroid(feature['geometry']['coordinates'])
+                    
+                    # Reverse geocode each building individually
+                    land = default_values.get("Land", "Deutschland")
+                    bundesland = default_values.get("Bundesland", "")
+                    stadt = default_values.get("Stadt", "")
+                    adresse = default_values.get("Adresse", "")
+                    
+                    if centroid[0] is not None and centroid[1] is not None:
+                        try:
+                            # Transform UTM to WGS84
+                            lon, lat = transformer.transform(centroid[0], centroid[1])
+                            
+                            # Reverse geocode with timeout
+                            location = geolocator.reverse(f"{lat}, {lon}", language="de", timeout=10)
+                            
+                            if location and location.raw.get('address'):
+                                address_data = location.raw['address']
+                                
+                                # Extract address components
+                                land = address_data.get('country', land)
+                                bundesland = address_data.get('state', bundesland)
+                                stadt = address_data.get('city') or address_data.get('town') or address_data.get('village') or address_data.get('municipality') or stadt
+                                
+                                # Build street address
+                                street_parts = []
+                                if 'road' in address_data:
+                                    street_parts.append(address_data['road'])
+                                if 'house_number' in address_data:
+                                    street_parts.append(address_data['house_number'])
+                                
+                                if street_parts:
+                                    adresse = " ".join(street_parts)
+                                
+                                print(f"Gebäude {i+1}: {adresse}, {stadt}")
+                        except Exception as e:
+                            print(f"Reverse Geocoding für Gebäude {i+1} fehlgeschlagen: {e}")
+                    
                     writer.writerow({
-                        "Land": default_values["Land"],
-                        "Bundesland": default_values["Bundesland"],
-                        "Stadt": default_values["Stadt"],
-                        "Adresse": default_values["Adresse"],
+                        "Land": land,
+                        "Bundesland": bundesland,
+                        "Stadt": stadt,
+                        "Adresse": adresse,
                         "Wärmebedarf": default_values["Wärmebedarf"],
                         "Gebäudetyp": default_values["Gebäudetyp"],
                         "Subtyp": default_values["Subtyp"],
@@ -365,8 +411,8 @@ class ProjectPresenter:
         for row_data in data:
             row = self.view.csvTable.rowCount()
             self.view.csvTable.insertRow(row)
-            for column, data in enumerate(row_data):
-                item = QTableWidgetItem(data)
+            for column, cell_value in enumerate(row_data):
+                item = QTableWidgetItem(cell_value)
                 self.view.csvTable.setItem(row, column, item)
 
     def save_csv(self, show_dialog=True):
@@ -422,16 +468,91 @@ class ProjectPresenter:
         standard_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("OSM_buldings_path"))
         geojson_file_path, _ = QFileDialog.getOpenFileName(self.view, "geoJSON auswählen", standard_path, "All Files (*)")
         if geojson_file_path and geojson_file_path.strip():  # Check for valid file path
-            dialog = OSMImportDialog(self.view)
+            # Extract sample coordinates from first building for reverse geocoding
+            sample_coords = None
+            try:
+                with open(geojson_file_path, 'r') as f:
+                    data = json.load(f)
+                    if data.get('features') and len(data['features']) > 0:
+                        first_feature = data['features'][0]
+                        centroid = self.model.calculate_centroid(first_feature['geometry']['coordinates'])
+                        if centroid[0] is not None and centroid[1] is not None:
+                            sample_coords = centroid
+            except Exception as e:
+                print(f"Konnte keine Beispielkoordinaten extrahieren: {e}")
+            
+            dialog = OSMImportDialog(self.view, sample_utm_coords=sample_coords)
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 default_values = dialog.get_input_data()
-                try:
-                    standard_output_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("OSM_building_data_path"))
-                    output_file_path = standard_output_path
-                    self.model.create_csv_from_geojson(geojson_file_path, output_file_path, default_values)
-                    self.load_csv(output_file_path)
-                except Exception as e:
-                    self.view.show_error_message("Fehler", str(e))
+                standard_output_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("OSM_building_data_path"))
+                output_file_path = standard_output_path
+                
+                # Start conversion in thread
+                if hasattr(self, 'geojson_conversion_thread') and self.geojson_conversion_thread.isRunning():
+                    self.geojson_conversion_thread.stop()
+                    self.geojson_conversion_thread.wait()
+                
+                self.geojson_conversion_thread = GeoJSONToCSVThread(
+                    geojson_file_path, 
+                    output_file_path, 
+                    default_values,
+                    self.model
+                )
+                self.geojson_conversion_thread.progress_update.connect(self.on_geojson_conversion_progress)
+                self.geojson_conversion_thread.calculation_done.connect(self.on_geojson_conversion_done)
+                self.geojson_conversion_thread.calculation_error.connect(self.on_geojson_conversion_error)
+                self.geojson_conversion_thread.start()
+                
+                # Show progress bar
+                self.view.progressBar.setRange(0, 0)  # Indeterminate until we know total
+                self.view.statusLabel.setText("Konvertiere GeoJSON zu CSV mit Reverse Geocoding...")
+
+    def on_geojson_conversion_progress(self, current, total, message):
+        """
+        Handle progress updates from GeoJSON conversion thread.
+        
+        Parameters
+        ----------
+        current : int
+            Current building number.
+        total : int
+            Total number of buildings.
+        message : str
+            Progress message.
+        """
+        if total > 0:
+            self.view.progressBar.setRange(0, total)
+            self.view.progressBar.setValue(current)
+        self.view.statusLabel.setText(message)
+    
+    def on_geojson_conversion_done(self, output_file_path):
+        """
+        Handle completion of GeoJSON conversion.
+        
+        Parameters
+        ----------
+        output_file_path : str
+            Path to created CSV file.
+        """
+        self.view.progressBar.setRange(0, 1)
+        self.view.progressBar.setValue(1)
+        self.view.statusLabel.setText("Konvertierung abgeschlossen")
+        self.load_csv(output_file_path)
+        self.view.show_message("Erfolg", f"CSV-Datei wurde erfolgreich erstellt:\n{output_file_path}")
+    
+    def on_geojson_conversion_error(self, error_message):
+        """
+        Handle error during GeoJSON conversion.
+        
+        Parameters
+        ----------
+        error_message : str
+            Error message.
+        """
+        self.view.progressBar.setRange(0, 1)
+        self.view.progressBar.setValue(0)
+        self.view.statusLabel.setText("Fehler bei der Konvertierung")
+        self.view.show_error_message("Fehler", error_message)
 
     def geocode_current_csv(self):
         """Geocode the currently loaded CSV file."""
@@ -717,6 +838,11 @@ class ProjectTabView(QWidget):
         
         self.rightLayout.addWidget(self.csvTable)
 
+        # Status label for operations
+        self.statusLabel = QLabel("")
+        self.statusLabel.setStyleSheet("padding: 5px; color: #666666;")
+        self.rightLayout.addWidget(self.statusLabel)
+
         self.progressBar = QProgressBar(self)
         self.rightLayout.addWidget(self.progressBar)
         rightWidget = QWidget()
@@ -758,26 +884,17 @@ class ProjectTabView(QWidget):
             Menu position.
         """
         contextMenu = QMenu(self)
-        addRowAction = QAction("Zeile hinzufügen", self)
-        deleteRowAction = QAction("Zeile löschen", self)
-        duplicateRowAction = QAction("Zeile duplizieren", self)
-        addColumnAction = QAction("Spalte hinzufügen", self)
-        deleteColumnAction = QAction("Spalte löschen", self)
-        duplicatColumnAction = QAction("Spalte duplizieren", self)
+        addRowAction = QAction("Gebäude hinzufügen", self)
+        deleteRowAction = QAction("Gebäude löschen", self)
+        duplicateRowAction = QAction("Gebäude duplizieren", self)
 
         contextMenu.addAction(addRowAction)
         contextMenu.addAction(deleteRowAction)
         contextMenu.addAction(duplicateRowAction)
-        contextMenu.addAction(addColumnAction)
-        contextMenu.addAction(deleteColumnAction)
-        contextMenu.addAction(duplicatColumnAction)
         
         addRowAction.triggered.connect(self.add_row)
         deleteRowAction.triggered.connect(self.delete_row)
         duplicateRowAction.triggered.connect(self.duplicate_row)
-        addColumnAction.triggered.connect(self.add_column)
-        deleteColumnAction.triggered.connect(self.delete_column)
-        duplicatColumnAction.triggered.connect(self.duplicate_column)
 
         contextMenu.exec(self.csvTable.viewport().mapToGlobal(position))
 
@@ -798,7 +915,7 @@ class ProjectTabView(QWidget):
         if currentRow > -1:
             self.csvTable.removeRow(currentRow)
         else:
-            self.show_error_message("Warnung", "Bitte wählen Sie eine Zeile zum Löschen aus.")
+            self.show_error_message("Warnung", "Bitte wählen Sie ein Gebäude zum Löschen aus.")
 
     def duplicate_row(self):
         """Duplicate selected table row."""
@@ -811,40 +928,7 @@ class ProjectTabView(QWidget):
                 newItem = QTableWidgetItem(item.text() if item else '')
                 self.csvTable.setItem(row, column, newItem)
         else:
-            self.show_error_message("Warnung", "Bitte wählen Sie eine Zeile zum Duplizieren aus.")
-
-    def add_column(self):
-        """Add new table column."""
-        column_count = self.csvTable.columnCount()
-        column_name, ok = QInputDialog.getText(self, "Spalte hinzufügen", "Name der neuen Spalte:")
-        if ok and column_name:
-            self.csvTable.insertColumn(column_count)
-            self.csvTable.setHorizontalHeaderItem(column_count, QTableWidgetItem(column_name))
-
-    def delete_column(self):
-        """Delete selected table column."""
-        currentColumn = self.csvTable.currentColumn()
-        if currentColumn > -1:
-            self.csvTable.removeColumn(currentColumn)
-        else:
-            self.show_error_message("Warnung", "Bitte wählen Sie eine Spalte zum Löschen aus.")
-    
-    def duplicate_column(self):
-        """Duplicate selected table column."""
-        currentColumn = self.csvTable.currentColumn()
-        if currentColumn > -1:
-            column_count = self.csvTable.columnCount()
-            new_column_index = column_count
-            self.csvTable.insertColumn(new_column_index)
-            header_item = self.csvTable.horizontalHeaderItem(currentColumn)
-            new_header_item = QTableWidgetItem(header_item.text() if header_item else '')
-            self.csvTable.setHorizontalHeaderItem(new_column_index, new_header_item)
-            for row in range(self.csvTable.rowCount()):
-                item = self.csvTable.item(row, currentColumn)
-                new_item = QTableWidgetItem(item.text() if item else '')
-                self.csvTable.setItem(row, new_column_index, new_item)
-        else:
-            self.show_error_message("Warnung", "Bitte wählen Sie eine Spalte zum Duplizieren aus.")
+            self.show_error_message("Warnung", "Bitte wählen Sie ein Gebäude zum Duplizieren aus.")
 
     def get_selected_file_path(self, index):
         """

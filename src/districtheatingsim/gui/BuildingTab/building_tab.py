@@ -137,7 +137,7 @@ class BuildingModel:
         """
         if self.data is not None:
             try:
-                self.data.to_csv(self.get_csv_path(), index=False, sep=';')
+                self.data.to_csv(self.get_csv_path(), index=False, sep=';', encoding='utf-8-sig')
             except Exception as e:
                 raise Exception(f"Fehler beim Speichern der CSV-Datei: {e}")
 
