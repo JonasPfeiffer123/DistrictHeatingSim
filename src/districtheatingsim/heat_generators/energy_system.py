@@ -1471,7 +1471,7 @@ class EnergySystem:
         df['el_Leistung_ges_L'] = self.results['el_Leistung_ges_L']
         
         # Save the DataFrame as a CSV file
-        df.to_csv(file_path, index=False, sep=";")
+        df.to_csv(file_path, index=False, sep=";", encoding='utf-8-sig')
 
     def save_to_json(self, file_path: str) -> None:
         """

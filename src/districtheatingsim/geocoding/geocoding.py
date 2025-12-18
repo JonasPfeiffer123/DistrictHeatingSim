@@ -73,7 +73,7 @@ def process_data(input_csv):
 
     try:
         with open(input_csv, mode='r', encoding='utf-8') as infile, \
-            open(temp_path, mode='w', newline='', encoding='utf-8') as outfile:
+            open(temp_path, mode='w', newline='', encoding='utf-8-sig') as outfile:
             reader = csv.reader(infile, delimiter=';')
             writer = csv.writer(outfile, delimiter=';')
 
