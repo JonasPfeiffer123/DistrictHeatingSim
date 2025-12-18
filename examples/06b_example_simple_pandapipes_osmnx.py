@@ -22,9 +22,9 @@ import geopandas as gpd
 import pandapipes as pp
 import pandapipes.plotting as pp_plot
 
-from districtheatingsim.net_simulation_pandapipes.config_plot import config_plot
 from districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson import *
 from districtheatingsim.net_simulation_pandapipes.utilities import *
+from districtheatingsim.net_simulation_pandapipes.interactive_network_plot import InteractiveNetworkPlot
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -41,7 +41,7 @@ def initialize_net_from_osmnx_geojson(
     qext_w: np.ndarray = None,
     return_temperature: np.ndarray = None,
     min_supply_temperature: np.ndarray = None,
-    pipetype: str = "110/202 PLUS",
+    pipetype: str = "KMR 100/250-2v",
     v_max_m_s: float = 1.5,
     k_mm: float = 0.1
 ):
@@ -139,7 +139,7 @@ def initialize_net_from_osmnx_geojson(
     pipe_dict = {
         "pipetype": pipetype,
         "v_max_pipe": v_max_m_s,
-        "material_filter": "PEXa",
+        "material_filter": "KMR",
         "pipe_creation_mode": "type",
         "k_mm": k_mm
     }
@@ -166,7 +166,7 @@ def initialize_net_from_osmnx_geojson(
     net = optimize_diameter_types(
         net,
         v_max=v_max_m_s,
-        material_filter="PEXa",
+        material_filter="KMR",
         k=k_mm
     )
 
@@ -229,8 +229,8 @@ if __name__ == "__main__":
             hast_file=hast_file,
             generator_file=generator_file,
             supply_temperature=90.0,
-            flow_pressure_pump=8.0,
-            lift_pressure_pump=4.0,
+            flow_pressure_pump=4.0,
+            lift_pressure_pump=2.0,
             qext_w=qext_w,
             return_temperature=return_temps,
             min_supply_temperature=60.0,
@@ -242,25 +242,16 @@ if __name__ == "__main__":
         # Print results
         print_results(net)
         
-        # Create visualization
-        fig, ax = plt.subplots(figsize=(12, 10))
-        config_plot(
-            net, 
-            ax, 
-            show_junctions=True, 
-            show_pipes=True, 
-            show_heat_consumers=True, 
-            show_pump=True, 
-            show_plot=False
+        # Create interactive visualization
+        print("\nGenerating interactive network visualization...")
+        plot = InteractiveNetworkPlot(net, crs="EPSG:25833")
+        fig = plot.create_interactive_plot_with_controls(
+            basemap_style='carto-positron',
+            colorscale='Viridis'
         )
         
-        ax.set_title("District Heating Network (OSMnx-based)")
-        ax.set_xlabel("UTM East (m)")
-        ax.set_ylabel("UTM North (m)")
-        ax.grid(True, alpha=0.3)
-        
-        plt.tight_layout()
-        plt.show()
+        # Show plot in browser
+        fig.show()
         
         print("\n" + "="*70)
         print("✓ SUCCESS: Network simulation completed")

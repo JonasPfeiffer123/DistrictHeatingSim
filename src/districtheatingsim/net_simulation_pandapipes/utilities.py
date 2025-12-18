@@ -39,6 +39,102 @@ from typing import Optional, List, Tuple, Dict, Any, Union
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
 
+def validate_minimum_pressure_difference(net, target_dp_min_bar: float = 1.0, 
+                                        verbose: bool = True) -> Tuple[bool, List[Dict[str, Any]]]:
+    """
+    Validate that all heat consumers meet minimum pressure difference requirements.
+    
+    This function checks the design without modifying pump parameters. It's intended
+    for use after pipe diameter optimization to ensure the design meets requirements.
+    Unlike the BadPointPressureLiftController, this does NOT adjust the network,
+    it only reports violations.
+    
+    Parameters
+    ----------
+    net : pandapipes.pandapipesNet
+        The network to validate (must have current pipeflow results)
+    target_dp_min_bar : float
+        Minimum required pressure difference [bar]
+    verbose : bool
+        If True, print detailed warnings for violations
+        
+    Returns
+    -------
+    Tuple[bool, List[Dict[str, Any]]]
+        - all_ok (bool): True if all consumers meet requirements
+        - violations (list): List of violation dictionaries with details
+        
+    Examples
+    --------
+    >>> # After diameter optimization
+    >>> pp.pipeflow(net, mode="bidirectional")
+    >>> all_ok, violations = validate_minimum_pressure_difference(net, target_dp_min_bar=1.0)
+    >>> if not all_ok:
+    ...     print(f"Design has {len(violations)} pressure violations")
+    ...     # Adjust pump parameters or pipe diameters
+    """
+    violations = []
+    
+    if verbose:
+        print(f"\n{'='*80}")
+        print(f"VALIDATING MINIMUM PRESSURE DIFFERENCE")
+        print(f"Target: dp_min >= {target_dp_min_bar} bar")
+        print(f"{'='*80}\n")
+    
+    # Check each active heat consumer
+    for idx in net.heat_consumer.index:
+        qext = net.heat_consumer.at[idx, 'qext_w']
+        
+        # Only check active consumers
+        if qext == 0:
+            continue
+            
+        p_from = net.res_heat_consumer.at[idx, 'p_from_bar']
+        p_to = net.res_heat_consumer.at[idx, 'p_to_bar']
+        dp = p_from - p_to
+        
+        consumer_name = net.heat_consumer.at[idx, 'name'] if 'name' in net.heat_consumer.columns else f"Consumer {idx}"
+        
+        if dp < target_dp_min_bar:
+            violation = {
+                'index': idx,
+                'name': consumer_name,
+                'dp_bar': dp,
+                'deficit_bar': target_dp_min_bar - dp,
+                'p_from_bar': p_from,
+                'p_to_bar': p_to,
+                'qext_w': qext
+            }
+            violations.append(violation)
+            
+            if verbose:
+                print(f"⚠ WARNING: {consumer_name}")
+                print(f"  Pressure difference: {dp:.3f} bar < {target_dp_min_bar} bar")
+                print(f"  Deficit: {target_dp_min_bar - dp:.3f} bar")
+                print(f"  p_from: {p_from:.3f} bar, p_to: {p_to:.3f} bar")
+                print(f"  Heat demand: {qext/1000:.1f} kW\n")
+        else:
+            if verbose:
+                print(f"✓ OK: {consumer_name} - dp={dp:.3f} bar >= {target_dp_min_bar} bar")
+    
+    all_ok = len(violations) == 0
+    
+    if verbose:
+        print(f"\n{'='*80}")
+        if all_ok:
+            print(f"✓ VALIDATION PASSED - All consumers meet minimum pressure requirements")
+        else:
+            print(f"✗ VALIDATION FAILED - {len(violations)} consumers below minimum pressure")
+            print(f"\nRecommendations:")
+            print(f"  1. Increase pump pressure (p_flow_bar or plift_bar)")
+            print(f"  2. Use larger pipe diameters")
+            print(f"  3. Reduce pipe lengths if possible")
+            print(f"  4. Check for flow restrictions")
+        print(f"{'='*80}\n")
+    
+    return all_ok, violations
+
+
 def COP_WP(VLT_L: Union[float, np.ndarray], QT: Union[float, np.ndarray], 
           values: Optional[np.ndarray] = None) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -201,7 +297,13 @@ def create_controllers(net, qext_w: np.ndarray, supply_temperature_heat_generato
         - Heat consumers: Constant heat demand with fixed return temperature
         - Main producer: Pressure-controlled with temperature setpoint
         - Secondary producers: Mass flow-controlled with coordinated temperature
-        - System pressure: Automatic bad point pressure lift control
+        - System pressure: Automatic bad point pressure lift control (if enabled)
+        
+    Design Phase vs Operation:
+        - Design Phase: enable_pressure_controller=False
+          → Controllers created but inactive for stable diameter optimization
+        - Operation Phase: enable_pressure_controller=True
+          → Full dynamic control including pressure regulation
 
     Data Source Integration:
         - Uses pandapower DFData for time series compatibility
@@ -210,11 +312,11 @@ def create_controllers(net, qext_w: np.ndarray, supply_temperature_heat_generato
 
     Examples
     --------
-    >>> # Basic network with heat consumers only
+    >>> # Design phase: Controllers inactive for diameter optimization
     >>> net_with_controls = create_controllers(
     ...     net=network,
-    ...     qext_w=np.array([50000, 75000, 30000]),  # Heat demands in W
-    ...     supply_temperature_heat_generator=80.0,   # Supply temp in °C
+    ...     qext_w=np.array([50000, 75000, 30000]),
+    ...     supply_temperature_heat_generator=80.0,
     ...     min_supply_temperature_heat_consumer=None,
     ...     return_temperature_heat_consumer=np.array([45, 50, 40])  # Return temps
     ... )
@@ -239,6 +341,7 @@ def create_controllers(net, qext_w: np.ndarray, supply_temperature_heat_generato
     MinimumSupplyTemperatureController : Custom temperature control implementation
     BadPointPressureLiftController : Pressure management controller
     ConstControl : pandapower constant value controller
+    validate_minimum_pressure_difference : Design validation without control
     """
     # Create controllers for each heat consumer
     for i in range(len(net.heat_consumer)):
@@ -462,6 +565,7 @@ def optimize_diameter_parameters(net, element: str = "pipe", v_max: float = 2.0,
     effective_v_max = v_max / safety_factor
     
     # Initial flow calculation
+    pp.pipeflow(net, mode="bidirectional", iter=100)
     run_control(net, mode="bidirectional", iter=100)
     element_df = getattr(net, element)
     res_df = getattr(net, f"res_{element}")
@@ -488,6 +592,7 @@ def optimize_diameter_parameters(net, element: str = "pipe", v_max: float = 2.0,
                 element_df.at[idx, 'diameter_m'] -= dx
                 
                 # Validate reduction doesn't violate constraints
+                pp.pipeflow(net, mode="bidirectional", iter=100)
                 run_control(net, mode="bidirectional", iter=100)
                 element_df = getattr(net, element)
                 res_df = getattr(net, f"res_{element}")
@@ -502,6 +607,7 @@ def optimize_diameter_parameters(net, element: str = "pipe", v_max: float = 2.0,
         
         # Recalculate only if changes were made
         if change_made:
+            pp.pipeflow(net, mode="bidirectional", iter=100)
             run_control(net, mode="bidirectional", iter=100)
             element_df = getattr(net, element)
             res_df = getattr(net, f"res_{element}")
@@ -580,8 +686,13 @@ def init_diameter_types(net, v_max_pipe: float = 1.0, material_filter: str = "KM
     start_time = time.time()
     
     # Initial hydraulic calculation
+    print(f"\n{'='*80}")
+    print(f"INIT_DIAMETER_TYPES: Initial calculation (pipeflow + control)")
+    print(f"{'='*80}")
+    # Step 1: Calculate velocities with current diameters
+    pp.pipeflow(net, mode="bidirectional", iter=100)
+    # Step 2: Let controller adjust pump parameters for proper pressures
     run_control(net, mode="bidirectional", iter=100)
-    logging.info(f"Initial pipeflow calculation took {time.time() - start_time:.2f} seconds")
 
     # Load and filter standard pipe types
     pipe_std_types = pp.std_types.available_std_types(net, "pipe")
@@ -591,8 +702,15 @@ def init_diameter_types(net, v_max_pipe: float = 1.0, material_filter: str = "KM
         raise ValueError(f"No standard pipe types found for material filter: {material_filter}")
 
     # Initialize pipe diameters based on velocity requirements
+    print(f"\n{'='*80}")
+    print(f"INIT_DIAMETER_TYPES: Initializing {len(net.pipe)} pipes")
+    print(f"v_max_pipe = {v_max_pipe} m/s, material = {material_filter}")
+    print(f"Available types: {filtered_by_material.index.tolist()}")
+    print(f"{'='*80}\n")
+    
     for pipe_idx, velocity in enumerate(net.res_pipe.v_mean_m_per_s):
         current_diameter = net.pipe.at[pipe_idx, 'diameter_m']
+        pipe_name = net.pipe.at[pipe_idx, 'name'] if 'name' in net.pipe.columns else f"Pipe {pipe_idx}"
         
         # Calculate required diameter using continuity equation
         required_diameter = current_diameter * (velocity / v_max_pipe)**0.5
@@ -605,13 +723,26 @@ def init_diameter_types(net, v_max_pipe: float = 1.0, material_filter: str = "KM
         
         # Update pipe properties
         properties = filtered_by_material.loc[closest_type]
+        selected_diameter = properties['inner_diameter_mm'] / 1000
+        
         net.pipe.std_type.at[pipe_idx] = closest_type
-        net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
+        net.pipe.at[pipe_idx, 'diameter_m'] = selected_diameter
         net.pipe.at[pipe_idx, 'u_w_per_m2k'] = properties['u_w_per_m2k']
         net.pipe.at[pipe_idx, 'k_mm'] = k
 
     # Final hydraulic calculation with updated pipe properties
+    print(f"\n{'='*80}")
+    print(f"INIT_DIAMETER_TYPES: Final calculation with new diameters")
+    print(f"{'='*80}")
+    # Step 1: Calculate velocities with new diameters
+    pp.pipeflow(net, mode="bidirectional", iter=100)
+    
+    # Step 2: Adjust pump parameters to meet pressure requirements
     run_control(net, mode="bidirectional", iter=100)
+    if hasattr(net, 'circ_pump_pressure') and len(net.circ_pump_pressure) > 0:
+        print(f"Final pump pressure: {net.circ_pump_pressure.at[0, 'p_flow_bar']:.2f} bar")
+        print(f"Final pump lift: {net.circ_pump_pressure.at[0, 'plift_bar']:.2f} bar")
+    print(f"{'='*80}\n")
     
     total_time = time.time() - start_time
     logging.info(f"Pipe diameter initialization completed in {total_time:.2f} seconds")
@@ -703,10 +834,6 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "KMR
     """
     start_time = time.time()
 
-    # Initial system state calculation
-    run_control(net, mode="bidirectional", iter=100)
-    logging.info(f"Initial pipeflow calculation took {time.time() - start_time:.2f} seconds")
-
     # Load and filter standard pipe types
     pipe_std_types = pp.std_types.available_std_types(net, "pipe")
     filtered_by_material = pipe_std_types[pipe_std_types['material'] == material_filter]
@@ -717,27 +844,16 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "KMR
     # Create type position mapping for optimization
     type_position_dict = {type_name: i for i, type_name in enumerate(filtered_by_material.index)}
 
-    # Initial diameter adjustment based on velocity requirements
-    for pipe_idx, velocity in enumerate(net.res_pipe.v_mean_m_per_s):
-        current_diameter = net.pipe.at[pipe_idx, 'diameter_m']
-        required_diameter = current_diameter * (velocity / v_max)**0.5
-        
-        # Select closest standard type
-        closest_type = min(
-            filtered_by_material.index, 
-            key=lambda x: abs(filtered_by_material.loc[x, 'inner_diameter_mm'] / 1000 - required_diameter)
-        )
-        
-        # Update pipe properties
-        properties = filtered_by_material.loc[closest_type]
-        net.pipe.std_type.at[pipe_idx] = closest_type
-        net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
-        net.pipe.at[pipe_idx, 'u_w_per_m2k'] = properties['u_w_per_m2k']
-        net.pipe.at[pipe_idx, 'k_mm'] = k
-
-    # Recalculate with initial sizing
+    # Initial system state calculation
+    print(f"\n{'='*80}")
+    print(f"OPTIMIZE_DIAMETER_TYPES: Starting optimization")
+    print(f"v_max = {v_max} m/s, material = {material_filter}")
+    print(f"Available types: {filtered_by_material.index.tolist()}")
+    print(f"{'='*80}")
+    
+    # Calculate current state (assumes init_diameter_types was called before)
+    pp.pipeflow(net, mode="bidirectional", iter=100)
     run_control(net, mode="bidirectional", iter=100)
-    logging.info(f"Post-initial sizing calculation took {time.time() - start_time:.2f} seconds")
 
     # Initialize optimization tracking
     net.pipe['optimized'] = False
@@ -745,11 +861,17 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "KMR
     iteration_count = 0
 
     # Iterative optimization loop
+    print(f"\n{'='*80}")
+    print(f"OPTIMIZE_DIAMETER_TYPES: Starting iterative optimization")
+    print(f"{'='*80}\n")
+    
     while change_made:
         iteration_start = time.time()
         change_made = False
         pipes_within_target = 0
         pipes_outside_target = 0
+        
+        print(f"\n--- Iteration {iteration_count + 1} ---")
 
         for pipe_idx, velocity in enumerate(net.res_pipe.v_mean_m_per_s):
             # Skip already optimized pipes within limits
@@ -764,6 +886,9 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "KMR
             if velocity > v_max and current_position < len(filtered_by_material) - 1:
                 new_type = filtered_by_material.index[current_position + 1]
                 properties = filtered_by_material.loc[new_type]
+                pipe_name = net.pipe.at[pipe_idx, 'name'] if 'name' in net.pipe.columns else f"Pipe {pipe_idx}"
+                
+                print(f"  {pipe_name}: UPSIZE v={velocity:.3f} > {v_max} m/s | {current_type} → {new_type}")
                 
                 net.pipe.std_type.at[pipe_idx] = new_type
                 net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
@@ -777,6 +902,7 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "KMR
             elif velocity <= v_max and current_position > 0:
                 new_type = filtered_by_material.index[current_position - 1]
                 properties = filtered_by_material.loc[new_type]
+                pipe_name = net.pipe.at[pipe_idx, 'name'] if 'name' in net.pipe.columns else f"Pipe {pipe_idx}"
                 
                 # Temporarily apply smaller diameter
                 net.pipe.std_type.at[pipe_idx] = new_type
@@ -785,12 +911,19 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "KMR
                 net.pipe.at[pipe_idx, 'k_mm'] = k
 
                 # Validate downsizing doesn't violate constraints
+                print(f"    Testing downsize: {current_type} → {new_type}")
+                # Step 1: Calculate new velocities
+                pp.pipeflow(net, mode="bidirectional", iter=100)
+                # Step 2: Adjust pump if needed
                 run_control(net, mode="bidirectional", iter=100)
                 new_velocity = net.res_pipe.v_mean_m_per_s[pipe_idx]
+                print(f"    New velocity: {new_velocity:.3f} m/s")
 
                 if new_velocity <= v_max:
+                    print(f"  {pipe_name}: DOWNSIZE v={velocity:.3f} ≤ {v_max} m/s | {current_type} → {new_type} (new v={new_velocity:.3f})")
                     change_made = True
                 else:
+                    print(f"  {pipe_name}: REVERT v={velocity:.3f} → {new_velocity:.3f} > {v_max} m/s | {new_type} → {current_type}")
                     # Revert to previous size and mark as optimized
                     properties = filtered_by_material.loc[current_type]
                     net.pipe.std_type.at[pipe_idx] = current_type
@@ -809,14 +942,39 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "KMR
         
         # Recalculate if changes were made
         if change_made:
+            print(f"\nRecalculating network after changes...")
+            # Step 1: Calculate velocities
+            pp.pipeflow(net, mode="bidirectional", iter=100)
+            # Step 2: Adjust pump parameters
             run_control(net, mode="bidirectional", iter=100)
+            print(f"Network recalculated with adjusted pump parameters")
         
         iteration_time = time.time() - iteration_start
+        print(f"\nIteration {iteration_count} summary: {pipes_within_target} pipes OK, {pipes_outside_target} pipes adjusted ({iteration_time:.2f}s)")
         logging.info(f"Iteration {iteration_count}: {pipes_within_target} pipes within target, "
                     f"{pipes_outside_target} pipes outside target ({iteration_time:.2f}s)")
+        
+        if not change_made:
+            print(f"\n{'='*80}")
+            print(f"OPTIMIZATION CONVERGED after {iteration_count} iterations")
+            print(f"{'='*80}\n")
 
-    # Final control system update
-    run_control(net, mode="bidirectional")
+    # Final calculation with optimized parameters
+    print(f"\n{'='*80}")
+    print(f"OPTIMIZE: Final calculation")
+    print(f"{'='*80}")
+    # Step 1: Calculate final velocities
+    pp.pipeflow(net, mode="bidirectional", iter=100)
+    print(f"Final velocities: {net.res_pipe.v_mean_m_per_s.values}")
+    
+    # Step 2: Final pump adjustment
+    run_control(net, mode="bidirectional", iter=100)
+    print(f"\nOptimization complete!")
+    if hasattr(net, 'circ_pump_pressure') and len(net.circ_pump_pressure) > 0:
+        print(f"Optimized pump pressure: {net.circ_pump_pressure.at[0, 'p_flow_bar']:.2f} bar")
+        print(f"Optimized pump lift: {net.circ_pump_pressure.at[0, 'plift_bar']:.2f} bar")
+    print(f"Optimized pipe types: {net.pipe.std_type.unique()}")
+    print(f"{'='*80}")
     
     total_time = time.time() - start_time
     logging.info(f"Total optimization time: {total_time:.2f} seconds")

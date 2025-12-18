@@ -35,7 +35,7 @@ def initialize_test_net(qext_w=np.array([100000, 100000, 100000]),
                         supply_temperature=85,
                         flow_pressure_pump=4, 
                         lift_pressure_pump=1.5,
-                        pipetype="110/202 PLUS",
+                        pipetype="KMR 100/250-2v",
                         v_max_m_s=1.5):
     print("Initializing test network...")
     # Initialize the pandapipes network
@@ -62,14 +62,14 @@ def initialize_test_net(qext_w=np.array([100000, 100000, 100000]),
                                        t_flow_k=supply_temperature_k, type="auto", name="Main Pump")
 
     # Pipes for supply line
-    pp.create_pipe(net, j1, j2, std_type=pipetype, length_km=0.2, k_mm=k, name="Main Pipe Supply")
-    pp.create_pipe(net, j2, j3, std_type=pipetype, length_km=0.3, k_mm=k, name="Branch B Pipe Supply")
-    pp.create_pipe(net, j3, j5, std_type=pipetype, length_km=0.3, k_mm=k, name="Branch C Pipe Supply")
+    pp.create_pipe(net, j1, j2, std_type=pipetype, length_km=0.02, k_mm=k, name="Main Pipe Supply")
+    pp.create_pipe(net, j2, j3, std_type=pipetype, length_km=0.03, k_mm=k, name="Branch B Pipe Supply")
+    pp.create_pipe(net, j3, j5, std_type=pipetype, length_km=0.03, k_mm=k, name="Branch C Pipe Supply")
 
     # Pipes for return line
-    pp.create_pipe(net, j12, j13, std_type=pipetype, length_km=0.2, k_mm=k, name="Main Pipe Return")
-    pp.create_pipe(net, j4, j12, std_type=pipetype, length_km=0.3, k_mm=k, name="Branch B Pipe Return")
-    pp.create_pipe(net, j6, j4, std_type=pipetype, length_km=0.3, k_mm=k, name="Branch C Pipe Return")
+    pp.create_pipe(net, j12, j13, std_type=pipetype, length_km=0.02, k_mm=k, name="Main Pipe Return")
+    pp.create_pipe(net, j4, j12, std_type=pipetype, length_km=0.03, k_mm=k, name="Branch B Pipe Return")
+    pp.create_pipe(net, j6, j4, std_type=pipetype, length_km=0.03, k_mm=k, name="Branch C Pipe Return")
 
     # Heat consumers
     pp.create_heat_consumer(net, from_junction=j2, to_junction=j12, qext_w=qext_w[0], treturn_k=return_temperature_k[0], name="Consumer A")
@@ -77,13 +77,16 @@ def initialize_test_net(qext_w=np.array([100000, 100000, 100000]),
     pp.create_heat_consumer(net, from_junction=j5, to_junction=j6, qext_w=qext_w[2], treturn_k=return_temperature_k[2], name="Consumer C")
 
     # Simulate pipe flow
-    pp.pipeflow(net, mode="bidirectional", iter=100, alpha=0.2)
+    pp.pipeflow(net, mode="bidirectional", iter=100)
 
     # Placeholder functions for additional processing
     net = create_controllers(net, qext_w, supply_temperature, None, return_temperature, None)
+
+    run_control(net, mode="bidirectional", iter=100)
+
     net = correct_flow_directions(net)
-    net = init_diameter_types(net, v_max_pipe=v_max_m_s, material_filter="PEXa", k=k)
-    net = optimize_diameter_types(net, v_max=v_max_m_s, material_filter="PEXa", k=k)
+    net = init_diameter_types(net, v_max_pipe=v_max_m_s, material_filter="KMR", k=k)
+    net = optimize_diameter_types(net, v_max=v_max_m_s, material_filter="KMR", k=k)
 
     return net
 
@@ -97,13 +100,22 @@ def timeseries_test(net):
     time_steps = np.arange(start, end, 1)	# time steps in hours
 
     # yearly time steps with dates beginning at 01.01.2021 00:00:00
-    yearly_time_steps = pd.date_range(start="2021-01-01 00:00:00", periods=end, freq="H")
+    yearly_time_steps = pd.date_range(start="2021-01-01 00:00:00", periods=end, freq="h")
 
     # np.random.seed() is used to make the random numbers predictable
     np.random.seed(0)
-    # for every time step for every heat consumer qext_w needs to be defined and saved in a two-dimensional array, not zeros random numbers in range 0 to 100000
-    qext_w_profiles = np.random.randint(0, 100000, size=(3, end)) # Structure is two-dimensional array with shape (n_profiles, n_time_steps)
-    print(f"qext_w_profiles: {qext_w_profiles}") # Structure is two-dimensional array with shape (n_profiles, n_time_steps)
+    # Generate more realistic heat demand profiles with smaller variations
+    # Instead of 0-100kW, use 30-70kW to avoid extreme controller adjustments
+    base_demand = np.array([50000, 60000, 40000])  # Base demand per consumer in W
+    variation = 0.3  # ±30% variation
+    
+    qext_w_profiles = np.zeros((3, end))
+    for i in range(3):
+        # Generate random variations around base demand
+        qext_w_profiles[i, :] = base_demand[i] * (1 + variation * (2 * np.random.random(end) - 1))
+    
+    print(f"qext_w_profiles shape: {qext_w_profiles.shape}")
+    print(f"qext_w_profiles min: {np.min(qext_w_profiles):.0f} W, max: {np.max(qext_w_profiles):.0f} W")
 
     return_temperature = np.linspace(50, 60, end).reshape(1, -1).repeat(3, axis=0)  # Generate time-dependent return temperatures as a linear gradient
     if qext_w_profiles.shape != return_temperature.shape:
@@ -129,7 +141,7 @@ def timeseries_test(net):
     log_variables = create_log_variables(net)
     ow = OutputWriter(net, time_steps, output_path=None, log_variables=log_variables)
 
-    run_time_series.run_timeseries(net, time_steps, mode="bidirectional", iter=100, alpha=0.2)
+    run_time_series.run_timeseries(net, time_steps, mode="bidirectional", iter=100, alpha=0.6)
 
     return yearly_time_steps, net, ow.np_results
 
@@ -145,10 +157,126 @@ def print_results(net):
     print(net.res_heat_consumer)
     print(net.res_circ_pump_pressure)
 
+def plot_time_series_results(yearly_time_steps, np_results, net):
+    """
+    Plot time series results for junction pressures, temperatures, and heat consumer data.
+    
+    Parameters
+    ----------
+    yearly_time_steps : pd.DatetimeIndex
+        Time steps with dates
+    np_results : dict
+        Results dictionary from OutputWriter
+    net : pandapipes.pandapipesNet
+        The network object with junction names
+    """
+    print("\n" + "="*70)
+    print("TIME SERIES RESULTS ANALYSIS")
+    print("="*70)
+    
+    # Extract junction pressures
+    if 'res_junction.p_bar' in np_results:
+        p_bar = np_results['res_junction.p_bar']
+        print(f"\nJunction Pressures Shape: {p_bar.shape}")
+        print(f"Time steps: {p_bar.shape[0]}, Junctions: {p_bar.shape[1]}")
+        
+        # Plot junction pressures over time
+        fig, ax = plt.subplots(figsize=(14, 6))
+        for i in range(p_bar.shape[1]):
+            junction_name = net.junction.at[i, 'name'] if 'name' in net.junction.columns else f"Junction {i}"
+            ax.plot(yearly_time_steps, p_bar[:, i], label=junction_name, linewidth=1.5)
+        
+        ax.set_xlabel('Zeit', fontsize=12)
+        ax.set_ylabel('Druck [bar]', fontsize=12)
+        ax.set_title('Knotendruck im Zeitverlauf', fontsize=14, fontweight='bold')
+        ax.legend(loc='best', fontsize=9)
+        ax.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.show()
+        
+        # Print statistics
+        print("\nKnotendruck Statistik:")
+        for i in range(p_bar.shape[1]):
+            junction_name = net.junction.at[i, 'name'] if 'name' in net.junction.columns else f"Junction {i}"
+            print(f"  {junction_name}:")
+            print(f"    Min: {np.min(p_bar[:, i]):.3f} bar")
+            print(f"    Max: {np.max(p_bar[:, i]):.3f} bar")
+            print(f"    Mittelwert: {np.mean(p_bar[:, i]):.3f} bar")
+    
+    # Extract junction temperatures
+    if 'res_junction.t_k' in np_results:
+        t_k = np_results['res_junction.t_k']
+        t_c = t_k - 273.15  # Convert to Celsius
+        
+        # Plot junction temperatures over time
+        fig, ax = plt.subplots(figsize=(14, 6))
+        for i in range(t_c.shape[1]):
+            junction_name = net.junction.at[i, 'name'] if 'name' in net.junction.columns else f"Junction {i}"
+            ax.plot(yearly_time_steps, t_c[:, i], label=junction_name, linewidth=1.5)
+        
+        ax.set_xlabel('Zeit', fontsize=12)
+        ax.set_ylabel('Temperatur [°C]', fontsize=12)
+        ax.set_title('Knotentemperatur im Zeitverlauf', fontsize=14, fontweight='bold')
+        ax.legend(loc='best', fontsize=9)
+        ax.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.show()
+    
+    # Extract heat consumer results
+    if 'res_heat_consumer.qext_w' in np_results:
+        qext_w = np_results['res_heat_consumer.qext_w']
+        qext_kw = qext_w / 1000  # Convert to kW
+        
+        # Plot heat demand over time
+        fig, ax = plt.subplots(figsize=(14, 6))
+        for i in range(qext_kw.shape[1]):
+            consumer_name = net.heat_consumer.at[i, 'name'] if 'name' in net.heat_consumer.columns else f"Consumer {i}"
+            ax.plot(yearly_time_steps, qext_kw[:, i], label=consumer_name, linewidth=1.5)
+        
+        # Plot total heat demand
+        total_qext_kw = np.sum(qext_kw, axis=1)
+        ax.plot(yearly_time_steps, total_qext_kw, label='Gesamt', linewidth=2.5, 
+                color='black', linestyle='--')
+        
+        ax.set_xlabel('Zeit', fontsize=12)
+        ax.set_ylabel('Wärmebedarf [kW]', fontsize=12)
+        ax.set_title('Wärmebedarf im Zeitverlauf', fontsize=14, fontweight='bold')
+        ax.legend(loc='best', fontsize=9)
+        ax.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.show()
+        
+        # Print statistics
+        print("\nWärmebedarf Statistik:")
+        for i in range(qext_kw.shape[1]):
+            consumer_name = net.heat_consumer.at[i, 'name'] if 'name' in net.heat_consumer.columns else f"Consumer {i}"
+            print(f"  {consumer_name}:")
+            print(f"    Min: {np.min(qext_kw[:, i]):.1f} kW")
+            print(f"    Max: {np.max(qext_kw[:, i]):.1f} kW")
+            print(f"    Mittelwert: {np.mean(qext_kw[:, i]):.1f} kW")
+        print(f"  Gesamt:")
+        print(f"    Min: {np.min(total_qext_kw):.1f} kW")
+        print(f"    Max: {np.max(total_qext_kw):.1f} kW")
+        print(f"    Mittelwert: {np.mean(total_qext_kw):.1f} kW")
+    
+    # Print available result keys
+    print("\nVerfügbare Ergebnis-Variablen:")
+    for key in sorted(np_results.keys()):
+        shape = np_results[key].shape if hasattr(np_results[key], 'shape') else 'N/A'
+        print(f"  {key}: {shape}")
+    
+    print("="*70)
+
 
 if __name__ == "__main__":
     try:
         net = initialize_test_net()
+
+        fig1, ax1 = plt.subplots()
+        
+        config_plot(net=net, ax=ax1, show_junctions=True, show_pipes=True, 
+                    show_heat_consumers=True, show_pump=True, show_plot=False, 
+                    show_basemap=False, map_type="OSM")
 
         print_results(net)
 
@@ -160,14 +288,12 @@ if __name__ == "__main__":
 
         print_results(net)
 
-        print("Time series simulation completed successfully.")
-        print("Results:")
-        print(yearly_time_steps)
-        print(np_results)
+        print("\nAnalyzing time series results...")
+        plot_time_series_results(yearly_time_steps, np_results, net)
 
-        fig, ax = plt.subplots()
+        fig2, ax2 = plt.subplots()
         
-        config_plot(net=net, ax=ax, show_junctions=True, show_pipes=True, 
+        config_plot(net=net, ax=ax2, show_junctions=True, show_pipes=True, 
                     show_heat_consumers=True, show_pump=True, show_plot=False, 
                     show_basemap=False, map_type="OSM")
 

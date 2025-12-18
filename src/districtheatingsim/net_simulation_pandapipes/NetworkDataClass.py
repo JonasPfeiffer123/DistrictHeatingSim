@@ -490,29 +490,40 @@ class NetworkGenerationData:
         calculate_results : Calculate network KPIs
         thermohydraulic_time_series_net : Generate simulation results
         """
+        # Determine time range for plots (use simulated range if available)
+        if hasattr(self, 'start_time_step') and hasattr(self, 'end_time_step'):
+            time_range = self.yearly_time_steps[self.start_time_step:self.end_time_step]
+            data_range_waerme = self.waerme_ges_kW[self.start_time_step:self.end_time_step]
+            data_range_strom = self.strombedarf_ges_kW[self.start_time_step:self.end_time_step]
+        else:
+            # Fallback: use full year
+            time_range = self.yearly_time_steps
+            data_range_waerme = self.waerme_ges_kW
+            data_range_strom = self.strombedarf_ges_kW
+        
         # Initialize plot data with base heat demand
         self.plot_data = {
             "Gesamtwärmebedarf Wärmeübertrager": {
-                "data": self.waerme_ges_kW,
+                "data": data_range_waerme,
                 "label": "Wärmebedarf Wärmeübertrager in kW",
                 "axis": "left",
-                "time": self.yearly_time_steps
+                "time": time_range
             }
         }
         
         # Add electrical data for cold networks
-        if np.sum(self.strombedarf_ges_kW) > 0:
+        if np.sum(data_range_strom) > 0:
             self.plot_data["Gesamtheizlast Gebäude"] = {
-                "data": self.waerme_ges_kW + self.strombedarf_ges_kW,
+                "data": data_range_waerme + data_range_strom,
                 "label": "Gesamtheizlast Gebäude in kW",
                 "axis": "left",
-                "time": self.yearly_time_steps
+                "time": time_range
             }
             self.plot_data["Gesamtstrombedarf Wärmepumpen Gebäude"] = {
-                "data": self.strombedarf_ges_kW,
+                "data": data_range_strom,
                 "label": "Gesamtstrombedarf Wärmepumpen Gebäude in kW",
                 "axis": "left",
-                "time": self.yearly_time_steps
+                "time": time_range
             }
         
         # Add detailed producer/pump data

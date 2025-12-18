@@ -25,6 +25,8 @@ import json
 import pandas as pd
 from typing import Dict, List, Tuple, Union, Any
 
+from pandapipes.control.run_control import run_control
+
 from districtheatingsim.net_simulation_pandapipes.utilities import create_controllers, correct_flow_directions, COP_WP, init_diameter_types
 
 def initialize_geojson(NetworkGenerationData) -> Any:
@@ -620,6 +622,9 @@ def create_network(gdf_dict: Dict[str, gpd.GeoDataFrame], consumer_dict: Dict[st
     # Network optimization
     net = create_controllers(net, qext_w, supply_temperature, min_supply_temperature_heat_consumer, 
                            return_temperature_heat_consumer, secondary_producers)
+    
+    run_control(net, mode="bidirectional",iter=100)
+    
     net = correct_flow_directions(net)
     net = init_diameter_types(net, v_max_pipe=v_max_pipe, material_filter=material_filter, k=k_mm)
 

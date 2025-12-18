@@ -18,6 +18,10 @@ functions for data validation, coordinate transformation, and GeoJSON export for
 integration with GIS systems and network simulation tools.
 """
 
+import warnings
+# Suppress pyogrio warnings about GeoJSON driver not supporting DRIVER option
+warnings.filterwarnings('ignore', message='.*driver GeoJSON does not support open option.*', category=RuntimeWarning)
+
 import traceback
 import geopandas as gpd
 import pandas as pd

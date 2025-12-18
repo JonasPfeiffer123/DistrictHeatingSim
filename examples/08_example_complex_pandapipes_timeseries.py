@@ -168,7 +168,7 @@ if __name__ == "__main__":
     
     # Set simulation time range
     network_data.start_time_step = 0
-    network_data.end_time_step = 10
+    network_data.end_time_step = 100
     
     # Preprocess time series data
     network_data = time_series_preprocessing(network_data)
