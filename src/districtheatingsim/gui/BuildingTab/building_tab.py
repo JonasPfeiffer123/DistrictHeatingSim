@@ -700,34 +700,34 @@ class BuildingTabView(QWidget):
             x = list(range(len(value["wärme"])))
 
             if "Wärmebedarf" in selected_data_types:
-                line, = ax_main.plot(x, value["wärme"], label=f'Building {key} Heat Demand', color=color_map(color_idx % 10), linewidth=line_width)
+                line, = ax_main.plot(x, value["wärme"], label=f'Wärmebedarf Gebäude {key}', color=color_map(color_idx % 10), linewidth=line_width)
                 lines_ax1.append(line)
-                labels_ax1.append(f'Building {key} Heat Demand')
+                labels_ax1.append(f'Wärmebedarf Gebäude {key}')
                 color_idx += 1
             if "Heizwärmebedarf" in selected_data_types:
-                line, = ax_main.plot(x, value["heizwärme"], label=f'Building {key} Space Heating', color=color_map(color_idx % 10), linestyle='--', linewidth=line_width)
+                line, = ax_main.plot(x, value["heizwärme"], label=f'Heizwärmebedarf Gebäude {key}', color=color_map(color_idx % 10), linestyle='--', linewidth=line_width)
                 lines_ax1.append(line)
-                labels_ax1.append(f'Building {key} Space Heating')
+                labels_ax1.append(f'Heizwärmebedarf Gebäude {key}')
                 color_idx += 1
             if "Warmwasserbedarf" in selected_data_types:
-                line, = ax_main.plot(x, value["warmwasserwärme"], label=f'Building {key} Hot Water', color=color_map(color_idx % 10), linestyle=':', linewidth=line_width)
+                line, = ax_main.plot(x, value["warmwasserwärme"], label=f'Warmwasserbedarf Gebäude {key}', color=color_map(color_idx % 10), linestyle=':', linewidth=line_width)
                 lines_ax1.append(line)
-                labels_ax1.append(f'Building {key} Hot Water')
+                labels_ax1.append(f'Warmwasserbedarf Gebäude {key}')
                 color_idx += 1
             if "Vorlauftemperatur" in selected_data_types:
-                line, = ax2.plot(x, value["vorlauftemperatur"], label=f'Building {key} Supply Temp.', color=temp_color_map(temp_color_idx % 8), linestyle='-.', linewidth=line_width)
+                line, = ax2.plot(x, value["vorlauftemperatur"], label=f'Vorlauftemperatur Gebäude {key}', color=temp_color_map(temp_color_idx % 8), linestyle='-.', linewidth=line_width)
                 lines_ax2.append(line)
-                labels_ax2.append(f'Building {key} Supply Temp.')
+                labels_ax2.append(f'Vorlauftemperatur Gebäude {key}')
                 temp_color_idx += 1
             if "Rücklauftemperatur" in selected_data_types:
-                line, = ax2.plot(x, value["rücklauftemperatur"], label=f'Building {key} Return Temp.', color=temp_color_map(temp_color_idx % 8), linestyle='-.', linewidth=line_width)
+                line, = ax2.plot(x, value["rücklauftemperatur"], label=f'Rücklauftemperatur Gebäude {key}', color=temp_color_map(temp_color_idx % 8), linestyle='-.', linewidth=line_width)
                 lines_ax2.append(line)
-                labels_ax2.append(f'Building {key} Return Temp.')
+                labels_ax2.append(f'Rücklauftemperatur Gebäude {key}')
                 temp_color_idx += 1
 
-        ax_main.set_xlabel('Annual Hours', fontsize=label_fontsize)
-        ax_main.set_ylabel('Heat Demand (kW)', fontsize=label_fontsize)
-        ax2.set_ylabel('Temperature (°C)', fontsize=label_fontsize)
+        ax_main.set_xlabel('Jahresstunden', fontsize=label_fontsize)
+        ax_main.set_ylabel('Wärmebedarf (kW)', fontsize=label_fontsize)
+        ax2.set_ylabel('Temperatur (°C)', fontsize=label_fontsize)
 
         ax_main.tick_params(axis='both', labelsize=14)
         ax2.tick_params(axis='y', labelsize=14)
@@ -751,7 +751,7 @@ class BuildingTabView(QWidget):
             ncol_right = get_ncol(len(lines_ax2))
             ax_legend_right.legend(lines_ax2, labels_ax2, loc='center', fontsize=legend_fontsize, frameon=False, ncol=ncol_right)
 
-        self.figure.suptitle('Building Heat Demand & Temperatures', fontsize=18)
+        self.figure.suptitle('Gebäude Wärmebedarf & Temperaturen', fontsize=18)
         ax_main.grid(True, alpha=0.3)
         self.canvas.draw()
 
