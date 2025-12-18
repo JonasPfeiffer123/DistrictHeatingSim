@@ -623,7 +623,7 @@ def thermohydraulic_time_series_net(NetworkGenerationData) -> Any:
     log_variables = create_log_variables(NetworkGenerationData.net)
     ow = OutputWriter(NetworkGenerationData.net, time_steps, output_path=None, log_variables=log_variables)
 
-    run_time_series.run_timeseries(NetworkGenerationData.net, time_steps, mode="bidirectional", iter=100)
+    run_time_series.run_timeseries(NetworkGenerationData.net, time_steps, mode="bidirectional", iter=100, alpha=0.5)
     
     NetworkGenerationData.net_results = ow.np_results
     NetworkGenerationData.pump_results = calculate_results(NetworkGenerationData.net, NetworkGenerationData.net_results)
