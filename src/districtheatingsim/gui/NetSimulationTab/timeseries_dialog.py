@@ -10,7 +10,8 @@ Date: 2025-02-11
 
 import os
 from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog,  \
-    QPushButton, QHBoxLayout, QFileDialog, QMessageBox
+    QPushButton, QHBoxLayout, QFileDialog, QMessageBox, QRadioButton, \
+    QButtonGroup, QGroupBox
 
 class TimeSeriesCalculationDialog(QDialog):
     """
@@ -36,10 +37,28 @@ class TimeSeriesCalculationDialog(QDialog):
     def initUI(self):
         """Initialize user interface components."""
         self.setWindowTitle("Zeitreihenrechnung")
-        self.resize(400, 200)
+        self.resize(500, 300)
 
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
+
+        # Berechnungsmethode auswählen
+        calculationMethodGroup = QGroupBox("Berechnungsmethode", self)
+        calculationMethodLayout = QVBoxLayout()
+        
+        self.detailedCalcRadio = QRadioButton("Ausführliche Berechnung mit pandapipes (detailliert, langsamer)", self)
+        self.simplifiedCalcRadio = QRadioButton("Vereinfachte Berechnung (schnell, basierend auf Auslegung)", self)
+        self.detailedCalcRadio.setChecked(True)
+        
+        self.calculationMethodGroup = QButtonGroup(self)
+        self.calculationMethodGroup.addButton(self.detailedCalcRadio, 0)
+        self.calculationMethodGroup.addButton(self.simplifiedCalcRadio, 1)
+        
+        calculationMethodLayout.addWidget(self.detailedCalcRadio)
+        calculationMethodLayout.addWidget(self.simplifiedCalcRadio)
+        calculationMethodGroup.setLayout(calculationMethodLayout)
+        
+        self.layout.addWidget(calculationMethodGroup)
 
         # Zeitschritte
         self.StartTimeStepLabel = QLabel("Zeitschritt Simulationsstart (min 0):", self)
@@ -124,10 +143,12 @@ class TimeSeriesCalculationDialog(QDialog):
         Returns
         -------
         dict
-            Dictionary containing results filename, start and end time steps.
+            Dictionary containing results filename, start and end time steps,
+            and calculation method.
         """
         return {
             'results_filename': self.resultsFileInput.text(),
             'start': int(self.StartTimeStepInput.text()),
-            'end': int(self.EndTimeStepInput.text())
+            'end': int(self.EndTimeStepInput.text()),
+            'simplified': self.simplifiedCalcRadio.isChecked()
         }

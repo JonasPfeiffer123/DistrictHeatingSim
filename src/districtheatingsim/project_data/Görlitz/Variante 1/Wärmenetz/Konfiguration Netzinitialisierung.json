@@ -1,10 +1,10 @@
 {
     "import_type": "GeoJSON",
-    "flow_line_path": "c:\\users\\jonas\\districtheatingsim\\src\\districtheatingsim\\project_data\\G\u00f6rlitz\\Variante 1\\W\u00e4rmenetz\\Vorlauf.geojson",
-    "return_line_path": "c:\\users\\jonas\\districtheatingsim\\src\\districtheatingsim\\project_data\\G\u00f6rlitz\\Variante 1\\W\u00e4rmenetz\\R\u00fccklauf.geojson",
-    "heat_consumer_path": "c:\\users\\jonas\\districtheatingsim\\src\\districtheatingsim\\project_data\\G\u00f6rlitz\\Variante 1\\W\u00e4rmenetz\\HAST.geojson",
-    "heat_generator_path": "c:\\users\\jonas\\districtheatingsim\\src\\districtheatingsim\\project_data\\G\u00f6rlitz\\Variante 1\\W\u00e4rmenetz\\Erzeugeranlagen.geojson",
-    "heat_demand_json_path": "c:\\users\\jonas\\districtheatingsim\\src\\districtheatingsim\\project_data\\G\u00f6rlitz\\Variante 1\\Lastgang\\Geb\u00e4ude Lastgang.json",
+    "flow_line_path": "C:/Users/jonas/DistrictHeatingSim/src/districtheatingsim/project_data/G\u00f6rlitz\\Variante 1\\W\u00e4rmenetz\\Vorlauf.geojson",
+    "return_line_path": "C:/Users/jonas/DistrictHeatingSim/src/districtheatingsim/project_data/G\u00f6rlitz\\Variante 1\\W\u00e4rmenetz\\R\u00fccklauf.geojson",
+    "heat_consumer_path": "C:/Users/jonas/DistrictHeatingSim/src/districtheatingsim/project_data/G\u00f6rlitz\\Variante 1\\W\u00e4rmenetz\\HAST.geojson",
+    "heat_generator_path": "C:/Users/jonas/DistrictHeatingSim/src/districtheatingsim/project_data/G\u00f6rlitz\\Variante 1\\W\u00e4rmenetz\\Erzeugeranlagen.geojson",
+    "heat_demand_json_path": "C:/Users/jonas/DistrictHeatingSim/src/districtheatingsim/project_data/G\u00f6rlitz\\Variante 1\\Lastgang\\Geb\u00e4ude Lastgang.json",
     "netconfiguration": "Niedertemperaturnetz",
     "supply_temperature_control": "Gleitend",
     "max_supply_temperature_heat_generator": 85.0,
@@ -26,8 +26,8 @@
     "k_mm_pipe": 0.1,
     "main_producer_location_index": 0,
     "secondary_producers": [],
-    "COP_filename": "..\\..\\..\\..\\data\\COP\\Kennlinien WP.csv",
-    "TRY_filename": "c:\\users\\jonas\\districtheatingsim\\src\\districtheatingsim\\data\\TRY\\TRY_511676144222\\TRY2015_511676144222_Jahr.dat",
+    "COP_filename": "..\\..\\..\\data\\COP\\Kennlinien WP.csv",
+    "TRY_filename": "..\\..\\..\\data\\TRY\\TRY_511676144222\\TRY2015_511676144222_Jahr.dat",
     "supply_temperature_buildings": "[70. 70. 70. 70. 70. 70. 70. 70. 70.]",
     "return_temperature_buildings": "[55. 55. 55. 55. 55. 55. 55. 55. 55.]",
     "supply_temperature_building_curve": "[[44.5  43.3  42.7  ... 49.45 47.95 46.45]\n [44.5  43.3  42.7  ... 49.45 47.95 46.45]\n [44.5  43.3  42.7  ... 49.45 47.95 46.45]\n ...\n [44.5  43.3  42.7  ... 49.45 47.95 46.45]\n [44.5  43.3  42.7  ... 49.45 47.95 46.45]\n [44.5  43.3  42.7  ... 49.45 47.95 46.45]]",
@@ -53,9 +53,9 @@
         "Trassenl\u00e4nge W\u00e4rmenetz [m]": 1090.967271956561,
         "W\u00e4rmebedarfsdichte [MWh/(a*m)]": 4.073088233475473,
         "Anschlussdichte [kW/m]": 1.932019308159695,
-        "Jahresw\u00e4rmeerzeugung [MWh]": 4685.970093618148,
-        "Pumpenstrom [MWh]": 12.009131663533708,
-        "Verteilverluste [MWh]": 242.3641351050428,
-        "rel. Verteilverluste [%]": 5.172122959878042
+        "Jahresw\u00e4rmeerzeugung [MWh]": 4997.278470669401,
+        "Pumpenstrom [MWh]": 12.416958304006425,
+        "Verteilverluste [MWh]": 553.6725121562959,
+        "rel. Verteilverluste [%]": 11.079480869556779
     }
 }
