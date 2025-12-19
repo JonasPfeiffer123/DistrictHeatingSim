@@ -369,6 +369,7 @@ class CalculationTab(QWidget):
             self.NetworkGenerationData.start_time_step = netCalcInputs["start"]
             self.NetworkGenerationData.end_time_step = netCalcInputs["end"]
             self.NetworkGenerationData.results_csv_filename = netCalcInputs["results_filename"]
+            self.NetworkGenerationData.simplified_calculation = netCalcInputs["simplified"]
             self.time_series_simulation()
       
     def create_and_initialize_net_geojson(self):
@@ -669,7 +670,9 @@ class CalculationTab(QWidget):
             return
 
         try:
-            self.calculationThread = NetCalculationThread(self.NetworkGenerationData)
+            # Check if simplified calculation is requested
+            simplified = getattr(self.NetworkGenerationData, 'simplified_calculation', False)
+            self.calculationThread = NetCalculationThread(self.NetworkGenerationData, simplified=simplified)
             self.calculationThread.calculation_done.connect(self.on_time_series_simulation_done)
             self.calculationThread.calculation_error.connect(self.on_time_series_simulation_error)
             self.calculationThread.start()
@@ -948,9 +951,15 @@ class CalculationTab(QWidget):
                 csv_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('csv_net_init_file_path'))
                 json_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('json_net_init_file_path'))
                 
-                # Speichere den relativen Pfad für die COP-Datei relativ zum Datenpfad
-                data_path = self.get_data_path()  # Hole den Datenpfad
-                self.NetworkGenerationData.COP_filename = os.path.relpath(self.NetworkGenerationData.COP_filename, data_path)
+                # Sichere die ursprünglichen absoluten Pfade für COP und TRY Dateien
+                original_cop_filename = self.NetworkGenerationData.COP_filename
+                original_try_filename = self.NetworkGenerationData.TRY_filename
+                
+                # Konvertiere zu relativen Pfaden für die Speicherung (relativ zu base_path)
+                if self.NetworkGenerationData.COP_filename and os.path.isabs(self.NetworkGenerationData.COP_filename):
+                    self.NetworkGenerationData.COP_filename = os.path.relpath(self.NetworkGenerationData.COP_filename, self.base_path)
+                if self.NetworkGenerationData.TRY_filename and os.path.isabs(self.NetworkGenerationData.TRY_filename):
+                    self.NetworkGenerationData.TRY_filename = os.path.relpath(self.NetworkGenerationData.TRY_filename, self.base_path)
 
                 # Speichere die Pandapipes-Netzwerkdaten mit der pandapipes-Funktion, das Netzwerk wird in pickle_file_path gespeichert
                 # Das Format kann auch allein mit pandapipes wieder geladen werden
@@ -984,6 +993,10 @@ class CalculationTab(QWidget):
                 # ggf. weitere Felder entfernen oder anpassen
                 with open(json_file_path, 'w') as json_file:
                     json.dump(meta_dict, json_file, indent=4, default=str)
+                
+                # Stelle die ursprünglichen absoluten Pfade wieder her
+                self.NetworkGenerationData.COP_filename = original_cop_filename
+                self.NetworkGenerationData.TRY_filename = original_try_filename
                 
                 if show_dialog:
                     QMessageBox.information(self, "Speichern erfolgreich", f"Pandapipes Netz erfolgreich gespeichert in: {pickle_file_path}, Daten erfolgreich gespeichert in: {csv_file_path} und {json_file_path}")
@@ -1036,7 +1049,13 @@ class CalculationTab(QWidget):
 
             # DataClass rekonstruieren
             self.NetworkGenerationData = NetworkGenerationData.from_dict(meta_dict)
-            self.NetworkGenerationData.COP_filename = os.path.join(data_path, self.NetworkGenerationData.COP_filename)
+            
+            # Konvertiere relative Pfade zurück zu absoluten Pfaden (relativ zu base_path)
+            if self.NetworkGenerationData.COP_filename and not os.path.isabs(self.NetworkGenerationData.COP_filename):
+                self.NetworkGenerationData.COP_filename = os.path.normpath(os.path.join(self.base_path, self.NetworkGenerationData.COP_filename))
+            if self.NetworkGenerationData.TRY_filename and not os.path.isabs(self.NetworkGenerationData.TRY_filename):
+                self.NetworkGenerationData.TRY_filename = os.path.normpath(os.path.join(self.base_path, self.NetworkGenerationData.TRY_filename))
+            
             self.NetworkGenerationData.net = net
             self.NetworkGenerationData.waerme_hast_ges_W = waerme_hast_ges_W
             self.NetworkGenerationData.strombedarf_hast_ges_W = strombedarf_hast_ges_W

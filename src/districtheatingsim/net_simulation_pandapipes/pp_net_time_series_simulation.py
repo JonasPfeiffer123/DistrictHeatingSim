@@ -630,6 +630,164 @@ def thermohydraulic_time_series_net(NetworkGenerationData) -> Any:
     
     return NetworkGenerationData
 
+def simplified_time_series_net(NetworkGenerationData) -> Any:
+    """
+    Run a simplified fast time series calculation based on design conditions.
+    
+    This function creates a load profile from the already calculated design state 
+    (from initialization) and scales it with the building heat demand time series.
+    Temperatures and pressures from the design state are applied constantly over 
+    the time period. This provides a quick, meaningful load profile without 
+    detailed hydraulic simulation.
+
+    Parameters
+    ----------
+    NetworkGenerationData : object
+        Network generation data object containing the preprocessed network model,
+        time series data, and simulation parameters. Must have been initialized
+        with design state results already available in net.res_* tables.
+
+    Returns
+    -------
+    NetworkGenerationData
+        Updated NetworkGenerationData object with simplified results including
+        scaled load profiles and constant temperatures/pressures.
+
+    Notes
+    -----
+    - Uses already calculated design state from network initialization
+    - No additional pipeflow calculation required
+    - Scales losses proportionally with building heat demand
+    - Applies constant temperatures and pressures from design state
+    - Much faster than detailed simulation (no iterative solving)
+    - Suitable for quick analysis and preliminary assessments
+
+    Examples
+    --------
+    >>> # Run simplified time series calculation
+    >>> results = simplified_time_series_net(network_data)
+    >>> print(f"Simplified calculation completed")
+    
+    See Also
+    --------
+    thermohydraulic_time_series_net : Detailed time series simulation
+    initialize_geojson : Network initialization that creates design state
+    """
+    
+    print("Starte vereinfachte Zeitreihenberechnung (basierend auf Auslegung)...")
+    
+    # Get time steps for selected simulation range
+    time_steps = range(0, len(NetworkGenerationData.waerme_hast_ges_W[0][NetworkGenerationData.start_time_step:NetworkGenerationData.end_time_step]))
+    n_steps = len(time_steps)
+    
+    # Find design point (maximum load)
+    max_load_idx = np.argmax(NetworkGenerationData.waerme_ges_kW)
+    total_building_demand_design = NetworkGenerationData.waerme_ges_kW[max_load_idx]
+    
+    print(f"Nutze Auslegungszustand bei max. Last: {total_building_demand_design:.1f} kW")
+    
+    # Extract design state results from already calculated network
+    # (these were calculated during initialization)
+    design_results = {
+        "Heizentrale Haupteinspeisung": {},
+        "weitere Einspeisung": {}
+    }
+    
+    # Get design state from pressure pumps (main generators)
+    if hasattr(NetworkGenerationData.net, 'res_circ_pump_pressure') and len(NetworkGenerationData.net.res_circ_pump_pressure) > 0:
+        for idx in NetworkGenerationData.net.res_circ_pump_pressure.index:
+            res = NetworkGenerationData.net.res_circ_pump_pressure.loc[idx]
+            design_results["Heizentrale Haupteinspeisung"][idx] = {
+                "mass_flow_design": res["mdot_from_kg_per_s"],
+                "flow_pressure_design": res["p_to_bar"],
+                "return_pressure_design": res["p_from_bar"],
+                "deltap_design": res["p_to_bar"] - res["p_from_bar"],
+                "return_temp_design": res["t_from_k"] - 273.15,
+                "flow_temp_design": res["t_to_k"] - 273.15,
+                "qext_kW_design": res["mdot_from_kg_per_s"] * 4.2 * (res["t_to_k"] - res["t_from_k"])
+            }
+            print(f"  Haupteinspeisung {idx}: {design_results['Heizentrale Haupteinspeisung'][idx]['qext_kW_design']:.1f} kW Auslegungsleistung")
+    
+    # Get design state from mass pumps (secondary producers)
+    if hasattr(NetworkGenerationData.net, 'res_circ_pump_mass') and len(NetworkGenerationData.net.res_circ_pump_mass) > 0:
+        for idx in NetworkGenerationData.net.res_circ_pump_mass.index:
+            res = NetworkGenerationData.net.res_circ_pump_mass.loc[idx]
+            design_results["weitere Einspeisung"][idx] = {
+                "mass_flow_design": res["mdot_from_kg_per_s"],
+                "flow_pressure_design": res["p_to_bar"],
+                "return_pressure_design": res["p_from_bar"],
+                "deltap_design": res["p_to_bar"] - res["p_from_bar"],
+                "return_temp_design": res["t_from_k"] - 273.15,
+                "flow_temp_design": res["t_to_k"] - 273.15,
+                "qext_kW_design": res["mdot_from_kg_per_s"] * 4.2 * (res["t_to_k"] - res["t_from_k"])
+            }
+            print(f"  Weitere Einspeisung {idx}: {design_results['weitere Einspeisung'][idx]['qext_kW_design']:.1f} kW Auslegungsleistung")
+    
+    # Calculate design losses (difference between generated and consumed heat)
+    total_generation_design = sum([data["qext_kW_design"] for pump_type in design_results.values() 
+                                   for data in pump_type.values()])
+    design_losses_kW = total_generation_design - total_building_demand_design
+    design_loss_factor = design_losses_kW / total_building_demand_design if total_building_demand_design > 0 else 0
+    
+    print(f"Auslegungsverluste: {design_losses_kW:.1f} kW ({design_loss_factor*100:.2f}%)")
+    
+    # Create time series by scaling with building demand
+    NetworkGenerationData.pump_results = {
+        "Heizentrale Haupteinspeisung": {},
+        "weitere Einspeisung": {}
+    }
+    
+    # Get building demand series for the selected time range
+    building_demand_series = NetworkGenerationData.waerme_ges_kW[NetworkGenerationData.start_time_step:NetworkGenerationData.end_time_step]
+    
+    # Handle supply temperature (static or sliding)
+    if isinstance(NetworkGenerationData.supply_temperature_heat_generator, np.ndarray):
+        # Gleitende Vorlauftemperatur
+        supply_temp_series = NetworkGenerationData.supply_temperature_heat_generator[NetworkGenerationData.start_time_step:NetworkGenerationData.end_time_step]
+        print("Verwende gleitende Vorlauftemperatur")
+    else:
+        # Statische Vorlauftemperatur
+        supply_temp_series = np.full(n_steps, NetworkGenerationData.supply_temperature_heat_generator)
+        print(f"Verwende statische Vorlauftemperatur: {NetworkGenerationData.supply_temperature_heat_generator:.1f} °C")
+    
+    # Scale results for each time step
+    for pump_type, pumps in design_results.items():
+        for idx, design_data in pumps.items():
+            # Calculate heat generation: building demand + constant losses
+            # Losses stay approximately constant (independent of load)
+            share_of_generation = design_data["qext_kW_design"] / total_generation_design if total_generation_design > 0 else 1.0
+            producer_losses = design_losses_kW * share_of_generation
+            qext_series = building_demand_series * share_of_generation + producer_losses
+            
+            # Calculate mass flow from heat and temperature difference
+            # q = m * cp * dT  =>  m = q / (cp * dT)
+            cp = 4.2  # kJ/kgK
+            delta_T = supply_temp_series - design_data["return_temp_design"]
+            mass_flow_series = qext_series / (cp * delta_T)
+            
+            # Temperature handling
+            if isinstance(NetworkGenerationData.supply_temperature_heat_generator, np.ndarray):
+                # Gleitende Vorlauftemperatur - verwende zeitabhängige Werte
+                flow_temp_series = supply_temp_series
+            else:
+                # Statische Vorlauftemperatur
+                flow_temp_series = np.full(n_steps, design_data["flow_temp_design"])
+            
+            # Store results
+            NetworkGenerationData.pump_results[pump_type][idx] = {
+                "mass_flow": mass_flow_series,
+                "flow_pressure": np.full(n_steps, design_data["flow_pressure_design"]),
+                "return_pressure": np.full(n_steps, design_data["return_pressure_design"]),
+                "deltap": np.full(n_steps, design_data["deltap_design"]),
+                "return_temp": np.full(n_steps, design_data["return_temp_design"]),
+                "flow_temp": flow_temp_series,
+                "qext_kW": qext_series
+            }
+    
+    print(f"Vereinfachte Berechnung erfolgreich abgeschlossen ({n_steps} Zeitschritte).")
+    
+    return NetworkGenerationData
+
 def calculate_results(net, net_results: Dict, cp_kJ_kgK: float = 4.2) -> Dict[str, Dict[int, Dict[str, np.ndarray]]]:
     """
     Calculate and structure the thermohydraulic simulation results.

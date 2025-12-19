@@ -14,7 +14,7 @@ import numpy as np
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson import initialize_geojson
-from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import thermohydraulic_time_series_net, time_series_preprocessing
+from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import thermohydraulic_time_series_net, time_series_preprocessing, simplified_time_series_net
 from districtheatingsim.net_simulation_pandapipes.utilities import optimize_diameter_types
 
 class NetInitializationThread(QThread):
@@ -63,7 +63,7 @@ class NetCalculationThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(str)
 
-    def __init__(self, NetworkGenerationData):
+    def __init__(self, NetworkGenerationData, simplified=False):
         """
         Initialize calculation thread.
 
@@ -71,16 +71,25 @@ class NetCalculationThread(QThread):
         ----------
         NetworkGenerationData : object
             Network generation data object.
+        simplified : bool, optional
+            Use simplified fast calculation instead of detailed simulation.
+            Default is False.
         """
         super().__init__()
         self.NetworkGenerationData = NetworkGenerationData
+        self.simplified = simplified
     
     def run(self):
         """Run time series calculation process."""
         try:
             self.NetworkGenerationData = time_series_preprocessing(self.NetworkGenerationData)
             
-            self.NetworkGenerationData = thermohydraulic_time_series_net(self.NetworkGenerationData)
+            if self.simplified:
+                # Use simplified fast calculation
+                self.NetworkGenerationData = simplified_time_series_net(self.NetworkGenerationData)
+            else:
+                # Use detailed hydraulic simulation
+                self.NetworkGenerationData = thermohydraulic_time_series_net(self.NetworkGenerationData)
 
             self.calculation_done.emit(self.NetworkGenerationData)
         except Exception as e:
