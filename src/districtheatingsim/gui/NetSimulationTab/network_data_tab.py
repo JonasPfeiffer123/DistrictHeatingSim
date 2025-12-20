@@ -102,46 +102,36 @@ class NetworkDataTab(QWidget):
         list
             List of input layouts.
         """
-        default_paths = {
-            'Erzeugeranlagen': os.path.join(self.base_path, self.parent.parent.config_manager.get_relative_path("net_heat_sources_path")),
-            'HAST': os.path.join(self.base_path, self.parent.parent.config_manager.get_relative_path("net_building_transfer_station_path")),
-            'Vorlauf': os.path.join(self.base_path, self.parent.parent.config_manager.get_relative_path("net_flow_pipes_path")),
-            'Rücklauf': os.path.join(self.base_path, self.parent.parent.config_manager.get_relative_path("net_return_pipes_path"))
-        }
+        # Default path for unified network GeoJSON
+        default_network_path = os.path.join(
+            self.base_path, 
+            self.parent.parent.config_manager.get_relative_path("dimensioned_net_path")
+        )
 
-        file_inputs_layout = self.createFileInputsGeoJSON(default_paths)
+        file_inputs_layout = self.createFileInputsGeoJSON(default_network_path)
 
         inputs = [
             file_inputs_layout
         ]
         return inputs
 
-    def createFileInputsGeoJSON(self, default_paths):
+    def createFileInputsGeoJSON(self, default_network_path):
         """
-        Create file input widgets for GeoJSON files.
+        Create file input widget for unified network GeoJSON file.
 
         Parameters
         ----------
-        default_paths : dict
-            Default file paths.
+        default_network_path : str
+            Default path to Wärmenetz.geojson.
 
         Returns
         -------
         QVBoxLayout
-            Layout containing file inputs.
+            Layout containing file input.
         """
         layout = QVBoxLayout()
-        self.vorlaufInput = self.createFileInput("Vorlauf GeoJSON:", default_paths['Vorlauf'])
-        layout.addLayout(self.vorlaufInput)
-        
-        self.ruecklaufInput = self.createFileInput("Rücklauf GeoJSON:", default_paths['Rücklauf'])
-        layout.addLayout(self.ruecklaufInput)
-
-        self.hastInput = self.createFileInput("HAST GeoJSON:", default_paths['HAST'])
-        layout.addLayout(self.hastInput)
-
-        self.erzeugeranlagenInput = self.createFileInput("Erzeugeranlagen GeoJSON:", default_paths['Erzeugeranlagen'])
-        layout.addLayout(self.erzeugeranlagenInput)
+        self.networkInput = self.createFileInput("Wärmenetz GeoJSON:", default_network_path)
+        layout.addLayout(self.networkInput)
 
         return layout
 
@@ -192,24 +182,26 @@ class NetworkDataTab(QWidget):
             self.update_plot()
 
     def update_plot(self):
-        """Update plot visualization based on selected GeoJSON files."""
+        """Update plot visualization based on selected unified GeoJSON file."""
         try:
-            # Pfade auslesen
-            vorlauf_path = self.vorlaufInput.itemAt(1).widget().text()
-            ruecklauf_path = self.ruecklaufInput.itemAt(1).widget().text()
-            hast_path = self.hastInput.itemAt(1).widget().text()
-            erzeugeranlagen_path = self.erzeugeranlagenInput.itemAt(1).widget().text()
-
-            # Dateien prüfen, ob sie existieren
-            if not (os.path.exists(vorlauf_path) and os.path.exists(ruecklauf_path) and 
-                    os.path.exists(hast_path) and os.path.exists(erzeugeranlagen_path)):
-                raise FileNotFoundError("Eine oder mehrere GeoJSON-Dateien wurden nicht gefunden.")
+            # Import schema for feature type identification
+            from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
             
-            # Dateien einlesen
-            vorlauf = gpd.read_file(vorlauf_path)
-            ruecklauf = gpd.read_file(ruecklauf_path)
-            hast = gpd.read_file(hast_path)
-            erzeugeranlagen = gpd.read_file(erzeugeranlagen_path)
+            # Pfad auslesen
+            network_path = self.networkInput.itemAt(1).widget().text()
+
+            # Datei prüfen, ob sie existiert
+            if not os.path.exists(network_path):
+                raise FileNotFoundError("Die Wärmenetz GeoJSON-Datei wurde nicht gefunden.")
+            
+            # Datei einlesen
+            network_gdf = gpd.read_file(network_path)
+            
+            # Separate features by type
+            vorlauf = network_gdf[network_gdf['feature_type'] == NetworkGeoJSONSchema.FEATURE_TYPE_FLOW]
+            ruecklauf = network_gdf[network_gdf['feature_type'] == NetworkGeoJSONSchema.FEATURE_TYPE_RETURN]
+            hast = network_gdf[network_gdf['feature_type'] == NetworkGeoJSONSchema.FEATURE_TYPE_BUILDING]
+            erzeugeranlagen = network_gdf[network_gdf['feature_type'] == NetworkGeoJSONSchema.FEATURE_TYPE_GENERATOR]
 
             # Plot vorbereiten
             self.figure1.clear()
@@ -225,8 +217,25 @@ class NetworkDataTab(QWidget):
             annotations = []
             for idx, row in hast.iterrows():
                 point = row['geometry'].representative_point()
-                label = (f"{row['Adresse']}\nWärmebedarf: {row['Wärmebedarf']}\n"
-                        f"Gebäudetyp: {row['Gebäudetyp']}\nVLT_max: {row['VLT_max']}\nRLT_max: {row['RLT_max']}")
+                
+                # Access building data from nested structure
+                building_data = row.get('building_data', {})
+                if isinstance(building_data, dict):
+                    adresse = building_data.get('Adresse', 'N/A')
+                    waermebedarf = building_data.get('Wärmebedarf', 'N/A')
+                    gebaeudetyp = building_data.get('Gebäudetyp', 'N/A')
+                    vlt_max = building_data.get('VLT_max', 'N/A')
+                    rlt_max = building_data.get('RLT_max', 'N/A')
+                else:
+                    # Fallback if data structure is different
+                    adresse = 'N/A'
+                    waermebedarf = 'N/A'
+                    gebaeudetyp = 'N/A'
+                    vlt_max = 'N/A'
+                    rlt_max = 'N/A'
+                
+                label = (f"{adresse}\nWärmebedarf: {waermebedarf}\n"
+                        f"Gebäudetyp: {gebaeudetyp}\nVLT_max: {vlt_max}\nRLT_max: {rlt_max}")
                 annotation = ax.annotate(label, xy=(point.x, point.y), xytext=(10, 10),
                                         textcoords="offset points", bbox=dict(boxstyle="round", fc="w"))
                 annotation.set_visible(False)

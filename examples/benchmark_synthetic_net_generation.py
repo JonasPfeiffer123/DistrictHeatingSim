@@ -92,15 +92,18 @@ def plot_benchmark_networks(
         ax = axes[idx]
         # Lade Daten
         building_file = os.path.join(data_base_dir, f"{n_buildings}_buildings", "synthetic_buildings.geojson")
-        vorlauf_file = os.path.join(result_base_dir, f"{n_buildings}_buildings", "Wärmenetz", "Vorlauf.geojson")
+        unified_file = os.path.join(result_base_dir, f"{n_buildings}_buildings", "Wärmenetz", "Wärmenetz.geojson")
 
-        if not (os.path.exists(street_file) and os.path.exists(building_file) and os.path.exists(vorlauf_file)):
+        if not (os.path.exists(street_file) and os.path.exists(building_file) and os.path.exists(unified_file)):
             ax.set_title(f"{n_buildings} Gebäude (Dateien fehlen)")
             ax.axis("off")
             continue
 
+        from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
+        
         buildings = gpd.read_file(building_file)
-        vorlauf = gpd.read_file(vorlauf_file)
+        unified_geojson = NetworkGeoJSONSchema.load_from_file(unified_file)
+        vorlauf, _, _, _ = NetworkGeoJSONSchema.split_to_legacy_format(unified_geojson)
 
         streets.plot(ax=ax, color="grey", linewidth=1, label="Straßennetz")
         buildings.plot(ax=ax, color="red", markersize=8, label="Gebäude")

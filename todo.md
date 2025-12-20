@@ -18,10 +18,6 @@
 
 ## Funktionalitäten:
 ### Wärmenetzgenerierung:
-- Dateistruktur überdenken
-- GeoJSON für Netzbestandteile
-    - Festlegen, ob eine geoJSON-Datei für die Speicherung aller Netzbestandteile genutzt werden soll.
-    - Implementierung der Datenhaltung in geoJSON-Format, falls entschieden.
 - bestehende Netze Laden? --> STANET
     - Ausbauszenarien? 
 

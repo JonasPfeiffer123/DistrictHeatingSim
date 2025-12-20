@@ -46,20 +46,20 @@ def initialize_net_from_osmnx_geojson(
     k_mm: float = 0.1
 ):
     """
-    Initialize pandapipes network from OSMnx-generated GeoJSON files.
+    Initialize pandapipes network from unified GeoJSON network file.
     
-    Note: HAST.geojson contains both the cross-connections AND the building data!
+    Note: Use NetworkGeoJSONSchema.split_to_legacy_format() to extract individual layers.
     
     Parameters
     ----------
     supply_file : str
-        Path to Vorlauf.geojson
+        Path to flow line GeoJSON (or extract from unified format)
     return_file : str
-        Path to Ruecklauf.geojson
+        Path to return line GeoJSON (or extract from unified format)
     hast_file : str
-        Path to HAST.geojson (contains cross-connections WITH building data)
+        Path to building connections GeoJSON (contains cross-connections WITH building data)
     generator_file : str
-        Path to Erzeugeranlagen.geojson
+        Path to generator connections GeoJSON
     supply_temperature : float
         Supply temperature in °C (default: 85)
     flow_pressure_pump : float
@@ -208,17 +208,30 @@ def print_results(net):
 
 if __name__ == "__main__":
     try:
-        # Path to OSMnx-generated GeoJSON files
+        from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
+        import tempfile
+        
+        # Path to unified GeoJSON network file
         data_dir = "examples/data/osmnx_steiner_output"
+        unified_file = os.path.join(data_dir, "Wärmenetz.geojson")
         
-        supply_file = os.path.join(data_dir, "Vorlauf.geojson")
-        return_file = os.path.join(data_dir, "Rücklauf.geojson")
-        hast_file = os.path.join(data_dir, "HAST.geojson")
-        generator_file = os.path.join(data_dir, "Erzeugeranlagen.geojson")
+        # Load and split unified format
+        unified_geojson = NetworkGeoJSONSchema.load_from_file(unified_file)
+        supply_gdf, return_gdf, hast_gdf, generator_gdf = NetworkGeoJSONSchema.split_to_legacy_format(unified_geojson)
         
-        # Initialize network from OSMnx data
-        # Build qext and return_temperature arrays sized to number of HAST features
-        hast_gdf = gpd.read_file(hast_file)
+        # For function compatibility, save temporary files (or modify function to accept GeoDataFrames)
+        temp_dir = tempfile.mkdtemp()
+        supply_file = os.path.join(temp_dir, "supply.geojson")
+        return_file = os.path.join(temp_dir, "return.geojson")
+        hast_file = os.path.join(temp_dir, "hast.geojson")
+        generator_file = os.path.join(temp_dir, "generator.geojson")
+        
+        supply_gdf.to_file(supply_file, driver="GeoJSON")
+        return_gdf.to_file(return_file, driver="GeoJSON")
+        hast_gdf.to_file(hast_file, driver="GeoJSON")
+        generator_gdf.to_file(generator_file, driver="GeoJSON")
+        
+        # Initialize network from extracted data
         n_hast = len(hast_gdf)
         qext_w = np.full(n_hast, 50000.0)           # 50 kW per consumer
         return_temps = np.full(n_hast, 55.0)        # 55 °C return for each consumer

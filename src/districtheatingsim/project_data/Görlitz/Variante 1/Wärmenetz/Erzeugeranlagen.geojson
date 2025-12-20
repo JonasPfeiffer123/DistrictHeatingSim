@@ -1,8 +1,0 @@
-{
-"type": "FeatureCollection",
-"name": "Erzeugeranlagen",
-"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::25833" } },
-"features": [
-{ "type": "Feature", "properties": { "Land": null, "Bundesland": null, "Stadt": null, "Adresse": null, "Wärmebedarf": null, "Gebäudetyp": null, "Subtyp": null, "WW_Anteil": null, "Typ_Heizflächen": null, "VLT_max": null, "Steigung_Heizkurve": null, "RLT_max": null, "Normaußentemperatur": null }, "geometry": { "type": "LineString", "coordinates": [ [ 499788.757726747484412, 5666162.268331659026444 ], [ 499789.257726747484412, 5666162.268331659026444 ] ] } }
-]
-}

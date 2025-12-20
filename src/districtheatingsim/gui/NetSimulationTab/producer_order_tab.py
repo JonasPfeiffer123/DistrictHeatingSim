@@ -85,8 +85,8 @@ class ProducerOrderTab(QWidget):
         return layout
 
     def load_producers(self):
-        """Load producers from GeoJSON file and populate list widget."""
-        filepath = self.parent.network_data_tab.erzeugeranlagenInput.itemAt(1).widget().text()
+        """Load producers from unified GeoJSON file and populate list widget."""
+        filepath = self.parent.network_data_tab.networkInput.itemAt(1).widget().text()
         try:
             producers = self.read_producers_from_geojson(filepath)
             self.producer_list_widget.clear()
@@ -99,12 +99,12 @@ class ProducerOrderTab(QWidget):
 
     def read_producers_from_geojson(self, filepath):
         """
-        Read producer data from GeoJSON file.
+        Read producer data from unified GeoJSON file.
 
         Parameters
         ----------
         filepath : str
-            Path to GeoJSON file.
+            Path to unified network GeoJSON file.
 
         Returns
         -------
@@ -119,9 +119,17 @@ class ProducerOrderTab(QWidget):
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"GeoJSON file not found: {filepath}")
 
+        from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
+        
         geojson_data = gpd.read_file(filepath)
+        
+        # Filter for generator features only
+        generator_features = geojson_data[
+            geojson_data['feature_type'] == NetworkGeoJSONSchema.FEATURE_TYPE_GENERATOR
+        ]
+        
         producers = []
-        for idx, row in geojson_data.iterrows():
+        for idx, row in generator_features.iterrows():
             producers.append({
                 'name': f'Erzeugerstandort {idx + 1}',
                 'location': row['geometry']

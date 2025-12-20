@@ -315,10 +315,7 @@ class ProjectPresenter:
                 "name": "Schritt 3: Wärmenetz Daten erstellen",
                 "description": "Generieren Sie das Wärmenetz im Tab 'Wärmenetz generieren'.",
                 "required_files": [
-                    "Wärmenetz\\Erzeugeranlagen.geojson",
-                    "Wärmenetz\\HAST.geojson",
-                    "Wärmenetz\\Vorlauf.geojson",
-                    "Wärmenetz\\Rücklauf.geojson"
+                    "Wärmenetz\\Wärmenetz.geojson"
                 ]
             },
             {
@@ -328,9 +325,9 @@ class ProjectPresenter:
                     "Wärmenetz\\Ergebnisse Netzinitialisierung.p",
                     "Wärmenetz\\Ergebnisse Netzinitialisierung.csv",
                     "Wärmenetz\\Konfiguration Netzinitialisierung.json",
-                    "Wärmenetz\\dimensioniertes Wärmenetz.geojson",
                     "Lastgang\\Lastgang.csv"
-                ]
+                ],
+                "check_dimensioned_network": True  # Special check for dimensioned flag in Wärmenetz.geojson
             },
             {
                 "name": "Schritt 5: Erzeugermix auslegen und berechnen",
@@ -686,6 +683,37 @@ class ProjectPresenter:
             # If we can't read the CSV, assume it exists but is problematic
             return 'ist vorhanden'
 
+    def check_network_dimensioned(self, network_file_path):
+        """
+        Check if network GeoJSON has state set to "dimensioned".
+        
+        Parameters
+        ----------
+        network_file_path : str
+            Path to Wärmenetz.geojson file.
+            
+        Returns
+        -------
+        bool
+            True if network is dimensioned, False otherwise.
+        """
+        if not os.path.exists(network_file_path):
+            return False
+            
+        try:
+            from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
+            
+            geojson = NetworkGeoJSONSchema.import_from_file(network_file_path)
+            
+            # Check metadata for state == "dimensioned"
+            metadata = geojson.get('metadata', {})
+            state = metadata.get('state', '')
+            return state == 'dimensioned'
+            
+        except Exception as e:
+            print(f"Fehler beim Prüfen des Dimensionierungsstatus: {e}")
+            return False
+
     def update_progress_tracker(self):
         """Update project progress and CSV status label based on file existence and content."""
         if not self.view:  # Skip if view not available yet
@@ -719,8 +747,23 @@ class ProjectPresenter:
             for step in self.process_steps:
                 full_paths = [os.path.join(base_path, path) for path in step['required_files']]
                 generated_files = [file for file in full_paths if os.path.exists(file)]
-                step['completed'] = len(generated_files) == len(full_paths)
-                step['missing_files'] = [path for path in full_paths if not os.path.exists(path)]
+                
+                # Special check for dimensioned network flag in Wärmenetz.geojson
+                if step.get('check_dimensioned_network', False):
+                    network_file = os.path.join(base_path, "Wärmenetz\\Wärmenetz.geojson")
+                    network_dimensioned = self.check_network_dimensioned(network_file)
+                    
+                    if not network_dimensioned:
+                        # Add virtual missing file indicator
+                        step['missing_files'] = [path for path in full_paths if not os.path.exists(path)]
+                        step['missing_files'].append("Wärmenetz\\Wärmenetz.geojson (nicht dimensioniert)")
+                        step['completed'] = False
+                    else:
+                        step['missing_files'] = [path for path in full_paths if not os.path.exists(path)]
+                        step['completed'] = len(step['missing_files']) == 0
+                else:
+                    step['completed'] = len(generated_files) == len(full_paths)
+                    step['missing_files'] = [path for path in full_paths if not os.path.exists(path)]
         else:
             for step in self.process_steps:
                 step['completed'] = False

@@ -29,6 +29,7 @@ from shapely.geometry import Point
 from typing import Optional, List, Tuple, Union
 
 from districtheatingsim.net_generation.net_generation import generate_network, generate_connection_lines
+from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
 
 def import_osm_street_layer(osm_street_layer_geojson_file: str) -> Optional[gpd.GeoDataFrame]:
     """
@@ -337,11 +338,14 @@ def generate_and_export_layers(osm_street_layer_geojson_file_name: str,
         ```
         base_path/
         └── Wärmenetz/
-            ├── Vorlauf.geojson      # Supply line network
-            ├── Rücklauf.geojson     # Return line network
-            ├── HAST.geojson         # Heat consumer connections
-            └── Erzeugeranlagen.geojson  # Heat generator connections
+            └── Wärmenetz.geojson  # Unified network file with all components
         ```
+        
+        The unified GeoJSON contains:
+        - Flow lines (supply network)
+        - Return lines (return network)  
+        - Building connections (HAST)
+        - Generator connections (Erzeugeranlagen)
 
     Coordinate System Management:
         - All outputs standardized to EPSG:25833 (ETRS89 / UTM zone 33N)
@@ -393,12 +397,14 @@ def generate_and_export_layers(osm_street_layer_geojson_file_name: str,
     >>> import os
     >>> network_dir = "output/Wärmenetz"
     >>> files = os.listdir(network_dir)
-    >>> print(f"Generated files: {files}")
+    >>> print(f"Generated files: {files}")  # ['Wärmenetz.geojson']
 
     >>> # Load and analyze generated network
     >>> import geopandas as gpd
-    >>> supply_network = gpd.read_file("output/Wärmenetz/Vorlauf.geojson")
-    >>> total_length = supply_network.geometry.length.sum()
+    >>> from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
+    >>> unified = NetworkGeoJSONSchema.import_from_file("output/Wärmenetz/Wärmenetz.geojson")
+    >>> flow, return_, building, generator = NetworkGeoJSONSchema.split_to_legacy_format(unified)
+    >>> total_length = flow.geometry.length.sum()
     >>> print(f"Total supply network length: {total_length/1000:.1f} km")
 
     Raises
@@ -469,20 +475,23 @@ def generate_and_export_layers(osm_street_layer_geojson_file_name: str,
     # Export all network components as GeoJSON files
     print(f"Exporting network layers to {output_dir}...")
     
-    export_files = [
-        (heat_consumer_gdf, "HAST.geojson", "Heat consumer connections"),
-        (return_lines_gdf, "Rücklauf.geojson", "Return line network"),
-        (flow_lines_gdf, "Vorlauf.geojson", "Supply line network"),
-        (heat_producer_gdf, "Erzeugeranlagen.geojson", "Heat generator connections")
-    ]
-    
-    for gdf, filename, description in export_files:
-        filepath = os.path.join(output_dir, filename)
-        try:
-            gdf.to_file(filepath, driver="GeoJSON")
-            print(f"✓ Exported {description}: {filename} ({len(gdf)} features)")
-        except Exception as e:
-            print(f"✗ Failed to export {description}: {e}")
+    # Export in unified format
+    try:
+        unified_geojson = NetworkGeoJSONSchema.create_network_geojson(
+            flow_lines=flow_lines_gdf,
+            return_lines=return_lines_gdf,
+            building_connections=heat_consumer_gdf,
+            generator_connections=heat_producer_gdf,
+            state="designed"
+        )
+        # Use default filename for unified network
+        unified_filename = "Wärmenetz.geojson"
+        unified_path = os.path.join(output_dir, unified_filename)
+        NetworkGeoJSONSchema.export_to_file(unified_geojson, unified_path)
+        print(f"✓ Exported unified network: {unified_filename} ({len(flow_lines_gdf) + len(return_lines_gdf) + len(heat_consumer_gdf) + len(heat_producer_gdf)} features)")
+    except Exception as e:
+        print(f"✗ Failed to export unified format: {e}")
+        return
 
     # Generate summary statistics
     print("\nNetwork Generation Summary:")

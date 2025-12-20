@@ -108,12 +108,8 @@ class NetGenerationDialog(QDialog):
     def generateNetwork(self):
         """Generate network based on user inputs and execute callback."""
         if self.network_data_tab.importTypeComboBox.currentText() == "GeoJSON":
-            # Extract GeoJSON-specific data
-            vorlauf_path = self.network_data_tab.vorlaufInput.itemAt(1).widget().text()
-            ruecklauf_path = self.network_data_tab.ruecklaufInput.itemAt(1).widget().text()
-            hast_path = self.network_data_tab.hastInput.itemAt(1).widget().text()
-            erzeugeranlagen_path = self.network_data_tab.erzeugeranlagenInput.itemAt(1).widget().text()
-
+            # Extract unified GeoJSON path
+            network_path = self.network_data_tab.networkInput.itemAt(1).widget().text()
             json_path = self.network_data_tab.jsonLineEdit.text()
 
             pipetype = self.network_config_tab.initialpipetypeInput.currentText()
@@ -155,10 +151,7 @@ class NetGenerationDialog(QDialog):
 
         data = NetworkGenerationData(
             import_type=self.network_data_tab.importTypeComboBox.currentText(),
-            flow_line_path=vorlauf_path,
-            return_line_path=ruecklauf_path,
-            heat_consumer_path=hast_path,
-            heat_generator_path=erzeugeranlagen_path,
+            network_geojson_path=network_path,
             heat_demand_json_path=json_path,
 
             netconfiguration=self.network_config_tab.netconfiguration,

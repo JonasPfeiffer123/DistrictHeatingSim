@@ -305,19 +305,38 @@ class KostenBerechnungDialog(QDialog):
 
     def onAccept(self):
         """
-        Reads the geoJSON file and calculates the total cost based on the input values.
+        Reads the unified GeoJSON file and calculates the total cost based on the input values.
         """
-        gdf_net = gpd.read_file(self.filename)
+        from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
+        
+        # Load unified GeoJSON and convert to GeoDataFrame
+        unified_geojson = NetworkGeoJSONSchema.import_from_file(self.filename)
+        gdf_net = gpd.GeoDataFrame.from_features(unified_geojson['features'])
 
-        gdf_net_filtered = gdf_net[gdf_net["name"].str.startswith(self.type)]
-
+        # Filter by feature_type instead of name
         if self.type.startswith("flow line"):
-            self.length_values = gdf_net_filtered["length_m"].values.astype(float)
+            gdf_net_filtered = gdf_net[gdf_net["feature_type"] == "network_line_flow"]
+            
+            # Extract length from nested calculated data
+            length_values = []
+            for _, row in gdf_net_filtered.iterrows():
+                if 'calculated' in row and row['calculated'] and 'length_m' in row['calculated']:
+                    length_values.append(float(row['calculated']['length_m']))
+            
+            self.length_values = np.array(length_values)
             self.cost_lines = self.length_values * float(self.specCostInput.text())
             self.total_cost = round(np.sum(self.cost_lines), 0)
 
         elif self.type == "HAST":
-            self.qext_values = gdf_net_filtered["qext_W"].values.astype(float) / 1000
+            gdf_net_filtered = gdf_net[gdf_net["feature_type"] == "building_connection"]
+            
+            # Extract heat_demand from nested building_data
+            qext_values = []
+            for _, row in gdf_net_filtered.iterrows():
+                if 'building_data' in row and row['building_data'] and 'heat_demand_W' in row['building_data']:
+                    qext_values.append(float(row['building_data']['heat_demand_W']) / 1000)
+            
+            self.qext_values = np.array(qext_values)
             self.cost_lines = self.qext_values * float(self.specCostInput.text())
             self.total_cost = round(np.sum(self.cost_lines), 0)
 

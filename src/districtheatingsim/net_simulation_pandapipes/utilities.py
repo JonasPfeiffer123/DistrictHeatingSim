@@ -34,6 +34,8 @@ from pandapower.control.controller.const_control import ConstControl
 from districtheatingsim.utilities.utilities import get_resource_path
 from districtheatingsim.net_simulation_pandapipes.controllers import MinimumSupplyTemperatureController, BadPointPressureLiftController
 
+from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
+
 from typing import Optional, List, Tuple, Dict, Any, Union
 
 # Initialize logging
@@ -981,147 +983,151 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "KMR
 
     return net
 
-def export_net_geojson(net, filename: str) -> None:
+def export_net_geojson(net, filename: str) -> dict:
     """
-    Export pandapipes network data to GeoJSON format for GIS integration and visualization.
+    Export pandapipes network data to unified GeoJSON format.
 
-    This function converts a pandapipes network into GeoJSON format, enabling integration
-    with Geographic Information Systems (GIS) and web mapping applications. It preserves
-    geometric information, component properties, and technical specifications for
-    comprehensive spatial analysis.
+    This function converts a pandapipes network into the unified GeoJSON format (Version 2.0),
+    creating a single file with all network components classified by feature_type.
 
     Parameters
     ----------
     net : pandapipes.pandapipesNet
         The pandapipes network object containing topology, geodata, and component properties.
     filename : str
-        Output file path for the GeoJSON export. Should have .geojson extension.
+        Output file path for the GeoJSON export (typically 'Wärmenetz.geojson').
 
     Returns
     -------
-    None
-        Function creates GeoJSON file at specified location.
+    dict
+        Dictionary with feature counts: {'flow': int, 'return': int, 'building': int, 'generator': int}
 
     Notes
     -----
     Exported Components:
-        - **Pipes** : LineString geometries with diameter, type, and length information
-        - **Heat Consumers** : LineString connections with heat demand data
-        - **Circulation Pumps** : LineString representations of pump connections
-        - **Junction data** : Preserved in component geometries
+        - **Flow Lines** : Vorlauf pipes with feature_type='network_line_flow'
+        - **Return Lines** : Rücklauf pipes with feature_type='network_line_return'
+        - **Building Connections** : Heat consumer connections with feature_type='building_connection'
+        - **Generator Connections** : Pump connections with feature_type='generator_connection'
 
     GeoJSON Structure:
-        - Feature Collection format
+        - Unified NetworkGeoJSONSchema Version 2.0
         - EPSG:25833 coordinate reference system
-        - Component properties as feature attributes
-        - LineString geometries for all network elements
-
-    Component Properties:
-        - **Pipes** : name, diameter_mm, std_type, length_m
-        - **Heat Consumers** : name, qext_W (heat demand)
-        - **Pumps** : name, geometry (connection line)
-
-    Applications:
-        - GIS analysis and spatial planning
-        - Web mapping and visualization
-        - Integration with urban planning tools
-        - Stakeholder presentation and reporting
-
-    Examples
-    --------
-    >>> # Export network for GIS analysis
-    >>> export_net_geojson(network, "network_layout.geojson")
-
-    >>> # Export optimized network
-    >>> optimized_net = optimize_diameter_types(network)
-    >>> export_net_geojson(optimized_net, "optimized_network.geojson")
-
-    >>> # Verify export with geopandas
-    >>> import geopandas as gpd
-    >>> gdf = gpd.read_file("network_layout.geojson")
-    >>> print(f"Exported {len(gdf)} network features")
-    >>> print(f"Feature types: {gdf.geometry.geom_type.unique()}")
-
-    Raises
-    ------
-    AttributeError
-        If network lacks required geodata components.
-    ValueError
-        If coordinate data is invalid or missing.
+        - All components in single file with feature_type classification
 
     See Also
     --------
-    create_network : Network creation with geodata integration
-    geopandas.GeoDataFrame.to_file : Underlying export functionality
+    NetworkGeoJSONSchema.create_network_geojson : Schema creation
+    NetworkGeoJSONSchema.update_calculated_data : Add calculation results
     """
-    features = []  # Collect GeoDataFrames for all network components
+    print(f"\n{'='*80}")
+    print(f"EXPORT_NET_GEOJSON: Starting export to {filename}")
+    print(f"{'='*80}\n")
     
-    # Export pipe data
+    # Extract flow and return lines from pipes
+    flow_features = []
+    return_features = []
+    
+    print(f"Checking pipe_geodata... hasattr: {hasattr(net, 'pipe_geodata')}")
+    if hasattr(net, 'pipe_geodata'):
+        print(f"pipe_geodata empty: {net.pipe_geodata.empty}")
+    
     if hasattr(net, 'pipe_geodata') and not net.pipe_geodata.empty:
-        # Create LineString geometries from coordinate data
-        geometry_lines = [LineString(coords) for coords in net.pipe_geodata['coords']]
-        gdf_lines = gpd.GeoDataFrame(net.pipe_geodata, geometry=geometry_lines)
-        del gdf_lines['coords']  # Remove coordinate list column
+        pipe_count = len(net.pipe)
         
-        # Add pipe technical properties
-        gdf_lines['name'] = net.pipe['name']
-        gdf_lines['diameter_mm'] = net.pipe['diameter_m'] * 1000
-        gdf_lines['std_type'] = net.pipe['std_type']
-        gdf_lines['length_m'] = net.pipe['length_km'] * 1000
-        
-        features.append(gdf_lines)
-
-    # Export circulation pump data
-    if hasattr(net, 'circ_pump_pressure') and not net.circ_pump_pressure.empty:
-        # Create pump connection lines
-        pump_lines = []
-        for index, pump in net.circ_pump_pressure.iterrows():
-            return_coords = net.junction_geodata.loc[pump['return_junction']]
-            flow_coords = net.junction_geodata.loc[pump['flow_junction']]
-            line = LineString([
-                (return_coords['x'], return_coords['y']),
-                (flow_coords['x'], flow_coords['y'])
-            ])
-            pump_lines.append(line)
-        
-        # Create GeoDataFrame with pump properties
-        relevant_columns = ['name']
-        pump_data = net.circ_pump_pressure[relevant_columns].copy()
-        gdf_pumps = gpd.GeoDataFrame(pump_data, geometry=pump_lines)
-        
-        features.append(gdf_pumps)
-
-    # Export heat consumer data
+        for idx, row in net.pipe_geodata.iterrows():
+            pipe_data = net.pipe.loc[idx]
+            geometry = LineString(row['coords'])
+            
+            # Split pipes into flow and return (first half = flow, second half = return)
+            feature_data = {
+                'geometry': geometry,
+                'segment_id': f"{'flow' if idx < pipe_count/2 else 'return'}_{idx:03d}",
+                'diameter_mm': pipe_data.get('diameter_m', 0) * 1000,
+                'std_type': pipe_data.get('std_type', ''),
+                'length_m': pipe_data.get('length_km', 0) * 1000
+            }
+            
+            if idx < pipe_count / 2:
+                flow_features.append(feature_data)
+            else:
+                return_features.append(feature_data)
+    
+    # Create GeoDataFrames
+    flow_gdf = gpd.GeoDataFrame(flow_features, crs="EPSG:25833") if flow_features else gpd.GeoDataFrame()
+    return_gdf = gpd.GeoDataFrame(return_features, crs="EPSG:25833") if return_features else gpd.GeoDataFrame()
+    
+    # Extract building connections from heat consumers
+    building_features = []
     if hasattr(net, 'heat_consumer') and not net.heat_consumer.empty:
-        for idx, heat_consumer in net.heat_consumer.iterrows():
-            # Get connection coordinates
-            start_coords = net.junction_geodata.loc[heat_consumer['from_junction']]
-            end_coords = net.junction_geodata.loc[heat_consumer['to_junction']]
-
-            # Create connection line geometry
-            line = LineString([
-                (start_coords['x'], start_coords['y']), 
-                (end_coords['x'], end_coords['y'])
+        for idx, consumer in net.heat_consumer.iterrows():
+            from_junction = net.junction_geodata.loc[consumer['from_junction']]
+            to_junction = net.junction_geodata.loc[consumer['to_junction']]
+            
+            geometry = LineString([
+                (from_junction['x'], from_junction['y']),
+                (to_junction['x'], to_junction['y'])
             ])
             
-            # Create feature with heat consumer properties
-            gdf_component = gpd.GeoDataFrame({
-                'name': ["HAST"],            
-                'qext_W': [f"{heat_consumer['qext_w']:.0f}"],
-                'geometry': [line]
-            }, crs="EPSG:25833")
+            building_features.append({
+                'geometry': geometry,
+                'connection_id': f"hast_{idx:03d}",
+                'heat_demand_W': consumer.get('qext_w', 0)
+            })
+    
+    building_gdf = gpd.GeoDataFrame(building_features, crs="EPSG:25833") if building_features else gpd.GeoDataFrame()
+    
+    # Extract generator connections from circulation pumps
+    generator_features = []
+    if hasattr(net, 'circ_pump_pressure') and not net.circ_pump_pressure.empty:
+        for idx, pump in net.circ_pump_pressure.iterrows():
+            return_junction = net.junction_geodata.loc[pump['return_junction']]
+            flow_junction = net.junction_geodata.loc[pump['flow_junction']]
             
-            features.append(gdf_component)
+            geometry = LineString([
+                (return_junction['x'], return_junction['y']),
+                (flow_junction['x'], flow_junction['y'])
+            ])
+            
+            generator_features.append({
+                'geometry': geometry,
+                'generator_id': f"gen_{idx:03d}"
+            })
+    
+    generator_gdf = gpd.GeoDataFrame(generator_features, crs="EPSG:25833") if generator_features else gpd.GeoDataFrame()
+    
+    print(f"\nExtracted features:")
+    print(f"  Flow: {len(flow_features)}")
+    print(f"  Return: {len(return_features)}")
+    print(f"  Buildings: {len(building_features)}")
+    print(f"  Generators: {len(generator_features)}")
+    print(f"\nCalling create_network_geojson...")
+    
+    # Create unified GeoJSON using NetworkGeoJSONSchema
+    # (calculated data is automatically included from GeoDataFrame columns)
+    unified_geojson = NetworkGeoJSONSchema.create_network_geojson(
+        flow_lines=flow_gdf,
+        return_lines=return_gdf,
+        building_connections=building_gdf,
+        generator_connections=generator_gdf,
+        state='dimensioned'
+    )
+    
+    print(f"Exporting network to unified GeoJSON format: {filename}")
+    logging.info(f"Created unified GeoJSON with {len(unified_geojson.get('features', []))} total features")
 
-    # Set consistent coordinate reference system
-    for feature in features:
-        if not feature.crs:
-            feature.set_crs(epsg=25833, inplace=True)
-
-    # Combine all features and export
-    if features:
-        gdf_all = gpd.GeoDataFrame(pd.concat(features, ignore_index=True), crs="EPSG:25833")
-        gdf_all.to_file(filename, driver='GeoJSON')
-        logging.info(f"Network exported to GeoJSON: {filename} ({len(gdf_all)} features)")
-    else:
-        logging.warning("No geographical data available in the network for export")
+    # Export to file
+    NetworkGeoJSONSchema.export_to_file(unified_geojson, filename)
+    
+    logging.info(
+        f"Network exported to unified GeoJSON: {filename} "
+        f"(Flow: {len(flow_features)}, Return: {len(return_features)}, "
+        f"Buildings: {len(building_features)}, Generators: {len(generator_features)})"
+    )
+    
+    return {
+        'flow': len(flow_features),
+        'return': len(return_features),
+        'building': len(building_features),
+        'generator': len(generator_features)
+    }

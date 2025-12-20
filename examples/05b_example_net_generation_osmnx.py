@@ -160,11 +160,11 @@ def main():
         print("Loading exported networks for visualization")
         print(f"{'='*70}")
         
+        from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
+        
         network_dir = os.path.join(os.path.dirname(output_dir), "Wärmenetz")
-        supply_network = gpd.read_file(os.path.join(network_dir, "Vorlauf.geojson"))
-        return_network = gpd.read_file(os.path.join(network_dir, "Rücklauf.geojson"))
-        hast_connections = gpd.read_file(os.path.join(network_dir, "HAST.geojson"))
-        generator_connection = gpd.read_file(os.path.join(network_dir, "Erzeugeranlagen.geojson"))
+        unified_geojson = NetworkGeoJSONSchema.load_from_file(os.path.join(network_dir, "Wärmenetz.geojson"))
+        supply_network, return_network, hast_connections, generator_connection = NetworkGeoJSONSchema.split_to_legacy_format(unified_geojson)
         
         # Load buildings for plotting
         df = pd.read_csv(data_csv_file, delimiter=';')

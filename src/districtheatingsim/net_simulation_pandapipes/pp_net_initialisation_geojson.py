@@ -28,6 +28,7 @@ from typing import Dict, List, Tuple, Union, Any
 from pandapipes.control.run_control import run_control
 
 from districtheatingsim.net_simulation_pandapipes.utilities import create_controllers, correct_flow_directions, COP_WP, init_diameter_types
+from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
 
 def initialize_geojson(NetworkGenerationData) -> Any:
     """
@@ -43,7 +44,7 @@ def initialize_geojson(NetworkGenerationData) -> Any:
     NetworkGenerationData : object
         Network generation data object containing all necessary parameters including:
         
-        - **GeoJSON file paths** : Paths to flow lines, return lines, heat consumers, and producers
+        - **network_geojson_path** : Path to unified GeoJSON file (Wärmenetz.geojson)
         - **Heat demand data** : JSON file with building heat demands and temperature profiles  
         - **Network configuration** : Type of network (traditional, cold network, hybrid)
         - **Temperature parameters** : Supply/return temperatures and control strategies
@@ -108,13 +109,24 @@ def initialize_geojson(NetworkGenerationData) -> Any:
     COP_WP : Heat pump coefficient of performance calculation
     create_controllers : Adds control systems to the network
     """
-    # Load GeoJSON data for network topology
+    # Load unified network GeoJSON data
+    
+    # Read unified GeoJSON file
+    network_gdf = gpd.read_file(NetworkGenerationData.network_geojson_path, driver='GeoJSON')
+    
+    # Separate features by type
     gdf_dict = {
-        "flow_line": gpd.read_file(NetworkGenerationData.flow_line_path, driver='GeoJSON'),
-        "return_line": gpd.read_file(NetworkGenerationData.return_line_path, driver='GeoJSON'),
-        "heat_consumer": gpd.read_file(NetworkGenerationData.heat_consumer_path, driver='GeoJSON'),
-        "heat_producer": gpd.read_file(NetworkGenerationData.heat_generator_path, driver='GeoJSON')
+        "flow_line": network_gdf[network_gdf['feature_type'] == NetworkGeoJSONSchema.FEATURE_TYPE_FLOW].copy(),
+        "return_line": network_gdf[network_gdf['feature_type'] == NetworkGeoJSONSchema.FEATURE_TYPE_RETURN].copy(),
+        "heat_consumer": network_gdf[network_gdf['feature_type'] == NetworkGeoJSONSchema.FEATURE_TYPE_BUILDING].copy(),
+        "heat_producer": network_gdf[network_gdf['feature_type'] == NetworkGeoJSONSchema.FEATURE_TYPE_GENERATOR].copy()
     }
+    
+    print(f"Loaded unified network GeoJSON with {len(network_gdf)} features")
+    print(f"  Flow lines: {len(gdf_dict['flow_line'])}")
+    print(f"  Return lines: {len(gdf_dict['return_line'])}")
+    print(f"  Heat consumers: {len(gdf_dict['heat_consumer'])}")
+    print(f"  Heat producers: {len(gdf_dict['heat_producer'])}")
 
     print(f"Max supply temperature heat generator: {NetworkGenerationData.max_supply_temperature_heat_generator} °C")
     

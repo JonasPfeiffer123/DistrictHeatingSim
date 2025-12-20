@@ -71,8 +71,18 @@ function addLayerToList(layer) {
     // Lock indicator
     const lockIcon = document.createElement('span');
     lockIcon.classList.add('lock-icon');
-    lockIcon.textContent = layer.options.locked ? '🔒' : '';
-    lockIcon.title = layer.options.locked ? 'Gesperrt' : 'Entsperrt';
+    
+    // Zeige Schloss-Icon wenn Layer gesperrt oder nicht editierbar ist
+    const isLocked = layer.options.locked || (layer.options.editable === false);
+    lockIcon.textContent = isLocked ? '🔒' : '';
+    lockIcon.title = isLocked ? 'Gesperrt (nicht editierbar)' : 'Entsperrt';
+    
+    // Wenn Layer nicht editierbar ist, verhindere Aktivierung
+    if (!layer.options.editable && layer.options.editable !== undefined) {
+        li.style.opacity = '0.7';
+        li.title = 'Dieser Layer ist geschützt und kann nicht bearbeitet werden';
+    }
+    
     li.appendChild(lockIcon);
 
     // Feature count
@@ -86,7 +96,12 @@ function addLayerToList(layer) {
 
     // Doppelklick zum Aktivieren des Layers für Draw-Tools
     li.ondblclick = () => {
-        setActiveLayer(layer);
+        // Nur editierbare Layer können aktiviert werden
+        if (layer.options.editable !== false && !layer.options.locked) {
+            setActiveLayer(layer);
+        } else {
+            console.warn("Layer kann nicht aktiviert werden - ist geschützt:", layer.options.name);
+        }
     };
 
     // Rechts-Klick für Kontextmenü
@@ -251,6 +266,24 @@ function selectLayer(layer, listItem) {
 
 // Setze einen Layer als aktiv für Draw-Operationen
 function setActiveLayer(layer) {
+    // Prüfe ob Layer editierbar ist
+    if (layer.options.editable === false) {
+        alert('Dieser Layer ist geschützt und kann nicht bearbeitet werden.\n\n' +
+              'Geschützte Layer:\n' +
+              '- HAST (Hausanschlussstationen): Gebäudedaten aus CSV\n' +
+              '- Erzeugeranlagen: Erzeugerpositionen\n\n' +
+              'Nur Vorlauf- und Rücklauf-Linien können bearbeitet werden.');
+        console.warn("Layer kann nicht aktiviert werden - ist geschützt:", layer.options.name);
+        return;
+    }
+    
+    // Prüfe auch auf locked-Status
+    if (layer.options.locked) {
+        alert('Dieser Layer ist gesperrt und kann nicht bearbeitet werden.');
+        console.warn("Layer kann nicht aktiviert werden - ist gesperrt:", layer.options.name);
+        return;
+    }
+    
     activeLayer = layer;
     window.activeLayer = layer;  // Setze auch die globale Variable für draw-handler
     // Aktualisiere visuelle Darstellung

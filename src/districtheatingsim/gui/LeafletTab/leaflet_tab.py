@@ -26,6 +26,7 @@ from PyQt6.QtWebChannel import QWebChannel
 
 from districtheatingsim.gui.LeafletTab.leaflet_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog
 from districtheatingsim.gui.LeafletTab.net_generation_threads import NetGenerationThread, FileImportThread, GeocodingThread
+from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
 
 from shapely.geometry import Point
 
@@ -146,6 +147,88 @@ class GeoJsonReceiver(QObject):
                 print("Fehler beim Erstellen des GeoDataFrame:", e)
                 import traceback
                 traceback.print_exc()
+    
+    @pyqtSlot(str)
+    def exportUnifiedNetworkGeoJSON(self, geojsonString):
+        """
+        Export edited network in unified format, preserving protected data.
+        
+        This merges edited geometries from the map with protected building
+        data to create a complete unified network GeoJSON.
+
+        Parameters
+        ----------
+        geojsonString : str
+            GeoJSON data from map (edited geometries).
+        """
+        fileName, _ = QFileDialog.getSaveFileName(
+            None, 
+            "Export Unified Network GeoJSON", 
+            self.base_path, 
+            "GeoJSON Files (*.geojson);;All Files (*)"
+        )
+        
+        if not fileName:
+            return
+        
+        try:
+            from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
+            
+            geojson_data = json.loads(geojsonString)
+            
+            # Check if this is already unified format
+            if geojson_data.get("metadata", {}).get("version") == NetworkGeoJSONSchema.VERSION:
+                # Just save as-is
+                with open(fileName, 'w', encoding='utf-8') as f:
+                    json.dump(geojson_data, f, indent=2, ensure_ascii=False)
+                print(f"✓ Exported unified network GeoJSON: {fileName}")
+            else:
+                # Convert to unified format (if needed, can implement merge logic here)
+                print("Converting to unified format...")
+                with open(fileName, 'w', encoding='utf-8') as f:
+                    json.dump(geojson_data, f, indent=2, ensure_ascii=False)
+                print(f"✓ Exported GeoJSON: {fileName}")
+                
+        except Exception as e:
+            print(f"✗ Export failed: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    @pyqtSlot(str, str)
+    def saveEditedNetwork(self, geojsonString, filepath):
+        """
+        Save edited network back to unified GeoJSON file.
+        
+        Merges edited geometries from map with original protected data.
+        This is called when user saves changes in the map.
+
+        Parameters
+        ----------
+        geojsonString : str
+            Edited GeoJSON data from map.
+        filepath : str
+            Path to save the network.
+        """
+        try:
+            from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
+            
+            edited_data = json.loads(geojsonString)
+            
+            # If already in unified format, just save
+            if edited_data.get("metadata", {}).get("version") == NetworkGeoJSONSchema.VERSION:
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    json.dump(edited_data, f, indent=2, ensure_ascii=False)
+                print(f"✓ Saved edited network: {filepath}")
+            else:
+                # Legacy format - just save as-is
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    json.dump(edited_data, f, indent=2, ensure_ascii=False)
+                print(f"✓ Saved GeoJSON: {filepath}")
+                
+        except Exception as e:
+            print(f"✗ Save failed: {e}")
+            import traceback
+            traceback.print_exc()
 
     @pyqtSlot(float, float)
     def receiveCoordinateFromMap(self, lat, lon):
@@ -312,6 +395,10 @@ class VisualizationPresenter(QObject):
         self.view.layerGenerationAction.triggered.connect(self.open_layer_generation_dialog)
         self.view.downloadActionOSM.triggered.connect(self.open_osm_data_dialog)
         self.view.osmBuildingAction.triggered.connect(self.open_osm_building_query_dialog)
+        self.view.saveNetworkAction.triggered.connect(self.save_network)
+        
+        # Track current unified network file
+        self.current_unified_network = None
 
         # Initialize map view
         if self.folder_manager.variant_folder:
@@ -429,14 +516,113 @@ class VisualizationPresenter(QObject):
                 # Read as UTF-8 to avoid encoding issues
                 with open(filename, 'r', encoding='utf-8') as f:
                     geojson_data = json.load(f)
-
-                # Pass the layers data to JavaScript via the WebChannel
-                layer_json = json.dumps(geojson_data)
-                self.view.web_view.page().runJavaScript(f"window.importGeoJSON({layer_json}, '{layer_name}');")
+                
+                # Check if this is a unified network GeoJSON
+                if self._is_unified_network_geojson(geojson_data):
+                    print(f"Loading unified network GeoJSON: {filename}")
+                    self._load_unified_network_geojson(geojson_data, filepath=filename)
+                else:
+                    # Legacy format - add as single layer
+                    layer_json = json.dumps(geojson_data)
+                    self.view.web_view.page().runJavaScript(f"window.importGeoJSON({layer_json}, '{layer_name}');")
 
         except Exception as e:
             error_message = f"{str(e)}\n\n{traceback.format_exc()}"
             self.view.show_error_message("Fehler beim Hinzufügen einer GeoJSON-Schicht", error_message)
+    
+    def _is_unified_network_geojson(self, geojson_data):
+        """
+        Check if GeoJSON is unified network format.
+        
+        Parameters
+        ----------
+        geojson_data : dict
+            GeoJSON data
+            
+        Returns
+        -------
+        bool
+            True if unified format
+        """
+        if geojson_data.get("type") != "FeatureCollection":
+            return False
+        
+        # Check for metadata marker
+        metadata = geojson_data.get("metadata", {})
+        if "version" in metadata and metadata["version"] == NetworkGeoJSONSchema.VERSION:
+            return True
+        
+        # Check if features have feature_type property
+        features = geojson_data.get("features", [])
+        if features and "feature_type" in features[0].get("properties", {}):
+            return True
+        
+        return False
+    
+    def _load_unified_network_geojson(self, geojson_data, filepath=None):
+        """
+        Load unified network GeoJSON and add layers to map.
+        
+        Parameters
+        ----------
+        geojson_data : dict
+            Unified network GeoJSON
+        filepath : str, optional
+            Path to the loaded file (for saving later)
+        """
+        # Separate features by type
+        flow_features = []
+        return_features = []
+        building_features = []
+        generator_features = []
+        
+        for feature in geojson_data.get("features", []):
+            ftype = feature["properties"].get("feature_type")
+            
+            if ftype == NetworkGeoJSONSchema.FEATURE_TYPE_FLOW:
+                flow_features.append(feature)
+            elif ftype == NetworkGeoJSONSchema.FEATURE_TYPE_RETURN:
+                return_features.append(feature)
+            elif ftype == NetworkGeoJSONSchema.FEATURE_TYPE_BUILDING:
+                building_features.append(feature)
+            elif ftype == NetworkGeoJSONSchema.FEATURE_TYPE_GENERATOR:
+                generator_features.append(feature)
+        
+        # Create separate layers for each type with editable flags
+        layers = [
+            ("Vorlauf", flow_features, True),
+            ("Rücklauf", return_features, True),
+            ("HAST", building_features, False),
+            ("Erzeugeranlagen", generator_features, False)
+        ]
+        
+        # Get CRS from original GeoJSON
+        crs = geojson_data.get("crs", {
+            "type": "name",
+            "properties": {
+                "name": "urn:ogc:def:crs:EPSG::25833"
+            }
+        })
+        
+        for layer_name, features, editable in layers:
+            if features:
+                layer_geojson = {
+                    "type": "FeatureCollection",
+                    "crs": crs,  # Include CRS in each layer
+                    "features": features
+                }
+                layer_json = json.dumps(layer_geojson)
+                
+                # Pass editable flag to JavaScript
+                self.view.web_view.page().runJavaScript(
+                    f"window.importGeoJSON({layer_json}, '{layer_name}', {str(editable).lower()});"
+                )
+                print(f"✓ Loaded layer '{layer_name}': {len(features)} features (editable: {editable})")
+        
+        # Store filepath for saving
+        if filepath:
+            self.current_unified_network = filepath
+            self.view.saveNetworkAction.setEnabled(True)
 
     def open_layer_generation_dialog(self):
         """Open dialog for generating layers from data."""
@@ -483,19 +669,37 @@ class VisualizationPresenter(QObject):
             Generation results.
         """
         self.view.progressBar.setRange(0, 1)
-        filenames = [os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("net_building_transfer_station_path")), 
-                     os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("net_return_pipes_path")),
-                     os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("net_flow_pipes_path")), 
-                     os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("net_heat_sources_path"))]
         
-        self.add_geojson_layer(filenames)
+        # Try to load unified network GeoJSON first
+        unified_path = os.path.join(
+            self.model.get_base_path(), 
+            self.config_manager.get_relative_path('dimensioned_net_path')
+        )
         
-        generatedLayers = {
-            'HAST': os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("net_building_transfer_station_path")),
-            'Rücklauf': os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("net_return_pipes_path")),
-            'Vorlauf': os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("net_flow_pipes_path")),
-            'Erzeugeranlagen': os.path.join(self.model.get_base_path(), self.config_manager.get_relative_path("net_heat_sources_path"))
+        print(f"Checking for unified GeoJSON at: {unified_path}")
+        print(f"File exists: {os.path.exists(unified_path)}")
+        
+        if os.path.exists(unified_path):
+            print(f"Loading unified network GeoJSON: {unified_path}")
+            self.add_geojson_layer([unified_path])
+            
+            # Store reference to unified file
+            self.current_unified_network = unified_path
+            
+            # Enable save action
+            self.view.saveNetworkAction.setEnabled(True)
+            
+            generatedLayers = {
+                'Wärmenetz': unified_path
             }
+        else:
+            # Unified file not found
+            print(f"Unified network file not found: {unified_path}")
+            self.view.show_error_message(
+                "Netzwerk nicht gefunden", 
+                f"Die Wärmenetz.geojson Datei wurde nicht gefunden:\n{unified_path}"
+            )
+            return
         
         self.layers_imported.emit(generatedLayers)
 
@@ -510,6 +714,41 @@ class VisualizationPresenter(QObject):
         """
         self.view.show_error_message("Berechnungsfehler", error_message)
         self.view.progressBar.setRange(0, 1)
+    
+    def save_network(self):
+        """
+        Save edited network back to unified GeoJSON file.
+        
+        Requests current network data from JavaScript and saves to file.
+        """
+        if not self.current_unified_network:
+            QMessageBox.warning(
+                self.view,
+                "Kein Netzwerk geladen",
+                "Es ist kein unified Netzwerk geladen, das gespeichert werden kann."
+            )
+            return
+        
+        # Request network data from JavaScript
+        # The JavaScript should call saveEditedNetwork with the current data
+        self.view.web_view.page().runJavaScript(
+            f"""
+            if (typeof getAllLayersAsGeoJSON === 'function') {{
+                var geojson = getAllLayersAsGeoJSON();
+                if (window.qt && window.qt.webChannelTransport) {{
+                    new QWebChannel(window.qt.webChannelTransport, function(channel) {{
+                        channel.objects.geoJsonReceiver.saveEditedNetwork(
+                            JSON.stringify(geojson),
+                            '{self.current_unified_network.replace(chr(92), chr(92)+chr(92))}'
+                        );
+                    }});
+                }}
+            }} else {{
+                console.error('getAllLayersAsGeoJSON function not found');
+            }}
+            """
+        )
+        print(f"Requested save of network to: {self.current_unified_network}")
 
     def activate_map_coordinate_picker(self):
         """Activate map coordinate picker mode by calling JavaScript."""
@@ -588,6 +827,12 @@ class VisualizationTabView(QWidget):
 
         self.layerGenerationAction = QAction('Wärmenetz aus Daten generieren', self)
         fileMenu.addAction(self.layerGenerationAction)
+        
+        fileMenu.addSeparator()
+        
+        self.saveNetworkAction = QAction('Netzwerk speichern', self)
+        self.saveNetworkAction.setEnabled(False)  # Initially disabled
+        fileMenu.addAction(self.saveNetworkAction)
 
         self.main_layout.addWidget(self.menuBar)
 
