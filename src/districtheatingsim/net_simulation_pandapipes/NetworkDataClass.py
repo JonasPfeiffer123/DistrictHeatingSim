@@ -84,14 +84,9 @@ class NetworkGenerationData:
     import_type : str
         Type of network data import method.
         Currently supported: "geoJSON" (STANET import planned for future versions).
-    flow_line_path : str
-        File path to the GeoJSON file containing supply line geometries.
-    return_line_path : str
-        File path to the GeoJSON file containing return line geometries.
-    heat_consumer_path : str
-        File path to the GeoJSON file containing heat consumer locations and connections.
-    heat_generator_path : str
-        File path to the GeoJSON file containing heat producer/generator locations.
+    network_geojson_path : str
+        File path to the unified network GeoJSON file (Wärmenetz.geojson).
+        Contains all network components: flow lines, return lines, heat consumers, and generators.
     heat_demand_json_path : str
         File path to the JSON file containing building heat demand time series data.
     netconfiguration : str
@@ -163,10 +158,7 @@ class NetworkGenerationData:
     >>> # Create network configuration for cold network
     >>> network_data = NetworkGenerationData(
     ...     import_type="geoJSON",
-    ...     flow_line_path="data/flow_lines.geojson",
-    ...     return_line_path="data/return_lines.geojson",
-    ...     heat_consumer_path="data/consumers.geojson",
-    ...     heat_generator_path="data/producers.geojson",
+    ...     network_geojson_path="data/Wärmenetz/Wärmenetz.geojson",
     ...     heat_demand_json_path="data/heat_demands.json",
     ...     netconfiguration="kaltes Netz",
     ...     supply_temperature_control="Gleitend",
@@ -207,10 +199,7 @@ class NetworkGenerationData:
     
     # Input data for the network generation
     import_type: str
-    flow_line_path: str
-    return_line_path: str
-    heat_consumer_path: str
-    heat_generator_path: str
+    network_geojson_path: str  # Unified GeoJSON file path
     heat_demand_json_path: str
 
     # Network configuration data
@@ -601,7 +590,14 @@ class NetworkGenerationData:
         """
         Deserialize network data including KPIs from saved dict.
         """
-        obj = cls(**{k: v for k, v in data.items() if k != 'kpi_results'})
-        if 'kpi_results' in data:
-            obj.kpi_results = data['kpi_results']
+        # Extract kpi_results before creating object
+        kpi_results = data.pop('kpi_results', None)
+        
+        # Create object with remaining data
+        obj = cls(**{k: v for k, v in data.items() if k in cls.__annotations__})
+        
+        # Restore kpi_results
+        if kpi_results is not None:
+            obj.kpi_results = kpi_results
+            
         return obj

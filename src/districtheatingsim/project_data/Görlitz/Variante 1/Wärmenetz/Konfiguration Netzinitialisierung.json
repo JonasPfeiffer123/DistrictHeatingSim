@@ -1,9 +1,6 @@
 {
     "import_type": "GeoJSON",
-    "flow_line_path": "C:/Users/jonas/DistrictHeatingSim/src/districtheatingsim/project_data/G\u00f6rlitz\\Variante 1\\W\u00e4rmenetz\\Vorlauf.geojson",
-    "return_line_path": "C:/Users/jonas/DistrictHeatingSim/src/districtheatingsim/project_data/G\u00f6rlitz\\Variante 1\\W\u00e4rmenetz\\R\u00fccklauf.geojson",
-    "heat_consumer_path": "C:/Users/jonas/DistrictHeatingSim/src/districtheatingsim/project_data/G\u00f6rlitz\\Variante 1\\W\u00e4rmenetz\\HAST.geojson",
-    "heat_generator_path": "C:/Users/jonas/DistrictHeatingSim/src/districtheatingsim/project_data/G\u00f6rlitz\\Variante 1\\W\u00e4rmenetz\\Erzeugeranlagen.geojson",
+    "network_geojson_path": "C:/Users/jonas/DistrictHeatingSim/src/districtheatingsim/project_data/G\u00f6rlitz\\Variante 1\\W\u00e4rmenetz\\W\u00e4rmenetz.geojson",
     "heat_demand_json_path": "C:/Users/jonas/DistrictHeatingSim/src/districtheatingsim/project_data/G\u00f6rlitz\\Variante 1\\Lastgang\\Geb\u00e4ude Lastgang.json",
     "netconfiguration": "Niedertemperaturnetz",
     "supply_temperature_control": "Gleitend",
@@ -40,22 +37,23 @@
     "min_supply_temperature_heat_consumer": "[0. 0. 0. 0. 0. 0. 0. 0. 0.]",
     "max_waerme_hast_ges_W": "[ 60745.31829814  15402.28824389 551347.38248226 292477.45847251\n  15402.28824389  28588.87086099 731193.64618128  30804.57648778\n 413510.53686169]",
     "max_el_leistung_hast_ges_W": "[0. 0. 0. 0. 0. 0. 0. 0. 0.]",
-    "start_time_step": null,
-    "end_time_step": null,
-    "results_csv_filename": null,
-    "supply_temperature_heat_generator": null,
+    "start_time_step": 0,
+    "end_time_step": 8760,
+    "results_csv_filename": "C:/Users/jonas/DistrictHeatingSim/src/districtheatingsim/project_data/G\u00f6rlitz\\Variante 1\\Lastgang\\Lastgang.csv",
+    "supply_temperature_heat_generator": "[77.8  77.32 77.08 ... 79.78 79.18 78.58]",
     "net_results": null,
     "kpi_results": {
         "Anzahl angeschlossene Geb\u00e4ude": 9,
         "Anzahl Heizzentralen": 1,
         "Jahresgesamtw\u00e4rmebedarf Geb\u00e4ude [MWh/a]": 4443.605958513105,
-        "max. Heizlast Geb\u00e4ude [kW]": 2107.769833990385,
-        "Trassenl\u00e4nge W\u00e4rmenetz [m]": 1090.967271956561,
-        "W\u00e4rmebedarfsdichte [MWh/(a*m)]": 4.073088233475473,
-        "Anschlussdichte [kW/m]": 1.932019308159695,
-        "Jahresw\u00e4rmeerzeugung [MWh]": 4997.278470669401,
-        "Pumpenstrom [MWh]": 12.416958304006425,
-        "Verteilverluste [MWh]": 553.6725121562959,
-        "rel. Verteilverluste [%]": 11.079480869556779
-    }
+        "max. Heizlast Geb\u00e4ude [kW]": 2107.7698339903855,
+        "Trassenl\u00e4nge W\u00e4rmenetz [m]": 1171.1128090470227,
+        "W\u00e4rmebedarfsdichte [MWh/(a*m)]": 3.7943449377255383,
+        "Anschlussdichte [kW/m]": 1.7998008541171664,
+        "Jahresw\u00e4rmeerzeugung [MWh]": 4991.074982876248,
+        "Pumpenstrom [MWh]": 13.085499717097399,
+        "Verteilverluste [MWh]": 547.469024363143,
+        "rel. Verteilverluste [%]": 10.968960118640585
+    },
+    "simplified_calculation": true
 }

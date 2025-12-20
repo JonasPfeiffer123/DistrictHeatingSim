@@ -1140,10 +1140,11 @@ def generate_osmnx_network(
     
     Output Files (if export_geojson=True):
     
-    - Vorlauf.geojson : Supply network
-    - Ruecklauf.geojson : Return network
-    - HAST.geojson : Building connections with metadata
-    - Erzeugeranlagen.geojson : Generator connection
+    - Wärmenetz.geojson : Unified network file containing:
+      - Flow lines (supply network)
+      - Return lines (return network)
+      - Building connections (HAST) with metadata
+      - Generator connections (Erzeugeranlagen)
     
     Examples
     --------
@@ -1329,22 +1330,27 @@ def generate_osmnx_network(
     if export_geojson:
         logger.info("Step 11/12: Exporting to GeoJSON")
         
-        supply_file = os.path.join(output_dir, "Vorlauf.geojson")
-        return_file = os.path.join(output_dir, "Rücklauf.geojson")
-        hast_file = os.path.join(output_dir, "HAST.geojson")
-        erzeuger_file = os.path.join(output_dir, "Erzeugeranlagen.geojson")
-        
-        supply_network.to_file(supply_file, driver='GeoJSON')
-        return_network.to_file(return_file, driver='GeoJSON')
-        hast_connections.to_file(hast_file, driver='GeoJSON')
-        generator_connection.to_file(erzeuger_file, driver='GeoJSON')
-        
-        output_files = {
-            'vorlauf': supply_file,
-            'ruecklauf': return_file,
-            'hast': hast_file,
-            'erzeuger': erzeuger_file
-        }
+        # Export in unified format
+        try:
+            from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
+            
+            unified_geojson = NetworkGeoJSONSchema.create_network_geojson(
+                flow_lines=supply_network,
+                return_lines=return_network,
+                building_connections=hast_connections,
+                generator_connections=generator_connection,
+                state="designed"
+            )
+            # Use default filename for unified network
+            unified_filename = "Wärmenetz.geojson"
+            unified_path = os.path.join(output_dir, unified_filename)
+            NetworkGeoJSONSchema.export_to_file(unified_geojson, unified_path)
+            logger.info(f"✓ Exported unified format: {unified_filename}")
+            
+            output_files = {'unified': unified_path}
+        except Exception as e:
+            logger.warning(f"Failed to export unified format: {e}")
+            output_files = {}
         
         logger.info(f"✓ Exported to: {output_dir}")
     
@@ -1456,10 +1462,13 @@ def generate_and_export_osmnx_layers(
     Output File Structure:
         base_path/
         └── Wärmenetz/
-            ├── Vorlauf.geojson      # Supply line network
-            ├── Rücklauf.geojson     # Return line network
-            ├── HAST.geojson         # Heat consumer connections with building data
-            └── Erzeugeranlagen.geojson  # Heat generator connections
+            └── Wärmenetz.geojson  # Unified network file with all components
+        
+        The unified GeoJSON contains:
+        - Flow lines (supply network)
+        - Return lines (return network)
+        - Building connections (HAST) with building data
+        - Generator connections (Erzeugeranlagen)
     
     Threading Compatibility:
         - Designed for use with NetGenerationThread in GUI
@@ -1555,11 +1564,11 @@ def generate_and_export_osmnx_layers(
         logger.info("="*70)
         logger.info("EXPORT COMPLETE")
         logger.info("="*70)
-        logger.info(f"Exported files to: {output_dir}")
-        logger.info(f"  - Vorlauf.geojson: {result['n_supply_segments']} segments")
-        logger.info(f"  - Rücklauf.geojson: {result['n_return_segments']} segments")
-        logger.info(f"  - HAST.geojson: {result['n_hast']} connections")
-        logger.info(f"  - Erzeugeranlagen.geojson: {result['n_generators']} generator(s)")
+        logger.info(f"Exported unified network to: {output_dir}/Wärmenetz.geojson")
+        logger.info(f"  - Flow lines: {result['n_supply_segments']} segments")
+        logger.info(f"  - Return lines: {result['n_return_segments']} segments")
+        logger.info(f"  - Building connections: {result['n_hast']} connections")
+        logger.info(f"  - Generator connections: {result['n_generators']} generator(s)")
         logger.info(f"Total pipe length: {result['total_length_km']:.2f} km")
         logger.info(f"Execution time: {result['execution_time_s']:.2f}s")
         logger.info("="*70)

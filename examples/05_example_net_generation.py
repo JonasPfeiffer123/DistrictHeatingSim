@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 
 from districtheatingsim.geocoding.geocoding import get_coordinates
 from districtheatingsim.net_generation.import_and_create_layers import generate_and_export_layers
+from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
 
 ### this is an example on how to use the net generation features ###
 ### Project-specific inputs ###
@@ -60,10 +61,10 @@ print(f"Starte die Generierung des Wärmenetzes in {base_path} mit dem Algorithm
 generate_and_export_layers(osm_street_layer_geojson_file_name, data_csv_file_name, coordinates, base_path, algorithm=mode)
 print("Wärmenetz-Layer erfolgreich erstellt.")
 
-hast = gpd.read_file(f"{base_path}\Wärmenetz\HAST.geojson", driver="GeoJSON")
-rücklauf = gpd.read_file(f"{base_path}\Wärmenetz\Rücklauf.geojson", driver="GeoJSON")
-vorlauf = gpd.read_file(f"{base_path}\Wärmenetz\Vorlauf.geojson", driver="GeoJSON")
-erzeuger = gpd.read_file(f"{base_path}\Wärmenetz\Erzeugeranlagen.geojson", driver="GeoJSON")
+# Load unified GeoJSON and extract layers for visualization
+
+unified_geojson = NetworkGeoJSONSchema.load_from_file(f"{base_path}\Wärmenetz\Wärmenetz.geojson")
+vorlauf, rücklauf, hast, erzeuger = NetworkGeoJSONSchema.split_to_legacy_format(unified_geojson)
 
 print("Layer erfolgreich geladen.")
 

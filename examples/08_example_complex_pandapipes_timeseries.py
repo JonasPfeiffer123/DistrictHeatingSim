@@ -62,11 +62,27 @@ def print_net_results(net):
         print(f"Results Circ Pump Mass: {net.res_circ_pump_mass}")
 
 if __name__ == "__main__":
-    # File paths
-    vorlauf_path = "examples/data/Wärmenetz/Variante 2/Vorlauf.geojson"
-    ruecklauf_path = "examples/data/Wärmenetz/Variante 2/Rücklauf.geojson"
-    hast_path = "examples/data/Wärmenetz/Variante 2/HAST.geojson"
-    erzeugeranlagen_path = "examples/data/Wärmenetz/Variante 2/Erzeugeranlagen.geojson"
+    from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
+    import tempfile
+    
+    # File paths - Load unified format
+    unified_path = "examples/data/Wärmenetz/Variante 2/Wärmenetz.geojson"
+    
+    # Extract layers from unified format
+    unified_geojson = NetworkGeoJSONSchema.load_from_file(unified_path)
+    vorlauf_gdf, ruecklauf_gdf, hast_gdf, erzeuger_gdf = NetworkGeoJSONSchema.split_to_legacy_format(unified_geojson)
+    
+    # Save to temporary files for compatibility
+    temp_dir = tempfile.mkdtemp()
+    vorlauf_path = os.path.join(temp_dir, "vorlauf.geojson")
+    ruecklauf_path = os.path.join(temp_dir, "ruecklauf.geojson")
+    hast_path = os.path.join(temp_dir, "hast.geojson")
+    erzeugeranlagen_path = os.path.join(temp_dir, "erzeuger.geojson")
+    
+    vorlauf_gdf.to_file(vorlauf_path, driver="GeoJSON")
+    ruecklauf_gdf.to_file(ruecklauf_path, driver="GeoJSON")
+    hast_gdf.to_file(hast_path, driver="GeoJSON")
+    erzeuger_gdf.to_file(erzeugeranlagen_path, driver="GeoJSON")
     json_path = "examples/data/Gebäude Lastgang.json"
     
     # Optional external data files

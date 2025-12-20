@@ -22,10 +22,7 @@ Dies ist die Struktur der Projektordner:
             - LOD2.csv (Varianten an Gebäudedaten)
         - Wärmenetz
             - Erzeugerstandorte (Eingangsdaten)
-            - Vorlauf.geojson (generiertes Netz)
-            - Rücklauf.geojson (generiertes Netz)
-            - HAST.geojson (generiertes Netz)
-            - Erzeugeranlagen.geojson (generiertes Netz)
+            - Wärmenetz.geojson (generiertes Netz - unified format)
             - Konfiguration Netzinitialisierung.json (thermohydraulische Berechnung)
             - Ergebnisse Netzinitialisierung.csv (thermohydraulische Berechnung)
             - Ergebnisse Netzinitialisierung.p (thermohydraulische Berechnung)

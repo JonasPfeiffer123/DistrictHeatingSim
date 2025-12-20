@@ -24,6 +24,8 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 
+from shapely.geometry import LineString
+
 # Plotly imports for interactive network visualization
 try:
     from PyQt6.QtWebEngineWidgets import QWebEngineView
@@ -47,6 +49,9 @@ from districtheatingsim.gui.NetSimulationTab.net_calculation_threads import NetI
 from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import NetworkGenerationData
 
 from districtheatingsim.gui.utilities import CheckableComboBox
+from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
+
+import geopandas as gpd
 
 class CalculationTab(QWidget):
     """
@@ -945,67 +950,82 @@ class CalculationTab(QWidget):
 
     def saveNet(self, show_dialog=True):
         """Save network data to pickle, CSV, and JSON files."""
-        if self.NetworkGenerationData:
-            try:
-                pickle_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('pp_pickle_file_path'))
-                csv_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('csv_net_init_file_path'))
-                json_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('json_net_init_file_path'))
-                
-                # Sichere die ursprünglichen absoluten Pfade für COP und TRY Dateien
-                original_cop_filename = self.NetworkGenerationData.COP_filename
-                original_try_filename = self.NetworkGenerationData.TRY_filename
-                
-                # Konvertiere zu relativen Pfaden für die Speicherung (relativ zu base_path)
-                if self.NetworkGenerationData.COP_filename and os.path.isabs(self.NetworkGenerationData.COP_filename):
-                    self.NetworkGenerationData.COP_filename = os.path.relpath(self.NetworkGenerationData.COP_filename, self.base_path)
-                if self.NetworkGenerationData.TRY_filename and os.path.isabs(self.NetworkGenerationData.TRY_filename):
-                    self.NetworkGenerationData.TRY_filename = os.path.relpath(self.NetworkGenerationData.TRY_filename, self.base_path)
-
-                # Speichere die Pandapipes-Netzwerkdaten mit der pandapipes-Funktion, das Netzwerk wird in pickle_file_path gespeichert
-                # Das Format kann auch allein mit pandapipes wieder geladen werden
-                pp.to_pickle(self.NetworkGenerationData.net, pickle_file_path)
-                
-                # Hier müsste man nochmal die Formate überarbeiten
-                # Die mehrschichtigen Daten für Wärme und Strom werden in einer CSV-Datei gespeichert
-                waerme_data = np.column_stack([self.NetworkGenerationData.waerme_hast_ges_W[i] for i in range(self.NetworkGenerationData.waerme_hast_ges_W.shape[0])])
-                waerme_df = pd.DataFrame(waerme_data, index=self.NetworkGenerationData.yearly_time_steps, columns=[f'waerme_hast_ges_W_{i+1}' for i in range(self.NetworkGenerationData.waerme_hast_ges_W.shape[0])])
-
-                strom_data = np.column_stack([self.NetworkGenerationData.strombedarf_hast_ges_W[i] for i in range(self.NetworkGenerationData.strombedarf_hast_ges_W.shape[0])])
-                strom_df = pd.DataFrame(strom_data, index=self.NetworkGenerationData.yearly_time_steps, columns=[f'strombedarf_hast_ges_W_{i+1}' for i in range(self.NetworkGenerationData.strombedarf_hast_ges_W.shape[0])])
-
-                combined_df = pd.concat([waerme_df, strom_df], axis=1)
-                combined_df.to_csv(csv_file_path, sep=';', date_format='%Y-%m-%dT%H:%M:%S', encoding='utf-8-sig')
-
-                # Metadaten/Parameter speichern
-                meta_dict = self.NetworkGenerationData.to_dict()
-                # Entferne große/unnötige Felder bzw. bereits gespeicherte Daten
-                meta_dict.pop('net', None)
-                meta_dict.pop('waerme_hast_ges_W', None)
-                meta_dict.pop('strombedarf_hast_ges_W', None)
-                meta_dict.pop('waerme_hast_ges_kW', None)
-                meta_dict.pop('strombedarf_hast_ges_kW', None)
-                meta_dict.pop('waerme_ges_kW', None)
-                meta_dict.pop('strombedarf_ges_kW', None)
-                meta_dict.pop('yearly_time_steps', None)#
-                meta_dict.pop('pump_results', None)
-                meta_dict.pop('plot_data', None)
-
-                # ggf. weitere Felder entfernen oder anpassen
-                with open(json_file_path, 'w') as json_file:
-                    json.dump(meta_dict, json_file, indent=4, default=str)
-                
-                # Stelle die ursprünglichen absoluten Pfade wieder her
-                self.NetworkGenerationData.COP_filename = original_cop_filename
-                self.NetworkGenerationData.TRY_filename = original_try_filename
-                
-                if show_dialog:
-                    QMessageBox.information(self, "Speichern erfolgreich", f"Pandapipes Netz erfolgreich gespeichert in: {pickle_file_path}, Daten erfolgreich gespeichert in: {csv_file_path} und {json_file_path}")
-            except Exception as e:
-                if show_dialog:
-                    QMessageBox.critical(self, "Speichern fehlgeschlagen", f"Fehler beim Speichern der Daten: {e}")
-        else:
+        print("Speichere Pandapipes-Netzwerk...")
+        if not self.NetworkGenerationData:
             if show_dialog:
                 QMessageBox.warning(self, "Keine Daten", "Kein Pandapipes-Netzwerk zum Speichern vorhanden.")
+            return
+            
+        try:
+            pickle_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('pp_pickle_file_path'))
+            csv_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('csv_net_init_file_path'))
+            json_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('json_net_init_file_path'))
+            
+            # Sichere die ursprünglichen absoluten Pfade für COP und TRY Dateien
+            original_cop_filename = self.NetworkGenerationData.COP_filename
+            original_try_filename = self.NetworkGenerationData.TRY_filename
+            
+            # Konvertiere zu relativen Pfaden für die Speicherung (relativ zu base_path)
+            if self.NetworkGenerationData.COP_filename and os.path.isabs(self.NetworkGenerationData.COP_filename):
+                self.NetworkGenerationData.COP_filename = os.path.relpath(self.NetworkGenerationData.COP_filename, self.base_path)
+            if self.NetworkGenerationData.TRY_filename and os.path.isabs(self.NetworkGenerationData.TRY_filename):
+                self.NetworkGenerationData.TRY_filename = os.path.relpath(self.NetworkGenerationData.TRY_filename, self.base_path)
+
+            # Speichere die Pandapipes-Netzwerkdaten mit der pandapipes-Funktion, das Netzwerk wird in pickle_file_path gespeichert
+            # Das Format kann auch allein mit pandapipes wieder geladen werden
+            pp.to_pickle(self.NetworkGenerationData.net, pickle_file_path)
+            
+            # Hier müsste man nochmal die Formate überarbeiten
+            # Die mehrschichtigen Daten für Wärme und Strom werden in einer CSV-Datei gespeichert
+            waerme_data = np.column_stack([self.NetworkGenerationData.waerme_hast_ges_W[i] for i in range(self.NetworkGenerationData.waerme_hast_ges_W.shape[0])])
+            waerme_df = pd.DataFrame(waerme_data, index=self.NetworkGenerationData.yearly_time_steps, columns=[f'waerme_hast_ges_W_{i+1}' for i in range(self.NetworkGenerationData.waerme_hast_ges_W.shape[0])])
+
+            strom_data = np.column_stack([self.NetworkGenerationData.strombedarf_hast_ges_W[i] for i in range(self.NetworkGenerationData.strombedarf_hast_ges_W.shape[0])])
+            strom_df = pd.DataFrame(strom_data, index=self.NetworkGenerationData.yearly_time_steps, columns=[f'strombedarf_hast_ges_W_{i+1}' for i in range(self.NetworkGenerationData.strombedarf_hast_ges_W.shape[0])])
+
+            combined_df = pd.concat([waerme_df, strom_df], axis=1)
+            combined_df.to_csv(csv_file_path, sep=';', date_format='%Y-%m-%dT%H:%M:%S', encoding='utf-8-sig')
+
+            # Metadaten/Parameter speichern
+            meta_dict = self.NetworkGenerationData.to_dict()
+            # Entferne große/unnötige Felder bzw. bereits gespeicherte Daten
+            meta_dict.pop('net', None)
+            meta_dict.pop('waerme_hast_ges_W', None)
+            meta_dict.pop('strombedarf_hast_ges_W', None)
+            meta_dict.pop('waerme_hast_ges_kW', None)
+            meta_dict.pop('strombedarf_hast_ges_kW', None)
+            meta_dict.pop('waerme_ges_kW', None)
+            meta_dict.pop('strombedarf_ges_kW', None)
+            meta_dict.pop('yearly_time_steps', None)
+            meta_dict.pop('pump_results', None)
+            meta_dict.pop('plot_data', None)
+
+            # ggf. weitere Felder entfernen oder anpassen
+            with open(json_file_path, 'w') as json_file:
+                json.dump(meta_dict, json_file, indent=4, default=str)
+            
+            # Stelle die ursprünglichen absoluten Pfade wieder her
+            self.NetworkGenerationData.COP_filename = original_cop_filename
+            self.NetworkGenerationData.TRY_filename = original_try_filename
+            
+            if show_dialog:
+                QMessageBox.information(
+                    self, 
+                    "Speichern erfolgreich", 
+                    f"✓ Pandapipes Netz erfolgreich gespeichert!\n\n"
+                    f"Dateien:\n"
+                    f"  • {os.path.basename(pickle_file_path)}\n"
+                    f"  • {os.path.basename(csv_file_path)}\n"
+                    f"  • {os.path.basename(json_file_path)}\n\n"
+                    f"Pfad: {os.path.dirname(pickle_file_path)}"
+                )
+        except Exception as e:
+            if show_dialog:
+                QMessageBox.critical(
+                    self, 
+                    "Speichern fehlgeschlagen", 
+                    f"Fehler beim Speichern der Daten:\n\n{str(e)}"
+                )
 
     def loadNet(self, show_dialog=True):
         """Load network data from saved files.
@@ -1015,6 +1035,7 @@ class CalculationTab(QWidget):
         show_dialog : bool, optional
             Whether to show success/error dialogs. Default is True.
         """
+        print("Lade gespeichertes Pandapipes-Netzwerk...")
         try:
             data_path = self.get_data_path()
             pickle_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('pp_pickle_file_path'))
@@ -1077,11 +1098,24 @@ class CalculationTab(QWidget):
             self.display_results()
 
             if show_dialog:
-                QMessageBox.information(self, "Laden erfolgreich", "Daten erfolgreich geladen aus: {}, {} und {}.".format(csv_file_path, pickle_file_path, json_file_path))
+                QMessageBox.information(
+                    self, 
+                    "Laden erfolgreich", 
+                    f"✓ Netz erfolgreich geladen!\n\n"
+                    f"Dateien:\n"
+                    f"  • {os.path.basename(pickle_file_path)}\n"
+                    f"  • {os.path.basename(csv_file_path)}\n"
+                    f"  • {os.path.basename(json_file_path)}\n\n"
+                    f"Pfad: {os.path.dirname(pickle_file_path)}"
+                )
         except Exception as e:
             tb = traceback.format_exc()
             if show_dialog:
-                QMessageBox.critical(self, "Laden fehlgeschlagen", f"Fehler beim Laden der Daten: {e}\n\n{tb}")
+                QMessageBox.critical(
+                    self, 
+                    "Laden fehlgeschlagen", 
+                    f"Fehler beim Laden der Daten:\n\n{str(e)}"
+                )
             else:
                 logging.error(f"Fehler beim Laden der Netzwerk-Daten: {e}\n{tb}")
 
@@ -1107,14 +1141,50 @@ class CalculationTab(QWidget):
             QMessageBox.warning(self, "Keine Daten", "Kein Pandapipes-Netzwerk zum Laden vorhanden.")
     
     def exportNetGeoJSON(self, show_dialog=True):
-        """Export network to GeoJSON format."""
-        geoJSON_filepath = os.path.join(self.base_path, self.config_manager.get_relative_path('dimensioned_net_path'))
-        if self.NetworkGenerationData:   
-            try:
-                export_net_geojson(self.NetworkGenerationData.net, geoJSON_filepath)
+        """Export dimensioned network to unified GeoJSON format."""
+        print("Starte Export des Wärmenetzes im GeoJSON-Format...")
+        if not self.NetworkGenerationData or not hasattr(self.NetworkGenerationData, 'net'):
+            if show_dialog:
+                QMessageBox.warning(
+                    self,
+                    "Kein Netz vorhanden",
+                    "Es muss zuerst ein Netz generiert werden, bevor es exportiert werden kann."
+                )
+            return
+        
+        try:
+            # Get unified GeoJSON path from config
+            unified_path = os.path.join(
+                self.base_path, 
+                self.config_manager.get_relative_path('dimensioned_net_path')
+            )
+            
+            print(f"Exportiere Wärmenetz zu: {unified_path}")
+            # Export network using utility function
+            feature_counts = export_net_geojson(self.NetworkGenerationData.net, unified_path)
+            
+            if show_dialog:
+                total_features = sum(feature_counts.values())
+                QMessageBox.information(
+                    self,
+                    "Export erfolgreich",
+                    f"✓ Wärmenetz erfolgreich exportiert!\n\n"
+                    f"Datei: {os.path.basename(unified_path)}\n"
+                    f"Pfad: {os.path.dirname(unified_path)}\n\n"
+                    f"Exportierte Features:\n"
+                    f"  • Vorlauf: {feature_counts['flow']}\n"
+                    f"  • Rücklauf: {feature_counts['return']}\n"
+                    f"  • Gebäudeanschlüsse: {feature_counts['building']}\n"
+                    f"  • Erzeuger: {feature_counts['generator']}\n"
+                    f"  • Gesamt: {total_features} Features"
+                )
                 
-                if show_dialog:
-                    QMessageBox.information(self, "Speichern erfolgreich", f"Pandapipes Wärmenetz erfolgreich als geoJSON gespeichert in: {geoJSON_filepath}")
-            except Exception as e:
-                if show_dialog:
-                    QMessageBox.critical(self, "Speichern fehlgeschlagen", f"Fehler beim Speichern der Daten: {e}")
+        except Exception as e:
+            if show_dialog:
+                QMessageBox.critical(
+                    self,
+                    "Export fehlgeschlagen",
+                    f"Fehler beim Exportieren des Wärmenetzes:\n\n{str(e)}"
+                )
+            else:
+                logging.error(f"Fehler beim Exportieren des Wärmenetzes: {e}")
