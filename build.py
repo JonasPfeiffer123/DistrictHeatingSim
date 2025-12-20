@@ -1,14 +1,14 @@
-# filepath: build_debug.py
+# filepath: build.py
 """
-Debug build script for DistrictHeatingSim with comprehensive logging.
+Release build script for DistrictHeatingSim (no console window).
 """
 import subprocess
 import sys
 from pathlib import Path
 from datetime import datetime
 
-def build_with_debug():
-    """Build DistrictHeatingSim with full debug logging."""
+def build_release():
+    """Build DistrictHeatingSim for release without console window."""
     
     # Create logs directory
     log_dir = Path('build_logs')
@@ -16,24 +16,23 @@ def build_with_debug():
     
     # Generate timestamp for log file
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    log_file = log_dir / f'pyinstaller_build_{timestamp}.log'
+    log_file = log_dir / f'pyinstaller_release_{timestamp}.log'
     
-    print(f"Starting PyInstaller build with debug logging...")
+    print(f"Starting PyInstaller RELEASE build...")
     print(f"Log file: {log_file}")
     
-    # PyInstaller command using .spec file with recursion limit fix
+    # PyInstaller command for release (no console)
     cmd = [
         'pyinstaller',
         '--clean',
         '--noconfirm',
-        '--log-level=DEBUG',
-        'DistrictHeatingSim.spec'
+        'DistrictHeatingSim_Release.spec'
     ]
     
     try:
         # Run PyInstaller and capture output
         with open(log_file, 'w', encoding='utf-8') as f:
-            f.write(f"Build started: {datetime.now()}\n")
+            f.write(f"Release build started: {datetime.now()}\n")
             f.write(f"Command: {' '.join(cmd)}\n")
             f.write("-" * 80 + "\n\n")
             
@@ -56,10 +55,16 @@ def build_with_debug():
             f.write(f"Return code: {process.returncode}\n")
         
         if process.returncode == 0:
-            print(f"\n✓ Build successful!")
-            print(f"Executable: dist/DistrictHeatingSim.exe")
+            print(f"\n✓ Release build successful!")
+            print(f"Output directory: dist/DistrictHeatingSim/")
+            print(f"Executable: dist/DistrictHeatingSim/DistrictHeatingSim.exe")
+            print(f"\nUser-accessible folders:")
+            print(f"  - dist/DistrictHeatingSim/data/")
+            print(f"  - dist/DistrictHeatingSim/project_data/")
+            print(f"  - dist/DistrictHeatingSim/images/")
+            print(f"  - dist/DistrictHeatingSim/leaflet/")
             
-            # Post-build cleanup: Remove device-specific files
+            # Post-build cleanup
             print("\nCleaning up device-specific files...")
             cleanup_device_specific_files()
         else:
@@ -76,12 +81,7 @@ def build_with_debug():
 
 
 def cleanup_device_specific_files():
-    """
-    Remove device-specific configuration files from the build.
-    
-    These files should be created fresh on each user's machine and
-    should not be bundled with the application.
-    """
+    """Remove device-specific configuration files from the build."""
     import os
     
     # Files to remove (device-specific)
@@ -108,12 +108,7 @@ def cleanup_device_specific_files():
 
 
 def move_user_data_outside():
-    """
-    Move data and project_data folders outside _internal for user accessibility.
-    
-    These folders contain user-editable data and example projects that should
-    be easily accessible and modifiable by users.
-    """
+    """Move data and project_data folders outside _internal for user accessibility."""
     import os
     import shutil
     
@@ -148,7 +143,7 @@ def move_user_data_outside():
                     shutil.move(source, target)
                     print(f"  ✓ Moved: {folder}/ from _internal to root")
                     moved_count += 1
-                    break  # Found and moved, don't check other sources
+                    break
                     
                 except Exception as e:
                     print(f"  ⚠ Could not move {folder}: {e}")
@@ -157,16 +152,26 @@ def move_user_data_outside():
         print("  ℹ No user-data folders found to move")
     else:
         print(f"  ✓ Moved {moved_count} user-data folder(s) to root level")
-        print(f"  → Users can now easily access and modify these folders")
 
 
 if __name__ == '__main__':
-    exit_code = build_with_debug()
+    print("="*70)
+    print("RELEASE BUILD - No Console Window")
+    print("="*70)
+    print()
+    
+    exit_code = build_release()
     
     if exit_code == 0:
         print("\n" + "="*70)
         print("Post-Build Optimization: Moving user-accessible data...")
         print("="*70)
         move_user_data_outside()
+        
+        print("\n" + "="*70)
+        print("✓ RELEASE BUILD COMPLETE")
+        print("="*70)
+        print("\nThe application is ready for distribution.")
+        print("Location: dist/DistrictHeatingSim/")
     
     sys.exit(exit_code)

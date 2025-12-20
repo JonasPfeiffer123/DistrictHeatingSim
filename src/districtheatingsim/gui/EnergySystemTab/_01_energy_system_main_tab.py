@@ -536,7 +536,8 @@ class EnergySystemTab(QWidget):
         """
         Saves the results and technology objects to a JSON file.
         """
-        if not self.energy_system or not self.energy_system.results:
+        # Check if energy_system attribute exists and has results
+        if not hasattr(self, 'energy_system') or not self.energy_system or not self.energy_system.results:
             if show_dialog:
                 QMessageBox.warning(self, "Keine Daten vorhanden", "Es sind keine Berechnungsergebnisse vorhanden, die gespeichert werden könnten.")
             return

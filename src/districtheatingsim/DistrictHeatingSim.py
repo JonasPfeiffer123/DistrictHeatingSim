@@ -285,4 +285,25 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    import traceback
+    try:
+        print("DistrictHeatingSim wird gestartet...")
+        print("-" * 80)
+        main()
+    except Exception as e:
+        print("\n" + "="*80)
+        print("FEHLER BEIM START DER ANWENDUNG")
+        print("="*80)
+        print(f"\nFehlermeldung: {e}\n")
+        print("Vollständiger Traceback:")
+        print("-"*80)
+        traceback.print_exc()
+        print("-"*80)
+        print("\nDrücken Sie ENTER zum Beenden...")
+        input()
+        sys.exit(1)
+    finally:
+        # Stelle sicher, dass die Konsole immer offen bleibt
+        print("\n" + "="*80)
+        print("Drücken Sie ENTER zum Beenden der Konsole...")
+        input()

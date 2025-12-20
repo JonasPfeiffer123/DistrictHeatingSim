@@ -1316,7 +1316,36 @@ class HeatSystemDesignGUI(QMainWindow):
         # If 'discard' or 'continue', proceed without saving
         
         # Determine parent directory for new project
-        folder_path = os.path.dirname(os.path.dirname(self.base_path))
+        # If no project is loaded, use a sensible default or ask user
+        if self.base_path:
+            folder_path = os.path.dirname(os.path.dirname(self.base_path))
+        else:
+            # No project loaded - ask user to select parent folder
+            # Try to use the most recent project's parent directory
+            start_dir = None
+            if hasattr(self, 'presenter') and self.presenter and self.presenter.folder_manager:
+                try:
+                    config_manager = self.presenter.folder_manager.config_manager
+                    recent_projects = config_manager.get_recent_projects()
+                    if recent_projects:
+                        # Use the parent directory of the most recent project
+                        start_dir = os.path.dirname(recent_projects[0])
+                except:
+                    pass
+            
+            # Fallback to Documents folder if no recent projects
+            if not start_dir:
+                default_dir = os.path.expanduser("~/Documents")
+                if os.path.exists(default_dir):
+                    start_dir = default_dir
+                else:
+                    start_dir = os.path.expanduser("~")
+            
+            folder_path = QFileDialog.getExistingDirectory(
+                self,
+                "Übergeordneten Ordner für neues Projekt auswählen",
+                start_dir
+            )
         
         if folder_path:
             # Collect project name from user

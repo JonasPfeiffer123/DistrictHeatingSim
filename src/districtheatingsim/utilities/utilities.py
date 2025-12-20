@@ -63,8 +63,20 @@ def get_resource_path(relative_path):
     sys.frozen : Attribute indicating if running from PyInstaller
     """
     if getattr(sys, 'frozen', False):
-        # When the application is frozen, the base path is the temp folder where PyInstaller extracts everything
-        base_path = sys._MEIPASS
+        # When the application is frozen, the base path needs special handling
+        # PyInstaller extracts files to sys._MEIPASS (_internal folder)
+        # but we configure some data folders to be in the parent directory
+        # Check if the relative_path starts with known data folders that are outside _internal
+        data_folders_outside = ['data', 'project_data', 'images', 'leaflet']
+        
+        # Check if this is a path that should be outside _internal
+        first_component = relative_path.split(os.sep)[0].split('/')[0]
+        if first_component in data_folders_outside:
+            # These folders are in the application directory (parent of _internal)
+            base_path = os.path.dirname(sys._MEIPASS)
+        else:
+            # Other resources are in the _internal folder
+            base_path = sys._MEIPASS
     else:
         # When the application is not frozen, the base path is the directory of the main file
         base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
