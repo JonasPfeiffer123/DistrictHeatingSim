@@ -75,7 +75,13 @@ def get_resource_path(relative_path: str) -> str:
     """
     if getattr(sys, 'frozen', False):
         # Running as PyInstaller executable
-        base_path = sys._MEIPASS
+        # Check if this is a path that should be outside _internal
+        data_folders_outside = ['data', 'project_data', 'images', 'leaflet']
+        first_component = relative_path.split(os.sep)[0].split('/')[0].split('\\')[0]
+        if first_component in data_folders_outside:
+            base_path = os.path.dirname(sys._MEIPASS)
+        else:
+            base_path = sys._MEIPASS
     else:
         # Running in development environment
         base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

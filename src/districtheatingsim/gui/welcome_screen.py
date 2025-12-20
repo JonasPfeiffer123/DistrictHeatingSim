@@ -424,37 +424,6 @@ class WelcomeScreen(QWidget):
         support_btn.clicked.connect(self.open_support)
         started_layout.addWidget(support_btn)
         
-        # Feature overview
-        features_frame = QFrame()
-        features_frame.setFrameStyle(QFrame.Shape.Box)
-        features_frame.setObjectName("featuresFrame")
-        
-        features_layout = QVBoxLayout()
-        features_layout.setContentsMargins(15, 15, 15, 15)
-        features_layout.setSpacing(8)
-        
-        features_title = QLabel("Wichtige Funktionen:")
-        features_title_font = QFont()
-        features_title_font.setBold(True)
-        features_title.setFont(features_title_font)
-        features_layout.addWidget(features_title)
-        
-        features = [
-            "🏗️ Netzwerktopologie-Generierung",
-            "🔥 Wärmebedarfsberechnung",
-            "💰 Wirtschaftlichkeitsanalyse",
-            "⚡ Energiesystem-Optimierung",
-            "📊 Umfassende Berichterstattung"
-        ]
-        
-        for feature in features:
-            feature_label = QLabel(feature)
-            feature_label.setObjectName("featureItem")
-            features_layout.addWidget(feature_label)
-        
-        features_frame.setLayout(features_layout)
-        started_layout.addWidget(features_frame)
-        
         parent_layout.addLayout(started_layout)
     
     def create_funding_footer(self, parent_layout):
@@ -744,18 +713,9 @@ class WelcomeScreen(QWidget):
     
     def new_project_clicked(self):
         """Handle new project button click."""
-        # Start in a sensible default location - check for existing projects first
-        start_dir = self.get_default_project_directory()
-        
-        folder = QFileDialog.getExistingDirectory(
-            self,
-            "Ordner für neues Projekt auswählen",
-            start_dir
-        )
-        
-        if folder:
-            self.newProjectRequested.emit()
-            self.projectSelected.emit(folder)
+        # Simply emit the signal - the main window will handle the complete workflow
+        # including folder selection, project name input, and project creation
+        self.newProjectRequested.emit()
     
     def open_project_clicked(self):
         """Handle open project button click."""

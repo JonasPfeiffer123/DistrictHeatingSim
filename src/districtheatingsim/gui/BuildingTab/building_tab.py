@@ -29,10 +29,6 @@ from districtheatingsim.heat_requirement.heat_requirement_calculation_csv import
 from districtheatingsim.gui.utilities import CheckableComboBox, convert_to_serializable
 
 import traceback
-import logging
-
-# Configure logging
-logging.basicConfig(filename='error_log.txt', level=logging.ERROR)
 
 class BuildingModel:
     """
@@ -197,26 +193,6 @@ class BuildingModel:
 
         # Convert from W to kW
         return yearly_time_steps, total_heat_W/1000, heating_heat_W/1000, warmwater_heat_W/1000, max_heat_requirement_W/1000, supply_temperature_curve, return_temperature_curve, hourly_air_temperatures
-
-    def get_resource_path(self, relative_path):
-        """
-        Get absolute resource path for dev and PyInstaller.
-
-        Parameters
-        ----------
-        relative_path : str
-            Relative path to resource.
-
-        Returns
-        -------
-        str
-            Absolute resource path.
-        """
-        if getattr(sys, 'frozen', False):
-            base_path = sys._MEIPASS
-        else:
-            base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        return os.path.join(base_path, relative_path)
 
 class BuildingPresenter:
     """
@@ -398,7 +374,6 @@ class BuildingPresenter:
             self.view.show_message("Erfolg", f"Berechnung der Gebäudelastgänge abgeschlossen und in {self.model.get_json_path()} gespeichert.")
         except Exception as e:
             tb_str = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-            logging.error(f"Ein Fehler ist aufgetreten:\n{tb_str}")
             self.view.show_error_message("Fehler", f"Es ist ein Fehler aufgetreten: {str(e)}\n\nDetails:\n{tb_str}")
 
     def format_results(self, results, data):

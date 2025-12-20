@@ -239,26 +239,6 @@ class ProjectModel:
         else:
             return None, None
 
-    def get_resource_path(self, relative_path):
-        """
-        Get absolute resource path for dev and PyInstaller.
-
-        Parameters
-        ----------
-        relative_path : str
-            Relative path to resource.
-
-        Returns
-        -------
-        str
-            Absolute resource path.
-        """
-        if getattr(sys, 'frozen', False):
-            base_path = sys._MEIPASS
-        else:
-            base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        return os.path.join(base_path, relative_path)
-
 class ProjectPresenter:
     """
     Presenter managing interaction between ProjectModel and ProjectTabView.

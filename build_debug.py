@@ -21,65 +21,13 @@ def build_with_debug():
     print(f"Starting PyInstaller build with debug logging...")
     print(f"Log file: {log_file}")
     
-    # PyInstaller command with full debug
+    # PyInstaller command using .spec file with recursion limit fix
     cmd = [
         'pyinstaller',
-        '--onedir',  # Changed from --onefile to support large data files
-        '--windowed',
-        '--name', 'DistrictHeatingSim',
-        # Add all data directories from src/districtheatingsim
-        '--add-data', 'src/districtheatingsim/data;data',
-        '--add-data', 'src/districtheatingsim/leaflet;leaflet',
-        '--add-data', 'src/districtheatingsim/geocoding;geocoding',
-        '--add-data', 'src/districtheatingsim/gui;gui',
-        # Add gui subdirectories explicitly to ensure all config files are included
-        '--add-data', 'src/districtheatingsim/gui/MainTab;gui/MainTab',
-        '--add-data', 'src/districtheatingsim/gui/NetSimulationTab;gui/NetSimulationTab',
-        '--add-data', 'src/districtheatingsim/gui/BuildingTab;gui/BuildingTab',
-        '--add-data', 'src/districtheatingsim/gui/ComparisonTab;gui/ComparisonTab',
-        '--add-data', 'src/districtheatingsim/gui/EnergySystemTab;gui/EnergySystemTab',
-        '--add-data', 'src/districtheatingsim/gui/LeafletTab;gui/LeafletTab',
-        '--add-data', 'src/districtheatingsim/gui/ProjectTab;gui/ProjectTab',
-        '--add-data', 'src/districtheatingsim/heat_generators;heat_generators',
-        '--add-data', 'src/districtheatingsim/heat_requirement;heat_requirement',
-        '--add-data', 'src/districtheatingsim/net_generation;net_generation',
-        '--add-data', 'src/districtheatingsim/net_simulation_pandapipes;net_simulation_pandapipes',
-        '--add-data', 'src/districtheatingsim/osm;osm',
-        '--add-data', 'src/districtheatingsim/project_data;project_data',
-        '--add-data', 'src/districtheatingsim/project_data;districtheatingsim/project_data',
-        '--add-data', 'src/districtheatingsim/utilities;utilities',
-        '--add-data', 'src/districtheatingsim/styles;styles',
-        # Add file_paths.json to multiple locations to ensure it's found
-        '--add-data', 'src/districtheatingsim/gui/MainTab/file_paths.json;gui/MainTab',
-        '--add-data', 'src/districtheatingsim/gui/MainTab/file_paths.json;districtheatingsim/gui/MainTab',
-        '--add-data', 'src/districtheatingsim/gui/MainTab/file_paths.json;.',
-        # Add pandapipes data directories
-        '--add-data', 'C:\\Users\\username\\AppData\\Local\\Programs\\Python\\Python311\\Lib\\site-packages\\pandapipes\\std_types\\library;pandapipes/std_types/library',
-        '--add-data', 'C:\\Users\\username\\AppData\\Local\\Programs\\Python\\Python311\\Lib\\site-packages\\pandapipes\\properties;pandapipes/properties',
-        # Exclude conflicting Qt bindings (app uses PyQt6)
-        '--exclude-module', 'PyQt5',
-        '--exclude-module', 'PySide2',
-        '--exclude-module', 'PySide6',
-        # Exclude other unnecessary modules to reduce size
-        '--exclude-module', 'tkinter',
-        # Use custom hooks directory for geospatial packages
-        '--additional-hooks-dir=hooks',
-        # Hidden imports for libraries that PyInstaller may miss
-        '--hidden-import=geopandas',
-        '--hidden-import=overpy',
-        '--hidden-import=geojson',
-        '--hidden-import=networkx',
-        '--hidden-import=numpy_financial',
-        '--hidden-import=pandapipes',
-        '--hidden-import=pandapipes.timeseries',
-        '--hidden-import=contextily',
-        '--hidden-import=rasterio.sample',
-        '--hidden-import=CoolProp',
-        '--hidden-import=matplotlib.backends.backend_qt5agg',
-        '--debug=all',
+        '--clean',
+        '--noconfirm',
         '--log-level=DEBUG',
-        '--console',  # Keep console for debug
-        'src/districtheatingsim/DistrictHeatingSim.py'
+        'DistrictHeatingSim.spec'
     ]
     
     try:

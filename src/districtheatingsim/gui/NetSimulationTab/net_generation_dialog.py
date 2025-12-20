@@ -10,9 +10,11 @@ Date: 2025-05-20
 
 import json
 import os
+import sys
 from PyQt6.QtWidgets import QVBoxLayout, QDialog, QPushButton, QTabWidget
 from PyQt6.QtCore import Qt
 
+from districtheatingsim.utilities.utilities import get_resource_path
 from districtheatingsim.gui.NetSimulationTab.network_data_tab import NetworkDataTab
 from districtheatingsim.gui.NetSimulationTab.producer_order_tab import ProducerOrderTab
 from districtheatingsim.gui.NetSimulationTab.network_config_tab import NetworkConfigTab
@@ -34,7 +36,8 @@ def load_dialog_config(config_path="dialog_config.json"):
         Configuration data.
     """
     if not os.path.isabs(config_path):
-        config_path = os.path.join(os.path.dirname(__file__), config_path)
+        # Use get_resource_path for PyInstaller compatibility
+        config_path = get_resource_path(os.path.join('gui', 'NetSimulationTab', config_path))
     with open(config_path, "r", encoding="utf-8") as f:
         return json.load(f)
     
@@ -50,7 +53,8 @@ def save_dialog_config(config, config_path="dialog_config.json"):
         Path to configuration file.
     """
     if not os.path.isabs(config_path):
-        config_path = os.path.join(os.path.dirname(__file__), config_path)
+        # Use get_resource_path for PyInstaller compatibility
+        config_path = get_resource_path(os.path.join('gui', 'NetSimulationTab', config_path))
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=4)
     
