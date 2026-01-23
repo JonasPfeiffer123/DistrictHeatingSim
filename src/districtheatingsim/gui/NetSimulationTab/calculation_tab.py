@@ -36,7 +36,8 @@ except ImportError:
 
 from PyQt6.QtCore import pyqtSignal, Qt, QTimer, QUrl
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QMessageBox, 
-                            QProgressBar, QMenuBar, QPlainTextEdit, QLabel, QFrame, QGridLayout)
+                            QProgressBar, QMenuBar, QPlainTextEdit, QLabel, QFrame, QGridLayout,
+                            QApplication, QTableWidget, QTableWidgetItem, QAbstractItemView, QPushButton, QComboBox, QHeaderView)
 from PyQt6.QtGui import QAction, QActionGroup, QFont
 
 from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import save_results_csv, import_results_csv
@@ -88,6 +89,12 @@ class CalculationTab(QWidget):
 
         # Initialize cache for HTML plot
         self._plot_html_path = None
+        
+        # Timer for polling plot clicks
+        self._plot_click_timer = QTimer()
+        self._plot_click_timer.timeout.connect(self._check_plot_click)
+        self._plot_click_timer.setInterval(200)  # Check every 200ms
+        self._last_selected_pipe = None
 
         self.initUI()
 
@@ -283,6 +290,83 @@ class CalculationTab(QWidget):
         self.top_horizontal_layout.addWidget(self.network_plot_container, 7)  # 70% width
         self.top_horizontal_layout.addWidget(self.info_container, 3)          # 30% width
         
+        # Middle section: Pipe configuration table (full width)
+        self.pipe_table_container = QWidget()
+        self.pipe_table_layout = QVBoxLayout(self.pipe_table_container)
+        self.pipe_table_layout.setContentsMargins(5, 10, 5, 10)
+        
+        # Title for pipe table
+        pipe_table_title = QLabel("🔧 Rohrleitungs-Konfiguration")
+        pipe_table_title.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        pipe_table_title.setStyleSheet("""
+            QLabel {
+                color: #2c3e50;
+                padding: 6px;
+                background-color: #ecf0f1;
+                border-radius: 3px;
+                border-left: 3px solid #e74c3c;
+            }
+        """)
+        self.pipe_table_layout.addWidget(pipe_table_title)
+        
+        # Pipe table
+        self.pipe_table = QTableWidget()
+        self.pipe_table.setMinimumHeight(400)
+        self.pipe_table.setMaximumHeight(600)
+        self.pipe_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.pipe_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.pipe_table.setAlternatingRowColors(True)
+        self.pipe_table.setStyleSheet("""
+            QTableWidget {
+                gridline-color: #d0d0d0;
+                alternate-background-color: #f9f9f9;
+            }
+            QTableWidget::item:selected {
+                background-color: #3498db;
+                color: white;
+            }
+            QHeaderView::section {
+                background-color: #34495e;
+                color: white;
+                padding: 6px;
+                font-weight: bold;
+                border: 1px solid #2c3e50;
+            }
+        """)
+        self.pipe_table.itemSelectionChanged.connect(self.on_pipe_selected_in_table)
+        self.pipe_table.itemChanged.connect(self.on_table_item_changed)
+        self.pipe_table_layout.addWidget(self.pipe_table)
+        
+        # Button row for pipe table
+        pipe_button_layout = QHBoxLayout()
+        
+        self.restore_pipes_button = QPushButton("Standardwerte wiederherstellen")
+        self.restore_pipes_button.clicked.connect(self.restore_pipe_defaults)
+        pipe_button_layout.addWidget(self.restore_pipes_button)
+        
+        pipe_button_layout.addStretch()
+        
+        self.recalculate_button = QPushButton("Netz neu berechnen")
+        self.recalculate_button.clicked.connect(self.recalculateNetwork)
+        self.recalculate_button.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            }
+        """)
+        pipe_button_layout.addWidget(self.recalculate_button)
+        
+        self.pipe_table_layout.addLayout(pipe_button_layout)
+        
+        # Hide pipe table initially (shown when network is loaded)
+        self.pipe_table_container.hide()
+        
         # Bottom section: Time series plot (full width)
         self.time_series_container = QWidget()
         self.time_series_layout = QVBoxLayout(self.time_series_container)
@@ -302,6 +386,7 @@ class CalculationTab(QWidget):
         
         # Add both sections to main vertical layout
         self.main_vertical_layout.addLayout(self.top_horizontal_layout)
+        self.main_vertical_layout.addWidget(self.pipe_table_container)
         self.main_vertical_layout.addWidget(self.time_series_container)
         
         # Setup scroll area
@@ -405,7 +490,11 @@ class CalculationTab(QWidget):
         """
         self.progressBar.setRange(0, 1)
 
-        self.NetworkGenerationData = NetworkGenerationData        
+        self.NetworkGenerationData = NetworkGenerationData
+        
+        # Store original pipe DataFrame for restore functionality
+        if hasattr(self.NetworkGenerationData, 'net'):
+            self._original_pipe_df = self.NetworkGenerationData.net.pipe.copy()
         
         # Invalidate plot cache to regenerate with new data
         self._invalidate_plot_cache()
@@ -415,6 +504,10 @@ class CalculationTab(QWidget):
         
         # Generate initial plot
         self.plot_pandapipes_net()
+        
+        # Populate pipe configuration table
+        self.populate_pipe_table()
+        
         self.NetworkGenerationData.prepare_plot_data()
         self.createPlotControlDropdown()
         self.update_time_series_plot()
@@ -651,8 +744,15 @@ class CalculationTab(QWidget):
                     )
                     self._plot_html_path = f.name
                 
+                # Inject click event handler into HTML
+                self._inject_click_handler(self._plot_html_path)
+                
                 # Load HTML in WebEngineView
                 self.pandapipes_net_canvas.setUrl(QUrl.fromLocalFile(self._plot_html_path))
+                
+                # Start polling for clicks after plot is loaded
+                if not self._plot_click_timer.isActive():
+                    self._plot_click_timer.start()
             else:
                 # Fallback message
                 if isinstance(self.pandapipes_net_canvas, QLabel):
@@ -1088,10 +1188,18 @@ class CalculationTab(QWidget):
             self.NetworkGenerationData.waerme_ges_kW = np.sum(self.NetworkGenerationData.waerme_hast_ges_kW, axis=0)
             self.NetworkGenerationData.strombedarf_ges_kW = np.sum(self.NetworkGenerationData.strombedarf_hast_ges_kW, axis=0)
             
+            # Store original pipe DataFrame for restore functionality
+            if hasattr(self.NetworkGenerationData, 'net'):
+                self._original_pipe_df = self.NetworkGenerationData.net.pipe.copy()
+            
             # Populate parameter dropdown with loaded network
             self._populate_network_param_dropdown()
             
             self.plot_pandapipes_net()
+            
+            # Populate pipe configuration table
+            self.populate_pipe_table()
+            
             self.NetworkGenerationData.prepare_plot_data()
             self.createPlotControlDropdown()
             self.update_time_series_plot()
@@ -1188,3 +1296,522 @@ class CalculationTab(QWidget):
                 )
             else:
                 logging.error(f"Fehler beim Exportieren des Wärmenetzes: {e}")
+    
+    def _inject_click_handler(self, html_path):
+        """Inject JavaScript click handler into Plotly HTML for pipe selection.
+        
+        Parameters
+        ----------
+        html_path : str
+            Path to the HTML file to modify
+        """
+        try:
+            with open(html_path, 'r', encoding='utf-8') as f:
+                html = f.read()
+            
+            # JavaScript to handle pipe clicks and select table rows
+            click_script = """
+            <script>
+            // Wait for Plotly to be ready
+            document.addEventListener('DOMContentLoaded', function() {
+                var plotDiv = document.getElementsByClassName('plotly-graph-div')[0];
+                if (!plotDiv) return;
+                
+                
+                // Store last highlighted trace
+                window.lastHighlighted = -1;
+                
+                // Add click event listener
+                plotDiv.on('plotly_click', function(data) {
+                    console.log('Plotly click event:', data);
+                    
+                    try {
+                        for (var i = 0; i < data.points.length; i++) {
+                            var point = data.points[i];
+                            
+                            // Check if customdata exists (should contain pipe index)
+                            if (point.customdata && point.customdata.length > 0) {
+                                var pipeIdx = point.customdata[0];
+                                var traceIdx = point.curveNumber;
+                                console.log('Pipe clicked:', pipeIdx, 'trace:', traceIdx);
+                                
+                                // Highlight the clicked pipe
+                                window.highlightPipe(pipeIdx, traceIdx);
+                                
+                                // Store for Python polling
+                                window.selectedPipeIndex = pipeIdx;
+                                console.log('Stored pipe index in window:', pipeIdx);
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error in click handler:', e);
+                    }
+                });
+                
+                // Function to highlight a specific pipe
+                window.highlightPipe = function(pipeIdx, traceIdx) {
+                    try {
+                        var plotDiv = document.getElementsByClassName('plotly-graph-div')[0];
+                        if (!plotDiv || !plotDiv.data) {
+                            console.log('No plot div or data');
+                            return;
+                        }
+                        
+                        console.log('Highlighting pipe:', pipeIdx, 'trace:', traceIdx);
+                        
+                        // Reset previous highlight
+                        if (window.lastHighlighted >= 0) {
+                            Plotly.restyle(plotDiv, {
+                                'line.width': 4,
+                                'line.color': '#2c3e50'
+                            }, [window.lastHighlighted]);
+                        }
+                        
+                        // Find the trace to highlight
+                        var targetTrace = -1;
+                        if (traceIdx !== undefined && traceIdx >= 0) {
+                            targetTrace = traceIdx;
+                        } else {
+                            // Search by pipe index
+                            for (var i = 0; i < plotDiv.data.length; i++) {
+                                var trace = plotDiv.data[i];
+                                if (trace.customdata && trace.customdata[0] && trace.customdata[0][0] === pipeIdx) {
+                                    targetTrace = i;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // Apply highlight
+                        if (targetTrace >= 0) {
+                            console.log('Applying highlight to trace:', targetTrace);
+                            Plotly.restyle(plotDiv, {
+                                'line.width': 8,
+                                'line.color': '#FF4500'
+                            }, [targetTrace]);
+                            window.lastHighlighted = targetTrace;
+                        } else {
+                            console.log('Target trace not found');
+                        }
+                    } catch (e) {
+                        console.error('Error highlighting pipe:', e);
+                    }
+                };
+                
+                console.log('Plotly click handler registered');
+            });
+            </script>
+            """
+            
+            # Inject before closing body tag
+            html = html.replace('</body>', click_script + '</body>')
+            
+            # Write back
+            with open(html_path, 'w', encoding='utf-8') as f:
+                f.write(html)
+                
+            logging.info("Click handler injected into plot HTML")
+            
+        except Exception as e:
+            logging.error(f"Failed to inject click handler: {e}")
+    
+    def _check_plot_click(self):
+        """Poll JavaScript for pipe clicks and update table selection."""
+        if not WEBENGINE_AVAILABLE or not hasattr(self, 'pipe_table'):
+            return
+        
+        try:
+            # Query JavaScript for selected pipe index
+            self.pandapipes_net_canvas.page().runJavaScript(
+                "window.selectedPipeIndex",
+                self._handle_plot_click_result
+            )
+        except Exception as e:
+            logging.debug(f"Error checking plot click: {e}")
+    
+    def _handle_plot_click_result(self, pipe_idx):
+        """Handle the result from JavaScript pipe click query.
+        
+        Parameters
+        ----------
+        pipe_idx : int or None
+            Index of clicked pipe, or None if no click
+        """
+        if pipe_idx is None or pipe_idx == self._last_selected_pipe:
+            return
+        
+        try:
+            # Find and select the table row for this pipe
+            for row in range(self.pipe_table.rowCount()):
+                item = self.pipe_table.item(row, 0)  # Index column
+                if item and int(item.text()) == pipe_idx:
+                    # Block signals to prevent recursion
+                    self.pipe_table.blockSignals(True)
+                    self.pipe_table.selectRow(row)
+                    self.pipe_table.scrollToItem(item)
+                    self.pipe_table.blockSignals(False)
+                    
+                    self._last_selected_pipe = pipe_idx
+                    logging.info(f"Plot click: Selected pipe {pipe_idx} in table (row {row})")
+                    
+                    # Clear the JavaScript variable
+                    self.pandapipes_net_canvas.page().runJavaScript(
+                        "window.selectedPipeIndex = null;"
+                    )
+                    break
+        except Exception as e:
+            logging.error(f"Error handling plot click result: {e}")
+    
+    def apply_table_changes_to_net(self):
+        """Apply all table changes to the network before calculation."""
+        if not self.NetworkGenerationData or not hasattr(self.NetworkGenerationData, 'net'):
+            return
+        
+        net = self.NetworkGenerationData.net
+        
+        try:
+            # Get available pipe types
+            pipe_std_types = pp.std_types.available_std_types(net, "pipe")
+        except:
+            pipe_std_types = None
+        
+        # Iterate through all rows and update net.pipe
+        for row in range(self.pipe_table.rowCount()):
+            pipe_idx = int(self.pipe_table.item(row, 0).text())
+            
+            # Update std_type from ComboBox
+            combo = self.pipe_table.cellWidget(row, 5)
+            if combo:
+                std_type = combo.currentText()
+                if std_type:
+                    net.pipe.at[pipe_idx, 'std_type'] = std_type
+                    
+                    # Update properties from std_type
+                    if pipe_std_types is not None and std_type in pipe_std_types.index:
+                        properties = pipe_std_types.loc[std_type]
+                        net.pipe.at[pipe_idx, 'u_w_per_m2k'] = properties['u_w_per_m2k']
+            
+            # Update diameter
+            diameter_item = self.pipe_table.item(row, 6)
+            if diameter_item:
+                try:
+                    diameter_mm = float(diameter_item.text())
+                    net.pipe.at[pipe_idx, 'diameter_m'] = diameter_mm / 1000
+                except ValueError:
+                    pass
+            
+            # Update roughness k
+            k_item = self.pipe_table.item(row, 7)
+            if k_item:
+                try:
+                    k_mm = float(k_item.text())
+                    net.pipe.at[pipe_idx, 'k_mm'] = k_mm
+                except ValueError:
+                    pass
+        
+        logging.info("Applied all table changes to network")
+    
+    def recalculateNetwork(self):
+        """Recalculate network with current pipe parameters (pipeflow only, no optimization)."""
+        if not self.NetworkGenerationData or not hasattr(self.NetworkGenerationData, 'net'):
+            QMessageBox.warning(
+                self,
+                "Kein Netz vorhanden",
+                "Es muss zuerst ein Netz generiert werden, bevor neu berechnet werden kann."
+            )
+            return
+        
+        try:
+            from districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson import run_control
+            
+            # Apply all table changes to network BEFORE calculation
+            self.apply_table_changes_to_net()
+            
+            # Show progress with proper management
+            self.progressBar.setVisible(True)
+            self.progressBar.setValue(0)
+            self.progressBar.setFormat("Führe thermohydraulische Berechnung durch...")
+            QApplication.processEvents()
+            
+            # Run pipeflow calculation
+            logging.info("Starting pipeflow recalculation...")
+            self.progressBar.setValue(30)
+            QApplication.processEvents()
+            
+            pp.pipeflow(self.NetworkGenerationData.net, mode="bidirectional", iter=100)
+            
+            # Run controller
+            logging.info("Running controller...")
+            self.progressBar.setValue(60)
+            QApplication.processEvents()
+            
+            run_control(self.NetworkGenerationData.net, mode="bidirectional", iter=100)
+            
+            self.progressBar.setValue(90)
+            QApplication.processEvents()
+            
+            # Invalidate cache and force plot refresh with new data
+            self._invalidate_plot_cache()
+            self.plot_pandapipes_net(force_refresh=True)
+            
+            # Update results display if available
+            if hasattr(self, 'display_results'):
+                self.display_results()
+            
+            self.progressBar.setValue(100)
+            self.progressBar.setFormat("Berechnung abgeschlossen")
+            QApplication.processEvents()
+            
+            logging.info("Network recalculation completed successfully")
+            
+            # Hide progress bar after short delay
+            QTimer.singleShot(1000, lambda: self.progressBar.setVisible(False))
+            
+            QMessageBox.information(
+                self,
+                "Berechnung abgeschlossen",
+                "Die thermohydraulische Berechnung wurde erfolgreich durchgeführt.\n\n"
+                "Das Netzwerk wurde mit den aktuellen Rohrleitungsparametern neu berechnet."
+            )
+            
+        except Exception as e:
+            logging.error(f"Error recalculating network: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            self.progressBar.setVisible(False)
+            
+            QMessageBox.critical(
+                self,
+                "Berechnungsfehler",
+                f"Fehler bei der Netzberechnung:\n\n{str(e)}\n\n"
+                f"Überprüfen Sie die Rohrleitungsparameter und Randbedingungen."
+            )
+    
+    def populate_pipe_table(self):
+        """Populate pipe configuration table with data from net.pipe DataFrame."""
+        if not self.NetworkGenerationData or not hasattr(self.NetworkGenerationData, 'net'):
+            return
+        
+        net = self.NetworkGenerationData.net
+        
+        # Block signals during population
+        self.pipe_table.blockSignals(True)
+        
+        # Define columns
+        columns = ['Index', 'Name', 'Von', 'Nach', 'Länge [m]', 'Std-Typ', 'DN [mm]', 'k [mm]']
+        self.pipe_table.setColumnCount(len(columns))
+        self.pipe_table.setHorizontalHeaderLabels(columns)
+        
+        # Set row count
+        self.pipe_table.setRowCount(len(net.pipe))
+        
+        # Set row height for better ComboBox display
+        self.pipe_table.verticalHeader().setDefaultSectionSize(50)
+        
+        # Load available pipe standard types
+        try:
+            pipe_std_types = pp.std_types.available_std_types(net, "pipe")
+        except:
+            pipe_std_types = None
+        
+        # Populate rows
+        for row, (idx, pipe_data) in enumerate(net.pipe.iterrows()):
+            # Column 0: Index (read-only)
+            item = QTableWidgetItem(str(idx))
+            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.pipe_table.setItem(row, 0, item)
+            
+            # Column 1: Name (read-only)
+            name = pipe_data.get('name', f'Pipe {idx}')
+            item = QTableWidgetItem(str(name))
+            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.pipe_table.setItem(row, 1, item)
+            
+            # Column 2: From Junction (read-only)
+            item = QTableWidgetItem(f"J{pipe_data['from_junction']}")
+            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.pipe_table.setItem(row, 2, item)
+            
+            # Column 3: To Junction (read-only)
+            item = QTableWidgetItem(f"J{pipe_data['to_junction']}")
+            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.pipe_table.setItem(row, 3, item)
+            
+            # Column 4: Length (read-only)
+            length_m = pipe_data['length_km'] * 1000
+            item = QTableWidgetItem(f"{length_m:.1f}")
+            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.pipe_table.setItem(row, 4, item)
+            
+            # Column 5: Std Type (ComboBox)
+            combo = QComboBox()
+            combo.setMinimumHeight(25)
+            combo.setStyleSheet("""
+                QComboBox {
+                    padding: 4px 8px;
+                    border: 1px solid #bdc3c7;
+                    border-radius: 3px;
+                    background-color: white;
+                    color: black;
+                    font-size: 11pt;
+                }
+                QComboBox:focus {
+                    border: 2px solid #3498db;
+                }
+                QComboBox::drop-down {
+                    border: none;
+                    width: 20px;
+                }
+                QComboBox QAbstractItemView {
+                    background-color: white;
+                    color: black;
+                    selection-background-color: #3498db;
+                    selection-color: white;
+                }
+            """)
+            if pipe_std_types is not None:
+                combo.addItems(pipe_std_types.index.tolist())
+                current_type = pipe_data.get('std_type', '')
+                if current_type and current_type in pipe_std_types.index:
+                    combo.setCurrentText(current_type)
+                elif len(pipe_std_types.index) > 0:
+                    # Fallback: set first item if no valid current type
+                    combo.setCurrentIndex(0)
+            combo.currentTextChanged.connect(lambda text, r=row: self.on_std_type_changed(r, text))
+            self.pipe_table.setCellWidget(row, 5, combo)
+            
+            # Column 6: Diameter (editable)
+            diameter_mm = pipe_data.get('diameter_m', 0) * 1000
+            item = QTableWidgetItem(f"{diameter_mm:.1f}")
+            self.pipe_table.setItem(row, 6, item)
+            
+            # Column 7: Roughness k (editable)
+            k_mm = pipe_data.get('k_mm', 0.1)
+            item = QTableWidgetItem(f"{k_mm:.2f}")
+            self.pipe_table.setItem(row, 7, item)
+        
+        # Adjust column widths
+        header = self.pipe_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        header.setDefaultSectionSize(60)
+        header.resizeSection(0, 60)  # Index
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)  # Name
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
+        header.resizeSection(2, 60)  # Von
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
+        header.resizeSection(3, 60)  # Nach
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
+        header.resizeSection(4, 90)  # Länge
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
+        header.resizeSection(5, 200)  # Std-Typ (breiter für bessere Sichtbarkeit)
+        header.setSectionResizeMode(6, QHeaderView.ResizeMode.Fixed)
+        header.resizeSection(6, 80)  # DN
+        header.setSectionResizeMode(7, QHeaderView.ResizeMode.Fixed)
+        header.resizeSection(7, 80)  # k
+        
+        self.pipe_table.blockSignals(False)
+        
+        # Show pipe table container
+        self.pipe_table_container.show()
+    
+    def on_pipe_selected_in_table(self):
+        """Handle table row selection - highlight pipe in plot."""
+        selected_rows = self.pipe_table.selectionModel().selectedRows()
+        if not selected_rows:
+            return
+        
+        row = selected_rows[0].row()
+        pipe_idx = int(self.pipe_table.item(row, 0).text())
+        
+        logging.info(f"Table selection: Pipe {pipe_idx}")
+        
+        # Highlight pipe in plot via JavaScript
+        if WEBENGINE_AVAILABLE and hasattr(self, 'pandapipes_net_canvas'):
+            js_code = f"if (window.highlightPipe) {{ window.highlightPipe({pipe_idx}); }}"
+            self.pandapipes_net_canvas.page().runJavaScript(js_code)
+    
+    def on_std_type_changed(self, row, new_std_type):
+        """Handle standard type change in ComboBox."""
+        if not new_std_type or not self.NetworkGenerationData:
+            return
+        
+        net = self.NetworkGenerationData.net
+        pipe_idx = int(self.pipe_table.item(row, 0).text())
+        
+        try:
+            pipe_std_types = pp.std_types.available_std_types(net, "pipe")
+            properties = pipe_std_types.loc[new_std_type]
+            
+            # Update net.pipe
+            net.pipe.at[pipe_idx, 'std_type'] = new_std_type
+            net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
+            net.pipe.at[pipe_idx, 'u_w_per_m2k'] = properties['u_w_per_m2k']
+            
+            # Update table (diameter)
+            self.pipe_table.blockSignals(True)
+            diameter_item = self.pipe_table.item(row, 6)
+            if diameter_item:
+                diameter_item.setText(f"{properties['inner_diameter_mm']:.1f}")
+            self.pipe_table.blockSignals(False)
+            
+            logging.info(f"Pipe {pipe_idx}: std_type changed to {new_std_type}")
+            
+        except Exception as e:
+            logging.error(f"Failed to update pipe {pipe_idx} std_type: {e}")
+    
+    def on_table_item_changed(self, item):
+        """Handle direct table cell edits (diameter, k)."""
+        if not self.NetworkGenerationData:
+            return
+        
+        row = item.row()
+        col = item.column()
+        
+        pipe_idx = int(self.pipe_table.item(row, 0).text())
+        net = self.NetworkGenerationData.net
+        
+        try:
+            # Column 6: Diameter
+            if col == 6:
+                diameter_mm = float(item.text())
+                net.pipe.at[pipe_idx, 'diameter_m'] = diameter_mm / 1000
+                logging.info(f"Pipe {pipe_idx}: diameter changed to {diameter_mm} mm")
+            
+            # Column 7: Roughness k
+            elif col == 7:
+                k_mm = float(item.text())
+                net.pipe.at[pipe_idx, 'k_mm'] = k_mm
+                logging.info(f"Pipe {pipe_idx}: k changed to {k_mm} mm")
+                
+        except ValueError:
+            logging.warning(f"Invalid value entered in row {row}, col {col}")
+            # Revert to original value
+            if col == 6:
+                diameter_mm = net.pipe.at[pipe_idx, 'diameter_m'] * 1000
+                item.setText(f"{diameter_mm:.1f}")
+            elif col == 7:
+                k_mm = net.pipe.at[pipe_idx, 'k_mm']
+                item.setText(f"{k_mm:.2f}")
+    
+    def restore_pipe_defaults(self):
+        """Restore pipe parameters to original values."""
+        if not self.NetworkGenerationData or not hasattr(self, '_original_pipe_df'):
+            QMessageBox.warning(
+                self,
+                "Keine Originaldaten",
+                "Es sind keine Originaldaten zum Wiederherstellen vorhanden."
+            )
+            return
+        
+        reply = QMessageBox.question(
+            self,
+            "Standardwerte wiederherstellen",
+            "Möchten Sie alle Änderungen an den Rohrleitungsparametern verwerfen?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            self.NetworkGenerationData.net.pipe = self._original_pipe_df.copy()
+            self.populate_pipe_table()
+            logging.info("Restored original pipe parameters")
