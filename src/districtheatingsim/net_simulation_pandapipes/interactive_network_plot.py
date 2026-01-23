@@ -619,6 +619,10 @@ class InteractiveNetworkPlot:
             mid_lat = (from_coords.y + to_coords.y) / 2
             mid_lon = (from_coords.x + to_coords.x) / 2
             
+            # Create customdata for click events - store pipe index and name
+            pipe_name = pipe_data.get('name', f'Pipe {idx}')
+            customdata = [[idx, pipe_name]] * 3  # Same for all three points
+            
             self.fig.add_trace(go.Scattermapbox(
                 lat=[from_coords.y, mid_lat, to_coords.y],
                 lon=[from_coords.x, mid_lon, to_coords.x],
@@ -627,6 +631,7 @@ class InteractiveNetworkPlot:
                 marker=dict(size=0.1, color=color),  # Invisible markers for hover
                 text=[hover_text, hover_text, hover_text],
                 hovertemplate='%{text}<extra></extra>',
+                customdata=customdata,  # Store pipe index for click events
                 legendgroup='pipes',
                 name='pipe',
                 showlegend=(i == 0),
