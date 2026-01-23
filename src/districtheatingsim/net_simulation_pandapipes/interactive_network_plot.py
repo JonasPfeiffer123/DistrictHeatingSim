@@ -70,34 +70,18 @@ class InteractiveNetworkPlot:
                 't_k',    # Temperature [K]
             ]
             
-        # Pipe parameters - Flow, Velocity, Thermal
+        # Pipe parameters - Only most relevant ones
         if hasattr(self.net, 'res_pipe'):
             available_pipe_params = []
             res_pipe = self.net.res_pipe
             
-            # Always available
-            if 'v_mean_m_per_s' in res_pipe.columns:
-                available_pipe_params.append('v_mean_m_per_s')      # Velocity [m/s]
+            # Core flow parameters
             if 'mdot_from_kg_per_s' in res_pipe.columns:
                 available_pipe_params.append('mdot_from_kg_per_s')  # Mass flow [kg/s]
-            if 'reynolds' in res_pipe.columns:
-                available_pipe_params.append('reynolds')            # Reynolds number [-]
-            if 'lambda' in res_pipe.columns:
-                available_pipe_params.append('lambda')              # Friction factor [-]
+            if 'v_mean_m_per_s' in res_pipe.columns:
+                available_pipe_params.append('v_mean_m_per_s')      # Velocity [m/s]
             
-            # Pressure parameters
-            if 'p_from_bar' in res_pipe.columns:
-                available_pipe_params.append('p_from_bar')          # From pressure [bar]
-            if 'p_to_bar' in res_pipe.columns:
-                available_pipe_params.append('p_to_bar')            # To pressure [bar]
-            
-            # Temperature parameters
-            if 't_from_k' in res_pipe.columns:
-                available_pipe_params.append('t_from_k')            # From temperature [K]
-            if 't_to_k' in res_pipe.columns:
-                available_pipe_params.append('t_to_k')              # To temperature [K]
-            
-            # Calculated parameters (dT, dp)
+            # Differential parameters (most useful for analysis)
             if 't_from_k' in res_pipe.columns and 't_to_k' in res_pipe.columns:
                 available_pipe_params.append('dt_k')                # Temperature difference [K]
             if 'p_from_bar' in res_pipe.columns and 'p_to_bar' in res_pipe.columns:
@@ -105,25 +89,17 @@ class InteractiveNetworkPlot:
             
             params['pipe'] = available_pipe_params
             
-        # Heat consumer parameters - Mass flow, Heat demand, Temperatures
+        # Heat consumer parameters - Only most relevant ones
         if hasattr(self.net, 'res_heat_consumer'):
             available_hc_params = []
             res_hc = self.net.res_heat_consumer
             
-            if 'mdot_from_kg_per_s' in res_hc.columns:
-                available_hc_params.append('mdot_from_kg_per_s')    # Mass flow [kg/s]
             if 'qext_w' in res_hc.columns:
                 available_hc_params.append('qext_w')                # Heat demand [W]
-            if 't_from_k' in res_hc.columns:
-                available_hc_params.append('t_from_k')              # Supply temperature [K]
-            if 't_to_k' in res_hc.columns:
-                available_hc_params.append('t_to_k')                # Return temperature [K]
-            if 'p_from_bar' in res_hc.columns:
-                available_hc_params.append('p_from_bar')            # From pressure [bar]
-            if 'p_to_bar' in res_hc.columns:
-                available_hc_params.append('p_to_bar')              # To pressure [bar]
+            if 'mdot_from_kg_per_s' in res_hc.columns:
+                available_hc_params.append('mdot_from_kg_per_s')    # Mass flow [kg/s]
             
-            # Calculated parameters (dT, dp)
+            # Differential parameters (most useful for analysis)
             if 't_from_k' in res_hc.columns and 't_to_k' in res_hc.columns:
                 available_hc_params.append('dt_k')                  # Temperature difference [K]
             if 'p_from_bar' in res_hc.columns and 'p_to_bar' in res_hc.columns:
@@ -131,7 +107,7 @@ class InteractiveNetworkPlot:
             
             params['heat_consumer'] = available_hc_params
             
-        # Pump parameters - Mass flow, Pressure lift
+        # Pump parameters - Only most relevant ones
         if hasattr(self.net, 'res_circ_pump_pressure') or hasattr(self.net, 'res_circ_pump_mass'):
             available_pump_params = []
             
@@ -142,20 +118,10 @@ class InteractiveNetworkPlot:
                     available_pump_params.append('mdot_from_kg_per_s')  # Mass flow [kg/s]
                 if 'deltap_bar' in res_pump.columns:
                     available_pump_params.append('deltap_bar')          # Pressure increase [bar]
-                if 't_from_k' in res_pump.columns:
-                    available_pump_params.append('t_from_k')            # From temperature [K]
-                if 't_to_k' in res_pump.columns:
-                    available_pump_params.append('t_to_k')              # To temperature [K]
-                if 'p_from_bar' in res_pump.columns:
-                    available_pump_params.append('p_from_bar')          # From pressure [bar]
-                if 'p_to_bar' in res_pump.columns:
-                    available_pump_params.append('p_to_bar')            # To pressure [bar]
                 
-                # Calculated parameters (dT, dp)
+                # Temperature difference
                 if 't_from_k' in res_pump.columns and 't_to_k' in res_pump.columns:
                     available_pump_params.append('dt_k')                # Temperature difference [K]
-                if 'p_from_bar' in res_pump.columns and 'p_to_bar' in res_pump.columns:
-                    available_pump_params.append('dp_bar')              # Pressure increase [bar]
             
             # Mass pump results (if exists)
             if hasattr(self.net, 'res_circ_pump_mass') and len(self.net.res_circ_pump_mass) > 0:
