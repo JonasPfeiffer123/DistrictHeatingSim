@@ -71,17 +71,32 @@ Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force build -ErrorAction SilentlyContinue
 ```
 
-### 2. Create Debug Build
+### 2. Create Debug Build (with Console)
 
 ```powershell
 python build_debug.py
 ```
 
 **What happens during debug build:**
+- Uses `DistrictHeatingSim.spec` configuration
 - Creates --onedir build (EXE + data folder)
-- Enables console output for debugging
-- Adds debug logging
-- Retains all symbols for debugging
+- Enables console window for debugging
+- Creates timestamped log file in `build_logs/pyinstaller_build_YYYYMMDD_HHMMSS.log`
+- Runs with `--log-level=DEBUG` for detailed output
+- Executes post-build cleanup and optimization
+
+### 3. Create Release Build (no Console)
+
+```powershell
+python build.py
+```
+
+**What happens during release build:**
+- Uses `DistrictHeatingSim_Release.spec` configuration
+- Creates --onedir build without console window
+- Creates timestamped log file in `build_logs/pyinstaller_release_YYYYMMDD_HHMMSS.log`
+- Executes post-build cleanup and optimization
+- Production-ready executable
 
 ### Build Structure (--onedir)
 
@@ -90,7 +105,7 @@ dist/
 └── DistrictHeatingSim/
     ├── DistrictHeatingSim.exe          # Main program (Entry Point)
     ├── _internal/                       # Python runtime environment (protected)
-    │   ├── python312.dll               # Python interpreter
+    │   ├── python311.dll               # Python interpreter
     │   ├── base_library.zip            # Python standard library
     │   ├── geopandas/                  # Geospatial libraries
     │   ├── pandas/                     # Data processing
@@ -99,19 +114,26 @@ dist/
     │       ├── gui/                    # GUI modules
     │       │   ├── MainTab/
     │       │   │   ├── file_paths.json         # ✅ Included
-    │       │   │   └── recent_projects.json    # ❌ Removed (device-specific)
+    │       │   │   └── recent_projects.json    # ❌ Removed by cleanup
     │       │   └── NetSimulationTab/
     │       │       └── dialog_config.json      # ✅ Included
     │       └── [other modules]
-    ├── data/                            # Editable data (TRY, COP)
-    ├── project_data/                   # Example projects (188 MB)
-    │   └── Görlitz/                    # Görlitz example project
+    ├── data/                            # ✅ Moved to root by post-build
+    │   ├── TRY files                   # User-editable climate data
+    │   └── COP files                   # Heat pump performance data
+    ├── project_data/                   # ✅ Moved to root by post-build
+    │   └── Görlitz/                    # Example project (188 MB)
     │       ├── Variante 1/
     │       └── Variante 2/
+    ├── images/                         # Application images
+    ├── leaflet/                        # Leaflet map resources
     ├── gui/                            # GUI configurations
     ├── styles/                         # Stylesheet data
     └── utilities/                      # Utility files
 ```
+
+**Post-Build Optimization:**
+Both build scripts automatically move `data/` and `project_data/` from `_internal/` to the root level, making them easily accessible and editable by users.
 
 ### Important Build Parameters
 
@@ -231,70 +253,123 @@ pause
 
 ### Python Build Scripts
 
-#### `build_debug.py` - Main Configuration
+#### `build_debug.py` - Debug Build with Console
 
 ```python
-import PyInstaller.__main__
-import os
+import subprocess
 import sys
+from pathlib import Path
 from datetime import datetime
 
+def build_with_debug():
+    """Build DistrictHeatingSim with full debug logging."""
+    
+    # Create logs directory
+    log_dir = Path('build_logs')
+    log_dir.mkdir(exist_ok=True)
+    
+    # Generate timestamp for log file
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    log_file = log_dir / f'pyinstaller_build_{timestamp}.log'
+    
+    print(f"Starting PyInstaller build with debug logging...")
+    print(f"Log file: {log_file}")
+    
+    # PyInstaller command using .spec file
+    cmd = [
+        'pyinstaller',
+        '--clean',
+        '--noconfirm',
+        '--log-level=DEBUG',
+        'DistrictHeatingSim.spec'  # Debug spec with console
+    ]
+    
+    # Run build process with logging
+    # ... (subprocess execution)
+    
+    return process.returncode
+
+if __name__ == '__main__':
+    exit_code = build_with_debug()
+    
+    if exit_code == 0:
+        # Post-build optimization
+        cleanup_device_specific_files()  # Remove recent_projects.json
+        move_user_data_outside()         # Move data/ and project_data/ to root
+    
+    sys.exit(exit_code)
+```
+
+#### `build.py` - Release Build without Console
+
+```python
+import subprocess
+import sys
+from pathlib import Path
+from datetime import datetime
+
+def build_release():
+    """Build DistrictHeatingSim for release without console window."""
+    
+    # Create logs directory
+    log_dir = Path('build_logs')
+    log_dir.mkdir(exist_ok=True)
+    
+    # Generate timestamp for log file
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    log_file = log_dir / f'pyinstaller_release_{timestamp}.log'
+    
+    # PyInstaller command using release spec
+    cmd = [
+        'pyinstaller',
+        '--clean',
+        '--noconfirm',
+        'DistrictHeatingSim_Release.spec'  # Release spec without console
+    ]
+    script (with console) | Root |
+| `build.py` | Release build script (no console) | Root |
+| `run_debug.bat` | Debug build launcher | Root |
+| `DistrictHeatingSim.spec` | Debug build configuration (with console) | Root |
+| `DistrictHeatingSim_Release.spec` | Release build configuration (no console) | Root |
+| `hooks/hook-*.py` | Custom PyInstaller hooks | `hooks/` |
+| `requirements.txt` | Python dependencies | Root |
+| `build_logs/` | Timestamped build logs | Auto-created
+
+if __name__ == '__main__':
+    exit_code = build_release()
+    
+    if exit_code == 0:
+        # Post-build optimization
+        cleanup_device_specific_files()  # Remove recent_projects.json
+        move_user_data_outside()         # Move data/ and project_data/ to root
+    
+    sys.exit(exit_code)
+```
+
+#### Post-Build Functions
+
+**1. cleanup_device_specific_files()**
+```python
 def cleanup_device_specific_files():
-    """Remove device-specific files after build"""
+    """Remove device-specific configuration files from the build."""
     files_to_remove = [
         'dist/DistrictHeatingSim/gui/MainTab/recent_projects.json',
         'dist/DistrictHeatingSim/_internal/gui/MainTab/recent_projects.json',
         'dist/DistrictHeatingSim/_internal/districtheatingsim/gui/MainTab/recent_projects.json',
     ]
-    
-    removed_count = 0
-    for file_path in files_to_remove:
-        if os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-                print(f"  ✓ Removed: {file_path}")
-                removed_count += 1
-            except Exception as e:
-                print(f"  ✗ Failed to remove {file_path}: {e}")
-    
-    if removed_count > 0:
-        print(f"\n✓ Cleanup completed: {removed_count} file(s) removed")
-    else:
-        print("\n  No device-specific files found to remove")
+    # Removes files that should be created fresh on each user's machine
+```
 
-# Main configuration for debug build
-PyInstaller.__main__.run([
-    '--onedir',              # Directory mode (for large data)
-    '--windowed',            # GUI application
-    '--console',             # DEBUG: Console for debugging
-    '--name', 'DistrictHeatingSim',
-    '--icon', 'images/icon.ico',
-    
-    # Debug options
-    '--debug=all',
-    '--log-level=DEBUG',
-    
-    # Data bundling
-    '--add-data', 'src/districtheatingsim/data;data',
-    '--add-data', 'src/districtheatingsim/project_data;project_data',
-    # ... additional data
-    
-    # Custom hooks
-    '--additional-hooks-dir=hooks',
-    
-    # Hidden imports
-    '--hidden-import=geopandas',
-    '--hidden-import=fiona',
-    # ... additional imports
-    
-    'src/districtheatingsim/DistrictHeatingSim.py'
-])
-
-# Post-Build Cleanup
-print("\n" + "="*70)
-print("Post-Build Cleanup: Removing device-specific files...")
-print("="*70)
-cleanup_device_specific_files()
+**2. move_user_data_outside()**
+```python
+def move_user_data_outside():
+    """Move data and project_data folders outside _internal for user accessibility."""
+    folders_to_move = [
+        'data',           # TRY, COP data files
+        'project_data'    # Example projects (Görlitz, etc.)
+    ]
+    # Moves folders from _internal/ to dist/DistrictHeatingSim/ root
+    # Makes them easily accessible and editable by users
 ```
 ---
 
@@ -315,10 +390,15 @@ cleanup_device_specific_files()
 - [PyInstaller Documentation](https://pyinstaller.org/en/stable/)
 - [PyInstaller Hooks](https://github.com/pyinstaller/pyinstaller-hooks-contrib)
 - [PyQt6 Documentation](https://www.riverbankcomputing.com/static/Docs/PyQt6/)
+January 23, 2026  
+**PyInstaller Version:** 6.5.0+  
+**Python Version:** 3.11.9  
+**Build Architecture:** Windows 64-bit, --onedir
 
----
-
-**Last Updated:** October 21, 2025  
+**Build Scripts:**
+- `build_debug.py` → Uses `DistrictHeatingSim.spec` (with console)
+- `build.py` → Uses `DistrictHeatingSim_Release.spec` (no console)
+- Both scripts include automatic logging and post-build optimization
 **PyInstaller Version:** 6.16.0  
 **Python Version:** 3.11.9  
 **Build Architecture:** Windows 64-bit, --onedir
