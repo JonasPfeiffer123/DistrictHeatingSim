@@ -58,7 +58,14 @@ python -m pip install -r requirements.txt
 
 # Install PyInstaller (if not already installed)
 python -m pip install pyinstaller>=6.5.0
+
+# Install additional optional dependencies (recommended)
+python -m pip install rtree tbb
 ```
+
+**Optional Dependencies:**
+- **rtree** - Enables spatial indexing for geopandas/osmnx operations (required for OSM-based network generation)
+- **tbb** - Intel Threading Building Blocks for numba parallel processing (improves performance)
 
 ---
 
@@ -162,6 +169,25 @@ Similar hooks exist for:
 - `hook-fiona.py` - GDAL/OGR wrapper
 - `hook-shapely.py` - GEOS geometry engine
 - `hook-pyproj.py` - PROJ coordinate transformation
+
+### Hidden Imports Management
+
+The .spec files include extensive `hiddenimports` lists for dependencies that PyInstaller cannot auto-detect:
+
+**Key hidden imports:**
+- **osmnx** - Requires explicit module listing (osmnx 2.x changed structure)
+  - ✅ Include: `osmnx.graph`, `osmnx.plot`, `osmnx.utils`, `osmnx.routing`, etc.
+  - ❌ Exclude: `osmnx.utils_graph`, `osmnx.speed`, `osmnx.folium` (deprecated in osmnx 2.x)
+- **rtree** - Spatial indexing: `rtree`, `rtree.index`
+- **scipy** - Scientific computing: Extensive submodule list required
+- **pandapipes** - Heat network simulation: `pandapipes.timeseries`
+
+**Expected harmless warnings during build:**
+- `WARNING: Hidden import "fiona._shim" not found` - Internal C extension, handled by custom hook
+- `WARNING: Hidden import "pyproj._datadir" not found` - Internal C extension, handled by custom hook
+- `WARNING: Library not found: tbb12.dll` - Only if `tbb` not installed (numba falls back to single-threaded)
+
+These warnings don't affect functionality as the custom hooks properly bundle the required components.
 
 ### Data Bundling
 
@@ -373,6 +399,79 @@ def move_user_data_outside():
 ```
 ---
 
+## Troubleshooting
+
+### Common Build Warnings (Harmless)
+
+During the build process, you may see several warnings that can be safely ignored:
+
+#### 1. Missing Hidden Imports
+```
+WARNING: Hidden import "fiona._shim" not found!
+WARNING: Hidden import "pyproj._datadir" not found!
+```
+**Cause:** These are internal C extensions that don't exist as importable Python modules.  
+**Solution:** No action needed - custom hooks handle these correctly.
+
+#### 2. Missing DLL
+```
+WARNING: Library not found: could not resolve 'tbb12.dll'
+```
+**Cause:** Intel Threading Building Blocks library not installed.  
+**Impact:** Numba falls back to single-threaded mode (slightly slower).  
+**Solution:** `pip install tbb` (optional performance improvement)
+
+#### 3. Deprecated osmnx Modules (osmnx 2.x)
+```
+ERROR: Hidden import 'osmnx.utils_graph' not found
+ERROR: Hidden import 'osmnx.speed' not found
+ERROR: Hidden import 'osmnx.folium' not found
+```
+**Cause:** These modules were renamed/removed in osmnx 2.x.  
+**Solution:** Already handled - these have been removed from hiddenimports in .spec files.
+
+### Build Failures
+
+#### PyInstaller 6.5.0+ COLLECT Error
+```
+AttributeError: 'COLLECT' object has no attribute 'datas'
+```
+**Cause:** PyInstaller 6.5.0+ changed the COLLECT API.  
+**Solution:** Already fixed in .spec files - data arrays are combined before COLLECT creation:
+```python
+# Correct approach (PyInstaller 6.5.0+)
+all_datas = datas_inside_internal + datas_outside_internal
+coll = COLLECT(exe, a.binaries, all_datas, ...)
+
+# Old approach (PyInstaller <6.5.0) - no longer works
+coll = COLLECT(exe, a.binaries, datas_inside_internal, ...)
+for item in datas_outside_internal:
+    coll.datas.append(item)  # ❌ AttributeError
+```
+
+#### Missing rtree Error at Runtime
+```
+ModuleNotFoundError: No module named 'rtree'
+```
+**Cause:** rtree not installed or not included in hiddenimports.  
+**Solution:** 
+1. Install: `pip install rtree`
+2. Verify .spec includes: `'rtree', 'rtree.index'` in hiddenimports
+3. Rebuild application
+
+### Performance Issues
+
+#### Slow Startup
+- **Cause:** Large project_data folder (188 MB Görlitz example)
+- **Solution:** Normal for --onedir builds with large data; consider removing example projects for distribution
+
+#### Missing Spatial Operations
+- **Symptom:** OSM network generation fails
+- **Cause:** rtree not installed
+- **Solution:** `pip install rtree` and rebuild
+
+---
+
 ## Appendix
 
 ### Important Files
@@ -390,6 +489,21 @@ def move_user_data_outside():
 - [PyInstaller Documentation](https://pyinstaller.org/en/stable/)
 - [PyInstaller Hooks](https://github.com/pyinstaller/pyinstaller-hooks-contrib)
 - [PyQt6 Documentation](https://www.riverbankcomputing.com/static/Docs/PyQt6/)
+- [osmnx 2.x Migration Guide](https://github.com/gboeing/osmnx)
+- [rtree Spatial Indexing](https://github.com/Toblerity/rtree)
+
+### Version Compatibility
+
+| Component | Version | Notes |
+|-----------|---------|-------|
+| Python | 3.11.9 | Required (not 3.12) |
+| PyInstaller | 6.5.0+ | API change in 6.5.0 (COLLECT) |
+| osmnx | 2.0.4+ | Module structure changed from 1.x |
+| rtree | Latest | Required for spatial indexing |
+| tbb | Latest | Optional (numba performance) |
+
+---
+
 January 23, 2026  
 **PyInstaller Version:** 6.5.0+  
 **Python Version:** 3.11.9  
