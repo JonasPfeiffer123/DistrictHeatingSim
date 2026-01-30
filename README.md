@@ -2,9 +2,11 @@
 
 ## Introduction
 
-Welcome to the DistrictHeatingSim project, a comprehensive tool for planning and optimizing sustainable district heating networks. This README provides an overview of the project's functionality, installation instructions, and usage guidelines. 
+Welcome to the DistrictHeatingSim project, a comprehensive tool for planning and optimizing sustainable district heating networks. This README provides an overview of the project's functionality, installation instructions, and usage guidelines.
 
-DistrictHeatingSim is developed by Dipl.-Ing. (FH) Jonas Pfeiffer as part of a preliminary research SMWK-NEUES TG70 project, which focuses on the development and testing of methods and tools for the conceptualization of sustainable heating networks. The software integrates technical and economic simulations to support the design and evaluation of district heating systems. Besides the technical methods for calculations, a huge focus lies on implementing a GUI for this process steps. The Tool is implemented as an PyQt6-GUI. The project was recently migrated from PyQt5 to PyQt6 and huge structural changes were made to the UI and the project management. It is possible that errors can occur because of that. The backend calculation functions are working properly.
+The software integrates technical and economic simulations to support the design and evaluation of district heating systems. Besides the technical methods for calculations, a huge focus lies on implementing a GUI for this process steps. The Tool is implemented as an PyQt6-GUI.
+
+DistrictHeatingSim was originally developed at the University of Applied Science Zittau/Görlitz by Dipl.-Ing. (FH) Jonas Pfeiffer as part of a preliminary research SMWK-NEUES TG70 project, which focuses on the development and testing of methods and tools for the conceptualization of sustainable heating networks. The work is now being continued within an EFRE-ESF founded "Nachwuchsforschergruppe Energiespeicher" at the University of Applied Science Zittau/Görlitz.
 
 ## Table of Contents
 1. [Features](#features)
@@ -57,6 +59,7 @@ To install DistrictHeatingSim, follow the steps below. The software has been tes
 2. Navigate to the project directory:
     ```sh
     cd DistrictHeatingSim
+    ```
 3. Install the required dependencies using the `setup.py` file:
     ```sh
     python setup.py install
@@ -70,7 +73,8 @@ To install DistrictHeatingSim, follow the steps below. The software has been tes
     python src/districtheatingsim/DistrictHeatingSim.py
     ```
 
-Note that currently the pandapipes-develop branch is used. Reason for this are recent advancements in pandapipes. The current implementation is therefor not compatible with the pandapipes main branch. Further, additional pipetypes where added. These need to be include by replacing the Pipe.csv in "pandapipes\std_types\library" with the Pipe.csv in "DistrictHeatingSim\src\districtheatingsim\data\pandapipes\pipes".
+> **ℹ️ Note - Custom Pipe Types:**  
+> Additional pipe types have been added and must be included by replacing the `Pipe.csv` in `pandapipes/std_types/library` with the `Pipe.csv` located in `DistrictHeatingSim/src/districtheatingsim/data/pandapipes/pipes`.
 
 ### Troubleshooting
 - If you encounter errors during installation or while running the application, ensure that all required Python modules are installed. You can install the dependencies listed in the `requirements.txt` file:
@@ -126,13 +130,13 @@ Start DistrictHeatingSim by running DistrictHeatingSim.py within src/districthea
 
 ## Requirements
 
-- Python 3.11 ; some libraries currently not working in 3.12 ; only tested in 3.11
+- **Python Version**: >= 3.11, < 3.12 (some libraries currently not working with Python 3.12; only tested with Python 3.11)
 - Required Python packages listed in `requirements.txt`:
     ```text
     PyQt6
     PyQt6-WebEngine
     matplotlib
-    pandapipes==0.12.0.dev1
+    pandapipes>=0.13.0
     pandapower
     geopandas
     folium
@@ -173,23 +177,63 @@ The Code is documented with docstrings which are readable by [Sphinx](https://ww
     pip install sphinx_rtd_theme
     ```
 
-3. **Directing to the docs folder**:
+3. **Navigate to the docs folder**:
     ```sh
     cd docs
     ```
 
-4. **Generating the .rst-files**:
+4. **Generate the .rst-files**:
     ```sh
     sphinx-apidoc -f -o source/ ../src/districtheatingsim
     ```
 
-5. **Generate the htmls**:
+5. **Build the HTML documentation**:
     ```sh
     make clean
     make html
     ```
 
-The current version of the documentation can be found under https://districtheatingsim.readthedocs.io/en/latest/. The Sphinx-compatible documentation was created with Copilot using Claude Sonnet 4 (Preview).
+The current version of the documentation can be found under https://districtheatingsim.readthedocs.io/en/latest/. The Sphinx-compatible documentation was created with Copilot using Claude Sonnet 4.5.
+
+### Documentation Style Guide
+
+To ensure consistency across the codebase, all Python code should follow these documentation standards:
+
+**Docstring Format**: Sphinx/reStructuredText (reST)
+
+**Required Elements**:
+- **Summary**: Brief one-line description of the function/class
+- **Parameters**: Description of all parameters (use `:param:` and `:type:`)
+- **Returns**: Description of return values (use `:return:` and `:rtype:`)
+- **Raises**: Exceptions that may be raised (use `:raises:`)
+
+**Example**:
+```python
+def calculate_heat_demand(building_area, building_type, weather_data):
+    """
+    Calculate the heat demand for a building based on area, type, and weather data.
+    
+    :param building_area: Area of the building in square meters
+    :type building_area: float
+    :param building_type: Type of building (e.g., 'residential', 'commercial')
+    :type building_type: str
+    :param weather_data: Weather data for the calculation period
+    :type weather_data: pd.DataFrame
+    :return: Calculated heat demand profile
+    :rtype: pd.Series
+    :raises ValueError: If building_area is negative or building_type is invalid
+    
+    .. note::
+        This function uses BDEW standard load profiles for the calculation.
+    """
+    pass
+```
+
+**Guidelines**:
+- Keep docstrings concise but informative
+- Document all public functions, classes, and methods
+- Use type hints in function signatures where possible
+- Add examples for complex functions using `.. code-block::` or doctest format
 
 ## Publication
 
@@ -216,9 +260,15 @@ I welcome contributions from the community. To contribute:
 
 Please ensure that your contributions align with the project's coding standards and add tests for new functionalities.
 
+## Known Issues and Future Work
+
+For a list of known issues, planned features, and ongoing development tasks, please refer to:
+- [GitHub Issues](https://github.com/JonasPfeiffer123/DistrictHeatingSim/issues)
+- [todo.md](todo.md) for internal development notes
+
 ## License
 
-DistrictHeatSim is licensed under the MIT License. See the `LICENSE` file for more details.
+DistrictHeatingSim is licensed under the GPL v3 License. See the `LICENSE` file for more details.
 
 ## Funding Notice
 
