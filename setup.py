@@ -6,7 +6,7 @@ def read_requirements(file_path):
 
 setup(
     name="districtheatingsim",  # Name des Pakets
-    version="0.1",  # Versionsnummer
+    version="1.0.0",  # Versionsnummer
     description="A simulation tool for district heating systems",  # Beschreibung
     author="Dipl.-Ing. (FH) Jonas Pfeiffer",  # Autor
     maintainer="Dipl.-Ing. (FH) Jonas Pfeiffer",  # Verantwortlicher
