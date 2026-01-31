@@ -2,93 +2,9 @@
 Solar Thermal Collector System Module
 =====================================
 
-This module provides comprehensive solar thermal collector system modeling capabilities
-for district heating applications.
+Solar thermal collector modeling with flat-plate and vacuum tube technologies.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-11
-
-The implementation includes detailed thermal performance
-modeling, economic analysis, and environmental impact assessment for solar thermal energy
-generation with integrated thermal storage systems.
-
-The module supports both flat-plate and vacuum tube collector technologies with advanced
-solar radiation calculations, thermal efficiency modeling, and optimization capabilities
-for optimal district heating system integration.
-
-Features
---------
-- Comprehensive solar thermal collector modeling with efficiency calculations
-- Support for flat-plate and vacuum tube collector technologies
-- Advanced solar radiation calculation including incidence angle modifiers
-- Integrated thermal storage system modeling with temperature stratification
-- Economic analysis with lifecycle cost assessment and subsidy integration
-- Environmental impact evaluation with zero-emission heat generation
-- Optimization capabilities for collector area and storage volume sizing
-
-Technical Specifications
-------------------------
-**Solar Collector Technologies**:
-- Flat-plate collectors with detailed thermal performance modeling
-- Vacuum tube collectors with enhanced efficiency characteristics
-- Incidence angle modifier calculations for accurate yield prediction
-- Temperature-dependent efficiency modeling with thermal losses
-- Stagnation protection and overheating prevention algorithms
-
-**Thermal Storage Integration**:
-- Temperature-stratified storage tank modeling
-- Heat loss calculations with ambient temperature dependency
-- Storage charging and discharging optimization
-- Integration with district heating supply and return temperatures
-- Storage volume optimization for seasonal energy storage
-
-**Solar Radiation Modeling**:
-- Detailed solar position calculations for any geographic location
-- Beam and diffuse radiation separation with collector orientation
-- Incidence angle modifier application for realistic performance
-- Weather data integration with Test Reference Year (TRY) support
-- Albedo consideration for ground-reflected radiation
-
-**Economic Analysis**:
-- Comprehensive cost modeling including collector and storage costs
-- Technology-specific cost functions for flat-plate and vacuum collectors
-- Subsidy integration with German renewable energy incentives (BEW)
-- Levelized cost of heat calculations for economic comparison
-- Investment optimization with capacity and storage sizing
-
-**Environmental Assessment**:
-- Zero CO2 emissions for renewable solar heat generation
-- Primary energy factor analysis for sustainability assessment
-- Environmental benefit quantification compared to fossil alternatives
-- Life cycle assessment integration for comprehensive evaluation
-
-Classes
--------
-SolarThermal : Main solar thermal collector system class
-SolarThermalStrategy : Control strategy for solar thermal operation
-
-Dependencies
-------------
-- numpy >= 1.20.0 : Numerical calculations and array operations
-- math : Mathematical functions for thermal calculations
-- districtheatingsim.heat_generators.solar_radiation : Solar radiation calculation module
-- districtheatingsim.heat_generators.base_heat_generator : Base classes for heat generators
-
-Applications
-------------
-The module supports solar thermal applications including:
-- Large-scale district heating solar thermal systems
-- Seasonal energy storage with solar collector fields
-- Solar thermal integration with conventional heating systems
-- Renewable energy system optimization and economic analysis
-
-References
-----------
-Solar thermal modeling based on:
-- EN 12975 thermal performance of solar collectors
-- ScenoCalc District Heating 2.0 calculation methodology
-- VDI 6002 solar heating systems design guidelines
-- German solar thermal standards and certification procedures
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import numpy as np
