@@ -2,10 +2,10 @@
 Leaflet Tab Module
 ==================
 
-Leaflet map integration for district heating network visualization.
+This module provides Leaflet map integration for district heating network
+visualization and interactive network generation.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-01-26
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import os
@@ -24,7 +24,8 @@ from PyQt6.QtWebEngineCore import QWebEngineSettings
 from PyQt6.QtCore import QUrl, QObject, pyqtSlot, pyqtSignal
 from PyQt6.QtWebChannel import QWebChannel
 
-from districtheatingsim.gui.LeafletTab.leaflet_dialogs import LayerGenerationDialog, DownloadOSMDataDialog, OSMBuildingQueryDialog
+from districtheatingsim.gui.LeafletTab.layer_generation_dialog import LayerGenerationDialog
+from districtheatingsim.gui.LeafletTab.osm_dialogs import DownloadOSMDataDialog, OSMBuildingQueryDialog
 from districtheatingsim.gui.LeafletTab.net_generation_threads import NetGenerationThread, FileImportThread, GeocodingThread
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
 
@@ -39,12 +40,11 @@ class GeoJsonReceiver(QObject):
     polygon_ready = pyqtSignal()
     
     def __init__(self, base_path=""):
-        """Initialize GeoJsonReceiver with base path.
+        """
+        Initialize GeoJsonReceiver with base path.
         
-        Parameters
-        ----------
-        base_path : str, optional
-            Base path for file dialogs.
+        :param base_path: Base path for file dialogs
+        :type base_path: str
         """
         super().__init__()
         self.base_path = base_path
@@ -54,10 +54,8 @@ class GeoJsonReceiver(QObject):
         """
         Receive GeoJSON from JavaScript and save to file.
 
-        Parameters
-        ----------
-        geojson_str : str
-            GeoJSON data as string.
+        :param geojson_str: GeoJSON data as string
+        :type geojson_str: str
         """
         print("Received GeoJSON from JavaScript")
         
@@ -84,10 +82,8 @@ class GeoJsonReceiver(QObject):
         """
         Export GeoJSON with file dialog.
 
-        Parameters
-        ----------
-        geojsonString : str
-            GeoJSON data as string.
+        :param geojsonString: GeoJSON data as string
+        :type geojsonString: str
         """
         fileName, _ = QFileDialog.getSaveFileName(None, "Save GeoJSON File", self.base_path, "GeoJSON Files (*.geojson);;All Files (*)")
         if fileName:
@@ -156,10 +152,8 @@ class GeoJsonReceiver(QObject):
         This merges edited geometries from the map with protected building
         data to create a complete unified network GeoJSON.
 
-        Parameters
-        ----------
-        geojsonString : str
-            GeoJSON data from map (edited geometries).
+        :param geojsonString: GeoJSON data from map (edited geometries)
+        :type geojsonString: str
         """
         fileName, _ = QFileDialog.getSaveFileName(
             None, 
@@ -202,12 +196,10 @@ class GeoJsonReceiver(QObject):
         Merges edited geometries from map with original protected data.
         This is called when user saves changes in the map.
 
-        Parameters
-        ----------
-        geojsonString : str
-            Edited GeoJSON data from map.
-        filepath : str
-            Path to save the network.
+        :param geojsonString: Edited GeoJSON data from map
+        :type geojsonString: str
+        :param filepath: Path to save the network
+        :type filepath: str
         """
         try:
             from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
@@ -232,32 +224,34 @@ class GeoJsonReceiver(QObject):
 
     @pyqtSlot(float, float)
     def receiveCoordinateFromMap(self, lat, lon):
-        """Receive coordinate from map click.
+        """
+        Receive coordinate from map click.
         
-        Parameters
-        ----------
-        lat : float
-            Latitude (WGS84).
-        lon : float
-            Longitude (WGS84).
+        :param lat: Latitude (WGS84)
+        :type lat: float
+        :param lon: Longitude (WGS84)
+        :type lon: float
         """
         print(f"Received coordinates from map: Lat={lat}, Lon={lon}")
         self.coordinate_picked.emit(lat, lon)
 
     @pyqtSlot()
     def polygonReadyForCapture(self):
-        """Signal that polygon has been drawn and is ready for capture."""
+        """
+        Signal that polygon has been drawn and is ready for capture.
+        
+        Emits polygon_ready signal to notify listeners.
+        """
         self.polygon_ready.emit()
 
 
     @pyqtSlot(str)
     def receivePolygonFromMap(self, geojson_str):
-        """Receive polygon GeoJSON from map drawing.
+        """
+        Receive polygon GeoJSON from map drawing.
         
-        Parameters
-        ----------
-        geojson_str : str
-            GeoJSON string of the drawn polygon.
+        :param geojson_str: GeoJSON string of the drawn polygon
+        :type geojson_str: str
         """
         print(f"Received polygon from map")
         try:
@@ -272,7 +266,11 @@ class VisualizationModel:
     """
 
     def __init__(self):
-        """Initialize model with empty layers and base path."""
+        """
+        Initialize model with empty layers and base path.
+        
+        Sets up initial state for visualization model.
+        """
         self.layers = {}
         self.base_path = ""
 
@@ -280,10 +278,8 @@ class VisualizationModel:
         """
         Set base path for file operations.
 
-        Parameters
-        ----------
-        base_path : str
-            Base path to set.
+        :param base_path: Base path to set
+        :type base_path: str
         """
         self.base_path = base_path
 
@@ -291,10 +287,8 @@ class VisualizationModel:
         """
         Get current base path.
 
-        Returns
-        -------
-        str
-            Current base path.
+        :return: Current base path
+        :rtype: str
         """
         return self.base_path
 
@@ -302,15 +296,10 @@ class VisualizationModel:
         """
         Load GeoJSON file as GeoDataFrame.
 
-        Parameters
-        ----------
-        file_path : str
-            Path to GeoJSON file.
-
-        Returns
-        -------
-        GeoDataFrame
-            Loaded GeoJSON data.
+        :param file_path: Path to GeoJSON file
+        :type file_path: str
+        :return: Loaded GeoJSON data
+        :rtype: GeoDataFrame
         """
         return gpd.read_file(file_path)
 
@@ -318,12 +307,10 @@ class VisualizationModel:
         """
         Create GeoJSON from CSV with coordinates.
 
-        Parameters
-        ----------
-        csv_file_path : str
-            Path to CSV file.
-        geojson_file_path : str
-            Output GeoJSON path.
+        :param csv_file_path: Path to CSV file
+        :type csv_file_path: str
+        :param geojson_file_path: Output GeoJSON path
+        :type geojson_file_path: str
         """
         df = pd.read_csv(csv_file_path, delimiter=';')
         gdf = gpd.GeoDataFrame(
@@ -338,15 +325,10 @@ class VisualizationModel:
         """
         Get absolute path to resource.
 
-        Parameters
-        ----------
-        relative_path : str
-            Relative path to resource.
-
-        Returns
-        -------
-        str
-            Absolute path to resource.
+        :param relative_path: Relative path to resource
+        :type relative_path: str
+        :return: Absolute path to resource
+        :rtype: str
         """
         if getattr(sys, 'frozen', False):
             # Check if this is a path that should be outside _internal
@@ -371,18 +353,16 @@ class VisualizationPresenter(QObject):
         """
         Initialize presenter with model, view, and managers.
 
-        Parameters
-        ----------
-        model : VisualizationModel
-            Model instance.
-        view : VisualizationTabView
-            View instance.
-        folder_manager : FolderManager
-            Folder manager instance.
-        data_manager : DataManager
-            Data manager instance.
-        config_manager : ConfigManager
-            Configuration manager instance.
+        :param model: Model instance
+        :type model: VisualizationModel
+        :param view: View instance
+        :type view: VisualizationTabView
+        :param folder_manager: Folder manager instance
+        :type folder_manager: FolderManager
+        :param data_manager: Data manager instance
+        :type data_manager: DataManager
+        :param config_manager: Configuration manager instance
+        :type config_manager: ConfigManager
         """
         super().__init__()
         self.model = model
@@ -418,17 +398,20 @@ class VisualizationPresenter(QObject):
         """
         Update base path when project folder changes.
 
-        Parameters
-        ----------
-        new_base_path : str
-            New base path.
+        :param new_base_path: New base path
+        :type new_base_path: str
         """
         if new_base_path:
             self.model.set_base_path(new_base_path)
             self.view.set_base_path(new_base_path)
 
     def open_geocode_addresses_dialog(self):
-        """Open dialog to select CSV file for geocoding addresses."""
+        """
+        Open dialog to select CSV file for geocoding addresses.
+        
+        Displays file selection dialog and starts geocoding process
+        if file is selected.
+        """
         fname, _ = QFileDialog.getOpenFileName(self.view, 'CSV-Koordinaten laden', self.model.get_base_path(), 'CSV Files (*.csv);;All Files (*)')
         if fname:
             self.geocode_addresses(fname)
@@ -437,10 +420,8 @@ class VisualizationPresenter(QObject):
         """
         Start geocoding process for CSV file.
 
-        Parameters
-        ----------
-        inputfilename : str
-            Path to CSV file.
+        :param inputfilename: Path to CSV file
+        :type inputfilename: str
         """
         if hasattr(self, 'geocodingThread') and self.geocodingThread.isRunning():
             self.geocodingThread.terminate()
@@ -455,10 +436,8 @@ class VisualizationPresenter(QObject):
         """
         Handle successful geocoding completion.
 
-        Parameters
-        ----------
-        fname : str
-            Path to generated CSV file.
+        :param fname: Path to generated CSV file
+        :type fname: str
         """
         self.view.progressBar.setRange(0, 1)
         self.load_csv_coordinates(fname)
@@ -467,10 +446,8 @@ class VisualizationPresenter(QObject):
         """
         Handle geocoding errors.
 
-        Parameters
-        ----------
-        error_message : str
-            Error message.
+        :param error_message: Error message
+        :type error_message: str
         """
         self.view.show_error_message("Fehler beim Geocoding", error_message)
         self.view.progressBar.setRange(0, 1)
@@ -479,10 +456,8 @@ class VisualizationPresenter(QObject):
         """
         Load coordinates from CSV and add to map.
 
-        Parameters
-        ----------
-        fname : str, optional
-            CSV file path.
+        :param fname: CSV file path
+        :type fname: str or None
         """
         try:
             if not fname:
@@ -496,7 +471,12 @@ class VisualizationPresenter(QObject):
             self.view.show_error_message("Fehler beim Importieren von GeoJSON", error_message)
 
     def import_geojson(self):
-        """Import GeoJSON files and add to map."""
+        """
+        Import GeoJSON files and add to map.
+        
+        Displays file selection dialog for GeoJSON files and adds
+        selected layers to the map.
+        """
         try:
             fnames, _ = QFileDialog.getOpenFileNames(self.view, 'Netzdaten importieren', self.model.get_base_path(), 'GeoJSON Files (*.geojson);;All Files (*)')
             if fnames:
@@ -509,10 +489,8 @@ class VisualizationPresenter(QObject):
         """
         Add GeoJSON layers to map.
 
-        Parameters
-        ----------
-        filenames : list
-            List of GeoJSON file paths.
+        :param filenames: List of GeoJSON file paths
+        :type filenames: list
         """
         try:
             for filename in filenames:
@@ -540,15 +518,10 @@ class VisualizationPresenter(QObject):
         """
         Check if GeoJSON is unified network format.
         
-        Parameters
-        ----------
-        geojson_data : dict
-            GeoJSON data
-            
-        Returns
-        -------
-        bool
-            True if unified format
+        :param geojson_data: GeoJSON data
+        :type geojson_data: dict
+        :return: True if unified format
+        :rtype: bool
         """
         if geojson_data.get("type") != "FeatureCollection":
             return False
@@ -569,12 +542,10 @@ class VisualizationPresenter(QObject):
         """
         Load unified network GeoJSON and add layers to map.
         
-        Parameters
-        ----------
-        geojson_data : dict
-            Unified network GeoJSON
-        filepath : str, optional
-            Path to the loaded file (for saving later)
+        :param geojson_data: Unified network GeoJSON data
+        :type geojson_data: dict
+        :param filepath: Path to the loaded file (for saving later)
+        :type filepath: str or None
         """
         # Separate features by type
         flow_features = []
@@ -631,7 +602,11 @@ class VisualizationPresenter(QObject):
             self.view.saveNetworkAction.setEnabled(True)
 
     def open_layer_generation_dialog(self):
-        """Open dialog for generating layers from data."""
+        """
+        Open dialog for generating layers from data.
+        
+        Creates and displays layer generation dialog with map picker support.
+        """
         dialog = LayerGenerationDialog(self.model.get_base_path(), self.config_manager, self.view)
         dialog.setVisualizationTab(self)
         dialog.accepted_inputs.connect(self.generate_and_import_layers)
@@ -651,10 +626,8 @@ class VisualizationPresenter(QObject):
         """
         Start layer generation process.
 
-        Parameters
-        ----------
-        inputs : dict
-            Generation inputs.
+        :param inputs: Generation inputs
+        :type inputs: dict
         """
         if hasattr(self, 'netgenerationThread') and self.netgenerationThread.isRunning():
             self.netgenerationThread.terminate()
@@ -669,10 +642,8 @@ class VisualizationPresenter(QObject):
         """
         Handle successful layer generation.
 
-        Parameters
-        ----------
-        results : dict
-            Generation results.
+        :param results: Generation results
+        :type results: dict
         """
         self.view.progressBar.setRange(0, 1)
         
@@ -713,10 +684,8 @@ class VisualizationPresenter(QObject):
         """
         Handle layer generation errors.
 
-        Parameters
-        ----------
-        error_message : str
-            Error message.
+        :param error_message: Error message
+        :type error_message: str
         """
         self.view.show_error_message("Berechnungsfehler", error_message)
         self.view.progressBar.setRange(0, 1)
@@ -757,11 +726,19 @@ class VisualizationPresenter(QObject):
         print(f"Requested save of network to: {self.current_unified_network}")
 
     def activate_map_coordinate_picker(self):
-        """Activate map coordinate picker mode by calling JavaScript."""
+        """
+        Activate map coordinate picker mode by calling JavaScript.
+        
+        Enables interactive coordinate selection on the map.
+        """
         self.view.web_view.page().runJavaScript("activateCoordinatePicker();")
 
     def open_osm_data_dialog(self):
-        """Open dialog for downloading OSM data."""
+        """
+        Open dialog for downloading OSM data.
+        
+        Displays non-modal dialog allowing map interaction during OSM download.
+        """
         dialog = DownloadOSMDataDialog(self.model.get_base_path(), self.config_manager, self.view, self)
         dialog.setVisualizationTab(self)
         dialog.show()  # Non-modal dialog - allows map interaction
@@ -769,7 +746,11 @@ class VisualizationPresenter(QObject):
         dialog.activateWindow()
 
     def open_osm_building_query_dialog(self):
-        """Open dialog for querying OSM building data."""
+        """
+        Open dialog for querying OSM building data.
+        
+        Displays non-modal dialog for building queries with map interaction.
+        """
         dialog = OSMBuildingQueryDialog(
             self.model.get_base_path(), 
             self.config_manager, 
@@ -790,16 +771,18 @@ class VisualizationTabView(QWidget):
         """
         Initialize view with UI components.
 
-        Parameters
-        ----------
-        parent : QWidget, optional
-            Parent widget.
+        :param parent: Parent widget
+        :type parent: QWidget or None
         """
         super().__init__(parent)
         self.initUI()
 
     def initUI(self):
-        """Initialize user interface components."""
+        """
+        Initialize user interface components.
+        
+        Sets up layout with menu bar, map view, and progress bar.
+        """
         self.main_layout = QVBoxLayout()
 
         self.initMenuBar()
@@ -811,7 +794,11 @@ class VisualizationTabView(QWidget):
         self.setLayout(self.main_layout)
 
     def initMenuBar(self):
-        """Initialize menu bar with actions."""
+        """
+        Initialize menu bar with actions.
+        
+        Creates file menu with geocoding, import, and network generation actions.
+        """
         self.menuBar = QMenuBar(self)
         self.menuBar.setFixedHeight(30)
         fileMenu = self.menuBar.addMenu('Datei')
@@ -843,7 +830,11 @@ class VisualizationTabView(QWidget):
         self.main_layout.addWidget(self.menuBar)
 
     def initMapView(self):
-        """Initialize map view with WebEngine and WebChannel."""
+        """
+        Initialize map view with WebEngine and WebChannel.
+        
+        Sets up web view configuration and Python-JavaScript bridge.
+        """
         self.web_view = QWebEngineView()
         
         # Configure WebEngine settings to allow mixed content and local requests
@@ -866,10 +857,8 @@ class VisualizationTabView(QWidget):
         """
         Update map view with new data.
 
-        Parameters
-        ----------
-        map_obj : object
-            Map object to display.
+        :param map_obj: Map object to display
+        :type map_obj: object
         """
         # Verwende eine temporäre Datei für die HTML-Karte, falls es notwendig ist
         with tempfile.NamedTemporaryFile(suffix=".html", delete=False) as temp_file:
@@ -879,12 +868,11 @@ class VisualizationTabView(QWidget):
         self.web_view.load(QUrl.fromLocalFile(temp_file_path))
 
     def set_base_path(self, base_path):
-        """Set base path for GeoJsonReceiver.
+        """
+        Set base path for GeoJsonReceiver.
         
-        Parameters
-        ----------
-        base_path : str
-            Base path for file dialogs.
+        :param base_path: Base path for file dialogs
+        :type base_path: str
         """
         if hasattr(self, 'geoJsonReceiver'):
             self.geoJsonReceiver.base_path = base_path
@@ -893,12 +881,10 @@ class VisualizationTabView(QWidget):
         """
         Show error message dialog.
 
-        Parameters
-        ----------
-        title : str
-            Dialog title.
-        message : str
-            Error message text.
+        :param title: Dialog title
+        :type title: str
+        :param message: Error message text
+        :type message: str
         """
         QMessageBox.critical(self, title, message)
 
@@ -911,16 +897,14 @@ class VisualizationTabLeaflet(QMainWindow):
         """
         Initialize visualization tab with managers.
 
-        Parameters
-        ----------
-        folder_manager : FolderManager
-            Folder manager instance.
-        data_manager : DataManager
-            Data manager instance.
-        config_manager : ConfigManager
-            Configuration manager instance.
-        parent : QWidget, optional
-            Parent widget.
+        :param folder_manager: Folder manager instance
+        :type folder_manager: FolderManager
+        :param data_manager: Data manager instance
+        :type data_manager: DataManager
+        :param config_manager: Configuration manager instance
+        :type config_manager: ConfigManager
+        :param parent: Parent widget
+        :type parent: QWidget or None
         """
         super().__init__(parent)
 

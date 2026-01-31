@@ -1,11 +1,9 @@
-"""
-Network Calculation Threads Module
-==================================
+"""Network Calculation Threads Module
+===================================
 
 Threaded network initialization and calculation functionality.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-05-17
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import traceback
@@ -28,16 +26,16 @@ class NetInitializationThread(QThread):
         """
         Initialize network initialization thread.
 
-        Parameters
-        ----------
-        NetworkGenerationData : object
-            Network generation data object.
+        :param NetworkGenerationData: Network generation data object.
+        :type NetworkGenerationData: object
         """
         super().__init__()
         self.NetworkGenerationData = NetworkGenerationData
 
     def run(self):
-        """Run network initialization process."""
+        """
+        Run network initialization process.
+        """
         try:
             self.NetworkGenerationData = initialize_geojson(self.NetworkGenerationData)      
 
@@ -67,20 +65,19 @@ class NetCalculationThread(QThread):
         """
         Initialize calculation thread.
 
-        Parameters
-        ----------
-        NetworkGenerationData : object
-            Network generation data object.
-        simplified : bool, optional
-            Use simplified fast calculation instead of detailed simulation.
-            Default is False.
+        :param NetworkGenerationData: Network generation data object.
+        :type NetworkGenerationData: object
+        :param simplified: Use simplified fast calculation instead of detailed simulation.
+        :type simplified: bool
         """
         super().__init__()
         self.NetworkGenerationData = NetworkGenerationData
         self.simplified = simplified
     
     def run(self):
-        """Run time series calculation process."""
+        """
+        Run time series calculation process.
+        """
         try:
             self.NetworkGenerationData = time_series_preprocessing(self.NetworkGenerationData)
             

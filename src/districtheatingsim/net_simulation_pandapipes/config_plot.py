@@ -5,8 +5,7 @@ Config Plot Module
 This module provides comprehensive visualization capabilities for district heating network
 analysis and presentation.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-31
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 
 It combines pandapipes network plotting with interactive features,
 contextual basemaps, and detailed component annotations to create professional-quality
@@ -30,117 +29,33 @@ def config_plot(net, ax: plt.Axes, show_junctions: bool = True, show_pipes: bool
                show_heat_consumers: bool = True, show_pump: bool = True, show_plot: bool = False, 
                show_basemap: bool = True, map_type: str = "OSM", show_all_annotations: bool = False) -> None:
     """
-    Configure and render an interactive visualization of a pandapipes district heating network.
-
-    This function creates a comprehensive network visualization with interactive annotations,
-    contextual basemaps, and customizable component display. It provides detailed technical
-    information through hover interactions and supports various map backgrounds for enhanced
-    spatial context and professional presentation quality.
-
-    Parameters
-    ----------
-    net : pandapipes.pandapipesNet
-        The pandapipes network object containing network topology, components, and simulation
-        results. Must include geodata for proper geographic visualization.
-    ax : matplotlib.axes.Axes
-        The matplotlib axis object on which to render the network plot. Will be cleared
-        before plotting to ensure clean visualization.
-    show_junctions : bool, optional
-        Display network junctions with pressure and temperature information.
-        Default is True. Useful for detailed hydraulic analysis.
-    show_pipes : bool, optional
-        Display network pipes with flow rates, velocities, and pipe specifications.
-        Default is True. Essential for pipe sizing and flow analysis.
-    show_heat_consumers : bool, optional
-        Display heat consumers with demand and mass flow information.
-        Default is True. Critical for load analysis and system balancing.
-    show_pump : bool, optional
-        Display circulation pumps with pressure lift and flow rate data.
-        Default is True. Important for pump sizing and energy analysis.
-    show_plot : bool, optional
-        Immediately display the plot using plt.show(). Default is False.
-        Set to True for standalone plotting, False for integration into larger figures.
-    show_basemap : bool, optional
-        Include contextual basemap from online tile services. Default is True.
-        Requires internet connection and proper coordinate reference system.
-    map_type : str, optional
-        Basemap provider type for geographic context. Default is "OSM".
-        
-        Available options:
-            - **"OSM"** : OpenStreetMap standard layer (good general purpose)
-            - **"Satellite"** : Esri WorldImagery satellite imagery (detailed terrain)
-            - **"Topology"** : OpenTopoMap topographic layer (elevation contours)
-            
-    show_all_annotations : bool, optional
-        Force display of all component annotations simultaneously. Default is False.
-        When False, annotations appear on mouse hover for cleaner visualization.
-
-    Returns
-    -------
-    None
-        Function modifies the provided axis in-place and sets up interactive event handlers.
-
-    Notes
-    -----
-    Interactive Features:
-        - **Hover annotations** : Component details appear when cursor approaches
-        - **Distance-based visibility** : Annotations show/hide based on cursor proximity
-        - **Multi-component support** : Handles junctions, pipes, consumers, and pumps
-        - **Real-time updates** : Smooth annotation transitions during mouse movement
-
-    Geographic Requirements:
-        - Network must include geodata (junction_geodata) with valid coordinates
-        - Coordinate system should be projected (e.g., EPSG:25833) for accurate display
-        - Internet connection required for basemap tiles
-
-    Annotation Content:
-        - **Junctions** : Name, pressure [bar], temperature [°C]
-        - **Pipes** : Name, type, length [km], mass flow [kg/s], velocity [m/s]
-        - **Heat consumers** : Name, heat demand [W], mass flow [kg/s]
-        - **Pumps** : Type, pressure lift [bar], mass flow [kg/s]
-
-    Performance Considerations:
-        - Large networks may have slower hover response due to distance calculations
-        - Basemap loading depends on internet connection speed
-        - Use show_all_annotations=False for better performance with many components
-
-    Examples
-    --------
-    >>> # Basic network visualization
-    >>> fig, ax = plt.subplots(figsize=(12, 8))
-    >>> config_plot(network, ax, show_basemap=True, map_type="OSM")
-    >>> plt.title("District Heating Network Overview")
-    >>> plt.show()
-
-    >>> # Technical analysis plot without basemap
-    >>> fig, ax = plt.subplots(figsize=(10, 8))
-    >>> config_plot(network, ax, show_basemap=False, show_all_annotations=True)
-    >>> ax.set_title("Network Technical Analysis")
-    >>> ax.grid(True, alpha=0.3)
-
-    >>> # Presentation-quality plot with satellite background
-    >>> fig, ax = plt.subplots(figsize=(16, 12))
-    >>> config_plot(network, ax, map_type="Satellite", show_junctions=False)
-    >>> ax.set_title("District Heating Network - Satellite View", fontsize=16)
-
-    >>> # Focus on specific components
-    >>> config_plot(network, ax, show_junctions=False, show_pipes=False,
-    ...              show_heat_consumers=True, show_pump=True)
-
-    Raises
-    ------
-    AttributeError
-        If network lacks required geodata or component tables.
-    ConnectionError
-        If basemap tiles cannot be downloaded (network connection issues).
-    ValueError
-        If coordinate reference system is invalid or incompatible.
-
-    See Also
-    --------
-    pandapipes.plotting.simple_plot : Basic pandapipes network plotting
-    contextily.add_basemap : Basemap integration for geographic context
-    matplotlib.pyplot.annotate : Annotation creation and styling
+    Interactive pandapipes network visualization with hover annotations and basemaps.
+    
+    :param net: Pandapipes network with topology and simulation results
+    :type net: pandapipes.pandapipesNet
+    :param ax: Matplotlib axis for rendering
+    :type ax: matplotlib.axes.Axes
+    :param show_junctions: Display junctions with pressure/temperature, defaults to True
+    :type show_junctions: bool
+    :param show_pipes: Display pipes with flow rates/velocities, defaults to True
+    :type show_pipes: bool
+    :param show_heat_consumers: Display heat consumers with demand info, defaults to True
+    :type show_heat_consumers: bool
+    :param show_pump: Display circulation pumps, defaults to True
+    :type show_pump: bool
+    :param show_plot: Immediately display with plt.show(), defaults to False
+    :type show_plot: bool
+    :param show_basemap: Include contextual basemap, defaults to True
+    :type show_basemap: bool
+    :param map_type: Basemap type: "OSM", "Satellite", "Topology", defaults to "OSM"
+    :type map_type: str
+    :param show_all_annotations: Force all annotations visible, defaults to False
+    :type show_all_annotations: bool
+    
+    .. note::
+       Interactive hover annotations, distance-based visibility. Requires geodata and internet
+       for basemap tiles. Annotations: junctions (pressure/temp), pipes (flow/velocity),
+       consumers (demand), pumps (pressure lift).
     """
     ax.clear()  # Clear previous plots
 
@@ -150,27 +65,24 @@ def config_plot(net, ax: plt.Axes, show_junctions: bool = True, show_pipes: bool
                        obj_id: Optional[int] = None, line_points: Optional[List[Tuple[float, float]]] = None, 
                        visible: bool = False) -> Dict[str, Any]:
         """
-        Create an interactive annotation for a network component.
-
-        Parameters
-        ----------
-        text : str
-            Annotation text content with component information.
-        x, y : float
-            Annotation anchor coordinates in network coordinate system.
-        obj_type : str
-            Component type for styling and interaction ("junction", "pipe", "heat_consumer", "pump").
-        obj_id : int, optional
-            Component ID for data lookup and interaction tracking.
-        line_points : List[Tuple[float, float]], optional
-            Line segment endpoints for pipe distance calculations.
-        visible : bool, optional
-            Initial visibility state. Default is False for hover-based display.
-
-        Returns
-        -------
-        Dict[str, Any]
-            Annotation data structure containing matplotlib annotation object and metadata.
+        Create interactive annotation for network component.
+        
+        :param text: Annotation text with component info
+        :type text: str
+        :param x: X coordinate in network CRS
+        :type x: float
+        :param y: Y coordinate in network CRS
+        :type y: float
+        :param obj_type: Component type: "junction", "pipe", "heat_consumer", "pump"
+        :type obj_type: str
+        :param obj_id: Component ID for tracking, optional
+        :type obj_id: Optional[int]
+        :param line_points: Line segment endpoints for pipes, optional
+        :type line_points: Optional[List[Tuple[float, float]]]
+        :param visible: Initial visibility, defaults to False
+        :type visible: bool
+        :return: Annotation dict with matplotlib object and metadata
+        :rtype: Dict[str, Any]
         """
         # Adjust annotation offset based on component type for optimal visibility
         if obj_type in ["heat_consumer", "pump"]:

@@ -121,16 +121,6 @@ Heat generation system optimization example.
 Building Analysis Examples
 --------------------------
 
-LOD2 Processing
-~~~~~~~~~~~~~~~
-
-.. literalinclude:: ../../examples/11_example_lod2.py
-   :language: python
-   :linenos:
-   :caption: 11_example_lod2.py
-
-Processing LOD2 building data example.
-
 Renovation Analysis
 ~~~~~~~~~~~~~~~~~~~
 

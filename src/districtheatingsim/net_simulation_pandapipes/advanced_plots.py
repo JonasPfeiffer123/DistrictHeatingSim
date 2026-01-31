@@ -6,17 +6,16 @@ Funktionsfähige erweiterte Plot-Funktionen für pandapipes Netzwerke.
 Diese Version umgeht die API-Limitierungen der pandapipes Collection-Funktionen
 und bietet robuste, produktionsreife Plotting-Alternativen.
 
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+
 Features:
+
 - Druckverteilungsplots mit Statistiken
 - Temperaturverteilungsplots  
 - Geschwindigkeitsanalyse
 - Druckprofile
 - Interaktive Dashboards
 - Drop-in Ersatz für config_plot
-
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer  
-Date: 2025-08-14
-Version: 1.0 (Production Ready)
 """
 
 import numpy as np
@@ -28,7 +27,22 @@ from typing import Optional, Dict, List
 
 
 def create_pressure_plot(net, ax: Optional[plt.Axes] = None, show_colorbar: bool = True):
-    """Create a pressure-based plot with data-driven colors."""
+    """
+    Pressure distribution plot with data-driven colors and statistics.
+    
+    :param net: Pandapipes network with simulation results
+    :type net: pandapipes.pandapipesNet
+    :param ax: Matplotlib axis, creates new if None
+    :type ax: Optional[plt.Axes]
+    :param show_colorbar: Display pressure colorbar, defaults to True
+    :type show_colorbar: bool
+    :return: Matplotlib axis with pressure plot
+    :rtype: plt.Axes
+    
+    .. note::
+       Blue (low pressure) to red (high pressure). Plots junctions, pipes, consumers, pumps.
+       Includes pressure range statistics.
+    """
     if ax is None:
         fig, ax = plt.subplots(figsize=(12, 8))
     
@@ -140,7 +154,20 @@ def create_pressure_plot(net, ax: Optional[plt.Axes] = None, show_colorbar: bool
 
 
 def create_temperature_plot(net, ax: Optional[plt.Axes] = None):
-    """Create a temperature-based plot with data-driven colors."""
+    """
+    Temperature distribution plot with data-driven colors and statistics.
+    
+    :param net: Pandapipes network with simulation results
+    :type net: pandapipes.pandapipesNet
+    :param ax: Matplotlib axis, creates new if None
+    :type ax: Optional[plt.Axes]
+    :return: Matplotlib axis with temperature plot
+    :rtype: plt.Axes
+    
+    .. note::
+       Plasma colormap (blue=cold, red=hot). Converts Kelvin to Celsius.
+       Shows temperature range statistics.
+    """
     if ax is None:
         fig, ax = plt.subplots(figsize=(12, 8))
     
@@ -259,7 +286,20 @@ def create_temperature_plot(net, ax: Optional[plt.Axes] = None):
 
 
 def create_velocity_plot(net, ax: Optional[plt.Axes] = None):
-    """Create a velocity-based plot with data-driven colors."""
+    """
+    Velocity distribution plot for pipe flow analysis.
+    
+    :param net: Pandapipes network with simulation results
+    :type net: pandapipes.pandapipesNet
+    :param ax: Matplotlib axis, creates new if None
+    :type ax: Optional[plt.Axes]
+    :return: Matplotlib axis with velocity plot
+    :rtype: plt.Axes
+    
+    .. note::
+       Viridis colormap (green=low, yellow=high). Plots pipe velocities with colorbar.
+       Includes velocity range statistics.
+    """
     if ax is None:
         fig, ax = plt.subplots(figsize=(12, 8))
     
@@ -379,7 +419,19 @@ def create_velocity_plot(net, ax: Optional[plt.Axes] = None):
 
 
 def create_pressure_profile(net, ax: Optional[plt.Axes] = None):
-    """Create a pressure profile plot along the network path."""
+    """
+    Pressure profile along network path showing pressure drop.
+    
+    :param net: Pandapipes network with simulation results
+    :type net: pandapipes.pandapipesNet
+    :param ax: Matplotlib axis, creates new if None
+    :type ax: Optional[plt.Axes]
+    :return: Matplotlib axis with pressure profile
+    :rtype: plt.Axes
+    
+    .. note::
+       Distance vs pressure plot. Shows total pressure drop statistics.
+    """
     if ax is None:
         fig, ax = plt.subplots(figsize=(12, 6))
     
@@ -412,7 +464,20 @@ def create_pressure_profile(net, ax: Optional[plt.Axes] = None):
 
 
 def create_comparison_dashboard(net, figsize=(16, 12)):
-    """Create a comprehensive comparison dashboard with multiple plot types."""
+    """
+    Comprehensive analysis dashboard with 4 plot types.
+    
+    :param net: Pandapipes network with simulation results
+    :type net: pandapipes.pandapipesNet
+    :param figsize: Figure size tuple (width, height), defaults to (16, 12)
+    :type figsize: tuple
+    :return: Figure and axes array (2x2)
+    :rtype: Tuple[plt.Figure, np.ndarray]
+    
+    .. note::
+       4 subplots: topology, pressure profile, pressure distribution, temperature distribution.
+       Includes network statistics text box.
+    """
     fig, axes = plt.subplots(2, 2, figsize=figsize)
     fig.suptitle('Fernwärmenetz Analyse Dashboard', fontsize=16, fontweight='bold')
     
@@ -445,7 +510,17 @@ def create_comparison_dashboard(net, figsize=(16, 12)):
 
 
 def get_network_statistics(net):
-    """Get network statistics as text."""
+    """
+    Extract network statistics as formatted text string.
+    
+    :param net: Pandapipes network
+    :type net: pandapipes.pandapipesNet
+    :return: Formatted statistics string
+    :rtype: str
+    
+    .. note::
+       Returns junction count, pipe count, consumer count, total load [kW], pressure range [bar].
+    """
     stats = []
     stats.append("Netzwerk Statistiken:")
     stats.append(f"• Knotenpunkte: {len(net.junction)}")
@@ -466,20 +541,20 @@ def get_network_statistics(net):
 
 def enhanced_config_plot(net, ax, plot_mode='traditional', **kwargs):
     """
-    Enhanced replacement for config_plot with multiple visualization modes.
+    Enhanced config_plot replacement with multiple visualization modes.
     
-    This can be used as a drop-in replacement for existing config_plot functions.
+    :param net: Pandapipes network to visualize
+    :type net: pandapipes.pandapipesNet
+    :param ax: Matplotlib axis for plotting
+    :type ax: matplotlib.axes.Axes
+    :param plot_mode: Mode: 'traditional', 'pressure', 'temperature', 'velocity', 'dashboard'
+    :type plot_mode: str
+    :param \**kwargs: Additional arguments for plotting functions
+    :return: Matplotlib axis (or figure for dashboard mode)
+    :rtype: plt.Axes
     
-    Parameters:
-    -----------
-    net : pandapipes.Network
-        The pandapipes network to plot
-    ax : matplotlib.axes.Axes
-        The axes to plot on
-    plot_mode : str
-        Plot mode: 'traditional', 'pressure', 'temperature', 'velocity', 'dashboard'
-    **kwargs : dict
-        Additional keyword arguments passed to plotting functions
+    .. note::
+       Drop-in replacement for config_plot. Dashboard mode returns new figure.
     """
     
     if plot_mode == 'traditional':

@@ -2,10 +2,9 @@
 Technology Tab Module
 =====================
 
-This module contains the TechnologyTab class, which is responsible for managing and displaying various technologies in a district heating simulation application. It allows users to add, edit, and remove technologies, as well as visualize them in a schematic view.
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-12-11
+Managing and displaying technologies in district heating simulation, including add, edit, remove, and schematic visualization.
 """
 
 import os
@@ -27,8 +26,7 @@ from districtheatingsim.gui.EnergySystemTab._11_generator_schematic import Schem
 
 class CustomListWidget(QListWidget):
     """
-    A custom QListWidget with additional functionality for handling drop events
-    and updating the order of technology objects in the parent TechnologyTab.
+    Custom list widget with drag-drop functionality for technology ordering.
     """
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -36,8 +34,10 @@ class CustomListWidget(QListWidget):
 
     def dropEvent(self, event):
         """
-        Handles the drop event to update the order of technology objects
-        in the parent TechnologyTab.
+        Handle drop event to update technology object order.
+
+        :param event: Drop event.
+        :type event: QDropEvent
         """
         super().dropEvent(event)
         if self.parent_tab:
@@ -45,13 +45,9 @@ class CustomListWidget(QListWidget):
 
 class TechnologyTab(QWidget):
     """
-    A QWidget subclass representing the TechnologyTab.
+    Tab for managing and displaying heat generation technologies.
 
-    Attributes:
-        data_added (pyqtSignal): A signal that emits data as an object.
-        data_manager (DataManager): An instance of the DataManager class for managing data.
-        results (dict): A dictionary to store results.
-        tech_objects (list): A list of technology objects.
+    :signal data_added: Signal that emits data as an object.
     """
 
     # Globale Zähler für jede Technologieklasse
@@ -73,11 +69,14 @@ class TechnologyTab(QWidget):
 
     def __init__(self, data_manager, config_manager, parent=None):
         """
-        Initializes the TechnologyTab.
+        Initialize the TechnologyTab.
 
-        Args:
-            data_manager (DataManager): The data manager.
-            parent (QWidget, optional): The parent widget. Defaults to None.
+        :param data_manager: Data manager instance.
+        :type data_manager: object
+        :param config_manager: Configuration manager instance.
+        :type config_manager: object
+        :param parent: Parent widget.
+        :type parent: QWidget
         """
         super().__init__(parent)
         self.data_manager = data_manager
@@ -93,7 +92,7 @@ class TechnologyTab(QWidget):
 
     def initFileInputs(self):
         """
-        Initializes the file input widgets.
+        Initialize file input widgets.
         """
         self.FilenameInput = QLineEdit('')
         self.selectFileButton = QPushButton('Lastgang-CSV auswählen')
@@ -101,10 +100,10 @@ class TechnologyTab(QWidget):
 
     def updateDefaultPath(self, new_base_path):
         """
-        Updates the default path for file inputs.
+        Update default path for file inputs.
 
-        Args:
-            new_base_path (str): The new base path.
+        :param new_base_path: New base path.
+        :type new_base_path: str
         """
         if new_base_path:
             self.base_path = new_base_path
@@ -114,7 +113,7 @@ class TechnologyTab(QWidget):
 
     def initUI(self):
         """
-        Initializes the UI components of the TechnologyTab.
+        Initialize UI components.
         """
         self.createMainScrollArea()
         self.setupFileInputs()
@@ -125,7 +124,7 @@ class TechnologyTab(QWidget):
 
     def createMainScrollArea(self):
         """
-        Creates the main scroll area for the TechnologyTab.
+        Create main scroll area.
         """
         self.mainScrollArea = QScrollArea(self)
         self.mainScrollArea.setWidgetResizable(True)
@@ -135,7 +134,7 @@ class TechnologyTab(QWidget):
 
     def setupFileInputs(self):
         """
-        Sets up the file input widgets and layout.
+        Set up file input widgets and layout.
         """
         layout = QHBoxLayout()
         layout.addWidget(self.selectFileButton)
@@ -145,17 +144,17 @@ class TechnologyTab(QWidget):
 
     def addLabel(self, text):
         """
-        Adds a label to the main layout.
+        Add label to main layout.
 
-        Args:
-            text (str): The text for the label.
+        :param text: Label text.
+        :type text: str
         """
         label = QLabel(text)
         self.mainLayout.addWidget(label)
 
     def on_selectFileButton_clicked(self):
         """
-        Handles the event when the select file button is clicked.
+        Handle select file button click event.
         """
         filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen")
         if filename:
@@ -163,7 +162,7 @@ class TechnologyTab(QWidget):
 
     def setupScaleFactor(self):
         """
-        Sets up the scale factor input widgets and layout.
+        Set up scale factor input widgets and layout.
         """
         self.load_scale_factorLabel = QLabel('Lastgang skalieren?:')
         self.load_scale_factorInput = QLineEdit("1")
@@ -172,10 +171,10 @@ class TechnologyTab(QWidget):
 
     def addHorizontalLayout(self, *widgets):
         """
-        Adds a horizontal layout with the given widgets to the main layout.
+        Add horizontal layout with given widgets to main layout.
 
-        Args:
-            *widgets: The widgets to add to the horizontal layout.
+        :param widgets: Widgets to add to horizontal layout.
+        :type widgets: tuple
         """
         layout = QHBoxLayout()
         for widget in widgets:
@@ -184,7 +183,7 @@ class TechnologyTab(QWidget):
 
     def addButtonLayout(self):
         """
-        Adds the button layout for managing technologies.
+        Add button layout for managing technologies.
         """
         buttonLayout = QHBoxLayout()
         self.btnDeleteSelectedTech = QPushButton("Ausgewählte Technologie entfernen")
@@ -197,7 +196,7 @@ class TechnologyTab(QWidget):
 
     def setupTechnologySelection(self):
         """
-        Sets up the technology selection widgets and layout.
+        Set up technology selection widgets and layout.
         """
         self.addLabel('Definierte Wärmeerzeuger')
         self.techList = CustomListWidget(self)
@@ -208,14 +207,14 @@ class TechnologyTab(QWidget):
 
     def createTechnology(self, tech_type, inputs):
         """
-        Creates a technology object based on the type and inputs.
+        Create technology object based on type and inputs.
 
-        Args:
-            tech_type (str): The type of technology.
-            inputs (dict): The inputs for the technology.
-
-        Returns:
-            Technology: The created technology object.
+        :param tech_type: Technology type.
+        :type tech_type: str
+        :param inputs: Technology inputs.
+        :type inputs: dict
+        :return: Created technology object.
+        :rtype: Technology
         """
         tech_classes = TECH_CLASS_REGISTRY
 
@@ -240,11 +239,12 @@ class TechnologyTab(QWidget):
 
     def addTech(self, tech_type, tech_data):
         """
-        Adds a new technology to the list.
+        Add new technology to list.
 
-        Args:
-            tech_type (str): The type of technology.
-            tech_data (dict): The data for the technology.
+        :param tech_type: Technology type.
+        :type tech_type: str
+        :param tech_data: Technology data.
+        :type tech_data: dict
         """
         dialog = TechInputDialog(tech_type, tech_data)
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -257,10 +257,10 @@ class TechnologyTab(QWidget):
 
     def editTech(self, item):
         """
-        Edits the selected technology.
+        Edit selected technology.
 
-        Args:
-            item (QListWidgetItem): The selected item to edit.
+        :param item: Selected item to edit.
+        :type item: QListWidgetItem
         """
         selected_tech_index = self.techList.row(item)
         selected_tech = self.tech_objects[selected_tech_index]
@@ -280,7 +280,7 @@ class TechnologyTab(QWidget):
 
     def removeSelectedTech(self):
         """
-        Entfernt das ausgewählte Technologie-Objekt und aktualisiert die Zähler und Objektnamen.
+        Remove selected technology object and update counters and object names.
         """
         selected_row = self.techList.currentRow()
 
@@ -302,7 +302,7 @@ class TechnologyTab(QWidget):
 
     def rebuildScene(self):
         """
-        Baut die gesamte Szene neu auf, indem alle verbleibenden Technologien hinzugefügt werden.
+        Rebuild entire scene by adding all remaining technologies.
         """
         self.schematic_scene.delete_all()  # Lösche alle Objekte aus der Szene
 
@@ -322,7 +322,10 @@ class TechnologyTab(QWidget):
 
     def updateTechNames(self, tech_type):
         """
-        Aktualisiert die Namen und Labels der verbleibenden Objekte einer Technologieklasse.
+        Update names and labels of remaining objects of a technology class.
+
+        :param tech_type: Technology type.
+        :type tech_type: str
         """
         count = 1  # Starte den Zähler für die Technologieklasse bei 1
 
@@ -341,7 +344,7 @@ class TechnologyTab(QWidget):
 
     def removeTech(self):
         """
-        Removes all technologies from the list.
+        Remove all technologies from list.
         """
         self.techList.clear()
         self.tech_objects = []
@@ -351,7 +354,7 @@ class TechnologyTab(QWidget):
 
     def updateTechList(self):
         """
-        Updates the technology list display.
+        Update technology list display.
         """
         self.techList.clear()
         for tech in self.tech_objects:
@@ -359,7 +362,7 @@ class TechnologyTab(QWidget):
 
     def updateTechObjectsOrder(self):
         """
-        Updates the order of technology objects based on the list display.
+        Update order of technology objects based on list display.
         """
         new_order = []
         for index in range(self.techList.count()):
@@ -374,13 +377,12 @@ class TechnologyTab(QWidget):
     
     def formatTechForDisplay(self, tech):
         """
-        Delegates the formatting of the display text to the technology object itself.
-        
-        Args:
-            tech (Technology): The technology object.
-        
-        Returns:
-            str: The formatted string for display.
+        Delegate formatting of display text to technology object.
+
+        :param tech: Technology object.
+        :type tech: Technology
+        :return: Formatted string for display.
+        :rtype: str
         """
         try:
             return tech.get_display_text()
@@ -390,10 +392,10 @@ class TechnologyTab(QWidget):
 
     def createMainLayout(self):
         """
-        Creates the main layout for the TechnologyTab.
+        Create main layout for TechnologyTab.
 
-        Returns:
-            QVBoxLayout: The main layout.
+        :return: Main layout.
+        :rtype: QVBoxLayout
         """
         layout = QVBoxLayout(self)
         layout.addWidget(self.mainScrollArea)
@@ -401,7 +403,7 @@ class TechnologyTab(QWidget):
 
     def setupPlotAndSchematic(self):
         """
-        Sets up both the plot area and the schematic scene area.
+        Set up plot area and schematic scene area.
         """
         # Create a QSplitter to split the plot area and the schematic scene
         splitter = QSplitter(self)
@@ -425,7 +427,7 @@ class TechnologyTab(QWidget):
 
     def createPlotCanvas(self):
         """
-        Creates the plot canvas for displaying graphs.
+        Create plot canvas for displaying graphs.
         """
         if self.plotCanvas:
             self.plotLayout.removeWidget(self.plotCanvas)
@@ -438,8 +440,7 @@ class TechnologyTab(QWidget):
 
     def loadFileAndPlot(self):
         """
-        Loads the file and plots the data. If the file is not available or has issues,
-        it displays a message on the plot canvas instead of throwing an error.
+        Load file and plot data, display message if file unavailable or has issues.
         """
         filename = self.FilenameInput.text()
         if filename:
@@ -457,10 +458,10 @@ class TechnologyTab(QWidget):
 
     def plotData(self, data):
         """
-        Plots the data on the plot canvas with modern styling and hour-based x-axis.
+        Plot data on canvas with modern styling and hour-based x-axis.
 
-        Args:
-            data (DataFrame): The data to plot.
+        :param data: Data to plot.
+        :type data: DataFrame
         """
         try:
             scale_factor = float(self.load_scale_factorInput.text())
@@ -527,10 +528,10 @@ class TechnologyTab(QWidget):
     
     def showInfoMessageOnPlot(self, message):
         """
-        Displays an information message on the plot canvas with modern styling.
+        Display information message on plot canvas with modern styling.
 
-        Args:
-            message (str): The message to display.
+        :param message: Message to display.
+        :type message: str
         """
         self.createPlotCanvas()
         
@@ -545,9 +546,12 @@ class TechnologyTab(QWidget):
         self.plotFigure.tight_layout()
         self.plotCanvas.draw()
 
-    def addTechToScene(self, tech): # der Mist muss mal refactored werden
+    def addTechToScene(self, tech):
         """
-        Fügt die Technologie zur SchematicScene hinzu und speichert die Referenz im tech-Objekt.
+        Add technology to SchematicScene and store reference in tech object.
+
+        :param tech: Technology object.
+        :type tech: object
         """
         has_storage = getattr(tech, 'has_storage', False)  # Prüfe, ob der Speicher ausgewählt wurde
         name = tech.name  # Nutze den eindeutigen Namen für die Szene

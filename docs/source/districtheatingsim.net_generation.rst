@@ -1,11 +1,6 @@
 Net generation package
 ==========================================
 
-.. automodule:: districtheatingsim.net_generation.osmnx_steiner_network
-   :members:
-   :show-inheritance:
-   :undoc-members:
-   
 .. automodule:: districtheatingsim.net_generation.import_and_create_layers
    :members:
    :show-inheritance:
@@ -17,6 +12,16 @@ Net generation package
    :undoc-members:
 
 .. automodule:: districtheatingsim.net_generation.net_generation
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+.. automodule:: districtheatingsim.net_generation.network_geojson_schema
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+.. automodule:: districtheatingsim.net_generation.osmnx_steiner_network
    :members:
    :show-inheritance:
    :undoc-members:

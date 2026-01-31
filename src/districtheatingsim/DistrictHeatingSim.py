@@ -1,133 +1,30 @@
 """
-DistrictHeatingSim - Main Application Module
-================================================
+Main entry point for the DistrictHeatingSim application.
 
-This module serves as the main entry point for the DistrictHeatingSim application,
-a comprehensive district heating system simulation and analysis tool. The application
-implements the Model-View-Presenter (MVP) architectural pattern to provide a
-maintainable and extensible GUI framework for district heating project management.
+This module provides a PyQt6-based GUI application for planning and optimizing
+district heating networks. It implements the Model-View-Presenter (MVP) pattern
+with clear separation between data management, business logic, and user interface.
 
-Module Overview
----------------
-The DistrictHeatingSim application provides a complete environment for:
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 
-- **Project Management**: Create, open, and manage district heating projects
-- **Data Visualization**: Interactive mapping and visualization of heating networks
-- **Building Analysis**: Calculate and analyze building heating requirements
-- **Network Simulation**: Perform hydraulic and thermal network calculations
-- **Energy System Design**: Design and optimize heating system configurations
-- **Economic Analysis**: Comprehensive economic evaluation and comparison
+The application provides:
 
-Architecture
-------------
-The application follows the MVP pattern with clear separation of concerns:
+    - Project management with variant support
+    - Building heat demand calculation using BDEW profiles
+    - Network generation from GIS data (OpenStreetMap)
+    - Thermohydraulic simulation with pandapipes
+    - Heat generator sizing and economic analysis
+    - Multi-variant comparison
 
-**Model Layer**:
-    - :class:`ProjectConfigManager`: Configuration and settings management
-    - :class:`DataManager`: Central data storage and management
-    - :class:`ProjectFolderManager`: Project file system operations
+Architecture:
 
-**View Layer**:
-    - :class:`HeatSystemDesignGUI`: Main application window and user interface
-    - Tab-based interface for different analysis modules
-    - Interactive dialogs and visualization components
+    - **Model**: ProjectConfigManager, DataManager, ProjectFolderManager
+    - **View**: HeatSystemDesignGUI (main window with tab-based interface)
+    - **Presenter**: HeatSystemPresenter (coordinates business logic)
 
-**Presenter Layer**:
-    - :class:`HeatSystemPresenter`: Business logic and user interaction handling
-    - Coordinates between model and view components
-    - Manages application state and data flow
-
-Key Features
-------------
-**Project Management**:
-    - Create new district heating projects with standardized folder structure
-    - Open existing projects with variant support
-    - Manage project versions and create copies
-    - Recent projects history and quick access
-
-**Multi-Tab Interface**:
-    - **Project Definition**: Basic project setup and configuration
-    - **Building Heat Demand**: Building-by-building heat requirement analysis
-    - **Network Visualization**: Interactive map-based network design
-    - **Network Calculation**: Hydraulic and thermal network simulation
-    - **Energy System Design**: Heating technology selection and sizing
-    - **Variant Comparison**: Economic and technical comparison of alternatives
-
-**Data Management**:
-    - Standardized data formats for interoperability
-    - Import/export capabilities for external tools
-
-**User Experience**:
-    - Intuitive workflow-based interface design
-    - Customizable themes (light/dark mode)
-
-Technical Implementation
-------------------------
-**GUI Framework**:
-    The application uses PyQt6 for the graphical user interface, providing:
-    
-    - Native look and feel across platforms
-    - Rich widget set for complex data visualization
-    - Signal-slot architecture for event handling
-    - Threading support for long-running calculations
-
-**Data Persistence**:
-    Project data is stored using multiple formats:
-    
-    - JSON for configuration and structured data
-    - CSV for tabular building and network data
-    - Pickle for complex Python objects and results
-    - PDF for professional report generation
-
-**Error Handling**:
-    Comprehensive error handling includes:
-    
-    - Global exception handling with error messages
-
-**Cross-Platform Support**:
-    The application is designed for cross-platform deployment:
-    
-    - Windows-specific features (taskbar integration)
-    - PyInstaller packaging support
-    - Resource path resolution for bundled applications
-    - Theme adaptation based on system time
-
-Application Lifecycle
----------------------
-**Initialization Sequence**:
-    1. **System Setup**: Exception handling, Qt application initialization
-    2. **Manager Creation**: Instantiate data and configuration managers
-    3. **GUI Construction**: Build main window and tab interfaces
-    4. **Presenter Linking**: Connect business logic to view components
-    5. **Theme Application**: Apply time-based or user-selected theme
-    6. **Project Loading**: Load last project or show default state
-
-Examples
---------
-**Basic Application Launch**:
-
-    >>> # Launch the DistrictHeatingSim application
-    >>> python DistrictHeatingSim.py
-    
-    # The application will:
-    # 1. Initialize all managers and GUI components
-    # 2. Load the last opened project (if available)
-    # 3. Apply theme based on current time
-    # 4. Display the main window maximized
-
-Notes
------
-The application is designed for professional use in district heating system
-planning and analysis. It provides comprehensive tools for engineers and
-planners to evaluate different heating system configurations, perform
-economic analysis, and generate professional documentation.
-
-The MVP architecture ensures maintainability and testability, while the
-modular design allows for easy extension and customization based on
-specific project requirements.
-
-For detailed usage instructions, see the user manual and tutorial
-documentation provided with the application.
+.. note::
+    The application uses time-based theme selection (light/dark mode) and
+    supports Windows taskbar integration when available.
 """
 
 import sys
@@ -149,86 +46,18 @@ from districtheatingsim.gui.MainTab.main_data_manager import ProjectFolderManage
 
 def main():
     """
-    Main application entry point and initialization function.
+    Initialize and launch the DistrictHeatingSim application.
     
-    This function handles the complete application startup sequence including
-    system configuration, manager initialization, GUI construction, and
-    application launch with proper error handling and cross-platform support.
+    This function sets up the Qt application, initializes all managers (config,
+    data, folder), creates the main GUI window, connects the MVP components,
+    applies the theme, and starts the event loop.
     
-    The initialization process follows a carefully orchestrated sequence:
+    :raises SystemExit: Normal application termination
+    :raises Exception: Caught by global exception handler for user-friendly error reporting
     
-    1. **System Configuration**: Set up global exception handling and Qt application
-    2. **Platform Integration**: Configure Windows-specific features if available
-    3. **Manager Initialization**: Create data, configuration, and folder managers
-    4. **GUI Construction**: Initialize main window and connect presenter
-    5. **Theme Application**: Apply time-based theme selection
-    6. **Data Loading**: Load initial temperature and heat pump data
-    7. **Window Display**: Show maximized window with project folder information
-    
-    Platform-Specific Features
-    ---------------------------
-    **Windows Integration**:
-        - Sets explicit app user model ID for proper taskbar grouping
-        - Enables custom application icon in taskbar
-        - Handles Windows-specific path separators and conventions
-    
-    **Cross-Platform Support**:
-        - Graceful fallback for platform-specific features
-        - Universal resource path resolution
-        - Consistent behavior across operating systems
-    
-    Error Handling
-    --------------
-    The application implements comprehensive error handling:
-    
-    - Global exception handler for unhandled exceptions
-    - Logging and debugging information for troubleshooting
-    
-    Theme Management
-    ----------------
-    Automatic theme selection based on system time:
-    
-    - Light theme during daytime hours (6 AM - 6 PM)
-    - Dark theme during evening and night hours
-    - User can override with manual theme selection
-    - Smooth theme transitions and consistent styling
-    
-    Resource Loading
-    ----------------
-    Initial data loading includes:
-    
-    - Temperature data for thermal calculations
-    - Heat pump performance characteristics
-    - Project configuration and recent project history
-    - User interface preferences and settings
-    
-    Raises
-    ------
-    SystemExit
-        Application exits normally after user closes the window
-    Exception
-        Any unhandled exceptions are caught by the global exception handler
-        
-    Examples
-    --------
-    **Standard Application Launch**:
-    
-        >>> # From command line or script
-        >>> if __name__ == '__main__':
-        ...     main()
-        
-        # This will:
-        # 1. Create all necessary managers and GUI components
-        # 2. Load the last opened project automatically
-        # 3. Display the main window in maximized state
-        # 4. Apply appropriate theme based on current time
-    
-    See Also
-    --------
-    handle_global_exception : Global exception handling function
-    get_stylesheet_based_on_time : Time-based theme selection
-    HeatSystemPresenter : Main application business logic controller
-    HeatSystemDesignGUI : Main application window and user interface
+    .. note::
+        Windows-specific taskbar integration is applied if available but
+        fails gracefully on other platforms.
     """
     # Configure global exception handling for user-friendly error reporting
     sys.excepthook = handle_global_exception

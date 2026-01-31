@@ -1,11 +1,10 @@
 """
 Energy System Tab Utilities Module
-==================================
+===================================
 
-This module contains the CollapsibleHeader class, which is used to create collapsible sections in the GUI. It allows for better organization of content by enabling users to expand or collapse sections as needed.
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-11-06
+Utility classes for Energy System Tab, including collapsible sections, checkable combo boxes, and custom JSON encoding.
 """
 
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QSizePolicy, QComboBox)
@@ -19,15 +18,15 @@ from districtheatingsim.heat_generators import *
 
 class CheckableComboBox(QComboBox):
     """
-    A QComboBox subclass that allows multiple items to be checked.
+    Combo box that allows multiple items to be checked.
     """
 
     def __init__(self, parent=None):
         """
-        Initializes the CheckableComboBox.
+        Initialize the CheckableComboBox.
 
-        Args:
-            parent (QWidget, optional): The parent widget. Defaults to None.
+        :param parent: Parent widget.
+        :type parent: QWidget
         """
         super(CheckableComboBox, self).__init__(parent)
         self.view().pressed.connect(self.handleItemPressed)
@@ -36,10 +35,10 @@ class CheckableComboBox(QComboBox):
 
     def handleItemPressed(self, index):
         """
-        Handles the item pressed event to toggle the check state.
+        Handle item pressed event to toggle check state.
 
-        Args:
-            index (QModelIndex): The index of the pressed item.
+        :param index: Index of the pressed item.
+        :type index: QModelIndex
         """
         item = self.model().itemFromIndex(index)
         if item.checkState() == Qt.CheckState.Checked:
@@ -52,7 +51,7 @@ class CheckableComboBox(QComboBox):
 
     def updateText(self):
         """
-        Updates the displayed text to show the checked items.
+        Update displayed text to show checked items.
         """
         if self.checked_items:
             self.setEditText(', '.join(self.checked_items))
@@ -61,11 +60,12 @@ class CheckableComboBox(QComboBox):
 
     def addItem(self, text, data=None):
         """
-        Adds an item to the combo box.
+        Add item to combo box.
 
-        Args:
-            text (str): The text of the item.
-            data (Any, optional): The data associated with the item. Defaults to None.
+        :param text: Item text.
+        :type text: str
+        :param data: Associated data.
+        :type data: Any
         """
         super(CheckableComboBox, self).addItem(text, data)
         item = self.model().item(self.count() - 1)
@@ -73,21 +73,22 @@ class CheckableComboBox(QComboBox):
 
     def addItems(self, texts):
         """
-        Adds multiple items to the combo box.
+        Add multiple items to combo box.
 
-        Args:
-            texts (list): The list of item texts to add.
+        :param texts: List of item texts to add.
+        :type texts: list
         """
         for text in texts:
             self.addItem(text)
 
     def setItemChecked(self, text, checked=True):
         """
-        Sets the check state of an item.
+        Set check state of an item.
 
-        Args:
-            text (str): The text of the item.
-            checked (bool, optional): The check state. Defaults to True.
+        :param text: Item text.
+        :type text: str
+        :param checked: Check state.
+        :type checked: bool
         """
         index = self.findText(text)
         if index != -1:
@@ -103,17 +104,17 @@ class CheckableComboBox(QComboBox):
 
     def clear(self):
         """
-        Clears all items from the combo box.
+        Clear all items from combo box.
         """
         super(CheckableComboBox, self).clear()
         self.checked_items = []
 
     def checkedItems(self):
         """
-        Gets the list of checked items.
+        Get list of checked items.
 
-        Returns:
-            list: The list of checked items.
+        :return: List of checked items.
+        :rtype: list
         """
         return self.checked_items
 
@@ -159,7 +160,7 @@ class CollapsibleHeader(QWidget):
         
 class CustomJSONEncoder(json.JSONEncoder):
     """
-    Custom JSON Encoder to handle encoding of specific objects and data types.
+    Custom JSON Encoder for handling numpy arrays, pandas DataFrames, and custom objects.
     """
     def default(self, obj):
         try:

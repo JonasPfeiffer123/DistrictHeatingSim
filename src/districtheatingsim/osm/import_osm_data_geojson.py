@@ -1,11 +1,10 @@
 """
-Import OSM Data to GeoJSON Module
-=================================
+OpenStreetMap data import and GeoJSON conversion module.
 
-This module provides functionality to download OpenStreetMap (OSM) data for specific cities and convert it into GeoJSON format.
+Provides Overpass API integration for downloading OSM data and converting
+it to GeoJSON format for district heating network planning.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-07-31
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import overpy
@@ -15,29 +14,16 @@ import geojson
 
 def build_query(city_name, tags, element_type="way"):
     """
-    Build an Overpass API query to download OSM data for a specific city and element type.
+    Build Overpass API query for OSM data download.
 
-    Parameters
-    ----------
-    city_name : str
-        Name of the city for which to download OSM data.
-    tags : list of tuple
-        List of (key, value) tuples to filter OSM elements.
-    element_type : str, optional
-        Type of OSM element to query. Can be "way" or "building". Default is "way".
-
-    Returns
-    -------
-    str
-        The Overpass API query string.
-
-    Examples
-    --------
-    >>> build_query("Berlin", [("highway", "primary")], "way")
-    '[out:json][timeout:25];\\narea[name="Berlin"]->.searchArea;\\n(\\nway["highway"="primary"](area.searchArea);\\n);\\n(._;>;);\\nout body;\\n'
-    
-    >>> build_query("Munich", [], "building")
-    '[out:json][timeout:25];\\narea[name="Munich"]->.searchArea;\\n(\\nrelation["building"](area.searchArea);way["building"](area.searchArea);\\n);\\n(._;>;);\\nout body;\\n'
+    :param city_name: City name for OSM query
+    :type city_name: str
+    :param tags: List of (key, value) tuples to filter OSM elements
+    :type tags: list of tuple
+    :param element_type: OSM element type ('way' or 'building')
+    :type element_type: str
+    :return: Overpass API query string
+    :rtype: str
     """
     query = f"""
     [out:json][timeout:25];
@@ -62,38 +48,18 @@ def build_query(city_name, tags, element_type="way"):
 
 def download_data(query, element_type):
     """
-    Download OSM data using the Overpass API and convert it to GeoJSON format.
+    Download OSM data via Overpass API and convert to GeoJSON.
 
-    Parameters
-    ----------
-    query : str
-        The Overpass API query string.
-    element_type : str
-        Type of OSM element to process. Can be "way" or "building".
-
-    Returns
-    -------
-    geojson.FeatureCollection
-        A GeoJSON FeatureCollection containing the downloaded OSM data.
-
-    Raises
-    ------
-    OverpassError
-        If the Overpass API query fails or times out.
+    :param query: Overpass API query string
+    :type query: str
+    :param element_type: OSM element type ('way' or 'building')
+    :type element_type: str
+    :return: GeoJSON FeatureCollection with OSM data
+    :rtype: geojson.FeatureCollection
+    :raises OverpassError: If API query fails
     
-    Notes
-    -----
-    - For "way" elements, creates LineString geometries
-    - For "building" elements, creates Polygon or MultiPolygon geometries
-    - Automatically closes building polygons if they are not already closed
-    - Preserves all OSM tags as properties in the GeoJSON features
-
-    Examples
-    --------
-    >>> query = build_query("Berlin", [("highway", "primary")], "way")
-    >>> geojson_data = download_data(query, "way")
-    >>> len(geojson_data['features'])
-    42
+    .. note::
+        Ways create LineString geometries, buildings create Polygon/MultiPolygon.
     """
     api = overpy.Overpass()
     result = api.query(query)
@@ -137,36 +103,13 @@ def download_data(query, element_type):
 
 def json_serial(obj):
     """
-    JSON serializer for objects not serializable by default.
+    JSON serializer for non-standard objects.
 
-    This function is used as a default serializer for the json.dump() function
-    to handle Decimal objects that are not JSON serializable by default.
-
-    Parameters
-    ----------
-    obj : any
-        The object to serialize.
-
-    Returns
-    -------
-    float
-        The serialized float representation of the object if it's a Decimal.
-
-    Raises
-    ------
-    TypeError
-        If the object type is not serializable.
-
-    Examples
-    --------
-    >>> from decimal import Decimal
-    >>> json_serial(Decimal('3.14'))
-    3.14
-    
-    >>> json_serial("not_a_decimal")
-    Traceback (most recent call last):
-        ...
-    TypeError: Object of type str is not JSON serializable
+    :param obj: Object to serialize
+    :type obj: any
+    :return: Float representation for Decimal objects
+    :rtype: float
+    :raises TypeError: If object type is not serializable
     """
     if isinstance(obj, Decimal):
         return float(obj)
@@ -174,28 +117,12 @@ def json_serial(obj):
 
 def save_to_file(geojson_data, filename):
     """
-    Save GeoJSON data to a file.
+    Save GeoJSON data to file.
 
-    Parameters
-    ----------
-    geojson_data : geojson.FeatureCollection
-        The GeoJSON data to save.
-    filename : str
-        The file path where the GeoJSON data will be saved.
-
-    Returns
-    -------
-    None
-
-    Examples
-    --------
-    >>> geojson_data = geojson.FeatureCollection([])
-    >>> save_to_file(geojson_data, "output.geojson")
-    
-    Notes
-    -----
-    The file is saved with proper JSON indentation (2 spaces) and uses
-    the json_serial function to handle Decimal objects.
+    :param geojson_data: GeoJSON data to save
+    :type geojson_data: geojson.FeatureCollection
+    :param filename: Output file path
+    :type filename: str
     """
     with open(filename, 'w') as outfile:
         json.dump(geojson_data, outfile, indent=2, default=json_serial)

@@ -1,11 +1,9 @@
-"""
-GUI Dialogs Module
+"""GUI Dialogs Module
 ==================
 
-This module contains dialog windows for user input and configuration.
+Dialog windows for user input and configuration.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-03-10
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QPushButton, QHBoxLayout, QFileDialog, QCheckBox, QDialogButtonBox, QHBoxLayout
@@ -16,24 +14,28 @@ from districtheatingsim.utilities.utilities import get_resource_path
 class TemperatureDataDialog(QDialog):
     """
     Dialog for selecting TRY (Test Reference Year) weather data files.
-    
-    Simple file selection dialog for weather data input with default path.
+
+    .. note::
+       Simple file selection dialog for weather data input with default path.
     """
 
     def __init__(self, parent=None):
         """
         Initialize temperature data dialog.
-        
-        Parameters
-        ----------
-        parent : QWidget, optional
-            Parent widget.
+
+        :param parent: Parent widget, defaults to None
+        :type parent: QWidget, optional
         """
         super().__init__(parent)
         self.initUI()
 
     def initUI(self):
-        """Initialize the user interface components."""
+        """
+        Initialize the user interface components with file selection controls.
+
+        .. note::
+           Creates description label with DWD link, file input field with default TRY path, and OK/Cancel buttons.
+        """
         self.setWindowTitle("Testreferenzjahr-Datei auswählen")
         self.resize(600, 200)
 
@@ -80,11 +82,9 @@ class TemperatureDataDialog(QDialog):
     def selectFilename(self, lineEdit):
         """
         Open file dialog and set selected path to line edit.
-        
-        Parameters
-        ----------
-        lineEdit : QLineEdit
-            Target line edit widget.
+
+        :param lineEdit: Target line edit widget
+        :type lineEdit: QLineEdit
         """
         filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen")
         if filename:
@@ -93,11 +93,9 @@ class TemperatureDataDialog(QDialog):
     def getValues(self):
         """
         Get dialog values.
-        
-        Returns
-        -------
-        dict
-            Dictionary with TRY filename.
+
+        :return: Dictionary with TRY filename
+        :rtype: dict
         """
         return {
             'TRY-filename': self.temperatureDataFileInput.text()
@@ -106,25 +104,29 @@ class TemperatureDataDialog(QDialog):
 class HeatPumpDataDialog(QDialog):
     """
     Dialog for selecting heat pump COP data files.
-    
-    Simple file selection dialog for heat pump performance data.
+
+    .. note::
+       Simple file selection dialog for heat pump performance data.
     """
 
     def __init__(self, parent=None):
         """
         Initialize heat pump data dialog.
-        
-        Parameters
-        ----------
-        parent : QWidget, optional
-            Parent widget.
+
+        :param parent: Parent widget, defaults to None
+        :type parent: QWidget, optional
         """
         super().__init__(parent)
         self.setWindowTitle("Wärmepumpendaten")
         self.initUI()
 
     def initUI(self):
-        """Initialize the user interface components."""
+        """
+        Initialize the user interface components with COP file selection.
+
+        .. note::
+           Creates file input field with default COP data path and OK/Cancel buttons.
+        """
         self.setWindowTitle("COP-Daten-Verwaltung")
         self.resize(400, 200)
         
@@ -161,11 +163,9 @@ class HeatPumpDataDialog(QDialog):
     def selectFilename(self, lineEdit):
         """
         Open file dialog and set selected path to line edit.
-        
-        Parameters
-        ----------
-        lineEdit : QLineEdit
-            Target line edit widget.
+
+        :param lineEdit: Target line edit widget
+        :type lineEdit: QLineEdit
         """
         filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", "", "CSV-Dateien (*.csv)")
         if filename:
@@ -174,11 +174,9 @@ class HeatPumpDataDialog(QDialog):
     def getValues(self):
         """
         Get dialog values.
-        
-        Returns
-        -------
-        dict
-            Dictionary with COP filename.
+
+        :return: Dictionary with COP filename
+        :rtype: dict
         """
         return {
             'COP-filename': self.heatPumpDataFileInput.text()

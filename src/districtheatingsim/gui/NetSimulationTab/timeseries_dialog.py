@@ -1,11 +1,9 @@
-"""
-Time Series Dialog Module
+"""Time Series Dialog Module
 =========================
 
 Dialog for configuring time series calculation parameters.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-02-11
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import os
@@ -22,12 +20,10 @@ class TimeSeriesCalculationDialog(QDialog):
         """
         Initialize time series calculation dialog.
 
-        Parameters
-        ----------
-        base_path : str
-            Base path for file dialogs.
-        parent : QWidget, optional
-            Parent widget.
+        :param base_path: Base path for file dialogs.
+        :type base_path: str
+        :param parent: Parent widget.
+        :type parent: QWidget
         """
         super().__init__(parent)
         self.base_path = base_path
@@ -35,7 +31,9 @@ class TimeSeriesCalculationDialog(QDialog):
         self.initUI()
 
     def initUI(self):
-        """Initialize user interface components."""
+        """
+        Initialize user interface components.
+        """
         self.setWindowTitle("Zeitreihenrechnung")
         self.resize(500, 300)
 
@@ -99,7 +97,9 @@ class TimeSeriesCalculationDialog(QDialog):
         self.layout.addLayout(buttonLayout)
 
     def onAccept(self):
-        """Validate inputs and accept dialog if valid."""
+        """
+        Validate inputs and accept dialog if valid.
+        """
         if self.validateInputs():
             self.accept()
 
@@ -107,10 +107,8 @@ class TimeSeriesCalculationDialog(QDialog):
         """
         Validate start and end time steps.
 
-        Returns
-        -------
-        bool
-            True if inputs are valid.
+        :return: True if inputs are valid.
+        :rtype: bool
         """
         start = int(self.StartTimeStepInput.text())
         end = int(self.EndTimeStepInput.text())
@@ -127,10 +125,8 @@ class TimeSeriesCalculationDialog(QDialog):
         """
         Open file dialog and update line edit with selected file.
 
-        Parameters
-        ----------
-        lineEdit : QLineEdit
-            Line edit widget to update.
+        :param lineEdit: Line edit widget to update.
+        :type lineEdit: QLineEdit
         """
         filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen")
         if filename:
@@ -140,11 +136,8 @@ class TimeSeriesCalculationDialog(QDialog):
         """
         Get dialog values.
 
-        Returns
-        -------
-        dict
-            Dictionary containing results filename, start and end time steps,
-            and calculation method.
+        :return: Dictionary containing results filename, start and end time steps, and calculation method.
+        :rtype: dict
         """
         return {
             'results_filename': self.resultsFileInput.text(),

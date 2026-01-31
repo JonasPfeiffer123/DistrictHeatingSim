@@ -1,15 +1,7 @@
 """
-Network GeoJSON Schema Module
-=============================
-
 Unified GeoJSON schema for district heating networks with layered data model.
 
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-12-19
-
-This module provides a standardized GeoJSON format that combines network geometry,
-building connections, and generator connections in a single file with clear
-separation between editable and protected data.
 """
 
 import json
@@ -23,13 +15,7 @@ from datetime import datetime
 
 class NetworkGeoJSONSchema:
     """
-    Unified GeoJSON schema for district heating networks.
-    
-    Features:
-    - Combines all network layers in single file
-    - Clear separation: editable vs. protected data
-    - Supports calculation results (diameters, pressures, etc.)
-    - Backward compatible with legacy 4-file format
+    Unified GeoJSON schema for district heating networks with editable/protected data separation.
     """
     
     VERSION = "2.0"
@@ -50,15 +36,10 @@ class NetworkGeoJSONSchema:
         """
         Create metadata for network GeoJSON.
         
-        Parameters
-        ----------
-        state : str
-            Network state: "designed", "calculated", or "optimized"
-            
-        Returns
-        -------
-        dict
-            Metadata dictionary
+        :param state: Network state ('designed', 'calculated', or 'optimized')
+        :type state: str
+        :return: Metadata dictionary with version, timestamp, and edit levels
+        :rtype: Dict[str, Any]
         """
         return {
             "version": NetworkGeoJSONSchema.VERSION,
@@ -82,23 +63,18 @@ class NetworkGeoJSONSchema:
         """
         Create a network line feature (flow or return).
         
-        Parameters
-        ----------
-        geometry : LineString
-            Line geometry
-        layer : str
-            "flow" or "return"
-        segment_id : str
-            Unique segment identifier
-        color : str, optional
-            Hex color code
-        calculated_data : dict, optional
-            Calculation results (diameter, flow rate, etc.)
-            
-        Returns
-        -------
-        dict
-            GeoJSON Feature
+        :param geometry: Line geometry
+        :type geometry: LineString
+        :param layer: Layer type ('flow' or 'return')
+        :type layer: str
+        :param segment_id: Unique segment identifier
+        :type segment_id: str
+        :param color: Hex color code (default: #59DB7F for flow, #0C350A for return)
+        :type color: str
+        :param calculated_data: Calculation results (diameter, flow rate, etc.)
+        :type calculated_data: Dict
+        :return: GeoJSON Feature with style and calculated properties
+        :rtype: Dict[str, Any]
         """
         # Default colors
         if color is None:
@@ -146,21 +122,16 @@ class NetworkGeoJSONSchema:
         building_data: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        Create a building connection feature.
+        Create a building connection feature with protected building data.
         
-        Parameters
-        ----------
-        geometry : LineString
-            Connection line geometry
-        connection_id : str
-            Unique connection identifier
-        building_data : dict
-            Building data from CSV (protected)
-            
-        Returns
-        -------
-        dict
-            GeoJSON Feature
+        :param geometry: Connection line geometry
+        :type geometry: LineString
+        :param connection_id: Unique connection identifier
+        :type connection_id: str
+        :param building_data: Building data from CSV (protected)
+        :type building_data: Dict[str, Any]
+        :return: GeoJSON Feature with building metadata
+        :rtype: Dict[str, Any]
         """
         feature = {
             "type": "Feature",
@@ -195,21 +166,16 @@ class NetworkGeoJSONSchema:
         """
         Create a generator connection feature.
         
-        Parameters
-        ----------
-        geometry : LineString
-            Connection line geometry
-        connection_id : str
-            Unique connection identifier
-        generator_type : str
-            "main" or "secondary"
-        location_index : int
-            Generator location index
-            
-        Returns
-        -------
-        dict
-            GeoJSON Feature
+        :param geometry: Connection line geometry
+        :type geometry: LineString
+        :param connection_id: Unique connection identifier
+        :type connection_id: str
+        :param generator_type: Generator type ('main' or 'secondary')
+        :type generator_type: str
+        :param location_index: Generator location index
+        :type location_index: int
+        :return: GeoJSON Feature with generator metadata
+        :rtype: Dict[str, Any]
         """
         feature = {
             "type": "Feature",
@@ -246,25 +212,20 @@ class NetworkGeoJSONSchema:
         """
         Create unified network GeoJSON from separate components.
         
-        Parameters
-        ----------
-        flow_lines : GeoDataFrame
-            Supply line network
-        return_lines : GeoDataFrame
-            Return line network
-        building_connections : GeoDataFrame
-            Building connections with data
-        generator_connections : GeoDataFrame
-            Generator connections
-        state : str
-            Network state
-        calculated_data : dict, optional
-            Calculation results indexed by segment_id
-            
-        Returns
-        -------
-        dict
-            Complete GeoJSON FeatureCollection
+        :param flow_lines: Supply line network
+        :type flow_lines: gpd.GeoDataFrame
+        :param return_lines: Return line network
+        :type return_lines: gpd.GeoDataFrame
+        :param building_connections: Building connections with data
+        :type building_connections: gpd.GeoDataFrame
+        :param generator_connections: Generator connections
+        :type generator_connections: gpd.GeoDataFrame
+        :param state: Network state
+        :type state: str
+        :param calculated_data: Calculation results indexed by segment_id
+        :type calculated_data: Dict
+        :return: Complete GeoJSON FeatureCollection
+        :rtype: Dict[str, Any]
         """
         features = []
         
@@ -397,12 +358,10 @@ class NetworkGeoJSONSchema:
         """
         Export network GeoJSON to file.
         
-        Parameters
-        ----------
-        geojson : dict
-            Network GeoJSON
-        filepath : str
-            Output file path
+        :param geojson: Network GeoJSON dictionary
+        :type geojson: Dict[str, Any]
+        :param filepath: Output file path
+        :type filepath: str
         """
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(geojson, f, indent=2, ensure_ascii=False)
@@ -413,15 +372,10 @@ class NetworkGeoJSONSchema:
         """
         Import network GeoJSON from file.
         
-        Parameters
-        ----------
-        filepath : str
-            Input file path
-            
-        Returns
-        -------
-        dict
-            Network GeoJSON
+        :param filepath: Input file path
+        :type filepath: str
+        :return: Network GeoJSON dictionary
+        :rtype: Dict[str, Any]
         """
         with open(filepath, 'r', encoding='utf-8') as f:
             geojson = json.load(f)
@@ -434,15 +388,10 @@ class NetworkGeoJSONSchema:
         """
         Split unified GeoJSON into legacy 4-file format.
         
-        Parameters
-        ----------
-        geojson : dict
-            Unified network GeoJSON
-            
-        Returns
-        -------
-        tuple
-            (flow_lines, return_lines, building_connections, generator_connections)
+        :param geojson: Unified network GeoJSON
+        :type geojson: Dict[str, Any]
+        :return: (flow_lines, return_lines, building_connections, generator_connections)
+        :rtype: Tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]
         """
         flow_features = []
         return_features = []
@@ -478,19 +427,14 @@ class NetworkGeoJSONSchema:
         """
         Update calculated data in unified GeoJSON after network dimensioning.
         
-        Parameters
-        ----------
-        geojson : dict
-            Unified network GeoJSON
-        flow_results : dict
-            Calculation results for flow lines {segment_id: {diameter_mm, flow_rate_kg_s, ...}}
-        return_results : dict
-            Calculation results for return lines
-            
-        Returns
-        -------
-        dict
-            Updated GeoJSON with calculation results
+        :param geojson: Unified network GeoJSON
+        :type geojson: Dict[str, Any]
+        :param flow_results: Calculation results for flow lines {segment_id: {diameter_mm, ...}}
+        :type flow_results: Dict[str, Dict]
+        :param return_results: Calculation results for return lines
+        :type return_results: Dict[str, Dict]
+        :return: Updated GeoJSON with calculation results
+        :rtype: Dict[str, Any]
         """
         updated_geojson = geojson.copy()
         updated_geojson['metadata']['state'] = 'calculated'

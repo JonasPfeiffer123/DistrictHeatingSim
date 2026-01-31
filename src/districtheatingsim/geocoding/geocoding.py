@@ -1,8 +1,10 @@
 """
-Filename: geocoding.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-06-25
-Description: Contains the geocoding functions necessary to geocode addresses.
+Geocoding module for address to coordinate transformation.
+
+Provides Nominatim-based geocoding with coordinate system transformation
+from WGS84 to UTM Zone 33N (ETRS89).
+
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import os
@@ -15,24 +17,16 @@ from pyproj import Transformer
 
 def get_coordinates(address, from_crs="epsg:4326", to_crs="epsg:25833"):
     """
-    Geocode an address and transform coordinates from EPSG:4326 to EPSG:25833.
+    Geocode address and transform coordinates to UTM.
 
-    Uses the Nominatim geocoder to obtain WGS84 coordinates and transforms them
-    to ETRS89 / UTM Zone 33N for higher accuracy.
-
-    Parameters
-    ----------
-    address : str
-        Address of the building to be geocoded.
-    from_crs : str, optional
-        Source coordinate reference system (default is "epsg:4326").
-    to_crs : str, optional
-        Target coordinate reference system (default is "epsg:25833").
-
-    Returns
-    -------
-    tuple of float or (None, None)
-        (UTM_X, UTM_Y) coordinates if successful, otherwise (None, None).
+    :param address: Address to geocode
+    :type address: str
+    :param from_crs: Source CRS (default: WGS84)
+    :type from_crs: str
+    :param to_crs: Target CRS (default: ETRS89/UTM Zone 33N)
+    :type to_crs: str
+    :return: (UTM_X, UTM_Y) coordinates or (None, None) if failed
+    :rtype: tuple of float
     """
     geolocator = Nominatim(user_agent="DistrictHeatingSim")
     transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
@@ -52,21 +46,10 @@ def get_coordinates(address, from_crs="epsg:4326", to_crs="epsg:25833"):
 
 def process_data(input_csv):
     """
-    Process a CSV file to add or update UTM_X and UTM_Y columns using geocoding.
+    Add UTM coordinates to CSV file via geocoding.
 
-    Reads a CSV file with address information, geocodes each address, transforms
-    the coordinates to UTM, and writes the results back to the file. If the columns
-    ``UTM_X`` and ``UTM_Y`` already exist, they are updated; otherwise, they are added.
-
-    Parameters
-    ----------
-    input_csv : str
-        Path to the input CSV file. The file must use ``;`` as delimiter and contain
-        at least the columns: country, state, city, address (in this order).
-
-    Returns
-    -------
-    None
+    :param input_csv: Path to CSV file (delimiter ';', columns: country, state, city, address)
+    :type input_csv: str
     """
     temp_fd, temp_path = tempfile.mkstemp()
     os.close(temp_fd)

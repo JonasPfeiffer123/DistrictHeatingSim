@@ -163,7 +163,7 @@ def main():
         from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
         
         network_dir = os.path.join(os.path.dirname(output_dir), "Wärmenetz")
-        unified_geojson = NetworkGeoJSONSchema.load_from_file(os.path.join(network_dir, "Wärmenetz.geojson"))
+        unified_geojson = NetworkGeoJSONSchema.import_from_file(os.path.join(network_dir, "Wärmenetz.geojson"))
         supply_network, return_network, hast_connections, generator_connection = NetworkGeoJSONSchema.split_to_legacy_format(unified_geojson)
         
         # Load buildings for plotting

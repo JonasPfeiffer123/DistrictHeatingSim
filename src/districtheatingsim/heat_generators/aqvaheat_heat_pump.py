@@ -2,10 +2,9 @@
 AqvaHeat Heat Pump Module
 =========================
 
-Contains the `AqvaHeat` class, which models a vacuum ice slurry generator with an attached heat pump. This class provides methods to calculate performance metrics such as cooling load, electric power consumption, and economic metrics based on various parameters.
+Vacuum ice slurry generator with heat pump.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-12-11
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import numpy as np
@@ -16,25 +15,14 @@ from districtheatingsim.heat_generators.base_heat_pumps import HeatPump
 
 class AqvaHeat(HeatPump):
     """
-    This class represents a AqvaHeat-solution (vacuum ice slurry generator with attached heat pump) and provides methods to calculate various performance and economic metrics.
+    AqvaHeat vacuum ice slurry heat pump system.
 
-    Args:
-        HeatPump (_type_): Base class for the heat pump.
-
-    Attributes:
-        Wärmeleistung_FW_WP (float): Heat output of the river water heat pump.
-        Temperatur_FW_WP (float): Temperature of the river water.
-        dT (float): Temperature difference. Default is 0.
-        spez_Investitionskosten_Flusswasser (float): Specific investment costs for river water heat pump per kW. Default is 1000.
-        spezifische_Investitionskosten_WP (float): Specific investment costs of the heat pump per kW. Default is 1000.
-        min_Teillast (float): Minimum partial load. Default is 0.2.
-
-    Methods:
-        Berechnung_WP(self.Wärmeleistung_kW, VLT_L, COP_data): Calculates the cooling load, electric power consumption, and adjusted flow temperatures.
-        abwärme(Last_L, VLT_L, COP_data, duration): Calculates the waste heat and other performance metrics.
-        calculate(VLT_L, COP_data, Strompreis, q, r, T, BEW, stundensatz, duration, general_results): Calculates the economic and environmental metrics for the heat pump.
-        to_dict(): Converts the object attributes to a dictionary.
-        from_dict(data): Creates an object from a dictionary of attributes.
+    :param name: System identifier
+    :type name: str
+    :param nominal_power: Nominal power [kW], defaults to 100
+    :type nominal_power: float
+    :param temperature_difference: Temperature difference [K], defaults to 0
+    :type temperature_difference: float
     """
     def __init__(self, name, nominal_power=100, temperature_difference=0):
 
@@ -45,22 +33,22 @@ class AqvaHeat(HeatPump):
         self.Wärmeleistung_FW_WP = nominal_power
 
     def calculate(self, economic_parameters, duration, load_profile, **kwargs):
+        """
+        Calculate AqvaHeat system performance.
+
+        :param economic_parameters: Economic parameters
+        :type economic_parameters: dict
+        :param duration: Simulation duration [h]
+        :type duration: float
+        :param load_profile: Load profile [kW]
+        :type load_profile: numpy.ndarray
+        :param kwargs: VLT_L (flow temperatures), COP_data (COP interpolation data)
+        :return: Performance metrics and results
+        :rtype: dict
+        """
         VLT_L = kwargs.get('VLT_L')
         COP_data = kwargs.get('COP_data')
-
-        """
-        Calculates the economic and environmental metrics for the AqvaHeat-solution.
-        Args:
-            VLT_L (array): Flow temperatures.
-            COP_data (array): COP data for interpolation.
-            economic_parameters (dict): Economic parameters dictionary containing fuel costs, capital interest rate, inflation rate, time period, and operational costs.
-            duration (float): Time duration.
-            load_profile (array): Load profile of the system in kW.
-
-        Returns:
-            dict: Dictionary containing calculated metrics and results.
-        """
-
+        
         residual_powers = load_profile
         effective_powers = np.zeros_like(residual_powers)
 
@@ -152,13 +140,12 @@ class AqvaHeat(HeatPump):
 
     def add_optimization_parameters(self, idx):
         """
-        AqvaHeat hat keine Optimierungsparameter. Diese Methode gibt leere Listen zurück.
+        Return empty optimization parameters (no optimization for AqvaHeat).
 
-        Args:
-            idx (int): Index der Technologie in der Liste.
-
-        Returns:
-            tuple: Leere Listen für initial_values, variables_order und bounds.
+        :param idx: Technology index
+        :type idx: int
+        :return: Empty lists (initial_values, variables_order, bounds)
+        :rtype: tuple
         """
         return [], [], []
 

@@ -31,7 +31,7 @@ DistrictHeatingSim Documentation
    .. grid-item-card:: 🏠 Building Modeling
       :text-align: center
       
-      LOD2 building data and heat demand calculations
+      Building data and heat demand calculations
 
    .. grid-item-card:: ⚡ Energy Systems
       :text-align: center
@@ -131,37 +131,65 @@ All example files are located in the ``examples/`` directory of the project repo
    .. grid-item-card:: 🏠 Building Analysis
       :text-align: center
       
-      Heat demand calculations and LOD2 processing
+      Heat demand calculations
       
-      See: ``03_example_simple_heat_requirement.py``, ``04_example_data_heat_requirement.py``, ``11_example_lod2.py``
+      See: ``03_example_simple_heat_requirement.py``, ``04_example_data_heat_requirement.py``
 
    .. grid-item-card:: 🌐 Network Design
       :text-align: center
       
-      Network generation and optimization
+      Network generation and optimization with MST and OSMnx
       
-      See: ``05_example_net_generation.py``, ``10_example_heat_generation_optimization.py``
-
-   .. grid-item-card:: ⚡ Energy Systems
-      :text-align: center
-      
-      Heat generators and seasonal storage
-      
-      See: ``09_example_heat_generators.py``, ``17_energy_system_seasonal_storage.py``
+      See: ``05_example_net_generation.py``, ``05b_example_net_generation_osmnx.py``, ``05c_example_osmnx_threading_compatible.py``
 
    .. grid-item-card:: 📊 Simulation
       :text-align: center
       
-      Pandapipes simulation and time series analysis
+      Thermo-hydraulic simulation with pandapipes
       
-      See: ``06_example_simple_pandapipes.py``, ``07_example_timeseries_pandapipes.py``, ``08_example_complex_pandapipes_timeseries.py``
+      See: ``06_example_simple_pandapipes.py``, ``06b_example_simple_pandapipes_osmnx.py``, ``07_example_timeseries_pandapipes.py``, ``08_example_complex_pandapipes_timeseries.py``
+
+   .. grid-item-card:: ⚡ Heat Generators
+      :text-align: center
+      
+      Heat pumps, CHP units, photovoltaics and system optimization
+      
+      See: ``09_example_heat_generators.py``, ``10_example_heat_generation_optimization.py``, ``14_example_photovoltaics.py``
+
+   .. grid-item-card:: 🔋 Energy Systems
+      :text-align: center
+      
+      Seasonal thermal storage and integrated energy systems
+      
+      See: ``17_energy_system_seasonal_storage.py``
 
    .. grid-item-card:: 💰 Economic Analysis
       :text-align: center
       
-      Renovation analysis and financial calculations
+      Annuity calculations and financial evaluation
       
-      See: ``12_example_renovation_analysis.py``, ``15_example_annuity.py``
+      See: ``15_example_annuity.py``
+
+   .. grid-item-card:: 🔄 Data Import/Export
+      :text-align: center
+      
+      STANET import and network data conversion
+      
+      See: ``18_stanet_to_pandapipes.py``
+
+   .. grid-item-card:: 📈 Visualization
+      :text-align: center
+      
+      Interactive plots, maps and network visualization
+      
+      See: ``16_interactive_matplotlib.py``, ``20_leaflet_test.py``, ``21_example_advanced_plots.py``
+
+   .. grid-item-card:: 🧪 Testing & Development
+      :text-align: center
+      
+      GUI component tests, benchmarks and development tools
+      
+      See: ``19_generator_schematic_test_window.py``, ``example_interactive_network_plot.py``, ``benchmark_synthetic_net_generation.py``
 
 .. toctree::
    :maxdepth: 3
@@ -176,7 +204,7 @@ All example files are located in the ``examples/`` directory of the project repo
 Examples use various data sources and formats:
 
 - **Geographic Data**: OpenStreetMap data, building coordinates
-- **Building Data**: LOD2 models, heat demand parameters
+- **Building Data**: Heat demand parameters, building specifications
 - **Weather Data**: TRY (Test Reference Year) files
 - **System Data**: Heat pump performance curves, generator specifications
 - **Network Data**: Pipe specifications, node configurations

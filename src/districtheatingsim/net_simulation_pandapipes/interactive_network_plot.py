@@ -4,10 +4,10 @@ Interactive Network Plot Module
 
 Modern interactive visualization for pandapipes district heating networks using Plotly.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-12-01
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 
 Features:
+
 - Interactive hover tooltips with detailed component information
 - Click events for component selection and inspection
 - Color-coded visualization of any network parameter
@@ -30,20 +30,28 @@ class InteractiveNetworkPlot:
     """
     Interactive Plotly-based network visualization with advanced features.
     
-    Provides color-coded parameter visualization, hover tooltips, click events,
-    and multiple basemap options for comprehensive network analysis.
+    :ivar net: Pandapipes network to visualize
+    :vartype net: pandapipes.pandapipesNet
+    :ivar crs: Coordinate reference system
+    :vartype crs: str
+    :ivar fig: Plotly figure object
+    :vartype fig: Optional[go.Figure]
+    :ivar available_parameters: Available parameters per component type
+    :vartype available_parameters: Dict[str, List[str]]
+    
+    .. note::
+       Color-coded parameter visualization, hover tooltips, click events, multiple basemap
+       options for comprehensive network analysis.
     """
     
     def __init__(self, net, crs: str = "EPSG:25833"):
         """
         Initialize interactive network plot.
         
-        Parameters
-        ----------
-        net : pandapipes.pandapipesNet
-            Network to visualize
-        crs : str
-            Coordinate reference system (default: EPSG:25833)
+        :param net: Network to visualize
+        :type net: pandapipes.pandapipesNet
+        :param crs: Coordinate reference system, defaults to "EPSG:25833"
+        :type crs: str
         """
         self.net = net
         self.crs = crs
@@ -54,7 +62,12 @@ class InteractiveNetworkPlot:
         self.available_parameters = self._get_available_parameters()
         
     def _get_available_parameters(self) -> Dict[str, List[str]]:
-        """Get all available parameters for each component type."""
+        """
+        Get all available parameters for each component type.
+        
+        :return: Dict with component types as keys, parameter lists as values
+        :rtype: Dict[str, List[str]]
+        """
         params = {
             'junction': [],
             'pipe': [],
@@ -155,20 +168,17 @@ class InteractiveNetworkPlot:
     
     def create_interactive_plot_with_controls(self, basemap_style: str = 'carto-positron', colorscale: str = 'Viridis') -> go.Figure:
         """
-        Create an interactive plot with dropdown controls for parameter selection.
-        Pre-generates all visualizations for dropdown functionality in standalone HTML.
+        Create interactive plot with dropdown controls for parameter selection.
         
-        Parameters
-        ----------
-        basemap_style : str
-            Mapbox style: 'open-street-map', 'carto-positron', 'white-bg', 'satellite'
-        colorscale : str
-            Plotly colorscale name
-            
-        Returns
-        -------
-        go.Figure
-            Interactive Plotly figure with dropdown controls
+        :param basemap_style: Mapbox style: 'open-street-map', 'carto-positron', 'white-bg', 'satellite'
+        :type basemap_style: str
+        :param colorscale: Plotly colorscale name, defaults to 'Viridis'
+        :type colorscale: str
+        :return: Interactive Plotly figure with dropdown controls
+        :rtype: go.Figure
+        
+        .. note::
+           Pre-generates all visualizations for dropdown functionality in standalone HTML.
         """
         gdf_junctions = self._get_junction_geodata()
         available_params = self._get_available_parameters()
@@ -274,24 +284,18 @@ class InteractiveNetworkPlot:
                                   basemap_style: str = 'carto-positron', 
                                   colorscale: str = 'Viridis') -> go.Figure:
         """
-        Create plot for a specific parameter visualization.
-        Used for on-demand loading of parameter views.
+        Create plot for specific parameter visualization (on-demand loading).
         
-        Parameters
-        ----------
-        component_type : str
-            Component type ('junction', 'pipe', 'heat_consumer', 'pump', 'flow_control')
-        parameter : str
-            Parameter name to visualize
-        basemap_style : str
-            Mapbox style
-        colorscale : str
-            Plotly colorscale
-            
-        Returns
-        -------
-        go.Figure
-            Interactive plot for the specific parameter
+        :param component_type: Component type: 'junction', 'pipe', 'heat_consumer', 'pump', 'flow_control'
+        :type component_type: str
+        :param parameter: Parameter name to visualize
+        :type parameter: str
+        :param basemap_style: Mapbox style, defaults to 'carto-positron'
+        :type basemap_style: str
+        :param colorscale: Plotly colorscale, defaults to 'Viridis'
+        :type colorscale: str
+        :return: Interactive plot for the specific parameter
+        :rtype: go.Figure
         """
         self.fig = go.Figure()
         gdf_junctions = self._get_junction_geodata()
@@ -321,31 +325,26 @@ class InteractiveNetworkPlot:
         """
         Create interactive network plot with optional parameter visualization.
         
-        Parameters
-        ----------
-        parameter : str, optional
-            Parameter to visualize (e.g., 'p_bar', 'v_mean_m_per_s')
-        component_type : str, optional
-            Component type for parameter ('junction', 'pipe', 'heat_consumer', 'pump')
-        show_junctions : bool
-            Show junction nodes
-        show_pipes : bool
-            Show pipe connections
-        show_heat_consumers : bool
-            Show heat consumers
-        show_pumps : bool
-            Show circulation pumps
-        show_flow_controls : bool
-            Show flow control components
-        basemap_style : str
-            Mapbox style: 'open-street-map', 'satellite', 'white-bg', 'carto-positron'
-        colorscale : str
-            Plotly colorscale name
-            
-        Returns
-        -------
-        go.Figure
-            Interactive Plotly figure
+        :param parameter: Parameter to visualize (e.g., 'p_bar', 'v_mean_m_per_s'), optional
+        :type parameter: Optional[str]
+        :param component_type: Component type: 'junction', 'pipe', 'heat_consumer', 'pump', optional
+        :type component_type: Optional[str]
+        :param show_junctions: Show junction nodes, defaults to True
+        :type show_junctions: bool
+        :param show_pipes: Show pipe connections, defaults to True
+        :type show_pipes: bool
+        :param show_heat_consumers: Show heat consumers, defaults to True
+        :type show_heat_consumers: bool
+        :param show_pumps: Show circulation pumps, defaults to True
+        :type show_pumps: bool
+        :param show_flow_controls: Show flow control components, defaults to True
+        :type show_flow_controls: bool
+        :param basemap_style: Mapbox style: 'open-street-map', 'satellite', 'white-bg', 'carto-positron'
+        :type basemap_style: str
+        :param colorscale: Plotly colorscale name, defaults to 'Viridis'
+        :type colorscale: str
+        :return: Interactive Plotly figure
+        :rtype: go.Figure
         """
         # Convert to WGS84 for Plotly mapbox
         gdf_junctions = self._get_junction_geodata()
@@ -399,7 +398,12 @@ class InteractiveNetworkPlot:
         return self.fig
     
     def _get_junction_geodata(self) -> gpd.GeoDataFrame:
-        """Get junction geodata in WGS84."""
+        """
+        Get junction geodata in WGS84 for Plotly mapbox.
+        
+        :return: GeoDataFrame with junction coordinates in WGS84
+        :rtype: gpd.GeoDataFrame
+        """
         gdf = gpd.GeoDataFrame(
             self.net.junction_geodata,
             geometry=[Point(xy) for xy in zip(
@@ -411,7 +415,16 @@ class InteractiveNetworkPlot:
         return gdf.to_crs('EPSG:4326')
     
     def _add_junctions(self, parameter: Optional[str], colorscale: str, show: bool = True):
-        """Add junction nodes to plot."""
+        """
+        Add junction nodes to plot with optional parameter coloring.
+        
+        :param parameter: Parameter for color coding, optional
+        :type parameter: Optional[str]
+        :param colorscale: Plotly colorscale name
+        :type colorscale: str
+        :param show: Visibility flag, defaults to True
+        :type show: bool
+        """
         gdf = self._get_junction_geodata()
         
         # Prepare data
@@ -473,7 +486,16 @@ class InteractiveNetworkPlot:
         ))
     
     def _add_pipes(self, parameter: Optional[str], colorscale: str, show: bool = True):
-        """Add pipes to plot."""
+        """
+        Add pipes to plot with optional parameter coloring.
+        
+        :param parameter: Parameter for color coding, optional
+        :type parameter: Optional[str]
+        :param colorscale: Plotly colorscale name
+        :type colorscale: str
+        :param show: Visibility flag, defaults to True
+        :type show: bool
+        """
         if not hasattr(self.net, 'pipe') or len(self.net.pipe) == 0:
             return
             
@@ -481,7 +503,15 @@ class InteractiveNetworkPlot:
         
         # Helper function to build hover text for a pipe (SINGLE DEFINITION)
         def build_pipe_hover_text(idx, pipe_data, param_value=None):
-            """Build hover text for a pipe with optional parameter value."""
+            """
+            Build hover text for pipe with optional parameter value.
+            
+            :param idx: Pipe index
+            :param pipe_data: Pipe data row
+            :param param_value: Optional parameter value for display
+            :return: Formatted HTML hover text
+            :rtype: str
+            """
             hover_text = f"<b>{pipe_data['name']}</b><br>"
             hover_text += f"Typ: {pipe_data['std_type']}<br>"
             hover_text += f"Länge: {pipe_data['length_km']:.3f} km<br>"
@@ -605,7 +635,16 @@ class InteractiveNetworkPlot:
             ))
     
     def _add_heat_consumers(self, parameter: Optional[str], colorscale: str, show: bool = True):
-        """Add heat consumers to plot as colored lines."""
+        """
+        Add heat consumers to plot as colored lines.
+        
+        :param parameter: Parameter for color coding, optional
+        :type parameter: Optional[str]
+        :param colorscale: Plotly colorscale name
+        :type colorscale: str
+        :param show: Visibility flag, defaults to True
+        :type show: bool
+        """
         if not hasattr(self.net, 'heat_consumer') or len(self.net.heat_consumer) == 0:
             return
             
@@ -723,7 +762,16 @@ class InteractiveNetworkPlot:
             ))
     
     def _add_pumps(self, parameter: Optional[str], colorscale: str, show: bool = True):
-        """Add circulation pumps to plot as colored lines."""
+        """
+        Add circulation pumps to plot as colored lines.
+        
+        :param parameter: Parameter for color coding, optional
+        :type parameter: Optional[str]
+        :param colorscale: Plotly colorscale name
+        :type colorscale: str
+        :param show: Visibility flag, defaults to True
+        :type show: bool
+        """
         # Check for both pump types
         pump_types = []
         if hasattr(self.net, 'circ_pump_pressure') and len(self.net.circ_pump_pressure) > 0:
@@ -875,7 +923,16 @@ class InteractiveNetworkPlot:
                 first_pump = False
     
     def _add_flow_controls(self, parameter: Optional[str], colorscale: str, show: bool = True):
-        """Add flow control components to plot as colored lines."""
+        """
+        Add flow control components to plot as colored lines.
+        
+        :param parameter: Parameter for color coding, optional
+        :type parameter: Optional[str]
+        :param colorscale: Plotly colorscale name
+        :type colorscale: str
+        :param show: Visibility flag, defaults to True
+        :type show: bool
+        """
         if not hasattr(self.net, 'flow_control') or len(self.net.flow_control) == 0:
             return
             
@@ -981,7 +1038,14 @@ class InteractiveNetworkPlot:
             ))
     
     def _configure_layout(self, gdf_junctions: gpd.GeoDataFrame, basemap_style: str):
-        """Configure plot layout and basemap."""
+        """
+        Configure plot layout, basemap, and zoom level.
+        
+        :param gdf_junctions: Junction geodata in WGS84
+        :type gdf_junctions: gpd.GeoDataFrame
+        :param basemap_style: Mapbox basemap style
+        :type basemap_style: str
+        """
         # Calculate center and zoom
         center_lat = gdf_junctions.geometry.y.mean()
         center_lon = gdf_junctions.geometry.x.mean()
@@ -1020,21 +1084,17 @@ class InteractiveNetworkPlot:
         )
     
     def _get_parameter_value(self, res_df, idx, parameter):
-        """Get parameter value, calculating if needed for dt_k or dp_bar.
+        """
+        Get parameter value, calculating dt_k or dp_bar if needed.
         
-        Parameters
-        ----------
-        res_df : DataFrame
-            Result DataFrame
-        idx : int
-            Component index
-        parameter : str
-            Parameter name
-            
-        Returns
-        -------
-        float or None
-            Parameter value
+        :param res_df: Result DataFrame
+        :type res_df: pd.DataFrame
+        :param idx: Component index
+        :type idx: int
+        :param parameter: Parameter name
+        :type parameter: str
+        :return: Parameter value or None
+        :rtype: Optional[float]
         """
         if parameter == 'dt_k':
             # Calculate temperature difference
@@ -1050,7 +1110,16 @@ class InteractiveNetworkPlot:
         return None
     
     def _calculate_zoom(self, lat_range: float, lon_range: float) -> int:
-        """Calculate appropriate zoom level."""
+        """
+        Calculate appropriate zoom level based on coordinate ranges.
+        
+        :param lat_range: Latitude range in degrees
+        :type lat_range: float
+        :param lon_range: Longitude range in degrees
+        :type lon_range: float
+        :return: Zoom level (5-15)
+        :rtype: int
+        """
         max_range = max(lat_range, lon_range)
         if max_range > 10:
             return 5
@@ -1066,7 +1135,14 @@ class InteractiveNetworkPlot:
             return 15
     
     def _get_parameter_label(self, parameter: str) -> str:
-        """Get formatted label for parameter."""
+        """
+        Get formatted German label for parameter.
+        
+        :param parameter: Parameter name
+        :type parameter: str
+        :return: Formatted label with units
+        :rtype: str
+        """
         labels = {
             'p_bar': 'Druck [bar]',
             't_k': 'Temperatur [K]',
@@ -1080,11 +1156,25 @@ class InteractiveNetworkPlot:
         return labels.get(parameter, parameter)
     
     def export_html(self, filename: str):
-        """Export plot to interactive HTML file."""
+        """
+        Export plot to interactive HTML file.
+        
+        :param filename: Output HTML filename
+        :type filename: str
+        """
         if self.fig:
             self.fig.write_html(filename)
     
     def export_png(self, filename: str, width: int = 1920, height: int = 1080):
-        """Export plot to PNG (requires kaleido)."""
+        """
+        Export plot to PNG (requires kaleido package).
+        
+        :param filename: Output PNG filename
+        :type filename: str
+        :param width: Image width in pixels, defaults to 1920
+        :type width: int
+        :param height: Image height in pixels, defaults to 1080
+        :type height: int
+        """
         if self.fig:
             self.fig.write_image(filename, width=width, height=height)

@@ -77,7 +77,7 @@ def BDEW(TRY_filename):
 
     hourly_intervals, hourly_heat_demand_total_normed, hourly_heat_demand_heating_normed, hourly_heat_demand_warmwater_normed, hourly_temperature = heat_requirement_BDEW.calculate(YEU_heating_kWh, building_type, subtype, TRY_filename, year, real_ww_share)
 
-    print("Ergebnisse VDI 4655")
+    print("Ergebnisse BDEW")
     print(f"Zeitschritte: {hourly_intervals}")
     print(f"Wärmebedarf Gesamt: {hourly_heat_demand_total_normed}") 
     print(f"Wärmebedarf Heizung: {hourly_heat_demand_heating_normed}")

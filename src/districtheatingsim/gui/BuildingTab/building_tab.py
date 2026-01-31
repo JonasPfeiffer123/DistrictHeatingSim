@@ -1,11 +1,10 @@
 """
-Building Tab Module
-===================
+Building data management and heat demand calculation module.
 
-Building data management and heat demand calculation with MVP architecture.
+Provides MVP architecture for building heat requirement calculations using
+BDEW profiles and Test Reference Year (TRY) climate data.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-09
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import os
@@ -33,6 +32,8 @@ import traceback
 class BuildingModel:
     """
     Data model for building information and heat demand calculations.
+
+    Manages CSV input data, JSON results, and heat profile generation.
     """
 
     def __init__(self):
@@ -46,10 +47,8 @@ class BuildingModel:
         """
         Set base path for file operations.
 
-        Parameters
-        ----------
-        base_path : str
-            Base directory path.
+        :param base_path: Base directory path
+        :type base_path: str
         """
         self.base_path = base_path
 
@@ -57,10 +56,8 @@ class BuildingModel:
         """
         Get base path.
 
-        Returns
-        -------
-        str
-            Current base path.
+        :return: Current base path
+        :rtype: str
         """
         return self.base_path
     
@@ -68,10 +65,8 @@ class BuildingModel:
         """
         Set CSV file path.
 
-        Parameters
-        ----------
-        csv_path : str
-            Path to CSV file.
+        :param csv_path: Path to CSV file
+        :type csv_path: str
         """
         self.csv_path = csv_path
 
@@ -79,10 +74,8 @@ class BuildingModel:
         """
         Get CSV file path.
 
-        Returns
-        -------
-        str
-            Current CSV file path.
+        :return: Current CSV file path
+        :rtype: str
         """
         return self.csv_path
 
@@ -90,10 +83,8 @@ class BuildingModel:
         """
         Set JSON file path.
 
-        Parameters
-        ----------
-        json_path : str
-            Path to JSON file.
+        :param json_path: Path to JSON file
+        :type json_path: str
         """
         self.json_path = json_path
 
@@ -101,10 +92,8 @@ class BuildingModel:
         """
         Get JSON file path.
 
-        Returns
-        -------
-        str
-            Current JSON file path.
+        :return: Current JSON file path
+        :rtype: str
         """
         return self.json_path
 
@@ -112,10 +101,7 @@ class BuildingModel:
         """
         Load CSV data into DataFrame.
 
-        Raises
-        ------
-        Exception
-            If CSV loading fails.
+        :raises Exception: If CSV loading fails
         """
         try:
             self.data = pd.read_csv(self.get_csv_path(), delimiter=';', dtype={'Subtyp': str})
@@ -126,10 +112,7 @@ class BuildingModel:
         """
         Save DataFrame to CSV file.
 
-        Raises
-        ------
-        Exception
-            If CSV saving fails.
+        :raises Exception: If CSV saving fails
         """
         if self.data is not None:
             try:
@@ -141,10 +124,7 @@ class BuildingModel:
         """
         Load results from JSON file.
 
-        Raises
-        ------
-        Exception
-            If JSON loading fails.
+        :raises Exception: If JSON loading fails
         """
         try:
             with open(self.get_json_path(), 'r', encoding='utf-8') as f:
@@ -157,15 +137,9 @@ class BuildingModel:
         """
         Save results to JSON file.
 
-        Parameters
-        ----------
-        combined_data : dict
-            Data to save.
-
-        Raises
-        ------
-        Exception
-            If JSON saving fails.
+        :param combined_data: Data to save
+        :type combined_data: dict
+        :raises Exception: If JSON saving fails
         """
         try:
             with open(self.get_json_path(), 'w', encoding='utf-8') as f:
@@ -177,17 +151,12 @@ class BuildingModel:
         """
         Calculate heat demand profiles from building data.
 
-        Parameters
-        ----------
-        data : pd.DataFrame
-            Building input data.
-        try_filename : str
-            Climate data filename.
-
-        Returns
-        -------
-        tuple
-            Calculated heat demand profiles in kW.
+        :param data: Building input data
+        :type data: pd.DataFrame
+        :param try_filename: Climate data filename
+        :type try_filename: str
+        :return: Calculated heat demand profiles in kW
+        :rtype: tuple
         """
         yearly_time_steps, total_heat_W, heating_heat_W, warmwater_heat_W, max_heat_requirement_W, supply_temperature_curve, return_temperature_curve, hourly_air_temperatures = generate_profiles_from_csv(data=data, TRY=try_filename, calc_method="Datensatz")
 
@@ -197,24 +166,24 @@ class BuildingModel:
 class BuildingPresenter:
     """
     Presenter managing interaction between BuildingModel and BuildingTabView.
+
+    Coordinates building data operations, heat demand calculations, and UI updates.
     """
 
     def __init__(self, model, view, folder_manager, data_manager, config_manager):
         """
         Initialize building presenter.
 
-        Parameters
-        ----------
-        model : BuildingModel
-            Data model.
-        view : BuildingTabView
-            View component.
-        folder_manager : object
-            Folder manager.
-        data_manager : object
-            Data manager.
-        config_manager : object
-            Configuration manager.
+        :param model: Data model
+        :type model: BuildingModel
+        :param view: View component
+        :type view: BuildingTabView
+        :param folder_manager: Folder manager
+        :type folder_manager: ProjectFolderManager
+        :param data_manager: Data manager
+        :type data_manager: DataManager
+        :param config_manager: Configuration manager
+        :type config_manager: ProjectConfigManager
         """
         self.model = model
         self.view = view
@@ -242,10 +211,8 @@ class BuildingPresenter:
         """
         Update default file paths.
 
-        Parameters
-        ----------
-        path : str
-            New base path.
+        :param path: New base path
+        :type path: str
         """
         if path:
             self.model.set_base_path(path)
@@ -380,17 +347,12 @@ class BuildingPresenter:
         """
         Format calculation results for JSON storage.
 
-        Parameters
-        ----------
-        results : tuple
-            Raw calculation results.
-        data : pd.DataFrame
-            Input building data.
-
-        Returns
-        -------
-        dict
-            Formatted results dictionary.
+        :param results: Raw calculation results
+        :type results: tuple
+        :param data: Input building data
+        :type data: pd.DataFrame
+        :return: Formatted results dictionary
+        :rtype: dict
         """
         formatted_results = {}
         for idx in range(len(data)):
@@ -413,17 +375,12 @@ class BuildingPresenter:
         """
         Combine input data with calculation results.
 
-        Parameters
-        ----------
-        data : pd.DataFrame
-            Input data.
-        results : dict
-            Calculation results.
-
-        Returns
-        -------
-        dict
-            Combined data dictionary.
+        :param data: Input data
+        :type data: pd.DataFrame
+        :param results: Calculation results
+        :type results: dict
+        :return: Combined data dictionary
+        :rtype: dict
         """
         data.reset_index(drop=True, inplace=True)
         data_dict = data.applymap(convert_to_serializable).to_dict(orient='index')
@@ -436,7 +393,10 @@ class BuildingPresenter:
 
 class BuildingTabView(QWidget):
     """
-    View component for building tab UI with table and plotting functionality.
+    View component for building tab UI.
+
+    Provides table for building data input and interactive plotting
+    of heat demand profiles.
     """
 
     load_csv_signal = pyqtSignal(str)
@@ -449,10 +409,8 @@ class BuildingTabView(QWidget):
         """
         Initialize building tab view.
 
-        Parameters
-        ----------
-        parent : QWidget, optional
-            Parent widget.
+        :param parent: Parent widget (optional)
+        :type parent: QWidget
         """
         super().__init__(parent)
         self.initUI()
@@ -565,10 +523,8 @@ class BuildingTabView(QWidget):
         """
         Populate table with DataFrame data.
 
-        Parameters
-        ----------
-        data : pd.DataFrame
-            Data to display in table.
+        :param data: Data to display in table
+        :type data: pd.DataFrame
         """
         self.table_widget.setColumnCount(len(data.columns))
         self.table_widget.setRowCount(len(data.index))
@@ -585,10 +541,8 @@ class BuildingTabView(QWidget):
         """
         Extract data from table widget.
 
-        Returns
-        -------
-        pd.DataFrame
-            Table data as DataFrame.
+        :return: Table data as DataFrame
+        :rtype: pd.DataFrame
         """
         rows = self.table_widget.rowCount()
         columns = self.table_widget.columnCount()
@@ -622,10 +576,8 @@ class BuildingTabView(QWidget):
         """
         Populate building selection combobox.
 
-        Parameters
-        ----------
-        results : dict
-            Results data for building selection.
+        :param results: Results data for building selection
+        :type results: dict
         """
         self.building_combobox.clear()
         for key in results.keys():
@@ -636,8 +588,11 @@ class BuildingTabView(QWidget):
 
     def plot(self, results=None):
         """
-        Modernisiertes Matplotlib-Design für ausgewählte Gebäude und Datentypen.
-        """        
+        Plot heat demand profiles for selected buildings and data types.
+        
+        :param results: Heat demand calculation results
+        :type results: dict
+        """
         if results is None:
             return
 
@@ -730,8 +685,13 @@ class BuildingTabView(QWidget):
         ax_main.grid(True, alpha=0.3)
         self.canvas.draw()
 
-    # Füge in BuildingTabView hinzu:
     def showEvent(self, event):
+        """
+        Handle widget show event to trigger initial plot.
+        
+        :param event: Show event
+        :type event: QShowEvent
+        """
         super().showEvent(event)
         from PyQt6.QtCore import QTimer
         # Initiales Plotten nach Layout-Finish
@@ -742,12 +702,10 @@ class BuildingTabView(QWidget):
         """
         Display error message dialog.
 
-        Parameters
-        ----------
-        title : str
-            Dialog title.
-        message : str
-            Error message.
+        :param title: Dialog title
+        :type title: str
+        :param message: Error message
+        :type message: str
         """
         QMessageBox.critical(self, title, message)
 
@@ -755,12 +713,10 @@ class BuildingTabView(QWidget):
         """
         Display information message dialog.
 
-        Parameters
-        ----------
-        title : str
-            Dialog title.
-        message : str
-            Information message.
+        :param title: Dialog title
+        :type title: str
+        :param message: Information message
+        :type message: str
         """
         QMessageBox.information(self, title, message)
 
@@ -775,16 +731,14 @@ class BuildingTab(QMainWindow):
         """
         Initialize building tab with MVP architecture.
 
-        Parameters
-        ----------
-        folder_manager : object
-            Folder manager.
-        data_manager : object
-            Data manager.
-        config_manager : object
-            Configuration manager.
-        parent : QWidget, optional
-            Parent widget.
+        :param folder_manager: Folder manager
+        :type folder_manager: ProjectFolderManager
+        :param data_manager: Data manager
+        :type data_manager: DataManager
+        :param config_manager: Configuration manager
+        :type config_manager: ProjectConfigManager
+        :param parent: Parent widget (optional)
+        :type parent: QWidget
         """
         super().__init__(parent)
         self.setWindowTitle("Gebäudetab")

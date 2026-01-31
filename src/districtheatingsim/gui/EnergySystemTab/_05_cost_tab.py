@@ -2,9 +2,9 @@
 Cost Tab Module
 ===============
 
-This module contains the CostTab class, which is responsible for displaying and managing cost-related data for different components in a heat generation project.
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-12-11
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
+
+Displaying and managing cost-related data for heat generation project components.
 """
 
 import pandas as pd
@@ -21,21 +21,9 @@ from districtheatingsim.gui.EnergySystemTab._02_energy_system_dialogs import Kos
 
 class CostTab(QWidget):
     """
-    The CostTab class represents the tab responsible for displaying and managing cost-related data 
-    for the different components in a heat generation project.
+    Tab for displaying and managing cost-related data for heat generation project components.
 
-    Attributes:
-        data_added (pyqtSignal): Signal emitted when new data is added.
-        data_manager (object): Reference to the data manager instance.
-        parent (QWidget): Reference to the parent widget.
-        results (dict): Stores results data.
-        tech_objects (list): List of technology objects.
-        individual_costs (list): List of individual costs for each component.
-        summe_tech_kosten (float): Sum of the technology costs.
-        base_path (str): Base path for the project.
-        summe_investitionskosten (float): Sum of the investment costs.
-        summe_annuität (float): Sum of the annuities.
-        totalCostLabel (QLabel): Label to display total costs.
+    :signal data_added: Signal emitted when new data is added.
     """
     data_added = pyqtSignal(object)  # Signal that transfers data as an object
     
@@ -43,9 +31,12 @@ class CostTab(QWidget):
         """
         Initializes the CostTab instance.
 
-        Args:
-            folder_manager (object): Reference to the folder manager instance.
-            parent (QWidget, optional): Reference to the parent widget. Defaults to None.
+        :param folder_manager: Reference to the folder manager instance
+        :type folder_manager: object
+        :param config_manager: Reference to the config manager instance
+        :type config_manager: object
+        :param parent: Reference to the parent widget
+        :type parent: QWidget or None
         """
         super().__init__(parent)
         self.folder_manager = folder_manager
@@ -67,14 +58,17 @@ class CostTab(QWidget):
         """
         Updates the default path for the project.
 
-        Args:
-            new_base_path (str): The new base path for the project.
+        :param new_base_path: The new base path for the project
+        :type new_base_path: str
         """
         self.base_path = new_base_path
 
     def initData(self):
         """
         Initializes the data as a pandas DataFrame with an index name and calculates the Annuität.
+
+        :return: DataFrame with infrastructure costs and calculated annuity values
+        :rtype: pd.DataFrame
         """
         # Create the initial DataFrame
         data = pd.DataFrame({
@@ -165,6 +159,9 @@ class CostTab(QWidget):
     def createMainLayout(self):
         """
         Creates the main layout for the tab with adjusted spacing and margins for better alignment.
+
+        :return: The main layout for the tab
+        :rtype: QVBoxLayout
         """
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)  # Set uniform margins for the tab
@@ -177,8 +174,8 @@ class CostTab(QWidget):
         """
         Adds a label to the main layout.
 
-        Args:
-            text (str): The text for the label.
+        :param text: The text for the label
+        :type text: str
         """
         label = QLabel(text)
         self.mainLayout.addWidget(label)
@@ -269,11 +266,10 @@ class CostTab(QWidget):
         """
         Formats the cost value in European style with spaces as thousand separators.
 
-        Args:
-            value (float): The cost value.
-
-        Returns:
-            str: Formatted cost string.
+        :param value: The cost value
+        :type value: float
+        :return: Formatted cost string
+        :rtype: str
         """
         return f"{value:,.0f} €".replace(",", " ")
 
@@ -281,8 +277,8 @@ class CostTab(QWidget):
         """
         Updates the DataFrame with values from the QTableWidget and recalculates Annuität.
 
-        Args:
-            item (QTableWidgetItem): The changed table item.
+        :param item: The changed table item
+        :type item: QTableWidgetItem
         """
         row = item.row()
         col = item.column()
@@ -373,8 +369,8 @@ class CostTab(QWidget):
         """
         Opens the context menu for the vertical header.
 
-        Args:
-            position (QPoint): The position where the context menu should be opened.
+        :param position: The position where the context menu should be opened
+        :type position: QPoint
         """
         menu = QMenu()
         renameAction = menu.addAction("Umbenennen")
@@ -389,8 +385,8 @@ class CostTab(QWidget):
         """
         Renames the header item at the specified row.
 
-        Args:
-            row (int): The row index of the header item to rename.
+        :param row: The row index of the header item to rename
+        :type row: int
         """
         newName, okPressed = QInputDialog.getText(self, "Name ändern", "Neuer Name:", QLineEdit.EchoMode.Normal, "")
         if okPressed and newName:
@@ -402,15 +398,18 @@ class CostTab(QWidget):
         """
         Calculates the annuity for a given set of parameters.
 
-        Args:
-            A0 (float): Initial investment cost.
-            TN (int): Lifetime of the investment.
-            f_Inst (float): Installation factor.
-            f_W_Insp (float): Maintenance and inspection factor.
-            Bedienaufwand (float): Operating effort.
-
-        Returns:
-            float: The calculated annuity.
+        :param A0: Initial investment cost
+        :type A0: float
+        :param TN: Lifetime of the investment
+        :type TN: int
+        :param f_Inst: Installation factor
+        :type f_Inst: float
+        :param f_W_Insp: Maintenance and inspection factor
+        :type f_W_Insp: float
+        :param Bedienaufwand: Operating effort
+        :type Bedienaufwand: float
+        :return: The calculated annuity
+        :rtype: float
         """
         if TN == 0: # Avoid division by zero
             return 0.0
@@ -447,10 +446,12 @@ class CostTab(QWidget):
         """
         Updates the value in the specified table cell.
 
-        Args:
-            row (int): The row index.
-            column (int): The column index.
-            value (Any): The value to set.
+        :param row: The row index
+        :type row: int
+        :param column: The column index
+        :type column: int
+        :param value: The value to set
+        :type value: Any
         """
         if 0 <= row < self.infrastructureCostsTable.rowCount() and 0 <= column < self.infrastructureCostsTable.columnCount():
             self.infrastructureCostsTable.setItem(row, column, QTableWidgetItem(self.format_cost(value)))
@@ -489,8 +490,8 @@ class CostTab(QWidget):
         """
         Updates the technology data table with the given technology objects.
 
-        Args:
-            tech_objects (list): List of technology objects.
+        :param tech_objects: List of technology objects
+        :type tech_objects: list
         """
         self.individual_costs = []  # Reset individual costs
         self.techDataTable.setRowCount(len(tech_objects))
@@ -565,8 +566,8 @@ class CostTab(QWidget):
         """
         Creates and returns a new figure and its canvas.
 
-        Returns:
-            tuple: The figure and canvas.
+        :return: The figure and canvas
+        :rtype: tuple
         """
         figure = Figure(figsize=(8, 6))
         canvas = FigureCanvas(figure)
@@ -637,8 +638,8 @@ class CostTab(QWidget):
         """
         Adjusts the size of the table to fit its contents.
 
-        Args:
-            table (QTableWidget): The table to adjust.
+        :param table: The table to adjust
+        :type table: QTableWidget
         """
         header_height = table.horizontalHeader().height()
         rows_height = sum([table.rowHeight(i) for i in range(table.rowCount())])
@@ -647,6 +648,9 @@ class CostTab(QWidget):
     def totalCostLabel(self):
         """
         Returns the total cost label.
+
+        :return: The total cost label
+        :rtype: QLabel
         """
         # Create the total cost label
         self.totalCostLabel = QLabel()

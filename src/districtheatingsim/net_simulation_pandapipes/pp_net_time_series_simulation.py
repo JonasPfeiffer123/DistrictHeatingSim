@@ -1,20 +1,8 @@
 """
-Pandapipes Time Series Simulation Module
-========================================
+Pandapipes time series simulation for district heating networks including controller updates,
+temperature control, and result processing.
 
-This module provides comprehensive time series simulation capabilities for district heating
-networks using the pandapipes framework.
-
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-05-15
-
-It handles the complete workflow of thermohydraulic
-network simulation including controller updates, temperature control, pump operations, and
-result processing for both static and dynamic network configurations.
-
-The module supports various network configurations including cold networks with heat pumps,
-traditional hot water networks, and hybrid systems with multiple heat generators. It includes
-sophisticated temperature control strategies and comprehensive result analysis capabilities.
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 from pandapipes.timeseries import run_time_series
@@ -33,45 +21,18 @@ from districtheatingsim.utilities.test_reference_year import import_TRY
 def update_heat_consumer_qext_controller(net, qext_w_profiles: List[np.ndarray], 
                                        time_steps: range, start: int, end: int) -> None:
     """
-    Update constant controls with new data sources for time series simulation.
-
-    This function updates the external heat demand controllers for all heat consumers
-    in the network with time-dependent heat profiles. It creates pandas DataFrames
-    with the heat demand data and assigns them as data sources to the corresponding
-    ConstControl objects.
-
-    Parameters
-    ----------
-    net : pandapipes.pandapipesNet
-        The pandapipes network object containing all network components and controllers.
-    qext_w_profiles : List[np.ndarray]
-        List of external heat demand profiles for each heat consumer [W].
-        Each array should have the same length as the simulation period.
-    time_steps : range
-        Range object defining the time steps for the current simulation period.
-    start : int
-        Start index for slicing the heat demand profiles.
-    end : int
-        End index for slicing the heat demand profiles.
-
-    Notes
-    -----
-    - Updates only ConstControl objects with element 'heat_consumer' and variable 'qext_w'
-    - Creates individual DataFrames for each heat consumer profile
-    - Time steps must match the length of the sliced profiles
-    - Heat demand values should be in Watts [W]
-
-    Examples
-    --------
-    >>> # Update heat consumers for simulation period
-    >>> heat_profiles = [np.array([5000, 6000, 4500]), np.array([3000, 3500, 2800])]
-    >>> time_steps = range(0, 3)
-    >>> update_heat_consumer_qext_controller(net, heat_profiles, time_steps, 0, 3)
+    Update external heat demand controllers with time-dependent profiles.
     
-    See Also
-    --------
-    update_heat_consumer_temperature_controller : Update temperature controllers
-    update_heat_consumer_return_temperature_controller : Update return temperature controllers
+    :param net: Pandapipes network with controllers
+    :type net: pandapipes.pandapipesNet
+    :param qext_w_profiles: List of heat demand profiles for each consumer [W]
+    :type qext_w_profiles: List[np.ndarray]
+    :param time_steps: Time steps for simulation period
+    :type time_steps: range
+    :param start: Start index for slicing profiles
+    :type start: int
+    :param end: End index for slicing profiles
+    :type end: int
     """
     for i, qext_w_profile in enumerate(qext_w_profiles):
         df = pd.DataFrame(index=time_steps, data={f'qext_w_{i}': qext_w_profile[start:end]})
@@ -83,46 +44,21 @@ def update_heat_consumer_qext_controller(net, qext_w_profiles: List[np.ndarray],
 def update_heat_consumer_temperature_controller(net, min_supply_temperature_heat_consumer: Union[np.ndarray, List], 
                                               time_steps: range, start: int, end: int) -> None:
     """
-    Update minimum supply temperature controllers with new data sources for time series simulation.
-
-    This function updates MinimumSupplyTemperatureController instances with time-dependent
-    or static minimum supply temperature requirements. It handles both scalar values
-    (constant temperatures) and time series arrays (variable temperatures).
-
-    Parameters
-    ----------
-    net : pandapipes.pandapipesNet
-        The pandapipes network object.
-    min_supply_temperature_heat_consumer : Union[np.ndarray, List]
-        Minimum supply temperature profiles for heat consumers [°C].
-        Can be scalar values, single-element arrays, or full time series.
-    time_steps : range
-        Range of time steps for the simulation.
-    start : int
-        Start index for slicing the temperature profiles.
-    end : int
-        End index for slicing the temperature profiles.
-
-    Notes
-    -----
-    - Handles both static (scalar) and dynamic (array) temperature requirements
-    - Automatically detects data type and creates appropriate time series
-    - Temperature values should be in degrees Celsius [°C]
-    - Updates only MinimumSupplyTemperatureController instances
-
-    Examples
-    --------
-    >>> # Static temperature requirement
-    >>> min_temp = [60.0, 55.0]  # °C for two consumers
-    >>> update_heat_consumer_temperature_controller(net, min_temp, time_steps, 0, 100)
+    Update minimum supply temperature controllers with static or time-dependent profiles.
     
-    >>> # Dynamic temperature requirement
-    >>> min_temp = [np.array([60, 58, 62]), np.array([55, 53, 57])]
-    >>> update_heat_consumer_temperature_controller(net, min_temp, time_steps, 0, 3)
+    :param net: Pandapipes network object
+    :type net: pandapipes.pandapipesNet
+    :param min_supply_temperature_heat_consumer: Min supply temperature profiles [°C]
+    :type min_supply_temperature_heat_consumer: Union[np.ndarray, List]
+    :param time_steps: Time steps range
+    :type time_steps: range
+    :param start: Start index for slicing
+    :type start: int
+    :param end: End index for slicing
+    :type end: int
     
-    See Also
-    --------
-    MinimumSupplyTemperatureController : Custom temperature controller class
+    .. note::
+       Handles both scalar (static) and array (dynamic) temperature requirements.
     """
     controller_count = 0
     for ctrl in net.controller.object.values:
@@ -147,43 +83,22 @@ def update_heat_consumer_temperature_controller(net, min_supply_temperature_heat
 def update_heat_consumer_return_temperature_controller(net, return_temperature_heat_consumer: Union[np.ndarray, List], 
                                                      time_steps: range, start: int, end: int) -> None:
     """
-    Update return temperature controllers with new data sources for time series simulation.
-
-    This function updates ConstControl objects that control the return temperature
-    of heat consumers. It handles both static and dynamic return temperature profiles
-    and automatically converts temperatures from Celsius to Kelvin for internal use.
-
-    Parameters
-    ----------
-    net : pandapipes.pandapipesNet
-        The pandapipes network object.
-    return_temperature_heat_consumer : Union[np.ndarray, List]
-        Return temperature profiles for heat consumers [°C].
-        Can be scalar values, single-element arrays, or full time series.
-    time_steps : range
-        Range of time steps for the simulation.
-    start : int
-        Start index for slicing the temperature profiles.
-    end : int
-        End index for slicing the temperature profiles.
-
-    Notes
-    -----
-    - Automatically converts temperatures from °C to K (adds 273.15)
-    - Handles both static and dynamic temperature profiles
-    - Updates ConstControl objects with element='heat_consumer' and variable='treturn_k'
-    - Creates individual controllers for each heat consumer
-
-    Examples
-    --------
-    >>> # Static return temperatures
-    >>> return_temps = [45.0, 40.0]  # °C
-    >>> update_heat_consumer_return_temperature_controller(net, return_temps, time_steps, 0, 100)
+    Update return temperature controllers with static or dynamic profiles.
     
-    >>> # Dynamic return temperatures
-    >>> return_temps = [np.array([45, 43, 47]), np.array([40, 38, 42])]
-    >>> update_heat_consumer_return_temperature_controller(net, return_temps, time_steps, 0, 3)
-    """
+    :param net: Pandapipes network object
+    :type net: pandapipes.pandapipesNet
+    :param return_temperature_heat_consumer: Return temperature profiles [°C]
+    :type return_temperature_heat_consumer: Union[np.ndarray, List]
+    :param time_steps: Time steps range
+    :type time_steps: range
+    :param start: Start index for slicing
+    :type start: int
+    :param end: End index for slicing
+    :type end: int
+    
+    .. note::
+       Automatically converts temperatures from °C to K (adds 273.15).
+"""
     for i, return_temp_profile in enumerate(return_temperature_heat_consumer):
         # Check if static or time-dependent
         if np.isscalar(return_temp_profile) or (isinstance(return_temp_profile, np.ndarray) and return_temp_profile.ndim == 0):
@@ -209,45 +124,21 @@ def update_heat_consumer_return_temperature_controller(net, return_temperature_h
 def update_secondary_producer_controller(net, secondary_producers: List[Any], 
                                        time_steps: range, start: int, end: int) -> None:
     """
-    Update secondary producer controls with new data sources for time series simulation.
-
-    This function updates mass flow controllers for secondary heat producers in the network.
-    Secondary producers are additional heat sources that feed into the district heating
-    network alongside the main heat generator.
-
-    Parameters
-    ----------
-    net : pandapipes.pandapipesNet
-        The pandapipes network object.
-    secondary_producers : List[Dict[str, Any]]
-        List of secondary producer configuration dictionaries.
-        Each dictionary should contain 'index' and 'mass_flow' keys.
-    time_steps : range
-        Range of time steps for the simulation.
-    start : int
-        Start index for slicing the mass flow profiles.
-    end : int
-        End index for slicing the mass flow profiles.
-
-    Notes
-    -----
-    - Updates both circulation pump mass controllers and flow control controllers
-    - Each secondary producer requires an index and mass flow profile
-    - Mass flow values should be in kg/s
-    - Creates separate DataFrames for pump control and flow control
-
-    Examples
-    --------
-    >>> # Define secondary producers
-    >>> secondary_producers = [
-    ...     {"index": 0, "mass_flow": np.array([1.5, 1.8, 1.2])},
-    ...     {"index": 1, "mass_flow": np.array([2.0, 2.3, 1.7])}
-    ... ]
-    >>> update_secondary_producer_controller(net, secondary_producers, time_steps, 0, 3)
-
-    See Also
-    --------
-    time_series_preprocessing : Calculates mass flow for secondary producers
+    Update secondary producer mass flow controllers for time series simulation.
+    
+    :param net: Pandapipes network object
+    :type net: pandapipes.pandapipesNet
+    :param secondary_producers: List of producer configs with index and mass_flow
+    :type secondary_producers: List[Any]
+    :param time_steps: Time steps range
+    :type time_steps: range
+    :param start: Start index for slicing
+    :type start: int
+    :param end: End index for slicing
+    :type end: int
+    
+    .. note::
+       Updates both circ_pump_mass and flow_control controllers for each producer.
     """
     for producer in secondary_producers:
         producer_index = producer.index if hasattr(producer, 'index') else 0
@@ -282,41 +173,21 @@ def update_secondary_producer_controller(net, secondary_producers: List[Any],
 def update_heat_generator_supply_temperature_controller(net, supply_temperature: np.ndarray, 
                                                       time_steps: range, start: int, end: int) -> None:
     """
-    Update supply temperature controls with new data sources for time series simulation.
-
-    This function updates the supply temperature controllers for heat generators
-    (both pressure and mass circulation pumps) with time-dependent temperature profiles.
-    It automatically converts temperatures from Celsius to Kelvin.
-
-    Parameters
-    ----------
-    net : pandapipes.pandapipesNet
-        The pandapipes network object.
-    supply_temperature : np.ndarray
-        Supply temperature profile for heat generators [°C].
-    time_steps : range
-        Range of time steps for the simulation.
-    start : int
-        Start index for slicing the temperature profile.
-    end : int
-        End index for slicing the temperature profile.
-
-    Notes
-    -----
-    - Automatically converts temperatures from °C to K (adds 273.15)
-    - Updates both circulation pump pressure and mass controllers
-    - Temperature profile should cover the entire simulation period
-    - Used for implementing sliding supply temperature control strategies
-
-    Examples
-    --------
-    >>> # Supply temperature profile for sliding control
-    >>> supply_temp = np.array([80, 78, 82, 75, 73])  # °C
-    >>> update_heat_generator_supply_temperature_controller(net, supply_temp, time_steps, 0, 5)
-
-    See Also
-    --------
-    time_series_preprocessing : Calculates supply temperature profiles
+    Update supply temperature controllers for heat generators with time-dependent profiles.
+    
+    :param net: Pandapipes network object
+    :type net: pandapipes.pandapipesNet
+    :param supply_temperature: Supply temperature profile [°C]
+    :type supply_temperature: np.ndarray
+    :param time_steps: Time steps range
+    :type time_steps: range
+    :param start: Start index for slicing
+    :type start: int
+    :param end: End index for slicing
+    :type end: int
+    
+    .. note::
+       Converts °C to K, updates both circ_pump_pressure and circ_pump_mass controllers.
     """
     if np.isscalar(supply_temperature):
         # If a single value is provided, repeat it for all time steps
@@ -333,40 +204,15 @@ def update_heat_generator_supply_temperature_controller(net, supply_temperature:
 
 def create_log_variables(net) -> List[Tuple[str, str]]:
     """
-    Create a list of variables to log during the time series simulation.
-
-    This function defines which network variables should be logged during
-    the time series simulation. It automatically adapts the logging configuration
-    based on the available network components.
-
-    Parameters
-    ----------
-    net : pandapipes.pandapipesNet
-        The pandapipes network object to analyze for available components.
-
-    Returns
-    -------
-    List[Tuple[str, str]]
-        List of tuples where each tuple contains (table_name, variable_name)
-        representing the variables to be logged during simulation.
-
-    Notes
-    -----
-    - Always logs junction pressures, temperatures, and heat consumer data
-    - Conditionally logs circulation pump mass data if available
-    - Results are stored in the OutputWriter for post-processing
-    - Logged variables are essential for result analysis and validation
-
-    Examples
-    --------
-    >>> log_vars = create_log_variables(net)
-    >>> print(f"Logging {len(log_vars)} variables")
-    >>> for table, var in log_vars:
-    ...     print(f"  {table}.{var}")
-
-    See Also
-    --------
-    pandapower.timeseries.OutputWriter : Handles result logging
+    Create list of variables to log during time series simulation.
+    
+    :param net: Pandapipes network to analyze for available components
+    :type net: pandapipes.pandapipesNet
+    :return: List of (table_name, variable_name) tuples to log
+    :rtype: List[Tuple[str, str]]
+    
+    .. note::
+       Logs junction pressures/temperatures, heat consumer data, and conditionally circ_pump_mass.
     """
     log_variables = [
         ('res_junction', 'p_bar'),
@@ -396,56 +242,16 @@ def create_log_variables(net) -> List[Tuple[str, str]]:
 
 def time_series_preprocessing(NetworkGenerationData) -> Any:
     """
-    Preprocess time series data for the thermal and hydraulic network simulation.
-
-    This function performs comprehensive preprocessing of network data including
-    temperature control strategy implementation, heat pump coefficient of performance
-    calculations, and mass flow calculations for secondary producers. It handles
-    different network configurations and temperature control modes.
-
-    Parameters
-    ----------
-    NetworkGenerationData : object
-        Network generation data object containing all necessary simulation parameters
-        including network configuration, temperature profiles, heat demands, and
-        control strategies.
-
-    Returns
-    -------
-    NetworkGenerationData
-        Updated NetworkGenerationData object with preprocessed time series data
-        including calculated supply temperatures, adjusted heat demands, and
-        prepared controller data.
-
-    Notes
-    -----
-    - Implements both static and sliding supply temperature control
-    - Handles cold network configurations with heat pump calculations
-    - Calculates COP-based power consumption for heat pumps
-    - Applies minimum load constraints (2% of maximum)
-    - Calculates mass flows for secondary heat producers
-    - Converts power values from W to kW for network simulation
-
-    Network Configuration Types:
-        - "kaltes Netz": Cold network with decentralized heat pumps
-        - Traditional hot water networks with central heat generation
-        - Hybrid systems with multiple heat sources
-
-    Temperature Control Strategies:
-        - "Statisch": Constant supply temperature
-        - "Gleitend": Outdoor temperature-dependent sliding control
-
-    Examples
-    --------
-    >>> # Preprocess network data for simulation
-    >>> processed_data = time_series_preprocessing(network_data)
-    >>> print(f"Total heat demand: {np.sum(processed_data.waerme_ges_kW):.1f} kW")
-    >>> print(f"Supply temperature control: {processed_data.supply_temperature_control}")
-
-    See Also
-    --------
-    COP_WP : Heat pump coefficient of performance calculation
-    import_TRY : Weather data import for sliding temperature control
+    Preprocess time series data including temperature control and COP calculations.
+    
+    :param NetworkGenerationData: Network data with simulation parameters and profiles
+    :type NetworkGenerationData: object
+    :return: Updated NetworkGenerationData with preprocessed time series
+    :rtype: Any
+    
+    .. note::
+       Implements static/sliding temperature control, COP calculations for cold networks,
+       applies 2% minimum load, calculates secondary producer mass flows. Converts W to kW.
     """
     print(f"Maximale Vorlauftemperatur Netz: {NetworkGenerationData.max_supply_temperature_heat_generator} °C")
     print(f"Mindestvorlauftemperatur HAST: {NetworkGenerationData.min_supply_temperature_heat_consumer} °C")
@@ -542,53 +348,17 @@ def time_series_preprocessing(NetworkGenerationData) -> Any:
     
 def thermohydraulic_time_series_net(NetworkGenerationData) -> Any:
     """
-    Run a thermohydraulic time series simulation for the district heating network.
-
-    This function orchestrates the complete time series simulation workflow including
-    controller updates, network solving, and result collection. It handles different
-    network configurations and control strategies automatically.
-
-    Parameters
-    ----------
-    NetworkGenerationData : object
-        Network generation data object containing the preprocessed network model,
-        time series data, and simulation parameters.
-
-    Returns
-    -------
-    NetworkGenerationData
-        Updated NetworkGenerationData object with simulation results including
-        network states, pump operations, and performance metrics.
-
-    Notes
-    -----
-    - Updates all relevant controllers before simulation
-    - Runs bidirectional thermohydraulic simulation
-    - Uses adaptive iteration limits for convergence
-    - Collects comprehensive result data for analysis
-    - Handles both static and dynamic control strategies
-
-    Simulation Features:
-        - Bidirectional flow calculation
-        - Temperature and pressure coupling
-        - Dynamic controller updates
-        - Comprehensive result logging
-        - Convergence monitoring
-
-    Examples
-    --------
-    >>> # Run complete time series simulation
-    >>> results = thermohydraulic_time_series_net(network_data)
-    >>> print(f"Simulation completed for {len(results.pump_results)} time steps")
-    >>> 
-    >>> # Access pump results
-    >>> main_pump = results.pump_results["Heizentrale Haupteinspeisung"][0]
-    >>> print(f"Max heat generation: {np.max(main_pump['qext_kW']):.1f} kW")
-
-    See Also
-    --------
-    run_time_series.run_timeseries : pandapipes time series solver
-    calculate_results : Result processing and structuring
+    Run thermohydraulic time series simulation with controller updates.
+    
+    :param NetworkGenerationData: Network data with preprocessed model and parameters
+    :type NetworkGenerationData: object
+    :return: Updated NetworkGenerationData with simulation results and pump operations
+    :rtype: Any
+    
+    .. note::
+       Runs bidirectional simulation with iter=100, alpha=0.5. Updates all controllers
+       (heat demand, temperatures, secondary producers). Logs junction, heat consumer,
+       and pump data.
     """
     # Update the ConstControl
     time_steps = range(0, len(NetworkGenerationData.waerme_hast_ges_W[0][NetworkGenerationData.start_time_step:NetworkGenerationData.end_time_step]))
@@ -632,46 +402,17 @@ def thermohydraulic_time_series_net(NetworkGenerationData) -> Any:
 
 def simplified_time_series_net(NetworkGenerationData) -> Any:
     """
-    Run a simplified fast time series calculation based on design conditions.
+    Run simplified time series by scaling design state with building heat demand.
     
-    This function creates a load profile from the already calculated design state 
-    (from initialization) and scales it with the building heat demand time series.
-    Temperatures and pressures from the design state are applied constantly over 
-    the time period. This provides a quick, meaningful load profile without 
-    detailed hydraulic simulation.
-
-    Parameters
-    ----------
-    NetworkGenerationData : object
-        Network generation data object containing the preprocessed network model,
-        time series data, and simulation parameters. Must have been initialized
-        with design state results already available in net.res_* tables.
-
-    Returns
-    -------
-    NetworkGenerationData
-        Updated NetworkGenerationData object with simplified results including
-        scaled load profiles and constant temperatures/pressures.
-
-    Notes
-    -----
-    - Uses already calculated design state from network initialization
-    - No additional pipeflow calculation required
-    - Scales losses proportionally with building heat demand
-    - Applies constant temperatures and pressures from design state
-    - Much faster than detailed simulation (no iterative solving)
-    - Suitable for quick analysis and preliminary assessments
-
-    Examples
-    --------
-    >>> # Run simplified time series calculation
-    >>> results = simplified_time_series_net(network_data)
-    >>> print(f"Simplified calculation completed")
+    :param NetworkGenerationData: Network data with design state from initialization
+    :type NetworkGenerationData: object
+    :return: Updated NetworkGenerationData with scaled load profiles
+    :rtype: Any
     
-    See Also
-    --------
-    thermohydraulic_time_series_net : Detailed time series simulation
-    initialize_geojson : Network initialization that creates design state
+    .. note::
+       No pipeflow calculation. Uses design state from net.res_*, scales with demand.
+       Constant temperatures/pressures from design. Losses scaled proportionally.
+       Much faster than thermohydraulic_time_series_net.
     """
     
     print("Starte vereinfachte Zeitreihenberechnung (basierend auf Auslegung)...")
@@ -790,63 +531,21 @@ def simplified_time_series_net(NetworkGenerationData) -> Any:
 
 def calculate_results(net, net_results: Dict, cp_kJ_kgK: float = 4.2) -> Dict[str, Dict[int, Dict[str, np.ndarray]]]:
     """
-    Calculate and structure the thermohydraulic simulation results.
-
-    This function processes the raw simulation results from pandapipes and structures
-    them into a comprehensive format for analysis and visualization. It calculates
-    derived quantities such as heat generation rates and pressure differences.
-
-    Parameters
-    ----------
-    net : pandapipes.pandapipesNet
-        The pandapipes network object containing component definitions.
-    net_results : Dict
-        Raw results dictionary from the time series simulation containing
-        all logged variables and their time series values.
-    cp_kJ_kgK : float, optional
-        Specific heat capacity of water [kJ/kg·K]. Default is 4.2.
-
-    Returns
-    -------
-    Dict[str, Dict[int, Dict[str, np.ndarray]]]
-        Structured results dictionary with the following hierarchy:
-        
-        - Level 1: Producer type ("Heizentrale Haupteinspeisung", "weitere Einspeisung")
-        - Level 2: Producer index (0, 1, 2, ...)
-        - Level 3: Parameter name with time series arrays:
-            - "mass_flow": Mass flow rate [kg/s]
-            - "flow_pressure": Supply pressure [bar]
-            - "return_pressure": Return pressure [bar]
-            - "deltap": Pressure difference [bar]
-            - "return_temp": Return temperature [°C]
-            - "flow_temp": Supply temperature [°C]
-            - "qext_kW": Heat generation rate [kW]
-
-    Notes
-    -----
-    - Automatically converts temperatures from Kelvin to Celsius
-    - Calculates heat generation from mass flow and temperature difference
-    - Handles both pressure pumps (main) and mass pumps (secondary)
-    - Results maintain time series structure for temporal analysis
-
-    Examples
-    --------
-    >>> results = calculate_results(net, simulation_results)
-    >>> 
-    >>> # Access main heat generator results
-    >>> main_gen = results["Heizentrale Haupteinspeisung"][0]
-    >>> max_heat = np.max(main_gen["qext_kW"])
-    >>> print(f"Maximum heat generation: {max_heat:.1f} kW")
-    >>> 
-    >>> # Plot temperature profile
-    >>> import matplotlib.pyplot as plt
-    >>> plt.plot(main_gen["flow_temp"], label="Supply")
-    >>> plt.plot(main_gen["return_temp"], label="Return")
-
-    See Also
-    --------
-    save_results_csv : Export results to CSV format
-    import_results_csv : Import results from CSV files
+    Process and structure raw simulation results from pandapipes.
+    
+    :param net: Pandapipes network with component definitions
+    :type net: pandapipes.pandapipesNet
+    :param net_results: Raw results dictionary from time series simulation
+    :type net_results: Dict
+    :param cp_kJ_kgK: Specific heat capacity of water [kJ/kg·K], defaults to 4.2
+    :type cp_kJ_kgK: float
+    :return: Structured results dict: {producer_type: {index: {parameter: time_series}}}
+    :rtype: Dict[str, Dict[int, Dict[str, np.ndarray]]]
+    
+    .. note::
+       Converts K→°C, calculates heat from mass flow and ΔT. Parameters: mass_flow,
+       flow_pressure, return_pressure, deltap, return_temp, flow_temp, qext_kW.
+       Handles circ_pump_pressure (main) and circ_pump_mass (secondary).
     """
     # Prepare data structure
     pump_results = {
@@ -885,60 +584,23 @@ def calculate_results(net, net_results: Dict, cp_kJ_kgK: float = 4.2) -> Dict[st
 def save_results_csv(time_steps: np.ndarray, total_heat_KW: np.ndarray, strom_wp_kW: np.ndarray, 
                     pump_results: Dict, filename: str) -> None:
     """
-    Save the thermohydraulic simulation results to a CSV file.
-
-    This function exports comprehensive simulation results to a CSV file with
-    German column headers and semicolon separation for compatibility with
-    German Excel installations and further analysis tools.
-
-    Parameters
-    ----------
-    time_steps : np.ndarray
-        Array of time step values (typically datetime objects).
-    total_heat_KW : np.ndarray
-        Total building heat demand time series [kW].
-    strom_wp_kW : np.ndarray
-        Heat pump electrical consumption time series [kW].
-    pump_results : Dict
-        Structured pump results from calculate_results function.
-    filename : str
-        Path to the output CSV file.
-
-    Notes
-    -----
-    - Uses German column names for compatibility
-    - Semicolon separated values (CSV) format
-    - Includes comprehensive pump operation data
-    - Maintains time series structure with timestamps
-    - Compatible with German regional settings
-
-    CSV Structure:
-        - Zeit: Time stamps
-        - Gesamtwärmebedarf_Gebäude_kW: Total building heat demand
-        - Gesamtheizlast_Gebäude_kW: Total building heating load
-        - Gesamtstrombedarf_Wärmepumpen_Gebäude_kW: Total heat pump power
-        - Wärmeerzeugung_[type]_[index]_kW: Heat generation by producer
-        - Massenstrom_[type]_[index]_kg/s: Mass flow rates
-        - Delta p_[type]_[index]_bar: Pressure differences
-        - Vorlauftemperatur_[type]_[index]_°C: Supply temperatures
-        - Rücklauftemperatur_[type]_[index]_°C: Return temperatures
-        - [Vorlauf/Rücklauf]druck_[type]_[index]_bar: Pressures
-
-    Examples
-    --------
-    >>> # Save simulation results
-    >>> save_results_csv(time_array, heat_demand, power_consumption, 
-    ...                  pump_data, "simulation_results.csv")
-    >>> 
-    >>> # Verify saved file
-    >>> import pandas as pd
-    >>> df = pd.read_csv("simulation_results.csv", sep=';')
-    >>> print(f"Saved {len(df)} time steps with {len(df.columns)} variables")
-
-    See Also
-    --------
-    import_results_csv : Import results from CSV files
-    calculate_results : Generate pump results structure
+    Export simulation results to CSV file with German column headers.
+    
+    :param time_steps: Time step array
+    :type time_steps: np.ndarray
+    :param total_heat_KW: Building heat demand time series [kW]
+    :type total_heat_KW: np.ndarray
+    :param strom_wp_kW: Heat pump electrical consumption [kW]
+    :type strom_wp_kW: np.ndarray
+    :param pump_results: Structured pump results from calculate_results
+    :type pump_results: Dict
+    :param filename: Output CSV file path
+    :type filename: str
+    
+    .. note::
+       Semicolon-separated CSV with German column names. Includes Zeit,
+       Gesamtwärmebedarf_Gebäude_kW, pump data (Wärmeerzeugung, Massenstrom,
+       Delta p, temperatures, pressures). UTF-8-sig encoding.
     """
     # Convert arrays to pandas DataFrame
     df = pd.DataFrame({
@@ -964,61 +626,20 @@ def save_results_csv(time_steps: np.ndarray, total_heat_KW: np.ndarray, strom_wp
 
 def import_results_csv(filename: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray, Dict]:
     """
-    Import thermohydraulic simulation results from a CSV file.
-
-    This function reads and parses CSV files created by save_results_csv,
-    reconstructing the original data structure for further analysis or
-    visualization. It handles the German CSV format and column naming.
-
-    Parameters
-    ----------
-    filename : str
-        Path to the input CSV file containing simulation results.
-
-    Returns
-    -------
-    Tuple[np.ndarray, np.ndarray, np.ndarray, Dict]
-        A tuple containing:
-        
-        - **time_steps** (np.ndarray) : Time step array as datetime64 objects
-        - **total_heat_KW** (np.ndarray) : Total building heat demand [kW]
-        - **strom_wp_kW** (np.ndarray) : Heat pump power consumption [kW]
-        - **pump_results** (Dict) : Structured pump results matching calculate_results format
-
-    Raises
-    ------
-    FileNotFoundError
-        If the specified CSV file cannot be found.
-    pd.errors.ParserError
-        If the CSV file format is invalid or corrupted.
-    KeyError
-        If required columns are missing from the CSV file.
-
-    Notes
-    -----
-    - Automatically parses German CSV format (semicolon separated)
-    - Reconstructs the hierarchical pump results structure
-    - Handles datetime parsing for time stamps
-    - Converts data types to appropriate numpy arrays
-    - Validates column naming and structure
-
-    Examples
-    --------
-    >>> # Import previously saved results
-    >>> time_data, heat_data, power_data, pump_data = import_results_csv("results.csv")
-    >>> 
-    >>> # Analyze imported data
-    >>> print(f"Time period: {time_data[0]} to {time_data[-1]}")
-    >>> print(f"Max heat demand: {np.max(heat_data):.1f} kW")
-    >>> 
-    >>> # Access specific pump data  
-    >>> main_pump = pump_data["Heizentrale Haupteinspeisung"][0]
-    >>> avg_supply_temp = np.mean(main_pump["flow_temp"])
-
-    See Also
-    --------
-    save_results_csv : Export results to CSV format
-    calculate_results : Original result structure generation
+    Import simulation results from CSV file created by save_results_csv.
+    
+    :param filename: Input CSV file path
+    :type filename: str
+    :return: (time_steps, total_heat_KW, strom_wp_kW, pump_results)
+    :rtype: Tuple[np.ndarray, np.ndarray, np.ndarray, Dict]
+    :raises FileNotFoundError: If CSV file cannot be found
+    :raises pd.errors.ParserError: If CSV format is invalid
+    :raises KeyError: If required columns are missing
+    
+    .. note::
+       Parses German semicolon-separated CSV. Reconstructs pump_results dict
+       structure. Converts dtypes to datetime64/float64. Returns time_steps as
+       datetime, heat/power as kW arrays, pump_results matching calculate_results.
     """
     # Load data from CSV file
     data = pd.read_csv(filename, sep=';', parse_dates=['Zeit'])

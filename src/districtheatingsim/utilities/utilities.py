@@ -1,11 +1,9 @@
-"""
-Utilities Module
-===================
+"""Utility functions for the DistrictHeatingSim application.
 
-This module provides utility functions for the DistrictHeatingSim application.
+This module provides helper functions for resource path resolution,
+global exception handling, and theme management.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-03-10
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import os
@@ -18,49 +16,16 @@ from PyQt6.QtWidgets import QMessageBox
 
 def get_resource_path(relative_path):
     """
-    Get the absolute path to a resource, works for dev and for PyInstaller.
+    Get absolute path to resource for both development and PyInstaller builds.
 
-    This function resolves the correct path to resources (files, images, etc.) 
-    whether the application is running in development mode or as a PyInstaller 
-    frozen executable. This is essential for accessing bundled resources in 
-    compiled applications.
-
-    Parameters
-    ----------
-    relative_path : str
-        The relative path to the resource from the project root directory.
-        Use forward slashes or os.path.join() for cross-platform compatibility.
-
-    Returns
-    -------
-    str
-        The absolute path to the resource.
-
-    Notes
-    -----
-    - In development mode: Returns path relative to the project root
-    - In PyInstaller mode: Returns path relative to the temporary extraction folder
-    - The function automatically detects the execution environment using sys.frozen
+    :param relative_path: Relative path to resource from project root
+    :type relative_path: str
+    :return: Absolute path to resource
+    :rtype: str
     
-    When using PyInstaller, ensure that your resources are included in the bundle
-    using the --add-data option or by specifying them in the .spec file.
-
-    Examples
-    --------
-    >>> get_resource_path('styles/logo.png')
-    '/path/to/project/styles/logo.png'
-    
-    >>> get_resource_path('data/config.json')
-    '/path/to/project/data/config.json'
-    
-    >>> # Cross-platform path handling
-    >>> get_resource_path(os.path.join('templates', 'report.html'))
-    '/path/to/project/templates/report.html'
-
-    See Also
-    --------
-    os.path.join : Platform-independent path joining
-    sys.frozen : Attribute indicating if running from PyInstaller
+    .. note::
+        Data folders (data, project_data, images, leaflet) are placed outside
+        the _internal folder in PyInstaller builds for user accessibility.
     """
     if getattr(sys, 'frozen', False):
         # When the application is frozen, the base path needs special handling
@@ -85,7 +50,17 @@ def get_resource_path(relative_path):
 
 def handle_global_exception(exc_type, exc_value, exc_traceback):
     """
-    Global exception handler to display errors in a QMessageBox.
+    Global exception handler that displays errors in a QMessageBox dialog.
+    
+    :param exc_type: Exception type
+    :type exc_type: type
+    :param exc_value: Exception instance
+    :type exc_value: BaseException
+    :param exc_traceback: Traceback object
+    :type exc_traceback: types.TracebackType
+    
+    .. note::
+        KeyboardInterrupt exceptions are handled by the default system handler.
     """
     if issubclass(exc_type, KeyboardInterrupt):
         # Standardverhalten für KeyboardInterrupt beibehalten
@@ -107,7 +82,14 @@ def handle_global_exception(exc_type, exc_value, exc_traceback):
 
 def get_stylesheet_based_on_time():
     """
-    Return the stylesheet path based on the current system time.
+    Get stylesheet identifier based on current system time.
+    
+    :return: 'light_theme_style_path' if between 6:00-18:00, otherwise 'dark_theme_style_path'
+    :rtype: str
+    
+    .. note::
+        Light theme is applied during daytime (6 AM - 6 PM),
+        dark theme during evening/night hours.
     """
     current_hour = time.localtime().tm_hour
     if 6 <= current_hour < 18:  # Wenn es zwischen 6:00 und 18:00 Uhr ist

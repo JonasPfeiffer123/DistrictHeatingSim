@@ -1,11 +1,9 @@
-"""
-Network Data Tab Module
+"""Network Data Tab Module
 =======================
 
 Tab for network data file selection and preview visualization.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-02-11
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import os
@@ -29,14 +27,12 @@ class NetworkDataTab(QWidget):
         """
         Initialize network data tab.
 
-        Parameters
-        ----------
-        base_path : str
-            Base path for file operations.
-        dialog_config : dict
-            Configuration data.
-        parent : QWidget, optional
-            Parent widget.
+        :param base_path: Base path for file operations.
+        :type base_path: str
+        :param dialog_config: Configuration data.
+        :type dialog_config: dict
+        :param parent: Parent widget.
+        :type parent: QWidget
         """
         super().__init__(parent)
         self.base_path = base_path
@@ -45,7 +41,9 @@ class NetworkDataTab(QWidget):
         self.initUI()
 
     def initUI(self):
-        """Initialize user interface components."""
+        """
+        Initialize user interface components.
+        """
         layout = QVBoxLayout(self)
 
         importGroup = QGroupBox("Import Netzdaten und Wärmebedarfsrechnung")
@@ -97,10 +95,8 @@ class NetworkDataTab(QWidget):
         """
         Create GeoJSON file input layouts.
 
-        Returns
-        -------
-        list
-            List of input layouts.
+        :return: List of input layouts.
+        :rtype: list
         """
         # Default path for unified network GeoJSON
         default_network_path = os.path.join(
@@ -119,15 +115,10 @@ class NetworkDataTab(QWidget):
         """
         Create file input widget for unified network GeoJSON file.
 
-        Parameters
-        ----------
-        default_network_path : str
-            Default path to Wärmenetz.geojson.
-
-        Returns
-        -------
-        QVBoxLayout
-            Layout containing file input.
+        :param default_network_path: Default path to Wärmenetz.geojson.
+        :type default_network_path: str
+        :return: Layout containing file input.
+        :rtype: QVBoxLayout
         """
         layout = QVBoxLayout()
         self.networkInput = self.createFileInput("Wärmenetz GeoJSON:", default_network_path)
@@ -139,17 +130,12 @@ class NetworkDataTab(QWidget):
         """
         Create file input row with label, text field, and browse button.
 
-        Parameters
-        ----------
-        label_text : str
-            Label text.
-        default_text : str
-            Default file path.
-
-        Returns
-        -------
-        QHBoxLayout
-            Layout containing file input components.
+        :param label_text: Label text.
+        :type label_text: str
+        :param default_text: Default file path.
+        :type default_text: str
+        :return: Layout containing file input components.
+        :rtype: QHBoxLayout
         """
         layout = QHBoxLayout()
         label = QLabel(label_text)
@@ -162,7 +148,9 @@ class NetworkDataTab(QWidget):
         return layout
 
     def browseJsonFile(self):
-        """Open file dialog for JSON file selection."""
+        """
+        Open file dialog for JSON file selection.
+        """
         fname, _ = QFileDialog.getOpenFileName(self, 'Select JSON File', os.path.join(self.base_path, self.parent.parent.config_manager.get_relative_path('building_load_profile_path')), 'JSON Files (*.json);;All Files (*)')
         if fname:
             self.jsonLineEdit.setText(fname)
@@ -171,10 +159,8 @@ class NetworkDataTab(QWidget):
         """
         Open file dialog and update line edit with selected file.
 
-        Parameters
-        ----------
-        line_edit : QLineEdit
-            Line edit widget to update.
+        :param line_edit: Line edit widget to update.
+        :type line_edit: QLineEdit
         """
         fname, _ = QFileDialog.getOpenFileName(self, 'Datei auswählen', '', 'All Files (*);;CSV Files (*.csv);;GeoJSON Files (*.geojson)')
         if fname:
@@ -182,7 +168,9 @@ class NetworkDataTab(QWidget):
             self.update_plot()
 
     def update_plot(self):
-        """Update plot visualization based on selected unified GeoJSON file."""
+        """
+        Update plot visualization based on selected unified GeoJSON file.
+        """
         try:
             # Import schema for feature type identification
             from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
@@ -290,12 +278,10 @@ class NetworkDataTab(QWidget):
         """
         Set visibility of all widgets in a layout.
 
-        Parameters
-        ----------
-        layout : QLayout
-            Layout to update.
-        visible : bool
-            Visibility state.
+        :param layout: Layout to update.
+        :type layout: QLayout
+        :param visible: Visibility state.
+        :type visible: bool
         """
         for i in range(layout.count()):
             item = layout.itemAt(i)
@@ -309,12 +295,10 @@ class NetworkDataTab(QWidget):
         """
         Set default value for a parameter row.
 
-        Parameters
-        ----------
-        parameter_row : QHBoxLayout
-            Parameter row layout.
-        value : str
-            Default value to set.
+        :param parameter_row: Parameter row layout.
+        :type parameter_row: QHBoxLayout
+        :param value: Default value to set.
+        :type value: str
         """
         # Zugriff auf das QLineEdit Widget in der Parameterzeile und Aktualisieren des Textes
         for i in range(parameter_row.count()):
@@ -324,7 +308,9 @@ class NetworkDataTab(QWidget):
                 break  # Beendet die Schleife, sobald das QLineEdit gefunden und aktualisiert wurde
 
     def updateInputFieldsVisibility(self):
-        """Update visibility of input fields based on selected options."""
+        """
+        Update visibility of input fields based on selected options.
+        """
         is_geojson = self.importTypeComboBox.currentText() == "GeoJSON"
 
         # GeoJSON-spezifische Eingabefelder

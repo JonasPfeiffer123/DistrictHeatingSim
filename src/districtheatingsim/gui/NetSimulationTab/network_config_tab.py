@@ -1,11 +1,9 @@
-"""
-Network Configuration Tab Module
+"""Network Configuration Tab Module
 ================================
 
 Tab for network configuration parameters in district heating systems.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-05-17
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import pandapipes as pp
@@ -21,12 +19,10 @@ class NetworkConfigTab(QWidget):
         """
         Initialize network configuration tab.
 
-        Parameters
-        ----------
-        dialog_config : dict
-            Configuration data.
-        parent : QWidget, optional
-            Parent widget.
+        :param dialog_config: Configuration data.
+        :type dialog_config: dict
+        :param parent: Parent widget.
+        :type parent: QWidget
         """
         super().__init__(parent)
         self.dialog_config = dialog_config
@@ -34,7 +30,9 @@ class NetworkConfigTab(QWidget):
         self.initUI()
 
     def initUI(self):
-        """Initialize user interface components."""
+        """
+        Initialize user interface components.
+        """
         layout = QVBoxLayout(self)
 
         netConfigGroup = QGroupBox("Netzkonfiguration")
@@ -76,10 +74,8 @@ class NetworkConfigTab(QWidget):
         """
         Create network configuration selection input.
 
-        Returns
-        -------
-        QVBoxLayout
-            Layout containing configuration controls.
+        :return: Layout containing configuration controls.
+        :rtype: QVBoxLayout
         """
         layout = QVBoxLayout()
         layout.addWidget(QLabel("Netzkonfiguration:"))
@@ -93,10 +89,8 @@ class NetworkConfigTab(QWidget):
         """
         Create temperature control selection input.
 
-        Returns
-        -------
-        QVBoxLayout
-            Layout containing temperature controls.
+        :return: Layout containing temperature controls.
+        :rtype: QVBoxLayout
         """
         layout = QVBoxLayout()
         self.supplyTemperatureControlInput = QComboBox(self)
@@ -110,10 +104,8 @@ class NetworkConfigTab(QWidget):
         """
         Create supply temperature configuration checkbox.
 
-        Returns
-        -------
-        QVBoxLayout
-            Layout containing supply temperature checkbox.
+        :return: Layout containing supply temperature checkbox.
+        :rtype: QVBoxLayout
         """
         layout = QVBoxLayout()
         layout.addWidget(QLabel("Temperaturregelung HAST:"))
@@ -128,10 +120,8 @@ class NetworkConfigTab(QWidget):
         """
         Create return temperature configuration checkbox.
 
-        Returns
-        -------
-        QVBoxLayout
-            Layout containing return temperature checkbox.
+        :return: Layout containing return temperature checkbox.
+        :rtype: QVBoxLayout
         """
         layout = QVBoxLayout()
         self.returnTempCheckbox = QCheckBox("Rücklauftemperatur für alle HA-Stationen festlegen.")
@@ -144,10 +134,8 @@ class NetworkConfigTab(QWidget):
         """
         Create building temperature configuration checkbox.
 
-        Returns
-        -------
-        QVBoxLayout
-            Layout containing building temperature checkbox.
+        :return: Layout containing building temperature checkbox.
+        :rtype: QVBoxLayout
         """
         layout = QVBoxLayout()
         self.buildingTempCheckbox = QCheckBox("Gebäudeheizungstemperaturen im zeitlichen Verlauf berücksichtigen.")
@@ -160,10 +148,8 @@ class NetworkConfigTab(QWidget):
         """
         Create network parameter input fields.
 
-        Returns
-        -------
-        QVBoxLayout
-            Layout containing parameter inputs.
+        :return: Layout containing parameter inputs.
+        :rtype: QVBoxLayout
         """
         layout = QVBoxLayout()
         self.parameter_rows_net = []
@@ -204,10 +190,8 @@ class NetworkConfigTab(QWidget):
         """
         Create heat consumer parameter input fields.
 
-        Returns
-        -------
-        QVBoxLayout
-            Layout containing heat consumer inputs.
+        :return: Layout containing heat consumer inputs.
+        :rtype: QVBoxLayout
         """
         layout = QVBoxLayout()
         self.parameter_rows_heat_consumer = []
@@ -234,17 +218,12 @@ class NetworkConfigTab(QWidget):
         """
         Create a parameter input row with label and text field.
 
-        Parameters
-        ----------
-        label_text : str
-            Label text.
-        default_text : str
-            Default input value.
-
-        Returns
-        -------
-        QHBoxLayout
-            Layout containing label and input field.
+        :param label_text: Label text.
+        :type label_text: str
+        :param default_text: Default input value.
+        :type default_text: str
+        :return: Layout containing label and input field.
+        :rtype: QHBoxLayout
         """
         row_layout = QHBoxLayout()
         label = QLabel(label_text)
@@ -257,10 +236,8 @@ class NetworkConfigTab(QWidget):
         """
         Create pipe type selection input.
 
-        Returns
-        -------
-        QVBoxLayout
-            Layout containing pipe type selection.
+        :return: Layout containing pipe type selection.
+        :rtype: QVBoxLayout
         """
         layout = QVBoxLayout()
         self.initialpipetypeInput = QComboBox(self)
@@ -284,12 +261,10 @@ class NetworkConfigTab(QWidget):
         """
         Set visibility of all widgets in a layout.
 
-        Parameters
-        ----------
-        layout : QLayout
-            Layout to update.
-        visible : bool
-            Visibility state.
+        :param layout: Layout to update.
+        :type layout: QLayout
+        :param visible: Visibility state.
+        :type visible: bool
         """
         for i in range(layout.count()):
             item = layout.itemAt(i)
@@ -303,12 +278,10 @@ class NetworkConfigTab(QWidget):
         """
         Set default value for a parameter row.
 
-        Parameters
-        ----------
-        parameter_row : QHBoxLayout
-            Parameter row layout.
-        value : str
-            Default value to set.
+        :param parameter_row: Parameter row layout.
+        :type parameter_row: QHBoxLayout
+        :param value: Default value to set.
+        :type value: str
         """
         # Zugriff auf das QLineEdit Widget in der Parameterzeile und Aktualisieren des Textes
         for i in range(parameter_row.count()):
@@ -318,7 +291,9 @@ class NetworkConfigTab(QWidget):
                 break  # Beendet die Schleife, sobald das QLineEdit gefunden und aktualisiert wurde
 
     def updateInputFieldsVisibility(self):
-        """Update visibility of input fields based on selected options."""
+        """
+        Update visibility of input fields based on selected options.
+        """
         self.netconfiguration = self.netconfigurationControlInput.currentText()
         std = self.dialog_config["standardwerte"][self.netconfiguration]
         self.set_default_value(self.max_supply_temp_row, str(std["max_supply_temp"]))
@@ -367,7 +342,9 @@ class NetworkConfigTab(QWidget):
         self.building_temp_checked =  self.buildingTempCheckbox.isChecked()
 
     def getSupplyTemperatureHeatGenerator(self):
-        """Calculate temperature curve based on selected control mode."""
+        """
+        Calculate temperature curve based on selected control mode.
+        """
         self.supply_temperature_control = self.supplyTemperatureControlInput.currentText()
         if self.supply_temperature_control == "Statisch":
             self.max_supply_temperature = float(self.parameter_rows_net[0].itemAt(1).widget().text())

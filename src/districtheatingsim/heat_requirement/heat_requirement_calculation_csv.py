@@ -1,21 +1,10 @@
 """
-Heat Requirement Calculation from CSV
-=====================================
+Heat demand profile generation from CSV building data.
 
-This module provides comprehensive heat demand profile generation for buildings
-using CSV-based input data.
+Integrates VDI 4655 and BDEW calculation methods for batch processing
+of building portfolios with temperature curves for district heating design.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-09
-
-It integrates multiple calculation methodologies
-(VDI 4655, BDEW) and automatically selects appropriate methods based on building
-types. The module supports batch processing of building portfolios with
-temperature curve calculation for district heating network design.
-
-The module serves as a data integration layer between building databases and
-standardized heat demand calculation methods, enabling efficient processing
-of large building datasets for district heating system planning and optimization.
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import numpy as np
@@ -29,160 +18,22 @@ def generate_profiles_from_csv(data: pd.DataFrame,
                              calc_method: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, 
                                                       np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
-    Generate comprehensive heat demand profiles from CSV building data using standardized calculation methods.
+    Generate heat demand profiles from CSV building data.
 
-    This function processes building data from CSV files to generate realistic heat demand
-    profiles for district heating applications. It automatically selects appropriate
-    calculation methods (VDI 4655 or BDEW) based on building types and generates
-    time series data suitable for network design and operation planning.
-
-    Parameters
-    ----------
-    data : pandas.DataFrame
-        Building information dataframe containing required columns:
-        
-        - **Wärmebedarf** (float) : Annual heat demand [kWh/a]
-        - **Gebäudetyp** (str) : Building type identifier (EFH, MFH, HEF, etc.)
-        - **Subtyp** (str) : Building subtype for detailed classification
-        - **WW_Anteil** (float) : Domestic hot water fraction [0-1]
-        - **Normaußentemperatur** (float) : Design outdoor temperature [°C]
-        - **VLT_max** (float) : Maximum supply temperature [°C]
-        - **RLT_max** (float) : Maximum return temperature [°C]
-        - **Steigung_Heizkurve** (float) : Heating curve slope [K/K]
-        
-    TRY : str
-        Path to Test Reference Year meteorological data file.
-        Contains hourly weather data for demand calculation.
-    calc_method : str
-        Calculation method selection:
-        
-        - **"Datensatz"** : Automatic method selection based on building type
-        - **"VDI4655"** : Force VDI 4655 method for all buildings
-        - **"BDEW"** : Force BDEW method for all buildings
-
-    Returns
-    -------
-    Tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray]
-        Comprehensive building energy data:
-        
-        - **yearly_time_steps** (numpy.ndarray) : Time stamps for demand profiles
-        - **total_heat_W** (numpy.ndarray) : Total heat demand [W] per building per timestep
-        - **heating_heat_W** (numpy.ndarray) : Space heating demand [W] per building per timestep
-        - **warmwater_heat_W** (numpy.ndarray) : DHW demand [W] per building per timestep
-        - **max_heat_requirement_W** (numpy.ndarray) : Peak heat demand [W] per building
-        - **supply_temperature_curve** (numpy.ndarray) : Supply temperature [°C] per building per timestep
-        - **return_temperature_curve** (numpy.ndarray) : Return temperature [°C] per building per timestep
-        - **hourly_air_temperatures** (numpy.ndarray) : Outdoor temperature [°C] per timestep
-
-    Notes
-    -----
-    Automatic Method Selection:
-        When calc_method="Datensatz", the function automatically selects calculation
-        methods based on building type identifiers:
-        
-        - **VDI 4655**: Residential buildings (EFH, MFH)
-        - **BDEW**: Commercial and public buildings (HEF, HMF, GKO, GHA, etc.)
-
-    Building Type Categories:
-        - **EFH**: Single family house (Einfamilienhaus)
-        - **MFH**: Multi-family house (Mehrfamilienhaus)
-        - **HEF**: Commercial single family house
-        - **HMF**: Commercial multi-family house
-        - **GKO**: Office building (Bürogebäude)
-        - **GHA**: Retail building (Handel)
-        - **GMK**: School building (Schule)
-        - **GBD**: Hotel building (Hotel)
-        - **GBH**: Restaurant building (Restaurant)
-        - **GWA**: Hospital building (Krankenhaus)
-        - **GGA**: Sports facility (Sportstätte)
-        - **GBA**: Cultural building (Kultur)
-        - **GGB**: Public building (Öffentlich)
-        - **GPD**: Production building (Produktion)
-        - **GMF**: Mixed-use building (Mischnutzung)
-        - **GHD**: Service building (Dienstleistung)
-
-    Temperature Curve Calculation:
-        Supply and return temperatures are calculated using heating curves
-        that account for outdoor temperature dependency:
-        
-        T_supply = T_max + slope × (T_outdoor - T_design)
-        T_return = T_supply - ΔT_system
-
-    Data Processing Workflow:
-        1. Load and validate CSV building data
-        2. Extract building parameters and energy demands
-        3. Select appropriate calculation method per building
-        4. Generate demand profiles using VDI 4655 or BDEW
-        5. Calculate temperature curves based on heating system parameters
-        6. Compile comprehensive output arrays for all buildings
-
-    Quality Assurance:
-        - Input data validation and type conversion
-        - Negative demand value clipping (non-physical values)
-        - Missing data handling with informative error messages
-        - Energy balance verification where applicable
-
-    Examples
-    --------
-    >>> import pandas as pd
-    >>> import numpy as np
-    >>> 
-    >>> # Create example building data
-    >>> building_data = pd.DataFrame({
-    ...     'Wärmebedarf': [15000, 8000, 25000],  # kWh/a
-    ...     'Gebäudetyp': ['EFH', 'MFH', 'GKO'],
-    ...     'Subtyp': ['Standard', 'Standard', 'Büro'],
-    ...     'WW_Anteil': [0.2, 0.15, 0.1],  # 20%, 15%, 10%
-    ...     'Normaußentemperatur': [-12, -12, -10],  # °C
-    ...     'VLT_max': [70, 75, 60],  # °C
-    ...     'RLT_max': [55, 60, 45],  # °C
-    ...     'Steigung_Heizkurve': [1.2, 1.3, 1.0]  # K/K
-    ... })
-    >>> 
-    >>> TRY_file = "path/to/weather_data.dat"
-    >>> 
-    >>> # Generate profiles with automatic method selection
-    >>> results = generate_profiles_from_csv(building_data, TRY_file, "Datensatz")
-    >>> time, total_heat, heating, dhw, peak_demand, t_supply, t_return, temp = results
-    >>> 
-    >>> print(f"Processed {len(building_data)} buildings")
-    >>> print(f"Time series length: {len(time)} timesteps")
-    >>> print(f"Building peak demands: {peak_demand} W")
-
-    >>> # Analyze total district heat demand
-    >>> district_total = total_heat.sum(axis=0)  # Sum across all buildings
-    >>> district_peak = district_total.max()
-    >>> annual_energy = district_total.sum() / 1000  # Convert W to kWh
-    >>> print(f"District peak demand: {district_peak/1e6:.1f} MW")
-    >>> print(f"District annual energy: {annual_energy:.0f} kWh")
-
-    >>> # Temperature level analysis
-    >>> max_supply_temp = t_supply.max(axis=1)  # Maximum per building
-    >>> district_supply_temp = t_supply.max()  # Maximum across all
-    >>> print(f"Building supply temperatures: {max_supply_temp} °C")
-    >>> print(f"District supply temperature: {district_supply_temp:.1f} °C")
-
-    >>> # Seasonal demand analysis
-    >>> # Assuming hourly data for full year
-    >>> winter_demand = district_total[:2160].mean()  # First 90 days
-    >>> summer_demand = district_total[4320:6480].mean()  # Days 181-270
-    >>> seasonal_factor = winter_demand / summer_demand
-    >>> print(f"Seasonal demand factor: {seasonal_factor:.1f}")
-
-    Raises
-    ------
-    KeyError
-        If required columns are missing from input DataFrame.
-    ValueError
-        If data types cannot be converted or contain invalid values.
-    FileNotFoundError
-        If TRY file or method-specific data files cannot be found.
-
-    See Also
-    --------
-    heat_requirement_VDI4655.calculate : VDI 4655 load profile calculation
-    heat_requirement_BDEW.calculate : BDEW load profile calculation
-    calculate_temperature_curves : Heating system temperature calculation
+    :param data: Building data (Wärmebedarf, Gebäudetyp, Subtyp, WW_Anteil, Normaußentemperatur, VLT_max, RLT_max, Steigung_Heizkurve)
+    :type data: pd.DataFrame
+    :param TRY: Path to Test Reference Year weather data file
+    :type TRY: str
+    :param calc_method: Calculation method ('Datensatz', 'VDI4655', or 'BDEW')
+    :type calc_method: str
+    :return: Tuple of (time_steps, total_heat_W, heating_heat_W, warmwater_heat_W, max_heat_W, supply_temp, return_temp, air_temp)
+    :rtype: Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+    :raises KeyError: If required CSV columns are missing
+    :raises ValueError: If data types are invalid
+    :raises FileNotFoundError: If TRY file not found
+    
+    .. note::
+        'Datensatz' mode auto-selects VDI4655 for residential (EFH/MFH), BDEW for commercial buildings.
     """
     # Static configuration parameters (should be moved to config file or UI)
     year = 2021  # Calculation year for VDI 4655 and BDEW
@@ -310,122 +161,15 @@ def calculate_temperature_curves(data: pd.DataFrame,
     """
     Calculate supply and return temperature curves for district heating systems.
 
-    This function generates time-dependent supply and return temperature profiles
-    for buildings based on their heating system characteristics and outdoor
-    temperature conditions. It implements weather-compensated heating curves
-    commonly used in district heating applications for optimal energy efficiency.
-
-    Parameters
-    ----------
-    data : pandas.DataFrame
-        Building data containing heating system parameters:
-        
-        - **VLT_max** (float) : Maximum supply temperature [°C]
-        - **RLT_max** (float) : Maximum return temperature [°C]
-        - **Steigung_Heizkurve** (float) : Heating curve slope coefficient [K/K]
-        - **Normaußentemperatur** (float) : Design outdoor temperature [°C]
-        
-    hourly_air_temperatures : numpy.ndarray
-        Hourly outdoor air temperature time series [°C].
-        Must cover complete analysis period (typically 8760 hours for full year).
-
-    Returns
-    -------
-    Tuple[numpy.ndarray, numpy.ndarray]
-        Temperature curve arrays for all buildings:
-        
-        - **supply_temperature_curve** (numpy.ndarray) : Supply temperature [°C] per building per hour
-        - **return_temperature_curve** (numpy.ndarray) : Return temperature [°C] per building per hour
-
-    Notes
-    -----
-    Heating Curve Methodology:
-        Weather-compensated heating curves adjust supply temperature based on
-        outdoor conditions to maintain optimal energy efficiency and comfort:
-        
-        T_supply = T_max                                    (T_outdoor ≤ T_design)
-        T_supply = T_max + slope × (T_outdoor - T_design)   (T_outdoor > T_design)
-        
-        Where:
-        - T_max: Maximum supply temperature at design conditions
-        - slope: Heating curve slope (typically 0.5 to 2.0 K/K)
-        - T_design: Design outdoor temperature (typically -10 to -15°C)
-
-    Temperature Relationship:
-        Return temperature maintains constant temperature difference:
-        T_return = T_supply - ΔT_system
-        
-        Where ΔT_system = T_max_supply - T_max_return
-
-    Physical Constraints:
-        - Supply temperature never drops below design minimum
-        - Return temperature follows supply with constant spread
-        - Curves ensure proper heat transfer and system efficiency
-        - Design temperatures based on local climate conditions
-
-    District Heating Applications:
-        - **Network Design**: Temperature levels determine pipe sizing and insulation
-        - **Heat Source Sizing**: Supply temperatures define generation requirements
-        - **Pump Sizing**: Temperature differences affect flow rate requirements
-        - **Energy Efficiency**: Optimal curves minimize distribution losses
-
-    Examples
-    --------
-    >>> import pandas as pd
-    >>> import numpy as np
-    >>> 
-    >>> # Create building heating system data
-    >>> building_data = pd.DataFrame({
-    ...     'VLT_max': [75, 80, 65],      # Maximum supply temperatures [°C]
-    ...     'RLT_max': [60, 65, 50],      # Maximum return temperatures [°C]
-    ...     'Steigung_Heizkurve': [1.2, 1.0, 1.5],  # Heating curve slopes [K/K]
-    ...     'Normaußentemperatur': [-12, -15, -10]   # Design temperatures [°C]
-    ... })
-    >>> 
-    >>> # Generate hourly temperature data (example for winter day)
-    >>> winter_temps = np.linspace(-10, 5, 24)  # -10°C to 5°C over 24 hours
-    >>> 
-    >>> supply_curves, return_curves = calculate_temperature_curves(building_data, winter_temps)
-    >>> 
-    >>> print(f"Supply temperature curves shape: {supply_curves.shape}")
-    >>> print(f"Return temperature curves shape: {return_curves.shape}")
-
-    >>> # Analyze temperature ranges for each building
-    >>> for i, building in enumerate(['Building 1', 'Building 2', 'Building 3']):
-    ...     supply_range = f"{supply_curves[i].min():.1f} to {supply_curves[i].max():.1f}°C"
-    ...     return_range = f"{return_curves[i].min():.1f} to {return_curves[i].max():.1f}°C"
-    ...     print(f"{building}: Supply {supply_range}, Return {return_range}")
-
-    >>> # District-wide temperature requirements
-    >>> max_supply_required = supply_curves.max()
-    >>> min_return_expected = return_curves.min()
-    >>> print(f"District supply temperature requirement: {max_supply_required:.1f}°C")
-    >>> print(f"Minimum return temperature: {min_return_expected:.1f}°C")
-
-    >>> # Heating curve analysis
-    >>> design_conditions = winter_temps <= -12  # Design temperature conditions
-    >>> normal_conditions = winter_temps > -12   # Above design temperature
-    >>> 
-    >>> print(f"Hours at design conditions: {np.sum(design_conditions)}")
-    >>> print(f"Hours with curve modulation: {np.sum(normal_conditions)}")
-
-    >>> # Energy efficiency analysis
-    >>> # Lower temperatures improve efficiency
-    >>> avg_supply_temp = supply_curves.mean(axis=1)
-    >>> efficiency_ranking = np.argsort(avg_supply_temp)  # Lower temp = better efficiency
-    >>> print(f"Efficiency ranking (best to worst): {efficiency_ranking + 1}")
-
-    Quality Assurance:
-        - Temperature curves respect physical limits and design parameters
-        - Consistent temperature spreads maintained across operating conditions
-        - Smooth temperature transitions prevent system stress
-        - Design temperature thresholds properly implemented
-
-    See Also
-    --------
-    generate_profiles_from_csv : Main CSV processing function using temperature curves
-    heat_requirement_VDI4655.calculate : VDI 4655 profile calculation
-    heat_requirement_BDEW.calculate : BDEW profile calculation
+    :param data: Building data (VLT_max, RLT_max, Steigung_Heizkurve, Normaußentemperatur)
+    :type data: pd.DataFrame
+    :param hourly_air_temperatures: Hourly outdoor temperature [°C]
+    :type hourly_air_temperatures: np.ndarray
+    :return: Tuple of (supply_temperature_curve, return_temperature_curve)
+    :rtype: Tuple[np.ndarray, np.ndarray]
+    
+    .. note::
+        Weather-compensated curves: T_supply = T_max + slope × (T_outdoor - T_design)
     """
     # Extract heating system parameters from building data
     supply_temperature_buildings = data["VLT_max"].values.astype(float)

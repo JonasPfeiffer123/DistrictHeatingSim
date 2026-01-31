@@ -4,8 +4,7 @@ Project Tab Dialogs Module
 
 Dialog windows for project tab functionality including data input and progress display.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-20
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 from PyQt6.QtWidgets import (QVBoxLayout, QLabel, QDialog, QLineEdit, QDialogButtonBox, 
@@ -23,12 +22,10 @@ class RowInputDialog(QDialog):
         """
         Initialize row input dialog.
 
-        Parameters
-        ----------
-        headers : list
-            Column headers for input fields.
-        parent : QWidget, optional
-            Parent widget.
+        :param headers: Column headers for input fields.
+        :type headers: list
+        :param parent: Parent widget.
+        :type parent: QWidget
         """
         super().__init__(parent)
         self.setWindowTitle("Neue Zeile hinzufügen")
@@ -54,10 +51,8 @@ class RowInputDialog(QDialog):
         """
         Get input data from dialog fields.
 
-        Returns
-        -------
-        dict
-            Mapping of headers to input values.
+        :return: Mapping of headers to input values.
+        :rtype: dict
         """
         return {header: field.text() for header, field in self.fields.items()}
     
@@ -69,12 +64,10 @@ class OSMImportDialog(QDialog):
         """
         Initialize OSM import dialog.
 
-        Parameters
-        ----------
-        parent : QWidget, optional
-            Parent widget.
-        sample_utm_coords : tuple, optional
-            Sample (UTM_X, UTM_Y) coordinates for reverse geocoding.
+        :param parent: Parent widget.
+        :type parent: QWidget
+        :param sample_utm_coords: Sample (UTM_X, UTM_Y) coordinates for reverse geocoding.
+        :type sample_utm_coords: tuple
         """
         super().__init__(parent)
         self.setWindowTitle("OSM-Daten importieren")
@@ -129,7 +122,12 @@ class OSMImportDialog(QDialog):
         self.layout.addWidget(buttonBox, len(self.default_values) + row_offset, 0, 1, 2)
 
     def _on_auto_fill_changed(self, state):
-        """Handle auto-fill checkbox state change."""
+        """
+        Handle auto-fill checkbox state change.
+
+        :param state: Checkbox state.
+        :type state: int
+        """
         if state == Qt.CheckState.Checked.value and self.sample_utm_coords:
             self._reverse_geocode_and_fill()
         elif state == Qt.CheckState.Unchecked.value:
@@ -140,7 +138,9 @@ class OSMImportDialog(QDialog):
             self.fields["Adresse"].setText("")
 
     def _reverse_geocode_and_fill(self):
-        """Reverse geocode UTM coordinates and fill address fields."""
+        """
+        Reverse geocode UTM coordinates and fill address fields.
+        """
         if not self.sample_utm_coords:
             return
 
@@ -191,10 +191,8 @@ class OSMImportDialog(QDialog):
         """
         Get OSM import parameters.
 
-        Returns
-        -------
-        dict
-            Mapping of parameters to input values.
+        :return: Mapping of parameters to input values.
+        :rtype: dict
         """
         return {header: field.text() for header, field in self.fields.items()}
     
@@ -206,12 +204,10 @@ class ProcessDetailsDialog(QDialog):
         """
         Initialize process details dialog.
 
-        Parameters
-        ----------
-        process_steps : list
-            List of process step dictionaries with progress info.
-        parent : QWidget, optional
-            Parent widget.
+        :param process_steps: List of process step dictionaries with progress info.
+        :type process_steps: list
+        :param parent: Parent widget.
+        :type parent: QWidget
         """
         super().__init__(parent)
         self.setWindowTitle("Projektfortschritt - Details")
@@ -303,15 +299,10 @@ class ProcessDetailsDialog(QDialog):
         """
         Calculate step completion percentage based on required files.
 
-        Parameters
-        ----------
-        step : dict
-            Process step information.
-
-        Returns
-        -------
-        float
-            Completion percentage (0-100).
+        :param step: Process step information.
+        :type step: dict
+        :return: Completion percentage (0-100).
+        :rtype: float
         """
         total_files = len(step["required_files"])
         missing_files = len(step.get("missing_files", []))
@@ -321,15 +312,10 @@ class ProcessDetailsDialog(QDialog):
         """
         Get human-readable status text.
 
-        Parameters
-        ----------
-        status : str
-            Status code.
-
-        Returns
-        -------
-        str
-            Human-readable status text.
+        :param status: Status code.
+        :type status: str
+        :return: Human-readable status text.
+        :rtype: str
         """
         status_mapping = {
             'completed': 'Abgeschlossen',
@@ -343,15 +329,10 @@ class ProcessDetailsDialog(QDialog):
         """
         Get color for status display.
 
-        Parameters
-        ----------
-        status : str
-            Status code.
-
-        Returns
-        -------
-        str
-            CSS color value.
+        :param status: Status code.
+        :type status: str
+        :return: CSS color value.
+        :rtype: str
         """
         color_mapping = {
             'completed': 'green',
@@ -369,14 +350,12 @@ class BuildingCSVDialog(QDialog):
         """
         Initialize dialog for building CSV creation/editing.
 
-        Parameters
-        ----------
-        headers : list
-            Column headers for table.
-        data : list of lists, optional
-            Initial table data.
-        parent : QWidget, optional
-            Parent widget.
+        :param headers: Column headers for table.
+        :type headers: list
+        :param data: Initial table data.
+        :type data: list of lists
+        :param parent: Parent widget.
+        :type parent: QWidget
         """
         super().__init__(parent)
         self.setWindowTitle("Gebäudedaten bearbeiten")
@@ -386,6 +365,9 @@ class BuildingCSVDialog(QDialog):
         self.initUI()
 
     def initUI(self):
+        """
+        Initialize user interface components.
+        """
         layout = QVBoxLayout(self)
         label = QLabel("Geben Sie die Gebäudedaten für das Quartier ein:")
         layout.addWidget(label)
@@ -424,9 +406,15 @@ class BuildingCSVDialog(QDialog):
         layout.addWidget(buttonBox)
 
     def add_row(self):
+        """
+        Add new row to table.
+        """
         self.table.insertRow(self.table.rowCount())
 
     def del_row(self):
+        """
+        Delete selected row from table.
+        """
         currentRow = self.table.currentRow()
         if currentRow > -1:
             self.table.removeRow(currentRow)
@@ -434,6 +422,9 @@ class BuildingCSVDialog(QDialog):
     def get_table_data(self):
         """
         Get table data as list of lists.
+
+        :return: Table data.
+        :rtype: list of lists
         """
         rows = self.table.rowCount()
         cols = self.table.columnCount()

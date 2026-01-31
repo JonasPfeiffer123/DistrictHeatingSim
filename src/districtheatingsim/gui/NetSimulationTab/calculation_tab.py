@@ -4,8 +4,7 @@ Network Simulation Tab Module
 
 District heating network simulation and calculation interface with pandapipes integration.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-05-17
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import logging
@@ -57,9 +56,9 @@ import geopandas as gpd
 class CalculationTab(QWidget):
     """
     Network simulation tab for district heating system calculations.
-    
-    Provides interface for network generation, time series simulation,
-    and visualization of heating network data using pandapipes.
+
+    .. note::
+       Provides interface for network generation, time series simulation, and visualization of heating network data using pandapipes.
     """
 
     data_added = pyqtSignal(object)
@@ -68,16 +67,14 @@ class CalculationTab(QWidget):
         """
         Initialize calculation tab.
 
-        Parameters
-        ----------
-        folder_manager : object
-            Project folder manager.
-        data_manager : object
-            Application data manager.
-        config_manager : object
-            Configuration manager.
-        parent : QWidget, optional
-            Parent widget.
+        :param folder_manager: Project folder manager.
+        :type folder_manager: object
+        :param data_manager: Application data manager.
+        :type data_manager: object
+        :param config_manager: Configuration manager.
+        :type config_manager: object
+        :param parent: Parent widget.
+        :type parent: QWidget
         """
         super().__init__(parent)
         self.folder_manager = folder_manager
@@ -104,15 +101,15 @@ class CalculationTab(QWidget):
         """
         Update project base path.
 
-        Parameters
-        ----------
-        new_base_path : str
-            New base path.
+        :param new_base_path: New base path.
+        :type new_base_path: str
         """
         self.base_path = new_base_path
 
     def initUI(self):
-        """Initialize user interface components."""
+        """
+        Initialize user interface components.
+        """
         scroll_area = QScrollArea(self)
         scroll_area.setWidgetResizable(True)
 
@@ -129,7 +126,9 @@ class CalculationTab(QWidget):
         self.setLayout(self.main_layout)
 
     def initMenuBar(self):
-        """Initialize menu bar with file and calculation actions."""
+        """
+        Initialize menu bar with file and calculation actions.
+        """
         self.menubar = QMenuBar(self)
         self.menubar.setFixedHeight(30)
 
@@ -162,7 +161,9 @@ class CalculationTab(QWidget):
         calculateNetAction.triggered.connect(self.opencalculateNetDialog)
 
     def setupPlotLayout(self):
-        """Setup layout with network plot and info on top, time series full width below."""
+        """
+        Setup layout with network plot and info on top, time series full width below.
+        """
         self.scrollArea = QScrollArea(self)
         self.scrollWidget = QWidget()
         
@@ -398,7 +399,9 @@ class CalculationTab(QWidget):
         self.container_layout.addWidget(self.scrollArea)
     
     def createPlotControlDropdown(self):
-        """Create dropdown for selecting plot data types."""
+        """
+        Create dropdown for selecting plot data types.
+        """
         # Remove existing dropdown if present
         if hasattr(self, 'dropdownLayout'):
             # Remove widgets from layout
@@ -425,7 +428,9 @@ class CalculationTab(QWidget):
         QTimer.singleShot(100, self.update_time_series_plot)
     
     def openNetGenerationDialog(self):
-        """Open network generation dialog."""
+        """
+        Open network generation dialog.
+        """
         try:
             dialog = NetGenerationDialog(
                 self.generateNetworkCallback,
@@ -441,10 +446,8 @@ class CalculationTab(QWidget):
         """
         Handle network generation callback.
 
-        Parameters
-        ----------
-        NetworkGenerationData : object
-            Network generation data.
+        :param NetworkGenerationData: Network generation data.
+        :type NetworkGenerationData: object
         """
         self.NetworkGenerationData = NetworkGenerationData
 
@@ -452,7 +455,9 @@ class CalculationTab(QWidget):
             self.create_and_initialize_net_geojson()
 
     def opencalculateNetDialog(self):
-        """Open time series calculation dialog."""
+        """
+        Open time series calculation dialog.
+        """
         dialog = TimeSeriesCalculationDialog(self.base_path, self)
         if dialog.exec():
             netCalcInputs = dialog.getValues()
@@ -463,7 +468,9 @@ class CalculationTab(QWidget):
             self.time_series_simulation()
       
     def create_and_initialize_net_geojson(self):
-        """Create and initialize network from GeoJSON files."""
+        """
+        Create and initialize network from GeoJSON files.
+        """
         # uses the dataclass to get the values
         # add COP filename
         self.NetworkGenerationData.COP_filename = self.data_manager.get_cop_filename()
@@ -473,7 +480,9 @@ class CalculationTab(QWidget):
         self.common_thread_initialization()
 
     def common_thread_initialization(self):
-        """Initialize common thread connections and progress."""
+        """
+        Initialize common thread connections and progress.
+        """
         self.initializationThread.calculation_done.connect(self.on_initialization_done)
         self.initializationThread.calculation_error.connect(self.on_time_series_simulation_error)
         self.initializationThread.start()
@@ -483,10 +492,8 @@ class CalculationTab(QWidget):
         """
         Handle initialization completion.
 
-        Parameters
-        ----------
-        NetworkGenerationData : object
-            Network generation data.
+        :param NetworkGenerationData: Network generation data.
+        :type NetworkGenerationData: object
         """
         self.progressBar.setRange(0, 1)
 
@@ -514,7 +521,20 @@ class CalculationTab(QWidget):
         self.display_results()
 
     def create_info_card(self, title, value, unit="", description=""):
-        """Create a compact info card for displaying network data."""
+        """
+        Create a compact info card for displaying network data.
+
+        :param title: Card title.
+        :type title: str
+        :param value: Display value.
+        :type value: float or str
+        :param unit: Unit string.
+        :type unit: str
+        :param description: Description text.
+        :type description: str
+        :return: Info card widget.
+        :rtype: QFrame
+        """
         card = QFrame()
         card.setStyleSheet("""
             QFrame {
@@ -562,7 +582,9 @@ class CalculationTab(QWidget):
         return card
 
     def display_results(self):
-        """Display network simulation results in compact card layout."""
+        """
+        Display network simulation results in compact card layout.
+        """
         # Clear existing cards
         while self.info_cards_layout.count():
             child = self.info_cards_layout.takeAt(0)
@@ -619,7 +641,9 @@ class CalculationTab(QWidget):
         self.info_cards_layout.addStretch()
 
     def _invalidate_plot_cache(self):
-        """Invalidate and clean up old plot cache."""
+        """
+        Invalidate and clean up old plot cache.
+        """
         if self._plot_html_path and os.path.exists(self._plot_html_path):
             try:
                 os.remove(self._plot_html_path)
@@ -628,7 +652,9 @@ class CalculationTab(QWidget):
         self._plot_html_path = None
     
     def _populate_network_param_dropdown(self):
-        """Populate dropdown with available network parameters."""
+        """
+        Populate dropdown with available network parameters.
+        """
         if not hasattr(self.NetworkGenerationData, 'net'):
             logging.warning("Cannot populate dropdown: NetworkGenerationData.net not found")
             return
@@ -693,19 +719,23 @@ class CalculationTab(QWidget):
             self.network_param_dropdown.blockSignals(False)
     
     def _on_network_param_changed(self, index):
-        """Handle network parameter selection change."""
+        """
+        Handle network parameter selection change.
+
+        :param index: Dropdown index.
+        :type index: int
+        """
         # Invalidate cache to force regeneration with new parameter
         self._invalidate_plot_cache()
         # Regenerate plot with selected parameter
         self.plot_pandapipes_net(force_refresh=True)
 
     def plot_pandapipes_net(self, force_refresh: bool = False):
-        """Plot pandapipes network visualization using interactive Plotly.
-        
-        Parameters
-        ----------
-        force_refresh : bool
-            If True, regenerate the plot even if cached version exists
+        """
+        Plot pandapipes network visualization using interactive Plotly.
+
+        :param force_refresh: If True, regenerate the plot even if cached version exists.
+        :type force_refresh: bool
         """
         if not hasattr(self.NetworkGenerationData, 'net'):
             return
@@ -769,7 +799,9 @@ class CalculationTab(QWidget):
                 )
 
     def time_series_simulation(self):
-        """Perform time series simulation."""
+        """
+        Perform time series simulation.
+        """
         if self.NetworkGenerationData is None:
             QMessageBox.warning(self, "Keine Netzdaten", "Bitte generieren Sie zuerst ein Netz.")
             return
@@ -790,10 +822,8 @@ class CalculationTab(QWidget):
         """
         Handle time series simulation completion.
 
-        Parameters
-        ----------
-        NetworkGenerationData : object
-            Network generation data with results.
+        :param NetworkGenerationData: Network generation data with results.
+        :type NetworkGenerationData: object
         """
         self.progressBar.setRange(0, 1)
         self.NetworkGenerationData = NetworkGenerationData
@@ -821,16 +851,16 @@ class CalculationTab(QWidget):
         """
         Handle simulation errors.
 
-        Parameters
-        ----------
-        error_message : str
-            Error message to display.
+        :param error_message: Error message to display.
+        :type error_message: str
         """
         QMessageBox.critical(self, "Berechnungsfehler", error_message)
         self.progressBar.setRange(0, 1)
 
     def update_time_series_plot(self):
-        """Update time series plot based on selected data with modern styling."""
+        """
+        Update time series plot based on selected data with modern styling.
+        """
         if not hasattr(self, 'dataSelectionDropdown'):
             self.createPlotControlDropdown()
 
@@ -1037,10 +1067,8 @@ class CalculationTab(QWidget):
         """
         Get absolute path to data directory.
 
-        Returns
-        -------
-        str
-            Data directory path.
+        :return: Data directory path.
+        :rtype: str
         """
         # Gehe zwei Ebenen über base_path hinaus, um den Projektpfad zu erhalten
         project_base_path = os.path.dirname(os.path.dirname(self.base_path))
@@ -1049,7 +1077,12 @@ class CalculationTab(QWidget):
         return os.path.join(project_base_path, "src", "districtheatingsim", "data")
 
     def saveNet(self, show_dialog=True):
-        """Save network data to pickle, CSV, and JSON files."""
+        """
+        Save network data to pickle, CSV, and JSON files.
+
+        :param show_dialog: Whether to show success/error dialogs.
+        :type show_dialog: bool
+        """
         print("Speichere Pandapipes-Netzwerk...")
         if not self.NetworkGenerationData:
             if show_dialog:
@@ -1128,12 +1161,11 @@ class CalculationTab(QWidget):
                 )
 
     def loadNet(self, show_dialog=True):
-        """Load network data from saved files.
-        
-        Parameters
-        ----------
-        show_dialog : bool, optional
-            Whether to show success/error dialogs. Default is True.
+        """
+        Load network data from saved files.
+
+        :param show_dialog: Whether to show success/error dialogs.
+        :type show_dialog: bool
         """
         print("Lade gespeichertes Pandapipes-Netzwerk...")
         try:
@@ -1228,12 +1260,11 @@ class CalculationTab(QWidget):
                 logging.error(f"Fehler beim Laden der Netzwerk-Daten: {e}\n{tb}")
 
     def load_net_results(self, show_dialog=True):
-        """Load network simulation results from CSV file.
-        
-        Parameters
-        ----------
-        show_dialog : bool, optional
-            Whether to show warning dialogs. Default is True.
+        """
+        Load network simulation results from CSV file.
+
+        :param show_dialog: Whether to show warning dialogs.
+        :type show_dialog: bool
         """
         if self.NetworkGenerationData:
             results_csv_filepath = os.path.join(self.base_path, self.config_manager.get_relative_path('load_profile_path'))
@@ -1249,7 +1280,12 @@ class CalculationTab(QWidget):
             QMessageBox.warning(self, "Keine Daten", "Kein Pandapipes-Netzwerk zum Laden vorhanden.")
     
     def exportNetGeoJSON(self, show_dialog=True):
-        """Export dimensioned network to unified GeoJSON format."""
+        """
+        Export dimensioned network to unified GeoJSON format.
+
+        :param show_dialog: Whether to show success/error dialogs.
+        :type show_dialog: bool
+        """
         print("Starte Export des Wärmenetzes im GeoJSON-Format...")
         if not self.NetworkGenerationData or not hasattr(self.NetworkGenerationData, 'net'):
             if show_dialog:
@@ -1298,12 +1334,11 @@ class CalculationTab(QWidget):
                 logging.error(f"Fehler beim Exportieren des Wärmenetzes: {e}")
     
     def _inject_click_handler(self, html_path):
-        """Inject JavaScript click handler into Plotly HTML for pipe selection.
-        
-        Parameters
-        ----------
-        html_path : str
-            Path to the HTML file to modify
+        """
+        Inject JavaScript click handler into Plotly HTML for pipe selection.
+
+        :param html_path: Path to the HTML file to modify.
+        :type html_path: str
         """
         try:
             with open(html_path, 'r', encoding='utf-8') as f:
@@ -1416,7 +1451,9 @@ class CalculationTab(QWidget):
             logging.error(f"Failed to inject click handler: {e}")
     
     def _check_plot_click(self):
-        """Poll JavaScript for pipe clicks and update table selection."""
+        """
+        Poll JavaScript for pipe clicks and update table selection.
+        """
         if not WEBENGINE_AVAILABLE or not hasattr(self, 'pipe_table'):
             return
         
@@ -1430,12 +1467,11 @@ class CalculationTab(QWidget):
             logging.debug(f"Error checking plot click: {e}")
     
     def _handle_plot_click_result(self, pipe_idx):
-        """Handle the result from JavaScript pipe click query.
-        
-        Parameters
-        ----------
-        pipe_idx : int or None
-            Index of clicked pipe, or None if no click
+        """
+        Handle the result from JavaScript pipe click query.
+
+        :param pipe_idx: Index of clicked pipe, or None if no click.
+        :type pipe_idx: int or None
         """
         if pipe_idx is None or pipe_idx == self._last_selected_pipe:
             return
@@ -1463,7 +1499,9 @@ class CalculationTab(QWidget):
             logging.error(f"Error handling plot click result: {e}")
     
     def apply_table_changes_to_net(self):
-        """Apply all table changes to the network before calculation."""
+        """
+        Apply all table changes to the network before calculation.
+        """
         if not self.NetworkGenerationData or not hasattr(self.NetworkGenerationData, 'net'):
             return
         
@@ -1512,7 +1550,9 @@ class CalculationTab(QWidget):
         logging.info("Applied all table changes to network")
     
     def recalculateNetwork(self):
-        """Recalculate network with current pipe parameters (pipeflow only, no optimization)."""
+        """
+        Recalculate network with current pipe parameters (pipeflow only, no optimization).
+        """
         if not self.NetworkGenerationData or not hasattr(self.NetworkGenerationData, 'net'):
             QMessageBox.warning(
                 self,
@@ -1589,7 +1629,9 @@ class CalculationTab(QWidget):
             )
     
     def populate_pipe_table(self):
-        """Populate pipe configuration table with data from net.pipe DataFrame."""
+        """
+        Populate pipe configuration table with data from net.pipe DataFrame.
+        """
         if not self.NetworkGenerationData or not hasattr(self.NetworkGenerationData, 'net'):
             return
         
@@ -1716,7 +1758,9 @@ class CalculationTab(QWidget):
         self.pipe_table_container.show()
     
     def on_pipe_selected_in_table(self):
-        """Handle table row selection - highlight pipe in plot."""
+        """
+        Handle table row selection - highlight pipe in plot.
+        """
         selected_rows = self.pipe_table.selectionModel().selectedRows()
         if not selected_rows:
             return
@@ -1732,7 +1776,14 @@ class CalculationTab(QWidget):
             self.pandapipes_net_canvas.page().runJavaScript(js_code)
     
     def on_std_type_changed(self, row, new_std_type):
-        """Handle standard type change in ComboBox."""
+        """
+        Handle standard type change in ComboBox.
+
+        :param row: Table row index.
+        :type row: int
+        :param new_std_type: New standard type name.
+        :type new_std_type: str
+        """
         if not new_std_type or not self.NetworkGenerationData:
             return
         
@@ -1761,7 +1812,12 @@ class CalculationTab(QWidget):
             logging.error(f"Failed to update pipe {pipe_idx} std_type: {e}")
     
     def on_table_item_changed(self, item):
-        """Handle direct table cell edits (diameter, k)."""
+        """
+        Handle direct table cell edits (diameter, k).
+
+        :param item: Changed table item.
+        :type item: QTableWidgetItem
+        """
         if not self.NetworkGenerationData:
             return
         
@@ -1795,7 +1851,9 @@ class CalculationTab(QWidget):
                 item.setText(f"{k_mm:.2f}")
     
     def restore_pipe_defaults(self):
-        """Restore pipe parameters to original values."""
+        """
+        Restore pipe parameters to original values.
+        """
         if not self.NetworkGenerationData or not hasattr(self, '_original_pipe_df'):
             QMessageBox.warning(
                 self,

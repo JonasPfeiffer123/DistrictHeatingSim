@@ -1,5 +1,9 @@
-"""
-Utility module for finding data directories in both development and frozen builds.
+"""Path utility functions for development and frozen builds.
+
+This module provides functions to locate data directories correctly
+in both development and PyInstaller frozen builds.
+
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import os
@@ -8,28 +12,16 @@ import sys
 
 def get_data_path(subfolder=''):
     """
-    Get path to data directory, works in both development and frozen builds.
+    Get path to data directory for both development and frozen builds.
     
-    In frozen builds, data folders (data, project_data) are located next to the
-    executable for user accessibility.
+    :param subfolder: Optional subfolder within data directory
+    :type subfolder: str
+    :return: Absolute path to data directory or subfolder
+    :rtype: str
     
-    Parameters
-    ----------
-    subfolder : str, optional
-        Subfolder within data directory (default: '')
-        
-    Returns
-    -------
-    str
-        Absolute path to data directory or subfolder
-        
-    Examples
-    --------
-    >>> # Get path to TRY data files
-    >>> try_path = get_data_path('TRY')
-    
-    >>> # Get path to COP files
-    >>> cop_path = get_data_path('COP')
+    .. note::
+        In frozen builds, data folder is located next to the executable
+        for user accessibility.
     """
     if getattr(sys, 'frozen', False):
         # Running as compiled executable
@@ -49,28 +41,15 @@ def get_data_path(subfolder=''):
 
 def get_project_data_path(project_name=''):
     """
-    Get path to project_data directory, works in both development and frozen builds.
+    Get path to project_data directory for both development and frozen builds.
     
-    In frozen builds, project_data folder is located next to the executable
-    for user accessibility.
+    :param project_name: Optional name of specific project
+    :type project_name: str
+    :return: Absolute path to project_data directory or specific project
+    :rtype: str
     
-    Parameters
-    ----------
-    project_name : str, optional
-        Name of specific project (default: '')
-        
-    Returns
-    -------
-    str
-        Absolute path to project_data directory or specific project
-        
-    Examples
-    --------
-    >>> # Get path to Görlitz project
-    >>> goerlitz_path = get_project_data_path('Görlitz')
-    
-    >>> # Get path to all projects
-    >>> all_projects = get_project_data_path()
+    .. note::
+        In frozen builds, project_data folder is located next to the executable.
     """
     if getattr(sys, 'frozen', False):
         # Running as compiled executable
@@ -89,24 +68,12 @@ def get_project_data_path(project_name=''):
 
 def get_internal_data_path(relative_path):
     """
-    Get path to data inside _internal folder (Python modules, etc.).
+    Get path to data inside _internal folder (not user-accessible).
     
-    This is for data that should NOT be user-accessible.
-    
-    Parameters
-    ----------
-    relative_path : str
-        Relative path within the internal data structure
-        
-    Returns
-    -------
-    str
-        Absolute path to internal data
-        
-    Examples
-    --------
-    >>> # Get path to pandapipes standard types
-    >>> pp_std = get_internal_data_path('pandapipes/std_types/library')
+    :param relative_path: Relative path within internal data structure
+    :type relative_path: str
+    :return: Absolute path to internal data
+    :rtype: str
     """
     if getattr(sys, 'frozen', False):
         # Running as compiled executable - use _MEIPASS
@@ -123,10 +90,8 @@ def is_frozen():
     """
     Check if running as frozen (compiled) application.
     
-    Returns
-    -------
-    bool
-        True if running as compiled executable, False if in development
+    :return: True if running as compiled executable, False otherwise
+    :rtype: bool
     """
     return getattr(sys, 'frozen', False)
 
@@ -135,11 +100,8 @@ def get_app_root():
     """
     Get application root directory.
     
-    Returns
-    -------
-    str
-        Path to application root (where exe is located in frozen build,
-        or project root in development)
+    :return: Path to executable directory (frozen) or project root (development)
+    :rtype: str
     """
     if getattr(sys, 'frozen', False):
         return os.path.dirname(sys.executable)

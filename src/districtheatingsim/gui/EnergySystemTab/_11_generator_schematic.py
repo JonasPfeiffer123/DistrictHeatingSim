@@ -1,11 +1,10 @@
 """
 Generator Schematic Module
-==========================
+===========================
 
-This module contains custom QGraphicsScene and QGraphicsView classes for a generator schematic. It also includes generator schematic items such as ComponentItem and Pipe, providing a complex example for a schematic editor with custom items and connections.
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-28
+Custom QGraphicsScene and QGraphicsView for generator schematic editor with custom items and connections.
 """
 
 from PyQt6.QtWidgets import (QGraphicsScene, QGraphicsPathItem, QGraphicsLineItem, QGraphicsItem, QGraphicsView, QGraphicsRectItem, QGraphicsTextItem)
@@ -23,17 +22,29 @@ class CustomGraphicsView(QGraphicsView):
         self.fit_to_scene()
 
     def fit_to_scene(self):
-        """Fit the entire scene into the view, considering the current window size."""
+        """
+        Fits the entire scene into the view, considering the current window size.
+        """
         # Use fitInView to scale the scene so that it fits entirely within the view
         self.fitInView(self.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
 
     def resizeEvent(self, event):
-        """Ensure the scene fits into the view whenever the window is resized."""
+        """
+        Ensures the scene fits into the view whenever the window is resized.
+
+        :param event: The resize event
+        :type event: QResizeEvent
+        """
         super().resizeEvent(event)
         self.fit_to_scene()  # Fit scene after resizing
 
     def wheelEvent(self, event):
-        """Handle zooming with mouse wheel"""
+        """
+        Handles zooming with mouse wheel.
+
+        :param event: The wheel event
+        :type event: QWheelEvent
+        """
         zoom_factor = 1.1  # Zoom factor for each wheel step
         if event.angleDelta().y() > 0:  # Zoom in
             self.scale(zoom_factor, zoom_factor)
@@ -41,13 +52,23 @@ class CustomGraphicsView(QGraphicsView):
             self.scale(1 / zoom_factor, 1 / zoom_factor)
 
     def mousePressEvent(self, event):
-        """Activate panning on middle mouse button press"""
+        """
+        Activates panning on middle mouse button press.
+
+        :param event: The mouse press event
+        :type event: QMouseEvent
+        """
         if event.button() == Qt.MouseButton.MiddleButton:
             self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)  # Allow panning with middle mouse button
         super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
-        """Deactivate panning when middle mouse button is released"""
+        """
+        Deactivates panning when middle mouse button is released.
+
+        :param event: The mouse release event
+        :type event: QMouseEvent
+        """
         if event.button() == Qt.MouseButton.MiddleButton:
             self.setDragMode(QGraphicsView.DragMode.NoDrag)  # Stop panning
         super().mouseReleaseEvent(event)
@@ -61,7 +82,12 @@ class CustomGraphicsScene(QGraphicsScene):
         self.setSceneRect(x, y, width, height)
 
     def mouseMoveEvent(self, event):
-        """Handle mouse move events in the scene"""
+        """
+        Handles mouse move events in the scene.
+
+        :param event: The mouse move event
+        :type event: QMouseEvent
+        """
         mouse_position = event.scenePos()  # Get mouse position relative to the scene
         x = mouse_position.x()
         y = mouse_position.y()
@@ -212,7 +238,9 @@ class SchematicScene(CustomGraphicsScene):
         self.setSceneRect(bounding_rect)
 
     def update_selected_item(self):
-        """Aktualisiert das ausgewählte Objekt, wenn sich die Auswahl in der Szene ändert."""
+        """
+        Updates the selected object when the selection in the scene changes.
+        """
         # Hole alle ausgewählten Objekte (es könnte theoretisch mehr als eines sein)
         selected_items = self.selectedItems()
 
@@ -224,13 +252,22 @@ class SchematicScene(CustomGraphicsScene):
             self.selected_item = None
 
     def snap_to_grid(self, position):
-        """Snap the given position to the nearest grid point"""
+        """
+        Snaps the given position to the nearest grid point.
+
+        :param position: The position to snap
+        :type position: QPointF
+        :return: The snapped position
+        :rtype: QPointF
+        """
         x = round(position.x() / self.GRID_SIZE) * self.GRID_SIZE
         y = round(position.y() / self.GRID_SIZE) * self.GRID_SIZE
         return QPointF(x, y)
     
     def create_parallel_lines(self):
-        """Create or update the parallel Vorlauf (red) and Rücklauf (blue) lines and add labels"""
+        """
+        Creates or updates the parallel Vorlauf (red) and Rücklauf (blue) lines and adds labels.
+        """
         # Entferne bestehende Leitungen und Labels
         if hasattr(self, 'vorlauf_line') and self.vorlauf_line:
             self.removeItem(self.vorlauf_line)
@@ -276,7 +313,14 @@ class SchematicScene(CustomGraphicsScene):
         self.connect_items_to_lines(self.consumer)
 
     def update_parallel_labels(self, start_x, end_x):
-        """Update the labels for the Vorlauf and Rücklauf lines dynamically."""
+        """
+        Updates the labels for the Vorlauf and Rücklauf lines dynamically.
+
+        :param start_x: The start x-coordinate
+        :type start_x: float
+        :param end_x: The end x-coordinate
+        :type end_x: float
+        """
         # Berechne die Mitte zwischen Start und Ende
         scene_width = end_x - start_x
         center_x = start_x + scene_width / 2
@@ -295,17 +339,26 @@ class SchematicScene(CustomGraphicsScene):
         ruecklauf_label.setPos(center_x - ruecklauf_label.boundingRect().width() / 2, self.generator_y + self.LINE_Y_OFFSET_GENERATOR + 10)
 
     def update_pipes_connected_to_lines(self):
-        """Update pipes that are connected to the parallel lines."""
+        """
+        Updates pipes that are connected to the parallel lines.
+        """
         for pipe in self.pipes:
             if not isinstance(pipe.point1, ConnectionPoint) or not isinstance(pipe.point2, ConnectionPoint):
                 # Pipe ist mit einer Linie verbunden
                 pipe.update_path()
 
     def add_generator(self, item_type, item_name, connect_to_lines=True):
-        """Add a generator at a fixed position and optionally connect it to the parallel lines"""
         """
-        item_name: Type of the generator (e.g., 'CHP', 'Solar')
-        name: Unique name for the generator (e.g., 'BHKW_1')
+        Adds a generator at a fixed position and optionally connects it to the parallel lines.
+
+        :param item_type: Type of the generator (e.g., 'CHP', 'Solar')
+        :type item_type: str
+        :param item_name: Unique name for the generator (e.g., 'BHKW_1')
+        :type item_name: str
+        :param connect_to_lines: Whether to connect to the parallel lines
+        :type connect_to_lines: bool
+        :return: The created generator component
+        :rtype: ComponentItem
         """
         # Define the generator position based on the current x-position
         position = QPointF(self.GENERATOR_X_START, self.generator_y)
@@ -341,7 +394,18 @@ class SchematicScene(CustomGraphicsScene):
         return generator
 
     def add_storage(self, position, item_type='Storage', item_name='Speicher'):
-        """Helper function to create and add a storage unit with custom geometry"""
+        """
+        Helper function to create and add a storage unit with custom geometry.
+
+        :param position: The position for the storage
+        :type position: QPointF
+        :param item_type: Type of storage
+        :type item_type: str
+        :param item_name: Name of the storage
+        :type item_name: str
+        :return: The created storage component
+        :rtype: ComponentItem
+        """
         position = self.snap_to_grid(position)
 
         item_color = self.OBJECTS[item_type]['color']  # Color of the storage
@@ -365,7 +429,16 @@ class SchematicScene(CustomGraphicsScene):
         return storage
 
     def add_generator_with_storage(self, item_name, name):
-        """Add a generator and a storage unit, connecting them and the storage to the consumer"""
+        """
+        Adds a generator and a storage unit, connecting them and the storage to the consumer.
+
+        :param item_name: Type of the generator
+        :type item_name: str
+        :param name: Unique name for the generator
+        :type name: str
+        :return: The created generator component
+        :rtype: ComponentItem
+        """
         # Add the generator but don't connect it to the lines
         generator = self.add_generator(item_name, name, connect_to_lines=False)
 
@@ -391,7 +464,16 @@ class SchematicScene(CustomGraphicsScene):
         return generator
 
     def add_consumer_net(self, item_type, item_name="Wärmenetz", connect_to_lines=False):
-        """Add the consumer (network)"""
+        """
+        Adds the consumer (network).
+
+        :param item_type: Type of consumer
+        :type item_type: str
+        :param item_name: Name of the consumer
+        :type item_name: str
+        :param connect_to_lines: Whether to connect to lines
+        :type connect_to_lines: bool
+        """
         if self.consumer is None:
             position = QPointF(self.GENERATOR_X_START, self.generator_y)  # Place consumer at Start_x
             position = self.snap_to_grid(position)  # Snap the position to the grid
@@ -415,7 +497,18 @@ class SchematicScene(CustomGraphicsScene):
             self.update_scene_size()
 
     def add_seasonal_storage(self, item_type='Saisonaler Wärmespeicher', item_name='Speicher', connect_to_lines=True):
-        """Add a seasonal storage unit at a fixed position and optionally connect it to the parallel lines."""
+        """
+        Adds a seasonal storage unit at a fixed position and optionally connects it to the parallel lines.
+
+        :param item_type: Type of seasonal storage
+        :type item_type: str
+        :param item_name: Name of the storage
+        :type item_name: str
+        :param connect_to_lines: Whether to connect to the parallel lines
+        :type connect_to_lines: bool
+        :return: The created storage component
+        :rtype: ComponentItem
+        """
         # Define the storage position based on the current x-position
         position = QPointF(self.GENERATOR_X_START, self.generator_y)
         position = self.snap_to_grid(position)
@@ -447,7 +540,14 @@ class SchematicScene(CustomGraphicsScene):
         return storage
     
     def check_label_collision(self, new_label_rect):
-        """Check if a new label would collide with existing component labels."""
+        """
+        Checks if a new label would collide with existing component labels.
+
+        :param new_label_rect: Rectangle of the new label
+        :type new_label_rect: QRectF
+        :return: True if collision detected, False otherwise
+        :rtype: bool
+        """
         for item in self.items():
             if isinstance(item, ComponentItem) and item.label and item.label.isVisible():
                 existing_rect = item.label.sceneBoundingRect()
@@ -456,7 +556,16 @@ class SchematicScene(CustomGraphicsScene):
         return False
     
     def find_optimal_label_position(self, item, label):
-        """Find optimal position for label to avoid collisions."""
+        """
+        Finds optimal position for label to avoid collisions.
+
+        :param item: The component item
+        :type item: ComponentItem
+        :param label: The label to position
+        :type label: QGraphicsTextItem
+        :return: The optimal position
+        :rtype: QPointF
+        """
         padding = 12
         base_y_below = item.pos().y() + item.boundingRect().height() + padding
         base_y_above = item.pos().y() - item.boundingRect().height() - padding - label.boundingRect().height()
@@ -501,7 +610,9 @@ class SchematicScene(CustomGraphicsScene):
             return QPointF(item.pos().x() - label.boundingRect().width() / 2, base_y_below)
     
     def update_all_label_positions(self):
-        """Update positions of all component labels to avoid collisions."""
+        """
+        Updates positions of all component labels to avoid collisions.
+        """
         components = [item for item in self.items() if isinstance(item, ComponentItem) and item.label]
         
         # Sort components by X position to process from left to right
@@ -524,7 +635,14 @@ class SchematicScene(CustomGraphicsScene):
                     component.background_rect.setRect(background_rect_x, background_rect_y, background_rect_width, background_rect_height)
     
     def update_label(self, item, new_text):
-        """Update the label of a given item with new text."""
+        """
+        Updates the label of a given item with new text.
+
+        :param item: The component item
+        :type item: ComponentItem
+        :param new_text: The new label text
+        :type new_text: str
+        """
         if item.label:
             # Update the text of the label
             item.label.setPlainText(new_text)
@@ -571,7 +689,14 @@ class SchematicScene(CustomGraphicsScene):
             item.background_rect = background_rect  # Link it to the item
 
     def connect_generator_to_storage(self, generator, storage):
-        """Connect two items (generator, storage, or consumer) using their connection points"""
+        """
+        Connects two items (generator, storage, or consumer) using their connection points.
+
+        :param generator: The generator component
+        :type generator: ComponentItem
+        :param storage: The storage component
+        :type storage: ComponentItem
+        """
         if generator.connection_points and storage.connection_points:
             # Erzeuger oder Verbraucher: Verwende rechte Verbindung für Vorlauf und linke für Rücklauf
             point1_supply = generator.connection_points[0]  # 0: Obere Verbindung für Vorlauf
@@ -594,7 +719,14 @@ class SchematicScene(CustomGraphicsScene):
             print("Error: One or both items have no connection points.")
             
     def connect_items_to_lines(self, component, is_storage=False):
-        """Connect a component to the parallel Vorlauf (red) and Rücklauf (blue) lines"""
+        """
+        Connects a component to the parallel Vorlauf (red) and Rücklauf (blue) lines.
+
+        :param component: The component to connect
+        :type component: ComponentItem
+        :param is_storage: Whether the component is a storage unit
+        :type is_storage: bool
+        """
 
         if not hasattr(self, 'vorlauf_line') or not self.vorlauf_line:
             return  # Leitungen existieren nicht, können keine Verbindung herstellen
@@ -633,10 +765,14 @@ class SchematicScene(CustomGraphicsScene):
 
     def add_component(self, item_name, name, storage=False):
         """
-        Add a component (generator, storage, or consumer) to the scene.
-        item_name: Type of the component (e.g., 'CHP', 'Solar')
-        name: Unique name for the component (e.g., 'BHKW_1')
-        storage: If True, add a storage with the component
+        Adds a component (generator or storage) to the scene.
+
+        :param item_name: Type of the component (e.g., 'CHP', 'Solar')
+        :type item_name: str
+        :param name: Unique name for the component (e.g., 'BHKW_1')
+        :type name: str
+        :param storage: If True, add a storage with the component
+        :type storage: bool
         """
         if storage:
             return self.add_generator_with_storage(item_name, name)
@@ -649,7 +785,9 @@ class SchematicScene(CustomGraphicsScene):
                 return self.add_generator(item_name, name)
 
     def delete_selected(self):
-        """Delete the selected component, ensuring that connected generators and storage are deleted together."""
+        """
+        Deletes the selected component, ensuring that connected generators and storage are deleted together.
+        """
         if self.selected_item and isinstance(self.selected_item, ComponentItem) and self.selected_item != self.consumer:
             # Erstelle eine Liste mit Generatoren und zugehörigen Speichern
             generators_with_storage = []
@@ -697,7 +835,9 @@ class SchematicScene(CustomGraphicsScene):
             self.update_scene_size()
 
     def delete_all(self):
-        """Delete all components, pipes, and reset all counters except for the consumer and its connections."""
+        """
+        Deletes all components, pipes, and resets all counters except for the consumer and its connections.
+        """
         # Collect all items except for the consumer and the pipes connected to the consumer
         items_to_delete = [
             item for item in self.items() 
@@ -730,7 +870,14 @@ class SchematicScene(CustomGraphicsScene):
         self.update_scene_size()
 
     def is_connected_to_consumer(self, item):
-        """Helper method to check if a pipe is connected to the consumer."""
+        """
+        Helper method to check if a pipe is connected to the consumer.
+
+        :param item: The item to check
+        :type item: Pipe
+        :return: True if connected to consumer, False otherwise
+        :rtype: bool
+        """
         if isinstance(item, Pipe):
             point1_connected = isinstance(item.point1, ConnectionPoint) and item.point1.parent == self.consumer
             point2_connected = isinstance(item.point2, ConnectionPoint) and item.point2.parent == self.consumer
@@ -738,7 +885,14 @@ class SchematicScene(CustomGraphicsScene):
         return False
     
     def find_linked_generator(self, storage):
-        """Find the generator linked to the given storage unit."""
+        """
+        Finds the generator linked to the given storage unit.
+
+        :param storage: The storage component
+        :type storage: ComponentItem
+        :return: The linked generator or None
+        :rtype: ComponentItem or None
+        """
         for pipe in self.items():
             if isinstance(pipe, Pipe):
                 # Prüfen, ob pipe.point1 ein ConnectionPoint ist und mit dem Speicher verbunden ist
@@ -752,7 +906,14 @@ class SchematicScene(CustomGraphicsScene):
         return None
     
     def find_linked_storage(self, generator):
-        """Find the storage unit linked to the given generator."""
+        """
+        Finds the storage unit linked to the given generator.
+
+        :param generator: The generator component
+        :type generator: ComponentItem
+        :return: The linked storage or None
+        :rtype: ComponentItem or None
+        """
         for pipe in self.items():
             if isinstance(pipe, Pipe):
                 # Prüfen, ob pipe.point1 ein ConnectionPoint ist und mit dem Generator verbunden ist
@@ -767,7 +928,24 @@ class SchematicScene(CustomGraphicsScene):
 
 class ComponentItem(QGraphicsItem):
     def __init__(self, position, item_type, item_name, color, geometry, flow_line_color=Qt.GlobalColor.red, return_line_color=Qt.GlobalColor.blue):
-        """Create a general visual representation of a component"""
+        """
+        Creates a general visual representation of a component.
+
+        :param position: The position of the component
+        :type position: QPointF
+        :param item_type: Type of component
+        :type item_type: str
+        :param item_name: Name of the component
+        :type item_name: str
+        :param color: Color of the component
+        :type color: QColor
+        :param geometry: Geometry of the component
+        :type geometry: QRectF
+        :param flow_line_color: Color for flow line
+        :type flow_line_color: Qt.GlobalColor
+        :param return_line_color: Color for return line
+        :type return_line_color: Qt.GlobalColor
+        """
         super().__init__()
 
         self.item_name = item_name

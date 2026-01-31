@@ -1,11 +1,9 @@
-"""
-Diameter Optimization Tab Module
+"""Diameter Optimization Tab Module
 ================================
 
 UI tab for pipe diameter optimization settings in district heating networks.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-02-11
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QComboBox, QWidget,  QHBoxLayout, QCheckBox, QGroupBox
@@ -19,19 +17,19 @@ class DiameterOptimizationTab(QWidget):
         """
         Initialize diameter optimization tab.
 
-        Parameters
-        ----------
-        dialog_config : dict
-            Configuration data for dialog settings.
-        parent : QWidget, optional
-            Parent widget.
+        :param dialog_config: Configuration data for dialog settings.
+        :type dialog_config: dict
+        :param parent: Parent widget.
+        :type parent: QWidget
         """
         super().__init__(parent)
         self.dialog_config = dialog_config
         self.initUI()
 
     def initUI(self):
-        """Initialize user interface components."""
+        """
+        Initialize user interface components.
+        """
         layout = QVBoxLayout(self)
 
         OptDiameterGroup = QGroupBox("Durchmesseroptimierung im Netz")
@@ -49,10 +47,8 @@ class DiameterOptimizationTab(QWidget):
         """
         Create checkbox for enabling diameter optimization.
 
-        Returns
-        -------
-        QVBoxLayout
-            Layout containing checkbox.
+        :return: Layout containing checkbox.
+        :rtype: QVBoxLayout
         """
         layout = QVBoxLayout()
         self.DiameterOptCheckbox = QCheckBox("Durchmesser optimieren.")
@@ -65,10 +61,8 @@ class DiameterOptimizationTab(QWidget):
         """
         Create input fields for diameter optimization parameters.
 
-        Returns
-        -------
-        QVBoxLayout
-            Layout containing input fields.
+        :return: Layout containing input fields.
+        :rtype: QVBoxLayout
         """
         layout = QVBoxLayout()
         layout.addWidget(QLabel("Eingaben zur Durchmesseroptimierung der Rohrleitungen:"))
@@ -95,7 +89,9 @@ class DiameterOptimizationTab(QWidget):
         return layout
 
     def updateInputFieldsVisibility(self):
-        """Update visibility of input fields based on checkbox state."""
+        """
+        Update visibility of input fields based on checkbox state.
+        """
         self.DiameterOpt_ckecked = self.DiameterOptCheckbox.isChecked()
 
         # Anzeige Optimierungsoptionen
@@ -109,10 +105,8 @@ class DiameterOptimizationTab(QWidget):
         """
         Get current parameter values from input fields.
 
-        Returns
-        -------
-        dict
-            Dictionary containing diameter optimization parameters.
+        :return: Dictionary containing diameter optimization parameters.
+        :rtype: dict
         """
         return {
             "diameter_optimization_enabled": self.DiameterOptCheckbox.isChecked(),

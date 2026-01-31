@@ -1,21 +1,10 @@
 """
-Import and Create Layers Module
-===============================
+Data import and layer processing for district heating network generation.
 
-This module provides comprehensive data import and layer processing capabilities for
-district heating network generation workflows.
+Handles integration of OpenStreetMap street networks, building locations, and
+heat generator coordinates into geospatial layers for network optimization.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-05-26
-
-It handles the integration of multiple
-data sources including OpenStreetMap street networks, building location data, and
-heat generator coordinates to create geospatial layers for network optimization.
-
-The module supports various data formats and coordinate systems, providing standardized
-processing workflows for district heating system planning and design. It includes
-functions for data validation, coordinate transformation, and GeoJSON export for
-integration with GIS systems and network simulation tools.
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import warnings
@@ -33,78 +22,17 @@ from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJ
 
 def import_osm_street_layer(osm_street_layer_geojson_file: str) -> Optional[gpd.GeoDataFrame]:
     """
-    Import OpenStreetMap street network from GeoJSON file for network routing analysis.
+    Import OpenStreetMap street network from GeoJSON.
 
-    This function loads street network data from OpenStreetMap exports, providing
-    the infrastructure backbone for district heating network routing and optimization.
-    It handles various GeoJSON formats and validates the imported data structure.
-
-    Parameters
-    ----------
-    osm_street_layer_geojson_file : str
-        Path to the GeoJSON file containing OpenStreetMap street network data.
-        File should contain LineString geometries representing street segments.
-
-    Returns
-    -------
-    Optional[geopandas.GeoDataFrame]
-        GeoDataFrame containing street network geometries, or None if import fails.
-        Preserves original coordinate reference system and feature attributes.
-
-    Notes
-    -----
-    Data Requirements:
-        - GeoJSON format with LineString geometries
-        - Valid coordinate reference system
-        - Connected street network for optimal routing
-        - Appropriate spatial extent covering planning area
-
-    Error Handling:
-        - Validates file existence and format
-        - Handles corrupted or invalid GeoJSON files
-        - Provides detailed error messages for debugging
-        - Returns None on failure to prevent cascading errors
-
-    OSM Data Preparation:
-        - Export street network using tools like JOSM, Overpass API, or OSMNX
-        - Filter to relevant road types (primary, secondary, residential)
-        - Ensure proper coordinate system (typically WGS84 or local projection)
-        - Validate network connectivity for routing algorithms
-
-    Examples
-    --------
-    >>> # Import street network for network routing
-    >>> street_network = import_osm_street_layer("osm_streets.geojson")
-    >>> if street_network is not None:
-    ...     print(f"Loaded {len(street_network)} street segments")
-    ...     print(f"CRS: {street_network.crs}")
-    ... else:
-    ...     print("Failed to load street network")
-
-    >>> # Validate street network properties
-    >>> if street_network is not None:
-    ...     total_length = street_network.geometry.length.sum()
-    ...     print(f"Total street network length: {total_length/1000:.1f} km")
-    ...     
-    ...     # Check geometry types
-    ...     geom_types = street_network.geometry.geom_type.unique()
-    ...     print(f"Geometry types: {geom_types}")
-
-    >>> # Export for verification
-    >>> if street_network is not None:
-    ...     street_network.to_file("verified_streets.shp")
-
-    Raises
-    ------
-    FileNotFoundError
-        If the specified GeoJSON file does not exist.
-    ValueError
-        If the file contains invalid GeoJSON format or geometries.
-
-    See Also
-    --------
-    load_layers : Complete data loading workflow
-    geopandas.read_file : Underlying file reading function
+    :param osm_street_layer_geojson_file: Path to GeoJSON with street network LineStrings
+    :type osm_street_layer_geojson_file: str
+    :return: Street network GeoDataFrame or None on failure
+    :rtype: Optional[gpd.GeoDataFrame]
+    :raises FileNotFoundError: If GeoJSON file missing
+    :raises ValueError: If invalid GeoJSON format
+    
+    .. note::
+        Returns None on error to prevent cascading failures. Prints diagnostic messages.
     """
     try:
         layer = gpd.read_file(osm_street_layer_geojson_file)
@@ -131,102 +59,22 @@ def load_layers(osm_street_layer_geojson_file: str,
                                                                 Optional[gpd.GeoDataFrame], 
                                                                 Optional[pd.DataFrame]]:
     """
-    Load and process all spatial layers for district heating network generation.
+    Load all spatial layers for network generation.
 
-    This function orchestrates the complete data loading workflow, integrating
-    street network data, building location data, and heat generator coordinates
-    into standardized geospatial layers. It handles coordinate system management
-    and data validation for network optimization algorithms.
-
-    Parameters
-    ----------
-    osm_street_layer_geojson_file : str
-        Path to GeoJSON file containing OpenStreetMap street network data.
-        Provides infrastructure routing constraints for network optimization.
-    data_csv_file_name : str
-        Path to CSV file containing building data with coordinates and attributes.
-        Must include 'UTM_X' and 'UTM_Y' columns for spatial positioning.
-    coordinates : List[Tuple[float, float]]
-        List of coordinate tuples (x, y) representing heat generator locations.
-        Coordinates should match the spatial reference system of other layers.
-
-    Returns
-    -------
-    Tuple[Optional[gpd.GeoDataFrame], Optional[gpd.GeoDataFrame], Optional[gpd.GeoDataFrame], Optional[pd.DataFrame]]
-        A tuple containing:
-        
-        - **osm_street_layer** (gpd.GeoDataFrame) : Street network for routing
-        - **heat_consumer_layer** (gpd.GeoDataFrame) : Building locations with geometry
-        - **heat_generator_layer** (gpd.GeoDataFrame) : Heat generator locations
-        - **heat_consumer_df** (pd.DataFrame) : Building attributes data
-
-    Notes
-    -----
-    Data Processing Workflow:
-        1. Load street network from GeoJSON file
-        2. Load building data from CSV with semicolon separator
-        3. Convert building coordinates to Point geometries
-        4. Create heat generator Points from coordinate list
-        5. Validate data consistency and spatial relationships
-
-    Coordinate System Management:
-        - Street network: Preserves original CRS from GeoJSON
-        - Building data: Creates Points from UTM coordinates
-        - Heat generators: Initially assigned EPSG:4326, requires transformation
-        - Coordinate consistency critical for spatial operations
-
-    Data Validation:
-        - Checks file existence and format compatibility
-        - Validates coordinate columns in CSV data
-        - Ensures geometry creation success
-        - Reports data quality issues for troubleshooting
-
-    CSV Data Requirements:
-        - Semicolon-separated values format
-        - 'UTM_X' and 'UTM_Y' columns for coordinates
-        - Additional building attributes (heat demand, type, etc.)
-        - Consistent coordinate reference system
-
-    Examples
-    --------
-    >>> # Load all layers for network generation
-    >>> generator_coords = [(100000, 200000), (105000, 205000)]
-    >>> street_net, consumers, generators, consumer_data = load_layers(
-    ...     "streets.geojson", 
-    ...     "buildings.csv", 
-    ...     generator_coords
-    ... )
-
-    >>> # Validate loaded data
-    >>> if all(layer is not None for layer in [street_net, consumers, generators]):
-    ...     print("All layers loaded successfully")
-    ...     print(f"Street segments: {len(street_net)}")
-    ...     print(f"Heat consumers: {len(consumers)}")
-    ...     print(f"Heat generators: {len(generators)}")
-
-    >>> # Check data alignment
-    >>> if consumer_data is not None and consumers is not None:
-    ...     coords_match = len(consumer_data) == len(consumers)
-    ...     print(f"Consumer data alignment: {coords_match}")
-
-    >>> # Analyze spatial extent
-    >>> if consumers is not None:
-    ...     bounds = consumers.total_bounds
-    ...     print(f"Consumer area bounds: {bounds}")
-
-    Raises
-    ------
-    FileNotFoundError
-        If CSV or GeoJSON files cannot be found.
-    KeyError
-        If required coordinate columns are missing from CSV.
-    ValueError
-        If coordinate data cannot be converted to valid geometries.
-
-    See Also
-    --------
-    import_osm_street_layer : Street network import function
-    generate_and_export_layers : Complete workflow with export
+    :param osm_street_layer_geojson_file: Path to street network GeoJSON
+    :type osm_street_layer_geojson_file: str
+    :param data_csv_file_name: Path to CSV with building data (requires UTM_X, UTM_Y columns)
+    :type data_csv_file_name: str
+    :param coordinates: Heat generator coordinate tuples (x, y)
+    :type coordinates: List[Tuple[float, float]]
+    :return: Tuple of (street_layer, consumer_layer, generator_layer, consumer_df)
+    :rtype: Tuple[Optional[gpd.GeoDataFrame], Optional[gpd.GeoDataFrame], Optional[gpd.GeoDataFrame], Optional[pd.DataFrame]]
+    :raises FileNotFoundError: If files not found
+    :raises KeyError: If UTM_X or UTM_Y missing from CSV
+    :raises ValueError: If coordinate conversion fails
+    
+    .. note::
+        CSV uses semicolon separator. Returns (None, None, None, None) on error.
     """
     try:
         # Load the street layer as a GeoDataFrame
@@ -285,142 +133,28 @@ def generate_and_export_layers(osm_street_layer_geojson_file_name: str,
                               offset_angle: float = 0, 
                               offset_distance: float = 0.5) -> None:
     """
-    Generate complete district heating network and export all layers as GeoJSON files.
+    Generate district heating network and export as GeoJSON.
 
-    This function provides the complete workflow for district heating network
-    generation, from data import through network optimization to standardized
-    GeoJSON export. It creates all necessary network components including
-    supply lines, return lines, and service connections with proper attributes.
-
-    Parameters
-    ----------
-    osm_street_layer_geojson_file_name : str
-        Path to GeoJSON file containing OpenStreetMap street network data.
-        Provides infrastructure constraints for network routing.
-    data_csv_file_name : str
-        Path to CSV file containing building data with coordinates and attributes.
-        Source of heat consumer locations and characteristics.
-    coordinates : List[Tuple[float, float]]
-        List of coordinate tuples (x, y) for heat generator locations.
-        Defines heat production points in the network.
-    base_path : str
-        Base directory path for exporting generated network layers.
-        Will create subdirectory structure for organized file management.
-    algorithm : str, optional
-        Network optimization algorithm to use. Default is "MST".
-        
-        Available algorithms:
-            - **"MST"** : Minimum Spanning Tree (fastest, tree topology)
-            - **"Advanced MST"** : MST with road alignment optimization
-            - **"Steiner"** : Steiner tree for minimal total length
-            
-    offset_angle : float, optional
-        Angle in degrees for parallel return line generation. Default is 0°.
-        0° = eastward offset, 90° = northward offset.
-    offset_distance : float, optional
-        Distance in meters for parallel return line separation. Default is 0.5m.
-        Typical values: 0.5-2.0m for district heating applications.
-
-    Returns
-    -------
-    None
-        Function creates and exports GeoJSON files to specified directory structure.
-
-    Notes
-    -----
-    Generated Network Components:
-        - **Supply Lines (Vorlauf)** : Main distribution network with optimization
-        - **Return Lines (Rücklauf)** : Parallel return network with offset
-        - **Heat Consumers (HAST)** : Building connections with attributes
-        - **Heat Generators (Erzeugeranlagen)** : Production facility connections
-
-    Output File Structure:
-        ```
-        base_path/
-        └── Wärmenetz/
-            └── Wärmenetz.geojson  # Unified network file with all components
-        ```
-        
-        The unified GeoJSON contains:
-        - Flow lines (supply network)
-        - Return lines (return network)  
-        - Building connections (HAST)
-        - Generator connections (Erzeugeranlagen)
-
-    Coordinate System Management:
-        - All outputs standardized to EPSG:25833 (ETRS89 / UTM zone 33N)
-        - Suitable for German district heating projects
-        - Maintains spatial accuracy for engineering applications
-
-    Data Processing Pipeline:
-        1. Load and validate all input data sources
-        2. Generate optimized network backbone using selected algorithm
-        3. Create service connections for all buildings and generators
-        4. Apply parallel line generation for return network
-        5. Standardize coordinate reference systems
-        6. Export all components as GeoJSON with proper attributes
-
-    Examples
-    --------
-    >>> # Generate complete network with MST algorithm
-    >>> generator_locations = [(100000, 200000), (105000, 205000)]
-    >>> generate_and_export_layers(
-    ...     "streets.geojson",
-    ...     "buildings.csv", 
-    ...     generator_locations,
-    ...     "output",
-    ...     algorithm="MST"
-    ... )
-
-    >>> # Generate optimized network with road alignment
-    >>> generate_and_export_layers(
-    ...     "streets.geojson",
-    ...     "buildings.csv",
-    ...     generator_locations,
-    ...     "output",
-    ...     algorithm="Advanced MST",
-    ...     offset_distance=1.0,
-    ...     offset_angle=90
-    ... )
-
-    >>> # Generate minimal-length network with Steiner tree
-    >>> generate_and_export_layers(
-    ...     "streets.geojson",
-    ...     "buildings.csv",
-    ...     generator_locations,
-    ...     "output",
-    ...     algorithm="Steiner",
-    ...     offset_distance=1.5
-    ... )
-
-    >>> # Verify generated files
-    >>> import os
-    >>> network_dir = "output/Wärmenetz"
-    >>> files = os.listdir(network_dir)
-    >>> print(f"Generated files: {files}")  # ['Wärmenetz.geojson']
-
-    >>> # Load and analyze generated network
-    >>> import geopandas as gpd
-    >>> from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
-    >>> unified = NetworkGeoJSONSchema.import_from_file("output/Wärmenetz/Wärmenetz.geojson")
-    >>> flow, return_, building, generator = NetworkGeoJSONSchema.split_to_legacy_format(unified)
-    >>> total_length = flow.geometry.length.sum()
-    >>> print(f"Total supply network length: {total_length/1000:.1f} km")
-
-    Raises
-    ------
-    FileNotFoundError
-        If input files cannot be found or accessed.
-    ValueError
-        If invalid algorithm is specified or coordinate data is malformed.
-    OSError
-        If output directory cannot be created or files cannot be written.
-
-    See Also
-    --------
-    load_layers : Data loading and processing workflow
-    generate_network : Network optimization algorithms
-    generate_connection_lines : Service connection generation
+    :param osm_street_layer_geojson_file_name: Path to street network GeoJSON
+    :type osm_street_layer_geojson_file_name: str
+    :param data_csv_file_name: Path to building CSV (UTM_X, UTM_Y columns)
+    :type data_csv_file_name: str
+    :param coordinates: Heat generator coordinate tuples (x, y)
+    :type coordinates: List[Tuple[float, float]]
+    :param base_path: Output directory for generated network
+    :type base_path: str
+    :param algorithm: Network algorithm - MST, Advanced MST, or Steiner (default MST)
+    :type algorithm: str
+    :param offset_angle: Return line offset angle in degrees (default 0)
+    :type offset_angle: float
+    :param offset_distance: Return line offset distance in meters (default 0.5)
+    :type offset_distance: float
+    :raises FileNotFoundError: If input files not found
+    :raises ValueError: If invalid algorithm or malformed data
+    :raises OSError: If output directory cannot be created
+    
+    .. note::
+        Exports unified GeoJSON to base_path/Wärmenetz/Wärmenetz.geojson in EPSG:25833.
     """
     # Load and process all input data layers
     osm_street_layer, heat_consumer_layer, heat_generator_layer, heat_consumer_df = load_layers(

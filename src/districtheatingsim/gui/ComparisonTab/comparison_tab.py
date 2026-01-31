@@ -1,19 +1,15 @@
-import traceback
-
-def debug_print(msg):
-    print(f"[ProjectExplorer DEBUG] {msg}")
 """
-Comparison Tab Module
-====================
+Variant comparison module for district heating project analysis.
 
-Modern tab widget for comprehensive project variant comparison and analysis.
+Provides automatic variant discovery, KPI dashboards, and comparative
+visualization of economic and technical metrics.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-14
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import os
 import json
+import traceback
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -30,9 +26,22 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
 
 
+def debug_print(msg):
+    """
+    Print debug message with ProjectExplorer prefix.
+    
+    :param msg: Debug message
+    :type msg: str
+    """
+    print(f"[ProjectExplorer DEBUG] {msg}")
+
+
 class ProjectExplorer(QWidget):
     """
-    Project explorer widget for automatic variant discovery and selection.
+    Project explorer for automatic variant discovery and selection.
+
+    Scans project folder for available variants and allows multi-selection
+    for comparison analysis.
     """
     
     variants_changed = pyqtSignal(list)  # Signal emitted when variant selection changes
@@ -125,13 +134,22 @@ class ProjectExplorer(QWidget):
         self.layout.addWidget(self.info_label)
         
     def set_base_path(self, base_path):
-        """Set the base path and refresh project list."""
+        """
+        Set base path and refresh project list.
+        
+        :param base_path: Project data base path
+        :type base_path: str
+        """
         self.base_path = base_path
         debug_print(f"set_base_path called with: {base_path}")
         self.discover_projects()
 
     def discover_projects(self):
-        """Discover and populate project variants."""
+        """
+        Discover and populate project variants.
+        
+        Scans parent directory for variant folders and validates them.
+        """
         self.project_tree.clear()
         try:
             debug_print(f"discover_projects: base_path={self.base_path}")
@@ -169,7 +187,14 @@ class ProjectExplorer(QWidget):
     # No longer needed, replaced by set_base_path
             
     def validate_variant(self, variant_path):
-        """Validate if variant contains required data files."""
+        """
+        Validate if variant contains required data files.
+        
+        :param variant_path: Path to variant folder
+        :type variant_path: str
+        :return: True if all required files exist
+        :rtype: bool
+        """
         required_files = [
             os.path.join("Ergebnisse", "Ergebnisse.json"),
             os.path.join("Lastgang", "Lastgang.csv"),
@@ -180,12 +205,23 @@ class ProjectExplorer(QWidget):
         return valid
         
     def on_selection_changed(self, item, column):
-        """Handle variant selection changes."""
+        """
+        Handle variant selection changes in tree widget.
+        
+        :param item: Changed tree item
+        :type item: QTreeWidgetItem
+        :param column: Column index
+        :type column: int
+        """
         if item.data(0, Qt.ItemDataRole.UserRole):  # Only for variant items
             self.update_selected_variants()
             
     def update_selected_variants(self):
-        """Update list of selected variants and emit signal."""
+        """
+        Update list of selected variants and emit signal.
+        
+        Collects all checked variants and emits variants_changed signal.
+        """
         self.selected_variants = []
         for i in range(self.project_tree.topLevelItemCount()):
             variant_item = self.project_tree.topLevelItem(i)
@@ -209,7 +245,10 @@ class ProjectExplorer(QWidget):
 
 class ComparisonDashboard(QWidget):
     """
-    Main dashboard widget showing comparison overview and KPIs.
+    Dashboard widget showing comparison overview and KPIs.
+
+    Displays economic, environmental, and technical metrics across
+    selected variants with interactive charts.
     """
     
     def __init__(self, parent=None):
@@ -775,23 +814,24 @@ class ComparisonDashboard(QWidget):
 
 class ComparisonTab(QWidget):
     """
-    Modern comparison tab widget with comprehensive variant analysis.
+    Comparison tab with comprehensive variant analysis.
+
+    Integrates project explorer, KPI dashboard, and comparative
+    visualizations for multi-variant evaluation.
     """
     
     def __init__(self, folder_manager, data_manager, config_manager, parent=None):
         """
-        Initialize modern comparison tab.
+        Initialize comparison tab.
 
-        Parameters
-        ----------
-        folder_manager : FolderManager
-            Project folder manager.
-        data_manager : DataManager
-            Application data manager.
-        config_manager : ConfigManager
-            Configuration manager.
-        parent : QWidget, optional
-            Parent widget.
+        :param folder_manager: Project folder manager
+        :type folder_manager: ProjectFolderManager
+        :param data_manager: Application data manager
+        :type data_manager: DataManager
+        :param config_manager: Configuration manager
+        :type config_manager: ProjectConfigManager
+        :param parent: Parent widget (optional)
+        :type parent: QWidget
         """
         super().__init__(parent)
         self.folder_manager = folder_manager
@@ -830,7 +870,12 @@ class ComparisonTab(QWidget):
         self.project_explorer.update_selected_variants()  # Initial update to load any pre-selected variants
         
     def create_comparison_content(self):
-        """Create the main comparison content area."""
+        """
+        Create main comparison content area.
+        
+        :return: Content widget with dashboard tabs
+        :rtype: QWidget
+        """
         content_widget = QWidget()
         content_layout = QVBoxLayout(content_widget)
         
@@ -846,7 +891,12 @@ class ComparisonTab(QWidget):
         return content_widget
         
     def on_variants_changed(self, selected_variants):
-        """Handle variant selection changes."""
+        """
+        Handle variant selection changes from explorer.
+        
+        :param selected_variants: List of selected variant info dicts
+        :type selected_variants: list
+        """
         if not selected_variants:
             self.variant_data = []
             self.dashboard.update_dashboard([])
@@ -856,7 +906,12 @@ class ComparisonTab(QWidget):
         self.load_variant_data(selected_variants)
         
     def load_variant_data(self, selected_variants):
-        """Load data for selected variants."""
+        """
+        Load data for selected variants.
+        
+        :param selected_variants: List of selected variant info dicts
+        :type selected_variants: list
+        """
         self.variant_data = []
         
         for variant_info in selected_variants:
@@ -891,7 +946,14 @@ class ComparisonTab(QWidget):
         self.dashboard.update_dashboard(self.variant_data)
         
     def load_network_data(self, variant_path):
-        """Instantiate NetworkGenerationData for the variant, load its data, and calculate KPIs."""
+        """
+        Load network KPI data from variant configuration.
+        
+        :param variant_path: Path to variant folder
+        :type variant_path: str
+        :return: Network KPI data (length, losses, pump energy, building count)
+        :rtype: dict
+        """
         network_data = {
             'Trassenlänge': 0,
             'Verteilverluste': 0,
@@ -915,7 +977,15 @@ class ComparisonTab(QWidget):
         return network_data
         
     def process_variant_results(self, results):
-        """Process raw variant results for comparison."""
+        """
+        Process raw variant results for comparison.
+        
+        :param results: Raw results from JSON file
+        :type results: dict
+        :return: Processed results for dashboard display
+        :rtype: dict
+        :raises ValueError: If processing fails
+        """
         try:
             # Handle primärenergiefaktor_Gesamt which can be float or list
             pe_gesamt = results.get('primärenergiefaktor_Gesamt', 0)

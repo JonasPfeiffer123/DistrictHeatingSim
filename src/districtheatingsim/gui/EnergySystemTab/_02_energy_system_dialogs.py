@@ -2,10 +2,9 @@
 Energy System Dialogs Module
 =============================
 
-This module contains the dialogs for the Energy System Tab, including economic parameters input, cost calculation based on geoJSON files, and weight settings for optimization.
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-05-02
+Dialogs for the Energy System Tab, including economic parameters input, cost calculation, and weight settings for optimization.
 """
 
 import os
@@ -21,30 +20,15 @@ import matplotlib.pyplot as plt
 
 class EconomicParametersDialog(QDialog):
     """
-    A QDialog subclass for inputting economic parameters.
-
-    Attributes:
-        default_values (dict): Dictionary containing the default values for the input fields.
-        gaspreisInput (QLineEdit): Input field for gas price.
-        strompreisInput (QLineEdit): Input field for electricity price.
-        holzpreisInput (QLineEdit): Input field for wood price.
-        kapitalzinsInput (QLineEdit): Input field for capital interest rate.
-        preissteigerungsrateInput (QLineEdit): Input field for price increase rate.
-        betrachtungszeitraumInput (QLineEdit): Input field for evaluation period.
-        stundensatzInput (QLineEdit): Input field for hourly wage rate for maintenance.
-        BEWComboBox (QComboBox): ComboBox for considering BEW funding.
-        fig (Figure): Matplotlib figure for plotting.
-        ax (Axes): Matplotlib axes for plotting.
-        canvas (FigureCanvas): Canvas to display the Matplotlib figure.
-    
+    Dialog for inputting economic parameters.
     """
 
     def __init__(self, parent=None):
         """
-        Initializes the EconomicParametersDialog.
+        Initialize the EconomicParametersDialog.
 
-        Args:
-            parent (QWidget, optional): The parent widget. Defaults to None.
+        :param parent: Parent widget.
+        :type parent: QWidget
         """
         super().__init__(parent)
         self.default_values = {
@@ -64,7 +48,7 @@ class EconomicParametersDialog(QDialog):
 
     def initUI(self):
         """
-        Initializes the user interface components.
+        Initialize user interface components.
         """
         self.setWindowTitle("Eingabe wirtschaftliche Parameter")
 
@@ -134,10 +118,10 @@ class EconomicParametersDialog(QDialog):
 
     def loadValues(self, values):
         """
-        Loads the given values into the input fields.
+        Load values into input fields.
 
-        Args:
-            values (dict): Dictionary containing the values to load.
+        :param values: Dictionary containing values to load.
+        :type values: dict
         """
         self.gaspreisInput.setText(str(values["gas_price"]))
         self.strompreisInput.setText(str(values["electricity_price"]))
@@ -150,10 +134,10 @@ class EconomicParametersDialog(QDialog):
 
     def getValues(self):
         """
-        Gets the values from the input fields.
+        Get values from input fields.
 
-        Returns:
-            dict: A dictionary containing the input values.
+        :return: Dictionary containing input values.
+        :rtype: dict
         """
         return {
             "gas_price": float(self.gaspreisInput.text()),
@@ -168,10 +152,10 @@ class EconomicParametersDialog(QDialog):
 
     def updateValues(self, new_values):
         """
-        Updates the default values and reloads them into the input fields.
+        Update default values and reload them into input fields.
 
-        Args:
-            new_values (dict): Dictionary containing the new values.
+        :param new_values: Dictionary containing new values.
+        :type new_values: dict
         """
         self.default_values.update(new_values)
         self.loadValues(self.default_values)
@@ -180,7 +164,7 @@ class EconomicParametersDialog(QDialog):
 
     def connectSignals(self):
         """
-        Connects the signals of the input fields to the validation method.
+        Connect input field signals to validation method.
         """
         self.gaspreisInput.textChanged.connect(self.validateInput)
         self.strompreisInput.textChanged.connect(self.validateInput)
@@ -193,7 +177,7 @@ class EconomicParametersDialog(QDialog):
 
     def validateInput(self):
         """
-        Validates the input fields and updates the plot if valid.
+        Validate input fields and update plot if valid.
         """
         try:
             float(self.gaspreisInput.text())
@@ -211,10 +195,10 @@ class EconomicParametersDialog(QDialog):
 
     def showErrorMessage(self, message):
         """
-        Shows an error message dialog.
+        Show error message dialog.
 
-        Args:
-            message (str): The message to display.
+        :param message: Message to display.
+        :type message: str
         """
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Icon.Warning)
@@ -224,7 +208,7 @@ class EconomicParametersDialog(QDialog):
 
     def plotPriceDevelopment(self):
         """
-        Plots the price development of energy carriers over time.
+        Plot price development of energy carriers over time.
         """
         self.ax.clear()
 
@@ -249,26 +233,21 @@ class EconomicParametersDialog(QDialog):
 
 class KostenBerechnungDialog(QDialog):
     """
-    A QDialog subclass for calculating costs based on a geoJSON file.
-
-    Attributes:
-        base_path (str): The base path for loading the geoJSON file.
-        filename (str): The filename of the geoJSON file.
-        label (str): The label for the specific cost input field.
-        value (str): The default value for the specific cost input field.
-        type (str): The type of cost calculation.
-        total_cost (float): The total calculated cost.
+    Dialog for calculating costs based on a geoJSON file.
     """
 
     def __init__(self, parent=None, label=None, value=None, type=None):
         """
-        Initializes the KostenBerechnungDialog.
+        Initialize the KostenBerechnungDialog.
 
-        Args:
-            parent (QWidget, optional): The parent widget. Defaults to None.
-            label (str, optional): The label for the specific cost input field. Defaults to None.
-            value (str, optional): The default value for the specific cost input field. Defaults to None.
-            type (str, optional): The type of cost calculation. Defaults to None.
+        :param parent: Parent widget.
+        :type parent: QWidget
+        :param label: Label for specific cost input field.
+        :type label: str
+        :param value: Default value for specific cost input field.
+        :type value: str
+        :param type: Type of cost calculation.
+        :type type: str
         """
         super().__init__(parent)
         self.base_path = parent.base_path
@@ -282,7 +261,7 @@ class KostenBerechnungDialog(QDialog):
 
     def initUI(self):
         """
-        Initializes the user interface components.
+        Initialize user interface components.
         """
         self.layout = QVBoxLayout(self)
 
@@ -305,7 +284,7 @@ class KostenBerechnungDialog(QDialog):
 
     def onAccept(self):
         """
-        Reads the unified GeoJSON file and calculates the total cost based on the input values.
+        Read unified GeoJSON file and calculate total cost based on input values.
         """
         from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
         
@@ -344,18 +323,12 @@ class KostenBerechnungDialog(QDialog):
     
 class WeightDialog(QDialog):
     """
-    A QDialog subclass for setting weights for optimization.
-
-    Attributes:
-        wgk_input (QLineEdit): Input field for the weight of heat generation costs.
-        co2_input (QLineEdit): Input field for the weight of specific CO2 emissions.
-        pe_input (QLineEdit): Input field for the weight of the primary energy factor.
-        button_box (QDialogButtonBox): Dialog button box for OK and Cancel buttons.
+    Dialog for setting weights for optimization.
     """
     
     def __init__(self):
         """
-        Initializes the WeightDialog.
+        Initialize the WeightDialog.
         """
         super().__init__()
         
@@ -387,10 +360,10 @@ class WeightDialog(QDialog):
     
     def get_weights(self):
         """
-        Gets the weights from the input fields.
+        Get weights from input fields.
 
-        Returns:
-            dict: A dictionary with weights for heat generation costs, CO2 emissions, and primary energy factor.
+        :return: Dictionary with weights for heat generation costs, CO2 emissions, and primary energy factor.
+        :rtype: dict
         """
         try:
             wgk_weight = float(self.wgk_input.text())

@@ -2,28 +2,11 @@
 STES Simulation Module
 ================================
 
-This module implements sophisticated Seasonal Thermal Energy Storage (STES) systems
-with detailed mass flow calculations, temperature-dependent storage operations, and
-realistic hydraulic behavior modeling.
+Seasonal Thermal Energy Storage with mass flow and temperature-dependent operations.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-06-26
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 
-It extends stratified thermal storage to include
-mass flow dynamics, charging/discharging controls, and operational constraints for
-district heating applications.
-
-The implementation is based on validated research methods and provides comprehensive
-analysis of STES performance including stagnation effects, unmet demand calculations,
-and system integration aspects critical for seasonal energy storage design.
-
-References
-----------
-Simulation method for assessing hourly energy flows in district heating system with seasonal thermal energy storage
-Authors: Kapil Narula, Fleury de Oliveira Filho, Willy Villasmil, Martin K. Patel
-Journal: Renewable Energy, Volume 151, May 2020, Pages 1250-1268
-DOI: https://doi.org/10.1016/j.renene.2019.11.121
-Link: https://www.sciencedirect.com/science/article/pii/S0960148119318154
+.. note:: Based on Narula et al., Renewable Energy 151 (2020), DOI: 10.1016/j.renene.2019.11.121
 """
 
 import os
@@ -37,212 +20,17 @@ from districtheatingsim.heat_generators.STES_animation import STESAnimation
 
 class STES(StratifiedThermalStorage):
     """
-    Advanced Seasonal Thermal Energy Storage (STES) system with mass flow modeling.
+    Seasonal Thermal Energy Storage with mass flow modeling.
 
-    This class extends the StratifiedThermalStorage to implement sophisticated STES
-    systems with detailed mass flow calculations, hydraulic constraints, and realistic
-    operational behavior. It provides comprehensive modeling of charging and discharging
-    operations including temperature-dependent flow controls, stagnation prevention,
-    and system integration aspects for district heating applications.
-
-    The STES model incorporates:
-    - Mass flow-based energy transfer calculations
-    - Temperature-dependent operational constraints
-    - Charging and discharging flow patterns
-    - Stagnation and overheating protection
-    - Unmet demand tracking and analysis
-    - System integration with heat sources and consumers
-
-    Parameters
-    ----------
-    **kwargs
-        All parameters from parent StratifiedThermalStorage class.
-        See StratifiedThermalStorage documentation for complete parameter list.
-
-    Attributes
-    ----------
-    mass_flow_in : numpy.ndarray
-        Heat input mass flow rate time series [kg/s].
-        Calculated based on heat input and temperature differences.
-    mass_flow_out : numpy.ndarray
-        Heat output mass flow rate time series [kg/s].
-        Calculated based on heat demand and temperature differences.
-    T_Q_in_flow : numpy.ndarray
-        Heat source supply temperature time series [°C].
-        Temperature of heat input from generators (e.g., solar collectors).
-    T_Q_in_return : numpy.ndarray
-        Heat source return temperature time series [°C].
-        Return temperature to heat generators from storage bottom.
-    T_Q_out_flow : numpy.ndarray
-        Consumer supply temperature time series [°C].
-        Supply temperature from storage top to consumers.
-    T_Q_out_return : numpy.ndarray
-        Consumer return temperature time series [°C].
-        Return temperature from consumers to storage.
-    excess_heat : float
-        Total excess heat due to storage stagnation [kWh].
-        Heat that cannot be stored due to temperature limitations.
-    unmet_demand : float
-        Total unmet heat demand [kWh].
-        Demand that cannot be satisfied due to insufficient storage temperature.
-    stagnation_time : int
-        Total stagnation duration [hours].
-        Time periods when storage cannot accept additional heat input.
-    storage_state : numpy.ndarray
-        Storage charge state time series [0-1].
-        Fraction of maximum possible energy content.
-    Q_net_storage_flow : numpy.ndarray
-        Net storage energy flow time series [kW].
-        Positive for discharge, negative for charge operations.
-    T_max_rücklauf : float
-        Maximum allowable return temperature to generators [°C].
-        Thermal protection limit for heat source equipment.
-    dT_VLT : float
-        Supply temperature tolerance [K].
-        Minimum temperature difference for acceptable supply conditions.
-
-    Notes
-    -----
-    Mass Flow Calculations:
-        
-        **Heat Input Mass Flow**:
-        ṁ_in = Q_in / (cp × (T_supply - T_return_bottom))
-        
-        **Heat Output Mass Flow**:
-        ṁ_out = Q_out / (cp × (T_top - T_return_consumer))
-        
-        **Energy Transfer**:
-        Q = ṁ × cp × ΔT [kW]
-
-    Operational Constraints:
-        
-        **Charging Limitations**:
-        - Storage bottom temperature must remain below T_max_rücklauf
-        - Sufficient temperature difference required for heat transfer
-        - Mass flow limited by thermal capacity and temperature gradients
-        
-        **Discharging Limitations**:
-        - Storage top temperature must exceed consumer requirements
-        - Minimum supply temperature maintained within dT_VLT tolerance
-        - Mass flow adjusted for varying temperature conditions
-
-    Storage Control Logic:
-        
-        **Charging Priority**:
-        1. Check bottom layer temperature vs. maximum return limit
-        2. Calculate required mass flow for heat input
-        3. Distribute heat input through layers (top to bottom)
-        4. Track excess heat during stagnation conditions
-        
-        **Discharging Priority**:
-        1. Check top layer temperature vs. minimum supply requirement
-        2. Calculate available mass flow for heat output
-        3. Extract heat from layers (bottom to top for return flow)
-        4. Track unmet demand when insufficient temperature available
-
-    Thermal Stratification:
-        Natural temperature stratification maintained through:
-        - Density-driven buoyancy effects
-        - Controlled inlet/outlet positioning
-        - Layer-specific mixing calculations
-        - Temperature-dependent flow distribution
-
-    Examples
-    --------
-    >>> # Create STES system for district heating
-    >>> import numpy as np
-    >>> 
-    >>> stes_params = {
-    ...     "storage_type": "truncated_cone",
-    ...     "dimensions": (25.0, 35.0, 15.0),  # Large-scale PTES
-    ...     "rho": 1000,  # Water density
-    ...     "cp": 4186,   # Water heat capacity
-    ...     "T_ref": 10,  # Reference temperature
-    ...     "lambda_top": 0.025,     # Insulation properties
-    ...     "lambda_side": 0.035,
-    ...     "lambda_bottom": 0.04,
-    ...     "lambda_soil": 2.0,      # Soil conductivity
-    ...     "dt_top": 0.3,           # Insulation thickness
-    ...     "ds_side": 0.5,
-    ...     "db_bottom": 0.3,
-    ...     "T_amb": 8,    # Ambient conditions
-    ...     "T_soil": 10,
-    ...     "T_max": 90,   # Operating temperature range
-    ...     "T_min": 20,
-    ...     "initial_temp": 45,  # Initial condition
-    ...     "hours": 8760,       # Annual simulation
-    ...     "num_layers": 10,    # Detailed stratification
-    ...     "thermal_conductivity": 0.6
-    ... }
-
-    >>> # Initialize STES system
-    >>> seasonal_storage = STES(name="District_STES_01", **stes_params)
-
-    >>> # Load realistic demand profile
-    >>> # Assume hourly district heating demand data
-    >>> Q_out_profile = np.array([...])  # Load from CSV or database
-
-    >>> # Define supply conditions
-    >>> T_supply_profile = np.full(8760, 85.0)     # Solar collector supply
-    >>> T_return_profile = np.full(8760, 45.0)     # Consumer return
-
-    >>> # Create seasonal heat input pattern
-    >>> time = np.arange(8760)
-    >>> solar_input = 500 * np.maximum(0, np.sin(2 * np.pi * (time - 2000) / 8760))
-    >>> Q_in_profile = solar_input  # kW
-
-    >>> # Run detailed STES simulation
-    >>> for hour in range(8760):
-    ...     seasonal_storage.simulate_stratified_temperature_mass_flows(
-    ...         hour, 
-    ...         Q_in_profile[hour], 
-    ...         Q_out_profile[hour],
-    ...         T_supply_profile[hour], 
-    ...         T_return_profile[hour]
-    ...     )
-
-    >>> # Analyze seasonal performance
-    >>> print(f"Annual efficiency: {seasonal_storage.efficiency:.1%}")
-    >>> print(f"Excess heat (stagnation): {seasonal_storage.excess_heat:.0f} kWh")
-    >>> print(f"Unmet demand: {seasonal_storage.unmet_demand:.0f} kWh")
-    >>> print(f"Stagnation hours: {seasonal_storage.stagnation_time}")
-
-    >>> # Storage utilization analysis
-    >>> max_energy = seasonal_storage.volume * seasonal_storage.rho * seasonal_storage.cp * (90-20) / 3.6e9
-    >>> utilization = seasonal_storage.Q_sto.max() / (max_energy * 1e6)  # Convert to kWh
-    >>> print(f"Peak storage utilization: {utilization:.1%}")
-
-    >>> # Mass flow analysis
-    >>> avg_flow_in = seasonal_storage.mass_flow_in[seasonal_storage.mass_flow_in > 0].mean()
-    >>> avg_flow_out = seasonal_storage.mass_flow_out[seasonal_storage.mass_flow_out > 0].mean()
-    >>> print(f"Average charging flow: {avg_flow_in:.2f} kg/s")
-    >>> print(f"Average discharging flow: {avg_flow_out:.2f} kg/s")
-
-    >>> # Generate comprehensive results visualization
-    >>> seasonal_storage.plot_results(
-    ...     Q_in_profile, Q_out_profile, 
-    ...     T_supply_profile, T_return_profile
-    ... )
-
-    >>> # Interactive 3D visualization
-    >>> from districtheatingsim.heat_generators.STES_animation import STESAnimation
-    >>> animation = STESAnimation(seasonal_storage)
-    >>> animation.show()
-
-    See Also
-    --------
-    StratifiedThermalStorage : Base stratified storage implementation
-    SimpleThermalStorage : Simplified storage model without stratification
-    simulate_stratified_temperature_mass_flows : Main simulation method
-    current_storage_state : Storage charge state calculation
-    plot_results : Comprehensive visualization of STES performance
+    .. note::
+       Extends StratifiedThermalStorage with mass flow calculations and stagnation prevention.
     """
     def __init__(self, **kwargs):
         """
-        Initialize STES system with mass flow modeling capabilities.
-        
-        Extends parent initialization with STES-specific attributes including
-        mass flow arrays, temperature tracking, and operational constraints.
+        Initialize STES system with mass flow modeling and temperature tracking.
+
+        .. note::
+           Extends StratifiedThermalStorage with mass flow arrays, temperature interfaces, and operational constraints.
         """
         super().__init__(**kwargs)
 
@@ -274,145 +62,21 @@ class STES(StratifiedThermalStorage):
         """
         Simulate stratified STES operation with mass flow and temperature dynamics.
 
-        This method performs comprehensive simulation of STES operation including mass flow
-        calculations, temperature-dependent charging/discharging controls, thermal stratification
-        effects, and operational constraint enforcement. It provides detailed modeling of
-        real-world STES behavior for district heating system integration.
+        :param t: Current simulation time step (hours, 0 to hours-1)
+        :type t: int
+        :param Q_in: Heat input power from generators (kW)
+        :type Q_in: float
+        :param Q_out: Heat demand from consumers (kW)
+        :type Q_out: float
+        :param T_Q_in_flow: Heat source supply temperature (°C)
+        :type T_Q_in_flow: float
+        :param T_Q_out_return: Consumer return temperature (°C)
+        :type T_Q_out_return: float
+        :raises ValueError: If time step outside valid range
+        :raises RuntimeError: If mass flow calculations non-physical
 
-        Parameters
-        ----------
-        t : int
-            Current simulation time step [hours].
-            Must be within range [0, hours-1] for valid operation.
-        Q_in : float
-            Heat input power from generators [kW].
-            Positive values represent available heat for storage charging.
-        Q_out : float
-            Heat demand from consumers [kW].
-            Positive values represent heat extraction requirements.
-        T_Q_in_flow : float
-            Heat source supply temperature [°C].
-            Temperature of incoming heat from generators (e.g., solar collectors).
-        T_Q_out_return : float
-            Consumer return temperature [°C].
-            Return temperature from district heating consumers.
-
-        Notes
-        -----
-        Simulation Sequence:
-            
-            **Initialization Phase (t=0)**:
-            1. Initialize layer temperatures to uniform initial condition
-            2. Calculate initial heat losses and stored energy
-            3. Set up thermal stratification arrays
-            
-            **Operational Phase (t>0)**:
-            1. **Heat Loss Calculation**: Layer-specific thermal losses
-            2. **Inter-layer Conduction**: Temperature-driven heat transfer
-            3. **Storage State Assessment**: Temperature-based operational limits
-            4. **Mass Flow Calculation**: Heat transfer rate determination
-            5. **Charging Operation**: Top-down heat input distribution
-            6. **Discharging Operation**: Bottom-up heat extraction
-            7. **Temperature Update**: Layer-specific temperature evolution
-
-        Mass Flow Calculations:
-            
-            **Charging Mass Flow**:
-            If bottom layer temperature allows charging:
-            ṁ_in = Q_in × 1000 / (cp × (T_supply - T_bottom))
-            
-            **Discharging Mass Flow**:
-            If top layer temperature allows discharging:
-            ṁ_out = Q_out × 1000 / (cp × (T_top - T_return))
-
-        Operational Logic:
-            
-            **Charging Constraints**:
-            - Bottom layer temperature < T_max_rücklauf (generator protection)
-            - Sufficient temperature difference for heat transfer
-            - Excess heat tracking during stagnation conditions
-            
-            **Discharging Constraints**:
-            - Top layer temperature > T_supply - dT_VLT (supply quality)
-            - Adequate temperature for consumer requirements
-            - Unmet demand tracking when storage insufficient
-
-        Heat Distribution:
-            
-            **Charging (Top to Bottom)**:
-            Heat input enters top layers first, maintaining stratification:
-            - Calculate mixing temperature with layer content
-            - Update layer energy and temperature
-            - Pass modified temperature to next layer
-            
-            **Discharging (Bottom to Top)**:
-            Return flow enters bottom, extracts heat upward:
-            - Calculate mixing temperature with return flow
-            - Extract available heat based on temperature difference
-            - Update layer conditions and flow temperature
-
-        Quality Assurance:
-            - Temperature bounds enforcement
-            - Energy conservation verification
-            - Mass flow physical limits
-            - Stratification preservation
-
-        Examples
-        --------
-        >>> # Single time step simulation example
-        >>> import numpy as np
-        >>> 
-        >>> # Initialize STES system
-        >>> stes = STES(name="Example_STES", **stes_params)
-        >>> 
-        >>> # Simulate charging operation
-        >>> stes.simulate_stratified_temperature_mass_flows(
-        ...     t=100,              # Time step
-        ...     Q_in=750,           # Heat input [kW]
-        ...     Q_out=200,          # Heat demand [kW]
-        ...     T_Q_in_flow=85,     # Supply temperature [°C]
-        ...     T_Q_out_return=45   # Return temperature [°C]
-        ... )
-
-        >>> # Check operational status
-        >>> print(f"Mass flow in: {stes.mass_flow_in[100]:.2f} kg/s")
-        >>> print(f"Mass flow out: {stes.mass_flow_out[100]:.2f} kg/s")
-        >>> print(f"Net storage flow: {stes.Q_net_storage_flow[100]:.1f} kW")
-
-        >>> # Analyze layer temperatures
-        >>> temps = stes.T_sto_layers[100, :]
-        >>> print(f"Top layer: {temps[0]:.1f}°C")
-        >>> print(f"Bottom layer: {temps[-1]:.1f}°C")
-        >>> print(f"Temperature gradient: {temps[0] - temps[-1]:.1f} K")
-
-        >>> # Seasonal simulation loop
-        >>> for hour in range(8760):
-        ...     # Define time-varying inputs
-        ...     solar_available = 500 * max(0, np.sin(2 * np.pi * hour / 8760))
-        ...     heating_demand = 300 + 200 * np.cos(2 * np.pi * hour / 8760)
-        ...     
-        ...     # Simulate time step
-        ...     stes.simulate_stratified_temperature_mass_flows(
-        ...         hour, solar_available, heating_demand, 85.0, 45.0
-        ...     )
-
-        >>> # Performance analysis
-        >>> print(f"Total excess heat: {stes.excess_heat:.0f} kWh")
-        >>> print(f"Total unmet demand: {stes.unmet_demand:.0f} kWh")
-        >>> print(f"Stagnation duration: {stes.stagnation_time} hours")
-
-        Raises
-        ------
-        ValueError
-            If time step is outside valid simulation range.
-        RuntimeError
-            If mass flow calculations result in non-physical values.
-
-        See Also
-        --------
-        current_storage_state : Calculate storage charge level
-        current_storage_temperatures : Get storage temperature conditions
-        calculate_stratified_heat_loss : Layer-specific heat loss calculation
+        .. note::
+           Includes mass flow calculations, temperature-dependent charging/discharging controls, thermal stratification, and operational constraint enforcement.
         """
         # Create local copies to avoid modifying input parameters
         T_Q_in_flow_copy = np.copy(T_Q_in_flow)
@@ -566,79 +230,17 @@ class STES(StratifiedThermalStorage):
         """
         Calculate current storage charge state and energy content.
 
-        This method determines the current charge level of the STES system as a fraction
-        of maximum possible energy content. It provides essential information for storage
-        management, operational control, and system integration in district heating networks.
+        :param t: Current time step
+        :type t: int
+        :param T_Q_out_return: Consumer return temperature (°C)
+        :type T_Q_out_return: float
+        :param T_Q_in_flow: Generator supply temperature (°C)
+        :type T_Q_in_flow: float
+        :return: Tuple (storage_fraction [0-1], available_energy [kWh], max_energy [kWh])
+        :rtype: tuple
 
-        Parameters
-        ----------
-        t : int
-            Current time step for state calculation.
-        T_Q_out_return : float
-            Consumer return temperature [°C].
-            Reference temperature for available energy calculation.
-        T_Q_in_flow : float
-            Generator supply temperature [°C].
-            Reference temperature for maximum energy calculation.
-
-        Returns
-        -------
-        tuple
-            Storage state information containing:
-            - storage_fraction (float): Charge state [0-1]
-            - available_energy (float): Currently available energy [kWh]
-            - max_energy (float): Maximum possible energy content [kWh]
-
-        Notes
-        -----
-        Energy Calculations:
-            
-            **Available Energy**:
-            E_available = Σ(T_storage - T_return) × V_layer × ρ × cp / 3.6e6
-            
-            **Maximum Energy**:
-            E_max = Σ(T_supply - T_return) × V_layer × ρ × cp / 3.6e6
-            
-            **Storage Fraction**:
-            f_storage = E_available / E_max
-
-        Physical Interpretation:
-            - 0.0: Storage at minimum useful temperature (empty)
-            - 1.0: Storage at maximum charging temperature (full)
-            - >1.0: Storage overcharged (should not occur in normal operation)
-
-        Applications:
-            - Storage management and control algorithms
-            - System integration with heat sources and loads
-            - Performance monitoring and optimization
-            - Predictive control strategies
-
-        Examples
-        --------
-        >>> # Calculate storage state during operation
-        >>> state, available, maximum = stes.current_storage_state(
-        ...     t=1000,
-        ...     T_Q_out_return=45.0,
-        ...     T_Q_in_flow=85.0
-        ... )
-        >>> 
-        >>> print(f"Storage charge level: {state:.1%}")
-        >>> print(f"Available energy: {available:.0f} kWh")
-        >>> print(f"Maximum capacity: {maximum:.0f} kWh")
-        >>> print(f"Energy utilization: {available/maximum:.1%}")
-
-        >>> # Monitor storage state over time
-        >>> states = []
-        >>> for hour in range(8760):
-        ...     state, _, _ = stes.current_storage_state(hour, 45.0, 85.0)
-        ...     states.append(state)
-        >>> 
-        >>> # Analyze storage utilization patterns
-        >>> import matplotlib.pyplot as plt
-        >>> plt.plot(states)
-        >>> plt.ylabel('Storage Charge State')
-        >>> plt.xlabel('Time (hours)')
-        >>> plt.title('Annual Storage State Evolution')
+        .. note::
+           Storage fraction: 0.0 = empty, 1.0 = full. Based on available energy above return temperature.
         """
         # Determine reference storage temperature
         if t == 0:
@@ -671,20 +273,12 @@ class STES(StratifiedThermalStorage):
 
     def current_storage_temperatures(self, t: int) -> tuple:
         """
-        Get current storage interface temperatures.
+        Get current storage interface temperatures for system integration.
 
-        Returns the supply and return temperatures at the storage interfaces
-        for system integration and control purposes.
-
-        Parameters
-        ----------
-        t : int
-            Current time step.
-
-        Returns
-        -------
-        tuple
-            Storage interface temperatures (supply_temp, return_temp) [°C].
+        :param t: Current time step
+        :type t: int
+        :return: Tuple (supply_temp, return_temp) in °C
+        :rtype: tuple
         """
         if t == 0:
             return self.T_sto[t], self.T_sto[t]
@@ -697,51 +291,37 @@ class STES(StratifiedThermalStorage):
                        Energiebedarf: float, Energiekosten: float, E1: float, 
                        stundensatz: float) -> None:
         """
-        Calculate heat generation costs for the STES system.
+        Calculate heat generation costs including investment and operational expenses.
 
-        This method computes the economic performance of the STES system including
-        investment costs, operational expenses, and heat generation costs per unit
-        energy delivered. It provides essential economic data for system optimization
-        and investment decision support.
+        :param Wärmemenge_MWh: Annual heat delivery (MWh/year)
+        :type Wärmemenge_MWh: float
+        :param Investitionskosten: Total investment costs (€)
+        :type Investitionskosten: float
+        :param Nutzungsdauer: System lifetime (years)
+        :type Nutzungsdauer: float
+        :param f_Inst: Installation cost factor
+        :type f_Inst: float
+        :param f_W_Insp: Maintenance and inspection cost factor
+        :type f_W_Insp: float
+        :param Bedienaufwand: Operation effort (hours/year)
+        :type Bedienaufwand: float
+        :param q: Interest rate factor
+        :type q: float
+        :param r: Real interest rate
+        :type r: float
+        :param T: Economic lifetime (years)
+        :type T: float
+        :param Energiebedarf: Energy consumption (kWh/year)
+        :type Energiebedarf: float
+        :param Energiekosten: Energy costs (€/kWh)
+        :type Energiekosten: float
+        :param E1: Reference energy (kWh)
+        :type E1: float
+        :param stundensatz: Labor cost rate (€/hour)
+        :type stundensatz: float
 
-        Parameters
-        ----------
-        Wärmemenge_MWh : float
-            Annual heat delivery [MWh/year].
-        Investitionskosten : float
-            Total investment costs [€].
-        Nutzungsdauer : float
-            System lifetime [years].
-        f_Inst : float
-            Installation cost factor [-].
-        f_W_Insp : float
-            Maintenance and inspection cost factor [-].
-        Bedienaufwand : float
-            Operation effort [hours/year].
-        q : float
-            Interest rate factor [-].
-        r : float
-            Real interest rate [-].
-        T : float
-            Economic lifetime [years].
-        Energiebedarf : float
-            Energy consumption [kWh/year].
-        Energiekosten : float
-            Energy costs [€/kWh].
-        E1 : float
-            Reference energy [kWh].
-        stundensatz : float
-            Labor cost rate [€/hour].
-
-        Notes
-        -----
-        The method calculates:
-        - Annualized costs including capital and operational expenses
-        - Specific heat generation costs [€/MWh]
-        - Economic performance indicators
-
-        This follows German VDI guidelines for economic assessment
-        of thermal energy systems.
+        .. note::
+           Follows VDI guidelines for economic assessment. Calculates annualized costs and specific heat generation costs (€/MWh).
         """
         # Store parameters for cost calculation
         self.Wärmemenge_MWh = Wärmemenge_MWh
@@ -773,12 +353,10 @@ class STES(StratifiedThermalStorage):
 
     def get_display_text(self) -> str:
         """
-        Generate display text for system identification.
+        Generate display text with key system parameters.
 
-        Returns
-        -------
-        str
-            Formatted display text with key system parameters.
+        :return: Formatted text with type, volume, temperatures, layers
+        :rtype: str
         """
         return (f"{self.storage_type.capitalize()} STES: Volume: {self.volume:.1f} m³, "
                 f"Max Temp: {self.T_max:.1f} °C, Min Temp: {self.T_min:.1f} °C, "
@@ -788,10 +366,8 @@ class STES(StratifiedThermalStorage):
         """
         Extract technical data for system documentation.
 
-        Returns
-        -------
-        tuple
-            Technical data (type, dimensions, costs, full_costs).
+        :return: Tuple (type, dimensions, costs, full_costs)
+        :rtype: tuple
         """
         storage_type = self.storage_type.capitalize() + " STES"
         dimensions = f"Volume: {self.volume:.1f} m³, Layers: {self.num_layers}"
@@ -802,38 +378,19 @@ class STES(StratifiedThermalStorage):
     def plot_results(self, Q_in: np.ndarray, Q_out: np.ndarray, 
                     T_Q_in_flow: np.ndarray, T_Q_out_return: np.ndarray) -> None:
         """
-        Generate comprehensive visualization of STES simulation results.
+        Generate comprehensive multi-panel visualization of STES simulation results.
 
-        This method creates a detailed multi-panel visualization showing all aspects
-        of STES performance including energy flows, temperatures, storage states,
-        and 3D geometry representation for complete system analysis.
+        :param Q_in: Heat input time series (kW)
+        :type Q_in: numpy.ndarray
+        :param Q_out: Heat output time series (kW)
+        :type Q_out: numpy.ndarray
+        :param T_Q_in_flow: Supply temperature time series (°C)
+        :type T_Q_in_flow: numpy.ndarray
+        :param T_Q_out_return: Return temperature time series (°C)
+        :type T_Q_out_return: numpy.ndarray
 
-        Parameters
-        ----------
-        Q_in : numpy.ndarray
-            Heat input time series [kW].
-        Q_out : numpy.ndarray
-            Heat output time series [kW].
-        T_Q_in_flow : numpy.ndarray
-            Supply temperature time series [°C].
-        T_Q_out_return : numpy.ndarray
-            Return temperature time series [°C].
-
-        Notes
-        -----
-        Visualization Panels:
-            1. Energy flows and storage net flow
-            2. System temperatures
-            3. Heat losses
-            4. Stored energy content
-            5. Stratified layer temperatures
-            6. 3D temperature distribution
-
-        The visualization provides comprehensive insight into:
-        - Seasonal energy patterns
-        - Storage charging/discharging cycles
-        - Temperature stratification effects
-        - System integration performance
+        .. note::
+           Shows energy flows, temperatures, heat losses, stored energy, layer temperatures, and 3D temperature distribution.
         """
         fig = plt.figure(figsize=(16, 10))
         

@@ -63,7 +63,7 @@ print("Wärmenetz-Layer erfolgreich erstellt.")
 
 # Load unified GeoJSON and extract layers for visualization
 
-unified_geojson = NetworkGeoJSONSchema.load_from_file(f"{base_path}\Wärmenetz\Wärmenetz.geojson")
+unified_geojson = NetworkGeoJSONSchema.import_from_file(f"{base_path}\Wärmenetz\Wärmenetz.geojson")
 vorlauf, rücklauf, hast, erzeuger = NetworkGeoJSONSchema.split_to_legacy_format(unified_geojson)
 
 print("Layer erfolgreich geladen.")
