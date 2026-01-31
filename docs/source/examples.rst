@@ -118,18 +118,18 @@ Heat Generation Optimization
 
 Heat generation system optimization example.
 
-Building Analysis Examples
+Economic Analysis Examples
 --------------------------
 
-Renovation Analysis
+Annuity Calculation
 ~~~~~~~~~~~~~~~~~~~
 
-.. literalinclude:: ../../examples/12_example_renovation_analysis.py
+.. literalinclude:: ../../examples/15_example_annuity.py
    :language: python
    :linenos:
-   :caption: 12_example_renovation_analysis.py
+   :caption: 15_example_annuity.py
 
-Building renovation economic analysis example.
+Economic evaluation and annuity calculation example.
 
 Visualization Examples
 ----------------------
