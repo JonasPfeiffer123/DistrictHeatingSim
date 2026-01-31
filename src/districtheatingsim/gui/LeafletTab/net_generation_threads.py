@@ -1,11 +1,11 @@
 """
 Net Generation Threads Module
-=============================
+==============================
 
-Threading classes for network generation, file import, and geocoding operations.
+This module provides threading classes for network generation, file import,
+and geocoding operations to maintain GUI responsiveness.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-10
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import geopandas as gpd
@@ -28,19 +28,25 @@ class NetGenerationThread(QThread):
         """
         Initialize network generation thread.
 
-        Parameters
-        ----------
-        inputs : dict
-            Input parameters for network generation.
-        base_path : str
-            Base path for file operations.
+        Sets up the thread with input parameters for generating district heating
+        networks using different algorithms.
+
+        :param inputs: Input parameters for network generation
+        :type inputs: dict
+        :param base_path: Base path for file operations
+        :type base_path: str
         """
         super().__init__()
         self.inputs = inputs
         self.base_path = base_path
 
     def run(self):
-        """Run network generation process."""
+        """
+        Run network generation process.
+        
+        Executes the network generation based on the selected algorithm
+        (OSMnx or traditional MST/Steiner) and emits signals on completion or error.
+        """
         try:
             print("Starting network generation thread...")
             print(f"Generation mode: {self.inputs['generation_mode']}")
@@ -73,7 +79,11 @@ class NetGenerationThread(QThread):
             self.calculation_error.emit(Exception(error_msg))
 
     def stop(self):
-        """Stop thread execution."""
+        """
+        Stop thread execution.
+        
+        Requests interruption and waits for the thread to finish if it is currently running.
+        """
         if self.isRunning():
             self.requestInterruption()
             self.wait()
@@ -90,14 +100,15 @@ class OSMStreetDownloadThread(QThread):
         """
         Initialize OSM street download thread.
         
-        Parameters
-        ----------
-        download_func : callable
-            The download function to execute.
-        *args : tuple
-            Positional arguments for download_func.
-        **kwargs : dict
-            Keyword arguments for download_func.
+        Sets up the thread with a download function and its arguments for
+        downloading OpenStreetMap street data asynchronously.
+        
+        :param download_func: The download function to execute
+        :type download_func: callable
+        :param args: Positional arguments for download_func
+        :type args: tuple
+        :param kwargs: Keyword arguments for download_func
+        :type kwargs: dict
         """
         super().__init__()
         self.download_func = download_func
@@ -105,7 +116,12 @@ class OSMStreetDownloadThread(QThread):
         self.kwargs = kwargs
     
     def run(self):
-        """Run download process."""
+        """
+        Run download process.
+        
+        Executes the download function and emits the filepath on success
+        or an error message on failure.
+        """
         try:
             filepath = self.download_func(*self.args, **self.kwargs)
             self.download_done.emit(filepath)
@@ -126,14 +142,15 @@ class OSMBuildingDownloadThread(QThread):
         """
         Initialize OSM building download thread.
         
-        Parameters
-        ----------
-        download_func : callable
-            The download function to execute.
-        *args : tuple
-            Positional arguments for download_func.
-        **kwargs : dict
-            Keyword arguments for download_func.
+        Sets up the thread with a download function and its arguments for
+        downloading OpenStreetMap building data asynchronously.
+        
+        :param download_func: The download function to execute
+        :type download_func: callable
+        :param args: Positional arguments for download_func
+        :type args: tuple
+        :param kwargs: Keyword arguments for download_func
+        :type kwargs: dict
         """
         super().__init__()
         self.download_func = download_func
@@ -141,7 +158,12 @@ class OSMBuildingDownloadThread(QThread):
         self.kwargs = kwargs
     
     def run(self):
-        """Run download process."""
+        """
+        Run download process.
+        
+        Executes the download function and emits the filepath and building count
+        on success or an error message on failure.
+        """
         try:
             filepath, building_count = self.download_func(*self.args, **self.kwargs)
             self.download_done.emit(filepath, building_count)
@@ -161,14 +183,15 @@ class FileImportThread(QThread):
         """
         Initialize file import thread.
 
-        Parameters
-        ----------
-        m : object
-            Map object for visualization.
-        filenames : list
-            List of filenames to import.
-        color : str
-            Color for visualization styling.
+        Sets up the thread with map object, filenames, and styling color
+        for importing geospatial files asynchronously.
+
+        :param m: Map object for visualization
+        :type m: object
+        :param filenames: List of filenames to import
+        :type filenames: list
+        :param color: Color for visualization styling
+        :type color: str
         """
         super().__init__()
         self.m = m
@@ -176,7 +199,12 @@ class FileImportThread(QThread):
         self.color = color
 
     def run(self):
-        """Run file import process."""
+        """
+        Run file import process.
+        
+        Reads geospatial files using geopandas and emits the results with
+        styling information for visualization on success or an error message on failure.
+        """
         try:
             results = {}
             for filename in self.filenames:
@@ -196,7 +224,11 @@ class FileImportThread(QThread):
             self.calculation_error.emit(str(e) + "\n" + traceback.format_exc())
 
     def stop(self):
-        """Stop thread execution."""
+        """
+        Stop thread execution.
+        
+        Requests interruption and waits for the thread to finish if it is currently running.
+        """
         if self.isRunning():
             self.requestInterruption()
             self.wait()
@@ -212,16 +244,22 @@ class GeocodingThread(QThread):
         """
         Initialize geocoding thread.
 
-        Parameters
-        ----------
-        inputfilename : str
-            Input filename for geocoding data.
+        Sets up the thread with an input filename for processing
+        geocoding operations asynchronously.
+
+        :param inputfilename: Input filename for geocoding data
+        :type inputfilename: str
         """
         super().__init__()
         self.inputfilename = inputfilename
 
     def run(self):
-        """Run geocoding process."""
+        """
+        Run geocoding process.
+        
+        Processes the geocoding data from the input file and emits the filename
+        on success or an error message on failure.
+        """
         try:
             process_data(self.inputfilename)
             self.calculation_done.emit((self.inputfilename))
@@ -231,7 +269,11 @@ class GeocodingThread(QThread):
             self.calculation_error.emit(Exception(error_message))
 
     def stop(self):
-        """Stop thread execution."""
+        """
+        Stop thread execution.
+        
+        Requests interruption and waits for the thread to finish if it is currently running.
+        """
         if self.isRunning():
             self.requestInterruption()
             self.wait()
@@ -249,16 +291,17 @@ class GeoJSONToCSVThread(QThread):
         """
         Initialize GeoJSON to CSV conversion thread.
         
-        Parameters
-        ----------
-        geojson_file_path : str
-            Input GeoJSON file path.
-        output_file_path : str
-            Output CSV file path.
-        default_values : dict
-            Default values for building parameters.
-        model : ProjectModel
-            Model instance with calculate_centroid method.
+        Sets up the thread with file paths, default values, and model instance
+        for converting GeoJSON building data to CSV with reverse geocoding.
+        
+        :param geojson_file_path: Input GeoJSON file path
+        :type geojson_file_path: str
+        :param output_file_path: Output CSV file path
+        :type output_file_path: str
+        :param default_values: Default values for building parameters
+        :type default_values: dict
+        :param model: Model instance with calculate_centroid method
+        :type model: ProjectModel
         """
         super().__init__()
         self.geojson_file_path = geojson_file_path
@@ -267,7 +310,12 @@ class GeoJSONToCSVThread(QThread):
         self.model = model
     
     def run(self):
-        """Run GeoJSON to CSV conversion with reverse geocoding."""
+        """
+        Run GeoJSON to CSV conversion with reverse geocoding.
+        
+        Reads GeoJSON building data, performs reverse geocoding for each building,
+        and writes the results to a CSV file with progress updates.
+        """
         import json
         import csv
         from geopy.geocoders import Nominatim
@@ -361,7 +409,11 @@ class GeoJSONToCSVThread(QThread):
             self.calculation_error.emit(error_message)
     
     def stop(self):
-        """Stop thread execution."""
+        """
+        Stop thread execution.
+        
+        Requests interruption and waits for the thread to finish if it is currently running.
+        """
         if self.isRunning():
             self.requestInterruption()
             self.wait()

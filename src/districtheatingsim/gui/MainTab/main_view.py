@@ -1,113 +1,11 @@
 """
-DistrictHeatingSim Main GUI View Module
-=======================================
+Main GUI view module for DistrictHeatingSim application.
 
-This module implements the main graphical user interface for the DistrictHeatingSim
-application, providing a comprehensive PyQt6-based interface for district heating
-system simulation and analysis. The module follows the Model-View-Presenter (MVP)
-architectural pattern as the View component, managing all user interface elements
-and interactions.
+This module implements the main window with a multi-tab interface for district
+heating system simulation. Follows the View component of the MVP pattern,
+managing UI elements, menu system, theme management, and tab coordination.
 
-Module Overview
----------------
-The main view module serves as the central GUI controller, orchestrating:
-
-- **Multi-Tab Interface**: Tabbed interface for different analysis modules
-- **Menu System**: Comprehensive menu bar with project and data management
-- **Theme Management**: Dynamic light/dark theme switching
-- **Project Workflow**: Complete project lifecycle management
-- **Data Visualization**: Integration with various analysis and visualization tabs
-- **User Interaction**: Event handling and user feedback mechanisms
-
-Key Components
---------------
-**Main Window Class**:
-    :class:`HeatSystemDesignGUI`: Primary application window and interface controller
-
-**Tab Management**:
-    - Dynamic tab creation and visibility control
-    - Tab ordering and restoration functionality
-    - Context-sensitive tab availability
-
-**Menu System**:
-    - File operations (create, open, save projects)
-    - Data management (temperature data, heat pump characteristics)
-    - Theme selection and application
-    - Tab visibility control
-
-**Dialog Integration**:
-    - Temperature data selection dialogs
-    - Heat pump performance data dialogs
-    - Project creation and management dialogs
-
-Architecture Integration
-------------------------
-**MVP Pattern Implementation**:
-    The view component integrates with:
-    
-    - **Model Layer**: Data and configuration managers
-    - **Presenter Layer**: Business logic and event handling
-    - **External Components**: Specialized tab modules and dialogs
-
-**Signal-Slot Architecture**:
-    Utilizes PyQt6's signal-slot mechanism for:
-    
-    - Inter-component communication
-    - Event propagation and handling
-    - Real-time UI updates
-    - Data synchronization
-
-**Modular Design**:
-    Each functional area is implemented as separate tab modules:
-    
-    - Project definition and configuration
-    - Building heat demand analysis
-    - Network visualization and generation
-    - Hydraulic and thermal calculations
-    - Energy system design and optimization
-    - Economic comparison and analysis
-
-Author Information
-------------------
-**Author**: Dipl.-Ing. (FH) Jonas Pfeiffer
-**Date**: 2025-06-26
-**Version**: Main GUI view for DistrictHeatingSim application
-
-The implementation provides a professional-grade user interface suitable for
-engineering applications in district heating system planning and analysis.
-
-Dependencies
-------------
-**Core GUI Framework**:
-    - PyQt6: Primary GUI framework for widgets and layouts
-    - QtWidgets: Main widget classes and containers
-    - QtGui: Icons, themes, and visual elements
-
-**Internal Modules**:
-    - Tab implementations for specialized functionality
-    - Dialog components for data input and configuration
-    - Utility modules for theme management and PDF generation
-
-**External Integration**:
-    - File system operations for project management
-
-See Also
---------
-:mod:`districtheatingsim.gui.MainTab.main_presenter` : Business logic controller
-:mod:`districtheatingsim.gui.MainTab.main_data_manager` : Data management classes
-:mod:`districtheatingsim.gui` : GUI component modules
-:mod:`districtheatingsim.utilities` : Common utility functions
-
-Notes
------
-This module implements the user interface layer of a comprehensive district
-heating simulation tool. The design emphasizes usability, professional
-appearance, and maintainable code structure suitable for engineering
-applications requiring complex data analysis and visualization capabilities.
-
-The multi-tab interface allows users to progress through different phases
-of district heating system analysis, from initial project setup through
-detailed technical and economic evaluation of heating system alternatives.
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import os
@@ -134,247 +32,32 @@ from districtheatingsim.gui.LeafletTab.leaflet_tab import VisualizationTabLeafle
 
 class HeatSystemDesignGUI(QMainWindow):
     """
-    Main application window providing comprehensive district heating system analysis interface.
+    Main application window with multi-tab interface for district heating analysis.
 
-    This class implements the primary user interface for the DistrictHeatingSim application,
-    serving as the central hub for project management, data analysis, and system design
-    workflows. The interface follows modern GUI design principles with a multi-tab
-    architecture that guides users through the complete district heating analysis process.
+    Implements the View component of the MVP pattern, managing UI elements,
+    menu system, theme switching, and tab coordination for the complete
+    district heating workflow.
 
-    The main window integrates multiple specialized analysis modules through a tabbed
-    interface, providing seamless workflow progression from initial project setup
-    through detailed technical and economic evaluation of heating system alternatives.
-
-    Parameters
-    ----------
-    folder_manager : ProjectFolderManager
-        Manager for project file system operations and folder structure maintenance.
-        Handles project creation, variant management, and file path resolution.
-    data_manager : DataManager
-        Central data storage and management system for application state and user data.
-        Maintains consistency across different analysis modules and workflow stages.
-
-    Attributes
-    ----------
-    presenter : HeatSystemPresenter or None
-        Business logic controller implementing MVP pattern presenter component.
-        Initially None until set via set_presenter() method.
-    folder_manager : ProjectFolderManager
-        Reference to project folder management system.
-    data_manager : DataManager
-        Reference to central data management system.
-    folderLabel : QLabel or None
-        Status label displaying current project folder path.
-    hidden_tabs : dict
-        Storage for temporarily hidden tabs to support dynamic tab management.
-        Maps tab names to (widget, index) tuples for restoration.
-    tab_order : list of str
-        Ordered list of tab names maintaining consistent tab sequence.
-        Used for proper tab insertion and restoration.
-    temperatureDataDialog : TemperatureDataDialog
-        Dialog for temperature data selection and configuration.
-    heatPumpDataDialog : HeatPumpDataDialog
-        Dialog for heat pump performance characteristics configuration.
+    :param folder_manager: Project folder management system
+    :type folder_manager: ProjectFolderManager
+    :param data_manager: Central data storage system
+    :type data_manager: DataManager
     
-    **Tab Components**:
-    
-    projectTab : ProjectTab
-        Project definition and configuration interface.
-    buildingTab : BuildingTab
-        Building heat demand analysis and calculation interface.
-    visTab2 : VisualizationTabLeaflet
-        Interactive map-based network visualization and generation interface.
-    calcTab : CalculationTab
-        Network hydraulic and thermal calculation interface.
-    mixDesignTab : EnergySystemTab
-        Energy system design and economic analysis interface.
-    comparisonTab : ComparisonTab
-        Multi-variant comparison and evaluation interface.
-    lod2Tab : LOD2Tab
-        LOD2 building data processing and analysis interface.
-    renovationTab : RenovationTab
-        Building renovation scenario analysis interface.
-    individualTab : IndividualTab
-        Individual heating solution analysis interface.
-
-    **Menu System Components**:
-    
-    menubar : QMenuBar
-        Main application menu bar with file, data, theme, and tab management.
-    tabsMenu : QMenu
-        Dynamic menu for tab visibility control and management.
-    menu_actions : dict
-        Storage for tab-specific menu actions enabling dynamic tab control.
-
-    Notes
-    -----
-    User Interface Architecture:
-        
-        **Multi-Tab Design**:
-        The interface employs a tab-based design that guides users through
-        the district heating analysis workflow:
-        
-        1. **Project Definition**: Basic project setup and configuration
-        2. **Building Analysis**: Heat demand calculation and profiling
-        3. **Network Design**: Interactive network layout and generation
-        4. **System Calculation**: Hydraulic and thermal network simulation
-        5. **Technology Selection**: Energy system design and optimization
-        6. **Economic Analysis**: Comprehensive cost-benefit evaluation
-        7. **Comparison Tools**: Multi-variant analysis and comparison
-        8. **Advanced Features**: Specialized analysis modules
-        
-        **Dynamic Tab Management**:
-        - Tabs can be shown/hidden based on workflow requirements
-        - Tab ordering is maintained for consistent user experience
-        - Context-sensitive tab availability based on project state
-        
-        **Professional Interface**:
-        - Clean, modern design suitable for engineering applications
-        - Consistent styling and theming across all components
-        - Responsive layout adaptation for different screen sizes
-
-    Project Management Integration:
-        
-        **Project Lifecycle**:
-        - New project creation with standardized folder structures
-        - Existing project opening with variant selection
-        - Project copying and variant management
-        - Data import/export and result persistence
-        
-        **Workflow Support**:
-        - Sequential workflow guidance through tab organization
-        - Data consistency maintenance across analysis modules
-        - Automatic saving and loading of project state
-        - Professional report generation capabilities
-
-    Theme and Customization:
-        
-        **Theme System**:
-        - Light and dark theme support for user preference
-        - Time-based automatic theme selection
-        - Consistent styling across all interface components
-        - Professional appearance suitable for technical applications
-        
-        **Customization Options**:
-        - Tab visibility control for workflow customization
-        - Menu reorganization for user preferences
-        - Dialog and window positioning memory
-        - User preference persistence across sessions
-
-    Examples
-    --------
-    **Basic GUI Initialization**:
-
-        >>> from districtheatingsim.gui.MainTab.main_data_manager import *
-        >>> from districtheatingsim.gui.MainTab.main_presenter import HeatSystemPresenter
-        >>> from PyQt6.QtWidgets import QApplication
-        >>> import sys
-        >>> 
-        >>> # Initialize Qt application
-        >>> app = QApplication(sys.argv)
-        >>> 
-        >>> # Create managers
-        >>> config_manager = ProjectConfigManager()
-        >>> folder_manager = ProjectFolderManager(config_manager)
-        >>> data_manager = DataManager()
-        >>> 
-        >>> # Create main GUI window
-        >>> main_window = HeatSystemDesignGUI(folder_manager, data_manager)
-        >>> 
-        >>> # Create and connect presenter
-        >>> presenter = HeatSystemPresenter(main_window, folder_manager, data_manager, config_manager)
-        >>> main_window.set_presenter(presenter)
-        >>> 
-        >>> # Show window and start application
-        >>> main_window.show()
-        >>> sys.exit(app.exec())
-
-    **Project Management Example**:
-
-        >>> # Create new project through GUI
-        >>> # User clicks "File" -> "Create New Project"
-        >>> # GUI prompts for project name and location
-        >>> project_name = "Munich_District_Heating"
-        >>> project_path = "/projects/heating_systems"
-        >>> 
-        >>> # Project structure is automatically created:
-        >>> # Munich_District_Heating/
-        >>> #   ├── Eingangsdaten allgemein/
-        >>> #   ├── Definition Quartier IST/
-        >>> #   └── Variante 1/
-        >>> #       ├── Ergebnisse/
-        >>> #       ├── Gebäudedaten/
-        >>> #       ├── Lastgang/
-        >>> #       └── Wärmenetz/
-
-    **Tab Management Example**:
-
-        >>> # Hide specialized tabs for basic workflow
-        >>> main_window.toggle_tab_visibility("Verarbeitung LOD2-Daten")
-        >>> main_window.toggle_tab_visibility("Gebäudesanierung")
-        >>> main_window.toggle_tab_visibility("Einzelversorgungslösung")
-        >>> 
-        >>> # Show only core analysis tabs
-        >>> core_tabs = [
-        ...     "Projektdefinition",
-        ...     "Wärmebedarf Gebäude", 
-        ...     "Kartenansicht Wärmenetzgenerierung",
-        ...     "Wärmenetzberechnung",
-        ...     "Erzeugerauslegung und Wirtschaftlichkeitsrechnung",
-        ...     "Variantenvergleich"
-        ... ]
-        >>> 
-        >>> # Tabs are automatically ordered and displayed
-
-    **Theme Application Example**:
-
-        >>> # Apply dark theme for evening work
-        >>> main_window.applyTheme('dark_theme_style_path')
-        >>> 
-        >>> # Apply light theme for daytime work
-        >>> main_window.applyTheme('light_theme_style_path')
-        >>> 
-        >>> # Theme is applied to all tabs and dialogs automatically
-
-    See Also
-    --------
-    HeatSystemPresenter : Business logic controller for main window
-    ProjectFolderManager : Project file system management
-    DataManager : Central data storage and management
-    ProjectTab : Project definition and configuration interface
-    BuildingTab : Building heat demand analysis interface
-    EnergySystemTab : Energy system design and optimization interface
-
-    References
-    ----------
-    .. [1] PyQt6 Documentation, "Model/View Programming"
-    .. [2] Qt Documentation, "Application Windows and Dialogs"
-    .. [3] GUI Design Principles for Engineering Applications
+    .. note::
+        Tabs can be dynamically shown/hidden via the menu system to
+        customize the workflow.
     """
 
     def __init__(self, folder_manager, data_manager):
         """
-        Initialize the main application window with manager dependencies.
+        Initialize main application window with manager dependencies.
 
-        This constructor sets up the basic window structure and initializes
-        core components, but defers UI creation until the presenter is set
-        to ensure proper MVP pattern implementation.
+        Sets up basic window structure, defers UI creation until presenter is set.
 
-        Parameters
-        ----------
-        folder_manager : ProjectFolderManager
-            Project folder management system for file operations.
-        data_manager : DataManager
-            Central data management system for application state.
-
-        Notes
-        -----
-        The initialization follows a two-phase approach:
-        
-        1. **Basic Setup**: Window creation and manager assignment
-        2. **UI Creation**: Deferred until presenter connection via set_presenter()
-        
-        This ensures proper dependency injection and MVP pattern compliance.
+        :param folder_manager: Project folder management system
+        :type folder_manager: ProjectFolderManager
+        :param data_manager: Central data management system
+        :type data_manager: DataManager
         """
         super().__init__()
         
@@ -399,40 +82,13 @@ class HeatSystemDesignGUI(QMainWindow):
 
     def set_presenter(self, presenter) -> None:
         """
-        Set the presenter and initialize the complete user interface.
+        Set presenter and initialize complete user interface.
 
-        This method completes the MVP pattern setup by connecting the presenter
-        and triggering full UI initialization. All UI components are created
-        after presenter connection to ensure proper event handling setup.
+        Completes MVP pattern setup by connecting presenter and triggering
+        full UI initialization including menus, tabs, dialogs, and theme.
 
-        Parameters
-        ----------
-        presenter : HeatSystemPresenter
-            Business logic controller implementing presenter pattern.
-            Manages user interactions and coordinates between model and view.
-
-        Notes
-        -----
-        Post-Presenter Initialization:
-            
-            **UI Component Creation**:
-            - Complete interface layout and widget creation
-            - Menu system setup with proper event connections
-            - Tab system initialization with all analysis modules
-            - Dialog creation for data input and configuration
-            
-            **Event Connection**:
-            - Signal-slot connections for model-view synchronization
-            - Menu action connections for user interactions
-            - Tab visibility and management event handling
-            
-            **Theme and Styling**:
-            - Application logo and icon setup
-            - Theme system initialization
-            - Professional styling application
-
-        The method ensures that all UI components are properly connected
-        to the business logic layer before the interface is displayed.
+        :param presenter: Business logic controller
+        :type presenter: HeatSystemPresenter
         """
         self.presenter = presenter
 
@@ -638,21 +294,16 @@ class HeatSystemDesignGUI(QMainWindow):
 
     def show_save_dialog(self, title: str, info_text: str, accept_text: str) -> str:
         """
-        Show a standardized save dialog for project operations.
+        Show standardized save dialog for project operations.
         
-        Parameters
-        ----------
-        title : str
-            Dialog window title
-        info_text : str 
-            Informative text explaining the operation
-        accept_text : str
-            Text for the accept button (e.g., "Speichern und wechseln")
-            
-        Returns
-        -------
-        str
-            'save', 'discard', or 'cancel'
+        :param title: Dialog window title
+        :type title: str
+        :param info_text: Informative text explaining the operation
+        :type info_text: str
+        :param accept_text: Text for accept button
+        :type accept_text: str
+        :return: User choice: 'save', 'discard', 'cancel', or 'continue'
+        :rtype: str
         """
         if not hasattr(self, 'base_path') or not self.base_path:
             return 'continue'  # No project loaded, continue operation
@@ -818,69 +469,10 @@ class HeatSystemDesignGUI(QMainWindow):
 
     def initMenuBar(self) -> None:
         """
-        Initialize the comprehensive menu bar system with all functional categories.
+        Initialize menu bar with File, Data, Theme, and Tabs menus.
 
-        This method creates a professional menu system providing access to all
-        application functionality including project management, data configuration,
-        theme selection, and tab control. The menu follows standard GUI conventions
-        with logical grouping and keyboard shortcuts.
-
-        Menu Structure:
-            
-            **File Menu**:
-            - Project creation and management
-            - Recent projects with quick access
-            - Project variants and copies
-            - Data import/export functionality
-            - Professional PDF report generation
-            
-            **Data Menu**:
-            - Temperature data configuration
-            - Heat pump performance characteristics
-            - External data source integration
-            
-            **Theme Menu**:
-            - Light mode for daytime work
-            - Dark mode for evening work
-            - Automatic theme switching
-            
-            **Tabs Menu**:
-            - Dynamic tab visibility control
-            - Workflow customization options
-            - Tab ordering and management
-
-        The menu system integrates seamlessly with the business logic layer
-        through the presenter pattern, ensuring proper separation of concerns
-        and maintainable code structure.
-
-        Notes
-        -----
-        Recent Projects Integration:
-            
-            **Smart Recent Projects**:
-            - Automatic tracking of recently opened projects
-            - Quick access to frequently used projects
-            - Graceful handling of missing or moved projects
-            - Configurable recent projects list length
-            
-            **User Experience**:
-            - One-click access to recent work
-            - Visual indication of project availability
-            - Fallback messaging for empty recent list
-
-        Professional Menu Features:
-            
-            **Standard Conventions**:
-            - Consistent with platform-specific menu standards
-            - Logical grouping of related functionality
-            - Appropriate use of separators and organization
-            - Professional terminology and descriptions
-            
-            **Accessibility**:
-            - Keyboard shortcuts for common operations
-            - Clear, descriptive menu item text
-            - Proper enabling/disabling based on context
-            - User-friendly error handling and feedback
+        Creates professional menu system with project management, recent projects,
+        variant handling, data configuration, and tab visibility control.
         """
         # Create main menu bar with professional appearance
         self.menubar = QMenuBar(self)
@@ -955,77 +547,11 @@ class HeatSystemDesignGUI(QMainWindow):
 
     def initTabs(self) -> None:
         """
-        Initialize the comprehensive multi-tab interface for district heating analysis.
+        Initialize multi-tab interface for district heating analysis workflow.
 
-        This method creates the complete tabbed interface that guides users through
-        the district heating system analysis workflow. Each tab represents a major
-        phase of the analysis process, from initial project setup through detailed
-        economic evaluation and comparison.
-
-        The tab system supports dynamic visibility control, allowing users to
-        customize their workflow by showing only relevant analysis modules for
-        their specific project requirements.
-
-        Tab Architecture:
-            
-            **Core Analysis Workflow**:
-            1. **Project Definition**: Basic project setup and configuration
-            2. **Building Heat Demand**: Heat requirement analysis and profiling
-            3. **Network Visualization**: Interactive network design and layout
-            4. **Network Calculation**: Hydraulic and thermal system simulation
-            5. **Energy System Design**: Technology selection and optimization
-            6. **Variant Comparison**: Economic and technical comparison analysis
-            
-            **Specialized Modules**:
-            7. **LOD2 Processing**: Advanced building geometry analysis
-            8. **Renovation Analysis**: Building upgrade scenario evaluation
-            9. **Individual Solutions**: Decentralized heating system analysis
-
-        Tab Management Features:
-            
-            **Dynamic Visibility**:
-            - Tabs can be shown/hidden based on project requirements
-            - Default visible tabs for standard workflow
-            - Specialized tabs hidden by default to reduce interface complexity
-            - Tab restoration maintains original ordering
-            
-            **Professional Interface**:
-            - Closeable tabs with proper restoration functionality
-            - Consistent styling and layout across all tabs
-            - Context-sensitive tab availability
-            - Seamless data flow between analysis phases
-
-        Notes
-        -----
-        Default Tab Configuration:
-            
-            **Always Visible**:
-            - Project Definition (mandatory starting point)
-            - Building Heat Demand (core analysis requirement)
-            - Network Visualization (essential for network design)
-            - Network Calculation (fundamental simulation capability)
-            - Energy System Design (technology selection core)
-            - Variant Comparison (essential decision support)
-            
-            **Hidden by Default**:
-            - LOD2 Processing (specialized building data analysis)
-            - Renovation Analysis (optional upgrade scenarios)
-            - Individual Solutions (alternative to district systems)
-
-        Integration with Business Logic:
-            
-            **Data Flow**:
-            Each tab is connected to the same manager instances, ensuring:
-            - Consistent data access across all analysis modules
-            - Real-time synchronization of project changes
-            - Centralized configuration management
-            - Unified error handling and user feedback
-            
-            **Workflow Support**:
-            - Sequential analysis progression through tab ordering
-            - Data validation and consistency checking
-            - Automatic saving and loading of intermediate results
-            - Professional report generation from all analysis phases
+        Creates tabs for project definition, building data, network visualization,
+        network calculation, energy system design, and variant comparison.
+        Supports dynamic tab visibility control.
         """
         # Create main tab widget with closeable tabs
         self.tabWidget = QTabWidget()
@@ -1082,56 +608,10 @@ class HeatSystemDesignGUI(QMainWindow):
 
     def initLogo(self) -> None:
         """
-        Initialize the application logo and window icon for professional branding.
+        Initialize application logo and window icon.
 
-        This method handles logo loading with comprehensive fallback mechanisms
-        to ensure the application maintains professional appearance even when
-        resources are missing or paths are incorrect. The logo serves as both
-        window icon and application identifier in the taskbar.
-
-        Logo Loading Strategy:
-            
-            **Primary Path Resolution**:
-            - Uses ConfigManager for proper resource path resolution
-            - Handles both development and packaged application scenarios
-            - Supports relative and absolute path configurations
-            
-            **Fallback Mechanisms**:
-            - Multiple fallback paths for logo discovery
-            - Graceful degradation when logo is unavailable
-            - User feedback for troubleshooting logo issues
-            - Default system icon when all fallbacks fail
-
-        Professional Branding Integration:
-            
-            **Visual Identity**:
-            - Consistent logo application across application windows
-            - Professional icon for taskbar and window management
-            - Brand recognition in multi-application environments
-            - Quality assurance for packaged application distribution
-
-        Notes
-        -----
-        Resource Path Handling:
-            
-            **Development Environment**:
-            - Direct file system access to logo resources
-            - Relative path resolution from module location
-            - Hot-reload capability for logo updates during development
-            
-            **Packaged Application**:
-            - Bundled resource access through PyInstaller or similar
-            - Embedded resource extraction and utilization
-            - Cross-platform path resolution and compatibility
-            
-            **Error Handling**:
-            - Comprehensive exception handling for missing resources
-            - User-friendly error messages with troubleshooting guidance
-            - Logging for development and deployment debugging
-            - Graceful fallback to system default icons
-
-        The method ensures that the application maintains professional
-        appearance regardless of deployment scenario or resource availability.
+        Loads logo via ConfigManager with fallback paths for both development
+        and packaged application scenarios.
         """
         try:
             # Primary logo loading through configuration manager
@@ -1178,37 +658,10 @@ class HeatSystemDesignGUI(QMainWindow):
     @pyqtSlot(str)
     def update_project_folder_label(self, base_path: str) -> None:
         """
-        Update the project folder status label with current project information.
+        Update project folder status label with current project path.
 
-        This method provides real-time feedback to users about the currently
-        active project, displaying the full path to help users understand
-        their current working context within the application.
-
-        Parameters
-        ----------
-        base_path : str
-            Current project base path, typically the variant folder path.
-            Empty string or None indicates no active project.
-
-        Notes
-        -----
-        User Experience Benefits:
-            
-            **Context Awareness**:
-            - Clear indication of active project for user orientation
-            - Full path display for unambiguous project identification
-            - Real-time updates when project changes occur
-            - Professional status reporting consistent with engineering tools
-            
-            **Workflow Support**:
-            - Immediate feedback when projects are opened or changed
-            - Visual confirmation of successful project operations
-            - Clear indication when no project is selected
-            - Support for troubleshooting project-related issues
-
-        The label serves as an important user interface element for maintaining
-        context awareness in complex project workflows with multiple variants
-        and analysis phases.
+        :param base_path: Current project/variant folder path
+        :type base_path: str
         """
         # Store base path for other operations
         self.base_path = base_path
@@ -1226,36 +679,10 @@ class HeatSystemDesignGUI(QMainWindow):
 
     def show_error_message(self, message: str) -> None:
         """
-        Display professional error messages with consistent styling and behavior.
+        Display standardized error message dialog.
 
-        This method provides standardized error reporting throughout the application,
-        ensuring users receive clear, actionable feedback when problems occur.
-        The error display follows GUI best practices for professional software.
-
-        Parameters
-        ----------
-        message : str
-            Error message text to display to the user.
-            Should be clear, descriptive, and actionable when possible.
-
-        Notes
-        -----
-        Error Handling Philosophy:
-            
-            **User-Friendly Communication**:
-            - Clear, non-technical language when possible
-            - Specific problem description with context
-            - Actionable guidance for error resolution
-            - Professional tone appropriate for engineering software
-            
-            **Consistent Interface**:
-            - Standardized error dialog appearance
-            - Consistent button layout and behavior
-            - Proper modal behavior for user attention
-            - Integration with application theming system
-
-        This method serves as the central error reporting mechanism for
-        all user-facing error conditions throughout the application.
+        :param message: Error message text to display
+        :type message: str
         """
         QMessageBox.critical(self, "Fehler", message)
 
@@ -1271,35 +698,8 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         Handle new project creation with user input and validation.
 
-        This method manages the complete new project creation workflow,
-        including user input collection, validation, and success feedback.
-        It integrates with the folder manager to ensure proper project
-        structure creation following established conventions.
-
-        Workflow Steps:
-            
-            1. **Path Resolution**: Determine parent directory for new project
-            2. **User Input**: Collect project name through input dialog
-            3. **Validation**: Check project name validity and uniqueness
-            4. **Creation**: Execute project creation through presenter
-            5. **Feedback**: Provide success or failure notification
-
-        Notes
-        -----
-        Project Creation Standards:
-            
-            **Folder Structure**:
-            The method creates standardized folder structures:
-            - Main project folder with user-specified name
-            - Standardized subfolder hierarchy for data organization
-            - Default variant folder for initial analysis work
-            - Proper permissions and accessibility setup
-            
-            **User Experience**:
-            - Intuitive input dialogs with helpful defaults
-            - Clear success/failure feedback
-            - Automatic project activation after creation
-            - Integration with recent projects system
+        Prompts for save if project loaded, collects project name, and creates
+        standardized project structure via presenter.
         """
         # Check if user wants to save current project before creating new one
         dialog_result = self.show_save_dialog(
@@ -1369,42 +769,11 @@ class HeatSystemDesignGUI(QMainWindow):
     def on_open_existing_project(self, folder_path: Optional[str] = None) -> None:
         """
         Handle opening existing projects with variant selection support.
-        Before switching, save all current project results.
 
-        This method manages the complete project opening workflow, including
-        folder selection, variant discovery, and user choice collection.
-        It supports both manual folder selection and direct path specification
-        for recent project integration.
+        Prompts for save, discovers variants, and loads selected project.
 
-        Parameters
-        ----------
-        folder_path : str, optional
-            Direct path to project folder. If None, user will be prompted
-            to select folder through file dialog. Used for recent projects.
-
-        Workflow Process:
-            
-            1. **Folder Selection**: Interactive folder selection or direct path
-            2. **Project Validation**: Verify project structure and accessibility
-            3. **Variant Discovery**: Scan for available project variants
-            4. **User Selection**: Present variant choices to user
-            5. **Project Activation**: Load selected project and variant
-
-        Notes
-        -----
-        Variant Management:
-            
-            **Automatic Discovery**:
-            - Scans project folder for variant subdirectories
-            - Validates variant folder structure and accessibility
-            - Presents user-friendly variant selection interface
-            - Handles projects with single or multiple variants
-            
-            **User Experience**:
-            - Clear variant naming and identification
-            - Intuitive selection dialogs with helpful information
-            - Graceful handling of missing or corrupted variants
-            - Integration with recent projects for quick access
+        :param folder_path: Direct path to project folder (optional)
+        :type folder_path: str or None
         """
         # Handle folder selection - either direct path or user dialog
         if not folder_path:
@@ -1466,42 +835,14 @@ class HeatSystemDesignGUI(QMainWindow):
 
     def get_available_variants(self, project_path: str) -> List[str]:
         """
-        Discover and validate available project variants in the specified project.
+        Discover available project variants in specified project directory.
 
-        This method scans the project directory structure to identify valid
-        variant folders, providing the foundation for variant selection and
-        management throughout the application.
+        Scans project directory for folders starting with "Variante".
 
-        Parameters
-        ----------
-        project_path : str
-            Path to the main project directory to scan for variants.
-
-        Returns
-        -------
-        list of str
-            List of valid variant folder names found in the project.
-            Returns empty list if no variants found or path is invalid.
-
-        Notes
-        -----
-        Variant Discovery Logic:
-            
-            **Folder Validation**:
-            - Checks for directory existence and accessibility
-            - Validates variant naming conventions (starts with "Variante")
-            - Ensures proper folder structure and permissions
-            - Filters out invalid or corrupted variant folders
-            
-            **Error Handling**:
-            - Graceful handling of missing project directories
-            - Clear error messages for troubleshooting
-            - Robust operation even with partially corrupted projects
-            - Logging for development and deployment debugging
-
-        This method supports the variant management system that allows
-        users to maintain multiple analysis scenarios within a single
-        project structure.
+        :param project_path: Path to main project directory
+        :type project_path: str
+        :return: List of valid variant folder names
+        :rtype: list of str
         """
         variants: List[str] = []
         
@@ -1524,27 +865,10 @@ class HeatSystemDesignGUI(QMainWindow):
 
     def on_create_project_copy(self) -> None:
         """
-        Handle project copy creation with user feedback and validation.
+        Handle project copy creation with user feedback.
 
-        This method manages the complete project copying workflow through
-        the presenter layer, providing appropriate user feedback for
-        success or failure conditions.
-
-        Notes
-        -----
-        Project Copy Functionality:
-            
-            **Copy Operation**:
-            - Creates complete duplicate of current project
-            - Preserves all data, settings, and analysis results
-            - Generates unique project identifier and folder name
-            - Maintains data integrity throughout copy process
-            
-            **User Experience**:
-            - Clear success confirmation with operation details
-            - Appropriate error handling and user notification
-            - Integration with project management workflow
-            - Support for project versioning and backup strategies
+        Prompts for save, creates complete project duplicate via presenter,
+        and displays success message.
         """
         # Check if user wants to save current changes before creating copy
         dialog_result = self.show_save_dialog(
@@ -1570,35 +894,9 @@ class HeatSystemDesignGUI(QMainWindow):
 
     def on_open_variant(self) -> None:
         """
-        Handle opening specific variants within the current project context.
-        Before switching, save all current project results.
+        Handle variant selection within current project.
 
-        This method provides variant switching functionality within an already
-        open project, allowing users to easily navigate between different
-        analysis scenarios without full project reloading.
-
-        Workflow Process:
-            
-            1. **Current Project Validation**: Verify active project context
-            2. **Variant Discovery**: Scan current project for available variants
-            3. **User Selection**: Present variant options through selection dialog
-            4. **Variant Activation**: Switch to selected variant seamlessly
-
-        Notes
-        -----
-        Variant Switching Benefits:
-            
-            **Efficient Workflow**:
-            - Quick variant switching without full project reload
-            - Maintains application state and user preferences
-            - Preserves unsaved changes with appropriate handling
-            - Seamless transition between analysis scenarios
-            
-            **User Experience**:
-            - Clear variant identification and selection
-            - Immediate feedback for variant activation
-            - Error handling for missing or corrupted variants
-            - Integration with overall project workflow
+        Prompts for save, discovers variants, and switches to selected variant.
         """
         # Validate current project context
         project_folder = self.folder_manager.project_folder
@@ -1644,26 +942,10 @@ class HeatSystemDesignGUI(QMainWindow):
 
     def on_create_project_variant(self) -> None:
         """
-        Handle creation of new project variants with proper validation and feedback.
+        Handle creation of new project variant.
 
-        This method manages the variant creation workflow through the presenter
-        layer, ensuring proper variant structure creation and user notification.
-
-        Notes
-        -----
-        Variant Creation Process:
-            
-            **New Variant Structure**:
-            - Creates new variant folder with standardized structure
-            - Inherits base project configuration and settings
-            - Initializes empty analysis data for independent development
-            - Maintains proper folder permissions and accessibility
-            
-            **User Workflow Integration**:
-            - Seamless integration with existing project workflow
-            - Automatic variant activation after creation
-            - Clear success feedback and next steps guidance
-            - Error handling for creation failures
+        Prompts for save, creates new variant via presenter, and displays
+        success message.
         """
         # Check if user wants to save current changes before creating variant
         dialog_result = self.show_save_dialog(
@@ -1689,27 +971,10 @@ class HeatSystemDesignGUI(QMainWindow):
 
     def on_create_project_variant_copy(self) -> None:
         """
-        Handle creation of project variant copies with data preservation.
+        Handle creation of variant copy with data preservation.
 
-        This method manages the variant copying workflow, creating new variants
-        based on existing variant data while maintaining data integrity and
-        providing appropriate user feedback.
-
-        Notes
-        -----
-        Variant Copy Benefits:
-            
-            **Data Preservation**:
-            - Copies all analysis data and results from source variant
-            - Maintains configuration settings and user preferences
-            - Preserves network definitions and building data
-            - Creates independent copy for modification and experimentation
-            
-            **Analysis Workflow Support**:
-            - Enables comparative analysis development
-            - Supports iterative design and optimization processes
-            - Facilitates sensitivity analysis and parameter studies
-            - Provides backup functionality for variant protection
+        Prompts for save, creates variant copy via presenter, and displays
+        success message.
         """
         # Check if user wants to save current changes before creating variant copy
         dialog_result = self.show_save_dialog(
@@ -1738,14 +1003,12 @@ class HeatSystemDesignGUI(QMainWindow):
 
     def show_temporary_success_message(self, message: str, duration_ms: int = 2000) -> None:
         """
-        Display a temporary success message that disappears automatically.
+        Display auto-dismissing success message.
         
-        Parameters
-        ----------
-        message : str
-            Success message to display
-        duration_ms : int, optional
-            Duration in milliseconds before the dialog closes automatically (default: 1000ms)
+        :param message: Success message to display
+        :type message: str
+        :param duration_ms: Display duration in milliseconds (default: 2000)
+        :type duration_ms: int
         """
         from PyQt6.QtCore import QTimer
         
@@ -1767,29 +1030,10 @@ class HeatSystemDesignGUI(QMainWindow):
 
     def on_importResultsAction(self) -> None:
         """
-        Handle comprehensive project data import for restoring analysis results.
+        Load all available project data and results.
 
-        This method uses the auto_load_project_results functionality but provides
-        user feedback with a temporary success message that automatically disappears
-        after 1 second. This gives users confirmation that the import completed
-        without requiring manual dialog dismissal.
-
-        Import Process:
-            
-            **Automated Loading**:
-            - Uses the same silent loading mechanism as auto_load_project_results
-            - Loads all available project data without individual confirmation dialogs
-            - Provides single success confirmation with auto-dismissal
-            
-            **User Experience**:
-            - Single-click restoration of complete project state
-            - Brief success confirmation that doesn't interrupt workflow
-            - Error handling with detailed failure information
-            - Integration with project management workflow
-
-        This functionality is essential for project continuity and
-        collaborative work environments where analysis results need
-        to be shared and restored across different work sessions.
+        Silently loads building data, network data, and energy system results
+        without individual confirmation dialogs. Shows single success message.
         """
         try:
             # Check if we have a valid project and variant loaded
@@ -1912,47 +1156,12 @@ class HeatSystemDesignGUI(QMainWindow):
 
     def applyTheme(self, theme_path: str) -> None:
         """
-        Apply visual themes to the application with comprehensive error handling.
+        Apply visual theme to application.
 
-        This method manages the application's visual appearance by loading and
-        applying Qt stylesheet files. It supports both light and dark themes
-        with professional styling suitable for engineering applications.
+        Loads and applies Qt stylesheet with fallback for missing resources.
 
-        Parameters
-        ----------
-        theme_path : str
-            Configuration key for the theme stylesheet path.
-            Resolved through the configuration manager for proper resource handling.
-
-        Theme System Features:
-            
-            **Professional Styling**:
-            - Consistent visual appearance across all interface components
-            - Professional color schemes suitable for technical applications
-            - Proper contrast and readability for extended use
-            - Integration with system accessibility settings
-            
-            **Dynamic Theme Switching**:
-            - Runtime theme changes without application restart
-            - Immediate visual feedback for theme selection
-            - Proper handling of theme-dependent resources
-            - Consistent theme application across all tabs and dialogs
-
-        Notes
-        -----
-        Theme Implementation:
-            
-            **Resource Management**:
-            - Centralized theme resource management through configuration
-            - Support for both development and packaged application scenarios
-            - Graceful fallback for missing theme resources
-            - Error handling with user-friendly feedback
-            
-            **Cross-Platform Compatibility**:
-            - Consistent appearance across different operating systems
-            - Proper handling of platform-specific styling requirements
-            - Integration with system theme preferences when appropriate
-            - Professional appearance regardless of deployment environment
+        :param theme_path: Configuration key for theme stylesheet path
+        :type theme_path: str
         """
         try:
             # Resolve theme path through configuration manager
@@ -1983,77 +1192,27 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         Open temperature data configuration dialog and update system settings.
 
-        This method provides access to temperature data configuration for
-        climate-dependent calculations throughout the application. It manages
-        the dialog interaction and system-wide data updates.
-
-        Notes
-        -----
-        Temperature Data Integration:
-            
-            **Climate Data Management**:
-            - Selection from standardized Test Reference Year (TRY) datasets
-            - Integration with thermal calculations and energy system modeling
-            - Support for different climate zones and weather patterns
-            - Proper data validation and format checking
-            
-            **System-Wide Updates**:
-            - Automatic propagation of temperature data changes
-            - Real-time recalculation of temperature-dependent parameters
-            - Integration with energy system performance calculations
-            - Consistency maintenance across all analysis modules
+        Displays dialog for TRY (Test Reference Year) selection and triggers
+        system-wide temperature data update.
         """
         if self.temperatureDataDialog.exec():
             self.updateTemperatureData()
 
     def openCOPDataSelection(self) -> None:
         """
-        Open heat pump performance data configuration dialog and update settings.
+        Open heat pump COP data configuration dialog and update settings.
 
-        This method provides access to heat pump coefficient of performance (COP)
-        data configuration for accurate heat pump modeling throughout the
-        application analysis modules.
-
-        Notes
-        -----
-        Heat Pump Data Integration:
-            
-            **Performance Characteristics**:
-            - Selection from certified heat pump performance datasets
-            - Temperature-dependent COP calculations for accurate modeling
-            - Integration with energy system design and optimization
-            - Support for different heat pump technologies and manufacturers
-            
-            **Analysis Integration**:
-            - Real-time performance calculations based on selected data
-            - Integration with economic analysis and optimization algorithms
-            - Proper handling of part-load and seasonal performance variations
-            - Consistency with industry standards and certification data
+        Displays dialog for heat pump performance data selection and triggers
+        system-wide COP data update.
         """
         if self.heatPumpDataDialog.exec():
             self.updateHeatPumpData()
 
     def updateTemperatureData(self) -> None:
         """
-        Update system temperature data based on user selection and validate settings.
+        Update system temperature data based on user selection.
 
-        This method processes temperature data selection from the configuration
-        dialog and updates the central data management system for use throughout
-        the application's thermal calculations and analysis modules.
-
-        Data Update Process:
-            
-            **Configuration Retrieval**:
-            - Extracts temperature data selection from dialog
-            - Validates data format and accessibility
-            - Updates central data manager with new settings
-            - Triggers recalculation of temperature-dependent parameters
-
-        Notes
-        -----
-        The temperature data serves as a foundation for multiple analysis
-        modules including building heat demand calculation, network thermal
-        simulation, and energy system performance evaluation.
+        Retrieves TRY filename from dialog and updates data manager.
         """
         try:
             # Retrieve temperature data selection from dialog
@@ -2071,23 +1230,7 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         Update system heat pump performance data based on user selection.
 
-        This method processes heat pump performance data selection from the
-        configuration dialog and updates the central data management system
-        for use in energy system modeling and optimization calculations.
-
-        Data Update Process:
-            
-            **Performance Data Integration**:
-            - Extracts heat pump COP data from dialog
-            - Validates performance data format and completeness
-            - Updates central data manager with new performance characteristics
-            - Triggers recalculation of heat pump-dependent analyses
-
-        Notes
-        -----
-        The heat pump performance data directly affects energy system design,
-        economic analysis, and optimization calculations throughout the
-        application's analysis modules.
+        Retrieves COP filename from dialog and updates data manager.
         """
         try:
             # Retrieve heat pump performance data selection from dialog
@@ -2104,69 +1247,10 @@ class HeatSystemDesignGUI(QMainWindow):
 
     def show_info_message(self, message: str) -> None:
         """
-        Display informational messages with consistent professional styling.
+        Display informational message dialog.
 
-        This method provides standardized informational feedback to users,
-        complementing the error message system with positive confirmation
-        and status updates for successful operations.
-
-        Parameters
-        ----------
-        message : str
-            Informational message text to display to the user.
-            Typically used for success confirmations and status updates.
-
-        Notes
-        -----
-        Information Display Standards:
-            
-            **Positive User Feedback**:
-            - Success confirmation for completed operations
-            - Status updates for long-running processes
-            - Helpful tips and guidance messages
-            - Professional communication tone
-            
-            **Interface Consistency**:
-            - Standardized information dialog appearance
-            - Consistent with error message styling
-            - Proper modal behavior and user interaction
-            - Seamless integration with application theme
-
-        User Experience Benefits:
-            
-            **Clear Communication**:
-            - Immediate feedback for user actions
-            - Confirmation of successful operations
-            - Status updates during data processing
-            - Professional tone appropriate for engineering software
-            
-            **Workflow Integration**:
-            - Non-intrusive information delivery
-            - Proper dialog positioning and sizing
-            - Consistent with application's visual design
-            - Support for German and English localization
-
-        Examples
-        --------
-        **Success Confirmation**:
-
-            >>> # Confirm successful project creation
-            >>> self.show_info_message("Projekt wurde erfolgreich erstellt.")
-
-        **Status Update**:
-
-            >>> # Inform user about data loading completion  
-            >>> self.show_info_message("Projektdaten wurden erfolgreich geladen.")
-
-        **Process Completion**:
-
-            >>> # Notify user of completed calculations
-            >>> self.show_info_message("Netzwerkberechnung wurde erfolgreich abgeschlossen.")
-
-        See Also
-        --------
-        show_error_message : Display error messages with consistent styling
-        QMessageBox.information : Underlying Qt message box functionality
+        :param message: Informational text to display
+        :type message: str
         """
         QMessageBox.information(self, "Info", message)
 

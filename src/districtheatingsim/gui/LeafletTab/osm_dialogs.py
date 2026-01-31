@@ -1,711 +1,26 @@
 """
-Leaflet Dialogs Module
-=====================
+OSM Dialogs Module
+==================
 
-Dialog widgets for network generation, OSM data download, and building queries.
+This module provides dialog interfaces for OSM data download and building
+queries through interactive user interfaces.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-10
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import os
 import json
 import traceback
 
-import geopandas as gpd
 import pandas as pd
-from math import radians, sin, cos, sqrt, atan2
-from shapely.geometry import box, Point
-from shapely.ops import transform
-import pyproj
 
 from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QDialog, QComboBox, QPushButton, \
-    QFormLayout, QHBoxLayout, QFileDialog, QMessageBox, QLabel, QWidget, \
-    QTableWidget, QTableWidgetItem, QGroupBox, QCheckBox, QProgressDialog
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QClipboard
+    QHBoxLayout, QFileDialog, QMessageBox, QLabel, QWidget, \
+    QGroupBox, QCheckBox, QProgressDialog
+from PyQt6.QtCore import Qt
 
-from pyproj import Transformer
-
-from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, OSMStreetDownloadThread, OSMBuildingDownloadThread
-from districtheatingsim.geocoding.geocoding import get_coordinates
-from districtheatingsim.osm.import_osm_data_geojson import build_query, download_data, save_to_file
-   
-class LayerGenerationDialog(QDialog):
-    """
-    Dialog for generating layers for heat network visualization.
-    """
-    accepted_inputs = pyqtSignal(dict)
-    request_map_coordinate = pyqtSignal()
-
-    def __init__(self, base_path, config_manager, parent=None):
-        """
-        Initialize layer generation dialog.
-
-        Parameters
-        ----------
-        base_path : str
-            Base path for file operations.
-        config_manager : ConfigManager
-            Configuration manager instance.
-        parent : QWidget, optional
-            Parent widget.
-        """
-        super().__init__(parent)
-        self.base_path = base_path
-        self.visualization_tab = None
-        self.config_manager = config_manager
-        self.waiting_for_map_click = False
-        self.custom_filter = '["highway"~"primary|secondary|tertiary|residential|living_street|service"]'  # Default filter
-        self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint)
-        self.initUI()
-
-    def initUI(self):
-        """Initialize user interface components."""
-        self.setWindowTitle('Wärmenetzgenerierung')
-        self.setGeometry(300, 300, 800, 800)
-
-        layout = QVBoxLayout(self)
-        layout.setSpacing(15)
-
-        # Data Input Section
-        dataGroup = QGroupBox("Dateneingabe")
-        dataLayout = QFormLayout()
-        dataLayout.setSpacing(10)
-
-        self.dataInput, self.dataCsvButton = self.createFileInput(os.path.abspath(os.path.join(self.base_path, self.config_manager.get_relative_path('current_building_data_path'))))
-        dataLayout.addRow("Gebäudestandorte (CSV):", self.createFileInputLayout(self.dataInput, self.dataCsvButton))
-        
-        self.generationModeComboBox = QComboBox(self)
-        self.generationModeComboBox.addItems(["OSMnx", "Advanced MST", "MST"])
-        self.generationModeComboBox.currentIndexChanged.connect(self.toggleGenerationMode)
-        dataLayout.addRow("Netzgenerierungsmodus:", self.generationModeComboBox)
-
-        self.fileInput, self.fileButton = self.createFileInput(os.path.abspath(os.path.join(self.base_path, self.config_manager.get_relative_path('OSM_streets_path'))))
-        self.streetLayerLabel = QLabel("GeoJSON-Straßen-Layer:")
-        self.streetLayerWidget = self.createFileInputLayout(self.fileInput, self.fileButton)
-        dataLayout.addRow(self.streetLayerLabel, self.streetLayerWidget)
-        
-        # OSMnx Advanced Settings (collapsible)
-        self.osmnxAdvancedWidget = QWidget()
-        osmnxAdvancedLayout = QVBoxLayout(self.osmnxAdvancedWidget)
-        osmnxAdvancedLayout.setContentsMargins(0, 5, 0, 5)
-        
-        # Toggle button for advanced settings
-        self.osmnxAdvancedToggle = QPushButton("▶ Erweiterte OSMnx-Einstellungen")
-        self.osmnxAdvancedToggle.setFlat(True)
-        self.osmnxAdvancedToggle.setStyleSheet("""
-            QPushButton {
-                text-align: left;
-                padding: 5px;
-                border: none;
-                background-color: transparent;
-                font-weight: normal;
-            }
-            QPushButton:hover {
-                background-color: #e0e0e0;
-            }
-        """)
-        self.osmnxAdvancedToggle.clicked.connect(self.toggleOSMnxAdvancedSettings)
-        osmnxAdvancedLayout.addWidget(self.osmnxAdvancedToggle)
-        
-        # Content widget (initially hidden)
-        self.osmnxAdvancedContent = QWidget()
-        osmnxContentLayout = QVBoxLayout(self.osmnxAdvancedContent)
-        osmnxContentLayout.setContentsMargins(20, 5, 0, 5)
-        
-        filterLabel = QLabel("Straßentypen für OSMnx-Filter:")
-        filterLabel.setStyleSheet("font-weight: bold; color: #333333; margin-top: 5px;")
-        osmnxContentLayout.addWidget(filterLabel)
-        
-        # Highway type checkboxes
-        self.highwayCheckboxes = {}
-        highway_types = [
-            ("primary", "Hauptstraßen (primary)"),
-            ("secondary", "Nebenstraßen (secondary)"),
-            ("tertiary", "Tertiärstraßen (tertiary)"),
-            ("residential", "Wohnstraßen (residential)"),
-            ("living_street", "Verkehrsberuhigte Bereiche (living_street)"),
-            ("service", "Erschließungsstraßen (service)")
-        ]
-        
-        for key, label in highway_types:
-            checkbox = QCheckBox(label)
-            checkbox.setChecked(True)  # All checked by default
-            checkbox.stateChanged.connect(self.updateFilters)
-            self.highwayCheckboxes[key] = checkbox
-            osmnxContentLayout.addWidget(checkbox)
-        
-        # Select/Deselect all buttons
-        selectButtonLayout = QHBoxLayout()
-        selectAllBtn = QPushButton("Alle auswählen")
-        selectAllBtn.clicked.connect(lambda: self.setAllHighwayCheckboxes(True))
-        selectButtonLayout.addWidget(selectAllBtn)
-        
-        deselectAllBtn = QPushButton("Alle abwählen")
-        deselectAllBtn.clicked.connect(lambda: self.setAllHighwayCheckboxes(False))
-        selectButtonLayout.addWidget(deselectAllBtn)
-        osmnxContentLayout.addLayout(selectButtonLayout)
-        
-        self.osmnxAdvancedContent.setVisible(False)  # Initially collapsed
-        osmnxAdvancedLayout.addWidget(self.osmnxAdvancedContent)
-        
-        dataLayout.addRow("", self.osmnxAdvancedWidget)
-        
-        dataGroup.setLayout(dataLayout)
-        layout.addWidget(dataGroup)
-
-        # Generator Coordinates Section
-        coordGroup = QGroupBox("Erzeugerstandorte")
-        coordLayout = QVBoxLayout()
-        coordLayout.setSpacing(10)
-
-        # Input mode selection
-        modeLayout = QFormLayout()
-        self.locationModeComboBox = QComboBox(self)
-        self.locationModeComboBox.addItems(["Koordinaten direkt eingeben", "Adresse eingeben", "Koordinaten aus CSV laden"])
-        self.locationModeComboBox.currentIndexChanged.connect(self.toggleLocationInputMode)
-        modeLayout.addRow("Eingabemodus:", self.locationModeComboBox)
-        coordLayout.addLayout(modeLayout)
-
-        # Coordinate input
-        coordInputLayout = QFormLayout()
-        self.coordSystemComboBox = QComboBox(self)
-        self.coordSystemComboBox.addItems(["EPSG:25833", "WGS84"])
-        coordInputLayout.addRow("Koordinatensystem:", self.coordSystemComboBox)
-
-        self.coordInput = QLineEdit(self)
-        self.coordInput.setText("499827.8585093066,55666161.599635682") # Görlitz
-        self.coordInput.setToolTip("Eingabe in folgender Form: 'X-Koordinate, Y-Koordinate'")
-        coordInputLayout.addRow("Koordinaten:", self.coordInput)
-        
-        # Button layout for coordinate input
-        coordButtonLayout = QHBoxLayout()
-        self.addCoordButton = QPushButton("Koordinate hinzufügen", self)
-        self.addCoordButton.clicked.connect(self.addCoordFromInput)
-        coordButtonLayout.addWidget(self.addCoordButton)
-        
-        self.mapPickerButton = QPushButton("Aus Karte wählen", self)
-        self.mapPickerButton.clicked.connect(self.activateMapPicker)
-        self.mapPickerButton.setToolTip("Klicken Sie auf die Karte, um Koordinaten auszuwählen")
-        coordButtonLayout.addWidget(self.mapPickerButton)
-        
-        coordInputLayout.addRow("", coordButtonLayout)
-        coordLayout.addLayout(coordInputLayout)
-
-        # Address input
-        addressInputLayout = QFormLayout()
-        self.addressInput = QLineEdit(self)
-        self.addressInput.setText("Deutschland,Sachsen,Bad Muskau,Gablenzer Straße 4")
-        self.addressInput.setToolTip("Eingabe in folgender Form: 'Land,Bundesland,Stadt,Adresse'")
-        addressInputLayout.addRow("Adresse:", self.addressInput)
-        
-        self.geocodeButton = QPushButton("Adresse geocodieren", self)
-        self.geocodeButton.clicked.connect(self.geocodeAndAdd)
-        addressInputLayout.addRow("", self.geocodeButton)
-        coordLayout.addLayout(addressInputLayout)
-
-        # CSV import
-        csvImportLayout = QHBoxLayout()
-        self.importCsvButton = QPushButton("Koordinaten aus CSV laden", self)
-        self.importCsvButton.clicked.connect(self.importCoordsFromCSV)
-        csvImportLayout.addWidget(self.importCsvButton)
-        csvImportLayout.addStretch()
-        coordLayout.addLayout(csvImportLayout)
-
-        # Coordinate table
-        tableLabel = QLabel("Erzeugerkoordinaten:")
-        coordLayout.addWidget(tableLabel)
-        
-        self.coordTable = QTableWidget(self)
-        self.coordTable.setColumnCount(2)
-        self.coordTable.setHorizontalHeaderLabels(["X-Koordinate (UTM)", "Y-Koordinate (UTM)"])
-        self.coordTable.setColumnWidth(0, 200)
-        self.coordTable.setColumnWidth(1, 200)
-        self.coordTable.setMinimumHeight(150)
-        self.coordTable.setMaximumHeight(200)
-        coordLayout.addWidget(self.coordTable)
-
-        # Table action buttons
-        tableButtonLayout = QHBoxLayout()
-        self.copyButton = QPushButton("Koordinaten kopieren", self)
-        self.copyButton.clicked.connect(self.copyCoordinates)
-        self.copyButton.setToolTip("Kopiert alle Koordinaten in die Zwischenablage")
-        tableButtonLayout.addWidget(self.copyButton)
-        
-        self.pasteButton = QPushButton("Koordinaten einfügen", self)
-        self.pasteButton.clicked.connect(self.pasteCoordinates)
-        self.pasteButton.setToolTip("Fügt Koordinaten aus der Zwischenablage ein")
-        tableButtonLayout.addWidget(self.pasteButton)
-        
-        self.saveButton = QPushButton("Als CSV speichern", self)
-        self.saveButton.clicked.connect(self.saveCoordinatesToCSV)
-        self.saveButton.setToolTip("Speichert Koordinaten als CSV-Datei")
-        tableButtonLayout.addWidget(self.saveButton)
-        
-        self.deleteCoordButton = QPushButton("Ausgewählte löschen", self)
-        self.deleteCoordButton.clicked.connect(self.deleteSelectedRow)
-        tableButtonLayout.addWidget(self.deleteCoordButton)
-        
-        self.clearButton = QPushButton("Alle löschen", self)
-        self.clearButton.clicked.connect(self.clearAllCoordinates)
-        tableButtonLayout.addWidget(self.clearButton)
-        
-        coordLayout.addLayout(tableButtonLayout)
-        
-        coordGroup.setLayout(coordLayout)
-        layout.addWidget(coordGroup)
-
-        # Dialog buttons
-        self.okButton = QPushButton("OK", self)
-        self.okButton.clicked.connect(self.onAccept)
-        self.cancelButton = QPushButton("Abbrechen", self)
-        self.cancelButton.clicked.connect(self.reject)
-
-        buttonLayout = QHBoxLayout()
-        buttonLayout.addStretch(1)
-        buttonLayout.addWidget(self.okButton)
-        buttonLayout.addWidget(self.cancelButton)
-        
-        layout.addLayout(buttonLayout)
-
-        # Styling
-        self.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 2px solid #cccccc;
-                border-radius: 5px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 5px 0 5px;
-            }
-            QPushButton:disabled, QLineEdit:disabled, QComboBox:disabled {
-                background-color: #f0f0f0;
-                color: #a0a0a0;
-            }
-            QPushButton {
-                padding: 5px 10px;
-            }
-        """)
-
-        self.toggleLocationInputMode(0)
-        self.toggleGenerationMode(0)
-        self.setLayout(layout)
-
-    def setVisualizationTab(self, visualization_tab):
-        """
-        Set visualization tab reference.
-
-        Parameters
-        ----------
-        visualization_tab : QWidget
-            VisualizationTab instance.
-        """
-        self.visualization_tab = visualization_tab
-
-    def toggleLocationInputMode(self, index):
-        """
-        Toggle input fields based on location mode.
-
-        Parameters
-        ----------
-        index : int
-            Selected mode index.
-        """
-        # Mode 0: Direct coordinate input
-        self.coordSystemComboBox.setEnabled(index == 0)
-        self.coordInput.setEnabled(index == 0)
-        self.addCoordButton.setEnabled(index == 0)
-        
-        # Mode 1: Address geocoding
-        self.addressInput.setEnabled(index == 1)
-        self.geocodeButton.setEnabled(index == 1)
-        
-        # Mode 2: CSV import
-        self.importCsvButton.setEnabled(index == 2)
-
-    def toggleGenerationMode(self, index):
-        """
-        Toggle street layer visibility based on generation mode.
-
-        Parameters
-        ----------
-        index : int
-            Selected generation mode index.
-        """
-        # Street layer only needed for non-OSMnx modes
-        is_osmnx = (self.generationModeComboBox.currentText() == "OSMnx")
-        self.streetLayerLabel.setVisible(not is_osmnx)
-        self.fileInput.setVisible(not is_osmnx)
-        self.fileButton.setVisible(not is_osmnx)
-        
-        # Show OSMnx advanced settings only for OSMnx mode
-        self.osmnxAdvancedWidget.setVisible(is_osmnx)
-
-    def toggleOSMnxAdvancedSettings(self):
-        """Toggle visibility of OSMnx advanced settings."""
-        is_visible = self.osmnxAdvancedContent.isVisible()
-        self.osmnxAdvancedContent.setVisible(not is_visible)
-        
-        # Update button text with arrow
-        if is_visible:
-            self.osmnxAdvancedToggle.setText("▶ Erweiterte OSMnx-Einstellungen")
-        else:
-            self.osmnxAdvancedToggle.setText("▼ Erweiterte OSMnx-Einstellungen")
-    
-    def setAllHighwayCheckboxes(self, checked):
-        """Set all highway checkboxes to checked or unchecked.
-        
-        Parameters
-        ----------
-        checked : bool
-            True to check all, False to uncheck all.
-        """
-        for checkbox in self.highwayCheckboxes.values():
-            checkbox.setChecked(checked)
-    
-    def updateFilters(self):
-        """Update custom filter string based on selected highway types."""
-        selected_types = [key for key, checkbox in self.highwayCheckboxes.items() if checkbox.isChecked()]
-        
-        if selected_types:
-            # Build filter string like: ["highway"~"primary|secondary|tertiary"]
-            filter_string = '|'.join(selected_types)
-            self.custom_filter = f'["highway"~"{filter_string}"]'
-        else:
-            # No types selected - use None to fall back to default
-            self.custom_filter = None
-
-    def createFileInputLayout(self, lineEdit, button):
-        """
-        Create file input layout.
-
-        Parameters
-        ----------
-        lineEdit : QLineEdit
-            File path input widget.
-        button : QPushButton
-            Browse button widget.
-
-        Returns
-        -------
-        QHBoxLayout
-            Layout containing file input widgets.
-        """
-        layout = QHBoxLayout()
-        layout.addWidget(lineEdit)
-        layout.addWidget(button)
-        return layout
-
-    def createFileInput(self, default_path):
-        """
-        Create file input widget with browse button.
-
-        Parameters
-        ----------
-        default_path : str
-            Default file path.
-
-        Returns
-        -------
-        tuple
-            Line edit and button widgets.
-        """
-        lineEdit = QLineEdit(default_path)
-        button = QPushButton("Durchsuchen")
-        button.clicked.connect(lambda: self.openFileDialog(lineEdit))
-        return lineEdit, button
-
-    def openFileDialog(self, lineEdit):
-        """
-        Open file dialog and update line edit.
-
-        Parameters
-        ----------
-        lineEdit : QLineEdit
-            Widget to update with selected file path.
-        """
-        filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", f"{self.base_path}", "All Files (*)")
-        if filename:
-            lineEdit.setText(filename)
-
-    def addCoordFromInput(self):
-        """Add coordinates from input field to table."""
-        coords = self.coordInput.text().split(',')
-        if len(coords) == 2:
-            x, y = map(str.strip, coords)
-            source_crs = self.coordSystemComboBox.currentText()
-            x_transformed, y_transformed = self.transform_coordinates(float(x), float(y), source_crs)
-            self.insertRowInTable(x_transformed, y_transformed)
-
-    def geocodeAndAdd(self):
-        """Geocode address and add coordinates to table."""
-        address = self.addressInput.text()
-        if address:
-            x, y = get_coordinates(address)
-            if x and y:
-                self.insertRowInTable(str(x), str(y))
-
-    def importCoordsFromCSV(self):
-        """Import coordinates from CSV file."""
-        filename, _ = QFileDialog.getOpenFileName(self, "CSV-Datei auswählen", f"{self.base_path}", "CSV Files (*.csv)")
-        if filename:
-            data = pd.read_csv(filename, delimiter=';', usecols=['UTM_X', 'UTM_Y'])
-            for _, row in data.iterrows():
-                self.insertRowInTable(str(row['UTM_X']), str(row['UTM_Y']))
-
-    def transform_coordinates(self, x, y, source_crs):
-        """
-        Transform coordinates to EPSG:25833.
-
-        Parameters
-        ----------
-        x : float
-            X-coordinate.
-        y : float
-            Y-coordinate.
-        source_crs : str
-            Source coordinate system.
-
-        Returns
-        -------
-        tuple
-            Transformed coordinates.
-        """
-        if source_crs == "WGS84":
-            transformer = Transformer.from_crs("EPSG:4326", "EPSG:25833", always_xy=True)
-        else:
-            transformer = Transformer.from_crs("EPSG:25833", "EPSG:25833", always_xy=True)
-        x_transformed, y_transformed = transformer.transform(x, y)
-        return x_transformed, y_transformed
-
-    def insertRowInTable(self, x, y):
-        """
-        Insert coordinate row in table.
-
-        Parameters
-        ----------
-        x : str
-            X-coordinate.
-        y : str
-            Y-coordinate.
-        """
-        row_count = self.coordTable.rowCount()
-        self.coordTable.insertRow(row_count)
-        self.coordTable.setItem(row_count, 0, QTableWidgetItem(str(x)))
-        self.coordTable.setItem(row_count, 1, QTableWidgetItem(str(y)))
-
-    def deleteSelectedRow(self):
-        """Delete selected row from coordinates table."""
-        selected_row = self.coordTable.currentRow()
-        if selected_row >= 0:
-            self.coordTable.removeRow(selected_row)
-
-    def clearAllCoordinates(self):
-        """Clear all coordinates from table."""
-        reply = QMessageBox.question(self, 'Bestätigung', 
-                                    'Möchten Sie wirklich alle Koordinaten löschen?',
-                                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                                    QMessageBox.StandardButton.No)
-        if reply == QMessageBox.StandardButton.Yes:
-            self.coordTable.setRowCount(0)
-
-    def copyCoordinates(self):
-        """Copy all coordinates to clipboard."""
-        if self.coordTable.rowCount() == 0:
-            QMessageBox.information(self, "Information", "Keine Koordinaten zum Kopieren vorhanden.")
-            return
-        
-        coordinates_text = ""
-        for row in range(self.coordTable.rowCount()):
-            x = self.coordTable.item(row, 0).text()
-            y = self.coordTable.item(row, 1).text()
-            coordinates_text += f"{x},{y}\n"
-        
-        clipboard = QClipboard()
-        clipboard.setText(coordinates_text.strip())
-        QMessageBox.information(self, "Erfolg", f"{self.coordTable.rowCount()} Koordinate(n) in die Zwischenablage kopiert.")
-
-    def pasteCoordinates(self):
-        """Paste coordinates from clipboard."""
-        clipboard = QClipboard()
-        text = clipboard.text().strip()
-        
-        if not text:
-            QMessageBox.warning(self, "Warnung", "Zwischenablage ist leer.")
-            return
-        
-        lines = text.split('\n')
-        added_count = 0
-        
-        for line in lines:
-            line = line.strip()
-            if ',' in line:
-                parts = line.split(',')
-                if len(parts) >= 2:
-                    try:
-                        x = float(parts[0].strip())
-                        y = float(parts[1].strip())
-                        self.insertRowInTable(x, y)
-                        added_count += 1
-                    except ValueError:
-                        continue
-        
-        if added_count > 0:
-            QMessageBox.information(self, "Erfolg", f"{added_count} Koordinate(n) eingefügt.")
-        else:
-            QMessageBox.warning(self, "Warnung", "Keine gültigen Koordinaten in der Zwischenablage gefunden.")
-
-    def saveCoordinatesToCSV(self):
-        """Save coordinates to CSV file."""
-        if self.coordTable.rowCount() == 0:
-            QMessageBox.information(self, "Information", "Keine Koordinaten zum Speichern vorhanden.")
-            return
-        
-        # Ask user what format to save
-        msgBox = QMessageBox(self)
-        msgBox.setWindowTitle("Speicherformat wählen")
-        msgBox.setText("In welchem Format möchten Sie die Koordinaten speichern?")
-        coordButton = msgBox.addButton("Nur Koordinaten", QMessageBox.ButtonRole.ActionRole)
-        addressButton = msgBox.addButton("Mit Adresse", QMessageBox.ButtonRole.ActionRole)
-        cancelButton = msgBox.addButton("Abbrechen", QMessageBox.ButtonRole.RejectRole)
-        msgBox.exec()
-        
-        clicked_button = msgBox.clickedButton()
-        
-        if clicked_button == cancelButton:
-            return
-        
-        filename, _ = QFileDialog.getSaveFileName(self, "CSV-Datei speichern", 
-                                                  os.path.join(self.base_path, "erzeuger_koordinaten.csv"),
-                                                  "CSV Files (*.csv)")
-        if not filename:
-            return
-        
-        try:
-            data = []
-            for row in range(self.coordTable.rowCount()):
-                x = self.coordTable.item(row, 0).text()
-                y = self.coordTable.item(row, 1).text()
-                
-                if clicked_button == addressButton:
-                    # Try to reverse geocode
-                    address = self.reverse_geocode(float(x), float(y))
-                    data.append({'UTM_X': x, 'UTM_Y': y, 'Adresse': address})
-                else:
-                    data.append({'UTM_X': x, 'UTM_Y': y})
-            
-            df = pd.DataFrame(data)
-            df.to_csv(filename, sep=';', index=False, encoding='utf-8-sig')
-            QMessageBox.information(self, "Erfolg", f"Koordinaten erfolgreich gespeichert:\n{filename}")
-        except Exception as e:
-            QMessageBox.critical(self, "Fehler", f"Fehler beim Speichern der Datei:\n{str(e)}")
-
-    def reverse_geocode(self, x, y):
-        """Simple reverse geocoding (returns formatted coordinates if geocoding fails)."""
-        try:
-            # Transform to WGS84 for geocoding
-            transformer = Transformer.from_crs("EPSG:25833", "EPSG:4326", always_xy=True)
-            lon, lat = transformer.transform(x, y)
-            
-            # Use Nominatim for reverse geocoding
-            from geopy.geocoders import Nominatim
-            geolocator = Nominatim(user_agent="districtheatingsim")
-            location = geolocator.reverse(f"{lat}, {lon}", language='de', timeout=5)
-            
-            if location:
-                return location.address
-            else:
-                return f"Lat: {lat:.6f}, Lon: {lon:.6f}"
-        except:
-            return f"UTM X: {x:.2f}, Y: {y:.2f}"
-
-    def activateMapPicker(self):
-        """Activate map coordinate picker mode."""
-        if not self.visualization_tab:
-            QMessageBox.warning(self, "Warnung", "Keine Kartenverbindung verfügbar.")
-            return
-        
-        self.waiting_for_map_click = True
-        self.mapPickerButton.setEnabled(False)
-        self.mapPickerButton.setText("Warte auf Kartenklick...")
-        self.mapPickerButton.setStyleSheet("background-color: #ffc107; color: black;")
-        
-        # Emit signal to activate map picker mode
-        self.request_map_coordinate.emit()
-    
-    def receiveMapCoordinates(self, lat, lon):
-        """Receive coordinates from map click.
-        
-        Parameters
-        ----------
-        lat : float
-            Latitude (WGS84).
-        lon : float
-            Longitude (WGS84).
-        """
-        if not self.waiting_for_map_click:
-            return
-        
-        # Reset button state immediately
-        self.waiting_for_map_click = False
-        self.mapPickerButton.setEnabled(True)
-        self.mapPickerButton.setText("Aus Karte wählen")
-        # Reset to default button style (remove the yellow background)
-        self.mapPickerButton.setStyleSheet("background-color: none;")
-        
-        try:
-            # Transform from WGS84 to EPSG:25833
-            transformer = Transformer.from_crs("EPSG:4326", "EPSG:25833", always_xy=True)
-            x, y = transformer.transform(lon, lat)
-            
-            # Update input field
-            self.coordInput.setText(f"{x},{y}")
-            
-            # Automatically add to table
-            self.insertRowInTable(x, y)
-            
-            QMessageBox.information(self, "Erfolg", 
-                                   f"Koordinate aus Karte übernommen:\nUTM X: {x:.2f}\nUTM Y: {y:.2f}")
-        except Exception as e:
-            QMessageBox.critical(self, "Fehler", f"Fehler bei der Koordinatentransformation:\n{str(e)}")
-
-    def getInputs(self):
-        """
-        Get dialog inputs.
-
-        Returns
-        -------
-        dict
-            Dictionary containing input values.
-        """
-        coordinates = []
-        for row in range(self.coordTable.rowCount()):
-            x = self.coordTable.item(row, 0).text()
-            y = self.coordTable.item(row, 1).text()
-            if x and y:
-                coordinates.append((float(x), float(y)))
-
-        # Update custom filter one last time before returning
-        self.updateFilters()
-
-        return {
-            "streetLayer": self.fileInput.text(),
-            "dataCsv": self.dataInput.text(),
-            "coordinates": coordinates,
-            "generation_mode": self.generationModeComboBox.currentText(),
-            "custom_filter": self.custom_filter
-        }
-
-    def onAccept(self):
-        """Handle accept event."""
-        inputs = self.getInputs()
-        self.accepted_inputs.emit(inputs)
-        self.accept()
+from districtheatingsim.gui.LeafletTab.net_generation_threads import OSMStreetDownloadThread, OSMBuildingDownloadThread
+from districtheatingsim.osm.import_osm_data_geojson import download_data
 
 class DownloadOSMDataDialog(QDialog):
     """
@@ -715,16 +30,17 @@ class DownloadOSMDataDialog(QDialog):
         """
         Initialize OSM data download dialog.
 
-        Parameters
-        ----------
-        base_path : str
-            Base path for file operations.
-        config_manager : ConfigManager
-            Configuration manager instance.
-        parent : QWidget
-            Parent widget.
-        parent_pres : object
-            Parent presenter instance.
+        Sets up the dialog with configuration for downloading OpenStreetMap
+        street data using different methods and area selection types.
+
+        :param base_path: Base path for file operations
+        :type base_path: str
+        :param config_manager: Configuration manager instance
+        :type config_manager: ConfigManager
+        :param parent: Parent widget
+        :type parent: QWidget
+        :param parent_pres: Parent presenter instance
+        :type parent_pres: object
         """
         super().__init__(parent)
         self.base_path = base_path
@@ -742,7 +58,12 @@ class DownloadOSMDataDialog(QDialog):
         self.initUI()
 
     def initUI(self):
-        """Initialize user interface components."""
+        """
+        Initialize user interface components.
+        
+        Creates and arranges all UI elements including area selection,
+        method selection, filter options, and download controls.
+        """
         self.setWindowTitle("OSM Straßendaten herunterladen")
         self.setGeometry(300, 300, 600, 700)
 
@@ -920,11 +241,27 @@ class DownloadOSMDataDialog(QDialog):
         self.updateFilters()
 
     def setVisualizationTab(self, visualization_tab):
-        """Set visualization tab reference for map interaction."""
+        """
+        Set visualization tab reference for map interaction.
+        
+        Stores a reference to the visualization tab to enable polygon
+        drawing and map-based area selection functionality.
+        
+        :param visualization_tab: The visualization tab instance
+        :type visualization_tab: VisualizationTabLeaflet
+        """
         self.visualization_tab = visualization_tab
 
     def toggleDownloadMethod(self, index):
-        """Toggle visibility based on download method."""
+        """
+        Toggle visibility based on download method.
+        
+        Enables or disables area selection options depending on whether
+        OSMnx or Overpass API is selected.
+        
+        :param index: Index of selected method
+        :type index: int
+        """
         is_osmnx = (self.methodComboBox.currentText() == "OSMnx (empfohlen)")
         
         # For Overpass API, only city name is supported
@@ -935,7 +272,15 @@ class DownloadOSMDataDialog(QDialog):
             self.areaTypeComboBox.setEnabled(True)
 
     def toggleAreaType(self, index):
-        """Toggle visibility based on area selection type."""
+        """
+        Toggle visibility based on area selection type.
+        
+        Shows the appropriate input widgets based on the selected area
+        type (city name, CSV, GeoJSON, or map drawing).
+        
+        :param index: Index of selected area type
+        :type index: int
+        """
         area_type = self.areaTypeComboBox.currentText()
         
         self.cityWidget.setVisible(area_type == "Stadt/Ortsname")
@@ -944,12 +289,24 @@ class DownloadOSMDataDialog(QDialog):
         self.mapDrawWidget.setVisible(area_type == "Polygon auf Karte zeichnen")
 
     def setAllHighwayCheckboxes(self, checked):
-        """Set all highway checkboxes to checked or unchecked."""
+        """
+        Set all highway checkboxes to checked or unchecked.
+        
+        Applies the same checked state to all highway type filters.
+        
+        :param checked: Target checked state
+        :type checked: bool
+        """
         for checkbox in self.highwayCheckboxes.values():
             checkbox.setChecked(checked)
 
     def updateFilters(self):
-        """Update OSMnx filter based on selected highway types."""
+        """
+        Update OSMnx filter based on selected highway types.
+        
+        Builds a custom OSMnx filter string from the checked highway
+        type checkboxes for network data download.
+        """
         selected_types = [key for key, checkbox in self.highwayCheckboxes.items() if checkbox.isChecked()]
         
         # Update OSMnx custom filter
@@ -960,7 +317,12 @@ class DownloadOSMDataDialog(QDialog):
             self.custom_filter = '["highway"]'
 
     def activateMapPolygonDrawing(self):
-        """Activate polygon drawing mode on map."""
+        """
+        Activate polygon drawing mode on map.
+        
+        Enables the interactive polygon drawing functionality on the Leaflet
+        map and connects signals for polygon completion.
+        """
         if not self.visualization_tab:
             QMessageBox.warning(self, "Warnung", "Keine Kartenverbindung verfügbar.")
             return
@@ -988,7 +350,12 @@ class DownloadOSMDataDialog(QDialog):
             self.visualization_tab.view.web_view.page().runJavaScript(js_code)
 
     def onPolygonReady(self):
-        """Called when polygon has been drawn on the map."""
+        """
+        Called when polygon has been drawn on the map.
+        
+        Updates UI state and notifies the user that the polygon is ready
+        and can be edited before starting the download.
+        """
         print("DEBUG: onPolygonReady() called in dialog!")
         
         if not self.waiting_for_polygon:
@@ -1051,7 +418,12 @@ class DownloadOSMDataDialog(QDialog):
         return None
 
     def clearCapturedPolygon(self):
-        """Clear the captured polygon from the map."""
+        """
+        Clear the captured polygon from the map.
+        
+        Removes the drawn polygon from the Leaflet map by calling
+        JavaScript functionality.
+        """
         if hasattr(self.visualization_tab.view, 'web_view'):
             js_code = "window.clearCapturedPolygon();"
             self.visualization_tab.view.web_view.page().runJavaScript(js_code)
@@ -1060,15 +432,13 @@ class DownloadOSMDataDialog(QDialog):
         """
         Create file input widget with browse button.
 
-        Parameters
-        ----------
-        default_path : str
-            Default file path.
+        Creates a QLineEdit and QPushButton combination for file path
+        input with browse dialog functionality.
 
-        Returns
-        -------
-        tuple
-            Line edit and button widgets.
+        :param default_path: Default file path
+        :type default_path: str
+        :return: Line edit and button widgets
+        :rtype: tuple
         """
         lineEdit = QLineEdit(default_path)
         button = QPushButton("Durchsuchen")
@@ -1079,17 +449,15 @@ class DownloadOSMDataDialog(QDialog):
         """
         Create file input layout.
 
-        Parameters
-        ----------
-        lineEdit : QLineEdit
-            File path input widget.
-        button : QPushButton
-            Browse button widget.
+        Combines file path input widget and browse button into a horizontal
+        layout for consistent UI presentation.
 
-        Returns
-        -------
-        QHBoxLayout
-            Layout containing file input widgets.
+        :param lineEdit: File path input widget
+        :type lineEdit: QLineEdit
+        :param button: Browse button widget
+        :type button: QPushButton
+        :return: Layout containing file input widgets
+        :rtype: QHBoxLayout
         """
         layout = QHBoxLayout()
         layout.addWidget(lineEdit)
@@ -1100,10 +468,11 @@ class DownloadOSMDataDialog(QDialog):
         """
         Open file dialog and update line edit.
 
-        Parameters
-        ----------
-        lineEdit : QLineEdit
-            Widget to update with selected file path.
+        Displays a file selection dialog and updates the provided line edit
+        widget with the selected file path.
+
+        :param lineEdit: Widget to update with selected file path
+        :type lineEdit: QLineEdit
         """
         filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", self.base_path, "All Files (*)")
         if filename:
@@ -1113,12 +482,13 @@ class DownloadOSMDataDialog(QDialog):
         """
         Add tag field to layout.
 
-        Parameters
-        ----------
-        key : str, optional
-            Tag key.
-        value : str, optional
-            Tag value.
+        Creates and adds a new key-value pair input row for OSM tag
+        specification in the query dialog.
+
+        :param key: Tag key
+        :type key: str
+        :param value: Tag value
+        :type value: str
         """
         key = str(key) if key is not None else ""
         value = str(value) if value is not None else ""
@@ -1132,7 +502,12 @@ class DownloadOSMDataDialog(QDialog):
         print(self.tags_to_download)
 
     def removeTagField(self):
-        """Remove last tag field from layout."""
+        """
+        Remove last tag field from layout.
+        
+        Removes the most recently added tag key-value pair from the
+        tag specification form.
+        """
         if self.tags_to_download:
             keyLineEdit, valueLineEdit = self.tagsLayoutList.pop()
             self.tags_to_download.pop()
@@ -1140,14 +515,24 @@ class DownloadOSMDataDialog(QDialog):
             print(self.tags_to_download)
 
     def loadAllStandardTags(self):
-        """Load all standard tags into layout."""
+        """
+        Load all standard tags into layout.
+        
+        Populates the tag specification form with all predefined
+        standard OSM tags for building queries.
+        """
         for tag in self.standard_tags:
             key = next(iter(tag))
             value = tag[key]
             self.addTagField(key, value)
 
     def loadSelectedStandardTag(self):
-        """Load selected standard tag into layout."""
+        """
+        Load selected standard tag into layout.
+        
+        Adds the currently selected standard tag from the dropdown
+        to the tag specification form.
+        """
         selected_tag_index = self.standardTagsComboBox.currentIndex()
         tag = self.standard_tags[selected_tag_index]
         key = next(iter(tag))
@@ -1155,7 +540,12 @@ class DownloadOSMDataDialog(QDialog):
         self.addTagField(key, value)
     
     def startQuery(self):
-        """Start OSM data query and download."""
+        """
+        Start OSM data query and download.
+        
+        Initiates the OpenStreetMap street data download process based on
+        selected area type, method, and filter settings.
+        """
         print("DEBUG: startQuery() called")
         filename = self.filenameLineEdit.text()
         
@@ -1251,7 +641,12 @@ class DownloadOSMDataDialog(QDialog):
             QMessageBox.critical(self, "Fehler", f"Fehler beim Start des Downloads:\n{str(e)}\n\n{traceback.format_exc()}")
 
     def _onDownloadCanceled(self):
-        """Handle download cancellation."""
+        """
+        Handle download cancellation.
+        
+        Terminates the download thread and resets UI state when the user
+        cancels the download process.
+        """
         print("DEBUG: Download canceled by user")
         if self.download_thread and self.download_thread.isRunning():
             self.download_thread.terminate()
@@ -1260,7 +655,15 @@ class DownloadOSMDataDialog(QDialog):
         self.queryButton.setText("Download starten")
 
     def _onDownloadComplete(self, filepath):
-        """Handle successful download completion."""
+        """
+        Handle successful download completion.
+        
+        Processes successful street network download, cleans up UI state,
+        adds the layer to the map, and notifies the user.
+        
+        :param filepath: Path to the downloaded GeoJSON file
+        :type filepath: str
+        """
         print(f"DEBUG: Download complete! File: {filepath}")
         
         # Clear drawn polygon from map if it was used
@@ -1294,19 +697,18 @@ class DownloadOSMDataDialog(QDialog):
         QMessageBox.critical(self, "Fehler", error_message)
 
     def _performOSMnxDownload(self, filename, area_params):
-        """Perform OSMnx download (runs in thread).
+        """
+        Perform OSMnx download (runs in thread).
         
-        Parameters
-        ----------
-        filename : str
-            Output file path.
-        area_params : dict
-            Dictionary with area type and file paths (no GUI access!).
-            
-        Returns
-        -------
-        str
-            Path to the saved file.
+        Executes OSMnx street network download in a background thread.
+        No GUI access allowed in this method.
+        
+        :param filename: Output file path
+        :type filename: str
+        :param area_params: Dictionary with area type and file paths (no GUI access!)
+        :type area_params: dict
+        :return: Path to the saved file
+        :rtype: str
         """
         print(f"DEBUG: _performOSMnxDownload started with filename: {filename}")
         try:
@@ -1319,14 +721,16 @@ class DownloadOSMDataDialog(QDialog):
             raise
 
     def downloadWithOSMnx(self, filename, area_params):
-        """Download street network using OSMnx.
+        """
+        Download street network using OSMnx.
         
-        Parameters
-        ----------
-        filename : str
-            Output file path.
-        area_params : dict
-            Dictionary with area type and file paths (no GUI access!).
+        Downloads OpenStreetMap street network data using the OSMnx library
+        based on various area selection methods (city name, CSV buffer, polygon).
+        
+        :param filename: Output file path
+        :type filename: str
+        :param area_params: Dictionary with area type and file paths (no GUI access!)
+        :type area_params: dict
         """
         print("DEBUG: downloadWithOSMnx started")
         import osmnx as ox
@@ -1456,18 +860,19 @@ class OSMBuildingQueryDialog(QDialog):
         """
         Initialize OSM building query dialog.
 
-        Parameters
-        ----------
-        base_path : str
-            Base path for file operations.
-        config_manager : ConfigManager
-            Configuration manager instance.
-        parent : QWidget
-            Parent widget.
-        parent_pres : object
-            Parent presenter instance.
-        visualization_tab : LeafletTab, optional
-            Reference to visualization tab for polygon drawing.
+        Sets up the dialog for downloading OpenStreetMap building data
+        with multiple area selection modes and configuration options.
+
+        :param base_path: Base path for file operations
+        :type base_path: str
+        :param config_manager: Configuration manager instance
+        :type config_manager: ConfigManager
+        :param parent: Parent widget
+        :type parent: QWidget
+        :param parent_pres: Parent presenter instance
+        :type parent_pres: object
+        :param visualization_tab: Reference to visualization tab for polygon drawing
+        :type visualization_tab: LeafletTab
         """
         super().__init__(parent)
         self.base_path = base_path
@@ -1484,7 +889,12 @@ class OSMBuildingQueryDialog(QDialog):
         self.initUI()
 
     def initUI(self):
-        """Initialize user interface components."""
+        """
+        Initialize user interface components.
+        
+        Creates and arranges all UI elements for area selection, tag
+        specification, default values, and download controls.
+        """
         layout = QVBoxLayout(self)
         self.setWindowTitle("OSM Gebäudedaten herunterladen")
 
@@ -1577,7 +987,12 @@ class OSMBuildingQueryDialog(QDialog):
             self.visualization_tab.view.geoJsonReceiver.polygon_ready.connect(self.onPolygonReady)
 
     def toggleAreaType(self):
-        """Show/hide widgets based on selected area type."""
+        """
+        Show/hide widgets based on selected area type.
+        
+        Displays the appropriate input widgets for the selected area
+        selection method (CSV, GeoJSON, or map drawing).
+        """
         area_type = self.areaTypeComboBox.currentText()
         
         self.csvWidget.setVisible(area_type == "Bereich um Gebäude aus CSV")
@@ -1588,12 +1003,13 @@ class OSMBuildingQueryDialog(QDialog):
         """
         Open file dialog for selecting input file.
         
-        Parameters
-        ----------
-        line_edit : QLineEdit
-            Line edit to update with selected path.
-        file_filter : str
-            File filter string for dialog.
+        Displays a file selection dialog with the specified filter and
+        updates the line edit widget with the chosen file path.
+        
+        :param line_edit: Line edit to update with selected path
+        :type line_edit: QLineEdit
+        :param file_filter: File filter string for dialog
+        :type file_filter: str
         """
         filename, _ = QFileDialog.getOpenFileName(
             self, "Datei auswählen", self.base_path, file_filter
@@ -1605,10 +1021,11 @@ class OSMBuildingQueryDialog(QDialog):
         """
         Open file dialog for selecting output file.
         
-        Parameters
-        ----------
-        line_edit : QLineEdit
-            Line edit to update with selected path.
+        Displays a save file dialog for GeoJSON output and updates
+        the line edit widget with the chosen file path.
+        
+        :param line_edit: Line edit to update with selected path
+        :type line_edit: QLineEdit
         """
         filename, _ = QFileDialog.getSaveFileName(
             self, "Speicherort wählen", line_edit.text(), "GeoJSON-Dateien (*.geojson)"
@@ -1617,7 +1034,12 @@ class OSMBuildingQueryDialog(QDialog):
             line_edit.setText(filename)
 
     def activateMapPolygonDrawing(self):
-        """Activate polygon drawing mode on the map."""
+        """
+        Activate polygon drawing mode on the map.
+        
+        Enables interactive polygon drawing on the Leaflet map for
+        defining the area for building data download.
+        """
         if not self.visualization_tab:
             QMessageBox.warning(self, "Fehler", "Keine Kartenverbindung verfügbar.")
             return
@@ -1640,7 +1062,12 @@ class OSMBuildingQueryDialog(QDialog):
             self.visualization_tab.view.web_view.page().runJavaScript("window.enablePolygonCaptureMode();")
 
     def onPolygonReady(self):
-        """Handle polygon ready signal from map."""
+        """
+        Handle polygon ready signal from map.
+        
+        Updates UI state when the polygon drawing is completed on the map,
+        allowing the user to proceed with the download.
+        """
         if not self.waiting_for_polygon:
             return
         
@@ -1797,7 +1224,12 @@ class OSMBuildingQueryDialog(QDialog):
             QMessageBox.critical(self, "Fehler", f"Fehler beim Start des Downloads:\n{str(e)}\n\n{traceback.format_exc()}")
 
     def _onDownloadCanceled(self):
-        """Handle progress dialog cancellation."""
+        """
+        Handle progress dialog cancellation.
+        
+        Terminates the building download thread and resets UI state when
+        the user cancels the download via the progress dialog.
+        """
         print("DEBUG: Building download canceled by user")
         if hasattr(self, 'download_thread') and self.download_thread.isRunning():
             self.download_thread.terminate()
@@ -1806,7 +1238,17 @@ class OSMBuildingQueryDialog(QDialog):
         self.downloadButton.setText("Download starten")
 
     def _onDownloadComplete(self, filepath, building_count):
-        """Handle successful download completion."""
+        """
+        Handle successful download completion.
+        
+        Processes successful building data download, cleans up UI state,
+        adds the layer to the map, and notifies the user of the results.
+        
+        :param filepath: Path to the downloaded GeoJSON file
+        :type filepath: str
+        :param building_count: Number of buildings downloaded
+        :type building_count: int
+        """
         print(f"DEBUG: Building download complete: {filepath}, {building_count} buildings")
         
         # Clear drawn polygon from map if it was used
@@ -1841,19 +1283,18 @@ class OSMBuildingQueryDialog(QDialog):
         QMessageBox.critical(self, "Fehler", error_message)
 
     def _performBuildingDownload(self, filename, area_params):
-        """Perform building download (runs in thread).
+        """
+        Perform building download (runs in thread).
         
-        Parameters
-        ----------
-        filename : str
-            Output file path.
-        area_params : dict
-            Dictionary with area type and file paths (no GUI access in thread!)
-            
-        Returns
-        -------
-        tuple
-            (filepath, building_count)
+        Executes building data download in a background thread using
+        Overpass API. No GUI access allowed in this method.
+        
+        :param filename: Output file path
+        :type filename: str
+        :param area_params: Dictionary with area type and file paths (no GUI access in thread!)
+        :type area_params: dict
+        :return: (filepath, building_count)
+        :rtype: tuple
         """
         print("DEBUG: _performBuildingDownload called")
         try:
@@ -1866,14 +1307,16 @@ class OSMBuildingQueryDialog(QDialog):
             raise
 
     def downloadBuildings(self, filename, area_params):
-        """Download building data using Overpass API.
+        """
+        Download building data using Overpass API.
         
-        Parameters
-        ----------
-        filename : str
-            Output file path.
-        area_params : dict
-            Dictionary with area type and file paths.
+        Downloads OpenStreetMap building data using the Overpass API based
+        on various area selection methods (CSV buffer, GeoJSON polygon, map drawing).
+        
+        :param filename: Output file path
+        :type filename: str
+        :param area_params: Dictionary with area type and file paths
+        :type area_params: dict
         """
         print("DEBUG: downloadBuildings called")
         import geopandas as gpd

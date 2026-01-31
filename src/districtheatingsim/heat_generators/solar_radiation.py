@@ -2,69 +2,9 @@
 Solar Radiation Calculation Module
 ==================================
 
-This module provides comprehensive solar radiation calculations based on Test Reference Year
-data for solar thermal collectors in district heating applications.
+Solar radiation calculations for tilted collectors using Test Reference Year data.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-24
-
-It implements advanced solar geometry algorithms, incidence angle modeling, and radiation component separation
-for accurate assessment of solar thermal energy potential.
-
-The calculations follow established solar engineering standards and are specifically adapted
-for German climate conditions and district heating integration requirements. The module
-supports various collector orientations, tilt angles, and includes Incidence Angle Modifier
-(IAM) corrections for high-precision solar thermal system modeling.
-
-Features
---------
-- Precise solar position calculations using astronomical algorithms
-- Separation of direct and diffuse radiation components
-- Incidence angle calculations for tilted and oriented collectors
-- Atmospheric attenuation and albedo reflection modeling
-- Incidence Angle Modifier (IAM) corrections for collector performance
-- Support for East-West and North-South collector orientations
-- Test Reference Year (TRY) data compatibility
-
-Mathematical Foundation
------------------------
-The module implements the following key calculations:
-
-**Solar Position**:
-    - Solar declination angle based on day of year
-    - Solar zenith and azimuth angles using spherical trigonometry
-    - Hour angle calculations with equation of time corrections
-    - Local solar time adjustments for longitude and time zone
-
-**Radiation Components**:
-    - Beam radiation on horizontal and inclined surfaces
-    - Diffuse radiation with atmospheric diffuse fraction
-    - Ground-reflected radiation using albedo factors
-    - Total radiation combining all components
-
-**Collector Performance**:
-    - Incidence angle calculations for arbitrary orientations
-    - Incidence Angle Modifier interpolation and application
-    - Collector-specific radiation adjustments
-
-Requirements
-------------
-- numpy >= 1.20.0
-- datetime (standard library)
-- Test Reference Year meteorological data
-
-References
-----------
-Calculation methodology based on:
-- ScenoCalc District Heating 2.0 (https://www.scfw.de/)
-- DIN EN ISO 9806 - Test methods for solar collectors
-- VDI 6002 - Solar heating systems design guidelines
-- Duffie, J.A. & Beckman, W.A. - Solar Engineering of Thermal Processes
-
-Additional Information
-----------------------
-Yield calculation program for solar thermal energy in heating networks
-(calculation basis: ScenoCalc District Heating 2.0) https://www.scfw.de/
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 # Import libraries
@@ -89,302 +29,46 @@ def calculate_solar_radiation(
     IAM_N: Optional[Dict[float, float]] = None
 ) -> Tuple[np.ndarray, Optional[np.ndarray], np.ndarray, np.ndarray]:
     """
-    Calculate solar radiation components for tilted solar thermal collectors.
+    Calculate solar radiation components for tilted collectors using Test Reference Year data.
 
-    This function performs comprehensive solar radiation calculations for solar thermal
-    collectors in district heating applications. It processes Test Reference Year
-    meteorological data to determine incident radiation on collectors with arbitrary
-    orientation and tilt angles, including advanced corrections for incidence angle
-    effects and atmospheric conditions.
+    :param time_steps: Time series as datetime64 array [hours]
+    :type time_steps: numpy.ndarray
+    :param global_radiation: Global horizontal irradiance [W/m²]
+    :type global_radiation: numpy.ndarray
+    :param direct_radiation: Direct normal irradiance [W/m²]
+    :type direct_radiation: numpy.ndarray
+    :param Longitude: Site longitude [degrees], range -180° to +180°
+    :type Longitude: float
+    :param STD_Longitude: Standard time zone longitude [degrees] (e.g., 15° for CET)
+    :type STD_Longitude: float
+    :param Latitude: Site latitude [degrees], range -90° to +90°
+    :type Latitude: float
+    :param Albedo: Ground reflectance factor [-], typical values 0.2 (grass), 0.8 (snow)
+    :type Albedo: float
+    :param East_West_collector_azimuth_angle: Collector azimuth [degrees], 0° = south
+    :type East_West_collector_azimuth_angle: float
+    :param Collector_tilt_angle: Collector tilt from horizontal [degrees], 0-90°
+    :type Collector_tilt_angle: float
+    :param IAM_W: Incidence Angle Modifier lookup table for East-West direction {angle: factor}
+    :type IAM_W: Optional[Dict[float, float]]
+    :param IAM_N: Incidence Angle Modifier lookup table for North-South direction {angle: factor}
+    :type IAM_N: Optional[Dict[float, float]]
+    :return: (GT_total[W/m²], K_beam[-], Gb_tilted[W/m²], Gd_tilted[W/m²])
+    :rtype: Tuple[np.ndarray, Optional[np.ndarray], np.ndarray, np.ndarray]
 
-    The calculation methodology follows established solar engineering standards and
-    includes sophisticated modeling of solar geometry, atmospheric effects, and
-    collector-specific performance characteristics essential for accurate solar
-    thermal system design and performance prediction.
-
-    Parameters
-    ----------
-    time_steps : numpy.ndarray
-        Time series as numpy datetime64 array [hours].
-        Must contain hourly timestamps for entire simulation period.
-        Typically represents Test Reference Year (TRY) time series.
-    global_radiation : numpy.ndarray
-        Global horizontal irradiance time series [W/m²].
-        Total solar radiation on horizontal surface from TRY data.
-        Includes both direct and diffuse radiation components.
-    direct_radiation : numpy.ndarray
-        Direct normal irradiance time series [W/m²].
-        Direct beam solar radiation normal to sun's rays from TRY data.
-        Used for calculation of beam radiation on horizontal surface.
-    Longitude : float
-        Site longitude coordinate [degrees].
-        Positive values for locations east of Greenwich meridian.
-        Range: -180° to +180°. Used for solar time corrections.
-    STD_Longitude : float
-        Standard time zone longitude [degrees].
-        Central meridian of local time zone (e.g., 15° for CET).
-        Used for local solar time calculation and equation of time.
-    Latitude : float
-        Site latitude coordinate [degrees].
-        Positive values for northern hemisphere locations.
-        Range: -90° to +90°. Critical for solar angle calculations.
-    Albedo : float
-        Ground reflectance factor [-].
-        Fraction of solar radiation reflected by ground surface.
-        Typical values: 0.2 (grass), 0.8 (snow), 0.1 (asphalt).
-    East_West_collector_azimuth_angle : float
-        Collector azimuth angle [degrees].
-        Deviation from south orientation (0° = due south).
-        Positive values for west-facing, negative for east-facing.
-        Range: -180° to +180°.
-    Collector_tilt_angle : float
-        Collector tilt angle from horizontal [degrees].
-        Inclination angle of collector surface.
-        Range: 0° (horizontal) to 90° (vertical).
-        Optimal values typically 30-50° for Germany.
-    IAM_W : dict of {float: float}, optional
-        Incidence Angle Modifier lookup table for East-West direction.
-        Keys represent incidence angles [degrees], values are IAM factors [-].
-        Used for collector-specific performance corrections.
-        If None, no IAM corrections applied.
-    IAM_N : dict of {float: float}, optional
-        Incidence Angle Modifier lookup table for North-South direction.
-        Keys represent incidence angles [degrees], values are IAM factors [-].
-        Used for collector-specific performance corrections.
-        If None, no IAM corrections applied.
-
-    Returns
-    -------
-    tuple of numpy.ndarray
-        Solar radiation components for collector surface:
-        
-        GT_H_Gk : numpy.ndarray
-            Total solar irradiance on tilted collector surface [W/m²].
-            Includes direct beam, diffuse sky, and ground-reflected radiation.
-            Primary input for solar thermal collector performance calculations.
-            
-        K_beam : numpy.ndarray or None
-            Combined Incidence Angle Modifier factor [-].
-            Product of East-West and North-South IAM factors.
-            Applied to beam radiation for collector-specific corrections.
-            Returns None if IAM data not provided.
-            
-        GbT : numpy.ndarray
-            Direct beam irradiance on tilted collector surface [W/m²].
-            Beam radiation component after geometric projection.
-            Important for tracking systems and optical analysis.
-            
-        GdT_H_Dk : numpy.ndarray
-            Diffuse irradiance on tilted collector surface [W/m²].
-            Combined diffuse sky and ground-reflected radiation.
-            Includes atmospheric diffuse and albedo components.
-
-    Notes
-    -----
-    Calculation Methodology:
-        
-        **Solar Position Calculation**:
-        The function implements standard solar position algorithms:
-        
-        1. **Day Angle**: B = (day_of_year - 1) × 360° / 365°
-        2. **Equation of Time**: Corrects for Earth's orbital variations
-        3. **Solar Declination**: δ = 23.45° × sin(360° × (284 + day_of_year) / 365°)
-        4. **Hour Angle**: ω = -180° + Solar_time × 180° / 12°
-        5. **Solar Zenith Angle**: cos(θz) = cos(φ)cos(ω)cos(δ) + sin(φ)sin(δ)
-        6. **Solar Azimuth Angle**: Calculated using spherical trigonometry
-        
-        **Radiation Components**:
-        
-        **Total Radiation on Tilted Surface**:
-        GT = Gb,T + Gd,T + Gr,T
-        
-        Where:
-        - Gb,T = Direct beam radiation on tilted surface
-        - Gd,T = Diffuse radiation on tilted surface  
-        - Gr,T = Ground-reflected radiation on tilted surface
-        
-        **Beam Radiation Calculation**:
-        Gb,T = Gb,h × Rb
-        
-        Where Rb is the beam radiation tilt factor:
-        Rb = cos(θi) / cos(θz)
-        
-        **Diffuse Radiation Model**:
-        The model separates diffuse radiation into:
-        - Atmospheric diffuse: Gd,h × Ai × Rb
-        - Isotropic diffuse: Gd,h × (1 - Ai) × (1 + cos(β)) / 2
-        
-        **Ground Reflection**:
-        Gr,T = Gh × ρ × (1 - cos(β)) / 2
-        
-        **Incidence Angle Modifier (IAM)**:
-        For collectors with provided IAM data, the function calculates:
-        - Incidence angles in East-West and North-South directions
-        - Bilinear interpolation of IAM values from lookup tables
-        - Combined IAM factor: K_beam = IAM_EW × IAM_NS
-
-    Physical Interpretation:
-        
-        **Solar Angles**:
-        - **Solar Zenith Angle (θz)**: Angle between sun and vertical
-        - **Solar Azimuth Angle**: Horizontal angle from south to sun projection
-        - **Incidence Angle (θi)**: Angle between sun rays and collector normal
-        
-        **Radiation Components**:
-        - **Direct Beam**: Radiation directly from solar disk
-        - **Diffuse Sky**: Scattered radiation from sky hemisphere
-        - **Ground Reflected**: Radiation reflected from ground surface
-        
-        **Atmospheric Effects**:
-        - **Air Mass**: Atmospheric path length affects beam radiation
-        - **Clearness Index**: Ratio of actual to extraterrestrial radiation
-        - **Diffuse Fraction**: Proportion of diffuse to total radiation
-
-    Validation and Quality Assurance:
-        
-        **Input Validation**:
-        - Time series consistency and completeness
-        - Geographical coordinate validity
-        - Physical parameter bounds checking
-        - Radiation data quality assessment
-        
-        **Calculation Bounds**:
-        - Solar angles limited to physical ranges
-        - Radiation values bounded by extraterrestrial limits
-        - Incidence angles capped at 90° for night conditions
-        
-        **Energy Conservation**:
-        - Total radiation components sum consistently
-        - Beam and diffuse radiation separation maintained
-        - No radiation during night hours (θz > 90°)
-
-    Applications:
-        
-        **Solar Thermal System Design**:
-        - Collector field layout optimization
-        - Annual energy yield prediction
-        - Economic feasibility assessment
-        - System sizing and configuration
-        
-        **District Heating Integration**:
-        - Seasonal energy storage sizing
-        - Load matching and system operation
-        - Grid integration planning
-        - Performance monitoring and validation
-
-    Examples
-    --------
-    >>> # Basic solar radiation calculation for German location
-    >>> import numpy as np
-    >>> from datetime import datetime, timedelta
-    >>> 
-    >>> # Create hourly time series for one year
-    >>> start_time = datetime(2023, 1, 1)
-    >>> time_steps = np.array([
-    ...     start_time + timedelta(hours=h) for h in range(8760)
-    ... ], dtype='datetime64[h]')
-    >>> 
-    >>> # Load TRY meteorological data (example values)
-    >>> global_rad = np.random.uniform(0, 800, 8760)    # W/m² global radiation
-    >>> direct_rad = np.random.uniform(0, 900, 8760)    # W/m² direct normal
-    >>> 
-    >>> # Define location (Munich, Germany)
-    >>> longitude = 11.5      # degrees east
-    >>> std_longitude = 15.0  # CET time zone
-    >>> latitude = 48.1       # degrees north
-    >>> albedo = 0.2          # grass/vegetation
-    >>> 
-    >>> # Define collector orientation
-    >>> azimuth = 0.0         # due south orientation
-    >>> tilt = 45.0           # optimal tilt for Germany
-    >>> 
-    >>> # Calculate solar radiation
-    >>> GT_total, K_beam, Gb_tilted, Gd_tilted = calculate_solar_radiation(
-    ...     time_steps, global_rad, direct_rad,
-    ...     longitude, std_longitude, latitude, albedo,
-    ...     azimuth, tilt
-    ... )
-    >>> 
-    >>> # Analyze results
-    >>> annual_irradiation = np.sum(GT_total)  # Wh/m²
-    >>> print(f"Annual irradiation: {annual_irradiation/1000:.0f} kWh/m²")
-    >>> print(f"Peak irradiance: {np.max(GT_total):.0f} W/m²")
-    >>> print(f"Beam fraction: {np.sum(Gb_tilted)/np.sum(GT_total):.2f}")
-
-    >>> # Advanced calculation with IAM corrections
-    >>> # Define Incidence Angle Modifier data for specific collector
-    >>> IAM_EW_data = {0: 1.00, 10: 0.99, 20: 0.96, 30: 0.91, 
-    ...                40: 0.85, 50: 0.77, 60: 0.67, 70: 0.53, 80: 0.35}
-    >>> IAM_NS_data = {0: 1.00, 10: 0.99, 20: 0.97, 30: 0.93,
-    ...                40: 0.87, 50: 0.79, 60: 0.69, 70: 0.56, 80: 0.38}
-    >>> 
-    >>> # Calculate with IAM corrections
-    >>> GT_corrected, K_beam_factor, Gb_corrected, Gd_corrected = calculate_solar_radiation(
-    ...     time_steps, global_rad, direct_rad,
-    ...     longitude, std_longitude, latitude, albedo,
-    ...     azimuth, tilt, IAM_EW_data, IAM_NS_data
-    ... )
-    >>> 
-    >>> # Compare with and without IAM corrections
-    >>> efficiency_loss = 1 - np.sum(GT_corrected) / np.sum(GT_total)
-    >>> print(f"IAM efficiency loss: {efficiency_loss:.1%}")
-    >>> print(f"Average IAM factor: {np.mean(K_beam_factor[K_beam_factor > 0]):.3f}")
-
-    >>> # Seasonal analysis
-    >>> # Calculate monthly irradiation totals
-    >>> monthly_totals = []
-    >>> for month in range(12):
-    ...     start_hour = month * 730  # Approximate monthly hours
-    ...     end_hour = min(start_hour + 730, 8760)
-    ...     monthly_total = np.sum(GT_total[start_hour:end_hour]) / 1000  # kWh/m²
-    ...     monthly_totals.append(monthly_total)
-    >>> 
-    >>> # Identify peak and minimum months
-    >>> peak_month = np.argmax(monthly_totals) + 1
-    >>> min_month = np.argmin(monthly_totals) + 1
-    >>> print(f"Peak irradiation month: {peak_month} ({monthly_totals[peak_month-1]:.0f} kWh/m²)")
-    >>> print(f"Minimum irradiation month: {min_month} ({monthly_totals[min_month-1]:.0f} kWh/m²)")
-
-    >>> # Optimization study for collector tilt angle
-    >>> tilt_angles = np.arange(0, 91, 5)  # 0° to 90° in 5° steps
-    >>> annual_yields = []
-    >>> 
-    >>> for tilt in tilt_angles:
-    ...     GT_opt, _, _, _ = calculate_solar_radiation(
-    ...         time_steps, global_rad, direct_rad,
-    ...         longitude, std_longitude, latitude, albedo,
-    ...         azimuth, tilt
-    ...     )
-    ...     annual_yield = np.sum(GT_opt) / 1000  # kWh/m²
-    ...     annual_yields.append(annual_yield)
-    >>> 
-    >>> # Find optimal tilt angle
-    >>> optimal_tilt = tilt_angles[np.argmax(annual_yields)]
-    >>> max_yield = np.max(annual_yields)
-    >>> print(f"Optimal tilt angle: {optimal_tilt}°")
-    >>> print(f"Maximum annual yield: {max_yield:.0f} kWh/m²")
-
-    See Also
-    --------
-    numpy.datetime64 : Time series handling for meteorological data
-    Solar thermal collector performance modeling
-    District heating solar integration methods
-    Test Reference Year (TRY) data processing
-
-    Raises
-    ------
-    ValueError
-        If input arrays have mismatched dimensions or invalid parameter ranges.
-    TypeError
-        If input data types are incompatible with calculation requirements.
+    .. note::
+       Implements comprehensive solar geometry, atmospheric effects, and collector-specific IAM corrections.
+       Total radiation GT = beam + diffuse sky + ground-reflected components.
     """
-    # Extract local time from datetime64 time steps
-    hour_L = (time_steps - time_steps.astype('datetime64[D]')).astype('timedelta64[m]').astype(float) / 60
-
+    # Convert time_steps to datetime64 if needed and extract hour of day
+    time_steps_dt = np.asarray(time_steps, dtype='datetime64[h]')
+    time_of_day = (time_steps_dt - time_steps_dt.astype('datetime64[D]')).astype('timedelta64[h]').astype(float)
+    hour_L = time_of_day
+    
     # Calculate day of year for each time step
     day_of_year = np.array([
         datetime.fromtimestamp(t.astype('datetime64[s]').astype(np.int64), tz=timezone.utc).timetuple().tm_yday 
-        for t in time_steps
+        for t in time_steps_dt
     ])
 
     # Calculate the day of the year as an angle for solar calculations
@@ -487,22 +171,14 @@ def calculate_solar_radiation(
 
         def IAM(Incidence_angle: np.ndarray, iam_data: Dict[float, float]) -> np.ndarray:
             """
-            Interpolate Incidence Angle Modifier values from lookup table.
-            
-            Performs bilinear interpolation between tabulated IAM values for
-            accurate collector performance corrections at arbitrary incidence angles.
-            
-            Parameters
-            ----------
-            Incidence_angle : numpy.ndarray
-                Array of incidence angles [degrees].
-            iam_data : dict
-                IAM lookup table with angles as keys and factors as values.
-                
-            Returns
-            -------
-            numpy.ndarray
-                Interpolated IAM factors for input incidence angles.
+            Interpolate Incidence Angle Modifier values from lookup table using bilinear interpolation.
+
+            :param Incidence_angle: Incidence angles [degrees]
+            :type Incidence_angle: numpy.ndarray
+            :param iam_data: IAM lookup table {angle: factor}
+            :type iam_data: Dict[float, float]
+            :return: Interpolated IAM factors
+            :rtype: numpy.ndarray
             """
             # Find lower bound incidence angles (rounded down to nearest 10°)
             sverweis_1 = np.abs(Incidence_angle) - np.abs(Incidence_angle) % 10

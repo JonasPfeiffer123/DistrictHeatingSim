@@ -1,11 +1,10 @@
 """
 Energy System Main Tab Module
-=============================
+==============================
 
-This module contains the main tab for managing the energy system design, including technology definitions, cost calculations, and results display.
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-04-19
+Main tab for managing energy system design, including technology definitions, cost calculations, and results display.
 """
 
 import traceback
@@ -30,47 +29,24 @@ from districtheatingsim.heat_generators.energy_system import EnergySystem
 
 class EnergySystemTab(QWidget):
     """
-    The MixDesignTab class represents the tab responsible for defining and managing the design of energy mix 
-    for a heat generation project.
+    Main tab for defining and managing energy mix design for heat generation projects.
 
-    Attributes:
-        data_added (pyqtSignal): Signal emitted when new data is added.
-        data_manager (object): Reference to the data manager instance.
-        parent (QWidget): Reference to the parent widget.
-        results (dict): Stores results data.
-        tech_objects (list): List of technology objects.
-        economicParametersDialog (EconomicParametersDialog): Dialog for economic parameters.
-        base_path (str): Base path for the project.
-        gaspreis (float): Gas price in €/MWh.
-        strompreis (float): Electricity price in €/MWh.
-        holzpreis (float): Wood price in €/MWh.
-        BEW (str): BEW funding consideration.
-        kapitalzins (float): Capital interest rate in %.
-        preissteigerungsrate (float): Price increase rate in %.
-        betrachtungszeitraum (int): Consideration period in years.
-        stundensatz (float): Hourly rate in €/h.
-        filename (str): Filename for data import.
-        load_scale_factor (float): Load scale factor.
-        TRY_data (array): Test reference year data.
-        COP_data (array): Coefficient of performance data.
-        calculationThread (CalculateMixThread): Thread for mix calculation.
-        menuBar (QMenuBar): Menu bar for the tab.
-        tabWidget (QTabWidget): Tab widget to hold different sub-tabs.
-        techTab (TechnologyTab): Tab for technology definitions.
-        costTab (CostTab): Tab for cost overview.
-        resultTab (ResultsTab): Tab for results display.
-        sensitivityTab (SensitivityTab): Tab for sensitivity analysis.
-        progressBar (QProgressBar): Progress bar for showing calculation progress.
+    :signal data_added: Signal emitted when new data is added.
     """
     data_added = pyqtSignal(object)  # Signal that transfers data as an object
     
     def __init__(self, folder_manager, data_manager, config_manager, parent=None):
         """
-        Initializes the MixDesignTab instance.
+        Initialize the EnergySystemTab.
 
-        Args:
-            data_manager (object): Reference to the data manager instance.
-            parent (QWidget, optional): Reference to the parent widget. Defaults to None.
+        :param folder_manager: Folder manager instance.
+        :type folder_manager: object
+        :param data_manager: Data manager instance.
+        :type data_manager: object
+        :param config_manager: Configuration manager instance.
+        :type config_manager: object
+        :param parent: Parent widget.
+        :type parent: QWidget
         """
         super().__init__(parent)
         self.folder_manager = folder_manager
@@ -89,22 +65,22 @@ class EnergySystemTab(QWidget):
 
     def initDialogs(self):
         """
-        Initializes the dialogs for economic and infrastructure parameters.
+        Initialize dialogs for economic parameters.
         """
         self.economicParametersDialog = EconomicParametersDialog(self)
 
     def updateDefaultPath(self, new_base_path):
         """
-        Updates the default path for the project.
+        Update project default path.
 
-        Args:
-            new_base_path (str): The new base path for the project.
+        :param new_base_path: New base path for the project.
+        :type new_base_path: str
         """
         self.base_path = new_base_path
 
     def initUI(self):
         """
-        Initializes the user interface components for the MixDesignTab.
+        Initialize user interface components.
         """
         self.createMainScrollArea()
         self.createMenu()
@@ -114,7 +90,7 @@ class EnergySystemTab(QWidget):
 
     def createMainScrollArea(self):
         """
-        Creates the main scroll area for the tab.
+        Create main scroll area for the tab.
         """
         self.mainScrollArea = QScrollArea(self)
         self.mainScrollArea.setWidgetResizable(True)
@@ -124,7 +100,7 @@ class EnergySystemTab(QWidget):
 
     def createMenu(self):
         """
-        Creates the menu bar for the tab.
+        Create menu bar for the tab.
         """
         self.menuBar = QMenuBar(self)
         self.menuBar.setFixedHeight(30)
@@ -171,14 +147,14 @@ class EnergySystemTab(QWidget):
 
     def createAction(self, title, method):
         """
-        Creates a menu action.
+        Create a menu action.
 
-        Args:
-            title (str): The title of the action.
-            method (function): The method to be called when the action is triggered.
-
-        Returns:
-            QAction: The created action.
+        :param title: Action title.
+        :type title: str
+        :param method: Method to be called when triggered.
+        :type method: function
+        :return: Created action.
+        :rtype: QAction
         """
         action = QAction(title, self)
         action.triggered.connect(method)
@@ -186,7 +162,7 @@ class EnergySystemTab(QWidget):
 
     def createTabs(self):
         """
-        Creates the tab widget and its sub-tabs.
+        Create tab widget and its sub-tabs.
         """
         self.tabWidget = QTabWidget()
         self.techTab = TechnologyTab(self.folder_manager, self.config_manager, self)
@@ -201,17 +177,17 @@ class EnergySystemTab(QWidget):
 
     def createProgressBar(self):
         """
-        Creates the progress bar for showing calculation progress.
+        Create progress bar for calculation progress.
         """
         self.progressBar = QProgressBar(self)
         self.mainLayout.addWidget(self.progressBar)
 
     def createMainLayout(self):
         """
-        Creates the main layout for the tab.
+        Create main layout for the tab.
 
-        Returns:
-            QVBoxLayout: The main layout for the tab.
+        :return: Main layout.
+        :rtype: QVBoxLayout
         """
         layout = QVBoxLayout(self)
         layout.addWidget(self.menuBar)
@@ -221,13 +197,13 @@ class EnergySystemTab(QWidget):
     ### Input Economic Parameters ###
     def setupParameters(self):
         """
-        Sets up the economic parameters.
+        Set up economic parameters.
         """
         self.updateEconomicParameters()
 
     def updateEconomicParameters(self):
         """
-        Updates the economic parameters from the dialog.
+        Update economic parameters from dialog.
         """
 
         self.economic_parameters = self.economicParametersDialog.getValues()
@@ -235,7 +211,7 @@ class EnergySystemTab(QWidget):
     ### Dialogs ###
     def openEconomicParametersDialog(self):
         """
-        Opens the economic parameters dialog.
+        Open economic parameters dialog.
         """
         if self.economicParametersDialog.exec():
             self.updateEconomicParameters()
@@ -243,10 +219,10 @@ class EnergySystemTab(QWidget):
     ### Calculation Functions ###
     def validateInputs(self):
         """
-        Validates the inputs for the calculation.
+        Validate inputs for calculation.
 
-        Returns:
-            bool: True if inputs are valid, False otherwise.
+        :return: True if inputs are valid, False otherwise.
+        :rtype: bool
         """
         try:
             load_scale_factor = float(self.techTab.load_scale_factorInput.text())
@@ -259,7 +235,7 @@ class EnergySystemTab(QWidget):
     
     def preprocessData(self):
         """
-        Preprocesses the data before calculation.
+        Preprocess data before calculation.
         """
         self.csv_filename = self.techTab.FilenameInput.text()
         self.TRY_filename = self.data_manager.get_try_filename()
@@ -314,11 +290,12 @@ class EnergySystemTab(QWidget):
 
     def calculate_energy_system(self, optimize=False, weights=None):
         """
-        Starts the calculation process.
+        Start calculation process.
 
-        Args:
-            optimize (bool, optional): Whether to optimize the calculation. Defaults to False.
-            weights (dict, optional): Weights for optimization. Defaults to None.
+        :param optimize: Whether to optimize the calculation.
+        :type optimize: bool
+        :param weights: Weights for optimization.
+        :type weights: dict
         """
         
         self.optimize = optimize
@@ -340,7 +317,7 @@ class EnergySystemTab(QWidget):
 
     def start_optimization(self):
         """
-        Opens the optimization dialog and starts the optimization process.
+        Open optimization dialog and start optimization process.
         """
         dialog = WeightDialog()
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -349,10 +326,10 @@ class EnergySystemTab(QWidget):
 
     def on_calculation_done(self, result):
         """
-        Handles the completion of the calculation.
+        Handle calculation completion.
 
-        Args:
-            result (dict): The results of the calculation.
+        :param result: Calculation results.
+        :type result: dict
         """
         self.progressBar.setRange(0, 1)
         self.energy_system = result[0]
@@ -367,10 +344,10 @@ class EnergySystemTab(QWidget):
 
     def on_calculation_error(self, error_message):
         """
-        Handles calculation errors.
+        Handle calculation errors.
 
-        Args:
-            error_message (str): The error message.
+        :param error_message: Error message.
+        :type error_message: str
         """
         self.progressBar.setRange(0, 1)
         QMessageBox.critical(self, "Berechnungsfehler", str(error_message))
@@ -398,13 +375,16 @@ class EnergySystemTab(QWidget):
 
     def sensitivity(self, gas_range, electricity_range, wood_range, weights=None):
         """
-        Performs a sensitivity analysis over a range of prices.
+        Perform sensitivity analysis over a range of prices.
 
-        Args:
-            gas_range (tuple): Range of gas prices (lower, upper, num_points).
-            electricity_range (tuple): Range of electricity prices (lower, upper, num_points).
-            wood_range (tuple): Range of wood prices (lower, upper, num_points).
-            weights (dict, optional): Weights for optimization. Defaults to None.
+        :param gas_range: Range of gas prices (lower, upper, num_points).
+        :type gas_range: tuple
+        :param electricity_range: Range of electricity prices (lower, upper, num_points).
+        :type electricity_range: tuple
+        :param wood_range: Range of wood prices (lower, upper, num_points).
+        :type wood_range: tuple
+        :param weights: Weights for optimization.
+        :type weights: dict
         """
         if not self.validateInputs():
             return
@@ -440,13 +420,12 @@ class EnergySystemTab(QWidget):
 
     def generate_values(self, price_range):
         """
-        Generates values within a specified range.
+        Generate values within a specified range.
 
-        Args:
-            price_range (tuple): The price range (lower, upper, num_points).
-
-        Returns:
-            list: Generated values within the specified range.
+        :param price_range: Price range (lower, upper, num_points).
+        :type price_range: tuple
+        :return: Generated values within the range.
+        :rtype: list
         """
         lower, upper, num_points = price_range
         step = (upper - lower) / (num_points - 1)
@@ -454,16 +433,18 @@ class EnergySystemTab(QWidget):
 
     def calculate_sensitivity(self, gas_price, electricity_price, wood_price, weights):
         """
-        Calculates the energy mix for given prices and weights.
+        Calculate energy mix for given prices and weights.
 
-        Args:
-            gas_price (float): Gas price.
-            electricity_price (float): Electricity price.
-            wood_price (float): Wood price.
-            weights (dict): Weights for optimization.
-
-        Returns:
-            dict: The calculation results.
+        :param gas_price: Gas price.
+        :type gas_price: float
+        :param electricity_price: Electricity price.
+        :type electricity_price: float
+        :param wood_price: Wood price.
+        :type wood_price: float
+        :param weights: Weights for optimization.
+        :type weights: dict
+        :return: Calculation results.
+        :rtype: dict
         """
         result = None
         calculation_done_event = QEventLoop()
@@ -502,7 +483,7 @@ class EnergySystemTab(QWidget):
     # Show Sankey Diagram
     def show_sankey(self):
         """
-        Shows additional results.
+        Show Sankey diagram of energy flows.
         """
         if self.techTab.tech_objects and self.energy_system.results:
             dialog = SankeyDialog(results=self.energy_system.results, parent=self)
@@ -516,7 +497,10 @@ class EnergySystemTab(QWidget):
     ### Save Calculation Results ###
     def save_heat_generation_results_to_csv(self, show_dialog=True):
         """
-        Saves the heat generation results to a CSV file.
+        Save heat generation results to CSV file.
+
+        :param show_dialog: Whether to show dialogs.
+        :type show_dialog: bool
         """
         if not self.energy_system or not self.energy_system.results:
             if show_dialog:
@@ -534,7 +518,10 @@ class EnergySystemTab(QWidget):
 
     def save_results_JSON(self, show_dialog=True):
         """
-        Saves the results and technology objects to a JSON file.
+        Save results and technology objects to JSON file.
+
+        :param show_dialog: Whether to show dialogs.
+        :type show_dialog: bool
         """
         # Check if energy_system attribute exists and has results
         if not hasattr(self, 'energy_system') or not self.energy_system or not self.energy_system.results:
@@ -554,12 +541,10 @@ class EnergySystemTab(QWidget):
 
     def load_results_JSON(self, show_dialog=True):
         """
-        Loads the EnergySystem object and its results from a JSON file.
-        
-        Parameters
-        ----------
-        show_dialog : bool, optional
-            Whether to show success/error dialogs. Default is True.
+        Load EnergySystem object and results from JSON file.
+
+        :param show_dialog: Whether to show success/error dialogs.
+        :type show_dialog: bool
         """
         json_filename = os.path.join(self.base_path, self.config_manager.get_relative_path("results_path"))
         if not json_filename:

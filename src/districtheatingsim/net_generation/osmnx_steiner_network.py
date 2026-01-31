@@ -1,57 +1,8 @@
 """
-OSMnx-based District Heating Network Generation
-================================================
-
-This module implements advanced district heating network generation using OpenStreetMap
-data via OSMnx combined with Steiner Tree optimization and edge-splitting algorithms.
-
-The workflow ensures optimal street-based routing while maintaining exact coordinate
-precision for connection points to prevent network fragmentation.
+OSMnx-based district heating network generation using OpenStreetMap data,
+Steiner Tree optimization, and edge-splitting algorithms for optimal street-based routing.
 
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-11-22
-
-Key Features
-------------
-- Street network download from OpenStreetMap via OSMnx
-- Steiner Tree approximation for minimal network topology
-- Edge-splitting algorithm with exact coordinate matching
-- Dead-end removal with connection endpoint protection
-- Dual network generation (supply/return) with offset
-- HAST cross-connections with full building metadata
-- Generator cross-connection support
-
-Technical Details
------------------
-The edge-splitting algorithm uses exact (x, y) coordinate tuples instead of
-Shapely Point objects to prevent floating-point precision drift that can cause
-network fragmentation. Connection endpoints are protected during dead-end removal
-to maintain network connectivity.
-
-See Also
---------
-osmnx : OpenStreetMap network data retrieval
-networkx : Graph algorithms including Steiner Tree
-shapely : Geometric operations
-
-Examples
---------
->>> from districtheatingsim.net_generation.osmnx_steiner_network import generate_osmnx_network
->>> 
->>> # Load building data
->>> buildings = gpd.read_file('buildings.csv')
->>> generator_coords = (480219, 5711597)
->>> 
->>> # Generate complete network
->>> result = generate_osmnx_network(
-...     buildings=buildings,
-...     generator_coords=generator_coords,
-...     output_dir='output/',
-...     return_offset=1.0
-... )
->>> 
->>> print(f"Generated {result['n_supply_segments']} supply segments")
->>> print(f"Total length: {result['total_length_km']} km")
 """
 
 import pandas as pd
@@ -86,103 +37,25 @@ def download_street_graph(
     """
     Download street network from OpenStreetMap for given building area.
     
-    Downloads the street network covering the building locations plus a buffer zone.
-    The graph is projected to the specified coordinate reference system for metric
-    calculations.
+    :param buildings: Building geometries (Point) in projected CRS
+    :type buildings: gpd.GeoDataFrame
+    :param generator_coords: List of (x, y) heat generator coordinates in same CRS
+    :type generator_coords: List[Tuple[float, float]]
+    :param buffer_meters: Buffer distance in meters around buildings
+    :type buffer_meters: float
+    :param network_type: OSM network type ('drive', 'drive_service', 'walk', 'bike', 'all')
+    :type network_type: str
+    :param target_crs: Target coordinate reference system
+    :type target_crs: str
+    :param custom_filter: Custom OSM filter string (overrides network_type)
+    :type custom_filter: Optional[str]
+    :return: Street network graph projected to target CRS
+    :rtype: nx.MultiDiGraph
+    :raises ValueError: If buildings is empty or has invalid CRS
+    :raises ConnectionError: If OSMnx cannot download data from OpenStreetMap
     
-    Parameters
-    ----------
-    buildings : gpd.GeoDataFrame
-        GeoDataFrame containing building geometries (Point) in projected CRS.
-    generator_coords : list of tuple of float
-        List of (x, y) coordinate tuples for heat generator locations in same CRS as buildings.
-        Example: [(480219, 5711597)] or [(480219, 5711597), (480500, 5712000)]
-    buffer_meters : float, optional
-        Buffer distance in meters around buildings for network download.
-        Default is 500.0 meters.
-    network_type : str, optional
-        Type of street network to download. Options include:
-        
-        - 'drive' : for cars (default roads)
-        - 'drive_service' : includes service roads
-        - 'walk' : for pedestrians
-        - 'bike' : for bicycles
-        - 'all' : all street types
-        
-        Default is 'drive_service'.
-        Ignored if custom_filter is provided.
-    custom_filter : str, optional
-        Custom OSM filter string for precise highway type selection.
-        Example: '["highway"~"primary|secondary|tertiary|residential|living_street|service"]'
-        If provided, overrides network_type parameter.
-        Default is None (uses network_type).
-    target_crs : str, optional
-        Target coordinate reference system for projection.
-        Default is 'EPSG:25833' (UTM Zone 33N, Europe).
-    
-    Returns
-    -------
-    nx.MultiDiGraph
-        NetworkX graph with street network, projected to target CRS.
-        Node attributes include 'x' and 'y' coordinates in target CRS.
-    
-    Raises
-    ------
-    ValueError
-        If buildings GeoDataFrame is empty or has invalid CRS.
-    ConnectionError
-        If OSMnx cannot download data from OpenStreetMap.
-    
-    Notes
-    -----
-    The function performs the following steps:
-    
-    1. Convert buildings to WGS84 (required for OSMnx)
-    2. Create buffer polygon around all buildings
-    3. Download street graph from OpenStreetMap
-    4. Project graph to target CRS for metric calculations
-    
-    The buffer is converted from meters to degrees using approximate conversion
-    (1 degree ≈ 111 km at equator). For more precise buffers, consider using
-    projected CRS before conversion.
-    
-    Custom Filter Syntax:
-        OSMnx uses regex patterns in custom filters. To filter for specific
-        highway types (like your OSM download tags), use:
-        
-        - Single type: '["highway"="primary"]'
-        - Multiple types: '["highway"~"primary|secondary|tertiary"]'
-        - With service: '["highway"~"primary|secondary|tertiary|residential|living_street|service"]'
-        
-        This is more precise than network_type presets.
-    
-    Examples
-    --------
-    >>> buildings = gpd.read_file('buildings.shp')
-    >>> generator_coords = [(480219, 5711597)]
-    >>> 
-    >>> # Using network_type (simple)
-    >>> street_graph = download_street_graph(
-    ...     buildings=buildings,
-    ...     generator_coords=generator_coords,
-    ...     buffer_meters=800.0,
-    ...     network_type='drive'
-    ... )
-    >>> 
-    >>> # Using custom_filter (precise control)
-    >>> street_graph = download_street_graph(
-    ...     buildings=buildings,
-    ...     generator_coords=generator_coords,
-    ...     buffer_meters=800.0,
-    ...     custom_filter='["highway"~"primary|secondary|tertiary|residential|living_street|service"]'
-    ... )
-    >>> 
-    >>> print(f"Downloaded {len(street_graph.nodes)} nodes")
-    
-    See Also
-    --------
-    osmnx.graph_from_polygon : OSMnx function for graph download
-    osmnx.project_graph : OSMnx function for graph projection
+    .. note::
+       Custom filters use regex: '["highway"~"primary|secondary|tertiary|residential|service"]'
     """
     if buildings.empty:
         raise ValueError("Buildings GeoDataFrame is empty")
@@ -234,72 +107,21 @@ def create_steiner_tree(
     weight: str = 'length'
 ) -> nx.Graph:
     """
-    Create Steiner Tree connecting terminal points on street network.
+    Create Steiner Tree connecting terminal points on street network using Kou approximation.
     
-    Computes an approximate minimum spanning tree that connects all terminal
-    points using the street network. Uses the Kou approximation algorithm
-    which provides a 2-approximation of the optimal Steiner Tree.
+    :param street_graph: Street network graph from OSMnx with node coordinates
+    :type street_graph: nx.MultiDiGraph
+    :param terminal_points: Terminal point geometries (buildings, generators)
+    :type terminal_points: gpd.GeoDataFrame
+    :param weight: Edge attribute for optimization (default 'length')
+    :type weight: str
+    :return: Undirected Steiner Tree subgraph connecting all terminals
+    :rtype: nx.Graph
+    :raises ValueError: If terminal_points is empty or street_graph has no nodes
+    :raises KeyError: If weight attribute not found in edge data
     
-    Parameters
-    ----------
-    street_graph : nx.MultiDiGraph
-        Street network graph from OSMnx with node coordinates.
-    terminal_points : gpd.GeoDataFrame
-        GeoDataFrame with terminal point geometries (buildings, generators).
-    weight : str, optional
-        Edge attribute to use as weight for optimization.
-        Default is 'length' for shortest path by distance.
-    
-    Returns
-    -------
-    nx.Graph
-        Undirected Steiner Tree subgraph connecting all terminals.
-        Maintains same node and edge attributes as input graph.
-    
-    Raises
-    ------
-    ValueError
-        If terminal_points is empty or street_graph has no nodes.
-    KeyError
-        If weight attribute not found in edge data.
-    
-    Notes
-    -----
-    Algorithm Steps:
-    
-    1. Find nearest street network node for each terminal point
-    2. Create undirected version of street graph
-    3. Compute Steiner Tree approximation using Kou algorithm
-    4. Return minimal subgraph connecting all terminals
-    
-    The Kou algorithm has time complexity O(|T|² |E| log |V|) where:
-    
-    - T = number of terminal nodes
-    - E = number of edges
-    - V = number of vertices
-    
-    For large networks (>10000 nodes), consider preprocessing to extract
-    relevant subgraph before computing Steiner Tree.
-    
-    Coordinate Precision:
-        Node coordinates are preserved exactly from input graph.
-        Important for subsequent edge-splitting operations.
-    
-    Examples
-    --------
-    >>> street_graph = download_street_graph(buildings)
-    >>> terminals = gpd.GeoDataFrame(geometry=building_points)
-    >>> steiner_tree = create_steiner_tree(
-    ...     street_graph=street_graph,
-    ...     terminal_points=terminals,
-    ...     weight='length'
-    ... )
-    >>> print(f"Steiner Tree: {len(steiner_tree.nodes)} nodes, {len(steiner_tree.edges)} edges")
-    
-    See Also
-    --------
-    networkx.algorithms.approximation.steiner_tree : Steiner Tree algorithm
-    osmnx.distance.nearest_nodes : Find nearest graph nodes
+    .. note::
+       Kou algorithm complexity: O(|T|² |E| log |V|). Node coordinates preserved for edge-splitting.
     """
     if terminal_points.empty:
         raise ValueError("Terminal points GeoDataFrame is empty")
@@ -341,89 +163,20 @@ def connect_terminals_with_edge_splitting(
     """
     Connect terminal points to Steiner Tree using edge-splitting algorithm.
     
-    Creates connections from each terminal to the nearest point on the Steiner Tree.
-    If the nearest point is close to an existing node, connects to that node.
-    Otherwise, marks the edge for splitting at the exact connection point.
+    :param steiner_tree: Steiner Tree graph connecting terminal nodes
+    :type steiner_tree: nx.Graph
+    :param street_graph: Original street network with node coordinates
+    :type street_graph: nx.MultiDiGraph
+    :param terminal_points: Terminal point geometries
+    :type terminal_points: gpd.GeoDataFrame
+    :param node_threshold: Distance threshold for node vs edge connection (meters)
+    :type node_threshold: float
+    :return: (connection_info, edges_to_split) tuple
+    :rtype: Tuple[List[Dict[str, Any]], Dict[Tuple, List[Dict[str, Any]]]]
+    :raises ValueError: If terminal_points or steiner_tree is empty
     
-    **CRITICAL**: Uses exact (x, y) coordinate tuples to prevent floating-point
-    precision drift that causes network fragmentation.
-    
-    Parameters
-    ----------
-    steiner_tree : nx.Graph
-        Steiner Tree graph connecting terminal node locations.
-    street_graph : nx.MultiDiGraph
-        Original street network graph with node coordinate data.
-    terminal_points : gpd.GeoDataFrame
-        GeoDataFrame containing terminal point geometries.
-    node_threshold : float, optional
-        Distance threshold in meters. If connection point is within this
-        distance of an existing node, connect to node instead of splitting edge.
-        Default is 0.1 meters.
-    
-    Returns
-    -------
-    connection_info : list of dict
-        List of connection information for each terminal:
-        
-        - 'terminal_idx' : Index of terminal in input GeoDataFrame
-        - 'terminal_coords' : (x, y) tuple of terminal location
-        - 'network_coords' : (x, y) tuple of connection point on network
-        - 'distance' : Distance from terminal to connection point
-        - 'type' : 'node' or 'split' indicating connection type
-        - 'edge' : Edge tuple (u, v) where connection is made
-        
-    edges_to_split : dict
-        Dictionary mapping edge tuples to list of split point information:
-        
-        - key : (u, v) tuple identifying edge
-        - value : list of dicts with 'split_coords' and 'terminal_idx'
-    
-    Raises
-    ------
-    ValueError
-        If terminal_points or steiner_tree is empty.
-    
-    Notes
-    -----
-    Edge-Splitting Algorithm:
-    
-    1. Build edge dictionary with exact coordinate tuples
-    2. For each terminal, find nearest point on each Steiner Tree edge
-    3. Check if nearest point is close to existing node (< node_threshold)
-    4. If yes: connection type = 'node', use node coordinates
-    5. If no: connection type = 'split', store exact split coordinates
-    6. Collect all split points per edge for later segmentation
-    
-    Coordinate Precision:
-        **Uses (x, y) tuples instead of Point objects**
-        Point objects cause floating-point drift during conversions:
-        
-        - Point → tuple → Point: coordinates may change slightly
-        - Tuple → tuple: coordinates remain bit-identical
-        
-        This is CRITICAL for subsequent operations that match coordinates
-        to connect networks without gaps.
-    
-    Examples
-    --------
-    >>> connection_info, edges_to_split = connect_terminals_with_edge_splitting(
-    ...     steiner_tree=steiner_tree,
-    ...     street_graph=street_graph,
-    ...     terminal_points=buildings,
-    ...     node_threshold=0.1
-    ... )
-    >>> print(f"Connections: {len(connection_info)}")
-    >>> print(f"Edges to split: {len(edges_to_split)}")
-    >>> 
-    >>> # Check connection types
-    >>> n_node = sum(1 for c in connection_info if c['type'] == 'node')
-    >>> n_split = sum(1 for c in connection_info if c['type'] == 'split')
-    >>> print(f"Node connections: {n_node}, Edge splits: {n_split}")
-    
-    See Also
-    --------
-    build_network_from_split_edges : Creates network segments from split information
+    .. note::
+       Uses exact (x, y) tuples instead of Point objects to prevent floating-point drift.
     """
     if terminal_points.empty:
         raise ValueError("Terminal points GeoDataFrame is empty")
@@ -514,62 +267,19 @@ def build_network_from_split_edges(
     """
     Build network segments from Steiner Tree with edge splitting.
     
-    Creates LineString geometries for the main network, splitting edges at
-    specified points to accommodate terminal connections. Maintains exact
-    coordinate precision using tuples.
+    :param steiner_tree: Steiner Tree graph to convert
+    :type steiner_tree: nx.Graph
+    :param street_graph: Original street graph with node coordinates
+    :type street_graph: nx.MultiDiGraph
+    :param edges_to_split: Dictionary of edges to split with split point info
+    :type edges_to_split: Dict[Tuple, List[Dict[str, Any]]]
+    :param crs: Coordinate reference system for output
+    :type crs: str
+    :return: Network segments as LineString geometries
+    :rtype: gpd.GeoDataFrame
     
-    Parameters
-    ----------
-    steiner_tree : nx.Graph
-        Steiner Tree graph to convert to geometric network.
-    street_graph : nx.MultiDiGraph
-        Original street graph with node coordinate data.
-    edges_to_split : dict
-        Dictionary from connect_terminals_with_edge_splitting indicating
-        which edges to split and where. Keys are edge tuples (u, v),
-        values are lists of split point dictionaries.
-    crs : str, optional
-        Coordinate reference system for output GeoDataFrame.
-        Default is 'EPSG:25833'.
-    
-    Returns
-    -------
-    gpd.GeoDataFrame
-        GeoDataFrame with LineString geometries representing network segments.
-        Each row is one segment between nodes or split points.
-    
-    Notes
-    -----
-    Algorithm:
-    
-    1. For each edge in Steiner Tree:
-       
-       a. If edge not in edges_to_split: Create single LineString
-       b. If edge in edges_to_split:
-          
-          - Sort split points by distance along edge
-          - Create all_points = [start] + [splits] + [end]
-          - Create segment between each consecutive pair
-    
-    2. Return GeoDataFrame with all segments
-    
-    The sorting ensures split points are in correct order along the edge,
-    preventing overlapping or reversed segments.
-    
-    Examples
-    --------
-    >>> main_network = build_network_from_split_edges(
-    ...     steiner_tree=steiner_tree,
-    ...     street_graph=street_graph,
-    ...     edges_to_split=edges_to_split,
-    ...     crs='EPSG:25833'
-    ... )
-    >>> print(f"Network segments: {len(main_network)}")
-    >>> print(f"Total length: {main_network.geometry.length.sum():.2f} m")
-    
-    See Also
-    --------
-    connect_terminals_with_edge_splitting : Generates edges_to_split dictionary
+    .. note::
+       Split points sorted by distance along edge to prevent overlapping segments.
     """
     logger.info("Building network from split edges")
     
@@ -625,70 +335,17 @@ def remove_dead_ends(
     """
     Remove dead-end segments while protecting connection endpoints.
     
-    Iteratively removes network segments that end in dead ends (degree 1 nodes)
-    while ensuring that connection endpoints for terminals are never removed.
-    This optimizes the network by eliminating unnecessary branches.
+    :param network_gdf: Network segments as LineString geometries
+    :type network_gdf: gpd.GeoDataFrame
+    :param protected_endpoints: Set of (x, y) coordinate tuples to protect
+    :type protected_endpoints: set
+    :param max_iterations: Maximum iterations for dead-end removal
+    :type max_iterations: int
+    :return: Cleaned network with dead ends removed
+    :rtype: gpd.GeoDataFrame
     
-    Parameters
-    ----------
-    network_gdf : gpd.GeoDataFrame
-        GeoDataFrame with LineString geometries representing network segments.
-    protected_endpoints : set of tuple
-        Set of (x, y) coordinate tuples that must not be removed.
-        Typically includes all terminal connection points.
-    max_iterations : int, optional
-        Maximum number of iterations for dead-end removal.
-        Default is 10. Prevents infinite loops in unusual network topologies.
-    
-    Returns
-    -------
-    gpd.GeoDataFrame
-        Cleaned network GeoDataFrame with dead ends removed.
-        Maintains same CRS and structure as input.
-    
-    Notes
-    -----
-    Algorithm:
-    
-    1. Build endpoint degree count (number of segments touching each point)
-    2. For each segment:
-       
-       - Check if start or end has degree = 1 (dead end)
-       - Check if endpoint is in protected_endpoints
-       - If dead end AND not protected: mark for removal
-       - If not dead end OR protected: keep segment
-    
-    3. Update network, repeat until no more removals or max_iterations reached
-    
-    A node is considered a dead end if:
-    
-    - It has degree 1 (only one segment connected)
-    - AND it is not in protected_endpoints
-    
-    Protection Strategy:
-        By protecting connection endpoints, the algorithm ensures that
-        all terminals remain connected to the network. Only truly unnecessary
-        branches (e.g., extra street segments) are removed.
-    
-    Examples
-    --------
-    >>> # Protect all connection points
-    >>> protected = set(conn['network_coords'] for conn in connection_info)
-    >>> 
-    >>> # Remove dead ends
-    >>> cleaned_network = remove_dead_ends(
-    ...     network_gdf=main_network,
-    ...     protected_endpoints=protected,
-    ...     max_iterations=10
-    ... )
-    >>> 
-    >>> print(f"Before: {len(main_network)} segments")
-    >>> print(f"After: {len(cleaned_network)} segments")
-    >>> print(f"Removed: {len(main_network) - len(cleaned_network)} dead-end segments")
-    
-    See Also
-    --------
-    connect_terminals_with_edge_splitting : Generates connection points to protect
+    .. note::
+       Nodes with degree 1 are removed unless in protected_endpoints.
     """
     logger.info(f"Removing dead ends (protecting {len(protected_endpoints)} endpoints)")
     
@@ -741,34 +398,14 @@ def create_connection_lines(
     crs: str = 'EPSG:25833'
 ) -> gpd.GeoDataFrame:
     """
-    Create connection line geometries from terminal to network attachment points.
+    Create connection line geometries from terminals to network attachment points.
     
-    Converts connection information dictionaries into LineString geometries
-    connecting each terminal to its attachment point on the main network.
-    
-    Parameters
-    ----------
-    connection_info : list of dict
-        Connection information from connect_terminals_with_edge_splitting.
-        Each dict must contain 'terminal_coords' and 'network_coords' tuples.
-    crs : str, optional
-        Coordinate reference system for output GeoDataFrame.
-        Default is 'EPSG:25833'.
-    
-    Returns
-    -------
-    gpd.GeoDataFrame
-        GeoDataFrame with LineString geometries for each connection.
-        One row per terminal connection.
-    
-    Examples
-    --------
-    >>> connection_lines = create_connection_lines(
-    ...     connection_info=connection_info,
-    ...     crs='EPSG:25833'
-    ... )
-    >>> print(f"Created {len(connection_lines)} connection lines")
-    >>> print(f"Total connection length: {connection_lines.geometry.length.sum():.2f} m")
+    :param connection_info: Connection information from edge-splitting algorithm
+    :type connection_info: List[Dict[str, Any]]
+    :param crs: Coordinate reference system for output
+    :type crs: str
+    :return: Connection lines as LineString geometries
+    :rtype: gpd.GeoDataFrame
     """
     logger.info(f"Creating connection lines for {len(connection_info)} terminals")
     
@@ -794,51 +431,17 @@ def create_return_network(
     """
     Create return network by offsetting supply network geometries.
     
-    Generates a parallel return network by translating all supply network
-    segments by specified offset. This creates the dual-pipe system typical
-    for district heating networks (supply and return).
+    :param supply_network: Supply network with LineString geometries
+    :type supply_network: gpd.GeoDataFrame
+    :param offset_x: Horizontal offset in meters
+    :type offset_x: float
+    :param offset_y: Vertical offset in meters
+    :type offset_y: float
+    :return: Return network with offset geometries
+    :rtype: gpd.GeoDataFrame
     
-    Parameters
-    ----------
-    supply_network : gpd.GeoDataFrame
-        Supply network GeoDataFrame with LineString geometries.
-    offset_x : float, optional
-        Horizontal offset in meters. Default is 1.0 meter.
-    offset_y : float, optional
-        Vertical offset in meters. Default is 0.0 meters.
-    
-    Returns
-    -------
-    gpd.GeoDataFrame
-        Return network GeoDataFrame with offset geometries.
-        Maintains same structure and CRS as supply network.
-    
-    Notes
-    -----
-    The offset creates physical separation between supply and return pipes:
-    
-    - Prevents overlapping geometries in visualization
-    - Represents realistic pipe placement in trenches
-    - Enables separate hydraulic simulation
-    
-    Typical offset values:
-    
-    - 0.5 - 1.0 m: District heating networks
-    - 0.2 - 0.5 m: Building service connections
-    - 1.0 - 2.0 m: Large transmission mains
-    
-    Examples
-    --------
-    >>> return_network = create_return_network(
-    ...     supply_network=supply_complete,
-    ...     offset_x=1.0,
-    ...     offset_y=0.0
-    ... )
-    >>> print(f"Return network: {len(return_network)} segments")
-    
-    See Also
-    --------
-    create_hast_connections : Creates cross-connections between supply and return
+    .. note::
+       Typical offsets: 0.5-1.0m (district heating), 0.2-0.5m (building connections).
     """
     logger.info(f"Creating return network with offset ({offset_x}, {offset_y}) m")
     
@@ -865,84 +468,19 @@ def create_hast_connections(
     """
     Create HAST (Hausanschlussstation) cross-connections with building metadata.
     
-    Generates cross-connections between supply and return networks at each
-    building location. These represent building substations in district heating
-    systems. Optionally includes all building metadata in the output.
+    :param buildings: Building locations with Point geometries and attributes
+    :type buildings: gpd.GeoDataFrame
+    :param offset_x: Horizontal offset matching return network (meters)
+    :type offset_x: float
+    :param offset_y: Vertical offset matching return network (meters)
+    :type offset_y: float
+    :param include_building_data: Include all building attributes in output
+    :type include_building_data: bool
+    :return: HAST connections with LineStrings and metadata
+    :rtype: gpd.GeoDataFrame
     
-    Parameters
-    ----------
-    buildings : gpd.GeoDataFrame
-        Building locations with Point geometries and attribute data.
-    offset_x : float, optional
-        Horizontal offset matching return network. Default is 1.0 meter.
-    offset_y : float, optional
-        Vertical offset matching return network. Default is 0.0 meters.
-    include_building_data : bool, optional
-        If True, includes all building attributes in output GeoDataFrame.
-        If False, only includes geometry, building_id, and length_m.
-        Default is True.
-    
-    Returns
-    -------
-    gpd.GeoDataFrame
-        HAST connections with LineString geometries and building metadata.
-        Each connection links supply and return networks at building location.
-        
-        Always includes:
-        
-        - geometry : LineString from supply to return point
-        - building_id : Index from input buildings GeoDataFrame
-        - length_m : Length of connection line
-        
-        If include_building_data=True, also includes:
-        
-        - All columns from input buildings GeoDataFrame (except geometry)
-        - Examples: Wärmebedarf, Gebäudetyp, VLT_max, RLT, Baujahr, etc.
-    
-    Notes
-    -----
-    HAST Structure:
-        In district heating networks, HAST represents:
-        
-        - Hausanschlussstation (German): House connection station
-        - Building substation with heat exchanger
-        - Metering and control equipment
-        - Connection point between district network and building
-    
-    The geometric connection is a horizontal line at the building location:
-    
-    - Start: (building_x, building_y) on supply network
-    - End: (building_x + offset_x, building_y + offset_y) on return network
-    
-    Building Data:
-        Including building metadata enables:
-        
-        - Heat demand assignment per consumer
-        - Temperature requirements (supply/return)
-        - Building-specific control strategies
-        - Economic calculations per building
-        - Renovation scenario analysis
-    
-    Examples
-    --------
-    >>> hast_connections = create_hast_connections(
-    ...     buildings=buildings,
-    ...     offset_x=1.0,
-    ...     include_building_data=True
-    ... )
-    >>> 
-    >>> print(f"Created {len(hast_connections)} HAST connections")
-    >>> print(f"Columns: {list(hast_connections.columns)}")
-    >>> 
-    >>> # Access building data
-    >>> if 'Wärmebedarf' in hast_connections.columns:
-    ...     total_demand = hast_connections['Wärmebedarf'].sum()
-    ...     print(f"Total heat demand: {total_demand:.0f} kW")
-    
-    See Also
-    --------
-    create_return_network : Creates offset return network
-    create_generator_connection : Creates generator cross-connection
+    .. note::
+       HAST = building substation connecting district network to building heating system.
     """
     logger.info(f"Creating HAST connections for {len(buildings)} buildings")
     
@@ -985,40 +523,18 @@ def create_generator_connection(
     crs: str = 'EPSG:25833'
 ) -> gpd.GeoDataFrame:
     """
-    Create Erzeugeranlage (generator) cross-connection.
+    Create Erzeugeranlage (generator) cross-connection between supply and return.
     
-    Generates cross-connection between supply and return networks at the
-    heat generator location. Represents the central heat production facility.
-    
-    Parameters
-    ----------
-    generator_coords : tuple of float
-        (x, y) coordinates of generator location in target CRS.
-    offset_x : float, optional
-        Horizontal offset matching return network. Default is 1.0 meter.
-    offset_y : float, optional
-        Vertical offset matching return network. Default is 0.0 meters.
-    crs : str, optional
-        Coordinate reference system. Default is 'EPSG:25833'.
-    
-    Returns
-    -------
-    gpd.GeoDataFrame
-        Generator connection with LineString geometry.
-        Includes generator_id and length_m attributes.
-    
-    Examples
-    --------
-    >>> generator_connection = create_generator_connection(
-    ...     generator_coords=(480219, 5711597),
-    ...     offset_x=1.0,
-    ...     crs='EPSG:25833'
-    ... )
-    >>> print(f"Generator connection length: {generator_connection['length_m'].iloc[0]:.2f} m")
-    
-    See Also
-    --------
-    create_hast_connections : Creates building connections
+    :param generator_coords: (x, y) coordinates of generator location
+    :type generator_coords: Tuple[float, float]
+    :param offset_x: Horizontal offset matching return network (meters)
+    :type offset_x: float
+    :param offset_y: Vertical offset matching return network (meters)
+    :type offset_y: float
+    :param crs: Coordinate reference system
+    :type crs: str
+    :return: Generator connection with LineString geometry
+    :rtype: gpd.GeoDataFrame
     """
     logger.info(f"Creating generator connection at {generator_coords}")
     
@@ -1055,146 +571,39 @@ def generate_osmnx_network(
     """
     Generate complete district heating network using OSMnx and Steiner Tree.
     
-    Main function that orchestrates the complete workflow for generating
-    a street-based district heating network with optimal topology.
+    :param buildings: Building locations with Point geometries in projected CRS
+    :type buildings: gpd.GeoDataFrame
+    :param generator_coords: List of (x, y) generator coordinates in same CRS
+    :type generator_coords: List[Tuple[float, float]]
+    :param output_dir: Directory for output GeoJSON files
+    :type output_dir: str
+    :param return_offset: Horizontal offset for return network (meters)
+    :type return_offset: float
+    :param buffer_meters: Buffer around buildings for street download
+    :type buffer_meters: float
+    :param network_type: OSM network type ('drive', 'drive_service', etc.)
+    :type network_type: str
+    :param custom_filter: Custom OSM filter (overrides network_type)
+    :type custom_filter: Optional[str]
+    :param node_threshold: Distance threshold for node vs edge connection
+    :type node_threshold: float
+    :param remove_dead_ends_flag: Remove dead-end segments
+    :type remove_dead_ends_flag: bool
+    :param max_dead_end_iterations: Maximum iterations for dead-end removal
+    :type max_dead_end_iterations: int
+    :param include_building_data: Include building metadata in HAST output
+    :type include_building_data: bool
+    :param export_geojson: Export results to GeoJSON files
+    :type export_geojson: bool
+    :param target_crs: Target coordinate reference system
+    :type target_crs: str
+    :return: Dictionary with network GeoDataFrames and statistics
+    :rtype: Dict[str, Any]
+    :raises ValueError: If buildings is empty or has invalid CRS
+    :raises FileNotFoundError: If output_dir cannot be created
     
-    Parameters
-    ----------
-    buildings : gpd.GeoDataFrame
-        Building locations with Point geometries and optional attribute data.
-        Must be in projected CRS (e.g., UTM).
-    generator_coords : list of tuple of float
-        List of (x, y) coordinate tuples for heat generator locations in same CRS as buildings.
-        Can contain single or multiple generators.
-        Example: [(480219, 5711597)] or [(480219, 5711597), (480500, 5712000)]
-    output_dir : str
-        Directory path for output GeoJSON files. Created if doesn't exist.
-    return_offset : float, optional
-        Horizontal offset in meters for return network. Default is 1.0 meter.
-    buffer_meters : float, optional
-        Buffer around buildings for street network download. Default is 500 meters.
-    network_type : str, optional
-        OSMnx network type. Default is 'drive_service'.
-        Options: 'drive', 'drive_service', 'walk', 'bike', 'all'.
-        Ignored if custom_filter is provided.
-    custom_filter : str, optional
-        Custom OSM filter for precise highway type selection.
-        Example: '["highway"~"primary|secondary|tertiary|residential|living_street|service"]'
-        If provided, overrides network_type parameter.
-        Default is None (uses network_type).
-    node_threshold : float, optional
-        Distance threshold for node vs edge connection. Default is 0.1 meters.
-    remove_dead_ends_flag : bool, optional
-        Whether to remove dead-end segments. Default is True.
-    max_dead_end_iterations : int, optional
-        Maximum iterations for dead-end removal. Default is 10.
-    include_building_data : bool, optional
-        Include building metadata in HAST output. Default is True.
-    export_geojson : bool, optional
-        Export results to GeoJSON files. Default is True.
-    target_crs : str, optional
-        Target coordinate reference system. Default is 'EPSG:25833'.
-    
-    Returns
-    -------
-    dict
-        Dictionary with network generation results:
-        
-        - 'supply_network' : GeoDataFrame with supply network
-        - 'return_network' : GeoDataFrame with return network
-        - 'hast_connections' : GeoDataFrame with HAST connections
-        - 'generator_connection' : GeoDataFrame with generator connection(s)
-        - 'connection_info' : List of connection information dicts
-        - 'n_buildings' : Number of buildings
-        - 'n_generators' : Number of generators
-        - 'n_supply_segments' : Number of supply network segments
-        - 'n_return_segments' : Number of return network segments
-        - 'n_hast' : Number of HAST connections
-        - 'total_length_km' : Total pipe length in kilometers
-        - 'execution_time_s' : Execution time in seconds
-        - 'output_files' : Dict with paths to output files (if exported)
-    
-    Raises
-    ------
-    ValueError
-        If buildings GeoDataFrame is empty or has invalid CRS.
-    FileNotFoundError
-        If output_dir cannot be created.
-    
-    Notes
-    -----
-    Workflow Steps:
-    
-    1. Download street network from OpenStreetMap
-    2. Add generator to terminals
-    3. Create Steiner Tree on street network
-    4. Connect terminals with edge-splitting algorithm
-    5. Build main network from split edges
-    6. Remove dead-end segments (optional)
-    7. Create connection lines
-    8. Combine supply network (main + connections)
-    9. Create return network with offset
-    10. Create HAST cross-connections with building data
-    11. Create generator cross-connection
-    12. Export to GeoJSON files (optional)
-    
-    Output Files (if export_geojson=True):
-    
-    - Wärmenetz.geojson : Unified network file containing:
-      - Flow lines (supply network)
-      - Return lines (return network)
-      - Building connections (HAST) with metadata
-      - Generator connections (Erzeugeranlagen)
-    
-    Examples
-    --------
-    >>> import geopandas as gpd
-    >>> from districtheatingsim.net_generation.osmnx_steiner_network import generate_osmnx_network
-    >>> 
-    >>> # Load building data
-    >>> buildings = gpd.read_file('buildings.csv')
-    >>> 
-    >>> # Single generator
-    >>> generator_coords = [(480219, 5711597)]
-    >>> result = generate_osmnx_network(
-    ...     buildings=buildings,
-    ...     generator_coords=generator_coords,
-    ...     output_dir='output/',
-    ...     return_offset=1.0,
-    ...     include_building_data=True
-    ... )
-    >>> 
-    >>> # Multiple generators
-    >>> generator_coords = [(480219, 5711597), (480500, 5712000)]
-    >>> result = generate_osmnx_network(
-    ...     buildings=buildings,
-    ...     generator_coords=generator_coords,
-    ...     output_dir='output/'
-    ... )
-    >>> 
-    >>> # Generate with custom highway filter
-    >>> result = generate_osmnx_network(
-    ...     buildings=buildings,
-    ...     generator_coords=[(480219, 5711597)],
-    ...     output_dir='output/',
-    ...     custom_filter='["highway"~"primary|secondary|tertiary|residential|living_street|service"]'
-    ... )
-    >>> 
-    >>> # Print summary
-    >>> print(f"Buildings: {result['n_buildings']}")
-    >>> print(f"Supply segments: {result['n_supply_segments']}")
-    >>> print(f"Total length: {result['total_length_km']:.2f} km")
-    >>> print(f"Execution time: {result['execution_time_s']:.2f}s")
-    >>> 
-    >>> # Access network data
-    >>> supply_network = result['supply_network']
-    >>> hast_with_building_data = result['hast_connections']
-    
-    See Also
-    --------
-    download_street_graph : Downloads OSM street network
-    create_steiner_tree : Creates optimal tree topology
-    connect_terminals_with_edge_splitting : Connects terminals to network
+    .. note::
+       Exports unified Wärmenetz.geojson with supply, return, HAST, and generator networks.
     """
     logger.info("="*70)
     logger.info("OSMNX-BASED DISTRICT HEATING NETWORK GENERATION")
@@ -1405,94 +814,41 @@ def generate_and_export_osmnx_layers(
     target_crs: str = 'EPSG:25833'
 ) -> None:
     """
-    Generate OSMnx-based district heating network and export all layers as GeoJSON files.
+    Generate OSMnx-based district heating network and export as GeoJSON files.
     
-    This function provides a complete workflow compatible with the GUI threading system,
-    generating optimized street-based networks using OSMnx and Steiner Tree algorithms.
-    It matches the interface of generate_and_export_layers() for drop-in replacement.
+    :param osm_street_layer_geojson_file_name: OSM street network (not used in OSMnx mode)
+    :type osm_street_layer_geojson_file_name: str
+    :param data_csv_file_name: Building data CSV with UTM_X and UTM_Y columns
+    :type data_csv_file_name: str
+    :param coordinates: List of (x, y) generator coordinates
+    :type coordinates: List[Tuple[float, float]]
+    :param base_path: Base directory for export (creates Wärmenetz subdirectory)
+    :type base_path: str
+    :param algorithm: Network generation algorithm identifier
+    :type algorithm: str
+    :param offset_angle: Angle for return line offset (degrees)
+    :type offset_angle: float
+    :param offset_distance: Distance for return line separation (meters)
+    :type offset_distance: float
+    :param buffer_meters: Buffer around buildings for street download
+    :type buffer_meters: float
+    :param network_type: OSM network type
+    :type network_type: str
+    :param custom_filter: Custom OSM filter (overrides network_type)
+    :type custom_filter: Optional[str]
+    :param node_threshold: Distance threshold for node vs edge connection
+    :type node_threshold: float
+    :param remove_dead_ends_flag: Remove dead-end segments
+    :type remove_dead_ends_flag: bool
+    :param target_crs: Target coordinate reference system
+    :type target_crs: str
+    :raises FileNotFoundError: If CSV file not found
+    :raises KeyError: If required CSV columns missing
+    :raises ValueError: If invalid data or parameters
+    :raises ConnectionError: If OSM download fails
     
-    Parameters
-    ----------
-    osm_street_layer_geojson_file_name : str
-        Path to GeoJSON file containing OpenStreetMap street network data.
-        Note: Not used in OSMnx mode as streets are downloaded directly from OSM.
-    data_csv_file_name : str
-        Path to CSV file containing building data with coordinates and attributes.
-        Must include 'UTM_X' and 'UTM_Y' columns for spatial positioning.
-    coordinates : List[Tuple[float, float]]
-        List of coordinate tuples (x, y) for heat generator locations.
-        Multiple generators are supported.
-    base_path : str
-        Base directory path for exporting generated network layers.
-        Will create "Wärmenetz" subdirectory for organized file management.
-    algorithm : str, optional
-        Network generation algorithm identifier. Default is "OSMnx".
-        Included for interface compatibility with generate_and_export_layers().
-    offset_angle : float, optional
-        Angle in degrees for parallel return line generation. Default is 0°.
-        0° = eastward offset, 90° = northward offset.
-        Converted to offset_x based on offset_distance.
-    offset_distance : float, optional
-        Distance in meters for parallel return line separation. Default is 0.5m.
-        Applied as horizontal offset (offset_x) for return network.
-    buffer_meters : float, optional
-        Buffer around buildings for street network download. Default is 500 meters.
-    network_type : str, optional
-        OSMnx network type. Default is 'drive_service'.
-        Options: 'drive', 'drive_service', 'walk', 'bike', 'all'.
-        Ignored if custom_filter is provided.
-    custom_filter : str, optional
-        Custom OSM filter for precise highway type selection.
-        Example: '["highway"~"primary|secondary|tertiary|residential|living_street|service"]'
-        If provided, overrides network_type parameter.
-    node_threshold : float, optional
-        Distance threshold for node vs edge connection. Default is 0.1 meters.
-    remove_dead_ends_flag : bool, optional
-        Whether to remove dead-end segments. Default is True.
-    target_crs : str, optional
-        Target coordinate reference system. Default is 'EPSG:25833'.
-    
-    Returns
-    -------
-    None
-        Function creates and exports GeoJSON files to specified directory structure.
-    
-    Notes
-    -----
-    Output File Structure:
-        base_path/
-        └── Wärmenetz/
-            └── Wärmenetz.geojson  # Unified network file with all components
-        
-        The unified GeoJSON contains:
-        - Flow lines (supply network)
-        - Return lines (return network)
-        - Building connections (HAST) with building data
-        - Generator connections (Erzeugeranlagen)
-    
-    Threading Compatibility:
-        - Designed for use with NetGenerationThread in GUI
-        - Same interface as generate_and_export_layers()
-        - Error handling compatible with pyqtSignal error emission
-        - Progress logging for user feedback
-    
-    Examples
-    --------
-    >>> # Basic usage matching generate_and_export_layers interface
-    >>> generator_locations = [(480219, 5711597), (480500, 5712000)]
-    >>> generate_and_export_osmnx_layers(
-    ...     "streets.geojson",  # Not used, but required for interface
-    ...     "buildings.csv",
-    ...     generator_locations,
-    ...     "output",
-    ...     algorithm="OSMnx",
-    ...     offset_distance=1.0
-    ... )
-    
-    See Also
-    --------
-    generate_osmnx_network : Core network generation function
-    generate_and_export_layers : Original MST/Steiner export function
+    .. note::
+       GUI-compatible interface matching generate_and_export_layers() for threading.
     """
     logger.info("="*70)
     logger.info("OSMNX-BASED NETWORK GENERATION AND EXPORT")

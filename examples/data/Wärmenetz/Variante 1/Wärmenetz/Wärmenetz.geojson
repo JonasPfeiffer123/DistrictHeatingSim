@@ -1,0 +1,2442 @@
+{
+  "type": "FeatureCollection",
+  "name": "Wärmenetz",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::25833"
+    }
+  },
+  "metadata": {
+    "version": "2.0",
+    "created": "2026-01-31T11:55:55.144465",
+    "state": "designed",
+    "edit_levels": {
+      "network_geometry": "editable",
+      "connections": "generated",
+      "building_data": "protected"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_000",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 34.97021016029532,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499630.7640760508,
+            5666520.506525122
+          ],
+          [
+            499596.98671547294,
+            5666511.450835692
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_001",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 35.107875668053296,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499630.7640760508,
+            5666520.506525122
+          ],
+          [
+            499665.78418850974,
+            5666518.025666947
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_002",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 60.17446797647238,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499781.92640960024,
+            5666198.8360340595
+          ],
+          [
+            499808.8492912581,
+            5666252.651691999
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_003",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 17.874091514866503,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499761.2203045799,
+            5666485.64725479
+          ],
+          [
+            499749.85838410753,
+            5666499.44543984
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_004",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 19.89081477156051,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499761.2203045799,
+            5666485.64725479
+          ],
+          [
+            499767.48504378967,
+            5666466.768760282
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_005",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 30.964350254295184,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499761.2203045799,
+            5666485.64725479
+          ],
+          [
+            499791.06515160797,
+            5666493.898078539
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_006",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 26.631026221867636,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499844.0067074173,
+            5666501.35683647
+          ],
+          [
+            499817.6722982518,
+            5666497.393195273
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_007",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 50.437419098636006,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499844.0067074173,
+            5666501.35683647
+          ],
+          [
+            499877.2424286466,
+            5666463.418464342
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_008",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 45.23032029262251,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499884.143368877,
+            5666302.494775734
+          ],
+          [
+            499841.82072993345,
+            5666318.45021702
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_009",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 3.2248633113750924,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499729.83695108024,
+            5666503.815712053
+          ],
+          [
+            499732.98762912746,
+            5666503.1279830225
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_010",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 65.61005419126005,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499729.83695108024,
+            5666503.815712053
+          ],
+          [
+            499665.78418850974,
+            5666518.025666947
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_011",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 73.59729385781735,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499808.8492912581,
+            5666252.651691999
+          ],
+          [
+            499841.82072993345,
+            5666318.45021702
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_012",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 50.72297254321283,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499807.59650826914,
+            5666355.887131891
+          ],
+          [
+            499841.82072993345,
+            5666318.45021702
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_013",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 60.45876193720203,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499807.59650826914,
+            5666355.887131891
+          ],
+          [
+            499794.40380251495,
+            5666414.888948896
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_014",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 26.835724203228036,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499791.06515160797,
+            5666493.898078539
+          ],
+          [
+            499817.6722982518,
+            5666497.393195273
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_015",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 3.224863311233349,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499732.98762912746,
+            5666503.1279830225
+          ],
+          [
+            499736.1383071747,
+            5666502.440253993
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_016",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 22.158130087154202,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499877.2424286466,
+            5666463.418464342
+          ],
+          [
+            499896.58848728205,
+            5666474.221831606
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_017",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 14.04312724616798,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499749.85838410753,
+            5666499.44543984
+          ],
+          [
+            499736.1383071747,
+            5666502.440253993
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_018",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 58.447706547992006,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499794.40380251495,
+            5666414.888948896
+          ],
+          [
+            499767.48504378967,
+            5666466.768760282
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_019",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 58.23103082774637,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499829.047722075,
+            5666164.624415245
+          ],
+          [
+            499781.92640960024,
+            5666198.8360340595
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_020",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 17.786032402237065,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499825.1792059168,
+            5666358.568864921
+          ],
+          [
+            499807.59650826914,
+            5666355.887131891
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_021",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 58.657663717172426,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499911.14272324,
+            5666415.548938136
+          ],
+          [
+            499877.2424286466,
+            5666463.418464342
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_022",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 58.98895995311144,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499949.2557052245,
+            5666447.653776529
+          ],
+          [
+            499896.58848728205,
+            5666474.221831606
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_023",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 13.657573427024042,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499888.961212516,
+            5666315.274356892
+          ],
+          [
+            499884.143368877,
+            5666302.494775734
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_024",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 15.317281513439678,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499753.8889983194,
+            5666459.714211357
+          ],
+          [
+            499767.48504378967,
+            5666466.768760282
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_025",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 50.196758766245374,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499746.8431851497,
+            5666551.482278606
+          ],
+          [
+            499736.1383071747,
+            5666502.440253993
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_026",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 20.893685242109864,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499725.3811982296,
+            5666483.402668441
+          ],
+          [
+            499729.83695108024,
+            5666503.815712053
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_027",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 43.953268715693184,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499555.78352249897,
+            5666496.147675249
+          ],
+          [
+            499596.98671547294,
+            5666511.450835692
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_flow",
+        "layer": "flow",
+        "segment_id": "flow_028",
+        "editable": true,
+        "style": {
+          "color": "#59DB7F",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 58.23103082774637,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499829.047722075,
+            5666164.624415245
+          ],
+          [
+            499781.92640960024,
+            5666198.8360340595
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_000",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 34.97021016029532,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499631.2640760508,
+            5666520.506525122
+          ],
+          [
+            499597.48671547294,
+            5666511.450835692
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_001",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 35.107875668053296,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499631.2640760508,
+            5666520.506525122
+          ],
+          [
+            499666.28418850974,
+            5666518.025666947
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_002",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 60.17446797647238,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499782.42640960024,
+            5666198.8360340595
+          ],
+          [
+            499809.3492912581,
+            5666252.651691999
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_003",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 17.874091514866503,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499761.7203045799,
+            5666485.64725479
+          ],
+          [
+            499750.35838410753,
+            5666499.44543984
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_004",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 19.89081477156051,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499761.7203045799,
+            5666485.64725479
+          ],
+          [
+            499767.98504378967,
+            5666466.768760282
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_005",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 30.964350254295184,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499761.7203045799,
+            5666485.64725479
+          ],
+          [
+            499791.56515160797,
+            5666493.898078539
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_006",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 26.631026221867636,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499844.5067074173,
+            5666501.35683647
+          ],
+          [
+            499818.1722982518,
+            5666497.393195273
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_007",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 50.437419098636006,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499844.5067074173,
+            5666501.35683647
+          ],
+          [
+            499877.7424286466,
+            5666463.418464342
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_008",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 45.23032029262251,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499884.643368877,
+            5666302.494775734
+          ],
+          [
+            499842.32072993345,
+            5666318.45021702
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_009",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 3.2248633113750924,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499730.33695108024,
+            5666503.815712053
+          ],
+          [
+            499733.48762912746,
+            5666503.1279830225
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_010",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 65.61005419126005,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499730.33695108024,
+            5666503.815712053
+          ],
+          [
+            499666.28418850974,
+            5666518.025666947
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_011",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 73.59729385781735,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499809.3492912581,
+            5666252.651691999
+          ],
+          [
+            499842.32072993345,
+            5666318.45021702
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_012",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 50.72297254321283,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499808.09650826914,
+            5666355.887131891
+          ],
+          [
+            499842.32072993345,
+            5666318.45021702
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_013",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 60.45876193720203,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499808.09650826914,
+            5666355.887131891
+          ],
+          [
+            499794.90380251495,
+            5666414.888948896
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_014",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 26.835724203228036,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499791.56515160797,
+            5666493.898078539
+          ],
+          [
+            499818.1722982518,
+            5666497.393195273
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_015",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 3.224863311233349,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499733.48762912746,
+            5666503.1279830225
+          ],
+          [
+            499736.6383071747,
+            5666502.440253993
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_016",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 22.158130087154202,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499877.7424286466,
+            5666463.418464342
+          ],
+          [
+            499897.08848728205,
+            5666474.221831606
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_017",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 14.04312724616798,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499750.35838410753,
+            5666499.44543984
+          ],
+          [
+            499736.6383071747,
+            5666502.440253993
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_018",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 58.447706547992006,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499794.90380251495,
+            5666414.888948896
+          ],
+          [
+            499767.98504378967,
+            5666466.768760282
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_019",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 58.23103082774637,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499829.547722075,
+            5666164.624415245
+          ],
+          [
+            499782.42640960024,
+            5666198.8360340595
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_020",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 17.786032402237065,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499825.6792059168,
+            5666358.568864921
+          ],
+          [
+            499808.09650826914,
+            5666355.887131891
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_021",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 58.657663717172426,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499911.64272324,
+            5666415.548938136
+          ],
+          [
+            499877.7424286466,
+            5666463.418464342
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_022",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 58.98895995311144,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499949.7557052245,
+            5666447.653776529
+          ],
+          [
+            499897.08848728205,
+            5666474.221831606
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_023",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 13.657573427024042,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499889.461212516,
+            5666315.274356892
+          ],
+          [
+            499884.643368877,
+            5666302.494775734
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_024",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 15.317281513439678,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499754.3889983194,
+            5666459.714211357
+          ],
+          [
+            499767.98504378967,
+            5666466.768760282
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_025",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 50.196758766245374,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499747.3431851497,
+            5666551.482278606
+          ],
+          [
+            499736.6383071747,
+            5666502.440253993
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_026",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 20.893685242109864,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499725.8811982296,
+            5666483.402668441
+          ],
+          [
+            499730.33695108024,
+            5666503.815712053
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_027",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 43.953268715693184,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499556.28352249897,
+            5666496.147675249
+          ],
+          [
+            499597.48671547294,
+            5666511.450835692
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "network_line_return",
+        "layer": "return",
+        "segment_id": "return_028",
+        "editable": true,
+        "style": {
+          "color": "#0C350A",
+          "weight": 3,
+          "opacity": 1
+        },
+        "calculated": {
+          "length_m": 58.23103082774637,
+          "diameter_mm": null,
+          "std_type": null,
+          "flow_rate_kg_s": null,
+          "pressure_loss_bar": null,
+          "velocity_m_s": null
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499829.547722075,
+            5666164.624415245
+          ],
+          [
+            499782.42640960024,
+            5666198.8360340595
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "building_connection",
+        "connection_id": "hast_000",
+        "editable": false,
+        "building_data": {
+          "Bundesland": "Sachsen",
+          "Stadt": "Görlitz",
+          "Adresse": "Brückenstraße 10",
+          "Wärmebedarf": 108000,
+          "Gebäudetyp": "GBD",
+          "Subtyp": 3,
+          "WW_Anteil": 0.2,
+          "Typ_Heizflächen": "HK",
+          "VLT_max": 70,
+          "Steigung_Heizkurve": 1.5,
+          "RLT_max": 55,
+          "Normaußentemperatur": -15
+        },
+        "style": {
+          "color": "#FF0000",
+          "weight": 2,
+          "opacity": 0.8
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499829.047722075,
+            5666164.624415245
+          ],
+          [
+            499829.547722075,
+            5666164.624415245
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "building_connection",
+        "connection_id": "hast_001",
+        "editable": false,
+        "building_data": {
+          "Bundesland": "Sachsen",
+          "Stadt": "Görlitz",
+          "Adresse": "Brückenstraße 3",
+          "Wärmebedarf": 50000,
+          "Gebäudetyp": "HMF",
+          "Subtyp": 3,
+          "WW_Anteil": 0.3,
+          "Typ_Heizflächen": "HK",
+          "VLT_max": 70,
+          "Steigung_Heizkurve": 1.5,
+          "RLT_max": 55,
+          "Normaußentemperatur": -15
+        },
+        "style": {
+          "color": "#FF0000",
+          "weight": 2,
+          "opacity": 0.8
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499825.1792059168,
+            5666358.568864921
+          ],
+          [
+            499825.6792059168,
+            5666358.568864921
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "building_connection",
+        "connection_id": "hast_002",
+        "editable": false,
+        "building_data": {
+          "Bundesland": "Sachsen",
+          "Stadt": "Görlitz",
+          "Adresse": "Furtstraße 1",
+          "Wärmebedarf": 1100000,
+          "Gebäudetyp": "GBD",
+          "Subtyp": 3,
+          "WW_Anteil": 0.4,
+          "Typ_Heizflächen": "HK",
+          "VLT_max": 70,
+          "Steigung_Heizkurve": 1.5,
+          "RLT_max": 55,
+          "Normaußentemperatur": -15
+        },
+        "style": {
+          "color": "#FF0000",
+          "weight": 2,
+          "opacity": 0.8
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499911.14272324,
+            5666415.548938136
+          ],
+          [
+            499911.64272324,
+            5666415.548938136
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "building_connection",
+        "connection_id": "hast_003",
+        "editable": false,
+        "building_data": {
+          "Bundesland": "Sachsen",
+          "Stadt": "Görlitz",
+          "Adresse": "Furtstraße 3",
+          "Wärmebedarf": 520000,
+          "Gebäudetyp": "GBD",
+          "Subtyp": 3,
+          "WW_Anteil": 0.2,
+          "Typ_Heizflächen": "HK",
+          "VLT_max": 70,
+          "Steigung_Heizkurve": 1.5,
+          "RLT_max": 55,
+          "Normaußentemperatur": -15
+        },
+        "style": {
+          "color": "#FF0000",
+          "weight": 2,
+          "opacity": 0.8
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499949.2557052245,
+            5666447.653776529
+          ],
+          [
+            499949.7557052245,
+            5666447.653776529
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "building_connection",
+        "connection_id": "hast_004",
+        "editable": false,
+        "building_data": {
+          "Bundesland": "Sachsen",
+          "Stadt": "Görlitz",
+          "Adresse": "Heynestraße 7",
+          "Wärmebedarf": 50000,
+          "Gebäudetyp": "HMF",
+          "Subtyp": 3,
+          "WW_Anteil": 0.3,
+          "Typ_Heizflächen": "HK",
+          "VLT_max": 70,
+          "Steigung_Heizkurve": 1.5,
+          "RLT_max": 55,
+          "Normaußentemperatur": -15
+        },
+        "style": {
+          "color": "#FF0000",
+          "weight": 2,
+          "opacity": 0.8
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499888.961212516,
+            5666315.274356892
+          ],
+          [
+            499889.461212516,
+            5666315.274356892
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "building_connection",
+        "connection_id": "hast_005",
+        "editable": false,
+        "building_data": {
+          "Bundesland": "Sachsen",
+          "Stadt": "Görlitz",
+          "Adresse": "Parkstraße 3",
+          "Wärmebedarf": 100000,
+          "Gebäudetyp": "HMF",
+          "Subtyp": 3,
+          "WW_Anteil": 0.4,
+          "Typ_Heizflächen": "HK",
+          "VLT_max": 70,
+          "Steigung_Heizkurve": 1.5,
+          "RLT_max": 55,
+          "Normaußentemperatur": -15
+        },
+        "style": {
+          "color": "#FF0000",
+          "weight": 2,
+          "opacity": 0.8
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499753.8889983194,
+            5666459.714211357
+          ],
+          [
+            499754.3889983194,
+            5666459.714211357
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "building_connection",
+        "connection_id": "hast_006",
+        "editable": false,
+        "building_data": {
+          "Bundesland": "Sachsen",
+          "Stadt": "Görlitz",
+          "Adresse": "Am Stadtpark 1",
+          "Wärmebedarf": 1300000,
+          "Gebäudetyp": "GBD",
+          "Subtyp": 3,
+          "WW_Anteil": 0.2,
+          "Typ_Heizflächen": "HK",
+          "VLT_max": 70,
+          "Steigung_Heizkurve": 1.5,
+          "RLT_max": 55,
+          "Normaußentemperatur": -15
+        },
+        "style": {
+          "color": "#FF0000",
+          "weight": 2,
+          "opacity": 0.8
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499746.8431851497,
+            5666551.482278606
+          ],
+          [
+            499747.3431851497,
+            5666551.482278606
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "building_connection",
+        "connection_id": "hast_007",
+        "editable": false,
+        "building_data": {
+          "Bundesland": "Sachsen",
+          "Stadt": "Görlitz",
+          "Adresse": "Am Stadtpark 6",
+          "Wärmebedarf": 100000,
+          "Gebäudetyp": "HMF",
+          "Subtyp": 3,
+          "WW_Anteil": 0.3,
+          "Typ_Heizflächen": "HK",
+          "VLT_max": 70,
+          "Steigung_Heizkurve": 1.5,
+          "RLT_max": 55,
+          "Normaußentemperatur": -15
+        },
+        "style": {
+          "color": "#FF0000",
+          "weight": 2,
+          "opacity": 0.8
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499725.3811982296,
+            5666483.402668441
+          ],
+          [
+            499725.8811982296,
+            5666483.402668441
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "building_connection",
+        "connection_id": "hast_008",
+        "editable": false,
+        "building_data": {
+          "Bundesland": "Sachsen",
+          "Stadt": "Görlitz",
+          "Adresse": "Dr.-Kahlbaum-Allee 31",
+          "Wärmebedarf": 825000,
+          "Gebäudetyp": "GBD",
+          "Subtyp": 3,
+          "WW_Anteil": 0.4,
+          "Typ_Heizflächen": "HK",
+          "VLT_max": 70,
+          "Steigung_Heizkurve": 1.5,
+          "RLT_max": 55,
+          "Normaußentemperatur": -15
+        },
+        "style": {
+          "color": "#FF0000",
+          "weight": 2,
+          "opacity": 0.8
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499555.78352249897,
+            5666496.147675249
+          ],
+          [
+            499556.28352249897,
+            5666496.147675249
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "generator_connection",
+        "connection_id": "gen_000",
+        "editable": false,
+        "generator_data": {
+          "type": "main",
+          "location_index": 0
+        },
+        "style": {
+          "color": "#0000FF",
+          "weight": 2,
+          "opacity": 1
+        }
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            499829.047722075,
+            5666164.624415245
+          ],
+          [
+            499829.547722075,
+            5666164.624415245
+          ]
+        ]
+      }
+    }
+  ]
+}

@@ -1,8 +1,10 @@
 """
-Filename: __init__.py
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-12-11
-Description: This file is used to import all heat generators and to provide a registry for the heat generators.
+Heat Generators Module
+======================
+
+This file is used to import all heat generators and to provide a registry for the heat generators.
+
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 from .base_heat_generator import BaseHeatGenerator, BaseStrategy
 from .chp import CHP

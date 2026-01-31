@@ -5,8 +5,7 @@ Network Generation Data Class Module
 This module provides data structures for comprehensive district heating network simulation
 and analysis.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-05-17
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 
 It defines the core data classes used throughout the simulation workflow,
 including network configuration parameters, input/output data management, and result
@@ -25,39 +24,18 @@ import numpy as np
 @dataclass
 class SecondaryProducer:
     """
-    Data class representing a secondary heat producer in the district heating network.
+    Secondary heat producer with mass flow control based on load percentage.
     
-    Secondary producers are additional heat sources that supplement the main heat generator,
-    typically used for distributed generation, renewable energy integration, or load balancing.
-    Each secondary producer operates with mass flow control based on a percentage of the
-    total network heat demand.
+    :ivar index: Unique producer index matching GeoJSON heat producer location
+    :vartype index: int
+    :ivar load_percentage: Percentage of total network heat load [%]
+    :vartype load_percentage: float
+    :ivar mass_flow: Calculated mass flow [kg/s], set during preprocessing
+    :vartype mass_flow: Optional[float]
     
-    Attributes
-    ----------
-    index : int
-        Unique identifier index for the secondary producer within the network.
-        Must correspond to the heat producer location index in the GeoJSON data.
-    load_percentage : float
-        Percentage of total network heat load handled by this producer [%].
-        Values typically range from 1-50% depending on system design.
-        
-    Examples
-    --------
-    >>> # Create secondary producer handling 20% of total load
-    >>> secondary = SecondaryProducer(index=1, load_percentage=20.0)
-    >>> print(f"Producer {secondary.index} handles {secondary.load_percentage}% of load")
-    Producer 1 handles 20.0% of load
-    
-    Notes
-    -----
-    - Load percentages across all secondary producers should not exceed 100%
-    - The main producer automatically handles remaining load capacity
-    - Index must match the corresponding heat producer location in GeoJSON data
-    - Can be extended with additional parameters as needed (marked as extensible)
-    
-    See Also
-    --------
-    NetworkGenerationData : Main network data container
+    .. note::
+       Load percentages across all secondary producers should not exceed 100%.
+       Main producer handles remaining capacity. Extensible for additional parameters.
     """
     index: int
     load_percentage: float
@@ -68,133 +46,57 @@ class SecondaryProducer:
 @dataclass
 class NetworkGenerationData:
     """
-    Comprehensive data class for district heating network generation and simulation.
+    Central data container for district heating network simulation and analysis.
     
-    This class serves as the central data container for all network simulation parameters,
-    input data, processing results, and analysis outputs. It supports the complete workflow
-    from GeoJSON-based network initialization through time series simulation to result
-    analysis and visualization.
+    :ivar import_type: Import method type (currently "geoJSON")
+    :vartype import_type: str
+    :ivar network_geojson_path: Path to unified GeoJSON file (Wärmenetz.geojson)
+    :vartype network_geojson_path: str
+    :ivar heat_demand_json_path: Path to building heat demand JSON
+    :vartype heat_demand_json_path: str
+    :ivar netconfiguration: Network type ("kaltes Netz", "Niedertemperaturnetz")
+    :vartype netconfiguration: str
+    :ivar supply_temperature_control: Control strategy ("Statisch", "Gleitend")
+    :vartype supply_temperature_control: str
+    :ivar max_supply_temperature_heat_generator: Maximum supply temperature [°C]
+    :vartype max_supply_temperature_heat_generator: float
+    :ivar min_supply_temperature_heat_generator: Minimum supply temperature for sliding control [°C]
+    :vartype min_supply_temperature_heat_generator: float
+    :ivar max_air_temperature_heat_generator: Maximum outdoor air temperature [°C]
+    :vartype max_air_temperature_heat_generator: float
+    :ivar min_air_temperature_heat_generator: Design outdoor air temperature [°C]
+    :vartype min_air_temperature_heat_generator: float
+    :ivar flow_pressure_pump: Pump outlet pressure [bar]
+    :vartype flow_pressure_pump: float
+    :ivar lift_pressure_pump: Pump pressure lift [bar]
+    :vartype lift_pressure_pump: float
+    :ivar pipetype: Standard pipe type designation
+    :vartype pipetype: str
+    :ivar diameter_optimization_pipe_checked: Enable diameter optimization
+    :vartype diameter_optimization_pipe_checked: bool
+    :ivar max_velocity_pipe: Maximum water velocity [m/s]
+    :vartype max_velocity_pipe: float
+    :ivar material_filter_pipe: Pipe material filter
+    :vartype material_filter_pipe: str
+    :ivar k_mm_pipe: Pipe roughness [mm]
+    :vartype k_mm_pipe: float
+    :ivar main_producer_location_index: Main heat producer index in GeoJSON
+    :vartype main_producer_location_index: int
+    :ivar secondary_producers: List of secondary producers
+    :vartype secondary_producers: List[SecondaryProducer]
+    :ivar net: Pandapipes network object
+    :vartype net: Optional[Any]
+    :ivar pump_results: Structured pump simulation results
+    :vartype pump_results: Optional[Dict[str, Any]]
+    :ivar plot_data: Processed visualization data
+    :vartype plot_data: Optional[Dict[str, Any]]
+    :ivar kpi_results: Key performance indicators
+    :vartype kpi_results: Optional[Dict[str, Union[int, float, None]]]
     
-    The class handles various network configurations including traditional hot water systems,
-    cold networks with heat pumps, and hybrid systems with multiple heat sources. It manages
-    both static network parameters and dynamic time series data for comprehensive simulation.
-    
-    Parameters
-    ----------
-    import_type : str
-        Type of network data import method.
-        Currently supported: "geoJSON" (STANET import planned for future versions).
-    network_geojson_path : str
-        File path to the unified network GeoJSON file (Wärmenetz.geojson).
-        Contains all network components: flow lines, return lines, heat consumers, and generators.
-    heat_demand_json_path : str
-        File path to the JSON file containing building heat demand time series data.
-    netconfiguration : str
-        Network configuration type defining the heating system architecture.
-        Options: "Niedertemperaturnetz" (low-temperature network), "kaltes Netz" (cold network).
-    supply_temperature_control : str
-        Supply temperature control strategy for the heat generator.
-        Options: "Statisch" (static/constant), "Gleitend" (sliding/weather-dependent).
-    max_supply_temperature_heat_generator : float
-        Maximum supply temperature at the main heat generator [°C].
-    min_supply_temperature_heat_generator : float
-        Minimum supply temperature for sliding control [°C].
-    max_air_temperature_heat_generator : float
-        Maximum outdoor air temperature for heating operation [°C].
-    min_air_temperature_heat_generator : float
-        Design outdoor air temperature for maximum heating load [°C].
-    flow_pressure_pump : float
-        Operating pressure at pump outlet [bar].
-    lift_pressure_pump : float
-        Pressure increase provided by circulation pumps [bar].
-    min_supply_temperature_building_checked : bool
-        Flag indicating whether minimum building supply temperature is enforced.
-    min_supply_temperature_building : float
-        Minimum required supply temperature at building level [°C].
-    fixed_return_temperature_heat_consumer_checked : bool
-        Flag for using fixed return temperature at heat consumers.
-    fixed_return_temperature_heat_consumer : float
-        Fixed return temperature value for heat consumers [°C].
-    dT_RL : float
-        Temperature difference between network and building systems [K].
-    building_temperature_checked : bool
-        Flag to use time-dependent building temperatures from JSON data.
-    pipetype : str
-        Standard pipe type designation for network pipes.
-    diameter_optimization_pipe_checked : bool
-        Flag enabling automatic pipe diameter optimization.
-    max_velocity_pipe : float
-        Maximum allowable water velocity in pipes [m/s].
-    material_filter_pipe : str
-        Material filter criteria for pipe selection.
-    k_mm_pipe : float
-        Absolute pipe roughness [mm].
-    main_producer_location_index : int
-        Index of the main heat producer location in the GeoJSON data.
-    secondary_producers : List[SecondaryProducer]
-        List of secondary heat producer configurations.
-        
-    Attributes
-    ----------
-    COP_filename : Optional[str]
-        File path to heat pump coefficient of performance data.
-    TRY_filename : Optional[str]
-        File path to Test Reference Year weather data file.
-    net : Optional[Any]
-        pandapipes network object containing the complete network topology.
-    yearly_time_steps : Optional[np.ndarray]
-        Array of datetime64 objects representing simulation time steps.
-    waerme_ges_kW : Optional[np.ndarray]
-        Total network heat demand time series [kW].
-    strombedarf_ges_kW : Optional[np.ndarray]
-        Total electrical power consumption time series [kW].
-    pump_results : Optional[Dict[str, Any]]
-        Structured simulation results for all heat producers/pumps.
-    plot_data : Optional[Dict[str, Any]]
-        Processed data ready for visualization and plotting.
-        
-    Examples
-    --------
-    >>> # Create network configuration for cold network
-    >>> network_data = NetworkGenerationData(
-    ...     import_type="geoJSON",
-    ...     network_geojson_path="data/Wärmenetz/Wärmenetz.geojson",
-    ...     heat_demand_json_path="data/heat_demands.json",
-    ...     netconfiguration="kaltes Netz",
-    ...     supply_temperature_control="Gleitend",
-    ...     max_supply_temperature_heat_generator=45.0,
-    ...     min_supply_temperature_heat_generator=25.0,
-    ...     # ... other required parameters
-    ... )
-    
-    >>> # Process and analyze results
-    >>> results = network_data.calculate_results()
-    >>> print(f"Connected buildings: {results['Anzahl angeschlossene Gebäude']}")
-    >>> print(f"Annual heat demand: {results['Jahresgesamtwärmebedarf Gebäude [MWh/a]']:.1f} MWh/a")
-    
-    Notes
-    -----
-    Network Configuration Types:
-        - **"kaltes Netz"** : Cold network with decentralized heat pumps at buildings
-        - **"Niedertemperaturnetz"** : Low-temperature hot water network
-        - **Traditional** : Standard hot water district heating network
-        
-    Temperature Control Strategies:
-        - **"Statisch"** : Constant supply temperature operation
-        - **"Gleitend"** : Weather-compensated sliding temperature control
-        
-    Data Flow:
-        1. Input parameters define network topology and operation
-        2. GeoJSON data provides geographic network layout
-        3. JSON data contains building heat demands and temperatures
-        4. Simulation results are stored in structured format
-        5. Analysis methods calculate key performance indicators
-        
-    See Also
-    --------
-    SecondaryProducer : Secondary heat producer configuration
-    initialize_geojson : Network initialization from GeoJSON data
-    thermohydraulic_time_series_net : Time series simulation execution
+    .. note::
+       Supports GeoJSON-based initialization, time series simulation, KPI calculation.
+       Handles cold networks (heat pumps), static/sliding temperature control.
+       Data flow: GeoJSON+JSON → initialization → simulation → results → KPIs.
     """
     
     # Input data for the network generation
@@ -275,66 +177,14 @@ class NetworkGenerationData:
 
     def calculate_results(self) -> Dict[str, Union[int, float, None]]:
         """
-        Calculate comprehensive key performance indicators for the district heating network.
+        Calculate network KPIs including heat density, losses, and pump consumption.
         
-        This method processes simulation results to calculate essential network performance
-        metrics including energy flows, system efficiency, heat density, and distribution
-        losses. It provides both absolute values and normalized indicators for network
-        assessment and comparison.
+        :return: Dict with KPIs (Anzahl angeschlossene Gebäude, Jahresgesamtwärmebedarf [MWh/a], max. Heizlast [kW], Trassenlänge [m], Wärmebedarfsdichte [MWh/(a*m)], Anschlussdichte [kW/m], Jahreswärmeerzeugung [MWh], Pumpenstrom [MWh], Verteilverluste [MWh], rel. Verteilverluste [%])
+        :rtype: Dict[str, Union[int, float, None]]
         
-        Returns
-        -------
-        Dict[str, Union[int, float, None]]
-            Dictionary containing calculated performance indicators:
-            
-            - **"Anzahl angeschlossene Gebäude"** (int) : Number of connected buildings
-            - **"Anzahl Heizzentralen"** (int) : Number of heat generation plants
-            - **"Jahresgesamtwärmebedarf Gebäude [MWh/a]"** (float) : Annual building heat demand
-            - **"max. Heizlast Gebäude [kW]"** (float) : Peak building heat load
-            - **"Trassenlänge Wärmenetz [m]"** (float) : Total network pipe length
-            - **"Wärmebedarfsdichte [MWh/(a*m)]"** (float) : Heat demand density
-            - **"Anschlussdichte [kW/m]"** (float) : Connection density
-            - **"Jahreswärmeerzeugung [MWh]"** (float) : Annual heat generation
-            - **"Pumpenstrom [MWh]"** (float) : Annual pump electricity consumption
-            - **"Verteilverluste [MWh]"** (float) : Annual distribution losses
-            - **"rel. Verteilverluste [%]"** (float) : Relative distribution losses
-            
-        Notes
-        -----
-        Calculation Methods:
-            - **Heat demand density** : Total annual demand divided by network length
-            - **Connection density** : Peak load divided by network length
-            - **Distribution losses** : Difference between generation and demand
-            - **Pump consumption** : Calculated from mass flow and pressure data
-            
-        Data Requirements:
-            - Network topology (self.net) must be available
-            - Simulation results (self.pump_results) required for generation data
-            - Heat demand data (self.waerme_ges_kW) needed for demand calculations
-            
-        Examples
-        --------
-        >>> # Calculate network performance indicators
-        >>> network_data.net = initialized_network
-        >>> network_data.pump_results = simulation_results
-        >>> kpis = network_data.calculate_results()
-        >>> 
-        >>> # Display key metrics
-        >>> print(f"Buildings connected: {kpis['Anzahl angeschlossene Gebäude']}")
-        >>> print(f"Heat demand density: {kpis['Wärmebedarfsdichte [MWh/(a*m)]']:.2f} MWh/(a*m)")
-        >>> print(f"Distribution losses: {kpis['rel. Verteilverluste [%]']:.1f}%")
-        
-        >>> # Check network efficiency
-        >>> if kpis["rel. Verteilverluste [%]"] is not None:
-        ...     if kpis["rel. Verteilverluste [%]"] < 15:
-        ...         print("Network operates with acceptable losses")
-        ...     else:
-        ...         print("High distribution losses - consider optimization")
-        
-        See Also
-        --------
-        prepare_plot_data : Prepare data for visualization
-        thermohydraulic_time_series_net : Run network simulation
+        .. note::
+           Density = demand/length. Losses = generation - demand. Pump power from mass flow and Δp.
+           Network length divided by 2 (supply+return). Requires net, pump_results, waerme_ges_kW.
         """
         results = {}
 
@@ -424,60 +274,13 @@ class NetworkGenerationData:
     
     def prepare_plot_data(self) -> None:
         """
-        Prepare and structure simulation data for visualization and plotting.
+        Structure simulation results for visualization with labels, axes, and time alignment.
         
-        This method processes simulation results into a standardized format suitable
-        for various plotting libraries and visualization tools. It organizes data
-        by plot type, assigns appropriate labels and axes, and handles time series
-        alignment for multi-variable plots.
-        
-        Notes
-        -----
-        Plot Data Structure:
-            Each entry contains:
-            - **"data"** : numpy array with time series values
-            - **"label"** : descriptive label for legends and axes
-            - **"axis"** : preferred plot axis ("left" or "right")
-            - **"time"** : corresponding time array for x-axis
-            
-        Generated Plot Categories:
-            - **Heat demand data** : Building and heat exchanger demands
-            - **Electrical data** : Heat pump power consumption (if applicable)
-            - **Producer data** : Heat generation, mass flows, pressures, temperatures
-            - **System pressures** : Supply and return pressures for all producers
-            
-        Data Handling:
-            - Automatically detects cold network configuration (electrical data)
-            - Handles multiple producers with indexed naming
-            - Aligns time series data with simulation time steps
-            - Maintains consistent units and formatting
-            
-        Examples
-        --------
-        >>> # Prepare data for plotting
-        >>> network_data.prepare_plot_data()
-        >>> 
-        >>> # Access specific plot data
-        >>> heat_demand = network_data.plot_data["Gesamtwärmebedarf Wärmeübertrager"]
-        >>> print(f"Data shape: {heat_demand['data'].shape}")
-        >>> print(f"Label: {heat_demand['label']}")
-        >>> 
-        >>> # Plot with matplotlib
-        >>> import matplotlib.pyplot as plt
-        >>> fig, ax1 = plt.subplots()
-        >>> ax1.plot(heat_demand['time'], heat_demand['data'], 
-        ...          label=heat_demand['label'])
-        >>> ax1.set_ylabel(heat_demand['label'])
-        
-        >>> # Check available plot variables
-        >>> print("Available plot data:")
-        >>> for key in network_data.plot_data.keys():
-        ...     print(f"  - {key}")
-        
-        See Also
-        --------
-        calculate_results : Calculate network KPIs
-        thermohydraulic_time_series_net : Generate simulation results
+        .. note::
+           Creates plot_data dict with entries: data (numpy array), label (string), axis
+           (left/right), time (array). Includes heat demand, electrical data (cold networks),
+           producer data (heat generation, mass flow, pressures, temperatures). Indexed by
+           variable name and producer number.
         """
         # Determine time range for plots (use simulated range if available)
         if hasattr(self, 'start_time_step') and hasattr(self, 'end_time_step'):
@@ -577,7 +380,10 @@ class NetworkGenerationData:
     
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serialize the network data including KPIs for saving.
+        Serialize network data including KPIs for saving.
+        
+        :return: Dictionary with all object attributes including kpi_results
+        :rtype: Dict[str, Any]
         """
         data = self.__dict__.copy()
         # Only include serializable fields
@@ -588,7 +394,12 @@ class NetworkGenerationData:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'NetworkGenerationData':
         """
-        Deserialize network data including KPIs from saved dict.
+        Deserialize network data from saved dictionary.
+        
+        :param data: Dictionary with serialized network data
+        :type data: Dict[str, Any]
+        :return: Reconstructed NetworkGenerationData object with KPIs
+        :rtype: NetworkGenerationData
         """
         # Extract kpi_results before creating object
         kpi_results = data.pop('kpi_results', None)

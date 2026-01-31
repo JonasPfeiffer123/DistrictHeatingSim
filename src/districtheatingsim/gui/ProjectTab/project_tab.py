@@ -1,11 +1,9 @@
-"""
-Project Tab Module
+"""Project Tab Module
 ==================
 
 Project management tab with MVP architecture for CSV file editing and project tracking.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-09-20
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import os
@@ -38,10 +36,8 @@ class ProjectModel:
         """
         Set project base path.
 
-        Parameters
-        ----------
-        base_path : str
-            Project base path.
+        :param base_path: Project base path.
+        :type base_path: str
         """
         self.base_path = base_path
 
@@ -49,10 +45,8 @@ class ProjectModel:
         """
         Get project base path.
 
-        Returns
-        -------
-        str
-            Current base path.
+        :return: Current base path.
+        :rtype: str
         """
         return self.base_path
 
@@ -60,15 +54,10 @@ class ProjectModel:
         """
         Load CSV file data.
 
-        Parameters
-        ----------
-        file_path : str
-            Path to CSV file.
-
-        Returns
-        -------
-        tuple
-            Headers and data lists.
+        :param file_path: Path to CSV file.
+        :type file_path: str
+        :return: Headers and data lists.
+        :rtype: tuple
         """
         with open(file_path, 'r', encoding='utf-8') as file:
             reader = csv.reader(file, delimiter=';')
@@ -80,14 +69,12 @@ class ProjectModel:
         """
         Save data to CSV file.
 
-        Parameters
-        ----------
-        file_path : str
-            Output file path.
-        headers : list
-            Column headers.
-        data : list of lists
-            Table data.
+        :param file_path: Output file path.
+        :type file_path: str
+        :param headers: Column headers.
+        :type headers: list
+        :param data: Table data.
+        :type data: list of lists
         """
         with open(file_path, 'w', newline='', encoding='utf-8-sig') as file:
             writer = csv.writer(file, delimiter=';')
@@ -98,14 +85,12 @@ class ProjectModel:
         """
         Create new CSV file with default data.
 
-        Parameters
-        ----------
-        file_path : str
-            Output file path.
-        headers : list
-            Column headers.
-        default_data : list
-            Default row data.
+        :param file_path: Output file path.
+        :type file_path: str
+        :param headers: Column headers.
+        :type headers: list
+        :param default_data: Default row data.
+        :type default_data: list
         """
         with open(file_path, 'w', newline='', encoding='utf-8-sig') as file:
             writer = csv.writer(file, delimiter=';')
@@ -116,19 +101,14 @@ class ProjectModel:
         """
         Create CSV from GeoJSON data with default values.
 
-        Parameters
-        ----------
-        geojson_file_path : str
-            Input GeoJSON file path.
-        output_file_path : str
-            Output CSV file path.
-        default_values : dict
-            Default values for building parameters.
-
-        Returns
-        -------
-        str
-            Output file path.
+        :param geojson_file_path: Input GeoJSON file path.
+        :type geojson_file_path: str
+        :param output_file_path: Output CSV file path.
+        :type output_file_path: str
+        :param default_values: Default values for building parameters.
+        :type default_values: dict
+        :return: Output file path.
+        :rtype: str
         """
         try:
             with open(geojson_file_path, 'r') as geojson_file:
@@ -208,15 +188,10 @@ class ProjectModel:
         """
         Calculate centroid of coordinate array.
 
-        Parameters
-        ----------
-        coordinates : list
-            Coordinate array.
-
-        Returns
-        -------
-        tuple
-            Centroid coordinates (x, y).
+        :param coordinates: Coordinate array.
+        :type coordinates: list
+        :return: Centroid coordinates (x, y).
+        :rtype: tuple
         """
         x_sum = 0
         y_sum = 0
@@ -247,18 +222,16 @@ class ProjectPresenter:
         """
         Initialize project presenter.
 
-        Parameters
-        ----------
-        model : ProjectModel
-            Data model.
-        view : ProjectTabView
-            View component.
-        folder_manager : object
-            Folder manager.
-        data_manager : object
-            Data manager.
-        config_manager : object
-            Configuration manager.
+        :param model: Data model.
+        :type model: ProjectModel
+        :param view: View component.
+        :type view: ProjectTabView
+        :param folder_manager: Folder manager.
+        :type folder_manager: object
+        :param data_manager: Data manager.
+        :type data_manager: object
+        :param config_manager: Configuration manager.
+        :type config_manager: object
         """
         self.model = model
         self.view = view
@@ -328,7 +301,9 @@ class ProjectPresenter:
         self.timer.start(50000)
 
     def connect_view_signals(self):
-        """Connect view signals after view is created."""
+        """
+        Connect view signals after view is created.
+        """
         if self.view:
             self.view.treeView.doubleClicked.connect(self.on_tree_view_double_clicked)
             # Initial update after view is available
@@ -340,10 +315,8 @@ class ProjectPresenter:
         """
         Handle project folder change.
 
-        Parameters
-        ----------
-        path : str
-            New project folder path.
+        :param path: New project folder path.
+        :type path: str
         """
         if path:
             self.model.set_base_path(path)
@@ -353,6 +326,12 @@ class ProjectPresenter:
             self.update_progress_tracker()
 
     def on_tree_view_double_clicked(self, index):
+        """
+        Handle double-click on file tree view.
+
+        :param index: Tree view index.
+        :type index: QModelIndex
+        """
         """Handle tree view double-click events."""
         file_path = self.view.get_selected_file_path(index)
         
@@ -365,6 +344,9 @@ class ProjectPresenter:
             self.load_csv(file_path)
 
     def import_csv(self):
+        """
+        Open file dialog to import existing CSV file.
+        """
         """Open CSV file dialog and load selected file."""
         standard_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("current_building_data_path"))
         fname, _ = QFileDialog.getOpenFileName(self.view, 'CSV öffnen', standard_path, 'CSV Files (*.csv);;All Files (*)')
@@ -375,10 +357,8 @@ class ProjectPresenter:
         """
         Load CSV file into table view.
 
-        Parameters
-        ----------
-        file_path : str
-            Path to CSV file.
+        :param file_path: Path to CSV file.
+        :type file_path: str
         """
         headers, data = self.model.load_csv(file_path)
         self.model.current_file_path = file_path
@@ -393,7 +373,12 @@ class ProjectPresenter:
                 self.view.csvTable.setItem(row, column, item)
 
     def save_csv(self, show_dialog=True):
-        """Save current table data to CSV file. If show_dialog is False, use default path and suppress messages."""
+        """
+        Save current table data to CSV file.
+
+        :param show_dialog: Show confirmation dialog if True.
+        :type show_dialog: bool
+        """
         headers = [self.view.csvTable.horizontalHeaderItem(i).text() for i in range(self.view.csvTable.columnCount())]
         data = [[self.view.csvTable.item(row, column).text() if self.view.csvTable.item(row, column) else '' 
                 for column in range(self.view.csvTable.columnCount())] for row in range(self.view.csvTable.rowCount())]
@@ -411,11 +396,15 @@ class ProjectPresenter:
                 self.view.show_error_message("Fehler", str(e))
 
     def add_row(self):
-        """Add new empty row to table."""
+        """
+        Add new empty row to table.
+        """
         self.view.csvTable.insertRow(self.view.csvTable.rowCount())
 
     def del_row(self):
-        """Delete selected row from table."""
+        """
+        Delete selected row from table.
+        """
         currentRow = self.view.csvTable.currentRow()
         if currentRow > -1:
             self.view.csvTable.removeRow(currentRow)
@@ -423,7 +412,14 @@ class ProjectPresenter:
             self.view.show_error_message("Warnung", "Bitte wählen Sie eine Zeile zum Löschen aus.")
 
     def create_csv(self, fname=None, show_dialog=True):
-        """Create new CSV file with default building data headers. If show_dialog is False, use default path and suppress dialog."""
+        """
+        Create new CSV file with default building data headers.
+
+        :param fname: Optional file path.
+        :type fname: str
+        :param show_dialog: Show file dialog if True.
+        :type show_dialog: bool
+        """
         headers = ['Land', 'Bundesland', 'Stadt', 'Adresse', 'Wärmebedarf', 'Gebäudetyp', "Subtyp", 'WW_Anteil', 'Typ_Heizflächen', 'VLT_max', 'Steigung_Heizkurve', 'RLT_max', "Normaußentemperatur"]
         default_data = ['']*len(headers)
         if not fname:
@@ -441,7 +437,9 @@ class ProjectPresenter:
                 self.view.show_message("Erfolg", f"CSV-Datei wurde in {fname} erstellt.")
 
     def create_csv_from_geojson(self):
-        """Create CSV from GeoJSON with user-defined building parameters."""
+        """
+        Create CSV from GeoJSON with user-defined building parameters.
+        """
         standard_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("OSM_buldings_path"))
         geojson_file_path, _ = QFileDialog.getOpenFileName(self.view, "geoJSON auswählen", standard_path, "All Files (*)")
         if geojson_file_path and geojson_file_path.strip():  # Check for valid file path
@@ -487,15 +485,13 @@ class ProjectPresenter:
     def on_geojson_conversion_progress(self, current, total, message):
         """
         Handle progress updates from GeoJSON conversion thread.
-        
-        Parameters
-        ----------
-        current : int
-            Current building number.
-        total : int
-            Total number of buildings.
-        message : str
-            Progress message.
+
+        :param current: Current building number.
+        :type current: int
+        :param total: Total number of buildings.
+        :type total: int
+        :param message: Progress message.
+        :type message: str
         """
         if total > 0:
             self.view.progressBar.setRange(0, total)
@@ -505,11 +501,9 @@ class ProjectPresenter:
     def on_geojson_conversion_done(self, output_file_path):
         """
         Handle completion of GeoJSON conversion.
-        
-        Parameters
-        ----------
-        output_file_path : str
-            Path to created CSV file.
+
+        :param output_file_path: Path to created CSV file.
+        :type output_file_path: str
         """
         self.view.progressBar.setRange(0, 1)
         self.view.progressBar.setValue(1)
@@ -520,11 +514,9 @@ class ProjectPresenter:
     def on_geojson_conversion_error(self, error_message):
         """
         Handle error during GeoJSON conversion.
-        
-        Parameters
-        ----------
-        error_message : str
-            Error message.
+
+        :param error_message: Error message.
+        :type error_message: str
         """
         self.view.progressBar.setRange(0, 1)
         self.view.progressBar.setValue(0)
@@ -532,7 +524,9 @@ class ProjectPresenter:
         self.view.show_error_message("Fehler", error_message)
 
     def geocode_current_csv(self):
-        """Geocode the currently loaded CSV file."""
+        """
+        Geocode the currently loaded CSV file.
+        """
         if hasattr(self.model, 'current_file_path') and self.model.current_file_path:
             # Save current table data first
             self.save_csv(show_dialog=False)
@@ -542,7 +536,9 @@ class ProjectPresenter:
             self.view.show_error_message("Fehler", "Keine CSV-Datei geladen. Bitte laden Sie zuerst eine CSV-Datei oder erstellen Sie eine neue.")
 
     def open_geocode_addresses_dialog(self):
-        """Open file dialog for geocoding CSV selection."""
+        """
+        Open file dialog for geocoding CSV selection.
+        """
         standard_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("current_building_data_path"))
         fname, _ = QFileDialog.getOpenFileName(self.view, 'CSV-Koordinaten laden', standard_path, 'CSV Files (*.csv);;All Files (*)')
         if fname and fname.strip():  # Check for valid file path
@@ -552,10 +548,8 @@ class ProjectPresenter:
         """
         Start geocoding thread for address processing.
 
-        Parameters
-        ----------
-        inputfilename : str
-            Path to CSV file for geocoding.
+        :param inputfilename: Path to CSV file for geocoding.
+        :type inputfilename: str
         """
         if hasattr(self, 'geocodingThread') and self.geocodingThread.isRunning():
             self.geocodingThread.terminate()
@@ -570,10 +564,8 @@ class ProjectPresenter:
         """
         Handle geocoding completion.
 
-        Parameters
-        ----------
-        fname : str
-            Output filename.
+        :param fname: Output filename.
+        :type fname: str
         """
         self.view.progressBar.setRange(0, 1)
         
@@ -588,10 +580,8 @@ class ProjectPresenter:
         """
         Handle geocoding errors.
 
-        Parameters
-        ----------
-        error_message : str
-            Error message to display.
+        :param error_message: Error message to display.
+        :type error_message: str
         """
         self.view.show_error_message("Fehler beim Geocoding", error_message)
         self.view.progressBar.setRange(0, 1)
@@ -600,12 +590,10 @@ class ProjectPresenter:
         """
         Update progress bar value and CSV status label.
 
-        Parameters
-        ----------
-        progress : float
-            Progress percentage.
-        csv_status : str, optional
-            Status text for Quartier IST.csv
+        :param progress: Progress percentage.
+        :type progress: float
+        :param csv_status: Status text for Quartier IST.csv.
+        :type csv_status: str
         """
         self.projectProgressBar.setValue(int(progress))
         if csv_status is not None:
@@ -614,16 +602,11 @@ class ProjectPresenter:
     def check_csv_status(self, csv_file_path):
         """
         Check detailed CSV status: missing, available without coordinates, or with coordinates.
-        
-        Parameters
-        ----------
-        csv_file_path : str
-            Path to CSV file to check.
-            
-        Returns
-        -------
-        str
-            Status: 'fehlt', 'ist vorhanden', or 'mit Koordinaten'
+
+        :param csv_file_path: Path to CSV file to check.
+        :type csv_file_path: str
+        :return: Status: 'fehlt', 'ist vorhanden', or 'mit Koordinaten'.
+        :rtype: str
         """
         if not os.path.exists(csv_file_path):
             return 'fehlt'
@@ -666,16 +649,11 @@ class ProjectPresenter:
     def check_network_dimensioned(self, network_file_path):
         """
         Check if network GeoJSON has state set to "dimensioned".
-        
-        Parameters
-        ----------
-        network_file_path : str
-            Path to Wärmenetz.geojson file.
-            
-        Returns
-        -------
-        bool
-            True if network is dimensioned, False otherwise.
+
+        :param network_file_path: Path to Wärmenetz.geojson file.
+        :type network_file_path: str
+        :return: True if network is dimensioned, False otherwise.
+        :rtype: bool
         """
         if not os.path.exists(network_file_path):
             return False
@@ -695,7 +673,9 @@ class ProjectPresenter:
             return False
 
     def update_progress_tracker(self):
-        """Update project progress and CSV status label based on file existence and content."""
+        """
+        Update project progress and CSV status label based on file existence and content.
+        """
         if not self.view:  # Skip if view not available yet
             return
             
@@ -764,19 +744,19 @@ class ProjectTabView(QWidget):
         """
         Initialize project tab view.
 
-        Parameters
-        ----------
-        presenter : ProjectPresenter, optional
-            Presenter instance for signal connections.
-        parent : QWidget, optional
-            Parent widget.
+        :param presenter: Presenter instance for signal connections.
+        :type presenter: ProjectPresenter
+        :param parent: Parent widget.
+        :type parent: QWidget
         """
         super().__init__(parent)
         self.presenter = presenter
         self.initUI()
 
     def initUI(self):
-        """Initialize user interface components."""
+        """
+        Initialize user interface components.
+        """
         mainLayout = QVBoxLayout()
         splitter = QSplitter()
 
@@ -888,10 +868,8 @@ class ProjectTabView(QWidget):
         """
         Update file tree view root path.
 
-        Parameters
-        ----------
-        path : str
-            New root path.
+        :param path: New root path.
+        :type path: str
         """
         self.treeView.setRootIndex(self.treeView.model().index(path))
         for column in range(self.model.columnCount()):
@@ -901,10 +879,8 @@ class ProjectTabView(QWidget):
         """
         Show table context menu.
 
-        Parameters
-        ----------
-        position : QPoint
-            Menu position.
+        :param position: Menu position.
+        :type position: QPoint
         """
         contextMenu = QMenu(self)
         addRowAction = QAction("Gebäude hinzufügen", self)
@@ -922,7 +898,9 @@ class ProjectTabView(QWidget):
         contextMenu.exec(self.csvTable.viewport().mapToGlobal(position))
 
     def add_row(self):
-        """Add new table row with input dialog."""
+        """
+        Add new table row with input dialog.
+        """
         headers = [self.csvTable.horizontalHeaderItem(i).text() for i in range(self.csvTable.columnCount())]
         dialog = RowInputDialog(headers, self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -933,7 +911,9 @@ class ProjectTabView(QWidget):
                 self.csvTable.setItem(row, i, QTableWidgetItem(row_data[header]))
 
     def delete_row(self):
-        """Delete selected table row."""
+        """
+        Delete selected table row.
+        """
         currentRow = self.csvTable.currentRow()
         if currentRow > -1:
             self.csvTable.removeRow(currentRow)
@@ -941,7 +921,9 @@ class ProjectTabView(QWidget):
             self.show_error_message("Warnung", "Bitte wählen Sie ein Gebäude zum Löschen aus.")
 
     def duplicate_row(self):
-        """Duplicate selected table row."""
+        """
+        Duplicate selected table row.
+        """
         currentRow = self.csvTable.currentRow()
         if currentRow > -1:
             row = self.csvTable.rowCount()
@@ -957,15 +939,10 @@ class ProjectTabView(QWidget):
         """
         Get selected file path from tree view.
 
-        Parameters
-        ----------
-        index : QModelIndex
-            Tree view index.
-
-        Returns
-        -------
-        str
-            Selected file path.
+        :param index: Tree view index.
+        :type index: QModelIndex
+        :return: Selected file path.
+        :rtype: str
         """
         return self.model.filePath(index)
 
@@ -973,12 +950,10 @@ class ProjectTabView(QWidget):
         """
         Display error message dialog.
 
-        Parameters
-        ----------
-        title : str
-            Dialog title.
-        message : str
-            Error message.
+        :param title: Dialog title.
+        :type title: str
+        :param message: Error message.
+        :type message: str
         """
         QMessageBox.critical(self, title, message)
 
@@ -986,12 +961,10 @@ class ProjectTabView(QWidget):
         """
         Update progress bar value and CSV status label with color-coded status.
 
-        Parameters
-        ----------
-        progress : float
-            Progress percentage.
-        csv_status : str, optional
-            Status text for Quartier IST.csv: 'fehlt', 'geladen', 'geocodiert'
+        :param progress: Progress percentage.
+        :type progress: float
+        :param csv_status: Status text for Quartier IST.csv.
+        :type csv_status: str
         """
         self.projectProgressBar.setValue(int(progress))
         if csv_status is not None:
@@ -1020,7 +993,9 @@ class ProjectTabView(QWidget):
             self.csv_status_label.setStyleSheet(config['style'])
 
     def showDetailsDialog(self):
-        """Show process step details dialog."""
+        """
+        Show process step details dialog.
+        """
         dialog = ProcessDetailsDialog(self.process_steps, self)
         dialog.exec()
 
@@ -1028,10 +1003,8 @@ class ProjectTabView(QWidget):
         """
         Set process steps data for details dialog.
 
-        Parameters
-        ----------
-        process_steps : list
-            List of process step dictionaries.
+        :param process_steps: List of process step dictionaries.
+        :type process_steps: list
         """
         self.process_steps = process_steps
 
@@ -1039,36 +1012,32 @@ class ProjectTabView(QWidget):
         """
         Display information message dialog.
 
-        Parameters
-        ----------
-        title : str
-            Dialog title.
-        message : str
-            Information message.
+        :param title: Dialog title.
+        :type title: str
+        :param message: Information message.
+        :type message: str
         """
         QMessageBox.information(self, title, message)
 
 class ProjectTab(QMainWindow):
     """
     Main project tab window integrating MVP components.
-    
-    Central interface for project management with file operations
-    and progress tracking functionality.
+
+    .. note::
+       Central interface for project management with file operations and progress tracking functionality.
     """
     def __init__(self, folder_manager, data_manager, config_manager, parent=None):
         """
         Initialize project tab with MVP architecture.
 
-        Parameters
-        ----------
-        folder_manager : object
-            Folder manager.
-        data_manager : object
-            Data manager.
-        config_manager : object
-            Configuration manager.
-        parent : QWidget, optional
-            Parent widget.
+        :param folder_manager: Folder manager.
+        :type folder_manager: object
+        :param data_manager: Data manager.
+        :type data_manager: object
+        :param config_manager: Configuration manager.
+        :type config_manager: object
+        :param parent: Parent widget.
+        :type parent: QWidget
         """
         super().__init__()
         self.setWindowTitle("Project Tab Example")

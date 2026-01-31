@@ -69,7 +69,7 @@ if __name__ == "__main__":
     unified_path = "examples/data/Wärmenetz/Variante 2/Wärmenetz.geojson"
     
     # Extract layers from unified format
-    unified_geojson = NetworkGeoJSONSchema.load_from_file(unified_path)
+    unified_geojson = NetworkGeoJSONSchema.import_from_file(unified_path)
     vorlauf_gdf, ruecklauf_gdf, hast_gdf, erzeuger_gdf = NetworkGeoJSONSchema.split_to_legacy_format(unified_geojson)
     
     # Save to temporary files for compatibility

@@ -1,11 +1,9 @@
-"""
-Producer Order Tab Module
+"""Producer Order Tab Module
 =========================
 
 Tab for selecting and ordering heat producers in district heating networks.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-02-11
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import os
@@ -26,12 +24,10 @@ class ProducerOrderTab(QWidget):
         """
         Initialize producer order tab.
 
-        Parameters
-        ----------
-        dialog_config : dict
-            Configuration data.
-        parent : QWidget, optional
-            Parent widget.
+        :param dialog_config: Configuration data.
+        :type dialog_config: dict
+        :param parent: Parent widget.
+        :type parent: QWidget
         """
         super().__init__(parent)
         self.parent = parent
@@ -40,7 +36,9 @@ class ProducerOrderTab(QWidget):
         self.percentage_inputs = []
 
     def initUI(self):
-        """Initialize user interface components."""
+        """
+        Initialize user interface components.
+        """
         layout = QVBoxLayout(self)
 
         producerGroup = QGroupBox("Erzeugerauswahl")
@@ -56,10 +54,8 @@ class ProducerOrderTab(QWidget):
         """
         Create producer selection interface components.
 
-        Returns
-        -------
-        QVBoxLayout
-            Layout containing producer selection widgets.
+        :return: Layout containing producer selection widgets.
+        :rtype: QVBoxLayout
         """
         layout = QVBoxLayout()
 
@@ -85,7 +81,9 @@ class ProducerOrderTab(QWidget):
         return layout
 
     def load_producers(self):
-        """Load producers from unified GeoJSON file and populate list widget."""
+        """
+        Load producers from unified GeoJSON file and populate list widget.
+        """
         filepath = self.parent.network_data_tab.networkInput.itemAt(1).widget().text()
         try:
             producers = self.read_producers_from_geojson(filepath)
@@ -101,20 +99,11 @@ class ProducerOrderTab(QWidget):
         """
         Read producer data from unified GeoJSON file.
 
-        Parameters
-        ----------
-        filepath : str
-            Path to unified network GeoJSON file.
-
-        Returns
-        -------
-        list
-            List of producer dictionaries.
-
-        Raises
-        ------
-        FileNotFoundError
-            If GeoJSON file not found.
+        :param filepath: Path to unified network GeoJSON file.
+        :type filepath: str
+        :return: List of producer dictionaries.
+        :rtype: list
+        :raises FileNotFoundError: If GeoJSON file not found.
         """
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"GeoJSON file not found: {filepath}")
@@ -137,7 +126,9 @@ class ProducerOrderTab(QWidget):
         return producers
 
     def add_producer_to_order(self):
-        """Add selected producer to the order list."""
+        """
+        Add selected producer to the order list.
+        """
         selected_items = self.producer_list_widget.selectedItems()
         for item in selected_items:
             producer = item.data(Qt.ItemDataRole.UserRole)
@@ -150,7 +141,9 @@ class ProducerOrderTab(QWidget):
         self.update_producer_percentage_inputs()
 
     def remove_producer_from_order(self):
-        """Remove selected producer from the order list."""
+        """
+        Remove selected producer from the order list.
+        """
         selected_items = self.producer_order_list_widget.selectedItems()
         for item in selected_items:
             self.producer_order_list_widget.takeItem(self.producer_order_list_widget.row(item))
@@ -158,7 +151,9 @@ class ProducerOrderTab(QWidget):
         self.update_producer_percentage_inputs()
 
     def update_producer_percentage_inputs(self):
-        """Update percentage input fields for secondary producers."""
+        """
+        Update percentage input fields for secondary producers.
+        """
         # Clear existing percentage inputs
         self.percentage_inputs.clear()
         while self.producer_percentage_inputs.count():

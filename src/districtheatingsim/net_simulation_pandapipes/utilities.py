@@ -1,20 +1,8 @@
 """
-Pandapipes Network Utility Functions
-========================================
+Pandapipes network utility functions for district heating simulation, optimization,
+and analysis including heat pump calculations, controller creation, and diameter optimization.
 
-This module provides essential utility functions for district heating network simulation,
-optimization, and analysis using the pandapipes framework.
-
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-05-17
-
-It includes heat pump performance calculations, network controller creation, pipe diameter optimization, flow direction
-correction, and GeoJSON export capabilities.
-
-The module supports various network optimization strategies including automatic pipe sizing,
-velocity-based diameter selection, and hydraulic flow direction correction. It integrates
-custom control systems for temperature management and multi-producer coordination in
-complex district heating networks.
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import time
@@ -46,34 +34,17 @@ def validate_minimum_pressure_difference(net, target_dp_min_bar: float = 1.0,
     """
     Validate that all heat consumers meet minimum pressure difference requirements.
     
-    This function checks the design without modifying pump parameters. It's intended
-    for use after pipe diameter optimization to ensure the design meets requirements.
-    Unlike the BadPointPressureLiftController, this does NOT adjust the network,
-    it only reports violations.
+    :param net: Network with current pipeflow results
+    :type net: pandapipes.pandapipesNet
+    :param target_dp_min_bar: Minimum required pressure difference [bar]
+    :type target_dp_min_bar: float
+    :param verbose: Print detailed warnings for violations
+    :type verbose: bool
+    :return: (all_ok, violations) - True if all consumers meet requirements, list of violations
+    :rtype: Tuple[bool, List[Dict[str, Any]]]
     
-    Parameters
-    ----------
-    net : pandapipes.pandapipesNet
-        The network to validate (must have current pipeflow results)
-    target_dp_min_bar : float
-        Minimum required pressure difference [bar]
-    verbose : bool
-        If True, print detailed warnings for violations
-        
-    Returns
-    -------
-    Tuple[bool, List[Dict[str, Any]]]
-        - all_ok (bool): True if all consumers meet requirements
-        - violations (list): List of violation dictionaries with details
-        
-    Examples
-    --------
-    >>> # After diameter optimization
-    >>> pp.pipeflow(net, mode="bidirectional")
-    >>> all_ok, violations = validate_minimum_pressure_difference(net, target_dp_min_bar=1.0)
-    >>> if not all_ok:
-    ...     print(f"Design has {len(violations)} pressure violations")
-    ...     # Adjust pump parameters or pipe diameters
+    .. note::
+       Design validation only - does NOT modify pump parameters like BadPointPressureLiftController.
     """
     violations = []
     
@@ -140,83 +111,21 @@ def validate_minimum_pressure_difference(net, target_dp_min_bar: float = 1.0,
 def COP_WP(VLT_L: Union[float, np.ndarray], QT: Union[float, np.ndarray], 
           values: Optional[np.ndarray] = None) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Calculate the Coefficient of Performance (COP) for heat pumps based on supply and source temperatures.
-
-    This function determines heat pump efficiency using interpolation of manufacturer performance
-    data. It enforces technical operating limits and handles both scalar and array inputs for
-    flexible application in time series simulations and steady-state calculations.
-
-    Parameters
-    ----------
-    VLT_L : Union[float, np.ndarray]
-        Supply temperature(s) for the heat pump system [°C].
-        Can be single value or array for time series calculations.
-    QT : Union[float, np.ndarray]
-        Source temperature(s) for the heat pump [°C].
-        For ground source: typically 8-12°C constant.
-        For air source: variable outdoor air temperature.
-    values : Optional[np.ndarray], optional
-        Heat pump performance data matrix with temperature grid and COP values.
-        Default loads manufacturer data from 'data/COP/Kennlinien WP.csv'.
-        First row contains supply temperatures, first column contains source temperatures.
-
-    Returns
-    -------
-    Tuple[np.ndarray, np.ndarray]
-        A tuple containing:
-        
-        - **COP_L** (np.ndarray) : Coefficient of Performance values [-]
-        - **VLT_L** (np.ndarray) : Adjusted supply temperatures [°C] (within technical limits)
-
-    Raises
-    ------
-    ValueError
-        If QT array length doesn't match VLT_L array length.
-    FileNotFoundError
-        If default COP data file cannot be found.
-
-    Notes
-    -----
-    Technical Constraints:
-        - Maximum temperature lift: 75°C (VLT_L ≤ QT + 75°C)
-        - Minimum supply temperature: 35°C
-        - Interpolation method: Linear interpolation between data points
-        - Extrapolation: Uses boundary values for out-of-range conditions
-
-    Performance Data Format:
-        - CSV file with semicolon separation
-        - First row (excluding [0,0]): Supply temperatures [°C]
-        - First column (excluding [0,0]): Source temperatures [°C]
-        - Data matrix: COP values [-]
-
-    Typical COP Values:
-        - Air source heat pumps: 2.5-4.5 (temperature dependent)
-        - Ground source heat pumps: 3.5-5.5 (more stable)
-        - Water source heat pumps: 4.0-6.0 (highest efficiency)
-
-    Examples
-    --------
-    >>> # Single operating point
-    >>> cop, supply_temp = COP_WP(45.0, 10.0)
-    >>> print(f"COP: {cop[0]:.2f}, Supply temp: {supply_temp[0]:.1f}°C")
-    COP: 4.20, Supply temp: 45.0°C
-
-    >>> # Time series calculation for air source heat pump
-    >>> outdoor_temps = np.array([-5, 0, 5, 10, 15])  # °C
-    >>> supply_temps = np.array([55, 50, 45, 40, 35])  # °C
-    >>> cops, adjusted_temps = COP_WP(supply_temps, outdoor_temps)
-    >>> print(f"Average COP: {np.mean(cops):.2f}")
-
-    >>> # Cold network application
-    >>> building_supply = np.array([35, 40, 45])  # Building heating temperature
-    >>> ground_temp = 8.0  # Constant ground source temperature
-    >>> cop_values, _ = COP_WP(building_supply, ground_temp)
-    >>> electrical_power = heat_demand / cop_values  # kW
-
-    See Also
-    --------
-    initialize_geojson : Uses COP calculation for cold network processing
-    RegularGridInterpolator : Scipy interpolation method used internally
+    Calculate heat pump Coefficient of Performance (COP) based on supply and source temperatures.
+    
+    :param VLT_L: Supply temperature(s) for heat pump [°C]
+    :type VLT_L: Union[float, np.ndarray]
+    :param QT: Source temperature(s) for heat pump [°C]
+    :type QT: Union[float, np.ndarray]
+    :param values: Heat pump performance data matrix (default loads from CSV)
+    :type values: Optional[np.ndarray]
+    :return: (COP values [-], adjusted supply temperatures [°C])
+    :rtype: Tuple[np.ndarray, np.ndarray]
+    :raises ValueError: If QT array length doesn't match VLT_L length
+    :raises FileNotFoundError: If default COP data file not found
+    
+    .. note::
+       Technical constraints: max temp lift 75°C (VLT_L ≤ QT + 75°C), min supply temp 35°C.
     """
     # Load default COP data if not provided
     if values is None:
@@ -253,97 +162,24 @@ def create_controllers(net, qext_w: np.ndarray, supply_temperature_heat_generato
                       secondary_producers: Optional[List[Dict[str, Any]]] = None):
     """
     Create comprehensive control systems for district heating network operation.
-
-    This function establishes all necessary controllers for network operation including
-    heat consumer demand control, temperature regulation, secondary producer coordination,
-    and system pressure management. It creates both static and dynamic controllers
-    based on the network configuration and operational requirements.
-
-    Parameters
-    ----------
-    net : pandapipes.pandapipesNet
-        The pandapipes network object to which controllers will be added.
-    qext_w : np.ndarray
-        External heat demand values for each heat consumer [W].
-        Array length must match the number of heat consumers.
-    supply_temperature_heat_generator : float
-        Supply temperature setpoint for the main heat generator [°C].
-    min_supply_temperature_heat_consumer : Optional[np.ndarray]
-        Minimum required supply temperatures for heat consumers [°C].
-        None if no minimum temperature constraints are needed.
-    return_temperature_heat_consumer : np.ndarray
-        Return temperature setpoints for heat consumers [°C].
-        Array length must match the number of heat consumers.
-    secondary_producers : Optional[List[SecondaryProducer]], optional
-    List of secondary producer objects, each containing:
-
-        - **index** (int) : Producer identification index
-        - **mass_flow** (float) : Design mass flow rate [kg/s]
-        - **load_percentage** (float) : Load percentage of total demand [%]
-
-    Returns
-    -------
-    pandapipes.pandapipesNet
-        The network object with all controllers added and configured.
-
-    Notes
-    -----
-    Controller Types Created:
-        - **Heat Consumer Controllers** : Demand and return temperature control
-        - **Temperature Controllers** : Minimum supply temperature enforcement
-        - **Heat Generator Controllers** : Main producer supply temperature control
-        - **Secondary Producer Controllers** : Mass flow and temperature control
-        - **Pressure Controllers** : System pressure management and bad point control
-
-    Control Strategy:
-        - Heat consumers: Constant heat demand with fixed return temperature
-        - Main producer: Pressure-controlled with temperature setpoint
-        - Secondary producers: Mass flow-controlled with coordinated temperature
-        - System pressure: Automatic bad point pressure lift control (if enabled)
-        
-    Design Phase vs Operation:
-        - Design Phase: enable_pressure_controller=False
-          → Controllers created but inactive for stable diameter optimization
-        - Operation Phase: enable_pressure_controller=True
-          → Full dynamic control including pressure regulation
-
-    Data Source Integration:
-        - Uses pandapower DFData for time series compatibility
-        - Placeholder DataFrames for static control values
-        - Extensible for dynamic time series control
-
-    Examples
-    --------
-    >>> # Design phase: Controllers inactive for diameter optimization
-    >>> net_with_controls = create_controllers(
-    ...     net=network,
-    ...     qext_w=np.array([50000, 75000, 30000]),
-    ...     supply_temperature_heat_generator=80.0,
-    ...     min_supply_temperature_heat_consumer=None,
-    ...     return_temperature_heat_consumer=np.array([45, 50, 40])  # Return temps
-    ... )
-
-    >>> # Network with secondary producers
-    >>> secondary_config = [
-    ...     {"index": 1, "mass_flow": 2.5},  # Solar thermal plant
-    ...     {"index": 2, "mass_flow": 1.8}   # CHP unit
-    ... ]
-    >>> net_with_controls = create_controllers(
-    ...     net, heat_demands, 75.0, min_temps, return_temps, secondary_config
-    ... )
-
-    >>> # Cold network with minimum temperature constraints
-    >>> min_supply_temps = np.array([35, 40, 38])  # Minimum temperatures for heat pumps
-    >>> net_with_controls = create_controllers(
-    ...     net, demands, 45.0, min_supply_temps, returns
-    ... )
-
-    See Also
-    --------
-    MinimumSupplyTemperatureController : Custom temperature control implementation
-    BadPointPressureLiftController : Pressure management controller
-    ConstControl : pandapower constant value controller
-    validate_minimum_pressure_difference : Design validation without control
+    
+    :param net: Pandapipes network object
+    :type net: pandapipes.pandapipesNet
+    :param qext_w: External heat demand values for each consumer [W]
+    :type qext_w: np.ndarray
+    :param supply_temperature_heat_generator: Supply temperature setpoint for main generator [°C]
+    :type supply_temperature_heat_generator: float
+    :param min_supply_temperature_heat_consumer: Minimum required supply temperatures [°C] (None if no constraints)
+    :type min_supply_temperature_heat_consumer: Optional[np.ndarray]
+    :param return_temperature_heat_consumer: Return temperature setpoints for consumers [°C]
+    :type return_temperature_heat_consumer: np.ndarray
+    :param secondary_producers: List of secondary producer objects with index, mass_flow, load_percentage
+    :type secondary_producers: Optional[List[Dict[str, Any]]]
+    :return: Network with all controllers added
+    :rtype: pandapipes.pandapipesNet
+    
+    .. note::
+       Controllers include heat consumer demand, temperature regulation, secondary producers, and pressure management.
     """
     # Create controllers for each heat consumer
     for i in range(len(net.heat_consumer)):
@@ -416,59 +252,15 @@ def create_controllers(net, qext_w: np.ndarray, supply_temperature_heat_generato
 
 def correct_flow_directions(net) -> pp.pandapipesNet:
     """
-    Correct hydraulic flow directions in the network by analyzing velocities and swapping connections.
-
-    This function identifies pipes with negative flow velocities (reverse flow) and corrects
-    the network topology by swapping junction connections. This ensures proper flow direction
-    representation for accurate hydraulic analysis and visualization.
-
-    Parameters
-    ----------
-    net : pandapipes.pandapipesNet
-        The pandapipes network object with potentially incorrect flow directions.
-
-    Returns
-    -------
-    pandapipes.pandapipesNet
-        The network object with corrected flow directions and updated hydraulic results.
-
-    Notes
-    -----
-    Correction Algorithm:
-        1. Performs initial bidirectional pipeflow calculation
-        2. Identifies pipes with negative mean velocities
-        3. Swaps from_junction and to_junction for negative flow pipes
-        4. Recalculates pipeflow to obtain corrected results
-
-    Why Flow Direction Matters:
-        - Proper visualization of flow patterns
-        - Correct heat transfer calculations
-        - Accurate pressure drop analysis
-        - Consistent result interpretation
-
-    Technical Background:
-        - Junction swapping aligns pipe orientation with actual flow
-
-    Examples
-    --------
-    >>> # Correct flow directions after network creation
-    >>> corrected_net = correct_flow_directions(network)
-    >>> 
-    >>> # Check flow directions in results
-    >>> positive_flows = (corrected_net.res_pipe.v_mean_m_per_s >= 0).sum()
-    >>> total_pipes = len(corrected_net.res_pipe)
-    >>> print(f"Positive flow directions: {positive_flows}/{total_pipes}")
-
-    >>> # Analyze flow patterns after correction
-    >>> max_velocity = corrected_net.res_pipe.v_mean_m_per_s.max()
-    >>> avg_velocity = corrected_net.res_pipe.v_mean_m_per_s.mean()
-    >>> print(f"Max velocity: {max_velocity:.2f} m/s")
-    >>> print(f"Average velocity: {avg_velocity:.2f} m/s")
-
-    See Also
-    --------
-    pp.pipeflow : pandapipes hydraulic calculation function
-    create_network : Network creation where this function is typically applied
+    Correct hydraulic flow directions by analyzing velocities and swapping junction connections.
+    
+    :param net: Network with potentially incorrect flow directions
+    :type net: pandapipes.pandapipesNet
+    :return: Network with corrected flow directions
+    :rtype: pp.pandapipesNet
+    
+    .. note::
+       Identifies pipes with negative velocities and swaps from_junction/to_junction for proper flow representation.
     """
     # Initial pipeflow calculation to determine actual flow directions
     pp.pipeflow(net, mode="bidirectional", iter=100)
@@ -495,73 +287,23 @@ def correct_flow_directions(net) -> pp.pandapipesNet:
 def optimize_diameter_parameters(net, element: str = "pipe", v_max: float = 2.0, 
                                dx: float = 0.001, safety_factor: float = 1.5) -> pp.pandapipesNet:
     """
-    Optimize network element diameters to meet specified maximum velocity constraints.
-
-    This function iteratively adjusts pipe diameters to achieve optimal hydraulic performance
-    while respecting velocity limits. It uses a continuous diameter adjustment approach
-    with configurable step size and safety factors for robust optimization.
-
-    Parameters
-    ----------
-    net : pandapipes.pandapipesNet
-        The pandapipes network object to optimize.
-    element : str, optional
-        Network element type to optimize. Default is "pipe".
-        Currently supports "pipe" elements.
-    v_max : float, optional
-        Maximum allowable velocity [m/s]. Default is 2.0 m/s.
-        Typical values: 1.0-2.5 m/s for district heating.
-    dx : float, optional
-        Diameter adjustment step size [m]. Default is 0.001 m (1 mm).
-        Smaller values provide finer optimization but longer computation time.
-    safety_factor : float, optional
-        Safety factor applied to maximum velocity. Default is 1.5.
-        Effective v_max = v_max / safety_factor for conservative design.
-
-    Returns
-    -------
-    pandapipes.pandapipesNet
-        The network object with optimized diameters.
-
-    Notes
-    -----
-    Optimization Algorithm:
-        1. Calculate initial flow velocities
-        2. For each element exceeding v_max: increase diameter by dx
-        3. For each element below v_max: attempt diameter reduction
-        4. Validate reduction doesn't exceed v_max
-        5. Repeat until no changes needed
-
-    Velocity Calculation:
-        - Uses volumetric flow rate divided by cross-sectional area
-        - More accurate than mean velocity for optimization
-        - Accounts for actual flow conditions
-
-    Design Considerations:
-        - Higher velocities: Lower material costs, higher pressure losses, lower thermal losses
-        - Lower velocities: Higher material costs, lower pressure losses, higher thermal losses
-        - Safety factor prevents operation too close to limits
-
-    Examples
-    --------
-    >>> # Standard optimization for district heating
-    >>> optimized_net = optimize_diameter_parameters(
-    ...     net, v_max=1.5, safety_factor=1.2
-    ... )
-
-    >>> # Fine optimization with small steps
-    >>> optimized_net = optimize_diameter_parameters(
-    ...     net, v_max=2.0, dx=0.0005, safety_factor=1.3
-    ... )
-
-    >>> # Check optimization results
-    >>> max_velocity = optimized_net.res_pipe.v_mean_m_per_s.max()
-    >>> print(f"Maximum velocity after optimization: {max_velocity:.2f} m/s")
-
-    See Also
-    --------
-    init_diameter_types : Initialize with standard pipe types
-    optimize_diameter_types : Optimize using discrete standard sizes
+    Optimize network element diameters to meet maximum velocity constraints using continuous adjustment.
+    
+    :param net: Pandapipes network to optimize
+    :type net: pandapipes.pandapipesNet
+    :param element: Network element type (default 'pipe')
+    :type element: str
+    :param v_max: Maximum allowable velocity [m/s]
+    :type v_max: float
+    :param dx: Diameter adjustment step size [m]
+    :type dx: float
+    :param safety_factor: Safety factor applied to v_max
+    :type safety_factor: float
+    :return: Network with optimized diameters
+    :rtype: pp.pandapipesNet
+    
+    .. note::
+       Iteratively adjusts diameters with step size dx. Effective v_max = v_max / safety_factor.
     """
     # Apply safety factor to velocity limit
     effective_v_max = v_max / safety_factor
@@ -621,69 +363,20 @@ def init_diameter_types(net, v_max_pipe: float = 1.0, material_filter: str = "KM
                        k: float = 0.1) -> pp.pandapipesNet:
     """
     Initialize pipe diameters using standard pipe types based on velocity requirements.
-
-    This function selects appropriate standard pipe types from available catalogs
-    based on calculated flow velocities and design constraints. It provides the
-    initial pipe sizing for network optimization and detailed design phases.
-
-    Parameters
-    ----------
-    net : pandapipes.pandapipesNet
-        The pandapipes network object to initialize.
-    v_max_pipe : float, optional
-        Maximum allowable velocity in pipes [m/s]. Default is 1.0 m/s.
-        Conservative value suitable for initial design.
-    material_filter : str, optional
-        Pipe material filter for standard type selection. Default is "KMR".
-        Common options: "KMR" (steel), "PE" (polyethylene), "PEX" (cross-linked PE).
-    k : float, optional
-        Pipe roughness coefficient [mm]. Default is 0.1 mm.
-        Typical values: 0.1-0.5 mm for new pipes, 0.5-2.0 mm for aged pipes.
-
-    Returns
-    -------
-    pandapipes.pandapipesNet
-        The network object with initialized standard pipe types and properties.
-
-    Notes
-    -----
-    Initialization Process:
-        1. Calculate required diameter based on current velocity and target velocity
-        2. Select closest available standard pipe type from filtered catalog
-        3. Update pipe properties (diameter, thermal conductivity, roughness)
-        4. Perform final hydraulic calculation with new pipe properties
-
-    Standard Pipe Selection:
-        - Uses pandapipes standard type libraries
-        - Filters by material type for consistency
-        - Selects closest match to required diameter
-        - Maintains thermal and hydraulic properties
-
-    Pipe Properties Updated:
-        - inner_diameter_mm: From standard type catalog
-        - u_w_per_m2k: Thermal conductivity from standard type
-        - k_mm: Surface roughness (user-specified)
-
-    Examples
-    --------
-    >>> # Initialize with conservative velocity limit
-    >>> initialized_net = init_diameter_types(
-    ...     net, v_max_pipe=0.8, material_filter="KMR", k=0.1
-    ... )
-
-    >>> # Initialize for polyethylene pipes
-    >>> initialized_net = init_diameter_types(
-    ...     net, v_max_pipe=1.2, material_filter="PE", k=0.05
-    ... )
-
-    >>> # Check initialized pipe types
-    >>> pipe_types = initialized_net.pipe.std_type.unique()
-    >>> print(f"Selected pipe types: {pipe_types}")
-
-    See Also
-    --------
-    optimize_diameter_types : Iterative optimization with standard types
-    pp.std_types.available_std_types : Access pandapipes standard type catalogs
+    
+    :param net: Pandapipes network to initialize
+    :type net: pandapipes.pandapipesNet
+    :param v_max_pipe: Maximum allowable velocity in pipes [m/s]
+    :type v_max_pipe: float
+    :param material_filter: Pipe material filter for standard types
+    :type material_filter: str
+    :param k: Pipe roughness coefficient [mm]
+    :type k: float
+    :return: Network with initialized standard pipe types
+    :rtype: pp.pandapipesNet
+    
+    .. note::
+       Selects closest available standard type from filtered catalog based on required diameter.
     """
     start_time = time.time()
     
@@ -755,84 +448,20 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "KMR
                            k: float = 0.1) -> pp.pandapipesNet:
     """
     Optimize pipe diameters using discrete standard pipe types through iterative adjustment.
-
-    This function performs comprehensive pipe diameter optimization by iteratively
-    selecting standard pipe types that minimize material costs while meeting
-    velocity constraints. It provides the most realistic optimization approach
-    using commercially available pipe sizes.
-
-    Parameters
-    ----------
-    net : pandapipes.pandapipesNet
-        The pandapipes network object to optimize.
-    v_max : float, optional
-        Maximum allowable velocity in pipes [m/s]. Default is 1.0 m/s.
-        Balance between pressure losses and material costs.
-    material_filter : str, optional
-        Pipe material filter for standard type selection. Default is "KMR".
-        Ensures consistent material properties throughout network.
-    k : float, optional
-        Pipe surface roughness [mm]. Default is 0.1 mm.
-        Affects friction losses and hydraulic performance.
-
-    Returns
-    -------
-    pandapipes.pandapipesNet
-        The network object with optimized standard pipe types and properties.
-
-    Notes
-    -----
-    Optimization Algorithm:
-        1. Initial diameter sizing based on velocity requirements
-        2. Iterative adjustment using discrete standard types
-        3. Upsize pipes exceeding velocity limit
-        4. Attempt downsizing for pipes below velocity limit
-        5. Validate downsizing doesn't violate constraints
-        6. Continue until all pipes meet requirements
-
-    Standard Type Management:
-        - Maintains position tracking in type catalog
-        - Ensures valid type transitions (adjacent sizes only)
-        - Preserves material consistency throughout network
-        - Updates all pipe properties consistently
-
-    Convergence Criteria:
-        - All pipes within velocity limits
-        - No further beneficial size reductions possible
-        - System hydraulically balanced
-
-    Performance Tracking:
-        - Logs iteration progress and timing
-        - Reports pipes within/outside target velocity
-        - Monitors optimization convergence
-
-    Examples
-    --------
-    >>> # Standard optimization for district heating
-    >>> optimized_net = optimize_diameter_types(
-    ...     net, v_max=1.2, material_filter="KMR", k=0.15
-    ... )
-
-    >>> # High-performance optimization
-    >>> optimized_net = optimize_diameter_types(
-    ...     net, v_max=0.8, material_filter="PE", k=0.05
-    ... )
-
-    >>> # Check optimization results
-    >>> velocities = optimized_net.res_pipe.v_mean_m_per_s
-    >>> over_limit = (velocities > v_max).sum()
-    >>> print(f"Pipes over velocity limit: {over_limit}")
-
-    >>> # Analyze pipe type distribution
-    >>> type_counts = optimized_net.pipe.std_type.value_counts()
-    >>> print("Pipe type distribution:")
-    >>> print(type_counts)
-
-    See Also
-    --------
-    init_diameter_types : Initial pipe type selection
-    optimize_diameter_parameters : Continuous diameter optimization
-    run_control : pandapipes control system execution
+    
+    :param net: Pandapipes network to optimize
+    :type net: pandapipes.pandapipesNet
+    :param v_max: Maximum allowable velocity [m/s]
+    :type v_max: float
+    :param material_filter: Pipe material filter for standard types
+    :type material_filter: str
+    :param k: Pipe surface roughness [mm]
+    :type k: float
+    :return: Network with optimized standard pipe types
+    :rtype: pp.pandapipesNet
+    
+    .. note::
+       Iteratively adjusts standard types: upsize pipes exceeding v_max, attempt downsizing below v_max.
     """
     start_time = time.time()
 
@@ -985,40 +614,17 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "KMR
 
 def export_net_geojson(net, filename: str) -> dict:
     """
-    Export pandapipes network data to unified GeoJSON format.
-
-    This function converts a pandapipes network into the unified GeoJSON format (Version 2.0),
-    creating a single file with all network components classified by feature_type.
-
-    Parameters
-    ----------
-    net : pandapipes.pandapipesNet
-        The pandapipes network object containing topology, geodata, and component properties.
-    filename : str
-        Output file path for the GeoJSON export (typically 'Wärmenetz.geojson').
-
-    Returns
-    -------
-    dict
-        Dictionary with feature counts: {'flow': int, 'return': int, 'building': int, 'generator': int}
-
-    Notes
-    -----
-    Exported Components:
-        - **Flow Lines** : Vorlauf pipes with feature_type='network_line_flow'
-        - **Return Lines** : Rücklauf pipes with feature_type='network_line_return'
-        - **Building Connections** : Heat consumer connections with feature_type='building_connection'
-        - **Generator Connections** : Pump connections with feature_type='generator_connection'
-
-    GeoJSON Structure:
-        - Unified NetworkGeoJSONSchema Version 2.0
-        - EPSG:25833 coordinate reference system
-        - All components in single file with feature_type classification
-
-    See Also
-    --------
-    NetworkGeoJSONSchema.create_network_geojson : Schema creation
-    NetworkGeoJSONSchema.update_calculated_data : Add calculation results
+    Export pandapipes network data to unified GeoJSON format (Version 2.0).
+    
+    :param net: Pandapipes network with topology, geodata, and component properties
+    :type net: pandapipes.pandapipesNet
+    :param filename: Output file path for GeoJSON export
+    :type filename: str
+    :return: Feature counts {'flow': int, 'return': int, 'building': int, 'generator': int}
+    :rtype: dict
+    
+    .. note::
+       Creates single file with flow/return lines, building connections, and generator connections.
     """
     print(f"\n{'='*80}")
     print(f"EXPORT_NET_GEOJSON: Starting export to {filename}")

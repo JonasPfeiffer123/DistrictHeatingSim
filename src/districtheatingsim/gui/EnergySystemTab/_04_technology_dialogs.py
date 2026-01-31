@@ -1,11 +1,10 @@
 """
 Technology Input Dialogs Module
-===============================
+================================
 
-This module contains the dialogs for inputting technology-specific data in the Energy System Tab of the District Heating Simulation application.
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-08-01
+Dialogs for inputting technology-specific data in Energy System Tab.
 """
 
 from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QComboBox, QCheckBox, QGroupBox, \
@@ -19,21 +18,17 @@ from matplotlib.figure import Figure
 
 class TechInputDialog(QDialog):
     """
-    A dialog for inputting technology-specific data based on the technology type.
-
-    Attributes:
-        tech_type (str): The type of technology.
-        tech_data (dict): The data for the technology.
-        dialog (QWidget): The specific dialog for the technology type.
+    Dialog for inputting technology-specific data based on technology type.
     """
 
     def __init__(self, tech_type, tech_data=None):
         """
-        Initializes the TechInputDialog with the given technology type and data.
+        Initialize TechInputDialog with technology type and data.
 
-        Args:
-            tech_type (str): The type of technology.
-            tech_data (dict, optional): The data for the technology. Defaults to None.
+        :param tech_type: Technology type.
+        :type tech_type: str
+        :param tech_data: Technology data.
+        :type tech_data: dict
         """
         super().__init__()
 
@@ -88,7 +83,7 @@ class TechInputDialog(QDialog):
 
     def accept(self):
         """
-        Accepts the dialog and retrieves the input data from the specific technology dialog.
+        Accept dialog and retrieve input data from specific technology dialog.
         """
         if self.dialog:
             self.tech_data = self.dialog.getInputs()
@@ -98,8 +93,8 @@ class TechInputDialog(QDialog):
         """
         Retrieves the input data from the dialog.
 
-        Returns:
-            dict: The input data.
+        :return: The input data
+        :rtype: dict
         """
         return self.tech_data
 
@@ -115,8 +110,8 @@ class SolarThermalDialog(QWidget):
         """
         Initializes the SolarThermalDialog with the given data.
 
-        Args:
-            tech_data (dict, optional): The data for the solar thermal technology. Defaults to None.
+        :param tech_data: The data for the solar thermal technology
+        :type tech_data: dict or None
         """
         super(SolarThermalDialog, self).__init__()
         self.tech_data = tech_data if tech_data is not None else {}
@@ -327,8 +322,8 @@ class SolarThermalDialog(QWidget):
         """
         Retrieves the input data from the dialog.
 
-        Returns:
-            dict: The input data.
+        :return: The input data
+        :rtype: dict
         """
         inputs = {
             'bruttofläche_STA': float(self.areaSInput.text()),
@@ -367,8 +362,8 @@ class BiomassBoilerDialog(QDialog):
         """
         Initializes the BiomassBoilerDialog with the given data.
 
-        Args:
-            tech_data (dict, optional): The data for the biomass boiler technology. Defaults to None.
+        :param tech_data: The data for the biomass boiler technology
+        :type tech_data: dict or None
         """
         super(BiomassBoilerDialog, self).__init__()
         self.tech_data = tech_data if tech_data is not None else {}
@@ -492,8 +487,8 @@ class BiomassBoilerDialog(QDialog):
         """
         Retrieves the input data from the dialog.
 
-        Returns:
-            dict: The input data.
+        :return: The input data
+        :rtype: dict
         """
         inputs = {
             'thermal_capacity_kW': float(self.PBMKInput.text()),
@@ -537,8 +532,8 @@ class GasBoilerDialog(QDialog):
         """
         Initializes the GasBoilerDialog.
 
-        Args:
-            tech_data (dict, optional): Dictionary containing initial values for the gas boiler parameters. Defaults to None.
+        :param tech_data: Dictionary containing initial values for the gas boiler parameters
+        :type tech_data: dict or None
         """
         super(GasBoilerDialog, self).__init__()
         self.tech_data = tech_data if tech_data is not None else {}
@@ -571,8 +566,8 @@ class GasBoilerDialog(QDialog):
         """
         Retrieves the input values from the user interface.
 
-        Returns:
-            dict: A dictionary containing the input values.
+        :return: A dictionary containing the input values
+        :rtype: dict
         """
         inputs = {
             'thermal_capacity_kW': float(self.thermalCapacityGasBoilerInput.text()),
@@ -596,8 +591,8 @@ class PowerToHeatDialog(QDialog):
         """
         Initializes the PowerToHeatDialog.
 
-        Args:
-            tech_data (dict, optional): Dictionary containing initial values for the Power-to-Heat parameters. Defaults to None.
+        :param tech_data: Dictionary containing initial values for the Power-to-Heat parameters
+        :type tech_data: dict or None
         """
         super(PowerToHeatDialog, self).__init__()
         self.tech_data = tech_data if tech_data is not None else {}
@@ -630,8 +625,8 @@ class PowerToHeatDialog(QDialog):
         """
         Retrieves the input values from the user interface.
 
-        Returns:
-            dict: A dictionary containing the input values.
+        :return: A dictionary containing the input values
+        :rtype: dict
         """
         inputs = {
             'thermal_capacity_kW': float(self.thermalCapacityPTHInput.text()),
@@ -653,8 +648,8 @@ class CHPDialog(QDialog):
         """
         Initializes the CHPDialog.
 
-        Args:
-            tech_data (dict, optional): Dictionary containing initial values for the CHP parameters. Defaults to None.
+        :param tech_data: Dictionary containing initial values for the CHP parameters
+        :type tech_data: dict or None
         """
         super(CHPDialog, self).__init__()
         self.tech_data = tech_data if tech_data is not None else {}
@@ -774,8 +769,8 @@ class CHPDialog(QDialog):
         """
         Retrieves the input values from the user interface.
 
-        Returns:
-            dict: A dictionary containing the input values.
+        :return: A dictionary containing the input values
+        :rtype: dict
         """
         inputs = {
             'th_Leistung_kW': float(self.PBHKWInput.text()),
@@ -816,8 +811,8 @@ class HolzgasCHPDialog(QDialog):
         """
         Initializes the HolzgasCHPDialog.
 
-        Args:
-            tech_data (dict, optional): Dictionary containing initial values for the Holzgas-CHP parameters. Defaults to None.
+        :param tech_data: Dictionary containing initial values for the Holzgas-CHP parameters
+        :type tech_data: dict or None
         """
         super(HolzgasCHPDialog, self).__init__()
         self.tech_data = tech_data if tech_data is not None else {}
@@ -936,8 +931,8 @@ class HolzgasCHPDialog(QDialog):
         """
         Retrieves the input values from the user interface.
 
-        Returns:
-            dict: A dictionary containing the input values.
+        :return: A dictionary containing the input values
+        :rtype: dict
         """
         inputs = {
             'th_Leistung_kW': float(self.PBHKWInput.text()),
@@ -988,8 +983,8 @@ class GeothermalDialog(QWidget):
         """
         Initializes the GeothermalDialog.
 
-        Args:
-            tech_data (dict, optional): Dictionary containing initial values for the geothermal parameters. Defaults to None.
+        :param tech_data: Dictionary containing initial values for the geothermal parameters
+        :type tech_data: dict or None
         """
         super(GeothermalDialog, self).__init__()
         self.tech_data = tech_data if tech_data is not None else {}
@@ -1096,8 +1091,8 @@ class GeothermalDialog(QWidget):
         """
         Retrieves the input values from the user interface.
 
-        Returns:
-            dict: A dictionary containing the input values.
+        :return: A dictionary containing the input values
+        :rtype: dict
         """
         inputs = {
             'Fläche': float(self.areaGInput.text()),
@@ -1127,8 +1122,8 @@ class WasteHeatPumpDialog(QDialog):
         """
         Initializes the WasteHeatPumpDialog.
 
-        Args:
-            tech_data (dict, optional): Dictionary containing initial values for the waste heat pump parameters. Defaults to None.
+        :param tech_data: Dictionary containing initial values for the waste heat pump parameters
+        :type tech_data: dict or None
         """
         super(WasteHeatPumpDialog, self).__init__()
         self.tech_data = tech_data if tech_data is not None else {}
@@ -1164,8 +1159,8 @@ class WasteHeatPumpDialog(QDialog):
         """
         Retrieves the input values from the user interface.
 
-        Returns:
-            dict: A dictionary containing the input values.
+        :return: A dictionary containing the input values
+        :rtype: dict
         """
         inputs = {
             'Kühlleistung_Abwärme': float(self.PWHInput.text()),
@@ -1194,8 +1189,8 @@ class RiverHeatPumpDialog(QDialog):
         """
         Initializes the RiverHeatPumpDialog.
 
-        Args:
-            tech_data (dict, optional): Dictionary containing initial values for the river heat pump parameters. Defaults to None.
+        :param tech_data: Dictionary containing initial values for the river heat pump parameters
+        :type tech_data: dict or None
         """
         super(RiverHeatPumpDialog, self).__init__()
         self.tech_data = tech_data if tech_data is not None else {}
@@ -1248,8 +1243,8 @@ class RiverHeatPumpDialog(QDialog):
         """
         Loads temperature data from a CSV file.
 
-        Args:
-            filename (str): The path to the CSV file.
+        :param filename: The path to the CSV file
+        :type filename: str
         """
         data = np.loadtxt(filename, delimiter=';', skiprows=1, usecols=1).astype(float)
         self.csvData = data
@@ -1259,8 +1254,8 @@ class RiverHeatPumpDialog(QDialog):
         """
         Retrieves the input values from the user interface.
 
-        Returns:
-            dict: A dictionary containing the input values.
+        :return: A dictionary containing the input values
+        :rtype: dict
         """
         inputs = {
             'Wärmeleistung_FW_WP': float(self.PFWInput.text()),
@@ -1301,8 +1296,8 @@ class AqvaHeatDialog(QDialog):
         """
         Initializes the RiverHeatPumpDialog.
 
-        Args:
-            tech_data (dict, optional): Dictionary containing initial values for the river heat pump parameters. Defaults to None.
+        :param tech_data: Dictionary containing initial values for the river heat pump parameters
+        :type tech_data: dict or None
         """
         super(AqvaHeatDialog, self).__init__()
         self.tech_data = tech_data if tech_data is not None else {}
@@ -1330,8 +1325,8 @@ class AqvaHeatDialog(QDialog):
         """
         Loads temperature data from a CSV file.
 
-        Args:
-            filename (str): The path to the CSV file.
+        :param filename: The path to the CSV file
+        :type filename: str
         """
         data = np.loadtxt(filename, delimiter=';', skiprows=1, usecols=1).astype(float)
         self.csvData = data
@@ -1341,8 +1336,8 @@ class AqvaHeatDialog(QDialog):
         """
         Retrieves the input values from the user interface.
 
-        Returns:
-            dict: A dictionary containing the input values.
+        :return: A dictionary containing the input values
+        :rtype: dict
         """
         inputs = {
         }
@@ -1360,8 +1355,8 @@ class TemperatureStratifiedThermalStorageDialog(QDialog):
         """
         Initializes the TemperatureStratifiedThermalStorageDialog.
 
-        Args:
-            tech_data (dict, optional): Dictionary containing initial values for the temperature stratified thermal storage parameters. Defaults to None.
+        :param tech_data: Dictionary containing initial values for the temperature stratified thermal storage parameters
+        :type tech_data: dict or None
         """
         super(TemperatureStratifiedThermalStorageDialog, self).__init__()
         self.tech_data = tech_data if tech_data is not None else {}
@@ -1471,8 +1466,8 @@ class TemperatureStratifiedThermalStorageDialog(QDialog):
         """
         Retrieves the input values from the user interface.
 
-        Returns:
-            dict: A dictionary containing the input values.
+        :return: A dictionary containing the input values
+        :rtype: dict
         """
         inputs = {
             'storage_type': self.storage_type_combo.currentText(),

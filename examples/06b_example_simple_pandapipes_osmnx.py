@@ -216,7 +216,7 @@ if __name__ == "__main__":
         unified_file = os.path.join(data_dir, "Wärmenetz.geojson")
         
         # Load and split unified format
-        unified_geojson = NetworkGeoJSONSchema.load_from_file(unified_file)
+        unified_geojson = NetworkGeoJSONSchema.import_from_file(unified_file)
         supply_gdf, return_gdf, hast_gdf, generator_gdf = NetworkGeoJSONSchema.split_to_legacy_format(unified_geojson)
         
         # For function compatibility, save temporary files (or modify function to accept GeoDataFrames)

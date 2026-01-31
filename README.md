@@ -201,6 +201,23 @@ To ensure consistency across the codebase, all Python code should follow these d
 
 **Docstring Format**: Sphinx/reStructuredText (reST)
 
+#### Module Headers
+
+Every Python module must start with a module-level docstring following this format:
+
+```python
+"""
+Module Title
+============
+
+Brief description of what this module does.
+
+:author: name
+"""
+```
+
+#### Function/Method Documentation
+
 **Required Elements**:
 - **Summary**: Brief one-line description of the function/class
 - **Parameters**: Description of all parameters (use `:param:` and `:type:`)
@@ -234,6 +251,8 @@ def calculate_heat_demand(building_area, building_type, weather_data):
 - Document all public functions, classes, and methods
 - Use type hints in function signatures where possible
 - Add examples for complex functions using `.. code-block::` or doctest format
+- Private methods (starting with `_`) should have brief docstrings
+- Use `.. note::` for important information or implementation details
 
 ## Publication
 

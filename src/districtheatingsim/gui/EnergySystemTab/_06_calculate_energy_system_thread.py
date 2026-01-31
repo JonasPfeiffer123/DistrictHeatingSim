@@ -1,11 +1,10 @@
 """
 Calculate Energy System Thread Module
-=====================================
+======================================
 
-This module contains the CalculateEnergySystemThread class, which is responsible for calculating the heat generation mix in a district heating simulation application. It runs the calculation in a separate thread to avoid blocking the main GUI thread.
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-05-03
+Thread for calculating heat generation mix in district heating simulation, running calculations in a separate thread.
 """
 
 import traceback
@@ -14,28 +13,24 @@ from PyQt6.QtCore import QThread, pyqtSignal
 
 class CalculateEnergySystemThread(QThread):
     """
-    Thread for calculating the heat generation mix.
+    Thread for calculating heat generation mix.
 
-    Signals:
-        calculation_done (object): Emitted when the calculation is done.
-        calculation_error (Exception): Emitted when an error occurs during the calculation.
+    :signal calculation_done: Emitted when calculation is done.
+    :signal calculation_error: Emitted when error occurs during calculation.
     """
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(Exception)
 
     def __init__(self, energy_system, optimize, weights):
         """
-        Initializes the CalculateMixThread.
+        Initialize the CalculateEnergySystemThread.
 
-        Args:
-            filename (str): Filename for the CSV containing the load data.
-            load_scale_factor (float): Scaling factor for the load.
-            TRY_data: Test Reference Year data.
-            COP_data: Coefficient of Performance data.
-            economic_parameters (dict): Economic parameters.
-            tech_objects (list): List of technology objects.
-            optimize (bool): Whether to optimize the mix.
-            weights (dict): Weights for optimization criteria.
+        :param energy_system: Energy system to calculate.
+        :type energy_system: object
+        :param optimize: Whether to optimize the mix.
+        :type optimize: bool
+        :param weights: Weights for optimization criteria.
+        :type weights: dict
         """
         super().__init__()
         self.energy_system = energy_system
@@ -44,7 +39,7 @@ class CalculateEnergySystemThread(QThread):
 
     def run(self):
         """
-        Runs the heat generation mix calculation.
+        Run heat generation mix calculation.
         """
         try:
             # Calculate the energy mix

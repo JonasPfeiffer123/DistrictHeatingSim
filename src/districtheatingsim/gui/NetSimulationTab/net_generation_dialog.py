@@ -1,11 +1,9 @@
-"""
-Network Generation Dialog Module
+"""Network Generation Dialog Module
 ================================
 
 Dialog for configuring network generation parameters with tabbed interface.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-05-20
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import json
@@ -25,15 +23,10 @@ def load_dialog_config(config_path="dialog_config.json"):
     """
     Load dialog configuration from JSON file.
 
-    Parameters
-    ----------
-    config_path : str, optional
-        Path to configuration file.
-
-    Returns
-    -------
-    dict
-        Configuration data.
+    :param config_path: Path to configuration file.
+    :type config_path: str
+    :return: Configuration data.
+    :rtype: dict
     """
     if not os.path.isabs(config_path):
         # Use get_resource_path for PyInstaller compatibility
@@ -45,12 +38,10 @@ def save_dialog_config(config, config_path="dialog_config.json"):
     """
     Save dialog configuration to JSON file.
 
-    Parameters
-    ----------
-    config : dict
-        Configuration data to save.
-    config_path : str, optional
-        Path to configuration file.
+    :param config: Configuration data to save.
+    :type config: dict
+    :param config_path: Path to configuration file.
+    :type config_path: str
     """
     if not os.path.isabs(config_path):
         # Use get_resource_path for PyInstaller compatibility
@@ -67,16 +58,14 @@ class NetGenerationDialog(QDialog):
         """
         Initialize network generation dialog.
 
-        Parameters
-        ----------
-        generate_callback : callable
-            Callback function for network generation.
-        base_path : str
-            Base path for file operations.
-        parent : QWidget, optional
-            Parent widget.
-        config_path : str, optional
-            Path to configuration file.
+        :param generate_callback: Callback function for network generation.
+        :type generate_callback: callable
+        :param base_path: Base path for file operations.
+        :type base_path: str
+        :param parent: Parent widget.
+        :type parent: QWidget
+        :param config_path: Path to configuration file.
+        :type config_path: str
         """
         super().__init__(parent)
         self.generate_callback = generate_callback
@@ -86,7 +75,9 @@ class NetGenerationDialog(QDialog):
         self.initUI()
 
     def initUI(self):
-        """Initialize dialog user interface with tabs."""
+        """
+        Initialize dialog user interface with tabs.
+        """
         self.setWindowTitle("Netz generieren")
         self.resize(1000, 800)
 
@@ -110,7 +101,9 @@ class NetGenerationDialog(QDialog):
         main_layout.addWidget(self.generateButton)
 
     def generateNetwork(self):
-        """Generate network based on user inputs and execute callback."""
+        """
+        Generate network based on user inputs and execute callback.
+        """
         if self.network_data_tab.importTypeComboBox.currentText() == "GeoJSON":
             # Extract unified GeoJSON path
             network_path = self.network_data_tab.networkInput.itemAt(1).widget().text()

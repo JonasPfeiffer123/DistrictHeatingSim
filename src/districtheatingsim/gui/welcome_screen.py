@@ -1,9 +1,9 @@
-"""
-Welcome Screen for DistrictHeatingSim Application
+"""Welcome Screen Module
+=====================
 
-This module provides the initial welcome screen that users see when starting
-the application. It offers project management functionality including recent
-projects, quick actions, and access to documentation.
+Initial welcome screen with project management, recent projects, and quick actions.
+
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import os
@@ -22,9 +22,20 @@ from PyQt6.QtGui import QFont, QPixmap, QIcon, QPainter, QColor, QPen
 
 
 class ThemeToggleSwitch(QCheckBox):
-    """A modern toggle switch for theme switching."""
+    """
+    Modern toggle switch for theme switching with animated handle.
+
+    .. note::
+       Renders custom painted toggle with sun/moon icons for light/dark theme indication.
+    """
     
     def __init__(self, parent=None):
+        """
+        Initialize toggle switch with custom styling and animation.
+
+        :param parent: Parent widget, defaults to None
+        :type parent: QWidget, optional
+        """
         super().__init__(parent)
         self.setFixedSize(60, 20)
         self.setStyleSheet("""
@@ -44,13 +55,26 @@ class ThemeToggleSwitch(QCheckBox):
         self.animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
         
     def mousePressEvent(self, event):
-        """Handle mouse press events to toggle the checkbox."""
+        """
+        Handle mouse press events to toggle the checkbox state.
+
+        :param event: Mouse event
+        :type event: QMouseEvent
+        """
         if event.button() == Qt.MouseButton.LeftButton:
             self.setChecked(not self.isChecked())
         super().mousePressEvent(event)
         
     def paintEvent(self, event):
-        """Custom paint event for the toggle switch."""
+        """
+        Custom paint event for rendering the toggle switch with animated handle.
+
+        :param event: Paint event
+        :type event: QPaintEvent
+
+        .. note::
+           Draws track background, circular handle, and sun/moon icons based on theme state.
+        """
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         
@@ -99,18 +123,38 @@ class ThemeToggleSwitch(QCheckBox):
 
 
 class RecentProjectWidget(QFrame):
-    """Widget for displaying a single recent project with thumbnail and metadata."""
+    """
+    Widget for displaying a single recent project with thumbnail and metadata.
+
+    :signal projectSelected: Emitted when project is selected (str: project_path)
+
+    .. note::
+       Displays project name, path, and last modification date in clickable frame.
+    """
     
     projectSelected = pyqtSignal(str)  # Signal emitted when project is selected
     
     def __init__(self, project_path: str, project_info: Dict):
+        """
+        Initialize recent project widget.
+
+        :param project_path: Path to the project folder
+        :type project_path: str
+        :param project_info: Dictionary with project metadata
+        :type project_info: Dict
+        """
         super().__init__()
         self.project_path = project_path
         self.project_info = project_info
         self.setup_ui()
     
     def setup_ui(self):
-        """Setup the UI for the recent project widget."""
+        """
+        Setup the UI for the recent project widget with name, path, and modification date.
+
+        .. note::
+           Creates clickable frame with project metadata display and hover cursor.
+        """
         self.setFrameStyle(QFrame.Shape.Box)
         # Styling is handled by central QSS themes
         
@@ -145,11 +189,21 @@ class RecentProjectWidget(QFrame):
         self.setMinimumWidth(200)
     
     def _get_display_path(self) -> str:
-        """Get the full project path for display."""
+        """
+        Get the full project path for display in widget.
+
+        :return: Formatted project path string
+        :rtype: str
+        """
         return str(Path(self.project_path))
     
     def mousePressEvent(self, event):
-        """Handle mouse press to select project."""
+        """
+        Handle mouse press to emit project selection signal.
+
+        :param event: Mouse event
+        :type event: QMouseEvent
+        """
         if event.button() == Qt.MouseButton.LeftButton:
             self.projectSelected.emit(self.project_path)
         super().mousePressEvent(event)
@@ -158,12 +212,13 @@ class RecentProjectWidget(QFrame):
 class WelcomeScreen(QWidget):
     """
     Welcome screen widget providing project management and quick actions.
-    
-    Features:
-    - Recent projects display from config manager
-    - Quick action buttons (New Project, Open Project)
-    - Getting started section with documentation links
-    - Clean, modern interface design
+
+    :signal projectSelected: Emitted when user selects a project (str: path)
+    :signal newProjectRequested: Emitted when user wants to create new project
+    :signal themeChangeRequested: Emitted when user changes theme (str: theme_key)
+
+    .. note::
+       Features recent projects display, quick action buttons, documentation links, and clean modern interface.
     """
     
     projectSelected = pyqtSignal(str)  # Signal when user selects a project
@@ -171,6 +226,12 @@ class WelcomeScreen(QWidget):
     themeChangeRequested = pyqtSignal(str)  # Signal when user changes theme (light/dark)
     
     def __init__(self, config_manager=None):
+        """
+        Initialize welcome screen with config manager for recent projects.
+
+        :param config_manager: Configuration manager instance, defaults to None
+        :type config_manager: ConfigManager, optional
+        """
         super().__init__()
         self.config_manager = config_manager  # Use the real config manager for recent projects
         self.recent_projects = []
@@ -178,7 +239,12 @@ class WelcomeScreen(QWidget):
         self.load_recent_projects()
     
     def setup_ui(self):
-        """Setup the main welcome screen UI with improved layout."""
+        """
+        Setup the main welcome screen UI with header, content sections, and footer.
+
+        .. note::
+           Creates three-section layout: header with title/theme toggle, content with recent projects and quick actions, funding footer.
+        """
         self.setWindowTitle("DistrictHeatingSim - Welcome")
         self.setMinimumSize(1000, 700)
         
@@ -210,7 +276,15 @@ class WelcomeScreen(QWidget):
         self.setLayout(main_layout)
     
     def create_header(self, parent_layout):
-        """Create the welcome screen header with improved introduction."""
+        """
+        Create the welcome screen header with title, subtitle, and theme switcher.
+
+        :param parent_layout: Parent layout to add header to
+        :type parent_layout: QVBoxLayout
+
+        .. note::
+           Includes main title, subtitle, introductory text, and theme toggle switch positioned top-right.
+        """
         header_layout = QVBoxLayout()
         header_layout.setSpacing(15)
         
@@ -274,7 +348,15 @@ class WelcomeScreen(QWidget):
         parent_layout.addLayout(header_layout)
     
     def create_recent_projects_section(self, parent_layout):
-        """Create the recent projects section with improved layout."""
+        """
+        Create the recent projects section with scrollable project list.
+
+        :param parent_layout: Parent layout to add section to
+        :type parent_layout: QHBoxLayout
+
+        .. note::
+           Creates scrollable area with project widgets and project count badge.
+        """
         left_widget = QWidget()
         left_layout = QVBoxLayout()
         left_layout.setContentsMargins(0, 0, 0, 0)
@@ -322,7 +404,15 @@ class WelcomeScreen(QWidget):
         parent_layout.addWidget(left_widget, 3)  # 60% of space
     
     def create_actions_section(self, parent_layout):
-        """Create the quick actions and getting started section."""
+        """
+        Create the quick actions and getting started section in right panel.
+
+        :param parent_layout: Parent layout to add section to
+        :type parent_layout: QHBoxLayout
+
+        .. note::
+           Combines quick action buttons and getting started resources.
+        """
         right_widget = QWidget()
         right_layout = QVBoxLayout()
         right_layout.setContentsMargins(0, 0, 0, 0)
@@ -340,7 +430,15 @@ class WelcomeScreen(QWidget):
         parent_layout.addWidget(right_widget, 2)  # 40% of space
     
     def create_quick_actions(self, parent_layout):
-        """Create the quick actions section with enhanced buttons."""
+        """
+        Create the quick actions section with New Project and Open Project buttons.
+
+        :param parent_layout: Parent layout to add quick actions to
+        :type parent_layout: QVBoxLayout
+
+        .. note::
+           Creates styled action button containers with callbacks.
+        """
         actions_title = QLabel("Schnellaktionen")
         actions_font = QFont()
         actions_font.setPointSize(18)
@@ -371,7 +469,17 @@ class WelcomeScreen(QWidget):
         parent_layout.addLayout(actions_layout)
     
     def create_action_button(self, title: str, style_class: str, callback):
-        """Create an action button with title."""
+        """
+        Create an action button with title and callback inside styled container.
+
+        :param title: Button text
+        :type title: str
+        :param style_class: CSS class for button styling
+        :type style_class: str
+        :param callback: Function to call on button click
+        :return: Framed button container
+        :rtype: QFrame
+        """
         container = QFrame()
         container.setFrameStyle(QFrame.Shape.Box)
         container.setObjectName("actionButtonContainer")
@@ -391,7 +499,15 @@ class WelcomeScreen(QWidget):
         return container
     
     def create_getting_started(self, parent_layout):
-        """Create the getting started section with tutorials and resources."""
+        """
+        Create the getting started section with documentation, examples, and support links.
+
+        :param parent_layout: Parent layout to add section to
+        :type parent_layout: QVBoxLayout
+
+        .. note::
+           Provides quick access to documentation, example projects, and GitHub support.
+        """
         started_title = QLabel("Schnellstart")
         started_font = QFont()
         started_font.setPointSize(18)
@@ -427,7 +543,15 @@ class WelcomeScreen(QWidget):
         parent_layout.addLayout(started_layout)
     
     def create_funding_footer(self, parent_layout):
-        """Create the funding notice footer with logo and project information."""
+        """
+        Create the funding notice footer with logo and project information.
+
+        :param parent_layout: Parent layout to add footer to
+        :type parent_layout: QVBoxLayout
+
+        .. note::
+           Displays Saxony funding logo, project title, and developer information.
+        """
         footer_container = QFrame()
         footer_container.setFrameStyle(QFrame.Shape.Box)
         footer_container.setObjectName("fundingFooter")
@@ -493,7 +617,12 @@ class WelcomeScreen(QWidget):
         parent_layout.addWidget(footer_container)
     
     def load_recent_projects(self):
-        """Load and display recent projects from config manager."""
+        """
+        Load and display recent projects from config manager with fallback to example project.
+
+        .. note::
+           Clears existing widgets, loads from config manager, adds Görlitz example if no projects found.
+        """
         # Clear existing projects
         while self.projects_layout.count():
             child = self.projects_layout.takeAt(0)
@@ -628,10 +757,13 @@ class WelcomeScreen(QWidget):
     
     def scan_for_projects(self) -> List[tuple]:
         """
-        Scan for existing project folders.
-        
-        Returns:
-            List of tuples (project_path, project_info)
+        Scan common directories for existing project folders.
+
+        :return: List of tuples (project_path, project_info) sorted by modification time
+        :rtype: List[tuple]
+
+        .. note::
+           Scans Documents, current directory, and application directory for valid project structures.
         """
         projects = []
         
@@ -662,13 +794,15 @@ class WelcomeScreen(QWidget):
     
     def is_project_folder(self, folder_path: str) -> bool:
         """
-        Check if a folder looks like a DistrictHeatingSim project.
-        
-        Args:
-            folder_path: Path to check
-            
-        Returns:
-            True if it appears to be a project folder
+        Check if a folder contains typical DistrictHeatingSim project structure.
+
+        :param folder_path: Path to check
+        :type folder_path: str
+        :return: True if appears to be a project folder
+        :rtype: bool
+
+        .. note::
+           Looks for indicator folders like 'Eingangsdaten allgemein', 'Definition Quartier IST', 'Variante 1'.
         """
         # Look for typical project structure indicators
         indicators = [
@@ -687,13 +821,15 @@ class WelcomeScreen(QWidget):
     
     def get_project_info(self, project_path: str) -> Dict:
         """
-        Get information about a project folder.
-        
-        Args:
-            project_path: Path to the project
-            
-        Returns:
-            Dictionary with project information
+        Get metadata information about a project folder.
+
+        :param project_path: Path to the project
+        :type project_path: str
+        :return: Dictionary with name, path, last_modified, last_modified_timestamp
+        :rtype: Dict
+
+        .. note::
+           Extracts folder name and modification timestamp for display and sorting.
         """
         info = {
             'name': os.path.basename(project_path),
@@ -712,13 +848,23 @@ class WelcomeScreen(QWidget):
         return info
     
     def new_project_clicked(self):
-        """Handle new project button click."""
+        """
+        Handle new project button click by emitting newProjectRequested signal.
+
+        .. note::
+           Main window handles complete workflow including folder selection and project creation.
+        """
         # Simply emit the signal - the main window will handle the complete workflow
         # including folder selection, project name input, and project creation
         self.newProjectRequested.emit()
     
     def open_project_clicked(self):
-        """Handle open project button click."""
+        """
+        Handle open project button click with file dialog for folder selection.
+
+        .. note::
+           Opens file dialog starting in default project directory, emits projectSelected signal.
+        """
         # Start in a sensible default location - check for existing projects first
         start_dir = self.get_default_project_directory()
         
@@ -732,7 +878,15 @@ class WelcomeScreen(QWidget):
             self.projectSelected.emit(folder)
 
     def get_default_project_directory(self):
-        """Get a sensible default directory for project dialogs."""
+        """
+        Get a sensible default directory for project dialogs.
+
+        :return: Path to default directory (most recent project parent or Documents folder)
+        :rtype: str
+
+        .. note::
+           Prefers parent directory of most recent project, falls back to ~/Documents.
+        """
         # Try to use the most recent project's parent directory
         if self.config_manager:
             try:
@@ -748,15 +902,30 @@ class WelcomeScreen(QWidget):
         return os.path.expanduser("~/Documents")
     
     def project_selected(self, project_path: str):
-        """Handle project selection."""
+        """
+        Handle project selection by emitting projectSelected signal.
+
+        :param project_path: Path to selected project
+        :type project_path: str
+        """
         self.projectSelected.emit(project_path)
     
     def open_documentation(self):
-        """Open the documentation website."""
+        """
+        Open the ReadTheDocs documentation website in default browser.
+
+        .. note::
+           Opens https://districtheatingsim.readthedocs.io/en/latest/
+        """
         webbrowser.open("https://districtheatingsim.readthedocs.io/en/latest/")
     
     def open_examples(self):
-        """Open example projects folder or documentation."""
+        """
+        Open example projects folder or GitHub examples page.
+
+        .. note::
+           Opens local examples folder if exists, otherwise opens GitHub examples page.
+        """
         examples_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "examples")
         if os.path.exists(examples_path):
             # Open the examples folder
@@ -766,26 +935,54 @@ class WelcomeScreen(QWidget):
             webbrowser.open("https://github.com/JonasPfeiffer123/DistrictHeatingSim/tree/main/examples")
     
     def open_support(self):
-        """Open support resources."""
+        """
+        Open GitHub issues page for support and bug reporting.
+
+        .. note::
+           Opens https://github.com/JonasPfeiffer123/DistrictHeatingSim/issues
+        """
         webbrowser.open("https://github.com/JonasPfeiffer123/DistrictHeatingSim/issues")
 
     def on_theme_toggle(self, checked):
-        """Handle theme toggle switch change."""
+        """
+        Handle theme toggle switch change to apply light or dark theme.
+
+        :param checked: True if dark theme, False if light theme
+        :type checked: bool
+        """
         if checked:
             self.apply_dark_theme()
         else:
             self.apply_light_theme()
 
     def apply_light_theme(self):
-        """Request light theme application for entire application."""
+        """
+        Request light theme application for entire application.
+
+        .. note::
+           Emits themeChangeRequested signal with 'light_theme_style_path'.
+        """
         self.themeChangeRequested.emit('light_theme_style_path')
 
     def apply_dark_theme(self):
-        """Request dark theme application for entire application."""
+        """
+        Request dark theme application for entire application.
+
+        .. note::
+           Emits themeChangeRequested signal with 'dark_theme_style_path'.
+        """
         self.themeChangeRequested.emit('dark_theme_style_path')
     
     def set_current_theme(self, is_dark_theme: bool):
-        """Set the toggle switch state based on current theme."""
+        """
+        Set the toggle switch state based on current theme without triggering signals.
+
+        :param is_dark_theme: True for dark theme, False for light theme
+        :type is_dark_theme: bool
+
+        .. note::
+           Temporarily disconnects signal to avoid loops when updating toggle state.
+        """
         # Temporarily disconnect the signal to avoid loops
         self.theme_toggle.toggled.disconnect(self.on_theme_toggle)
         self.theme_toggle.setChecked(is_dark_theme)
@@ -793,12 +990,22 @@ class WelcomeScreen(QWidget):
         self.theme_toggle.toggled.connect(self.on_theme_toggle)
     
     def refresh_recent_projects(self):
-        """Refresh the recent projects list."""
+        """
+        Refresh the recent projects list by reloading from config manager.
+
+        .. note::
+           Calls load_recent_projects() to update the displayed project widgets.
+        """
         self.load_recent_projects()
 
 
 def main():
-    """Test the welcome screen standalone."""
+    """
+    Test the welcome screen standalone for development and debugging.
+
+    .. note::
+       Creates QApplication and displays WelcomeScreen widget.
+    """
     app = QApplication([])
     
     welcome = WelcomeScreen()

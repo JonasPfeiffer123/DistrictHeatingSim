@@ -2,10 +2,9 @@
 Sensitivity Tab Module
 ======================
 
-This module contains the SensitivityTab class, which is responsible for performing sensitivity analysis on the heat generation costs based on varying input parameters such as gas, electricity, and wood prices. It provides a user interface for inputting ranges for these parameters and visualizes the results in 3D plots.
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-08-01
+Performing sensitivity analysis on heat generation costs based on varying parameters, with 3D visualization.
 """
 
 from matplotlib.figure import Figure
@@ -32,9 +31,10 @@ class SensitivityTab(QWidget):
         """
         Initializes the SensitivityTab.
 
-        Args:
-            data_manager (DataManager): The data manager.
-            parent (QWidget, optional): The parent widget. Defaults to None.
+        :param data_manager: The data manager
+        :type data_manager: DataManager
+        :param parent: The parent widget
+        :type parent: QWidget or None
         """
         super().__init__(parent)
         self.data_manager = data_manager
@@ -50,8 +50,8 @@ class SensitivityTab(QWidget):
         """
         Updates the default base path.
 
-        Args:
-            new_base_path (str): The new base path.
+        :param new_base_path: The new base path
+        :type new_base_path: str
         """
         self.base_path = new_base_path
 
@@ -88,15 +88,18 @@ class SensitivityTab(QWidget):
         """
         Creates a range input field for sensitivity analysis.
 
-        Args:
-            label_text (str): The text for the label.
-            unit_text (str): The text for the unit label.
-            ll (int or float, optional): The lower limit. Defaults to 10.
-            ul (int or float, optional): The upper limit. Defaults to 50.
-            nP (int, optional): The number of points. Defaults to 5.
-
-        Returns:
-            QVBoxLayout: The layout containing the input fields.
+        :param label_text: The text for the label
+        :type label_text: str
+        :param unit_text: The text for the unit label
+        :type unit_text: str
+        :param ll: The lower limit
+        :type ll: int or float
+        :param ul: The upper limit
+        :type ul: int or float
+        :param nP: The number of points
+        :type nP: int
+        :return: The layout containing the input fields
+        :rtype: QVBoxLayout
         """
         layout = QVBoxLayout()
         label = QLabel(label_text)
@@ -143,11 +146,10 @@ class SensitivityTab(QWidget):
         """
         Parses the range input fields and returns the range values.
 
-        Args:
-            layout (QVBoxLayout): The layout containing the input fields.
-
-        Returns:
-            tuple: The lower limit, upper limit, and number of points if valid, otherwise None.
+        :param layout: The layout containing the input fields
+        :type layout: QVBoxLayout
+        :return: The lower limit, upper limit, and number of points if valid, otherwise None
+        :rtype: tuple or None
         """
         try:
             lower = float(layout.itemAt(1).itemAt(1).widget().text())
@@ -164,8 +166,8 @@ class SensitivityTab(QWidget):
         """
         Plots the sensitivity analysis results.
 
-        Args:
-            results (list): The results of the sensitivity analysis.
+        :param results: The results of the sensitivity analysis
+        :type results: list
         """
         self.figure.clear()
         ax = self.figure.add_subplot(111, projection='3d')
@@ -190,8 +192,8 @@ class SensitivityTab(QWidget):
         """
         Plots the sensitivity analysis results as a surface plot.
 
-        Args:
-            results (list): The results of the sensitivity analysis.
+        :param results: The results of the sensitivity analysis
+        :type results: list
         """
         self.figure.clear()
         ax = self.figure.add_subplot(111, projection='3d')

@@ -8,5 +8,4 @@ This section contains utility functions and analysis modules.
 
    districtheatingsim.utilities
    districtheatingsim.heat_requirement
-   districtheatingsim.lod2
    districtheatingsim.osm

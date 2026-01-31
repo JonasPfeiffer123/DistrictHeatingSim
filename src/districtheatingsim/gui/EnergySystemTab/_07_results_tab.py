@@ -2,10 +2,9 @@
 Results Tab Module
 ==================
 
-This module contains the ResultsTab class, which is responsible for displaying the results of the energy system calculations in a district heating simulation application. It includes various diagrams and tables to visualize the results, such as stack plots, pie charts, and detailed result tables.
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2024-08-01
+Displaying results of energy system calculations with diagrams and tables, including stack plots, pie charts, and result tables.
 """
 
 import sys
@@ -38,9 +37,10 @@ class ResultsTab(QWidget):
         """
         Initializes the ResultsTab.
 
-        Args:
-            data_manager (DataManager): The data manager.
-            parent (QWidget, optional): The parent widget. Defaults to None.
+        :param data_manager: The data manager
+        :type data_manager: DataManager
+        :param parent: The parent widget
+        :type parent: QWidget or None
         """
         super().__init__(parent)
         self.data_manager = data_manager
@@ -58,8 +58,8 @@ class ResultsTab(QWidget):
         """
         Updates the default base path.
 
-        Args:
-            new_base_path (str): The new base path.
+        :param new_base_path: The new base path
+        :type new_base_path: str
         """
         self.base_path = new_base_path
 
@@ -149,8 +149,8 @@ class ResultsTab(QWidget):
         """
         Adds a label to the layout.
 
-        Args:
-            text (str): The text for the label.
+        :param text: The text for the label
+        :type text: str
         """
         label = QLabel(text)
         self.scrollLayout.addWidget(label)
@@ -181,8 +181,8 @@ class ResultsTab(QWidget):
         """
         Adjusts the size of the table to fit its contents.
 
-        Args:
-            table (QTableWidget): The table to adjust.
+        :param table: The table to adjust
+        :type table: QTableWidget
         """
         header_height = table.horizontalHeader().height()
         rows_height = sum([table.rowHeight(i) for i in range(table.rowCount())])
@@ -192,8 +192,8 @@ class ResultsTab(QWidget):
         """
         Updates the results in the ResultsTab.
 
-        Args:
-            energy_system (EnergySystem): The energy system instance containing results.
+        :param energy_system: The energy system instance containing results
+        :type energy_system: EnergySystem
         """
         self.energy_system = energy_system
 
@@ -248,7 +248,6 @@ class ResultsTab(QWidget):
     def showAdditionalResultsTable(self):
         """
         Displays the additional results in the additional results table.
-
         """
 
         # The following calculations really need to be done in the energy system class
@@ -289,7 +288,6 @@ class ResultsTab(QWidget):
     def plotResults(self):
         """
         Plots the results in the diagrams.
-
         """
         extracted_data, initial_vars = self.energy_system.getInitialPlotData()
 

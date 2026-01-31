@@ -102,7 +102,7 @@ def plot_benchmark_networks(
         from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
         
         buildings = gpd.read_file(building_file)
-        unified_geojson = NetworkGeoJSONSchema.load_from_file(unified_file)
+        unified_geojson = NetworkGeoJSONSchema.import_from_file(unified_file)
         vorlauf, _, _, _ = NetworkGeoJSONSchema.split_to_legacy_format(unified_geojson)
 
         streets.plot(ax=ax, color="grey", linewidth=1, label="Straßennetz")

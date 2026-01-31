@@ -2,10 +2,9 @@
 Sankey Dialog Module
 ====================
 
-This module contains the SankeyDialog class, which is responsible for displaying a Sankey diagram using Plotly in a PyQt6 application. The dialog visualizes energy flows in a district heating system based on provided results data.
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-04-19
+Displaying Sankey diagram using Plotly to visualize energy flows in district heating systems.
 """
 
 import sys
@@ -116,6 +115,9 @@ class SankeyDialog(QDialog):
     def closeEvent(self, event):
         """
         Clean up the temporary HTML file when the dialog is closed.
+
+        :param event: The close event
+        :type event: QCloseEvent
         """
         if os.path.exists(self.html_file_path):
             os.remove(self.html_file_path)

@@ -5,8 +5,7 @@ Pandapipes Network Initialization Module
 This module provides comprehensive network initialization capabilities for district heating
 systems using GeoJSON-based geographic data.
 
-Author: Dipl.-Ing. (FH) Jonas Pfeiffer
-Date: 2025-05-17
+:author: Dipl.-Ing. (FH) Jonas Pfeiffer
 
 It handles the complete workflow from GeoJSON
 data processing to pandapipes network creation, including heat demand integration, temperature
@@ -32,82 +31,20 @@ from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJ
 
 def initialize_geojson(NetworkGenerationData) -> Any:
     """
-    Initialize the district heating network using GeoJSON data and configuration parameters.
-
-    This function orchestrates the complete network initialization workflow including
-    GeoJSON data loading, heat demand processing, temperature calculations, network
-    topology creation, and controller setup. It handles different network configurations
-    and automatically calculates derived parameters for simulation.
-
-    Parameters
-    ----------
-    NetworkGenerationData : object
-        Network generation data object containing all necessary parameters including:
-        
-        - **network_geojson_path** : Path to unified GeoJSON file (Wärmenetz.geojson)
-        - **Heat demand data** : JSON file with building heat demands and temperature profiles  
-        - **Network configuration** : Type of network (traditional, cold network, hybrid)
-        - **Temperature parameters** : Supply/return temperatures and control strategies
-        - **Pipe specifications** : Pipe types, materials, and hydraulic parameters
-        - **Producer configuration** : Main and secondary heat generator specifications
-
-    Returns
-    -------
-    NetworkGenerationData
-        Updated NetworkGenerationData object with initialized network and calculated parameters:
-        
-        - **net** : pandapipes network object ready for simulation
-        - **Time series data** : Processed heat demands and temperature profiles
-        - **Network parameters** : Calculated mass flows, temperatures, and system configuration
-        - **Building data** : Processed building heat demands and characteristics
-
-    Raises
-    ------
-    FileNotFoundError
-        If any of the required GeoJSON or JSON files cannot be found.
-    ValueError
-        If temperature constraints are violated (return > supply temperature).
-    KeyError
-        If required data fields are missing from the heat demand JSON file.
-    gpd.errors.DataSourceError
-        If GeoJSON files are corrupted or have invalid format.
-
-    Notes
-    -----
-    Network Configuration Types:
-        - **"kaltes Netz"** : Cold network with decentralized heat pumps
-        - **Traditional** : Hot water network with central heat generation
-        - **Hybrid** : Mixed systems with multiple heat sources
-
-    Temperature Processing:
-        - Validates temperature constraints (return < supply)
-        - Calculates heat pump performance for cold networks
-        - Applies minimum load constraints (2% of maximum)
-        - Processes time-dependent temperature profiles
-
-    Mass Flow Calculations:
-        - Main producer: Based on total heat demand and temperature difference
-        - Secondary producers: Percentage-based distribution of total flow
-        - Uses water properties (cp = 4.18 kJ/kg·K)
-
-    Examples
-    --------
-    >>> # Initialize network from GeoJSON data
-    >>> network_data = initialize_geojson(config_data)
-    >>> print(f"Created network with {len(network_data.net.heat_consumer)} consumers")
-    >>> print(f"Total heat demand: {np.sum(network_data.waerme_ges_kW):.1f} kW")
+    Initialize district heating network from unified GeoJSON and heat demand data.
     
-    >>> # Access network components
-    >>> net = network_data.net
-    >>> print(f"Junctions: {len(net.junction)}")
-    >>> print(f"Pipes: {len(net.pipe)}")
-    >>> print(f"Heat consumers: {len(net.heat_consumer)}")
-
-    See Also
-    --------
-    create_network : Creates the pandapipes network topology
-    COP_WP : Heat pump coefficient of performance calculation
-    create_controllers : Adds control systems to the network
+    :param NetworkGenerationData: Configuration with network_geojson_path, heat_demand_json_path, temperatures, pipe specs, producer config
+    :type NetworkGenerationData: object
+    :return: Updated NetworkGenerationData with initialized net, time series, mass flows, building data
+    :rtype: Any
+    :raises FileNotFoundError: If GeoJSON or JSON files not found
+    :raises ValueError: If temperature constraints violated (return > supply)
+    :raises KeyError: If required JSON fields missing
+    
+    .. note::
+       Loads unified GeoJSON (Wärmenetz.geojson), processes heat demands, validates temperatures.
+       Handles cold networks (COP calculation), applies 2% min load. Calculates mass flows
+       (main: total demand/ΔT, secondary: percentage-based). Creates complete pandapipes network.
     """
     # Load unified network GeoJSON data
     
@@ -291,49 +228,16 @@ def initialize_geojson(NetworkGenerationData) -> Any:
     
 def get_line_coords_and_lengths(gdf: gpd.GeoDataFrame) -> Tuple[List[List[Tuple]], List[float]]:
     """
-    Extract line coordinates and lengths from a GeoDataFrame.
-
-    This function processes a GeoDataFrame containing LineString geometries and
-    extracts coordinate pairs along with their calculated lengths. It validates
-    geometry types and handles only valid LineString objects.
-
-    Parameters
-    ----------
-    gdf : gpd.GeoDataFrame
-        GeoDataFrame containing line geometries (typically flow or return lines).
-        Must contain LineString geometries in the 'geometry' column.
-
-    Returns
-    -------
-    Tuple[List[List[Tuple]], List[float]]
-        A tuple containing:
-        
-        - **all_line_coords** (List[List[Tuple]]) : List of coordinate sequences,
-          where each sequence represents one line as [(x1,y1), (x2,y2), ...]
-        - **all_line_lengths** (List[float]) : List of line lengths in the same
-          order as coordinates, calculated using geodetic methods
-
-    Notes
-    -----
-    - Only processes LineString geometries, skips other geometry types
-    - Calculates lengths using GeoPandas' built-in length property
-    - Prints warnings for non-LineString geometries
-    - Coordinate order depends on the original GeoJSON projection
-
-    Examples
-    --------
-    >>> # Process flow line coordinates
-    >>> coords, lengths = get_line_coords_and_lengths(flow_line_gdf)
-    >>> print(f"Found {len(coords)} lines with total length {sum(lengths):.1f}m")
+    Extract coordinates and lengths from LineString geometries.
     
-    >>> # Access individual line data
-    >>> first_line_coords = coords[0]  # [(x1,y1), (x2,y2)]
-    >>> first_line_length = lengths[0]  # length in meters
-
-    See Also
-    --------
-    get_all_point_coords_from_line_cords : Extract unique junction points
-    create_pipes : Create pandapipes pipe elements
+    :param gdf: GeoDataFrame with LineString geometries (flow/return lines)
+    :type gdf: gpd.GeoDataFrame
+    :return: (all_line_coords, all_line_lengths) - coordinate sequences and lengths
+    :rtype: Tuple[List[List[Tuple]], List[float]]
+    
+    .. note::
+       Only processes LineString geometries, skips others with warning. Uses
+       GeoPandas length property for geodetic calculation.
     """
     all_line_coords, all_line_lengths = [], []
     gdf['length'] = gdf.geometry.length
@@ -353,45 +257,16 @@ def get_line_coords_and_lengths(gdf: gpd.GeoDataFrame) -> Tuple[List[List[Tuple]
 
 def get_all_point_coords_from_line_cords(all_line_coords: List[List[Tuple]]) -> List[Tuple]:
     """
-    Extract all unique point coordinates from line coordinate sequences.
-
-    This function takes a list of line coordinate sequences and extracts all
-    unique point coordinates, which are needed for creating network junctions.
-    It automatically removes duplicates to ensure each junction is created only once.
-
-    Parameters
-    ----------
-    all_line_coords : List[List[Tuple]]
-        List of line coordinate sequences, where each sequence contains
-        coordinate tuples [(x1,y1), (x2,y2), ...].
-
-    Returns
-    -------
-    List[Tuple]
-        List of unique point coordinates as tuples (x, y).
-        Each coordinate represents a potential network junction location.
-
-    Notes
-    -----
-    - Automatically removes duplicate coordinates using set operations
-    - Maintains coordinate precision from original data
-    - Order of returned coordinates is not guaranteed due to set conversion
-    - Essential for creating proper network topology without duplicate junctions
-
-    Examples
-    --------
-    >>> # Extract unique junction points
-    >>> line_coords = [[(0,0), (1,0)], [(1,0), (2,0)], [(2,0), (2,1)]]
-    >>> unique_points = get_all_point_coords_from_line_cords(line_coords)
-    >>> print(f"Found {len(unique_points)} unique junction points")
-    Found 4 unique junction points
+    Extract unique point coordinates for network junction creation.
     
-    >>> # Points would be: [(0,0), (1,0), (2,0), (2,1)]
-
-    See Also
-    --------
-    create_junctions_from_coords : Create pandapipes junctions from coordinates
-    get_line_coords_and_lengths : Extract line data from GeoDataFrame
+    :param all_line_coords: List of coordinate sequences [(x1,y1), (x2,y2), ...]
+    :type all_line_coords: List[List[Tuple]]
+    :return: Unique point coordinates (x, y) for junction locations
+    :rtype: List[Tuple]
+    
+    .. note::
+       Removes duplicates using set operations. Order not guaranteed.
+       Essential for proper network topology without duplicate junctions.
     """
     point_coords = [koordinate for paar in all_line_coords for koordinate in paar]
     unique_point_coords = list(set(point_coords))
@@ -400,94 +275,23 @@ def get_all_point_coords_from_line_cords(all_line_coords: List[List[Tuple]]) -> 
 def create_network(gdf_dict: Dict[str, gpd.GeoDataFrame], consumer_dict: Dict[str, Any], 
                   pipe_dict: Dict[str, Any], producer_dict: Dict[str, Any]) -> pp.pandapipesNet:
     """
-    Create the complete pandapipes network using GeoJSON data and configuration parameters.
-
-    This function orchestrates the creation of a complete district heating network
-    including junctions, pipes, heat consumers, and heat producers. It handles
-    different pipe creation modes, multiple producer configurations, and applies
-    network optimization algorithms.
-
-    Parameters
-    ----------
-    gdf_dict : Dict[str, gpd.GeoDataFrame]
-        Dictionary containing GeoDataFrames with keys:
-        
-        - "flow_line" : Supply line geometries
-        - "return_line" : Return line geometries  
-        - "heat_consumer" : Heat consumer locations
-        - "heat_producer" : Heat producer locations
-        
-    consumer_dict : Dict[str, Any]
-        Heat consumer configuration containing:
-        
-        - "qext_w" : External heat demands [W]
-        - "min_supply_temperature_heat_consumer" : Minimum supply temperatures [°C]
-        - "return_temperature_heat_consumer" : Return temperatures [°C]
-        
-    pipe_dict : Dict[str, Any]
-        Pipe configuration parameters:
-        
-        - "pipetype" : Standard pipe type or diameter specification
-        - "v_max_pipe" : Maximum allowable velocity [m/s]
-        - "material_filter" : Pipe material filter criteria
-        - "pipe_creation_mode" : Creation mode ("type" or "diameter")
-        - "k_mm" : Pipe roughness [mm]
-        
-    producer_dict : Dict[str, Any]
-        Heat producer configuration:
-        
-        - "supply_temperature" : Supply temperature [°C]
-        - "flow_pressure_pump" : Pump outlet pressure [bar]
-        - "lift_pressure_pump" : Pump pressure lift [bar]
-        - "main_producer_location_index" : Index of main producer location
-        - "secondary_producers" : List of secondary producer configurations
-
-    Returns
-    -------
-    pp.pandapipesNet
-        Complete pandapipes network object ready for simulation containing:
-        
-        - Junctions for all network nodes
-        - Pipes for supply and return lines
-        - Heat consumers with proper connections
-        - Heat producers (main and secondary)
-        - Controllers for system operation
-        - Optimized pipe diameters
-
-    Notes
-    -----
-    Network Creation Steps:
-        1. Create junctions from unique coordinate points
-        2. Create pipes connecting junctions (supply and return)
-        3. Add heat consumers with thermal specifications
-        4. Install heat producers (pressure and mass flow controlled)
-        5. Run initial flow simulation for validation
-        6. Add control systems and optimization
-
-    Producer Types:
-        - **Main producer** : Pressure-controlled circulation pump
-        - **Secondary producers** : Mass flow-controlled circulation pumps
-        - **Flow controls** : Additional flow regulation elements
-
-    Optimization Features:
-        - Automatic pipe diameter sizing based on velocity constraints
-        - Flow direction correction for proper hydraulic operation
-        - Controller integration for dynamic operation
-
-    Examples
-    --------
-    >>> # Create network from processed data
-    >>> network = create_network(geo_data, consumers, pipes, producers)
-    >>> print(f"Created network with {len(network.junction)} junctions")
-    >>> print(f"Supply pipes: {len([p for p in network.pipe.name if 'flow' in p])}")
-    >>> print(f"Return pipes: {len([p for p in network.pipe.name if 'return' in p])}")
-
-    See Also
-    --------
-    create_controllers : Add control systems to the network
-    correct_flow_directions : Optimize flow directions
-    init_diameter_types : Optimize pipe diameters
-    pp.pipeflow : pandapipes flow simulation
+    Create complete pandapipes network with junctions, pipes, consumers, and producers.
+    
+    :param gdf_dict: GeoDataFrames with keys flow_line, return_line, heat_consumer, heat_producer
+    :type gdf_dict: Dict[str, gpd.GeoDataFrame]
+    :param consumer_dict: Heat consumer config (qext_w, min_supply_temperature_heat_consumer, return_temperature_heat_consumer)
+    :type consumer_dict: Dict[str, Any]
+    :param pipe_dict: Pipe config (pipetype, v_max_pipe, material_filter, pipe_creation_mode, k_mm)
+    :type pipe_dict: Dict[str, Any]
+    :param producer_dict: Producer config (supply_temperature, pressures, main_producer_location_index, secondary_producers)
+    :type producer_dict: Dict[str, Any]
+    :return: Complete pandapipes network with optimized diameters and controllers
+    :rtype: pp.pandapipesNet
+    
+    .. note::
+       Steps: 1) junctions from coords, 2) pipes (supply/return), 3) heat consumers,
+       4) producers (main=circ_pump_pressure, secondary=circ_pump_mass), 5) pipeflow,
+       6) controllers, diameter optimization. Corrects flow directions automatically.
     """
     # Extract data from dictionaries
     gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_producer = gdf_dict["flow_line"], gdf_dict["return_line"], gdf_dict["heat_consumer"], gdf_dict["heat_producer"]
