@@ -5,6 +5,21 @@ All notable changes to DistrictHeatingSim will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [1.0.1] - 2026-02-16
+
+### Fixed
+- Data folder and all required resource files (data/, images/, leaflet/, styles/) are now included in the pip package and accessible after installation ([#148](https://github.com/JonasPfeiffer123/DistrictHeatingSim/issues/148)).
+- Unified resource path handling for pip, development, and PyInstaller builds (using get_resource_path).
+- Funding logo and main logo now always available via images/ folder.
+- build.py and build_debug.py updated to move images/ and leaflet/ to dist/ for user accessibility.
+
+### Packaging
+- MANIFEST.in updated to include all resource folders (data, images, leaflet, styles).
+- file_paths.json and all code references updated to use forward-slash and images/ for logos.
+
+### Note
+- This release addresses the issue reported by @GauravLad20112: missing data/ folder in the PyPI package. All CSVs and resources required for BDEW and VDI 4655 profiles are now shipped and accessible after pip install.
+
 ## [1.0.0] - 2026-01-31
 
 ### Added

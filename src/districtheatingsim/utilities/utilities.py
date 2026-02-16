@@ -16,17 +16,19 @@ from PyQt6.QtWidgets import QMessageBox
 
 def get_resource_path(relative_path):
     """
-    Get absolute path to resource for both development and PyInstaller builds.
+    Resolve the absolute path to a resource file for development, PyInstaller, or pip-installed package.
 
-    :param relative_path: Relative path to resource from project root
+    :param relative_path: Relative path to the resource from the package root
     :type relative_path: str
-    :return: Absolute path to resource
+    :return: Absolute path to the resource file
     :rtype: str
-    
-    .. note::
-        Data folders (data, project_data, images, leaflet) are placed outside
-        the _internal folder in PyInstaller builds for user accessibility.
+
+    Notes:
+        - In development, returns the path relative to the source tree.
+        - In PyInstaller builds, handles data folders outside _internal.
+        - In pip installations, uses importlib.resources for package data.
     """
+    # 1. PyInstaller build: handle frozen state and data folders outside _internal
     if getattr(sys, 'frozen', False):
         # When the application is frozen, the base path needs special handling
         # PyInstaller extracts files to sys._MEIPASS (_internal folder)
@@ -42,11 +44,25 @@ def get_resource_path(relative_path):
         else:
             # Other resources are in the _internal folder
             base_path = sys._MEIPASS
-    else:
-        # When the application is not frozen, the base path is the directory of the main file
-        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        return os.path.join(base_path, relative_path)
 
-    return os.path.join(base_path, relative_path)
+    # 2. Development mode: use path relative to source tree
+    dev_base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    dev_path = os.path.join(dev_base_path, relative_path)
+    if os.path.exists(dev_path):
+        return dev_path
+
+    # 3. pip-installed package: use importlib.resources for package data
+    import importlib.resources
+    parts = relative_path.replace('\\', '/').split('/')
+    if not parts:
+        raise FileNotFoundError(f"Empty resource path: {relative_path}")
+    resource_package = f"districtheatingsim.{parts[0]}"
+    resource_path = '/'.join(parts[1:])
+    try:
+        return str(importlib.resources.files(resource_package).joinpath(resource_path))
+    except Exception as e:
+        raise FileNotFoundError(f"Resource not found via importlib.resources: {relative_path}\n{e}")
 
 def handle_global_exception(exc_type, exc_value, exc_traceback):
     """

@@ -117,8 +117,10 @@ def move_user_data_outside():
     
     # Folders to move (these should be user-accessible)
     folders_to_move = [
-        'data',           # TRY, COP data files
-        'project_data'    # Example projects (Görlitz, etc.)
+        'data',            # TRY, COP data files
+        'project_data',    # Example projects (Görlitz, etc.)
+        'images',          # Images for GUI
+        'leaflet'          # Leaflet map data
     ]
     
     moved_count = 0
