@@ -1,0 +1,5 @@
+recursive-include src/districtheatingsim/data *
+recursive-include src/districtheatingsim/images *
+recursive-include src/districtheatingsim/leaflet *
+recursive-include src/districtheatingsim/project_data *
+recursive-include src/districtheatingsim/styles *

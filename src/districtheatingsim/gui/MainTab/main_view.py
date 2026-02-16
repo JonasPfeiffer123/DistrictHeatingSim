@@ -615,7 +615,7 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         try:
             # Primary logo loading through configuration manager
-            logo_path = self.presenter.config_manager.get_resource_path('logo_path')
+            logo_path = self.presenter.config_manager.get_resource_path(self.presenter.config_manager.get_relative_path('logo_path'))
             
             # Create and validate icon
             icon = QIcon(logo_path)
@@ -632,12 +632,12 @@ class HeatSystemDesignGUI(QMainWindow):
         # Comprehensive fallback mechanism for logo discovery
         try:
             fallback_paths = [
-                'styles/logo.png',
-                'styles\\logo.png',
-                os.path.join('styles', 'logo.png'),
-                os.path.join(os.path.dirname(__file__), 'styles', 'logo.png'),
-                os.path.join(os.path.dirname(__file__), '..', 'styles', 'logo.png'),
-                os.path.join(os.path.dirname(__file__), '..', '..', 'styles', 'logo.png')
+                'images/logo.png',
+                'images\\logo.png',
+                os.path.join('images', 'logo.png'),
+                os.path.join(os.path.dirname(__file__), 'images', 'logo.png'),
+                os.path.join(os.path.dirname(__file__), '..', 'images', 'logo.png'),
+                os.path.join(os.path.dirname(__file__), '..', '..', 'images', 'logo.png')
             ]
             
             # Try each fallback path sequentially

@@ -565,7 +565,7 @@ class WelcomeScreen(QWidget):
             from districtheatingsim.utilities.utilities import get_resource_path
             
             # Logo is in src/districtheatingsim/images/
-            logo_path = get_resource_path('images/funding_saxony.jpg')
+            logo_path = get_resource_path(self.config_manager.get_relative_path('funding_logo_path'))
             
             if os.path.exists(logo_path):
                 logo_label = QLabel()

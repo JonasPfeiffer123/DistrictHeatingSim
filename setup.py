@@ -6,7 +6,7 @@ def read_requirements(file_path):
 
 setup(
     name="districtheatingsim",  # Name des Pakets
-    version="1.0.0",  # Versionsnummer
+    version="1.0.1",  # Versionsnummer
     description="A simulation tool for district heating systems",  # Beschreibung
     author="Dipl.-Ing. (FH) Jonas Pfeiffer",  # Autor
     maintainer="Dipl.-Ing. (FH) Jonas Pfeiffer",  # Verantwortlicher
@@ -15,10 +15,8 @@ setup(
     long_description_content_type='text/markdown',
     package_dir={"": "src"},  # Root ist "src"
     install_requires=read_requirements('requirements.txt'),
-    # Include all files from the data/ directory
-    package_data={
-        'your_package': ['data/**/*', 'leaflet/**/*'],  # Include all files recursively in the data/ directory
-    },
+    include_package_data=True,  # WICHTIG: Daten aus MANIFEST.in übernehmen
+    # package_data kann leer bleiben, da MANIFEST.in genutzt wird
     classifiers=[
         "Programming Language :: Python :: 3.11",
         "Intended Audience :: Developers",
