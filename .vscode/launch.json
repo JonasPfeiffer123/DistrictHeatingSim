@@ -1,0 +1,59 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "debugpy",
+      "request": "launch",
+      "name": "Run Example Script",
+      "program": "${workspaceFolder}/examples/${input:exampleScript}",
+      "env": {
+        "DEBUG": "1",
+        "PYTHONPATH": "${workspaceRoot}/src",
+      },
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "debugpy",
+      "request": "launch",
+      "name": "Debug Main Application (with DEBUG=1)",
+      "program": "${workspaceFolder}/src/districtheatingsim/DistrictHeatingSim.py",
+      "env": {
+        "DEBUG": "1",
+        "PYTHONPATH": "${workspaceRoot}/src",
+      },
+      "console": "integratedTerminal",
+    //   "justMyCode": false
+    }
+  ],
+  "inputs": [
+    {
+      "id": "exampleScript",
+      "type": "pickString",
+      "description": "Select an example script to run",
+      "options": [
+        "01_example_geocoding.py",
+        "02_example_import_osm_data_geojson.py",
+        "03_example_simple_heat_requirement.py",
+        "04_example_data_heat_requirement.py",
+        "05_example_net_generation.py",
+        "06_example_simple_pandapipes.py",
+        "07_example_timeseries_pandapipes.py",
+        "08_example_complex_pandapipes_timeseries.py",
+        "09_example_heat_generators.py",
+        "10_example_heat_generation_optimization.py",
+        "11_example_lod2.py",
+        "12_example_renovation_analysis.py",
+        "14_example_photovoltaics.py",
+        "15_example_annuity.py",
+        "16_interactive_matplotlib.py",
+        "17_energy_system_seasonal_storage.py",
+        "18_stanet_to_pandapipes.py",
+        "19_generator_schematic_test_window.py",
+        "20_leaflet_test.py",
+        "21_example_advanced_plots.py",
+        "benchmark_synthetic_net_generation.py",
+        "BHKW_Speicher.py"
+      ]
+    }
+  ]
+}
