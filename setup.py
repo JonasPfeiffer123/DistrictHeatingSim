@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 def read_requirements(file_path):
-    with open(file_path, 'r') as file:
+    with open(file_path, 'r', encoding='utf-8') as file:
         return [line.strip() for line in file if line.strip()]
 
 setup(
@@ -11,7 +11,7 @@ setup(
     author="Dipl.-Ing. (FH) Jonas Pfeiffer",  # Autor
     maintainer="Dipl.-Ing. (FH) Jonas Pfeiffer",  # Verantwortlicher
     packages=find_packages(where="src"),  # Suche Pakete im Ordner "src"
-    long_description=open('README.md').read(),
+    long_description=open('README.md', encoding='utf-8').read(),
     long_description_content_type='text/markdown',
     package_dir={"": "src"},  # Root ist "src"
     install_requires=read_requirements('requirements.txt'),
