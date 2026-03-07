@@ -13,6 +13,7 @@ import math
 import os
 import sys
 from typing import Tuple, Optional, Union
+from datetime import date as _date, timedelta as _timedelta
 
 from districtheatingsim.utilities.test_reference_year import import_TRY
 from districtheatingsim.utilities.utilities import get_resource_path
@@ -102,6 +103,74 @@ def calculate_daily_averages(temperature: np.ndarray) -> np.ndarray:
     daily_avg_temperature = np.mean(daily_temperature, axis=1)
     
     return daily_avg_temperature
+
+def calculate_allokationstemperatur(daily_avg_temperature: np.ndarray) -> np.ndarray:
+    """
+    Calculate Allokationstemperatur (BDEW weighted moving average of daily temperatures).
+
+    :param daily_avg_temperature: Daily mean temperatures [°C]
+    :type daily_avg_temperature: np.ndarray
+    :return: Allokationstemperatur for each day [°C]
+    :rtype: np.ndarray
+
+    .. note::
+        Formula (Leitfaden S. 43-44):
+        T_allo(D) = (T_D·8 + T_{D-1}·4 + T_{D-2}·2 + T_{D-3}·1) / 15
+    """
+    weights = np.array([8.0, 4.0, 2.0, 1.0]) / 15.0
+    n = len(daily_avg_temperature)
+    result = np.empty(n)
+    for i in range(n):
+        result[i] = (
+            weights[0] * daily_avg_temperature[i]
+            + weights[1] * daily_avg_temperature[max(i - 1, 0)]
+            + weights[2] * daily_avg_temperature[max(i - 2, 0)]
+            + weights[3] * daily_avg_temperature[max(i - 3, 0)]
+        )
+    return result
+
+def compute_holidays(year: int) -> set:
+    """
+    Compute statutory German public holidays per BDEW Leitfaden Kap. 6.1.1.
+
+    :param year: Target year
+    :type year: int
+    :return: Set of holiday dates
+    :rtype: set
+
+    .. note::
+        Holidays are treated as Sundays (weekday 7) in FWT lookup.
+        Bundesweite Feiertage: Neujahr, Karfreitag, Ostermontag, 01.05.,
+        Christi Himmelfahrt, Pfingstmontag, 03.10., 25.12., 26.12.
+    """
+    a = year % 19
+    b = year % 4
+    c = year % 7
+    k = year // 100
+    p = (13 + 8 * k) // 25
+    q = k // 4
+    M = (15 - p + k - q) % 30
+    N = (4 + k - q) % 7
+    d = (19 * a + M) % 30
+    e = (2 * b + 4 * c + 6 * d + N) % 7
+    if d == 29 and e == 6:
+        easter_offset = 50
+    elif d == 28 and e == 6 and (11 * M + 11) % 30 < 19:
+        easter_offset = 49
+    else:
+        easter_offset = d + e + 22
+    easter = _date(year, 3, 1) + _timedelta(days=easter_offset - 1)
+    return {
+        _date(year, 1, 1),                       # Neujahr
+        easter + _timedelta(days=-2),             # Karfreitag
+        easter + _timedelta(days=1),              # Ostermontag
+        _date(year, 5, 1),                        # Tag der Arbeit
+        easter + _timedelta(days=39),             # Christi Himmelfahrt
+        easter + _timedelta(days=50),             # Pfingstmontag
+        _date(year, 10, 3),                       # Tag der deutschen Einheit
+        _date(year, 12, 25),                      # 1. Weihnachtstag
+        _date(year, 12, 26),                      # 2. Weihnachtstag
+    }
 
 def calculate_hourly_intervals(year: int) -> np.ndarray:
     """
@@ -262,13 +331,20 @@ def calculate(JWB_kWh: float,
     
     # Generate temporal arrays for calculation
     days_of_year, months, days, daily_weekdays = generate_year_months_days_weekdays(year)
-    
+
     # Import and process meteorological data
     hourly_temperature, _, _, _, _ = import_TRY(TRY_file_path)
     daily_avg_temperature = np.round(calculate_daily_averages(hourly_temperature), 1)
-    
-    # Calculate BDEW reference temperatures (discrete temperature steps)
-    daily_reference_temperature = np.round((daily_avg_temperature + 2.5) * 2, -1) / 2 - 2.5
+
+    # Allokationstemperatur (BDEW Leitfaden S. 43-44):
+    # T_allo(D) = (T_D*8 + T_{D-1}*4 + T_{D-2}*2 + T_{D-3}*1) / 15
+    daily_allo_temperature = calculate_allokationstemperatur(daily_avg_temperature)
+
+    # Override weekday to 7 (Sunday) for statutory holidays (Leitfaden Kap. 6.1.1)
+    holiday_dates = compute_holidays(year)
+    for i, d in enumerate(days_of_year):
+        if _date.fromisoformat(str(d)) in holiday_dates:
+            daily_weekdays[i] = 7
 
     # Load BDEW coefficient data
     daily_data = pd.read_csv(
@@ -279,30 +355,30 @@ def calculate(JWB_kWh: float,
     # Extract building-specific coefficients
     h_A, h_B, h_C, h_D, mH, bH, mW, bW = get_coefficients(profiletype, subtype, daily_data)
     
-    # Calculate linear temperature corrections
-    lin_H = np.nan_to_num(mH * daily_avg_temperature + bH) if mH != 0 or bH != 0 else 0
-    lin_W = np.nan_to_num(mW * daily_avg_temperature + bW) if mW != 0 or bW != 0 else 0
+    # Linear temperature corrections based on Allokationstemperatur (Leitfaden S. 41-42)
+    lin_H = (np.nan_to_num(mH * daily_allo_temperature + bH)
+             if mH != 0 or bH != 0 else np.zeros(len(daily_allo_temperature)))
+    lin_W = (np.nan_to_num(mW * daily_allo_temperature + bW)
+             if mW != 0 or bW != 0 else np.zeros(len(daily_allo_temperature)))
 
-    # Calculate daily heating demand using BDEW sigmoid function
-    h_T_heating = h_A / (1 + (h_B / (daily_avg_temperature - 40)) ** h_C) + lin_H
-    
+    # SigLinDe: h_total = sigmoid + D + max(mH*T+bH, mW*T+bW)
+    # DHW component:     h_dhw  = D + mW*T + bW  (warm water baseline)
+    # Heating component: h_total - h_dhw  (temperature-dependent space heating)
+    h_T_sigmoid = h_A / (1 + (h_B / (daily_allo_temperature - 40)) ** h_C)
+    h_T_dhw     = h_D + lin_W
+    h_T_total   = h_T_sigmoid + h_D + np.maximum(lin_H, lin_W)
+
     # Apply weekday factors
     F_D = get_weekday_factor(daily_weekdays, profiletype, subtype, daily_data)
-    h_T_F_D_heating = h_T_heating * F_D
-    
-    # Calculate annual scaling factor for heating
-    sum_h_T_F_D_heating = np.sum(h_T_F_D_heating)
-    KW_kWh_heating = JWB_kWh / sum_h_T_F_D_heating if sum_h_T_F_D_heating != 0 else 0
-    daily_heat_demand_heating = h_T_F_D_heating * KW_kWh_heating
 
-    # Calculate daily hot water demand
-    h_T_warmwater = lin_W + h_D
-    h_T_F_D_warmwater = h_T_warmwater * F_D
-    
-    # Calculate annual scaling factor for hot water
-    sum_h_T_F_D_warmwater = np.sum(h_T_F_D_warmwater)
-    KW_kWh_warmwater = JWB_kWh / sum_h_T_F_D_warmwater if sum_h_T_F_D_warmwater != 0 else 0
-    daily_heat_demand_warmwater = h_T_F_D_warmwater * KW_kWh_warmwater
+    # Single KW normalization on combined total (Leitfaden S. 42)
+    # Fixes: old code applied separate KW to heating AND dhw -> sum = 2*JWB
+    sum_h_T_F_D_total = np.sum(h_T_total * F_D)
+    KW_kWh = JWB_kWh / sum_h_T_F_D_total if sum_h_T_F_D_total != 0 else 0
+
+    # Daily demands - proportional split, sum = JWB_kWh exactly
+    daily_heat_demand_heating   = (h_T_total - h_T_dhw) * F_D * KW_kWh
+    daily_heat_demand_warmwater = h_T_dhw * F_D * KW_kWh
 
     # Process hourly temperature data for interpolation
     hourly_reference_temperature = np.round((hourly_temperature + 2.5) * 2, -1) / 2 - 2.5

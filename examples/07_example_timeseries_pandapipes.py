@@ -77,12 +77,12 @@ def initialize_test_net(qext_w=np.array([100000, 100000, 100000]),
     pp.create_heat_consumer(net, from_junction=j5, to_junction=j6, qext_w=qext_w[2], treturn_k=return_temperature_k[2], name="Consumer C")
 
     # Simulate pipe flow
-    pp.pipeflow(net, mode="bidirectional", iter=100)
+    pp.pipeflow(net, mode="bidirectional", iter=100, alpha=0.6, transient=False)
 
     # Placeholder functions for additional processing
     net = create_controllers(net, qext_w, supply_temperature, None, return_temperature, None)
 
-    run_control(net, mode="bidirectional", iter=100)
+    run_control(net, mode="bidirectional", iter=100, alpha=0.6, transient=False)
 
     net = correct_flow_directions(net)
     net = init_diameter_types(net, v_max_pipe=v_max_m_s, material_filter="KMR", k=k)
@@ -91,7 +91,7 @@ def initialize_test_net(qext_w=np.array([100000, 100000, 100000]),
     return net
 
 
-def timeseries_test(net):
+def timeseries_test(net, transient=False):
     print("Running time series test...")
     start = 0
     end = 8 # 8760 hours in a year
@@ -141,7 +141,7 @@ def timeseries_test(net):
     log_variables = create_log_variables(net)
     ow = OutputWriter(net, time_steps, output_path=None, log_variables=log_variables)
 
-    run_time_series.run_timeseries(net, time_steps, mode="bidirectional", iter=100, alpha=0.6)
+    run_time_series.run_timeseries(net, time_steps, mode="bidirectional", iter=100, alpha=0.6, transient=transient)
 
     return yearly_time_steps, net, ow.np_results
 
@@ -284,7 +284,7 @@ if __name__ == "__main__":
               " Running time series simulation..." )
         
 
-        yearly_time_steps, net, np_results = timeseries_test(net)
+        yearly_time_steps, net, np_results = timeseries_test(net, transient=False)
 
         print_results(net)
 
