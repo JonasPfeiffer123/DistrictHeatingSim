@@ -5,7 +5,21 @@ All notable changes to DistrictHeatingSim will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-# [1.0.1] - 2026-02-16
+## [Unreleased]
+
+## [1.0.2] - 2026-03-17
+
+### Changed
+- Migrated heat demand calculation to [pyslpheat](https://github.com/JonasPfeiffer123/pyslpheat) package.
+  `heat_requirement_BDEW.py` and `heat_requirement_VDI4655.py` have been removed; callers now use
+  `from pyslpheat import bdew_calculate, vdi4655_calculate`.
+
+### Removed
+- Internal modules `heat_requirement_BDEW.py` and `heat_requirement_VDI4655.py`.
+- Bundled BDEW and VDI 4655 coefficient CSV files (`data/BDEW profiles/`, `data/VDI 4655 profiles/`);
+  these are now shipped inside the `pyslpheat` package.
+
+## [1.0.1] - 2026-02-16
 
 ### Fixed
 - Data folder and all required resource files (data/, images/, leaflet/, styles/) are now included in the pip package and accessible after installation ([#148](https://github.com/JonasPfeiffer123/DistrictHeatingSim/issues/148)).
