@@ -14,7 +14,8 @@ import json
 import numpy as np
 import pandas as pd
 
-from districtheatingsim.heat_generators import *
+from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
+from districtheatingsim.heat_generators.STES import STES
 
 class CheckableComboBox(QComboBox):
     """
@@ -177,5 +178,4 @@ class CustomJSONEncoder(json.JSONEncoder):
                 return obj.to_dict()
             return super().default(obj)
         except TypeError as e:
-            print(f"Failed to encode {obj} of type {type(obj)}")
             raise e
