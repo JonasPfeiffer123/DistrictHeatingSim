@@ -6,7 +6,9 @@ Dialog windows for user input and configuration.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QPushButton, QHBoxLayout, QFileDialog, QCheckBox, QDialogButtonBox, QHBoxLayout
+import os
+
+from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QPushButton, QHBoxLayout, QFileDialog
 from PyQt6.QtCore import Qt
 
 from districtheatingsim.utilities.utilities import get_resource_path
@@ -56,7 +58,9 @@ class TemperatureDataDialog(QDialog):
 
         self.temperatureDataFileLabel = QLabel("TRY-Datei:", self)
         self.temperatureDataFileInput = QLineEdit(self)
-        self.temperatureDataFileInput.setText(get_resource_path("data\\TRY\\TRY_511676144222\\TRY2015_511676144222_Jahr.dat"))
+        self.temperatureDataFileInput.setText(
+            get_resource_path(os.path.join("data", "TRY", "TRY_511676144222", "TRY2015_511676144222_Jahr.dat"))
+        )
         self.selectTRYFileButton = QPushButton('TRY-Datei auswählen')
         self.selectTRYFileButton.clicked.connect(lambda: self.selectFilename(self.temperatureDataFileInput))
 
@@ -117,7 +121,6 @@ class HeatPumpDataDialog(QDialog):
         :type parent: QWidget, optional
         """
         super().__init__(parent)
-        self.setWindowTitle("Wärmepumpendaten")
         self.initUI()
 
     def initUI(self):

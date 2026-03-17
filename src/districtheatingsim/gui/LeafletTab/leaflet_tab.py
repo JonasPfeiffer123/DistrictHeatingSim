@@ -11,13 +11,13 @@ visualization and interactive network generation.
 import os
 import sys
 import json
-import geopandas as gpd
-import pandas as pd
 import traceback
-import os
 import tempfile
 
-from PyQt6.QtWidgets import QVBoxLayout, QWidget, QFileDialog, QMenuBar, QProgressBar, QMessageBox, QMainWindow, QDialog
+import geopandas as gpd
+import pandas as pd
+
+from PyQt6.QtWidgets import QVBoxLayout, QWidget, QFileDialog, QMenuBar, QProgressBar, QMessageBox, QDialog
 from PyQt6.QtGui import QAction
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWebEngineCore import QWebEngineSettings
@@ -57,8 +57,6 @@ class GeoJsonReceiver(QObject):
         :param geojson_str: GeoJSON data as string
         :type geojson_str: str
         """
-        print("Received GeoJSON from JavaScript")
-        
         # Konvertiere den JSON-String in ein Python-Objekt
         geojson_data = json.loads(geojson_str)
         
@@ -75,7 +73,6 @@ class GeoJsonReceiver(QObject):
         # Speichere die Daten als GeoJSON
         output_file = 'exported_data.geojson' ### Replace with path dialog
         gdf.to_file(output_file, driver="GeoJSON")
-        print(f"GeoJSON gespeichert in {output_file}")
 
     @pyqtSlot(str)
     def exportGeoJSON(self, geojsonString):
@@ -95,12 +92,7 @@ class GeoJsonReceiver(QObject):
             elif geojson_data.get("type") == "Feature":
                 features = [geojson_data]
             else:
-                print("Unbekannter GeoJSON-Typ:", geojson_data.get("type"))
-                return
-
-            # Debug: Zeige die Geometrie-Typen und Koordinaten
-            for i, feature in enumerate(features):
-                print(f"Feature {i}: type={feature['geometry']['type']}, coords={feature['geometry']['coordinates']}")
+                return  # Unknown GeoJSON type — skip
 
             # Optional: Korrigiere fehlerhafte Geometrien
             for feature in features:
@@ -138,11 +130,8 @@ class GeoJsonReceiver(QObject):
                 target_crs = 'EPSG:25833'
                 gdf.to_crs(target_crs, inplace=True)
                 gdf.to_file(fileName, driver="GeoJSON")
-                print(f"GeoJSON-Datei gespeichert: {fileName}")
-            except Exception as e:
-                print("Fehler beim Erstellen des GeoDataFrame:", e)
-                import traceback
-                traceback.print_exc()
+            except Exception:
+                pass
     
     @pyqtSlot(str)
     def exportUnifiedNetworkGeoJSON(self, geojsonString):
@@ -175,18 +164,11 @@ class GeoJsonReceiver(QObject):
                 # Just save as-is
                 with open(fileName, 'w', encoding='utf-8') as f:
                     json.dump(geojson_data, f, indent=2, ensure_ascii=False)
-                print(f"✓ Exported unified network GeoJSON: {fileName}")
             else:
-                # Convert to unified format (if needed, can implement merge logic here)
-                print("Converting to unified format...")
                 with open(fileName, 'w', encoding='utf-8') as f:
                     json.dump(geojson_data, f, indent=2, ensure_ascii=False)
-                print(f"✓ Exported GeoJSON: {fileName}")
-                
-        except Exception as e:
-            print(f"✗ Export failed: {e}")
-            import traceback
-            traceback.print_exc()
+        except Exception:
+            pass
     
     @pyqtSlot(str, str)
     def saveEditedNetwork(self, geojsonString, filepath):
@@ -210,17 +192,12 @@ class GeoJsonReceiver(QObject):
             if edited_data.get("metadata", {}).get("version") == NetworkGeoJSONSchema.VERSION:
                 with open(filepath, 'w', encoding='utf-8') as f:
                     json.dump(edited_data, f, indent=2, ensure_ascii=False)
-                print(f"✓ Saved edited network: {filepath}")
             else:
                 # Legacy format - just save as-is
                 with open(filepath, 'w', encoding='utf-8') as f:
                     json.dump(edited_data, f, indent=2, ensure_ascii=False)
-                print(f"✓ Saved GeoJSON: {filepath}")
-                
-        except Exception as e:
-            print(f"✗ Save failed: {e}")
-            import traceback
-            traceback.print_exc()
+        except Exception:
+            pass
 
     @pyqtSlot(float, float)
     def receiveCoordinateFromMap(self, lat, lon):
@@ -232,7 +209,6 @@ class GeoJsonReceiver(QObject):
         :param lon: Longitude (WGS84)
         :type lon: float
         """
-        print(f"Received coordinates from map: Lat={lat}, Lon={lon}")
         self.coordinate_picked.emit(lat, lon)
 
     @pyqtSlot()
@@ -253,12 +229,11 @@ class GeoJsonReceiver(QObject):
         :param geojson_str: GeoJSON string of the drawn polygon
         :type geojson_str: str
         """
-        print(f"Received polygon from map")
         try:
             geojson_data = json.loads(geojson_str)
             self.polygon_drawn.emit(geojson_data)
-        except Exception as e:
-            print(f"Error parsing polygon GeoJSON: {e}")
+        except Exception:
+            pass
 
 class VisualizationModel:
     """
@@ -273,24 +248,6 @@ class VisualizationModel:
         """
         self.layers = {}
         self.base_path = ""
-
-    def set_base_path(self, base_path):
-        """
-        Set base path for file operations.
-
-        :param base_path: Base path to set
-        :type base_path: str
-        """
-        self.base_path = base_path
-
-    def get_base_path(self):
-        """
-        Get current base path.
-
-        :return: Current base path
-        :rtype: str
-        """
-        return self.base_path
 
     def load_geojson(self, file_path):
         """
@@ -319,7 +276,6 @@ class VisualizationModel:
             crs="EPSG:25833"
         )
         gdf.to_file(geojson_file_path, driver='GeoJSON')
-        print(f"GeoJSON created at: {geojson_file_path}")
 
     def get_resource_path(self, relative_path):
         """
@@ -402,7 +358,7 @@ class VisualizationPresenter(QObject):
         :type new_base_path: str
         """
         if new_base_path:
-            self.model.set_base_path(new_base_path)
+            self.model.base_path = new_base_path
             self.view.set_base_path(new_base_path)
 
     def open_geocode_addresses_dialog(self):
@@ -412,7 +368,7 @@ class VisualizationPresenter(QObject):
         Displays file selection dialog and starts geocoding process
         if file is selected.
         """
-        fname, _ = QFileDialog.getOpenFileName(self.view, 'CSV-Koordinaten laden', self.model.get_base_path(), 'CSV Files (*.csv);;All Files (*)')
+        fname, _ = QFileDialog.getOpenFileName(self.view, 'CSV-Koordinaten laden', self.model.base_path, 'CSV Files (*.csv);;All Files (*)')
         if fname:
             self.geocode_addresses(fname)
 
@@ -461,9 +417,9 @@ class VisualizationPresenter(QObject):
         """
         try:
             if not fname:
-                fname, _ = QFileDialog.getOpenFileName(self.view, 'CSV-Koordinaten laden', self.model.get_base_path(), 'CSV Files (*.csv);;All Files (*)')
+                fname, _ = QFileDialog.getOpenFileName(self.view, 'CSV-Koordinaten laden', self.model.base_path, 'CSV Files (*.csv);;All Files (*)')
             if fname:
-                geojson_path = os.path.join(self.model.get_base_path(), 'Gebäudedaten', f"{os.path.splitext(os.path.basename(fname))[0]}.geojson")
+                geojson_path = os.path.join(self.model.base_path, 'Gebäudedaten', f"{os.path.splitext(os.path.basename(fname))[0]}.geojson")
                 self.model.create_geojson_from_csv(fname, geojson_path)
                 self.add_geojson_layer([geojson_path])
         except Exception as e:
@@ -478,7 +434,7 @@ class VisualizationPresenter(QObject):
         selected layers to the map.
         """
         try:
-            fnames, _ = QFileDialog.getOpenFileNames(self.view, 'Netzdaten importieren', self.model.get_base_path(), 'GeoJSON Files (*.geojson);;All Files (*)')
+            fnames, _ = QFileDialog.getOpenFileNames(self.view, 'Netzdaten importieren', self.model.base_path, 'GeoJSON Files (*.geojson);;All Files (*)')
             if fnames:
                 self.add_geojson_layer(fnames)
         except Exception as e:
@@ -607,7 +563,7 @@ class VisualizationPresenter(QObject):
         
         Creates and displays layer generation dialog with map picker support.
         """
-        dialog = LayerGenerationDialog(self.model.get_base_path(), self.config_manager, self.view)
+        dialog = LayerGenerationDialog(self.model.base_path, self.config_manager, self.view)
         dialog.setVisualizationTab(self)
         dialog.accepted_inputs.connect(self.generate_and_import_layers)
         
@@ -632,7 +588,7 @@ class VisualizationPresenter(QObject):
         if hasattr(self, 'netgenerationThread') and self.netgenerationThread.isRunning():
             self.netgenerationThread.terminate()
             self.netgenerationThread.wait()
-        self.netgenerationThread = NetGenerationThread(inputs, self.model.get_base_path())
+        self.netgenerationThread = NetGenerationThread(inputs, self.model.base_path)
         self.netgenerationThread.calculation_done.connect(self.on_generation_done)
         self.netgenerationThread.calculation_error.connect(self.on_generation_error)
         self.netgenerationThread.start()
@@ -649,7 +605,7 @@ class VisualizationPresenter(QObject):
         
         # Try to load unified network GeoJSON first
         unified_path = os.path.join(
-            self.model.get_base_path(), 
+            self.model.base_path, 
             self.config_manager.get_relative_path('dimensioned_net_path')
         )
         
@@ -739,7 +695,7 @@ class VisualizationPresenter(QObject):
         
         Displays non-modal dialog allowing map interaction during OSM download.
         """
-        dialog = DownloadOSMDataDialog(self.model.get_base_path(), self.config_manager, self.view, self)
+        dialog = DownloadOSMDataDialog(self.model.base_path, self.config_manager, self.view, self)
         dialog.setVisualizationTab(self)
         dialog.show()  # Non-modal dialog - allows map interaction
         dialog.raise_()
@@ -752,7 +708,7 @@ class VisualizationPresenter(QObject):
         Displays non-modal dialog for building queries with map interaction.
         """
         dialog = OSMBuildingQueryDialog(
-            self.model.get_base_path(), 
+            self.model.base_path, 
             self.config_manager, 
             self.view, 
             self, 
@@ -888,9 +844,9 @@ class VisualizationTabView(QWidget):
         """
         QMessageBox.critical(self, title, message)
 
-class VisualizationTabLeaflet(QMainWindow):
+class VisualizationTabLeaflet(QWidget):
     """
-    Main window integrating model, view, and presenter for map visualization.
+    Main widget integrating model, view, and presenter for map visualization.
     """
 
     def __init__(self, folder_manager, data_manager, config_manager, parent=None):
@@ -912,12 +868,13 @@ class VisualizationTabLeaflet(QMainWindow):
         self.model = VisualizationModel()
         self.view = VisualizationTabView()
         self.presenter = VisualizationPresenter(self.model, self.view, folder_manager, data_manager, config_manager)
-        
-        # Set base path for GeoJsonReceiver after presenter is initialized
-        self.view.set_base_path(self.model.get_base_path())
 
-        # Set the central widget to the view
-        self.setCentralWidget(self.view)
+        # Set base path for GeoJsonReceiver after presenter is initialized
+        self.view.set_base_path(self.model.base_path)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.view)
     
     def update_base_path(self, base_path):
         """Update base path in model and view.
@@ -927,5 +884,5 @@ class VisualizationTabLeaflet(QMainWindow):
         base_path : str
             New base path for project.
         """
-        self.model.set_base_path(base_path)
+        self.model.base_path = base_path
         self.view.set_base_path(base_path)
