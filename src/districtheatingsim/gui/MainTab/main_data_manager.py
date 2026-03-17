@@ -78,8 +78,7 @@ class ProjectConfigManager:
             try:
                 with open(self.config_path, 'r', encoding='utf-8') as file:
                     return json.load(file)
-            except (json.JSONDecodeError, UnicodeDecodeError) as e:
-                print(f"Error loading configuration: {e}")
+            except (json.JSONDecodeError, UnicodeDecodeError):
                 return {}
         return {}
 
@@ -94,8 +93,7 @@ class ProjectConfigManager:
             try:
                 with open(self.file_paths_path, 'r', encoding='utf-8') as file:
                     return json.load(file)
-            except (json.JSONDecodeError, UnicodeDecodeError) as e:
-                print(f"Error loading file paths: {e}")
+            except (json.JSONDecodeError, UnicodeDecodeError):
                 return {}
         return {}
 
@@ -110,8 +108,7 @@ class ProjectConfigManager:
         try:
             with open(self.config_path, 'w', encoding='utf-8') as file:
                 json.dump(config, file, indent=4, ensure_ascii=False)
-        except Exception as e:
-            print(f"Error saving configuration: {e}")
+        except Exception:
             raise
 
     def save_file_paths(self, file_paths: Dict[str, str]) -> None:
@@ -125,8 +122,7 @@ class ProjectConfigManager:
         try:
             with open(self.file_paths_path, 'w', encoding='utf-8') as file:
                 json.dump(file_paths, file, indent=4, ensure_ascii=False)
-        except Exception as e:
-            print(f"Error saving file paths: {e}")
+        except Exception:
             raise
 
     def get_last_project(self) -> str:

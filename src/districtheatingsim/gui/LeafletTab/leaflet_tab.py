@@ -17,7 +17,7 @@ import tempfile
 import geopandas as gpd
 import pandas as pd
 
-from PyQt6.QtWidgets import QVBoxLayout, QWidget, QFileDialog, QMenuBar, QProgressBar, QMessageBox, QDialog
+from PyQt6.QtWidgets import QVBoxLayout, QWidget, QFileDialog, QMenuBar, QProgressBar, QMessageBox
 from PyQt6.QtGui import QAction
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWebEngineCore import QWebEngineSettings
@@ -26,7 +26,7 @@ from PyQt6.QtWebChannel import QWebChannel
 
 from districtheatingsim.gui.LeafletTab.layer_generation_dialog import LayerGenerationDialog
 from districtheatingsim.gui.LeafletTab.osm_dialogs import DownloadOSMDataDialog, OSMBuildingQueryDialog
-from districtheatingsim.gui.LeafletTab.net_generation_threads import NetGenerationThread, FileImportThread, GeocodingThread
+from districtheatingsim.gui.LeafletTab.net_generation_threads import NetGenerationThread, GeocodingThread
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
 
 from shapely.geometry import Point
@@ -459,7 +459,6 @@ class VisualizationPresenter(QObject):
                 
                 # Check if this is a unified network GeoJSON
                 if self._is_unified_network_geojson(geojson_data):
-                    print(f"Loading unified network GeoJSON: {filename}")
                     self._load_unified_network_geojson(geojson_data, filepath=filename)
                 else:
                     # Legacy format - add as single layer
@@ -550,8 +549,7 @@ class VisualizationPresenter(QObject):
                 self.view.web_view.page().runJavaScript(
                     f"window.importGeoJSON({layer_json}, '{layer_name}', {str(editable).lower()});"
                 )
-                print(f"✓ Loaded layer '{layer_name}': {len(features)} features (editable: {editable})")
-        
+
         # Store filepath for saving
         if filepath:
             self.current_unified_network = filepath
@@ -594,7 +592,7 @@ class VisualizationPresenter(QObject):
         self.netgenerationThread.start()
         self.view.progressBar.setRange(0, 0)
 
-    def on_generation_done(self, results):
+    def on_generation_done(self, _results):
         """
         Handle successful layer generation.
 
@@ -609,11 +607,7 @@ class VisualizationPresenter(QObject):
             self.config_manager.get_relative_path('dimensioned_net_path')
         )
         
-        print(f"Checking for unified GeoJSON at: {unified_path}")
-        print(f"File exists: {os.path.exists(unified_path)}")
-        
         if os.path.exists(unified_path):
-            print(f"Loading unified network GeoJSON: {unified_path}")
             self.add_geojson_layer([unified_path])
             
             # Store reference to unified file
@@ -626,8 +620,6 @@ class VisualizationPresenter(QObject):
                 'Wärmenetz': unified_path
             }
         else:
-            # Unified file not found
-            print(f"Unified network file not found: {unified_path}")
             self.view.show_error_message(
                 "Netzwerk nicht gefunden", 
                 f"Die Wärmenetz.geojson Datei wurde nicht gefunden:\n{unified_path}"
@@ -679,7 +671,6 @@ class VisualizationPresenter(QObject):
             }}
             """
         )
-        print(f"Requested save of network to: {self.current_unified_network}")
 
     def activate_map_coordinate_picker(self):
         """

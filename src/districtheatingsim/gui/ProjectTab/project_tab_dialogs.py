@@ -180,12 +180,8 @@ class OSMImportDialog(QDialog):
                 if street_parts:
                     self.fields["Adresse"].setText(" ".join(street_parts))
                 
-                print(f"Reverse geocoding erfolgreich: {location.address}")
-            else:
-                print("Keine Adressinformationen gefunden")
-                
-        except Exception as e:
-            print(f"Fehler beim Reverse Geocoding: {e}")
+        except Exception:
+            pass
 
     def get_input_data(self):
         """

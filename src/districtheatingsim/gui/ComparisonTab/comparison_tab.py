@@ -493,9 +493,7 @@ class ComparisonDashboard(QWidget):
             else:
                 self.kpi_widgets['Verteilverluste'].value_label.setText("n.v.")
                 
-        except Exception as e:
-            print(f"Error updating KPIs: {e}")
-            # Reset to default on error
+        except Exception:
             for widget in self.kpi_widgets.values():
                 widget.value_label.setText("--")
             
@@ -507,8 +505,8 @@ class ComparisonDashboard(QWidget):
             self.update_co2_chart()
             self.update_pe_chart()
             self.update_network_chart()
-        except Exception as e:
-            print(f"Error updating charts: {e}")
+        except Exception:
+            pass
             
     def update_cost_chart(self):
         """Update cost comparison chart."""
@@ -942,7 +940,6 @@ class ComparisonTab(QWidget):
         try:
             config_path = os.path.join(variant_path, "Wärmenetz", "Konfiguration Netzinitialisierung.json")
             if not os.path.exists(config_path):
-                print(f"Config not found for {variant_path}")
                 return network_data
             with open(config_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
@@ -951,8 +948,8 @@ class ComparisonTab(QWidget):
             network_data['Verteilverluste'] = kpi_results.get('rel. Verteilverluste [%]', 0)
             network_data['Pumpenenergie'] = kpi_results.get('Pumpenstrom [MWh]', 0)
             network_data['Anzahl_Gebäude'] = kpi_results.get('Anzahl angeschlossene Gebäude', 0)
-        except Exception as e:
-            print(f"Error loading KPIs for {variant_path}: {e}")
+        except Exception:
+            pass
         return network_data
         
     def process_variant_results(self, results):
