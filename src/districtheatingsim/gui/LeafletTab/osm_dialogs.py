@@ -1422,6 +1422,10 @@ class OSMBuildingQueryDialog(QDialog):
         gdf_filtered = gdf[gdf.geometry.intersects(polygon)]
         print(f"DEBUG: Filtered to {len(gdf_filtered)} buildings")
         
+        print("DEBUG: Converting to ETRS89 (EPSG:25833)...")
+        # Convert to ETRS89 / UTM zone 33N
+        gdf_filtered = gdf_filtered.to_crs('EPSG:25833')
+        
         print(f"DEBUG: Saving to file: {filename}")
         # Save to file
         gdf_filtered.to_file(filename, driver='GeoJSON')
