@@ -267,9 +267,7 @@ class HeatSystemDesignGUI(QMainWindow):
         try:
             # Call the existing method that handles project opening with all the proper logic
             self.on_open_existing_project(project_path)
-        except Exception as e:
-            print(f"Warning: Could not load project from {project_path}: {e}")
-            # Fallback: just show the main interface
+        except Exception:
             pass
 
     def on_new_project_requested(self):
@@ -283,9 +281,7 @@ class HeatSystemDesignGUI(QMainWindow):
         # Use the existing new project functionality
         try:
             self.on_create_new_project()
-        except Exception as e:
-            print(f"Warning: Could not create new project: {e}")
-            # Fallback: just show the main interface
+        except Exception:
             pass
 
     def show_save_dialog(self, title: str, info_text: str, accept_text: str) -> str:

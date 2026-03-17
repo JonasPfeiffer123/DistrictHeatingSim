@@ -48,10 +48,6 @@ class NetGenerationThread(QThread):
         (OSMnx or traditional MST/Steiner) and emits signals on completion or error.
         """
         try:
-            print("Starting network generation thread...")
-            print(f"Generation mode: {self.inputs['generation_mode']}")
-            print(f"Coordinates: {self.inputs['coordinates']}")
-            
             if self.inputs["generation_mode"] == "OSMnx":
                 # Use OSMnx-based network generation
                 generate_and_export_osmnx_layers(
@@ -75,7 +71,6 @@ class NetGenerationThread(QThread):
             self.calculation_done.emit(())
         except Exception as e:
             error_msg = f"{str(e)}\n{traceback.format_exc()}"
-            print(f"ERROR in network generation: {error_msg}")
             self.calculation_error.emit(Exception(error_msg))
 
     def stop(self):
@@ -378,9 +373,8 @@ class GeoJSONToCSVThread(QThread):
                                     adresse = " ".join(street_parts)
                                 
                                 self.progress_update.emit(i + 1, total_features, f"Gebäude {i+1}/{total_features}: {adresse}, {stadt}")
-                        except Exception as e:
+                        except Exception:
                             self.progress_update.emit(i + 1, total_features, f"Gebäude {i+1}/{total_features}: Geocoding fehlgeschlagen")
-                            print(f"Reverse Geocoding für Gebäude {i+1} fehlgeschlagen: {e}")
                     else:
                         self.progress_update.emit(i + 1, total_features, f"Gebäude {i+1}/{total_features}: Keine Koordinaten")
                     
