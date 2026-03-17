@@ -7,11 +7,10 @@ Project management tab with MVP architecture for CSV file editing and project tr
 """
 
 import os
-import sys
 import csv
 import json
 
-from PyQt6.QtWidgets import (QMainWindow, QFileDialog, QTableWidgetItem, QWidget, QVBoxLayout, QHBoxLayout,
+from PyQt6.QtWidgets import (QFileDialog, QTableWidgetItem, QWidget, QVBoxLayout, QHBoxLayout,
                              QMenuBar, QProgressBar, QLabel, QTableWidget, QFrame,
                              QTreeView, QSplitter, QMessageBox, QDialog, QMenu, QPushButton, QInputDialog, QSizePolicy)
 from PyQt6.QtGui import QAction, QFileSystemModel
@@ -31,24 +30,6 @@ class ProjectModel:
         self.base_path = None
         self.current_file_path = ''
         self.layers = {}
-
-    def set_base_path(self, base_path):
-        """
-        Set project base path.
-
-        :param base_path: Project base path.
-        :type base_path: str
-        """
-        self.base_path = base_path
-
-    def get_base_path(self):
-        """
-        Get project base path.
-
-        :return: Current base path.
-        :rtype: str
-        """
-        return self.base_path
 
     def load_csv(self, file_path):
         """
@@ -124,7 +105,7 @@ class ProjectModel:
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter=";")
                 writer.writeheader()
                 
-                for i, feature in enumerate(data['features']):
+                for feature in data['features']:
                     centroid = self.calculate_centroid(feature['geometry']['coordinates'])
                     
                     # Reverse geocode each building individually
@@ -159,9 +140,8 @@ class ProjectModel:
                                 if street_parts:
                                     adresse = " ".join(street_parts)
                                 
-                                print(f"Gebäude {i+1}: {adresse}, {stadt}")
-                        except Exception as e:
-                            print(f"Reverse Geocoding für Gebäude {i+1} fehlgeschlagen: {e}")
+                        except Exception:
+                            pass  # Reverse geocoding failed for this building — skip
                     
                     writer.writerow({
                         "Land": land,
@@ -319,7 +299,7 @@ class ProjectPresenter:
         :type path: str
         """
         if path:
-            self.model.set_base_path(path)
+            self.model.base_path = path
             if self.view:  # Only update if view exists
                 self.view.update_tree_view(os.path.dirname(path))
         if self.view:  # Only update progress if view exists
@@ -453,8 +433,8 @@ class ProjectPresenter:
                         centroid = self.model.calculate_centroid(first_feature['geometry']['coordinates'])
                         if centroid[0] is not None and centroid[1] is not None:
                             sample_coords = centroid
-            except Exception as e:
-                print(f"Konnte keine Beispielkoordinaten extrahieren: {e}")
+            except Exception:
+                pass  # Could not extract sample coordinates — continue without them
             
             dialog = OSMImportDialog(self.view, sample_utm_coords=sample_coords)
             if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -668,8 +648,7 @@ class ProjectPresenter:
             state = metadata.get('state', '')
             return state == 'dimensioned'
             
-        except Exception as e:
-            print(f"Fehler beim Prüfen des Dimensionierungsstatus: {e}")
+        except Exception:
             return False
 
     def update_progress_tracker(self):
@@ -679,7 +658,7 @@ class ProjectPresenter:
         if not self.view:  # Skip if view not available yet
             return
             
-        base_path = self.model.get_base_path()
+        base_path = self.model.base_path
 
         # CSV Status: check first process step (Quartier IST.csv) with detailed analysis
         csv_status = "unbekannt"
@@ -1019,9 +998,9 @@ class ProjectTabView(QWidget):
         """
         QMessageBox.information(self, title, message)
 
-class ProjectTab(QMainWindow):
+class ProjectTab(QWidget):
     """
-    Main project tab window integrating MVP components.
+    Main project tab widget integrating MVP components.
 
     .. note::
        Central interface for project management with file operations and progress tracking functionality.
@@ -1039,9 +1018,7 @@ class ProjectTab(QMainWindow):
         :param parent: Parent widget.
         :type parent: QWidget
         """
-        super().__init__()
-        self.setWindowTitle("Project Tab Example")
-        self.setGeometry(100, 100, 800, 600)
+        super().__init__(parent)
 
         self.model = ProjectModel()
         self.presenter = ProjectPresenter(self.model, None, folder_manager, data_manager, config_manager)
@@ -1049,4 +1026,6 @@ class ProjectTab(QMainWindow):
         self.presenter.view = self.view
         self.presenter.connect_view_signals()
 
-        self.setCentralWidget(self.view)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.view)
