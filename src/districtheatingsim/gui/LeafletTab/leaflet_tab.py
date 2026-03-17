@@ -28,6 +28,7 @@ from districtheatingsim.gui.LeafletTab.layer_generation_dialog import LayerGener
 from districtheatingsim.gui.LeafletTab.osm_dialogs import DownloadOSMDataDialog, OSMBuildingQueryDialog
 from districtheatingsim.gui.LeafletTab.net_generation_threads import NetGenerationThread, GeocodingThread
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
+from districtheatingsim.utilities.crs_utils import crs_to_urn
 
 from shapely.geometry import Point
 
@@ -42,12 +43,13 @@ class GeoJsonReceiver(QObject):
     def __init__(self, base_path=""):
         """
         Initialize GeoJsonReceiver with base path.
-        
+
         :param base_path: Base path for file dialogs
         :type base_path: str
         """
         super().__init__()
         self.base_path = base_path
+        self.project_crs = "EPSG:25833"
     
     @pyqtSlot(str)
     def sendGeoJSONToPython(self, geojson_str):
@@ -66,8 +68,8 @@ class GeoJsonReceiver(QObject):
         # Setze das ursprüngliche CRS (EPSG:4326)
         gdf.set_crs(epsg=4326, inplace=True)
         
-        # Konvertiere das CRS in das gewünschte Ziel-CRS (z.B. EPSG:25833)
-        target_crs = 'EPSG:25833'
+        # Konvertiere das CRS in das Projekt-CRS
+        target_crs = self.project_crs
         gdf.to_crs(target_crs, inplace=True)
         
         # Speichere die Daten als GeoJSON
@@ -125,10 +127,9 @@ class GeoJsonReceiver(QObject):
                     properties_list.append(props)
                 
                 gdf = gpd.GeoDataFrame(properties_list, geometry=geometries, crs='EPSG:4326')
-                
-                # Transformiere zu Ziel-CRS
-                target_crs = 'EPSG:25833'
-                gdf.to_crs(target_crs, inplace=True)
+
+                # Transformiere zu Projekt-CRS
+                gdf.to_crs(self.project_crs, inplace=True)
                 gdf.to_file(fileName, driver="GeoJSON")
             except Exception:
                 pass
@@ -260,7 +261,7 @@ class VisualizationModel:
         """
         return gpd.read_file(file_path)
 
-    def create_geojson_from_csv(self, csv_file_path, geojson_file_path):
+    def create_geojson_from_csv(self, csv_file_path, geojson_file_path, crs: str = "EPSG:25833"):
         """
         Create GeoJSON from CSV with coordinates.
 
@@ -268,12 +269,14 @@ class VisualizationModel:
         :type csv_file_path: str
         :param geojson_file_path: Output GeoJSON path
         :type geojson_file_path: str
+        :param crs: Projected CRS of the coordinate columns
+        :type crs: str
         """
         df = pd.read_csv(csv_file_path, delimiter=';')
         gdf = gpd.GeoDataFrame(
             df,
             geometry=[Point(xy) for xy in zip(df.UTM_X, df.UTM_Y)],
-            crs="EPSG:25833"
+            crs=crs
         )
         gdf.to_file(geojson_file_path, driver='GeoJSON')
 
@@ -360,6 +363,7 @@ class VisualizationPresenter(QObject):
         if new_base_path:
             self.model.base_path = new_base_path
             self.view.set_base_path(new_base_path)
+            self.view.set_project_crs(self.folder_manager.project_crs)
 
     def open_geocode_addresses_dialog(self):
         """
@@ -420,7 +424,7 @@ class VisualizationPresenter(QObject):
                 fname, _ = QFileDialog.getOpenFileName(self.view, 'CSV-Koordinaten laden', self.model.base_path, 'CSV Files (*.csv);;All Files (*)')
             if fname:
                 geojson_path = os.path.join(self.model.base_path, 'Gebäudedaten', f"{os.path.splitext(os.path.basename(fname))[0]}.geojson")
-                self.model.create_geojson_from_csv(fname, geojson_path)
+                self.model.create_geojson_from_csv(fname, geojson_path, crs=self.folder_manager.project_crs)
                 self.add_geojson_layer([geojson_path])
         except Exception as e:
             error_message = f"{str(e)}\n\n{traceback.format_exc()}"
@@ -529,10 +533,11 @@ class VisualizationPresenter(QObject):
         ]
         
         # Get CRS from original GeoJSON
+        fallback_urn = crs_to_urn(self.folder_manager.project_crs)
         crs = geojson_data.get("crs", {
             "type": "name",
             "properties": {
-                "name": "urn:ogc:def:crs:EPSG::25833"
+                "name": fallback_urn
             }
         })
         
@@ -561,7 +566,8 @@ class VisualizationPresenter(QObject):
         
         Creates and displays layer generation dialog with map picker support.
         """
-        dialog = LayerGenerationDialog(self.model.base_path, self.config_manager, self.view)
+        dialog = LayerGenerationDialog(self.model.base_path, self.config_manager, self.view,
+                                       project_crs=self.folder_manager.project_crs)
         dialog.setVisualizationTab(self)
         dialog.accepted_inputs.connect(self.generate_and_import_layers)
         
@@ -686,7 +692,8 @@ class VisualizationPresenter(QObject):
         
         Displays non-modal dialog allowing map interaction during OSM download.
         """
-        dialog = DownloadOSMDataDialog(self.model.base_path, self.config_manager, self.view, self)
+        dialog = DownloadOSMDataDialog(self.model.base_path, self.config_manager, self.view, self,
+                                       project_crs=self.folder_manager.project_crs)
         dialog.setVisualizationTab(self)
         dialog.show()  # Non-modal dialog - allows map interaction
         dialog.raise_()
@@ -699,11 +706,12 @@ class VisualizationPresenter(QObject):
         Displays non-modal dialog for building queries with map interaction.
         """
         dialog = OSMBuildingQueryDialog(
-            self.model.base_path, 
-            self.config_manager, 
-            self.view, 
-            self, 
-            visualization_tab=self
+            self.model.base_path,
+            self.config_manager,
+            self.view,
+            self,
+            visualization_tab=self,
+            project_crs=self.folder_manager.project_crs
         )
         dialog.show()  # Non-modal dialog - allows map interaction
         dialog.raise_()
@@ -797,6 +805,9 @@ class VisualizationTabView(QWidget):
         self.channel.registerObject("geoJsonReceiver", self.geoJsonReceiver)
         self.web_view.page().setWebChannel(self.channel)
 
+        # Inject project CRS into JS after each page load
+        self.web_view.loadFinished.connect(self._inject_project_crs)
+
         # Füge das WebView in das Layout ein
         self.main_layout.addWidget(self.web_view)
 
@@ -817,12 +828,30 @@ class VisualizationTabView(QWidget):
     def set_base_path(self, base_path):
         """
         Set base path for GeoJsonReceiver.
-        
+
         :param base_path: Base path for file dialogs
         :type base_path: str
         """
         if hasattr(self, 'geoJsonReceiver'):
             self.geoJsonReceiver.base_path = base_path
+
+    def _inject_project_crs(self, _ok=True):
+        """Inject window.projectCRS into the loaded Leaflet page."""
+        if hasattr(self, 'geoJsonReceiver'):
+            crs = self.geoJsonReceiver.project_crs
+            js = f"if (typeof window.setProjectCRS === 'function') {{ window.setProjectCRS('{crs}'); }}"
+            self.web_view.page().runJavaScript(js)
+
+    def set_project_crs(self, crs: str):
+        """
+        Set the project CRS used when exporting/importing GeoJSON.
+
+        :param crs: EPSG code string
+        :type crs: str
+        """
+        if hasattr(self, 'geoJsonReceiver'):
+            self.geoJsonReceiver.project_crs = crs
+            self._inject_project_crs()
     
     def show_error_message(self, title, message):
         """

@@ -25,9 +25,10 @@ import geopandas as gpd
 from shapely.geometry import Point
 from typing import Optional, List, Tuple, Dict, Any
 
-def config_plot(net, ax: plt.Axes, show_junctions: bool = True, show_pipes: bool = True, 
-               show_heat_consumers: bool = True, show_pump: bool = True, show_plot: bool = False, 
-               show_basemap: bool = True, map_type: str = "OSM", show_all_annotations: bool = False) -> None:
+def config_plot(net, ax: plt.Axes, show_junctions: bool = True, show_pipes: bool = True,
+               show_heat_consumers: bool = True, show_pump: bool = True, show_plot: bool = False,
+               show_basemap: bool = True, map_type: str = "OSM", show_all_annotations: bool = False,
+               crs: str = "EPSG:25833") -> None:
     """
     Interactive pandapipes network visualization with hover annotations and basemaps.
     
@@ -195,11 +196,11 @@ def config_plot(net, ax: plt.Axes, show_junctions: bool = True, show_pipes: bool
             gdf = gpd.GeoDataFrame(
                 net.junction_geodata,
                 geometry=[Point(xy) for xy in zip(net.junction_geodata['x'], net.junction_geodata['y'])],
-                crs="EPSG:25833"  # Adjust coordinate system as needed
+                crs=crs
             )
 
             # Ensure proper coordinate reference system
-            gdf = gdf.to_crs(epsg=25833)
+            gdf = gdf.to_crs(crs)
 
             # Set plot bounds with buffer for better visualization
             xmin, ymin, xmax, ymax = gdf.total_bounds
