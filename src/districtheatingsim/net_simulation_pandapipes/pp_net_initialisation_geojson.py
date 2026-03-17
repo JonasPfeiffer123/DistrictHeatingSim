@@ -17,6 +17,8 @@ It automatically processes building heat demands, calculates temperature require
 creates appropriate network topologies with proper controller configurations.
 """
 
+import logging
+import warnings
 import numpy as np
 import geopandas as gpd
 import pandapipes as pp
@@ -432,8 +434,14 @@ def create_network(gdf_dict: Dict[str, gpd.GeoDataFrame], consumer_dict: Dict[st
 
     print(f"secondary_producers: {secondary_producers}")
 
-    # Intial flow simulation
-    pp.pipeflow(net, mode="bidirectional", iter=100)
+    # Initial flow simulation – catch the pump-direction UserWarning so that
+    # correct_flow_directions() below can fix the topology.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        try:
+            pp.pipeflow(net, mode="bidirectional", iter=100)
+        except UserWarning as e:
+            logging.warning(f"Initial pipeflow UserWarning (will be corrected): {e}")
 
     # Network optimization
     net = create_controllers(net, qext_w, supply_temperature, min_supply_temperature_heat_consumer, 
