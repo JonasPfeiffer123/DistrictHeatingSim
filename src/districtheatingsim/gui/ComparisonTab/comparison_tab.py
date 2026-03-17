@@ -9,7 +9,6 @@ visualization of economic and technical metrics.
 
 import os
 import json
-import traceback
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -25,15 +24,6 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
 
-
-def debug_print(msg):
-    """
-    Print debug message with ProjectExplorer prefix.
-    
-    :param msg: Debug message
-    :type msg: str
-    """
-    print(f"[ProjectExplorer DEBUG] {msg}")
 
 
 class ProjectExplorer(QWidget):
@@ -141,7 +131,6 @@ class ProjectExplorer(QWidget):
         :type base_path: str
         """
         self.base_path = base_path
-        debug_print(f"set_base_path called with: {base_path}")
         self.discover_projects()
 
     def discover_projects(self):
@@ -152,36 +141,28 @@ class ProjectExplorer(QWidget):
         """
         self.project_tree.clear()
         try:
-            debug_print(f"discover_projects: base_path={self.base_path}")
             if not self.base_path or not os.path.exists(self.base_path):
-                debug_print("Projekt-Datenordner nicht gefunden!")
                 self.info_label.setText("Projekt-Datenordner nicht gefunden")
                 return
             # Use parent directory of base_path to find all variants
             parent_dir = os.path.dirname(self.base_path)
-            debug_print(f"Using parent_dir for variants: {parent_dir}")
             variants = [d for d in os.listdir(parent_dir) if os.path.isdir(os.path.join(parent_dir, d)) and d.startswith("Variante")]
-            debug_print(f"Found variant folders: {variants}")
             # Add all valid variants as top-level items
             variant_count = 0
             for variant_name in variants:
                 variant_path = os.path.join(parent_dir, variant_name)
                 if self.validate_variant(variant_path):
-                    debug_print(f"Valid variant: {variant_name} at {variant_path}")
                     variant_item = QTreeWidgetItem([variant_name])
                     variant_item.setCheckState(0, Qt.CheckState.Checked)
                     variant_item.setData(0, Qt.ItemDataRole.UserRole, variant_path)
                     self.project_tree.addTopLevelItem(variant_item)
                     variant_count += 1
-                else:
-                    debug_print(f"Skipped (invalid): {variant_name} at {variant_path}")
             if variant_count == 0:
                 self.info_label.setText("Keine gültigen Varianten gefunden")
             else:
                 self.info_label.setText(f"{variant_count} Varianten gefunden")
             self.update_selected_variants()
         except Exception as e:
-            debug_print(f"Exception in discover_projects: {e}\n{traceback.format_exc()}")
             QMessageBox.warning(self, "Fehler", f"Fehler beim Laden der Projekte: {str(e)}")
 
     # No longer needed, replaced by set_base_path
@@ -200,9 +181,7 @@ class ProjectExplorer(QWidget):
             os.path.join("Lastgang", "Lastgang.csv"),
             os.path.join("Wärmenetz", "Konfiguration Netzinitialisierung.json")
         ]
-        valid = all(os.path.exists(os.path.join(variant_path, file)) for file in required_files)
-        debug_print(f"validate_variant: {variant_path} valid={valid}")
-        return valid
+        return all(os.path.exists(os.path.join(variant_path, file)) for file in required_files)
         
     def on_selection_changed(self, item, column):
         """
