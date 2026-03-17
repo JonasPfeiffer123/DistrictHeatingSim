@@ -182,8 +182,8 @@ class BadPointPressureLiftController(BasicCtrl):
         new_plift = current_plift_bar + plift_adjustment
         new_pflow = current_pflow_bar + pflow_adjustment
         
-        net.circ_pump_pressure["plift_bar"].at[self.circ_pump_pressure_idx] = new_plift
-        net.circ_pump_pressure["p_flow_bar"].at[self.circ_pump_pressure_idx] = new_pflow
+        net.circ_pump_pressure.at[self.circ_pump_pressure_idx, "plift_bar"] = new_plift
+        net.circ_pump_pressure.at[self.circ_pump_pressure_idx, "p_flow_bar"] = new_pflow
 
         return super(BadPointPressureLiftController, self).control_step(net)
 
