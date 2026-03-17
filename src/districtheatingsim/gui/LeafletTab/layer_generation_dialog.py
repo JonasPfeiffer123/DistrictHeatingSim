@@ -28,7 +28,7 @@ class LayerGenerationDialog(QDialog):
     accepted_inputs = pyqtSignal(dict)
     request_map_coordinate = pyqtSignal()
 
-    def __init__(self, base_path, config_manager, parent=None):
+    def __init__(self, base_path, config_manager, parent=None, project_crs: str = "EPSG:25833"):
         """
         Initialize layer generation dialog.
 
@@ -38,11 +38,14 @@ class LayerGenerationDialog(QDialog):
         :type config_manager: ConfigManager
         :param parent: Parent widget
         :type parent: QWidget or None
+        :param project_crs: Projected CRS used for coordinate input/output
+        :type project_crs: str
         """
         super().__init__(parent)
         self.base_path = base_path
         self.visualization_tab = None
         self.config_manager = config_manager
+        self.project_crs = project_crs
         self.waiting_for_map_click = False
         self.custom_filter = '["highway"~"primary|secondary|tertiary|residential|living_street|service"]'  # Default filter
         self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint)
@@ -164,7 +167,7 @@ class LayerGenerationDialog(QDialog):
         # Coordinate input
         coordInputLayout = QFormLayout()
         self.coordSystemComboBox = QComboBox(self)
-        self.coordSystemComboBox.addItems(["EPSG:25833", "WGS84"])
+        self.coordSystemComboBox.addItems([self.project_crs, "WGS84"])
         coordInputLayout.addRow("Koordinatensystem:", self.coordSystemComboBox)
 
         self.coordInput = QLineEdit(self)
@@ -421,7 +424,7 @@ class LayerGenerationDialog(QDialog):
         """
         Add coordinates from input field to table.
         
-        Parses coordinate input, transforms to EPSG:25833 if needed,
+        Parses coordinate input, transforms to the project CRS if needed,
         and adds the coordinate pair to the table.
         """
         coords = self.coordInput.text().split(',')
@@ -459,7 +462,7 @@ class LayerGenerationDialog(QDialog):
 
     def transform_coordinates(self, x, y, source_crs):
         """
-        Transform coordinates to EPSG:25833.
+        Transform coordinates to the project CRS.
 
         :param x: X-coordinate
         :type x: float
@@ -471,9 +474,9 @@ class LayerGenerationDialog(QDialog):
         :rtype: tuple
         """
         if source_crs == "WGS84":
-            transformer = Transformer.from_crs("EPSG:4326", "EPSG:25833", always_xy=True)
+            transformer = Transformer.from_crs("EPSG:4326", self.project_crs, always_xy=True)
         else:
-            transformer = Transformer.from_crs("EPSG:25833", "EPSG:25833", always_xy=True)
+            transformer = Transformer.from_crs(self.project_crs, self.project_crs, always_xy=True)
         x_transformed, y_transformed = transformer.transform(x, y)
         return x_transformed, y_transformed
 
@@ -634,7 +637,7 @@ class LayerGenerationDialog(QDialog):
         """
         try:
             # Transform to WGS84 for geocoding
-            transformer = Transformer.from_crs("EPSG:25833", "EPSG:4326", always_xy=True)
+            transformer = Transformer.from_crs(self.project_crs, "EPSG:4326", always_xy=True)
             lon, lat = transformer.transform(x, y)
             
             # Use Nominatim for reverse geocoding
@@ -688,8 +691,8 @@ class LayerGenerationDialog(QDialog):
         self.mapPickerButton.setStyleSheet("background-color: none;")
         
         try:
-            # Transform from WGS84 to EPSG:25833
-            transformer = Transformer.from_crs("EPSG:4326", "EPSG:25833", always_xy=True)
+            # Transform from WGS84 to project CRS
+            transformer = Transformer.from_crs("EPSG:4326", self.project_crs, always_xy=True)
             x, y = transformer.transform(lon, lat)
             
             # Update input field
@@ -725,7 +728,8 @@ class LayerGenerationDialog(QDialog):
             "dataCsv": self.dataInput.text(),
             "coordinates": coordinates,
             "generation_mode": self.generationModeComboBox.currentText(),
-            "custom_filter": self.custom_filter
+            "custom_filter": self.custom_filter,
+            "project_crs": self.project_crs
         }
 
     def onAccept(self):

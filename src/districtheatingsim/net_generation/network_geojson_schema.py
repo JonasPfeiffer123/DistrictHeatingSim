@@ -12,6 +12,8 @@ from typing import Dict, List, Tuple, Optional, Any
 from shapely.geometry import LineString, Point
 from datetime import datetime
 
+from districtheatingsim.utilities.crs_utils import crs_to_urn, epsg_from_urn, DEFAULT_CRS
+
 
 class NetworkGeoJSONSchema:
     """
@@ -221,11 +223,12 @@ class NetworkGeoJSONSchema:
         building_connections: gpd.GeoDataFrame,
         generator_connections: gpd.GeoDataFrame,
         state: str = "designed",
-        calculated_data: Dict = None
+        calculated_data: Dict = None,
+        crs: str = DEFAULT_CRS
     ) -> Dict[str, Any]:
         """
         Create unified network GeoJSON from separate components.
-        
+
         :param flow_lines: Supply line network
         :type flow_lines: gpd.GeoDataFrame
         :param return_lines: Return line network
@@ -238,6 +241,8 @@ class NetworkGeoJSONSchema:
         :type state: str
         :param calculated_data: Calculation results indexed by segment_id
         :type calculated_data: Dict
+        :param crs: Projected CRS for the output GeoJSON (default EPSG:25833)
+        :type crs: str
         :return: Complete GeoJSON FeatureCollection
         :rtype: Dict[str, Any]
         """
@@ -356,7 +361,7 @@ class NetworkGeoJSONSchema:
             "crs": {
                 "type": "name",
                 "properties": {
-                    "name": "urn:ogc:def:crs:EPSG::25833"
+                    "name": crs_to_urn(crs)
                 }
             },
             "metadata": NetworkGeoJSONSchema.create_metadata(state),
@@ -397,24 +402,37 @@ class NetworkGeoJSONSchema:
     
     @staticmethod
     def split_to_legacy_format(
-        geojson: Dict[str, Any]
+        geojson: Dict[str, Any],
+        crs: str = None
     ) -> Tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
         """
         Split unified GeoJSON into legacy 4-file format.
-        
+
+        The CRS is read from the ``crs`` field embedded in the GeoJSON (if
+        present).  The ``crs`` parameter can override this.  Falls back to
+        ``DEFAULT_CRS`` when neither source is available.
+
         :param geojson: Unified network GeoJSON
         :type geojson: Dict[str, Any]
+        :param crs: Projected CRS override (EPSG code string).  If ``None``,
+            the CRS stored in the GeoJSON file is used.
+        :type crs: str or None
         :return: (flow_lines, return_lines, building_connections, generator_connections)
         :rtype: Tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]
         """
+        # Determine CRS: explicit override > embedded in file > default
+        if crs is None:
+            embedded_urn = geojson.get("crs", {}).get("properties", {}).get("name", "")
+            crs = epsg_from_urn(embedded_urn) if embedded_urn else DEFAULT_CRS
+
         flow_features = []
         return_features = []
         building_features = []
         generator_features = []
-        
+
         for feature in geojson['features']:
             ftype = feature['properties'].get('feature_type')
-            
+
             if ftype == NetworkGeoJSONSchema.FEATURE_TYPE_FLOW:
                 flow_features.append(feature)
             elif ftype == NetworkGeoJSONSchema.FEATURE_TYPE_RETURN:
@@ -423,13 +441,13 @@ class NetworkGeoJSONSchema:
                 building_features.append(feature)
             elif ftype == NetworkGeoJSONSchema.FEATURE_TYPE_GENERATOR:
                 generator_features.append(feature)
-        
+
         # Convert to GeoDataFrames
-        flow_gdf = gpd.GeoDataFrame.from_features(flow_features, crs="EPSG:25833") if flow_features else gpd.GeoDataFrame()
-        return_gdf = gpd.GeoDataFrame.from_features(return_features, crs="EPSG:25833") if return_features else gpd.GeoDataFrame()
-        building_gdf = gpd.GeoDataFrame.from_features(building_features, crs="EPSG:25833") if building_features else gpd.GeoDataFrame()
-        generator_gdf = gpd.GeoDataFrame.from_features(generator_features, crs="EPSG:25833") if generator_features else gpd.GeoDataFrame()
-        
+        flow_gdf = gpd.GeoDataFrame.from_features(flow_features, crs=crs) if flow_features else gpd.GeoDataFrame()
+        return_gdf = gpd.GeoDataFrame.from_features(return_features, crs=crs) if return_features else gpd.GeoDataFrame()
+        building_gdf = gpd.GeoDataFrame.from_features(building_features, crs=crs) if building_features else gpd.GeoDataFrame()
+        generator_gdf = gpd.GeoDataFrame.from_features(generator_features, crs=crs) if generator_features else gpd.GeoDataFrame()
+
         return flow_gdf, return_gdf, building_gdf, generator_gdf
     
     @staticmethod

@@ -3,12 +3,83 @@
 // Date: 2025-01-26
 // Description: JavaScript-File for the  import and export of GeoJSON data
 
-// Definieren von EPSG:25833 (ETRS89 / UTM Zone 33N)
+// ---------------------------------------------------------------------------
+// Dynamic CRS registration
+// ---------------------------------------------------------------------------
+
+/**
+ * Register a proj4 definition for a given EPSG code (if not already defined).
+ * Supports:
+ *   EPSG:258xx  – ETRS89 UTM zones  1–60
+ *   EPSG:326xx  – WGS84 UTM zones   1–60 (northern hemisphere)
+ *   EPSG:327xx  – WGS84 UTM zones   1–60 (southern hemisphere)
+ *   EPSG:3857   – Web Mercator
+ *   EPSG:4326   – WGS84 geographic (identity; proj4 knows this natively)
+ */
+function registerEPSG(epsgCode) {
+    if (!epsgCode || typeof proj4 === 'undefined') return;
+    if (proj4.defs(epsgCode)) return; // Already registered
+
+    const code = parseInt(epsgCode.replace(/^EPSG:/i, ''), 10);
+    let proj4String;
+
+    if (code >= 25801 && code <= 25860) {
+        const zone = code - 25800;
+        proj4String = `+proj=utm +zone=${zone} +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs`;
+    } else if (code >= 32601 && code <= 32660) {
+        const zone = code - 32600;
+        proj4String = `+proj=utm +zone=${zone} +datum=WGS84 +units=m +no_defs`;
+    } else if (code >= 32701 && code <= 32760) {
+        const zone = code - 32700;
+        proj4String = `+proj=utm +zone=${zone} +south +datum=WGS84 +units=m +no_defs`;
+    } else if (code === 3857) {
+        proj4String = '+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs';
+    } else {
+        console.warn(`No built-in proj4 definition for ${epsgCode} – transformation may fail`);
+        return;
+    }
+
+    proj4.defs(epsgCode, proj4String);
+    console.log(`Registered CRS: ${epsgCode}`);
+}
+
+/**
+ * Convert an OGC URN like "urn:ogc:def:crs:EPSG::25833" to "EPSG:25833".
+ */
+function urnToEPSG(urn) {
+    if (!urn) return null;
+    const match = urn.match(/EPSG:{1,2}(\d+)/);
+    return match ? `EPSG:${match[1]}` : urn;
+}
+
+/**
+ * Convert "EPSG:25833" to "urn:ogc:def:crs:EPSG::25833".
+ */
+function epsgToUrn(epsgCode) {
+    if (!epsgCode) return 'urn:ogc:def:crs:EPSG::4326';
+    const code = epsgCode.replace(/^EPSG:/i, '');
+    return `urn:ogc:def:crs:EPSG::${code}`;
+}
+
+// Default project CRS – overridden by Python via window.setProjectCRS() after page load
+window.projectCRS = "EPSG:25833";
+
 if (typeof proj4 !== 'undefined') {
-    proj4.defs("EPSG:25833", "+proj=utm +zone=33 +ellps=GRS80 +units=m +no_defs");
+    registerEPSG(window.projectCRS);
 } else {
     console.error("proj4 is not defined");
 }
+
+/** Called by Python (runJavaScript) whenever the project CRS changes. */
+window.setProjectCRS = function(epsgCode) {
+    window.projectCRS = epsgCode;
+    if (typeof proj4 !== 'undefined') {
+        registerEPSG(epsgCode);
+    }
+    console.log("Project CRS set to:", epsgCode);
+};
+
+// ---------------------------------------------------------------------------
 
 // Polyfill für _flat, falls es veraltet ist
 if (typeof L.LineUtil._flat === 'undefined') {
@@ -30,22 +101,24 @@ function importGeoJSON(geojsonData, fileName, editable) {
     if (typeof editable === 'undefined') {
         editable = true; // Default: editierbar
     }
-    
-    const crs = geojsonData.crs ? geojsonData.crs.properties.name : 'EPSG:4326';
+
+    const crsUrn = geojsonData.crs ? geojsonData.crs.properties.name : null;
+    const sourceCRS = crsUrn ? urnToEPSG(crsUrn) : 'EPSG:4326';
 
     // Transformiere Koordinaten, falls das CRS nicht WGS84 ist
-    if (crs === "urn:ogc:def:crs:EPSG::25833") {
-        console.log("Transforming coordinates from EPSG:25833 to WGS84 for", geojsonData.features.length, "features");
+    if (sourceCRS && sourceCRS !== 'EPSG:4326') {
+        registerEPSG(sourceCRS);
+        console.log(`Transforming coordinates from ${sourceCRS} to WGS84 for`, geojsonData.features.length, "features");
         geojsonData.features.forEach(feature => {
             if (feature.geometry && feature.geometry.coordinates) {
                 const beforeCoord = JSON.stringify(feature.geometry.coordinates[0]);
-                transformCoordinates(feature);
+                transformCoordinates(feature, sourceCRS);
                 const afterCoord = JSON.stringify(feature.geometry.coordinates[0]);
                 console.log("Transformed:", beforeCoord, "->", afterCoord);
             }
         });
     } else {
-        console.log("CRS is", crs, "- no transformation needed");
+        console.log("CRS is", sourceCRS || 'EPSG:4326', "- no transformation needed");
     }
 
     // Generiere eine zufällige Farbe
@@ -53,7 +126,7 @@ function importGeoJSON(geojsonData, fileName, editable) {
 
     // Erstelle einen FeatureGroup (nicht nur geoJSON) für bessere Verwaltung
     const layerGroup = L.featureGroup();
-    
+
     // Füge alle Features als separate Layer hinzu
     const geoJsonLayer = L.geoJSON(geojsonData, {
         style: (feature) => ({
@@ -68,10 +141,10 @@ function importGeoJSON(geojsonData, fileName, editable) {
                 if (layer.pm) {
                     layer.pm.disable();
                 }
-                
+
                 // Markiere als nicht editierbar
                 layer.options.editable = false;
-                
+
                 // Verhindere Drag & Drop
                 if (layer.dragging) {
                     layer.dragging.disable();
@@ -79,7 +152,7 @@ function importGeoJSON(geojsonData, fileName, editable) {
             } else {
                 layer.options.editable = true;
             }
-            
+
             layerGroup.addLayer(layer);
         }
     });
@@ -88,8 +161,8 @@ function importGeoJSON(geojsonData, fileName, editable) {
     layerGroup.options = {
         name: fileName || "Imported Layer",
         color: randomColor,
-        opacity: (geojsonData.features.length > 0 && geojsonData.features[0].properties) 
-            ? (geojsonData.features[0].properties.opacity || 1.0) 
+        opacity: (geojsonData.features.length > 0 && geojsonData.features[0].properties)
+            ? (geojsonData.features[0].properties.opacity || 1.0)
             : 1.0,
         visible: true,
         locked: !editable,  // Gesperrte Layer sind nicht editierbar
@@ -105,26 +178,24 @@ function importGeoJSON(geojsonData, fileName, editable) {
         map.fitBounds(layerGroup.getBounds());
     }
 
-    console.log("Layer-Gruppe importiert:", layerGroup.options.name, 
+    console.log("Layer-Gruppe importiert:", layerGroup.options.name,
                 "Features:", layerGroup.getLayers().length,
                 "Editable:", editable);
 }
 
-// Funktion zur Transformation von Koordinaten von EPSG:25833 zu WGS84
-function transformCoordinates(feature) {
+// Funktion zur Transformation von Koordinaten zum Ziel-CRS (Default: WGS84)
+function transformCoordinates(feature, sourceCRS) {
     if (typeof proj4 === 'undefined') {
         console.error("proj4 is not defined - cannot transform coordinates");
         return;
     }
-    
+    const src = sourceCRS || window.projectCRS;
+
     const transformCoord = coord => {
-        // coord ist [x, y] oder [x, y, z] in UTM (EPSG:25833)
-        // proj4 transformiert [x, y] zu [lon, lat] in WGS84
-        const transformed = proj4("EPSG:25833", "EPSG:4326", [coord[0], coord[1]]);
-        // Behalte Z-Koordinate wenn vorhanden
+        const transformed = proj4(src, "EPSG:4326", [coord[0], coord[1]]);
         return coord.length > 2 ? [transformed[0], transformed[1], coord[2]] : transformed;
     };
-    
+
     const transformRing = ring => ring.map(transformCoord);
 
     if (feature.geometry.type === "Polygon") {
@@ -176,7 +247,7 @@ function add2DLayer(feature) {
 // Funktion zum Sammeln aller Layer als unified GeoJSON
 function getAllLayersAsGeoJSON() {
     const allFeatures = [];
-    
+
     // Durchlaufe alle Layer in allLayers
     if (typeof allLayers !== 'undefined') {
         allLayers.eachLayer(function(layerGroup) {
@@ -186,12 +257,12 @@ function getAllLayersAsGeoJSON() {
                     // Konvertiere jeden Layer zu GeoJSON
                     if (layer.toGeoJSON) {
                         const feature = layer.toGeoJSON();
-                        
+
                         // Füge zusätzliche Eigenschaften hinzu
                         if (!feature.properties) {
                             feature.properties = {};
                         }
-                        
+
                         // Übernehme Layer-Optionen
                         if (layerGroup.options) {
                             feature.properties.layer_name = layerGroup.options.name;
@@ -199,24 +270,24 @@ function getAllLayersAsGeoJSON() {
                             feature.properties.opacity = layerGroup.options.opacity;
                             feature.properties.editable = layerGroup.options.editable;
                         }
-                        
-                        // Transformiere zurück zu EPSG:25833 wenn nötig
+
+                        // Transformiere zurück zum Projekt-CRS
                         transformCoordinatesToUTM(feature);
-                        
+
                         allFeatures.push(feature);
                     }
                 });
             }
         });
     }
-    
-    // Erstelle FeatureCollection
+
+    // Erstelle FeatureCollection mit dynamischem Projekt-CRS
     const geojson = {
         "type": "FeatureCollection",
         "crs": {
             "type": "name",
             "properties": {
-                "name": "urn:ogc:def:crs:EPSG::25833"
+                "name": epsgToUrn(window.projectCRS)
             }
         },
         "metadata": {
@@ -226,27 +297,26 @@ function getAllLayersAsGeoJSON() {
         },
         "features": allFeatures
     };
-    
-    console.log("Exported", allFeatures.length, "features as GeoJSON");
+
+    console.log("Exported", allFeatures.length, "features as GeoJSON with CRS:", window.projectCRS);
     return geojson;
 }
 
-// Funktion zur Rücktransformation von WGS84 zu EPSG:25833
+// Funktion zur Rücktransformation von WGS84 zum Projekt-CRS
 function transformCoordinatesToUTM(feature) {
     if (typeof proj4 === 'undefined') {
         console.error("proj4 is not defined - cannot transform coordinates");
         return;
     }
-    
+    const targetCRS = window.projectCRS;
+
     const transformCoord = coord => {
-        // coord ist [lon, lat] in WGS84, transformiere zu [x, y] in UTM
-        const transformed = proj4("EPSG:4326", "EPSG:25833", coord);
-        // Behalte Z-Koordinate wenn vorhanden
+        const transformed = proj4("EPSG:4326", targetCRS, coord);
         return coord.length > 2 ? [transformed[0], transformed[1], coord[2]] : transformed;
     };
-    
+
     const transformRing = ring => ring.map(transformCoord);
-    
+
     if (feature.geometry.type === "Polygon") {
         feature.geometry.coordinates = feature.geometry.coordinates.map(transformRing);
     } else if (feature.geometry.type === "MultiPolygon") {

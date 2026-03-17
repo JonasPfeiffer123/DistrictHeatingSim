@@ -12,7 +12,8 @@ import json
 
 from PyQt6.QtWidgets import (QFileDialog, QTableWidgetItem, QWidget, QVBoxLayout, QHBoxLayout,
                              QMenuBar, QProgressBar, QLabel, QTableWidget, QFrame,
-                             QTreeView, QSplitter, QMessageBox, QDialog, QMenu, QPushButton, QInputDialog, QSizePolicy)
+                             QTreeView, QSplitter, QMessageBox, QDialog, QMenu, QPushButton,
+                             QInputDialog, QSizePolicy, QComboBox)
 from PyQt6.QtGui import QAction, QFileSystemModel
 from PyQt6.QtCore import Qt, QTimer
 
@@ -21,6 +22,7 @@ from pyproj import Transformer
 
 from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, GeoJSONToCSVThread
 from districtheatingsim.gui.ProjectTab.project_tab_dialogs import RowInputDialog, OSMImportDialog, ProcessDetailsDialog
+from districtheatingsim.utilities.crs_utils import COMMON_CRS_OPTIONS, suggest_crs_from_location
 
 class ProjectModel:
     """
@@ -78,7 +80,7 @@ class ProjectModel:
             writer.writerow(headers)
             writer.writerow(default_data)
 
-    def create_csv_from_geojson(self, geojson_file_path, output_file_path, default_values):
+    def create_csv_from_geojson(self, geojson_file_path, output_file_path, default_values, project_crs="EPSG:25833"):
         """
         Create CSV from GeoJSON data with default values.
 
@@ -97,7 +99,7 @@ class ProjectModel:
             
             # Initialize geocoder and transformer once
             geolocator = Nominatim(user_agent="DistrictHeatingSim")
-            transformer = Transformer.from_crs("epsg:25833", "epsg:4326", always_xy=True)
+            transformer = Transformer.from_crs(project_crs, "epsg:4326", always_xy=True)
             
             with open(output_file_path, 'w', encoding='utf-8-sig', newline='') as csvfile:
                 fieldnames = ["Land", "Bundesland", "Stadt", "Adresse", "Wärmebedarf", "Gebäudetyp", "Subtyp", "WW_Anteil", "Typ_Heizflächen", 
@@ -286,6 +288,13 @@ class ProjectPresenter:
         """
         if self.view:
             self.view.treeView.doubleClicked.connect(self.on_tree_view_double_clicked)
+
+            # Synchronise CRS selector with current project CRS and listen for changes
+            self.view.set_crs(self.folder_manager.project_crs)
+            self.view.crs_combo.currentTextChanged.connect(self._on_crs_combo_changed)
+            self.folder_manager.crs_changed.connect(self.view.set_crs)
+            self.view.suggest_crs_button.clicked.connect(self._suggest_crs)
+
             # Initial update after view is available
             if self.folder_manager.variant_folder:
                 self.on_variant_folder_changed(self.folder_manager.variant_folder)
@@ -322,6 +331,34 @@ class ProjectPresenter:
                 self.folder_manager.set_project_folder(file_path)
         elif file_path.endswith('.csv'):
             self.load_csv(file_path)
+
+    def _on_crs_combo_changed(self, label: str):
+        """Save CRS when the user selects a different entry in the combo box."""
+        # The combo displays labels like "EPSG:25833 – ETRS89 …", extract code prefix
+        code = label.split(" ")[0] if label else ""
+        if code.upper().startswith("EPSG:"):
+            self.folder_manager.set_project_crs(code)
+
+    def _suggest_crs(self):
+        """Auto-detect and suggest CRS based on first building coordinate in CSV."""
+        if not (hasattr(self.model, 'current_file_path') and self.model.current_file_path):
+            return
+        try:
+            headers, data = self.model.load_csv(self.model.current_file_path)
+            utm_x_idx = headers.index("UTM_X") if "UTM_X" in headers else None
+            utm_y_idx = headers.index("UTM_Y") if "UTM_Y" in headers else None
+            if utm_x_idx is None or not data:
+                return
+            x = float(data[0][utm_x_idx])
+            y = float(data[0][utm_y_idx])
+            # Convert from current project CRS to WGS84 for suggestion
+            transformer = Transformer.from_crs(self.folder_manager.project_crs, "epsg:4326", always_xy=True)
+            lon, lat = transformer.transform(x, y)
+            suggested = suggest_crs_from_location(lon, lat)
+            self.folder_manager.set_project_crs(suggested)
+            self.view.set_crs(suggested)
+        except Exception:
+            pass
 
     def import_csv(self):
         """
@@ -436,22 +473,24 @@ class ProjectPresenter:
             except Exception:
                 pass  # Could not extract sample coordinates — continue without them
             
-            dialog = OSMImportDialog(self.view, sample_utm_coords=sample_coords)
+            dialog = OSMImportDialog(self.view, sample_utm_coords=sample_coords,
+                                     project_crs=self.folder_manager.project_crs)
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 default_values = dialog.get_input_data()
                 standard_output_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("OSM_building_data_path"))
                 output_file_path = standard_output_path
-                
+
                 # Start conversion in thread
                 if hasattr(self, 'geojson_conversion_thread') and self.geojson_conversion_thread.isRunning():
                     self.geojson_conversion_thread.stop()
                     self.geojson_conversion_thread.wait()
-                
+
                 self.geojson_conversion_thread = GeoJSONToCSVThread(
-                    geojson_file_path, 
-                    output_file_path, 
+                    geojson_file_path,
+                    output_file_path,
                     default_values,
-                    self.model
+                    self.model,
+                    project_crs=self.folder_manager.project_crs
                 )
                 self.geojson_conversion_thread.progress_update.connect(self.on_geojson_conversion_progress)
                 self.geojson_conversion_thread.calculation_done.connect(self.on_geojson_conversion_done)
@@ -534,7 +573,7 @@ class ProjectPresenter:
         if hasattr(self, 'geocodingThread') and self.geocodingThread.isRunning():
             self.geocodingThread.terminate()
             self.geocodingThread.wait()
-        self.geocodingThread = GeocodingThread(inputfilename)
+        self.geocodingThread = GeocodingThread(inputfilename, project_crs=self.folder_manager.project_crs)
         self.geocodingThread.calculation_done.connect(self.on_geocode_done)
         self.geocodingThread.calculation_error.connect(self.on_geocode_error)
         self.geocodingThread.start()
@@ -769,6 +808,19 @@ class ProjectTabView(QWidget):
         self.csv_status_label.setStyleSheet("font-weight: bold; color: #757575; background-color: #f5f5f5; padding: 8px; border-radius: 4px; border-left: 4px solid #757575; margin-bottom: 10px;")
         self.leftLayout.addWidget(self.csv_status_label)
 
+        # CRS selector row
+        crs_row = QHBoxLayout()
+        crs_row.addWidget(QLabel("Koordinatensystem (CRS):"))
+        self.crs_combo = QComboBox()
+        self.crs_combo.setMinimumWidth(380)
+        for code, label in COMMON_CRS_OPTIONS:
+            self.crs_combo.addItem(f"{code} – {label.split('–', 1)[-1].strip()}", userData=code)
+        crs_row.addWidget(self.crs_combo)
+        self.suggest_crs_button = QPushButton("Vorschlagen")
+        self.suggest_crs_button.setToolTip("CRS anhand der ersten Gebäudekoordinaten automatisch vorschlagen")
+        crs_row.addWidget(self.suggest_crs_button)
+        crs_row.addStretch()
+        self.leftLayout.addLayout(crs_row)
 
         # Button-Bar für alle Aktionen
         button_layout = QHBoxLayout()
@@ -842,6 +894,30 @@ class ProjectTabView(QWidget):
             self.csv_save_button.clicked.connect(lambda: self.presenter.save_csv(show_dialog=True))
             self.csv_from_osm_button.clicked.connect(self.presenter.create_csv_from_geojson)
             self.geocode_button.clicked.connect(self.presenter.geocode_current_csv)
+
+    def set_crs(self, crs: str):
+        """
+        Set the CRS combo box to the given EPSG code (blocks signal to avoid loop).
+
+        :param crs: EPSG code string, e.g. ``"EPSG:25833"``
+        :type crs: str
+        """
+        self.crs_combo.blockSignals(True)
+        # Try to find by userData first, then by display text prefix
+        for i in range(self.crs_combo.count()):
+            if self.crs_combo.itemData(i) == crs:
+                self.crs_combo.setCurrentIndex(i)
+                self.crs_combo.blockSignals(False)
+                return
+        # CRS not in list: add it as a custom entry
+        self.crs_combo.addItem(crs, userData=crs)
+        self.crs_combo.setCurrentIndex(self.crs_combo.count() - 1)
+        self.crs_combo.blockSignals(False)
+
+    def get_crs(self) -> str:
+        """Return the currently selected EPSG code string."""
+        data = self.crs_combo.currentData()
+        return data if data else self.crs_combo.currentText().split(" ")[0]
 
     def update_tree_view(self, path):
         """

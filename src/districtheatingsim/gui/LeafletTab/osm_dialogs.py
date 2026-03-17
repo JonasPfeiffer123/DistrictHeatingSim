@@ -26,7 +26,7 @@ class DownloadOSMDataDialog(QDialog):
     """
     Dialog for downloading OSM street data with OSMnx.
     """
-    def __init__(self, base_path, config_manager, parent, parent_pres):
+    def __init__(self, base_path, config_manager, parent, parent_pres, project_crs: str = "EPSG:25833"):
         """
         Initialize OSM data download dialog.
 
@@ -41,11 +41,14 @@ class DownloadOSMDataDialog(QDialog):
         :type parent: QWidget
         :param parent_pres: Parent presenter instance
         :type parent_pres: object
+        :param project_crs: Projected CRS for downloaded data
+        :type project_crs: str
         """
         super().__init__(parent)
         self.base_path = base_path
         self.config_manager = config_manager
         self.parent_pres = parent_pres
+        self.project_crs = project_crs
         self.visualization_tab = None
         self.waiting_for_polygon = False
         self.custom_filter = '["highway"~"primary|secondary|tertiary|residential|living_street|service"]'
@@ -559,7 +562,8 @@ class DownloadOSMDataDialog(QDialog):
             'csv_file': self.csvLineEdit.text() if area_type == "Bereich um Gebäude aus CSV" else None,
             'buffer_dist': float(self.bufferLineEdit.text()) if area_type == "Bereich um Gebäude aus CSV" else None,
             'polygon_file': self.polygonLineEdit.text() if area_type == "Polygon aus GeoJSON" else None,
-            'drawn_polygon_file': None
+            'drawn_polygon_file': None,
+            'project_crs': self.project_crs
         }
         
         # Handle drawn polygon - get file path NOW before thread
@@ -734,9 +738,10 @@ class DownloadOSMDataDialog(QDialog):
                 return
             
             # Create GeoDataFrame
+            project_crs = area_params.get('project_crs', 'EPSG:25833')
             geometry = gpd.points_from_xy(df['UTM_X'], df['UTM_Y'])
-            gdf = gpd.GeoDataFrame(df, geometry=geometry, crs='EPSG:25833')
-            
+            gdf = gpd.GeoDataFrame(df, geometry=geometry, crs=project_crs)
+
             # Convert to WGS84 for OSMnx
             gdf_wgs84 = gdf.to_crs('EPSG:4326')
             
@@ -782,8 +787,8 @@ class DownloadOSMDataDialog(QDialog):
         # Convert to GeoDataFrame
         gdf_edges = ox.graph_to_gdfs(G, nodes=False, edges=True)
         
-        # Convert to EPSG:25833
-        gdf_edges = gdf_edges.to_crs('EPSG:25833')
+        # Convert to project CRS
+        gdf_edges = gdf_edges.to_crs(area_params.get('project_crs', 'EPSG:25833'))
         
         # Save to file
         gdf_edges.to_file(filename, driver='GeoJSON')
@@ -795,7 +800,8 @@ class OSMBuildingQueryDialog(QDialog):
     """
     Dialog for querying OSM building data with multiple area selection modes.
     """
-    def __init__(self, base_path, config_manager, parent, parent_pres, visualization_tab=None):
+    def __init__(self, base_path, config_manager, parent, parent_pres, visualization_tab=None,
+                 project_crs: str = "EPSG:25833"):
         """
         Initialize OSM building query dialog.
 
@@ -812,12 +818,15 @@ class OSMBuildingQueryDialog(QDialog):
         :type parent_pres: object
         :param visualization_tab: Reference to visualization tab for polygon drawing
         :type visualization_tab: LeafletTab
+        :param project_crs: Projected CRS for downloaded data
+        :type project_crs: str
         """
         super().__init__(parent)
         self.base_path = base_path
         self.config_manager = config_manager
         self.parent_pres = parent_pres
         self.visualization_tab = visualization_tab
+        self.project_crs = project_crs
         self.waiting_for_polygon = False
         self.download_thread = None
         self.progress_dialog = None
@@ -1082,7 +1091,8 @@ class OSMBuildingQueryDialog(QDialog):
             'area_type': area_type,
             'csv_file': self.csvLineEdit.text() if area_type == "Bereich um Gebäude aus CSV" else None,
             'polygon_file': self.polygonLineEdit.text() if area_type == "Polygon aus GeoJSON" else None,
-            'drawn_polygon_file': None
+            'drawn_polygon_file': None,
+            'project_crs': self.project_crs
         }
         
         # Handle drawn polygon specially - get file path NOW before thread
@@ -1241,9 +1251,10 @@ class OSMBuildingQueryDialog(QDialog):
                 return
             
             # Create GeoDataFrame with building points
+            project_crs = area_params.get('project_crs', 'EPSG:25833')
             geometry = gpd.points_from_xy(df['UTM_X'], df['UTM_Y'])
-            gdf_buildings = gpd.GeoDataFrame(df, geometry=geometry, crs='EPSG:25833')
-            
+            gdf_buildings = gpd.GeoDataFrame(df, geometry=geometry, crs=project_crs)
+
             # Convert to WGS84
             gdf_wgs84 = gdf_buildings.to_crs('EPSG:4326')
             
@@ -1300,8 +1311,8 @@ class OSMBuildingQueryDialog(QDialog):
         # Filter to only buildings within the actual polygon (not just bounding box)
         gdf_filtered = gdf[gdf.geometry.intersects(polygon)]
         
-        # Convert to ETRS89 / UTM zone 33N
-        gdf_filtered = gdf_filtered.to_crs('EPSG:25833')
+        # Convert to project CRS
+        gdf_filtered = gdf_filtered.to_crs(area_params.get('project_crs', 'EPSG:25833'))
         
         # Save to file
         gdf_filtered.to_file(filename, driver='GeoJSON')

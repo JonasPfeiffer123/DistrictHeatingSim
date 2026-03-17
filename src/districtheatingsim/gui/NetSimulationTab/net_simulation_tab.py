@@ -71,6 +71,7 @@ class NetSimulationTab(QWidget):
         plt.style.use('seaborn-v0_8-darkgrid')
 
         self.folder_manager.project_folder_changed.connect(self._update_base_path)
+        self.folder_manager.crs_changed.connect(self._sync_crs)
         self._update_base_path(self.folder_manager.variant_folder)
 
         self.NetworkGenerationData = None
@@ -78,6 +79,7 @@ class NetSimulationTab(QWidget):
         self._calc_thread = None
 
         self._init_ui()
+        self._sync_crs()
 
     # ------------------------------------------------------------------
     # Path management
@@ -304,6 +306,10 @@ class NetSimulationTab(QWidget):
     # ------------------------------------------------------------------
     # Widget refresh
     # ------------------------------------------------------------------
+
+    def _sync_crs(self):
+        """Propagate current project CRS to sub-widgets."""
+        self._net_plot.project_crs = self.folder_manager.project_crs
 
     def _refresh_all_widgets(self):
         """Refresh all sub-widgets from current NetworkGenerationData."""
@@ -554,7 +560,8 @@ class NetSimulationTab(QWidget):
                 self.base_path,
                 self.config_manager.get_relative_path('dimensioned_net_path'),
             )
-            feature_counts = export_net_geojson(self.NetworkGenerationData.net, unified_path)
+            feature_counts = export_net_geojson(self.NetworkGenerationData.net, unified_path,
+                                                crs=self.folder_manager.project_crs)
 
             if show_dialog:
                 total = sum(feature_counts.values())

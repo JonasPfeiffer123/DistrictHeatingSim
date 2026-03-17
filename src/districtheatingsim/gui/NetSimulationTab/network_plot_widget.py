@@ -110,6 +110,7 @@ class NetworkPlotWidget(QWidget):
         self._net_data = None
         self._plot_html_path = None
         self._last_selected_pipe = None
+        self.project_crs: str = "EPSG:25833"
 
         self._click_timer = QTimer()
         self._click_timer.setInterval(200)
@@ -153,7 +154,7 @@ class NetworkPlotWidget(QWidget):
             component_type = selected['component'] if selected else None
             parameter = selected['parameter'] if selected else None
 
-            plotter = InteractiveNetworkPlot(self._net_data.net)
+            plotter = InteractiveNetworkPlot(self._net_data.net, crs=self.project_crs)
             fig = plotter.create_plot(
                 parameter=parameter,
                 component_type=component_type,
@@ -250,7 +251,7 @@ class NetworkPlotWidget(QWidget):
         self._param_dropdown.addItem("Standard (ohne Parameter)", userData=None)
 
         try:
-            plotter = InteractiveNetworkPlot(self._net_data.net)
+            plotter = InteractiveNetworkPlot(self._net_data.net, crs=self.project_crs)
             available = plotter._get_available_parameters()
 
             component_labels = {

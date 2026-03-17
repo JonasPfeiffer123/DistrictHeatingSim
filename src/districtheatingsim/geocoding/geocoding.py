@@ -53,14 +53,16 @@ def get_coordinates(address, from_crs="epsg:4326", to_crs="epsg:25833"):
         return (None, None)
 
 
-def process_data(input_csv):
+def process_data(input_csv, crs: str = "EPSG:25833"):
     """
-    Add UTM coordinates to CSV file via geocoding.
+    Add projected coordinates to CSV file via geocoding.
 
     Requests are rate-limited to 1/sec to comply with the Nominatim usage policy.
 
     :param input_csv: Path to CSV file (delimiter ';', columns: country, state, city, address)
     :type input_csv: str
+    :param crs: Target projected CRS for UTM_X/UTM_Y columns (default EPSG:25833)
+    :type crs: str
     """
     temp_fd, temp_path = tempfile.mkstemp()
     os.close(temp_fd)
@@ -88,7 +90,7 @@ def process_data(input_csv):
             for row in reader:
                 country, state, city, address = row[0], row[1], row[2], row[3]
                 full_address = f"{address}, {city}, {state}, {country}"
-                utm_x, utm_y = get_coordinates(full_address)  # rate-limited via _geocode
+                utm_x, utm_y = get_coordinates(full_address, to_crs=crs)  # rate-limited via _geocode
 
                 if headers_written:
                     # Ensure the row has enough columns before assignment

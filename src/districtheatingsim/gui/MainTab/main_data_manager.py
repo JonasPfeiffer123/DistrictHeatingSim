@@ -16,6 +16,7 @@ from typing import Dict, List, Optional, Any
 from PyQt6.QtCore import QObject, pyqtSignal
 
 from districtheatingsim.utilities.utilities import get_resource_path
+from districtheatingsim.utilities.crs_utils import DEFAULT_CRS
         
 class ProjectConfigManager:
     """
@@ -233,6 +234,7 @@ class ProjectFolderManager(QObject):
     """
 
     project_folder_changed = pyqtSignal(str)
+    crs_changed = pyqtSignal(str)  # Emitted when project CRS changes
 
     def __init__(self, config_manager: Optional[ProjectConfigManager] = None):
         """
@@ -247,6 +249,9 @@ class ProjectFolderManager(QObject):
         # Do not set project_folder or variant_folder until a project is selected or loaded
         self.project_folder = None
         self.variant_folder = None
+
+        # Projected CRS used for all geospatial operations in this project
+        self.project_crs: str = DEFAULT_CRS
 
         # Do not emit initial folder change signal; will be emitted after project selection
 
@@ -278,7 +283,10 @@ class ProjectFolderManager(QObject):
         # Validate and set variant folder
         if not self.variant_folder or not os.path.exists(self.variant_folder):
             self.variant_folder = os.path.join(self.project_folder, "Variante 1")
-        
+
+        # Load per-project settings (CRS, …)
+        self.load_project_settings()
+
         self.emit_project_and_variant_folder()
 
     def set_variant_folder(self, variant_name: str) -> None:
@@ -301,6 +309,47 @@ class ProjectFolderManager(QObject):
         :rtype: str
         """
         return self.variant_folder if self.variant_folder else self.project_folder
+
+    def _settings_path(self) -> Optional[str]:
+        """Return path to ``project_settings.json`` for the current project, or None."""
+        if self.project_folder:
+            return os.path.join(self.project_folder, "project_settings.json")
+        return None
+
+    def load_project_settings(self) -> None:
+        """Load per-project settings (CRS, …) from ``project_settings.json``."""
+        path = self._settings_path()
+        if path and os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                self.project_crs = data.get("crs", DEFAULT_CRS)
+            except (json.JSONDecodeError, OSError):
+                self.project_crs = DEFAULT_CRS
+        else:
+            self.project_crs = DEFAULT_CRS
+
+    def save_project_settings(self) -> None:
+        """Persist per-project settings to ``project_settings.json``."""
+        path = self._settings_path()
+        if path:
+            try:
+                data = {"crs": self.project_crs}
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=4, ensure_ascii=False)
+            except OSError:
+                pass
+
+    def set_project_crs(self, crs: str) -> None:
+        """
+        Set the projected CRS for this project and persist it.
+
+        :param crs: EPSG code string, e.g. ``"EPSG:25833"``
+        :type crs: str
+        """
+        self.project_crs = crs
+        self.save_project_settings()
+        self.crs_changed.emit(crs)
 
     def load_last_project(self) -> None:
         """
