@@ -11,9 +11,30 @@ if (document.getElementById('map')._leaflet_id) {
     
     // Initialize Leaflet map centered on Landkreis Görlitz
     const map = L.map('map').setView([51.158677, 14.740906], 10);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: 'OpenStreetMap', maxZoom: 22
-    }).addTo(map);
+    // CartoDB Positron – does not require a Referer header (works from file:// in Qt WebEngine)
+    // OSM tiles block requests without a Referer (HTTP 403) when loaded from local files.
+    var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 22
+    });
+    var cartoLight = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 22
+    });
+    var cartoDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 22
+    });
+    cartoLight.addTo(map);
+
+    // Basemap switcher
+    L.control.layers({
+        'CartoDB Light': cartoLight,
+        'CartoDB Dark': cartoDark,
+        'OpenStreetMap': osmLayer
+    }, {}, { position: 'topright', collapsed: true }).addTo(map);
 
     // Store map globally
     window.map = map;
