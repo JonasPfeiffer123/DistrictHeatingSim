@@ -290,7 +290,7 @@ class BuildingPresenter:
             return
 
         try:
-            try_filename = self.data_manager.get_try_filename()
+            try_filename = self.data_manager.try_filename
             results = self.model.calculate_heat_demand(self.model.data, try_filename)
             self.model.results = self.format_results(results, self.model.data)
 

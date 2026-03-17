@@ -10,7 +10,7 @@ data management layers.
 
 import os
 import shutil
-from typing import Optional, Tuple
+from typing import Optional
 
 from PyQt6.QtWidgets import QInputDialog
 
@@ -175,8 +175,8 @@ class HeatSystemPresenter:
                     
                     # Search for variants in copied project
                     variants = [
-                        folder for folder in os.listdir(new_project_path) 
-                        if "Variante" in folder
+                        folder for folder in os.listdir(new_project_path)
+                        if folder.startswith("Variante")
                     ]
                     
                     if variants:
@@ -204,9 +204,7 @@ class HeatSystemPresenter:
                 )
                 return False
         else:
-            # Handle user cancellation
-            self.view.show_error_message("Projektkopie wurde abgebrochen.")
-            return False
+            return False  # User cancelled — no error message needed
 
     def create_project_variant(self) -> bool:
         """

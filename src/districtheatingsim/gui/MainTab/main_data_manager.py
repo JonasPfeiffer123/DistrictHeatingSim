@@ -222,59 +222,6 @@ class DataManager:
         self.try_filename = None
         self.cop_filename = None
 
-    def add_data(self, data: Any) -> None:
-        """
-        Add data to the map data collection.
-
-        :param data: Data to be added to the map data collection
-        :type data: any
-        """
-        self.map_data.append(data)
-
-    def get_map_data(self) -> List[Any]:
-        """
-        Get the complete map data collection.
-
-        :return: List of all map data entries
-        :rtype: list
-        """
-        return self.map_data
-    
-    def set_try_filename(self, filename: str) -> None:
-        """
-        Set the Test Reference Year (TRY) weather data filename.
-
-        :param filename: Name of the TRY weather data file
-        :type filename: str
-        """
-        self.try_filename = filename
-
-    def get_try_filename(self) -> Optional[str]:
-        """
-        Get the currently selected TRY weather data filename.
-
-        :return: TRY weather data filename or None if not set
-        :rtype: str or None
-        """
-        return self.try_filename
-
-    def set_cop_filename(self, filename: str) -> None:
-        """
-        Set the Coefficient of Performance (COP) data filename for heat pumps.
-
-        :param filename: Name of the COP data file
-        :type filename: str
-        """
-        self.cop_filename = filename
-
-    def get_cop_filename(self) -> Optional[str]:
-        """
-        Get the currently selected COP data filename.
-
-        :return: COP data filename or None if not set
-        :rtype: str or None
-        """
-        return self.cop_filename
 
 class ProjectFolderManager(QObject):
     """
@@ -298,7 +245,6 @@ class ProjectFolderManager(QObject):
         :param config_manager: Configuration manager instance (creates new if None)
         :type config_manager: ProjectConfigManager
         """
-    def __init__(self, config_manager: Optional[ProjectConfigManager] = None):
         super(ProjectFolderManager, self).__init__()
         self.config_manager = config_manager or ProjectConfigManager()
 
@@ -315,11 +261,8 @@ class ProjectFolderManager(QObject):
         Creates default "Variante 1" if no variant folder exists.
         """
         if self.project_folder and self.variant_folder and os.path.exists(self.variant_folder):
-            print(f"Initial variant folder set to: {self.variant_folder}")
             self.project_folder_changed.emit(self.variant_folder)
         elif self.project_folder:
-            # Create default variant if none exists
-            print("No variant folder found, setting default variant")
             self.variant_folder = os.path.join(self.project_folder, "Variante 1")
             self.project_folder_changed.emit(self.variant_folder)
 

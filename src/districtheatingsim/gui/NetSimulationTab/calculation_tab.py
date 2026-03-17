@@ -473,8 +473,8 @@ class CalculationTab(QWidget):
         """
         # uses the dataclass to get the values
         # add COP filename
-        self.NetworkGenerationData.COP_filename = self.data_manager.get_cop_filename()
-        self.NetworkGenerationData.TRY_filename = self.data_manager.get_try_filename()
+        self.NetworkGenerationData.COP_filename = self.data_manager.cop_filename
+        self.NetworkGenerationData.TRY_filename = self.data_manager.try_filename
         
         self.initializationThread = NetInitializationThread(self.NetworkGenerationData)
         self.common_thread_initialization()
