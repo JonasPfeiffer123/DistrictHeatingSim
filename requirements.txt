@@ -2,6 +2,7 @@ PyQt6
 PyQt6-WebEngine
 matplotlib
 pandapipes==0.13.0
+pyslpheat @ git+https://github.com/JonasPfeiffer123/pyslpheat.git
 geopandas
 folium
 scipy

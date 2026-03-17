@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from typing import Tuple, Union, Optional
 
-from districtheatingsim.heat_requirement import heat_requirement_VDI4655, heat_requirement_BDEW
+from pyslpheat import bdew_calculate, vdi4655_calculate
 
 def generate_profiles_from_csv(data: pd.DataFrame, 
                              TRY: str, 
@@ -109,29 +109,42 @@ def generate_profiles_from_csv(data: pd.DataFrame,
             YEU_heating_kWh = YEU_total_heat_kWh * (1 - ww_demand)
             YEU_hot_water_kWh = YEU_total_heat_kWh * ww_demand
             heating, hot_water = YEU_heating_kWh[idx], YEU_hot_water_kWh[idx]
-            
-            # Calculate VDI 4655 profiles (electricity set to 0 as not used)
-            yearly_time_steps, hourly_heat_demand_total_kW, hourly_heat_demand_heating_kW, \
-            hourly_heat_demand_warmwater_kW, hourly_air_temperatures, electricity_kW = \
-                heat_requirement_VDI4655.calculate(
-                    YEU_heating_kWh=heating,
-                    YEU_hot_water_kWh=hot_water,
-                    YEU_electricity_kWh=0,
-                    building_type=current_building_type,
-                    number_people_household=number_people_household,
-                    year=year,
-                    climate_zone=climate_zone,
-                    TRY=TRY,
-                    holidays=holidays
-                )
+
+            # Calculate VDI 4655 profiles via pyslpheat
+            df_vdi = vdi4655_calculate(
+                annual_heating_kWh=heating,
+                annual_dhw_kWh=hot_water,
+                annual_electricity_kWh=1,  # placeholder; electricity not used downstream
+                building_type=current_building_type,
+                number_people_household=number_people_household,
+                year=year,
+                climate_zone=climate_zone,
+                TRY=TRY,
+                holidays=holidays,
+            )
+            yearly_time_steps = df_vdi.index.values
+            # kWh per 15 min → kW (×4)
+            hourly_heat_demand_total_kW = df_vdi["Q_total_kWh"].values * 4
+            hourly_heat_demand_heating_kW = df_vdi["Q_heat_kWh"].values * 4
+            hourly_heat_demand_warmwater_kW = df_vdi["Q_dhw_kWh"].values * 4
+            # temperature is hourly in TRY; VDI DataFrame repeats each value 4 times
+            hourly_air_temperatures = df_vdi["temperature_C"].values[::4]
 
         elif current_calc_method == "BDEW":
-            # Calculate BDEW profiles
-            yearly_time_steps, hourly_heat_demand_total_kW, hourly_heat_demand_heating_kW, \
-            hourly_heat_demand_warmwater_kW, hourly_air_temperatures = \
-                heat_requirement_BDEW.calculate(
-                    YEU, current_building_type, current_subtype, TRY, year, current_ww_demand
-                )
+            # Calculate BDEW profiles via pyslpheat
+            df_bdew = bdew_calculate(
+                annual_heat_kWh=YEU,
+                profile_type=current_building_type,
+                subtype=current_subtype,
+                TRY_file_path=TRY,
+                year=year,
+                dhw_share=current_ww_demand,
+            )
+            yearly_time_steps = df_bdew.index.values
+            hourly_heat_demand_total_kW = df_bdew["Q_total_kWh"].values
+            hourly_heat_demand_heating_kW = df_bdew["Q_heat_kWh"].values
+            hourly_heat_demand_warmwater_kW = df_bdew["Q_dhw_kWh"].values
+            hourly_air_temperatures = df_bdew["temperature_C"].values
 
         # Ensure non-negative demand values (clip physical impossible negative values)
         hourly_heat_demand_total_kW = np.clip(hourly_heat_demand_total_kW, 0, None)

@@ -19,8 +19,7 @@ import traceback
 import numpy as np
 import matplotlib.pyplot as plt
 
-from districtheatingsim.heat_requirement import heat_requirement_BDEW
-from districtheatingsim.heat_requirement import heat_requirement_VDI4655
+from pyslpheat import bdew_calculate, vdi4655_calculate
 
 # Berechnung mit VDI 4655 (Referenzlastprofile)
 def VDI4655(TRY_filename):
@@ -31,16 +30,32 @@ def VDI4655(TRY_filename):
 
     # folgendes wird statisch gesetzt, muss in Zukunft noch in config-Datei ausgelagert werden oder im UI einstellbar sein
     year = 2021 # Jahr, für das die Berechnung durchgeführt wird (für VDI 4655, BDEW)
-    holidays = np.array(["2021-01-01", "2021-04-02", "2021-04-05", "2021-05-01", "2021-05-24", "2021-05-13", 
+    holidays = np.array(["2021-01-01", "2021-04-02", "2021-04-05", "2021-05-01", "2021-05-24", "2021-05-13",
                          "2021-06-03", "2021-10-03", "2021-11-01", "2021-12-25", "2021-12-26"]).astype('datetime64[D]') # Feiertage in Deutschland 2021 (ohne Wochenenden) als datetime64[D]-Array (YYYY-MM-DD) für VDI 4655
     climate_zone = "9"  # Klimazone 9: Deutschland (VDI 4655)
     number_people_household = 2  # Anzahl der Personen im Haushalt (VDI 4655)
 
-    time_15min, total_heat_kW, heating_kW, hot_water_kW, temperature, electricity_kW = heat_requirement_VDI4655.calculate(YEU_heating_kWh, YEU_hot_water_kWh, YEU_electricity_kWh, building_type, number_people_household, year, climate_zone, TRY_filename, holidays)
+    df = vdi4655_calculate(
+        annual_heating_kWh=YEU_heating_kWh,
+        annual_dhw_kWh=YEU_hot_water_kWh,
+        annual_electricity_kWh=YEU_electricity_kWh,
+        building_type=building_type,
+        number_people_household=number_people_household,
+        year=year,
+        climate_zone=climate_zone,
+        TRY=TRY_filename,
+        holidays=holidays,
+    )
+    time_15min = df.index.values
+    total_heat_kW = df["Q_total_kWh"].values * 4
+    heating_kW = df["Q_heat_kWh"].values * 4
+    hot_water_kW = df["Q_dhw_kWh"].values * 4
+    electricity_kW = df["Q_electricity_kWh"].values * 4
+    temperature = df["temperature_C"].values
 
     print("Ergebnisse VDI 4655")
     print(f"Zeitschritte: {time_15min}")
-    print(f"Strombedarf: {electricity_kW}")    
+    print(f"Strombedarf: {electricity_kW}")
     print(f"Wärmebedarf Heizung: {heating_kW}")
     print(f"Wärmebedarf Warmwasser: {hot_water_kW}")
     print(f"Wärmebedarf Gesamt: {total_heat_kW}")
@@ -54,9 +69,6 @@ def VDI4655(TRY_filename):
     ax1.plot(time_15min, heating_kW, 'b-', label="Heizung", linewidth=0.5)
     ax1.plot(time_15min, hot_water_kW, 'r-', label="Warmwasser", linewidth=0.5)
     ax1.plot(time_15min, electricity_kW, 'm-', label="Strombedarf", linewidth=0.5)
-    
-    # temperature is hourly, so we need to repeat the values for the 15min intervals
-    temperature = np.repeat(temperature, 4)
     ax2.plot(time_15min, temperature, 'k-', label="Außentemperatur", linewidth=0.5)
 
     ax1.set_xlabel("Zeitschritte")
@@ -75,13 +87,25 @@ def BDEW(TRY_filename):
 
     year = 2021
 
-    hourly_intervals, hourly_heat_demand_total_normed, hourly_heat_demand_heating_normed, hourly_heat_demand_warmwater_normed, hourly_temperature = heat_requirement_BDEW.calculate(YEU_heating_kWh, building_type, subtype, TRY_filename, year, real_ww_share)
+    df = bdew_calculate(
+        annual_heat_kWh=YEU_heating_kWh,
+        profile_type=building_type,
+        subtype=subtype,
+        TRY_file_path=TRY_filename,
+        year=year,
+        dhw_share=real_ww_share,
+    )
+    hourly_intervals = df.index.values
+    hourly_heat_demand_total_normed = df["Q_total_kWh"].values
+    hourly_heat_demand_heating_normed = df["Q_heat_kWh"].values
+    hourly_heat_demand_warmwater_normed = df["Q_dhw_kWh"].values
+    hourly_temperature = df["temperature_C"].values
 
     print("Ergebnisse BDEW")
     print(f"Zeitschritte: {hourly_intervals}")
-    print(f"Wärmebedarf Gesamt: {hourly_heat_demand_total_normed}") 
+    print(f"Wärmebedarf Gesamt: {hourly_heat_demand_total_normed}")
     print(f"Wärmebedarf Heizung: {hourly_heat_demand_heating_normed}")
-    print(f"Wärmebedarf Warmwasser: {hourly_heat_demand_warmwater_normed}")  
+    print(f"Wärmebedarf Warmwasser: {hourly_heat_demand_warmwater_normed}")
     print(f"Temperaturen: {hourly_temperature}")
 
     # Plotting
