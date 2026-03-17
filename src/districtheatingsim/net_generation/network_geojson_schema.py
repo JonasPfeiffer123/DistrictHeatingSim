@@ -165,16 +165,30 @@ class NetworkGeoJSONSchema:
     ) -> Dict[str, Any]:
         """
         Create a generator connection feature.
-        
-        :param geometry: Connection line geometry
+
+        **Coordinate convention** – the LineString geometry *must* follow
+        ``[Vorlauf_point, Rücklauf_point]`` order, i.e.:
+
+        * ``coords[0]`` → supply / Vorlauf (VL) endpoint
+        * ``coords[1]`` → return / Rücklauf (RL) endpoint
+
+        This convention is required by
+        :func:`pp_net_initialisation_geojson.create_network` so that the
+        circulation pump is connected with ``flow_junction`` on the VL side
+        and ``return_junction`` on the RL side.  All network generation
+        helpers (``osmnx_steiner_network``, ``import_and_create_layers``)
+        already follow this convention.  If you create or edit generator
+        connections manually, ensure the line direction is preserved.
+
+        :param geometry: Connection line geometry (VL→RL direction).
         :type geometry: LineString
-        :param connection_id: Unique connection identifier
+        :param connection_id: Unique connection identifier.
         :type connection_id: str
-        :param generator_type: Generator type ('main' or 'secondary')
+        :param generator_type: Generator type (``'main'`` or ``'secondary'``).
         :type generator_type: str
-        :param location_index: Generator location index
+        :param location_index: Generator location index.
         :type location_index: int
-        :return: GeoJSON Feature with generator metadata
+        :return: GeoJSON Feature with generator metadata.
         :rtype: Dict[str, Any]
         """
         feature = {

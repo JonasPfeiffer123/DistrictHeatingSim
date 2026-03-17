@@ -262,8 +262,12 @@ def correct_flow_directions(net) -> pp.pandapipesNet:
     .. note::
        Identifies pipes with negative velocities and swaps from_junction/to_junction for proper flow representation.
     """
-    # Initial pipeflow calculation to determine actual flow directions
-    pp.pipeflow(net, mode="bidirectional", iter=100)
+    # Initial pipeflow – suppress UserWarning about pump direction; that is what we fix here.
+    import warnings
+    try:
+        pp.pipeflow(net, mode="bidirectional", iter=100)
+    except UserWarning as e:
+        logging.warning(f"correct_flow_directions initial pipeflow: {e}")
 
     # Identify and correct pipes with reverse flow
     corrections_made = 0
@@ -277,7 +281,10 @@ def correct_flow_directions(net) -> pp.pandapipesNet:
             corrections_made += 1
 
     # Recalculate with corrected flow directions
-    pp.pipeflow(net, mode="bidirectional", iter=100)
+    try:
+        pp.pipeflow(net, mode="bidirectional", iter=100)
+    except UserWarning as e:
+        logging.warning(f"correct_flow_directions verification pipeflow: {e}")
     
     if corrections_made > 0:
         logging.info(f"Corrected flow directions for {corrections_made} pipes")
