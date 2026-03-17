@@ -80,6 +80,7 @@ class CalculationTab(QWidget):
         self.folder_manager = folder_manager
         self.data_manager = data_manager
         self.config_manager = config_manager
+        plt.style.use('seaborn-v0_8-darkgrid')
 
         self.folder_manager.project_folder_changed.connect(self.updateDefaultPath)
         self.updateDefaultPath(self.folder_manager.variant_folder)
@@ -845,7 +846,6 @@ class CalculationTab(QWidget):
                          self.NetworkGenerationData.pump_results, 
                          self.NetworkGenerationData.results_csv_filename)
 
-        print("Simulation erfolgreich abgeschlossen.")
 
     def on_time_series_simulation_error(self, error_message):
         """
@@ -864,8 +864,7 @@ class CalculationTab(QWidget):
         if not hasattr(self, 'dataSelectionDropdown'):
             self.createPlotControlDropdown()
 
-        # Apply modern theme
-        plt.style.use('seaborn-v0_8-darkgrid')
+
 
         self.time_series_figure.clear()
         
@@ -906,7 +905,6 @@ class CalculationTab(QWidget):
                 
                 time_steps = data_info.get("time", None)
                 if time_steps is None or len(time_steps) != len(data_info["data"]):
-                    print(f"Warnung: Zeitachse und Datenlänge passen nicht für {key}")
                     continue
                 
                 # Convert datetime to hours of year (0-8760) if needed
@@ -928,9 +926,7 @@ class CalculationTab(QWidget):
                     else:
                         # Fallback for empty or problematic time_steps
                         hours_of_year = list(range(len(data_info["data"])))
-                except Exception as e:
-                    print(f"Fehler bei Zeitkonvertierung für {key}: {e}")
-                    # Fallback: use index as hours
+                except Exception:
                     hours_of_year = list(range(len(data_info["data"])))
                 
                 if data_info["axis"] == "left":
@@ -956,7 +952,6 @@ class CalculationTab(QWidget):
                     min_time = tmin if min_time is None else min(min_time, tmin)
                     max_time = tmax if max_time is None else max(max_time, tmax)
                 except (ValueError, TypeError):
-                    print(f"Fehler bei Zeitbereichsberechnung für {key}")
                     continue
 
         # Axis styling with line breaks for long labels
@@ -1083,7 +1078,6 @@ class CalculationTab(QWidget):
         :param show_dialog: Whether to show success/error dialogs.
         :type show_dialog: bool
         """
-        print("Speichere Pandapipes-Netzwerk...")
         if not self.NetworkGenerationData:
             if show_dialog:
                 QMessageBox.warning(self, "Keine Daten", "Kein Pandapipes-Netzwerk zum Speichern vorhanden.")
@@ -1167,7 +1161,6 @@ class CalculationTab(QWidget):
         :param show_dialog: Whether to show success/error dialogs.
         :type show_dialog: bool
         """
-        print("Lade gespeichertes Pandapipes-Netzwerk...")
         try:
             data_path = self.get_data_path()
             pickle_file_path = os.path.join(self.base_path, self.config_manager.get_relative_path('pp_pickle_file_path'))
@@ -1286,7 +1279,6 @@ class CalculationTab(QWidget):
         :param show_dialog: Whether to show success/error dialogs.
         :type show_dialog: bool
         """
-        print("Starte Export des Wärmenetzes im GeoJSON-Format...")
         if not self.NetworkGenerationData or not hasattr(self.NetworkGenerationData, 'net'):
             if show_dialog:
                 QMessageBox.warning(
@@ -1303,7 +1295,6 @@ class CalculationTab(QWidget):
                 self.config_manager.get_relative_path('dimensioned_net_path')
             )
             
-            print(f"Exportiere Wärmenetz zu: {unified_path}")
             # Export network using utility function
             feature_counts = export_net_geojson(self.NetworkGenerationData.net, unified_path)
             

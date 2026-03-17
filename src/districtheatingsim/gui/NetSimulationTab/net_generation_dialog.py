@@ -177,7 +177,6 @@ class NetGenerationDialog(QDialog):
         )
         
         if self.generate_callback:
-            print("Calling generate_callback with data:", vars(data))
             self.generate_callback(data)
 
         self.accept()
