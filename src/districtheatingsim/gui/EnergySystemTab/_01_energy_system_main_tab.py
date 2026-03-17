@@ -253,8 +253,6 @@ class EnergySystemTab(QWidget):
             for idx, pump_data in pumps.items():
                 if 'qext_kW' in pump_data:
                     qext_values.append(pump_data['qext_kW'])
-                else:
-                    print(f"Keine qext_kW Daten für {pump_type} Pumpe {idx}")
 
                 if pump_type == "Heizentrale Haupteinspeisung":
                     flow_temp_circ_pump = pump_data['flow_temp']

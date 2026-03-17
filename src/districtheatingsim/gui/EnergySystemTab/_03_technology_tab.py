@@ -82,6 +82,7 @@ class TechnologyTab(QWidget):
         self.data_manager = data_manager
         self.config_manager = config_manager
         self.tech_objects = []
+        plt.style.use('seaborn-v0_8-darkgrid')
         self.initFileInputs()
         self.initUI()
 
@@ -471,9 +472,6 @@ class TechnologyTab(QWidget):
 
         self.createPlotCanvas()
         
-        # Apply modern matplotlib styling
-        plt.style.use('seaborn-v0_8-darkgrid')
-        
         ax = self.plotFigure.add_subplot(111)
 
         # Identifiziere alle Spalten, die Wärmeerzeugung enthalten
@@ -534,9 +532,6 @@ class TechnologyTab(QWidget):
         :type message: str
         """
         self.createPlotCanvas()
-        
-        # Apply modern matplotlib styling
-        plt.style.use('seaborn-v0_8-darkgrid')
         
         ax = self.plotFigure.add_subplot(111)
         ax.text(0.5, 0.5, message, ha='center', va='center', transform=ax.transAxes,
