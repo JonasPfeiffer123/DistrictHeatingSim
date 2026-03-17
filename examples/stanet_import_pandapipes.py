@@ -16,7 +16,7 @@ import os
 import traceback
 import matplotlib.pyplot as plt
 
-from districtheatingsim.heat_requirement import heat_requirement_BDEW
+from pyslpheat import bdew_calculate
 from districtheatingsim.net_simulation_pandapipes.config_plot import config_plot
 
 # Read the exported STANET-CSV file with the specified delimiter and ignore bad lines
@@ -184,9 +184,19 @@ def create_net_from_stanet_csv(stanet_csv_file_path, TRY_file_path, supply_tempe
             heat_usage_kWh = float(row["VERBRAUCH"])
             current_building_type = row["PROFIL"]
 
-            # calculate(JWB_kWh, profiletype, subtype, TRY, year, real_ww_share):
-            # return hourly_intervals, hourly_heat_demand_total_normed, hourly_heat_demand_heating_normed.astype(float), hourly_heat_demand_warmwater_normed.astype(float), hourly_temperature
-            yearly_time_steps, total_heat_kW, heating_demand_kW, warm_water_demand_kW, ourly_temperatures  = heat_requirement_BDEW.calculate(JWB_kWh=heat_usage_kWh, profiletype=current_building_type, subtype="03", TRY_file_path=TRY_file_path, year=2021, real_ww_share=None)
+            df_bdew = bdew_calculate(
+                annual_heat_kWh=heat_usage_kWh,
+                profile_type=current_building_type,
+                subtype="03",
+                TRY_file_path=TRY_file_path,
+                year=2021,
+                dhw_share=None,
+            )
+            yearly_time_steps = df_bdew.index.values
+            total_heat_kW = df_bdew["Q_total_kWh"].values
+            heating_demand_kW = df_bdew["Q_heat_kWh"].values
+            warm_water_demand_kW = df_bdew["Q_dhw_kWh"].values
+            ourly_temperatures = df_bdew["temperature_C"].values
 
             total_heat_W.append(total_heat_kW * 1000)
             max_heat_requirement_W.append(np.max(total_heat_kW * 1000))

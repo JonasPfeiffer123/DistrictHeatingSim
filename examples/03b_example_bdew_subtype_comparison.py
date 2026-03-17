@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import RadioButtons
 
-from districtheatingsim.heat_requirement import heat_requirement_BDEW
+from pyslpheat import bdew_calculate
 
 # Verfügbare Subtypen für HMF
 subtypes = ["03", "04", "05", "33", "34"]
@@ -32,15 +32,20 @@ real_ww_share = 0.25
 # Ergebnisse für alle Subtypen berechnen
 results = {}
 for subtype in subtypes:
-    hourly_intervals, total, heating, warmwater, temperature = heat_requirement_BDEW.calculate(
-        YEU_heating_kWh, building_type, subtype, TRY_filename, year, real_ww_share
+    df = bdew_calculate(
+        annual_heat_kWh=YEU_heating_kWh,
+        profile_type=building_type,
+        subtype=subtype,
+        TRY_file_path=TRY_filename,
+        year=year,
+        dhw_share=real_ww_share,
     )
     results[subtype] = {
-        "hourly_intervals": hourly_intervals,
-        "total": total,
-        "heating": heating,
-        "warmwater": warmwater,
-        "temperature": temperature
+        "hourly_intervals": df.index.values,
+        "total": df["Q_total_kWh"].values,
+        "heating": df["Q_heat_kWh"].values,
+        "warmwater": df["Q_dhw_kWh"].values,
+        "temperature": df["temperature_C"].values,
     }
 
 # Interaktives Plotten mit Dropdown
