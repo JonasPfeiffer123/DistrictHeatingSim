@@ -7,12 +7,12 @@ Initial welcome screen with project management, recent projects, and quick actio
 """
 
 import os
-import sys
 import json
 import webbrowser
+import subprocess
 from pathlib import Path
 from datetime import datetime
-from typing import List, Optional, Dict
+from typing import Optional, Dict
 
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, 
                              QPushButton, QLabel, QFrame, QScrollArea, 
@@ -575,10 +575,8 @@ class WelcomeScreen(QWidget):
                 logo_label.setPixmap(scaled_pixmap)
                 logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 footer_layout.addWidget(logo_label)
-            else:
-                print(f"Funding logo not found at: {logo_path}")
-        except Exception as e:
-            print(f"Could not load funding logo: {e}")
+        except Exception:
+            pass  # Logo not available — skip silently
         
         # Project information text
         info_layout = QVBoxLayout()
@@ -638,8 +636,8 @@ class WelcomeScreen(QWidget):
                     if os.path.exists(project_path):
                         project_info = self.get_project_info(project_path)
                         self.recent_projects.append((project_path, project_info))
-            except Exception as e:
-                print(f"Could not load recent projects: {e}")
+            except Exception:
+                pass  # Config not available — skip silently
         
         # Always add the bundled example project (Görlitz) if no recent projects exist
         if not self.recent_projects:
@@ -673,19 +671,15 @@ class WelcomeScreen(QWidget):
             no_projects_container.setLayout(no_projects_layout)
             self.projects_layout.addWidget(no_projects_container)
             
-            # Update project count
-            if hasattr(self, 'project_count_label'):
-                self.project_count_label.setText("0")
+            self.project_count_label.setText("0")
         else:
             # Add recent project widgets
             for project_path, project_info in self.recent_projects[:10]:  # Show max 10 recent
                 project_widget = RecentProjectWidget(project_path, project_info)
                 project_widget.projectSelected.connect(self.project_selected)
                 self.projects_layout.addWidget(project_widget)
-            
-            # Update project count
-            if hasattr(self, 'project_count_label'):
-                self.project_count_label.setText(str(min(len(self.recent_projects), 10)))
+
+            self.project_count_label.setText(str(min(len(self.recent_projects), 10)))
         
         self.projects_layout.addStretch()
     
@@ -709,12 +703,10 @@ class WelcomeScreen(QWidget):
             
             if self.config_manager:
                 try:
-                    # Get from file_paths.json configuration
                     standard_relative = self.config_manager.get_relative_path('standard_folder_path')
-                    # Convert to absolute path using resource path resolution
                     standard_project_path = get_resource_path(standard_relative)
-                except Exception as e:
-                    print(f"Could not get standard project path from config: {e}")
+                except Exception:
+                    pass  # Config key not available — use fallback paths
             
             # Fallback: try common locations
             if not standard_project_path or not os.path.exists(standard_project_path):
@@ -750,47 +742,10 @@ class WelcomeScreen(QWidget):
                 project_info['name'] = '📚 Görlitz Beispielprojekt'  # Add icon to indicate it's the example
                 return (standard_project_path, project_info)
             
-        except Exception as e:
-            print(f"Error locating bundled example project: {e}")
-        
+        except Exception:
+            pass
+
         return None
-    
-    def scan_for_projects(self) -> List[tuple]:
-        """
-        Scan common directories for existing project folders.
-
-        :return: List of tuples (project_path, project_info) sorted by modification time
-        :rtype: List[tuple]
-
-        .. note::
-           Scans Documents, current directory, and application directory for valid project structures.
-        """
-        projects = []
-        
-        # Default locations to scan
-        scan_paths = [
-            os.path.expanduser("~/Documents"),
-            os.getcwd(),
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        ]
-        
-        for scan_path in scan_paths:
-            if os.path.exists(scan_path):
-                try:
-                    for item in os.listdir(scan_path):
-                        item_path = os.path.join(scan_path, item)
-                        if os.path.isdir(item_path):
-                            # Check if it looks like a project folder
-                            if self.is_project_folder(item_path):
-                                project_info = self.get_project_info(item_path)
-                                projects.append((item_path, project_info))
-                except (OSError, PermissionError):
-                    continue
-        
-        # Sort by last modified time (newest first)
-        projects.sort(key=lambda x: x[1].get('last_modified_timestamp', 0), reverse=True)
-        
-        return projects
     
     def is_project_folder(self, folder_path: str) -> bool:
         """
@@ -928,10 +883,13 @@ class WelcomeScreen(QWidget):
         """
         examples_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "examples")
         if os.path.exists(examples_path):
-            # Open the examples folder
-            os.startfile(examples_path) if os.name == 'nt' else os.system(f'open "{examples_path}"')
+            if os.name == 'nt':
+                os.startfile(examples_path)
+            else:
+                import sys
+                opener = 'open' if sys.platform == 'darwin' else 'xdg-open'
+                subprocess.run([opener, examples_path])
         else:
-            # Fallback to documentation
             webbrowser.open("https://github.com/JonasPfeiffer123/DistrictHeatingSim/tree/main/examples")
     
     def open_support(self):

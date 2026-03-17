@@ -238,8 +238,8 @@ class EnergySystemTab(QWidget):
         Preprocess data before calculation.
         """
         self.csv_filename = self.techTab.FilenameInput.text()
-        self.TRY_filename = self.data_manager.get_try_filename()
-        self.COP_filename = self.data_manager.get_cop_filename()
+        self.TRY_filename = self.data_manager.try_filename
+        self.COP_filename = self.data_manager.cop_filename
         self.load_scale_factor = float(self.techTab.load_scale_factorInput.text())
 
         # Import data from the CSV file
