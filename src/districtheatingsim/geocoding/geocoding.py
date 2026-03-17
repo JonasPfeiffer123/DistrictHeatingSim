@@ -9,15 +9,25 @@ from WGS84 to UTM Zone 33N (ETRS89).
 
 import os
 import csv
+import time
 import tempfile
 import shutil
 
 from geopy.geocoders import Nominatim
+from geopy.extra.rate_limiter import RateLimiter
 from pyproj import Transformer
+
+# Shared geolocator instance (Nominatim usage policy: max 1 req/sec, identify your app)
+_geolocator = Nominatim(user_agent="DistrictHeatingSim/1.0")
+_geocode = RateLimiter(_geolocator.geocode, min_delay_seconds=1, max_retries=3, error_wait_seconds=5)
+
 
 def get_coordinates(address, from_crs="epsg:4326", to_crs="epsg:25833"):
     """
     Geocode address and transform coordinates to UTM.
+
+    Uses a shared rate-limited Nominatim instance (max 1 req/sec) to comply
+    with the Nominatim usage policy.
 
     :param address: Address to geocode
     :type address: str
@@ -28,11 +38,10 @@ def get_coordinates(address, from_crs="epsg:4326", to_crs="epsg:25833"):
     :return: (UTM_X, UTM_Y) coordinates or (None, None) if failed
     :rtype: tuple of float
     """
-    geolocator = Nominatim(user_agent="DistrictHeatingSim")
     transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
 
     try:
-        location = geolocator.geocode(address)
+        location = _geocode(address)
         if location:
             utm_x, utm_y = transformer.transform(location.longitude, location.latitude)
             return (utm_x, utm_y)
@@ -47,6 +56,8 @@ def get_coordinates(address, from_crs="epsg:4326", to_crs="epsg:25833"):
 def process_data(input_csv):
     """
     Add UTM coordinates to CSV file via geocoding.
+
+    Requests are rate-limited to 1/sec to comply with the Nominatim usage policy.
 
     :param input_csv: Path to CSV file (delimiter ';', columns: country, state, city, address)
     :type input_csv: str
@@ -77,7 +88,7 @@ def process_data(input_csv):
             for row in reader:
                 country, state, city, address = row[0], row[1], row[2], row[3]
                 full_address = f"{address}, {city}, {state}, {country}"
-                utm_x, utm_y = get_coordinates(full_address)
+                utm_x, utm_y = get_coordinates(full_address)  # rate-limited via _geocode
 
                 if headers_written:
                     # Ensure the row has enough columns before assignment
