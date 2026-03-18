@@ -9,15 +9,25 @@ from WGS84 to UTM Zone 33N (ETRS89).
 
 import os
 import csv
+import time
 import tempfile
 import shutil
 
 from geopy.geocoders import Nominatim
+from geopy.extra.rate_limiter import RateLimiter
 from pyproj import Transformer
+
+# Shared geolocator instance (Nominatim usage policy: max 1 req/sec, identify your app)
+_geolocator = Nominatim(user_agent="DistrictHeatingSim/1.0")
+_geocode = RateLimiter(_geolocator.geocode, min_delay_seconds=1, max_retries=3, error_wait_seconds=5)
+
 
 def get_coordinates(address, from_crs="epsg:4326", to_crs="epsg:25833"):
     """
     Geocode address and transform coordinates to UTM.
+
+    Uses a shared rate-limited Nominatim instance (max 1 req/sec) to comply
+    with the Nominatim usage policy.
 
     :param address: Address to geocode
     :type address: str
@@ -28,11 +38,10 @@ def get_coordinates(address, from_crs="epsg:4326", to_crs="epsg:25833"):
     :return: (UTM_X, UTM_Y) coordinates or (None, None) if failed
     :rtype: tuple of float
     """
-    geolocator = Nominatim(user_agent="DistrictHeatingSim")
     transformer = Transformer.from_crs(from_crs, to_crs, always_xy=True)
 
     try:
-        location = geolocator.geocode(address)
+        location = _geocode(address)
         if location:
             utm_x, utm_y = transformer.transform(location.longitude, location.latitude)
             return (utm_x, utm_y)
@@ -44,15 +53,25 @@ def get_coordinates(address, from_crs="epsg:4326", to_crs="epsg:25833"):
         return (None, None)
 
 
-def process_data(input_csv):
+def process_data(input_csv, crs: str = "EPSG:25833") -> dict:
     """
-    Add UTM coordinates to CSV file via geocoding.
+    Add projected coordinates to CSV file via geocoding.
+
+    Requests are rate-limited to 1/sec to comply with the Nominatim usage policy.
 
     :param input_csv: Path to CSV file (delimiter ';', columns: country, state, city, address)
     :type input_csv: str
+    :param crs: Target projected CRS for UTM_X/UTM_Y columns (default EPSG:25833)
+    :type crs: str
+    :return: Summary dict with keys ``total``, ``success``, ``failed``, ``failed_addresses``
+    :rtype: dict
     """
     temp_fd, temp_path = tempfile.mkstemp()
     os.close(temp_fd)
+
+    total = 0
+    success = 0
+    failed_addresses = []
 
     try:
         with open(input_csv, mode='r', encoding='utf-8') as infile, \
@@ -77,7 +96,13 @@ def process_data(input_csv):
             for row in reader:
                 country, state, city, address = row[0], row[1], row[2], row[3]
                 full_address = f"{address}, {city}, {state}, {country}"
-                utm_x, utm_y = get_coordinates(full_address)
+                utm_x, utm_y = get_coordinates(full_address, to_crs=crs)  # rate-limited via _geocode
+
+                total += 1
+                if utm_x is not None and utm_y is not None:
+                    success += 1
+                else:
+                    failed_addresses.append(full_address)
 
                 if headers_written:
                     # Ensure the row has enough columns before assignment
@@ -96,12 +121,13 @@ def process_data(input_csv):
 
         # Replace the original file with the updated temporary file using shutil.move
         shutil.move(temp_path, input_csv)
-        print("Processing completed.")
     finally:
         try:
             os.remove(temp_path)
         except OSError:
             pass
+
+    return {"total": total, "success": success, "failed": total - success, "failed_addresses": failed_addresses}
 
 if __name__ == '__main__':
     # File name of the data file with addresses

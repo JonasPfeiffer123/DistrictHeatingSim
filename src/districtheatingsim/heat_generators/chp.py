@@ -251,15 +251,7 @@ class CHP(BaseHeatGenerator):
         .. note::
            Includes KWKG/BEW subsidies and electricity revenue offset.
         """
-        # Extract economic parameters
-        self.Strompreis = economic_parameters['electricity_price']
-        self.Gaspreis = economic_parameters['gas_price']
-        self.Holzpreis = economic_parameters['wood_price']
-        self.q = economic_parameters['capital_interest_rate']
-        self.r = economic_parameters['inflation_rate']
-        self.T = economic_parameters['time_period']
-        self.BEW = economic_parameters['subsidy_eligibility']
-        self.stundensatz = economic_parameters['hourly_rate']
+        self.load_economic_parameters(economic_parameters)
 
         if self.Wärmemenge_MWh == 0:
             self.WGK = 0

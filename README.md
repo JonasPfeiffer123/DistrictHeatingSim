@@ -60,11 +60,7 @@ To install DistrictHeatingSim, follow the steps below. The software has been tes
     ```sh
     cd DistrictHeatingSim
     ```
-3. Install the required dependencies using the `setup.py` file:
-    ```sh
-    python setup.py install
-    ```
-    Alternatively, you can use pip to install the package:
+3. Install the package:
     ```sh
     pip install .
     ```
@@ -79,7 +75,7 @@ To install DistrictHeatingSim, follow the steps below. The software has been tes
 ### Troubleshooting
 - If you encounter errors during installation or while running the application, ensure that all required Python modules are installed. You can install the dependencies listed in the `requirements.txt` file:
     ```sh
-    pip install -r requirements.txt
+    pip install .
     ```
 - Verify that all necessary data files are present in the appropriate directories.
 - If issues persist, please report them on the [GitHub Issues page](https://github.com/JonasPfeiffer123/DistrictHeatingSim/issues) with detailed information about the error.
@@ -130,27 +126,9 @@ Start DistrictHeatingSim by running DistrictHeatingSim.py within src/districthea
 
 ## Requirements
 
-- **Python Version**: >= 3.11, < 3.12 (some libraries currently not working with Python 3.12; only tested with Python 3.11)
-- Required Python packages listed in `requirements.txt`:
-    ```text
-    PyQt6
-    PyQt6-WebEngine
-    matplotlib
-    pandapipes>=0.13.0
-    pandapower
-    geopandas
-    folium
-    scipy
-    geopy
-    overpy
-    geojson
-    scikit-learn
-    requests
-    CoolProp
-    contextily
-    plotly
-    seaborn
-    ```
+- **Python Version**: >= 3.11
+- Dependencies are declared in `pyproject.toml` and installed automatically via `pip install .`
+- For documentation dependencies: `pip install ".[docs]"`
 
 ## Project Structure
 
@@ -283,7 +261,6 @@ Please ensure that your contributions align with the project's coding standards 
 
 For a list of known issues, planned features, and ongoing development tasks, please refer to:
 - [GitHub Issues](https://github.com/JonasPfeiffer123/DistrictHeatingSim/issues)
-- [todo.md](todo.md) for internal development notes
 
 ## License
 

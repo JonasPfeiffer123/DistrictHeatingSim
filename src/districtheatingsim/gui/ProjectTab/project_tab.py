@@ -7,13 +7,13 @@ Project management tab with MVP architecture for CSV file editing and project tr
 """
 
 import os
-import sys
 import csv
 import json
 
-from PyQt6.QtWidgets import (QMainWindow, QFileDialog, QTableWidgetItem, QWidget, QVBoxLayout, QHBoxLayout,
+from PyQt6.QtWidgets import (QFileDialog, QTableWidgetItem, QWidget, QVBoxLayout, QHBoxLayout,
                              QMenuBar, QProgressBar, QLabel, QTableWidget, QFrame,
-                             QTreeView, QSplitter, QMessageBox, QDialog, QMenu, QPushButton, QInputDialog, QSizePolicy)
+                             QTreeView, QSplitter, QMessageBox, QDialog, QMenu, QPushButton,
+                             QInputDialog, QSizePolicy, QComboBox, QSpinBox)
 from PyQt6.QtGui import QAction, QFileSystemModel
 from PyQt6.QtCore import Qt, QTimer
 
@@ -22,6 +22,8 @@ from pyproj import Transformer
 
 from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, GeoJSONToCSVThread
 from districtheatingsim.gui.ProjectTab.project_tab_dialogs import RowInputDialog, OSMImportDialog, ProcessDetailsDialog
+from districtheatingsim.gui.ProjectTab.csv_import_dialog import CsvImportDialog
+from districtheatingsim.utilities.crs_utils import COMMON_CRS_OPTIONS, suggest_crs_from_location
 
 class ProjectModel:
     """
@@ -31,24 +33,6 @@ class ProjectModel:
         self.base_path = None
         self.current_file_path = ''
         self.layers = {}
-
-    def set_base_path(self, base_path):
-        """
-        Set project base path.
-
-        :param base_path: Project base path.
-        :type base_path: str
-        """
-        self.base_path = base_path
-
-    def get_base_path(self):
-        """
-        Get project base path.
-
-        :return: Current base path.
-        :rtype: str
-        """
-        return self.base_path
 
     def load_csv(self, file_path):
         """
@@ -97,7 +81,7 @@ class ProjectModel:
             writer.writerow(headers)
             writer.writerow(default_data)
 
-    def create_csv_from_geojson(self, geojson_file_path, output_file_path, default_values):
+    def create_csv_from_geojson(self, geojson_file_path, output_file_path, default_values, project_crs="EPSG:25833"):
         """
         Create CSV from GeoJSON data with default values.
 
@@ -116,7 +100,7 @@ class ProjectModel:
             
             # Initialize geocoder and transformer once
             geolocator = Nominatim(user_agent="DistrictHeatingSim")
-            transformer = Transformer.from_crs("epsg:25833", "epsg:4326", always_xy=True)
+            transformer = Transformer.from_crs(project_crs, "epsg:4326", always_xy=True)
             
             with open(output_file_path, 'w', encoding='utf-8-sig', newline='') as csvfile:
                 fieldnames = ["Land", "Bundesland", "Stadt", "Adresse", "Wärmebedarf", "Gebäudetyp", "Subtyp", "WW_Anteil", "Typ_Heizflächen", 
@@ -124,7 +108,7 @@ class ProjectModel:
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter=";")
                 writer.writeheader()
                 
-                for i, feature in enumerate(data['features']):
+                for feature in data['features']:
                     centroid = self.calculate_centroid(feature['geometry']['coordinates'])
                     
                     # Reverse geocode each building individually
@@ -159,9 +143,8 @@ class ProjectModel:
                                 if street_parts:
                                     adresse = " ".join(street_parts)
                                 
-                                print(f"Gebäude {i+1}: {adresse}, {stadt}")
-                        except Exception as e:
-                            print(f"Reverse Geocoding für Gebäude {i+1} fehlgeschlagen: {e}")
+                        except Exception:
+                            pass  # Reverse geocoding failed for this building — skip
                     
                     writer.writerow({
                         "Land": land,
@@ -306,6 +289,17 @@ class ProjectPresenter:
         """
         if self.view:
             self.view.treeView.doubleClicked.connect(self.on_tree_view_double_clicked)
+
+            # Synchronise CRS selector with current project CRS and listen for changes
+            self.view.set_crs(self.folder_manager.project_crs)
+            self.view.crs_combo.currentTextChanged.connect(self._on_crs_combo_changed)
+            self.folder_manager.crs_changed.connect(self.view.set_crs)
+            self.view.suggest_crs_button.clicked.connect(self._suggest_crs)
+
+            # Synchronise calculation year spinbox
+            self.view.year_spinbox.setValue(self.folder_manager.calculation_year)
+            self.view.year_spinbox.valueChanged.connect(self.folder_manager.set_calculation_year)
+
             # Initial update after view is available
             if self.folder_manager.variant_folder:
                 self.on_variant_folder_changed(self.folder_manager.variant_folder)
@@ -319,9 +313,13 @@ class ProjectPresenter:
         :type path: str
         """
         if path:
-            self.model.set_base_path(path)
+            self.model.base_path = path
             if self.view:  # Only update if view exists
                 self.view.update_tree_view(os.path.dirname(path))
+                # Sync year spinbox without triggering save
+                self.view.year_spinbox.blockSignals(True)
+                self.view.year_spinbox.setValue(self.folder_manager.calculation_year)
+                self.view.year_spinbox.blockSignals(False)
         if self.view:  # Only update progress if view exists
             self.update_progress_tracker()
 
@@ -343,15 +341,93 @@ class ProjectPresenter:
         elif file_path.endswith('.csv'):
             self.load_csv(file_path)
 
+    def _on_crs_combo_changed(self, label: str):
+        """Save CRS when the user selects a different entry in the combo box."""
+        # The combo displays labels like "EPSG:25833 – ETRS89 …", extract code prefix
+        code = label.split(" ")[0] if label else ""
+        if code.upper().startswith("EPSG:"):
+            self.folder_manager.set_project_crs(code)
+
+    def _suggest_crs(self):
+        """Auto-detect and suggest CRS based on first building coordinate in CSV."""
+        if not (hasattr(self.model, 'current_file_path') and self.model.current_file_path):
+            return
+        try:
+            headers, data = self.model.load_csv(self.model.current_file_path)
+            utm_x_idx = headers.index("UTM_X") if "UTM_X" in headers else None
+            utm_y_idx = headers.index("UTM_Y") if "UTM_Y" in headers else None
+            if utm_x_idx is None or not data:
+                return
+            x = float(data[0][utm_x_idx])
+            y = float(data[0][utm_y_idx])
+            # Convert from current project CRS to WGS84 for suggestion
+            transformer = Transformer.from_crs(self.folder_manager.project_crs, "epsg:4326", always_xy=True)
+            lon, lat = transformer.transform(x, y)
+            suggested = suggest_crs_from_location(lon, lat)
+            self.folder_manager.set_project_crs(suggested)
+            self.view.set_crs(suggested)
+        except Exception:
+            pass
+
     def import_csv(self):
         """
-        Open file dialog to import existing CSV file.
+        Open a CSV file, show the column-mapping dialog, and load the result.
+
+        If the source CSV already uses the internal column schema (all required
+        columns present with the expected names) it is loaded directly without
+        showing the mapping dialog.  Otherwise the CsvImportDialog is shown so
+        the user can assign source columns to target fields and supply default
+        values for missing ones.
         """
-        """Open CSV file dialog and load selected file."""
-        standard_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("current_building_data_path"))
-        fname, _ = QFileDialog.getOpenFileName(self.view, 'CSV öffnen', standard_path, 'CSV Files (*.csv);;All Files (*)')
-        if fname and fname.strip():  # Check for valid file path
-            self.load_csv(fname)
+        standard_path = os.path.join(
+            self.folder_manager.get_variant_folder(),
+            self.config_manager.get_relative_path("current_building_data_path"),
+        )
+        fname, _ = QFileDialog.getOpenFileName(
+            self.view, "CSV importieren", standard_path, "CSV Files (*.csv);;All Files (*)"
+        )
+        if not fname or not fname.strip():
+            return
+
+        # Check whether the file already matches the internal schema
+        try:
+            import pandas as pd
+            from districtheatingsim.gui.ProjectTab.csv_import_dialog import _detect_delimiter, TARGET_COLUMNS
+            delim = _detect_delimiter(fname)
+            probe = pd.read_csv(fname, delimiter=delim, encoding="utf-8-sig", nrows=0)
+            required_cols = {tc[0] for tc in TARGET_COLUMNS if tc[2]}  # required only
+            if required_cols.issubset(set(probe.columns)):
+                # Already in the right format – load directly
+                self.load_csv(fname)
+                return
+        except Exception:
+            pass  # Fall through to mapping dialog on any error
+
+        # Show column-mapping dialog
+        dialog = CsvImportDialog(fname, parent=self.view)
+        if dialog.exec() != CsvImportDialog.DialogCode.Accepted:
+            return
+
+        df = dialog.get_result()
+        if df is None:
+            return
+
+        # Save the mapped result to the standard project path and load it
+        target_path = os.path.join(
+            self.folder_manager.get_variant_folder(),
+            self.config_manager.get_relative_path("current_building_data_path"),
+        )
+        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+        try:
+            df.to_csv(target_path, sep=";", index=False, encoding="utf-8-sig")
+            self.load_csv(target_path)
+            QMessageBox.information(
+                self.view,
+                "Import erfolgreich",
+                f"{len(df)} Gebäude importiert und gespeichert unter:\n{target_path}",
+            )
+        except Exception as e:
+            QMessageBox.critical(self.view, "Fehler beim Speichern", str(e))
 
     def load_csv(self, file_path):
         """
@@ -453,25 +529,27 @@ class ProjectPresenter:
                         centroid = self.model.calculate_centroid(first_feature['geometry']['coordinates'])
                         if centroid[0] is not None and centroid[1] is not None:
                             sample_coords = centroid
-            except Exception as e:
-                print(f"Konnte keine Beispielkoordinaten extrahieren: {e}")
+            except Exception:
+                pass  # Could not extract sample coordinates — continue without them
             
-            dialog = OSMImportDialog(self.view, sample_utm_coords=sample_coords)
+            dialog = OSMImportDialog(self.view, sample_utm_coords=sample_coords,
+                                     project_crs=self.folder_manager.project_crs)
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 default_values = dialog.get_input_data()
                 standard_output_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("OSM_building_data_path"))
                 output_file_path = standard_output_path
-                
+
                 # Start conversion in thread
                 if hasattr(self, 'geojson_conversion_thread') and self.geojson_conversion_thread.isRunning():
                     self.geojson_conversion_thread.stop()
                     self.geojson_conversion_thread.wait()
-                
+
                 self.geojson_conversion_thread = GeoJSONToCSVThread(
-                    geojson_file_path, 
-                    output_file_path, 
+                    geojson_file_path,
+                    output_file_path,
                     default_values,
-                    self.model
+                    self.model,
+                    project_crs=self.folder_manager.project_crs
                 )
                 self.geojson_conversion_thread.progress_update.connect(self.on_geojson_conversion_progress)
                 self.geojson_conversion_thread.calculation_done.connect(self.on_geojson_conversion_done)
@@ -554,7 +632,7 @@ class ProjectPresenter:
         if hasattr(self, 'geocodingThread') and self.geocodingThread.isRunning():
             self.geocodingThread.terminate()
             self.geocodingThread.wait()
-        self.geocodingThread = GeocodingThread(inputfilename)
+        self.geocodingThread = GeocodingThread(inputfilename, project_crs=self.folder_manager.project_crs)
         self.geocodingThread.calculation_done.connect(self.on_geocode_done)
         self.geocodingThread.calculation_error.connect(self.on_geocode_error)
         self.geocodingThread.start()
@@ -668,8 +746,7 @@ class ProjectPresenter:
             state = metadata.get('state', '')
             return state == 'dimensioned'
             
-        except Exception as e:
-            print(f"Fehler beim Prüfen des Dimensionierungsstatus: {e}")
+        except Exception:
             return False
 
     def update_progress_tracker(self):
@@ -679,7 +756,7 @@ class ProjectPresenter:
         if not self.view:  # Skip if view not available yet
             return
             
-        base_path = self.model.get_base_path()
+        base_path = self.model.base_path
 
         # CSV Status: check first process step (Quartier IST.csv) with detailed analysis
         csv_status = "unbekannt"
@@ -790,11 +867,41 @@ class ProjectTabView(QWidget):
         self.csv_status_label.setStyleSheet("font-weight: bold; color: #757575; background-color: #f5f5f5; padding: 8px; border-radius: 4px; border-left: 4px solid #757575; margin-bottom: 10px;")
         self.leftLayout.addWidget(self.csv_status_label)
 
+        # CRS selector row
+        crs_row = QHBoxLayout()
+        crs_row.addWidget(QLabel("Koordinatensystem (CRS):"))
+        self.crs_combo = QComboBox()
+        self.crs_combo.setMinimumWidth(380)
+        for code, label in COMMON_CRS_OPTIONS:
+            self.crs_combo.addItem(f"{code} – {label.split('–', 1)[-1].strip()}", userData=code)
+        crs_row.addWidget(self.crs_combo)
+        self.suggest_crs_button = QPushButton("Vorschlagen")
+        self.suggest_crs_button.setToolTip("CRS anhand der ersten Gebäudekoordinaten automatisch vorschlagen")
+        crs_row.addWidget(self.suggest_crs_button)
+        crs_row.addStretch()
+        self.leftLayout.addLayout(crs_row)
+
+        # Calculation year row
+        year_row = QHBoxLayout()
+        year_row.addWidget(QLabel("Berechnungsjahr (BDEW/VDI 4655):"))
+        self.year_spinbox = QSpinBox()
+        self.year_spinbox.setRange(2010, 2040)
+        self.year_spinbox.setValue(2023)
+        self.year_spinbox.setFixedWidth(90)
+        self.year_spinbox.setToolTip(
+            "Jahr für die Lastprofilberechnung nach BDEW/VDI 4655.\n"
+            "Beeinflusst die Lage von Wochenenden, Feiertagen und TRY-Wetterdaten."
+        )
+        year_row.addWidget(self.year_spinbox)
+        year_row.addStretch()
+        self.leftLayout.addLayout(year_row)
 
         # Button-Bar für alle Aktionen
         button_layout = QHBoxLayout()
         self.csv_import_button = QPushButton("CSV importieren")
-        self.csv_import_button.setToolTip("Bestehende Gebäude-CSV importieren und ins Projekt kopieren")
+        self.csv_import_button.setToolTip(
+            "CSV in beliebigem Format importieren – Spalten können interaktiv zugeordnet werden"
+        )
         button_layout.addWidget(self.csv_import_button)
 
         self.csv_create_button = QPushButton("CSV erstellen")
@@ -863,6 +970,30 @@ class ProjectTabView(QWidget):
             self.csv_save_button.clicked.connect(lambda: self.presenter.save_csv(show_dialog=True))
             self.csv_from_osm_button.clicked.connect(self.presenter.create_csv_from_geojson)
             self.geocode_button.clicked.connect(self.presenter.geocode_current_csv)
+
+    def set_crs(self, crs: str):
+        """
+        Set the CRS combo box to the given EPSG code (blocks signal to avoid loop).
+
+        :param crs: EPSG code string, e.g. ``"EPSG:25833"``
+        :type crs: str
+        """
+        self.crs_combo.blockSignals(True)
+        # Try to find by userData first, then by display text prefix
+        for i in range(self.crs_combo.count()):
+            if self.crs_combo.itemData(i) == crs:
+                self.crs_combo.setCurrentIndex(i)
+                self.crs_combo.blockSignals(False)
+                return
+        # CRS not in list: add it as a custom entry
+        self.crs_combo.addItem(crs, userData=crs)
+        self.crs_combo.setCurrentIndex(self.crs_combo.count() - 1)
+        self.crs_combo.blockSignals(False)
+
+    def get_crs(self) -> str:
+        """Return the currently selected EPSG code string."""
+        data = self.crs_combo.currentData()
+        return data if data else self.crs_combo.currentText().split(" ")[0]
 
     def update_tree_view(self, path):
         """
@@ -1019,9 +1150,9 @@ class ProjectTabView(QWidget):
         """
         QMessageBox.information(self, title, message)
 
-class ProjectTab(QMainWindow):
+class ProjectTab(QWidget):
     """
-    Main project tab window integrating MVP components.
+    Main project tab widget integrating MVP components.
 
     .. note::
        Central interface for project management with file operations and progress tracking functionality.
@@ -1039,9 +1170,7 @@ class ProjectTab(QMainWindow):
         :param parent: Parent widget.
         :type parent: QWidget
         """
-        super().__init__()
-        self.setWindowTitle("Project Tab Example")
-        self.setGeometry(100, 100, 800, 600)
+        super().__init__(parent)
 
         self.model = ProjectModel()
         self.presenter = ProjectPresenter(self.model, None, folder_manager, data_manager, config_manager)
@@ -1049,4 +1178,6 @@ class ProjectTab(QMainWindow):
         self.presenter.view = self.view
         self.presenter.connect_view_signals()
 
-        self.setCentralWidget(self.view)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.view)

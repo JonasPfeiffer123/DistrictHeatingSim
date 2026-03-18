@@ -26,7 +26,7 @@ class DownloadOSMDataDialog(QDialog):
     """
     Dialog for downloading OSM street data with OSMnx.
     """
-    def __init__(self, base_path, config_manager, parent, parent_pres):
+    def __init__(self, base_path, config_manager, parent, parent_pres, project_crs: str = "EPSG:25833"):
         """
         Initialize OSM data download dialog.
 
@@ -41,11 +41,14 @@ class DownloadOSMDataDialog(QDialog):
         :type parent: QWidget
         :param parent_pres: Parent presenter instance
         :type parent_pres: object
+        :param project_crs: Projected CRS for downloaded data
+        :type project_crs: str
         """
         super().__init__(parent)
         self.base_path = base_path
         self.config_manager = config_manager
         self.parent_pres = parent_pres
+        self.project_crs = project_crs
         self.visualization_tab = None
         self.waiting_for_polygon = False
         self.custom_filter = '["highway"~"primary|secondary|tertiary|residential|living_street|service"]'
@@ -343,7 +346,6 @@ class DownloadOSMDataDialog(QDialog):
                 pass
             
             self.visualization_tab.view.geoJsonReceiver.polygon_ready.connect(self.onPolygonReady)
-            print("DEBUG: polygon_ready signal connected to onPolygonReady")
             
             # Activate polygon capture mode via JavaScript
             js_code = "window.enablePolygonCaptureMode();"
@@ -356,10 +358,8 @@ class DownloadOSMDataDialog(QDialog):
         Updates UI state and notifies the user that the polygon is ready
         and can be edited before starting the download.
         """
-        print("DEBUG: onPolygonReady() called in dialog!")
         
         if not self.waiting_for_polygon:
-            print("DEBUG: Not waiting for polygon, ignoring signal")
             return
         
         # Reset button state
@@ -389,9 +389,9 @@ class DownloadOSMDataDialog(QDialog):
             if geojson_str:
                 try:
                     result['geojson'] = json.loads(geojson_str)
-                except Exception as e:
+                except Exception:
                     pass
-        
+
         # Get polygon from JavaScript
         if hasattr(self.visualization_tab.view, 'web_view'):
             js_code = """
@@ -499,7 +499,6 @@ class DownloadOSMDataDialog(QDialog):
 
         self.tagsLayoutList.append((keyLineEdit, valueLineEdit))
         self.tags_to_download.append((key, value))
-        print(self.tags_to_download)
 
     def removeTagField(self):
         """
@@ -512,7 +511,6 @@ class DownloadOSMDataDialog(QDialog):
             keyLineEdit, valueLineEdit = self.tagsLayoutList.pop()
             self.tags_to_download.pop()
             self.tagsLayout.removeRow(keyLineEdit)
-            print(self.tags_to_download)
 
     def loadAllStandardTags(self):
         """
@@ -546,14 +544,12 @@ class DownloadOSMDataDialog(QDialog):
         Initiates the OpenStreetMap street data download process based on
         selected area type, method, and filter settings.
         """
-        print("DEBUG: startQuery() called")
         filename = self.filenameLineEdit.text()
         
         if not filename:
             QMessageBox.warning(self, "Warnung", "Bitte geben Sie einen Dateinamen an.")
             return
         
-        print(f"DEBUG: Output filename: {filename}")
         
         # Get all GUI values BEFORE starting thread (GUI access not allowed in threads!)
         area_type = self.areaTypeComboBox.currentText()
@@ -566,26 +562,21 @@ class DownloadOSMDataDialog(QDialog):
             'csv_file': self.csvLineEdit.text() if area_type == "Bereich um Gebäude aus CSV" else None,
             'buffer_dist': float(self.bufferLineEdit.text()) if area_type == "Bereich um Gebäude aus CSV" else None,
             'polygon_file': self.polygonLineEdit.text() if area_type == "Polygon aus GeoJSON" else None,
-            'drawn_polygon_file': None
+            'drawn_polygon_file': None,
+            'project_crs': self.project_crs
         }
         
         # Handle drawn polygon - get file path NOW before thread
         if area_type == "Polygon auf Karte zeichnen":
-            print("DEBUG: Getting drawn polygon file before thread start...")
             try:
                 drawn_polygon = self.getCapturedPolygonFromMap()
-                print(f"DEBUG: getCapturedPolygonFromMap returned: {drawn_polygon}")
                 if not drawn_polygon or not os.path.exists(drawn_polygon):
-                    print(f"DEBUG: Polygon file invalid or doesn't exist: {drawn_polygon}")
                     QMessageBox.warning(self, "Warnung", 
                         "Bitte zeichnen Sie zuerst ein Polygon auf der Karte.\n\n" +
                         "Klicken Sie auf 'Polygon auf Karte zeichnen' und zeichnen Sie den gewünschten Bereich.")
                     return
                 area_params['drawn_polygon_file'] = drawn_polygon
-                print(f"DEBUG: Drawn polygon file set: {drawn_polygon}")
             except Exception as e:
-                print(f"DEBUG: Exception in getCapturedPolygonFromMap: {e}")
-                print(traceback.format_exc())
                 QMessageBox.critical(self, "Fehler", f"Fehler beim Abrufen des Polygons:\n{str(e)}")
                 return
         
@@ -619,21 +610,17 @@ class DownloadOSMDataDialog(QDialog):
         self.progress_dialog.canceled.connect(self._onDownloadCanceled)
         
         try:
-            print("DEBUG: Creating OSMnx download thread...")
             
             # Create and start download thread
             self.download_thread = OSMStreetDownloadThread(self._performOSMnxDownload, filename, area_params)
             
             self.download_thread.download_done.connect(self._onDownloadComplete)
             self.download_thread.download_error.connect(self._onDownloadError)
-            print("DEBUG: Starting download thread...")
             self.download_thread.start()
             
             self.progress_dialog.setLabelText("Download läuft... Bitte warten.")
                 
         except Exception as e:
-            print(f"DEBUG: Exception in startQuery: {e}")
-            print(traceback.format_exc())
             self.queryButton.setEnabled(True)
             self.queryButton.setText("Download starten")
             if self.progress_dialog:
@@ -647,7 +634,6 @@ class DownloadOSMDataDialog(QDialog):
         Terminates the download thread and resets UI state when the user
         cancels the download process.
         """
-        print("DEBUG: Download canceled by user")
         if self.download_thread and self.download_thread.isRunning():
             self.download_thread.terminate()
             self.download_thread.wait()
@@ -664,11 +650,9 @@ class DownloadOSMDataDialog(QDialog):
         :param filepath: Path to the downloaded GeoJSON file
         :type filepath: str
         """
-        print(f"DEBUG: Download complete! File: {filepath}")
         
         # Clear drawn polygon from map if it was used
         if hasattr(self, 'last_area_type') and self.last_area_type == "Polygon auf Karte zeichnen":
-            print("DEBUG: Clearing drawn polygon from map")
             self.clearCapturedPolygon()
         
         if self.progress_dialog:
@@ -681,13 +665,11 @@ class DownloadOSMDataDialog(QDialog):
             f"Download abgeschlossen!\n\nDatei gespeichert: {filepath}")
         
         # Add to map
-        print("DEBUG: Adding layer to map")
         self.parent_pres.add_geojson_layer([filepath])
         self.accept()
 
     def _onDownloadError(self, error_message):
         """Handle download error."""
-        print(f"DEBUG: Download error: {error_message}")
         
         if self.progress_dialog:
             self.progress_dialog.close()
@@ -710,14 +692,9 @@ class DownloadOSMDataDialog(QDialog):
         :return: Path to the saved file
         :rtype: str
         """
-        print(f"DEBUG: _performOSMnxDownload started with filename: {filename}")
         try:
-            result = self.downloadWithOSMnx(filename, area_params)
-            print(f"DEBUG: _performOSMnxDownload completed successfully: {result}")
-            return result
-        except Exception as e:
-            print(f"DEBUG: _performOSMnxDownload exception: {e}")
-            print(traceback.format_exc())
+            return self.downloadWithOSMnx(filename, area_params)
+        except Exception:
             raise
 
     def downloadWithOSMnx(self, filename, area_params):
@@ -732,7 +709,6 @@ class DownloadOSMDataDialog(QDialog):
         :param area_params: Dictionary with area type and file paths (no GUI access!)
         :type area_params: dict
         """
-        print("DEBUG: downloadWithOSMnx started")
         import osmnx as ox
         import geopandas as gpd
         from shapely.geometry import box as shp_box
@@ -740,47 +716,36 @@ class DownloadOSMDataDialog(QDialog):
         
         area_type = area_params['area_type']
         custom_filter = area_params['custom_filter']
-        print(f"DEBUG: Area type: {area_type}")
-        print(f"DEBUG: Custom filter: {custom_filter}")
         
         # Get area/polygon based on selection
         if area_type == "Stadt/Ortsname":
             city_name = area_params['city_name']
-            print(f"DEBUG: Downloading for city: {city_name}")
             
-            print("DEBUG: Calling ox.graph_from_place...")
             # Download by place name
             G = ox.graph_from_place(city_name, network_type='all', custom_filter=custom_filter)
-            print(f"DEBUG: Graph downloaded, nodes: {len(G.nodes)}, edges: {len(G.edges)}")
             
         elif area_type == "Bereich um Gebäude aus CSV":
-            print("DEBUG: CSV mode selected")
             csv_file = area_params['csv_file']
             buffer_dist = area_params['buffer_dist']
             
-            print(f"DEBUG: Reading CSV file: {csv_file}")
-            print(f"DEBUG: Buffer distance: {buffer_dist}")
             
             # Read CSV and create buffer
             import pandas as pd
             df = pd.read_csv(csv_file, delimiter=';')
-            print(f"DEBUG: CSV loaded, {len(df)} rows")
             
             if 'UTM_X' not in df.columns or 'UTM_Y' not in df.columns:
                 QMessageBox.warning(self, "Warnung", "CSV muss 'UTM_X' und 'UTM_Y' Spalten enthalten.")
                 return
             
-            print("DEBUG: Creating GeoDataFrame from CSV...")
             # Create GeoDataFrame
+            project_crs = area_params.get('project_crs', 'EPSG:25833')
             geometry = gpd.points_from_xy(df['UTM_X'], df['UTM_Y'])
-            gdf = gpd.GeoDataFrame(df, geometry=geometry, crs='EPSG:25833')
-            
+            gdf = gpd.GeoDataFrame(df, geometry=geometry, crs=project_crs)
+
             # Convert to WGS84 for OSMnx
-            print("DEBUG: Converting to WGS84...")
             gdf_wgs84 = gdf.to_crs('EPSG:4326')
             
             # Create buffer around all points
-            print("DEBUG: Creating buffer polygon...")
             combined = gdf_wgs84.unary_union
             
             # Buffer in degrees (approximate)
@@ -788,66 +753,45 @@ class DownloadOSMDataDialog(QDialog):
             polygon = combined.buffer(buffer_deg)
             
             # Download by polygon
-            print("DEBUG: Calling ox.graph_from_polygon for CSV buffer...")
             G = ox.graph_from_polygon(polygon, network_type='all', custom_filter=custom_filter)
-            print(f"DEBUG: Graph downloaded, nodes: {len(G.nodes)}, edges: {len(G.edges)}")
             
         elif area_type == "Polygon aus GeoJSON":
-            print("DEBUG: GeoJSON polygon mode selected")
             polygon_file = area_params['polygon_file']
             
-            print(f"DEBUG: Reading GeoJSON file: {polygon_file}")
             # Read polygon
             gdf_polygon = gpd.read_file(polygon_file)
-            print(f"DEBUG: GeoJSON loaded, {len(gdf_polygon)} features")
             
             # Ensure WGS84
             if gdf_polygon.crs != 'EPSG:4326':
-                print("DEBUG: Converting GeoJSON to WGS84...")
                 gdf_polygon = gdf_polygon.to_crs('EPSG:4326')
             
-            print("DEBUG: Creating union polygon...")
             polygon = gdf_polygon.unary_union
             
             # Download by polygon
-            print("DEBUG: Calling ox.graph_from_polygon for GeoJSON...")
             G = ox.graph_from_polygon(polygon, network_type='all', custom_filter=custom_filter)
-            print(f"DEBUG: Graph downloaded, nodes: {len(G.nodes)}, edges: {len(G.edges)}")
             
         elif area_type == "Polygon auf Karte zeichnen":
-            print("DEBUG: Drawn polygon mode selected")
             # Get polygon file path from params (already retrieved in main thread)
             polygon_file = area_params['drawn_polygon_file']
             
-            print(f"DEBUG: Reading drawn polygon from: {polygon_file}")
             # Read polygon from temp file
             gdf_polygon = gpd.read_file(polygon_file)
-            print(f"DEBUG: Polygon loaded, {len(gdf_polygon)} features")
             
             if gdf_polygon.crs != 'EPSG:4326':
-                print("DEBUG: Converting polygon to WGS84...")
                 gdf_polygon = gdf_polygon.to_crs('EPSG:4326')
             
-            print("DEBUG: Creating union polygon...")
             polygon = gdf_polygon.unary_union
             
-            print("DEBUG: Calling ox.graph_from_polygon for drawn polygon...")
             G = ox.graph_from_polygon(polygon, network_type='all', custom_filter=custom_filter)
-            print(f"DEBUG: Graph downloaded, nodes: {len(G.nodes)}, edges: {len(G.edges)}")
         
-        print("DEBUG: Converting graph to GeoDataFrame...")
         # Convert to GeoDataFrame
         gdf_edges = ox.graph_to_gdfs(G, nodes=False, edges=True)
-        print(f"DEBUG: GeoDataFrame created, {len(gdf_edges)} edges")
         
-        print("DEBUG: Converting to EPSG:25833...")
-        # Convert to EPSG:25833
-        gdf_edges = gdf_edges.to_crs('EPSG:25833')
+        # Convert to project CRS
+        gdf_edges = gdf_edges.to_crs(area_params.get('project_crs', 'EPSG:25833'))
         
-        print(f"DEBUG: Saving to file: {filename}")
         # Save to file
         gdf_edges.to_file(filename, driver='GeoJSON')
-        print("DEBUG: File saved successfully")
         
         return filename
 
@@ -856,7 +800,8 @@ class OSMBuildingQueryDialog(QDialog):
     """
     Dialog for querying OSM building data with multiple area selection modes.
     """
-    def __init__(self, base_path, config_manager, parent, parent_pres, visualization_tab=None):
+    def __init__(self, base_path, config_manager, parent, parent_pres, visualization_tab=None,
+                 project_crs: str = "EPSG:25833"):
         """
         Initialize OSM building query dialog.
 
@@ -873,12 +818,15 @@ class OSMBuildingQueryDialog(QDialog):
         :type parent_pres: object
         :param visualization_tab: Reference to visualization tab for polygon drawing
         :type visualization_tab: LeafletTab
+        :param project_crs: Projected CRS for downloaded data
+        :type project_crs: str
         """
         super().__init__(parent)
         self.base_path = base_path
         self.config_manager = config_manager
         self.parent_pres = parent_pres
         self.visualization_tab = visualization_tab
+        self.project_crs = project_crs
         self.waiting_for_polygon = False
         self.download_thread = None
         self.progress_dialog = None
@@ -1090,20 +1038,16 @@ class OSMBuildingQueryDialog(QDialog):
         str or None
             Path to temporary GeoJSON file with polygon, or None if no polygon.
         """
-        print("DEBUG: getCapturedPolygonFromMap called")
         result = {'geojson': None}
         
         def handle_result(geojson_str):
-            print(f"DEBUG: JavaScript callback received: {geojson_str[:100] if geojson_str else None}...")
             if geojson_str:
                 try:
                     result['geojson'] = json.loads(geojson_str)
-                    print(f"DEBUG: Successfully parsed GeoJSON")
-                except Exception as e:
-                    print(f"DEBUG: Failed to parse GeoJSON: {e}")
-        
+                except Exception:
+                    pass
+
         if hasattr(self.visualization_tab.view, 'web_view'):
-            print("DEBUG: Executing JavaScript to get polygon...")
             js_code = """
                 (function() {
                     var polygon = window.getCapturedPolygon();
@@ -1112,26 +1056,17 @@ class OSMBuildingQueryDialog(QDialog):
             """
             self.visualization_tab.view.web_view.page().runJavaScript(js_code, handle_result)
             
-            print("DEBUG: Waiting for JavaScript callback...")
             from PyQt6.QtCore import QEventLoop, QTimer
             loop = QEventLoop()
             QTimer.singleShot(100, loop.quit)
             loop.exec()
             
-            print(f"DEBUG: Event loop finished, result: {result}")
             if result['geojson']:
-                print("DEBUG: Writing GeoJSON to temp file...")
                 temp_file = os.path.join(self.base_path, "_temp_building_polygon.geojson")
                 with open(temp_file, 'w', encoding='utf-8') as f:
                     json.dump(result['geojson'], f)
-                print(f"DEBUG: Temp file written: {temp_file}")
                 return temp_file
-            else:
-                print("DEBUG: No GeoJSON data received")
-        else:
-            print("DEBUG: web_view not available")
-        
-        print("DEBUG: Returning None")
+
         return None
 
     def clearCapturedPolygon(self):
@@ -1141,9 +1076,7 @@ class OSMBuildingQueryDialog(QDialog):
 
     def startQuery(self):
         """Start OSM building data query and download."""
-        print("DEBUG: Building startQuery called")
         filename = self.filenameLineEdit.text()
-        print(f"DEBUG: Building filename: {filename}")
         
         if not filename:
             QMessageBox.warning(self, "Warnung", "Bitte geben Sie einen Dateinamen an.")
@@ -1152,33 +1085,27 @@ class OSMBuildingQueryDialog(QDialog):
         # Get all GUI values BEFORE starting thread (GUI access not allowed in threads!)
         area_type = self.areaTypeComboBox.currentText()
         self.last_area_type = area_type  # Store for cleanup in completion handler
-        print(f"DEBUG: Area type: {area_type}")
         
         # Prepare parameters based on area type
         area_params = {
             'area_type': area_type,
             'csv_file': self.csvLineEdit.text() if area_type == "Bereich um Gebäude aus CSV" else None,
             'polygon_file': self.polygonLineEdit.text() if area_type == "Polygon aus GeoJSON" else None,
-            'drawn_polygon_file': None
+            'drawn_polygon_file': None,
+            'project_crs': self.project_crs
         }
         
         # Handle drawn polygon specially - get file path NOW before thread
         if area_type == "Polygon auf Karte zeichnen":
-            print("DEBUG: Getting drawn polygon file before thread start...")
             try:
                 drawn_polygon = self.getCapturedPolygonFromMap()
-                print(f"DEBUG: getCapturedPolygonFromMap returned: {drawn_polygon}")
                 if not drawn_polygon or not os.path.exists(drawn_polygon):
-                    print(f"DEBUG: Polygon file invalid or doesn't exist: {drawn_polygon}")
                     QMessageBox.warning(self, "Warnung", 
                         "Bitte zeichnen Sie zuerst ein Polygon auf der Karte.\n\n" +
                         "Klicken Sie auf 'Neues Polygon zeichnen' und zeichnen Sie den gewünschten Bereich.")
                     return
                 area_params['drawn_polygon_file'] = drawn_polygon
-                print(f"DEBUG: Drawn polygon file set: {drawn_polygon}")
             except Exception as e:
-                print(f"DEBUG: Exception in getCapturedPolygonFromMap: {e}")
-                print(traceback.format_exc())
                 QMessageBox.critical(self, "Fehler", f"Fehler beim Abrufen des Polygons:\n{str(e)}")
                 return
         
@@ -1204,19 +1131,14 @@ class OSMBuildingQueryDialog(QDialog):
         self.downloadButton.setText("Download läuft...")
         
         try:
-            print("DEBUG: Creating building download thread...")
             # Create and start download thread - pass area_params instead of reading GUI in thread
             self.download_thread = OSMBuildingDownloadThread(self._performBuildingDownload, filename, area_params)
             self.download_thread.download_done.connect(self._onDownloadComplete)
             self.download_thread.download_error.connect(self._onDownloadError)
             
-            print("DEBUG: Starting building download thread...")
             self.progress_dialog.setLabelText("Download läuft...")
             self.download_thread.start()
-            print("DEBUG: Building download thread started")
         except Exception as e:
-            print(f"DEBUG: Exception in startQuery: {e}")
-            print(traceback.format_exc())
             if self.progress_dialog:
                 self.progress_dialog.close()
             self.downloadButton.setEnabled(True)
@@ -1230,7 +1152,6 @@ class OSMBuildingQueryDialog(QDialog):
         Terminates the building download thread and resets UI state when
         the user cancels the download via the progress dialog.
         """
-        print("DEBUG: Building download canceled by user")
         if hasattr(self, 'download_thread') and self.download_thread.isRunning():
             self.download_thread.terminate()
             self.download_thread.wait()
@@ -1249,11 +1170,9 @@ class OSMBuildingQueryDialog(QDialog):
         :param building_count: Number of buildings downloaded
         :type building_count: int
         """
-        print(f"DEBUG: Building download complete: {filepath}, {building_count} buildings")
         
         # Clear drawn polygon from map if it was used
         if hasattr(self, 'last_area_type') and self.last_area_type == "Polygon auf Karte zeichnen":
-            print("DEBUG: Clearing drawn polygon from map")
             self.clearCapturedPolygon()
         
         if self.progress_dialog:
@@ -1273,7 +1192,6 @@ class OSMBuildingQueryDialog(QDialog):
 
     def _onDownloadError(self, error_message):
         """Handle download error."""
-        print(f"DEBUG: Building download error: {error_message}")
         if self.progress_dialog:
             self.progress_dialog.close()
             self.progress_dialog = None
@@ -1296,14 +1214,9 @@ class OSMBuildingQueryDialog(QDialog):
         :return: (filepath, building_count)
         :rtype: tuple
         """
-        print("DEBUG: _performBuildingDownload called")
         try:
-            result = self.downloadBuildings(filename, area_params)
-            print(f"DEBUG: _performBuildingDownload success: {result}")
-            return result
-        except Exception as e:
-            print(f"DEBUG: _performBuildingDownload exception: {e}")
-            print(traceback.format_exc())
+            return self.downloadBuildings(filename, area_params)
+        except Exception:
             raise
 
     def downloadBuildings(self, filename, area_params):
@@ -1318,84 +1231,66 @@ class OSMBuildingQueryDialog(QDialog):
         :param area_params: Dictionary with area type and file paths
         :type area_params: dict
         """
-        print("DEBUG: downloadBuildings called")
         import geopandas as gpd
         from shapely.geometry import box as shp_box
         from pyproj import Transformer
         
         area_type = area_params['area_type']
-        print(f"DEBUG: Building area type: {area_type}")
         
         # Get polygon based on selection
         polygon = None
         
         if area_type == "Bereich um Gebäude aus CSV":
-            print("DEBUG: Building CSV mode")
             csv_file = area_params['csv_file']
             
-            print(f"DEBUG: Reading building CSV: {csv_file}")
             # Read CSV with building coordinates
             df = pd.read_csv(csv_file, delimiter=';')
-            print(f"DEBUG: CSV loaded, {len(df)} buildings")
             
             if 'UTM_X' not in df.columns or 'UTM_Y' not in df.columns:
                 QMessageBox.warning(self, "Warnung", "CSV muss 'UTM_X' und 'UTM_Y' Spalten enthalten.")
                 return
             
-            print("DEBUG: Creating building GeoDataFrame...")
             # Create GeoDataFrame with building points
+            project_crs = area_params.get('project_crs', 'EPSG:25833')
             geometry = gpd.points_from_xy(df['UTM_X'], df['UTM_Y'])
-            gdf_buildings = gpd.GeoDataFrame(df, geometry=geometry, crs='EPSG:25833')
-            
+            gdf_buildings = gpd.GeoDataFrame(df, geometry=geometry, crs=project_crs)
+
             # Convert to WGS84
-            print("DEBUG: Converting to WGS84...")
             gdf_wgs84 = gdf_buildings.to_crs('EPSG:4326')
             
             # Create small buffer around points to capture buildings (5m radius)
             # This accounts for coordinate precision and building size
-            print("DEBUG: Creating buffer polygon...")
             buffer_deg = 5.0 / 111000.0  # ~5 meters
             polygon = gdf_wgs84.unary_union.buffer(buffer_deg)
             
         elif area_type == "Polygon aus GeoJSON":
-            print("DEBUG: Building GeoJSON mode")
             polygon_file = area_params['polygon_file']
             
-            print(f"DEBUG: Reading building polygon: {polygon_file}")
             # Read polygon
             gdf_polygon = gpd.read_file(polygon_file)
-            print(f"DEBUG: Polygon loaded, {len(gdf_polygon)} features")
             
             # Ensure WGS84
             if gdf_polygon.crs != 'EPSG:4326':
-                print("DEBUG: Converting polygon to WGS84...")
                 gdf_polygon = gdf_polygon.to_crs('EPSG:4326')
             
             polygon = gdf_polygon.unary_union
             
         elif area_type == "Polygon auf Karte zeichnen":
-            print("DEBUG: Building drawn polygon mode")
             # Get polygon file path from params (already retrieved in main thread)
             polygon_file = area_params['drawn_polygon_file']
             
-            print(f"DEBUG: Reading drawn polygon: {polygon_file}")
             # Read polygon from temp file
             gdf_polygon = gpd.read_file(polygon_file)
-            print(f"DEBUG: Polygon loaded, {len(gdf_polygon)} features")
             
             if gdf_polygon.crs != 'EPSG:4326':
-                print("DEBUG: Converting to WGS84...")
                 gdf_polygon = gdf_polygon.to_crs('EPSG:4326')
             
             polygon = gdf_polygon.unary_union
         
-        print("DEBUG: Getting polygon bounds...")
         # Download buildings using Overpass API
         bounds = polygon.bounds  # (minx, miny, maxx, maxy)
-        print(f"DEBUG: Bounds: {bounds}")
         
         # Build Overpass query for buildings within polygon
-        print("DEBUG: Building Overpass query...")
         query = f"""
         [out:json][timeout:180];
         (
@@ -1407,29 +1302,19 @@ class OSMBuildingQueryDialog(QDialog):
         out skel qt;
         """
         
-        print("DEBUG: Calling Overpass API...")
         # Download data
         geojson_data = download_data(query, element_type="building")
-        print(f"DEBUG: Overpass API returned data")
         
-        print("DEBUG: Converting to GeoDataFrame...")
         # Convert to GeoDataFrame
         gdf = gpd.GeoDataFrame.from_features(geojson_data['features'], crs='EPSG:4326')
-        print(f"DEBUG: GeoDataFrame created, {len(gdf)} buildings")
         
-        print("DEBUG: Filtering buildings within polygon...")
         # Filter to only buildings within the actual polygon (not just bounding box)
         gdf_filtered = gdf[gdf.geometry.intersects(polygon)]
-        print(f"DEBUG: Filtered to {len(gdf_filtered)} buildings")
         
-        print("DEBUG: Converting to ETRS89 (EPSG:25833)...")
-        # Convert to ETRS89 / UTM zone 33N
-        gdf_filtered = gdf_filtered.to_crs('EPSG:25833')
+        # Convert to project CRS
+        gdf_filtered = gdf_filtered.to_crs(area_params.get('project_crs', 'EPSG:25833'))
         
-        print(f"DEBUG: Saving to file: {filename}")
         # Save to file
         gdf_filtered.to_file(filename, driver='GeoJSON')
-        print("DEBUG: File saved successfully")
         
-        print(f"DEBUG: downloadBuildings returning: {filename}, {len(gdf_filtered)} buildings")
         return (filename, len(gdf_filtered))

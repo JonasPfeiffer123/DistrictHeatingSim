@@ -48,10 +48,7 @@ class NetGenerationThread(QThread):
         (OSMnx or traditional MST/Steiner) and emits signals on completion or error.
         """
         try:
-            print("Starting network generation thread...")
-            print(f"Generation mode: {self.inputs['generation_mode']}")
-            print(f"Coordinates: {self.inputs['coordinates']}")
-            
+            project_crs = self.inputs.get("project_crs", "EPSG:25833")
             if self.inputs["generation_mode"] == "OSMnx":
                 # Use OSMnx-based network generation
                 generate_and_export_osmnx_layers(
@@ -60,7 +57,8 @@ class NetGenerationThread(QThread):
                     coordinates=self.inputs["coordinates"],
                     base_path=self.base_path,
                     algorithm=self.inputs["generation_mode"],
-                    custom_filter=self.inputs.get("custom_filter", None)
+                    custom_filter=self.inputs.get("custom_filter", None),
+                    target_crs=project_crs
                 )
             else:
                 # Use traditional MST/Steiner algorithms
@@ -69,13 +67,13 @@ class NetGenerationThread(QThread):
                     data_csv_file_name=self.inputs["dataCsv"],
                     coordinates=self.inputs["coordinates"],
                     base_path=self.base_path,
-                    algorithm=self.inputs["generation_mode"]
+                    algorithm=self.inputs["generation_mode"],
+                    crs=project_crs
                 )
 
             self.calculation_done.emit(())
         except Exception as e:
             error_msg = f"{str(e)}\n{traceback.format_exc()}"
-            print(f"ERROR in network generation: {error_msg}")
             self.calculation_error.emit(Exception(error_msg))
 
     def stop(self):
@@ -240,7 +238,7 @@ class GeocodingThread(QThread):
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(Exception)
 
-    def __init__(self, inputfilename):
+    def __init__(self, inputfilename, project_crs: str = "EPSG:25833"):
         """
         Initialize geocoding thread.
 
@@ -249,20 +247,24 @@ class GeocodingThread(QThread):
 
         :param inputfilename: Input filename for geocoding data
         :type inputfilename: str
+        :param project_crs: Target projected CRS for coordinate output
+        :type project_crs: str
         """
         super().__init__()
         self.inputfilename = inputfilename
+        self.project_crs = project_crs
 
     def run(self):
         """
         Run geocoding process.
-        
-        Processes the geocoding data from the input file and emits the filename
-        on success or an error message on failure.
+
+        Processes the geocoding data from the input file and emits a tuple of
+        (filename, result_summary) on success or an error message on failure.
+        The result_summary dict contains keys: total, success, failed, failed_addresses.
         """
         try:
-            process_data(self.inputfilename)
-            self.calculation_done.emit((self.inputfilename))
+            result = process_data(self.inputfilename, crs=self.project_crs)
+            self.calculation_done.emit((self.inputfilename, result))
         except Exception as e:
             tb = traceback.format_exc()
             error_message = f"Ein Fehler ist aufgetreten: {e}\n{tb}"
@@ -287,13 +289,14 @@ class GeoJSONToCSVThread(QThread):
     calculation_done = pyqtSignal(str)  # output_file_path
     calculation_error = pyqtSignal(str)
     
-    def __init__(self, geojson_file_path, output_file_path, default_values, model):
+    def __init__(self, geojson_file_path, output_file_path, default_values, model,
+                 project_crs: str = "EPSG:25833"):
         """
         Initialize GeoJSON to CSV conversion thread.
-        
+
         Sets up the thread with file paths, default values, and model instance
         for converting GeoJSON building data to CSV with reverse geocoding.
-        
+
         :param geojson_file_path: Input GeoJSON file path
         :type geojson_file_path: str
         :param output_file_path: Output CSV file path
@@ -302,12 +305,15 @@ class GeoJSONToCSVThread(QThread):
         :type default_values: dict
         :param model: Model instance with calculate_centroid method
         :type model: ProjectModel
+        :param project_crs: Projected CRS of the input coordinates
+        :type project_crs: str
         """
         super().__init__()
         self.geojson_file_path = geojson_file_path
         self.output_file_path = output_file_path
         self.default_values = default_values
         self.model = model
+        self.project_crs = project_crs
     
     def run(self):
         """
@@ -330,7 +336,7 @@ class GeoJSONToCSVThread(QThread):
             
             # Initialize geocoder and transformer once
             geolocator = Nominatim(user_agent="DistrictHeatingSim")
-            transformer = Transformer.from_crs("epsg:25833", "epsg:4326", always_xy=True)
+            transformer = Transformer.from_crs(self.project_crs, "epsg:4326", always_xy=True)
             
             with open(self.output_file_path, 'w', encoding='utf-8-sig', newline='') as csvfile:
                 fieldnames = ["Land", "Bundesland", "Stadt", "Adresse", "Wärmebedarf", "Gebäudetyp", "Subtyp", "WW_Anteil", "Typ_Heizflächen", 
@@ -378,9 +384,8 @@ class GeoJSONToCSVThread(QThread):
                                     adresse = " ".join(street_parts)
                                 
                                 self.progress_update.emit(i + 1, total_features, f"Gebäude {i+1}/{total_features}: {adresse}, {stadt}")
-                        except Exception as e:
+                        except Exception:
                             self.progress_update.emit(i + 1, total_features, f"Gebäude {i+1}/{total_features}: Geocoding fehlgeschlagen")
-                            print(f"Reverse Geocoding für Gebäude {i+1} fehlgeschlagen: {e}")
                     else:
                         self.progress_update.emit(i + 1, total_features, f"Gebäude {i+1}/{total_features}: Keine Koordinaten")
                     

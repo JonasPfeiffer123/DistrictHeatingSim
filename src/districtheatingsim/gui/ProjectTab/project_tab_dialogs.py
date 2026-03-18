@@ -60,7 +60,7 @@ class OSMImportDialog(QDialog):
     """
     Dialog for OSM data import with default building parameters.
     """
-    def __init__(self, parent=None, sample_utm_coords=None):
+    def __init__(self, parent=None, sample_utm_coords=None, project_crs: str = "EPSG:25833"):
         """
         Initialize OSM import dialog.
 
@@ -68,12 +68,15 @@ class OSMImportDialog(QDialog):
         :type parent: QWidget
         :param sample_utm_coords: Sample (UTM_X, UTM_Y) coordinates for reverse geocoding.
         :type sample_utm_coords: tuple
+        :param project_crs: Projected CRS of the sample coordinates.
+        :type project_crs: str
         """
         super().__init__(parent)
         self.setWindowTitle("OSM-Daten importieren")
         self.layout = QGridLayout(self)
         self.fields = {}
         self.sample_utm_coords = sample_utm_coords
+        self.project_crs = project_crs
 
         # Define the default values for the fields
         self.default_values = {
@@ -147,8 +150,8 @@ class OSMImportDialog(QDialog):
         try:
             utm_x, utm_y = self.sample_utm_coords
             
-            # Transform UTM to WGS84
-            transformer = Transformer.from_crs("epsg:25833", "epsg:4326", always_xy=True)
+            # Transform project CRS to WGS84
+            transformer = Transformer.from_crs(self.project_crs, "epsg:4326", always_xy=True)
             lon, lat = transformer.transform(utm_x, utm_y)
             
             # Reverse geocode
@@ -180,12 +183,8 @@ class OSMImportDialog(QDialog):
                 if street_parts:
                     self.fields["Adresse"].setText(" ".join(street_parts))
                 
-                print(f"Reverse geocoding erfolgreich: {location.address}")
-            else:
-                print("Keine Adressinformationen gefunden")
-                
-        except Exception as e:
-            print(f"Fehler beim Reverse Geocoding: {e}")
+        except Exception:
+            pass
 
     def get_input_data(self):
         """

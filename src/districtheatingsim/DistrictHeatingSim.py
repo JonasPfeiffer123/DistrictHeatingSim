@@ -70,16 +70,10 @@ def main():
     try:
         import ctypes
         # Set unique application ID for proper Windows taskbar grouping
-        myappid = 'districtheatingsim.main.1.0'  # Unique app identifier
+        myappid = 'districtheatingsim.main.1.0'
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-    except ImportError:
-        # Graceful fallback for non-Windows systems
-        print("Windows-specific taskbar integration not available on this platform.")
-        pass
-    except Exception as e:
-        # Handle any other Windows integration errors
-        print(f"Warning: Could not configure Windows taskbar integration: {e}")
-        pass
+    except (ImportError, Exception):
+        pass  # Non-Windows or unavailable — graceful fallback
 
     # Initialize the core application managers with proper dependency injection
     config_manager = ProjectConfigManager()
@@ -98,15 +92,12 @@ def main():
     view.applyTheme(theme_path)
 
     # Load initial application data for immediate availability
-    presenter.view.updateTemperatureData()
-    presenter.view.updateHeatPumpData()
+    view.updateTemperatureData()
+    view.updateHeatPumpData()
 
     # Configure window display with proper timing to ensure complete initialization
     QTimer.singleShot(0, lambda: view.showMaximized())
     QTimer.singleShot(0, lambda: view.update_project_folder_label(folder_manager.variant_folder))
-
-    # Display the main window and enter the Qt event loop
-    view.show()
     
     # Start the application event loop and handle clean shutdown
     exit_code = app.exec()
