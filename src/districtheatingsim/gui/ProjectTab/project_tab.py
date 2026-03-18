@@ -22,6 +22,7 @@ from pyproj import Transformer
 
 from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, GeoJSONToCSVThread
 from districtheatingsim.gui.ProjectTab.project_tab_dialogs import RowInputDialog, OSMImportDialog, ProcessDetailsDialog
+from districtheatingsim.gui.ProjectTab.csv_import_dialog import CsvImportDialog
 from districtheatingsim.utilities.crs_utils import COMMON_CRS_OPTIONS, suggest_crs_from_location
 
 class ProjectModel:
@@ -370,13 +371,63 @@ class ProjectPresenter:
 
     def import_csv(self):
         """
-        Open file dialog to import existing CSV file.
+        Open a CSV file, show the column-mapping dialog, and load the result.
+
+        If the source CSV already uses the internal column schema (all required
+        columns present with the expected names) it is loaded directly without
+        showing the mapping dialog.  Otherwise the CsvImportDialog is shown so
+        the user can assign source columns to target fields and supply default
+        values for missing ones.
         """
-        """Open CSV file dialog and load selected file."""
-        standard_path = os.path.join(self.folder_manager.get_variant_folder(), self.config_manager.get_relative_path("current_building_data_path"))
-        fname, _ = QFileDialog.getOpenFileName(self.view, 'CSV öffnen', standard_path, 'CSV Files (*.csv);;All Files (*)')
-        if fname and fname.strip():  # Check for valid file path
-            self.load_csv(fname)
+        standard_path = os.path.join(
+            self.folder_manager.get_variant_folder(),
+            self.config_manager.get_relative_path("current_building_data_path"),
+        )
+        fname, _ = QFileDialog.getOpenFileName(
+            self.view, "CSV importieren", standard_path, "CSV Files (*.csv);;All Files (*)"
+        )
+        if not fname or not fname.strip():
+            return
+
+        # Check whether the file already matches the internal schema
+        try:
+            import pandas as pd
+            from districtheatingsim.gui.ProjectTab.csv_import_dialog import _detect_delimiter, TARGET_COLUMNS
+            delim = _detect_delimiter(fname)
+            probe = pd.read_csv(fname, delimiter=delim, encoding="utf-8-sig", nrows=0)
+            required_cols = {tc[0] for tc in TARGET_COLUMNS if tc[2]}  # required only
+            if required_cols.issubset(set(probe.columns)):
+                # Already in the right format – load directly
+                self.load_csv(fname)
+                return
+        except Exception:
+            pass  # Fall through to mapping dialog on any error
+
+        # Show column-mapping dialog
+        dialog = CsvImportDialog(fname, parent=self.view)
+        if dialog.exec() != CsvImportDialog.DialogCode.Accepted:
+            return
+
+        df = dialog.get_result()
+        if df is None:
+            return
+
+        # Save the mapped result to the standard project path and load it
+        target_path = os.path.join(
+            self.folder_manager.get_variant_folder(),
+            self.config_manager.get_relative_path("current_building_data_path"),
+        )
+        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+        try:
+            df.to_csv(target_path, sep=";", index=False, encoding="utf-8-sig")
+            self.load_csv(target_path)
+            QMessageBox.information(
+                self.view,
+                "Import erfolgreich",
+                f"{len(df)} Gebäude importiert und gespeichert unter:\n{target_path}",
+            )
+        except Exception as e:
+            QMessageBox.critical(self.view, "Fehler beim Speichern", str(e))
 
     def load_csv(self, file_path):
         """
@@ -848,7 +899,9 @@ class ProjectTabView(QWidget):
         # Button-Bar für alle Aktionen
         button_layout = QHBoxLayout()
         self.csv_import_button = QPushButton("CSV importieren")
-        self.csv_import_button.setToolTip("Bestehende Gebäude-CSV importieren und ins Projekt kopieren")
+        self.csv_import_button.setToolTip(
+            "CSV in beliebigem Format importieren – Spalten können interaktiv zugeordnet werden"
+        )
         button_layout.addWidget(self.csv_import_button)
 
         self.csv_create_button = QPushButton("CSV erstellen")
