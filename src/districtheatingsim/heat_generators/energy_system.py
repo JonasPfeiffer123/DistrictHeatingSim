@@ -21,6 +21,7 @@ from typing import Dict, Tuple, List, Optional, Union
 from scipy.optimize import minimize as scipy_minimize
 
 from districtheatingsim.heat_generators import *
+from districtheatingsim.heat_generators import TECH_CLASS_BY_TYPE
 from districtheatingsim.gui.EnergySystemTab._10_utilities import CustomJSONEncoder
 import itertools
 from matplotlib import cm
@@ -209,14 +210,16 @@ class EnergySystem:
         # Initialize optimization variables
         self.set_optimization_variables(variables, variables_order)
         
+        # Separate STES from generators before iterating (modifying a list during
+        # iteration skips elements and is undefined behaviour).
+        stes_list = [t for t in self.technologies if isinstance(t, STES)]
+        self.technologies = [t for t in self.technologies if not isinstance(t, STES)]
+        if stes_list:
+            self.storage = stes_list[-1]  # Use last-added STES if multiple were added
+
         for tech in self.technologies:
-            if isinstance(tech, STES):
-                self.storage = tech
-                # remove the storage from the technologies list
-                self.technologies.remove(tech)
-            else:
-                # Initialize each technology
-                tech.init_operation(8760)
+            # Initialize each technology
+            tech.init_operation(8760)
 
         if self.storage:
             self.storage_state = np.zeros(len(self.time_steps))
@@ -328,12 +331,12 @@ class EnergySystem:
         :return: (extracted_data, initial_vars)
         :rtype: tuple
         """
-        # Extract data
+        # Extract data using the explicit get_plot_data() interface instead of dir()
+        # to avoid picking up inherited attributes and internal helpers.
         self.extracted_data = {}
         for tech_class in self.technologies:
-            for var_name in dir(tech_class):
-                var_value = getattr(tech_class, var_name)
-                if isinstance(var_value, (list, np.ndarray)) and len(var_value) == len(self.time_steps):
+            for var_name, var_value in tech_class.get_plot_data().items():
+                if len(var_value) == len(self.time_steps):
                     unique_var_name = f"{tech_class.name}_{var_name}"
                     self.extracted_data[unique_var_name] = var_value
 
@@ -659,13 +662,21 @@ class EnergySystem:
             economic_parameters=economic_parameters
         )
 
-        # Restore technologies
+        # Restore technologies — prefer tech_type (class name) stored since v1.0.2,
+        # fall back to prefix-matching for JSON files written by older versions.
         obj.technologies = []
         for tech_data in data.get('technologies', []):
-            for prefix, tech_class in TECH_CLASS_REGISTRY.items():
-                if tech_data['name'].startswith(prefix):
-                    obj.technologies.append(tech_class.from_dict(tech_data))
-                    break
+            tech_class = TECH_CLASS_BY_TYPE.get(tech_data.get('tech_type'))
+            if tech_class is None:
+                for prefix, cls in TECH_CLASS_REGISTRY.items():
+                    if tech_data['name'].startswith(prefix):
+                        tech_class = cls
+                        break
+            if tech_class is not None:
+                obj.technologies.append(tech_class.from_dict(tech_data))
+            else:
+                logging.warning("Could not restore technology '%s': unknown type '%s'",
+                                tech_data.get('name'), tech_data.get('tech_type'))
 
         # Restore storage
         if data.get('storage'):
@@ -816,7 +827,7 @@ class EnergySystemOptimizer:
                            "technologies with configurable parameters (e.g., capacity, storage volume).")
 
         for restart in range(self.num_restarts):
-            print(f"Starting optimization run {restart + 1}/{self.num_restarts}")
+            logging.info("Starting optimization run %d/%d", restart + 1, self.num_restarts)
 
             # Create fresh copy for this optimization run
             self.energy_system_copy = self.initial_energy_system.copy()
@@ -844,7 +855,7 @@ class EnergySystemOptimizer:
             variables_order = list(variables_mapping.keys())
 
             if not initial_values:
-                print("No optimization parameters found. Skipping optimization.")
+                logging.warning("No optimization parameters found. Skipping optimization.")
                 return self.initial_energy_system
 
             # Generate random initial values within parameter bounds
@@ -853,7 +864,7 @@ class EnergySystemOptimizer:
                 for bound in bounds
             ]
 
-            print(f"Initial values for restart {restart + 1}: {random_initial_values}")
+            logging.debug("Initial values for restart %d: %s", restart + 1, random_initial_values)
 
             def objective_function(variables):
                 """
@@ -882,19 +893,19 @@ class EnergySystemOptimizer:
                         self.weights['specific_emissions_Gesamt'] * results['specific_emissions_Gesamt'] +
                         self.weights['primärenergiefaktor_Gesamt'] * results['primärenergiefaktor_Gesamt']
                     )
-                    
+
                     return weighted_sum
 
                 except Exception as e:
-                    print(f"Error in objective function evaluation: {e}")
+                    logging.debug("Error in objective function evaluation: %s", e)
                     return float('inf')  # Return large value for infeasible solutions
 
             # Perform optimization with SLSQP algorithm
             try:
                 result = scipy_minimize(
-                    objective_function, 
-                    random_initial_values, 
-                    method='SLSQP', 
+                    objective_function,
+                    random_initial_values,
+                    method='SLSQP',
                     bounds=bounds,
                     options={'maxiter': 1000, 'ftol': 1e-6}
                 )
@@ -903,15 +914,15 @@ class EnergySystemOptimizer:
                 if result.success and result.fun < best_objective_value:
                     best_objective_value = result.fun
                     best_solution = result
-                    print(f"New best solution found in restart {restart + 1}: {result.fun:.4f}")
+                    logging.info("New best solution found in restart %d: %.4f", restart + 1, result.fun)
 
             except Exception as e:
-                print(f"Optimization failed in restart {restart + 1}: {e}")
+                logging.warning("Optimization failed in restart %d: %s", restart + 1, e)
                 continue
 
         # Apply best solution if found
         if best_solution is not None:
-            print(f"Optimization completed successfully. Best objective value: {best_objective_value:.4f}")
+            logging.info("Optimization completed. Best objective value: %.4f", best_objective_value)
             
             # Apply optimal parameters to energy system
             for tech in self.energy_system_copy.technologies:
