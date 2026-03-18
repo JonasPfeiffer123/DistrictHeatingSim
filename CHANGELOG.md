@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-03-18
+
+### Added
+- **CSV importer dialog**: load CSVs in any column format, auto-detect delimiter,
+  auto-suggest column mappings via alias table and substring matching, fill missing
+  fields with per-column defaults.
+- **CSV template creation**: one-click generation of a correctly structured template
+  CSV including all optional BDEW columns.
+- **Extended BDEW profile parameters**: optional columns `Heizgrenztemperatur`,
+  `Heizexponent`, and `P_max` in building CSV map directly to pyslpheat BDEW API
+  parameters; missing values fall back to library defaults.
+- **Configurable calculation year**: SpinBox in ProjectTab, persisted in
+  `project_settings.json`; dynamic German national holiday computation for any year
+  via Anonymous Gregorian Easter algorithm replaces hardcoded 2021 holidays.
+- **Configurable projected CRS**: per-project CRS stored in `project_settings.json`
+  and applied consistently across all coordinate transformations.
+- **Multiple energy system configurations per project variant**: each variant can
+  store several named energy system configs; active config tracked in
+  `project_settings.json`.
+- **TRY/COP file portability**: selected files are copied into project-local
+  `Klimadaten/` and `Wärmepumpendaten/` subfolders; relative paths stored in
+  `project_settings.json` so projects remain self-contained across machines.
+- **TRY geographic location display**: `TemperatureDataDialog` shows the station
+  coordinates extracted from the DWD filename pattern (primary) or by converting
+  the file-header `Rechtswert`/`Hochwert` values from EPSG:3034 (Lambert Conformal
+  Conic) to WGS84 (fallback); label updates live as the user browses.
+- **COP Kennfeld visualisation**: `HeatPumpDataDialog` embeds a matplotlib heatmap
+  of the COP matrix with per-cell annotations; updates live on file change.
+
+### Fixed
+- **Geocoding feedback**: `process_data()` now returns a summary dict
+  (`total / success / failed / failed_addresses`); a dialog is shown after
+  geocoding with succeeded and failed address counts.
+- **Nominatim rate limiting**: added delay between requests to prevent HTTP 429
+  errors from the Nominatim geocoding service.
+- **OSM tile layer**: replaced unavailable OSM tile URL with CartoDB Positron to
+  fix 403 errors in Qt WebEngine.
+- **Pump junction assignment**: corrected VL/RL junction assignment in network
+  initialisation.
+- **Two pre-existing simulation errors** in network initialisation resolved.
+- **OSM building import**: coordinates now correctly converted to EPSG:25833;
+  fixed pandas `.at[]` indexing for building data.
+
+### Refactored
+- **CalculationTab** split from a 1865-line God Class into focused sub-widgets.
+- **EnergySystem and heat generator base classes** cleaned up; wild imports removed.
+- **Full GUI debug-print cleanup** across all tabs (comparison, leaflet,
+  net-simulation, energy-system, building, project, dialogs).
+- MVP architecture completed across all tabs.
+
+### Build / Packaging
+- Migrated from `setup.py` + `MANIFEST.in` to `pyproject.toml`
+  (PEP 517/518, setuptools backend).
+- Documentation dependencies moved to `[project.optional-dependencies] docs`;
+  install with `pip install ".[docs]"`.
+- `documentation_requirements.txt`, `RELEASE_CHECKLIST.md`, and `todo.md` removed;
+  tracking moved to GitHub Issues.
+
 ## [1.0.2] - 2026-03-17
 
 ### Changed

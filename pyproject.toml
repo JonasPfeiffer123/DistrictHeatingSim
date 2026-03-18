@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "districtheatingsim"
+version = "1.0.3"
+description = "A simulation tool for district heating systems"
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [{name = "Dipl.-Ing. (FH) Jonas Pfeiffer", email = "jonas.pfeiffer@hszg.de"}]
+maintainers = [{name = "Dipl.-Ing. (FH) Jonas Pfeiffer", email = "jonas.pfeiffer@hszg.de"}]
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+]
+dependencies = [
+    "PyQt6",
+    "PyQt6-WebEngine",
+    "matplotlib",
+    "pandapipes==0.13.0",
+    "pyslpheat @ git+https://github.com/JonasPfeiffer123/pyslpheat.git",
+    "geopandas",
+    "folium",
+    "scipy",
+    "geopy",
+    "overpy",
+    "geojson",
+    "scikit-learn",
+    "requests",
+    "CoolProp",
+    "contextily",
+    "plotly",
+    "seaborn",
+    "osmnx",
+    "networkx",
+    "numpy>=2.2,<2.4",
+    "pyarrow>=17.0.0",
+]
+
+[project.optional-dependencies]
+docs = [
+    "sphinx>=8.0.0",
+    "sphinx-rtd-theme>=2.0.0",
+    "sphinx-design>=0.5.0",
+    "sphinx-copybutton>=0.5.0",
+    "sphinx-tabs>=3.4.0",
+    "myst-parser>=2.0.0",
+    "sphinxcontrib-bibtex>=2.4.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/JonasPfeiffer123/DistrictHeatingSim"
+Documentation = "https://districtheatingsim.readthedocs.io"
+Repository = "https://github.com/JonasPfeiffer123/DistrictHeatingSim"
+Issues = "https://github.com/JonasPfeiffer123/DistrictHeatingSim/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"districtheatingsim" = [
+    "data/**/*",
+    "images/**/*",
+    "leaflet/**/*",
+    "project_data/**/*",
+    "styles/**/*",
+]
