@@ -1,0 +1,6 @@
+{
+    "crs": "EPSG:25833",
+    "active_energy_configs": {
+        "Variante 1": "Gaskessel"
+    }
+}

@@ -26,6 +26,33 @@ from PyQt6.QtGui import QFont
 
 
 
+def _filename_to_config_name(filename: str) -> str:
+    """Convert a JSON filename to a display config name."""
+    if filename == "Ergebnisse.json":
+        return "Standard"
+    return filename[len("Ergebnisse_"):-len(".json")]
+
+
+def _discover_variant_configs(variant_path: str) -> list:
+    """
+    Return list of (config_name, filename) for all energy system configs in a variant.
+
+    :param variant_path: Absolute path to the variant folder.
+    :return: List of (config_name, filename) tuples, Standard first.
+    """
+    ergebnisse_dir = os.path.join(variant_path, "Ergebnisse")
+    configs = []
+    if not os.path.isdir(ergebnisse_dir):
+        return configs
+    files = sorted(os.listdir(ergebnisse_dir))
+    if "Ergebnisse.json" in files:
+        configs.append(("Standard", "Ergebnisse.json"))
+    for f in files:
+        if f.startswith("Ergebnisse_") and f.endswith(".json"):
+            configs.append((_filename_to_config_name(f), f))
+    return configs
+
+
 class ProjectExplorer(QWidget):
     """
     Project explorer for automatic variant discovery and selection.
@@ -135,28 +162,51 @@ class ProjectExplorer(QWidget):
 
     def discover_projects(self):
         """
-        Discover and populate project variants.
-        
-        Scans parent directory for variant folders and validates them.
+        Discover variants and their energy system configs; build two-level tree.
+
+        Top level: variant folders (``Variante *``).
+        Children: each ``Ergebnisse*.json`` config inside that variant.
         """
         self.project_tree.clear()
         try:
             if not self.base_path or not os.path.exists(self.base_path):
                 self.info_label.setText("Projekt-Datenordner nicht gefunden")
                 return
-            # Use parent directory of base_path to find all variants
             parent_dir = os.path.dirname(self.base_path)
-            variants = [d for d in os.listdir(parent_dir) if os.path.isdir(os.path.join(parent_dir, d)) and d.startswith("Variante")]
-            # Add all valid variants as top-level items
+            variant_names = sorted(
+                d for d in os.listdir(parent_dir)
+                if os.path.isdir(os.path.join(parent_dir, d)) and d.startswith("Variante")
+            )
             variant_count = 0
-            for variant_name in variants:
+            for variant_name in variant_names:
                 variant_path = os.path.join(parent_dir, variant_name)
-                if self.validate_variant(variant_path):
-                    variant_item = QTreeWidgetItem([variant_name])
-                    variant_item.setCheckState(0, Qt.CheckState.Checked)
-                    variant_item.setData(0, Qt.ItemDataRole.UserRole, variant_path)
-                    self.project_tree.addTopLevelItem(variant_item)
-                    variant_count += 1
+                if not self.validate_variant(variant_path):
+                    continue
+                configs = _discover_variant_configs(variant_path)
+                if not configs:
+                    continue
+
+                # Top-level variant item (no UserRole data — not a selectable leaf)
+                variant_item = QTreeWidgetItem([variant_name])
+                variant_item.setCheckState(0, Qt.CheckState.Checked)
+                self.project_tree.addTopLevelItem(variant_item)
+
+                for config_name, config_file in configs:
+                    display = config_name
+                    child = QTreeWidgetItem([display])
+                    child.setCheckState(0, Qt.CheckState.Checked)
+                    child.setData(0, Qt.ItemDataRole.UserRole, {
+                        'variant_path': variant_path,
+                        'variant_name': variant_name,
+                        'config_name': config_name,
+                        'config_file': config_file,
+                        'display_name': f"{variant_name} · {config_name}",
+                    })
+                    variant_item.addChild(child)
+
+                variant_item.setExpanded(True)
+                variant_count += 1
+
             if variant_count == 0:
                 self.info_label.setText("Keine gültigen Varianten gefunden")
             else:
@@ -165,61 +215,63 @@ class ProjectExplorer(QWidget):
         except Exception as e:
             QMessageBox.warning(self, "Fehler", f"Fehler beim Laden der Projekte: {str(e)}")
 
-    # No longer needed, replaced by set_base_path
-            
     def validate_variant(self, variant_path):
         """
-        Validate if variant contains required data files.
-        
+        Validate that a variant has at least one energy system result file.
+
         :param variant_path: Path to variant folder
         :type variant_path: str
-        :return: True if all required files exist
+        :return: True if the variant is usable for comparison
         :rtype: bool
         """
-        required_files = [
-            os.path.join("Ergebnisse", "Ergebnisse.json"),
-            os.path.join("Lastgang", "Lastgang.csv"),
-            os.path.join("Wärmenetz", "Konfiguration Netzinitialisierung.json")
-        ]
-        return all(os.path.exists(os.path.join(variant_path, file)) for file in required_files)
-        
+        ergebnisse_dir = os.path.join(variant_path, "Ergebnisse")
+        has_results = (
+            os.path.isdir(ergebnisse_dir) and
+            any(
+                f.startswith("Ergebnisse") and f.endswith(".json")
+                for f in os.listdir(ergebnisse_dir)
+            )
+        )
+        return has_results
+
     def on_selection_changed(self, item, column):
         """
-        Handle variant selection changes in tree widget.
-        
+        Handle selection changes; propagate variant-level toggles to all child configs.
+
         :param item: Changed tree item
         :type item: QTreeWidgetItem
-        :param column: Column index
+        :param column: Column index (unused)
         :type column: int
         """
-        if item.data(0, Qt.ItemDataRole.UserRole):  # Only for variant items
-            self.update_selected_variants()
-            
+        self.project_tree.blockSignals(True)
+        if item.parent() is None:
+            # Variant-level: propagate state to all config children
+            state = item.checkState(0)
+            for i in range(item.childCount()):
+                item.child(i).setCheckState(0, state)
+        self.project_tree.blockSignals(False)
+        self.update_selected_variants()
+
     def update_selected_variants(self):
         """
-        Update list of selected variants and emit signal.
-        
-        Collects all checked variants and emits variants_changed signal.
+        Collect all checked leaf (config) items and emit variants_changed signal.
         """
         self.selected_variants = []
         for i in range(self.project_tree.topLevelItemCount()):
             variant_item = self.project_tree.topLevelItem(i)
-            if variant_item.checkState(0) == Qt.CheckState.Checked:
-                variant_path = variant_item.data(0, Qt.ItemDataRole.UserRole)
-                variant_name = variant_item.text(0)
-                self.selected_variants.append({
-                    'name': variant_name,
-                    'path': variant_path
-                })
-        # Update info label
+            for j in range(variant_item.childCount()):
+                config_item = variant_item.child(j)
+                if config_item.checkState(0) == Qt.CheckState.Checked:
+                    self.selected_variants.append(
+                        config_item.data(0, Qt.ItemDataRole.UserRole)
+                    )
         count = len(self.selected_variants)
         if count == 0:
-            self.info_label.setText("Keine Varianten ausgewählt")
+            self.info_label.setText("Keine Konfigurationen ausgewählt")
         elif count == 1:
-            self.info_label.setText("1 Variante ausgewählt")
+            self.info_label.setText("1 Konfiguration ausgewählt")
         else:
-            self.info_label.setText(f"{count} Varianten ausgewählt")
-        # Emit signal
+            self.info_label.setText(f"{count} Konfigurationen ausgewählt")
         self.variants_changed.emit(self.selected_variants)
 
 class ComparisonDashboard(QWidget):
@@ -884,42 +936,46 @@ class ComparisonTab(QWidget):
         
     def load_variant_data(self, selected_variants):
         """
-        Load data for selected variants.
-        
-        :param selected_variants: List of selected variant info dicts
+        Load data for selected (variant, config) combinations.
+
+        Network KPIs are cached per variant path since they are shared across configs.
+
+        :param selected_variants: List of item data dicts from ProjectExplorer
         :type selected_variants: list
         """
         self.variant_data = []
-        
-        for variant_info in selected_variants:
+        network_cache: dict = {}
+
+        for item in selected_variants:
             try:
-                variant_path = variant_info['path']
-                variant_name = variant_info['name']
-                
-                # Load results.json
-                results_path = os.path.join(variant_path, "Ergebnisse", "Ergebnisse.json")
+                variant_path = item['variant_path']
+                variant_name = item['variant_name']
+                config_name = item['config_name']
+                config_file = item['config_file']
+                display_name = item['display_name']
+
+                results_path = os.path.join(variant_path, "Ergebnisse", config_file)
                 with open(results_path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                    
-                # Extract results section
+
                 results = data.get('results', {})
-                
-                # Process data for comparison
                 processed_data = self.process_variant_results(results)
-                processed_data['name'] = variant_name
+                processed_data['name'] = display_name
+                processed_data['variant_name'] = variant_name
+                processed_data['config_name'] = config_name
                 processed_data['path'] = variant_path
-                
-                # Load additional network data
-                network_data = self.load_network_data(variant_path)
-                processed_data.update(network_data)
-                
+
+                # Network KPIs: load once per variant, share across configs
+                if variant_path not in network_cache:
+                    network_cache[variant_path] = self.load_network_data(variant_path)
+                processed_data.update(network_cache[variant_path])
+
                 self.variant_data.append(processed_data)
-                
+
             except Exception as e:
-                QMessageBox.warning(self, "Ladenfehler", 
-                                   f"Fehler beim Laden von {variant_name}:\n{str(e)}")
-                
-        # Update dashboard
+                QMessageBox.warning(self, "Ladefehler",
+                                    f"Fehler beim Laden von '{item.get('display_name', '?')}':\n{str(e)}")
+
         self.dashboard.update_dashboard(self.variant_data)
         
     def load_network_data(self, variant_path):
