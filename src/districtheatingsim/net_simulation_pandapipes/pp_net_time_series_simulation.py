@@ -378,16 +378,16 @@ def thermohydraulic_time_series_net(NetworkGenerationData) -> Any:
         print("Update Return Temperature Const Control")
         update_heat_consumer_return_temperature_controller(NetworkGenerationData.net, NetworkGenerationData.return_temperature_heat_consumer, time_steps, NetworkGenerationData.start_time_step, NetworkGenerationData.end_time_step)
 
-    # Update supply temperature controller if dynamic
-    if NetworkGenerationData.supply_temperature_heat_generator is not None and isinstance(NetworkGenerationData.supply_temperature_heat_generator, np.ndarray):
-        update_heat_generator_supply_temperature_controller(NetworkGenerationData.net, NetworkGenerationData.supply_temperature_heat_generator, time_steps, NetworkGenerationData.start_time_step, NetworkGenerationData.end_time_step)
-    
-    if NetworkGenerationData.supply_temperature_control == "Statisch":
-        # Erstelle Array für statische Temperatur
-        static_temp_array = np.full(len(time_steps), NetworkGenerationData.supply_temperature_heat_generator)
-        update_heat_generator_supply_temperature_controller(NetworkGenerationData.net, 
-                                            static_temp_array, 
-                                            time_steps, NetworkGenerationData.start_time_step, NetworkGenerationData.end_time_step)
+    # Always update supply temperature controller so its DFData covers all time_steps.
+    # update_heat_generator_supply_temperature_controller handles both scalars and arrays.
+    if NetworkGenerationData.supply_temperature_heat_generator is not None:
+        update_heat_generator_supply_temperature_controller(
+            NetworkGenerationData.net,
+            NetworkGenerationData.supply_temperature_heat_generator,
+            time_steps,
+            NetworkGenerationData.start_time_step,
+            NetworkGenerationData.end_time_step,
+        )
 
     # Configure logging and run simulation
     log_variables = create_log_variables(NetworkGenerationData.net)

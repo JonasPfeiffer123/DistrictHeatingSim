@@ -11,11 +11,13 @@ This module implements the Model layer of the MVP pattern, providing three core 
 
 import os
 import json
+import shutil
 from typing import Dict, List, Optional, Any
 
 from PyQt6.QtCore import QObject, pyqtSignal
 
 from districtheatingsim.utilities.utilities import get_resource_path
+from districtheatingsim.utilities.crs_utils import DEFAULT_CRS
         
 class ProjectConfigManager:
     """
@@ -78,8 +80,7 @@ class ProjectConfigManager:
             try:
                 with open(self.config_path, 'r', encoding='utf-8') as file:
                     return json.load(file)
-            except (json.JSONDecodeError, UnicodeDecodeError) as e:
-                print(f"Error loading configuration: {e}")
+            except (json.JSONDecodeError, UnicodeDecodeError):
                 return {}
         return {}
 
@@ -94,8 +95,7 @@ class ProjectConfigManager:
             try:
                 with open(self.file_paths_path, 'r', encoding='utf-8') as file:
                     return json.load(file)
-            except (json.JSONDecodeError, UnicodeDecodeError) as e:
-                print(f"Error loading file paths: {e}")
+            except (json.JSONDecodeError, UnicodeDecodeError):
                 return {}
         return {}
 
@@ -110,8 +110,7 @@ class ProjectConfigManager:
         try:
             with open(self.config_path, 'w', encoding='utf-8') as file:
                 json.dump(config, file, indent=4, ensure_ascii=False)
-        except Exception as e:
-            print(f"Error saving configuration: {e}")
+        except Exception:
             raise
 
     def save_file_paths(self, file_paths: Dict[str, str]) -> None:
@@ -125,8 +124,7 @@ class ProjectConfigManager:
         try:
             with open(self.file_paths_path, 'w', encoding='utf-8') as file:
                 json.dump(file_paths, file, indent=4, ensure_ascii=False)
-        except Exception as e:
-            print(f"Error saving file paths: {e}")
+        except Exception:
             raise
 
     def get_last_project(self) -> str:
@@ -222,59 +220,6 @@ class DataManager:
         self.try_filename = None
         self.cop_filename = None
 
-    def add_data(self, data: Any) -> None:
-        """
-        Add data to the map data collection.
-
-        :param data: Data to be added to the map data collection
-        :type data: any
-        """
-        self.map_data.append(data)
-
-    def get_map_data(self) -> List[Any]:
-        """
-        Get the complete map data collection.
-
-        :return: List of all map data entries
-        :rtype: list
-        """
-        return self.map_data
-    
-    def set_try_filename(self, filename: str) -> None:
-        """
-        Set the Test Reference Year (TRY) weather data filename.
-
-        :param filename: Name of the TRY weather data file
-        :type filename: str
-        """
-        self.try_filename = filename
-
-    def get_try_filename(self) -> Optional[str]:
-        """
-        Get the currently selected TRY weather data filename.
-
-        :return: TRY weather data filename or None if not set
-        :rtype: str or None
-        """
-        return self.try_filename
-
-    def set_cop_filename(self, filename: str) -> None:
-        """
-        Set the Coefficient of Performance (COP) data filename for heat pumps.
-
-        :param filename: Name of the COP data file
-        :type filename: str
-        """
-        self.cop_filename = filename
-
-    def get_cop_filename(self) -> Optional[str]:
-        """
-        Get the currently selected COP data filename.
-
-        :return: COP data filename or None if not set
-        :rtype: str or None
-        """
-        return self.cop_filename
 
 class ProjectFolderManager(QObject):
     """
@@ -290,6 +235,7 @@ class ProjectFolderManager(QObject):
     """
 
     project_folder_changed = pyqtSignal(str)
+    crs_changed = pyqtSignal(str)  # Emitted when project CRS changes
 
     def __init__(self, config_manager: Optional[ProjectConfigManager] = None):
         """
@@ -298,13 +244,25 @@ class ProjectFolderManager(QObject):
         :param config_manager: Configuration manager instance (creates new if None)
         :type config_manager: ProjectConfigManager
         """
-    def __init__(self, config_manager: Optional[ProjectConfigManager] = None):
         super(ProjectFolderManager, self).__init__()
         self.config_manager = config_manager or ProjectConfigManager()
 
         # Do not set project_folder or variant_folder until a project is selected or loaded
         self.project_folder = None
         self.variant_folder = None
+
+        # Projected CRS used for all geospatial operations in this project
+        self.project_crs: str = DEFAULT_CRS
+
+        # Year used for heat-demand profile calculations (BDEW / VDI 4655)
+        self.calculation_year: int = 2023
+
+        # Active energy system config per variant folder (relative variant name → config name)
+        self.active_energy_configs: Dict[str, str] = {}
+
+        # Persisted climate / heat-pump data file paths (None = not yet configured)
+        self.try_filename: Optional[str] = None
+        self.cop_filename: Optional[str] = None
 
         # Do not emit initial folder change signal; will be emitted after project selection
 
@@ -315,11 +273,8 @@ class ProjectFolderManager(QObject):
         Creates default "Variante 1" if no variant folder exists.
         """
         if self.project_folder and self.variant_folder and os.path.exists(self.variant_folder):
-            print(f"Initial variant folder set to: {self.variant_folder}")
             self.project_folder_changed.emit(self.variant_folder)
         elif self.project_folder:
-            # Create default variant if none exists
-            print("No variant folder found, setting default variant")
             self.variant_folder = os.path.join(self.project_folder, "Variante 1")
             self.project_folder_changed.emit(self.variant_folder)
 
@@ -339,7 +294,10 @@ class ProjectFolderManager(QObject):
         # Validate and set variant folder
         if not self.variant_folder or not os.path.exists(self.variant_folder):
             self.variant_folder = os.path.join(self.project_folder, "Variante 1")
-        
+
+        # Load per-project settings (CRS, …)
+        self.load_project_settings()
+
         self.emit_project_and_variant_folder()
 
     def set_variant_folder(self, variant_name: str) -> None:
@@ -362,6 +320,202 @@ class ProjectFolderManager(QObject):
         :rtype: str
         """
         return self.variant_folder if self.variant_folder else self.project_folder
+
+    def _settings_path(self) -> Optional[str]:
+        """Return path to ``project_settings.json`` for the current project, or None."""
+        if self.project_folder:
+            return os.path.join(self.project_folder, "project_settings.json")
+        return None
+
+    def _resolve_data_file(self, stored: Optional[str]) -> Optional[str]:
+        """
+        Resolve a stored (relative or absolute) data file path to an absolute path.
+
+        Relative paths are resolved against the project folder so that projects
+        remain portable across machines.
+
+        :param stored: Stored path value from ``project_settings.json``
+        :type stored: str or None
+        :return: Absolute path if the file exists, else None
+        :rtype: str or None
+        """
+        if not stored:
+            return None
+        if os.path.isabs(stored):
+            return stored if os.path.isfile(stored) else None
+        if self.project_folder:
+            absolute = os.path.join(self.project_folder, stored)
+            return absolute if os.path.isfile(absolute) else None
+        return None
+
+    def load_project_settings(self) -> None:
+        """Load per-project settings (CRS, active energy configs, TRY/COP paths) from ``project_settings.json``."""
+        path = self._settings_path()
+        if path and os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                self.project_crs = data.get("crs", DEFAULT_CRS)
+                self.calculation_year = int(data.get("calculation_year", 2023))
+                self.active_energy_configs = data.get("active_energy_configs", {})
+                # Resolve stored paths: prefer project-relative, fall back to absolute
+                self.try_filename = self._resolve_data_file(data.get("try_filename"))
+                self.cop_filename = self._resolve_data_file(data.get("cop_filename"))
+            except (json.JSONDecodeError, OSError):
+                self.project_crs = DEFAULT_CRS
+                self.calculation_year = 2023
+                self.active_energy_configs = {}
+                self.try_filename = None
+                self.cop_filename = None
+        else:
+            self.project_crs = DEFAULT_CRS
+            self.calculation_year = 2023
+            self.active_energy_configs = {}
+            self.try_filename = None
+            self.cop_filename = None
+
+    def _to_relative_path(self, absolute: Optional[str]) -> Optional[str]:
+        """
+        Convert an absolute path to a project-relative path for storage.
+
+        If the file is inside the project folder the stored value will be a
+        relative path (e.g. ``"Klimadaten/TRY2015_xxx.dat"``).  Files outside
+        the project folder fall back to the absolute path.
+
+        :param absolute: Absolute file path to convert
+        :type absolute: str or None
+        :return: Relative or absolute path suitable for ``project_settings.json``
+        :rtype: str or None
+        """
+        if not absolute or not self.project_folder:
+            return absolute
+        try:
+            return os.path.relpath(absolute, self.project_folder)
+        except ValueError:
+            # relpath can fail across Windows drives
+            return absolute
+
+    def save_project_settings(self) -> None:
+        """Persist per-project settings to ``project_settings.json``."""
+        path = self._settings_path()
+        if path:
+            try:
+                data = {
+                    "crs": self.project_crs,
+                    "calculation_year": self.calculation_year,
+                    "active_energy_configs": self.active_energy_configs,
+                    "try_filename": self._to_relative_path(self.try_filename),
+                    "cop_filename": self._to_relative_path(self.cop_filename),
+                }
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=4, ensure_ascii=False)
+            except OSError:
+                pass
+
+    def get_active_energy_config(self, variant_folder: str) -> str:
+        """
+        Return the active energy system config name for a variant folder.
+
+        :param variant_folder: Absolute path to the variant folder.
+        :type variant_folder: str
+        :return: Config name (e.g. ``"Standard"`` or ``"Solar+BHKW"``).
+        :rtype: str
+        """
+        key = os.path.basename(variant_folder)
+        return self.active_energy_configs.get(key, "Standard")
+
+    def set_active_energy_config(self, variant_folder: str, config_name: str) -> None:
+        """
+        Persist the active energy system config name for a variant folder.
+
+        :param variant_folder: Absolute path to the variant folder.
+        :type variant_folder: str
+        :param config_name: Config name to store.
+        :type config_name: str
+        """
+        key = os.path.basename(variant_folder)
+        self.active_energy_configs[key] = config_name
+        self.save_project_settings()
+
+    def set_project_crs(self, crs: str) -> None:
+        """
+        Set the projected CRS for this project and persist it.
+
+        :param crs: EPSG code string, e.g. ``"EPSG:25833"``
+        :type crs: str
+        """
+        self.project_crs = crs
+        self.save_project_settings()
+        self.crs_changed.emit(crs)
+
+    def set_calculation_year(self, year: int) -> None:
+        """
+        Set the heat-demand profile calculation year and persist it.
+
+        :param year: Four-digit year (e.g. 2023) used for BDEW/VDI 4655 profiles.
+        :type year: int
+        """
+        self.calculation_year = int(year)
+        self.save_project_settings()
+
+    def _copy_data_file_to_project(self, src: str, subfolder: str) -> str:
+        """
+        Copy a data file into a subfolder of the project folder.
+
+        If the file is already inside the project folder it is not copied again.
+        The destination directory is created if necessary.
+
+        :param src: Absolute source path of the data file.
+        :type src: str
+        :param subfolder: Target subfolder name inside the project folder.
+        :type subfolder: str
+        :return: Absolute path to the file in the project folder.
+        :rtype: str
+        """
+        if not self.project_folder or not src or not os.path.isfile(src):
+            return src
+        dest_dir = os.path.join(self.project_folder, subfolder)
+        dest = os.path.join(dest_dir, os.path.basename(src))
+        # Skip copy if file is already inside the project folder
+        try:
+            if os.path.commonpath([os.path.abspath(src), os.path.abspath(self.project_folder)]) == os.path.abspath(self.project_folder):
+                return src
+        except ValueError:
+            pass  # Happens on different Windows drives — proceed with copy
+        os.makedirs(dest_dir, exist_ok=True)
+        if not os.path.exists(dest):
+            shutil.copy2(src, dest)
+        return dest
+
+    def set_try_filename(self, path: Optional[str]) -> None:
+        """
+        Copy the selected TRY file into the project folder and persist the path.
+
+        The file is copied to ``<project>/Klimadaten/`` so the project stays
+        self-contained and portable across machines.
+
+        :param path: Absolute path to the TRY ``.dat`` file, or None to clear.
+        :type path: str or None
+        """
+        if path:
+            path = self._copy_data_file_to_project(path, "Klimadaten")
+        self.try_filename = path
+        self.save_project_settings()
+
+    def set_cop_filename(self, path: Optional[str]) -> None:
+        """
+        Copy the selected COP data file into the project folder and persist the path.
+
+        The file is copied to ``<project>/Wärmepumpendaten/`` so the project stays
+        self-contained and portable across machines.
+
+        :param path: Absolute path to the COP data file, or None to clear.
+        :type path: str or None
+        """
+        if path:
+            path = self._copy_data_file_to_project(path, "Wärmepumpendaten")
+        self.cop_filename = path
+        self.save_project_settings()
 
     def load_last_project(self) -> None:
         """

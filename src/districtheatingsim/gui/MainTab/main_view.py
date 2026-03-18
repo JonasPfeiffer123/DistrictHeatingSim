@@ -62,7 +62,7 @@ class HeatSystemDesignGUI(QMainWindow):
         super().__init__()
         
         # MVP pattern: Initially no presenter until explicitly set
-        self.presenter: None
+        self.presenter = None
         
         # Store manager references for later use
         self.folder_manager = folder_manager
@@ -171,23 +171,17 @@ class HeatSystemDesignGUI(QMainWindow):
             self.folderLabel = QLabel("Kein Projektordner ausgewählt")
             self.layout1.addWidget(self.folderLabel)
 
-            # Ensure dialogs are properly initialized
-            self.temperatureDataDialog = TemperatureDataDialog(self)
-            self.heatPumpDataDialog = HeatPumpDataDialog(self)
-
             # Connect model signals to view updates for reactive interface
             # Disconnect first to avoid duplicate connections
             try:
                 self.folder_manager.project_folder_changed.disconnect(self.update_project_folder_label)
-                self.presenter.folder_manager.project_folder_changed.disconnect(self.updateTemperatureData)
-                self.presenter.folder_manager.project_folder_changed.disconnect(self.updateHeatPumpData)
-            except:
+                self.presenter.folder_manager.project_folder_changed.disconnect(self.restoreDataFilesFromProject)
+            except TypeError:
                 pass  # Connections might not exist yet
-            
+
             # Connect signals
             self.folder_manager.project_folder_changed.connect(self.update_project_folder_label)
-            self.presenter.folder_manager.project_folder_changed.connect(self.updateTemperatureData)
-            self.presenter.folder_manager.project_folder_changed.connect(self.updateHeatPumpData)
+            self.presenter.folder_manager.project_folder_changed.connect(self.restoreDataFilesFromProject)
 
     def show_welcome_screen(self) -> None:
         """
@@ -271,9 +265,7 @@ class HeatSystemDesignGUI(QMainWindow):
         try:
             # Call the existing method that handles project opening with all the proper logic
             self.on_open_existing_project(project_path)
-        except Exception as e:
-            print(f"Warning: Could not load project from {project_path}: {e}")
-            # Fallback: just show the main interface
+        except Exception:
             pass
 
     def on_new_project_requested(self):
@@ -287,9 +279,7 @@ class HeatSystemDesignGUI(QMainWindow):
         # Use the existing new project functionality
         try:
             self.on_create_new_project()
-        except Exception as e:
-            print(f"Warning: Could not create new project: {e}")
-            # Fallback: just show the main interface
+        except Exception:
             pass
 
     def show_save_dialog(self, title: str, info_text: str, accept_text: str) -> str:
@@ -399,73 +389,55 @@ class HeatSystemDesignGUI(QMainWindow):
             self.main_theme_toggle.setChecked(self.current_theme_is_dark)
             self.main_theme_toggle.toggled.connect(self.on_main_theme_toggle)
 
-    def apply_theme(self):
-        """Apply the current theme to both welcome screen and main interface."""
+    def _read_stylesheet(self, theme_path: str) -> Optional[str]:
+        """Read a stylesheet file and return its content, or None on failure."""
         try:
-            # Get the current theme from utilities
+            if os.path.exists(theme_path):
+                with open(theme_path, 'r', encoding='utf-8') as f:
+                    return f.read()
+        except Exception:
+            pass
+        return None
+
+    def apply_theme(self):
+        """Apply the time-based default theme to the entire application."""
+        try:
             from districtheatingsim.utilities.utilities import get_stylesheet_based_on_time
             theme_path = get_stylesheet_based_on_time()
-            
-            # Update our theme state tracking
             self.current_theme_is_dark = 'dark' in theme_path.lower()
-            
-            # Apply theme to the main application
-            if os.path.exists(theme_path):
-                with open(theme_path, 'r', encoding='utf-8') as file:
-                    theme_content = file.read()
-                    self.setStyleSheet(theme_content)
-                    
-                    # Also apply to welcome screen if it exists
-                    if self.welcome_screen:
-                        self.welcome_screen.setStyleSheet(theme_content)
-                        
-            # Sync toggle states
+            content = self._read_stylesheet(theme_path)
+            if content:
+                self.setStyleSheet(content)
+                if self.welcome_screen:
+                    self.welcome_screen.setStyleSheet(content)
             self.sync_theme_toggle_state()
-        except Exception as e:
-            print(f"Warning: Could not apply theme: {e}")
+        except Exception:
+            pass
 
     def apply_current_theme_to_welcome_screen(self):
         """Apply the current application theme to the welcome screen."""
         if not self.welcome_screen:
             return
-            
         try:
-            # Get the current theme from utilities (same logic as main app startup)
             from districtheatingsim.utilities.utilities import get_stylesheet_based_on_time
-            theme_path = get_stylesheet_based_on_time()
-            
-            # Apply theme to welcome screen
-            if os.path.exists(theme_path):
-                with open(theme_path, 'r', encoding='utf-8') as file:
-                    self.welcome_screen.setStyleSheet(file.read())
-        except Exception as e:
-            print(f"Warning: Could not apply current theme to welcome screen: {e}")
+            content = self._read_stylesheet(get_stylesheet_based_on_time())
+            if content:
+                self.welcome_screen.setStyleSheet(content)
+        except Exception:
+            pass
 
     def sync_theme_toggle_state(self):
         """Synchronize the theme toggle switch with the current theme."""        
         try:
-            # First try to use our tracked theme state
-            is_dark_theme = self.current_theme_is_dark
-            
-            # If we don't have tracked state, determine from utilities as fallback
-            if not hasattr(self, 'current_theme_is_dark'):
-                from districtheatingsim.utilities.utilities import get_stylesheet_based_on_time
-                theme_path = get_stylesheet_based_on_time()
-                is_dark_theme = 'dark' in theme_path.lower()
-                self.current_theme_is_dark = is_dark_theme
-            
-            # Set welcome screen toggle state without triggering signals
+            is_dark = self.current_theme_is_dark
             if self.welcome_screen:
-                self.welcome_screen.set_current_theme(is_dark_theme)
-                
-            # Set main interface toggle state without triggering signals
+                self.welcome_screen.set_current_theme(is_dark)
             if hasattr(self, 'main_theme_toggle') and self.main_theme_toggle:
                 self.main_theme_toggle.toggled.disconnect(self.on_main_theme_toggle)
-                self.main_theme_toggle.setChecked(is_dark_theme)
+                self.main_theme_toggle.setChecked(is_dark)
                 self.main_theme_toggle.toggled.connect(self.on_main_theme_toggle)
-                
-        except Exception as e:
-            print(f"Warning: Could not sync theme toggle state: {e}")
+        except Exception:
+            pass
 
     def initMenuBar(self) -> None:
         """
@@ -621,39 +593,28 @@ class HeatSystemDesignGUI(QMainWindow):
             icon = QIcon(logo_path)
             if not icon.isNull():
                 self.setWindowIcon(icon)
-                print(f"Logo erfolgreich geladen: {logo_path}")
                 return
-            else:
-                print(f"Logo konnte nicht geladen werden: {logo_path}")
-                
-        except Exception as e:
-            print(f"Fehler beim Laden des Logos: {e}")
+        except Exception:
+            pass
             
         # Comprehensive fallback mechanism for logo discovery
         try:
+            base = os.path.dirname(__file__)
             fallback_paths = [
-                'images/logo.png',
-                'images\\logo.png',
                 os.path.join('images', 'logo.png'),
-                os.path.join(os.path.dirname(__file__), 'images', 'logo.png'),
-                os.path.join(os.path.dirname(__file__), '..', 'images', 'logo.png'),
-                os.path.join(os.path.dirname(__file__), '..', '..', 'images', 'logo.png')
+                os.path.join(base, 'images', 'logo.png'),
+                os.path.join(base, '..', 'images', 'logo.png'),
+                os.path.join(base, '..', '..', 'images', 'logo.png'),
             ]
             
-            # Try each fallback path sequentially
             for path in fallback_paths:
                 if os.path.exists(path):
                     icon = QIcon(path)
                     if not icon.isNull():
                         self.setWindowIcon(icon)
-                        print(f"Logo erfolgreich geladen (Fallback): {path}")
                         return
-                        
-            # Final fallback - no logo available
-            print("Kein Logo gefunden - verwende Standard-Icon")
-            
-        except Exception as fallback_error:
-            print(f"Auch Fallback-Logo konnte nicht geladen werden: {fallback_error}")
+        except Exception:
+            pass
 
     @pyqtSlot(str)
     def update_project_folder_label(self, base_path: str) -> None:
@@ -688,7 +649,6 @@ class HeatSystemDesignGUI(QMainWindow):
 
     def show_message(self, title: str, message: str) -> None:
         """Show a success/info message dialog."""
-        from PyQt6.QtWidgets import QMessageBox
         QMessageBox.information(self, title, message)
 
     # Project Management Methods
@@ -1078,8 +1038,6 @@ class HeatSystemDesignGUI(QMainWindow):
                 # Silently continue if energy system data loading fails
                 pass
                 
-            print("Auto-load completed: Available results loaded successfully.")
-            
             # Show temporary success message that disappears after 1 second
             self.show_temporary_success_message("Projektdaten wurden erfolgreich geladen.")
             
@@ -1168,17 +1126,11 @@ class HeatSystemDesignGUI(QMainWindow):
             qss_path = self.presenter.config_manager.get_resource_path(theme_path)
             
             # Validate theme file existence
-            if os.path.exists(qss_path):
-                # Load and apply stylesheet
-                with open(qss_path, 'r', encoding='utf-8') as file:
-                    theme_content = file.read()
-                    self.setStyleSheet(theme_content)
-                    
-                    # Also apply to welcome screen if it exists
-                    if self.welcome_screen:
-                        self.welcome_screen.setStyleSheet(theme_content)
-                        
-                print(f"Theme erfolgreich angewendet: {qss_path}")
+            content = self._read_stylesheet(qss_path)
+            if content:
+                self.setStyleSheet(content)
+                if self.welcome_screen:
+                    self.welcome_screen.setStyleSheet(content)
             else:
                 self.show_error_message(f"Stylesheet {qss_path} nicht gefunden.")
                 
@@ -1208,51 +1160,51 @@ class HeatSystemDesignGUI(QMainWindow):
         if self.heatPumpDataDialog.exec():
             self.updateHeatPumpData()
 
+    def restoreDataFilesFromProject(self) -> None:
+        """
+        Restore TRY and COP filenames from the loaded project settings.
+
+        Called whenever the project/variant folder changes. If the project has
+        previously saved paths, they are written back to the data manager and
+        shown in the selection dialogs. The dialog defaults remain as fallback
+        when no project-level path is stored.
+        """
+        fm = self.presenter.folder_manager
+
+        if fm.try_filename:
+            self.data_manager.try_filename = fm.try_filename
+            self.temperatureDataDialog.temperatureDataFileInput.setText(fm.try_filename)
+
+        if fm.cop_filename:
+            self.data_manager.cop_filename = fm.cop_filename
+            self.heatPumpDataDialog.heatPumpDataFileInput.setText(fm.cop_filename)
+
     def updateTemperatureData(self) -> None:
         """
-        Update system temperature data based on user selection.
-
-        Retrieves TRY filename from dialog and updates data manager.
+        Persist the TRY file selected in the dialog to both the data manager and
+        the project settings so it is restored on next project open.
         """
         try:
-            # Retrieve temperature data selection from dialog
             TRY = self.temperatureDataDialog.getValues()
-            
-            # Update central data manager with selected temperature data
-            self.data_manager.set_try_filename(TRY['TRY-filename'])
-            
-            print(f"Temperaturdaten aktualisiert: {TRY['TRY-filename']}")
-            
+            path = TRY['TRY-filename']
+            self.data_manager.try_filename = path
+            self.presenter.folder_manager.set_try_filename(path)
         except Exception as e:
             self.show_error_message(f"Fehler beim Aktualisieren der Temperaturdaten: {str(e)}")
 
     def updateHeatPumpData(self) -> None:
         """
-        Update system heat pump performance data based on user selection.
-
-        Retrieves COP filename from dialog and updates data manager.
+        Persist the COP file selected in the dialog to both the data manager and
+        the project settings so it is restored on next project open.
         """
         try:
-            # Retrieve heat pump performance data selection from dialog
             COP = self.heatPumpDataDialog.getValues()
-            
-            # Update central data manager with selected performance data
-            self.data_manager.set_cop_filename(COP['COP-filename'])
-            
-            print(f"Wärmepumpendaten aktualisiert: {COP['COP-filename']}")
-            
+            path = COP['COP-filename']
+            self.data_manager.cop_filename = path
+            self.presenter.folder_manager.set_cop_filename(path)
         except Exception as e:
             self.show_error_message(f"Fehler beim Aktualisieren der Wärmepumpendaten: {str(e)}")
 
-
-    def show_info_message(self, message: str) -> None:
-        """
-        Display informational message dialog.
-
-        :param message: Informational text to display
-        :type message: str
-        """
-        QMessageBox.information(self, "Info", message)
 
     def closeEvent(self, event):
         """

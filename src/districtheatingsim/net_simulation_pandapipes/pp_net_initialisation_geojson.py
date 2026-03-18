@@ -17,6 +17,8 @@ It automatically processes building heat demands, calculates temperature require
 creates appropriate network topologies with proper controller configurations.
 """
 
+import logging
+import warnings
 import numpy as np
 import geopandas as gpd
 import pandapipes as pp
@@ -376,29 +378,58 @@ def create_network(gdf_dict: Dict[str, gpd.GeoDataFrame], consumer_dict: Dict[st
                                   to_junction=junction_dict[coords[1]], loss_coefficient=0, 
                                   qext_w=q, treturn_k=t, name=f"{name_prefix} {i}")
 
-    def create_circulation_pump_pressure(net_i: pp.pandapipesNet, all_coords: List[List[Tuple]], 
-                                       junction_dict: Dict[Tuple, int], name_prefix: str) -> None:
-        """Create pressure-controlled circulation pumps."""
+    def _resolve_pump_junctions(coords, jd_vl, jd_rl):
+        """Return (return_junction_idx, flow_junction_idx) for a generator connection line.
+
+        A generator-connection line has one endpoint on the Vorlauf (supply) network
+        and one on the Rücklauf (return) network.  We look up each coordinate in both
+        dicts so the assignment is correct regardless of the line's digitisation direction.
+
+        :param coords: [coord0, coord1] of the generator-connection line.
+        :param jd_vl: Junction dict for the Vorlauf (flow/supply) network.
+        :param jd_rl: Junction dict for the Rücklauf (return) network.
+        :returns: (return_junction_idx, flow_junction_idx)
+        :raises KeyError: if neither coordinate can be found in the expected dicts.
+        """
+        if coords[0] in jd_vl:
+            return jd_rl[coords[1]], jd_vl[coords[0]]   # return=RL end, flow=VL end
+        elif coords[1] in jd_vl:
+            return jd_rl[coords[0]], jd_vl[coords[1]]   # return=RL end, flow=VL end
+        else:
+            # Fallback – merged dict, original (possibly wrong) order
+            logging.warning("Could not determine VL/RL side for generator connection; "
+                            "using original coord order (may cause pump-direction warning)")
+            merged = {**jd_vl, **jd_rl}
+            return merged[coords[1]], merged[coords[0]]
+
+    def create_circulation_pump_pressure(net_i: pp.pandapipesNet, all_coords: List[List[Tuple]],
+                                        jd_vl: Dict[Tuple, int], jd_rl: Dict[Tuple, int],
+                                        name_prefix: str) -> None:
+        """Create pressure-controlled circulation pumps with correct VL/RL junction assignment."""
         for i, coords in enumerate(all_coords, start=0):
-            pp.create_circ_pump_const_pressure(net_i, junction_dict[coords[1]], junction_dict[coords[0]],
-                                             p_flow_bar=flow_pressure_pump, plift_bar=lift_pressure_pump,
-                                             t_flow_k=supply_temperature_k, type="auto",
-                                             name=f"{name_prefix} {i}")
-            
-    def create_circulation_pump_mass_flow(net_i: pp.pandapipesNet, all_coords: List[List[Tuple]], 
-                                        junction_dict: Dict[Tuple, int], name_prefix: str, 
-                                        mass_flows: List[float]) -> None:
-        """Create mass flow-controlled circulation pumps."""
+            return_junc, flow_junc = _resolve_pump_junctions(coords, jd_vl, jd_rl)
+            pp.create_circ_pump_const_pressure(net_i, return_junc, flow_junc,
+                                               p_flow_bar=flow_pressure_pump,
+                                               plift_bar=lift_pressure_pump,
+                                               t_flow_k=supply_temperature_k, type="auto",
+                                               name=f"{name_prefix} {i}")
+
+    def create_circulation_pump_mass_flow(net_i: pp.pandapipesNet, all_coords: List[List[Tuple]],
+                                         jd_vl: Dict[Tuple, int], jd_rl: Dict[Tuple, int],
+                                         name_prefix: str, mass_flows: List[float]) -> None:
+        """Create mass-flow-controlled circulation pumps with correct VL/RL junction assignment."""
         for i, (coords, mass_flow) in enumerate(zip(all_coords, mass_flows), start=0):
+            return_junc, flow_junc = _resolve_pump_junctions(coords, jd_vl, jd_rl)
             mid_coord = ((coords[0][0] + coords[1][0]) / 2, (coords[0][1] + coords[1][1]) / 2)
-            mid_junction_idx = pp.create_junction(net_i, pn_bar=1.05, tfluid_k=supply_temperature_k, 
-                                                name=f"Junction {name_prefix}", geodata=mid_coord)
-            pp.create_circ_pump_const_mass_flow(net_i, junction_dict[coords[1]], mid_junction_idx,
-                                              p_flow_bar=flow_pressure_pump, mdot_flow_kg_per_s=mass_flow,
-                                              t_flow_k=supply_temperature_k, type="auto",
-                                              name=f"{name_prefix} {i}", in_service=True)
-            pp.create_flow_control(net, mid_junction_idx, junction_dict[coords[0]], 
-                                 controlled_mdot_kg_per_s=mass_flow)
+            mid_junction_idx = pp.create_junction(net_i, pn_bar=1.05, tfluid_k=supply_temperature_k,
+                                                  name=f"Junction {name_prefix}", geodata=mid_coord)
+            pp.create_circ_pump_const_mass_flow(net_i, return_junc, mid_junction_idx,
+                                                p_flow_bar=flow_pressure_pump,
+                                                mdot_flow_kg_per_s=mass_flow,
+                                                t_flow_k=supply_temperature_k, type="auto",
+                                                name=f"{name_prefix} {i}", in_service=True)
+            pp.create_flow_control(net_i, mid_junction_idx, flow_junc,
+                                   controlled_mdot_kg_per_s=mass_flow)
 
     # Create network topology
     junction_dict_vl = create_junctions_from_coords(net, get_all_point_coords_from_line_cords(
@@ -420,27 +451,36 @@ def create_network(gdf_dict: Dict[str, gpd.GeoDataFrame], consumer_dict: Dict[st
     all_heat_producer_coords, all_heat_producer_lengths = get_line_coords_and_lengths(gdf_heat_producer)
     if all_heat_producer_coords:
         # Main producer (pressure controlled)
-        create_circulation_pump_pressure(net, [all_heat_producer_coords[main_producer_location_index]], 
-                                       {**junction_dict_vl, **junction_dict_rl}, "heat source")
+        create_circulation_pump_pressure(net, [all_heat_producer_coords[main_producer_location_index]],
+                                        junction_dict_vl, junction_dict_rl, "heat source")
 
         # Secondary producers (mass flow controlled)
         if secondary_producers:
             mass_flows = [producer.mass_flow for producer in secondary_producers]
             secondary_coords = [all_heat_producer_coords[producer.index] for producer in secondary_producers]
-            create_circulation_pump_mass_flow(net, secondary_coords, {**junction_dict_vl, **junction_dict_rl}, 
-                                            "heat source slave", mass_flows)
+            create_circulation_pump_mass_flow(net, secondary_coords, junction_dict_vl, junction_dict_rl,
+                                             "heat source slave", mass_flows)
 
     print(f"secondary_producers: {secondary_producers}")
 
-    # Intial flow simulation
-    pp.pipeflow(net, mode="bidirectional", iter=100)
+    # Initial flow simulation – catch the pump-direction UserWarning so that
+    # correct_flow_directions() below can fix the topology.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        try:
+            pp.pipeflow(net, mode="bidirectional", iter=100)
+        except UserWarning as e:
+            logging.warning(f"Initial pipeflow UserWarning (will be corrected): {e}")
 
     # Network optimization
     net = create_controllers(net, qext_w, supply_temperature, min_supply_temperature_heat_consumer, 
                            return_temperature_heat_consumer, secondary_producers)
     
-    run_control(net, mode="bidirectional",iter=100)
-    
+    try:
+        run_control(net, mode="bidirectional", iter=100)
+    except UserWarning as e:
+        logging.warning(f"run_control UserWarning (will be corrected by correct_flow_directions): {e}")
+
     net = correct_flow_directions(net)
     net = init_diameter_types(net, v_max_pipe=v_max_pipe, material_filter=material_filter, k=k_mm)
 

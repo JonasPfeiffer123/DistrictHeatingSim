@@ -22,7 +22,7 @@ Complete guide for creating a standalone Windows executable for DistrictHeatingS
 - **Python 3.11.9** (IMPORTANT: Not Python 3.12 or Conda base environment!)
 - **PyInstaller 6.5.0+** (installed in Python 3.11.9 environment)
 - **Windows 10/11** (64-bit)
-- **All project dependencies** from `requirements.txt`
+- **All project dependencies** declared in `pyproject.toml`
 
 ### Why Python 3.11.9?
 
@@ -54,7 +54,7 @@ python -c "import sys; print(sys.executable)"
 
 ```powershell
 # Install all project dependencies
-python -m pip install -r requirements.txt
+pip install .
 
 # Install PyInstaller (if not already installed)
 python -m pip install pyinstaller>=6.5.0

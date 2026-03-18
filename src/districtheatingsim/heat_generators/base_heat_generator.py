@@ -7,6 +7,7 @@ Abstract base classes for heat generation technologies.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+import logging
 import numpy as np
 from typing import Dict, Any, List, Union, Optional
 import copy
@@ -47,27 +48,59 @@ class BaseHeatGenerator:
         """
         return annuity(*args, **kwargs)
     
-    def calculate(self, economic_parameters: Dict[str, Any], duration: float, 
-                 general_results: Dict[str, Any], **kwargs) -> Dict[str, Any]:
+    def generate(self, t: int, **kwargs) -> tuple:
         """
-        Core calculation method for heat generator operation (abstract).
+        Generate heat for a single time step (used in storage-coupled dispatch).
+
+        :param t: Time step index
+        :type t: int
+        :param kwargs: Technology-specific context (remaining_load, VLT_L, RLT_L, etc.)
+        :return: (heat_output_kW, electricity_output_kW)
+        :rtype: tuple
+
+        :raises NotImplementedError: Must be implemented by derived classes that support STES coupling.
+        """
+        raise NotImplementedError("generate() must be implemented for STES-coupled dispatch.")
+
+    def calculate(self, economic_parameters: Dict[str, Any], duration: float,
+                 load_profile, **kwargs) -> Dict[str, Any]:
+        """
+        Full-profile calculation including economic and environmental analysis (abstract).
 
         :param economic_parameters: Economic parameters (electricity_price, gas_price, etc.)
         :type economic_parameters: dict
         :param duration: Time step duration [hours]
         :type duration: float
-        :param general_results: System results (heat_demand, temperatures, etc.)
-        :type general_results: dict
+        :param load_profile: Remaining heat demand profile [kW]
+        :type load_profile: numpy.ndarray
         :param kwargs: Technology-specific parameters
-        :return: Results dict with heat_output, fuel_input, operational_cost, etc.
+        :return: Results dict with Wärmemenge, WGK, spec_co2_total, etc.
         :rtype: dict
 
-        :raises NotImplementedError: Must be implemented by derived classes
-
-        .. note::
-           Derived classes must implement technology-specific calculations.
+        :raises NotImplementedError: Must be implemented by derived classes.
         """
         raise NotImplementedError("The method 'calculate' must be implemented in the derived class.")
+
+    def load_economic_parameters(self, economic_parameters: Dict[str, Any]) -> None:
+        """
+        Extract and store common economic parameters from the shared parameters dict.
+
+        :param economic_parameters: Dict with keys electricity_price, gas_price, wood_price,
+            capital_interest_rate, inflation_rate, time_period, subsidy_eligibility, hourly_rate.
+        :type economic_parameters: dict
+
+        .. note::
+           Call this at the start of calculate_heat_generation_cost() in each subclass
+           instead of repeating the same 7-8 assignment lines.
+        """
+        self.Strompreis = economic_parameters['electricity_price']
+        self.Gaspreis = economic_parameters['gas_price']
+        self.Holzpreis = economic_parameters['wood_price']
+        self.q = economic_parameters['capital_interest_rate']
+        self.r = economic_parameters['inflation_rate']
+        self.T = economic_parameters['time_period']
+        self.BEW = economic_parameters['subsidy_eligibility']
+        self.stundensatz = economic_parameters['hourly_rate']
 
     def set_parameters(self, variables: List[float], variables_order: List[str], idx: int) -> None:
         """
@@ -119,7 +152,7 @@ class BaseHeatGenerator:
         ]
 
         if not relevant_vars:
-            print(f"No relevant variables found for {self.name}.")
+            logging.debug("No relevant variables found for %s.", self.name)
             return
 
         # Update parameters with optimized values
@@ -128,7 +161,7 @@ class BaseHeatGenerator:
             param_name = var.rsplit("_", 1)[0]
             if param_name in self.__dict__:
                 setattr(self, param_name, value)
-                print(f"Set {param_name} for {self.name} to {value}")
+                logging.debug("Set %s for %s to %s", param_name, self.name, value)
 
     def get_plot_data(self) -> Dict[str, Union[List, np.ndarray]]:
         """
@@ -155,10 +188,13 @@ class BaseHeatGenerator:
         """
         # Create copy of object dictionary
         data = self.__dict__.copy()
-        
+
+        # Store class name for reliable deserialization (avoids fragile prefix-matching)
+        data['tech_type'] = type(self).__name__
+
         # Remove non-serializable attributes
         data.pop('scene_item', None)  # GUI elements
-        
+
         # Convert numpy arrays to lists for JSON compatibility
         for key, value in data.items():
             if isinstance(value, np.ndarray):

@@ -36,6 +36,11 @@ NetSimulationTab package
    :show-inheritance:
    :undoc-members:
 
+.. automodule:: districtheatingsim.gui.NetSimulationTab.network_plot_widget
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 .. automodule:: districtheatingsim.gui.NetSimulationTab.timeseries_dialog
    :members:
    :show-inheritance:

@@ -11,7 +11,9 @@ import traceback
 import numpy as np
 import os
 
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QProgressBar, QTabWidget, QMessageBox, QMenuBar, QScrollArea, QDialog)
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QProgressBar, QTabWidget,
+                             QMessageBox, QMenuBar, QScrollArea, QDialog, QLabel,
+                             QComboBox, QPushButton, QInputDialog)
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import pyqtSignal, QEventLoop
 
@@ -26,6 +28,23 @@ from districtheatingsim.gui.EnergySystemTab._07_results_tab import ResultsTab
 from districtheatingsim.gui.EnergySystemTab._08_sensitivity_tab import SensitivityTab
 from districtheatingsim.gui.EnergySystemTab._09_sankey_dialog import SankeyDialog
 from districtheatingsim.heat_generators.energy_system import EnergySystem
+
+
+def _config_name_to_filename(config_name: str) -> str:
+    """Convert a display config name to the corresponding JSON filename."""
+    if config_name == "Standard":
+        return "Ergebnisse.json"
+    safe = config_name.replace("/", "-").replace("\\", "-").replace(":", "-")
+    return f"Ergebnisse_{safe}.json"
+
+
+def _filename_to_config_name(filename: str) -> str:
+    """Convert a JSON filename back to a display config name."""
+    if filename == "Ergebnisse.json":
+        return "Standard"
+    # Strip "Ergebnisse_" prefix and ".json" suffix
+    return filename[len("Ergebnisse_"):-len(".json")]
+
 
 class EnergySystemTab(QWidget):
     """
@@ -54,7 +73,8 @@ class EnergySystemTab(QWidget):
         self.config_manager = config_manager
         self.parent_object = parent
         self.results = {}
-        
+        self._active_config_name = "Standard"
+
         self.initDialogs()
         self.setupParameters()
         self.initUI()
@@ -71,12 +91,13 @@ class EnergySystemTab(QWidget):
 
     def updateDefaultPath(self, new_base_path):
         """
-        Update project default path.
+        Update project default path and refresh the config selector.
 
-        :param new_base_path: New base path for the project.
+        :param new_base_path: New base path for the project (variant folder).
         :type new_base_path: str
         """
         self.base_path = new_base_path
+        self._refresh_config_combo()
 
     def initUI(self):
         """
@@ -84,6 +105,7 @@ class EnergySystemTab(QWidget):
         """
         self.createMainScrollArea()
         self.createMenu()
+        self.createConfigBar()
         self.createTabs()
         self.createProgressBar()
         self.setLayout(self.createMainLayout())
@@ -114,6 +136,11 @@ class EnergySystemTab(QWidget):
         loadJSONAction = QAction('Ergebnisse aus JSON laden', self)
         loadJSONAction.triggered.connect(self.load_results_JSON)
         fileMenu.addAction(loadJSONAction)
+
+        fileMenu.addSeparator()
+        exportCSVAction = QAction('Ergebnisse als CSV exportieren...', self)
+        exportCSVAction.triggered.connect(self.save_heat_generation_results_to_csv)
+        fileMenu.addAction(exportCSVAction)
 
         # 'Einstellungen'-Menü
         settingsMenu = self.menuBar.addMenu('Einstellungen')
@@ -182,6 +209,37 @@ class EnergySystemTab(QWidget):
         self.progressBar = QProgressBar(self)
         self.mainLayout.addWidget(self.progressBar)
 
+    def createConfigBar(self):
+        """Create the energy config selector bar (ComboBox + action buttons)."""
+        self.configBar = QWidget()
+        bar_layout = QHBoxLayout(self.configBar)
+        bar_layout.setContentsMargins(4, 2, 4, 2)
+
+        bar_layout.addWidget(QLabel("Erzeugerkonfiguration:"))
+
+        self.configCombo = QComboBox()
+        self.configCombo.setMinimumWidth(200)
+        self.configCombo.setToolTip("Aktive Erzeugerkonfiguration auswählen")
+        self.configCombo.currentIndexChanged.connect(self._on_config_selected)
+        bar_layout.addWidget(self.configCombo)
+
+        btn_new = QPushButton("Neu")
+        btn_new.setToolTip("Neue leere Konfiguration anlegen")
+        btn_new.clicked.connect(self._new_config_action)
+        bar_layout.addWidget(btn_new)
+
+        btn_save_as = QPushButton("Speichern als...")
+        btn_save_as.setToolTip("Aktuelle Konfiguration unter neuem Namen speichern")
+        btn_save_as.clicked.connect(self._save_as_config_action)
+        bar_layout.addWidget(btn_save_as)
+
+        btn_delete = QPushButton("Löschen")
+        btn_delete.setToolTip("Aktuelle Konfiguration löschen")
+        btn_delete.clicked.connect(self._delete_config_action)
+        bar_layout.addWidget(btn_delete)
+
+        bar_layout.addStretch()
+
     def createMainLayout(self):
         """
         Create main layout for the tab.
@@ -191,10 +249,166 @@ class EnergySystemTab(QWidget):
         """
         layout = QVBoxLayout(self)
         layout.addWidget(self.menuBar)
+        layout.addWidget(self.configBar)
         layout.addWidget(self.mainScrollArea)
         return layout
 
-    ### Input Economic Parameters ###
+    # ── Config management ────────────────────────────────────────────────────
+
+    def _ergebnisse_dir(self) -> str:
+        """Return the Ergebnisse subfolder for the current variant."""
+        return os.path.join(self.base_path, "Ergebnisse") if self.base_path else ""
+
+    def _discover_configs(self) -> list:
+        """
+        Scan the Ergebnisse folder and return (display_name, filename) pairs.
+
+        ``Ergebnisse.json`` always appears first as ``"Standard"``.
+        """
+        ergebnisse_dir = self._ergebnisse_dir()
+        configs = []
+        if os.path.isdir(ergebnisse_dir):
+            files = sorted(os.listdir(ergebnisse_dir))
+            if "Ergebnisse.json" in files:
+                configs.append(("Standard", "Ergebnisse.json"))
+            for f in files:
+                if f.startswith("Ergebnisse_") and f.endswith(".json"):
+                    configs.append((_filename_to_config_name(f), f))
+        if not configs:
+            configs = [("Standard", "Ergebnisse.json")]
+        return configs
+
+    def _refresh_config_combo(self):
+        """Repopulate the config ComboBox; restore saved active selection."""
+        self.configCombo.blockSignals(True)
+        self.configCombo.clear()
+        configs = self._discover_configs()
+        for name, _ in configs:
+            self.configCombo.addItem(name)
+
+        # Restore the saved active config for this variant
+        saved = self.folder_manager.get_active_energy_config(self.base_path) if self.base_path else "Standard"
+        idx = self.configCombo.findText(saved)
+        if idx >= 0:
+            self.configCombo.setCurrentIndex(idx)
+            self._active_config_name = saved
+        else:
+            self._active_config_name = configs[0][0] if configs else "Standard"
+
+        # Show selection dialog only when multiple configs exist and no saved preference
+        configs_on_disk = [c for c in configs if c[0] != "Standard" or
+                           os.path.exists(os.path.join(self._ergebnisse_dir(), "Ergebnisse.json"))]
+        if len(configs_on_disk) > 1 and idx < 0:
+            self.configCombo.blockSignals(False)
+            self._ask_which_config(configs)
+            return
+
+        self.configCombo.blockSignals(False)
+
+    def _ask_which_config(self, configs: list):
+        """Show a selection dialog when multiple configs exist and no preference is saved."""
+        names = [name for name, _ in configs]
+        chosen, ok = QInputDialog.getItem(
+            self, "Erzeugerkonfiguration wählen",
+            "Mehrere Konfigurationen vorhanden.\nWelche soll geladen werden?",
+            names, 0, False
+        )
+        if ok and chosen:
+            idx = self.configCombo.findText(chosen)
+            if idx >= 0:
+                self.configCombo.setCurrentIndex(idx)
+            self._active_config_name = chosen
+            self.folder_manager.set_active_energy_config(self.base_path, chosen)
+
+    def _on_config_selected(self, index: int):
+        """Handle combo-box selection change — persist and load the selected config."""
+        if index < 0:
+            return
+        name = self.configCombo.itemText(index)
+        if name == self._active_config_name:
+            return
+        self._active_config_name = name
+        if self.base_path:
+            self.folder_manager.set_active_energy_config(self.base_path, name)
+        # Load the config if a file already exists for it
+        filepath = os.path.join(self._ergebnisse_dir(), _config_name_to_filename(name))
+        if os.path.exists(filepath):
+            self.load_results_JSON(show_dialog=False)
+
+    def _new_config_action(self):
+        """Create a new (unsaved) configuration by clearing the current state."""
+        name, ok = QInputDialog.getText(self, "Neue Konfiguration", "Name der neuen Konfiguration:")
+        if not ok or not name.strip():
+            return
+        name = name.strip()
+        if name == "Standard":
+            QMessageBox.warning(self, "Ungültiger Name", "'Standard' ist reserviert.")
+            return
+        # Check for duplicate
+        existing = [n for n, _ in self._discover_configs()]
+        if name in existing:
+            QMessageBox.warning(self, "Bereits vorhanden",
+                                f"Eine Konfiguration mit dem Namen '{name}' existiert bereits.")
+            return
+        # Set as active (no file written yet) and clear tech list
+        self._active_config_name = name
+        self.configCombo.blockSignals(True)
+        self.configCombo.addItem(name)
+        self.configCombo.setCurrentText(name)
+        self.configCombo.blockSignals(False)
+        if self.base_path:
+            self.folder_manager.set_active_energy_config(self.base_path, name)
+        # Clear the technology scene
+        self.techTab.tech_objects.clear()
+        self.techTab.rebuildScene()
+        self.techTab.updateTechList()
+
+    def _save_as_config_action(self):
+        """Save the current energy system under a new config name."""
+        name, ok = QInputDialog.getText(
+            self, "Konfiguration speichern als", "Name der Konfiguration:",
+            text=self._active_config_name if self._active_config_name != "Standard" else ""
+        )
+        if not ok or not name.strip():
+            return
+        name = name.strip()
+        self._active_config_name = name
+        self.configCombo.blockSignals(True)
+        if self.configCombo.findText(name) < 0:
+            self.configCombo.addItem(name)
+        self.configCombo.setCurrentText(name)
+        self.configCombo.blockSignals(False)
+        if self.base_path:
+            self.folder_manager.set_active_energy_config(self.base_path, name)
+        self.save_results_JSON(show_dialog=True)
+
+    def _delete_config_action(self):
+        """Delete the active configuration file (Standard cannot be deleted)."""
+        name = self._active_config_name
+        if name == "Standard":
+            QMessageBox.warning(self, "Nicht möglich",
+                                "Die Standardkonfiguration kann nicht gelöscht werden.")
+            return
+        reply = QMessageBox.question(
+            self, "Konfiguration löschen",
+            f"Konfiguration '{name}' wirklich löschen?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        filepath = os.path.join(self._ergebnisse_dir(), _config_name_to_filename(name))
+        try:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+        except OSError as e:
+            QMessageBox.critical(self, "Fehler", f"Datei konnte nicht gelöscht werden:\n{e}")
+            return
+        self._active_config_name = "Standard"
+        if self.base_path:
+            self.folder_manager.set_active_energy_config(self.base_path, "Standard")
+        self._refresh_config_combo()
+
+    # ── Input Economic Parameters ────────────────────────────────────────────
     def setupParameters(self):
         """
         Set up economic parameters.
@@ -238,8 +452,8 @@ class EnergySystemTab(QWidget):
         Preprocess data before calculation.
         """
         self.csv_filename = self.techTab.FilenameInput.text()
-        self.TRY_filename = self.data_manager.get_try_filename()
-        self.COP_filename = self.data_manager.get_cop_filename()
+        self.TRY_filename = self.data_manager.try_filename
+        self.COP_filename = self.data_manager.cop_filename
         self.load_scale_factor = float(self.techTab.load_scale_factorInput.text())
 
         # Import data from the CSV file
@@ -253,8 +467,6 @@ class EnergySystemTab(QWidget):
             for idx, pump_data in pumps.items():
                 if 'qext_kW' in pump_data:
                     qext_values.append(pump_data['qext_kW'])
-                else:
-                    print(f"Keine qext_kW Daten für {pump_type} Pumpe {idx}")
 
                 if pump_type == "Heizentrale Haupteinspeisung":
                     flow_temp_circ_pump = pump_data['flow_temp']
@@ -339,8 +551,6 @@ class EnergySystemTab(QWidget):
             self.energy_system = self.optimized_energy_system
             
         self.process_data()
-
-        self.save_heat_generation_results_to_csv()
 
     def on_calculation_error(self, error_message):
         """
@@ -516,50 +726,59 @@ class EnergySystemTab(QWidget):
             if show_dialog:
                 QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der CSV-Datei: {e}")
 
+    def _active_json_path(self) -> str:
+        """Return the full path to the active config's JSON file."""
+        ergebnisse_dir = self._ergebnisse_dir()
+        os.makedirs(ergebnisse_dir, exist_ok=True)
+        return os.path.join(ergebnisse_dir, _config_name_to_filename(self._active_config_name))
+
     def save_results_JSON(self, show_dialog=True):
         """
-        Save results and technology objects to JSON file.
+        Save results and technology objects to the active config JSON file.
 
         :param show_dialog: Whether to show dialogs.
         :type show_dialog: bool
         """
-        # Check if energy_system attribute exists and has results
         if not hasattr(self, 'energy_system') or not self.energy_system or not self.energy_system.results:
             if show_dialog:
-                QMessageBox.warning(self, "Keine Daten vorhanden", "Es sind keine Berechnungsergebnisse vorhanden, die gespeichert werden könnten.")
+                QMessageBox.warning(self, "Keine Daten vorhanden",
+                                    "Es sind keine Berechnungsergebnisse vorhanden, die gespeichert werden könnten.")
             return
 
         try:
-            json_filename = os.path.join(self.base_path, self.config_manager.get_relative_path("results_path"))
+            json_filename = self._active_json_path()
             self.energy_system.save_to_json(json_filename)
+            # Refresh combo in case a new file was created
+            self._refresh_config_combo()
             if show_dialog:
-                QMessageBox.information(self, "Erfolgreich gespeichert", f"Die Ergebnisse wurden erfolgreich unter {json_filename} gespeichert.")
+                QMessageBox.information(self, "Erfolgreich gespeichert",
+                                        f"Konfiguration '{self._active_config_name}' gespeichert unter:\n{json_filename}")
         except Exception as e:
             error_details = traceback.format_exc()
             if show_dialog:
-                QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der JSON-Datei: {e}\n\nDetails:\n{error_details}")
+                QMessageBox.critical(self, "Speicherfehler",
+                                     f"Fehler beim Speichern der JSON-Datei: {e}\n\nDetails:\n{error_details}")
 
     def load_results_JSON(self, show_dialog=True):
         """
-        Load EnergySystem object and results from JSON file.
+        Load EnergySystem from the active config JSON file.
 
         :param show_dialog: Whether to show success/error dialogs.
         :type show_dialog: bool
         """
-        json_filename = os.path.join(self.base_path, self.config_manager.get_relative_path("results_path"))
-        if not json_filename:
+        json_filename = self._active_json_path()
+        if not os.path.exists(json_filename):
             if show_dialog:
-                QMessageBox.warning(self, "Fehler", "Pfad für Ergebnisse konnte nicht ermittelt werden.")
+                QMessageBox.warning(self, "Datei nicht gefunden",
+                                    f"Keine gespeicherte Konfiguration gefunden:\n{json_filename}")
             return
 
         try:
-            # Load the EnergySystem object
             self.energy_system = EnergySystem.load_from_json(json_filename)
-
             self.process_data()
-
             if show_dialog:
-                QMessageBox.information(self, "Erfolgreich geladen", f"Die Ergebnisse wurden erfolgreich aus {json_filename} geladen.")
+                QMessageBox.information(self, "Erfolgreich geladen",
+                                        f"Konfiguration '{self._active_config_name}' geladen.")
         except ValueError as e:
             if show_dialog:
                 QMessageBox.critical(self, "Ladefehler", str(e))

@@ -125,13 +125,14 @@ def load_layers(osm_street_layer_geojson_file: str,
         traceback.print_exc()
         return None, None, None, None
 
-def generate_and_export_layers(osm_street_layer_geojson_file_name: str, 
-                              data_csv_file_name: str, 
-                              coordinates: List[Tuple[float, float]], 
-                              base_path: str, 
-                              algorithm: str = "MST", 
-                              offset_angle: float = 0, 
-                              offset_distance: float = 0.5) -> None:
+def generate_and_export_layers(osm_street_layer_geojson_file_name: str,
+                              data_csv_file_name: str,
+                              coordinates: List[Tuple[float, float]],
+                              base_path: str,
+                              algorithm: str = "MST",
+                              offset_angle: float = 0,
+                              offset_distance: float = 0.5,
+                              crs: str = "EPSG:25833") -> None:
     """
     Generate district heating network and export as GeoJSON.
 
@@ -149,12 +150,11 @@ def generate_and_export_layers(osm_street_layer_geojson_file_name: str,
     :type offset_angle: float
     :param offset_distance: Return line offset distance in meters (default 0.5)
     :type offset_distance: float
+    :param crs: Projected CRS for the output network (default EPSG:25833)
+    :type crs: str
     :raises FileNotFoundError: If input files not found
     :raises ValueError: If invalid algorithm or malformed data
     :raises OSError: If output directory cannot be created
-    
-    .. note::
-        Exports unified GeoJSON to base_path/Wärmenetz/Wärmenetz.geojson in EPSG:25833.
     """
     # Load and process all input data layers
     osm_street_layer, heat_consumer_layer, heat_generator_layer, heat_consumer_df = load_layers(
@@ -193,13 +193,12 @@ def generate_and_export_layers(osm_street_layer_geojson_file_name: str,
         offset_angle
     )
 
-    # Standardize coordinate reference system to EPSG:25833
-    print("Standardizing coordinate reference systems...")
-    target_crs = "EPSG:25833"
-    heat_consumer_gdf = heat_consumer_gdf.set_crs(target_crs)
-    return_lines_gdf = return_lines_gdf.set_crs(target_crs)
-    flow_lines_gdf = flow_lines_gdf.set_crs(target_crs)
-    heat_producer_gdf = heat_producer_gdf.set_crs(target_crs)
+    # Standardize coordinate reference system
+    print(f"Standardizing coordinate reference systems to {crs}...")
+    heat_consumer_gdf = heat_consumer_gdf.set_crs(crs)
+    return_lines_gdf = return_lines_gdf.set_crs(crs)
+    flow_lines_gdf = flow_lines_gdf.set_crs(crs)
+    heat_producer_gdf = heat_producer_gdf.set_crs(crs)
 
     # Create output directory structure
     import os
@@ -216,7 +215,8 @@ def generate_and_export_layers(osm_street_layer_geojson_file_name: str,
             return_lines=return_lines_gdf,
             building_connections=heat_consumer_gdf,
             generator_connections=heat_producer_gdf,
-            state="designed"
+            state="designed",
+            crs=crs
         )
         # Use default filename for unified network
         unified_filename = "Wärmenetz.geojson"

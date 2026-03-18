@@ -262,8 +262,12 @@ def correct_flow_directions(net) -> pp.pandapipesNet:
     .. note::
        Identifies pipes with negative velocities and swaps from_junction/to_junction for proper flow representation.
     """
-    # Initial pipeflow calculation to determine actual flow directions
-    pp.pipeflow(net, mode="bidirectional", iter=100)
+    # Initial pipeflow – suppress UserWarning about pump direction; that is what we fix here.
+    import warnings
+    try:
+        pp.pipeflow(net, mode="bidirectional", iter=100)
+    except UserWarning as e:
+        logging.warning(f"correct_flow_directions initial pipeflow: {e}")
 
     # Identify and correct pipes with reverse flow
     corrections_made = 0
@@ -277,7 +281,10 @@ def correct_flow_directions(net) -> pp.pandapipesNet:
             corrections_made += 1
 
     # Recalculate with corrected flow directions
-    pp.pipeflow(net, mode="bidirectional", iter=100)
+    try:
+        pp.pipeflow(net, mode="bidirectional", iter=100)
+    except UserWarning as e:
+        logging.warning(f"correct_flow_directions verification pipeflow: {e}")
     
     if corrections_made > 0:
         logging.info(f"Corrected flow directions for {corrections_made} pipes")
@@ -612,17 +619,19 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "KMR
 
     return net
 
-def export_net_geojson(net, filename: str) -> dict:
+def export_net_geojson(net, filename: str, crs: str = "EPSG:25833") -> dict:
     """
     Export pandapipes network data to unified GeoJSON format (Version 2.0).
-    
+
     :param net: Pandapipes network with topology, geodata, and component properties
     :type net: pandapipes.pandapipesNet
     :param filename: Output file path for GeoJSON export
     :type filename: str
+    :param crs: Projected CRS for the output GeoJSON (default EPSG:25833)
+    :type crs: str
     :return: Feature counts {'flow': int, 'return': int, 'building': int, 'generator': int}
     :rtype: dict
-    
+
     .. note::
        Creates single file with flow/return lines, building connections, and generator connections.
     """
@@ -660,8 +669,8 @@ def export_net_geojson(net, filename: str) -> dict:
                 return_features.append(feature_data)
     
     # Create GeoDataFrames
-    flow_gdf = gpd.GeoDataFrame(flow_features, crs="EPSG:25833") if flow_features else gpd.GeoDataFrame()
-    return_gdf = gpd.GeoDataFrame(return_features, crs="EPSG:25833") if return_features else gpd.GeoDataFrame()
+    flow_gdf = gpd.GeoDataFrame(flow_features, crs=crs) if flow_features else gpd.GeoDataFrame()
+    return_gdf = gpd.GeoDataFrame(return_features, crs=crs) if return_features else gpd.GeoDataFrame()
     
     # Extract building connections from heat consumers
     building_features = []
@@ -681,7 +690,7 @@ def export_net_geojson(net, filename: str) -> dict:
                 'heat_demand_W': consumer.get('qext_w', 0)
             })
     
-    building_gdf = gpd.GeoDataFrame(building_features, crs="EPSG:25833") if building_features else gpd.GeoDataFrame()
+    building_gdf = gpd.GeoDataFrame(building_features, crs=crs) if building_features else gpd.GeoDataFrame()
     
     # Extract generator connections from circulation pumps
     generator_features = []
@@ -700,7 +709,7 @@ def export_net_geojson(net, filename: str) -> dict:
                 'generator_id': f"gen_{idx:03d}"
             })
     
-    generator_gdf = gpd.GeoDataFrame(generator_features, crs="EPSG:25833") if generator_features else gpd.GeoDataFrame()
+    generator_gdf = gpd.GeoDataFrame(generator_features, crs=crs) if generator_features else gpd.GeoDataFrame()
     
     print(f"\nExtracted features:")
     print(f"  Flow: {len(flow_features)}")
@@ -716,7 +725,8 @@ def export_net_geojson(net, filename: str) -> dict:
         return_lines=return_gdf,
         building_connections=building_gdf,
         generator_connections=generator_gdf,
-        state='dimensioned'
+        state='dimensioned',
+        crs=crs
     )
     
     print(f"Exporting network to unified GeoJSON format: {filename}")

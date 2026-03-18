@@ -456,7 +456,7 @@ class CostTab(QWidget):
         if 0 <= row < self.infrastructureCostsTable.rowCount() and 0 <= column < self.infrastructureCostsTable.columnCount():
             self.infrastructureCostsTable.setItem(row, column, QTableWidgetItem(self.format_cost(value)))
         else:
-            print("Fehler: Ungültiger Zeilen- oder Spaltenindex.")
+            pass
     
     def berechneWaermenetzKosten(self):
         """

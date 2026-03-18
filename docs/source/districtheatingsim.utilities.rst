@@ -1,6 +1,11 @@
 Main Utilities package
 ====================================
 
+.. automodule:: districtheatingsim.utilities.crs_utils
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 .. automodule:: districtheatingsim.utilities.path_utils
    :members:
    :show-inheritance:

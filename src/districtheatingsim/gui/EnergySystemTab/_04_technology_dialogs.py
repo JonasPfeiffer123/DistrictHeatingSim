@@ -1273,7 +1273,7 @@ class RiverHeatPumpDialog(QDialog):
             else:
                 inputs['Temperatur_FW_WP'] = float(self.TFWInput.text())
         except ValueError:
-            print("Ungültige Eingabe")
+            pass
         return inputs
 
 

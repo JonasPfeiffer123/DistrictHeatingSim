@@ -32,3 +32,7 @@ TECH_CLASS_REGISTRY = {
     'Power-to-Heat': PowerToHeat,
     'Saisonaler Wärmespeicher': STES
 }
+
+# Lookup by Python class name (stored as tech_type in to_dict).
+# Used for reliable deserialization without fragile prefix-matching.
+TECH_CLASS_BY_TYPE = {cls.__name__: cls for cls in TECH_CLASS_REGISTRY.values()}

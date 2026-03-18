@@ -716,7 +716,7 @@ class SchematicScene(CustomGraphicsScene):
             self.addItem(return_pipe)
             self.pipes.append(return_pipe)
         else:
-            print("Error: One or both items have no connection points.")
+            pass  # Items have no connection points
             
     def connect_items_to_lines(self, component, is_storage=False):
         """
@@ -823,7 +823,6 @@ class SchematicScene(CustomGraphicsScene):
 
             # Füge die Generatoren und Speicher in der ursprünglichen Reihenfolge wieder hinzu
             for generator, storage in sorted(generators_with_storage, key=lambda i: i[0].pos().x()):
-                print(generator)
                 self.add_generator_with_storage(generator.item_type, generator.item_name)
 
             for generator in sorted(generators_without_storage, key=lambda i: i.pos().x()):

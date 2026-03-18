@@ -1,0 +1,9 @@
+{
+    "crs": "EPSG:25833",
+    "calculation_year": 2023,
+    "active_energy_configs": {
+        "Variante 1": "Gaskessel"
+    },
+    "try_filename": "Klimadaten\\TRY2015_511676144222_Jahr.dat",
+    "cop_filename": "Wärmepumpendaten\\Kennlinien WP.csv"
+}

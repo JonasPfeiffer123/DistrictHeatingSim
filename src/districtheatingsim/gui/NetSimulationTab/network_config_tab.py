@@ -253,7 +253,7 @@ class NetworkConfigTab(QWidget):
         if default_pipe_type in pipetypes:
             self.initialpipetypeInput.setCurrentText(default_pipe_type)
         else:
-            print(f"Warnung: Startwert '{default_pipe_type}' nicht in der Liste der Rohrtypen gefunden.")
+            pass
 
         return layout
     
