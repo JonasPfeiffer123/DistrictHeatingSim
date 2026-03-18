@@ -253,6 +253,9 @@ class ProjectFolderManager(QObject):
         # Projected CRS used for all geospatial operations in this project
         self.project_crs: str = DEFAULT_CRS
 
+        # Active energy system config per variant folder (relative variant name → config name)
+        self.active_energy_configs: Dict[str, str] = {}
+
         # Do not emit initial folder change signal; will be emitted after project selection
 
     def emit_project_and_variant_folder(self) -> None:
@@ -317,28 +320,59 @@ class ProjectFolderManager(QObject):
         return None
 
     def load_project_settings(self) -> None:
-        """Load per-project settings (CRS, …) from ``project_settings.json``."""
+        """Load per-project settings (CRS, active energy configs) from ``project_settings.json``."""
         path = self._settings_path()
         if path and os.path.exists(path):
             try:
                 with open(path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 self.project_crs = data.get("crs", DEFAULT_CRS)
+                self.active_energy_configs = data.get("active_energy_configs", {})
             except (json.JSONDecodeError, OSError):
                 self.project_crs = DEFAULT_CRS
+                self.active_energy_configs = {}
         else:
             self.project_crs = DEFAULT_CRS
+            self.active_energy_configs = {}
 
     def save_project_settings(self) -> None:
         """Persist per-project settings to ``project_settings.json``."""
         path = self._settings_path()
         if path:
             try:
-                data = {"crs": self.project_crs}
+                data = {
+                    "crs": self.project_crs,
+                    "active_energy_configs": self.active_energy_configs,
+                }
                 with open(path, "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=4, ensure_ascii=False)
             except OSError:
                 pass
+
+    def get_active_energy_config(self, variant_folder: str) -> str:
+        """
+        Return the active energy system config name for a variant folder.
+
+        :param variant_folder: Absolute path to the variant folder.
+        :type variant_folder: str
+        :return: Config name (e.g. ``"Standard"`` or ``"Solar+BHKW"``).
+        :rtype: str
+        """
+        key = os.path.basename(variant_folder)
+        return self.active_energy_configs.get(key, "Standard")
+
+    def set_active_energy_config(self, variant_folder: str, config_name: str) -> None:
+        """
+        Persist the active energy system config name for a variant folder.
+
+        :param variant_folder: Absolute path to the variant folder.
+        :type variant_folder: str
+        :param config_name: Config name to store.
+        :type config_name: str
+        """
+        key = os.path.basename(variant_folder)
+        self.active_energy_configs[key] = config_name
+        self.save_project_settings()
 
     def set_project_crs(self, crs: str) -> None:
         """
