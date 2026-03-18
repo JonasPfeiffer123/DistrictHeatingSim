@@ -258,12 +258,13 @@ class GeocodingThread(QThread):
         """
         Run geocoding process.
 
-        Processes the geocoding data from the input file and emits the filename
-        on success or an error message on failure.
+        Processes the geocoding data from the input file and emits a tuple of
+        (filename, result_summary) on success or an error message on failure.
+        The result_summary dict contains keys: total, success, failed, failed_addresses.
         """
         try:
-            process_data(self.inputfilename, crs=self.project_crs)
-            self.calculation_done.emit((self.inputfilename))
+            result = process_data(self.inputfilename, crs=self.project_crs)
+            self.calculation_done.emit((self.inputfilename, result))
         except Exception as e:
             tb = traceback.format_exc()
             error_message = f"Ein Fehler ist aufgetreten: {e}\n{tb}"

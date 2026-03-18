@@ -158,6 +158,7 @@ class BuildingPresenter:
         if self.folder_manager.variant_folder:
             self.standard_path(self.folder_manager.variant_folder)
 
+        self.view.create_csv_template_signal.connect(self.create_csv_template)
         self.view.load_csv_signal.connect(self.load_csv)
         self.view.save_csv_signal.connect(self.save_csv)
         self.view.load_json_signal.connect(self.load_json)
@@ -180,6 +181,48 @@ class BuildingPresenter:
             self.model.base_path = path
             self.model.csv_path = os.path.join(self.model.base_path, self.config_manager.get_relative_path("current_building_data_path"))
             self.model.json_path = os.path.join(self.model.base_path, self.config_manager.get_relative_path("building_load_profile_path"))
+
+    # Column order must match what geocoding, heat-profile calc, and net generation expect
+    _TEMPLATE_COLUMNS = [
+        "Land", "Bundesland", "Stadt", "Adresse",
+        "Wärmebedarf", "Gebäudetyp", "Subtyp", "WW_Anteil",
+        "Typ_Heizflächen", "VLT_max", "Steigung_Heizkurve", "RLT_max",
+        "Normaußentemperatur", "UTM_X", "UTM_Y",
+    ]
+    _TEMPLATE_EXAMPLE = [
+        "Deutschland", "Sachsen", "Leipzig", "Musterstraße 1",
+        "50000", "MFH", "", "0.15",
+        "HK", "70", "1.5", "50",
+        "-15", "", "",
+    ]
+
+    def create_csv_template(self):
+        """
+        Save an empty CSV template with the required column headers and one
+        example row. The user picks the save location via file dialog.
+        """
+        default_path = os.path.join(self.model.base_path or "", "Quartier.csv")
+        fname, _ = QFileDialog.getSaveFileName(
+            self.view, "CSV-Vorlage speichern", default_path, "CSV Files (*.csv)"
+        )
+        if not fname:
+            return
+        try:
+            template_df = pd.DataFrame([self._TEMPLATE_EXAMPLE], columns=self._TEMPLATE_COLUMNS)
+            template_df.to_csv(fname, index=False, sep=';', encoding='utf-8-sig')
+            self.view.populate_table(template_df)
+            self.model.csv_path = fname
+            self.model.data = template_df
+            self.view.show_message(
+                "Vorlage erstellt",
+                f"CSV-Vorlage wurde gespeichert und geladen:\n{fname}\n\n"
+                "Bitte füllen Sie die Zeilen mit Ihren Gebäudedaten aus.\n"
+                "Pflichtfelder: Land, Bundesland, Stadt, Adresse, Wärmebedarf, Gebäudetyp, WW_Anteil, "
+                "VLT_max, Steigung_Heizkurve, RLT_max, Normaußentemperatur.\n"
+                "UTM_X/UTM_Y werden beim Geocoding automatisch befüllt."
+            )
+        except Exception as e:
+            self.view.show_error_message("Fehler", f"Vorlage konnte nicht gespeichert werden: {e}")
 
     def load_csv(self, fname=None, show_dialog=True):
         """
@@ -361,6 +404,7 @@ class BuildingTabView(QWidget):
     of heat demand profiles.
     """
 
+    create_csv_template_signal = pyqtSignal()
     load_csv_signal = pyqtSignal()
     save_csv_signal = pyqtSignal()
     load_json_signal = pyqtSignal()
@@ -389,6 +433,10 @@ class BuildingTabView(QWidget):
         """Initialize menu bar with file operations."""
         self.menubar = QMenuBar(self)
         self.menubar.setFixedHeight(30)
+
+        new_template_action = QAction("Neue CSV-Vorlage erstellen", self)
+        new_template_action.triggered.connect(self.createCsvTemplate)
+        self.menubar.addAction(new_template_action)
 
         load_csv_action = QAction("Gebäudedaten laden", self)
         load_csv_action.triggered.connect(self.loadCsvFile)
@@ -462,6 +510,10 @@ class BuildingTabView(QWidget):
 
         combobox_group.setLayout(combobox_group_layout)
         self.main_layout.addWidget(combobox_group)
+
+    def createCsvTemplate(self):
+        """Emit signal to create a new CSV template."""
+        self.create_csv_template_signal.emit()
 
     def loadCsvFile(self):
         """Emit signal to load CSV file."""

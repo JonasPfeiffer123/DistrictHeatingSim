@@ -53,7 +53,7 @@ def get_coordinates(address, from_crs="epsg:4326", to_crs="epsg:25833"):
         return (None, None)
 
 
-def process_data(input_csv, crs: str = "EPSG:25833"):
+def process_data(input_csv, crs: str = "EPSG:25833") -> dict:
     """
     Add projected coordinates to CSV file via geocoding.
 
@@ -63,9 +63,15 @@ def process_data(input_csv, crs: str = "EPSG:25833"):
     :type input_csv: str
     :param crs: Target projected CRS for UTM_X/UTM_Y columns (default EPSG:25833)
     :type crs: str
+    :return: Summary dict with keys ``total``, ``success``, ``failed``, ``failed_addresses``
+    :rtype: dict
     """
     temp_fd, temp_path = tempfile.mkstemp()
     os.close(temp_fd)
+
+    total = 0
+    success = 0
+    failed_addresses = []
 
     try:
         with open(input_csv, mode='r', encoding='utf-8') as infile, \
@@ -92,6 +98,12 @@ def process_data(input_csv, crs: str = "EPSG:25833"):
                 full_address = f"{address}, {city}, {state}, {country}"
                 utm_x, utm_y = get_coordinates(full_address, to_crs=crs)  # rate-limited via _geocode
 
+                total += 1
+                if utm_x is not None and utm_y is not None:
+                    success += 1
+                else:
+                    failed_addresses.append(full_address)
+
                 if headers_written:
                     # Ensure the row has enough columns before assignment
                     if len(row) > utm_x_index:
@@ -109,12 +121,13 @@ def process_data(input_csv, crs: str = "EPSG:25833"):
 
         # Replace the original file with the updated temporary file using shutil.move
         shutil.move(temp_path, input_csv)
-        print("Processing completed.")
     finally:
         try:
             os.remove(temp_path)
         except OSError:
             pass
+
+    return {"total": total, "success": success, "failed": total - success, "failed_addresses": failed_addresses}
 
 if __name__ == '__main__':
     # File name of the data file with addresses
