@@ -254,6 +254,9 @@ class ProjectFolderManager(QObject):
         # Projected CRS used for all geospatial operations in this project
         self.project_crs: str = DEFAULT_CRS
 
+        # Year used for heat-demand profile calculations (BDEW / VDI 4655)
+        self.calculation_year: int = 2023
+
         # Active energy system config per variant folder (relative variant name → config name)
         self.active_energy_configs: Dict[str, str] = {}
 
@@ -353,17 +356,20 @@ class ProjectFolderManager(QObject):
                 with open(path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 self.project_crs = data.get("crs", DEFAULT_CRS)
+                self.calculation_year = int(data.get("calculation_year", 2023))
                 self.active_energy_configs = data.get("active_energy_configs", {})
                 # Resolve stored paths: prefer project-relative, fall back to absolute
                 self.try_filename = self._resolve_data_file(data.get("try_filename"))
                 self.cop_filename = self._resolve_data_file(data.get("cop_filename"))
             except (json.JSONDecodeError, OSError):
                 self.project_crs = DEFAULT_CRS
+                self.calculation_year = 2023
                 self.active_energy_configs = {}
                 self.try_filename = None
                 self.cop_filename = None
         else:
             self.project_crs = DEFAULT_CRS
+            self.calculation_year = 2023
             self.active_energy_configs = {}
             self.try_filename = None
             self.cop_filename = None
@@ -396,6 +402,7 @@ class ProjectFolderManager(QObject):
             try:
                 data = {
                     "crs": self.project_crs,
+                    "calculation_year": self.calculation_year,
                     "active_energy_configs": self.active_energy_configs,
                     "try_filename": self._to_relative_path(self.try_filename),
                     "cop_filename": self._to_relative_path(self.cop_filename),
@@ -440,6 +447,16 @@ class ProjectFolderManager(QObject):
         self.project_crs = crs
         self.save_project_settings()
         self.crs_changed.emit(crs)
+
+    def set_calculation_year(self, year: int) -> None:
+        """
+        Set the heat-demand profile calculation year and persist it.
+
+        :param year: Four-digit year (e.g. 2023) used for BDEW/VDI 4655 profiles.
+        :type year: int
+        """
+        self.calculation_year = int(year)
+        self.save_project_settings()
 
     def _copy_data_file_to_project(self, src: str, subfolder: str) -> str:
         """

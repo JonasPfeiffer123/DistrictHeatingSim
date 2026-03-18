@@ -13,7 +13,7 @@ import json
 from PyQt6.QtWidgets import (QFileDialog, QTableWidgetItem, QWidget, QVBoxLayout, QHBoxLayout,
                              QMenuBar, QProgressBar, QLabel, QTableWidget, QFrame,
                              QTreeView, QSplitter, QMessageBox, QDialog, QMenu, QPushButton,
-                             QInputDialog, QSizePolicy, QComboBox)
+                             QInputDialog, QSizePolicy, QComboBox, QSpinBox)
 from PyQt6.QtGui import QAction, QFileSystemModel
 from PyQt6.QtCore import Qt, QTimer
 
@@ -295,6 +295,10 @@ class ProjectPresenter:
             self.folder_manager.crs_changed.connect(self.view.set_crs)
             self.view.suggest_crs_button.clicked.connect(self._suggest_crs)
 
+            # Synchronise calculation year spinbox
+            self.view.year_spinbox.setValue(self.folder_manager.calculation_year)
+            self.view.year_spinbox.valueChanged.connect(self.folder_manager.set_calculation_year)
+
             # Initial update after view is available
             if self.folder_manager.variant_folder:
                 self.on_variant_folder_changed(self.folder_manager.variant_folder)
@@ -311,6 +315,10 @@ class ProjectPresenter:
             self.model.base_path = path
             if self.view:  # Only update if view exists
                 self.view.update_tree_view(os.path.dirname(path))
+                # Sync year spinbox without triggering save
+                self.view.year_spinbox.blockSignals(True)
+                self.view.year_spinbox.setValue(self.folder_manager.calculation_year)
+                self.view.year_spinbox.blockSignals(False)
         if self.view:  # Only update progress if view exists
             self.update_progress_tracker()
 
@@ -821,6 +829,21 @@ class ProjectTabView(QWidget):
         crs_row.addWidget(self.suggest_crs_button)
         crs_row.addStretch()
         self.leftLayout.addLayout(crs_row)
+
+        # Calculation year row
+        year_row = QHBoxLayout()
+        year_row.addWidget(QLabel("Berechnungsjahr (BDEW/VDI 4655):"))
+        self.year_spinbox = QSpinBox()
+        self.year_spinbox.setRange(2010, 2040)
+        self.year_spinbox.setValue(2023)
+        self.year_spinbox.setFixedWidth(90)
+        self.year_spinbox.setToolTip(
+            "Jahr für die Lastprofilberechnung nach BDEW/VDI 4655.\n"
+            "Beeinflusst die Lage von Wochenenden, Feiertagen und TRY-Wetterdaten."
+        )
+        year_row.addWidget(self.year_spinbox)
+        year_row.addStretch()
+        self.leftLayout.addLayout(year_row)
 
         # Button-Bar für alle Aktionen
         button_layout = QHBoxLayout()

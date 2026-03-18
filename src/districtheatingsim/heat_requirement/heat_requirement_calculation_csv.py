@@ -13,38 +13,88 @@ from typing import Tuple, Union, Optional
 
 from pyslpheat import bdew_calculate, vdi4655_calculate
 
-def generate_profiles_from_csv(data: pd.DataFrame, 
-                             TRY: str, 
-                             calc_method: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, 
-                                                      np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def _easter_sunday(year: int) -> pd.Timestamp:
+    """
+    Compute Easter Sunday for a given year using the Anonymous Gregorian algorithm.
+
+    :param year: Four-digit year
+    :type year: int
+    :return: Easter Sunday date
+    :rtype: pd.Timestamp
+    """
+    a = year % 19
+    b, c = divmod(year, 100)
+    d, e = divmod(b, 4)
+    f = (b + 8) // 25
+    g = (b - f + 1) // 3
+    h = (19 * a + b - d - g + 15) % 30
+    i, k = divmod(c, 4)
+    l = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * l) // 451
+    month = (h + l - 7 * m + 114) // 31
+    day = ((h + l - 7 * m + 114) % 31) + 1
+    return pd.Timestamp(year=year, month=month, day=day)
+
+
+def _german_national_holidays(year: int) -> np.ndarray:
+    """
+    Return German national public holidays for *year* as a ``datetime64[D]`` array.
+
+    Includes only holidays that apply across all Bundesländer.
+
+    :param year: Four-digit year
+    :type year: int
+    :return: Array of holiday dates
+    :rtype: numpy.ndarray
+    """
+    easter = _easter_sunday(year)
+    dates = [
+        pd.Timestamp(year, 1, 1),          # Neujahr
+        easter - pd.Timedelta(days=2),      # Karfreitag
+        easter + pd.Timedelta(days=1),      # Ostermontag
+        pd.Timestamp(year, 5, 1),           # Tag der Arbeit
+        easter + pd.Timedelta(days=39),     # Christi Himmelfahrt
+        easter + pd.Timedelta(days=50),     # Pfingstmontag
+        pd.Timestamp(year, 10, 3),          # Tag der Deutschen Einheit
+        pd.Timestamp(year, 12, 25),         # 1. Weihnachtstag
+        pd.Timestamp(year, 12, 26),         # 2. Weihnachtstag
+    ]
+    return np.array([d.date() for d in dates], dtype='datetime64[D]')
+
+
+def generate_profiles_from_csv(data: pd.DataFrame,
+                               TRY: str,
+                               calc_method: str,
+                               year: int = 2023) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
+                                                          np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Generate heat demand profiles from CSV building data.
 
-    :param data: Building data (Wärmebedarf, Gebäudetyp, Subtyp, WW_Anteil, Normaußentemperatur, VLT_max, RLT_max, Steigung_Heizkurve)
+    :param data: Building data with required columns (Wärmebedarf, Gebäudetyp, Subtyp,
+                 WW_Anteil, Normaußentemperatur, VLT_max, RLT_max, Steigung_Heizkurve)
+                 and optional BDEW columns (Heizgrenztemperatur, Heizexponent, P_max).
     :type data: pd.DataFrame
     :param TRY: Path to Test Reference Year weather data file
     :type TRY: str
     :param calc_method: Calculation method ('Datensatz', 'VDI4655', or 'BDEW')
     :type calc_method: str
-    :return: Tuple of (time_steps, total_heat_W, heating_heat_W, warmwater_heat_W, max_heat_W, supply_temp, return_temp, air_temp)
-    :rtype: Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+    :param year: Year for profile calculation (affects weekday/holiday pattern and TRY mapping),
+                 defaults to 2023
+    :type year: int
+    :return: Tuple of (time_steps, total_heat_W, heating_heat_W, warmwater_heat_W, max_heat_W,
+             supply_temp, return_temp, air_temp)
+    :rtype: Tuple[np.ndarray, ...]
     :raises KeyError: If required CSV columns are missing
     :raises ValueError: If data types are invalid
     :raises FileNotFoundError: If TRY file not found
-    
+
     .. note::
-        'Datensatz' mode auto-selects VDI4655 for residential (EFH/MFH), BDEW for commercial buildings.
+        'Datensatz' mode auto-selects VDI4655 for residential (EFH/MFH), BDEW for commercial
+        buildings.  Optional BDEW columns (Heizgrenztemperatur, Heizexponent, P_max) are read
+        per building if present; missing values fall back to pyslpheat defaults.
     """
-    # Static configuration parameters (should be moved to config file or UI)
-    year = 2021  # Calculation year for VDI 4655 and BDEW
-    
-    # German holidays 2021 (excluding weekends) as datetime64[D] array for VDI 4655
-    holidays = np.array([
-        "2021-01-01", "2021-04-02", "2021-04-05", "2021-05-01", 
-        "2021-05-24", "2021-05-13", "2021-06-03", "2021-10-03", 
-        "2021-11-01", "2021-12-25", "2021-12-26"
-    ]).astype('datetime64[D]')
-    
+    holidays = _german_national_holidays(year)
+
     climate_zone = "9"  # Climate zone 9: Germany (VDI 4655)
     number_people_household = 2  # Number of people per household (VDI 4655)
     
@@ -131,6 +181,24 @@ def generate_profiles_from_csv(data: pd.DataFrame,
             hourly_air_temperatures = df_vdi["temperature_C"].values[::4]
 
         elif current_calc_method == "BDEW":
+            # Read optional per-building BDEW parameters (None → pyslpheat uses its defaults)
+            heating_limit_temp = (
+                float(data.at[idx, "Heizgrenztemperatur"])
+                if "Heizgrenztemperatur" in data.columns and pd.notna(data.at[idx, "Heizgrenztemperatur"])
+                else None
+            )
+            heating_exponent = (
+                float(data.at[idx, "Heizexponent"])
+                if "Heizexponent" in data.columns and pd.notna(data.at[idx, "Heizexponent"])
+                else 1.0
+            )
+            peak_design_kw = (
+                float(data.at[idx, "P_max"])
+                if "P_max" in data.columns and pd.notna(data.at[idx, "P_max"])
+                   and str(data.at[idx, "P_max"]).strip() not in ("", "None")
+                else None
+            )
+
             # Calculate BDEW profiles via pyslpheat
             df_bdew = bdew_calculate(
                 annual_heat_kWh=YEU,
@@ -139,6 +207,9 @@ def generate_profiles_from_csv(data: pd.DataFrame,
                 TRY_file_path=TRY,
                 year=year,
                 dhw_share=current_ww_demand,
+                heating_limit_temp=heating_limit_temp,
+                heating_exponent=heating_exponent,
+                peak_design_kW=peak_design_kw,
             )
             yearly_time_steps = df_bdew.index.values
             hourly_heat_demand_total_kW = df_bdew["Q_total_kWh"].values

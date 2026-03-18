@@ -98,7 +98,7 @@ class BuildingModel:
          'supply_temp', 'return_temp', 'air_temp']
     )
 
-    def calculate_heat_demand(self, data, try_filename):
+    def calculate_heat_demand(self, data, try_filename, year: int = 2023):
         """
         Calculate heat demand profiles from building data.
 
@@ -106,10 +106,12 @@ class BuildingModel:
         :type data: pd.DataFrame
         :param try_filename: Climate data filename
         :type try_filename: str
+        :param year: Calculation year for profile generation (BDEW/VDI 4655), defaults to 2023
+        :type year: int
         :return: Calculated heat demand profiles in kW
         :rtype: HeatDemandResult
         """
-        yearly_time_steps, total_heat_W, heating_heat_W, warmwater_heat_W, max_heat_requirement_W, supply_temperature_curve, return_temperature_curve, hourly_air_temperatures = generate_profiles_from_csv(data=data, TRY=try_filename, calc_method="Datensatz")
+        yearly_time_steps, total_heat_W, heating_heat_W, warmwater_heat_W, max_heat_requirement_W, supply_temperature_curve, return_temperature_curve, hourly_air_temperatures = generate_profiles_from_csv(data=data, TRY=try_filename, calc_method="Datensatz", year=year)
 
         # Convert from W to kW
         return self.HeatDemandResult(
@@ -182,18 +184,21 @@ class BuildingPresenter:
             self.model.csv_path = os.path.join(self.model.base_path, self.config_manager.get_relative_path("current_building_data_path"))
             self.model.json_path = os.path.join(self.model.base_path, self.config_manager.get_relative_path("building_load_profile_path"))
 
-    # Column order must match what geocoding, heat-profile calc, and net generation expect
+    # Column order must match what geocoding, heat-profile calc, and net generation expect.
+    # Heizgrenztemperatur / Heizexponent / P_max are optional BDEW parameters; leave blank to use defaults.
     _TEMPLATE_COLUMNS = [
         "Land", "Bundesland", "Stadt", "Adresse",
         "Wärmebedarf", "Gebäudetyp", "Subtyp", "WW_Anteil",
         "Typ_Heizflächen", "VLT_max", "Steigung_Heizkurve", "RLT_max",
-        "Normaußentemperatur", "UTM_X", "UTM_Y",
+        "Normaußentemperatur", "Heizgrenztemperatur", "Heizexponent", "P_max",
+        "UTM_X", "UTM_Y",
     ]
     _TEMPLATE_EXAMPLE = [
         "Deutschland", "Sachsen", "Leipzig", "Musterstraße 1",
         "50000", "MFH", "", "0.15",
         "HK", "70", "1.5", "50",
-        "-15", "", "",
+        "-15", "", "", "",
+        "", "",
     ]
 
     def create_csv_template(self):
@@ -216,9 +221,12 @@ class BuildingPresenter:
             self.view.show_message(
                 "Vorlage erstellt",
                 f"CSV-Vorlage wurde gespeichert und geladen:\n{fname}\n\n"
-                "Bitte füllen Sie die Zeilen mit Ihren Gebäudedaten aus.\n"
-                "Pflichtfelder: Land, Bundesland, Stadt, Adresse, Wärmebedarf, Gebäudetyp, WW_Anteil, "
-                "VLT_max, Steigung_Heizkurve, RLT_max, Normaußentemperatur.\n"
+                "Pflichtfelder: Land, Bundesland, Stadt, Adresse, Wärmebedarf, Gebäudetyp,\n"
+                "WW_Anteil, VLT_max, Steigung_Heizkurve, RLT_max, Normaußentemperatur.\n\n"
+                "Optionale BDEW-Felder (leer lassen = pyslpheat-Standard):\n"
+                "  Heizgrenztemperatur – Temperatur ab der geheizt wird (Standard ~15 °C)\n"
+                "  Heizexponent – Formparameter der Heizkurve (Standard 1.0)\n"
+                "  P_max – maximale Wärmeleistung in kW (begrenzt Lastspitzen)\n\n"
                 "UTM_X/UTM_Y werden beim Geocoding automatisch befüllt."
             )
         except Exception as e:
@@ -334,7 +342,8 @@ class BuildingPresenter:
 
         try:
             try_filename = self.data_manager.try_filename
-            results = self.model.calculate_heat_demand(self.model.data, try_filename)
+            year = getattr(self.folder_manager, 'calculation_year', 2023)
+            results = self.model.calculate_heat_demand(self.model.data, try_filename, year=year)
             self.model.results = self.format_results(results, self.model.data)
 
             self.view.populate_building_combobox(self.model.results)
