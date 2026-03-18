@@ -392,14 +392,37 @@ class VisualizationPresenter(QObject):
         self.geocodingThread.start()
         self.view.progressBar.setRange(0, 0)
 
-    def on_geocode_done(self, fname):
+    def on_geocode_done(self, result):
         """
         Handle successful geocoding completion.
 
-        :param fname: Path to generated CSV file
-        :type fname: str
+        Shows a summary of how many addresses were geocoded successfully and
+        which ones failed (if any), then loads the updated CSV onto the map.
+
+        :param result: Tuple of (filename, summary_dict) where summary_dict has
+                       keys total, success, failed, failed_addresses.
+        :type result: tuple
         """
         self.view.progressBar.setRange(0, 1)
+
+        fname, summary = result
+        total = summary.get("total", 0)
+        success = summary.get("success", 0)
+        failed = summary.get("failed", 0)
+        failed_addresses = summary.get("failed_addresses", [])
+
+        if failed == 0:
+            msg = f"Geocoding abgeschlossen: {success} von {total} Adressen erfolgreich."
+            QMessageBox.information(self.view, "Geocoding erfolgreich", msg)
+        else:
+            details = "\n".join(f"  • {a}" for a in failed_addresses)
+            msg = (
+                f"Geocoding abgeschlossen: {success} von {total} Adressen erfolgreich.\n\n"
+                f"Nicht gefunden ({failed}):\n{details}\n\n"
+                f"Bitte prüfen Sie diese Adressen und ergänzen Sie die Koordinaten manuell."
+            )
+            QMessageBox.warning(self.view, "Geocoding: Einige Adressen nicht gefunden", msg)
+
         self.load_csv_coordinates(fname)
 
     def on_geocode_error(self, error_message):

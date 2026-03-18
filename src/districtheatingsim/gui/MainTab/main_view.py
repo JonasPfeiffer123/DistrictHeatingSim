@@ -175,15 +175,13 @@ class HeatSystemDesignGUI(QMainWindow):
             # Disconnect first to avoid duplicate connections
             try:
                 self.folder_manager.project_folder_changed.disconnect(self.update_project_folder_label)
-                self.presenter.folder_manager.project_folder_changed.disconnect(self.updateTemperatureData)
-                self.presenter.folder_manager.project_folder_changed.disconnect(self.updateHeatPumpData)
+                self.presenter.folder_manager.project_folder_changed.disconnect(self.restoreDataFilesFromProject)
             except TypeError:
                 pass  # Connections might not exist yet
-            
+
             # Connect signals
             self.folder_manager.project_folder_changed.connect(self.update_project_folder_label)
-            self.presenter.folder_manager.project_folder_changed.connect(self.updateTemperatureData)
-            self.presenter.folder_manager.project_folder_changed.connect(self.updateHeatPumpData)
+            self.presenter.folder_manager.project_folder_changed.connect(self.restoreDataFilesFromProject)
 
     def show_welcome_screen(self) -> None:
         """
@@ -1162,35 +1160,48 @@ class HeatSystemDesignGUI(QMainWindow):
         if self.heatPumpDataDialog.exec():
             self.updateHeatPumpData()
 
+    def restoreDataFilesFromProject(self) -> None:
+        """
+        Restore TRY and COP filenames from the loaded project settings.
+
+        Called whenever the project/variant folder changes. If the project has
+        previously saved paths, they are written back to the data manager and
+        shown in the selection dialogs. The dialog defaults remain as fallback
+        when no project-level path is stored.
+        """
+        fm = self.presenter.folder_manager
+
+        if fm.try_filename:
+            self.data_manager.try_filename = fm.try_filename
+            self.temperatureDataDialog.temperatureDataFileInput.setText(fm.try_filename)
+
+        if fm.cop_filename:
+            self.data_manager.cop_filename = fm.cop_filename
+            self.heatPumpDataDialog.heatPumpDataFileInput.setText(fm.cop_filename)
+
     def updateTemperatureData(self) -> None:
         """
-        Update system temperature data based on user selection.
-
-        Retrieves TRY filename from dialog and updates data manager.
+        Persist the TRY file selected in the dialog to both the data manager and
+        the project settings so it is restored on next project open.
         """
         try:
-            # Retrieve temperature data selection from dialog
             TRY = self.temperatureDataDialog.getValues()
-            
-            # Update central data manager with selected temperature data
-            self.data_manager.try_filename = TRY['TRY-filename']
-            
+            path = TRY['TRY-filename']
+            self.data_manager.try_filename = path
+            self.presenter.folder_manager.set_try_filename(path)
         except Exception as e:
             self.show_error_message(f"Fehler beim Aktualisieren der Temperaturdaten: {str(e)}")
 
     def updateHeatPumpData(self) -> None:
         """
-        Update system heat pump performance data based on user selection.
-
-        Retrieves COP filename from dialog and updates data manager.
+        Persist the COP file selected in the dialog to both the data manager and
+        the project settings so it is restored on next project open.
         """
         try:
-            # Retrieve heat pump performance data selection from dialog
             COP = self.heatPumpDataDialog.getValues()
-            
-            # Update central data manager with selected performance data
-            self.data_manager.cop_filename = COP['COP-filename']
-            
+            path = COP['COP-filename']
+            self.data_manager.cop_filename = path
+            self.presenter.folder_manager.set_cop_filename(path)
         except Exception as e:
             self.show_error_message(f"Fehler beim Aktualisieren der Wärmepumpendaten: {str(e)}")
 
