@@ -54,11 +54,19 @@ def offset_lines_by_angle(lines_gdf: gpd.GeoDataFrame, distance: float,
         Creates parallel return lines from supply lines. Maintains topology and connectivity.
     """
     def offset_line(line: LineString) -> LineString:
-        """Apply offset transformation to individual LineString."""
-        return LineString([
-            create_offset_points(Point(x, y), distance, angle_degrees)
-            for x, y in line.coords
-        ])
+        """Apply offset transformation to individual LineString.
+
+        Preserves Z-coordinates (elevation) when the source geometry is 3-D.
+        """
+        new_coords = []
+        for coord in line.coords:
+            x, y = coord[0], coord[1]
+            offset_pt = create_offset_points(Point(x, y), distance, angle_degrees)
+            if len(coord) > 2:
+                new_coords.append((offset_pt.x, offset_pt.y, coord[2]))
+            else:
+                new_coords.append((offset_pt.x, offset_pt.y))
+        return LineString(new_coords)
     
     offset_lines = [offset_line(line) for line in lines_gdf.geometry]
     return gpd.GeoDataFrame(geometry=offset_lines, crs=lines_gdf.crs)
@@ -280,9 +288,17 @@ def generate_connection_lines(layer: gpd.GeoDataFrame,
                 if 'Normaußentemperatur' in match.columns:
                     attr['Normaußentemperatur'] = match['Normaußentemperatur'].iloc[0]
 
-        # Create connection line geometry
+        # Create connection line geometry.
+        # If the source point carries a Z-coordinate (elevation), preserve it
+        # in the offset end-point so that the full connection line is 3-D.
         offset_point = create_offset_points(point, offset_distance, offset_angle)
-        line = LineString([point, offset_point])
+        if point.has_z:
+            z = point.z
+            start = (point.x, point.y, z)
+            end   = (offset_point.x, offset_point.y, z)
+            line  = LineString([start, end])
+        else:
+            line = LineString([point, offset_point])
         
         lines.append(line)
         attributes.append(attr)
