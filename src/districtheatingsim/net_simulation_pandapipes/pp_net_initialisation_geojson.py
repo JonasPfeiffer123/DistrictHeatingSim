@@ -230,25 +230,31 @@ def initialize_geojson(NetworkGenerationData) -> Any:
     
 def get_line_coords_and_lengths(gdf: gpd.GeoDataFrame) -> Tuple[List[List[Tuple]], List[float]]:
     """
-    Extract coordinates and lengths from LineString geometries.
-    
+    Extract 2-D coordinates and lengths from LineString geometries.
+
+    Z-coordinates (elevation) are stripped here so that the returned
+    coordinate tuples are always ``(x, y)``.  Elevation data is extracted
+    separately via :func:`build_elevation_lookup_from_gdf` and passed to
+    the junction-creation step as ``height_m``.
+
     :param gdf: GeoDataFrame with LineString geometries (flow/return lines)
     :type gdf: gpd.GeoDataFrame
-    :return: (all_line_coords, all_line_lengths) - coordinate sequences and lengths
+    :return: (all_line_coords, all_line_lengths) - 2-D coordinate sequences and lengths
     :rtype: Tuple[List[List[Tuple]], List[float]]
-    
+
     .. note::
        Only processes LineString geometries, skips others with warning. Uses
        GeoPandas length property for geodetic calculation.
     """
     all_line_coords, all_line_lengths = [], []
     gdf['length'] = gdf.geometry.length
-    
+
     for index, row in gdf.iterrows():
         line = row['geometry']
-        
+
         if line.geom_type == 'LineString':
-            coords = list(line.coords)
+            # Strip Z — keep only (x, y) for junction dict keys
+            coords = [(c[0], c[1]) for c in line.coords]
             length = row['length']
             all_line_coords.append(coords)
             all_line_lengths.append(length)
@@ -257,15 +263,42 @@ def get_line_coords_and_lengths(gdf: gpd.GeoDataFrame) -> Tuple[List[List[Tuple]
 
     return all_line_coords, all_line_lengths
 
+
+def build_elevation_lookup_from_gdf(gdf: gpd.GeoDataFrame) -> Dict[Tuple, float]:
+    """
+    Build a ``{(x, y): z_m}`` elevation lookup from a GeoDataFrame with 3-D geometries.
+
+    Only vertices that actually carry a Z-coordinate contribute to the lookup.
+    Vertices without Z are silently skipped (they will fall back to ``height_m=0``).
+
+    :param gdf: GeoDataFrame with Point or LineString geometries (may be 2-D or 3-D)
+    :type gdf: gpd.GeoDataFrame
+    :return: Mapping from 2-D coordinate tuple to elevation [m above sea level]
+    :rtype: Dict[Tuple[float, float], float]
+    """
+    lookup: Dict[Tuple, float] = {}
+    for geom in gdf.geometry:
+        if geom is None:
+            continue
+        if geom.geom_type == 'Point':
+            if geom.has_z:
+                lookup[(geom.x, geom.y)] = geom.z
+        elif geom.geom_type == 'LineString':
+            for coord in geom.coords:
+                if len(coord) > 2:
+                    lookup[(coord[0], coord[1])] = coord[2]
+    return lookup
+
+
 def get_all_point_coords_from_line_cords(all_line_coords: List[List[Tuple]]) -> List[Tuple]:
     """
     Extract unique point coordinates for network junction creation.
-    
-    :param all_line_coords: List of coordinate sequences [(x1,y1), (x2,y2), ...]
+
+    :param all_line_coords: List of 2-D coordinate sequences [(x1,y1), (x2,y2), ...]
     :type all_line_coords: List[List[Tuple]]
     :return: Unique point coordinates (x, y) for junction locations
     :rtype: List[Tuple]
-    
+
     .. note::
        Removes duplicates using set operations. Order not guaranteed.
        Essential for proper network topology without duplicate junctions.
@@ -312,16 +345,25 @@ def create_network(gdf_dict: Dict[str, gpd.GeoDataFrame], consumer_dict: Dict[st
     supply_temperature_k = supply_temperature + 273.15
     return_temperature_heat_consumer_k = return_temperature_heat_consumer + 273.15
 
-    def create_junctions_from_coords(net_i: pp.pandapipesNet, all_coords: List[Tuple]) -> Dict[Tuple, int]:
+    def create_junctions_from_coords(net_i: pp.pandapipesNet,
+                                     all_coords: List[Tuple],
+                                     elevation_lookup: Dict[Tuple, float]) -> Dict[Tuple, int]:
         """
         Create junctions in the network from coordinate points.
+
+        Each junction receives a ``height_m`` value looked up from
+        *elevation_lookup*.  This enables pandapipes to include the
+        hydrostatic pressure contribution ``ρ·g·Δh`` in the flow equations.
+        Junctions without an entry in the lookup default to ``height_m=0``.
 
         Parameters
         ----------
         net_i : pp.pandapipesNet
             The pandapipes network object.
         all_coords : List[Tuple]
-            List of coordinate tuples for junction locations.
+            List of 2-D coordinate tuples for junction locations.
+        elevation_lookup : Dict[Tuple[float, float], float]
+            Mapping from ``(x, y)`` to elevation [m above sea level].
 
         Returns
         -------
@@ -330,8 +372,10 @@ def create_network(gdf_dict: Dict[str, gpd.GeoDataFrame], consumer_dict: Dict[st
         """
         junction_dict = {}
         for i, coords in enumerate(all_coords, start=0):
-            junction_id = pp.create_junction(net_i, pn_bar=1.05, tfluid_k=supply_temperature_k, 
-                                           name=f"Junction {i}", geodata=coords)
+            height = elevation_lookup.get(coords, 0.0)
+            junction_id = pp.create_junction(net_i, pn_bar=1.05, tfluid_k=supply_temperature_k,
+                                             height_m=height,
+                                             name=f"Junction {i}", geodata=coords)
             junction_dict[coords] = junction_id
         return junction_dict
 
@@ -416,12 +460,22 @@ def create_network(gdf_dict: Dict[str, gpd.GeoDataFrame], consumer_dict: Dict[st
 
     def create_circulation_pump_mass_flow(net_i: pp.pandapipesNet, all_coords: List[List[Tuple]],
                                          jd_vl: Dict[Tuple, int], jd_rl: Dict[Tuple, int],
-                                         name_prefix: str, mass_flows: List[float]) -> None:
-        """Create mass-flow-controlled circulation pumps with correct VL/RL junction assignment."""
+                                         name_prefix: str, mass_flows: List[float],
+                                         elevation_lookup: Dict[Tuple, float]) -> None:
+        """Create mass-flow-controlled circulation pumps with correct VL/RL junction assignment.
+
+        The intermediate junction inserted between pump and flow-control element
+        receives an elevation equal to the average of its two endpoint elevations.
+        """
         for i, (coords, mass_flow) in enumerate(zip(all_coords, mass_flows), start=0):
             return_junc, flow_junc = _resolve_pump_junctions(coords, jd_vl, jd_rl)
             mid_coord = ((coords[0][0] + coords[1][0]) / 2, (coords[0][1] + coords[1][1]) / 2)
+            # Interpolate elevation for the synthetic mid-point junction
+            z0 = elevation_lookup.get(coords[0], 0.0)
+            z1 = elevation_lookup.get(coords[1], 0.0)
+            mid_height = (z0 + z1) / 2.0
             mid_junction_idx = pp.create_junction(net_i, pn_bar=1.05, tfluid_k=supply_temperature_k,
+                                                  height_m=mid_height,
                                                   name=f"Junction {name_prefix}", geodata=mid_coord)
             pp.create_circ_pump_const_mass_flow(net_i, return_junc, mid_junction_idx,
                                                 p_flow_bar=flow_pressure_pump,
@@ -431,22 +485,45 @@ def create_network(gdf_dict: Dict[str, gpd.GeoDataFrame], consumer_dict: Dict[st
             pp.create_flow_control(net_i, mid_junction_idx, flow_junc,
                                    controlled_mdot_kg_per_s=mass_flow)
 
+    # Build elevation lookup from 3-D GeoJSON geometries (Z-coord = height above NN).
+    # All four GDFs are merged so that every junction—whether on a network line,
+    # building connection, or generator connection—receives a correct height_m.
+    elevation_lookup: Dict[Tuple, float] = {}
+    for gdf_src in (gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_producer):
+        elevation_lookup.update(build_elevation_lookup_from_gdf(gdf_src))
+
+    if elevation_lookup:
+        z_vals = list(elevation_lookup.values())
+        dh = max(z_vals) - min(z_vals)
+        logging.info("Elevation data found: min=%.1f m, max=%.1f m, Δh=%.1f m "
+                     "→ hydrostatic pressure offset ≈ %.2f bar",
+                     min(z_vals), max(z_vals), dh, 1000 * 9.81 * dh / 1e5)
+        if dh > 0.5 * lift_pressure_pump * 1e5 / (1000 * 9.81):
+            logging.warning(
+                "Hydrostatic head (%.1f m) exceeds 50%% of pump lift (%.2f bar). "
+                "Verify pressure zone design.", dh, lift_pressure_pump)
+    else:
+        logging.info("No elevation data in GeoJSON — all junctions set to height_m=0.")
+
     # Create network topology
-    junction_dict_vl = create_junctions_from_coords(net, get_all_point_coords_from_line_cords(
-        get_line_coords_and_lengths(gdf_flow_line)[0]))
-    junction_dict_rl = create_junctions_from_coords(net, get_all_point_coords_from_line_cords(
-        get_line_coords_and_lengths(gdf_return_line)[0]))
+    flow_line_2d_coords  = get_line_coords_and_lengths(gdf_flow_line)[0]
+    return_line_2d_coords = get_line_coords_and_lengths(gdf_return_line)[0]
+
+    junction_dict_vl = create_junctions_from_coords(
+        net, get_all_point_coords_from_line_cords(flow_line_2d_coords), elevation_lookup)
+    junction_dict_rl = create_junctions_from_coords(
+        net, get_all_point_coords_from_line_cords(return_line_2d_coords), elevation_lookup)
 
     # Create pipes
-    create_pipes(net, *get_line_coords_and_lengths(gdf_flow_line), junction_dict_vl, 
+    create_pipes(net, *get_line_coords_and_lengths(gdf_flow_line), junction_dict_vl,
                 pipe_creation_mode, diameter_mm if pipe_creation_mode == "diameter" else pipetype, "flow line")
-    create_pipes(net, *get_line_coords_and_lengths(gdf_return_line), junction_dict_rl, 
+    create_pipes(net, *get_line_coords_and_lengths(gdf_return_line), junction_dict_rl,
                 pipe_creation_mode, diameter_mm if pipe_creation_mode == "diameter" else pipetype, "return line")
-    
+
     # Create heat consumers
-    create_heat_consumers(net, get_line_coords_and_lengths(gdf_heat_exchanger)[0], 
+    create_heat_consumers(net, get_line_coords_and_lengths(gdf_heat_exchanger)[0],
                         {**junction_dict_vl, **junction_dict_rl}, "heat consumer")
-    
+
     # Create heat producers
     all_heat_producer_coords, all_heat_producer_lengths = get_line_coords_and_lengths(gdf_heat_producer)
     if all_heat_producer_coords:
@@ -459,7 +536,7 @@ def create_network(gdf_dict: Dict[str, gpd.GeoDataFrame], consumer_dict: Dict[st
             mass_flows = [producer.mass_flow for producer in secondary_producers]
             secondary_coords = [all_heat_producer_coords[producer.index] for producer in secondary_producers]
             create_circulation_pump_mass_flow(net, secondary_coords, junction_dict_vl, junction_dict_rl,
-                                             "heat source slave", mass_flows)
+                                             "heat source slave", mass_flows, elevation_lookup)
 
     print(f"secondary_producers: {secondary_producers}")
 
