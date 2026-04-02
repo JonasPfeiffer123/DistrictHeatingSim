@@ -84,7 +84,12 @@ class NetworkGeoJSONSchema:
         
         # Calculate length from geometry
         length_m = geometry.length
-        
+
+        # Extract start/end elevations from 3-D geometry when available
+        coords = list(geometry.coords)
+        elevation_start_m = coords[0][2]  if len(coords[0]) > 2 else None
+        elevation_end_m   = coords[-1][2] if len(coords[-1]) > 2 else None
+
         feature = {
             "type": "Feature",
             "properties": {
@@ -92,20 +97,22 @@ class NetworkGeoJSONSchema:
                 "layer": layer,
                 "segment_id": segment_id,
                 "editable": True,
-                
+
                 "style": {
                     "color": color,
                     "weight": 3,
                     "opacity": 1
                 },
-                
+
                 "calculated": {
                     "length_m": length_m,
                     "diameter_mm": None,
                     "std_type": None,
                     "flow_rate_kg_s": None,
                     "pressure_loss_bar": None,
-                    "velocity_m_s": None
+                    "velocity_m_s": None,
+                    "elevation_start_m": elevation_start_m,
+                    "elevation_end_m": elevation_end_m,
                 }
             },
             "geometry": geometry.__geo_interface__

@@ -151,6 +151,26 @@ class LayerGenerationDialog(QDialog):
         dataGroup.setLayout(dataLayout)
         layout.addWidget(dataGroup)
 
+        # Elevation / DEM Section
+        elevGroup = QGroupBox("Höhendaten (optional)")
+        elevLayout = QFormLayout()
+        elevLayout.setSpacing(10)
+
+        self.demInput, self.demButton = self.createFileInput("")
+        self.demInput.setPlaceholderText("Kein DGM gewählt — OpenTopoData API wird als Fallback verwendet")
+        self.demInput.setToolTip(
+            "Optionales digitales Geländemodell als GeoTIFF (.tif/.tiff).\n"
+            "Wird kein DGM angegeben, fragt die Software Höhenwerte über die\n"
+            "OpenTopoData-API ab (erfordert Internetzugang).\n"
+            "Empfohlen: Landes-DGM mit 1 m Auflösung (z.B. BKG / Landesamt)."
+        )
+        self.demButton.clicked.disconnect()
+        self.demButton.clicked.connect(lambda: self._openDemFileDialog())
+        elevLayout.addRow("DGM-Datei (GeoTIFF):", self.createFileInputLayout(self.demInput, self.demButton))
+
+        elevGroup.setLayout(elevLayout)
+        layout.addWidget(elevGroup)
+
         # Generator Coordinates Section
         coordGroup = QGroupBox("Erzeugerstandorte")
         coordLayout = QVBoxLayout()
@@ -419,6 +439,15 @@ class LayerGenerationDialog(QDialog):
         filename, _ = QFileDialog.getOpenFileName(self, "Datei auswählen", f"{self.base_path}", "All Files (*)")
         if filename:
             lineEdit.setText(filename)
+
+    def _openDemFileDialog(self):
+        """Open a file dialog filtered to GeoTIFF files for DEM selection."""
+        filename, _ = QFileDialog.getOpenFileName(
+            self, "DGM-Datei auswählen", self.base_path,
+            "GeoTIFF (*.tif *.tiff);;All Files (*)"
+        )
+        if filename:
+            self.demInput.setText(filename)
 
     def addCoordFromInput(self):
         """
@@ -723,13 +752,16 @@ class LayerGenerationDialog(QDialog):
         # Update custom filter one last time before returning
         self.updateFilters()
 
+        dem_path = self.demInput.text().strip() or None
+
         return {
             "streetLayer": self.fileInput.text(),
             "dataCsv": self.dataInput.text(),
             "coordinates": coordinates,
             "generation_mode": self.generationModeComboBox.currentText(),
             "custom_filter": self.custom_filter,
-            "project_crs": self.project_crs
+            "project_crs": self.project_crs,
+            "dem_path": dem_path,
         }
 
     def onAccept(self):

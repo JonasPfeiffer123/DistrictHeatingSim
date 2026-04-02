@@ -151,6 +151,10 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+# VSCode – nur projektweite Settings tracken, nutzerspezifisches ignorieren
+.vscode/*
+!.vscode/settings.json
+
 # PC specific config files for districtheatingsim
 error_log.txt
 recent_projects.json

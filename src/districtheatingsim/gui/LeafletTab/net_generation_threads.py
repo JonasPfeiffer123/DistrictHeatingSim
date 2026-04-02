@@ -68,7 +68,8 @@ class NetGenerationThread(QThread):
                     coordinates=self.inputs["coordinates"],
                     base_path=self.base_path,
                     algorithm=self.inputs["generation_mode"],
-                    crs=project_crs
+                    crs=project_crs,
+                    dem_path=self.inputs.get("dem_path"),
                 )
 
             self.calculation_done.emit(())
