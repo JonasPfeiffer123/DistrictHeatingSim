@@ -122,6 +122,19 @@ class ResultsTab(QWidget):
         self.diagram2_section = CollapsibleHeader("Anteile Wärmeerzeugung Diagramm", self.diagram2_widget)
         self.scrollLayout.addWidget(self.diagram2_section)
 
+        # Third Diagram (Storage – shown only when a storage is present)
+        self.storageFigure = Figure(figsize=(10, 8))
+        self.storageCanvas = FigureCanvas(self.storageFigure)
+        self.storageCanvas.setMinimumSize(500, 600)
+        self.storageToolbar = NavigationToolbar(self.storageCanvas, self)
+        self.diagram3_widget = QWidget()
+        diagram3_layout = QVBoxLayout(self.diagram3_widget)
+        diagram3_layout.addWidget(self.storageCanvas)
+        diagram3_layout.addWidget(self.storageToolbar)
+        self.diagram3_section = CollapsibleHeader("Thermischer Speicher – Betrieb", self.diagram3_widget)
+        self.diagram3_section.setVisible(False)  # hidden until a storage exists
+        self.scrollLayout.addWidget(self.diagram3_section)
+
     def setupCollapsibleResultsSections(self):
         """
         Sets up the collapsible sections for displaying results tables.
@@ -201,6 +214,7 @@ class ResultsTab(QWidget):
         self.showAdditionalResultsTable()
         self.plotResults()
         self.updatePieChart()
+        self.plotStorage()
 
     def showResultsInTable(self):
         """
@@ -324,6 +338,69 @@ class ResultsTab(QWidget):
             second_y_axis=self.secondYAxisCheckBox.isChecked()
         )
         self.stackPlotCanvas.draw()
+
+    def plotStorage(self):
+        """
+        Draws the 4-panel storage overview plot when a storage is present.
+        Panels: net flow, SOC, temperatures (top/middle/bottom), heat loss.
+        Hidden when no storage is attached to the energy system.
+        """
+        storage = getattr(self.energy_system, 'storage', None)
+        if storage is None:
+            self.diagram3_section.setVisible(False)
+            return
+
+        self.diagram3_section.setVisible(True)
+        fig = self.storageFigure
+        fig.clear()
+
+        hours = np.arange(len(storage._soc))
+        net = storage._Q_net_storage_flow
+
+        ax1, ax2, ax3, ax4 = fig.subplots(4, 1, sharex=True)
+
+        # Panel 1 – net storage flow
+        ax1.fill_between(hours, net, where=(net > 0), color='tomato', alpha=0.7,
+                         label='Entladung (kW)')
+        ax1.fill_between(hours, net, where=(net < 0), color='steelblue', alpha=0.7,
+                         label='Beladung (kW)')
+        ax1.axhline(0, color='black', linewidth=0.5)
+        ax1.set_ylabel('Speicherfluss (kW)')
+        ax1.legend(fontsize=7, loc='upper right')
+        ax1.grid(True, alpha=0.3)
+
+        # Panel 2 – state of charge
+        ax2.fill_between(hours, storage._soc * 100, alpha=0.4, color='steelblue')
+        ax2.plot(hours, storage._soc * 100, color='steelblue', linewidth=0.8,
+                 label='SOC (%)')
+        ax2.set_ylabel('SOC (%)')
+        ax2.set_ylim(0, 100)
+        ax2.legend(fontsize=7, loc='upper right')
+        ax2.grid(True, alpha=0.3)
+
+        # Panel 3 – temperatures
+        ax3.plot(hours, storage._T_supply, color='red', linewidth=0.8,
+                 label='T oben (°C)')
+        ax3.plot(hours, storage._T_middle, color='orange', linewidth=0.8,
+                 label='T mitte (°C)')
+        ax3.plot(hours, storage._T_return, color='royalblue', linewidth=0.8,
+                 label='T unten (°C)')
+        ax3.set_ylabel('Temperatur (°C)')
+        ax3.legend(fontsize=7, loc='upper right')
+        ax3.grid(True, alpha=0.3)
+
+        # Panel 4 – heat loss
+        ax4.fill_between(hours, storage.Q_loss, alpha=0.5, color='orange')
+        ax4.plot(hours, storage.Q_loss, color='darkorange', linewidth=0.7,
+                 label='Wärmeverluste (kW)')
+        ax4.set_ylabel('Verluste (kW)')
+        ax4.set_xlabel('Stunde des Jahres')
+        ax4.legend(fontsize=7, loc='upper right')
+        ax4.grid(True, alpha=0.3)
+
+        fig.suptitle(f'Thermischer Speicher – {storage.name}', fontsize=10)
+        fig.tight_layout()
+        self.storageCanvas.draw()
 
     def updatePieChart(self):
         """
