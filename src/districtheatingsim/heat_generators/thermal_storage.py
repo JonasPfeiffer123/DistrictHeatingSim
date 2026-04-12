@@ -111,6 +111,8 @@ class ThermalStorageAdapter(BaseHeatGenerator):
         buoyancy: bool = True,
         spez_Investitionskosten: float = 50.0,
         hours: int = 8760,
+        T_charge: float = 90.0,
+        T_discharge_return: float = 50.0,
     ):
         super().__init__(name)
 
@@ -137,16 +139,24 @@ class ThermalStorageAdapter(BaseHeatGenerator):
         self.buoyancy = buoyancy
         self.spez_Investitionskosten = spez_Investitionskosten
         self.hours = hours
+        # Fixed generator-side temperatures for charge/discharge mass-flow calculation.
+        # T_charge: temperature at which generators supply heat to storage (independent of
+        #   the variable network supply temperature VLT_L, which is the consumer side).
+        # T_discharge_return: expected network return temperature used as discharge inlet.
+        self.T_charge = T_charge
+        self.T_discharge_return = T_discharge_return
 
         # Build the 1D model
         self._model = self._build_model()
         self._state = self._model.initialize(T_init=initial_temp)
 
         # Per-timestep result arrays (indexed by t, filled during simulation)
-        self.Q_loss = np.zeros(hours)           # kW  (converted from W)
-        self._T_supply = np.full(hours, initial_temp)   # °C top node
-        self._T_return = np.full(hours, initial_temp)   # °C bottom node
+        self.Q_loss = np.zeros(hours)                          # kW  (converted from W)
+        self._T_supply = np.full(hours, initial_temp)          # °C – top node (upper)
+        self._T_middle = np.full(hours, initial_temp)          # °C – middle node
+        self._T_return = np.full(hours, initial_temp)          # °C – bottom node (lower)
         self._soc = np.zeros(hours)
+        self._Q_net_storage_flow = np.zeros(hours)  # kW: positive = discharge, negative = charge
 
         # Performance tracking (filled by calculate_efficiency)
         self.efficiency: float = 0.0
@@ -232,8 +242,8 @@ class ThermalStorageAdapter(BaseHeatGenerator):
         t: int,
         Q_in: float,
         Q_out: float,
-        T_Q_in_flow: float,
-        T_Q_out_return: float,
+        T_Q_in_flow: float,   # noqa: ARG002 – network supply temp, kept for interface compat
+        T_Q_out_return: float,  # noqa: ARG002 – network return temp, kept for interface compat
     ) -> None:
         """
         Advance storage by one timestep (dt = 3600 s).
@@ -243,29 +253,64 @@ class ThermalStorageAdapter(BaseHeatGenerator):
         t : int
             Current simulation timestep index.
         Q_in : float
-            Heat delivered into storage [kW].
+            Total heat delivered by all generators [kW].
         Q_out : float
-            Heat drawn from storage [kW].
+            Total network heat demand [kW].
         T_Q_in_flow : float
-            Temperature of incoming heat carrier [°C].
+            Network supply temperature passed by EnergySystem [°C].
+            Not used for mass-flow calculation — the fixed ``self.T_charge``
+            (generator-side temperature) is used instead, so that a variable
+            network supply curve ("Gleitung") does not inadvertently cool the
+            storage in summer.
         T_Q_out_return : float
-            Return temperature from the network [°C].
+            Network return temperature passed by EnergySystem [°C].
+            Not used directly — ``self.T_discharge_return`` is used instead.
+
+        Notes
+        -----
+        The storage is either charging or discharging in a given timestep:
+
+        * **Charging** (generators over-produce): excess ``Q_in − Q_out``
+          enters the storage at the top at ``self.T_charge`` (fixed generator
+          supply temperature, e.g. 90 °C).
+        * **Discharging** (demand exceeds generation): deficit ``Q_out − Q_in``
+          is drawn from the storage top; cold return enters at the bottom at
+          ``self.T_discharge_return``.
+
+        Port assignments (StorageInputs.two_port):
+          - charge_in     : z = height (top),   m_dot > 0, T_in = T_charge
+          - charge_out    : z = 0 (bottom),      m_dot < 0  → outlet T = T_bottom
+          - discharge_in  : z = 0 (bottom),      m_dot > 0, T_in = T_discharge_return
+          - discharge_out : z = height (top),    m_dot < 0  → outlet T = T_top
         """
         cp = self._cp_effective()
-        rho = self._rho_effective()
 
-        # Convert kW → mass flows [kg/s]
-        dT_charge = max(T_Q_in_flow - self._state.T_top, 0.5)        # top node is charge outlet
-        dT_discharge = max(self._state.T_bottom - T_Q_out_return, 0.5)  # bottom → consumer
+        # Net heat flow: positive → net charge into storage, negative → net discharge
+        Q_net = Q_in - Q_out
+        Q_charge = max(0.0, Q_net)      # kW entering storage (generators over-produce)
+        Q_discharge = max(0.0, -Q_net)  # kW leaving storage (demand exceeds generation)
 
-        m_dot_charge = (Q_in * 1000.0) / (cp * dT_charge) if Q_in > 0 else 0.0
-        m_dot_discharge = (Q_out * 1000.0) / (cp * dT_discharge) if Q_out > 0 else 0.0
+        # Use fixed generator-side temperature for charging (independent of the variable
+        # network supply temperature T_Q_in_flow, which represents the consumer side and
+        # can drop in summer due to "Gleitung"). This prevents the storage from being
+        # cooled down in summer when VLT_L < T_storage_top.
+        T_charge_in = self.T_charge
+        T_discharge_in = self.T_discharge_return  # fixed return temperature for discharge
+
+        # Mass flows [kg/s]
+        # Charge loop: generator supplies at T_charge_in at top, return exits at bottom.
+        dT_charge = max(T_charge_in - self._state.T_bottom, 0.5)
+        m_dot_charge = (Q_charge * 1000.0) / (cp * dT_charge) if Q_charge > 0 else 0.0
+
+        # Discharge loop: cold return enters at bottom at T_discharge_in, hot exits at top.
+        dT_discharge = max(self._state.T_top - T_discharge_in, 0.5)
+        m_dot_discharge = (Q_discharge * 1000.0) / (cp * dT_discharge) if Q_discharge > 0 else 0.0
 
         inputs = StorageInputs.two_port(
             m_dot_charge=m_dot_charge,
-            T_charge_in=T_Q_in_flow,
+            T_charge_in=T_charge_in,
             m_dot_discharge=m_dot_discharge,
-            T_discharge_in=T_Q_out_return,
+            T_discharge_in=T_discharge_in,
             height=self.height,
         )
 
@@ -274,13 +319,32 @@ class ThermalStorageAdapter(BaseHeatGenerator):
 
         # Store results (W → kW for Q_loss)
         self.Q_loss[t] = outputs.Q_loss / 1000.0
-        self._T_supply[t] = outputs.port_temperatures[0] if outputs.port_temperatures else self._state.T[0]
-        self._T_return[t] = outputs.port_temperatures[-1] if outputs.port_temperatures else self._state.T[-1]
+        # Temperatures read from state — independent of port ordering.
+        temps = self._state.temperatures
+        n = len(temps)
+        self._T_supply[t] = self._state.T_top
+        self._T_middle[t] = float(temps[n // 2])
+        self._T_return[t] = self._state.T_bottom
         self._soc[t] = self._model.get_soc(self._state, self.T_min, self.T_max)
+        # Net storage flow [kW]: positive = discharge (storage helps network),
+        # negative = charge (generators fill storage).
+        self._Q_net_storage_flow[t] = Q_out - Q_in
+
+    @property
+    def Q_net_storage_flow(self) -> np.ndarray:
+        """Net heat flow [kW]: positive = discharge, negative = charge."""
+        return self._Q_net_storage_flow
 
     def current_storage_temperatures(self, t: int) -> tuple:
-        """Return (supply_temp, return_temp) [°C] at timestep t."""
-        return float(self._T_supply[t]), float(self._T_return[t])
+        """
+        Return (upper_temp, lower_temp) [°C] at timestep t, used by generator
+        control strategies via EnergySystem.calculate_mix().
+
+        upper_temp = T_top  (hot side – used for charge_on threshold).
+        lower_temp = T_middle (middle node – strategy turn-off threshold,
+                    better indicator of overall charge state than T_bottom).
+        """
+        return float(self._T_supply[t]), float(self._T_middle[t])
 
     def current_storage_state(self, t: int, T_Q_out_return: float, T_Q_in_flow: float) -> tuple:
         """
@@ -376,6 +440,8 @@ class ThermalStorageAdapter(BaseHeatGenerator):
             "buoyancy": self.buoyancy,
             "spez_Investitionskosten": self.spez_Investitionskosten,
             "hours": self.hours,
+            "T_charge": self.T_charge,
+            "T_discharge_return": self.T_discharge_return,
         }
 
     @classmethod

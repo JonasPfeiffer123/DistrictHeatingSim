@@ -295,10 +295,12 @@ class EnergySystem:
                 # Add technology as inactive with zero contribution
                 self.aggregate_results({'tech_name': tech.name})
 
-        # Calculate unmet demand after processing all technologies
+        # Calculate unmet demand after processing all technologies.
+        # Use np.maximum(..., 0) so that over-production (negative residual, absorbed by
+        # seasonal storage) does not produce a negative unmet-demand entry.
         if np.any(self.results['Restlast_L'] > 1e-6):
-            unmet_demand = np.sum(self.results['Restlast_L']) / 1000 * self.duration
-            self.results['Wärmeleistung_L'].append(self.results['Restlast_L'])
+            unmet_demand = np.sum(np.maximum(self.results['Restlast_L'], 0)) / 1000 * self.duration
+            self.results['Wärmeleistung_L'].append(np.maximum(self.results['Restlast_L'], 0))
             self.results['Wärmemengen'].append(unmet_demand)
             self.results['techs'].append("Ungedeckter Bedarf")
             self.results['Anteile'].append(unmet_demand / self.results['Jahreswärmebedarf'])
@@ -351,6 +353,13 @@ class EnergySystem:
             # Add storage data to extracted data structure
             self.extracted_data['Speicherbeladung_kW'] = Q_net_negative
             self.extracted_data['Speicherentladung_kW'] = Q_net_positive
+
+            # Additional storage state variables for plotting
+            self.extracted_data['Speicher_SOC_%'] = self.storage._soc * 100.0
+            self.extracted_data['Speicher_T_oben_°C'] = self.storage._T_supply
+            self.extracted_data['Speicher_T_mitte_°C'] = self.storage._T_middle
+            self.extracted_data['Speicher_T_unten_°C'] = self.storage._T_return
+            self.extracted_data['Speicher_Verluste_kW'] = self.storage.Q_loss
 
         if "Ungedeckter Bedarf" in self.results['techs']:
             # Find index of "Ungedeckter Bedarf" in technology list

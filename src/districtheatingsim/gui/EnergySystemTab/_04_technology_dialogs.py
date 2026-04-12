@@ -1407,6 +1407,12 @@ class ThermalStorage1DDialog(QWidget):
         self.initial_temp_input = QLineEdit(self._field("initial_temp", "60"))
         temp_layout.addRow("Initial temperature (°C):", self.initial_temp_input)
 
+        self.T_charge_input = QLineEdit(self._field("T_charge", "90"))
+        temp_layout.addRow("Generator charge temp (°C):", self.T_charge_input)
+
+        self.T_discharge_return_input = QLineEdit(self._field("T_discharge_return", "50"))
+        temp_layout.addRow("Network return temp (°C):", self.T_discharge_return_input)
+
         temp_box.setLayout(temp_layout)
         main_layout.addWidget(temp_box)
 
@@ -1541,7 +1547,6 @@ class ThermalStorage1DDialog(QWidget):
             T_ambient = float(self.T_ground_surface_input.text())
 
         return {
-            "name": self.name_input.text(),
             "volume": float(self.volume_input.text()),
             "height": float(self.height_input.text()),
             "geometry_type": self.geometry_combo.currentText(),
@@ -1567,4 +1572,6 @@ class ThermalStorage1DDialog(QWidget):
             "buoyancy": self.buoyancy_check.isChecked(),
             "spez_Investitionskosten": float(self.spez_cost_input.text()),
             "hours": 8760,
+            "T_charge": float(self.T_charge_input.text()),
+            "T_discharge_return": float(self.T_discharge_return_input.text()),
         }
