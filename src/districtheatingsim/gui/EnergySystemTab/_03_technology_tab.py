@@ -21,6 +21,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
 from districtheatingsim.heat_generators import TECH_CLASS_REGISTRY
+from districtheatingsim.heat_generators.thermal_storage import ThermalStorageAdapter
 from districtheatingsim.gui.EnergySystemTab._04_technology_dialogs import TechInputDialog
 from districtheatingsim.gui.EnergySystemTab._11_generator_schematic import SchematicScene, CustomGraphicsView
 
@@ -571,5 +572,5 @@ class TechnologyTab(QWidget):
             tech.scene_item = self.schematic_scene.add_component('Gas Boiler', name, storage=False)
         elif tech.name.startswith('PowerToHeat'):
             tech.scene_item = self.schematic_scene.add_component('Power-to-Heat', name, storage=False)
-        elif tech.name.startswith('Saisonaler Wärmespeicher'):
+        elif isinstance(tech, ThermalStorageAdapter) or tech.name.startswith('Saisonaler Wärmespeicher'):
             tech.scene_item = self.schematic_scene.add_component('Seasonal Thermal Storage', name, storage=False)
