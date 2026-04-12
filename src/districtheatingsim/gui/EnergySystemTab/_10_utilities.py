@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 
 from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
-from districtheatingsim.heat_generators.STES import STES
+from districtheatingsim.heat_generators.thermal_storage import ThermalStorageAdapter
 
 class CheckableComboBox(QComboBox):
     """
@@ -174,7 +174,7 @@ class CustomJSONEncoder(json.JSONEncoder):
             if isinstance(obj, pd.DataFrame):
                 # Use 'split' format for DataFrame serialization
                 return obj.to_dict(orient='split')
-            if isinstance(obj, (BaseHeatGenerator, BaseStrategy, STES)):
+            if isinstance(obj, (BaseHeatGenerator, BaseStrategy, ThermalStorageAdapter)):
                 return obj.to_dict()
             return super().default(obj)
         except TypeError as e:

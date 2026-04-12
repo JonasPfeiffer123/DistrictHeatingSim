@@ -17,7 +17,7 @@ from .biomass_boiler import BiomassBoiler
 from .gas_boiler import GasBoiler
 from .power_to_heat import PowerToHeat
 from .solar_thermal import SolarThermal
-from .STES import STES
+from .thermal_storage import ThermalStorageAdapter, BufferStorage
 
 TECH_CLASS_REGISTRY = {
     'BHKW': CHP,
@@ -30,7 +30,7 @@ TECH_CLASS_REGISTRY = {
     'Solarthermie': SolarThermal,
     'AqvaHeat': AqvaHeat,
     'Power-to-Heat': PowerToHeat,
-    'Saisonaler Wärmespeicher': STES
+    'Saisonaler Wärmespeicher': ThermalStorageAdapter,
 }
 
 # Lookup by Python class name (stored as tech_type in to_dict).
