@@ -56,7 +56,7 @@ class ThermalStorageAdapter(BaseHeatGenerator):
     initial_temp : float
         Uniform initial temperature [°C].
     n_nodes : int
-        Number of vertical nodes (default 20).
+        Number of vertical nodes (default 50).
     geometry_type : str
         ``"cylinder"``, ``"truncated_cone"``, or ``"truncated_pyramid"``.
     loss_model_type : str
