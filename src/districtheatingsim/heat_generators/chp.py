@@ -11,6 +11,7 @@ import numpy as np
 from typing import Dict, Tuple, List, Optional, Union
 
 from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
+from districtheatingsim.heat_generators.thermal_storage import BufferStorage
 
 class CHP(BaseHeatGenerator):
     """
@@ -84,6 +85,16 @@ class CHP(BaseHeatGenerator):
         # Initialize control strategy
         self.strategy = CHPStrategy(75, 70)
 
+        # Build buffer storage model if active
+        self.buffer: Optional[BufferStorage] = (
+            BufferStorage(
+                volume=self.Speicher_Volumen_BHKW,
+                T_flow=self.T_vorlauf,
+                T_return=self.T_ruecklauf,
+            )
+            if self.speicher_aktiv else None
+        )
+
         # Initialize operational arrays
         self.init_operation(8760)
 
@@ -133,7 +144,7 @@ class CHP(BaseHeatGenerator):
 
     def simulate_storage(self, Last_L: np.ndarray, duration: float) -> None:
         """
-        Simulate CHP with thermal storage.
+        Simulate CHP with thermal buffer storage (backed by ThermalStorage1D).
 
         :param Last_L: Thermal load [kW]
         :type Last_L: numpy.ndarray
@@ -141,60 +152,44 @@ class CHP(BaseHeatGenerator):
         :type duration: float
 
         .. note::
-           Storage enables optimal CHP operation with hysteresis control.
+           CHP runs at full nominal load; excess heat charges the buffer.
+           Hysteresis control (min_fill / max_fill SOC thresholds) decides
+           when to switch on/off. Buffer provides discharge when CHP is off.
         """
-        # Calculate thermal storage capacity based on water storage
-        speicher_kapazitaet = (self.Speicher_Volumen_BHKW * 4186 * 
-                              (self.T_vorlauf - self.T_ruecklauf) / 3600)  # kWh
-        
-        # Initialize storage state and operational limits
-        speicher_fill = self.initial_fill * speicher_kapazitaet
-        min_speicher_fill = self.min_fill * speicher_kapazitaet
-        max_speicher_fill = self.max_fill * speicher_kapazitaet
-
-        # Initialize storage-related arrays
         self.Wärmeleistung_Speicher_kW = np.zeros_like(Last_L)
         self.Speicher_Fuellstand = np.zeros_like(Last_L)
 
-        # Simulate hourly storage and cogeneration operation
+        # Pre-charge buffer to initial_fill SOC
+        if self.initial_fill > 0 and self.buffer is not None:
+            capacity_kwh = self.buffer.get_capacity_kwh()
+            self.buffer.step(self.initial_fill * capacity_kwh / duration, duration)
+
         for i in range(len(Last_L)):
+            soc = self.buffer.get_soc() if self.buffer else 0.0
+
             if self.active:
-                # Check if storage is full
-                if speicher_fill >= max_speicher_fill:
+                if soc >= self.max_fill:
                     self.active = False
                 else:
-                    # Operate CHP at nominal capacity for optimal efficiency
                     self.Wärmeleistung_kW[i] = self.th_Leistung_kW
-                    
-                    # Manage storage charging/discharging
-                    if Last_L[i] < self.th_Leistung_kW:
-                        # Charge storage with excess heat
-                        self.Wärmeleistung_Speicher_kW[i] = Last_L[i] - self.th_Leistung_kW
-                        speicher_fill += (self.th_Leistung_kW - Last_L[i]) * duration
-                        speicher_fill = float(min(speicher_fill, speicher_kapazitaet))
-                    else:
-                        # No storage charging when load exceeds CHP capacity
-                        self.Wärmeleistung_Speicher_kW[i] = 0
+                    Q_excess = self.th_Leistung_kW - Last_L[i]
+                    if Q_excess > 0:
+                        self.Wärmeleistung_Speicher_kW[i] = -Q_excess  # negative = charging
+                        self.buffer.step(Q_excess, duration)
+                    # else: load ≥ CHP output, no buffer interaction
             else:
-                # Check if storage needs recharging
-                if speicher_fill <= min_speicher_fill:
+                if soc <= self.min_fill:
                     self.active = True
-            
-            # Storage discharge mode when CHP inactive
+
             if not self.active:
                 self.Wärmeleistung_kW[i] = 0
-                self.Wärmeleistung_Speicher_kW[i] = Last_L[i]
-                speicher_fill -= Last_L[i] * duration
-                speicher_fill = float(max(speicher_fill, 0))
+                self.Wärmeleistung_Speicher_kW[i] = Last_L[i]  # positive = discharging
+                self.buffer.step(-Last_L[i], duration)
 
-            # Calculate electrical output based on thermal output
-            self.el_Leistung_kW[i] = (self.Wärmeleistung_kW[i] / 
-                                     self.thermischer_Wirkungsgrad * self.el_Wirkungsgrad)
-            
-            # Update storage fill level percentage
-            self.Speicher_Fuellstand[i] = speicher_fill / speicher_kapazitaet * 100  # %
+            self.el_Leistung_kW[i] = (self.Wärmeleistung_kW[i] /
+                                      self.thermischer_Wirkungsgrad * self.el_Wirkungsgrad)
+            self.Speicher_Fuellstand[i] = self.buffer.get_soc() * 100.0
 
-        # Update operational mask based on CHP operation
         self.betrieb_mask = self.Wärmeleistung_kW > 0
 
     def generate(self, t: int, **kwargs) -> Tuple[float, float]:
