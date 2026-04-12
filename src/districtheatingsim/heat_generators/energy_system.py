@@ -99,7 +99,7 @@ class EnergySystem:
         Add a seasonal thermal energy storage system to the energy system.
 
         :param storage: Seasonal Thermal Energy Storage object.
-        :type storage: STES
+        :type storage: ThermalStorageAdapter
 
         .. note:: Enables temporal decoupling of generation and demand for improved efficiency.
         """
@@ -212,10 +212,10 @@ class EnergySystem:
         
         # Separate STES from generators before iterating (modifying a list during
         # iteration skips elements and is undefined behaviour).
-        stes_list = [t for t in self.technologies if isinstance(t, STES)]
-        self.technologies = [t for t in self.technologies if not isinstance(t, STES)]
+        stes_list = [t for t in self.technologies if isinstance(t, ThermalStorageAdapter)]
+        self.technologies = [t for t in self.technologies if not isinstance(t, ThermalStorageAdapter)]
         if stes_list:
-            self.storage = stes_list[-1]  # Use last-added STES if multiple were added
+            self.storage = stes_list[-1]  # Use last-added storage if multiple were added
 
         for tech in self.technologies:
             # Initialize each technology
@@ -680,7 +680,12 @@ class EnergySystem:
 
         # Restore storage
         if data.get('storage'):
-            obj.storage = STES.from_dict(data['storage'])
+            obj.storage = ThermalStorageAdapter.from_dict(data['storage'])
+            if obj.storage is None:
+                logging.warning(
+                    "Thermal storage could not be loaded (outdated format). "
+                    "Please re-configure the storage in the GUI."
+                )
 
         # Restore results (if available)
         obj.results = {}
