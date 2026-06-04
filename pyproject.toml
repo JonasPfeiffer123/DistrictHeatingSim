@@ -73,4 +73,5 @@ where = ["src"]
     "leaflet/**/*",
     "project_data/**/*",
     "styles/**/*",
+    "gui/**/*.json",
 ]
