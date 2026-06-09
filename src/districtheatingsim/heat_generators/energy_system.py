@@ -191,7 +191,11 @@ class EnergySystem:
             self.results['Restlast_L'] -= tech_results["Wärmeleistung_Speicher_L"]
             self.results['Wärmeleistung_L'].append(tech_results["Wärmeleistung_Speicher_L"])
             self.results['techs'].append(f"{tech_results['tech_name']}_Speicher")
+            self.results['Wärmemengen'].append(0)
             self.results['Anteile'].append(0)
+            self.results['WGK'].append(0)
+            self.results['specific_emissions_L'].append(0)
+            self.results['primärenergie_L'].append(0)
             self.results['colors'].append("gray")
 
     def calculate_mix(self, variables: list = [], variables_order: list = []) -> dict:
@@ -275,7 +279,6 @@ class EnergySystem:
 
             # Calculate storage results
             self.storage.calculate_efficiency(self.load_profile)
-            # self.storage.calculate_operational_costs(0.10) # TODO: needs to be implemented in STES class
             self.results['storage_class'] = self.storage
         
         for tech in self.technologies:
@@ -301,15 +304,19 @@ class EnergySystem:
             storage_discharge = np.maximum(self.storage._Q_net_storage_flow, 0.0)
             storage_discharge_mwh = np.sum(storage_discharge) / 1000.0 * self.duration
             if storage_discharge_mwh > 1e-3:
+                # Storage cost: capital annuity + maintenance (VDI 2067), spread over the
+                # discharged energy. No fuel cost – the loss energy is paid on the generator side.
+                self.storage.calculate_costs(storage_discharge_mwh, self.economic_parameters)
                 self.results['Restlast_L'] -= storage_discharge
                 self.results['Wärmeleistung_L'].append(storage_discharge)
                 self.results['Wärmemengen'].append(storage_discharge_mwh)
                 self.results['techs'].append(f"{self.storage.name} (Entladung)")
                 self.results['Anteile'].append(storage_discharge_mwh / self.results['Jahreswärmebedarf'])
-                self.results['WGK'].append(0.0)
+                self.results['WGK'].append(self.storage.WGK)
                 self.results['specific_emissions_L'].append(0.0)
                 self.results['primärenergie_L'].append(0.0)
                 self.results['colors'].append('steelblue')
+                self.results['WGK_Gesamt'] += self.storage.A_N / self.results['Jahreswärmebedarf']
                 self.results['Restwärmebedarf'] -= storage_discharge_mwh
 
         # Calculate unmet demand after processing all technologies.
@@ -321,6 +328,9 @@ class EnergySystem:
             self.results['Wärmemengen'].append(unmet_demand)
             self.results['techs'].append("Ungedeckter Bedarf")
             self.results['Anteile'].append(unmet_demand / self.results['Jahreswärmebedarf'])
+            self.results['WGK'].append(0)
+            self.results['specific_emissions_L'].append(0)
+            self.results['primärenergie_L'].append(0)
             self.results['colors'].append("black")
 
         self.getInitialPlotData()
@@ -593,11 +603,7 @@ class EnergySystem:
         labels_all = self.results['techs']
         anteile_all = np.asarray(self.results['Anteile'], dtype=float)
         colors_all = self.results['colors']
-        jahresbedarf = self.results.get('Jahreswärmebedarf', 1.0)
-
-        # Compute MWh from shares × annual demand (avoids length mismatch when
-        # buffer-storage entries are appended to techs/Anteile but not Wärmemengen).
-        waermemengen_all = anteile_all * jahresbedarf
+        waermemengen_all = np.asarray(self.results['Wärmemengen'], dtype=float)
 
         # Filter out zero or negative shares
         mask = anteile_all > 0

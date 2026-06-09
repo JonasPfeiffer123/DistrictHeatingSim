@@ -111,6 +111,10 @@ class ThermalStorageAdapter(BaseHeatGenerator):
         buoyancy: bool = True,
         lambda_eff_factor: float = 5.0,
         spez_Investitionskosten: float = 50.0,
+        Nutzungsdauer: int = 30,
+        f_Inst: float = 1.0,
+        f_W_Insp: float = 1.0,
+        Bedienaufwand: float = 0.0,
         hours: int = 8760,
         T_charge: float = 90.0,
         T_discharge_return: float = 50.0,
@@ -140,6 +144,12 @@ class ThermalStorageAdapter(BaseHeatGenerator):
         self.buoyancy = buoyancy
         self.lambda_eff_factor = lambda_eff_factor
         self.spez_Investitionskosten = spez_Investitionskosten
+        # VDI 2067 cost factors. f_W_Insp is the annual maintenance/inspection cost as a
+        # percentage of the investment (folded into the annuity by annuity()).
+        self.Nutzungsdauer = Nutzungsdauer
+        self.f_Inst = f_Inst
+        self.f_W_Insp = f_W_Insp
+        self.Bedienaufwand = Bedienaufwand
         self.hours = hours
         # Fixed generator-side temperatures for charge/discharge mass-flow calculation.
         # T_charge: temperature at which generators supply heat to storage (independent of
@@ -373,27 +383,35 @@ class ThermalStorageAdapter(BaseHeatGenerator):
     # Cost calculation
     # ------------------------------------------------------------------
 
-    def calculate_costs(
-        self,
-        Wärmemenge_MWh: float,
-        Investitionskosten: float,
-        Nutzungsdauer: float,
-        f_Inst: float,
-        f_W_Insp: float,
-        Bedienaufwand: float,
-        q: float,
-        r: float,
-        T: float,
-        Energiebedarf: float,
-        Energiekosten: float,
-        E1: float,
-        stundensatz: float,
-    ) -> None:
+    def calculate_costs(self, Wärmemenge_MWh: float, economic_parameters: dict) -> None:
+        """
+        Compute the storage's annuity and heat-generation cost (VDI 2067).
+
+        Capital-bound costs come from the tank investment (``volume`` ×
+        ``spez_Investitionskosten``); the annual maintenance share is the
+        ``f_W_Insp`` factor folded into the annuity. There are no demand-bound
+        (fuel) costs – the energy to cover the storage losses is paid for on the
+        generator side, so charging it here too would double-count.
+
+        :param Wärmemenge_MWh: Annual heat discharged from the storage [MWh].
+        :param economic_parameters: Shared economic-parameters dict.
+        """
+        self.load_economic_parameters(economic_parameters)
         self.Wärmemenge_MWh = Wärmemenge_MWh
-        self.Investitionskosten = Investitionskosten
+        self.Investitionskosten = self.volume * self.spez_Investitionskosten
         self.A_N = self.annuity(
-            Investitionskosten, Nutzungsdauer, f_Inst, f_W_Insp,
-            Bedienaufwand, q, r, T, Energiebedarf, Energiekosten, E1, stundensatz,
+            initial_investment_cost=self.Investitionskosten,
+            asset_lifespan_years=self.Nutzungsdauer,
+            installation_factor=self.f_Inst,
+            maintenance_inspection_factor=self.f_W_Insp,
+            operational_effort_h=self.Bedienaufwand,
+            interest_rate_factor=self.q,
+            inflation_rate_factor=self.r,
+            consideration_time_period_years=self.T,
+            annual_energy_demand=0,
+            energy_cost_per_unit=0,
+            annual_revenue=0,
+            hourly_rate=self.stundensatz,
         )
         self.WGK = self.A_N / Wärmemenge_MWh if Wärmemenge_MWh > 0 else float("inf")
 
@@ -443,6 +461,10 @@ class ThermalStorageAdapter(BaseHeatGenerator):
             "buoyancy": self.buoyancy,
             "lambda_eff_factor": self.lambda_eff_factor,
             "spez_Investitionskosten": self.spez_Investitionskosten,
+            "Nutzungsdauer": self.Nutzungsdauer,
+            "f_Inst": self.f_Inst,
+            "f_W_Insp": self.f_W_Insp,
+            "Bedienaufwand": self.Bedienaufwand,
             "hours": self.hours,
             "T_charge": self.T_charge,
             "T_discharge_return": self.T_discharge_return,
