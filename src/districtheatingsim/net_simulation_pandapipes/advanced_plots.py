@@ -24,6 +24,7 @@ import pandapipes as pp
 import pandapipes.plotting as pp_plot
 import pandas as pd
 from typing import Optional, Dict, List
+from districtheatingsim.constants import KELVIN_OFFSET
 
 
 def create_pressure_plot(net, ax: Optional[plt.Axes] = None, show_colorbar: bool = True):
@@ -182,7 +183,7 @@ def create_temperature_plot(net, ax: Optional[plt.Axes] = None):
         
         # Get temperature data (convert to Celsius)
         temperatures_k = net.res_junction['t_k']
-        temperatures_c = temperatures_k - 273.15
+        temperatures_c = temperatures_k - KELVIN_OFFSET
         t_min, t_max = temperatures_c.min(), temperatures_c.max()
         
         # Create temperature colormap (blue = cold, red = hot)
@@ -195,7 +196,7 @@ def create_temperature_plot(net, ax: Optional[plt.Axes] = None):
                 if idx in net.junction_geodata.index:
                     x = net.junction_geodata.loc[idx, 'x']
                     y = net.junction_geodata.loc[idx, 'y']
-                    temp_c = net.res_junction.loc[idx, 't_k'] - 273.15
+                    temp_c = net.res_junction.loc[idx, 't_k'] - KELVIN_OFFSET
                     color = temp_cmap(temp_norm(temp_c))
                     ax.scatter(x, y, c=[color], s=100, edgecolors='black', linewidth=1, zorder=5)
         
@@ -211,13 +212,13 @@ def create_temperature_plot(net, ax: Optional[plt.Axes] = None):
                     to_y = net.junction_geodata.loc[to_junction, 'y']
                     # Use pipe temperature data if available
                     if 't_from_k' in net.res_pipe.columns and 't_to_k' in net.res_pipe.columns:
-                        t_from = net.res_pipe.loc[idx, 't_from_k'] - 273.15
-                        t_to = net.res_pipe.loc[idx, 't_to_k'] - 273.15
+                        t_from = net.res_pipe.loc[idx, 't_from_k'] - KELVIN_OFFSET
+                        t_to = net.res_pipe.loc[idx, 't_to_k'] - KELVIN_OFFSET
                         avg_temp = (t_from + t_to) / 2
                     else:
                         # Fallback: use junction temperatures
-                        t_from = net.res_junction.loc[from_junction, 't_k'] - 273.15
-                        t_to = net.res_junction.loc[to_junction, 't_k'] - 273.15
+                        t_from = net.res_junction.loc[from_junction, 't_k'] - KELVIN_OFFSET
+                        t_to = net.res_junction.loc[to_junction, 't_k'] - KELVIN_OFFSET
                         avg_temp = (t_from + t_to) / 2
                     
                     pipe_color = temp_cmap(temp_norm(avg_temp))

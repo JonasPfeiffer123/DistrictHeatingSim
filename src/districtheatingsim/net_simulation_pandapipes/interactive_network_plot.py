@@ -23,6 +23,7 @@ import pandas as pd
 import numpy as np
 from typing import Optional, List, Dict, Any, Tuple
 import geopandas as gpd
+from districtheatingsim.constants import KELVIN_OFFSET
 from shapely.geometry import Point, LineString
 import pandapipes as pp
 
@@ -441,7 +442,7 @@ class InteractiveNetworkPlot:
             if hasattr(self.net, 'res_junction'):
                 res = self.net.res_junction.loc[idx]
                 text += f"Druck: {res['p_bar']:.2f} bar<br>"
-                text += f"Temperatur: {res['t_k'] - 273.15:.1f} °C<br>"
+                text += f"Temperatur: {res['t_k'] - KELVIN_OFFSET:.1f} °C<br>"
                 
             hover_texts.append(text)
         
@@ -718,9 +719,9 @@ class InteractiveNetworkPlot:
                 if 'mdot_from_kg_per_s' in res.index:
                     hover_text += f"Massenstrom: {res['mdot_from_kg_per_s']:.2f} kg/s<br>"
                 if 't_from_k' in res.index:
-                    hover_text += f"Vorlauftemp.: {res['t_from_k'] - 273.15:.1f} °C<br>"
+                    hover_text += f"Vorlauftemp.: {res['t_from_k'] - KELVIN_OFFSET:.1f} °C<br>"
                 if 't_to_k' in res.index:
-                    hover_text += f"Rücklauftemp.: {res['t_to_k'] - 273.15:.1f} °C<br>"
+                    hover_text += f"Rücklauftemp.: {res['t_to_k'] - KELVIN_OFFSET:.1f} °C<br>"
                 if 'dt_k' in res.index:
                     hover_text += f"ΔT: {res['dt_k']:.1f} K<br>"
                 elif 't_from_k' in res.index and 't_to_k' in res.index:
@@ -870,9 +871,9 @@ class InteractiveNetworkPlot:
                         if 'mdot_from_kg_per_s' in res.index:
                             hover_text += f"Massenstrom: {res['mdot_from_kg_per_s']:.2f} kg/s<br>"
                         if 't_from_k' in res.index:
-                            hover_text += f"Vorlauftemp.: {res['t_to_k'] - 273.15:.1f} °C<br>"
+                            hover_text += f"Vorlauftemp.: {res['t_to_k'] - KELVIN_OFFSET:.1f} °C<br>"
                         if 't_to_k' in res.index:
-                            hover_text += f"Rücklauftemp.: {res['t_from_k'] - 273.15:.1f} °C<br>"
+                            hover_text += f"Rücklauftemp.: {res['t_from_k'] - KELVIN_OFFSET:.1f} °C<br>"
                         if 'dt_k' in res.index:
                             hover_text += f"ΔT: {res['dt_k']:.1f} K<br>"
                         elif 't_from_k' in res.index and 't_to_k' in res.index:

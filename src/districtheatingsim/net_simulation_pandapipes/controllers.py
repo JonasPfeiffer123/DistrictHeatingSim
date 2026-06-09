@@ -20,6 +20,7 @@ in district heating systems.
 from pandapower.control.basic_controller import BasicCtrl
 import numpy as np
 from typing import Optional, Tuple, List, Union
+from districtheatingsim.constants import KELVIN_OFFSET
 
 class BadPointPressureLiftController(BasicCtrl):
     """
@@ -306,8 +307,8 @@ class MinimumSupplyTemperatureController(BasicCtrl):
             return super(MinimumSupplyTemperatureController, self).control_step(net)
 
         # Get current temperatures
-        current_T_out = net.res_heat_consumer["t_to_k"].at[self.heat_consumer_idx] - 273.15
-        current_T_in = net.res_heat_consumer["t_from_k"].at[self.heat_consumer_idx] - 273.15
+        current_T_out = net.res_heat_consumer["t_to_k"].at[self.heat_consumer_idx] - KELVIN_OFFSET
+        current_T_in = net.res_heat_consumer["t_from_k"].at[self.heat_consumer_idx] - KELVIN_OFFSET
 
         # Apply weighted averaging for stability
         weighted_avg_T_in = self.get_weighted_average_temperature()
@@ -321,7 +322,7 @@ class MinimumSupplyTemperatureController(BasicCtrl):
             net.heat_consumer["treturn_k"].at[self.heat_consumer_idx] = new_T_out
             
             if self.debug:
-                print(f"Minimum supply temperature not met. Adjusted target output temperature to {new_T_out - 273.15:.1f}°C.")
+                print(f"Minimum supply temperature not met. Adjusted target output temperature to {new_T_out - KELVIN_OFFSET:.1f}°C.")
             
         return super(MinimumSupplyTemperatureController, self).control_step(net)
 
@@ -343,8 +344,8 @@ class MinimumSupplyTemperatureController(BasicCtrl):
             return True
         
         # Get current temperatures and system state
-        current_T_out = net.res_heat_consumer["t_to_k"].at[self.heat_consumer_idx] - 273.15
-        current_T_in = net.res_heat_consumer["t_from_k"].at[self.heat_consumer_idx] - 273.15
+        current_T_out = net.res_heat_consumer["t_to_k"].at[self.heat_consumer_idx] - KELVIN_OFFSET
+        current_T_in = net.res_heat_consumer["t_from_k"].at[self.heat_consumer_idx] - KELVIN_OFFSET
         previous_T_in = self.previous_temperatures[-1] if self.previous_temperatures else None
         current_mass_flow = net.res_heat_consumer["mdot_from_kg_per_s"].at[self.heat_consumer_idx]
 

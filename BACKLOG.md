@@ -183,11 +183,18 @@ are hardcoded.
 `project_settings.json` and the project JSONs have no version field → old projects
 break on format changes. (The storage `from_dict` → `None` + warning is a one-off,
 not a general migration path.)
-### D3. Scattered physical constants / magic numbers
-`cp` is sometimes 4.18, sometimes 4.2 kJ/kgK; `273.15` is hardcoded ~20×; CO₂
-factors and temperature limits (e.g. the 75 K Hub) live locally in individual
-generators. Fix: a central `constants.py` + a unit convention — eliminates the
-4.18/4.2 class of bugs.
+### D3. Scattered physical constants / magic numbers (largely fixed 2026-06)
+`cp` was both 4.18 and 4.2 kJ/kgK; `273.15` was hard-coded ~20×; CO₂/primary-energy/
+BEW factors were duplicated across generators. **Fixed**: central
+`districtheatingsim/constants.py` (`KELVIN_OFFSET`, `CP_WATER_KJ_KGK`, `CO2_FACTOR_*`,
+`PRIMARY_ENERGY_FACTOR_*`, `BEW_SUBSIDY_SHARE`). All generators + the
+`net_simulation_pandapipes` Kelvin/cp sites now import from it. The factor + Kelvin
+centralization is value-identical (golden masters unchanged); **cp was unified to
+4.18** — this *changed* the former `4.2` sites in the (untested) pandapipes layer by
+~0.5 % toward correctness. Pinned by `tests/test_constants.py`.
+- **Still open:** temperature limits (e.g. the 75 K Hub) and `cp=4187 J/kgK` in
+  `thermal_storage.py` (different unit system) were intentionally left; fold in if a
+  unit convention is formalized.
 
 ## E. Hygiene
 ### E1. `.gitignore` casing

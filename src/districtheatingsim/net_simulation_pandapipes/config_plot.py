@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt
 import pandapipes.plotting as pp_plot
 import contextily as cx
 import geopandas as gpd
+from districtheatingsim.constants import KELVIN_OFFSET
 from shapely.geometry import Point
 from typing import Optional, List, Tuple, Dict, Any
 
@@ -113,8 +114,8 @@ def config_plot(net, ax: plt.Axes, show_junctions: bool = True, show_pipes: bool
                 x, y = net.junction_geodata.loc[junction, ['x', 'y']]
                 name = net.junction.loc[junction, 'name']
                 pressure = net.res_junction.loc[junction, 'p_bar'] if hasattr(net, 'res_junction') else 0.0
-                temperature = net.res_junction.loc[junction, 't_k'] if hasattr(net, 'res_junction') else 273.15
-                text = f"{name}\nPressure: {pressure:.2f} bar\nTemperature: {temperature - 273.15:.2f} °C"
+                temperature = net.res_junction.loc[junction, 't_k'] if hasattr(net, 'res_junction') else KELVIN_OFFSET
+                text = f"{name}\nPressure: {pressure:.2f} bar\nTemperature: {temperature - KELVIN_OFFSET:.2f} °C"
                 ann = make_annotation(text, x, y, "junction", junction)
                 data_annotations.append(ann)
             except (KeyError, IndexError):

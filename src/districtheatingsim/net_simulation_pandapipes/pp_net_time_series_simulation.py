@@ -17,6 +17,7 @@ from typing import List, Dict, Tuple, Union, Any
 from districtheatingsim.net_simulation_pandapipes.utilities import COP_WP
 from districtheatingsim.net_simulation_pandapipes.controllers import MinimumSupplyTemperatureController
 from districtheatingsim.utilities.test_reference_year import import_TRY
+from districtheatingsim.constants import KELVIN_OFFSET, CP_WATER_KJ_KGK
 
 def update_heat_consumer_qext_controller(net, qext_w_profiles: List[np.ndarray], 
                                        time_steps: range, start: int, end: int) -> None:
@@ -97,18 +98,18 @@ def update_heat_consumer_return_temperature_controller(net, return_temperature_h
     :type end: int
     
     .. note::
-       Automatically converts temperatures from °C to K (adds 273.15).
+       Automatically converts temperatures from °C to K (adds KELVIN_OFFSET).
 """
     for i, return_temp_profile in enumerate(return_temperature_heat_consumer):
         # Check if static or time-dependent
         if np.isscalar(return_temp_profile) or (isinstance(return_temp_profile, np.ndarray) and return_temp_profile.ndim == 0):
             # Single value: repeat for all time steps
-            values = np.full(len(time_steps), return_temp_profile + 273.15)
+            values = np.full(len(time_steps), return_temp_profile + KELVIN_OFFSET)
         elif isinstance(return_temp_profile, np.ndarray) and return_temp_profile.ndim == 1 and len(return_temp_profile) == 1:
-            values = np.full(len(time_steps), return_temp_profile[0] + 273.15)
+            values = np.full(len(time_steps), return_temp_profile[0] + KELVIN_OFFSET)
         else:
             # Time series: take correct slice and convert
-            values = return_temp_profile[start:end] + 273.15
+            values = return_temp_profile[start:end] + KELVIN_OFFSET
 
         # Build DataFrame for all time steps
         df_return_temp = pd.DataFrame(index=time_steps, data={
@@ -194,7 +195,7 @@ def update_heat_generator_supply_temperature_controller(net, supply_temperature:
         supply_temperature = np.full(len(time_steps), supply_temperature)
 
     # Create the DataFrame for the supply temperature
-    df_supply_temp = pd.DataFrame(index=time_steps, data={'supply_temperature': supply_temperature[start:end] + 273.15})
+    df_supply_temp = pd.DataFrame(index=time_steps, data={'supply_temperature': supply_temperature[start:end] + KELVIN_OFFSET})
     data_source_supply_temp = DFData(df_supply_temp)
     for ctrl in net.controller.object.values:
         if isinstance(ctrl, ConstControl) and ctrl.element == 'circ_pump_pressure' and ctrl.variable == 't_flow_k':
@@ -332,8 +333,8 @@ def time_series_preprocessing(NetworkGenerationData) -> Any:
 
     # Calculate mass flow for secondary producers
     if NetworkGenerationData.secondary_producers:
-        # Calculate mass flow with cp = 4.18 kJ/kgK
-        cp = 4.18  # kJ/kgK
+        # Calculate mass flow using the central water heat capacity
+        cp = CP_WATER_KJ_KGK  # kJ/kgK
         avg_return_temperature = np.mean(NetworkGenerationData.return_temperature_heat_consumer)
         mass_flow = NetworkGenerationData.waerme_ges_kW / (cp * (NetworkGenerationData.supply_temperature_heat_generator - avg_return_temperature))  # kW / (kJ/kgK * K) = kg/s
 
@@ -443,9 +444,9 @@ def simplified_time_series_net(NetworkGenerationData) -> Any:
                 "flow_pressure_design": res["p_to_bar"],
                 "return_pressure_design": res["p_from_bar"],
                 "deltap_design": res["p_to_bar"] - res["p_from_bar"],
-                "return_temp_design": res["t_from_k"] - 273.15,
-                "flow_temp_design": res["t_to_k"] - 273.15,
-                "qext_kW_design": res["mdot_from_kg_per_s"] * 4.2 * (res["t_to_k"] - res["t_from_k"])
+                "return_temp_design": res["t_from_k"] - KELVIN_OFFSET,
+                "flow_temp_design": res["t_to_k"] - KELVIN_OFFSET,
+                "qext_kW_design": res["mdot_from_kg_per_s"] * CP_WATER_KJ_KGK * (res["t_to_k"] - res["t_from_k"])
             }
             print(f"  Haupteinspeisung {idx}: {design_results['Heizentrale Haupteinspeisung'][idx]['qext_kW_design']:.1f} kW Auslegungsleistung")
     
@@ -458,9 +459,9 @@ def simplified_time_series_net(NetworkGenerationData) -> Any:
                 "flow_pressure_design": res["p_to_bar"],
                 "return_pressure_design": res["p_from_bar"],
                 "deltap_design": res["p_to_bar"] - res["p_from_bar"],
-                "return_temp_design": res["t_from_k"] - 273.15,
-                "flow_temp_design": res["t_to_k"] - 273.15,
-                "qext_kW_design": res["mdot_from_kg_per_s"] * 4.2 * (res["t_to_k"] - res["t_from_k"])
+                "return_temp_design": res["t_from_k"] - KELVIN_OFFSET,
+                "flow_temp_design": res["t_to_k"] - KELVIN_OFFSET,
+                "qext_kW_design": res["mdot_from_kg_per_s"] * CP_WATER_KJ_KGK * (res["t_to_k"] - res["t_from_k"])
             }
             print(f"  Weitere Einspeisung {idx}: {design_results['weitere Einspeisung'][idx]['qext_kW_design']:.1f} kW Auslegungsleistung")
     
@@ -502,7 +503,7 @@ def simplified_time_series_net(NetworkGenerationData) -> Any:
             
             # Calculate mass flow from heat and temperature difference
             # q = m * cp * dT  =>  m = q / (cp * dT)
-            cp = 4.2  # kJ/kgK
+            cp = CP_WATER_KJ_KGK  # kJ/kgK
             delta_T = supply_temp_series - design_data["return_temp_design"]
             mass_flow_series = qext_series / (cp * delta_T)
             
@@ -529,7 +530,7 @@ def simplified_time_series_net(NetworkGenerationData) -> Any:
     
     return NetworkGenerationData
 
-def calculate_results(net, net_results: Dict, cp_kJ_kgK: float = 4.2) -> Dict[str, Dict[int, Dict[str, np.ndarray]]]:
+def calculate_results(net, net_results: Dict, cp_kJ_kgK: float = CP_WATER_KJ_KGK) -> Dict[str, Dict[int, Dict[str, np.ndarray]]]:
     """
     Process and structure raw simulation results from pandapipes.
     
@@ -537,7 +538,7 @@ def calculate_results(net, net_results: Dict, cp_kJ_kgK: float = 4.2) -> Dict[st
     :type net: pandapipes.pandapipesNet
     :param net_results: Raw results dictionary from time series simulation
     :type net_results: Dict
-    :param cp_kJ_kgK: Specific heat capacity of water [kJ/kg·K], defaults to 4.2
+    :param cp_kJ_kgK: Specific heat capacity of water [kJ/kg·K], defaults to CP_WATER_KJ_KGK (4.18)
     :type cp_kJ_kgK: float
     :return: Structured results dict: {producer_type: {index: {parameter: time_series}}}
     :rtype: Dict[str, Dict[int, Dict[str, np.ndarray]]]
@@ -561,8 +562,8 @@ def calculate_results(net, net_results: Dict, cp_kJ_kgK: float = 4.2) -> Dict[st
                 "flow_pressure": net_results["res_circ_pump_pressure.p_to_bar"][:, idx],
                 "return_pressure": net_results["res_circ_pump_pressure.p_from_bar"][:, idx],
                 "deltap": net_results["res_circ_pump_pressure.p_to_bar"][:, idx] - net_results["res_circ_pump_pressure.p_from_bar"][:, idx],
-                "return_temp": net_results["res_circ_pump_pressure.t_from_k"][:, idx] - 273.15,
-                "flow_temp": net_results["res_circ_pump_pressure.t_to_k"][:, idx] - 273.15,
+                "return_temp": net_results["res_circ_pump_pressure.t_from_k"][:, idx] - KELVIN_OFFSET,
+                "flow_temp": net_results["res_circ_pump_pressure.t_to_k"][:, idx] - KELVIN_OFFSET,
                 "qext_kW": net_results["res_circ_pump_pressure.mdot_from_kg_per_s"][:, idx] * cp_kJ_kgK * (net_results["res_circ_pump_pressure.t_to_k"][:, idx] - net_results["res_circ_pump_pressure.t_from_k"][:, idx])
             }
 
@@ -574,8 +575,8 @@ def calculate_results(net, net_results: Dict, cp_kJ_kgK: float = 4.2) -> Dict[st
                 "flow_pressure": net_results["res_circ_pump_mass.p_to_bar"][:, idx],
                 "return_pressure": net_results["res_circ_pump_mass.p_from_bar"][:, idx],
                 "deltap": net_results["res_circ_pump_mass.p_to_bar"][:, idx] - net_results["res_circ_pump_mass.p_from_bar"][:, idx],
-                "return_temp": net_results["res_circ_pump_mass.t_from_k"][:, idx] - 273.15,
-                "flow_temp": net_results["res_circ_pump_mass.t_to_k"][:, idx] - 273.15,
+                "return_temp": net_results["res_circ_pump_mass.t_from_k"][:, idx] - KELVIN_OFFSET,
+                "flow_temp": net_results["res_circ_pump_mass.t_to_k"][:, idx] - KELVIN_OFFSET,
                 "qext_kW": net_results["res_circ_pump_mass.mdot_from_kg_per_s"][:, idx] * cp_kJ_kgK * (net_results["res_circ_pump_mass.t_to_k"][:, idx] - net_results["res_circ_pump_mass.t_from_k"][:, idx])
             }
 

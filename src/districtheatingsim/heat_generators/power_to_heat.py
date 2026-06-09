@@ -11,6 +11,7 @@ import numpy as np
 from typing import Dict, Any, Union, Tuple, Optional
 
 from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
+from districtheatingsim.constants import CO2_FACTOR_ELECTRICITY, PRIMARY_ENERGY_FACTOR_ELECTRICITY_PTH
 
 class PowerToHeat(BaseHeatGenerator):
     """
@@ -52,8 +53,8 @@ class PowerToHeat(BaseHeatGenerator):
         self.Nutzungsgrad = Nutzungsgrad
         self.Nutzungsdauer = 20  # years system lifetime
         self.f_Inst, self.f_W_Insp, self.Bedienaufwand = 1, 2, 0  # Economic factors
-        self.co2_factor_fuel = 0.4  # tCO2/MWh electricity grid mix
-        self.primärenergiefaktor = 2.4  # Primary energy factor for electricity
+        self.co2_factor_fuel = CO2_FACTOR_ELECTRICITY  # tCO2/MWh electricity grid mix
+        self.primärenergiefaktor = PRIMARY_ENERGY_FACTOR_ELECTRICITY_PTH  # Primary energy factor for electricity
         self.active = active
 
         # Initialize control strategy for storage integration

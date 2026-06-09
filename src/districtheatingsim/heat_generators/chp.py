@@ -12,6 +12,10 @@ from typing import Dict, Tuple, List, Optional, Union
 
 from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
 from districtheatingsim.heat_generators.thermal_storage import BufferStorage
+from districtheatingsim.constants import (
+    CO2_FACTOR_GAS, CO2_FACTOR_WOOD, CO2_FACTOR_ELECTRICITY,
+    PRIMARY_ENERGY_FACTOR_GAS, PRIMARY_ENERGY_FACTOR_WOOD, BEW_SUBSIDY_SHARE,
+)
 
 class CHP(BaseHeatGenerator):
     """
@@ -78,14 +82,14 @@ class CHP(BaseHeatGenerator):
 
         # Technology-specific emission and energy factors
         if self.fuel_type == "wood_gas":
-            self.co2_factor_fuel = 0.036  # tCO2/MWh for wood pellets
-            self.primärenergiefaktor = 0.2  # Primary energy factor for biomass
+            self.co2_factor_fuel = CO2_FACTOR_WOOD  # tCO2/MWh for wood pellets
+            self.primärenergiefaktor = PRIMARY_ENERGY_FACTOR_WOOD  # Primary energy factor for biomass
         else:  # gas
-            self.co2_factor_fuel = 0.201  # tCO2/MWh for natural gas
-            self.primärenergiefaktor = 1.1  # Primary energy factor for gas
+            self.co2_factor_fuel = CO2_FACTOR_GAS  # tCO2/MWh for natural gas
+            self.primärenergiefaktor = PRIMARY_ENERGY_FACTOR_GAS  # Primary energy factor for gas
 
-        self.co2_factor_electricity = 0.4  # tCO2/MWh for grid electricity displacement
-        self.Anteil_Förderung_BEW = 0.4  # BEW subsidy percentage (40%)
+        self.co2_factor_electricity = CO2_FACTOR_ELECTRICITY  # tCO2/MWh for grid electricity displacement
+        self.Anteil_Förderung_BEW = BEW_SUBSIDY_SHARE  # BEW subsidy percentage (40%)
 
         # Initialize control strategy
         self.strategy = CHPStrategy(75, 70)
