@@ -129,20 +129,19 @@ anything else leaves `spez_Investitionskosten_BHKW` unbound and raises
 `UnboundLocalError` mid-calculation. Production names happen to start with `BHKW`,
 so it works today, but the cost path should key off an explicit fuel/type attribute,
 not the display name. Characterized in `tests/test_heat_generators.py::TestCHP`.
-### C7. Dialog capacity read/write key asymmetry (found 2026-06)
-`GasBoilerDialog` / `BiomassBoilerDialog` read the capacity field's initial value
-from `th_Leistung_kW` / `P_BMK` but emit it under `thermal_capacity_kW`. Editing an
-existing tech (whose stored data carries `thermal_capacity_kW`, per the generator
-constructors) finds neither read-key present, so the displayed capacity silently
-resets to the field default (1000 / 240 kW). Pinned by
-`tests/test_technology_dialogs.py::TestKeyAsymmetry` and reproduced verbatim in the
-refactor via `Field.in_key`. Fix: make read-key == write-key (`thermal_capacity_kW`)
-once the generators' `to_dict`/edit round-trip is confirmed — then flip the tests.
-### C8. CHP/HolzgasCHP storage-cost default typo (found 2026-06)
-The "spez. Investitionskosten Speicher" field defaults to `"0.8"` in the CHP and
-Holzgas-CHP dialogs but `"750"` in Biomass — almost certainly a typo (€/m³). Pinned
-by `tests/test_technology_dialogs.py::TestStorageToggle` and preserved in
-`_schemas.CHP_STORAGE`. Fix: set the default to `"750"` and update the test.
+### C7. Dialog capacity read/write key asymmetry (fixed 2026-06)
+`GasBoilerDialog` / `PowerToHeatDialog` / `BiomassBoilerDialog` read the capacity
+field's initial value from `th_Leistung_kW` / `P_BMK` but emitted it under
+`thermal_capacity_kW` (the generators' actual attribute), so editing an existing
+tech reset the displayed capacity to the field default. **Fixed**: the schema
+fields now read and write `thermal_capacity_kW` (dropped the `in_key` overrides in
+`_schemas.py`); the add flow is unaffected (new techs open with an empty dict).
+Round-trip now pinned by `tests/test_technology_dialogs.py::TestCapacityRoundTrip`.
+(`Field.in_key` remains available as a general capability but is now unused.)
+### C8. CHP/HolzgasCHP storage-cost default typo (fixed 2026-06)
+The "spez. Investitionskosten Speicher" field defaulted to `"0.8"` in the CHP and
+Holzgas-CHP dialogs but `"750"` in Biomass — a typo (€/m³). **Fixed**:
+`_schemas.CHP_STORAGE` now defaults to `"750"`; `TestStorageToggle` updated.
 ### C9. GUI access inside OSM download threads (fixed 2026-06)
 The OSM worker methods (`downloadWithOSMnx`/`downloadBuildings`) run inside
 `OSMStreetDownloadThread`/`OSMBuildingDownloadThread` but called

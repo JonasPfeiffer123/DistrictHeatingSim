@@ -20,14 +20,13 @@ from districtheatingsim.gui.EnergySystemTab.technology_dialogs._base import (
 # ── Simple dialogs ────────────────────────────────────────────────────────────
 
 GAS_BOILER: List = [
-    # Quirk: initial value read from 'th_Leistung_kW', emitted as 'thermal_capacity_kW'.
-    Field("thermal_capacity_kW", "Thermische Leistung Gaskessel in kW", "1000", in_key="th_Leistung_kW"),
+    Field("thermal_capacity_kW", "Thermische Leistung Gaskessel in kW", "1000"),
     Field("Nutzungsgrad", "Nutzungsgrad Gaskessel", "0.9"),
     Field("spez_Investitionskosten", "spez. Investitionskosten in €/kW", "30"),
 ]
 
 POWER_TO_HEAT: List = [
-    Field("thermal_capacity_kW", "Thermische Leistung Power-To-Heat in kW", "1000", in_key="th_Leistung_kW"),
+    Field("thermal_capacity_kW", "Thermische Leistung Power-To-Heat in kW", "1000"),
     Field("Nutzungsgrad", "Nutzungsgrad Power-to-Heat", "0.9"),
     Field("spez_Investitionskosten", "spez. Investitionskosten in €/kW", "30"),
 ]
@@ -66,8 +65,7 @@ def storage_fields(volume_key: str, opt_min_key: str, opt_max_key: str,
 # ── Combustion dialogs (main field block) ─────────────────────────────────────
 
 BIOMASS_MAIN: List = [
-    # Quirk: initial value read from 'P_BMK', emitted as 'thermal_capacity_kW'.
-    Field("thermal_capacity_kW", "th. Leistung in kW", "240", in_key="P_BMK"),
+    Field("thermal_capacity_kW", "th. Leistung in kW", "240"),
     Field("Größe_Holzlager", "Größe Holzlager in t", "40"),
     Field("spez_Investitionskosten", "spez. Investitionskosten Kessel in €/kW", "200"),
     Field("spez_Investitionskosten_Holzlager", "spez. Investitionskosten Holzlager in €/t", "400"),
@@ -100,8 +98,8 @@ HOLZGAS_CHP_MAIN: List = [
     Field("opt_BHKW_max", "Obere Grenze th. Leistung Optimierung", "1000"),
     CheckField("speicher_aktiv", "Speicher aktiv"),
 ]
-# CHP and HolzgasCHP share the same storage block (note the legacy 0.8 default).
-CHP_STORAGE = storage_fields("Speicher_Volumen_BHKW", "opt_BHKW_Speicher_min", "opt_BHKW_Speicher_max", "0.8")
+# CHP and HolzgasCHP share the same storage block.
+CHP_STORAGE = storage_fields("Speicher_Volumen_BHKW", "opt_BHKW_Speicher_min", "opt_BHKW_Speicher_max", "750")
 
 
 # ── Heat pumps ────────────────────────────────────────────────────────────────

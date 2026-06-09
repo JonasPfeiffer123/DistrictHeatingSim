@@ -10,9 +10,9 @@ behaviour-preserving: this exact file must keep passing before and after the mov
 Headless Qt: the session-scoped ``qapp`` fixture (conftest.py) plus
 ``QT_QPA_PLATFORM=offscreen`` let the widgets build without a display.
 
-NOTE: some pinned values reproduce *bugs* on purpose (see ``TestKeyAsymmetry`` and
-the CHP storage-cost default of 0.8 vs Biomass's 750 — BACKLOG). When those are
-fixed, update the corresponding assertions in the same commit.
+NOTE: the two latent quirks these tests originally pinned (C7 capacity read/write
+key asymmetry; C8 CHP storage-cost default 0.8 vs 750) have since been **fixed** —
+see ``TestCapacityRoundTrip`` and the 750 default in ``_STORAGE_ACTIVE``.
 """
 
 import pytest
@@ -238,8 +238,8 @@ _STORAGE_ACTIVE = {
         "initial_fill": 0.0,
         "min_fill": 0.2,
         "max_fill": 0.8,
-        # Quirk: CHP default is 0.8 (Biomass is 750) — preserved verbatim.
-        "spez_Investitionskosten_Speicher": 0.8,
+        # C8 fixed: CHP storage-cost default is now 750 €/m³ (was a 0.8 typo).
+        "spez_Investitionskosten_Speicher": 750.0,
         "opt_BHKW_Speicher_min": 0.0,
         "opt_BHKW_Speicher_max": 100.0,
     },
@@ -250,7 +250,7 @@ _STORAGE_ACTIVE = {
         "initial_fill": 0.0,
         "min_fill": 0.2,
         "max_fill": 0.8,
-        "spez_Investitionskosten_Speicher": 0.8,
+        "spez_Investitionskosten_Speicher": 750.0,
         "opt_BHKW_Speicher_min": 0.0,
         "opt_BHKW_Speicher_max": 100.0,
     },
@@ -275,29 +275,27 @@ class TestStorageToggle:
             assert out[key] == val
 
 
-class TestKeyAsymmetry:
-    """BACKLOG: capacity field reads one key but writes another.
-
-    GasBoiler / BiomassBoiler read the QLineEdit default from ``th_Leistung_kW`` /
-    ``P_BMK`` but emit it under ``thermal_capacity_kW``. Editing an existing tech
-    (whose data carries ``thermal_capacity_kW``) therefore silently resets the
-    displayed capacity to the field default. Pinned here; fix should flip these.
+class TestCapacityRoundTrip:
+    """C7 fixed: the capacity field now reads and writes the same key
+    (``thermal_capacity_kW``, the generators' actual attribute), so editing an
+    existing tech round-trips its capacity instead of resetting to the field
+    default. The legacy ``th_Leistung_kW`` / ``P_BMK`` read keys are gone.
     """
 
-    def test_gas_boiler_reads_th_leistung(self):
-        dialog = GasBoilerDialog({"th_Leistung_kW": 555})
+    def test_gas_boiler_round_trips_capacity(self):
+        dialog = GasBoilerDialog({"thermal_capacity_kW": 555})
         assert dialog.getInputs()["thermal_capacity_kW"] == 555.0
 
-    def test_gas_boiler_ignores_thermal_capacity_key(self):
-        dialog = GasBoilerDialog({"thermal_capacity_kW": 555})
+    def test_gas_boiler_ignores_legacy_key(self):
+        dialog = GasBoilerDialog({"th_Leistung_kW": 555})
         assert dialog.getInputs()["thermal_capacity_kW"] == 1000.0  # field default
 
-    def test_biomass_reads_p_bmk(self):
-        dialog = BiomassBoilerDialog({"P_BMK": 555})
+    def test_biomass_round_trips_capacity(self):
+        dialog = BiomassBoilerDialog({"thermal_capacity_kW": 555})
         assert dialog.getInputs()["thermal_capacity_kW"] == 555.0
 
-    def test_biomass_ignores_thermal_capacity_key(self):
-        dialog = BiomassBoilerDialog({"thermal_capacity_kW": 555})
+    def test_biomass_ignores_legacy_key(self):
+        dialog = BiomassBoilerDialog({"P_BMK": 555})
         assert dialog.getInputs()["thermal_capacity_kW"] == 240.0  # field default
 
 
