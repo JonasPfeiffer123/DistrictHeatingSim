@@ -7,10 +7,47 @@ it to GeoJSON format for district heating network planning.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+import urllib.request
+
 import overpy
 import json
 from decimal import Decimal
 import geojson
+
+# Canonical Overpass endpoint (HTTPS). overpy 0.7 defaults to plain-HTTP
+# ``http://overpass-api.de/api/interpreter``.
+OVERPASS_ENDPOINT = "https://overpass-api.de/api/interpreter"
+
+# overpy 0.7 calls ``urllib.request.urlopen`` without a User-Agent, so requests go
+# out as ``Python-urllib/x.y`` — which overpass-api.de now rejects with HTTP 406
+# ("Not Acceptable"). A descriptive User-Agent fixes it. See the module-level
+# opener installed below.
+OVERPASS_USER_AGENT = (
+    "DistrictHeatingSim/1.0 (+https://github.com/JonasPfeiffer123/DistrictHeatingSim)"
+)
+
+
+def _install_user_agent_opener():
+    """
+    Install a global urllib opener that sends a proper User-Agent.
+
+    overpy 0.7 uses the process-wide ``urllib`` opener, so this makes its Overpass
+    requests carry ``OVERPASS_USER_AGENT`` and avoids the HTTP 406 from
+    overpass-api.de. Only raw ``urllib.request.urlopen`` calls are affected (i.e.
+    overpy); geopy and osmnx use their own HTTP stacks and are untouched.
+
+    :return: The installed opener (returned for testability).
+    :rtype: urllib.request.OpenerDirector
+    """
+    opener = urllib.request.build_opener()
+    opener.addheaders = [("User-Agent", OVERPASS_USER_AGENT)]
+    urllib.request.install_opener(opener)
+    return opener
+
+
+# Install once on import so every Overpass query made through this module is safe.
+_install_user_agent_opener()
+
 
 def build_query(city_name, tags, element_type="way"):
     """
@@ -61,7 +98,7 @@ def download_data(query, element_type):
     .. note::
         Ways create LineString geometries, buildings create Polygon/MultiPolygon.
     """
-    api = overpy.Overpass()
+    api = overpy.Overpass(url=OVERPASS_ENDPOINT)
     result = api.query(query)
 
     features = []

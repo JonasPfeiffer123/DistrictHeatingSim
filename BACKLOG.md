@@ -152,6 +152,16 @@ access off the main thread, and the `return None` then crashed on `polygon.bound
 `ValueError`; the thread catches it and emits `download_error` → a proper error box
 on the main thread. Pinned by `tests/test_area_selection.py`. (Audit the other
 threads in `net_generation_threads.py` for the same anti-pattern.)
+### C10. Overpass HTTP 406 on building download (fixed 2026-06)
+`OSMBuildingQueryDialog` building downloads failed with
+`OverpassUnknownHTTPStatusCode: 406`. Root cause: overpy 0.7 issues its request via
+`urllib` **without a User-Agent**, and overpass-api.de rejects the default
+`Python-urllib/x.y` UA with HTTP 406. **Fixed** in
+`osm/import_osm_data_geojson.py`: a module-level global urllib opener now sends a
+descriptive User-Agent, and `download_data` targets the HTTPS endpoint
+(`OVERPASS_ENDPOINT`). Verified live (canonical endpoint returns features again);
+config pinned by `tests/test_osm_import.py`. Only raw-urllib (overpy) traffic is
+affected by the global opener — geopy/osmnx use their own HTTP stacks.
 
 ## D. State & data
 ### D1. Double state source
