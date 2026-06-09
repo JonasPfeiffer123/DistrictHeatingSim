@@ -24,6 +24,7 @@ from districtheatingsim.heat_generators.energy_system import EnergySystem
 from districtheatingsim.heat_generators.gas_boiler import GasBoiler, GasBoilerStrategy
 from districtheatingsim.heat_generators.chp import CHP, CHPStrategy
 from districtheatingsim.heat_generators.thermal_storage import ThermalStorageAdapter, BufferStorage
+from districtheatingsim.heat_generators.results import TechnologyResult
 
 REL = 1e-4  # relative tolerance — slightly looser than single-generator tests
 
@@ -177,6 +178,80 @@ class TestEnergySystemWithNetworkStorage:
 
     def test_chp_waermemenge_golden(self, network_storage_results):
         assert network_storage_results['Wärmemengen'][0] == pytest.approx(1192.050, rel=REL)
+
+
+# ===========================================================================
+# 2b. TechnologyResult records (C4)
+# ===========================================================================
+
+class TestTechnologyResultRecords:
+    """C4: per-row `TechnologyResult` records are the single source of truth; the
+    German parallel lists are projected from them. Each record field must equal its
+    projected list entry at the same index, and records are not serialized.
+    """
+
+    @staticmethod
+    def _no_storage_system():
+        es = _make_energy_system(_LOAD, _ECONOMIC_PARAMS)
+        es.add_technology(CHP(name="BHKW_1", th_Leistung_kW=100))
+        es.add_technology(GasBoiler("Gaskessel_1", thermal_capacity_kW=500))
+        return es
+
+    @staticmethod
+    def _network_storage_system():
+        es = _make_energy_system(_LOAD, _ECONOMIC_PARAMS)
+        storage = ThermalStorageAdapter(
+            name="TestSpeicher", volume=100.0, height=5.0,
+            T_min=40.0, T_max=90.0, initial_temp=60.0, n_nodes=5,
+            geometry_type="cylinder", loss_model_type="constant", U_loss=0.3,
+            T_ambient=15.0, fluid_type="water", solver="implicit",
+            advection_scheme="tvd", buoyancy=True, spez_Investitionskosten=50.0,
+            hours=8760, T_charge=85.0, T_discharge_return=50.0,
+        )
+        chp = CHP(name="BHKW_1", th_Leistung_kW=150)
+        chp.strategy = CHPStrategy(charge_on=55, charge_off=80)
+        gas = GasBoiler("Gaskessel_1", thermal_capacity_kW=500)
+        gas.strategy = GasBoilerStrategy(charge_on=40)
+        es.add_storage(storage)
+        es.add_technology(chp)
+        es.add_technology(gas)
+        return es
+
+    def test_records_count_matches_projection(self):
+        es = self._no_storage_system()
+        results = es.calculate_mix()
+        assert len(es.tech_results) == len(results['techs'])
+        assert all(isinstance(r, TechnologyResult) for r in es.tech_results)
+
+    def test_record_fields_match_projected_lists(self):
+        es = self._no_storage_system()
+        r = es.calculate_mix()
+        for i, rec in enumerate(es.tech_results):
+            assert rec.name == r['techs'][i]
+            assert rec.heat_amount_MWh == r['Wärmemengen'][i]
+            assert rec.share == r['Anteile'][i]
+            assert rec.heat_generation_cost == r['WGK'][i]
+            assert rec.specific_co2 == r['specific_emissions_L'][i]
+            assert rec.primary_energy == r['primärenergie_L'][i]
+            assert rec.color == r['colors'][i]
+            # projection reuses the same array object
+            assert rec.heat_output_kW is r['Wärmeleistung_L'][i]
+
+    def test_network_storage_has_discharge_record(self):
+        es = self._network_storage_system()
+        es.calculate_mix()
+        names = [rec.name for rec in es.tech_results]
+        assert any("Entladung" in name for name in names)
+        # all eight projected lists stay in lockstep with the records
+        assert len(es.tech_results) == len(es.results['techs'])
+        _assert_parallel_lists(es.results)
+
+    def test_records_not_serialized(self):
+        es = self._no_storage_system()
+        es.calculate_mix()
+        d = es.to_dict()
+        assert 'tech_results' not in d
+        assert 'tech_results' not in d.get('results', {})
 
 
 # ===========================================================================

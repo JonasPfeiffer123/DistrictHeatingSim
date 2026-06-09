@@ -22,6 +22,7 @@ from scipy.optimize import minimize as scipy_minimize
 
 from districtheatingsim.heat_generators import *
 from districtheatingsim.heat_generators import TECH_CLASS_BY_TYPE
+from districtheatingsim.heat_generators.results import TechnologyResult
 from districtheatingsim.gui.EnergySystemTab._10_utilities import CustomJSONEncoder
 import itertools
 from matplotlib import cm
@@ -78,7 +79,12 @@ class EnergySystem:
         self.economic_parameters = economic_parameters
         self.technologies = []  # List to store generator objects
         self.storage = None
-        
+
+        # One TechnologyResult per result row — the single source of truth from
+        # which the legacy German parallel lists in self.results are projected
+        # (see _add_tech_result / _project_results). Not serialized.
+        self.tech_results = []
+
         self.results = {}
 
         self.duration = (np.diff(self.time_steps[:2]) / np.timedelta64(1, 'h'))[0]
@@ -132,8 +138,12 @@ class EnergySystem:
             'primärenergiefaktor_Gesamt': 0,
         })
 
+        # Records are the source of truth; the German lists below are projected
+        # from them by _project_results() at the end of calculate_mix().
+        self.tech_results = []
+
         # Ensure lists are initialized or cleared
-        for key in ['Wärmeleistung_L', 'colors', 'Wärmemengen', 'Anteile', 'WGK', 
+        for key in ['Wärmeleistung_L', 'colors', 'Wärmemengen', 'Anteile', 'WGK',
                     'specific_emissions_L', 'primärenergie_L', 'techs']:
             if key not in self.results:
                 self.results[key] = []
@@ -154,6 +164,27 @@ class EnergySystem:
                 idx = tech.name.split("_")[-1]
                 tech.set_parameters(variables, variables_order, idx)
 
+    def _add_tech_result(self, record: TechnologyResult) -> None:
+        """Append one result row. The single append point for result rows, so the
+        projected German lists (see _project_results) can never diverge."""
+        self.tech_results.append(record)
+
+    def _project_results(self) -> None:
+        """Rebuild the legacy German parallel lists from self.tech_results.
+
+        The GUI (results table, pie chart, Sankey) and serialization still read
+        these keys; they are a pure projection of the records, filled in one pass.
+        """
+        rows = self.tech_results
+        self.results['techs'] = [r.name for r in rows]
+        self.results['Wärmeleistung_L'] = [r.heat_output_kW for r in rows]
+        self.results['Wärmemengen'] = [r.heat_amount_MWh for r in rows]
+        self.results['Anteile'] = [r.share for r in rows]
+        self.results['WGK'] = [r.heat_generation_cost for r in rows]
+        self.results['specific_emissions_L'] = [r.specific_co2 for r in rows]
+        self.results['primärenergie_L'] = [r.primary_energy for r in rows]
+        self.results['colors'] = [r.color for r in rows]
+
     def aggregate_results(self, tech_results: dict) -> None:
         """
         Aggregate technology results into system-level metrics.
@@ -161,14 +192,16 @@ class EnergySystem:
         :param tech_results: Technology results dictionary
         :type tech_results: dict
         """
-        self.results['techs'].append(tech_results.get('tech_name', 'unknown'))
-        self.results['Wärmeleistung_L'].append(tech_results.get('Wärmeleistung_L', np.zeros_like(self.load_profile)))
-        self.results['Wärmemengen'].append(tech_results.get('Wärmemenge', 0))
-        self.results['Anteile'].append(tech_results.get('Wärmemenge', 0) / self.results['Jahreswärmebedarf'])
-        self.results['WGK'].append(tech_results.get('WGK', 0))
-        self.results['specific_emissions_L'].append(tech_results.get('spec_co2_total', 0))
-        self.results['primärenergie_L'].append(tech_results.get('primärenergie', 0))
-        self.results['colors'].append(tech_results.get('color', 'gray'))
+        self._add_tech_result(TechnologyResult(
+            name=tech_results.get('tech_name', 'unknown'),
+            heat_output_kW=tech_results.get('Wärmeleistung_L', np.zeros_like(self.load_profile)),
+            heat_amount_MWh=tech_results.get('Wärmemenge', 0),
+            share=tech_results.get('Wärmemenge', 0) / self.results['Jahreswärmebedarf'],
+            heat_generation_cost=tech_results.get('WGK', 0),
+            specific_co2=tech_results.get('spec_co2_total', 0),
+            primary_energy=tech_results.get('primärenergie', 0),
+            color=tech_results.get('color', 'gray'),
+        ))
 
         if tech_results.get('Wärmemenge', 0) > 1e-6:
             self.results['Restlast_L'] -= tech_results.get('Wärmeleistung_L', np.zeros_like(self.load_profile))
@@ -189,14 +222,16 @@ class EnergySystem:
 
         if "Wärmeleistung_Speicher_L" in tech_results.keys():
             self.results['Restlast_L'] -= tech_results["Wärmeleistung_Speicher_L"]
-            self.results['Wärmeleistung_L'].append(tech_results["Wärmeleistung_Speicher_L"])
-            self.results['techs'].append(f"{tech_results['tech_name']}_Speicher")
-            self.results['Wärmemengen'].append(0)
-            self.results['Anteile'].append(0)
-            self.results['WGK'].append(0)
-            self.results['specific_emissions_L'].append(0)
-            self.results['primärenergie_L'].append(0)
-            self.results['colors'].append("gray")
+            self._add_tech_result(TechnologyResult(
+                name=f"{tech_results['tech_name']}_Speicher",
+                heat_output_kW=tech_results["Wärmeleistung_Speicher_L"],
+                heat_amount_MWh=0,
+                share=0,
+                heat_generation_cost=0,
+                specific_co2=0,
+                primary_energy=0,
+                color="gray",
+            ))
 
     def calculate_mix(self, variables: list = [], variables_order: list = []) -> dict:
         """
@@ -308,14 +343,16 @@ class EnergySystem:
                 # discharged energy. No fuel cost – the loss energy is paid on the generator side.
                 self.storage.calculate_costs(storage_discharge_mwh, self.economic_parameters)
                 self.results['Restlast_L'] -= storage_discharge
-                self.results['Wärmeleistung_L'].append(storage_discharge)
-                self.results['Wärmemengen'].append(storage_discharge_mwh)
-                self.results['techs'].append(f"{self.storage.name} (Entladung)")
-                self.results['Anteile'].append(storage_discharge_mwh / self.results['Jahreswärmebedarf'])
-                self.results['WGK'].append(self.storage.WGK)
-                self.results['specific_emissions_L'].append(0.0)
-                self.results['primärenergie_L'].append(0.0)
-                self.results['colors'].append('steelblue')
+                self._add_tech_result(TechnologyResult(
+                    name=f"{self.storage.name} (Entladung)",
+                    heat_output_kW=storage_discharge,
+                    heat_amount_MWh=storage_discharge_mwh,
+                    share=storage_discharge_mwh / self.results['Jahreswärmebedarf'],
+                    heat_generation_cost=self.storage.WGK,
+                    specific_co2=0.0,
+                    primary_energy=0.0,
+                    color='steelblue',
+                ))
                 self.results['WGK_Gesamt'] += self.storage.A_N / self.results['Jahreswärmebedarf']
                 self.results['Restwärmebedarf'] -= storage_discharge_mwh
 
@@ -324,14 +361,20 @@ class EnergySystem:
         # seasonal storage) does not produce a negative unmet-demand entry.
         if np.any(self.results['Restlast_L'] > 1e-6):
             unmet_demand = np.sum(np.maximum(self.results['Restlast_L'], 0)) / 1000 * self.duration
-            self.results['Wärmeleistung_L'].append(np.maximum(self.results['Restlast_L'], 0))
-            self.results['Wärmemengen'].append(unmet_demand)
-            self.results['techs'].append("Ungedeckter Bedarf")
-            self.results['Anteile'].append(unmet_demand / self.results['Jahreswärmebedarf'])
-            self.results['WGK'].append(0)
-            self.results['specific_emissions_L'].append(0)
-            self.results['primärenergie_L'].append(0)
-            self.results['colors'].append("black")
+            self._add_tech_result(TechnologyResult(
+                name="Ungedeckter Bedarf",
+                heat_output_kW=np.maximum(self.results['Restlast_L'], 0),
+                heat_amount_MWh=unmet_demand,
+                share=unmet_demand / self.results['Jahreswärmebedarf'],
+                heat_generation_cost=0,
+                specific_co2=0,
+                primary_energy=0,
+                color="black",
+            ))
+
+        # Project the records into the legacy German parallel lists consumed by the
+        # GUI and serialization. Single pass → all eight lists stay in lockstep.
+        self._project_results()
 
         self.getInitialPlotData()
 
@@ -752,6 +795,10 @@ class EnergySystem:
                     "Thermal storage could not be loaded (outdated format). "
                     "Please re-configure the storage in the GUI."
                 )
+
+        # Records are not serialized (the German lists in results carry the data);
+        # the GUI reads the lists after a load, so an empty record list is fine.
+        obj.tech_results = []
 
         # Restore results (if available)
         obj.results = {}
