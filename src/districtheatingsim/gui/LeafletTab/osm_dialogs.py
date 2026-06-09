@@ -9,10 +9,9 @@ queries through interactive user interfaces.
 """
 
 import os
-import json
 import traceback
 
-from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QDialog, QComboBox, QPushButton, \
+from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QComboBox, QPushButton, \
     QHBoxLayout, QFileDialog, QMessageBox, QLabel, QWidget, \
     QGroupBox, QCheckBox, QProgressDialog
 from PyQt6.QtCore import Qt
@@ -20,11 +19,14 @@ from PyQt6.QtCore import Qt
 from districtheatingsim.gui.LeafletTab.net_generation_threads import OSMStreetDownloadThread, OSMBuildingDownloadThread
 from districtheatingsim.osm.import_osm_data_geojson import download_data
 from districtheatingsim.osm.area_selection import build_highway_filter, resolve_area_polygon
+from districtheatingsim.gui.LeafletTab.osm_dialogs_base import OSMDownloadDialogBase
 
-class DownloadOSMDataDialog(QDialog):
+class DownloadOSMDataDialog(OSMDownloadDialogBase):
     """
     Dialog for downloading OSM street data with OSMnx.
     """
+    _temp_polygon_filename = "_temp_download_polygon.geojson"
+
     def __init__(self, base_path, config_manager, parent, parent_pres, project_crs: str = "EPSG:25833"):
         """
         Initialize OSM data download dialog.
@@ -43,20 +45,8 @@ class DownloadOSMDataDialog(QDialog):
         :param project_crs: Projected CRS for downloaded data
         :type project_crs: str
         """
-        super().__init__(parent)
-        self.base_path = base_path
-        self.config_manager = config_manager
-        self.parent_pres = parent_pres
-        self.project_crs = project_crs
-        self.visualization_tab = None
-        self.waiting_for_polygon = False
+        super().__init__(base_path, config_manager, parent, parent_pres, project_crs=project_crs)
         self.custom_filter = '["highway"~"primary|secondary|tertiary|residential|living_street|service"]'
-        self.download_thread = None
-        self.progress_dialog = None
-        
-        # Set window flags to allow interaction with map while dialog is open
-        self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint)
-        
         self.initUI()
 
     def initUI(self):
@@ -207,6 +197,7 @@ class DownloadOSMDataDialog(QDialog):
         self.queryButton = QPushButton("Download starten", self)
         self.queryButton.clicked.connect(self.startQuery)
         self.queryButton.setStyleSheet("font-weight: bold; padding: 8px;")
+        self._download_button = self.queryButton  # used by base cancel/error handlers
         buttonLayout.addWidget(self.queryButton)
         
         self.okButton = QPushButton("OK", self)
@@ -241,18 +232,6 @@ class DownloadOSMDataDialog(QDialog):
         # Initialize visibility
         self.toggleAreaType(0)
         self.updateFilters()
-
-    def setVisualizationTab(self, visualization_tab):
-        """
-        Set visualization tab reference for map interaction.
-        
-        Stores a reference to the visualization tab to enable polygon
-        drawing and map-based area selection functionality.
-        
-        :param visualization_tab: The visualization tab instance
-        :type visualization_tab: VisualizationTabLeaflet
-        """
-        self.visualization_tab = visualization_tab
 
     def toggleDownloadMethod(self, index):
         """
@@ -319,30 +298,15 @@ class DownloadOSMDataDialog(QDialog):
         Enables the interactive polygon drawing functionality on the Leaflet
         map and connects signals for polygon completion.
         """
-        if not self.visualization_tab:
+        if not self._begin_polygon_capture():
             QMessageBox.warning(self, "Warnung", "Keine Kartenverbindung verfügbar.")
             return
-        
-        self.waiting_for_polygon = True
+
         self.drawPolygonButton.setEnabled(False)
         self.drawPolygonButton.setText("Warte auf Polygon...")
         self.drawPolygonButton.setStyleSheet("background-color: #ffc107; color: black; padding: 5px 10px;")
         self.polygonStatusLabel.setText("Status: Zeichnen Sie jetzt ein Polygon auf der Karte")
         self.polygonStatusLabel.setStyleSheet("color: #ffc107; font-weight: bold;")
-        
-        # Connect signal for when polygon is ready
-        if hasattr(self.visualization_tab.view, 'geoJsonReceiver'):
-            # Disconnect first to avoid duplicate connections
-            try:
-                self.visualization_tab.view.geoJsonReceiver.polygon_ready.disconnect(self.onPolygonReady)
-            except:
-                pass
-            
-            self.visualization_tab.view.geoJsonReceiver.polygon_ready.connect(self.onPolygonReady)
-            
-            # Activate polygon capture mode via JavaScript
-            js_code = "window.enablePolygonCaptureMode();"
-            self.visualization_tab.view.web_view.page().runJavaScript(js_code)
 
     def onPolygonReady(self):
         """
@@ -367,59 +331,6 @@ class DownloadOSMDataDialog(QDialog):
             "Polygon wurde erfolgreich gezeichnet!\n\n" +
             "Sie können es jetzt auf der Karte bearbeiten (verschieben, Punkte hinzufügen/entfernen).\n" +
             "Klicken Sie auf 'Download starten', um das Polygon zu verwenden.")
-
-    def getCapturedPolygonFromMap(self):
-        """Get the captured polygon from the map via JavaScript.
-        
-        Returns
-        -------
-        str or None
-            Path to temporary GeoJSON file with polygon, or None if no polygon.
-        """
-        result = {'geojson': None}
-        
-        def handle_result(geojson_str):
-            if geojson_str:
-                try:
-                    result['geojson'] = json.loads(geojson_str)
-                except Exception:
-                    pass
-
-        # Get polygon from JavaScript
-        if hasattr(self.visualization_tab.view, 'web_view'):
-            js_code = """
-                (function() {
-                    var polygon = window.getCapturedPolygon();
-                    return polygon ? JSON.stringify(polygon) : null;
-                })();
-            """
-            self.visualization_tab.view.web_view.page().runJavaScript(js_code, handle_result)
-            
-            # Wait a bit for the callback (simple blocking approach)
-            from PyQt6.QtCore import QEventLoop, QTimer
-            loop = QEventLoop()
-            QTimer.singleShot(100, loop.quit)
-            loop.exec()
-            
-            if result['geojson']:
-                # Save to temp file
-                temp_file = os.path.join(self.base_path, "_temp_download_polygon.geojson")
-                with open(temp_file, 'w', encoding='utf-8') as f:
-                    json.dump(result['geojson'], f)
-                return temp_file
-        
-        return None
-
-    def clearCapturedPolygon(self):
-        """
-        Clear the captured polygon from the map.
-        
-        Removes the drawn polygon from the Leaflet map by calling
-        JavaScript functionality.
-        """
-        if hasattr(self.visualization_tab.view, 'web_view'):
-            js_code = "window.clearCapturedPolygon();"
-            self.visualization_tab.view.web_view.page().runJavaScript(js_code)
 
     def createFileInput(self, default_path):
         """
@@ -620,19 +531,6 @@ class DownloadOSMDataDialog(QDialog):
                 self.progress_dialog.close()
             QMessageBox.critical(self, "Fehler", f"Fehler beim Start des Downloads:\n{str(e)}\n\n{traceback.format_exc()}")
 
-    def _onDownloadCanceled(self):
-        """
-        Handle download cancellation.
-        
-        Terminates the download thread and resets UI state when the user
-        cancels the download process.
-        """
-        if self.download_thread and self.download_thread.isRunning():
-            self.download_thread.terminate()
-            self.download_thread.wait()
-        self.queryButton.setEnabled(True)
-        self.queryButton.setText("Download starten")
-
     def _onDownloadComplete(self, filepath):
         """
         Handle successful download completion.
@@ -660,16 +558,6 @@ class DownloadOSMDataDialog(QDialog):
         # Add to map
         self.parent_pres.add_geojson_layer([filepath])
         self.accept()
-
-    def _onDownloadError(self, error_message):
-        """Handle download error."""
-        
-        if self.progress_dialog:
-            self.progress_dialog.close()
-        
-        self.queryButton.setEnabled(True)
-        self.queryButton.setText("Download starten")
-        QMessageBox.critical(self, "Fehler", error_message)
 
     def _performOSMnxDownload(self, filename, area_params):
         """
@@ -729,10 +617,12 @@ class DownloadOSMDataDialog(QDialog):
         return filename
 
 
-class OSMBuildingQueryDialog(QDialog):
+class OSMBuildingQueryDialog(OSMDownloadDialogBase):
     """
     Dialog for querying OSM building data with multiple area selection modes.
     """
+    _temp_polygon_filename = "_temp_building_polygon.geojson"
+
     def __init__(self, base_path, config_manager, parent, parent_pres, visualization_tab=None,
                  project_crs: str = "EPSG:25833"):
         """
@@ -754,19 +644,8 @@ class OSMBuildingQueryDialog(QDialog):
         :param project_crs: Projected CRS for downloaded data
         :type project_crs: str
         """
-        super().__init__(parent)
-        self.base_path = base_path
-        self.config_manager = config_manager
-        self.parent_pres = parent_pres
-        self.visualization_tab = visualization_tab
-        self.project_crs = project_crs
-        self.waiting_for_polygon = False
-        self.download_thread = None
-        self.progress_dialog = None
-        
-        # Set window flags to allow interaction with map while dialog is open
-        self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint)
-        
+        super().__init__(base_path, config_manager, parent, parent_pres,
+                         project_crs=project_crs, visualization_tab=visualization_tab)
         self.initUI()
 
     def initUI(self):
@@ -853,6 +732,7 @@ class OSMBuildingQueryDialog(QDialog):
         button_layout = QHBoxLayout()
         self.downloadButton = QPushButton("Download starten", self)
         self.downloadButton.clicked.connect(self.startQuery)
+        self._download_button = self.downloadButton  # used by base cancel/error handlers
         button_layout.addWidget(self.downloadButton)
         
         self.cancelButton = QPushButton("Abbrechen", self)
@@ -921,26 +801,14 @@ class OSMBuildingQueryDialog(QDialog):
         Enables interactive polygon drawing on the Leaflet map for
         defining the area for building data download.
         """
-        if not self.visualization_tab:
+        if not self._begin_polygon_capture():
             QMessageBox.warning(self, "Fehler", "Keine Kartenverbindung verfügbar.")
             return
-        
-        self.waiting_for_polygon = True
+
         self.drawPolygonButton.setText("Warte auf Polygon...")
         self.drawPolygonButton.setStyleSheet("background-color: #ffeb3b;")
         self.polygonStatusLabel.setText("Zeichnen Sie jetzt ein Polygon auf der Karte...")
         self.polygonStatusLabel.setStyleSheet("color: #ff9800;")
-        
-        # Connect signal
-        try:
-            self.visualization_tab.view.geoJsonReceiver.polygon_ready.disconnect(self.onPolygonReady)
-        except:
-            pass
-        self.visualization_tab.view.geoJsonReceiver.polygon_ready.connect(self.onPolygonReady)
-        
-        # Enable drawing mode via JavaScript
-        if hasattr(self.visualization_tab.view, 'web_view'):
-            self.visualization_tab.view.web_view.page().runJavaScript("window.enablePolygonCaptureMode();")
 
     def onPolygonReady(self):
         """
@@ -962,50 +830,6 @@ class OSMBuildingQueryDialog(QDialog):
             "Das Polygon wurde erfolgreich gezeichnet.\n\n" +
             "Sie können es noch bearbeiten (Punkte verschieben, hinzufügen oder löschen).\n\n" +
             "Klicken Sie auf 'Download starten', um das Polygon zu verwenden.")
-
-    def getCapturedPolygonFromMap(self):
-        """Get the captured polygon from the map via JavaScript.
-        
-        Returns
-        -------
-        str or None
-            Path to temporary GeoJSON file with polygon, or None if no polygon.
-        """
-        result = {'geojson': None}
-        
-        def handle_result(geojson_str):
-            if geojson_str:
-                try:
-                    result['geojson'] = json.loads(geojson_str)
-                except Exception:
-                    pass
-
-        if hasattr(self.visualization_tab.view, 'web_view'):
-            js_code = """
-                (function() {
-                    var polygon = window.getCapturedPolygon();
-                    return polygon ? JSON.stringify(polygon) : null;
-                })();
-            """
-            self.visualization_tab.view.web_view.page().runJavaScript(js_code, handle_result)
-            
-            from PyQt6.QtCore import QEventLoop, QTimer
-            loop = QEventLoop()
-            QTimer.singleShot(100, loop.quit)
-            loop.exec()
-            
-            if result['geojson']:
-                temp_file = os.path.join(self.base_path, "_temp_building_polygon.geojson")
-                with open(temp_file, 'w', encoding='utf-8') as f:
-                    json.dump(result['geojson'], f)
-                return temp_file
-
-        return None
-
-    def clearCapturedPolygon(self):
-        """Clear the captured polygon from the map."""
-        if hasattr(self.visualization_tab.view, 'web_view'):
-            self.visualization_tab.view.web_view.page().runJavaScript("window.clearCapturedPolygon();")
 
     def startQuery(self):
         """Start OSM building data query and download."""
@@ -1078,19 +902,6 @@ class OSMBuildingQueryDialog(QDialog):
             self.downloadButton.setText("Download starten")
             QMessageBox.critical(self, "Fehler", f"Fehler beim Start des Downloads:\n{str(e)}\n\n{traceback.format_exc()}")
 
-    def _onDownloadCanceled(self):
-        """
-        Handle progress dialog cancellation.
-        
-        Terminates the building download thread and resets UI state when
-        the user cancels the download via the progress dialog.
-        """
-        if hasattr(self, 'download_thread') and self.download_thread.isRunning():
-            self.download_thread.terminate()
-            self.download_thread.wait()
-        self.downloadButton.setEnabled(True)
-        self.downloadButton.setText("Download starten")
-
     def _onDownloadComplete(self, filepath, building_count):
         """
         Handle successful download completion.
@@ -1122,16 +933,6 @@ class OSMBuildingQueryDialog(QDialog):
         # Add to map
         self.parent_pres.add_geojson_layer([filepath])
         self.accept()
-
-    def _onDownloadError(self, error_message):
-        """Handle download error."""
-        if self.progress_dialog:
-            self.progress_dialog.close()
-            self.progress_dialog = None
-        
-        self.downloadButton.setEnabled(True)
-        self.downloadButton.setText("Download starten")
-        QMessageBox.critical(self, "Fehler", error_message)
 
     def _performBuildingDownload(self, filename, area_params):
         """
