@@ -121,18 +121,32 @@ def annuity(
        Implements VDI 2067 methodology for lifecycle cost analysis including capital-bound,
        demand-bound, and operation-bound costs with revenue integration.
     
-    :raises ValueError: If
-    ValueError
-        If asset_lifespan_years is zero or negative.
-    ZeroDivisionError
-        If interest and inflation rates are equal (mathematical singularity).
-    TypeError
-        If input parameters are not numeric types.
+    :raises ValueError:
+        If ``asset_lifespan_years`` is zero or negative, or if
+        ``interest_rate_factor`` <= 1 / ``inflation_rate_factor`` < 1 (a *rate* such
+        as 0.05 was passed where a *factor* such as 1.05 is required — see BACKLOG C5).
+    :raises ZeroDivisionError:
+        If interest and inflation factors are equal (mathematical singularity).
     """
     # Input validation and preprocessing
     if asset_lifespan_years <= 0:
         raise ValueError("Asset lifespan must be positive")
-    
+
+    # Guard the rate-vs-factor footgun (BACKLOG C5): the function expects interest
+    # and inflation as *factors* (1.05 = 5 %), not *rates* (0.05). A rate silently
+    # collapsed the cost to ~0; reject it loudly instead. q = 1 (0 % interest) also
+    # has to be rejected because the annuity factor would be 0/0.
+    if interest_rate_factor <= 1:
+        raise ValueError(
+            f"interest_rate_factor must be a factor > 1 (e.g. 1.05 for 5 %), got "
+            f"{interest_rate_factor}. Did you pass a rate (0.05) instead of a factor?"
+        )
+    if inflation_rate_factor < 1:
+        raise ValueError(
+            f"inflation_rate_factor must be a factor >= 1 (e.g. 1.03 for 3 %), got "
+            f"{inflation_rate_factor}. Did you pass a rate (0.03) instead of a factor?"
+        )
+
     if interest_rate_factor == inflation_rate_factor:
         raise ZeroDivisionError("Interest rate and inflation rate cannot be equal")
     
