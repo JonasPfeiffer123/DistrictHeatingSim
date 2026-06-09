@@ -341,7 +341,7 @@ class BuildingPresenter:
             return
 
         try:
-            try_filename = self.data_manager.try_filename
+            try_filename = self.folder_manager.try_filename
             year = getattr(self.folder_manager, 'calculation_year', 2023)
             results = self.model.calculate_heat_demand(self.model.data, try_filename, year=year)
             self.model.results = self.format_results(results, self.model.data)

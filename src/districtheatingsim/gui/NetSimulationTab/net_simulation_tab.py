@@ -247,8 +247,8 @@ class NetSimulationTab(QWidget):
     # ------------------------------------------------------------------
 
     def _create_and_initialize_net_geojson(self):
-        self.NetworkGenerationData.COP_filename = self.data_manager.cop_filename
-        self.NetworkGenerationData.TRY_filename = self.data_manager.try_filename
+        self.NetworkGenerationData.COP_filename = self.folder_manager.cop_filename
+        self.NetworkGenerationData.TRY_filename = self.folder_manager.try_filename
 
         self._init_thread = NetInitializationThread(self.NetworkGenerationData)
         self._init_thread.calculation_done.connect(self._on_initialization_done)
