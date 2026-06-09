@@ -27,6 +27,11 @@ from districtheatingsim.gui.EnergySystemTab._10_utilities import CustomJSONEncod
 import itertools
 from matplotlib import cm
 
+#: Schema version of the serialized EnergySystem (``to_dict`` / ``save_to_json``).
+#: Bump when the on-disk format changes and migrate in ``from_dict``.
+ENERGY_SYSTEM_SCHEMA_VERSION = 1
+
+
 class EnergySystem:
     """
     Multi-technology district heating system integration.
@@ -721,6 +726,7 @@ class EnergySystem:
             Dictionary representation of the complete energy system.
         """
         return {
+            'version': ENERGY_SYSTEM_SCHEMA_VERSION,
             'time_steps': self.time_steps.astype(str).tolist(),  # Convert datetime64 to string
             'load_profile': self.load_profile.tolist(),
             'VLT_L': self.VLT_L.tolist(),
@@ -751,6 +757,13 @@ class EnergySystem:
         EnergySystem
             Fully initialized EnergySystem object.
         """
+        # Schema version: 0 = pre-versioning. Older files load best-effort; warn on
+        # files written by a newer app (forward-incompatible changes possible).
+        version = int(data.get('version', 0))
+        if version > ENERGY_SYSTEM_SCHEMA_VERSION:
+            logging.warning("EnergySystem JSON is v%d, newer than this app (v%d); "
+                            "loading best-effort", version, ENERGY_SYSTEM_SCHEMA_VERSION)
+
         # Restore basic attributes
         time_steps = np.array(data['time_steps'], dtype='datetime64')
         load_profile = np.array(data['load_profile'])
