@@ -12,8 +12,6 @@ import os
 import json
 import traceback
 
-import pandas as pd
-
 from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QDialog, QComboBox, QPushButton, \
     QHBoxLayout, QFileDialog, QMessageBox, QLabel, QWidget, \
     QGroupBox, QCheckBox, QProgressDialog
@@ -21,6 +19,7 @@ from PyQt6.QtCore import Qt
 
 from districtheatingsim.gui.LeafletTab.net_generation_threads import OSMStreetDownloadThread, OSMBuildingDownloadThread
 from districtheatingsim.osm.import_osm_data_geojson import download_data
+from districtheatingsim.osm.area_selection import build_highway_filter, resolve_area_polygon
 
 class DownloadOSMDataDialog(QDialog):
     """
@@ -311,13 +310,7 @@ class DownloadOSMDataDialog(QDialog):
         type checkboxes for network data download.
         """
         selected_types = [key for key, checkbox in self.highwayCheckboxes.items() if checkbox.isChecked()]
-        
-        # Update OSMnx custom filter
-        if selected_types:
-            types_str = "|".join(selected_types)
-            self.custom_filter = f'["highway"~"{types_str}"]'
-        else:
-            self.custom_filter = '["highway"]'
+        self.custom_filter = build_highway_filter(selected_types)
 
     def activateMapPolygonDrawing(self):
         """
@@ -710,80 +703,20 @@ class DownloadOSMDataDialog(QDialog):
         :type area_params: dict
         """
         import osmnx as ox
-        import geopandas as gpd
-        from shapely.geometry import box as shp_box
-        from pyproj import Transformer
-        
+
         area_type = area_params['area_type']
         custom_filter = area_params['custom_filter']
-        
-        # Get area/polygon based on selection
+
+        # Get the street network either by place name or by resolved polygon.
         if area_type == "Stadt/Ortsname":
             city_name = area_params['city_name']
-            
-            # Download by place name
             G = ox.graph_from_place(city_name, network_type='all', custom_filter=custom_filter)
-            
-        elif area_type == "Bereich um Gebäude aus CSV":
-            csv_file = area_params['csv_file']
-            buffer_dist = area_params['buffer_dist']
-            
-            
-            # Read CSV and create buffer
-            import pandas as pd
-            df = pd.read_csv(csv_file, delimiter=';')
-            
-            if 'UTM_X' not in df.columns or 'UTM_Y' not in df.columns:
-                QMessageBox.warning(self, "Warnung", "CSV muss 'UTM_X' und 'UTM_Y' Spalten enthalten.")
-                return
-            
-            # Create GeoDataFrame
-            project_crs = area_params.get('project_crs', 'EPSG:25833')
-            geometry = gpd.points_from_xy(df['UTM_X'], df['UTM_Y'])
-            gdf = gpd.GeoDataFrame(df, geometry=geometry, crs=project_crs)
+        else:
+            # CSV / GeoJSON / drawn polygon → WGS84 polygon (raises ValueError on a
+            # malformed CSV; caught by the download thread → error signal).
+            polygon = resolve_area_polygon(area_params, buffer_m=area_params.get('buffer_dist'))
+            G = ox.graph_from_polygon(polygon, network_type='all', custom_filter=custom_filter)
 
-            # Convert to WGS84 for OSMnx
-            gdf_wgs84 = gdf.to_crs('EPSG:4326')
-            
-            # Create buffer around all points
-            combined = gdf_wgs84.unary_union
-            
-            # Buffer in degrees (approximate)
-            buffer_deg = buffer_dist / 111000.0  # rough conversion
-            polygon = combined.buffer(buffer_deg)
-            
-            # Download by polygon
-            G = ox.graph_from_polygon(polygon, network_type='all', custom_filter=custom_filter)
-            
-        elif area_type == "Polygon aus GeoJSON":
-            polygon_file = area_params['polygon_file']
-            
-            # Read polygon
-            gdf_polygon = gpd.read_file(polygon_file)
-            
-            # Ensure WGS84
-            if gdf_polygon.crs != 'EPSG:4326':
-                gdf_polygon = gdf_polygon.to_crs('EPSG:4326')
-            
-            polygon = gdf_polygon.unary_union
-            
-            # Download by polygon
-            G = ox.graph_from_polygon(polygon, network_type='all', custom_filter=custom_filter)
-            
-        elif area_type == "Polygon auf Karte zeichnen":
-            # Get polygon file path from params (already retrieved in main thread)
-            polygon_file = area_params['drawn_polygon_file']
-            
-            # Read polygon from temp file
-            gdf_polygon = gpd.read_file(polygon_file)
-            
-            if gdf_polygon.crs != 'EPSG:4326':
-                gdf_polygon = gdf_polygon.to_crs('EPSG:4326')
-            
-            polygon = gdf_polygon.unary_union
-            
-            G = ox.graph_from_polygon(polygon, network_type='all', custom_filter=custom_filter)
-        
         # Convert to GeoDataFrame
         gdf_edges = ox.graph_to_gdfs(G, nodes=False, edges=True)
         
@@ -1232,61 +1165,12 @@ class OSMBuildingQueryDialog(QDialog):
         :type area_params: dict
         """
         import geopandas as gpd
-        from shapely.geometry import box as shp_box
-        from pyproj import Transformer
-        
-        area_type = area_params['area_type']
-        
-        # Get polygon based on selection
-        polygon = None
-        
-        if area_type == "Bereich um Gebäude aus CSV":
-            csv_file = area_params['csv_file']
-            
-            # Read CSV with building coordinates
-            df = pd.read_csv(csv_file, delimiter=';')
-            
-            if 'UTM_X' not in df.columns or 'UTM_Y' not in df.columns:
-                QMessageBox.warning(self, "Warnung", "CSV muss 'UTM_X' und 'UTM_Y' Spalten enthalten.")
-                return
-            
-            # Create GeoDataFrame with building points
-            project_crs = area_params.get('project_crs', 'EPSG:25833')
-            geometry = gpd.points_from_xy(df['UTM_X'], df['UTM_Y'])
-            gdf_buildings = gpd.GeoDataFrame(df, geometry=geometry, crs=project_crs)
 
-            # Convert to WGS84
-            gdf_wgs84 = gdf_buildings.to_crs('EPSG:4326')
-            
-            # Create small buffer around points to capture buildings (5m radius)
-            # This accounts for coordinate precision and building size
-            buffer_deg = 5.0 / 111000.0  # ~5 meters
-            polygon = gdf_wgs84.unary_union.buffer(buffer_deg)
-            
-        elif area_type == "Polygon aus GeoJSON":
-            polygon_file = area_params['polygon_file']
-            
-            # Read polygon
-            gdf_polygon = gpd.read_file(polygon_file)
-            
-            # Ensure WGS84
-            if gdf_polygon.crs != 'EPSG:4326':
-                gdf_polygon = gdf_polygon.to_crs('EPSG:4326')
-            
-            polygon = gdf_polygon.unary_union
-            
-        elif area_type == "Polygon auf Karte zeichnen":
-            # Get polygon file path from params (already retrieved in main thread)
-            polygon_file = area_params['drawn_polygon_file']
-            
-            # Read polygon from temp file
-            gdf_polygon = gpd.read_file(polygon_file)
-            
-            if gdf_polygon.crs != 'EPSG:4326':
-                gdf_polygon = gdf_polygon.to_crs('EPSG:4326')
-            
-            polygon = gdf_polygon.unary_union
-        
+        # CSV / GeoJSON / drawn polygon → WGS84 polygon. Buildings near CSV points
+        # are captured with a small 5 m buffer. Raises ValueError on a malformed
+        # CSV (caught by the download thread → error signal).
+        polygon = resolve_area_polygon(area_params, buffer_m=5.0)
+
         # Download buildings using Overpass API
         bounds = polygon.bounds  # (minx, miny, maxx, maxy)
         
