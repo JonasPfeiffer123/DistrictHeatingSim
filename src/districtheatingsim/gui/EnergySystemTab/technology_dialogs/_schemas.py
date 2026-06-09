@@ -12,7 +12,9 @@ storage-cost default of ``"0.8"`` (Biomass uses ``"750"``).
 
 from typing import List
 
-from districtheatingsim.gui.EnergySystemTab.technology_dialogs._base import Field, CheckField
+from districtheatingsim.gui.EnergySystemTab.technology_dialogs._base import (
+    Field, CheckField, ComboField, Section,
+)
 
 
 # ── Simple dialogs ────────────────────────────────────────────────────────────
@@ -100,3 +102,63 @@ HOLZGAS_CHP_MAIN: List = [
 ]
 # CHP and HolzgasCHP share the same storage block (note the legacy 0.8 default).
 CHP_STORAGE = storage_fields("Speicher_Volumen_BHKW", "opt_BHKW_Speicher_min", "opt_BHKW_Speicher_max", "0.8")
+
+
+# ── Heat pumps ────────────────────────────────────────────────────────────────
+
+# River heat pump: the four plain fields. The 'Temperatur_FW_WP' field (CSV import
+# / scalar / ndarray) is handled by RiverHeatPumpDialog's getInputs override.
+RIVER: List = [
+    Field("Wärmeleistung_FW_WP", "th. Leistung Wärmepumpe in kW", "200"),
+    Field("dT", "Zulässige Abweichung Vorlauftemperatur Wärmepumpe von Netzvorlauftemperatur", "0"),
+    Field("spez_Investitionskosten_Flusswasser", "spez. Investitionskosten Flusswärmenutzung", "1000"),
+    Field("spezifische_Investitionskosten_WP", "spez. Investitionskosten Wärmepumpe", "1000"),
+]
+
+
+# ── Geothermal ────────────────────────────────────────────────────────────────
+
+GEOTHERMAL: List = [
+    Field("Fläche", "Fläche Erdsondenfeld in m²", "100"),
+    Field("Bohrtiefe", "Bohrtiefe Sonden in m", "100"),
+    Field("Temperatur_Geothermie", "Quelltemperatur in °C", "10"),
+    Field("Abstand_Sonden", "Abstand Erdsonden in m", "10"),
+    Field("spez_Bohrkosten", "spez. Bohrkosten pro Bohrmeter in €/m", "120"),
+    Field("spez_Entzugsleistung", "spez. Entzugsleistung Untergrund in W/m", "50"),
+    Field("Vollbenutzungsstunden", "Vollbenutzungsstunden Sondenfeld in h", "2400"),
+    Field("spezifische_Investitionskosten_WP", "spez. Investitionskosten Wärmepumpe in €/kW", "1000"),
+]
+
+
+# ── Solar thermal ─────────────────────────────────────────────────────────────
+# Grouped into the same three group boxes as the original dialog.
+
+SOLAR_SECTIONS: List[Section] = [
+    Section("Technische Daten", [
+        Field("bruttofläche_STA", "Kollektorbruttofläche in m²", "200"),
+        Field("vs", "Solarspeichervolumen in m³", "20"),
+        ComboField("Typ", "Kollektortyp", ["Vakuumröhrenkollektor", "Flachkollektor"], "Vakuumröhrenkollektor"),
+        Field("Tsmax", "Maximale Speichertemperatur in °C", "90"),
+        Field("Longitude", "Longitude des Erzeugerstandortes", "-14.4222"),
+        Field("STD_Longitude", "STD_Longitude des Erzeugerstandortes", "15", cast=int),
+        Field("Latitude", "Latitude des Erzeugerstandortes", "51.1676"),
+        Field("East_West_collector_azimuth_angle", "Azimuth-Ausrichtung des Kollektors in °", "0"),
+        Field("Collector_tilt_angle", "Neigungswinkel des Kollektors in ° (0-90)", "36"),
+        Field("Tm_rl", "Startwert Rücklauftemperatur in Speicher in °C", "60"),
+        Field("Qsa", "Startwert Speicherfüllstand", "0"),
+        Field("Vorwärmung_K", "Mögliche Abweichung von Solltemperatur bei Vorwärmung", "8"),
+        Field("DT_WT_Solar_K", "Grädigkeit Wärmeübertrager Kollektor/Speicher", "5"),
+        Field("DT_WT_Netz_K", "Grädigkeit Wärmeübertrager Speicher/Netz", "5"),
+    ]),
+    Section("Kosten", [
+        Field("kosten_speicher_spez", "spez. Kosten Solarspeicher in €/m³", "750"),
+        Field("kosten_fk_spez", "spez. Kosten Flachkollektor in €/m²", "430"),
+        Field("kosten_vrk_spez", "spez. Kosten Vakuumröhrenkollektor in €/m²", "590"),
+    ]),
+    Section("Optimierungsparameter", [
+        Field("opt_volume_min", "Untere Grenze Speichervolumen Optimierung", "1"),
+        Field("opt_volume_max", "Obere Grenze Speichervolumen Optimierung", "200"),
+        Field("opt_area_min", "Untere Grenze Kollektorfläche Optimierung", "1"),
+        Field("opt_area_max", "Obere Grenze Kollektorfläche Optimierung", "2000"),
+    ]),
+]

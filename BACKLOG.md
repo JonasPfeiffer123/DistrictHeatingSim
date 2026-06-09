@@ -59,10 +59,16 @@ tests. This is the safety net that makes every refactor below low-risk.
   so the import path (`from ..._04_technology_dialogs import TechInputDialog`,
   used in `_03_technology_tab.py:25`) is unchanged. Behaviour pinned by
   `tests/test_technology_dialogs.py` (44 tests, green before *and* after).
-  - **Still open (follow-up session):** migrate the 4 hand-written dialogs that were
-    moved *verbatim* — `_solar.py`, `_geothermal.py` (3D-viz, need custom hooks),
-    `_heat_pump.py` (River CSV import), `_storage.py` (ThermalStorage1D dynamic
-    sections). Needs a `ComboField` and a custom-widget escape hatch in `_base.py`.
+  - **Follow-up DONE 2026-06:** `_base.py` gained `ComboField` + `Section` (group
+    boxes) + a viz-friendly `_build_fields()`; `_solar.py` (212→86), `_geothermal.py`
+    (128→63) and `_heat_pump.py` (River+Aqva, 155→70) are now schema-driven (3D-viz /
+    CSV kept via `_build()`/`getInputs()` overrides; viz reads `self._widgets`).
+    Viz wiring covered by `TestVisualizationSmoke`. **48 dialog tests green.**
+  - **Deliberately left hand-written:** `_storage.py` (ThermalStorage1D). It is
+    *unique* (no duplication to remove) and has dynamic loss-model/fluid sections +
+    conditional output (`U_top`/`T_ambient` resolved from the active section, three
+    widgets for one value). Forcing it through the schema would grow `_base.py` more
+    than it shrinks the dialog — net negative. Leave as-is.
 - Still to tackle: `osm_dialogs.py` (~1320), `main_view.py` (~1232),
   `interactive_network_plot.py` (~1179) — same base-class + schema treatment.
 ### B2. MVP violations

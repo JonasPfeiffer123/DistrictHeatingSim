@@ -21,6 +21,8 @@ from districtheatingsim.gui.EnergySystemTab._04_technology_dialogs import (
     TechInputDialog,
     GasBoilerDialog,
     BiomassBoilerDialog,
+    SolarThermalDialog,
+    GeothermalDialog,
 )
 
 # Use the qapp fixture for the whole module (every test needs a QApplication).
@@ -297,3 +299,33 @@ class TestKeyAsymmetry:
     def test_biomass_ignores_thermal_capacity_key(self):
         dialog = BiomassBoilerDialog({"thermal_capacity_kW": 555})
         assert dialog.getInputs()["thermal_capacity_kW"] == 240.0  # field default
+
+
+class TestVisualizationSmoke:
+    """The Solar/Geothermal dialogs were schema-migrated; their 3D viz now reads
+    field widgets via ``self._widgets``. getInputs() is pinned above, but the viz
+    wiring is otherwise untested — these smoke tests ensure it builds and redraws
+    without a KeyError / crash when the driving inputs change.
+    """
+
+    def test_geothermal_viz_redraws_on_change(self):
+        dialog = GeothermalDialog()
+        dialog._widgets["Fläche"].setText("250")    # triggers updateVisualization
+        dialog._widgets["Bohrtiefe"].setText("150")
+        dialog.updateVisualization()                 # explicit call must not raise
+
+    def test_geothermal_viz_tolerates_invalid_input(self):
+        dialog = GeothermalDialog()
+        dialog._widgets["Fläche"].setText("")        # non-numeric → fallback path
+        dialog.updateVisualization()
+
+    def test_solar_viz_redraws_on_change(self):
+        dialog = SolarThermalDialog()
+        dialog._widgets["East_West_collector_azimuth_angle"].setText("45")
+        dialog._widgets["Collector_tilt_angle"].setText("30")
+        dialog.updateVisualization()
+
+    def test_solar_viz_tolerates_invalid_input(self):
+        dialog = SolarThermalDialog()
+        dialog._widgets["Collector_tilt_angle"].setText("abc")  # non-numeric → fallback
+        dialog.updateVisualization()
