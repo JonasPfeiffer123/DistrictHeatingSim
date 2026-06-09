@@ -99,7 +99,7 @@ class EnergySystem:
         Add a seasonal thermal energy storage system to the energy system.
 
         :param storage: Seasonal Thermal Energy Storage object.
-        :type storage: STES
+        :type storage: ThermalStorageAdapter
 
         .. note:: Enables temporal decoupling of generation and demand for improved efficiency.
         """
@@ -191,7 +191,11 @@ class EnergySystem:
             self.results['Restlast_L'] -= tech_results["Wärmeleistung_Speicher_L"]
             self.results['Wärmeleistung_L'].append(tech_results["Wärmeleistung_Speicher_L"])
             self.results['techs'].append(f"{tech_results['tech_name']}_Speicher")
+            self.results['Wärmemengen'].append(0)
             self.results['Anteile'].append(0)
+            self.results['WGK'].append(0)
+            self.results['specific_emissions_L'].append(0)
+            self.results['primärenergie_L'].append(0)
             self.results['colors'].append("gray")
 
     def calculate_mix(self, variables: list = [], variables_order: list = []) -> dict:
@@ -212,10 +216,10 @@ class EnergySystem:
         
         # Separate STES from generators before iterating (modifying a list during
         # iteration skips elements and is undefined behaviour).
-        stes_list = [t for t in self.technologies if isinstance(t, STES)]
-        self.technologies = [t for t in self.technologies if not isinstance(t, STES)]
+        stes_list = [t for t in self.technologies if isinstance(t, ThermalStorageAdapter)]
+        self.technologies = [t for t in self.technologies if not isinstance(t, ThermalStorageAdapter)]
         if stes_list:
-            self.storage = stes_list[-1]  # Use last-added STES if multiple were added
+            self.storage = stes_list[-1]  # Use last-added storage if multiple were added
 
         for tech in self.technologies:
             # Initialize each technology
@@ -275,7 +279,6 @@ class EnergySystem:
 
             # Calculate storage results
             self.storage.calculate_efficiency(self.load_profile)
-            # self.storage.calculate_operational_costs(0.10) # TODO: needs to be implemented in STES class
             self.results['storage_class'] = self.storage
         
         for tech in self.technologies:
@@ -295,13 +298,39 @@ class EnergySystem:
                 # Add technology as inactive with zero contribution
                 self.aggregate_results({'tech_name': tech.name})
 
-        # Calculate unmet demand after processing all technologies
+        # Credit network storage discharge against Restlast_L.
+        # Positive _Q_net_storage_flow = storage discharging = demand covered by storage.
+        if self.storage:
+            storage_discharge = np.maximum(self.storage._Q_net_storage_flow, 0.0)
+            storage_discharge_mwh = np.sum(storage_discharge) / 1000.0 * self.duration
+            if storage_discharge_mwh > 1e-3:
+                # Storage cost: capital annuity + maintenance (VDI 2067), spread over the
+                # discharged energy. No fuel cost – the loss energy is paid on the generator side.
+                self.storage.calculate_costs(storage_discharge_mwh, self.economic_parameters)
+                self.results['Restlast_L'] -= storage_discharge
+                self.results['Wärmeleistung_L'].append(storage_discharge)
+                self.results['Wärmemengen'].append(storage_discharge_mwh)
+                self.results['techs'].append(f"{self.storage.name} (Entladung)")
+                self.results['Anteile'].append(storage_discharge_mwh / self.results['Jahreswärmebedarf'])
+                self.results['WGK'].append(self.storage.WGK)
+                self.results['specific_emissions_L'].append(0.0)
+                self.results['primärenergie_L'].append(0.0)
+                self.results['colors'].append('steelblue')
+                self.results['WGK_Gesamt'] += self.storage.A_N / self.results['Jahreswärmebedarf']
+                self.results['Restwärmebedarf'] -= storage_discharge_mwh
+
+        # Calculate unmet demand after processing all technologies.
+        # Use np.maximum(..., 0) so that over-production (negative residual, absorbed by
+        # seasonal storage) does not produce a negative unmet-demand entry.
         if np.any(self.results['Restlast_L'] > 1e-6):
-            unmet_demand = np.sum(self.results['Restlast_L']) / 1000 * self.duration
-            self.results['Wärmeleistung_L'].append(self.results['Restlast_L'])
+            unmet_demand = np.sum(np.maximum(self.results['Restlast_L'], 0)) / 1000 * self.duration
+            self.results['Wärmeleistung_L'].append(np.maximum(self.results['Restlast_L'], 0))
             self.results['Wärmemengen'].append(unmet_demand)
             self.results['techs'].append("Ungedeckter Bedarf")
             self.results['Anteile'].append(unmet_demand / self.results['Jahreswärmebedarf'])
+            self.results['WGK'].append(0)
+            self.results['specific_emissions_L'].append(0)
+            self.results['primärenergie_L'].append(0)
             self.results['colors'].append("black")
 
         self.getInitialPlotData()
@@ -351,6 +380,13 @@ class EnergySystem:
             # Add storage data to extracted data structure
             self.extracted_data['Speicherbeladung_kW'] = Q_net_negative
             self.extracted_data['Speicherentladung_kW'] = Q_net_positive
+
+            # Additional storage state variables for plotting
+            self.extracted_data['Speicher_SOC_%'] = self.storage._soc * 100.0
+            self.extracted_data['Speicher_T_oben_°C'] = self.storage._T_supply
+            self.extracted_data['Speicher_T_mitte_°C'] = self.storage._T_middle
+            self.extracted_data['Speicher_T_unten_°C'] = self.storage._T_return
+            self.extracted_data['Speicher_Verluste_kW'] = self.storage.Q_loss
 
         if "Ungedeckter Bedarf" in self.results['techs']:
             # Find index of "Ungedeckter Bedarf" in technology list
@@ -421,6 +457,13 @@ class EnergySystem:
 
         line_vars = [var for var in selected_vars if var not in stackplot_vars and var != "Last_L"]
 
+        def _clean_label(var: str) -> str:
+            """Strip internal suffixes for display in legend."""
+            label = var.replace("_Wärmeleistung", "")
+            label = label.replace("_kW", " (kW)").replace("_%", " (%)")
+            label = label.replace("_°C", " (°C)")
+            return label
+
         stackplot_data = []
         stackplot_labels = []
         for var in stackplot_vars:
@@ -429,14 +472,14 @@ class EnergySystem:
                     x,
                     0,
                     self.extracted_data[var],
-                    label=var,
+                    label=_clean_label(var),
                     step="mid",
                     color="gray",
                     alpha=1.0,
                 )
             elif var in self.extracted_data:
                 stackplot_data.append(self.extracted_data[var])
-                stackplot_labels.append(var)
+                stackplot_labels.append(_clean_label(var))
 
         if stackplot_data:
             ax_main.stackplot(
@@ -456,37 +499,48 @@ class EnergySystem:
         color_cycle = itertools.cycle(cm.Dark2.colors)
         for var_name in line_vars:
             if var_name in self.extracted_data:
+                display_label = _clean_label(var_name)
                 if ax2:
                     line, = ax2.plot(
                         x,
                         self.extracted_data[var_name],
-                        label=var_name,
+                        label=display_label,
                         color=next(color_cycle)
                     )
                     lines_ax2.append(line)
-                    labels_ax2.append(var_name)
+                    labels_ax2.append(display_label)
                 else:
-                    line, = ax_main.plot(x, self.extracted_data[var_name], label=var_name)
+                    line, = ax_main.plot(x, self.extracted_data[var_name], label=display_label)
                     lines_ax1.append(line)
-                    labels_ax1.append(var_name)
+                    labels_ax1.append(display_label)
 
         if "Last_L" in selected_vars:
-            line, = ax_main.plot(x, self.results["Last_L"], color='blue', label='Last', linewidth=0.25)
+            line, = ax_main.plot(x, self.results["Last_L"], color='black', label='Wärmebedarf', linewidth=0.25)
             lines_ax1.append(line)
-            labels_ax1.append('Last')
+            labels_ax1.append('Wärmebedarf')
 
         # Achsenbeschriftung und Grid
         ax_main.set_title("Jahresganglinie", fontsize=16)
-        ax_main.set_xlabel("Jahresstunden", fontsize=14)
+        ax_main.set_xlabel("", fontsize=14)
         ax_main.set_ylabel("Wärmeleistung [kW]", fontsize=14)
-        ax_main.grid()
+        ax_main.grid(True, alpha=0.3)
         if ax2:
             ax2.set_ylabel('Temperatur (°C)', fontsize=14)
             ax2.tick_params(axis='y', labelsize=14)
 
-        step = 1000
-        ax_main.set_xticks(np.arange(0, n_steps+step, step))
-        ax_main.set_xticklabels([str(i) for i in np.arange(0, n_steps+step, step)])
+        # Use month labels when simulation covers a full year (≥8000 h)
+        month_names = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun",
+                        "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]
+        month_starts = [0, 744, 1416, 2160, 2880, 3624,
+                        4344, 5088, 5832, 6552, 7296, 8016]
+        if n_steps >= 8000:
+            valid = [(s, m) for s, m in zip(month_starts, month_names) if s < n_steps]
+            ax_main.set_xticks([s for s, _ in valid])
+            ax_main.set_xticklabels([m for _, m in valid], fontsize=12)
+        else:
+            step = max(1, n_steps // 10)
+            ax_main.set_xticks(np.arange(0, n_steps + step, step))
+            ax_main.set_xticklabels([str(i) for i in np.arange(0, n_steps + step, step)])
 
         # Legenden in eigenen Achsen
         def get_ncol(n):
@@ -543,29 +597,41 @@ class EnergySystem:
         if figure is None:
             figure = plt.figure()
 
-        # clear the figure if it already exists
-        if figure.axes:
-            for ax in figure.axes:
-                ax.clear()
-
+        figure.clear()
         ax = figure.add_subplot(111)
-        labels = self.results['techs']
-        Anteile = self.results['Anteile']
-        colors = self.results['colors']
 
-        # Create the pie chart without percentage labels on the chart
+        labels_all = self.results['techs']
+        anteile_all = np.asarray(self.results['Anteile'], dtype=float)
+        colors_all = self.results['colors']
+        waermemengen_all = np.asarray(self.results['Wärmemengen'], dtype=float)
+
+        # Filter out zero or negative shares
+        mask = anteile_all > 0
+        labels  = [l for l, m in zip(labels_all, mask) if m]
+        anteile = anteile_all[mask]
+        colors  = [c for c, m in zip(colors_all, mask) if m]
+        waermemengen = waermemengen_all[mask]
+
+        # Donut-style pie chart
         wedges, _ = ax.pie(
-            Anteile,
+            anteile,
             labels=None,
             colors=colors,
-            startangle=90
+            startangle=90,
+            wedgeprops=dict(width=0.55, edgecolor='white', linewidth=1.5),
+            pctdistance=0.75,
         )
-        ax.set_title("Anteile Wärmeerzeugung")
-        ax.axis("equal")  # Ensure the pie chart is circular
+        ax.set_title("Anteile Wärmeerzeugung", fontsize=13, pad=12)
+        ax.axis("equal")
 
-        # Prepare legend labels with percentages
-        percent_labels = [f"{label}: {100 * anteil:.1f}%" for label, anteil in zip(labels, Anteile)]
-        ax.legend(wedges, percent_labels, loc="center left")
+        # Legend: name, MWh, percentage
+        legend_labels = [
+            f"{label}:  {mwh:.0f} MWh  ({100 * share:.1f} %)"
+            for label, mwh, share in zip(labels, waermemengen, anteile)
+        ]
+        ax.legend(wedges, legend_labels, loc="center left",
+                  bbox_to_anchor=(0.85, 0, 0.5, 1),
+                  fontsize=9, frameon=False)
     
     def copy(self):
         """
@@ -680,7 +746,12 @@ class EnergySystem:
 
         # Restore storage
         if data.get('storage'):
-            obj.storage = STES.from_dict(data['storage'])
+            obj.storage = ThermalStorageAdapter.from_dict(data['storage'])
+            if obj.storage is None:
+                logging.warning(
+                    "Thermal storage could not be loaded (outdated format). "
+                    "Please re-configure the storage in the GUI."
+                )
 
         # Restore results (if available)
         obj.results = {}

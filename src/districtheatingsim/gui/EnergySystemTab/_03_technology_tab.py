@@ -21,6 +21,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
 from districtheatingsim.heat_generators import TECH_CLASS_REGISTRY
+from districtheatingsim.heat_generators.thermal_storage import ThermalStorageAdapter
 from districtheatingsim.gui.EnergySystemTab._04_technology_dialogs import TechInputDialog
 from districtheatingsim.gui.EnergySystemTab._11_generator_schematic import SchematicScene, CustomGraphicsView
 
@@ -62,7 +63,7 @@ class TechnologyTab(QWidget):
         "Gaskessel": 0,
         "AqvaHeat": 0,
         "Power-to-Heat": 0,
-        "Saisonaler Wärmespeicher": 0
+        "Thermischer Netzspeicher": 0
     }
 
     data_added = pyqtSignal(object)  # Signal, das Daten als Objekt überträgt
@@ -571,5 +572,5 @@ class TechnologyTab(QWidget):
             tech.scene_item = self.schematic_scene.add_component('Gas Boiler', name, storage=False)
         elif tech.name.startswith('PowerToHeat'):
             tech.scene_item = self.schematic_scene.add_component('Power-to-Heat', name, storage=False)
-        elif tech.name.startswith('Saisonaler Wärmespeicher'):
+        elif isinstance(tech, ThermalStorageAdapter) or tech.name.startswith('Thermischer Netzspeicher'):
             tech.scene_item = self.schematic_scene.add_component('Seasonal Thermal Storage', name, storage=False)

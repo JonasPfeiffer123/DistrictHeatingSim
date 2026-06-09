@@ -28,6 +28,7 @@ from districtheatingsim.gui.EnergySystemTab._07_results_tab import ResultsTab
 from districtheatingsim.gui.EnergySystemTab._08_sensitivity_tab import SensitivityTab
 from districtheatingsim.gui.EnergySystemTab._09_sankey_dialog import SankeyDialog
 from districtheatingsim.heat_generators.energy_system import EnergySystem
+from districtheatingsim.heat_generators.thermal_storage import ThermalStorageAdapter
 
 
 def _config_name_to_filename(config_name: str) -> str:
@@ -155,7 +156,7 @@ class EnergySystemTab(QWidget):
             addHeatGeneratorMenu.addAction(action)
 
         addstorageMenu = self.menuBar.addMenu('Speicher hinzufügen')
-        storageTypes = ["Saisonaler Wärmespeicher"]
+        storageTypes = ["Thermischer Netzspeicher"]
         for storage in storageTypes:
             action = QAction(storage, self)
             action.triggered.connect(lambda checked, stor=storage: self.techTab.addTech(stor, None))
@@ -490,9 +491,12 @@ class EnergySystemTab(QWidget):
             economic_parameters=self.economic_parameters,
         )
 
-        # Add technologies to the system
+        # Add technologies / storage to the system
         for tech in self.techTab.tech_objects:
-            self.energy_system.add_technology(tech)
+            if isinstance(tech, ThermalStorageAdapter):
+                self.energy_system.add_storage(tech)
+            else:
+                self.energy_system.add_technology(tech)
 
         self.energy_system.results["waerme_ges_kW"] = waerme_ges_kW
         self.energy_system.results["strom_wp_kW"] = strom_wp_kW
