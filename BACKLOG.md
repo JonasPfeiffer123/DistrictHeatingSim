@@ -69,8 +69,23 @@ tests. This is the safety net that makes every refactor below low-risk.
     conditional output (`U_top`/`T_ambient` resolved from the active section, three
     widgets for one value). Forcing it through the schema would grow `_base.py` more
     than it shrinks the dialog — net negative. Leave as-is.
-- Still to tackle: `osm_dialogs.py` (~1320), `main_view.py` (~1232),
-  `interactive_network_plot.py` (~1179) — same base-class + schema treatment.
+- **`osm_dialogs.py` (1248 → 939): DONE 2026-06.** Two near-identical download
+  dialogs (`DownloadOSMDataDialog`, `OSMBuildingQueryDialog`) shared method-level
+  duplication. Extracted in two steps:
+  - `osm/area_selection.py` (GUI-free, **13 tests**): `build_highway_filter`,
+    `polygon_from_csv`/`_from_geojson`, `resolve_area_polygon`. Both worker methods
+    (`downloadWithOSMnx`/`downloadBuildings`) now call it; ~95 lines of duplicated
+    geo logic removed and the C9 thread bug fixed.
+  - `osm_dialogs_base.py::OSMDownloadDialogBase`: shared map-polygon capture
+    (`getCapturedPolygonFromMap`, `clearCapturedPolygon`, `_begin_polygon_capture`),
+    thread-lifecycle (`_onDownloadCanceled`/`_onDownloadError`) and construction,
+    parametrised via `self._download_button` / `_temp_polygon_filename`. Both
+    dialogs inherit it; import path (`from ...osm_dialogs import …`, used in
+    `leaflet_tab.py:28`) unchanged. Smoke-tested by `tests/test_osm_dialogs.py`
+    (14 tests). The two distinct `initUI`/`startQuery`/`_onDownloadComplete` stay
+    per-dialog (genuinely different — streets have highway filters + 4 area types).
+- Still to tackle: `main_view.py` (~1232), `interactive_network_plot.py` (~1179) —
+  same base-class treatment.
 ### B2. MVP violations
 The main frame is clean, but individual tabs reach directly into
 `data_manager` / domain objects and make business-logic decisions past the
@@ -128,6 +143,15 @@ The "spez. Investitionskosten Speicher" field defaults to `"0.8"` in the CHP and
 Holzgas-CHP dialogs but `"750"` in Biomass — almost certainly a typo (€/m³). Pinned
 by `tests/test_technology_dialogs.py::TestStorageToggle` and preserved in
 `_schemas.CHP_STORAGE`. Fix: set the default to `"750"` and update the test.
+### C9. GUI access inside OSM download threads (fixed 2026-06)
+The OSM worker methods (`downloadWithOSMnx`/`downloadBuildings`) run inside
+`OSMStreetDownloadThread`/`OSMBuildingDownloadThread` but called
+`QMessageBox.warning(self, …)` + `return` when a CSV lacked `UTM_X`/`UTM_Y` — GUI
+access off the main thread, and the `return None` then crashed on `polygon.bounds`.
+**Fixed** by extracting the logic to `osm/area_selection.py`, which `raise`s
+`ValueError`; the thread catches it and emits `download_error` → a proper error box
+on the main thread. Pinned by `tests/test_area_selection.py`. (Audit the other
+threads in `net_generation_threads.py` for the same anti-pattern.)
 
 ## D. State & data
 ### D1. Double state source
