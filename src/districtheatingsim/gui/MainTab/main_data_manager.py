@@ -11,6 +11,7 @@ This module implements the Model layer of the MVP pattern, providing three core 
 
 import os
 import json
+import logging
 import shutil
 from typing import Dict, List, Optional, Any
 
@@ -18,6 +19,10 @@ from PyQt6.QtCore import QObject, pyqtSignal
 
 from districtheatingsim.utilities.utilities import get_resource_path
 from districtheatingsim.utilities.crs_utils import DEFAULT_CRS
+
+#: Schema version of ``project_settings.json``. Bump when the on-disk format
+#: changes and add the corresponding step to ``_migrate_project_settings``.
+PROJECT_SETTINGS_VERSION = 1
         
 class ProjectConfigManager:
     """
@@ -346,6 +351,25 @@ class ProjectFolderManager(QObject):
             return absolute if os.path.isfile(absolute) else None
         return None
 
+    def _migrate_project_settings(self, data: Dict[str, Any], version: int) -> Dict[str, Any]:
+        """
+        Migrate a loaded ``project_settings.json`` dict to the current schema.
+
+        Currently a pass-through (missing keys fall back to defaults on read).
+        Future format changes add a step here, keyed off the stored ``version``.
+
+        :param data: Raw settings dict as loaded from disk.
+        :param version: ``version`` field from the file (0 = pre-versioning).
+        :return: The (possibly migrated) settings dict.
+        """
+        if version < PROJECT_SETTINGS_VERSION:
+            logging.info("Migrating project_settings.json from v%d to v%d",
+                         version, PROJECT_SETTINGS_VERSION)
+        elif version > PROJECT_SETTINGS_VERSION:
+            logging.warning("project_settings.json is v%d, newer than this app (v%d); "
+                            "loading best-effort", version, PROJECT_SETTINGS_VERSION)
+        return data
+
     def load_project_settings(self) -> None:
         """Load per-project settings (CRS, active energy configs, TRY/COP paths) from ``project_settings.json``."""
         path = self._settings_path()
@@ -353,6 +377,7 @@ class ProjectFolderManager(QObject):
             try:
                 with open(path, "r", encoding="utf-8") as f:
                     data = json.load(f)
+                data = self._migrate_project_settings(data, int(data.get("version", 0)))
                 self.project_crs = data.get("crs", DEFAULT_CRS)
                 self.calculation_year = int(data.get("calculation_year", 2023))
                 self.active_energy_configs = data.get("active_energy_configs", {})
@@ -399,6 +424,7 @@ class ProjectFolderManager(QObject):
         if path:
             try:
                 data = {
+                    "version": PROJECT_SETTINGS_VERSION,
                     "crs": self.project_crs,
                     "calculation_year": self.calculation_year,
                     "active_energy_configs": self.active_energy_configs,

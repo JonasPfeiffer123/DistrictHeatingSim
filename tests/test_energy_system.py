@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from districtheatingsim.heat_generators.energy_system import EnergySystem
+from districtheatingsim.heat_generators.energy_system import EnergySystem, ENERGY_SYSTEM_SCHEMA_VERSION
 from districtheatingsim.heat_generators.gas_boiler import GasBoiler, GasBoilerStrategy
 from districtheatingsim.heat_generators.chp import CHP, CHPStrategy
 from districtheatingsim.heat_generators.thermal_storage import ThermalStorageAdapter, BufferStorage
@@ -252,6 +252,39 @@ class TestTechnologyResultRecords:
         d = es.to_dict()
         assert 'tech_results' not in d
         assert 'tech_results' not in d.get('results', {})
+
+
+# ===========================================================================
+# 2c. Serialization schema version (D2)
+# ===========================================================================
+
+class TestSerializationVersion:
+    """D2: the serialized EnergySystem carries a schema version, round-trips, and
+    a pre-versioning dict (no `version`) still loads."""
+
+    @staticmethod
+    def _system():
+        es = _make_energy_system(_LOAD, _ECONOMIC_PARAMS)
+        es.add_technology(CHP(name="BHKW_1", th_Leistung_kW=100))
+        es.add_technology(GasBoiler("Gaskessel_1", thermal_capacity_kW=500))
+        es.calculate_mix()
+        return es
+
+    def test_to_dict_has_schema_version(self):
+        d = self._system().to_dict()
+        assert d["version"] == ENERGY_SYSTEM_SCHEMA_VERSION
+
+    def test_round_trip(self):
+        d = self._system().to_dict()
+        restored = EnergySystem.from_dict(d)
+        assert len(restored.technologies) == 2
+        assert restored.economic_parameters == _ECONOMIC_PARAMS
+
+    def test_legacy_dict_without_version_loads(self):
+        d = self._system().to_dict()
+        d.pop("version", None)            # pre-versioning file
+        restored = EnergySystem.from_dict(d)  # must not raise
+        assert len(restored.technologies) == 2
 
 
 # ===========================================================================

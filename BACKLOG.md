@@ -175,14 +175,22 @@ config pinned by `tests/test_osm_import.py`. Only raw-urllib (overpy) traffic is
 affected by the global opener — geopy/osmnx use their own HTTP stacks.
 
 ## D. State & data
-### D1. Double state source
-`try_filename` lives in both `DataManager` and `ProjectFolderManager` and is
-synchronized manually — no single source of truth. Folder names like "Variante 1"
-are hardcoded.
-### D2. No schema versioning / migration
-`project_settings.json` and the project JSONs have no version field → old projects
-break on format changes. (The storage `from_dict` → `None` + warning is a one-off,
-not a general migration path.)
+### D1. Double state source (fixed 2026-06)
+`try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,
+mirrored by hand in `main_view` (and slightly buggy: raw vs project-copied path).
+**Fixed**: `ProjectFolderManager` is now the single owner (it persists them in
+`project_settings.json`); `DataManager` holds only `map_data`; the three consumer
+tabs read `folder_manager.try_filename/.cop_filename` (they already held the ref).
+Pinned indirectly by `tests/test_project_settings.py`. *Still open:* folder names
+like "Variante 1" are still hardcoded (separate, smaller item).
+### D2. No schema versioning / migration (fixed 2026-06)
+Neither `project_settings.json` nor the EnergySystem project JSON had a version
+field. **Fixed**: both carry a `version` (`PROJECT_SETTINGS_VERSION`,
+`ENERGY_SYSTEM_SCHEMA_VERSION`) and route loads through a migration hook
+(`_migrate_project_settings`; `from_dict` reads + warns on newer-than-app files).
+Old files (no `version` = v0) still load with defaults. Pinned by
+`tests/test_project_settings.py` + `tests/test_energy_system.py::TestSerializationVersion`.
+(The storage `from_dict` → `None` + warning remains its own one-off path.)
 ### D3. Scattered physical constants / magic numbers (largely fixed 2026-06)
 `cp` was both 4.18 and 4.2 kJ/kgK; `273.15` was hard-coded ~20×; CO₂/primary-energy/
 BEW factors were duplicated across generators. **Fixed**: central
