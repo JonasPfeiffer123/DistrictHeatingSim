@@ -62,8 +62,8 @@ economic_parameters = {
     "gas_price": 50,
     "wood_price": 40,
     "electricity_price": 120,
-    "capital_interest_rate": 0.05,
-    "inflation_rate": 0.03,
+    "capital_interest_rate": 1.05,   # factor = 1 + rate (5 %), per VDI 2067 annuity()
+    "inflation_rate": 1.03,          # factor = 1 + rate (3 %)
     "time_period": 20,
     "subsidy_eligibility": "Nein",
     "hourly_rate": 45,
