@@ -16,6 +16,7 @@ from typing import Dict, Tuple, List, Optional, Union, Any
 
 from districtheatingsim.heat_generators.solar_radiation import calculate_solar_radiation
 from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
+from districtheatingsim.constants import CO2_FACTOR_SOLAR, PRIMARY_ENERGY_FACTOR_SOLAR, BEW_SUBSIDY_SHARE
 
 class SolarThermal(BaseHeatGenerator):
     """
@@ -102,10 +103,10 @@ class SolarThermal(BaseHeatGenerator):
         self.Kosten_STA_spez = self.kosten_pro_typ[self.Typ]  # €/m²
         self.Nutzungsdauer = 20  # Jahre
         self.f_Inst, self.f_W_Insp, self.Bedienaufwand = 0.5, 1, 0
-        self.Anteil_Förderung_BEW = 0.4
+        self.Anteil_Förderung_BEW = BEW_SUBSIDY_SHARE
         self.Betriebskostenförderung_BEW = 10  # €/MWh 10 Jahre
-        self.co2_factor_solar = 0.0  # tCO2/MWh heat is 0
-        self.primärenergiefaktor = 0.0
+        self.co2_factor_solar = CO2_FACTOR_SOLAR  # tCO2/MWh heat is 0
+        self.primärenergiefaktor = PRIMARY_ENERGY_FACTOR_SOLAR
 
         self.strategy = SolarThermalStrategy(charge_on=0, charge_off=0)
 

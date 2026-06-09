@@ -12,6 +12,7 @@ import numpy as np
 import CoolProp.CoolProp as CP
 
 from districtheatingsim.heat_generators.base_heat_pumps import HeatPump
+from districtheatingsim.constants import KELVIN_OFFSET
 
 class AqvaHeat(HeatPump):
     """
@@ -95,7 +96,7 @@ class AqvaHeat(HeatPump):
         initial_temperature = triple_point_temperature
 
         # Define final conditions after first compression
-        final_temperature = 12 + 273.15  # Convert to Kelvin
+        final_temperature = 12 + KELVIN_OFFSET  # Convert to Kelvin
         final_pressure = CP.PropsSI('P', 'T', final_temperature, 'Q', 0, fluid)
 
         # mass flow from condensing vapor at 12°C, 14hPa

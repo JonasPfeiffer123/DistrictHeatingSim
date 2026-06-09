@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import geopandas as gpd
 from shapely.geometry import LineString
+from districtheatingsim.constants import KELVIN_OFFSET
 from scipy.interpolate import RegularGridInterpolator
 
 import pandapipes as pp
@@ -190,7 +191,7 @@ def create_controllers(net, qext_w: np.ndarray, supply_temperature_heat_generato
                     data_source=placeholder_data_source_qext, profile_name=f'qext_w_{i}')
 
         # Return temperature controller  
-        placeholder_df_treturn = pd.DataFrame({f'treturn_k_{i}': [return_temperature_heat_consumer[i] + 273.15]})
+        placeholder_df_treturn = pd.DataFrame({f'treturn_k_{i}': [return_temperature_heat_consumer[i] + KELVIN_OFFSET]})
         placeholder_data_source_treturn = DFData(placeholder_df_treturn)
         ConstControl(net, element='heat_consumer', variable='treturn_k', element_index=i, 
                     data_source=placeholder_data_source_treturn, profile_name=f'treturn_k_{i}')
@@ -214,7 +215,7 @@ def create_controllers(net, qext_w: np.ndarray, supply_temperature_heat_generato
             net.controller.loc[len(net.controller)] = [T_controller, True, -1, -1, False, False, None]
 
     # Main heat generator supply temperature controller
-    placeholder_df_supply_temp = pd.DataFrame({'supply_temperature': [supply_temperature_heat_generator + 273.15]})
+    placeholder_df_supply_temp = pd.DataFrame({'supply_temperature': [supply_temperature_heat_generator + KELVIN_OFFSET]})
     placeholder_data_source_supply_temp = DFData(placeholder_df_supply_temp)
     ConstControl(net, element='circ_pump_pressure', variable='t_flow_k', element_index=0, 
                 data_source=placeholder_data_source_supply_temp, profile_name='supply_temperature')

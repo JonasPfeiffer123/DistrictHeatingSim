@@ -14,6 +14,9 @@ from typing import Dict, Tuple, Union, Optional, Any
 import CoolProp.CoolProp as CP
 
 from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
+from districtheatingsim.constants import (
+    CO2_FACTOR_ELECTRICITY, PRIMARY_ENERGY_FACTOR_ELECTRICITY_HP, BEW_SUBSIDY_SHARE,
+)
 
 class HeatPump(BaseHeatGenerator):
     """
@@ -53,10 +56,10 @@ class HeatPump(BaseHeatGenerator):
             "Flusswärmepumpe": 20, 
             "Geothermie": 30
         }
-        self.co2_factor_electricity = 0.4  # tCO2/MWh electricity
-        self.primärenergiefaktor = 1.8
+        self.co2_factor_electricity = CO2_FACTOR_ELECTRICITY  # tCO2/MWh electricity
+        self.primärenergiefaktor = PRIMARY_ENERGY_FACTOR_ELECTRICITY_HP
 
-        self.Anteil_Förderung_BEW = 0.4  # 40% subsidy for BEW program
+        self.Anteil_Förderung_BEW = BEW_SUBSIDY_SHARE  # 40% subsidy for BEW program
 
         self.strategy = HeatPumpStrategy(75, 70)
         

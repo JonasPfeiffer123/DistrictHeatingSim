@@ -12,6 +12,7 @@ from typing import Dict, Tuple, List, Optional, Union
 
 from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
 from districtheatingsim.heat_generators.thermal_storage import BufferStorage
+from districtheatingsim.constants import CO2_FACTOR_WOOD, PRIMARY_ENERGY_FACTOR_WOOD, BEW_SUBSIDY_SHARE
 
 class BiomassBoiler(BaseHeatGenerator):
     """
@@ -69,9 +70,9 @@ class BiomassBoiler(BaseHeatGenerator):
         # System specifications based on biomass boiler standards
         self.Nutzungsdauer = 15  # Operational lifespan [years]
         self.f_Inst, self.f_W_Insp, self.Bedienaufwand = 3, 3, 0  # Installation and maintenance factors
-        self.co2_factor_fuel = 0.036  # tCO2/MWh for wood pellets (carbon-neutral)
-        self.primärenergiefaktor = 0.2  # Primary energy factor for biomass
-        self.Anteil_Förderung_BEW = 0.4  # BEW subsidy percentage (40%)
+        self.co2_factor_fuel = CO2_FACTOR_WOOD  # tCO2/MWh for wood pellets (carbon-neutral)
+        self.primärenergiefaktor = PRIMARY_ENERGY_FACTOR_WOOD  # Primary energy factor for biomass
+        self.Anteil_Förderung_BEW = BEW_SUBSIDY_SHARE  # BEW subsidy percentage (40%)
 
         # Initialize control strategy
         self.strategy = BiomassBoilerStrategy(75, 70)

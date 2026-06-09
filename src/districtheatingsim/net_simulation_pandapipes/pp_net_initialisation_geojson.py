@@ -30,6 +30,7 @@ from pandapipes.control.run_control import run_control
 
 from districtheatingsim.net_simulation_pandapipes.utilities import create_controllers, correct_flow_directions, COP_WP, init_diameter_types
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
+from districtheatingsim.constants import KELVIN_OFFSET, CP_WATER_KJ_KGK
 
 def initialize_geojson(NetworkGenerationData) -> Any:
     """
@@ -167,7 +168,7 @@ def initialize_geojson(NetworkGenerationData) -> Any:
 
     # Calculate mass flows for secondary producers
     if NetworkGenerationData.secondary_producers:
-        cp = 4.18  # kJ/kgK - specific heat capacity of water
+        cp = CP_WATER_KJ_KGK  # kJ/kgK - specific heat capacity of water
         print(f"Specific heat capacity of water: {cp} kJ/kgK")
         print(f"maximum_building_heat_load_W: {maximum_building_heat_load_W}")
         sum_maximum_building_heat_load_W = np.sum(maximum_building_heat_load_W)
@@ -342,8 +343,8 @@ def create_network(gdf_dict: Dict[str, gpd.GeoDataFrame], consumer_dict: Dict[st
     u_w_per_m2k_pipe = properties['u_w_per_m2k']
 
     # Convert temperatures to Kelvin
-    supply_temperature_k = supply_temperature + 273.15
-    return_temperature_heat_consumer_k = return_temperature_heat_consumer + 273.15
+    supply_temperature_k = supply_temperature + KELVIN_OFFSET
+    return_temperature_heat_consumer_k = return_temperature_heat_consumer + KELVIN_OFFSET
 
     def create_junctions_from_coords(net_i: pp.pandapipesNet,
                                      all_coords: List[Tuple],

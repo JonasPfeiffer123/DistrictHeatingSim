@@ -11,6 +11,7 @@ import numpy as np
 from typing import Dict, Tuple, List, Optional, Union
 
 from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
+from districtheatingsim.constants import CO2_FACTOR_GAS, PRIMARY_ENERGY_FACTOR_GAS
 
 class GasBoiler(BaseHeatGenerator):
     """
@@ -56,8 +57,8 @@ class GasBoiler(BaseHeatGenerator):
         # System specifications based on gas boiler standards
         self.Nutzungsdauer = 20  # Operational lifespan [years]
         self.f_Inst, self.f_W_Insp, self.Bedienaufwand = 1, 2, 0  # Installation and maintenance factors
-        self.co2_factor_fuel = 0.201  # tCO2/MWh for natural gas
-        self.primärenergiefaktor = 1.1  # Primary energy factor for natural gas
+        self.co2_factor_fuel = CO2_FACTOR_GAS  # tCO2/MWh for natural gas
+        self.primärenergiefaktor = PRIMARY_ENERGY_FACTOR_GAS  # Primary energy factor for natural gas
 
         # Initialize control strategy
         self.strategy = GasBoilerStrategy(70)
