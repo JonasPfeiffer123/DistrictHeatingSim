@@ -496,7 +496,7 @@ class SchematicScene(CustomGraphicsScene):
             # Update the scene size after adding the generator
             self.update_scene_size()
 
-    def add_seasonal_storage(self, item_type='Saisonaler Wärmespeicher', item_name='Speicher', connect_to_lines=True):
+    def add_seasonal_storage(self, item_type='Seasonal Thermal Storage', item_name='Speicher', connect_to_lines=True):
         """
         Adds a seasonal storage unit at a fixed position and optionally connects it to the parallel lines.
 
@@ -779,7 +779,7 @@ class SchematicScene(CustomGraphicsScene):
         else:
             if item_name == 'Consumer':
                 return self.add_consumer_net(name)
-            if item_name == 'Saisonaler Wärmespeicher':
+            if item_name == 'Seasonal Thermal Storage':
                 return self.add_seasonal_storage(item_name, name)
             else:
                 return self.add_generator(item_name, name)

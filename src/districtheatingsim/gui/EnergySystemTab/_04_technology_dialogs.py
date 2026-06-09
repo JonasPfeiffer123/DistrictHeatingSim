@@ -65,7 +65,7 @@ class TechInputDialog(QDialog):
             self.dialog = AqvaHeatDialog(self.tech_data)
         elif self.tech_type.startswith("Power-to-Heat"):
             self.dialog = PowerToHeatDialog(self.tech_data)
-        elif self.tech_type.startswith("Saisonaler Wärmespeicher"):
+        elif self.tech_type.startswith("Thermischer Netzspeicher"):
             self.dialog = ThermalStorage1DDialog(self.tech_data)
         else:
             raise ValueError(f"Unbekannter Technologietyp: {self.tech_type}")
@@ -1374,7 +1374,7 @@ class ThermalStorage1DDialog(QWidget):
         basic_box = QGroupBox("Basic")
         basic_layout = QFormLayout()
 
-        self.name_input = QLineEdit(self._field("name", "Saisonaler Wärmespeicher"))
+        self.name_input = QLineEdit(self._field("name", "Thermischer Netzspeicher"))
         basic_layout.addRow("Name:", self.name_input)
 
         self.volume_input = QLineEdit(self._field("volume", "1000"))
@@ -1511,6 +1511,9 @@ class ThermalStorage1DDialog(QWidget):
         self.buoyancy_check.setChecked(self.tech_data.get("buoyancy", True))
         solver_layout.addRow("", self.buoyancy_check)
 
+        self.lambda_eff_factor_input = QLineEdit(self._field("lambda_eff_factor", "5.0"))
+        solver_layout.addRow("Effective conductivity factor (λ_eff):", self.lambda_eff_factor_input)
+
         solver_header = CollapsibleHeader("Solver (Advanced)", solver_inner)
         solver_header.toggle_content()  # start collapsed
         main_layout.addWidget(solver_header)
@@ -1570,6 +1573,7 @@ class ThermalStorage1DDialog(QWidget):
             "solver": self.solver_combo.currentText(),
             "advection_scheme": self.advection_combo.currentText(),
             "buoyancy": self.buoyancy_check.isChecked(),
+            "lambda_eff_factor": float(self.lambda_eff_factor_input.text()),
             "spez_Investitionskosten": float(self.spez_cost_input.text()),
             "hours": 8760,
             "T_charge": float(self.T_charge_input.text()),
