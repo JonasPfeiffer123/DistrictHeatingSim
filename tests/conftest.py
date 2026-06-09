@@ -12,9 +12,26 @@ reproducible across machines and CI runs. Do not introduce randomness here.
 import matplotlib
 matplotlib.use('Agg')
 
+# Run Qt without a display so the GUI-dialog characterization tests
+# (tests/test_technology_dialogs.py) can construct widgets in headless CI.
+# Must be set before any QApplication is created.
+import os
+os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
+
 import numpy as np
 import pandas as pd
 import pytest
+
+
+@pytest.fixture(scope='session')
+def qapp():
+    """Process-wide QApplication for GUI-widget tests.
+
+    Qt requires a single QApplication instance per process; reuse the existing
+    one if another test (or the IDE) already created it.
+    """
+    from PyQt6.QtWidgets import QApplication
+    return QApplication.instance() or QApplication([])
 
 
 @pytest.fixture(scope='module')
