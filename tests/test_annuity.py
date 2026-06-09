@@ -3,9 +3,9 @@ Unit + regression tests for the VDI 2067 annuity calculation.
 
 ``annuity()`` is the economic backbone of every heat generator's WGK/LCOH.
 It is pure and deterministic, which makes it the cheapest high-value test
-target in the codebase. These tests also pin the C5 "footgun" documented in
-BACKLOG.md: the function expects interest/inflation as *factors* (1.05), not
-*rates* (0.05), and silently produces ~0 cost when given a rate.
+target in the codebase. The function expects interest/inflation as *factors*
+(1.05), not *rates* (0.05); the C5 footgun (a rate silently producing ~0 cost) is
+now guarded and raises a clear ValueError (see ``TestAnnuityRateFactorGuard``).
 
 Reference values were captured from the current implementation (golden master).
 If the economic model changes intentionally, update the expected numbers in the
@@ -79,27 +79,56 @@ class TestAnnuityFactorConvention:
         assert high > low
 
 
-class TestAnnuityC5Footgun:
-    """Characterization tests for the rate-vs-factor footgun (BACKLOG C5)."""
+class TestAnnuityRateFactorGuard:
+    """C5 fixed: passing a rate (0.05) instead of a factor (1.05) now raises a
+    clear ValueError instead of silently collapsing the cost to ~0.
+    """
 
-    def test_rate_instead_of_factor_silently_collapses_to_zero(self):
-        # Passing 0.05/0.03 (rates) instead of 1.05/1.03 (factors) yields ~0,
-        # with no error. If the API is later hardened (validate q > 1 or accept
-        # rates), this assertion will fail and must be updated to the new
-        # behaviour — that failure is the desired alarm.
-        buggy = annuity(
+    def test_interest_rate_instead_of_factor_raises(self):
+        with pytest.raises(ValueError, match="factor"):
+            annuity(
+                initial_investment_cost=10000,
+                asset_lifespan_years=20,
+                installation_factor=0.03,
+                maintenance_inspection_factor=0.02,
+                interest_rate_factor=0.05,   # rate, not factor
+                inflation_rate_factor=1.03,
+            )
+
+    def test_inflation_rate_instead_of_factor_raises(self):
+        with pytest.raises(ValueError, match="factor"):
+            annuity(
+                initial_investment_cost=10000,
+                asset_lifespan_years=20,
+                installation_factor=0.03,
+                maintenance_inspection_factor=0.02,
+                interest_rate_factor=1.05,
+                inflation_rate_factor=0.03,   # rate, not factor
+            )
+
+    def test_interest_factor_of_one_raises(self):
+        # q = 1 (0 % interest) makes the annuity factor 0/0 — must be rejected.
+        with pytest.raises(ValueError):
+            annuity(
+                initial_investment_cost=10000,
+                asset_lifespan_years=20,
+                installation_factor=0.03,
+                maintenance_inspection_factor=0.02,
+                interest_rate_factor=1.0,
+                inflation_rate_factor=1.03,
+            )
+
+    def test_zero_inflation_factor_is_valid(self):
+        # r = 1.0 (0 % inflation) is a legitimate factor and must NOT raise.
+        result = annuity(
             initial_investment_cost=10000,
             asset_lifespan_years=20,
-            installation_factor=0.03,
-            maintenance_inspection_factor=0.02,
-            operational_effort_h=10,
-            interest_rate_factor=0.05,
-            inflation_rate_factor=0.03,
-            consideration_time_period_years=20,
-            annual_energy_demand=15000,
-            energy_cost_per_unit=0.15,
+            installation_factor=0,
+            maintenance_inspection_factor=0,
+            interest_rate_factor=1.05,
+            inflation_rate_factor=1.0,
         )
-        assert buggy == pytest.approx(0.0, abs=1e-9)
+        assert result > 0
 
 
 class TestAnnuityValidation:

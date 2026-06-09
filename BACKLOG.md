@@ -121,14 +121,14 @@ serialized; the German `results` keys are kept for GUI + serialization compat
 (Option A). Pinned by `tests/test_energy_system.py::TestTechnologyResultRecords`.
 The broad DE/EN rename of the `results` *dict keys* (+ GUI + saved-project
 migration) remains separate — see B4.
-### C5. Economic-model footgun (found 2026-06)
-`annuity()` expects interest/inflation as *factors* (`1.05`), not *rates* (`0.05`).
-Passing a rate silently yields negative/zero costs with no error. The bug was fixed
-in examples 17/18. Unit tests on `annuity()` now exist (`tests/test_annuity.py`),
-including a characterization test pinning the footgun. API hardening (accept rates
-and convert internally, validate `q > 1`) is still open — when it lands, the
-characterization test will flip and must be updated. The GUI already passes the
-factor convention, so production was never affected — but the API invites the bug.
+### C5. Economic-model footgun (fixed 2026-06)
+`annuity()` expects interest/inflation as *factors* (`1.05`), not *rates* (`0.05`);
+a rate silently yielded ~0 cost. **Fixed**: `annuity()` now raises a clear
+`ValueError` when `interest_rate_factor <= 1` or `inflation_rate_factor < 1` (also
+rejects `q == 1`, which makes the annuity factor 0/0). `r == 1` (0 % inflation)
+stays valid. Pinned by `tests/test_annuity.py::TestAnnuityRateFactorGuard` (the old
+characterization test was flipped). The GUI always passed factors, so production was
+never affected — the guard just makes the misuse loud.
 ### C6. CHP cost calc brittle to instance name (found 2026-06)
 `chp.calculate_heat_generation_costs()` selects investment cost + fuel price by
 branching on `self.name.startswith("BHKW")` / `"Holzgas-BHKW"`. A `CHP` named
