@@ -39,9 +39,10 @@ class CHP(BaseHeatGenerator):
                  KWK_Wirkungsgrad: float = 0.9, min_Teillast: float = 0.7, speicher_aktiv: bool = False, 
                  Speicher_Volumen_BHKW: float = 20, T_vorlauf: float = 90, T_ruecklauf: float = 60, 
                  initial_fill: float = 0.0, min_fill: float = 0.2, max_fill: float = 0.8, 
-                 spez_Investitionskosten_Speicher: float = 750, active: bool = True, 
-                 opt_BHKW_min: float = 0, opt_BHKW_max: float = 1000, 
-                 opt_BHKW_Speicher_min: float = 0, opt_BHKW_Speicher_max: float = 100):
+                 spez_Investitionskosten_Speicher: float = 750, active: bool = True,
+                 opt_BHKW_min: float = 0, opt_BHKW_max: float = 1000,
+                 opt_BHKW_Speicher_min: float = 0, opt_BHKW_Speicher_max: float = 100,
+                 fuel_type: Optional[str] = None):
         super().__init__(name)
         self.th_Leistung_kW = th_Leistung_kW
         self.spez_Investitionskosten_GBHKW = spez_Investitionskosten_GBHKW
@@ -71,14 +72,18 @@ class CHP(BaseHeatGenerator):
         self.Nutzungsdauer = 15  # Operational lifespan [years]
         self.f_Inst, self.f_W_Insp, self.Bedienaufwand = 6, 2, 0  # Installation and maintenance factors
         
+        # Fuel keyed off an explicit attribute, not the display name (BACKLOG C6).
+        # Inferred from the name for backwards compatibility; defaults to gas.
+        self.fuel_type = fuel_type if fuel_type is not None else self._infer_fuel_type(name)
+
         # Technology-specific emission and energy factors
-        if self.name.startswith("BHKW"):
-            self.co2_factor_fuel = 0.201  # tCO2/MWh for natural gas
-            self.primärenergiefaktor = 1.1  # Primary energy factor for gas
-        elif self.name.startswith("Holzgas-BHKW"):
+        if self.fuel_type == "wood_gas":
             self.co2_factor_fuel = 0.036  # tCO2/MWh for wood pellets
             self.primärenergiefaktor = 0.2  # Primary energy factor for biomass
-            
+        else:  # gas
+            self.co2_factor_fuel = 0.201  # tCO2/MWh for natural gas
+            self.primärenergiefaktor = 1.1  # Primary energy factor for gas
+
         self.co2_factor_electricity = 0.4  # tCO2/MWh for grid electricity displacement
         self.Anteil_Förderung_BEW = 0.4  # BEW subsidy percentage (40%)
 
@@ -97,6 +102,20 @@ class CHP(BaseHeatGenerator):
 
         # Initialize operational arrays
         self.init_operation(8760)
+
+    @staticmethod
+    def _infer_fuel_type(name: str) -> str:
+        """Map a CHP display name to its fuel. Unknown names default to ``"gas"``.
+
+        :param name: Instance name (e.g. ``"BHKW_1"`` / ``"Holzgas-BHKW_1"``).
+        :return: ``"wood_gas"`` for Holzgas units, otherwise ``"gas"``.
+        """
+        return "wood_gas" if name.startswith("Holzgas-BHKW") else "gas"
+
+    def _resolve_fuel_type(self) -> str:
+        """Fuel type, falling back to name inference for pre-C6 saved objects
+        (``from_dict`` bypasses ``__init__``, so old dicts lack ``fuel_type``)."""
+        return getattr(self, "fuel_type", None) or self._infer_fuel_type(self.name)
 
     def init_operation(self, hours: int) -> None:
         """
@@ -266,13 +285,13 @@ class CHP(BaseHeatGenerator):
             self.WGK = 0
             return 0
         
-        # Determine technology-specific costs and fuel prices
-        if self.name.startswith("BHKW"):
-            spez_Investitionskosten_BHKW = self.spez_Investitionskosten_GBHKW  # €/kW
-            self.Brennstoffpreis = self.Gaspreis
-        elif self.name.startswith("Holzgas-BHKW"):
+        # Determine technology-specific costs and fuel prices by fuel type (not name).
+        if self._resolve_fuel_type() == "wood_gas":
             spez_Investitionskosten_BHKW = self.spez_Investitionskosten_HBHKW  # €/kW
             self.Brennstoffpreis = self.Holzpreis
+        else:  # gas
+            spez_Investitionskosten_BHKW = self.spez_Investitionskosten_GBHKW  # €/kW
+            self.Brennstoffpreis = self.Gaspreis
 
         # Calculate component investment costs
         self.Investitionskosten_BHKW = spez_Investitionskosten_BHKW * self.th_Leistung_kW
@@ -457,12 +476,11 @@ class CHP(BaseHeatGenerator):
         :return: Formatted configuration text
         :rtype: str
         """
-        if self.name.startswith("BHKW"):
-            return (f"{self.name}: th. Leistung: {self.th_Leistung_kW:.1f} kW, "
-                    f"spez. Investitionskosten Erdgas-BHKW: {self.spez_Investitionskosten_GBHKW:.1f} €/kW")
-        elif self.name.startswith("Holzgas-BHKW"):
+        if self._resolve_fuel_type() == "wood_gas":
             return (f"{self.name}: th. Leistung: {self.th_Leistung_kW:.1f} kW, "
                     f"spez. Investitionskosten Holzgas-BHKW: {self.spez_Investitionskosten_HBHKW:.1f} €/kW")
+        return (f"{self.name}: th. Leistung: {self.th_Leistung_kW:.1f} kW, "
+                f"spez. Investitionskosten Erdgas-BHKW: {self.spez_Investitionskosten_GBHKW:.1f} €/kW")
         
     def extract_tech_data(self) -> Tuple[str, str, str, str]:
         """
