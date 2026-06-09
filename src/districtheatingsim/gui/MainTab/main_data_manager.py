@@ -205,11 +205,11 @@ class ProjectConfigManager:
 
 class DataManager:
     """
-    Central data storage for district heating simulation.
+    Central storage for transient, in-memory runtime data (map layers).
 
-    Manages map visualization data, weather data (TRY) filenames,
-    and heat pump performance (COP) filenames for use across
-    application components.
+    Per-project state — including the TRY (weather) and COP (heat-pump) file
+    paths — lives in :class:`ProjectFolderManager`, which persists it to
+    ``project_settings.json``. Read those paths from the folder manager, not here.
     """
 
     def __init__(self):
@@ -217,8 +217,6 @@ class DataManager:
         Initialize the data manager with empty data structures.
         """
         self.map_data = []
-        self.try_filename = None
-        self.cop_filename = None
 
 
 class ProjectFolderManager(QObject):

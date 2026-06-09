@@ -1172,11 +1172,9 @@ class HeatSystemDesignGUI(QMainWindow):
         fm = self.presenter.folder_manager
 
         if fm.try_filename:
-            self.data_manager.try_filename = fm.try_filename
             self.temperatureDataDialog.temperatureDataFileInput.setText(fm.try_filename)
 
         if fm.cop_filename:
-            self.data_manager.cop_filename = fm.cop_filename
             self.heatPumpDataDialog.heatPumpDataFileInput.setText(fm.cop_filename)
 
     def updateTemperatureData(self) -> None:
@@ -1187,7 +1185,6 @@ class HeatSystemDesignGUI(QMainWindow):
         try:
             TRY = self.temperatureDataDialog.getValues()
             path = TRY['TRY-filename']
-            self.data_manager.try_filename = path
             self.presenter.folder_manager.set_try_filename(path)
         except Exception as e:
             self.show_error_message(f"Fehler beim Aktualisieren der Temperaturdaten: {str(e)}")
@@ -1200,7 +1197,6 @@ class HeatSystemDesignGUI(QMainWindow):
         try:
             COP = self.heatPumpDataDialog.getValues()
             path = COP['COP-filename']
-            self.data_manager.cop_filename = path
             self.presenter.folder_manager.set_cop_filename(path)
         except Exception as e:
             self.show_error_message(f"Fehler beim Aktualisieren der Wärmepumpendaten: {str(e)}")
