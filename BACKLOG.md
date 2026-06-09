@@ -203,6 +203,50 @@ centralization is value-identical (golden masters unchanged); **cp was unified t
 - **Still open:** temperature limits (e.g. the 75 K Hub) and `cp=4187 J/kgK` in
   `thermal_storage.py` (different unit system) were intentionally left; fold in if a
   unit convention is formalized.
+### D4. Project-wide serialization/versioning strategy (not started)
+D2 versioned only two artifacts (`project_settings.json`, EnergySystem JSON). The app
+reads/writes **many** serialized files of different kinds, and most are unversioned.
+A blanket "add a version field everywhere" is wrong — the strategy must be
+differentiated by artifact kind.
+
+**Inventory (the persistence footprint):**
+- **Project-state JSON (app-owned, format evolves → version):** `project_settings.json`
+  ✅(D2), EnergySystem results JSON ✅(D2), building combined-data JSON
+  (`BuildingTab/building_tab.py::save_json`), `dialog_config.json`
+  (`NetSimulationTab/net_generation_dialog.py`).
+- **App-config JSON (app-owned, lower priority, regenerable):** `recent_projects.json`,
+  `file_paths.json` (`MainTab/main_data_manager.py::ProjectConfigManager`).
+- **Network GeoJSON (app-owned):** `net_generation/network_geojson_schema.py` — version
+  belongs *inside* the GeoJSON (top-level/`properties` key), not a sidecar.
+- **Domain CSV (app + user-editable):** building/Lastgang CSVs (`UTM_X`/`UTM_Y` …),
+  geocoding CSV (`GeoJSONToCSVThread` fieldnames), results CSV
+  (`energy_system.save_to_csv`, `pp_net_time_series_simulation.save_results_csv`). The
+  **column header is the contract** — a version row would break pandas/Excel interop.
+- **Interchange / ephemeral (do NOT version):** OSM GeoJSON layers (external standard),
+  Leaflet HTML, plot outputs (regenerated on demand).
+
+**Strategy:**
+1. **One shared helper + registry.** D2 already duplicated the version+migrate logic
+   twice (the C4 anti-pattern again). Add `utilities/schema.py` with
+   `write_versioned(data, kind, version)` / `read_versioned(raw, kind, current, migrate)`
+   writing a `"_meta"` block, plus a single registry listing every versioned artifact +
+   its current version + migration steps. Migrate `project_settings`/`EnergySystem` onto
+   it (removes the scattered `*_VERSION` constants).
+2. **Separate `schema_version` from `app_version`.** Schema version drives migration;
+   `app_version` (`districtheatingsim` from `pyproject`, e.g. 1.0.3) is diagnostics only.
+   Both live in `"_meta"`.
+3. **CSV = column-contract validation, not a version field.** Centralize required
+   columns (`csv_schemas.py`: required columns per file kind + `validate(df, schema)`),
+   point loaders at it, raise a clear error on missing/renamed columns (extends the
+   `UTM_X/UTM_Y` checks already present).
+4. **A version field is worthless without (a) a migration path and (b) a golden-file
+   regression test** per artifact: a fixture of an *old* version that must still load.
+   That discipline — not the field — is the real protection.
+
+**Rollout (leverage → effort):** (1) `utilities/schema.py` + registry, migrate the two
+D2 artifacts onto it; (2) building JSON + `dialog_config.json`; (3) NetworkGeoJSON schema
+version + load validation; (4) CSV column-contracts. Incremental, no big bang. Explicitly
+out of scope: ephemeral/interchange artifacts.
 
 ## E. Hygiene
 ### E1. `.gitignore` casing
