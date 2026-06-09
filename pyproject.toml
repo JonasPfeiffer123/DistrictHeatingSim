@@ -57,6 +57,10 @@ docs = [
     "myst-parser>=2.0.0",
     "sphinxcontrib-bibtex>=2.4.0",
 ]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
 
 [project.urls]
 Homepage = "https://github.com/JonasPfeiffer123/DistrictHeatingSim"
@@ -76,3 +80,28 @@ where = ["src"]
     "styles/**/*",
     "gui/**/*.json",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+# The GUI layer is large, legacy, and not yet lint-clean. Scope linting to the
+# domain core + tests for now; widen `src` coverage as modules are cleaned up.
+extend-exclude = [
+    "src/districtheatingsim/gui",
+    "examples",
+    "docs",
+]
+
+[tool.ruff.lint]
+# Conservative starter rule set: real-bug catchers, not style churn.
+#   E/F  = pyflakes + pycodestyle errors (undefined names, unused imports, ...)
+#   I    = import sorting
+#   B    = flake8-bugbear (likely-bug patterns)
+#   UP   = pyupgrade
+select = ["E", "F", "I", "B", "UP"]
+# E501 (line too long) is handled by the formatter, not the linter.
+ignore = ["E501"]
