@@ -193,7 +193,9 @@ class BaseHeatGenerator:
         data['tech_type'] = type(self).__name__
 
         # Remove non-serializable attributes
-        data.pop('scene_item', None)  # GUI elements
+        data.pop('scene_item', None)   # GUI elements
+        data.pop('buffer', None)       # BufferStorage — contains ThermalStorage1D model;
+                                       # rebuilt from constructor params on deserialization
 
         # Convert numpy arrays to lists for JSON compatibility
         for key, value in data.items():
@@ -214,15 +216,24 @@ class BaseHeatGenerator:
         """
         # Create new object without calling __init__
         obj = cls.__new__(cls)
-        
+
         # Update object dictionary with provided data
         obj.__dict__.update(data)
-        
+
         # Convert lists back to numpy arrays for array attributes
         for key, value in obj.__dict__.items():
             if isinstance(value, list) and key.endswith(('_array', '_data', '_profile')):
                 setattr(obj, key, np.array(value))
-        
+
+        # Restore strategy: JSON round-trip leaves it as a plain dict.
+        # Reconstruct the original strategy subclass so the correct
+        # decide_operation() override is preserved.
+        if isinstance(getattr(obj, 'strategy', None), dict):
+            obj.strategy = BaseStrategy.from_dict(obj.strategy)
+            # Subclasses register automatically via __init_subclass__ when their
+            # modules are imported — all strategy subclasses are available by
+            # the time from_dict() is called during deserialization.
+
         return obj
     
     def __deepcopy__(self, memo: Dict[int, Any]) -> 'BaseHeatGenerator':
@@ -245,6 +256,13 @@ class BaseStrategy:
     :param charge_off: Temperature threshold for deactivation [°C]
     :type charge_off: float
     """
+
+    # Auto-populated registry of all subclasses — used for deserialization.
+    _registry: dict = {}
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        BaseStrategy._registry[cls.__name__] = cls
 
     def __init__(self, charge_on: float, charge_off: float) -> None:
         """
@@ -281,7 +299,8 @@ class BaseStrategy:
         # Check current operational state and apply hysteresis logic
         if current_state:
             # Generator is currently operating
-            if lower_storage_temp < self.charge_off and remaining_demand > 0:
+            charge_off = getattr(self, 'charge_off', None)
+            if (charge_off is None or lower_storage_temp < charge_off) and remaining_demand > 0:
                 return True  # Continue operation
             else:
                 return False  # Stop operation (overheating protection or no demand)
@@ -299,19 +318,29 @@ class BaseStrategy:
         :return: Dictionary representation of the strategy
         :rtype: dict
         """
-        return self.__dict__.copy()
+        data = self.__dict__.copy()
+        data['_strategy_class'] = type(self).__name__
+        return data
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'BaseStrategy':
         """
         Create strategy from dictionary representation.
 
+        Looks up the concrete subclass via the ``_strategy_class`` key written by
+        ``to_dict()`` so the correct ``decide_operation()`` override is preserved.
+        Falls back to *cls* (typically ``BaseStrategy``) for legacy JSON files that
+        do not contain the key.
+
         :param data: Dictionary containing strategy attributes
         :type data: dict
         :return: New strategy object
         :rtype: BaseStrategy
         """
-        obj = cls.__new__(cls)
+        data = dict(data)  # copy so we don't mutate the caller's dict
+        strategy_class_name = data.pop('_strategy_class', None)
+        target_cls = BaseStrategy._registry.get(strategy_class_name, cls)
+        obj = target_cls.__new__(target_cls)
         obj.__dict__.update(data)
         return obj
     

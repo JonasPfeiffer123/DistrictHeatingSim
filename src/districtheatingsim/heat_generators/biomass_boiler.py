@@ -103,6 +103,12 @@ class BiomassBoiler(BaseHeatGenerator):
         self.Anzahl_Starts = 0
         self.Betriebsstunden = 0
         self.Betriebsstunden_pro_Start = 0
+
+        # Pre-initialize buffer storage arrays so they exist even when
+        # simulate_storage() is skipped (e.g. per-timestep dispatch path).
+        if self.speicher_aktiv:
+            self.Wärmeleistung_Speicher_kW = np.zeros(hours, dtype=float)
+            self.Speicher_Fuellstand = np.zeros(hours, dtype=float)
         
         self.calculated = False  # Flag to indicate if calculation is complete
 
@@ -142,13 +148,17 @@ class BiomassBoiler(BaseHeatGenerator):
         self.Wärmeleistung_Speicher_kW = np.zeros_like(Last_L)
         self.Speicher_Fuellstand = np.zeros_like(Last_L)
 
-        # Pre-charge buffer to initial_fill SOC
+        # Pre-charge buffer to initial_fill SOC, then clear history so it
+        # only covers the actual simulation window (not the pre-charge step).
         if self.initial_fill > 0 and self.buffer is not None:
             capacity_kwh = self.buffer.get_capacity_kwh()
             self.buffer.step(self.initial_fill * capacity_kwh / duration, duration)
+        self.buffer.reset_history()
 
         for i in range(len(Last_L)):
             soc = self.buffer.get_soc() if self.buffer else 0.0
+
+            Q_net = 0.0  # net buffer interaction this timestep [kW], + = charge, − = discharge
 
             if self.active:
                 if soc >= self.max_fill:
@@ -158,7 +168,7 @@ class BiomassBoiler(BaseHeatGenerator):
                     Q_excess = self.thermal_capacity_kW - Last_L[i]
                     if Q_excess > 0:
                         self.Wärmeleistung_Speicher_kW[i] = -Q_excess  # negative = charging
-                        self.buffer.step(Q_excess, duration)
+                        Q_net = Q_excess
             else:
                 if soc <= self.min_fill:
                     self.active = True
@@ -166,7 +176,11 @@ class BiomassBoiler(BaseHeatGenerator):
             if not self.active:
                 self.Wärmeleistung_kW[i] = 0
                 self.Wärmeleistung_Speicher_kW[i] = Last_L[i]  # positive = discharging
-                self.buffer.step(-Last_L[i], duration)
+                Q_net = -Last_L[i]
+
+            # Always advance buffer state (even if Q_net == 0) so heat losses
+            # are tracked every timestep and history length == simulation length.
+            self.buffer.step(Q_net, duration)
 
             self.Speicher_Fuellstand[i] = self.buffer.get_soc() * 100.0
 

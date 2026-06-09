@@ -109,6 +109,7 @@ class ThermalStorageAdapter(BaseHeatGenerator):
         solver: str = "implicit",
         advection_scheme: str = "tvd",
         buoyancy: bool = True,
+        lambda_eff_factor: float = 5.0,
         spez_Investitionskosten: float = 50.0,
         hours: int = 8760,
         T_charge: float = 90.0,
@@ -137,6 +138,7 @@ class ThermalStorageAdapter(BaseHeatGenerator):
         self.solver = solver
         self.advection_scheme = advection_scheme
         self.buoyancy = buoyancy
+        self.lambda_eff_factor = lambda_eff_factor
         self.spez_Investitionskosten = spez_Investitionskosten
         self.hours = hours
         # Fixed generator-side temperatures for charge/discharge mass-flow calculation.
@@ -187,6 +189,7 @@ class ThermalStorageAdapter(BaseHeatGenerator):
             solver=self.solver,
             advection_scheme=self.advection_scheme,
             buoyancy=self.buoyancy,
+            lambda_eff_factor=self.lambda_eff_factor,
         )
         return ThermalStorage1D(config)
 
@@ -438,6 +441,7 @@ class ThermalStorageAdapter(BaseHeatGenerator):
             "solver": self.solver,
             "advection_scheme": self.advection_scheme,
             "buoyancy": self.buoyancy,
+            "lambda_eff_factor": self.lambda_eff_factor,
             "spez_Investitionskosten": self.spez_Investitionskosten,
             "hours": self.hours,
             "T_charge": self.T_charge,
@@ -522,6 +526,14 @@ class BufferStorage:
 
         self._last_Q_loss_kw: float = 0.0
 
+        # Per-timestep history (appended on every step() call)
+        self.soc_history: list[float] = []
+        self.T_top_history: list[float] = []
+        self.T_middle_history: list[float] = []
+        self.T_bottom_history: list[float] = []
+        self.Q_loss_history: list[float] = []
+        self.Q_net_history: list[float] = []
+
     def step(self, Q_net_kw: float, dt_h: float = 1.0) -> None:
         """
         Advance buffer by one timestep.
@@ -554,6 +566,25 @@ class BufferStorage:
         outputs = self._model.step(self._state, dt=dt, inputs=inputs)
         self._state = outputs.state
         self._last_Q_loss_kw = outputs.Q_loss / 1000.0
+
+        # Record history
+        temps = self._state.temperatures
+        n = len(temps)
+        self.soc_history.append(self._model.get_soc(self._state, self.T_min, self.T_max))
+        self.T_top_history.append(float(self._state.T_top))
+        self.T_middle_history.append(float(temps[n // 2]))
+        self.T_bottom_history.append(float(self._state.T_bottom))
+        self.Q_loss_history.append(self._last_Q_loss_kw)
+        self.Q_net_history.append(Q_net_kw)
+
+    def reset_history(self) -> None:
+        """Clear all per-timestep history lists (call after pre-charge, before main loop)."""
+        self.soc_history.clear()
+        self.T_top_history.clear()
+        self.T_middle_history.clear()
+        self.T_bottom_history.clear()
+        self.Q_loss_history.clear()
+        self.Q_net_history.clear()
 
     def get_soc(self) -> float:
         """State of charge in [0, 1]."""

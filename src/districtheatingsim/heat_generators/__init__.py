@@ -30,7 +30,7 @@ TECH_CLASS_REGISTRY = {
     'Solarthermie': SolarThermal,
     'AqvaHeat': AqvaHeat,
     'Power-to-Heat': PowerToHeat,
-    'Saisonaler Wärmespeicher': ThermalStorageAdapter,
+    'Thermischer Netzspeicher': ThermalStorageAdapter,
 }
 
 # Lookup by Python class name (stored as tech_type in to_dict).
