@@ -48,13 +48,23 @@ tests. This is the safety net that makes every refactor below low-risk.
     and add `ruff format --check` over the whole tree.
 
 ## B. Architecture & maintainability
-### B1. God-objects in the GUI
-- `_04_technology_dialogs.py` (~1581 lines, ~11 near-identical dialog classes —
-  copy-paste instead of a base class + declarative field schema/registry).
-- Similarly `osm_dialogs.py` (~1320), `main_view.py` (~1232),
-  `interactive_network_plot.py` (~1179).
-- Fix: one base dialog class with a declarative field schema, one file per
-  technology — removes ~1000 lines of duplication.
+### B1. God-objects in the GUI  ← in progress
+- **`_04_technology_dialogs.py` (1582 → 28-line façade): DONE 2026-06.** Extracted
+  into a `technology_dialogs/` package: declarative `Field`/`CheckField` schema +
+  `SchemaDialog` base (`_base.py`), per-tech schemas (`_schemas.py`), schema-driven
+  `_simple.py` (Gas/PowerToHeat/WasteHeatPump) and `_combustion.py`
+  (Biomass/CHP/HolzgasCHP, shared 9-field storage block via `storage_fields()`).
+  The 6 migrated dialogs shrank from ~668 lines of copy-paste to ~125 lines of
+  dialog-specific code + 117 lines reusable infra. `_04` is now a re-export façade
+  so the import path (`from ..._04_technology_dialogs import TechInputDialog`,
+  used in `_03_technology_tab.py:25`) is unchanged. Behaviour pinned by
+  `tests/test_technology_dialogs.py` (44 tests, green before *and* after).
+  - **Still open (follow-up session):** migrate the 4 hand-written dialogs that were
+    moved *verbatim* — `_solar.py`, `_geothermal.py` (3D-viz, need custom hooks),
+    `_heat_pump.py` (River CSV import), `_storage.py` (ThermalStorage1D dynamic
+    sections). Needs a `ComboField` and a custom-widget escape hatch in `_base.py`.
+- Still to tackle: `osm_dialogs.py` (~1320), `main_view.py` (~1232),
+  `interactive_network_plot.py` (~1179) — same base-class + schema treatment.
 ### B2. MVP violations
 The main frame is clean, but individual tabs reach directly into
 `data_manager` / domain objects and make business-logic decisions past the
@@ -98,6 +108,20 @@ anything else leaves `spez_Investitionskosten_BHKW` unbound and raises
 `UnboundLocalError` mid-calculation. Production names happen to start with `BHKW`,
 so it works today, but the cost path should key off an explicit fuel/type attribute,
 not the display name. Characterized in `tests/test_heat_generators.py::TestCHP`.
+### C7. Dialog capacity read/write key asymmetry (found 2026-06)
+`GasBoilerDialog` / `BiomassBoilerDialog` read the capacity field's initial value
+from `th_Leistung_kW` / `P_BMK` but emit it under `thermal_capacity_kW`. Editing an
+existing tech (whose stored data carries `thermal_capacity_kW`, per the generator
+constructors) finds neither read-key present, so the displayed capacity silently
+resets to the field default (1000 / 240 kW). Pinned by
+`tests/test_technology_dialogs.py::TestKeyAsymmetry` and reproduced verbatim in the
+refactor via `Field.in_key`. Fix: make read-key == write-key (`thermal_capacity_kW`)
+once the generators' `to_dict`/edit round-trip is confirmed — then flip the tests.
+### C8. CHP/HolzgasCHP storage-cost default typo (found 2026-06)
+The "spez. Investitionskosten Speicher" field defaults to `"0.8"` in the CHP and
+Holzgas-CHP dialogs but `"750"` in Biomass — almost certainly a typo (€/m³). Pinned
+by `tests/test_technology_dialogs.py::TestStorageToggle` and preserved in
+`_schemas.CHP_STORAGE`. Fix: set the default to `"750"` and update the test.
 
 ## D. State & data
 ### D1. Double state source
