@@ -107,11 +107,21 @@ class TestCHP:
         assert r["spec_co2_total"] == pytest.approx(0.121053, rel=REL)
         assert r["primärenergie"] == pytest.approx(1572.108423, rel=REL)
 
-    def test_cost_calc_is_brittle_to_name(self, economic_parameters, load_profile):
-        # Characterization of BACKLOG C6: CHP cost calc branches on
-        # self.name.startswith("BHKW") / "Holzgas-BHKW". A CHP named anything
-        # else leaves spez_Investitionskosten_BHKW unbound and crashes. When
-        # that fragility is fixed, this test should be updated to assert the
-        # cost is computed for an arbitrary name instead.
-        with pytest.raises(UnboundLocalError):
-            self._make(name="CHP").calculate(economic_parameters, 1, load_profile)
+    def test_arbitrary_name_defaults_to_gas(self, economic_parameters, load_profile):
+        # C6 fixed: a CHP not named BHKW/Holzgas-BHKW no longer crashes with an
+        # UnboundLocalError; it keys cost off self.fuel_type (default "gas") and
+        # so yields the same result as a "BHKW"-named unit.
+        r_named = self._make(name="BHKW").calculate(economic_parameters, 1, load_profile)
+        r_other = self._make(name="CHP").calculate(economic_parameters, 1, load_profile)
+        assert r_other["WGK"] == pytest.approx(r_named["WGK"], rel=REL)
+        assert r_other["spec_co2_total"] == pytest.approx(r_named["spec_co2_total"], rel=REL)
+
+    def test_explicit_fuel_type_overrides_name(self):
+        # fuel_type keys the economics, independent of the display name.
+        assert self._make(name="BHKW").fuel_type == "gas"
+        wood = CHP(name="BHKW", th_Leistung_kW=100, fuel_type="wood_gas")
+        assert wood.fuel_type == "wood_gas"
+        assert wood.co2_factor_fuel == 0.036  # biomass factor, despite the BHKW name
+
+    def test_holzgas_name_infers_wood_gas(self):
+        assert self._make(name="Holzgas-BHKW").fuel_type == "wood_gas"

@@ -129,13 +129,18 @@ rejects `q == 1`, which makes the annuity factor 0/0). `r == 1` (0 % inflation)
 stays valid. Pinned by `tests/test_annuity.py::TestAnnuityRateFactorGuard` (the old
 characterization test was flipped). The GUI always passed factors, so production was
 never affected — the guard just makes the misuse loud.
-### C6. CHP cost calc brittle to instance name (found 2026-06)
-`chp.calculate_heat_generation_costs()` selects investment cost + fuel price by
-branching on `self.name.startswith("BHKW")` / `"Holzgas-BHKW"`. A `CHP` named
-anything else leaves `spez_Investitionskosten_BHKW` unbound and raises
-`UnboundLocalError` mid-calculation. Production names happen to start with `BHKW`,
-so it works today, but the cost path should key off an explicit fuel/type attribute,
-not the display name. Characterized in `tests/test_heat_generators.py::TestCHP`.
+### C6. CHP cost calc brittle to instance name (fixed 2026-06)
+`chp.calculate_heat_generation_costs()` (and `__init__`/`get_display_text`) branched
+on `self.name.startswith("BHKW")` / `"Holzgas-BHKW"`; a `CHP` named anything else
+left `spez_Investitionskosten_BHKW` unbound → `UnboundLocalError` (and `__init__`
+never set the CO₂/primary-energy factors). **Fixed**: `CHP` now keys economics off
+an explicit `self.fuel_type` (`"gas"` / `"wood_gas"`), a new constructor param
+inferred from the name once (default `"gas"`); call sites use `_resolve_fuel_type()`
+(falls back to name inference for pre-C6 saves, since `from_dict` bypasses
+`__init__`). Standard `BHKW`/`Holzgas-BHKW` behaviour is unchanged (golden master
+green); arbitrary names now default to gas instead of crashing. Pinned by
+`tests/test_heat_generators.py::TestCHP` (`test_arbitrary_name_defaults_to_gas`,
+`test_explicit_fuel_type_overrides_name`).
 ### C7. Dialog capacity read/write key asymmetry (fixed 2026-06)
 `GasBoilerDialog` / `PowerToHeatDialog` / `BiomassBoilerDialog` read the capacity
 field's initial value from `th_Leistung_kW` / `P_BMK` but emitted it under
