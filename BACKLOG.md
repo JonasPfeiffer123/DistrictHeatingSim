@@ -256,11 +256,15 @@ time-series chain on the real Görlitz data — `initialize_geojson` / `create_n
 `calculate_results` produces the headline metrics (Jahreswärmebedarf, Trassenlänge,
 Verteilverluste …); example 07's time-series path also runs. Last `material_filter="KMR"`
 references in `examples/06b/08` migrated to `"P235GH/PUR/PEHD"`.
+**pandas chained-assignment fixed:** the time-series controllers + diameter helpers
+wrote through chained indexing (`net.heat_consumer["treturn_k"].at[i] = …`,
+`net.pipe.std_type.at[i] = …`) → silently a no-op under pandas 3.0 Copy-on-Write. All
+9 write sites in `controllers.py` / `utilities.py` moved to single-step `.at[i, col]`
+/ `.loc[:, col]`; verified the full time-series runs clean under
+`-W error::FutureWarning`.
 *Still open:* the changed circ-pump behaviour (one-time warning, not yet verified to
-change results); a pandas chained-assignment `FutureWarning` in `controllers.py:267`
-(`net.heat_consumer["treturn_k"].at[i] = …` → use `.loc[i, "treturn_k"]`, breaks on
-pandas 3.0); `examples/08` still constructs `NetworkGenerationData` with the obsolete
-multi-path API (`flow_line_path` …) instead of `network_geojson_path`;
+change results); `examples/08` still constructs `NetworkGenerationData` with the
+obsolete multi-path API (`flow_line_path` …) instead of `network_geojson_path`;
 `interactive_network_plot` u-value column.
 
 ## D. State & data
