@@ -33,7 +33,10 @@ from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation 
 )
 from districtheatingsim.net_simulation_pandapipes.utilities import export_net_geojson
 from districtheatingsim.net_simulation_pandapipes.net_migration import migrate_loaded_net
-from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import NetworkGenerationData
+from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import (
+    NetworkGenerationData,
+    json_default,
+)
 
 from districtheatingsim.gui.NetSimulationTab.timeseries_dialog import TimeSeriesCalculationDialog
 from districtheatingsim.gui.NetSimulationTab.net_generation_dialog import NetGenerationDialog
@@ -433,7 +436,7 @@ class NetSimulationTab(QWidget):
                         'yearly_time_steps', 'pump_results', 'plot_data'):
                 meta.pop(key, None)
             with open(json_path, 'w') as jf:
-                json.dump(meta, jf, indent=4, default=str)
+                json.dump(meta, jf, indent=4, default=json_default)
 
             nd.COP_filename = orig_cop
             nd.TRY_filename = orig_try

@@ -287,9 +287,14 @@ back to an array (`NetworkGenerationData._coerce_array`: list / 1-D `str(array)`
 array; truncated/2-D/garbage → `None`, since those are recomputed or reloaded from the
 CSV). The per-consumer fields are small and parse cleanly; verified end-to-end on the
 Görlitz project (load → preprocess → thermohydraulic → `calculate_results`). Tested by
-`tests/test_net_simulation.py::TestNetworkDataArrayCoercion`. **Still open (save side):**
-`saveNet` should serialise arrays as lists (and stop `str`-dumping the whole `net`/
-non-JSON objects into the JSON) instead of relying on `default=str`; ties into D4.
+`tests/test_net_simulation.py::TestNetworkDataArrayCoercion`. **Save side fixed too:**
+`saveNet` now dumps with `NetworkDataClass.json_default` (numpy arrays → lists, scalars
+→ native, `str` fallback) instead of `default=str`, so arrays are written losslessly
+(no more numpy `…` abbreviation); the big time-series arrays are still popped + stored
+in the CSV. Lossless save+load round-trip pinned by
+`TestNetworkDataArrayCoercion::test_json_default_round_trip_is_lossless`. *Note:* a
+non-empty `secondary_producers` list still round-trips via the `str` fallback (the
+load side doesn't reconstruct the dataclasses either) — separate from C12, ties into D4.
 
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)

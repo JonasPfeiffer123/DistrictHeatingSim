@@ -23,6 +23,23 @@ from typing import Any
 import numpy as np
 
 
+def json_default(obj):
+    """``json.dump`` fallback that serialises numpy arrays losslessly as lists.
+
+    The save path previously used ``default=str``, which stringifies arrays via
+    ``str(array)`` — numpy abbreviates long arrays (``"[1. 2. … 9.]"``), an
+    unrecoverable, lossy save that also broke the load round-trip (BACKLOG C12).
+    Arrays/scalars are now emitted as native JSON; anything else still falls back to
+    ``str`` so the save never fails. Pairs with ``NetworkGenerationData._coerce_array``
+    on load.
+    """
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    if isinstance(obj, (np.integer, np.floating)):
+        return obj.item()
+    return str(obj)
+
+
 @dataclass
 class SecondaryProducer:
     """

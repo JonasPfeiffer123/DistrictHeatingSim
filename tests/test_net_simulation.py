@@ -153,6 +153,21 @@ class TestNetworkDataArrayCoercion:
         assert self._coerce("[[1. 2.][3. 4.]]") is None
         assert self._coerce("Statisch") is None
 
+    def test_json_default_round_trip_is_lossless(self):
+        """json_default (save) + _coerce_array (load) must round-trip arrays exactly,
+        including long ones that str() would have truncated (BACKLOG C12 save side)."""
+        import json as _json
+
+        from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import (
+            json_default,
+        )
+        original = np.linspace(70.0, 85.0, 9000)  # long enough that str() abbreviates
+        dumped = _json.dumps({"x": original}, default=json_default)
+        assert "..." not in dumped  # serialised as a full list, not a truncated repr
+        restored = self._coerce(_json.loads(dumped)["x"])
+        assert isinstance(restored, np.ndarray)
+        assert np.array_equal(restored, original)
+
 
 class TestKmrToIsoplus:
     """Legacy KMR pipe names map to their ISOPLUS successors (pandapipes >=0.14)."""
