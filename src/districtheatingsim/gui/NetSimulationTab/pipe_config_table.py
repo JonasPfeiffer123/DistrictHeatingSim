@@ -109,7 +109,7 @@ class PipeConfigTable(QWidget):
             diameter_item = self._table.item(row, 6)
             if diameter_item:
                 try:
-                    net.pipe.at[pipe_idx, 'diameter_m'] = float(diameter_item.text()) / 1000
+                    net.pipe.at[pipe_idx, 'inner_diameter_mm'] = float(diameter_item.text())
                 except ValueError:
                     pass
 
@@ -271,7 +271,7 @@ class PipeConfigTable(QWidget):
             combo.currentTextChanged.connect(lambda text, r=row: self._on_std_type_changed(r, text))
             self._table.setCellWidget(row, 5, combo)
 
-            self._table.setItem(row, 6, QTableWidgetItem(f"{pipe_data.get('diameter_m', 0) * 1000:.1f}"))
+            self._table.setItem(row, 6, QTableWidgetItem(f"{pipe_data.get('inner_diameter_mm', 0):.1f}"))
             self._table.setItem(row, 7, QTableWidgetItem(f"{pipe_data.get('k_mm', 0.1):.2f}"))
 
         hdr = self._table.horizontalHeader()
@@ -304,7 +304,7 @@ class PipeConfigTable(QWidget):
             pipe_std_types = pp.std_types.available_std_types(net, "pipe")
             props = pipe_std_types.loc[new_std_type]
             net.pipe.at[pipe_idx, 'std_type'] = new_std_type
-            net.pipe.at[pipe_idx, 'diameter_m'] = props['inner_diameter_mm'] / 1000
+            net.pipe.at[pipe_idx, 'inner_diameter_mm'] = props['inner_diameter_mm']
             net.pipe.at[pipe_idx, 'u_w_per_m2k'] = resolve_pipe_u_w_per_m2k(props)
 
             self._table.blockSignals(True)
@@ -327,14 +327,14 @@ class PipeConfigTable(QWidget):
 
         try:
             if col == 6:
-                net.pipe.at[pipe_idx, 'diameter_m'] = float(item.text()) / 1000
+                net.pipe.at[pipe_idx, 'inner_diameter_mm'] = float(item.text())
             elif col == 7:
                 net.pipe.at[pipe_idx, 'k_mm'] = float(item.text())
         except ValueError:
             # Revert to stored value
             self._table.blockSignals(True)
             if col == 6:
-                item.setText(f"{net.pipe.at[pipe_idx, 'diameter_m'] * 1000:.1f}")
+                item.setText(f"{net.pipe.at[pipe_idx, 'inner_diameter_mm']:.1f}")
             elif col == 7:
                 item.setText(f"{net.pipe.at[pipe_idx, 'k_mm']:.2f}")
             self._table.blockSignals(False)

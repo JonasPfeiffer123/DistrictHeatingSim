@@ -39,17 +39,22 @@ def migrate_loaded_net(net):
     if not hasattr(net, "pipe") or len(net.pipe) == 0:
         return net
 
-    try:
-        catalog = pp.std_types.available_std_types(net, "pipe")
-    except Exception:  # pragma: no cover - defensive
-        catalog = None
+    # Use the CURRENT pandapipes pipe catalog (from a fresh net), NOT the one embedded
+    # in the loaded net — an old pickle ships its own std-types library that still holds
+    # the obsolete KMR types (so a lookup against the loaded net would never find ISOPLUS).
+    fresh = pp.create_empty_network(fluid="water")
+    catalog = pp.std_types.available_std_types(fresh, "pipe")
+    # Replace the net's embedded pipe std-types with the current catalog so the GUI
+    # offers ISOPLUS types and std_type lookups resolve to them.
+    if hasattr(net, "std_types") and "pipe" in getattr(net, "std_types", {}):
+        net.std_types["pipe"] = dict(fresh.std_types["pipe"])
 
     # Derive the new per-pipe diameter column from the old one where it is missing.
     if "inner_diameter_mm" not in net.pipe.columns and "diameter_m" in net.pipe.columns:
         net.pipe["inner_diameter_mm"] = net.pipe["diameter_m"] * 1000.0
 
     remapped = 0
-    if "std_type" in net.pipe.columns and catalog is not None:
+    if "std_type" in net.pipe.columns:
         for idx in net.pipe.index:
             isoplus = kmr_to_isoplus_std_type(net.pipe.at[idx, "std_type"])
             if isoplus is None or isoplus not in catalog.index:
