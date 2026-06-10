@@ -15,6 +15,7 @@ from pandapower.timeseries import DFData, OutputWriter
 
 from districtheatingsim.constants import CP_WATER_KJ_KGK, KELVIN_OFFSET
 from districtheatingsim.net_simulation_pandapipes.controllers import MinimumSupplyTemperatureController
+from districtheatingsim.net_simulation_pandapipes.result_validation import validate_simulation_results
 from districtheatingsim.net_simulation_pandapipes.utilities import COP_WP
 from districtheatingsim.utilities.test_reference_year import import_TRY
 
@@ -394,11 +395,19 @@ def thermohydraulic_time_series_net(NetworkGenerationData) -> Any:
     log_variables = create_log_variables(NetworkGenerationData.net)
     ow = OutputWriter(NetworkGenerationData.net, time_steps, output_path=None, log_variables=log_variables)
 
-    run_time_series.run_timeseries(NetworkGenerationData.net, time_steps, mode="bidirectional", iter=100, alpha=0.5)
-    
+    try:
+        run_time_series.run_timeseries(NetworkGenerationData.net, time_steps, mode="bidirectional", iter=100, alpha=0.5)
+    except Exception as e:
+        raise RuntimeError(
+            f"Thermohydraulic time-series simulation failed (bidirectional, iter=100): {e}"
+        ) from e
+
     NetworkGenerationData.net_results = ow.np_results
+    # Fail loudly on a non-converged / infeasible run instead of letting NaN/inf
+    # propagate into the heat and temperature post-processing (BACKLOG C2).
+    validate_simulation_results(NetworkGenerationData.net_results, context="thermohydraulic time series")
     NetworkGenerationData.pump_results = calculate_results(NetworkGenerationData.net, NetworkGenerationData.net_results)
-    
+
     return NetworkGenerationData
 
 def simplified_time_series_net(NetworkGenerationData) -> Any:
