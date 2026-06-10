@@ -115,7 +115,7 @@ if __name__ == "__main__":
     pipetype = "ISOPLUS_DRE100_2x"  # type of pipe
     diameter_optimization_pipe_checked = True  # flag indicating if diameter optimization is checked
     max_velocity_pipe = 2.0  # m/s - maximum flow velocity in the pipes
-    material_filter_pipe = "KMR"  # material filter for pipes
+    material_filter_pipe = "P235GH/PUR/PEHD"  # material filter for pipes
     k_mm_pipe = 0.1  # mm - roughness of the pipe
     
     # Producer configuration
