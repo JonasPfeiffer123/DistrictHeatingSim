@@ -17,12 +17,12 @@ import pandas as pd
 from matplotlib import cm
 from scipy.optimize import minimize as scipy_minimize
 
-from districtheatingsim.gui.EnergySystemTab._10_utilities import CustomJSONEncoder
 from districtheatingsim.heat_generators import (
     TECH_CLASS_BY_TYPE,
     TECH_CLASS_REGISTRY,
     ThermalStorageAdapter,
 )
+from districtheatingsim.heat_generators.json_encoder import CustomJSONEncoder
 from districtheatingsim.heat_generators.results import TechnologyResult
 
 logging.basicConfig(level=logging.INFO)
