@@ -7,12 +7,9 @@ Multi-technology energy system modeling with optimization and visualization.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import logging
-
-logging.basicConfig(level=logging.INFO)
-
 import copy
 import json
+import logging
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,9 +18,14 @@ from matplotlib import cm
 from scipy.optimize import minimize as scipy_minimize
 
 from districtheatingsim.gui.EnergySystemTab._10_utilities import CustomJSONEncoder
-from districtheatingsim.heat_generators import *
-from districtheatingsim.heat_generators import TECH_CLASS_BY_TYPE
+from districtheatingsim.heat_generators import (
+    TECH_CLASS_BY_TYPE,
+    TECH_CLASS_REGISTRY,
+    ThermalStorageAdapter,
+)
 from districtheatingsim.heat_generators.results import TechnologyResult
+
+logging.basicConfig(level=logging.INFO)
 
 #: Schema version of the serialized EnergySystem (``to_dict`` / ``save_to_json``).
 #: Bump when the on-disk format changes and migrate in ``from_dict``.
@@ -236,7 +238,7 @@ class EnergySystem:
                 color="gray",
             ))
 
-    def calculate_mix(self, variables: list = [], variables_order: list = []) -> dict:
+    def calculate_mix(self, variables: list | None = None, variables_order: list | None = None) -> dict:
         """
         Calculate energy generation mix with technology dispatch and storage.
 
@@ -247,6 +249,11 @@ class EnergySystem:
         :return: System results dictionary
         :rtype: dict
         """
+        if variables is None:
+            variables = []
+        if variables_order is None:
+            variables_order = []
+
         self.initialize_results()
         
         # Initialize optimization variables
@@ -653,7 +660,7 @@ class EnergySystem:
 
         # Filter out zero or negative shares
         mask = anteile_all > 0
-        labels  = [l for l, m in zip(labels_all, mask, strict=False) if m]
+        labels  = [label for label, m in zip(labels_all, mask, strict=False) if m]
         anteile = anteile_all[mask]
         colors  = [c for c, m in zip(colors_all, mask, strict=False) if m]
         waermemengen = waermemengen_all[mask]
@@ -887,7 +894,7 @@ class EnergySystem:
                 data_loaded = json.load(json_file)
             return cls.from_dict(data_loaded)
         except Exception as e:
-            raise ValueError(f"Error loading JSON file: {e}")
+            raise ValueError(f"Error loading JSON file: {e}") from e
 
 class EnergySystemOptimizer:
     """
@@ -995,7 +1002,7 @@ class EnergySystemOptimizer:
 
             logging.debug("Initial values for restart %d: %s", restart + 1, random_initial_values)
 
-            def objective_function(variables):
+            def objective_function(variables, variables_order=variables_order):
                 """
                 Multi-objective function for energy system optimization.
 
