@@ -262,10 +262,13 @@ wrote through chained indexing (`net.heat_consumer["treturn_k"].at[i] = …`,
 9 write sites in `controllers.py` / `utilities.py` moved to single-step `.at[i, col]`
 / `.loc[:, col]`; verified the full time-series runs clean under
 `-W error::FutureWarning`.
+**`examples/08` modernised:** dropped the obsolete split-to-temp-files dance + the
+multi-path `NetworkGenerationData` API (`flow_line_path` …) for the current
+`network_geojson_path`; points at `examples/data/osmnx_steiner_output/Wärmenetz.geojson`
+with `secondary_producers=[]` (that data set has one producer). Runs end-to-end on 0.14
+(net generation → time series → `calculate_results` → plots).
 *Still open:* the changed circ-pump behaviour (one-time warning, not yet verified to
-change results); `examples/08` still constructs `NetworkGenerationData` with the
-obsolete multi-path API (`flow_line_path` …) instead of `network_geojson_path`;
-`interactive_network_plot` u-value column.
+change results); `interactive_network_plot` u-value column.
 
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
