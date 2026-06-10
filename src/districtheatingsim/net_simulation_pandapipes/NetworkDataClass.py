@@ -244,8 +244,8 @@ class NetworkGenerationData:
         jahreswaermeerzeugung = 0
         pumpenstrom = 0
         if self.pump_results is not None:
-            for pump_type, pumps in self.pump_results.items():
-                for idx, pump_data in pumps.items():
+            for _pump_type, pumps in self.pump_results.items():
+                for _idx, pump_data in pumps.items():
                     # Heat generation [MWh/a]
                     jahreswaermeerzeugung += np.sum(pump_data['qext_kW']) / 1000
                     # Pump power: P = (ṁ * Δp) / ρ [MWh/a]

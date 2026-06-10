@@ -98,7 +98,7 @@ def initialize_geojson(NetworkGenerationData) -> Any:
     print(f"Max heat demand buildings (W): {maximum_building_heat_load_W}")
 
     # Calculate return temperature for heat consumers
-    if NetworkGenerationData.fixed_return_temperature_heat_consumer == None:
+    if NetworkGenerationData.fixed_return_temperature_heat_consumer is None:
         return_temperature_heat_consumer = return_temperature_buildings + NetworkGenerationData.dT_RL
         print(f"Return temperature heat consumers: {return_temperature_heat_consumer} °C")
     else:
@@ -110,7 +110,7 @@ def initialize_geojson(NetworkGenerationData) -> Any:
         raise ValueError("Return temperature must not be higher than the supply temperature at the injection point. Please check your inputs.")
     
     # Calculate minimum supply temperature for heat consumers
-    if NetworkGenerationData.min_supply_temperature_building == None:
+    if NetworkGenerationData.min_supply_temperature_building is None:
         min_supply_temperature_heat_consumer = np.zeros_like(supply_temperature_buildings, NetworkGenerationData.min_supply_temperature_building)
         print(f"Minimum supply temperature heat consumers: {min_supply_temperature_heat_consumer} °C")
     else:
@@ -135,7 +135,7 @@ def initialize_geojson(NetworkGenerationData) -> Any:
         print(f"COP dezentrale Wärmepumpen Gebäude: {COP}")
 
         # Calculate heat pump electricity consumption and network heat demand
-        for waerme_gebaeude, leistung_gebaeude, cop in zip(total_building_heat_demand_W, maximum_building_heat_load_W, COP):
+        for waerme_gebaeude, leistung_gebaeude, cop in zip(total_building_heat_demand_W, maximum_building_heat_load_W, COP, strict=False):
             strombedarf_wp = waerme_gebaeude/cop
             waerme_hast = waerme_gebaeude - strombedarf_wp
             waerme_hast_ges_W.append(waerme_hast)
@@ -256,7 +256,7 @@ def get_line_coords_and_lengths(gdf: gpd.GeoDataFrame) -> tuple[list[list[tuple]
     all_line_coords, all_line_lengths = [], []
     gdf['length'] = gdf.geometry.length
 
-    for index, row in gdf.iterrows():
+    for _index, row in gdf.iterrows():
         line = row['geometry']
 
         if line.geom_type == 'LineString':
@@ -409,7 +409,7 @@ def create_network(gdf_dict: dict[str, gpd.GeoDataFrame], consumer_dict: dict[st
         line_type : str
             Description of line type for naming.
         """
-        for coords, length_m, i in zip(all_line_coords, all_line_lengths, range(len(all_line_coords))):
+        for coords, length_m, i in zip(all_line_coords, all_line_lengths, range(len(all_line_coords)), strict=False):
             if pipe_mode == "diameter":
                 diameter_mm = pipe_type_or_diameter
                 pp.create_pipe_from_parameters(net_i, from_junction=junction_dict[coords[0]],
@@ -424,7 +424,7 @@ def create_network(gdf_dict: dict[str, gpd.GeoDataFrame], consumer_dict: dict[st
     def create_heat_consumers(net_i: pp.pandapipesNet, all_coords: list[list[tuple]], 
                             junction_dict: dict[tuple, int], name_prefix: str) -> None:
         """Create heat consumers in the network."""
-        for i, (coords, q, t) in enumerate(zip(all_coords, qext_w, return_temperature_heat_consumer_k)):
+        for i, (coords, q, t) in enumerate(zip(all_coords, qext_w, return_temperature_heat_consumer_k, strict=False)):
             pp.create_heat_consumer(net_i, from_junction=junction_dict[coords[0]], 
                                   to_junction=junction_dict[coords[1]], loss_coefficient=0, 
                                   qext_w=q, treturn_k=t, name=f"{name_prefix} {i}")
@@ -474,7 +474,7 @@ def create_network(gdf_dict: dict[str, gpd.GeoDataFrame], consumer_dict: dict[st
         The intermediate junction inserted between pump and flow-control element
         receives an elevation equal to the average of its two endpoint elevations.
         """
-        for i, (coords, mass_flow) in enumerate(zip(all_coords, mass_flows), start=0):
+        for i, (coords, mass_flow) in enumerate(zip(all_coords, mass_flows, strict=False), start=0):
             return_junc, flow_junc = _resolve_pump_junctions(coords, jd_vl, jd_rl)
             mid_coord = ((coords[0][0] + coords[1][0]) / 2, (coords[0][1] + coords[1][1]) / 2)
             # Interpolate elevation for the synthetic mid-point junction

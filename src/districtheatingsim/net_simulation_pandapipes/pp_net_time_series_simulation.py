@@ -289,13 +289,13 @@ def time_series_preprocessing(NetworkGenerationData) -> Any:
     # Temperature processing based on network configuration
     ### if building_temperature_checked is True, the time dependent building temperatures are used
     ### if netconfiguration is not "kaltes Netz", no changes are made to the heat demand and no power consumption is calculated
-    if NetworkGenerationData.building_temperature_checked == True and NetworkGenerationData.netconfiguration != "kaltes Netz":
+    if NetworkGenerationData.building_temperature_checked and NetworkGenerationData.netconfiguration != "kaltes Netz":
         NetworkGenerationData.min_supply_temperature_heat_consumer = NetworkGenerationData.supply_temperature_buildings_curve + NetworkGenerationData.dT_RL
         NetworkGenerationData.return_temperature_heat_consumer = NetworkGenerationData.return_temperature_buildings_curve + NetworkGenerationData.dT_RL
 
     ### if building_temperature_checked is True, the time dependent building temperatures are used
     ### if netconfiguration is "kaltes Netz", the heat demand and power consumption are calculated using the COP calculation
-    elif NetworkGenerationData.building_temperature_checked == True and NetworkGenerationData.netconfiguration == "kaltes Netz":
+    elif NetworkGenerationData.building_temperature_checked and NetworkGenerationData.netconfiguration == "kaltes Netz":
         NetworkGenerationData.min_supply_temperature_heat_consumer = NetworkGenerationData.return_temperature_heat_consumer + NetworkGenerationData.dT_RL
         NetworkGenerationData.return_temperature_heat_consumer = NetworkGenerationData.return_temperature_buildings_curve + NetworkGenerationData.dT_RL
 
@@ -308,7 +308,7 @@ def time_series_preprocessing(NetworkGenerationData) -> Any:
         NetworkGenerationData.strombedarf_hast_ges_W = strom_wp
     ### if building_temperature_checked is False, the time dependent building temperatures are not used
     ### if netconfiguration is not "kaltes Netz", the heat demand and power consumption are calculated using the COP calculation
-    elif NetworkGenerationData.building_temperature_checked == False and NetworkGenerationData.netconfiguration == "kaltes Netz":
+    elif not NetworkGenerationData.building_temperature_checked and NetworkGenerationData.netconfiguration == "kaltes Netz":
         cop, _ = COP_WP(NetworkGenerationData.supply_temperature_buildings, NetworkGenerationData.return_temperature_heat_consumer, COP_file_values)
 
         strom_wp = NetworkGenerationData.waerme_hast_ges_W / cop
@@ -556,7 +556,7 @@ def calculate_results(net, net_results: dict, cp_kJ_kgK: float = CP_WATER_KJ_KGK
 
     # Add results for the Pressure Pump (main heat generator)
     if 'circ_pump_pressure' in net:
-        for idx, row in net.circ_pump_pressure.iterrows():
+        for idx, _row in net.circ_pump_pressure.iterrows():
             pump_results["Heizentrale Haupteinspeisung"][idx] = {
                 "mass_flow": net_results["res_circ_pump_pressure.mdot_from_kg_per_s"][:, 0],
                 "flow_pressure": net_results["res_circ_pump_pressure.p_to_bar"][:, idx],
@@ -569,7 +569,7 @@ def calculate_results(net, net_results: dict, cp_kJ_kgK: float = CP_WATER_KJ_KGK
 
     # Add results for the Mass Pumps (secondary producers)
     if 'circ_pump_mass' in net:
-        for idx, row in net.circ_pump_mass.iterrows():
+        for idx, _row in net.circ_pump_mass.iterrows():
             pump_results["weitere Einspeisung"][idx] = {
                 "mass_flow": net_results["res_circ_pump_mass.mdot_from_kg_per_s"][:, idx],
                 "flow_pressure": net_results["res_circ_pump_mass.p_to_bar"][:, idx],

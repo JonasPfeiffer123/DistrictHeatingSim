@@ -183,7 +183,7 @@ def calculate_building(TRY_data: str, building_data: str, output_filename: str) 
     print(f"Processing {len(gdata)} building systems...")
 
     # Process each building in the input data
-    for idx, (building, area, direction) in enumerate(gdata):
+    for _idx, (building, area, direction) in enumerate(gdata):
         try:
             # Convert numpy types to Python native types
             building = str(building)

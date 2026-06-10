@@ -190,7 +190,7 @@ def build_elevation_lookup(points_utm: list[tuple[float, float]],
             logger.warning("API elevation lookup failed (%s) — all heights set to 0.0 m", exc)
             elevations = [0.0] * len(points_utm)
 
-    return dict(zip(points_utm, elevations))
+    return dict(zip(points_utm, elevations, strict=False))
 
 
 def assign_elevation_to_geodataframe(gdf: gpd.GeoDataFrame,

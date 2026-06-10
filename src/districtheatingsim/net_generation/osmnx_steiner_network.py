@@ -132,7 +132,7 @@ def create_steiner_tree(
     
     # Find nearest nodes for each terminal
     terminal_nodes = []
-    for idx, terminal in terminal_points.iterrows():
+    for _idx, terminal in terminal_points.iterrows():
         nearest_node = ox.distance.nearest_nodes(
             street_graph,
             terminal.geometry.x,

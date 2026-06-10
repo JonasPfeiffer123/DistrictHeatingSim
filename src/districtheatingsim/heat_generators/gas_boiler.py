@@ -219,7 +219,7 @@ class GasBoiler(BaseHeatGenerator):
            Includes thermal simulation, economic and environmental analysis.
         """
         # Perform thermal simulation if not already calculated
-        if self.calculated == False:
+        if not self.calculated:
             self.calculate_operation(load_profile)
 
         # Calculate performance metrics

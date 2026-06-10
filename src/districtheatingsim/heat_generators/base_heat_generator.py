@@ -148,7 +148,7 @@ class BaseHeatGenerator:
             var for var in variables_order if var.endswith(f"_{idx}")
         ]
         relevant_values = [
-            value for var, value in zip(variables_order, optimized_values) 
+            value for var, value in zip(variables_order, optimized_values, strict=False) 
             if var in relevant_vars
         ]
 
@@ -157,7 +157,7 @@ class BaseHeatGenerator:
             return
 
         # Update parameters with optimized values
-        for var, value in zip(relevant_vars, relevant_values):
+        for var, value in zip(relevant_vars, relevant_values, strict=False):
             # Extract parameter name without technology index
             param_name = var.rsplit("_", 1)[0]
             if param_name in self.__dict__:
