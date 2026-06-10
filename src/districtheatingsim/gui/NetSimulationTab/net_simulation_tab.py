@@ -32,6 +32,7 @@ from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation 
     save_results_csv, import_results_csv,
 )
 from districtheatingsim.net_simulation_pandapipes.utilities import export_net_geojson
+from districtheatingsim.net_simulation_pandapipes.net_migration import migrate_loaded_net
 from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import NetworkGenerationData
 
 from districtheatingsim.gui.NetSimulationTab.timeseries_dialog import TimeSeriesCalculationDialog
@@ -463,6 +464,9 @@ class NetSimulationTab(QWidget):
             json_path = os.path.join(self.base_path, self.config_manager.get_relative_path('json_net_init_file_path'))
 
             net = pp.from_pickle(pickle_path)
+            # Migrate nets saved on pandapipes 0.13 (KMR std-types / diameter_m) to
+            # the current 0.14 schema so old projects open and recalculate (C11).
+            net = migrate_loaded_net(net)
 
             with open(csv_path, newline='') as csvfile:
                 reader = csv.reader(csvfile, delimiter=';')

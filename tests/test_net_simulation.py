@@ -11,7 +11,10 @@ isolation with synthetic result dicts — no pandapipes network needed.
 import numpy as np
 import pytest
 
-from districtheatingsim.net_simulation_pandapipes.pipe_std_types import resolve_pipe_u_w_per_m2k
+from districtheatingsim.net_simulation_pandapipes.pipe_std_types import (
+    kmr_to_isoplus_std_type,
+    resolve_pipe_u_w_per_m2k,
+)
 from districtheatingsim.net_simulation_pandapipes.result_validation import (
     validate_design_state,
     validate_simulation_results,
@@ -113,3 +116,109 @@ class TestResolvePipeU:
         import pandas as pd
         s = pd.Series({"u_w_per_m2k": np.nan, "u_w_per_mk": 0.1905, "outer_diameter_mm": 114.3})
         assert resolve_pipe_u_w_per_m2k(s) == pytest.approx(0.5305, abs=1e-4)
+
+
+class TestKmrToIsoplus:
+    """Legacy KMR pipe names map to their ISOPLUS successors (pandapipes >=0.14)."""
+
+    @pytest.mark.parametrize("kmr,iso", [
+        ("KMR 100/250-2v", "ISOPLUS_DRE100_2x"),
+        ("KMR 32/140-2v", "ISOPLUS_DRE32_2x"),
+        ("KMR 20/125-2v", "ISOPLUS_DRE20_2x"),
+        ("KMR 125/280-2v", "ISOPLUS_DRE125_2x"),
+    ])
+    def test_kmr_names_map(self, kmr, iso):
+        assert kmr_to_isoplus_std_type(kmr) == iso
+
+    def test_non_kmr_returns_none(self):
+        assert kmr_to_isoplus_std_type("ISOPLUS_DRE100_2x") is None
+        assert kmr_to_isoplus_std_type("100/182 PLUS") is None
+        assert kmr_to_isoplus_std_type(None) is None
+
+
+class TestMigrateLoadedNet:
+    """A net saved on pandapipes 0.13 (KMR std-types, diameter_m, no
+    inner_diameter_mm) must be upgraded on load so old projects open + recalculate."""
+
+    @staticmethod
+    def _old_net():
+        import pandapipes as pp
+        net = pp.create_empty_network(fluid="water")
+        j1 = pp.create_junction(net, pn_bar=5, tfluid_k=358)
+        j2 = pp.create_junction(net, pn_bar=5, tfluid_k=358)
+        pp.create_pipe_from_parameters(net, j1, j2, length_km=0.1, diameter_m=0.037, k_mm=0.1)
+        # Emulate the 0.13 schema: diameter_m present, inner_diameter_mm absent, KMR name.
+        net.pipe["diameter_m"] = 0.037
+        net.pipe.drop(columns=["inner_diameter_mm"], inplace=True, errors="ignore")
+        net.pipe["std_type"] = "KMR 32/140-2v"
+        return net
+
+    def test_kmr_pipe_reanchored_to_isoplus(self):
+        from districtheatingsim.net_simulation_pandapipes.net_migration import migrate_loaded_net
+        net = migrate_loaded_net(self._old_net())
+        row = net.pipe.iloc[0]
+        assert row["std_type"] == "ISOPLUS_DRE32_2x"
+        assert "inner_diameter_mm" in net.pipe.columns
+        assert np.isfinite(row["inner_diameter_mm"]) and row["inner_diameter_mm"] > 0
+        assert np.isfinite(row["u_w_per_m2k"]) and row["u_w_per_m2k"] > 0
+
+    def test_inner_diameter_added_when_no_kmr_match(self):
+        from districtheatingsim.net_simulation_pandapipes.net_migration import migrate_loaded_net
+        net = self._old_net()
+        net.pipe["std_type"] = ""  # unknown / no remap
+        migrate_loaded_net(net)
+        # inner_diameter_mm derived from the legacy diameter_m [m] -> mm.
+        assert net.pipe.iloc[0]["inner_diameter_mm"] == pytest.approx(37.0)
+
+
+@pytest.mark.slow
+class TestNetworkInitialization:
+    """End-to-end seam: build a tiny district-heating net, run the production
+    diameter-init path, and assert invariants on pandapipes 0.14 (pins the
+    KMR→ISOPLUS / inner_diameter_mm / u_w_per_mk migration, BACKLOG C11).
+
+    Asserts invariants (convergence, finiteness, ISOPLUS selection), not golden
+    values, so it is robust to pandapipes solver-value drift.
+    """
+
+    @staticmethod
+    def _build_and_init():
+        import pandapipes as pp
+        from pandapipes.control.run_control import run_control
+
+        from districtheatingsim.net_simulation_pandapipes.utilities import (
+            correct_flow_directions,
+            create_controllers,
+            init_diameter_types,
+        )
+
+        net = pp.create_empty_network(fluid="water")
+        st = 85 + 273.15
+        coords = [(0, 10), (0, 0), (10, 0), (60, 0), (85, 0), (85, 10), (60, 10), (10, 10)]
+        j = [pp.create_junction(net, pn_bar=1.05, tfluid_k=st, geodata=c) for c in coords]
+        pp.create_circ_pump_const_pressure(net, j[0], j[1], p_flow_bar=4, plift_bar=1.5,
+                                           t_flow_k=st, type="auto")
+        for a, b, length in [(1, 2, 0.01), (2, 3, 0.05), (3, 4, 0.025)]:
+            pp.create_pipe(net, j[a], j[b], std_type="ISOPLUS_DRE100_2x", length_km=length, k_mm=0.1)
+        pp.create_heat_consumer(net, j[4], j[5], qext_w=500000, treturn_k=55 + 273.15)
+        pp.create_heat_consumer(net, j[3], j[6], qext_w=200000, treturn_k=60 + 273.15)
+        for a, b, length in [(5, 6, 0.25), (6, 7, 0.05), (7, 0, 0.01)]:
+            pp.create_pipe(net, j[a], j[b], std_type="ISOPLUS_DRE100_2x", length_km=length, k_mm=0.1)
+
+        pp.pipeflow(net, mode="bidirectional", iter=100)
+        net = create_controllers(net, np.array([500000, 200000]), 85, None,
+                                 np.array([55, 60]), None)
+        run_control(net, mode="bidirectional", iter=100)
+        net = correct_flow_directions(net)
+        return init_diameter_types(net, v_max_pipe=1.5, k=0.1)
+
+    def test_init_converges_and_selects_isoplus(self):
+        net = self._build_and_init()
+        # Converged: all junction results finite.
+        assert np.all(np.isfinite(net.res_junction.values))
+        # The u-value resolver assigned finite per-area coefficients (u_w_per_mk path).
+        assert np.all(np.isfinite(net.pipe["u_w_per_m2k"].values))
+        # Diameter init selected ISOPLUS std-types (the KMR successor) for every pipe.
+        assert all(str(s).startswith("ISOPLUS_DRE") for s in net.pipe["std_type"])
+        # Pipe diameters are stored in the 0.14 inner_diameter_mm column, all positive.
+        assert np.all(net.pipe["inner_diameter_mm"].values > 0)
