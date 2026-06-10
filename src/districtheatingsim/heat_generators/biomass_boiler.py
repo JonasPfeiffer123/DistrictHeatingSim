@@ -333,7 +333,7 @@ class BiomassBoiler(BaseHeatGenerator):
            Includes thermal simulation, economic and environmental analysis.
         """
         # Perform thermal simulation if not already calculated
-        if self.calculated == False:
+        if not self.calculated:
             if self.speicher_aktiv:
                 self.simulate_storage(load_profile, duration)
             else:

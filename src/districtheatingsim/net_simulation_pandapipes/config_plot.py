@@ -199,7 +199,7 @@ def config_plot(net, ax: plt.Axes, show_junctions: bool = True, show_pipes: bool
             # Convert junction geodata to GeoDataFrame for basemap integration
             gdf = gpd.GeoDataFrame(
                 net.junction_geodata,
-                geometry=[Point(xy) for xy in zip(net.junction_geodata['x'], net.junction_geodata['y'])],
+                geometry=[Point(xy) for xy in zip(net.junction_geodata['x'], net.junction_geodata['y'], strict=False)],
                 crs=crs
             )
 

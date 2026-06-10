@@ -91,7 +91,7 @@ class BadPointPressureLiftController(BasicCtrl):
             net.heat_consumer.index, 
             net.heat_consumer["qext_w"], 
             net.res_heat_consumer["p_from_bar"], 
-            net.res_heat_consumer["p_to_bar"]
+            net.res_heat_consumer["p_to_bar"], strict=False
         ):
             if qext != 0:  # Only consider active consumers
                 dp_diff = p_from - p_to

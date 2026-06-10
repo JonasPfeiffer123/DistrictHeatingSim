@@ -286,7 +286,7 @@ class EnergySystem:
                 Q_loss = self.storage.Q_loss[t - 1] if t > 0 else 0
 
                 # Control generators based on priority
-                for i, tech in enumerate(self.technologies):
+                for _i, tech in enumerate(self.technologies):
                     tech.active = tech.strategy.decide_operation(tech.active, upper_storage_temperature, lower_storage_temperature, remaining_load)
 
                     if tech.active:
@@ -580,7 +580,7 @@ class EnergySystem:
         month_starts = [0, 744, 1416, 2160, 2880, 3624,
                         4344, 5088, 5832, 6552, 7296, 8016]
         if n_steps >= 8000:
-            valid = [(s, m) for s, m in zip(month_starts, month_names) if s < n_steps]
+            valid = [(s, m) for s, m in zip(month_starts, month_names, strict=False) if s < n_steps]
             ax_main.set_xticks([s for s, _ in valid])
             ax_main.set_xticklabels([m for _, m in valid], fontsize=12)
         else:
@@ -653,9 +653,9 @@ class EnergySystem:
 
         # Filter out zero or negative shares
         mask = anteile_all > 0
-        labels  = [l for l, m in zip(labels_all, mask) if m]
+        labels  = [l for l, m in zip(labels_all, mask, strict=False) if m]
         anteile = anteile_all[mask]
-        colors  = [c for c, m in zip(colors_all, mask) if m]
+        colors  = [c for c, m in zip(colors_all, mask, strict=False) if m]
         waermemengen = waermemengen_all[mask]
 
         # Donut-style pie chart
@@ -673,7 +673,7 @@ class EnergySystem:
         # Legend: name, MWh, percentage
         legend_labels = [
             f"{label}:  {mwh:.0f} MWh  ({100 * share:.1f} %)"
-            for label, mwh, share in zip(labels, waermemengen, anteile)
+            for label, mwh, share in zip(labels, waermemengen, anteile, strict=False)
         ]
         ax.legend(wedges, legend_labels, loc="center left",
                   bbox_to_anchor=(0.85, 0, 0.5, 1),
@@ -844,7 +844,7 @@ class EnergySystem:
         df['Last_L'] = self.results['Last_L']
         
         # Add the heat generation data for each technology
-        for tech_results, techs in zip(self.results['Wärmeleistung_L'], self.results['techs']):
+        for tech_results, techs in zip(self.results['Wärmeleistung_L'], self.results['techs'], strict=False):
             df[techs] = tech_results
         
         # Add the electrical power data

@@ -398,7 +398,7 @@ class CHP(BaseHeatGenerator):
            Includes cogeneration simulation with electricity revenue.
         """
         # Perform cogeneration simulation if not already calculated
-        if self.calculated == False:
+        if not self.calculated:
             if self.speicher_aktiv:
                 self.simulate_storage(load_profile, duration)
             else:

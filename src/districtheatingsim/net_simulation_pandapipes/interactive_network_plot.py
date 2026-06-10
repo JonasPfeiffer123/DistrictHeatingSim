@@ -409,7 +409,7 @@ class InteractiveNetworkPlot:
             self.net.junction_geodata,
             geometry=[Point(xy) for xy in zip(
                 self.net.junction_geodata['x'], 
-                self.net.junction_geodata['y']
+                self.net.junction_geodata['y'], strict=False
             )],
             crs=self.crs
         )

@@ -269,7 +269,7 @@ def calculate_temperature_curves(data: pd.DataFrame,
     dT = np.expand_dims(supply_temperature_buildings - return_temperature_buildings, axis=1)
 
     # Generate supply temperature curves for each building
-    for st, s, min_air_temperature in zip(supply_temperature_buildings, slope, min_air_temperatures):
+    for st, s, min_air_temperature in zip(supply_temperature_buildings, slope, min_air_temperatures, strict=False):
         # Apply heating curve equation
         st_curve = np.where(
             hourly_air_temperatures <= min_air_temperature,

@@ -64,7 +64,7 @@ def create_pressure_plot(net, ax: plt.Axes | None = None, show_colorbar: bool = 
         
         # Plot junctions with pressure-based colors
         if hasattr(net, 'junction_geodata') and not net.junction_geodata.empty:
-            for idx, junction in net.junction.iterrows():
+            for idx, _junction in net.junction.iterrows():
                 if idx in net.junction_geodata.index:
                     x = net.junction_geodata.loc[idx, 'x']
                     y = net.junction_geodata.loc[idx, 'y']
@@ -190,7 +190,7 @@ def create_temperature_plot(net, ax: plt.Axes | None = None):
         
         # Plot junctions with temperature-based colors
         if hasattr(net, 'junction_geodata') and not net.junction_geodata.empty:
-            for idx, junction in net.junction.iterrows():
+            for idx, _junction in net.junction.iterrows():
                 if idx in net.junction_geodata.index:
                     x = net.junction_geodata.loc[idx, 'x']
                     y = net.junction_geodata.loc[idx, 'y']
@@ -313,7 +313,7 @@ def create_velocity_plot(net, ax: plt.Axes | None = None):
         
         # Plot junctions in neutral color
         if hasattr(net, 'junction_geodata') and not net.junction_geodata.empty:
-            for idx, junction in net.junction.iterrows():
+            for idx, _junction in net.junction.iterrows():
                 if idx in net.junction_geodata.index:
                     x = net.junction_geodata.loc[idx, 'x']
                     y = net.junction_geodata.loc[idx, 'y']
