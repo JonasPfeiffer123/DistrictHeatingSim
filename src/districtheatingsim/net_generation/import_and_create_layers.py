@@ -8,24 +8,27 @@ heat generator coordinates into geospatial layers for network optimization.
 """
 
 import warnings
+
 # Suppress pyogrio warnings about GeoJSON driver not supporting DRIVER option
 warnings.filterwarnings('ignore', message='.*driver GeoJSON does not support open option.*', category=RuntimeWarning)
 
 import traceback
+from typing import List, Optional, Tuple, Union
+
 import geopandas as gpd
 import pandas as pd
 from shapely.geometry import Point
-from typing import Optional, List, Tuple, Union
 
-from districtheatingsim.net_generation.net_generation import generate_network, generate_connection_lines
-from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
 from districtheatingsim.net_generation.elevation_utils import (
-    build_elevation_lookup,
     assign_elevation_to_geodataframe,
+    build_elevation_lookup,
     collect_unique_points_from_gdfs,
 )
+from districtheatingsim.net_generation.net_generation import generate_connection_lines, generate_network
+from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
 
-def import_osm_street_layer(osm_street_layer_geojson_file: str) -> Optional[gpd.GeoDataFrame]:
+
+def import_osm_street_layer(osm_street_layer_geojson_file: str) -> gpd.GeoDataFrame | None:
     """
     Import OpenStreetMap street network from GeoJSON.
 
@@ -59,12 +62,12 @@ def import_osm_street_layer(osm_street_layer_geojson_file: str) -> Optional[gpd.
 
 def load_layers(osm_street_layer_geojson_file: str,
                 data_csv_file_name: str,
-                coordinates: List[Tuple[float, float]],
-                dem_path: Optional[str] = None,
-                crs: str = "EPSG:25833") -> Tuple[Optional[gpd.GeoDataFrame],
-                                                   Optional[gpd.GeoDataFrame],
-                                                   Optional[gpd.GeoDataFrame],
-                                                   Optional[pd.DataFrame]]:
+                coordinates: list[tuple[float, float]],
+                dem_path: str | None = None,
+                crs: str = "EPSG:25833") -> tuple[gpd.GeoDataFrame | None,
+                                                   gpd.GeoDataFrame | None,
+                                                   gpd.GeoDataFrame | None,
+                                                   pd.DataFrame | None]:
     """
     Load all spatial layers for network generation.
 
@@ -166,13 +169,13 @@ def load_layers(osm_street_layer_geojson_file: str,
 
 def generate_and_export_layers(osm_street_layer_geojson_file_name: str,
                               data_csv_file_name: str,
-                              coordinates: List[Tuple[float, float]],
+                              coordinates: list[tuple[float, float]],
                               base_path: str,
                               algorithm: str = "MST",
                               offset_angle: float = 0,
                               offset_distance: float = 0.5,
                               crs: str = "EPSG:25833",
-                              dem_path: Optional[str] = None) -> None:
+                              dem_path: str | None = None) -> None:
     """
     Generate district heating network and export as GeoJSON.
 
@@ -311,4 +314,4 @@ def generate_and_export_layers(osm_street_layer_geojson_file_name: str,
     total_return_length = return_lines_gdf.geometry.length.sum()
     print(f"Total supply network length: {total_supply_length/1000:.2f} km")
     print(f"Total return network length: {total_return_length/1000:.2f} km")
-    print(f"Network generation completed successfully!")
+    print("Network generation completed successfully!")

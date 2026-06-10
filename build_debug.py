@@ -4,8 +4,9 @@ Debug build script for DistrictHeatingSim with comprehensive logging.
 """
 import subprocess
 import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
 
 def build_with_debug():
     """Build DistrictHeatingSim with full debug logging."""
@@ -18,7 +19,7 @@ def build_with_debug():
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     log_file = log_dir / f'pyinstaller_build_{timestamp}.log'
     
-    print(f"Starting PyInstaller build with debug logging...")
+    print("Starting PyInstaller build with debug logging...")
     print(f"Log file: {log_file}")
     
     # PyInstaller command using .spec file with recursion limit fix
@@ -56,8 +57,8 @@ def build_with_debug():
             f.write(f"Return code: {process.returncode}\n")
         
         if process.returncode == 0:
-            print(f"\n✓ Build successful!")
-            print(f"Executable: dist/DistrictHeatingSim.exe")
+            print("\n✓ Build successful!")
+            print("Executable: dist/DistrictHeatingSim.exe")
             
             # Post-build cleanup: Remove device-specific files
             print("\nCleaning up device-specific files...")
@@ -159,7 +160,7 @@ def move_user_data_outside():
         print("  ℹ No user-data folders found to move")
     else:
         print(f"  ✓ Moved {moved_count} user-data folder(s) to root level")
-        print(f"  → Users can now easily access and modify these folders")
+        print("  → Users can now easily access and modify these folders")
 
 
 if __name__ == '__main__':

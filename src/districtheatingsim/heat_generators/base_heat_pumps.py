@@ -7,16 +7,19 @@ Base classes for heat pump modeling with COP calculations and economic analysis.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import numpy as np
-from scipy.interpolate import RegularGridInterpolator
-from typing import Dict, Tuple, Union, Optional, Any
+from typing import Any, Dict, Optional, Tuple, Union
 
 import CoolProp.CoolProp as CP
+import numpy as np
+from scipy.interpolate import RegularGridInterpolator
 
-from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
 from districtheatingsim.constants import (
-    CO2_FACTOR_ELECTRICITY, PRIMARY_ENERGY_FACTOR_ELECTRICITY_HP, BEW_SUBSIDY_SHARE,
+    BEW_SUBSIDY_SHARE,
+    CO2_FACTOR_ELECTRICITY,
+    PRIMARY_ENERGY_FACTOR_ELECTRICITY_HP,
 )
+from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
+
 
 class HeatPump(BaseHeatGenerator):
     """
@@ -86,8 +89,8 @@ class HeatPump(BaseHeatGenerator):
 
         self.calculated = False  # Flag to indicate if the calculation is done
 
-    def calculate_COP(self, VLT_L: np.ndarray, QT: Union[float, np.ndarray], 
-                     COP_data: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def calculate_COP(self, VLT_L: np.ndarray, QT: float | np.ndarray, 
+                     COP_data: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
         Calculate Coefficient of Performance using manufacturer data interpolation.
 
@@ -152,7 +155,7 @@ class HeatPump(BaseHeatGenerator):
 
     def calculate_heat_generation_costs(self, Wärmeleistung: float, Wärmemenge_MWh: float, 
                                       Strombedarf: float, spez_Investitionskosten_WQ: float, 
-                                      economic_parameters: Dict[str, Any]) -> float:
+                                      economic_parameters: dict[str, Any]) -> float:
         """
         Calculate heat generation costs (WGK).
 

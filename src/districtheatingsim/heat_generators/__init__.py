@@ -6,18 +6,18 @@ This file is used to import all heat generators and to provide a registry for th
 
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
-from .base_heat_generator import BaseHeatGenerator, BaseStrategy
-from .chp import CHP
-from .base_heat_pumps import HeatPump
 from .aqvaheat_heat_pump import AqvaHeat
-from .river_heat_pump import RiverHeatPump
-from .waste_heat_pump import WasteHeatPump
-from .geothermal_heat_pump import Geothermal
+from .base_heat_generator import BaseHeatGenerator, BaseStrategy
+from .base_heat_pumps import HeatPump
 from .biomass_boiler import BiomassBoiler
+from .chp import CHP
 from .gas_boiler import GasBoiler
+from .geothermal_heat_pump import Geothermal
 from .power_to_heat import PowerToHeat
+from .river_heat_pump import RiverHeatPump
 from .solar_thermal import SolarThermal
-from .thermal_storage import ThermalStorageAdapter, BufferStorage
+from .thermal_storage import BufferStorage, ThermalStorageAdapter
+from .waste_heat_pump import WasteHeatPump
 
 TECH_CLASS_REGISTRY = {
     'BHKW': CHP,

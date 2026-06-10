@@ -20,11 +20,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from districtheatingsim.heat_generators.energy_system import EnergySystem, ENERGY_SYSTEM_SCHEMA_VERSION
-from districtheatingsim.heat_generators.gas_boiler import GasBoiler, GasBoilerStrategy
 from districtheatingsim.heat_generators.chp import CHP, CHPStrategy
-from districtheatingsim.heat_generators.thermal_storage import ThermalStorageAdapter, BufferStorage
+from districtheatingsim.heat_generators.energy_system import ENERGY_SYSTEM_SCHEMA_VERSION, EnergySystem
+from districtheatingsim.heat_generators.gas_boiler import GasBoiler, GasBoilerStrategy
 from districtheatingsim.heat_generators.results import TechnologyResult
+from districtheatingsim.heat_generators.thermal_storage import BufferStorage, ThermalStorageAdapter
 
 REL = 1e-4  # relative tolerance — slightly looser than single-generator tests
 

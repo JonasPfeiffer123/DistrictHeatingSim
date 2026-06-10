@@ -9,9 +9,8 @@ list of common projected coordinate systems.
 
 from typing import List, Tuple
 
-
 # Curated list of common projected CRS options (epsg_code, display_label)
-COMMON_CRS_OPTIONS: List[Tuple[str, str]] = [
+COMMON_CRS_OPTIONS: list[tuple[str, str]] = [
     ("EPSG:25832", "EPSG:25832 – ETRS89 / UTM Zone 32N (Westdeutschland, 6°–12°E)"),
     ("EPSG:25833", "EPSG:25833 – ETRS89 / UTM Zone 33N (Ostdeutschland, 12°–18°E)"),
     ("EPSG:25834", "EPSG:25834 – ETRS89 / UTM Zone 34N (Osteuropa, 18°–24°E)"),

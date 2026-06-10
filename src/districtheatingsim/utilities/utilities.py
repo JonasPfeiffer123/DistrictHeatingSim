@@ -9,10 +9,10 @@ global exception handling, and theme management.
 import os
 import sys
 import time
-
 import traceback
 
 from PyQt6.QtWidgets import QMessageBox
+
 
 def get_resource_path(relative_path):
     """

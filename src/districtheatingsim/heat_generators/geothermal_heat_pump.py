@@ -7,10 +7,12 @@ Geothermal heat pump modeling with borehole field design and drilling cost analy
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+from typing import Any, Dict, Optional, Tuple, Union
+
 import numpy as np
-from typing import Dict, Any, Union, Tuple, Optional
 
 from districtheatingsim.heat_generators.base_heat_pumps import HeatPump
+
 
 class Geothermal(HeatPump):
     """
@@ -156,7 +158,7 @@ class Geothermal(HeatPump):
             self.VLT_WP = np.zeros_like(Last_L, dtype=float)
             self.COP = np.zeros_like(Last_L, dtype=float)
 
-    def generate(self, t: int, **kwargs) -> Tuple[float, float]:
+    def generate(self, t: int, **kwargs) -> tuple[float, float]:
         """
         Generate heat for time step.
 
@@ -230,8 +232,8 @@ class Geothermal(HeatPump):
             if self.Anzahl_Starts > 0 else 0
         )
 
-    def calculate(self, economic_parameters: Dict[str, Any], duration: float, 
-                 load_profile: np.ndarray, **kwargs) -> Dict[str, Any]:
+    def calculate(self, economic_parameters: dict[str, Any], duration: float, 
+                 load_profile: np.ndarray, **kwargs) -> dict[str, Any]:
         """
         Comprehensive geothermal heat pump analysis.
 
@@ -322,7 +324,7 @@ class Geothermal(HeatPump):
         except ValueError as e:
             print(f"Error setting parameters for {self.name}: {e}")
 
-    def add_optimization_parameters(self, idx: int) -> Tuple[list, list, list]:
+    def add_optimization_parameters(self, idx: int) -> tuple[list, list, list]:
         """
         Define optimization parameters for borehole field sizing.
 
@@ -356,7 +358,7 @@ class Geothermal(HeatPump):
                 f"Vollbenutzungsstunden: {self.Vollbenutzungsstunden} h, Abstand Sonden: {self.Abstand_Sonden} m, "
                 f"spez. Investitionskosten Wärmepumpe: {self.spezifische_Investitionskosten_WP} €/kW")
     
-    def extract_tech_data(self) -> Tuple[str, str, str, str]:
+    def extract_tech_data(self) -> tuple[str, str, str, str]:
         """
         Extract technology data for reporting.
 

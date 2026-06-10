@@ -7,14 +7,14 @@ from WGS84 to UTM Zone 33N (ETRS89).
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import os
 import csv
-import time
-import tempfile
+import os
 import shutil
+import tempfile
+import time
 
-from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
+from geopy.geocoders import Nominatim
 from pyproj import Transformer
 
 # Shared geolocator instance (Nominatim usage policy: max 1 req/sec, identify your app)
@@ -74,7 +74,7 @@ def process_data(input_csv, crs: str = "EPSG:25833") -> dict:
     failed_addresses = []
 
     try:
-        with open(input_csv, mode='r', encoding='utf-8') as infile, \
+        with open(input_csv, encoding='utf-8') as infile, \
             open(temp_path, mode='w', newline='', encoding='utf-8-sig') as outfile:
             reader = csv.reader(infile, delimiter=';')
             writer = csv.writer(outfile, delimiter=';')

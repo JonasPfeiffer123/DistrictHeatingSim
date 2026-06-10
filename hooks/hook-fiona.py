@@ -1,5 +1,5 @@
 # PyInstaller hook for fiona
-from PyInstaller.utils.hooks import collect_all, collect_submodules, collect_dynamic_libs
+from PyInstaller.utils.hooks import collect_all, collect_dynamic_libs, collect_submodules
 
 # Collect all fiona modules, data files and binaries
 datas, binaries, hiddenimports = collect_all('fiona')

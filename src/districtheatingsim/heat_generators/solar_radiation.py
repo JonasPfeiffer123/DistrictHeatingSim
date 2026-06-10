@@ -8,9 +8,10 @@ Solar radiation calculations for tilted collectors using Test Reference Year dat
 """
 
 # Import libraries
+from datetime import UTC, datetime, timezone
+from typing import Dict, Optional, Tuple, Union
+
 import numpy as np
-from datetime import datetime, timezone
-from typing import Tuple, Optional, Dict, Union
 
 # Constant for degree-to-radian conversion
 DEG_TO_RAD = np.pi / 180
@@ -25,9 +26,9 @@ def calculate_solar_radiation(
     Albedo: float, 
     East_West_collector_azimuth_angle: float, 
     Collector_tilt_angle: float, 
-    IAM_W: Optional[Dict[float, float]] = None, 
-    IAM_N: Optional[Dict[float, float]] = None
-) -> Tuple[np.ndarray, Optional[np.ndarray], np.ndarray, np.ndarray]:
+    IAM_W: dict[float, float] | None = None, 
+    IAM_N: dict[float, float] | None = None
+) -> tuple[np.ndarray, np.ndarray | None, np.ndarray, np.ndarray]:
     """
     Calculate solar radiation components for tilted collectors using Test Reference Year data.
 
@@ -67,7 +68,7 @@ def calculate_solar_radiation(
     
     # Calculate day of year for each time step
     day_of_year = np.array([
-        datetime.fromtimestamp(t.astype('datetime64[s]').astype(np.int64), tz=timezone.utc).timetuple().tm_yday 
+        datetime.fromtimestamp(t.astype('datetime64[s]').astype(np.int64), tz=UTC).timetuple().tm_yday 
         for t in time_steps_dt
     ])
 
@@ -169,7 +170,7 @@ def calculate_solar_radiation(
         Incidence_angle_EW = np.where(condition, f_EW, 89.999)
         Incidence_angle_NS = np.where(condition, f_NS, 89.999)
 
-        def IAM(Incidence_angle: np.ndarray, iam_data: Dict[float, float]) -> np.ndarray:
+        def IAM(Incidence_angle: np.ndarray, iam_data: dict[float, float]) -> np.ndarray:
             """
             Interpolate Incidence Angle Modifier values from lookup table using bilinear interpolation.
 

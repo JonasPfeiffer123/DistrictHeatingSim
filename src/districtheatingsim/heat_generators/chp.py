@@ -7,15 +7,21 @@ CHP system modeling with thermal/electrical efficiency, storage integration and 
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import numpy as np
-from typing import Dict, Tuple, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
+import numpy as np
+
+from districtheatingsim.constants import (
+    BEW_SUBSIDY_SHARE,
+    CO2_FACTOR_ELECTRICITY,
+    CO2_FACTOR_GAS,
+    CO2_FACTOR_WOOD,
+    PRIMARY_ENERGY_FACTOR_GAS,
+    PRIMARY_ENERGY_FACTOR_WOOD,
+)
 from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
 from districtheatingsim.heat_generators.thermal_storage import BufferStorage
-from districtheatingsim.constants import (
-    CO2_FACTOR_GAS, CO2_FACTOR_WOOD, CO2_FACTOR_ELECTRICITY,
-    PRIMARY_ENERGY_FACTOR_GAS, PRIMARY_ENERGY_FACTOR_WOOD, BEW_SUBSIDY_SHARE,
-)
+
 
 class CHP(BaseHeatGenerator):
     """
@@ -46,7 +52,7 @@ class CHP(BaseHeatGenerator):
                  spez_Investitionskosten_Speicher: float = 750, active: bool = True,
                  opt_BHKW_min: float = 0, opt_BHKW_max: float = 1000,
                  opt_BHKW_Speicher_min: float = 0, opt_BHKW_Speicher_max: float = 100,
-                 fuel_type: Optional[str] = None):
+                 fuel_type: str | None = None):
         super().__init__(name)
         self.th_Leistung_kW = th_Leistung_kW
         self.spez_Investitionskosten_GBHKW = spez_Investitionskosten_GBHKW
@@ -95,7 +101,7 @@ class CHP(BaseHeatGenerator):
         self.strategy = CHPStrategy(75, 70)
 
         # Build buffer storage model if active
-        self.buffer: Optional[BufferStorage] = (
+        self.buffer: BufferStorage | None = (
             BufferStorage(
                 volume=self.Speicher_Volumen_BHKW,
                 T_flow=self.T_vorlauf,
@@ -229,7 +235,7 @@ class CHP(BaseHeatGenerator):
 
         self.betrieb_mask = self.Wärmeleistung_kW > 0
 
-    def generate(self, t: int, **kwargs) -> Tuple[float, float]:
+    def generate(self, t: int, **kwargs) -> tuple[float, float]:
         """
         Generate heat and electricity for time step.
 
@@ -271,7 +277,7 @@ class CHP(BaseHeatGenerator):
         self.Betriebsstunden_pro_Start = (self.Betriebsstunden / self.Anzahl_Starts 
                                          if self.Anzahl_Starts > 0 else 0)
     
-    def calculate_heat_generation_costs(self, economic_parameters: Dict) -> float:
+    def calculate_heat_generation_costs(self, economic_parameters: dict) -> float:
         """
         Calculate net heat generation costs with electricity revenue.
 
@@ -375,8 +381,8 @@ class CHP(BaseHeatGenerator):
         # Calculate primary energy consumption
         self.primärenergie = self.Brennstoffbedarf_MWh * self.primärenergiefaktor
     
-    def calculate(self, economic_parameters: Dict, duration: float, 
-                 load_profile: np.ndarray, **kwargs) -> Dict:
+    def calculate(self, economic_parameters: dict, duration: float, 
+                 load_profile: np.ndarray, **kwargs) -> dict:
         """
         Comprehensive CHP analysis.
 
@@ -430,7 +436,7 @@ class CHP(BaseHeatGenerator):
 
         return results
     
-    def set_parameters(self, variables: List[float], variables_order: List[str], idx: int) -> None:
+    def set_parameters(self, variables: list[float], variables_order: list[str], idx: int) -> None:
         """
         Set optimization parameters.
 
@@ -448,7 +454,7 @@ class CHP(BaseHeatGenerator):
         except ValueError as e:
             print(f"Fehler beim Setzen der Parameter für {self.name}: {e}")
 
-    def add_optimization_parameters(self, idx: int) -> Tuple[List[float], List[str], List[Tuple[float, float]]]:
+    def add_optimization_parameters(self, idx: int) -> tuple[list[float], list[str], list[tuple[float, float]]]:
         """
         Define optimization parameters for CHP sizing.
 
@@ -486,7 +492,7 @@ class CHP(BaseHeatGenerator):
         return (f"{self.name}: th. Leistung: {self.th_Leistung_kW:.1f} kW, "
                 f"spez. Investitionskosten Erdgas-BHKW: {self.spez_Investitionskosten_GBHKW:.1f} €/kW")
         
-    def extract_tech_data(self) -> Tuple[str, str, str, str]:
+    def extract_tech_data(self) -> tuple[str, str, str, str]:
         """
         Extract technology data for reporting.
 

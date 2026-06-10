@@ -51,17 +51,17 @@ steiner_tree : Direct Steiner tree generation
 """
 
 from .osmnx_steiner_network import (
-    generate_osmnx_network,
-    generate_and_export_osmnx_layers,
-    download_street_graph,
-    create_steiner_tree,
-    connect_terminals_with_edge_splitting,
     build_network_from_split_edges,
-    remove_dead_ends,
+    connect_terminals_with_edge_splitting,
     create_connection_lines,
-    create_return_network,
+    create_generator_connection,
     create_hast_connections,
-    create_generator_connection
+    create_return_network,
+    create_steiner_tree,
+    download_street_graph,
+    generate_and_export_osmnx_layers,
+    generate_osmnx_network,
+    remove_dead_ends,
 )
 
 __all__ = [

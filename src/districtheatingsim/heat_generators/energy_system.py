@@ -8,24 +8,24 @@ Multi-technology energy system modeling with optimization and visualization.
 """
 
 import logging
+
 logging.basicConfig(level=logging.INFO)
 
-import numpy as np
-import matplotlib.pyplot as plt
 import copy
+import itertools
 import json
+from typing import Dict, List, Optional, Tuple, Union
+
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
-
-from typing import Dict, Tuple, List, Optional, Union
-
+from matplotlib import cm
 from scipy.optimize import minimize as scipy_minimize
 
+from districtheatingsim.gui.EnergySystemTab._10_utilities import CustomJSONEncoder
 from districtheatingsim.heat_generators import *
 from districtheatingsim.heat_generators import TECH_CLASS_BY_TYPE
 from districtheatingsim.heat_generators.results import TechnologyResult
-from districtheatingsim.gui.EnergySystemTab._10_utilities import CustomJSONEncoder
-import itertools
-from matplotlib import cm
 
 #: Schema version of the serialized EnergySystem (``to_dict`` / ``save_to_json``).
 #: Bump when the on-disk format changes and migrate in ``from_dict``.
@@ -885,7 +885,7 @@ class EnergySystem:
             Loaded EnergySystem object with complete configuration.
         """
         try:
-            with open(file_path, 'r') as json_file:
+            with open(file_path) as json_file:
                 data_loaded = json.load(json_file)
             return cls.from_dict(data_loaded)
         except Exception as e:
@@ -906,7 +906,7 @@ class EnergySystemOptimizer:
        Uses SLSQP with random restarts for multi-objective optimization.
     """
 
-    def __init__(self, initial_energy_system: 'EnergySystem', weights: Dict[str, float], num_restarts: int = 5):
+    def __init__(self, initial_energy_system: 'EnergySystem', weights: dict[str, float], num_restarts: int = 5):
         """
         Initialize multi-objective optimizer.
 
@@ -1069,7 +1069,7 @@ class EnergySystemOptimizer:
             raise RuntimeError("Optimization failed to find valid solution in all restart attempts. "
                              "Consider adjusting parameter bounds, weights, or increasing restart attempts.")
 
-    def get_optimization_summary(self) -> Dict[str, Union[float, int, bool]]:
+    def get_optimization_summary(self) -> dict[str, float | int | bool]:
         """
         Generate optimization summary report.
 

@@ -7,12 +7,14 @@ Abstract base classes for heat generation technologies.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import logging
-import numpy as np
-from typing import Dict, Any, List, Union, Optional
 import copy
+import logging
+from typing import Any, Dict, List, Optional, Union
+
+import numpy as np
 
 from districtheatingsim.heat_generators.annuity import annuity
+
 
 class BaseHeatGenerator:
     """
@@ -62,8 +64,8 @@ class BaseHeatGenerator:
         """
         raise NotImplementedError("generate() must be implemented for STES-coupled dispatch.")
 
-    def calculate(self, economic_parameters: Dict[str, Any], duration: float,
-                 load_profile, **kwargs) -> Dict[str, Any]:
+    def calculate(self, economic_parameters: dict[str, Any], duration: float,
+                 load_profile, **kwargs) -> dict[str, Any]:
         """
         Full-profile calculation including economic and environmental analysis (abstract).
 
@@ -81,7 +83,7 @@ class BaseHeatGenerator:
         """
         raise NotImplementedError("The method 'calculate' must be implemented in the derived class.")
 
-    def load_economic_parameters(self, economic_parameters: Dict[str, Any]) -> None:
+    def load_economic_parameters(self, economic_parameters: dict[str, Any]) -> None:
         """
         Extract and store common economic parameters from the shared parameters dict.
 
@@ -102,7 +104,7 @@ class BaseHeatGenerator:
         self.BEW = economic_parameters['subsidy_eligibility']
         self.stundensatz = economic_parameters['hourly_rate']
 
-    def set_parameters(self, variables: List[float], variables_order: List[str], idx: int) -> None:
+    def set_parameters(self, variables: list[float], variables_order: list[str], idx: int) -> None:
         """
         Set optimization parameters for the heat generator (abstract).
 
@@ -117,7 +119,7 @@ class BaseHeatGenerator:
         """
         raise NotImplementedError("set_parameters must be implemented in the derived class.")
     
-    def add_optimization_parameters(self, idx: int) -> Dict[str, Any]:
+    def add_optimization_parameters(self, idx: int) -> dict[str, Any]:
         """
         Define optimization variables and constraints for the technology (abstract).
 
@@ -130,7 +132,7 @@ class BaseHeatGenerator:
         """
         raise NotImplementedError("add_optimization_parameters must be implemented in the derived class.")
     
-    def update_parameters(self, optimized_values: List[float], variables_order: List[str]) -> None:
+    def update_parameters(self, optimized_values: list[float], variables_order: list[str]) -> None:
         """
         Update technology parameters from optimization results.
 
@@ -163,7 +165,7 @@ class BaseHeatGenerator:
                 setattr(self, param_name, value)
                 logging.debug("Set %s for %s to %s", param_name, self.name, value)
 
-    def get_plot_data(self) -> Dict[str, Union[List, np.ndarray]]:
+    def get_plot_data(self) -> dict[str, list | np.ndarray]:
         """
         Extract time-series data for visualization.
 
@@ -176,7 +178,7 @@ class BaseHeatGenerator:
             if isinstance(getattr(self, var_name), (list, np.ndarray))
         }
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert heat generator to dictionary for serialization.
 
@@ -205,7 +207,7 @@ class BaseHeatGenerator:
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'BaseHeatGenerator':
+    def from_dict(cls, data: dict[str, Any]) -> 'BaseHeatGenerator':
         """
         Create heat generator from dictionary representation.
 
@@ -236,7 +238,7 @@ class BaseHeatGenerator:
 
         return obj
     
-    def __deepcopy__(self, memo: Dict[int, Any]) -> 'BaseHeatGenerator':
+    def __deepcopy__(self, memo: dict[int, Any]) -> 'BaseHeatGenerator':
         """
         Create deep copy of heat generator.
 
@@ -311,7 +313,7 @@ class BaseStrategy:
             else:
                 return False  # Remain stopped (sufficient storage temp or no demand)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert strategy to dictionary for serialization.
 
@@ -323,7 +325,7 @@ class BaseStrategy:
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'BaseStrategy':
+    def from_dict(cls, data: dict[str, Any]) -> 'BaseStrategy':
         """
         Create strategy from dictionary representation.
 
@@ -344,7 +346,7 @@ class BaseStrategy:
         obj.__dict__.update(data)
         return obj
     
-    def __deepcopy__(self, memo: Dict[int, Any]) -> 'BaseStrategy':
+    def __deepcopy__(self, memo: dict[int, Any]) -> 'BaseStrategy':
         """
         Create deep copy of strategy.
 

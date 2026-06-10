@@ -10,13 +10,15 @@ Solar thermal collector modeling with flat-plate and vacuum tube technologies.
     Based on Scenocalc 2.0 solar thermal model (https://www.scfw.de)
 """
 
-import numpy as np
-from math import pi, exp, log, sqrt
-from typing import Dict, Tuple, List, Optional, Union, Any
+from math import exp, log, pi, sqrt
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-from districtheatingsim.heat_generators.solar_radiation import calculate_solar_radiation
+import numpy as np
+
+from districtheatingsim.constants import BEW_SUBSIDY_SHARE, CO2_FACTOR_SOLAR, PRIMARY_ENERGY_FACTOR_SOLAR
 from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
-from districtheatingsim.constants import CO2_FACTOR_SOLAR, PRIMARY_ENERGY_FACTOR_SOLAR, BEW_SUBSIDY_SHARE
+from districtheatingsim.heat_generators.solar_radiation import calculate_solar_radiation
+
 
 class SolarThermal(BaseHeatGenerator):
     """
@@ -203,7 +205,7 @@ class SolarThermal(BaseHeatGenerator):
         self.Verlustwärmestrom_Speicher_L = np.zeros(hours, dtype=float)
         self.Stagnation_L = np.zeros(hours, dtype=float)
 
-    def calculate_heat_generation_costs(self, economic_parameters: Dict) -> float:
+    def calculate_heat_generation_costs(self, economic_parameters: dict) -> float:
         """
         Calculate levelized heat generation costs with subsidy integration.
 
@@ -287,7 +289,7 @@ class SolarThermal(BaseHeatGenerator):
         self.primärenergie_Solarthermie = self.Wärmemenge_MWh * self.primärenergiefaktor
 
     def calculate_solar_thermal_with_storage(self, Last_L: np.ndarray, VLT_L: np.ndarray, 
-                                           RLT_L: np.ndarray, TRY_data: Tuple, 
+                                           RLT_L: np.ndarray, TRY_data: tuple, 
                                            time_steps: np.ndarray, duration: float) -> None:
         """
         Hourly solar thermal simulation with storage integration.
@@ -443,7 +445,7 @@ class SolarThermal(BaseHeatGenerator):
         # Calculate total annual heat generation
         self.Wärmemenge_MWh = np.sum(self.Wärmeleistung_kW) * duration / 1000  # kWh -> MWh
 
-    def generate(self, t: int, **kwargs) -> Tuple[float, float]:
+    def generate(self, t: int, **kwargs) -> tuple[float, float]:
         """
         Generate instantaneous heat output with detailed collector and storage modeling.
 
@@ -650,8 +652,8 @@ class SolarThermal(BaseHeatGenerator):
         # Return heat output and zero electrical output (solar thermal only)
         return self.Wärmeleistung_kW[t], 0
 
-    def calculate(self, economic_parameters: Dict[str, Union[float, str]], duration: float, 
-                load_profile: np.ndarray, **kwargs) -> Dict[str, Union[str, float, np.ndarray]]:
+    def calculate(self, economic_parameters: dict[str, float | str], duration: float, 
+                load_profile: np.ndarray, **kwargs) -> dict[str, str | float | np.ndarray]:
         """
         Comprehensive system analysis including performance and economic evaluation.
 
@@ -721,7 +723,7 @@ class SolarThermal(BaseHeatGenerator):
 
         return results
 
-    def set_parameters(self, variables: List[float], variables_order: List[str], idx: int) -> None:
+    def set_parameters(self, variables: list[float], variables_order: list[str], idx: int) -> None:
         """
         Set optimization parameters from optimizer variable list.
 
@@ -756,7 +758,7 @@ class SolarThermal(BaseHeatGenerator):
             print(f"Available variables: {variables_order}")
             print(f"Expected variables: bruttofläche_STA_{idx}, vs_{idx}")
 
-    def add_optimization_parameters(self, idx: int) -> Tuple[List[float], List[str], List[Tuple[float, float]]]:
+    def add_optimization_parameters(self, idx: int) -> tuple[list[float], list[str], list[tuple[float, float]]]:
         """
         Define optimization parameters for solar thermal system sizing.
 
@@ -795,7 +797,7 @@ class SolarThermal(BaseHeatGenerator):
                 f"spez. Kosten Flachkollektor: {self.kosten_fk_spez:.1f} €/m², "
                 f"spez. Kosten Röhrenkollektor: {self.kosten_vrk_spez:.1f} €/m²")
 
-    def extract_tech_data(self) -> Tuple[str, str, str, str]:
+    def extract_tech_data(self) -> tuple[str, str, str, str]:
         """
         Extract technology data for reporting and documentation.
 
@@ -811,7 +813,7 @@ class SolarThermal(BaseHeatGenerator):
         return self.name, dimensions, costs, full_costs
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'SolarThermal':
+    def from_dict(cls, data: dict[str, Any]) -> 'SolarThermal':
         """
         Create SolarThermal object from dictionary representation.
 
@@ -848,7 +850,7 @@ class SolarThermalStrategy(BaseStrategy):
        Operates continuously when solar irradiation available.
     """
     
-    def __init__(self, charge_on: int, charge_off: Optional[int] = None):
+    def __init__(self, charge_on: int, charge_off: int | None = None):
         """
         Initialize solar thermal control strategy.
 

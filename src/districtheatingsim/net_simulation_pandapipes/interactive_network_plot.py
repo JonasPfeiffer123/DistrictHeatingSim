@@ -17,15 +17,18 @@ Features:
 - Export capabilities (HTML, PNG)
 """
 
-import plotly.graph_objects as go
-import plotly.express as px
-import pandas as pd
-import numpy as np
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
 import geopandas as gpd
-from districtheatingsim.constants import KELVIN_OFFSET
-from shapely.geometry import Point, LineString
+import numpy as np
 import pandapipes as pp
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from shapely.geometry import LineString, Point
+
+from districtheatingsim.constants import KELVIN_OFFSET
+
 
 class InteractiveNetworkPlot:
     """
@@ -62,7 +65,7 @@ class InteractiveNetworkPlot:
         # Available parameters for visualization
         self.available_parameters = self._get_available_parameters()
         
-    def _get_available_parameters(self) -> Dict[str, List[str]]:
+    def _get_available_parameters(self) -> dict[str, list[str]]:
         """
         Get all available parameters for each component type.
         
@@ -277,7 +280,7 @@ class InteractiveNetworkPlot:
             }]
         )
         
-        print(f"[Performance] Interactive plot with dropdown ready!")
+        print("[Performance] Interactive plot with dropdown ready!")
         
         return self.fig
     
@@ -314,8 +317,8 @@ class InteractiveNetworkPlot:
         return self.fig
     
     def create_plot(self, 
-                   parameter: Optional[str] = None,
-                   component_type: Optional[str] = None,
+                   parameter: str | None = None,
+                   component_type: str | None = None,
                    show_junctions: bool = True,
                    show_pipes: bool = True,
                    show_heat_consumers: bool = True,
@@ -415,7 +418,7 @@ class InteractiveNetworkPlot:
         )
         return gdf.to_crs('EPSG:4326')
     
-    def _add_junctions(self, parameter: Optional[str], colorscale: str, show: bool = True):
+    def _add_junctions(self, parameter: str | None, colorscale: str, show: bool = True):
         """
         Add junction nodes to plot with optional parameter coloring.
         
@@ -486,7 +489,7 @@ class InteractiveNetworkPlot:
             visible=show
         ))
     
-    def _add_pipes(self, parameter: Optional[str], colorscale: str, show: bool = True):
+    def _add_pipes(self, parameter: str | None, colorscale: str, show: bool = True):
         """
         Add pipes to plot with optional parameter coloring.
         
@@ -635,7 +638,7 @@ class InteractiveNetworkPlot:
                 visible=show
             ))
     
-    def _add_heat_consumers(self, parameter: Optional[str], colorscale: str, show: bool = True):
+    def _add_heat_consumers(self, parameter: str | None, colorscale: str, show: bool = True):
         """
         Add heat consumers to plot as colored lines.
         
@@ -762,7 +765,7 @@ class InteractiveNetworkPlot:
                 visible=show
             ))
     
-    def _add_pumps(self, parameter: Optional[str], colorscale: str, show: bool = True):
+    def _add_pumps(self, parameter: str | None, colorscale: str, show: bool = True):
         """
         Add circulation pumps to plot as colored lines.
         
@@ -923,7 +926,7 @@ class InteractiveNetworkPlot:
                 ))
                 first_pump = False
     
-    def _add_flow_controls(self, parameter: Optional[str], colorscale: str, show: bool = True):
+    def _add_flow_controls(self, parameter: str | None, colorscale: str, show: bool = True):
         """
         Add flow control components to plot as colored lines.
         

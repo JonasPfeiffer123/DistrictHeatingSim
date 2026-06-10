@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-def _transform_utm_to_wgs84(points_utm: List[Tuple[float, float]],
-                              crs_utm: str) -> List[Tuple[float, float]]:
+def _transform_utm_to_wgs84(points_utm: list[tuple[float, float]],
+                              crs_utm: str) -> list[tuple[float, float]]:
     """Transform UTM points to (lon, lat) WGS84 tuples.
 
     :param points_utm: List of (x, y) coordinate pairs in *crs_utm*
@@ -41,9 +41,9 @@ def _transform_utm_to_wgs84(points_utm: List[Tuple[float, float]],
 # Public API
 # ---------------------------------------------------------------------------
 
-def query_elevation_from_geotiff(points_utm: List[Tuple[float, float]],
+def query_elevation_from_geotiff(points_utm: list[tuple[float, float]],
                                   dem_path: str,
-                                  crs_utm: str = "EPSG:25833") -> List[float]:
+                                  crs_utm: str = "EPSG:25833") -> list[float]:
     """Read terrain elevations from a local GeoTIFF digital elevation model.
 
     Uses ``rasterio`` to sample the raster at the given projected coordinates.
@@ -81,7 +81,7 @@ def query_elevation_from_geotiff(points_utm: List[Tuple[float, float]],
         else:
             query_coords = points_utm
 
-        elevations: List[float] = []
+        elevations: list[float] = []
         nodata = src.nodata
 
         for x, y in query_coords:
@@ -100,9 +100,9 @@ def query_elevation_from_geotiff(points_utm: List[Tuple[float, float]],
     return elevations
 
 
-def query_elevation_from_api(points_utm: List[Tuple[float, float]],
+def query_elevation_from_api(points_utm: list[tuple[float, float]],
                               crs_utm: str = "EPSG:25833",
-                              dataset: str = "eudem25m") -> List[float]:
+                              dataset: str = "eudem25m") -> list[float]:
     """Query terrain elevations from the OpenTopoData REST API (online fallback).
 
     Transforms UTM coordinates to WGS84, then queries
@@ -125,7 +125,7 @@ def query_elevation_from_api(points_utm: List[Tuple[float, float]],
     import requests
 
     wgs84_pts = _transform_utm_to_wgs84(points_utm, crs_utm)
-    elevations: List[float] = [0.0] * len(points_utm)
+    elevations: list[float] = [0.0] * len(points_utm)
 
     batch_size = 100
     url = f"https://api.opentopodata.org/v1/{dataset}"
@@ -152,9 +152,9 @@ def query_elevation_from_api(points_utm: List[Tuple[float, float]],
     return elevations
 
 
-def build_elevation_lookup(points_utm: List[Tuple[float, float]],
-                            dem_path: Optional[str],
-                            crs_utm: str = "EPSG:25833") -> Dict[Tuple[float, float], float]:
+def build_elevation_lookup(points_utm: list[tuple[float, float]],
+                            dem_path: str | None,
+                            crs_utm: str = "EPSG:25833") -> dict[tuple[float, float], float]:
     """Build a ``{(x, y): z_m}`` dictionary for a list of UTM points.
 
     Uses the local GeoTIFF if *dem_path* is provided and ``rasterio`` is
@@ -174,7 +174,7 @@ def build_elevation_lookup(points_utm: List[Tuple[float, float]],
     if not points_utm:
         return {}
 
-    elevations: Optional[List[float]] = None
+    elevations: list[float] | None = None
 
     if dem_path:
         try:
@@ -195,7 +195,7 @@ def build_elevation_lookup(points_utm: List[Tuple[float, float]],
 
 
 def assign_elevation_to_geodataframe(gdf: gpd.GeoDataFrame,
-                                      elevation_lookup: Dict[Tuple[float, float], float],
+                                      elevation_lookup: dict[tuple[float, float], float],
                                       default_z: float = 0.0) -> gpd.GeoDataFrame:
     """Write Z-coordinates from *elevation_lookup* into a GeoDataFrame's geometries.
 
@@ -234,7 +234,7 @@ def assign_elevation_to_geodataframe(gdf: gpd.GeoDataFrame,
     return gdf_3d
 
 
-def collect_unique_points_from_gdfs(*gdfs: gpd.GeoDataFrame) -> List[Tuple[float, float]]:
+def collect_unique_points_from_gdfs(*gdfs: gpd.GeoDataFrame) -> list[tuple[float, float]]:
     """Collect all unique 2-D (x, y) vertex coordinates from one or more GeoDataFrames.
 
     This is a convenience function to assemble the list of points that need

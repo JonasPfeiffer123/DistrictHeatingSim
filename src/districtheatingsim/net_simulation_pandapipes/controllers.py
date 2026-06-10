@@ -17,10 +17,13 @@ bad point pressure control, minimum temperature enforcement, and multi-producer 
 in district heating systems.
 """
 
-from pandapower.control.basic_controller import BasicCtrl
+from typing import List, Optional, Tuple, Union
+
 import numpy as np
-from typing import Optional, Tuple, List, Union
+from pandapower.control.basic_controller import BasicCtrl
+
 from districtheatingsim.constants import KELVIN_OFFSET
+
 
 class BadPointPressureLiftController(BasicCtrl):
     """
@@ -58,7 +61,7 @@ class BadPointPressureLiftController(BasicCtrl):
     def __init__(self, net, circ_pump_pressure_idx: int = 0, target_dp_min_bar: float = 1.0, 
                  tolerance: float = 0.2, proportional_gain: float = 0.2, min_plift: float = 1.5, 
                  min_pflow: float = 3.5, **kwargs):
-        super(BadPointPressureLiftController, self).__init__(net, **kwargs)
+        super().__init__(net, **kwargs)
         self.circ_pump_pressure_idx = circ_pump_pressure_idx
         self.target_dp_min_bar = target_dp_min_bar
         self.tolerance = tolerance
@@ -70,7 +73,7 @@ class BadPointPressureLiftController(BasicCtrl):
         # Initialize worst point calculation
         self.dp_min, self.heat_consumer_idx = self.calculate_worst_point(net)
 
-    def calculate_worst_point(self, net) -> Tuple[float, int]:
+    def calculate_worst_point(self, net) -> tuple[float, int]:
         """
         Find heat consumer with lowest pressure difference among active consumers.
         
@@ -164,7 +167,7 @@ class BadPointPressureLiftController(BasicCtrl):
             print("No heat flow detected. Switching to standby mode.")
             net.circ_pump_pressure["plift_bar"].iloc[:] = self.min_plift
             net.circ_pump_pressure["p_flow_bar"].iloc[:] = self.min_pflow
-            return super(BadPointPressureLiftController, self).control_step(net)
+            return super().control_step(net)
 
         # Calculate control parameters
         current_dp_bar = (
@@ -186,7 +189,7 @@ class BadPointPressureLiftController(BasicCtrl):
         net.circ_pump_pressure.at[self.circ_pump_pressure_idx, "plift_bar"] = new_plift
         net.circ_pump_pressure.at[self.circ_pump_pressure_idx, "p_flow_bar"] = new_pflow
 
-        return super(BadPointPressureLiftController, self).control_step(net)
+        return super().control_step(net)
 
 class MinimumSupplyTemperatureController(BasicCtrl):
     """
@@ -226,7 +229,7 @@ class MinimumSupplyTemperatureController(BasicCtrl):
     def __init__(self, net, heat_consumer_idx: int, min_supply_temperature: float = 65.0, 
                  tolerance: float = 2.0, max_iterations: int = 100, 
                  temperature_adjustment_step: float = 1.0, debug: bool = False, **kwargs):
-        super(MinimumSupplyTemperatureController, self).__init__(net, **kwargs)
+        super().__init__(net, **kwargs)
         self.heat_consumer_idx = heat_consumer_idx
         self.min_supply_temperature = min_supply_temperature
         self.tolerance = tolerance
@@ -237,7 +240,7 @@ class MinimumSupplyTemperatureController(BasicCtrl):
         # Controller state variables
         self.data_source = None
         self.iteration = 0
-        self.previous_temperatures: List[float] = []
+        self.previous_temperatures: list[float] = []
 
     def time_step(self, net, time_step: int) -> int:
         """
@@ -270,7 +273,7 @@ class MinimumSupplyTemperatureController(BasicCtrl):
         
         return time_step
 
-    def get_weighted_average_temperature(self) -> Optional[float]:
+    def get_weighted_average_temperature(self) -> float | None:
         """
         Calculate weighted average of recent supply temperatures for stability.
         
@@ -304,7 +307,7 @@ class MinimumSupplyTemperatureController(BasicCtrl):
         if all(net.heat_consumer["qext_w"] == 0):
             if self.debug:
                 print("No heat flow detected. Switching to standby mode.")
-            return super(MinimumSupplyTemperatureController, self).control_step(net)
+            return super().control_step(net)
 
         # Get current temperatures
         current_T_out = net.res_heat_consumer["t_to_k"].at[self.heat_consumer_idx] - KELVIN_OFFSET
@@ -324,7 +327,7 @@ class MinimumSupplyTemperatureController(BasicCtrl):
             if self.debug:
                 print(f"Minimum supply temperature not met. Adjusted target output temperature to {new_T_out - KELVIN_OFFSET:.1f}°C.")
             
-        return super(MinimumSupplyTemperatureController, self).control_step(net)
+        return super().control_step(net)
 
     def is_converged(self, net) -> bool:
         """
