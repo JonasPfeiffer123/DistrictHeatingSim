@@ -139,7 +139,7 @@ def initialize_net_from_osmnx_geojson(
     pipe_dict = {
         "pipetype": pipetype,
         "v_max_pipe": v_max_m_s,
-        "material_filter": "KMR",
+        "material_filter": "P235GH/PUR/PEHD",
         "pipe_creation_mode": "type",
         "k_mm": k_mm
     }
