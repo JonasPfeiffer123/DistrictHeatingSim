@@ -119,6 +119,41 @@ class TestResolvePipeU:
         assert resolve_pipe_u_w_per_m2k(s) == pytest.approx(0.5305, abs=1e-4)
 
 
+class TestNetworkDataArrayCoercion:
+    """`from_dict` must restore numpy-array fields that older project JSONs saved as
+    their `str(array)` repr (via json default=str), else the time-series controllers
+    silently skip them (KeyError mid-run). BACKLOG C2/C11 regression."""
+
+    @staticmethod
+    def _coerce(value):
+        from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import (
+            NetworkGenerationData,
+        )
+        return NetworkGenerationData._coerce_array(value)
+
+    def test_string_repr_restored_to_array(self):
+        out = self._coerce("[60. 60. 55. 60.]")
+        assert isinstance(out, np.ndarray)
+        assert out.tolist() == [60.0, 60.0, 55.0, 60.0]
+
+    def test_list_restored_to_array(self):
+        out = self._coerce([55.0, 60.0])
+        assert isinstance(out, np.ndarray) and out.tolist() == [55.0, 60.0]
+
+    def test_none_and_ndarray_passthrough(self):
+        assert self._coerce(None) is None
+        arr = np.array([1.0, 2.0])
+        assert self._coerce(arr) is arr
+
+    def test_truncated_repr_dropped(self):
+        # numpy abbreviates long arrays — unrecoverable, must not be half-parsed.
+        assert self._coerce("[77.8 77.3 ... 79.1 78.5]") is None
+
+    def test_2d_and_nonarray_strings_dropped(self):
+        assert self._coerce("[[1. 2.][3. 4.]]") is None
+        assert self._coerce("Statisch") is None
+
+
 class TestKmrToIsoplus:
     """Legacy KMR pipe names map to their ISOPLUS successors (pandapipes >=0.14)."""
 
