@@ -12,14 +12,21 @@ network plot widget can highlight the corresponding pipe.
 import logging
 
 import pandapipes as pp
-
-from PyQt6.QtCore import pyqtSignal, Qt
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QTableWidget, QTableWidgetItem, QAbstractItemView, QComboBox,
-    QHeaderView, QMessageBox,
-)
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
+from PyQt6.QtWidgets import (
+    QAbstractItemView,
+    QComboBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
 from districtheatingsim.net_simulation_pandapipes.pipe_std_types import resolve_pipe_u_w_per_m2k
 
@@ -104,7 +111,12 @@ class PipeConfigTable(QWidget):
                 if std_type:
                     net.pipe.at[pipe_idx, 'std_type'] = std_type
                     if pipe_std_types is not None and std_type in pipe_std_types.index:
-                        net.pipe.at[pipe_idx, 'u_w_per_m2k'] = resolve_pipe_u_w_per_m2k(pipe_std_types.loc[std_type])
+                        try:
+                            net.pipe.at[pipe_idx, 'u_w_per_m2k'] = resolve_pipe_u_w_per_m2k(pipe_std_types.loc[std_type])
+                        except ValueError:
+                            # std-type carries no heat-loss value (e.g. an uninsulated
+                            # type); keep the pipe's existing u_w_per_m2k.
+                            logging.warning("No heat-loss value for std-type '%s'; keeping existing u for pipe %d", std_type, pipe_idx)
 
             diameter_item = self._table.item(row, 6)
             if diameter_item:

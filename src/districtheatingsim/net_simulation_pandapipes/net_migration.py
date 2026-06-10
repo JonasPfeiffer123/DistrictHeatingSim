@@ -16,7 +16,7 @@ import logging
 import pandapipes as pp
 
 from districtheatingsim.net_simulation_pandapipes.pipe_std_types import (
-    kmr_to_isoplus_std_type,
+    nearest_isoplus_for_kmr,
     resolve_pipe_u_w_per_m2k,
 )
 
@@ -56,8 +56,8 @@ def migrate_loaded_net(net):
     remapped = 0
     if "std_type" in net.pipe.columns:
         for idx in net.pipe.index:
-            isoplus = kmr_to_isoplus_std_type(net.pipe.at[idx, "std_type"])
-            if isoplus is None or isoplus not in catalog.index:
+            isoplus = nearest_isoplus_for_kmr(net.pipe.at[idx, "std_type"], catalog)
+            if isoplus is None:
                 continue
             props = catalog.loc[isoplus]
             net.pipe.at[idx, "std_type"] = isoplus

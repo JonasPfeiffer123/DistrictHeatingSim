@@ -243,11 +243,16 @@ tested in `tests/test_net_simulation.py`. **Embedded-catalog gotcha:** a pickled
 ships its own `net.std_types["pipe"]` library — an old one holds only KMR types, so the
 remap must look up (and replace the net's library from) a *fresh* net's catalog, else
 the GUI combo keeps offering KMR. `pipe_config_table.py` also read/wrote the obsolete
-`diameter_m` column at 5 sites → moved to `inner_diameter_mm`. **193 passed.** *Still
-open:* the changed circ-pump behaviour (a one-time warning, not yet verified to change
-results);
-`simplified`/timeseries paths and `examples/07–08` not yet run end-to-end;
-`interactive_network_plot` u-value column.
+`diameter_m` column at 5 sites → moved to `inner_diameter_mm`. **Nearest-size snap:**
+some legacy names have a blank outer diameter (`KMR 175/-2v`) and a nominal width with
+no ISOPLUS size (DN175); `nearest_isoplus_for_kmr` parses these and snaps to the same
+insulation grade at the nearest available width (DN175 → DRE200, rounding up on a tie),
+so every pipe maps to a valid type instead of silently defaulting to `80_GGG` (and
+crashing the u lookup). Verified on the real Görlitz net (68 pipes → all ISOPLUS,
+pipeflow converges). `apply_changes_to_net` also guards the u lookup. **197 passed.**
+*Still open:* the changed circ-pump behaviour (a one-time warning, not yet verified to
+change results); `simplified`/timeseries paths and `examples/07–08` not yet run
+end-to-end; `interactive_network_plot` u-value column.
 
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)

@@ -13,6 +13,7 @@ import pytest
 
 from districtheatingsim.net_simulation_pandapipes.pipe_std_types import (
     kmr_to_isoplus_std_type,
+    nearest_isoplus_for_kmr,
     resolve_pipe_u_w_per_m2k,
 )
 from districtheatingsim.net_simulation_pandapipes.result_validation import (
@@ -126,6 +127,7 @@ class TestKmrToIsoplus:
         ("KMR 32/140-2v", "ISOPLUS_DRE32_2x"),
         ("KMR 20/125-2v", "ISOPLUS_DRE20_2x"),
         ("KMR 125/280-2v", "ISOPLUS_DRE125_2x"),
+        ("KMR 175/-2v", "ISOPLUS_DRE175_2x"),  # blank outer diameter in old data
     ])
     def test_kmr_names_map(self, kmr, iso):
         assert kmr_to_isoplus_std_type(kmr) == iso
@@ -134,6 +136,25 @@ class TestKmrToIsoplus:
         assert kmr_to_isoplus_std_type("ISOPLUS_DRE100_2x") is None
         assert kmr_to_isoplus_std_type("100/182 PLUS") is None
         assert kmr_to_isoplus_std_type(None) is None
+
+
+class TestNearestIsoplusForKmr:
+    """Snap legacy KMR names to an ISOPLUS type that actually exists in the catalog."""
+
+    @staticmethod
+    def _catalog():
+        import pandapipes as pp
+        return pp.std_types.available_std_types(pp.create_empty_network(fluid="water"), "pipe")
+
+    def test_exact_match_used_when_available(self):
+        assert nearest_isoplus_for_kmr("KMR 100/250-2v", self._catalog()) == "ISOPLUS_DRE100_2x"
+
+    def test_missing_nominal_width_snaps_to_nearest_rounding_up(self):
+        # DN175 is not an ISOPLUS size; 150 and 200 are equidistant -> round up to 200.
+        assert nearest_isoplus_for_kmr("KMR 175/-2v", self._catalog()) == "ISOPLUS_DRE200_2x"
+
+    def test_non_kmr_returns_none(self):
+        assert nearest_isoplus_for_kmr("ISOPLUS_DRE100_2x", self._catalog()) is None
 
 
 class TestMigrateLoadedNet:
