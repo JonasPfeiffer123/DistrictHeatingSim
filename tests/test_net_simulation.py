@@ -151,9 +151,17 @@ class TestMigrateLoadedNet:
         net.pipe["diameter_m"] = 0.037
         net.pipe.drop(columns=["inner_diameter_mm"], inplace=True, errors="ignore")
         net.pipe["std_type"] = "KMR 32/140-2v"
+        # Emulate the obsolete std-types library shipped inside an old pickle: it holds
+        # only KMR types, so a lookup against this net would never find ISOPLUS.
+        net.std_types["pipe"] = {
+            "KMR 32/140-2v": {"nominal_width_mm": 32, "inner_diameter_mm": 37.2,
+                              "outer_diameter_mm": 140, "u_w_per_m2k": 0.4},
+        }
         return net
 
     def test_kmr_pipe_reanchored_to_isoplus(self):
+        import pandapipes as pp
+
         from districtheatingsim.net_simulation_pandapipes.net_migration import migrate_loaded_net
         net = migrate_loaded_net(self._old_net())
         row = net.pipe.iloc[0]
@@ -161,6 +169,11 @@ class TestMigrateLoadedNet:
         assert "inner_diameter_mm" in net.pipe.columns
         assert np.isfinite(row["inner_diameter_mm"]) and row["inner_diameter_mm"] > 0
         assert np.isfinite(row["u_w_per_m2k"]) and row["u_w_per_m2k"] > 0
+        # The net's embedded catalog was refreshed to the current ISOPLUS library so the
+        # GUI combo offers (and can select) the new type, not the stale KMR one.
+        catalog = pp.std_types.available_std_types(net, "pipe")
+        assert "ISOPLUS_DRE32_2x" in catalog.index
+        assert "KMR 32/140-2v" not in catalog.index
 
     def test_inner_diameter_added_when_no_kmr_match(self):
         from districtheatingsim.net_simulation_pandapipes.net_migration import migrate_loaded_net

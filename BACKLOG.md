@@ -239,8 +239,13 @@ migration:** a net pickled on 0.13 (KMR std-types, `diameter_m`, no
 `net_migration.migrate_loaded_net` (called in `net_simulation_tab.loadNet`) re-anchors
 KMR pipes to their ISOPLUS successors (`kmr_to_isoplus_std_type`, taking diameter +
 u from the catalog) and adds `inner_diameter_mm` from the legacy `diameter_m`; unit-
-tested in `tests/test_net_simulation.py`. **193 passed.** *Still open:* the changed
-circ-pump behaviour (a one-time warning, not yet verified to change results);
+tested in `tests/test_net_simulation.py`. **Embedded-catalog gotcha:** a pickled net
+ships its own `net.std_types["pipe"]` library — an old one holds only KMR types, so the
+remap must look up (and replace the net's library from) a *fresh* net's catalog, else
+the GUI combo keeps offering KMR. `pipe_config_table.py` also read/wrote the obsolete
+`diameter_m` column at 5 sites → moved to `inner_diameter_mm`. **193 passed.** *Still
+open:* the changed circ-pump behaviour (a one-time warning, not yet verified to change
+results);
 `simplified`/timeseries paths and `examples/07–08` not yet run end-to-end;
 `interactive_network_plot` u-value column.
 
