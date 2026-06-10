@@ -164,8 +164,8 @@ class BadPointPressureLiftController(BasicCtrl):
         # Handle standby mode - no heat demand
         if all(net.heat_consumer["qext_w"] == 0):
             print("No heat flow detected. Switching to standby mode.")
-            net.circ_pump_pressure["plift_bar"].iloc[:] = self.min_plift
-            net.circ_pump_pressure["p_flow_bar"].iloc[:] = self.min_pflow
+            net.circ_pump_pressure.loc[:, "plift_bar"] = self.min_plift
+            net.circ_pump_pressure.loc[:, "p_flow_bar"] = self.min_pflow
             return super().control_step(net)
 
         # Calculate control parameters
@@ -264,7 +264,7 @@ class MinimumSupplyTemperatureController(BasicCtrl):
             self.standard_return_temperature = net.heat_consumer["treturn_k"].at[self.heat_consumer_idx]
         else:
             # Restore standard return temperature at start of each step
-            net.heat_consumer["treturn_k"].at[self.heat_consumer_idx] = self.standard_return_temperature
+            net.heat_consumer.at[self.heat_consumer_idx, "treturn_k"] = self.standard_return_temperature
 
         # Update minimum temperature from external data source
         if self.data_source is not None:
@@ -320,8 +320,8 @@ class MinimumSupplyTemperatureController(BasicCtrl):
         current_mass_flow = net.res_heat_consumer["mdot_from_kg_per_s"].at[self.heat_consumer_idx]
         # Adjust return temperature if supply temperature too low
         if current_T_in < self.min_supply_temperature:
-            new_T_out = net.heat_consumer["treturn_k"].at[self.heat_consumer_idx] + self.temperature_adjustment_step
-            net.heat_consumer["treturn_k"].at[self.heat_consumer_idx] = new_T_out
+            new_T_out = net.heat_consumer.at[self.heat_consumer_idx, "treturn_k"] + self.temperature_adjustment_step
+            net.heat_consumer.at[self.heat_consumer_idx, "treturn_k"] = new_T_out
             
             if self.debug:
                 print(f"Minimum supply temperature not met. Adjusted target output temperature to {new_T_out - KELVIN_OFFSET:.1f}°C.")
