@@ -41,7 +41,7 @@ def initialize_net_from_osmnx_geojson(
     qext_w: np.ndarray = None,
     return_temperature: np.ndarray = None,
     min_supply_temperature: np.ndarray = None,
-    pipetype: str = "KMR 100/250-2v",
+    pipetype: str = "ISOPLUS_DRE100_2x",
     v_max_m_s: float = 1.5,
     k_mm: float = 0.1
 ):
@@ -166,7 +166,7 @@ def initialize_net_from_osmnx_geojson(
     net = optimize_diameter_types(
         net,
         v_max=v_max_m_s,
-        material_filter="KMR",
+        material_filter="P235GH/PUR/PEHD",
         k=k_mm
     )
 

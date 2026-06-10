@@ -21,6 +21,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QFont
 
+from districtheatingsim.net_simulation_pandapipes.pipe_std_types import resolve_pipe_u_w_per_m2k
+
 
 class PipeConfigTable(QWidget):
     """
@@ -102,7 +104,7 @@ class PipeConfigTable(QWidget):
                 if std_type:
                     net.pipe.at[pipe_idx, 'std_type'] = std_type
                     if pipe_std_types is not None and std_type in pipe_std_types.index:
-                        net.pipe.at[pipe_idx, 'u_w_per_m2k'] = pipe_std_types.loc[std_type, 'u_w_per_m2k']
+                        net.pipe.at[pipe_idx, 'u_w_per_m2k'] = resolve_pipe_u_w_per_m2k(pipe_std_types.loc[std_type])
 
             diameter_item = self._table.item(row, 6)
             if diameter_item:
@@ -303,7 +305,7 @@ class PipeConfigTable(QWidget):
             props = pipe_std_types.loc[new_std_type]
             net.pipe.at[pipe_idx, 'std_type'] = new_std_type
             net.pipe.at[pipe_idx, 'diameter_m'] = props['inner_diameter_mm'] / 1000
-            net.pipe.at[pipe_idx, 'u_w_per_m2k'] = props['u_w_per_m2k']
+            net.pipe.at[pipe_idx, 'u_w_per_m2k'] = resolve_pipe_u_w_per_m2k(props)
 
             self._table.blockSignals(True)
             item = self._table.item(row, 6)

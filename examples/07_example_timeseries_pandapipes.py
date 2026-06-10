@@ -35,7 +35,7 @@ def initialize_test_net(qext_w=np.array([100000, 100000, 100000]),
                         supply_temperature=85,
                         flow_pressure_pump=4, 
                         lift_pressure_pump=1.5,
-                        pipetype="KMR 100/250-2v",
+                        pipetype="ISOPLUS_DRE100_2x",
                         v_max_m_s=1.5):
     print("Initializing test network...")
     # Initialize the pandapipes network
@@ -85,8 +85,8 @@ def initialize_test_net(qext_w=np.array([100000, 100000, 100000]),
     run_control(net, mode="bidirectional", iter=100, alpha=0.6, transient=False)
 
     net = correct_flow_directions(net)
-    net = init_diameter_types(net, v_max_pipe=v_max_m_s, material_filter="KMR", k=k)
-    net = optimize_diameter_types(net, v_max=v_max_m_s, material_filter="KMR", k=k)
+    net = init_diameter_types(net, v_max_pipe=v_max_m_s, material_filter="P235GH/PUR/PEHD", k=k)
+    net = optimize_diameter_types(net, v_max=v_max_m_s, material_filter="P235GH/PUR/PEHD", k=k)
 
     return net
 

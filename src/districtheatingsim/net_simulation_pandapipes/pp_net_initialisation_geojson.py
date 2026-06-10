@@ -30,6 +30,7 @@ from pandapipes.control.run_control import run_control
 
 from districtheatingsim.constants import CP_WATER_KJ_KGK, KELVIN_OFFSET
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
+from districtheatingsim.net_simulation_pandapipes.pipe_std_types import resolve_pipe_u_w_per_m2k
 from districtheatingsim.net_simulation_pandapipes.utilities import (
     COP_WP,
     correct_flow_directions,
@@ -346,7 +347,7 @@ def create_network(gdf_dict: dict[str, gpd.GeoDataFrame], consumer_dict: dict[st
     pipe_std_types = pp.std_types.available_std_types(net, "pipe")
     properties = pipe_std_types.loc[pipetype]
     diameter_mm = properties['inner_diameter_mm']
-    u_w_per_m2k_pipe = properties['u_w_per_m2k']
+    u_w_per_m2k_pipe = resolve_pipe_u_w_per_m2k(properties)
 
     # Convert temperatures to Kelvin
     supply_temperature_k = supply_temperature + KELVIN_OFFSET
