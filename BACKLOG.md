@@ -267,8 +267,11 @@ multi-path `NetworkGenerationData` API (`flow_line_path` …) for the current
 `network_geojson_path`; points at `examples/data/osmnx_steiner_output/Wärmenetz.geojson`
 with `secondary_producers=[]` (that data set has one producer). Runs end-to-end on 0.14
 (net generation → time series → `calculate_results` → plots).
-*Still open:* the changed circ-pump behaviour (one-time warning, not yet verified to
-change results); `interactive_network_plot` u-value column.
+*Still open (minor):* the changed circ-pump behaviour — pandapipes logs a one-time
+INFO that the pump outlet temperature is now fixed; "in most cases this does not change
+the outcome", not yet cross-checked against 0.13. No `diameter_m` reads remain in `src`
+except the intentional one in `net_migration` (old → new column). C11 is otherwise
+complete.
 
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
