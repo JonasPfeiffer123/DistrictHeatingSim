@@ -111,6 +111,16 @@ presenter; dialogs call presenter methods directly.
 ### B4. DE/EN naming mix
 `Wärmeleistung_kW` next to `HeatPump`, German UI strings + English docstrings;
 inconsistent method names (`calculate_heat_generation_cost()` vs `…costs()`).
+### B5. Domain core imports the GUI (fixed 2026-06)
+`heat_generators/energy_system.py` imported `CustomJSONEncoder` from
+`gui/EnergySystemTab/_10_utilities.py`, which imports PyQt6 — so the GUI-free domain
+core (and every test that touches it) transitively required PyQt6, and the Linux CI
+failed to even import it (`libEGL.so.1`). **Fixed**: moved the encoder (a pure
+`json.JSONEncoder`, no GUI dependency) to `heat_generators/json_encoder.py`;
+`energy_system` imports it from there, `_10_utilities` re-exports it for the GUI. The
+domain core is now PyQt6-free, pinned by `tests/test_serialization.py` (subprocess:
+importing `energy_system` must not load `PyQt6`). *Note:* the CI apt step for Qt libs
+is still required for the actual GUI tests.
 
 ## C. Correctness & robustness
 ### C1. Threading not thread-safe

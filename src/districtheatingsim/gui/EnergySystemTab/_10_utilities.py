@@ -7,15 +7,13 @@ Energy System Tab Utilities Module
 Utility classes for Energy System Tab, including collapsible sections, checkable combo boxes, and custom JSON encoding.
 """
 
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QSizePolicy, QComboBox)
 from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtWidgets import QComboBox, QPushButton, QSizePolicy, QVBoxLayout, QWidget
 
-import json
-import numpy as np
-import pandas as pd
+# CustomJSONEncoder moved to the GUI-free domain core (BACKLOG B5); re-exported here
+# for backward compatibility with code importing it from this module.
+from districtheatingsim.heat_generators.json_encoder import CustomJSONEncoder  # noqa: F401
 
-from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
-from districtheatingsim.heat_generators.thermal_storage import ThermalStorageAdapter
 
 class CheckableComboBox(QComboBox):
     """
@@ -29,7 +27,7 @@ class CheckableComboBox(QComboBox):
         :param parent: Parent widget.
         :type parent: QWidget
         """
-        super(CheckableComboBox, self).__init__(parent)
+        super().__init__(parent)
         self.view().pressed.connect(self.handleItemPressed)
         self.setModelColumn(0)
         self.checked_items = []
@@ -68,7 +66,7 @@ class CheckableComboBox(QComboBox):
         :param data: Associated data.
         :type data: Any
         """
-        super(CheckableComboBox, self).addItem(text, data)
+        super().addItem(text, data)
         item = self.model().item(self.count() - 1)
         item.setCheckState(Qt.CheckState.Unchecked)
 
@@ -107,7 +105,7 @@ class CheckableComboBox(QComboBox):
         """
         Clear all items from combo box.
         """
-        super(CheckableComboBox, self).clear()
+        super().clear()
         self.checked_items = []
 
     def checkedItems(self):
@@ -158,24 +156,3 @@ class CollapsibleHeader(QWidget):
         else:
             # Only the height of the button when collapsed
             return QSize(self.toggle_button.width(), self.toggle_button.sizeHint().height())
-        
-class CustomJSONEncoder(json.JSONEncoder):
-    """
-    Custom JSON Encoder for handling numpy arrays, pandas DataFrames, and custom objects.
-    """
-    def default(self, obj):
-        try:
-            if isinstance(obj, np.ndarray):
-                return obj.tolist()
-            if isinstance(obj, np.integer):
-                return int(obj)
-            if isinstance(obj, np.floating):
-                return float(obj)
-            if isinstance(obj, pd.DataFrame):
-                # Use 'split' format for DataFrame serialization
-                return obj.to_dict(orient='split')
-            if isinstance(obj, (BaseHeatGenerator, BaseStrategy, ThermalStorageAdapter)):
-                return obj.to_dict()
-            return super().default(obj)
-        except TypeError as e:
-            raise e
