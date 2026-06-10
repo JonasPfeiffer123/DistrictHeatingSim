@@ -12,6 +12,7 @@ import numpy as np
 import pytest
 
 from districtheatingsim.net_simulation_pandapipes.result_validation import (
+    validate_design_state,
     validate_simulation_results,
 )
 
@@ -54,3 +55,31 @@ class TestValidateSimulationResults:
             "ok": np.array([1.0, 2.0]),
         }
         validate_simulation_results(results)  # must not raise
+
+
+def _design_state(qext=7.5):
+    return {
+        "Heizentrale Haupteinspeisung": {
+            0: {"mass_flow_design": 1.2, "flow_temp_design": 85.0,
+                "return_temp_design": 60.0, "qext_kW_design": qext},
+        },
+        "weitere Einspeisung": {},
+    }
+
+
+class TestValidateDesignState:
+    def test_finite_design_state_passes(self):
+        validate_design_state(_design_state())  # must not raise
+
+    def test_empty_design_state_passes(self):
+        # No producers extracted yet → nothing to check, must not raise.
+        validate_design_state({"Heizentrale Haupteinspeisung": {}, "weitere Einspeisung": {}})
+
+    def test_nan_design_value_raises_and_names_it(self):
+        bad = _design_state(qext=np.nan)
+        with pytest.raises(RuntimeError, match=r"qext_kW_design"):
+            validate_design_state(bad)
+
+    def test_context_in_message(self):
+        with pytest.raises(RuntimeError, match="init-run"):
+            validate_design_state(_design_state(qext=np.inf), context="init-run")

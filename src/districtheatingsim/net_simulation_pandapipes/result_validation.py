@@ -46,3 +46,29 @@ def validate_simulation_results(net_results: dict, *, context: str = "") -> None
                 "thermohydraulic solver did not converge (try more iterations or a "
                 "different initial state, or check for a disconnected/infeasible network)."
             )
+
+
+def validate_design_state(design_results: dict, *, context: str = "") -> None:
+    """
+    Raise ``RuntimeError`` if the extracted producer design-state contains NaN/inf.
+
+    The simplified time series scales this design state (read from ``net.res_*``
+    after the initialization pipeflow) by the building demand. A NaN/inf here means
+    the network initialization did not converge, which would otherwise silently
+    poison every scaled time step.
+
+    :param design_results: Nested mapping ``{producer_type: {idx: {param: value}}}``.
+    :type design_results: dict
+    :param context: Optional label included in the error message.
+    :type context: str
+    :raises RuntimeError: If any design-state value is NaN/inf.
+    """
+    prefix = f"{context}: " if context else ""
+    for producer_type, by_index in design_results.items():
+        for idx, params in by_index.items():
+            for param, value in params.items():
+                if not np.isfinite(value):
+                    raise RuntimeError(
+                        f"{prefix}design-state result '{producer_type}[{idx}].{param}' is "
+                        "NaN/inf — the network initialization (design pipeflow) did not converge."
+                    )

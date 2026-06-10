@@ -15,7 +15,10 @@ from pandapower.timeseries import DFData, OutputWriter
 
 from districtheatingsim.constants import CP_WATER_KJ_KGK, KELVIN_OFFSET
 from districtheatingsim.net_simulation_pandapipes.controllers import MinimumSupplyTemperatureController
-from districtheatingsim.net_simulation_pandapipes.result_validation import validate_simulation_results
+from districtheatingsim.net_simulation_pandapipes.result_validation import (
+    validate_design_state,
+    validate_simulation_results,
+)
 from districtheatingsim.net_simulation_pandapipes.utilities import COP_WP
 from districtheatingsim.utilities.test_reference_year import import_TRY
 
@@ -474,8 +477,12 @@ def simplified_time_series_net(NetworkGenerationData) -> Any:
             }
             print(f"  Weitere Einspeisung {idx}: {design_results['weitere Einspeisung'][idx]['qext_kW_design']:.1f} kW Auslegungsleistung")
     
+    # Fail loudly if the design state is NaN/inf (init pipeflow did not converge)
+    # rather than scaling NaN across every time step (BACKLOG C2).
+    validate_design_state(design_results, context="simplified time series")
+
     # Calculate design losses (difference between generated and consumed heat)
-    total_generation_design = sum([data["qext_kW_design"] for pump_type in design_results.values() 
+    total_generation_design = sum([data["qext_kW_design"] for pump_type in design_results.values()
                                    for data in pump_type.values()])
     design_losses_kW = total_generation_design - total_building_demand_design
     design_loss_factor = design_losses_kW / total_building_demand_design if total_building_demand_design > 0 else 0
