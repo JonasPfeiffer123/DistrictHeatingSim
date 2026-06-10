@@ -62,29 +62,11 @@ def print_net_results(net):
         print(f"Results Circ Pump Mass: {net.res_circ_pump_mass}")
 
 if __name__ == "__main__":
-    from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
-    import tempfile
-    
-    # File paths - Load unified format
-    unified_path = "examples/data/Wärmenetz/Variante 2/Wärmenetz.geojson"
-    
-    # Extract layers from unified format
-    unified_geojson = NetworkGeoJSONSchema.import_from_file(unified_path)
-    vorlauf_gdf, ruecklauf_gdf, hast_gdf, erzeuger_gdf = NetworkGeoJSONSchema.split_to_legacy_format(unified_geojson)
-    
-    # Save to temporary files for compatibility
-    temp_dir = tempfile.mkdtemp()
-    vorlauf_path = os.path.join(temp_dir, "vorlauf.geojson")
-    ruecklauf_path = os.path.join(temp_dir, "ruecklauf.geojson")
-    hast_path = os.path.join(temp_dir, "hast.geojson")
-    erzeugeranlagen_path = os.path.join(temp_dir, "erzeuger.geojson")
-    
-    vorlauf_gdf.to_file(vorlauf_path, driver="GeoJSON")
-    ruecklauf_gdf.to_file(ruecklauf_path, driver="GeoJSON")
-    hast_gdf.to_file(hast_path, driver="GeoJSON")
-    erzeuger_gdf.to_file(erzeugeranlagen_path, driver="GeoJSON")
+    # File paths - the unified GeoJSON is read directly by initialize_geojson
+    # (no split into separate flow/return/consumer/producer files needed).
+    unified_path = "examples/data/osmnx_steiner_output/Wärmenetz.geojson"
     json_path = "examples/data/Gebäude Lastgang.json"
-    
+
     # Optional external data files
     TRY_filename = "examples/data/TRY/TRY_511676144222/TRY2015_511676144222_Jahr.dat"
     COP_filename = "examples/data/COP/Kennlinien WP.csv"
@@ -120,11 +102,10 @@ if __name__ == "__main__":
     
     # Producer configuration
     main_producer_location_index = 0  # index of the main producer location
-    #secondary_producers = []  # list of secondary producers, can be empty or contain multiple producers
-    secondary_producers = [
-        SecondaryProducer(index=1, load_percentage=5.0)  # secondary producer with 5% load
-    ]
-    
+    # This data set has a single producer; add SecondaryProducer(index=…) entries here
+    # only if the GeoJSON actually contains additional heat-producer locations.
+    secondary_producers = []
+
     # Import type
     import_type = "geoJSON"  # currently only geoJSON
 
@@ -132,10 +113,7 @@ if __name__ == "__main__":
     network_data = NetworkGenerationData(
         # Required input data paths
         import_type=import_type,
-        flow_line_path=vorlauf_path,
-        return_line_path=ruecklauf_path,
-        heat_consumer_path=hast_path,
-        heat_generator_path=erzeugeranlagen_path,
+        network_geojson_path=unified_path,
         heat_demand_json_path=json_path,
         
         # Network configuration data
