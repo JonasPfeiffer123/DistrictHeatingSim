@@ -11,6 +11,7 @@ isolation with synthetic result dicts — no pandapipes network needed.
 import numpy as np
 import pytest
 
+from districtheatingsim.net_simulation_pandapipes.pipe_std_types import resolve_pipe_u_w_per_m2k
 from districtheatingsim.net_simulation_pandapipes.result_validation import (
     validate_design_state,
     validate_simulation_results,
@@ -83,3 +84,32 @@ class TestValidateDesignState:
     def test_context_in_message(self):
         with pytest.raises(RuntimeError, match="init-run"):
             validate_design_state(_design_state(qext=np.inf), context="init-run")
+
+
+class TestResolvePipeU:
+    """pandapipes >=0.14 ISOPLUS pipes carry u_w_per_mk (per length); the legacy
+    KMR types stored u_w_per_m2k (per area). The resolver handles both."""
+
+    def test_legacy_per_area_returned_as_is(self):
+        props = {"u_w_per_m2k": 0.4, "u_w_per_mk": np.nan, "outer_diameter_mm": 250.0}
+        assert resolve_pipe_u_w_per_m2k(props) == 0.4
+
+    def test_isoplus_per_length_converted_via_outer_surface(self):
+        # ISOPLUS_DRE100_2x: u_w_per_mk=0.1905, outer=114.3 mm.
+        # pandapipes assigns u_w_per_m2k = 0.1905 / (pi * 0.1143) = 0.5305.
+        props = {"u_w_per_m2k": np.nan, "u_w_per_mk": 0.1905, "outer_diameter_mm": 114.3}
+        assert resolve_pipe_u_w_per_m2k(props) == pytest.approx(0.5305, abs=1e-4)
+
+    def test_per_area_preferred_when_both_present(self):
+        props = {"u_w_per_m2k": 0.3, "u_w_per_mk": 0.1905, "outer_diameter_mm": 114.3}
+        assert resolve_pipe_u_w_per_m2k(props) == 0.3
+
+    def test_raises_when_neither_available(self):
+        props = {"u_w_per_m2k": np.nan, "u_w_per_mk": np.nan, "outer_diameter_mm": 114.3}
+        with pytest.raises(ValueError):
+            resolve_pipe_u_w_per_m2k(props)
+
+    def test_works_with_pandas_series(self):
+        import pandas as pd
+        s = pd.Series({"u_w_per_m2k": np.nan, "u_w_per_mk": 0.1905, "outer_diameter_mm": 114.3})
+        assert resolve_pipe_u_w_per_m2k(s) == pytest.approx(0.5305, abs=1e-4)

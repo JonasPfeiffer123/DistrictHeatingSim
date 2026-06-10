@@ -21,6 +21,7 @@ from shapely.geometry import LineString
 
 from districtheatingsim.constants import KELVIN_OFFSET
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
+from districtheatingsim.net_simulation_pandapipes.pipe_std_types import resolve_pipe_u_w_per_m2k
 from districtheatingsim.net_simulation_pandapipes.controllers import (
     BadPointPressureLiftController,
     MinimumSupplyTemperatureController,
@@ -366,7 +367,7 @@ def optimize_diameter_parameters(net, element: str = "pipe", v_max: float = 2.0,
     logging.info(f"Diameter optimization completed in {iteration_count} iterations")
     return net
 
-def init_diameter_types(net, v_max_pipe: float = 1.0, material_filter: str = "KMR", 
+def init_diameter_types(net, v_max_pipe: float = 1.0, material_filter: str = "P235GH/PUR/PEHD", 
                        k: float = 0.1) -> pp.pandapipesNet:
     """
     Initialize pipe diameters using standard pipe types based on velocity requirements.
@@ -429,7 +430,7 @@ def init_diameter_types(net, v_max_pipe: float = 1.0, material_filter: str = "KM
         
         net.pipe.std_type.at[pipe_idx] = closest_type
         net.pipe.at[pipe_idx, 'diameter_m'] = selected_diameter
-        net.pipe.at[pipe_idx, 'u_w_per_m2k'] = properties['u_w_per_m2k']
+        net.pipe.at[pipe_idx, 'u_w_per_m2k'] = resolve_pipe_u_w_per_m2k(properties)
         net.pipe.at[pipe_idx, 'k_mm'] = k
 
     # Final hydraulic calculation with updated pipe properties
@@ -451,7 +452,7 @@ def init_diameter_types(net, v_max_pipe: float = 1.0, material_filter: str = "KM
 
     return net
 
-def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "KMR", 
+def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "P235GH/PUR/PEHD", 
                            k: float = 0.1) -> pp.pandapipesNet:
     """
     Optimize pipe diameters using discrete standard pipe types through iterative adjustment.
@@ -530,7 +531,7 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "KMR
                 
                 net.pipe.std_type.at[pipe_idx] = new_type
                 net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
-                net.pipe.at[pipe_idx, 'u_w_per_m2k'] = properties['u_w_per_m2k']
+                net.pipe.at[pipe_idx, 'u_w_per_m2k'] = resolve_pipe_u_w_per_m2k(properties)
                 net.pipe.at[pipe_idx, 'k_mm'] = k
                 
                 change_made = True
@@ -545,7 +546,7 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "KMR
                 # Temporarily apply smaller diameter
                 net.pipe.std_type.at[pipe_idx] = new_type
                 net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
-                net.pipe.at[pipe_idx, 'u_w_per_m2k'] = properties['u_w_per_m2k']
+                net.pipe.at[pipe_idx, 'u_w_per_m2k'] = resolve_pipe_u_w_per_m2k(properties)
                 net.pipe.at[pipe_idx, 'k_mm'] = k
 
                 # Validate downsizing doesn't violate constraints
@@ -566,7 +567,7 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "KMR
                     properties = filtered_by_material.loc[current_type]
                     net.pipe.std_type.at[pipe_idx] = current_type
                     net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
-                    net.pipe.at[pipe_idx, 'u_w_per_m2k'] = properties['u_w_per_m2k']
+                    net.pipe.at[pipe_idx, 'u_w_per_m2k'] = resolve_pipe_u_w_per_m2k(properties)
                     net.pipe.at[pipe_idx, 'k_mm'] = k
                     
                     net.pipe.at[pipe_idx, 'optimized'] = True

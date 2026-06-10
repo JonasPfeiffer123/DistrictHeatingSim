@@ -23,7 +23,7 @@ dependencies = [
     "PyQt6",
     "PyQt6-WebEngine",
     "matplotlib",
-    "pandapipes==0.13.0",
+    "pandapipes==0.14.0",
     "pyslpheat @ git+https://github.com/JonasPfeiffer123/pyslpheat.git",
     "thermal-energy-storage-1d @ git+https://github.com/JonasPfeiffer123/thermal-energy-storage-1d.git",
     "geopandas",

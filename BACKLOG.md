@@ -214,6 +214,22 @@ descriptive User-Agent, and `download_data` targets the HTTPS endpoint
 (`OVERPASS_ENDPOINT`). Verified live (canonical endpoint returns features again);
 config pinned by `tests/test_osm_import.py`. Only raw-urllib (overpy) traffic is
 affected by the global opener — geopy/osmnx use their own HTTP stacks.
+### C11. pandapipes 0.13 → 0.14 migration (in progress 2026-06)
+The repo's pipe types (`KMR 100/250-2v`, `material="KMR"`) only exist on pandapipes
+**0.14**, where they are anchored as ISOPLUS bonded-steel pipes (`ISOPLUS_DRE…`); on
+0.13 those std-types are absent (the code was already broken for them). **Done:**
+pin bumped to `0.14.0`; `KMR 100/250-2v` → `ISOPLUS_DRE100_2x` and `material="KMR"` →
+`"P235GH/PUR/PEHD"` across `dialog_config.json`, the diameter helpers and the examples.
+0.14 stores the ISOPLUS heat loss as `u_w_per_mk` [W/m·K] (per length) and leaves the
+legacy `u_w_per_m2k` empty, so `net_simulation_pandapipes/pipe_std_types.py::resolve_pipe_u_w_per_m2k`
+returns the per-area value when present else converts via the outer surface
+(`u/(π·d_outer)`, matching pandapipes); applied at all 6 read sites; unit-tested in
+`tests/test_net_simulation.py`. Full suite green on 0.14 (**185 passed**). **Still
+open:** the simulation path is not yet fully 0.14-ready — `utilities.py` reads the
+pipe `diameter_m` column (12×) which std-type pipes no longer have in 0.14
+(`KeyError: 'diameter_m'`, use `inner_diameter_mm`), plus the changed circ-pump
+behaviour; `examples/06–08` don't run end-to-end yet. Best finished iteratively with
+the network test seam (which the runnable examples would provide).
 
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)

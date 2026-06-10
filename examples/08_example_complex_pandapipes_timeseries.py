@@ -112,7 +112,7 @@ if __name__ == "__main__":
     building_temperature_checked = False  # flag indicating if building temperatures are considered
     
     # Pipe parameters
-    pipetype = "KMR 100/250-2v"  # type of pipe
+    pipetype = "ISOPLUS_DRE100_2x"  # type of pipe
     diameter_optimization_pipe_checked = True  # flag indicating if diameter optimization is checked
     max_velocity_pipe = 2.0  # m/s - maximum flow velocity in the pipes
     material_filter_pipe = "KMR"  # material filter for pipes

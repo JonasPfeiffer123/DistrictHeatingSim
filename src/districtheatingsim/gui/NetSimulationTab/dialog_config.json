@@ -12,7 +12,7 @@
       "min_supply_temp_building": 60,
       "return_temp": 50,
       "dT_RL": 5,
-      "default_pipe_type": "KMR 100/250-2v"
+      "default_pipe_type": "ISOPLUS_DRE100_2x"
     },
     "kaltes Netz": {
       "max_supply_temp": 10,
@@ -24,7 +24,7 @@
       "min_supply_temp_building": 30,
       "return_temp": 20,
       "dT_RL": 5,
-      "default_pipe_type": "KMR 100/250-2v"
+      "default_pipe_type": "ISOPLUS_DRE100_2x"
     }
   },
   "diameter_optimization": {
