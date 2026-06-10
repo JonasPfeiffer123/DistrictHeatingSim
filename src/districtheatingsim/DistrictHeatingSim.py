@@ -27,7 +27,6 @@ Architecture:
     supports Windows taskbar integration when available.
 """
 
-import os
 import sys
 import warnings
 

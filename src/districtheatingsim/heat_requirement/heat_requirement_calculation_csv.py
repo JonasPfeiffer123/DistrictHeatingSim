@@ -7,7 +7,6 @@ of building portfolios with temperature curves for district heating design.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-from typing import Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd

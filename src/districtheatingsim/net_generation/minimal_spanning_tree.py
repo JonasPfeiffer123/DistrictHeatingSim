@@ -8,7 +8,6 @@ road alignment adjustment while maintaining connectivity.
 """
 
 from collections import defaultdict
-from typing import Any, Dict, Optional, Set, Tuple
 
 import geopandas as gpd
 import networkx as nx

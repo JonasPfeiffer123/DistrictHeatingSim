@@ -7,7 +7,7 @@ Electric heating system modeling with storage integration and control strategies
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 

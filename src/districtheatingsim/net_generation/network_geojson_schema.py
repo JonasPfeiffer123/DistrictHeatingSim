@@ -6,12 +6,11 @@ Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 
 import json
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import geopandas as gpd
-import numpy as np
 import pandas as pd
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString
 
 from districtheatingsim.utilities.crs_utils import DEFAULT_CRS, crs_to_urn, epsg_from_urn
 

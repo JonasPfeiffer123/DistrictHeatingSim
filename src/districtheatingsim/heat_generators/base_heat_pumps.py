@@ -7,9 +7,8 @@ Base classes for heat pump modeling with COP calculations and economic analysis.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any
 
-import CoolProp.CoolProp as CP
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 

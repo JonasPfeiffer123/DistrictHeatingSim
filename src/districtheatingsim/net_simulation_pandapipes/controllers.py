@@ -17,7 +17,6 @@ bad point pressure control, minimum temperature enforcement, and multi-producer 
 in district heating systems.
 """
 
-from typing import List, Optional, Tuple, Union
 
 import numpy as np
 from pandapower.control.basic_controller import BasicCtrl

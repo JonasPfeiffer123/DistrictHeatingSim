@@ -8,8 +8,7 @@ Solar radiation calculations for tilted collectors using Test Reference Year dat
 """
 
 # Import libraries
-from datetime import UTC, datetime, timezone
-from typing import Dict, Optional, Tuple, Union
+from datetime import UTC, datetime
 
 import numpy as np
 

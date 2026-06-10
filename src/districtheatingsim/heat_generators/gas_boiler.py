@@ -7,7 +7,6 @@ Gas-fired boiler system with economic analysis and environmental assessment.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 

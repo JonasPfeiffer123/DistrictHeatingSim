@@ -18,13 +18,9 @@ Features:
 - Drop-in Ersatz für config_plot
 """
 
-from typing import Dict, List, Optional
 
 import matplotlib.pyplot as plt
-import numpy as np
-import pandapipes as pp
 import pandapipes.plotting as pp_plot
-import pandas as pd
 
 from districtheatingsim.constants import KELVIN_OFFSET
 

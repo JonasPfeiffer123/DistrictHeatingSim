@@ -71,7 +71,6 @@ Cost Categories:
     Additional system-specific costs not covered by other categories
 """
 
-from typing import Union
 
 
 def annuity(

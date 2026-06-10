@@ -17,7 +17,7 @@ to public presentations. It integrates seamlessly with matplotlib and geographic
 libraries for enhanced spatial context.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import contextily as cx
 import geopandas as gpd

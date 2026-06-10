@@ -7,7 +7,7 @@ Geothermal heat pump modeling with borehole field design and drilling cost analy
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 

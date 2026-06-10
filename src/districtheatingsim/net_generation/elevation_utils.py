@@ -11,7 +11,6 @@ can use them as ``height_m`` on network junctions.
 """
 
 import logging
-from typing import Dict, List, Optional, Tuple
 
 import geopandas as gpd
 import numpy as np

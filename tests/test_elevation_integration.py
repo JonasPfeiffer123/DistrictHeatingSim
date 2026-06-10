@@ -11,8 +11,6 @@ Covers:
 - Regression: flat network (all height_m=0) behaves identically to baseline
 """
 
-import math
-from unittest.mock import patch
 
 import geopandas as gpd
 import pandapipes as pp

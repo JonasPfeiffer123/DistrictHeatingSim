@@ -10,11 +10,10 @@ import os
 import time
 import traceback
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import geopandas as gpd
 import networkx as nx
-import numpy as np
 import osmnx as ox
 import pandas as pd
 from shapely.geometry import LineString, Point
