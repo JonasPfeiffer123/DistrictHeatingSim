@@ -43,9 +43,25 @@ tests. This is the safety net that makes every refactor below low-risk.
     convention, reset.
   - `conftest.py` extended: `matplotlib.use('Agg')`, `time_steps`, `try_data_stub`,
     `cop_data_stub` fixtures. Suite now **68 passed** locally (Py 3.11, Windows).
+- **Landed 2026-06 (ruff sweep):** ran ruff over the lint-scoped tree (src minus
+  gui, + tests) for the first time — **694 → 48 findings**, all behaviour-preserving
+  and test-verified (168 passed after each batch). Applied: PEP 585/604 type hints
+  (UP006/UP045/UP007), import sorting (I001), empty f-strings (F541), unused-import
+  removal (F401, +explicit `__all__` on `heat_generators/__init__.py`), comparison
+  fixes (E711/E712), `zip(strict=False)` (B905). `energy_system.py` hand-cleaned
+  (mutable-default args, removed `import *`, closure binding, `raise … from e`) — the
+  whole **tested** domain core is now lint-clean.
 - **Still open:**
-  - Widen `ruff` coverage into `src/` module-by-module, then flip lint to gating
-    and add `ruff format --check` over the whole tree.
+  - The remaining **48 findings are all in untested modules** (`net_simulation_pandapipes`,
+    `net_generation`, `heat_requirement`, `photovoltaics`, `DistrictHeatingSim.py`,
+    `utilities`): E402 (13, mostly intentional imports-after-setup), B007 (11), F841
+    (11), B904 (8), E722 (4), E741 (1). Deliberately **not** fixed blind — clear them
+    alongside a test seam for those layers, then flip lint to **gating**.
+  - Widen `ruff` into `src/districtheatingsim/gui` (currently excluded) — hundreds of
+    findings expected in the least-tested code; do module-by-module with smoke tests.
+  - Decide on `ruff format` (not yet applied — would reformat the whole tree).
+  - `ruff` is installed in the dev env now; the CI `ruff` step is still unverified on
+    GitHub.
 
 ## B. Architecture & maintainability
 ### B1. God-objects in the GUI  ← in progress
@@ -262,8 +278,20 @@ Same root cause as B4.
 ---
 
 ## Suggested order
-1. **A1 — Tests & CI** (the bracket that de-risks everything below).
-2. **D3 — central constants** (cheap, kills a whole bug class).
-3. **C4 / C5** (result-record refactor + economics hardening) — low-risk once A1 exists.
-4. **B1** (break up the dialog god-object; biggest LOC win).
-5. The rest (B2/B3, C1–C3, D1/D2, E1) as capacity allows.
+**Done 2026-06:** A1 (test suite + CI + ruff sweep of the tested tree), B1
+(`_04_technology_dialogs` + `osm_dialogs`), C4–C10, D1, D2, D3. The domain core is
+now well-tested and lint-clean; the easy low-risk wins there are harvested.
+
+**What's left clusters into untested territory — pick by appetite:**
+1. **Test seam for `net_simulation_pandapipes`** (small pandapipes network fixture +
+   characterization test). Unlocks C1/C2/C3 *and* the ruff long-tail (48 findings) at
+   low risk — the highest-leverage enabler.
+2. **C2 — solver error handling** (run_timeseries try/except + NaN/inf/convergence
+   checks). Real robustness; needs (1) or careful manual verification.
+3. **B1 remainder** — `main_view.py`, `interactive_network_plot.py` (also B3); big LOC
+   win but untested GUI god-objects.
+4. **C1 — threading** audit (worker threads mutate shared state; inconsistent error
+   signatures). Subtle; wants a seam too.
+5. Quick wins: refresh hardcoded "Variante 1" (D1 leftover), E1 (`.gitignore` casing).
+6. Larger/optional: B2 (MVP violations), B4/E2 (DE/EN naming), D4 (serialization
+   versioning strategy), widen ruff into `gui/` + flip lint to gating.
