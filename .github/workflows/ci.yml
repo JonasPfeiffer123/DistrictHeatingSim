@@ -25,6 +25,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # PyQt6 needs these shared libraries even to *import* (e.g. libEGL.so.1),
+      # before any offscreen rendering. The domain-core tests pull in PyQt6
+      # transitively (energy_system imports CustomJSONEncoder from the gui package),
+      # so every test module needs them.
+      - name: Install system libraries for headless Qt
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 libgl1 libxkbcommon0 libdbus-1-3 libglib2.0-0
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
