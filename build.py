@@ -4,8 +4,9 @@ Release build script for DistrictHeatingSim (no console window).
 """
 import subprocess
 import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
 
 def build_release():
     """Build DistrictHeatingSim for release without console window."""
@@ -18,7 +19,7 @@ def build_release():
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     log_file = log_dir / f'pyinstaller_release_{timestamp}.log'
     
-    print(f"Starting PyInstaller RELEASE build...")
+    print("Starting PyInstaller RELEASE build...")
     print(f"Log file: {log_file}")
     
     # PyInstaller command for release (no console)
@@ -55,14 +56,14 @@ def build_release():
             f.write(f"Return code: {process.returncode}\n")
         
         if process.returncode == 0:
-            print(f"\n✓ Release build successful!")
-            print(f"Output directory: dist/DistrictHeatingSim/")
-            print(f"Executable: dist/DistrictHeatingSim/DistrictHeatingSim.exe")
-            print(f"\nUser-accessible folders:")
-            print(f"  - dist/DistrictHeatingSim/data/")
-            print(f"  - dist/DistrictHeatingSim/project_data/")
-            print(f"  - dist/DistrictHeatingSim/images/")
-            print(f"  - dist/DistrictHeatingSim/leaflet/")
+            print("\n✓ Release build successful!")
+            print("Output directory: dist/DistrictHeatingSim/")
+            print("Executable: dist/DistrictHeatingSim/DistrictHeatingSim.exe")
+            print("\nUser-accessible folders:")
+            print("  - dist/DistrictHeatingSim/data/")
+            print("  - dist/DistrictHeatingSim/project_data/")
+            print("  - dist/DistrictHeatingSim/images/")
+            print("  - dist/DistrictHeatingSim/leaflet/")
             
             # Post-build cleanup
             print("\nCleaning up device-specific files...")

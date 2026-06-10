@@ -5,18 +5,19 @@ Steiner Tree optimization, and edge-splitting algorithms for optimal street-base
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import pandas as pd
-import geopandas as gpd
-import numpy as np
-import osmnx as ox
-import networkx as nx
-from shapely.geometry import Point, LineString
-from collections import defaultdict
-from typing import List, Tuple, Dict, Optional, Any
+import logging
 import os
 import time
-import logging
 import traceback
+from collections import defaultdict
+from typing import Any, Dict, List, Optional, Tuple
+
+import geopandas as gpd
+import networkx as nx
+import numpy as np
+import osmnx as ox
+import pandas as pd
+from shapely.geometry import LineString, Point
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -28,11 +29,11 @@ ox.settings.log_console = False
 
 def download_street_graph(
     buildings: gpd.GeoDataFrame,
-    generator_coords: List[Tuple[float, float]],
+    generator_coords: list[tuple[float, float]],
     buffer_meters: float = 500.0,
     network_type: str = 'drive_service',
     target_crs: str = 'EPSG:25833',
-    custom_filter: Optional[str] = None
+    custom_filter: str | None = None
 ) -> nx.MultiDiGraph:
     """
     Download street network from OpenStreetMap for given building area.
@@ -159,7 +160,7 @@ def connect_terminals_with_edge_splitting(
     street_graph: nx.MultiDiGraph,
     terminal_points: gpd.GeoDataFrame,
     node_threshold: float = 0.1
-) -> Tuple[List[Dict[str, Any]], Dict[Tuple, List[Dict[str, Any]]]]:
+) -> tuple[list[dict[str, Any]], dict[tuple, list[dict[str, Any]]]]:
     """
     Connect terminal points to Steiner Tree using edge-splitting algorithm.
     
@@ -261,7 +262,7 @@ def connect_terminals_with_edge_splitting(
 def build_network_from_split_edges(
     steiner_tree: nx.Graph,
     street_graph: nx.MultiDiGraph,
-    edges_to_split: Dict[Tuple, List[Dict[str, Any]]],
+    edges_to_split: dict[tuple, list[dict[str, Any]]],
     crs: str = 'EPSG:25833'
 ) -> gpd.GeoDataFrame:
     """
@@ -394,7 +395,7 @@ def remove_dead_ends(
 
 
 def create_connection_lines(
-    connection_info: List[Dict[str, Any]],
+    connection_info: list[dict[str, Any]],
     crs: str = 'EPSG:25833'
 ) -> gpd.GeoDataFrame:
     """
@@ -517,7 +518,7 @@ def create_hast_connections(
 
 
 def create_generator_connection(
-    generator_coords: Tuple[float, float],
+    generator_coords: tuple[float, float],
     offset_x: float = 1.0,
     offset_y: float = 0.0,
     crs: str = 'EPSG:25833'
@@ -555,19 +556,19 @@ def create_generator_connection(
 
 def generate_osmnx_network(
     buildings: gpd.GeoDataFrame,
-    generator_coords: List[Tuple[float, float]],
+    generator_coords: list[tuple[float, float]],
     output_dir: str,
     return_offset: float = 1.0,
     buffer_meters: float = 500.0,
     network_type: str = 'drive_service',
-    custom_filter: Optional[str] = None,
+    custom_filter: str | None = None,
     node_threshold: float = 0.1,
     remove_dead_ends_flag: bool = True,
     max_dead_end_iterations: int = 10,
     include_building_data: bool = True,
     export_geojson: bool = True,
     target_crs: str = 'EPSG:25833'
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Generate complete district heating network using OSMnx and Steiner Tree.
     
@@ -801,14 +802,14 @@ def generate_osmnx_network(
 def generate_and_export_osmnx_layers(
     osm_street_layer_geojson_file_name: str,
     data_csv_file_name: str,
-    coordinates: List[Tuple[float, float]],
+    coordinates: list[tuple[float, float]],
     base_path: str,
     algorithm: str = "OSMnx",
     offset_angle: float = 0,
     offset_distance: float = 0.5,
     buffer_meters: float = 500.0,
     network_type: str = 'drive_service',
-    custom_filter: Optional[str] = None,
+    custom_filter: str | None = None,
     node_threshold: float = 0.1,
     remove_dead_ends_flag: bool = True,
     target_crs: str = 'EPSG:25833'
@@ -890,7 +891,7 @@ def generate_and_export_osmnx_layers(
         return_offset_x = offset_distance
         return_offset_y = 0.0
         
-        logger.info(f"Network parameters:")
+        logger.info("Network parameters:")
         logger.info(f"  - Buffer: {buffer_meters}m")
         logger.info(f"  - Network type: {network_type if not custom_filter else 'Custom filter'}")
         logger.info(f"  - Return offset: ({return_offset_x}, {return_offset_y})m")

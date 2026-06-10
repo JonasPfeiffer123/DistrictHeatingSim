@@ -18,8 +18,10 @@ with automatic calculation of key performance indicators.
 """
 
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Any, Union
+from typing import Any, Dict, List, Optional, Union
+
 import numpy as np
+
 
 @dataclass
 class SecondaryProducer:
@@ -39,7 +41,7 @@ class SecondaryProducer:
     """
     index: int
     load_percentage: float
-    mass_flow: Optional[float] = None
+    mass_flow: float | None = None
 
     # could be extended with additional parameters as needed
 
@@ -129,53 +131,53 @@ class NetworkGenerationData:
 
     # Producer configuration
     main_producer_location_index: int
-    secondary_producers: List[SecondaryProducer]
+    secondary_producers: list[SecondaryProducer]
     
     # External data file paths
-    COP_filename: Optional[str] = None
-    TRY_filename: Optional[str] = None
+    COP_filename: str | None = None
+    TRY_filename: str | None = None
 
     # Building and temperature data (processed from JSON)
-    supply_temperature_buildings: Optional[np.ndarray] = None
-    return_temperature_buildings: Optional[np.ndarray] = None
-    supply_temperature_building_curve: Optional[np.ndarray] = None
-    return_temperature_building_curve: Optional[np.ndarray] = None
-    yearly_time_steps: Optional[np.ndarray] = None
-    waerme_gebaeude_ges_W: Optional[np.ndarray] = None
-    heizwaerme_gebaeude_ges_W: Optional[np.ndarray] = None
-    ww_waerme_gebaeude_ges_W: Optional[np.ndarray] = None
-    max_waerme_gebaeude_ges_W: Optional[np.ndarray] = None
+    supply_temperature_buildings: np.ndarray | None = None
+    return_temperature_buildings: np.ndarray | None = None
+    supply_temperature_building_curve: np.ndarray | None = None
+    return_temperature_building_curve: np.ndarray | None = None
+    yearly_time_steps: np.ndarray | None = None
+    waerme_gebaeude_ges_W: np.ndarray | None = None
+    heizwaerme_gebaeude_ges_W: np.ndarray | None = None
+    ww_waerme_gebaeude_ges_W: np.ndarray | None = None
+    max_waerme_gebaeude_ges_W: np.ndarray | None = None
     
     # Heat consumer data (network side)
-    return_temperature_heat_consumer: Optional[np.ndarray] = None
-    min_supply_temperature_heat_consumer: Optional[np.ndarray] = None
-    waerme_hast_ges_W: Optional[np.ndarray] = None
-    max_waerme_hast_ges_W: Optional[np.ndarray] = None
-    strombedarf_hast_ges_W: Optional[np.ndarray] = None
-    max_el_leistung_hast_ges_W: Optional[np.ndarray] = None
+    return_temperature_heat_consumer: np.ndarray | None = None
+    min_supply_temperature_heat_consumer: np.ndarray | None = None
+    waerme_hast_ges_W: np.ndarray | None = None
+    max_waerme_hast_ges_W: np.ndarray | None = None
+    strombedarf_hast_ges_W: np.ndarray | None = None
+    max_el_leistung_hast_ges_W: np.ndarray | None = None
 
     # Aggregated system data
-    waerme_hast_ges_kW: Optional[np.ndarray] = None
-    strombedarf_hast_ges_kW: Optional[np.ndarray] = None
-    waerme_ges_kW: Optional[np.ndarray] = None
-    strombedarf_ges_kW: Optional[np.ndarray] = None
+    waerme_hast_ges_kW: np.ndarray | None = None
+    strombedarf_hast_ges_kW: np.ndarray | None = None
+    waerme_ges_kW: np.ndarray | None = None
+    strombedarf_ges_kW: np.ndarray | None = None
 
     # Network object and simulation parameters
-    net: Optional[Any] = None
-    start_time_step: Optional[int] = None
-    end_time_step: Optional[int] = None
-    results_csv_filename: Optional[str] = None
+    net: Any | None = None
+    start_time_step: int | None = None
+    end_time_step: int | None = None
+    results_csv_filename: str | None = None
 
     # Simulation results
-    supply_temperature_heat_generator: Optional[Union[float, np.ndarray]] = None
-    net_results: Optional[Dict[str, Any]] = None
-    pump_results: Optional[Dict[str, Any]] = None
-    plot_data: Optional[Dict[str, Any]] = None
+    supply_temperature_heat_generator: float | np.ndarray | None = None
+    net_results: dict[str, Any] | None = None
+    pump_results: dict[str, Any] | None = None
+    plot_data: dict[str, Any] | None = None
     
     # KPI results
-    kpi_results: Optional[Dict[str, Union[int, float, None]]] = None
+    kpi_results: dict[str, int | float | None] | None = None
 
-    def calculate_results(self) -> Dict[str, Union[int, float, None]]:
+    def calculate_results(self) -> dict[str, int | float | None]:
         """
         Calculate network KPIs including heat density, losses, and pump consumption.
         
@@ -378,7 +380,7 @@ class NetworkGenerationData:
                         "time": time_series
                     }
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize network data including KPIs for saving.
         
@@ -392,7 +394,7 @@ class NetworkGenerationData:
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'NetworkGenerationData':
+    def from_dict(cls, data: dict[str, Any]) -> 'NetworkGenerationData':
         """
         Deserialize network data from saved dictionary.
         

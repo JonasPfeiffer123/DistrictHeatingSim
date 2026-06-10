@@ -17,20 +17,26 @@ It automatically processes building heat demands, calculates temperature require
 creates appropriate network topologies with proper controller configurations.
 """
 
+import json
 import logging
 import warnings
-import numpy as np
-import geopandas as gpd
-import pandapipes as pp
-import json
-import pandas as pd
-from typing import Dict, List, Tuple, Union, Any
+from typing import Any, Dict, List, Tuple, Union
 
+import geopandas as gpd
+import numpy as np
+import pandapipes as pp
+import pandas as pd
 from pandapipes.control.run_control import run_control
 
-from districtheatingsim.net_simulation_pandapipes.utilities import create_controllers, correct_flow_directions, COP_WP, init_diameter_types
+from districtheatingsim.constants import CP_WATER_KJ_KGK, KELVIN_OFFSET
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
-from districtheatingsim.constants import KELVIN_OFFSET, CP_WATER_KJ_KGK
+from districtheatingsim.net_simulation_pandapipes.utilities import (
+    COP_WP,
+    correct_flow_directions,
+    create_controllers,
+    init_diameter_types,
+)
+
 
 def initialize_geojson(NetworkGenerationData) -> Any:
     """
@@ -71,7 +77,7 @@ def initialize_geojson(NetworkGenerationData) -> Any:
     print(f"Max supply temperature heat generator: {NetworkGenerationData.max_supply_temperature_heat_generator} °C")
     
     # Load and process heat demand data
-    with open(NetworkGenerationData.heat_demand_json_path, 'r', encoding='utf-8') as f:
+    with open(NetworkGenerationData.heat_demand_json_path, encoding='utf-8') as f:
         loaded_data = json.load(f)
         results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and 'wärme' in v}
         heat_demand_df = pd.DataFrame.from_dict({k: v for k, v in loaded_data.items() if k.isdigit()}, orient='index')
@@ -229,7 +235,7 @@ def initialize_geojson(NetworkGenerationData) -> Any:
 
     return NetworkGenerationData
     
-def get_line_coords_and_lengths(gdf: gpd.GeoDataFrame) -> Tuple[List[List[Tuple]], List[float]]:
+def get_line_coords_and_lengths(gdf: gpd.GeoDataFrame) -> tuple[list[list[tuple]], list[float]]:
     """
     Extract 2-D coordinates and lengths from LineString geometries.
 
@@ -265,7 +271,7 @@ def get_line_coords_and_lengths(gdf: gpd.GeoDataFrame) -> Tuple[List[List[Tuple]
     return all_line_coords, all_line_lengths
 
 
-def build_elevation_lookup_from_gdf(gdf: gpd.GeoDataFrame) -> Dict[Tuple, float]:
+def build_elevation_lookup_from_gdf(gdf: gpd.GeoDataFrame) -> dict[tuple, float]:
     """
     Build a ``{(x, y): z_m}`` elevation lookup from a GeoDataFrame with 3-D geometries.
 
@@ -277,7 +283,7 @@ def build_elevation_lookup_from_gdf(gdf: gpd.GeoDataFrame) -> Dict[Tuple, float]
     :return: Mapping from 2-D coordinate tuple to elevation [m above sea level]
     :rtype: Dict[Tuple[float, float], float]
     """
-    lookup: Dict[Tuple, float] = {}
+    lookup: dict[tuple, float] = {}
     for geom in gdf.geometry:
         if geom is None:
             continue
@@ -291,7 +297,7 @@ def build_elevation_lookup_from_gdf(gdf: gpd.GeoDataFrame) -> Dict[Tuple, float]
     return lookup
 
 
-def get_all_point_coords_from_line_cords(all_line_coords: List[List[Tuple]]) -> List[Tuple]:
+def get_all_point_coords_from_line_cords(all_line_coords: list[list[tuple]]) -> list[tuple]:
     """
     Extract unique point coordinates for network junction creation.
 
@@ -308,8 +314,8 @@ def get_all_point_coords_from_line_cords(all_line_coords: List[List[Tuple]]) -> 
     unique_point_coords = list(set(point_coords))
     return unique_point_coords
 
-def create_network(gdf_dict: Dict[str, gpd.GeoDataFrame], consumer_dict: Dict[str, Any], 
-                  pipe_dict: Dict[str, Any], producer_dict: Dict[str, Any]) -> pp.pandapipesNet:
+def create_network(gdf_dict: dict[str, gpd.GeoDataFrame], consumer_dict: dict[str, Any], 
+                  pipe_dict: dict[str, Any], producer_dict: dict[str, Any]) -> pp.pandapipesNet:
     """
     Create complete pandapipes network with junctions, pipes, consumers, and producers.
     
@@ -347,8 +353,8 @@ def create_network(gdf_dict: Dict[str, gpd.GeoDataFrame], consumer_dict: Dict[st
     return_temperature_heat_consumer_k = return_temperature_heat_consumer + KELVIN_OFFSET
 
     def create_junctions_from_coords(net_i: pp.pandapipesNet,
-                                     all_coords: List[Tuple],
-                                     elevation_lookup: Dict[Tuple, float]) -> Dict[Tuple, int]:
+                                     all_coords: list[tuple],
+                                     elevation_lookup: dict[tuple, float]) -> dict[tuple, int]:
         """
         Create junctions in the network from coordinate points.
 
@@ -380,9 +386,9 @@ def create_network(gdf_dict: Dict[str, gpd.GeoDataFrame], consumer_dict: Dict[st
             junction_dict[coords] = junction_id
         return junction_dict
 
-    def create_pipes(net_i: pp.pandapipesNet, all_line_coords: List[List[Tuple]], 
-                    all_line_lengths: List[float], junction_dict: Dict[Tuple, int], 
-                    pipe_mode: str, pipe_type_or_diameter: Union[str, float], line_type: str) -> None:
+    def create_pipes(net_i: pp.pandapipesNet, all_line_coords: list[list[tuple]], 
+                    all_line_lengths: list[float], junction_dict: dict[tuple, int], 
+                    pipe_mode: str, pipe_type_or_diameter: str | float, line_type: str) -> None:
         """
         Create pipes in the network from line geometries.
 
@@ -415,8 +421,8 @@ def create_network(gdf_dict: Dict[str, gpd.GeoDataFrame], consumer_dict: Dict[st
                             std_type=pipe_type_or_diameter, length_km=length_m/1000, k_mm=k_mm, 
                             name=f"{line_type} {i}", geodata=coords, sections=5, text_k=283)
 
-    def create_heat_consumers(net_i: pp.pandapipesNet, all_coords: List[List[Tuple]], 
-                            junction_dict: Dict[Tuple, int], name_prefix: str) -> None:
+    def create_heat_consumers(net_i: pp.pandapipesNet, all_coords: list[list[tuple]], 
+                            junction_dict: dict[tuple, int], name_prefix: str) -> None:
         """Create heat consumers in the network."""
         for i, (coords, q, t) in enumerate(zip(all_coords, qext_w, return_temperature_heat_consumer_k)):
             pp.create_heat_consumer(net_i, from_junction=junction_dict[coords[0]], 
@@ -447,8 +453,8 @@ def create_network(gdf_dict: Dict[str, gpd.GeoDataFrame], consumer_dict: Dict[st
             merged = {**jd_vl, **jd_rl}
             return merged[coords[1]], merged[coords[0]]
 
-    def create_circulation_pump_pressure(net_i: pp.pandapipesNet, all_coords: List[List[Tuple]],
-                                        jd_vl: Dict[Tuple, int], jd_rl: Dict[Tuple, int],
+    def create_circulation_pump_pressure(net_i: pp.pandapipesNet, all_coords: list[list[tuple]],
+                                        jd_vl: dict[tuple, int], jd_rl: dict[tuple, int],
                                         name_prefix: str) -> None:
         """Create pressure-controlled circulation pumps with correct VL/RL junction assignment."""
         for i, coords in enumerate(all_coords, start=0):
@@ -459,10 +465,10 @@ def create_network(gdf_dict: Dict[str, gpd.GeoDataFrame], consumer_dict: Dict[st
                                                t_flow_k=supply_temperature_k, type="auto",
                                                name=f"{name_prefix} {i}")
 
-    def create_circulation_pump_mass_flow(net_i: pp.pandapipesNet, all_coords: List[List[Tuple]],
-                                         jd_vl: Dict[Tuple, int], jd_rl: Dict[Tuple, int],
-                                         name_prefix: str, mass_flows: List[float],
-                                         elevation_lookup: Dict[Tuple, float]) -> None:
+    def create_circulation_pump_mass_flow(net_i: pp.pandapipesNet, all_coords: list[list[tuple]],
+                                         jd_vl: dict[tuple, int], jd_rl: dict[tuple, int],
+                                         name_prefix: str, mass_flows: list[float],
+                                         elevation_lookup: dict[tuple, float]) -> None:
         """Create mass-flow-controlled circulation pumps with correct VL/RL junction assignment.
 
         The intermediate junction inserted between pump and flow-control element
@@ -489,7 +495,7 @@ def create_network(gdf_dict: Dict[str, gpd.GeoDataFrame], consumer_dict: Dict[st
     # Build elevation lookup from 3-D GeoJSON geometries (Z-coord = height above NN).
     # All four GDFs are merged so that every junction—whether on a network line,
     # building connection, or generator connection—receives a correct height_m.
-    elevation_lookup: Dict[Tuple, float] = {}
+    elevation_lookup: dict[tuple, float] = {}
     for gdf_src in (gdf_flow_line, gdf_return_line, gdf_heat_exchanger, gdf_heat_producer):
         elevation_lookup.update(build_elevation_lookup_from_gdf(gdf_src))
 

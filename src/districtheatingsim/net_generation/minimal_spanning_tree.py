@@ -7,13 +7,15 @@ road alignment adjustment while maintaining connectivity.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+from collections import defaultdict
+from typing import Any, Dict, Optional, Set, Tuple
+
 import geopandas as gpd
+import networkx as nx
+import numpy as np
 from shapely.geometry import LineString, Point
 from shapely.ops import nearest_points
-import networkx as nx
-from collections import defaultdict
-import numpy as np
-from typing import Tuple, Optional, Set, Dict, Any
+
 
 def generate_mst(points: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
@@ -77,8 +79,8 @@ def adjust_segments_to_roads(mst_gdf: gpd.GeoDataFrame,
     max_iterations = 50
 
     # Track segment adjustments and blacklist problematic segments
-    segment_change_counter: Dict[int, int] = {}
-    blacklist: Set[int] = set()
+    segment_change_counter: dict[int, int] = {}
+    blacklist: set[int] = set()
 
     def line_hash(line: LineString) -> int:
         """Create stable hash for line geometry based on rounded coordinates."""
@@ -90,7 +92,7 @@ def adjust_segments_to_roads(mst_gdf: gpd.GeoDataFrame,
         print(f"\n--- Road Alignment Iteration {iteration} ---")
         adjusted_lines = []
         changes_made = False
-        changed_this_iter: Set[int] = set()
+        changed_this_iter: set[int] = set()
 
         for idx, line in enumerate(mst_gdf.geometry):
             # Validate line geometry
@@ -114,7 +116,7 @@ def adjust_segments_to_roads(mst_gdf: gpd.GeoDataFrame,
                 # Avoid adjustments where projection point equals line endpoints
                 if (point_on_street.equals(Point(line.coords[0])) or 
                     point_on_street.equals(Point(line.coords[1]))):
-                    print(f"    Skipping adjustment: projected point is endpoint")
+                    print("    Skipping adjustment: projected point is endpoint")
                     adjusted_lines.append(line)
                     continue
 
@@ -142,7 +144,7 @@ def adjust_segments_to_roads(mst_gdf: gpd.GeoDataFrame,
                         
                         adjusted_lines.append(new_line)
                     else:
-                        print(f"    [!] Invalid new segment created")
+                        print("    [!] Invalid new segment created")
 
                 changes_made = True
                 changed_this_iter.add(seg_id)

@@ -15,10 +15,10 @@ absorb platform float noise.
 import numpy as np
 import pytest
 
-from districtheatingsim.heat_generators.gas_boiler import GasBoiler
-from districtheatingsim.heat_generators.power_to_heat import PowerToHeat
 from districtheatingsim.heat_generators.biomass_boiler import BiomassBoiler
 from districtheatingsim.heat_generators.chp import CHP
+from districtheatingsim.heat_generators.gas_boiler import GasBoiler
+from districtheatingsim.heat_generators.power_to_heat import PowerToHeat
 
 REL = 1e-5
 

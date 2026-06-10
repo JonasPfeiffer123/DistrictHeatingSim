@@ -7,10 +7,12 @@ Waste heat pump modeling with variable source temperatures and heat recovery.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+from typing import Any, Dict, Optional, Tuple, Union
+
 import numpy as np
-from typing import Dict, Any, Union, Tuple, Optional
 
 from districtheatingsim.heat_generators.base_heat_pumps import HeatPump
+
 
 class WasteHeatPump(HeatPump):
     """
@@ -63,7 +65,7 @@ class WasteHeatPump(HeatPump):
         self.opt_cooling_min = opt_cooling_min
         self.opt_cooling_max = opt_cooling_max
 
-    def calculate_heat_pump(self, VLT_L: np.ndarray, COP_data: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def calculate_heat_pump(self, VLT_L: np.ndarray, COP_data: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         Calculate heat pump performance for waste heat operation.
 
@@ -140,7 +142,7 @@ class WasteHeatPump(HeatPump):
             self.VLT_WP = np.zeros_like(Last_L, dtype=float)
             self.COP = np.zeros_like(Last_L, dtype=float)
 
-    def generate(self, t: int, **kwargs) -> Tuple[float, float]:
+    def generate(self, t: int, **kwargs) -> tuple[float, float]:
         """
         Generate heat at specific time step with waste heat constraints.
 
@@ -203,8 +205,8 @@ class WasteHeatPump(HeatPump):
         self.Betriebsstunden_pro_Start = (self.Betriebsstunden / self.Anzahl_Starts 
                                          if self.Anzahl_Starts > 0 else 0)
     
-    def calculate(self, economic_parameters: Dict[str, Any], duration: float, 
-                 load_profile: np.ndarray, **kwargs) -> Dict[str, Any]:
+    def calculate(self, economic_parameters: dict[str, Any], duration: float, 
+                 load_profile: np.ndarray, **kwargs) -> dict[str, Any]:
         """
         Comprehensive calculation of waste heat pump performance and economics.
 
@@ -285,7 +287,7 @@ class WasteHeatPump(HeatPump):
         except ValueError as e:
             print(f"Error setting parameters for {self.name}: {e}")
 
-    def add_optimization_parameters(self, idx: int) -> Tuple[list, list, list]:
+    def add_optimization_parameters(self, idx: int) -> tuple[list, list, list]:
         """
         Define optimization parameters for waste heat pump system.
 
@@ -316,7 +318,7 @@ class WasteHeatPump(HeatPump):
                 f"{self.spez_Investitionskosten_Abwärme} €/kW, spez. Investitionskosten Wärmepumpe: "
                 f"{self.spezifische_Investitionskosten_WP} €/kW")
     
-    def extract_tech_data(self) -> Tuple[str, str, str, str]:
+    def extract_tech_data(self) -> tuple[str, str, str, str]:
         """
         Extract technology data for reporting and analysis.
 

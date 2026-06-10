@@ -5,21 +5,21 @@ temperature control, and result processing.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+from typing import Any, Dict, List, Tuple, Union
+
+import numpy as np
+import pandas as pd
 from pandapipes.timeseries import run_time_series
 from pandapower.control.controller.const_control import ConstControl
-from pandapower.timeseries import OutputWriter
-from pandapower.timeseries import DFData
+from pandapower.timeseries import DFData, OutputWriter
 
-import pandas as pd
-import numpy as np
-from typing import List, Dict, Tuple, Union, Any
-
-from districtheatingsim.net_simulation_pandapipes.utilities import COP_WP
+from districtheatingsim.constants import CP_WATER_KJ_KGK, KELVIN_OFFSET
 from districtheatingsim.net_simulation_pandapipes.controllers import MinimumSupplyTemperatureController
+from districtheatingsim.net_simulation_pandapipes.utilities import COP_WP
 from districtheatingsim.utilities.test_reference_year import import_TRY
-from districtheatingsim.constants import KELVIN_OFFSET, CP_WATER_KJ_KGK
 
-def update_heat_consumer_qext_controller(net, qext_w_profiles: List[np.ndarray], 
+
+def update_heat_consumer_qext_controller(net, qext_w_profiles: list[np.ndarray], 
                                        time_steps: range, start: int, end: int) -> None:
     """
     Update external heat demand controllers with time-dependent profiles.
@@ -42,7 +42,7 @@ def update_heat_consumer_qext_controller(net, qext_w_profiles: List[np.ndarray],
             if isinstance(ctrl, ConstControl) and ctrl.element_index == i and ctrl.variable == 'qext_w':
                 ctrl.data_source = data_source
 
-def update_heat_consumer_temperature_controller(net, min_supply_temperature_heat_consumer: Union[np.ndarray, List], 
+def update_heat_consumer_temperature_controller(net, min_supply_temperature_heat_consumer: np.ndarray | list, 
                                               time_steps: range, start: int, end: int) -> None:
     """
     Update minimum supply temperature controllers with static or time-dependent profiles.
@@ -81,7 +81,7 @@ def update_heat_consumer_temperature_controller(net, min_supply_temperature_heat
             ctrl.data_source = data_source_return_temp
             controller_count += 1
 
-def update_heat_consumer_return_temperature_controller(net, return_temperature_heat_consumer: Union[np.ndarray, List], 
+def update_heat_consumer_return_temperature_controller(net, return_temperature_heat_consumer: np.ndarray | list, 
                                                      time_steps: range, start: int, end: int) -> None:
     """
     Update return temperature controllers with static or dynamic profiles.
@@ -122,7 +122,7 @@ def update_heat_consumer_return_temperature_controller(net, return_temperature_h
                 # Update the data source of the existing ConstControl
                 ctrl.data_source = data_source_return_temp
 
-def update_secondary_producer_controller(net, secondary_producers: List[Any], 
+def update_secondary_producer_controller(net, secondary_producers: list[Any], 
                                        time_steps: range, start: int, end: int) -> None:
     """
     Update secondary producer mass flow controllers for time series simulation.
@@ -203,7 +203,7 @@ def update_heat_generator_supply_temperature_controller(net, supply_temperature:
         elif isinstance(ctrl, ConstControl) and ctrl.element == 'circ_pump_mass' and ctrl.variable == 't_flow_k':
             ctrl.data_source = data_source_supply_temp
 
-def create_log_variables(net) -> List[Tuple[str, str]]:
+def create_log_variables(net) -> list[tuple[str, str]]:
     """
     Create list of variables to log during time series simulation.
     
@@ -530,7 +530,7 @@ def simplified_time_series_net(NetworkGenerationData) -> Any:
     
     return NetworkGenerationData
 
-def calculate_results(net, net_results: Dict, cp_kJ_kgK: float = CP_WATER_KJ_KGK) -> Dict[str, Dict[int, Dict[str, np.ndarray]]]:
+def calculate_results(net, net_results: dict, cp_kJ_kgK: float = CP_WATER_KJ_KGK) -> dict[str, dict[int, dict[str, np.ndarray]]]:
     """
     Process and structure raw simulation results from pandapipes.
     
@@ -583,7 +583,7 @@ def calculate_results(net, net_results: Dict, cp_kJ_kgK: float = CP_WATER_KJ_KGK
     return pump_results
 
 def save_results_csv(time_steps: np.ndarray, total_heat_KW: np.ndarray, strom_wp_kW: np.ndarray, 
-                    pump_results: Dict, filename: str) -> None:
+                    pump_results: dict, filename: str) -> None:
     """
     Export simulation results to CSV file with German column headers.
     
@@ -625,7 +625,7 @@ def save_results_csv(time_steps: np.ndarray, total_heat_KW: np.ndarray, strom_wp
     # Save DataFrame as CSV with German formatting
     df.to_csv(filename, sep=';', date_format='%Y-%m-%d %H:%M:%S', index=False, encoding='utf-8-sig')
 
-def import_results_csv(filename: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray, Dict]:
+def import_results_csv(filename: str) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
     """
     Import simulation results from CSV file created by save_results_csv.
     

@@ -18,16 +18,18 @@ Features:
 - Drop-in Ersatz für config_plot
 """
 
-import numpy as np
+from typing import Dict, List, Optional
+
 import matplotlib.pyplot as plt
+import numpy as np
 import pandapipes as pp
 import pandapipes.plotting as pp_plot
 import pandas as pd
-from typing import Optional, Dict, List
+
 from districtheatingsim.constants import KELVIN_OFFSET
 
 
-def create_pressure_plot(net, ax: Optional[plt.Axes] = None, show_colorbar: bool = True):
+def create_pressure_plot(net, ax: plt.Axes | None = None, show_colorbar: bool = True):
     """
     Pressure distribution plot with data-driven colors and statistics.
     
@@ -154,7 +156,7 @@ def create_pressure_plot(net, ax: Optional[plt.Axes] = None, show_colorbar: bool
     return ax
 
 
-def create_temperature_plot(net, ax: Optional[plt.Axes] = None):
+def create_temperature_plot(net, ax: plt.Axes | None = None):
     """
     Temperature distribution plot with data-driven colors and statistics.
     
@@ -286,7 +288,7 @@ def create_temperature_plot(net, ax: Optional[plt.Axes] = None):
     return ax
 
 
-def create_velocity_plot(net, ax: Optional[plt.Axes] = None):
+def create_velocity_plot(net, ax: plt.Axes | None = None):
     """
     Velocity distribution plot for pipe flow analysis.
     
@@ -419,7 +421,7 @@ def create_velocity_plot(net, ax: Optional[plt.Axes] = None):
     return ax
 
 
-def create_pressure_profile(net, ax: Optional[plt.Axes] = None):
+def create_pressure_profile(net, ax: plt.Axes | None = None):
     """
     Pressure profile along network path showing pressure drop.
     

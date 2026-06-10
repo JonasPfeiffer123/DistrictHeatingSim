@@ -5,33 +5,33 @@ and analysis including heat pump calculations, controller creation, and diameter
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import time
 import logging
-import numpy as np
-import pandas as pd
+import time
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import geopandas as gpd
-from shapely.geometry import LineString
-from districtheatingsim.constants import KELVIN_OFFSET
-from scipy.interpolate import RegularGridInterpolator
-
+import numpy as np
 import pandapipes as pp
+import pandas as pd
 from pandapipes.control.run_control import run_control
-
-from pandapower.timeseries import DFData
 from pandapower.control.controller.const_control import ConstControl
+from pandapower.timeseries import DFData
+from scipy.interpolate import RegularGridInterpolator
+from shapely.geometry import LineString
 
-from districtheatingsim.utilities.utilities import get_resource_path
-from districtheatingsim.net_simulation_pandapipes.controllers import MinimumSupplyTemperatureController, BadPointPressureLiftController
-
+from districtheatingsim.constants import KELVIN_OFFSET
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
-
-from typing import Optional, List, Tuple, Dict, Any, Union
+from districtheatingsim.net_simulation_pandapipes.controllers import (
+    BadPointPressureLiftController,
+    MinimumSupplyTemperatureController,
+)
+from districtheatingsim.utilities.utilities import get_resource_path
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
 
 def validate_minimum_pressure_difference(net, target_dp_min_bar: float = 1.0, 
-                                        verbose: bool = True) -> Tuple[bool, List[Dict[str, Any]]]:
+                                        verbose: bool = True) -> tuple[bool, list[dict[str, Any]]]:
     """
     Validate that all heat consumers meet minimum pressure difference requirements.
     
@@ -51,7 +51,7 @@ def validate_minimum_pressure_difference(net, target_dp_min_bar: float = 1.0,
     
     if verbose:
         print(f"\n{'='*80}")
-        print(f"VALIDATING MINIMUM PRESSURE DIFFERENCE")
+        print("VALIDATING MINIMUM PRESSURE DIFFERENCE")
         print(f"Target: dp_min >= {target_dp_min_bar} bar")
         print(f"{'='*80}\n")
     
@@ -96,21 +96,21 @@ def validate_minimum_pressure_difference(net, target_dp_min_bar: float = 1.0,
     if verbose:
         print(f"\n{'='*80}")
         if all_ok:
-            print(f"✓ VALIDATION PASSED - All consumers meet minimum pressure requirements")
+            print("✓ VALIDATION PASSED - All consumers meet minimum pressure requirements")
         else:
             print(f"✗ VALIDATION FAILED - {len(violations)} consumers below minimum pressure")
-            print(f"\nRecommendations:")
-            print(f"  1. Increase pump pressure (p_flow_bar or plift_bar)")
-            print(f"  2. Use larger pipe diameters")
-            print(f"  3. Reduce pipe lengths if possible")
-            print(f"  4. Check for flow restrictions")
+            print("\nRecommendations:")
+            print("  1. Increase pump pressure (p_flow_bar or plift_bar)")
+            print("  2. Use larger pipe diameters")
+            print("  3. Reduce pipe lengths if possible")
+            print("  4. Check for flow restrictions")
         print(f"{'='*80}\n")
     
     return all_ok, violations
 
 
-def COP_WP(VLT_L: Union[float, np.ndarray], QT: Union[float, np.ndarray], 
-          values: Optional[np.ndarray] = None) -> Tuple[np.ndarray, np.ndarray]:
+def COP_WP(VLT_L: float | np.ndarray, QT: float | np.ndarray, 
+          values: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculate heat pump Coefficient of Performance (COP) based on supply and source temperatures.
     
@@ -158,9 +158,9 @@ def COP_WP(VLT_L: Union[float, np.ndarray], QT: Union[float, np.ndarray],
     return COP_L, VLT_L
 
 def create_controllers(net, qext_w: np.ndarray, supply_temperature_heat_generator: float, 
-                      min_supply_temperature_heat_consumer: Optional[np.ndarray], 
+                      min_supply_temperature_heat_consumer: np.ndarray | None, 
                       return_temperature_heat_consumer: np.ndarray, 
-                      secondary_producers: Optional[List[Dict[str, Any]]] = None):
+                      secondary_producers: list[dict[str, Any]] | None = None):
     """
     Create comprehensive control systems for district heating network operation.
     
@@ -201,7 +201,7 @@ def create_controllers(net, qext_w: np.ndarray, supply_temperature_heat_generato
             print(f"Creating temperature controller for heat consumer {i} with min supply temperature {min_supply_temperature_heat_consumer[i]} °C")
             
             min_supply_temp_profile = pd.DataFrame({
-                f'min_supply_temperature': [min_supply_temperature_heat_consumer[i]]
+                'min_supply_temperature': [min_supply_temperature_heat_consumer[i]]
             })
             min_supply_temp_data_source = DFData(min_supply_temp_profile)
             
@@ -390,7 +390,7 @@ def init_diameter_types(net, v_max_pipe: float = 1.0, material_filter: str = "KM
     
     # Initial hydraulic calculation
     print(f"\n{'='*80}")
-    print(f"INIT_DIAMETER_TYPES: Initial calculation (pipeflow + control)")
+    print("INIT_DIAMETER_TYPES: Initial calculation (pipeflow + control)")
     print(f"{'='*80}")
     # Step 1: Calculate velocities with current diameters
     pp.pipeflow(net, mode="bidirectional", iter=100)
@@ -435,7 +435,7 @@ def init_diameter_types(net, v_max_pipe: float = 1.0, material_filter: str = "KM
 
     # Final hydraulic calculation with updated pipe properties
     print(f"\n{'='*80}")
-    print(f"INIT_DIAMETER_TYPES: Final calculation with new diameters")
+    print("INIT_DIAMETER_TYPES: Final calculation with new diameters")
     print(f"{'='*80}")
     # Step 1: Calculate velocities with new diameters
     pp.pipeflow(net, mode="bidirectional", iter=100)
@@ -485,7 +485,7 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "KMR
 
     # Initial system state calculation
     print(f"\n{'='*80}")
-    print(f"OPTIMIZE_DIAMETER_TYPES: Starting optimization")
+    print("OPTIMIZE_DIAMETER_TYPES: Starting optimization")
     print(f"v_max = {v_max} m/s, material = {material_filter}")
     print(f"Available types: {filtered_by_material.index.tolist()}")
     print(f"{'='*80}")
@@ -501,7 +501,7 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "KMR
 
     # Iterative optimization loop
     print(f"\n{'='*80}")
-    print(f"OPTIMIZE_DIAMETER_TYPES: Starting iterative optimization")
+    print("OPTIMIZE_DIAMETER_TYPES: Starting iterative optimization")
     print(f"{'='*80}\n")
     
     while change_made:
@@ -581,12 +581,12 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "KMR
         
         # Recalculate if changes were made
         if change_made:
-            print(f"\nRecalculating network after changes...")
+            print("\nRecalculating network after changes...")
             # Step 1: Calculate velocities
             pp.pipeflow(net, mode="bidirectional", iter=100)
             # Step 2: Adjust pump parameters
             run_control(net, mode="bidirectional", iter=100)
-            print(f"Network recalculated with adjusted pump parameters")
+            print("Network recalculated with adjusted pump parameters")
         
         iteration_time = time.time() - iteration_start
         print(f"\nIteration {iteration_count} summary: {pipes_within_target} pipes OK, {pipes_outside_target} pipes adjusted ({iteration_time:.2f}s)")
@@ -600,7 +600,7 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "KMR
 
     # Final calculation with optimized parameters
     print(f"\n{'='*80}")
-    print(f"OPTIMIZE: Final calculation")
+    print("OPTIMIZE: Final calculation")
     print(f"{'='*80}")
     # Step 1: Calculate final velocities
     pp.pipeflow(net, mode="bidirectional", iter=100)
@@ -608,7 +608,7 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "KMR
     
     # Step 2: Final pump adjustment
     run_control(net, mode="bidirectional", iter=100)
-    print(f"\nOptimization complete!")
+    print("\nOptimization complete!")
     if hasattr(net, 'circ_pump_pressure') and len(net.circ_pump_pressure) > 0:
         print(f"Optimized pump pressure: {net.circ_pump_pressure.at[0, 'p_flow_bar']:.2f} bar")
         print(f"Optimized pump lift: {net.circ_pump_pressure.at[0, 'plift_bar']:.2f} bar")
@@ -712,12 +712,12 @@ def export_net_geojson(net, filename: str, crs: str = "EPSG:25833") -> dict:
     
     generator_gdf = gpd.GeoDataFrame(generator_features, crs=crs) if generator_features else gpd.GeoDataFrame()
     
-    print(f"\nExtracted features:")
+    print("\nExtracted features:")
     print(f"  Flow: {len(flow_features)}")
     print(f"  Return: {len(return_features)}")
     print(f"  Buildings: {len(building_features)}")
     print(f"  Generators: {len(generator_features)}")
-    print(f"\nCalling create_network_geojson...")
+    print("\nCalling create_network_geojson...")
     
     # Create unified GeoJSON using NetworkGeoJSONSchema
     # (calculated data is automatically included from GeoDataFrame columns)

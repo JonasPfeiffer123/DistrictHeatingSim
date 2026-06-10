@@ -27,21 +27,19 @@ Architecture:
     supports Windows taskbar integration when available.
 """
 
-import sys
 import os
+import sys
 import warnings
+
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import QTimer
+from PyQt6.QtWidgets import QApplication
 
-from districtheatingsim.utilities.utilities import handle_global_exception, get_stylesheet_based_on_time
-
+from districtheatingsim.gui.MainTab.main_data_manager import DataManager, ProjectConfigManager, ProjectFolderManager
 from districtheatingsim.gui.MainTab.main_presenter import HeatSystemPresenter
 from districtheatingsim.gui.MainTab.main_view import HeatSystemDesignGUI
-from districtheatingsim.gui.MainTab.main_data_manager import ProjectConfigManager
-from districtheatingsim.gui.MainTab.main_data_manager import DataManager
-from districtheatingsim.gui.MainTab.main_data_manager import ProjectFolderManager
+from districtheatingsim.utilities.utilities import get_stylesheet_based_on_time, handle_global_exception
 
 
 def main():

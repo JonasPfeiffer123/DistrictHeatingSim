@@ -18,11 +18,11 @@ see ``TestCapacityRoundTrip`` and the 750 default in ``_STORAGE_ACTIVE``.
 import pytest
 
 from districtheatingsim.gui.EnergySystemTab._04_technology_dialogs import (
-    TechInputDialog,
-    GasBoilerDialog,
     BiomassBoilerDialog,
-    SolarThermalDialog,
+    GasBoilerDialog,
     GeothermalDialog,
+    SolarThermalDialog,
+    TechInputDialog,
 )
 
 # Use the qapp fixture for the whole module (every test needs a QApplication).

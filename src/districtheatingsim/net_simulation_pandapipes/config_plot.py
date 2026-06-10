@@ -17,14 +17,17 @@ to public presentations. It integrates seamlessly with matplotlib and geographic
 libraries for enhanced spatial context.
 """
 
-import numpy as np
-import matplotlib.pyplot as plt
-import pandapipes.plotting as pp_plot
+from typing import Any, Dict, List, Optional, Tuple
+
 import contextily as cx
 import geopandas as gpd
-from districtheatingsim.constants import KELVIN_OFFSET
+import matplotlib.pyplot as plt
+import numpy as np
+import pandapipes.plotting as pp_plot
 from shapely.geometry import Point
-from typing import Optional, List, Tuple, Dict, Any
+
+from districtheatingsim.constants import KELVIN_OFFSET
+
 
 def config_plot(net, ax: plt.Axes, show_junctions: bool = True, show_pipes: bool = True,
                show_heat_consumers: bool = True, show_pump: bool = True, show_plot: bool = False,
@@ -61,11 +64,11 @@ def config_plot(net, ax: plt.Axes, show_junctions: bool = True, show_pipes: bool
     """
     ax.clear()  # Clear previous plots
 
-    data_annotations: List[Dict[str, Any]] = []  # Store annotation references and data
+    data_annotations: list[dict[str, Any]] = []  # Store annotation references and data
 
     def make_annotation(text: str, x: float, y: float, obj_type: str, 
-                       obj_id: Optional[int] = None, line_points: Optional[List[Tuple[float, float]]] = None, 
-                       visible: bool = False) -> Dict[str, Any]:
+                       obj_id: int | None = None, line_points: list[tuple[float, float]] | None = None, 
+                       visible: bool = False) -> dict[str, Any]:
         """
         Create interactive annotation for network component.
         

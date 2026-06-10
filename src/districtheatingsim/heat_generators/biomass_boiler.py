@@ -7,12 +7,14 @@ Biomass boiler system with storage integration, economic analysis and BEW subsid
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import numpy as np
-from typing import Dict, Tuple, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
+import numpy as np
+
+from districtheatingsim.constants import BEW_SUBSIDY_SHARE, CO2_FACTOR_WOOD, PRIMARY_ENERGY_FACTOR_WOOD
 from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
 from districtheatingsim.heat_generators.thermal_storage import BufferStorage
-from districtheatingsim.constants import CO2_FACTOR_WOOD, PRIMARY_ENERGY_FACTOR_WOOD, BEW_SUBSIDY_SHARE
+
 
 class BiomassBoiler(BaseHeatGenerator):
     """
@@ -78,7 +80,7 @@ class BiomassBoiler(BaseHeatGenerator):
         self.strategy = BiomassBoilerStrategy(75, 70)
 
         # Build buffer storage model if active
-        self.buffer: Optional[BufferStorage] = (
+        self.buffer: BufferStorage | None = (
             BufferStorage(
                 volume=self.Speicher_Volumen,
                 T_flow=self.T_vorlauf,
@@ -187,7 +189,7 @@ class BiomassBoiler(BaseHeatGenerator):
 
         self.betrieb_mask = self.Wärmeleistung_kW > 0
 
-    def generate(self, t: int, **kwargs) -> Tuple[float, float]:
+    def generate(self, t: int, **kwargs) -> tuple[float, float]:
         """
         Generate heat for time step.
 
@@ -223,7 +225,7 @@ class BiomassBoiler(BaseHeatGenerator):
         self.Betriebsstunden_pro_Start = (self.Betriebsstunden / self.Anzahl_Starts 
                                          if self.Anzahl_Starts > 0 else 0)
 
-    def calculate_heat_generation_costs(self, economic_parameters: Dict) -> float:
+    def calculate_heat_generation_costs(self, economic_parameters: dict) -> float:
         """
         Calculate heat generation costs with BEW subsidies.
 
@@ -314,8 +316,8 @@ class BiomassBoiler(BaseHeatGenerator):
         self.primärenergie = self.Brennstoffbedarf_MWh * self.primärenergiefaktor
         
 
-    def calculate(self, economic_parameters: Dict, duration: float, 
-                 load_profile: np.ndarray, **kwargs) -> Dict:
+    def calculate(self, economic_parameters: dict, duration: float, 
+                 load_profile: np.ndarray, **kwargs) -> dict:
         """
         Comprehensive system analysis.
 
@@ -367,7 +369,7 @@ class BiomassBoiler(BaseHeatGenerator):
 
         return results
     
-    def set_parameters(self, variables: List[float], variables_order: List[str], idx: int) -> None:
+    def set_parameters(self, variables: list[float], variables_order: list[str], idx: int) -> None:
         """
         Set optimization parameters.
 
@@ -383,7 +385,7 @@ class BiomassBoiler(BaseHeatGenerator):
         except ValueError as e:
             print(f"Fehler beim Setzen der Parameter für {self.name}: {e}")
 
-    def add_optimization_parameters(self, idx: int) -> Tuple[List[float], List[str], List[Tuple[float, float]]]:
+    def add_optimization_parameters(self, idx: int) -> tuple[list[float], list[str], list[tuple[float, float]]]:
         """
         Define optimization parameters for system sizing.
 
@@ -420,7 +422,7 @@ class BiomassBoiler(BaseHeatGenerator):
                 f"spez. Investitionskosten Kessel: {self.spez_Investitionskosten:.1f} €/kW, "
                 f"spez. Investitionskosten Holzlager: {self.spez_Investitionskosten_Holzlager:.1f} €/t")
     
-    def extract_tech_data(self) -> Tuple[str, str, str, str]:
+    def extract_tech_data(self) -> tuple[str, str, str, str]:
         """
         Extract technology data for reporting.
 

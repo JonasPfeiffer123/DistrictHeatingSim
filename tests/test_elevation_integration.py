@@ -12,11 +12,12 @@ Covers:
 """
 
 import math
-import pytest
+from unittest.mock import patch
+
 import geopandas as gpd
 import pandapipes as pp
+import pytest
 from shapely.geometry import LineString, Point
-from unittest.mock import patch
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -220,8 +221,8 @@ class TestFlatNetworkRegressionHeightM:
     def test_all_junctions_height_zero_for_2d_geojson(self):
         from districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson import (
             build_elevation_lookup_from_gdf,
-            get_line_coords_and_lengths,
             get_all_point_coords_from_line_cords,
+            get_line_coords_and_lengths,
         )
         # Flat 2-D network — no Z coordinates
         line = LineString([(0, 0), (100, 0)])

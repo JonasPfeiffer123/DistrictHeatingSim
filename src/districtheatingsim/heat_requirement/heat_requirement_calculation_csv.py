@@ -7,11 +7,12 @@ of building portfolios with temperature curves for district heating design.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+from typing import Optional, Tuple, Union
+
 import numpy as np
 import pandas as pd
-from typing import Tuple, Union, Optional
-
 from pyslpheat import bdew_calculate, vdi4655_calculate
+
 
 def _easter_sunday(year: int) -> pd.Timestamp:
     """
@@ -65,7 +66,7 @@ def _german_national_holidays(year: int) -> np.ndarray:
 def generate_profiles_from_csv(data: pd.DataFrame,
                                TRY: str,
                                calc_method: str,
-                               year: int = 2023) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
+                               year: int = 2023) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
                                                           np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Generate heat demand profiles from CSV building data.
@@ -241,7 +242,7 @@ def generate_profiles_from_csv(data: pd.DataFrame,
             max_heat_requirement_W, supply_temperature_curve, return_temperature_curve, hourly_air_temperatures)
 
 def calculate_temperature_curves(data: pd.DataFrame, 
-                               hourly_air_temperatures: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+                               hourly_air_temperatures: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculate supply and return temperature curves for district heating systems.
 

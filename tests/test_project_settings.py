@@ -15,8 +15,8 @@ import json
 import pytest
 
 from districtheatingsim.gui.MainTab.main_data_manager import (
-    ProjectFolderManager,
     PROJECT_SETTINGS_VERSION,
+    ProjectFolderManager,
 )
 
 pytestmark = pytest.mark.usefixtures("qapp")

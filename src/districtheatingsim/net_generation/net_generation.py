@@ -7,13 +7,15 @@ network topologies with street alignment and parallel line generation.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import pandas as pd
-import geopandas as gpd
 import math
-from shapely.geometry import LineString, Point
-from typing import Optional, Tuple, List, Dict, Any, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-from districtheatingsim.net_generation.minimal_spanning_tree import generate_mst, adjust_segments_to_roads
+import geopandas as gpd
+import pandas as pd
+from shapely.geometry import LineString, Point
+
+from districtheatingsim.net_generation.minimal_spanning_tree import adjust_segments_to_roads, generate_mst
+
 
 def create_offset_points(point: Point, distance: float, angle_degrees: float) -> Point:
     """
@@ -71,7 +73,7 @@ def offset_lines_by_angle(lines_gdf: gpd.GeoDataFrame, distance: float,
     offset_lines = [offset_line(line) for line in lines_gdf.geometry]
     return gpd.GeoDataFrame(geometry=offset_lines, crs=lines_gdf.crs)
 
-def find_nearest_line(point: Point, line_layer: gpd.GeoDataFrame) -> Optional[LineString]:
+def find_nearest_line(point: Point, line_layer: gpd.GeoDataFrame) -> LineString | None:
     """
     Find nearest line to a point.
 
@@ -114,7 +116,7 @@ def create_perpendicular_line(point: Point, line: LineString) -> LineString:
     return LineString([point, nearest_point_on_line])
 
 def process_layer_points(layer: gpd.GeoDataFrame, 
-                        layer_lines: gpd.GeoDataFrame) -> Tuple[List[LineString], set]:
+                        layer_lines: gpd.GeoDataFrame) -> tuple[list[LineString], set]:
     """
     Process points to create perpendicular connections and extract street endpoints.
 
@@ -149,7 +151,7 @@ def generate_network(heat_consumer_layer: gpd.GeoDataFrame,
                     osm_street_layer: gpd.GeoDataFrame, 
                     algorithm: str = "MST", 
                     offset_distance: float = 0.5, 
-                    offset_angle: float = 0) -> Tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+                    offset_angle: float = 0) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """
     Generate optimal district heating network with supply and return lines.
 
@@ -214,7 +216,7 @@ def generate_network(heat_consumer_layer: gpd.GeoDataFrame,
 def generate_connection_lines(layer: gpd.GeoDataFrame, 
                              offset_distance: float, 
                              offset_angle: float, 
-                             df: Optional[pd.DataFrame] = None) -> gpd.GeoDataFrame:
+                             df: pd.DataFrame | None = None) -> gpd.GeoDataFrame:
     """
     Generate connection lines with building attributes.
 

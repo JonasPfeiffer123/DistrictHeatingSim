@@ -7,12 +7,12 @@ it to GeoJSON format for district heating network planning.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import urllib.request
-
-import overpy
 import json
+import urllib.request
 from decimal import Decimal
+
 import geojson
+import overpy
 
 # Canonical Overpass endpoint (HTTPS). overpy 0.7 defaults to plain-HTTP
 # ``http://overpass-api.de/api/interpreter``.

@@ -7,12 +7,12 @@ Vacuum ice slurry generator with heat pump.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+import CoolProp.CoolProp as CP
 import numpy as np
 
-import CoolProp.CoolProp as CP
-
-from districtheatingsim.heat_generators.base_heat_pumps import HeatPump
 from districtheatingsim.constants import KELVIN_OFFSET
+from districtheatingsim.heat_generators.base_heat_pumps import HeatPump
+
 
 class AqvaHeat(HeatPump):
     """

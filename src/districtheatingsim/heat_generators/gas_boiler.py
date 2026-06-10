@@ -7,11 +7,13 @@ Gas-fired boiler system with economic analysis and environmental assessment.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import numpy as np
-from typing import Dict, Tuple, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
-from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
+import numpy as np
+
 from districtheatingsim.constants import CO2_FACTOR_GAS, PRIMARY_ENERGY_FACTOR_GAS
+from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
+
 
 class GasBoiler(BaseHeatGenerator):
     """
@@ -102,7 +104,7 @@ class GasBoiler(BaseHeatGenerator):
             self.thermal_capacity_kW
         )
 
-    def generate(self, t: int, **kwargs) -> Tuple[float, float]:
+    def generate(self, t: int, **kwargs) -> tuple[float, float]:
         """
         Generate heat for time step.
 
@@ -142,7 +144,7 @@ class GasBoiler(BaseHeatGenerator):
         self.Betriebsstunden_pro_Start = (self.Betriebsstunden / self.Anzahl_Starts 
                                          if self.Anzahl_Starts > 0 else 0)
 
-    def calculate_heat_generation_cost(self, economic_parameters: Dict) -> None:
+    def calculate_heat_generation_cost(self, economic_parameters: dict) -> None:
         """
         Calculate heat generation costs.
 
@@ -200,8 +202,8 @@ class GasBoiler(BaseHeatGenerator):
         # Calculate primary energy consumption
         self.primärenergie = self.Brennstoffbedarf_MWh * self.primärenergiefaktor
 
-    def calculate(self, economic_parameters: Dict, duration: float, 
-                 load_profile: np.ndarray, **kwargs) -> Dict:
+    def calculate(self, economic_parameters: dict, duration: float, 
+                 load_profile: np.ndarray, **kwargs) -> dict:
         """
         Comprehensive system analysis.
 
@@ -245,7 +247,7 @@ class GasBoiler(BaseHeatGenerator):
 
         return results
     
-    def set_parameters(self, variables: List[float], variables_order: List[str], idx: int) -> None:
+    def set_parameters(self, variables: list[float], variables_order: list[str], idx: int) -> None:
         """
         Set optimization parameters.
 
@@ -254,7 +256,7 @@ class GasBoiler(BaseHeatGenerator):
         """
         pass
 
-    def add_optimization_parameters(self, idx: int) -> Tuple[List[float], List[str], List[Tuple[float, float]]]:
+    def add_optimization_parameters(self, idx: int) -> tuple[list[float], list[str], list[tuple[float, float]]]:
         """
         Define optimization parameters.
 
@@ -276,7 +278,7 @@ class GasBoiler(BaseHeatGenerator):
                 f"Nutzungsgrad: {self.Nutzungsgrad:.2f}, "
                 f"spez. Investitionskosten: {self.spez_Investitionskosten:.1f} €/kW")
     
-    def extract_tech_data(self) -> Tuple[str, str, str, str]:
+    def extract_tech_data(self) -> tuple[str, str, str, str]:
         """
         Extract technology data for reporting.
 
@@ -298,7 +300,7 @@ class GasBoilerStrategy(BaseStrategy):
     :type charge_off: float, optional
     """
     
-    def __init__(self, charge_on: float, charge_off: Optional[float] = None):
+    def __init__(self, charge_on: float, charge_off: float | None = None):
         """
         Initialize control strategy.
 

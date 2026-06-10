@@ -73,6 +73,7 @@ Cost Categories:
 
 from typing import Union
 
+
 def annuity(
     initial_investment_cost: float,
     asset_lifespan_years: int,

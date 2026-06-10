@@ -7,11 +7,13 @@ Electric heating system modeling with storage integration and control strategies
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import numpy as np
-from typing import Dict, Any, Union, Tuple, Optional
+from typing import Any, Dict, Optional, Tuple, Union
 
-from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
+import numpy as np
+
 from districtheatingsim.constants import CO2_FACTOR_ELECTRICITY, PRIMARY_ENERGY_FACTOR_ELECTRICITY_PTH
+from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator, BaseStrategy
+
 
 class PowerToHeat(BaseHeatGenerator):
     """
@@ -107,7 +109,7 @@ class PowerToHeat(BaseHeatGenerator):
             self.Wärmeleistung_kW[self.betrieb_mask] / self.Nutzungsgrad
         )
 
-    def generate(self, t: int, **kwargs) -> Tuple[float, float]:
+    def generate(self, t: int, **kwargs) -> tuple[float, float]:
         """
         Generate thermal power for specific time step.
 
@@ -155,7 +157,7 @@ class PowerToHeat(BaseHeatGenerator):
             if self.Anzahl_Starts > 0 else 0
         )
     
-    def calculate_heat_generation_cost(self, economic_parameters: Dict[str, Any]) -> None:
+    def calculate_heat_generation_cost(self, economic_parameters: dict[str, Any]) -> None:
         """
         Calculate heat generation costs using VDI 2067 methodology.
 
@@ -214,8 +216,8 @@ class PowerToHeat(BaseHeatGenerator):
         # Primary energy consumption
         self.primärenergie = self.Strommenge_MWh * self.primärenergiefaktor
 
-    def calculate(self, economic_parameters: Dict[str, Any], duration: float, 
-                 load_profile: np.ndarray, **kwargs) -> Dict[str, Any]:
+    def calculate(self, economic_parameters: dict[str, Any], duration: float, 
+                 load_profile: np.ndarray, **kwargs) -> dict[str, Any]:
         """
         Comprehensive calculation of power-to-heat performance and economics.
 
@@ -277,7 +279,7 @@ class PowerToHeat(BaseHeatGenerator):
         """
         pass  # No optimization parameters for power-to-heat systems
     
-    def add_optimization_parameters(self, idx: int) -> Tuple[list, list, list]:
+    def add_optimization_parameters(self, idx: int) -> tuple[list, list, list]:
         """
         Define optimization parameters for power-to-heat system.
 
@@ -301,7 +303,7 @@ class PowerToHeat(BaseHeatGenerator):
         """
         return f"{self.name}: spez. Investitionskosten: {self.spez_Investitionskosten:.1f} €/kW"
     
-    def extract_tech_data(self) -> Tuple[str, str, str, str]:
+    def extract_tech_data(self) -> tuple[str, str, str, str]:
         """
         Extract technology data for reporting and analysis.
 
@@ -327,7 +329,7 @@ class PowerToHeatStrategy(BaseStrategy):
     :type charge_off: float, optional
     """
 
-    def __init__(self, charge_on: float, charge_off: Optional[float] = None) -> None:
+    def __init__(self, charge_on: float, charge_off: float | None = None) -> None:
         """
         Initialize power-to-heat control strategy.
 

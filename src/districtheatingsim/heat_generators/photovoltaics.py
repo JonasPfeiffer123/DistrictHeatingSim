@@ -7,20 +7,21 @@ Photovoltaic power generation modeling based on EU PVGIS methodology.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+from datetime import UTC, datetime, timezone
+from typing import List, Optional, Tuple, Union
+
 import numpy as np
 import pandas as pd
-from datetime import datetime, timezone
-from typing import Tuple, Union, List, Optional
 
-from districtheatingsim.utilities.test_reference_year import import_TRY
 from districtheatingsim.heat_generators.solar_radiation import calculate_solar_radiation
+from districtheatingsim.utilities.test_reference_year import import_TRY
 
 # Constant for degree-radian conversion
 DEG_TO_RAD = np.pi / 180
 
 def Calculate_PV(TRY_data: str, Gross_area: float, Longitude: float, STD_Longitude: float, 
                 Latitude: float, Albedo: float, East_West_collector_azimuth_angle: float, 
-                Collector_tilt_angle: float) -> Tuple[float, float, np.ndarray]:
+                Collector_tilt_angle: float) -> tuple[float, float, np.ndarray]:
     """
     Calculate photovoltaic power output based on EU PVGIS methodology.
 
@@ -63,7 +64,7 @@ def Calculate_PV(TRY_data: str, Gross_area: float, Longitude: float, STD_Longitu
     Day_of_Year_L = np.array([
         datetime.fromtimestamp(
             t.astype('datetime64[s]').astype(np.int64), 
-            tz=timezone.utc
+            tz=UTC
         ).timetuple().tm_yday 
         for t in time_steps
     ])
@@ -115,7 +116,7 @@ def Calculate_PV(TRY_data: str, Gross_area: float, Longitude: float, STD_Longitu
 
     return yield_kWh, P_max, P_L
 
-def azimuth_angle(direction: str) -> Optional[float]:
+def azimuth_angle(direction: str) -> float | None:
     """
     Convert cardinal direction to azimuth angle.
 
@@ -247,11 +248,11 @@ def calculate_building(TRY_data: str, building_data: str, output_filename: str) 
         total_capacity = df[pv_columns].max().sum()
         annual_yield = df[pv_columns].sum().sum() / 1000  # Convert to MWh
         
-        print(f"Summary:")
+        print("Summary:")
         print(f"  → Total systems processed: {total_systems}")
         print(f"  → Total PV capacity: {total_capacity:.1f} kW")
         print(f"  → Annual district yield: {annual_yield:.1f} MWh")
         print(f"  → Average capacity factor: {annual_yield*1000/(total_capacity*8760):.2f}")
         
     except Exception as e:
-        raise IOError(f"Error saving results to {output_filename}: {e}")
+        raise OSError(f"Error saving results to {output_filename}: {e}")

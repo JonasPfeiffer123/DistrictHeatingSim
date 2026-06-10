@@ -10,12 +10,14 @@ reproducible across machines and CI runs. Do not introduce randomness here.
 # energy_system.py (which does `import matplotlib.pyplot as plt` at module
 # level) works in headless CI environments without a display.
 import matplotlib
+
 matplotlib.use('Agg')
 
 # Run Qt without a display so the GUI-dialog characterization tests
 # (tests/test_technology_dialogs.py) can construct widgets in headless CI.
 # Must be set before any QApplication is created.
 import os
+
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
 import numpy as np

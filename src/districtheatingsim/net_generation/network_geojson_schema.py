@@ -5,14 +5,15 @@ Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import json
-import geopandas as gpd
-import pandas as pd
-import numpy as np
-from typing import Dict, List, Tuple, Optional, Any
-from shapely.geometry import LineString, Point
 from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 
-from districtheatingsim.utilities.crs_utils import crs_to_urn, epsg_from_urn, DEFAULT_CRS
+import geopandas as gpd
+import numpy as np
+import pandas as pd
+from shapely.geometry import LineString, Point
+
+from districtheatingsim.utilities.crs_utils import DEFAULT_CRS, crs_to_urn, epsg_from_urn
 
 
 class NetworkGeoJSONSchema:
@@ -34,7 +35,7 @@ class NetworkGeoJSONSchema:
     EDIT_LEVEL_PROTECTED = "protected"
     
     @staticmethod
-    def create_metadata(state: str = "designed") -> Dict[str, Any]:
+    def create_metadata(state: str = "designed") -> dict[str, Any]:
         """
         Create metadata for network GeoJSON.
         
@@ -60,8 +61,8 @@ class NetworkGeoJSONSchema:
         layer: str,
         segment_id: str,
         color: str = None,
-        calculated_data: Dict = None
-    ) -> Dict[str, Any]:
+        calculated_data: dict = None
+    ) -> dict[str, Any]:
         """
         Create a network line feature (flow or return).
         
@@ -128,8 +129,8 @@ class NetworkGeoJSONSchema:
     def create_building_connection_feature(
         geometry: LineString,
         connection_id: str,
-        building_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        building_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Create a building connection feature with protected building data.
         
@@ -171,7 +172,7 @@ class NetworkGeoJSONSchema:
         connection_id: str,
         generator_type: str = "main",
         location_index: int = 0
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a generator connection feature.
 
@@ -230,9 +231,9 @@ class NetworkGeoJSONSchema:
         building_connections: gpd.GeoDataFrame,
         generator_connections: gpd.GeoDataFrame,
         state: str = "designed",
-        calculated_data: Dict = None,
+        calculated_data: dict = None,
         crs: str = DEFAULT_CRS
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create unified network GeoJSON from separate components.
 
@@ -380,7 +381,7 @@ class NetworkGeoJSONSchema:
         return geojson
     
     @staticmethod
-    def export_to_file(geojson: Dict[str, Any], filepath: str) -> None:
+    def export_to_file(geojson: dict[str, Any], filepath: str) -> None:
         """
         Export network GeoJSON to file.
         
@@ -394,7 +395,7 @@ class NetworkGeoJSONSchema:
         print(f"✓ Exported unified network GeoJSON: {filepath}")
     
     @staticmethod
-    def import_from_file(filepath: str) -> Dict[str, Any]:
+    def import_from_file(filepath: str) -> dict[str, Any]:
         """
         Import network GeoJSON from file.
         
@@ -403,15 +404,15 @@ class NetworkGeoJSONSchema:
         :return: Network GeoJSON dictionary
         :rtype: Dict[str, Any]
         """
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(filepath, encoding='utf-8') as f:
             geojson = json.load(f)
         return geojson
     
     @staticmethod
     def split_to_legacy_format(
-        geojson: Dict[str, Any],
+        geojson: dict[str, Any],
         crs: str = None
-    ) -> Tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
+    ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame, gpd.GeoDataFrame]:
         """
         Split unified GeoJSON into legacy 4-file format.
 
@@ -459,10 +460,10 @@ class NetworkGeoJSONSchema:
     
     @staticmethod
     def update_calculated_data(
-        geojson: Dict[str, Any],
-        flow_results: Dict[str, Dict],
-        return_results: Dict[str, Dict]
-    ) -> Dict[str, Any]:
+        geojson: dict[str, Any],
+        flow_results: dict[str, dict],
+        return_results: dict[str, dict]
+    ) -> dict[str, Any]:
         """
         Update calculated data in unified GeoJSON after network dimensioning.
         

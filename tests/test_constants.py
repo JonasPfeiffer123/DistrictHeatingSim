@@ -7,9 +7,9 @@ emission / primary-energy factors from ``constants`` rather than re-hardcoding t
 """
 
 from districtheatingsim import constants as C
+from districtheatingsim.heat_generators.biomass_boiler import BiomassBoiler
 from districtheatingsim.heat_generators.gas_boiler import GasBoiler
 from districtheatingsim.heat_generators.power_to_heat import PowerToHeat
-from districtheatingsim.heat_generators.biomass_boiler import BiomassBoiler
 
 
 class TestPhysicalConstants:

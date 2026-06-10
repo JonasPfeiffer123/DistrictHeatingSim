@@ -9,21 +9,21 @@ exposing the interface required by EnergySystem and the GUI.
 """
 
 import logging
-import numpy as np
 from typing import Optional
 
+import numpy as np
 from thermal_energy_storage_model import (
-    ThermalStorage1D,
+    ConstantAmbientLoss,
+    ConstantFluidProperties,
+    CylinderGeometry,
+    GroundTemperatureLoss,
+    SplitAmbientLoss,
     StorageConfig,
     StorageInputs,
-    CylinderGeometry,
+    ThermalStorage1D,
     TruncatedConeGeometry,
     TruncatedPyramidGeometry,
-    ConstantAmbientLoss,
-    SplitAmbientLoss,
-    GroundTemperatureLoss,
     WaterProperties,
-    ConstantFluidProperties,
 )
 
 from districtheatingsim.heat_generators.base_heat_generator import BaseHeatGenerator
