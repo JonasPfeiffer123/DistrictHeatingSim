@@ -7,8 +7,7 @@ Photovoltaic power generation modeling based on EU PVGIS methodology.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-from datetime import UTC, datetime, timezone
-from typing import List, Optional, Tuple, Union
+from datetime import UTC, datetime
 
 import numpy as np
 import pandas as pd

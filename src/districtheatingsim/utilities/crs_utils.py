@@ -7,7 +7,6 @@ list of common projected coordinate systems.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-from typing import List, Tuple
 
 # Curated list of common projected CRS options (epsg_code, display_label)
 COMMON_CRS_OPTIONS: list[tuple[str, str]] = [

@@ -12,9 +12,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 import copy
-import itertools
 import json
-from typing import Dict, List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np

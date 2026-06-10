@@ -17,15 +17,12 @@ Features:
 - Export capabilities (HTML, PNG)
 """
 
-from typing import Any, Dict, List, Optional, Tuple
 
 import geopandas as gpd
 import numpy as np
-import pandapipes as pp
-import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from shapely.geometry import LineString, Point
+from shapely.geometry import Point
 
 from districtheatingsim.constants import KELVIN_OFFSET
 

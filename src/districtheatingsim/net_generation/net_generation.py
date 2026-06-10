@@ -8,7 +8,6 @@ network topologies with street alignment and parallel line generation.
 """
 
 import math
-from typing import Any, Dict, List, Optional, Tuple, Union
 
 import geopandas as gpd
 import pandas as pd

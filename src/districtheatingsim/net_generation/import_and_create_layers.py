@@ -13,7 +13,6 @@ import warnings
 warnings.filterwarnings('ignore', message='.*driver GeoJSON does not support open option.*', category=RuntimeWarning)
 
 import traceback
-from typing import List, Optional, Tuple, Union
 
 import geopandas as gpd
 import pandas as pd

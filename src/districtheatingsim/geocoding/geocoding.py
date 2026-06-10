@@ -11,7 +11,6 @@ import csv
 import os
 import shutil
 import tempfile
-import time
 
 from geopy.extra.rate_limiter import RateLimiter
 from geopy.geocoders import Nominatim

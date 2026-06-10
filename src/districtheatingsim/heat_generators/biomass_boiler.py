@@ -7,7 +7,6 @@ Biomass boiler system with storage integration, economic analysis and BEW subsid
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 

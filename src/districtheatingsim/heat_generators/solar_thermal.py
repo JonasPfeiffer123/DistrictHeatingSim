@@ -10,8 +10,8 @@ Solar thermal collector modeling with flat-plate and vacuum tube technologies.
     Based on Scenocalc 2.0 solar thermal model (https://www.scfw.de)
 """
 
-from math import exp, log, pi, sqrt
-from typing import Any, Dict, List, Optional, Tuple, Union
+from math import exp
+from typing import Any
 
 import numpy as np
 

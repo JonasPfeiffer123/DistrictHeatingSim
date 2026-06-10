@@ -7,7 +7,7 @@ and analysis including heat pump calculations, controller creation, and diameter
 
 import logging
 import time
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import geopandas as gpd
 import numpy as np
@@ -264,7 +264,6 @@ def correct_flow_directions(net) -> pp.pandapipesNet:
        Identifies pipes with negative velocities and swaps from_junction/to_junction for proper flow representation.
     """
     # Initial pipeflow – suppress UserWarning about pump direction; that is what we fix here.
-    import warnings
     try:
         pp.pipeflow(net, mode="bidirectional", iter=100)
     except UserWarning as e:

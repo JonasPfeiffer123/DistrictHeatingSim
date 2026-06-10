@@ -7,7 +7,7 @@ River water heat pump modeling with temperature-dependent performance and intake
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 

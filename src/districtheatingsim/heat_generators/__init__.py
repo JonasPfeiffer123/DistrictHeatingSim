@@ -19,6 +19,15 @@ from .solar_thermal import SolarThermal
 from .thermal_storage import BufferStorage, ThermalStorageAdapter
 from .waste_heat_pump import WasteHeatPump
 
+# Public API re-exported from this package (also marks the base classes /
+# BufferStorage as intentional re-exports for linting).
+__all__ = [
+    "AqvaHeat", "BaseHeatGenerator", "BaseStrategy", "HeatPump", "BiomassBoiler",
+    "CHP", "GasBoiler", "Geothermal", "PowerToHeat", "RiverHeatPump", "SolarThermal",
+    "BufferStorage", "ThermalStorageAdapter", "WasteHeatPump",
+    "TECH_CLASS_REGISTRY", "TECH_CLASS_BY_TYPE",
+]
+
 TECH_CLASS_REGISTRY = {
     'BHKW': CHP,
     "Holzgas-BHKW": CHP,

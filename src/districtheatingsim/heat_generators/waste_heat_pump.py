@@ -7,7 +7,7 @@ Waste heat pump modeling with variable source temperatures and heat recovery.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 
