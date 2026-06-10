@@ -272,6 +272,24 @@ INFO that the pump outlet temperature is now fixed; "in most cases this does not
 the outcome", not yet cross-checked against 0.13. No `diameter_m` reads remain in `src`
 except the intentional one in `net_migration` (old → new column). C11 is otherwise
 complete.
+### C12. NetworkGenerationData arrays round-trip as strings (load fixed 2026-06)
+`net_simulation_tab.saveNet` writes the network-init JSON with
+`json.dump(meta, …, default=str)`, so the numpy-array fields
+(`return_temperature_heat_consumer`, `min_supply_temperature_heat_consumer`, …) are
+saved as their `str(array)` repr instead of a list — and `NetworkGenerationData.from_dict`
+loaded them back as **`str`**. `thermohydraulic_time_series_net` gates its controller
+updates on `isinstance(…, np.ndarray)`, so the (string) return-temperature controllers
+were silently skipped → their 1-row design `DFData` survived → the time series died at
+step 1 with `KeyError: 1` (surfaced via the C2 wrapper as "Thermohydraulic time-series
+simulation failed"). This blocked **every** loaded project's time-series run, not just
+old ones. **Fixed (load side):** `from_dict` now coerces every `np.ndarray`-typed field
+back to an array (`NetworkGenerationData._coerce_array`: list / 1-D `str(array)` repr →
+array; truncated/2-D/garbage → `None`, since those are recomputed or reloaded from the
+CSV). The per-consumer fields are small and parse cleanly; verified end-to-end on the
+Görlitz project (load → preprocess → thermohydraulic → `calculate_results`). Tested by
+`tests/test_net_simulation.py::TestNetworkDataArrayCoercion`. **Still open (save side):**
+`saveNet` should serialise arrays as lists (and stop `str`-dumping the whole `net`/
+non-JSON objects into the JSON) instead of relying on `default=str`; ties into D4.
 
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)

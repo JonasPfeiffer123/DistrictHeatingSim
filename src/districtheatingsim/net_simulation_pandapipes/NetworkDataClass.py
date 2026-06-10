@@ -393,11 +393,38 @@ class NetworkGenerationData:
             data['kpi_results'] = self.kpi_results
         return data
 
+    @staticmethod
+    def _coerce_array(value):
+        """Restore an ``np.ndarray`` field saved by ``json.dump(..., default=str)``.
+
+        Older project JSONs stored numpy arrays as their ``str(array)`` repr
+        (``"[60. 60. …]"``) instead of a list, so they load back as ``str`` and break
+        ``isinstance(x, np.ndarray)`` checks. Accepts the current (list) form too.
+        Truncated reprs (numpy abbreviates long arrays with ``…``) and 2-D reprs are
+        unrecoverable → returned as ``None`` (those fields are recomputed or reloaded
+        from the CSV downstream).
+        """
+        if value is None or isinstance(value, np.ndarray):
+            return value
+        if isinstance(value, (list, tuple)):
+            return np.array(value)
+        if isinstance(value, str):
+            s = value.strip()
+            # Only a clean 1-D numpy repr is safely parseable.
+            if s.startswith('[') and s.endswith(']') and '...' not in s and '[' not in s[1:]:
+                try:
+                    arr = np.fromstring(s[1:-1], sep=' ')
+                    return arr if arr.size > 0 else None
+                except ValueError:
+                    return None
+            return None
+        return value
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> 'NetworkGenerationData':
         """
         Deserialize network data from saved dictionary.
-        
+
         :param data: Dictionary with serialized network data
         :type data: Dict[str, Any]
         :return: Reconstructed NetworkGenerationData object with KPIs
@@ -405,12 +432,18 @@ class NetworkGenerationData:
         """
         # Extract kpi_results before creating object
         kpi_results = data.pop('kpi_results', None)
-        
+
         # Create object with remaining data
         obj = cls(**{k: v for k, v in data.items() if k in cls.__annotations__})
-        
+
+        # Restore numpy-array fields that round-tripped through json default=str as
+        # their string repr (otherwise the time-series controllers silently skip them).
+        for field_name, annotation in cls.__annotations__.items():
+            if 'ndarray' in str(annotation):
+                setattr(obj, field_name, cls._coerce_array(getattr(obj, field_name, None)))
+
         # Restore kpi_results
         if kpi_results is not None:
             obj.kpi_results = kpi_results
-            
+
         return obj
