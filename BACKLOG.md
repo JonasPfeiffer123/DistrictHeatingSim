@@ -224,12 +224,25 @@ pin bumped to `0.14.0`; `KMR 100/250-2v` → `ISOPLUS_DRE100_2x` and `material="
 legacy `u_w_per_m2k` empty, so `net_simulation_pandapipes/pipe_std_types.py::resolve_pipe_u_w_per_m2k`
 returns the per-area value when present else converts via the outer surface
 (`u/(π·d_outer)`, matching pandapipes); applied at all 6 read sites; unit-tested in
-`tests/test_net_simulation.py`. Full suite green on 0.14 (**185 passed**). **Still
-open:** the simulation path is not yet fully 0.14-ready — `utilities.py` reads the
-pipe `diameter_m` column (12×) which std-type pipes no longer have in 0.14
-(`KeyError: 'diameter_m'`, use `inner_diameter_mm`), plus the changed circ-pump
-behaviour; `examples/06–08` don't run end-to-end yet. Best finished iteratively with
-the network test seam (which the runnable examples would provide).
+`tests/test_net_simulation.py`. **Diameter columns migrated:** 0.14 removed the pipe
+`diameter_m` column (std-type pipes carry `inner_diameter_mm` [mm]); all 12 sites in
+`utilities.py` (`init_diameter_types`, `optimize_diameter_types`,
+`optimize_diameter_parameters`, the GeoJSON export) now use `inner_diameter_mm` with
+explicit unit handling. **`examples/06` runs end-to-end on 0.14** (all three net
+builders converge; pipes get ISOPLUS std-types, finite u-values). Added an end-to-end
+**network test seam**: `tests/test_net_simulation.py::TestNetworkInitialization`
+(marked `slow`, ~30 s numba cold-start) builds a tiny net + runs the production
+diameter-init path, asserting convergence / finiteness / ISOPLUS selection — the first
+real test of the simulation code, and the seam for C1/C3. **Old-project load
+migration:** a net pickled on 0.13 (KMR std-types, `diameter_m`, no
+`inner_diameter_mm`) crashed `pipeflow` on load and showed obsolete KMR names.
+`net_migration.migrate_loaded_net` (called in `net_simulation_tab.loadNet`) re-anchors
+KMR pipes to their ISOPLUS successors (`kmr_to_isoplus_std_type`, taking diameter +
+u from the catalog) and adds `inner_diameter_mm` from the legacy `diameter_m`; unit-
+tested in `tests/test_net_simulation.py`. **193 passed.** *Still open:* the changed
+circ-pump behaviour (a one-time warning, not yet verified to change results);
+`simplified`/timeseries paths and `examples/07–08` not yet run end-to-end;
+`interactive_network_plot` u-value column.
 
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)

@@ -84,6 +84,9 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+markers = [
+    "slow: end-to-end tests that build + solve a pandapipes network (numba cold-start ~30s). Run by default; skip locally with `-m 'not slow'`.",
+]
 
 [tool.ruff]
 target-version = "py311"

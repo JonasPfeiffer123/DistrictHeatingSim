@@ -16,8 +16,31 @@ converting the per-length value the same way pandapipes does internally
 """
 
 import math
+import re
 
 import numpy as np
+
+# Legacy "KMR <DN>/<outer>-<insulation>v" pipe names map to the ISOPLUS bonded-steel
+# successors "ISOPLUS_DRE<DN>_<insulation>x" in pandapipes >= 0.14.
+_KMR_PATTERN = re.compile(r"^KMR\s+(\d+)/\d+-(\d+)v$")
+
+
+def kmr_to_isoplus_std_type(name) -> str | None:
+    """
+    Map a legacy ``KMR …`` pipe std-type name to its ISOPLUS equivalent.
+
+    ``KMR 100/250-2v`` → ``ISOPLUS_DRE100_2x``. Returns ``None`` for names that are
+    not legacy KMR types (e.g. already-ISOPLUS names), so callers can skip them.
+
+    :param name: A pipe std-type name.
+    :return: The ISOPLUS name, or ``None`` if ``name`` is not a KMR type.
+    :rtype: str | None
+    """
+    match = _KMR_PATTERN.match(str(name))
+    if not match:
+        return None
+    nominal_width, insulation = match.group(1), match.group(2)
+    return f"ISOPLUS_DRE{nominal_width}_{insulation}x"
 
 
 def resolve_pipe_u_w_per_m2k(properties) -> float:

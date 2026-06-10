@@ -21,11 +21,11 @@ from shapely.geometry import LineString
 
 from districtheatingsim.constants import KELVIN_OFFSET
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
-from districtheatingsim.net_simulation_pandapipes.pipe_std_types import resolve_pipe_u_w_per_m2k
 from districtheatingsim.net_simulation_pandapipes.controllers import (
     BadPointPressureLiftController,
     MinimumSupplyTemperatureController,
 )
+from districtheatingsim.net_simulation_pandapipes.pipe_std_types import resolve_pipe_u_w_per_m2k
 from districtheatingsim.utilities.utilities import get_resource_path
 
 # Initialize logging
@@ -330,30 +330,33 @@ def optimize_diameter_parameters(net, element: str = "pipe", v_max: float = 2.0,
         iteration_count += 1
         
         for idx in element_df.index:
-            # Calculate velocity using volumetric flow and cross-sectional area
-            current_velocity = res_df.vdot_m3_per_s[idx] / (np.pi * (element_df.at[idx, 'diameter_m'] / 2)**2)
-            current_diameter = element_df.at[idx, 'diameter_m']
-            
+            # pandapipes >=0.14: the pipe diameter column is inner_diameter_mm [mm]
+            # (diameter_m was removed). Work in metres locally, write back in mm.
+            diameter_m = element_df.at[idx, 'inner_diameter_mm'] / 1000
+            current_velocity = res_df.vdot_m3_per_s[idx] / (np.pi * (diameter_m / 2)**2)
+            current_diameter = diameter_m
+
             # Increase diameter if velocity exceeds limit
             if current_velocity > effective_v_max:
-                element_df.at[idx, 'diameter_m'] += dx
+                element_df.at[idx, 'inner_diameter_mm'] = (diameter_m + dx) * 1000
                 change_made = True
 
             # Attempt diameter reduction if below limit
             elif current_velocity < effective_v_max:
-                element_df.at[idx, 'diameter_m'] -= dx
-                
+                element_df.at[idx, 'inner_diameter_mm'] = (diameter_m - dx) * 1000
+
                 # Validate reduction doesn't violate constraints
                 pp.pipeflow(net, mode="bidirectional", iter=100)
                 run_control(net, mode="bidirectional", iter=100)
                 element_df = getattr(net, element)
                 res_df = getattr(net, f"res_{element}")
-                
-                new_velocity = res_df.vdot_m3_per_s[idx] / (np.pi * (element_df.at[idx, 'diameter_m'] / 2)**2)
+
+                new_diameter_m = element_df.at[idx, 'inner_diameter_mm'] / 1000
+                new_velocity = res_df.vdot_m3_per_s[idx] / (np.pi * (new_diameter_m / 2)**2)
 
                 if new_velocity > effective_v_max:
                     # Revert if reduction violates constraint
-                    element_df.at[idx, 'diameter_m'] = current_diameter
+                    element_df.at[idx, 'inner_diameter_mm'] = current_diameter * 1000
                 else:
                     change_made = True
         
@@ -412,9 +415,10 @@ def init_diameter_types(net, v_max_pipe: float = 1.0, material_filter: str = "P2
     print(f"{'='*80}\n")
     
     for pipe_idx, velocity in enumerate(net.res_pipe.v_mean_m_per_s):
-        current_diameter = net.pipe.at[pipe_idx, 'diameter_m']
-        pipe_name = net.pipe.at[pipe_idx, 'name'] if 'name' in net.pipe.columns else f"Pipe {pipe_idx}"
-        
+        # pandapipes >=0.14: the pipe diameter column is inner_diameter_mm [mm]
+        # (diameter_m was removed). Work in metres locally.
+        current_diameter = net.pipe.at[pipe_idx, 'inner_diameter_mm'] / 1000
+
         # Calculate required diameter using continuity equation
         required_diameter = current_diameter * (velocity / v_max_pipe)**0.5
         
@@ -426,10 +430,9 @@ def init_diameter_types(net, v_max_pipe: float = 1.0, material_filter: str = "P2
         
         # Update pipe properties
         properties = filtered_by_material.loc[closest_type]
-        selected_diameter = properties['inner_diameter_mm'] / 1000
-        
+
         net.pipe.std_type.at[pipe_idx] = closest_type
-        net.pipe.at[pipe_idx, 'diameter_m'] = selected_diameter
+        net.pipe.at[pipe_idx, 'inner_diameter_mm'] = properties['inner_diameter_mm']
         net.pipe.at[pipe_idx, 'u_w_per_m2k'] = resolve_pipe_u_w_per_m2k(properties)
         net.pipe.at[pipe_idx, 'k_mm'] = k
 
@@ -530,7 +533,7 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "P23
                 print(f"  {pipe_name}: UPSIZE v={velocity:.3f} > {v_max} m/s | {current_type} → {new_type}")
                 
                 net.pipe.std_type.at[pipe_idx] = new_type
-                net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
+                net.pipe.at[pipe_idx, 'inner_diameter_mm'] = properties['inner_diameter_mm']
                 net.pipe.at[pipe_idx, 'u_w_per_m2k'] = resolve_pipe_u_w_per_m2k(properties)
                 net.pipe.at[pipe_idx, 'k_mm'] = k
                 
@@ -545,7 +548,7 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "P23
                 
                 # Temporarily apply smaller diameter
                 net.pipe.std_type.at[pipe_idx] = new_type
-                net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
+                net.pipe.at[pipe_idx, 'inner_diameter_mm'] = properties['inner_diameter_mm']
                 net.pipe.at[pipe_idx, 'u_w_per_m2k'] = resolve_pipe_u_w_per_m2k(properties)
                 net.pipe.at[pipe_idx, 'k_mm'] = k
 
@@ -566,7 +569,7 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "P23
                     # Revert to previous size and mark as optimized
                     properties = filtered_by_material.loc[current_type]
                     net.pipe.std_type.at[pipe_idx] = current_type
-                    net.pipe.at[pipe_idx, 'diameter_m'] = properties['inner_diameter_mm'] / 1000
+                    net.pipe.at[pipe_idx, 'inner_diameter_mm'] = properties['inner_diameter_mm']
                     net.pipe.at[pipe_idx, 'u_w_per_m2k'] = resolve_pipe_u_w_per_m2k(properties)
                     net.pipe.at[pipe_idx, 'k_mm'] = k
                     
@@ -659,7 +662,7 @@ def export_net_geojson(net, filename: str, crs: str = "EPSG:25833") -> dict:
             feature_data = {
                 'geometry': geometry,
                 'segment_id': f"{'flow' if idx < pipe_count/2 else 'return'}_{idx:03d}",
-                'diameter_mm': pipe_data.get('diameter_m', 0) * 1000,
+                'diameter_mm': pipe_data.get('inner_diameter_mm', 0),
                 'std_type': pipe_data.get('std_type', ''),
                 'length_m': pipe_data.get('length_km', 0) * 1000
             }
