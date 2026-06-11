@@ -159,7 +159,7 @@ cython_debug/
 error_log.txt
 recent_projects.json
 
-build_Logs/
+build_logs/
 #build_debug.py
 #run_debug.bat
 Software_Analyse_und_Verbesserungsvorschlaege.md
