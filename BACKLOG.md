@@ -114,9 +114,10 @@ logic leaks into the views. Concrete findings (2026-06 survey):
    - ~~`net_simulation_tab.recalculateNetwork` runs `pp.pipeflow` + `run_control`
      directly in a view method.~~ **First slice done (2026-06):** the solver step is
      now `utilities.recalculate_net(net)` (pipeflow + controllers, wraps solver
-     failures in a clear `RuntimeError`), called by the view; unit-tested via the net
-     seam (`test_net_simulation.py` — reconverge + error wrapping). *Still on the UI
-     thread* — moving it to a worker (like the other calc threads) is the next step.
+     failures in a clear `RuntimeError`), called from a `NetRecalculationThread`
+     worker (no more UI-thread freeze), with `_on_recalculation_done/_error` handlers
+     mirroring the init/timeseries flows. Unit-tested via the net seam
+     (`test_net_simulation.py` — reconverge + error wrapping). **Done.**
    - `_05_cost_tab.py:422` calls `annuity(...)` (economic domain) in the view.
    - `network_info_panel.py:105` calls `network_data.calculate_results()` in a panel.
    - Worker threads (`_06_calculate_energy_system_thread`, `net_calculation_threads`)

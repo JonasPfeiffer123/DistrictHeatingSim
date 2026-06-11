@@ -24,14 +24,14 @@ import matplotlib.pyplot as plt
 from PyQt6.QtCore import pyqtSignal, Qt, QTimer
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QScrollArea,
-    QMessageBox, QProgressBar, QMenuBar, QApplication,
+    QMessageBox, QProgressBar, QMenuBar,
 )
 from PyQt6.QtGui import QAction
 
 from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import (
     save_results_csv, import_results_csv,
 )
-from districtheatingsim.net_simulation_pandapipes.utilities import export_net_geojson, recalculate_net
+from districtheatingsim.net_simulation_pandapipes.utilities import export_net_geojson
 from districtheatingsim.net_simulation_pandapipes.net_migration import migrate_loaded_net
 from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import (
     NetworkGenerationData,
@@ -41,7 +41,7 @@ from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import (
 from districtheatingsim.gui.NetSimulationTab.timeseries_dialog import TimeSeriesCalculationDialog
 from districtheatingsim.gui.NetSimulationTab.net_generation_dialog import NetGenerationDialog
 from districtheatingsim.gui.NetSimulationTab.net_calculation_threads import (
-    NetInitializationThread, NetCalculationThread,
+    NetInitializationThread, NetCalculationThread, NetRecalculationThread,
 )
 from districtheatingsim.gui.NetSimulationTab.network_plot_widget import NetworkPlotWidget
 from districtheatingsim.gui.NetSimulationTab.network_info_panel import NetworkInfoPanel
@@ -329,7 +329,7 @@ class NetSimulationTab(QWidget):
     # ------------------------------------------------------------------
 
     def recalculateNetwork(self):
-        """Recalculate network with current pipe parameters (pipeflow only)."""
+        """Recalculate the network with the current pipe parameters, off the UI thread."""
         if not self.NetworkGenerationData or not hasattr(self.NetworkGenerationData, 'net'):
             QMessageBox.warning(
                 self,
@@ -338,46 +338,41 @@ class NetSimulationTab(QWidget):
             )
             return
 
-        try:
-            self._pipe_table.apply_changes_to_net()
+        self._pipe_table.apply_changes_to_net()
 
-            self._progress_bar.setVisible(True)
-            self._progress_bar.setValue(0)
-            self._progress_bar.setFormat("Führe thermohydraulische Berechnung durch...")
-            QApplication.processEvents()
+        self._progress_bar.setVisible(True)
+        self._progress_bar.setRange(0, 0)  # indeterminate while the solver runs
+        self._progress_bar.setFormat("Führe thermohydraulische Berechnung durch...")
 
-            self._progress_bar.setValue(30)
-            QApplication.processEvents()
-            recalculate_net(self.NetworkGenerationData.net)
+        self._recalc_thread = NetRecalculationThread(self.NetworkGenerationData)
+        self._recalc_thread.calculation_done.connect(self._on_recalculation_done)
+        self._recalc_thread.calculation_error.connect(self._on_recalculation_error)
+        self._recalc_thread.start()
 
-            self._progress_bar.setValue(90)
-            QApplication.processEvents()
+    def _on_recalculation_done(self, network_data):
+        self.NetworkGenerationData = network_data
+        self._progress_bar.setRange(0, 1)
+        self._progress_bar.setFormat("Berechnung abgeschlossen")
+        self._net_plot.set_network(self.NetworkGenerationData)
+        self._info_panel.update(self.NetworkGenerationData)
+        QTimer.singleShot(1000, lambda: self._progress_bar.setVisible(False))
 
-            self._net_plot.set_network(self.NetworkGenerationData)
-            self._info_panel.update(self.NetworkGenerationData)
+        QMessageBox.information(
+            self,
+            "Berechnung abgeschlossen",
+            "Die thermohydraulische Berechnung wurde erfolgreich durchgeführt.\n\n"
+            "Das Netzwerk wurde mit den aktuellen Rohrleitungsparametern neu berechnet.",
+        )
 
-            self._progress_bar.setValue(100)
-            self._progress_bar.setFormat("Berechnung abgeschlossen")
-            QApplication.processEvents()
-
-            QTimer.singleShot(1000, lambda: self._progress_bar.setVisible(False))
-
-            QMessageBox.information(
-                self,
-                "Berechnung abgeschlossen",
-                "Die thermohydraulische Berechnung wurde erfolgreich durchgeführt.\n\n"
-                "Das Netzwerk wurde mit den aktuellen Rohrleitungsparametern neu berechnet.",
-            )
-
-        except Exception as e:
-            logging.error(f"Error recalculating network: {e}\n{traceback.format_exc()}")
-            self._progress_bar.setVisible(False)
-            QMessageBox.critical(
-                self,
-                "Berechnungsfehler",
-                f"Fehler bei der Netzberechnung:\n\n{str(e)}\n\n"
-                "Überprüfen Sie die Rohrleitungsparameter und Randbedingungen.",
-            )
+    def _on_recalculation_error(self, error_message):
+        self._progress_bar.setRange(0, 1)
+        self._progress_bar.setVisible(False)
+        QMessageBox.critical(
+            self,
+            "Berechnungsfehler",
+            f"Fehler bei der Netzberechnung:\n\n{str(error_message)}\n\n"
+            "Überprüfen Sie die Rohrleitungsparameter und Randbedingungen.",
+        )
 
     # ------------------------------------------------------------------
     # File I/O

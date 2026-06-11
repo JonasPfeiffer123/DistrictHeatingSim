@@ -13,7 +13,7 @@ from PyQt6.QtCore import QThread, pyqtSignal
 
 from districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson import initialize_geojson
 from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import thermohydraulic_time_series_net, time_series_preprocessing, simplified_time_series_net
-from districtheatingsim.net_simulation_pandapipes.utilities import optimize_diameter_types
+from districtheatingsim.net_simulation_pandapipes.utilities import optimize_diameter_types, recalculate_net
 
 class NetInitializationThread(QThread):
     """
@@ -48,6 +48,37 @@ class NetInitializationThread(QThread):
         except Exception as e:
             self.calculation_error.emit(str(e) + "\n" + traceback.format_exc())
     
+    def stop(self):
+        """Stop thread execution."""
+        if self.isRunning():
+            self.requestInterruption()
+            self.wait()
+
+class NetRecalculationThread(QThread):
+    """
+    Thread for steady-state network recalculation (pipeflow + controllers).
+
+    Runs the recalculation off the UI thread so the GUI does not freeze while the
+    solver runs (e.g. after the user edits pipe parameters).
+    """
+    calculation_done = pyqtSignal(object)
+    calculation_error = pyqtSignal(str)
+
+    def __init__(self, NetworkGenerationData):
+        """
+        :param NetworkGenerationData: Network generation data object (recalculated in place).
+        """
+        super().__init__()
+        self.NetworkGenerationData = NetworkGenerationData
+
+    def run(self):
+        """Run the steady-state recalculation."""
+        try:
+            recalculate_net(self.NetworkGenerationData.net)
+            self.calculation_done.emit(self.NetworkGenerationData)
+        except Exception as e:
+            self.calculation_error.emit(str(e) + "\n" + traceback.format_exc())
+
     def stop(self):
         """Stop thread execution."""
         if self.isRunning():
