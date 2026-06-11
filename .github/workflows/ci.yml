@@ -51,12 +51,8 @@ jobs:
         run: pytest
 
   lint:
-    name: ruff (advisory)
+    name: ruff
     runs-on: ubuntu-latest
-    # Advisory for now: the legacy GUI layer is not yet lint-clean, so a failure
-    # here must not block merges. Remove this line once the tree is clean and
-    # lint should gate the build.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -66,10 +62,12 @@ jobs:
           python-version: "3.11"
 
       - name: Install ruff
-        run: pip install ruff
+        # Pinned so the gating check is reproducible (a newer ruff can add rules).
+        run: pip install ruff==0.15.16
 
-      - name: Lint (config + excludes from pyproject.toml)
+      - name: Lint (gating — config + excludes from pyproject.toml; GUI still excluded)
         run: ruff check .
 
-      - name: Format check (tests only for now)
+      - name: Format check (advisory — ruff format not yet adopted; see BACKLOG A1)
         run: ruff format --check tests
+        continue-on-error: true

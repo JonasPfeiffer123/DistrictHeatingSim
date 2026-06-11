@@ -211,7 +211,7 @@ class InteractiveNetworkPlot:
         all_traces = []
         trace_counts = []
         
-        for i, (label, comp_type, param) in enumerate(visualizations):
+        for i, (_label, comp_type, param) in enumerate(visualizations):
             # Create temporary figure for this visualization
             temp_fig = go.Figure()
             self.fig = temp_fig
@@ -241,7 +241,7 @@ class InteractiveNetworkPlot:
         
         # Create dropdown buttons with visibility control
         buttons = []
-        for i, (label, comp_type, param) in enumerate(visualizations):
+        for i, (label, _comp_type, _param) in enumerate(visualizations):
             # Calculate visibility array for this visualization
             visible = [False] * len(all_traces)
             start_idx = sum(trace_counts[:i])

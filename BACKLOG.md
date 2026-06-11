@@ -51,17 +51,24 @@ tests. This is the safety net that makes every refactor below low-risk.
   fixes (E711/E712), `zip(strict=False)` (B905). `energy_system.py` hand-cleaned
   (mutable-default args, removed `import *`, closure binding, `raise … from e`) — the
   whole **tested** domain core is now lint-clean.
+- **Landed 2026-06 (lint long-tail → gating):** cleared the remaining **48 → 0**
+  findings in the untested modules (`net_simulation_pandapipes`, `net_generation`,
+  `heat_requirement`, `photovoltaics`, `DistrictHeatingSim.py`, `utilities`), all
+  behaviour-preserving + verified (217 passed, import smokes on every touched module):
+  B904 (exception chaining), F841 (dead code removed — incl. a wasted 8760-element
+  `np.array` build; the `heat_requirement` column reads kept as KeyError validation),
+  E741 (Easter `l`→`ll`), E722 (`except Exception`), E402 (moved the runtime pyogrio
+  filter below the imports; `# noqa` on the intentional DeprecationWarning-before-imports
+  block), B007 (unused loop vars → `_`). **`ruff check .` is now GATING in CI**
+  (`continue-on-error` removed, ruff pinned to `0.15.16`); the scoped tree (src minus
+  gui, + tests) is clean.
 - **Still open:**
-  - The remaining **48 findings are all in untested modules** (`net_simulation_pandapipes`,
-    `net_generation`, `heat_requirement`, `photovoltaics`, `DistrictHeatingSim.py`,
-    `utilities`): E402 (13, mostly intentional imports-after-setup), B007 (11), F841
-    (11), B904 (8), E722 (4), E741 (1). Deliberately **not** fixed blind — clear them
-    alongside a test seam for those layers, then flip lint to **gating**.
   - Widen `ruff` into `src/districtheatingsim/gui` (currently excluded) — hundreds of
     findings expected in the least-tested code; do module-by-module with smoke tests.
-  - Decide on `ruff format` (not yet applied — would reformat the whole tree).
-  - `ruff` is installed in the dev env now; the CI `ruff` step is still unverified on
-    GitHub.
+  - Decide on `ruff format` (not yet applied — `ruff format --check tests` reports 10
+    files; the CI format step is **advisory** for now). Adopting it reformats the tree.
+  - The CI `lint` job is now gating but still **unverified on GitHub** (first gating run
+    happens on the next push).
 
 ## B. Architecture & maintainability
 ### B1. God-objects in the GUI  ← in progress

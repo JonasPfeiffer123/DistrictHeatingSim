@@ -74,7 +74,7 @@ def create_pressure_plot(net, ax: plt.Axes | None = None, show_colorbar: bool = 
         
         # Plot pipes with pressure gradient colors
         if hasattr(net, 'res_pipe') and not net.res_pipe.empty and hasattr(net, 'junction_geodata'):
-            for idx, pipe in net.pipe.iterrows():
+            for _idx, pipe in net.pipe.iterrows():
                 from_junction = pipe['from_junction']
                 to_junction = pipe['to_junction']
                 if from_junction in net.junction_geodata.index and to_junction in net.junction_geodata.index:
@@ -93,7 +93,7 @@ def create_pressure_plot(net, ax: plt.Axes | None = None, show_colorbar: bool = 
         
         # Plot heat consumers
         if hasattr(net, 'heat_consumer') and len(net.heat_consumer) > 0 and hasattr(net, 'junction_geodata'):
-            for idx, consumer in net.heat_consumer.iterrows():
+            for _idx, consumer in net.heat_consumer.iterrows():
                 from_junction = consumer['from_junction']
                 to_junction = consumer['to_junction']
                 if from_junction in net.junction_geodata.index and to_junction in net.junction_geodata.index:
@@ -108,7 +108,7 @@ def create_pressure_plot(net, ax: plt.Axes | None = None, show_colorbar: bool = 
         
         # Plot pumps
         if hasattr(net, 'circ_pump_const_pressure') and len(net.circ_pump_const_pressure) > 0 and hasattr(net, 'junction_geodata'):
-            for idx, pump in net.circ_pump_const_pressure.iterrows():
+            for _idx, pump in net.circ_pump_const_pressure.iterrows():
                 from_junction = pump['from_junction']
                 to_junction = pump['to_junction']
                 if from_junction in net.junction_geodata.index and to_junction in net.junction_geodata.index:
@@ -225,7 +225,7 @@ def create_temperature_plot(net, ax: plt.Axes | None = None):
         
         # Plot heat consumers (blue = cooling effect)
         if hasattr(net, 'heat_consumer') and len(net.heat_consumer) > 0 and hasattr(net, 'junction_geodata'):
-            for idx, consumer in net.heat_consumer.iterrows():
+            for _idx, consumer in net.heat_consumer.iterrows():
                 from_junction = consumer['from_junction']
                 to_junction = consumer['to_junction']
                 if from_junction in net.junction_geodata.index and to_junction in net.junction_geodata.index:
@@ -240,7 +240,7 @@ def create_temperature_plot(net, ax: plt.Axes | None = None):
         
         # Plot pumps
         if hasattr(net, 'circ_pump_const_pressure') and len(net.circ_pump_const_pressure) > 0 and hasattr(net, 'junction_geodata'):
-            for idx, pump in net.circ_pump_const_pressure.iterrows():
+            for _idx, pump in net.circ_pump_const_pressure.iterrows():
                 from_junction = pump['from_junction']
                 to_junction = pump['to_junction']
                 if from_junction in net.junction_geodata.index and to_junction in net.junction_geodata.index:
@@ -358,7 +358,7 @@ def create_velocity_plot(net, ax: plt.Axes | None = None):
         else:
             # Fallback if no velocity data
             if hasattr(net, 'junction_geodata'):
-                for idx, pipe in net.pipe.iterrows():
+                for _idx, pipe in net.pipe.iterrows():
                     from_junction = pipe['from_junction']
                     to_junction = pipe['to_junction']
                     if from_junction in net.junction_geodata.index and to_junction in net.junction_geodata.index:
@@ -371,7 +371,7 @@ def create_velocity_plot(net, ax: plt.Axes | None = None):
         
         # Plot heat consumers
         if hasattr(net, 'heat_consumer') and len(net.heat_consumer) > 0 and hasattr(net, 'junction_geodata'):
-            for idx, consumer in net.heat_consumer.iterrows():
+            for _idx, consumer in net.heat_consumer.iterrows():
                 from_junction = consumer['from_junction']
                 to_junction = consumer['to_junction']
                 if from_junction in net.junction_geodata.index and to_junction in net.junction_geodata.index:
@@ -386,7 +386,7 @@ def create_velocity_plot(net, ax: plt.Axes | None = None):
         
         # Plot pumps
         if hasattr(net, 'circ_pump_const_pressure') and len(net.circ_pump_const_pressure) > 0 and hasattr(net, 'junction_geodata'):
-            for idx, pump in net.circ_pump_const_pressure.iterrows():
+            for _idx, pump in net.circ_pump_const_pressure.iterrows():
                 from_junction = pump['from_junction']
                 to_junction = pump['to_junction']
                 if from_junction in net.junction_geodata.index and to_junction in net.junction_geodata.index:
