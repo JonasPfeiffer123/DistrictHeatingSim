@@ -686,7 +686,7 @@ def import_results_csv(filename: str) -> tuple[np.ndarray, np.ndarray, np.ndarra
             parts = column.split('_')
             if len(parts) >= 4:
                 # Expected structure: [prefix, pump_type, index, parameter]
-                prefix, pump_type, idx, parameter = parts[0], parts[1], int(parts[2])-1, "_".join(parts[3:])
+                prefix, pump_type, idx, _parameter = parts[0], parts[1], int(parts[2])-1, "_".join(parts[3:])
 
                 value = pump_data[prefix]
 

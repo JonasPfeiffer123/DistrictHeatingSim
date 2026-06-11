@@ -125,7 +125,7 @@ if __name__ == '__main__':
             print("\nDrücken Sie ENTER zum Beenden...")
             try:
                 input()
-            except:
+            except Exception:
                 pass
         sys.exit(1)
     finally:
@@ -135,5 +135,5 @@ if __name__ == '__main__':
             print("Drücken Sie ENTER zum Beenden der Konsole...")
             try:
                 input()
-            except:
+            except Exception:
                 pass

@@ -485,7 +485,7 @@ def create_comparison_dashboard(net, figsize=(16, 12)):
         pp_plot.simple_plot(net, ax=axes[0,0], show_plot=False,
                            junction_size=0.02, heat_consumer_size=0.1, pump_size=0.1)
         axes[0,0].set_title('Netzwerk Topologie')
-    except:
+    except Exception:
         axes[0,0].text(0.5, 0.5, 'Netzwerk Topologie\nnicht verfügbar', 
                       transform=axes[0,0].transAxes, ha='center', va='center')
     
@@ -561,7 +561,7 @@ def enhanced_config_plot(net, ax, plot_mode='traditional', **kwargs):
         try:
             from districtheatingsim.net_simulation_pandapipes.config_plot import config_plot
             config_plot(net, ax, **kwargs)
-        except:
+        except Exception:
             # Fallback to simple plot
             pp_plot.simple_plot(net, ax=ax, show_plot=False, **kwargs)
             

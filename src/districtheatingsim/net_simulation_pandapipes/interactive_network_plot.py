@@ -431,8 +431,7 @@ class InteractiveNetworkPlot:
         # Prepare data
         lats = gdf.geometry.y.values
         lons = gdf.geometry.x.values
-        names = [self.net.junction.loc[idx, 'name'] for idx in gdf.index]
-        
+
         # Hover text
         hover_texts = []
         for idx in gdf.index:

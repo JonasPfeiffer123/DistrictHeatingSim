@@ -932,21 +932,21 @@ def generate_and_export_osmnx_layers(
     except FileNotFoundError as e:
         error_msg = f"File not found: {e}"
         logger.error(error_msg)
-        raise FileNotFoundError(error_msg)
+        raise FileNotFoundError(error_msg) from e
     except KeyError as e:
         error_msg = f"Missing required data columns: {e}"
         logger.error(error_msg)
-        raise KeyError(error_msg)
+        raise KeyError(error_msg) from e
     except ValueError as e:
         error_msg = f"Invalid data or parameters: {e}"
         logger.error(error_msg)
-        raise ValueError(error_msg)
+        raise ValueError(error_msg) from e
     except ConnectionError as e:
         error_msg = f"Failed to download OSM data: {e}"
         logger.error(error_msg)
-        raise ConnectionError(error_msg)
+        raise ConnectionError(error_msg) from e
     except Exception as e:
         error_msg = f"Network generation failed: {e}"
         logger.error(error_msg)
         logger.error(f"Traceback: {traceback.format_exc()}")
-        raise Exception(error_msg)
+        raise Exception(error_msg) from e

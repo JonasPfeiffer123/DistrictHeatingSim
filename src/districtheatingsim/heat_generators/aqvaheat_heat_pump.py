@@ -74,7 +74,6 @@ class AqvaHeat(HeatPump):
         # sum energy over whole lifetime
         # convert to MWh
         heat_supplied = np.sum(effective_powers / 1000) * duration
-        cooling_supplied = np.sum(cooling_powers / 1000) * duration
 
         # VACUUM ICE GENERATOR
         # now the vacuum ice generator, needs to supply 12°C from river water to the heatpump
@@ -82,7 +81,6 @@ class AqvaHeat(HeatPump):
 
         isentropic_efficiency = 0.7  # Adjust this value based on the actual compressor efficiency
         fluid = 'Water'
-        molar_mass_water = 18.01528  # in g/mol
 
         # Triple point conditions for water
         # temperature_triple_point = 273.16  # Temperature in Kelvin
