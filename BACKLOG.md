@@ -123,7 +123,12 @@ logic leaks into the views. Concrete findings (2026-06 survey):
      (maps the GUI dict to `annuity()`, guards a zero lifespan); the tab's
      `calc_annuität` is a thin pass-through. Tested in
      `test_annuity.py::TestInfrastructureAnnuity`.
-   - `network_info_panel.py:105` calls `network_data.calculate_results()` in a panel.
+   - ~~`network_info_panel.py:105` calls `network_data.calculate_results()` in a panel.~~
+     **Done (2026-06):** the worker threads (init/timeseries/recalc) now compute
+     `calculate_results()` off the UI thread when they produce the net; the panel just
+     renders `network_data.kpi_results` (falling back to compute only for an older
+     loaded project whose JSON predates `kpi_results`). KPI computation pinned by
+     `test_net_simulation.py::TestNetworkInitialization::test_calculate_results_topology_kpis`.
    - Worker threads (`_06_calculate_energy_system_thread`, `net_calculation_threads`)
      call domain code — more acceptable (off-UI-thread) but still GUI-package
      orchestration.

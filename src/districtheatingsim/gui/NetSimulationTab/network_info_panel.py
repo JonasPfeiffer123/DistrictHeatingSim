@@ -102,7 +102,12 @@ class NetworkInfoPanel(QWidget):
             self._cards_layout.addWidget(lbl)
             return
 
-        results = network_data.calculate_results()
+        # Render the KPIs computed by the producer (worker thread) or restored from a
+        # saved project; only fall back to computing here for an older loaded project
+        # whose JSON predates kpi_results (BACKLOG B2 — keep the panel a pure renderer).
+        results = network_data.kpi_results
+        if results is None:
+            results = network_data.calculate_results()
 
         for key in self._PRIORITY_KEYS:
             if key in results and results[key] is not None:
