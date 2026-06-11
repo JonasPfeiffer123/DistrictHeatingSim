@@ -6,24 +6,40 @@ Project management tab with MVP architecture for CSV file editing and project tr
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import os
 import csv
 import json
-
-from PyQt6.QtWidgets import (QFileDialog, QTableWidgetItem, QWidget, QVBoxLayout, QHBoxLayout,
-                             QMenuBar, QProgressBar, QLabel, QTableWidget, QFrame,
-                             QTreeView, QSplitter, QMessageBox, QDialog, QMenu, QPushButton,
-                             QInputDialog, QSizePolicy, QComboBox, QSpinBox)
-from PyQt6.QtGui import QAction, QFileSystemModel
-from PyQt6.QtCore import Qt, QTimer
+import os
 
 from geopy.geocoders import Nominatim
 from pyproj import Transformer
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QAction, QFileSystemModel
+from PyQt6.QtWidgets import (
+    QComboBox,
+    QDialog,
+    QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QMenu,
+    QMessageBox,
+    QProgressBar,
+    QPushButton,
+    QSizePolicy,
+    QSpinBox,
+    QSplitter,
+    QTableWidget,
+    QTableWidgetItem,
+    QTreeView,
+    QVBoxLayout,
+    QWidget,
+)
 
 from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, GeoJSONToCSVThread
-from districtheatingsim.gui.ProjectTab.project_tab_dialogs import RowInputDialog, OSMImportDialog, ProcessDetailsDialog
 from districtheatingsim.gui.ProjectTab.csv_import_dialog import CsvImportDialog
+from districtheatingsim.gui.ProjectTab.project_tab_dialogs import OSMImportDialog, ProcessDetailsDialog, RowInputDialog
 from districtheatingsim.utilities.crs_utils import COMMON_CRS_OPTIONS, suggest_crs_from_location
+
 
 class ProjectModel:
     """
@@ -43,7 +59,7 @@ class ProjectModel:
         :return: Headers and data lists.
         :rtype: tuple
         """
-        with open(file_path, 'r', encoding='utf-8') as file:
+        with open(file_path, encoding='utf-8') as file:
             reader = csv.reader(file, delimiter=';')
             headers = next(reader)
             data = [row for row in reader]
@@ -95,7 +111,7 @@ class ProjectModel:
         :rtype: str
         """
         try:
-            with open(geojson_file_path, 'r') as geojson_file:
+            with open(geojson_file_path) as geojson_file:
                 data = json.load(geojson_file)
             
             # Initialize geocoder and transformer once
@@ -392,7 +408,8 @@ class ProjectPresenter:
         # Check whether the file already matches the internal schema
         try:
             import pandas as pd
-            from districtheatingsim.gui.ProjectTab.csv_import_dialog import _detect_delimiter, TARGET_COLUMNS
+
+            from districtheatingsim.gui.ProjectTab.csv_import_dialog import TARGET_COLUMNS, _detect_delimiter
             delim = _detect_delimiter(fname)
             probe = pd.read_csv(fname, delimiter=delim, encoding="utf-8-sig", nrows=0)
             required_cols = {tc[0] for tc in TARGET_COLUMNS if tc[2]}  # required only
@@ -522,7 +539,7 @@ class ProjectPresenter:
             # Extract sample coordinates from first building for reverse geocoding
             sample_coords = None
             try:
-                with open(geojson_file_path, 'r') as f:
+                with open(geojson_file_path) as f:
                     data = json.load(f)
                     if data.get('features') and len(data['features']) > 0:
                         first_feature = data['features'][0]
@@ -690,7 +707,7 @@ class ProjectPresenter:
             return 'fehlt'
             
         try:
-            with open(csv_file_path, 'r', encoding='utf-8', errors='ignore') as file:
+            with open(csv_file_path, encoding='utf-8', errors='ignore') as file:
                 # Use semicolon delimiter to match the CSV format
                 reader = csv.DictReader(file, delimiter=';')
                 headers = reader.fieldnames
@@ -720,7 +737,7 @@ class ProjectPresenter:
                     
                 return 'ist vorhanden'  # Has headers but no valid coordinate data
                 
-        except Exception as e:
+        except Exception:
             # If we can't read the CSV, assume it exists but is problematic
             return 'ist vorhanden'
 

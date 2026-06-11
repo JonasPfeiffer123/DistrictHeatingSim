@@ -7,9 +7,18 @@ Generator Schematic Module
 Custom QGraphicsScene and QGraphicsView for generator schematic editor with custom items and connections.
 """
 
-from PyQt6.QtWidgets import (QGraphicsScene, QGraphicsPathItem, QGraphicsLineItem, QGraphicsItem, QGraphicsView, QGraphicsRectItem, QGraphicsTextItem)
-from PyQt6.QtCore import Qt, QPointF, QRectF, QLineF, pyqtSignal
-from PyQt6.QtGui import QPen, QColor, QPainterPath, QFont, QPainter
+from PyQt6.QtCore import QLineF, QPointF, QRectF, Qt, pyqtSignal
+from PyQt6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen
+from PyQt6.QtWidgets import (
+    QGraphicsItem,
+    QGraphicsLineItem,
+    QGraphicsPathItem,
+    QGraphicsRectItem,
+    QGraphicsScene,
+    QGraphicsTextItem,
+    QGraphicsView,
+)
+
 
 class CustomGraphicsView(QGraphicsView):
     def __init__(self, scene):

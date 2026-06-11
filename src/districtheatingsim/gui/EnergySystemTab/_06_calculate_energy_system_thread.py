@@ -11,6 +11,7 @@ import traceback
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
+
 class CalculateEnergySystemThread(QThread):
     """
     Thread for calculating heat generation mix.
@@ -53,7 +54,7 @@ class CalculateEnergySystemThread(QThread):
                 optimized_energy_system.calculate_mix()
 
                 # Emit the calculation result
-                self.calculation_done.emit(([self.energy_system, optimized_energy_system]))
+                self.calculation_done.emit([self.energy_system, optimized_energy_system])
             else:
                 # Emit the calculation result
                 self.calculation_done.emit([self.energy_system])

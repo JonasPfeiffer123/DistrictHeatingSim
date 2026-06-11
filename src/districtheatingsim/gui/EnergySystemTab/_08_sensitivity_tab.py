@@ -7,13 +7,14 @@ Sensitivity Tab Module
 Performing sensitivity analysis on heat generation costs based on varying parameters, with 3D visualization.
 """
 
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QPushButton, QLineEdit, QMessageBox
-from PyQt6.QtCore import pyqtSignal
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout, QWidget
 from scipy.interpolate import griddata
+
 
 class SensitivityTab(QWidget):
     """

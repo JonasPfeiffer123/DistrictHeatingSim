@@ -8,29 +8,28 @@ visualization and interactive network generation.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+import json
 import os
 import sys
-import json
-import traceback
 import tempfile
+import traceback
 
 import geopandas as gpd
 import pandas as pd
-
-from PyQt6.QtWidgets import QVBoxLayout, QWidget, QFileDialog, QMenuBar, QProgressBar, QMessageBox
+from PyQt6.QtCore import QObject, QUrl, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QAction
-from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWebEngineCore import QWebEngineSettings
-from PyQt6.QtCore import QUrl, QObject, pyqtSlot, pyqtSignal
 from PyQt6.QtWebChannel import QWebChannel
+from PyQt6.QtWebEngineCore import QWebEngineSettings
+from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PyQt6.QtWidgets import QFileDialog, QMenuBar, QMessageBox, QProgressBar, QVBoxLayout, QWidget
+from shapely.geometry import Point
 
 from districtheatingsim.gui.LeafletTab.layer_generation_dialog import LayerGenerationDialog
+from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, NetGenerationThread
 from districtheatingsim.gui.LeafletTab.osm_dialogs import DownloadOSMDataDialog, OSMBuildingQueryDialog
-from districtheatingsim.gui.LeafletTab.net_generation_threads import NetGenerationThread, GeocodingThread
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
 from districtheatingsim.utilities.crs_utils import crs_to_urn
 
-from shapely.geometry import Point
 
 class GeoJsonReceiver(QObject):
     """
@@ -481,7 +480,7 @@ class VisualizationPresenter(QObject):
                 layer_name = os.path.splitext(os.path.basename(filename))[0]
 
                 # Read as UTF-8 to avoid encoding issues
-                with open(filename, 'r', encoding='utf-8') as f:
+                with open(filename, encoding='utf-8') as f:
                     geojson_data = json.load(f)
                 
                 # Check if this is a unified network GeoJSON

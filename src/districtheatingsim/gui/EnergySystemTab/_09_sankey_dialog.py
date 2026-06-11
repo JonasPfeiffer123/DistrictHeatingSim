@@ -7,14 +7,16 @@ Sankey Dialog Module
 Displaying Sankey diagram using Plotly to visualize energy flows in district heating systems.
 """
 
-import sys
-import plotly.graph_objects as go
-from PyQt6.QtWidgets import QDialog, QVBoxLayout, QApplication
-from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtCore import QUrl
-import tempfile
 import os
+import sys
+import tempfile
+
 import numpy as np
+import plotly.graph_objects as go
+from PyQt6.QtCore import QUrl
+from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PyQt6.QtWidgets import QApplication, QDialog, QVBoxLayout
+
 
 class SankeyDialog(QDialog):
     """

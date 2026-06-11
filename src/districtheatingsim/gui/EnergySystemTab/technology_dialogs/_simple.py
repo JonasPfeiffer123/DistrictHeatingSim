@@ -7,8 +7,8 @@ storage section; they reduce to a class attribute pointing at their field schema
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-from districtheatingsim.gui.EnergySystemTab.technology_dialogs._base import SchemaDialog
 from districtheatingsim.gui.EnergySystemTab.technology_dialogs import _schemas as S
+from districtheatingsim.gui.EnergySystemTab.technology_dialogs._base import SchemaDialog
 
 
 class GasBoilerDialog(SchemaDialog):

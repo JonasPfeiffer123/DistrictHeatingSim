@@ -8,10 +8,9 @@ network simulation results.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QScrollArea,
-                              QLabel, QFrame, QHBoxLayout)
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
+from PyQt6.QtWidgets import QFrame, QHBoxLayout, QLabel, QScrollArea, QVBoxLayout, QWidget
 
 
 class NetworkInfoPanel(QWidget):

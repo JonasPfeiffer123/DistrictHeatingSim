@@ -8,15 +8,14 @@ displaying network simulation time series results.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import pandas as pd
-import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
+import pandas as pd
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
-
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
+from matplotlib.figure import Figure
 from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 
 from districtheatingsim.gui.utilities import CheckableComboBox
 

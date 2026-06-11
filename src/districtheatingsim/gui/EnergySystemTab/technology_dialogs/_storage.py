@@ -7,7 +7,13 @@ sections and a collapsible advanced solver block). Moved verbatim from
 """
 
 from PyQt6.QtWidgets import (
-    QVBoxLayout, QLineEdit, QComboBox, QCheckBox, QGroupBox, QFormLayout, QWidget,
+    QCheckBox,
+    QComboBox,
+    QFormLayout,
+    QGroupBox,
+    QLineEdit,
+    QVBoxLayout,
+    QWidget,
 )
 
 

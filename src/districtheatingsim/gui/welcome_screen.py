@@ -7,19 +7,26 @@ Initial welcome screen with project management, recent projects, and quick actio
 """
 
 import os
-import sys
-import json
-import webbrowser
 import subprocess
-from pathlib import Path
+import sys
+import webbrowser
 from datetime import datetime
-from typing import Optional, Dict
+from pathlib import Path
 
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, 
-                             QPushButton, QLabel, QFrame, QScrollArea, 
-                             QFileDialog, QMessageBox, QApplication, QCheckBox)
-from PyQt6.QtCore import Qt, pyqtSignal, QSize, QPropertyAnimation, QRect, QEasingCurve
-from PyQt6.QtGui import QFont, QPixmap, QIcon, QPainter, QColor, QPen
+from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, QRect, Qt, pyqtSignal
+from PyQt6.QtGui import QColor, QFont, QPainter, QPen, QPixmap
+from PyQt6.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
+)
 
 
 class ThemeToggleSwitch(QCheckBox):
@@ -135,7 +142,7 @@ class RecentProjectWidget(QFrame):
     
     projectSelected = pyqtSignal(str)  # Signal emitted when project is selected
     
-    def __init__(self, project_path: str, project_info: Dict):
+    def __init__(self, project_path: str, project_info: dict):
         """
         Initialize recent project widget.
 
@@ -684,7 +691,7 @@ class WelcomeScreen(QWidget):
         
         self.projects_layout.addStretch()
     
-    def get_bundled_example_project(self) -> Optional[tuple]:
+    def get_bundled_example_project(self) -> tuple | None:
         """
         Get the bundled Görlitz example project path.
         
@@ -775,7 +782,7 @@ class WelcomeScreen(QWidget):
         except (OSError, PermissionError):
             return False
     
-    def get_project_info(self, project_path: str) -> Dict:
+    def get_project_info(self, project_path: str) -> dict:
         """
         Get metadata information about a project folder.
 

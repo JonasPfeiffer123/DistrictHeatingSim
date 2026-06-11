@@ -8,19 +8,24 @@ Dispatch logic (prefix matching, order) is preserved verbatim from the original
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-from PyQt6.QtWidgets import QVBoxLayout, QDialog, QDialogButtonBox
+from PyQt6.QtWidgets import QDialog, QDialogButtonBox, QVBoxLayout
 
-from districtheatingsim.gui.EnergySystemTab.technology_dialogs._simple import (
-    GasBoilerDialog, PowerToHeatDialog, WasteHeatPumpDialog,
-)
 from districtheatingsim.gui.EnergySystemTab.technology_dialogs._combustion import (
-    BiomassBoilerDialog, CHPDialog, HolzgasCHPDialog,
+    BiomassBoilerDialog,
+    CHPDialog,
+    HolzgasCHPDialog,
 )
-from districtheatingsim.gui.EnergySystemTab.technology_dialogs._solar import SolarThermalDialog
 from districtheatingsim.gui.EnergySystemTab.technology_dialogs._geothermal import GeothermalDialog
 from districtheatingsim.gui.EnergySystemTab.technology_dialogs._heat_pump import (
-    RiverHeatPumpDialog, AqvaHeatDialog,
+    AqvaHeatDialog,
+    RiverHeatPumpDialog,
 )
+from districtheatingsim.gui.EnergySystemTab.technology_dialogs._simple import (
+    GasBoilerDialog,
+    PowerToHeatDialog,
+    WasteHeatPumpDialog,
+)
+from districtheatingsim.gui.EnergySystemTab.technology_dialogs._solar import SolarThermalDialog
 from districtheatingsim.gui.EnergySystemTab.technology_dialogs._storage import ThermalStorage1DDialog
 
 

@@ -9,11 +9,21 @@ Tab for selecting and ordering heat producers in district heating networks.
 import os
 
 import geopandas as gpd
-
-from PyQt6.QtWidgets import QVBoxLayout, QWidget, QGroupBox, QListWidget, QPushButton, \
-    QMessageBox, QAbstractItemView, QListWidgetItem, QHBoxLayout, QLabel, QLineEdit
-
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (
+    QAbstractItemView,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
+
 
 class ProducerOrderTab(QWidget):
     """

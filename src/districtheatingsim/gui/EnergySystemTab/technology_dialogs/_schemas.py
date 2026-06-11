@@ -10,28 +10,29 @@ storage-cost default of ``"0.8"`` (Biomass uses ``"750"``).
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-from typing import List
 
 from districtheatingsim.gui.EnergySystemTab.technology_dialogs._base import (
-    Field, CheckField, ComboField, Section,
+    CheckField,
+    ComboField,
+    Field,
+    Section,
 )
-
 
 # ── Simple dialogs ────────────────────────────────────────────────────────────
 
-GAS_BOILER: List = [
+GAS_BOILER: list = [
     Field("thermal_capacity_kW", "Thermische Leistung Gaskessel in kW", "1000"),
     Field("Nutzungsgrad", "Nutzungsgrad Gaskessel", "0.9"),
     Field("spez_Investitionskosten", "spez. Investitionskosten in €/kW", "30"),
 ]
 
-POWER_TO_HEAT: List = [
+POWER_TO_HEAT: list = [
     Field("thermal_capacity_kW", "Thermische Leistung Power-To-Heat in kW", "1000"),
     Field("Nutzungsgrad", "Nutzungsgrad Power-to-Heat", "0.9"),
     Field("spez_Investitionskosten", "spez. Investitionskosten in €/kW", "30"),
 ]
 
-WASTE_HEAT_PUMP: List = [
+WASTE_HEAT_PUMP: list = [
     Field("Kühlleistung_Abwärme", "Kühlleistung Abwärme in kW", "30"),
     Field("Temperatur_Abwärme", "Temperatur Abwärme in °C", "30"),
     Field("spez_Investitionskosten_Abwärme", "spez. Investitionskosten Abwärmenutzung in €/kW", "500"),
@@ -42,7 +43,7 @@ WASTE_HEAT_PUMP: List = [
 # ── Shared storage block (Biomass / CHP / HolzgasCHP) ─────────────────────────
 
 def storage_fields(volume_key: str, opt_min_key: str, opt_max_key: str,
-                   spez_cost_default: str) -> List[Field]:
+                   spez_cost_default: str) -> list[Field]:
     """Return the 9-field generator buffer-storage block.
 
     Six fields are identical across the three combustion dialogs; the volume key,
@@ -64,7 +65,7 @@ def storage_fields(volume_key: str, opt_min_key: str, opt_max_key: str,
 
 # ── Combustion dialogs (main field block) ─────────────────────────────────────
 
-BIOMASS_MAIN: List = [
+BIOMASS_MAIN: list = [
     Field("thermal_capacity_kW", "th. Leistung in kW", "240"),
     Field("Größe_Holzlager", "Größe Holzlager in t", "40"),
     Field("spez_Investitionskosten", "spez. Investitionskosten Kessel in €/kW", "200"),
@@ -77,7 +78,7 @@ BIOMASS_MAIN: List = [
 ]
 BIOMASS_STORAGE = storage_fields("Speicher_Volumen", "opt_Speicher_min", "opt_Speicher_max", "750")
 
-CHP_MAIN: List = [
+CHP_MAIN: list = [
     Field("th_Leistung_kW", "thermische Leistung", "100"),
     Field("el_Wirkungsgrad", "elektrischer Wirkungsgrad BHKW", "0.33"),
     Field("KWK_Wirkungsgrad", "KWK Wirkungsgrad", "0.9"),
@@ -88,7 +89,7 @@ CHP_MAIN: List = [
     CheckField("speicher_aktiv", "Speicher aktiv"),
 ]
 
-HOLZGAS_CHP_MAIN: List = [
+HOLZGAS_CHP_MAIN: list = [
     Field("th_Leistung_kW", "thermische Leistung", "100"),
     Field("el_Wirkungsgrad", "elektrischer Wirkungsgrad BHKW", "0.33"),
     Field("KWK_Wirkungsgrad", "KWK Wirkungsgrad", "0.9"),
@@ -106,7 +107,7 @@ CHP_STORAGE = storage_fields("Speicher_Volumen_BHKW", "opt_BHKW_Speicher_min", "
 
 # River heat pump: the four plain fields. The 'Temperatur_FW_WP' field (CSV import
 # / scalar / ndarray) is handled by RiverHeatPumpDialog's getInputs override.
-RIVER: List = [
+RIVER: list = [
     Field("Wärmeleistung_FW_WP", "th. Leistung Wärmepumpe in kW", "200"),
     Field("dT", "Zulässige Abweichung Vorlauftemperatur Wärmepumpe von Netzvorlauftemperatur", "0"),
     Field("spez_Investitionskosten_Flusswasser", "spez. Investitionskosten Flusswärmenutzung", "1000"),
@@ -116,7 +117,7 @@ RIVER: List = [
 
 # ── Geothermal ────────────────────────────────────────────────────────────────
 
-GEOTHERMAL: List = [
+GEOTHERMAL: list = [
     Field("Fläche", "Fläche Erdsondenfeld in m²", "100"),
     Field("Bohrtiefe", "Bohrtiefe Sonden in m", "100"),
     Field("Temperatur_Geothermie", "Quelltemperatur in °C", "10"),
@@ -131,7 +132,7 @@ GEOTHERMAL: List = [
 # ── Solar thermal ─────────────────────────────────────────────────────────────
 # Grouped into the same three group boxes as the original dialog.
 
-SOLAR_SECTIONS: List[Section] = [
+SOLAR_SECTIONS: list[Section] = [
     Section("Technische Daten", [
         Field("bruttofläche_STA", "Kollektorbruttofläche in m²", "200"),
         Field("vs", "Solarspeichervolumen in m³", "20"),

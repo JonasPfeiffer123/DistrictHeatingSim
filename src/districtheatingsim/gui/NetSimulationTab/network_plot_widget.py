@@ -14,16 +14,15 @@ import tempfile
 import traceback
 
 try:
-    from PyQt6.QtWebEngineWidgets import QWebEngineView
     from PyQt6.QtWebEngineCore import QWebEngineSettings
+    from PyQt6.QtWebEngineWidgets import QWebEngineView
     WEBENGINE_AVAILABLE = True
 except ImportError:
     WEBENGINE_AVAILABLE = False
     logging.warning("PyQt6.QtWebEngineWidgets not available. Interactive plot will use fallback label.")
 
-from PyQt6.QtCore import pyqtSignal, QTimer, QUrl
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QComboBox, QLabel
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer, QUrl, pyqtSignal
+from PyQt6.QtWidgets import QComboBox, QLabel, QVBoxLayout, QWidget
 
 from districtheatingsim.net_simulation_pandapipes.interactive_network_plot import InteractiveNetworkPlot
 
@@ -288,7 +287,7 @@ class NetworkPlotWidget(QWidget):
 
     def _inject_click_handler(self, html_path: str):
         try:
-            with open(html_path, 'r', encoding='utf-8') as f:
+            with open(html_path, encoding='utf-8') as f:
                 html = f.read()
             html = html.replace('</body>', self._CLICK_JS + '</body>')
             with open(html_path, 'w', encoding='utf-8') as f:

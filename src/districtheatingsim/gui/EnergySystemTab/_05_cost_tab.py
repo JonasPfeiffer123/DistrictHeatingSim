@@ -8,16 +8,30 @@ Displaying and managing cost-related data for heat generation project components
 """
 
 import pandas as pd
-
-from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QScrollArea, QTableWidget, QTableWidgetItem, QHeaderView, QSizePolicy, QHBoxLayout, QPushButton, QLineEdit, QInputDialog, QMenu)
-from PyQt6.QtCore import pyqtSignal, Qt
+from matplotlib.figure import Figure
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
+from PyQt6.QtWidgets import (
+    QHBoxLayout,
+    QHeaderView,
+    QInputDialog,
+    QLabel,
+    QLineEdit,
+    QMenu,
+    QPushButton,
+    QScrollArea,
+    QSizePolicy,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
-from districtheatingsim.heat_generators.annuity import infrastructure_annuity
-from districtheatingsim.gui.EnergySystemTab._10_utilities import CollapsibleHeader
 from districtheatingsim.gui.EnergySystemTab._02_energy_system_dialogs import KostenBerechnungDialog
+from districtheatingsim.gui.EnergySystemTab._10_utilities import CollapsibleHeader
+from districtheatingsim.heat_generators.annuity import infrastructure_annuity
+
 
 class CostTab(QWidget):
     """

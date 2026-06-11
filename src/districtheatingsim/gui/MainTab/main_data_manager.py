@@ -9,16 +9,16 @@ This module implements the Model layer of the MVP pattern, providing three core 
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import os
 import json
 import logging
+import os
 import shutil
-from typing import Dict, List, Optional, Any
+from typing import Any
 
 from PyQt6.QtCore import QObject, pyqtSignal
 
-from districtheatingsim.utilities.utilities import get_resource_path
 from districtheatingsim.utilities.crs_utils import DEFAULT_CRS
+from districtheatingsim.utilities.utilities import get_resource_path
 
 #: Schema version of ``project_settings.json``. Bump when the on-disk format
 #: changes and add the corresponding step to ``_migrate_project_settings``.
@@ -42,7 +42,7 @@ class ProjectConfigManager:
         character support.
     """
 
-    def __init__(self, config_path: Optional[str] = None, file_paths_path: Optional[str] = None):
+    def __init__(self, config_path: str | None = None, file_paths_path: str | None = None):
         """
         Initialize configuration manager with automatic data loading.
 
@@ -74,7 +74,7 @@ class ProjectConfigManager:
         """
         return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'file_paths.json')
 
-    def load_config(self) -> Dict[str, Any]:
+    def load_config(self) -> dict[str, Any]:
         """
         Load application configuration from JSON file with UTF-8 encoding.
 
@@ -83,13 +83,13 @@ class ProjectConfigManager:
         """
         if os.path.exists(self.config_path):
             try:
-                with open(self.config_path, 'r', encoding='utf-8') as file:
+                with open(self.config_path, encoding='utf-8') as file:
                     return json.load(file)
             except (json.JSONDecodeError, UnicodeDecodeError):
                 return {}
         return {}
 
-    def load_file_paths(self) -> Dict[str, str]:
+    def load_file_paths(self) -> dict[str, str]:
         """
         Load file path mappings from JSON configuration with UTF-8 encoding.
 
@@ -98,13 +98,13 @@ class ProjectConfigManager:
         """
         if os.path.exists(self.file_paths_path):
             try:
-                with open(self.file_paths_path, 'r', encoding='utf-8') as file:
+                with open(self.file_paths_path, encoding='utf-8') as file:
                     return json.load(file)
             except (json.JSONDecodeError, UnicodeDecodeError):
                 return {}
         return {}
 
-    def save_config(self, config: Dict[str, Any]) -> None:
+    def save_config(self, config: dict[str, Any]) -> None:
         """
         Save configuration data to JSON file with UTF-8 encoding.
 
@@ -118,7 +118,7 @@ class ProjectConfigManager:
         except Exception:
             raise
 
-    def save_file_paths(self, file_paths: Dict[str, str]) -> None:
+    def save_file_paths(self, file_paths: dict[str, str]) -> None:
         """
         Save file paths configuration to JSON file with UTF-8 encoding.
 
@@ -170,7 +170,7 @@ class ProjectConfigManager:
         # Persist changes immediately
         self.save_config(self.config_data)
 
-    def get_recent_projects(self) -> List[str]:
+    def get_recent_projects(self) -> list[str]:
         """
         Retrieve the list of recently opened projects.
 
@@ -240,14 +240,14 @@ class ProjectFolderManager(QObject):
     project_folder_changed = pyqtSignal(str)
     crs_changed = pyqtSignal(str)  # Emitted when project CRS changes
 
-    def __init__(self, config_manager: Optional[ProjectConfigManager] = None):
+    def __init__(self, config_manager: ProjectConfigManager | None = None):
         """
         Initialize the project folder manager.
 
         :param config_manager: Configuration manager instance (creates new if None)
         :type config_manager: ProjectConfigManager
         """
-        super(ProjectFolderManager, self).__init__()
+        super().__init__()
         self.config_manager = config_manager or ProjectConfigManager()
 
         # Do not set project_folder or variant_folder until a project is selected or loaded
@@ -261,11 +261,11 @@ class ProjectFolderManager(QObject):
         self.calculation_year: int = 2023
 
         # Active energy system config per variant folder (relative variant name → config name)
-        self.active_energy_configs: Dict[str, str] = {}
+        self.active_energy_configs: dict[str, str] = {}
 
         # Persisted climate / heat-pump data file paths (None = not yet configured)
-        self.try_filename: Optional[str] = None
-        self.cop_filename: Optional[str] = None
+        self.try_filename: str | None = None
+        self.cop_filename: str | None = None
 
         # Do not emit initial folder change signal; will be emitted after project selection
 
@@ -324,13 +324,13 @@ class ProjectFolderManager(QObject):
         """
         return self.variant_folder if self.variant_folder else self.project_folder
 
-    def _settings_path(self) -> Optional[str]:
+    def _settings_path(self) -> str | None:
         """Return path to ``project_settings.json`` for the current project, or None."""
         if self.project_folder:
             return os.path.join(self.project_folder, "project_settings.json")
         return None
 
-    def _resolve_data_file(self, stored: Optional[str]) -> Optional[str]:
+    def _resolve_data_file(self, stored: str | None) -> str | None:
         """
         Resolve a stored (relative or absolute) data file path to an absolute path.
 
@@ -351,7 +351,7 @@ class ProjectFolderManager(QObject):
             return absolute if os.path.isfile(absolute) else None
         return None
 
-    def _migrate_project_settings(self, data: Dict[str, Any], version: int) -> Dict[str, Any]:
+    def _migrate_project_settings(self, data: dict[str, Any], version: int) -> dict[str, Any]:
         """
         Migrate a loaded ``project_settings.json`` dict to the current schema.
 
@@ -375,7 +375,7 @@ class ProjectFolderManager(QObject):
         path = self._settings_path()
         if path and os.path.exists(path):
             try:
-                with open(path, "r", encoding="utf-8") as f:
+                with open(path, encoding="utf-8") as f:
                     data = json.load(f)
                 data = self._migrate_project_settings(data, int(data.get("version", 0)))
                 self.project_crs = data.get("crs", DEFAULT_CRS)
@@ -397,7 +397,7 @@ class ProjectFolderManager(QObject):
             self.try_filename = None
             self.cop_filename = None
 
-    def _to_relative_path(self, absolute: Optional[str]) -> Optional[str]:
+    def _to_relative_path(self, absolute: str | None) -> str | None:
         """
         Convert an absolute path to a project-relative path for storage.
 
@@ -511,7 +511,7 @@ class ProjectFolderManager(QObject):
             shutil.copy2(src, dest)
         return dest
 
-    def set_try_filename(self, path: Optional[str]) -> None:
+    def set_try_filename(self, path: str | None) -> None:
         """
         Copy the selected TRY file into the project folder and persist the path.
 
@@ -526,7 +526,7 @@ class ProjectFolderManager(QObject):
         self.try_filename = path
         self.save_project_settings()
 
-    def set_cop_filename(self, path: Optional[str]) -> None:
+    def set_cop_filename(self, path: str | None) -> None:
         """
         Copy the selected COP data file into the project folder and persist the path.
 

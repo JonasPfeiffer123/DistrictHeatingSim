@@ -7,23 +7,31 @@ visualization of economic and technical metrics.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import os
 import json
-import pandas as pd
-import numpy as np
+import os
+
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QSplitter, 
-    QScrollArea, QGroupBox, QGridLayout, QFrame, QLabel, 
-    QPushButton, QTreeWidget, QTreeWidgetItem, QMessageBox
-)
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
-
+from PyQt6.QtWidgets import (
+    QFrame,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QSplitter,
+    QTabWidget,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
 
 def _filename_to_config_name(filename: str) -> str:
@@ -955,7 +963,7 @@ class ComparisonTab(QWidget):
                 display_name = item['display_name']
 
                 results_path = os.path.join(variant_path, "Ergebnisse", config_file)
-                with open(results_path, 'r', encoding='utf-8') as f:
+                with open(results_path, encoding='utf-8') as f:
                     data = json.load(f)
 
                 results = data.get('results', {})
@@ -997,7 +1005,7 @@ class ComparisonTab(QWidget):
             config_path = os.path.join(variant_path, "Wärmenetz", "Konfiguration Netzinitialisierung.json")
             if not os.path.exists(config_path):
                 return network_data
-            with open(config_path, 'r', encoding='utf-8') as f:
+            with open(config_path, encoding='utf-8') as f:
                 config = json.load(f)
             kpi_results = config.get('kpi_results', {})
             network_data['Trassenlänge'] = kpi_results.get('Trassenlänge Wärmenetz [m]', 0)

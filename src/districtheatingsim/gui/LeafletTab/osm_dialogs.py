@@ -11,15 +11,27 @@ queries through interactive user interfaces.
 import os
 import traceback
 
-from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QComboBox, QPushButton, \
-    QHBoxLayout, QFileDialog, QMessageBox, QLabel, QWidget, \
-    QGroupBox, QCheckBox, QProgressDialog
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QFileDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QProgressDialog,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
-from districtheatingsim.gui.LeafletTab.net_generation_threads import OSMStreetDownloadThread, OSMBuildingDownloadThread
-from districtheatingsim.osm.import_osm_data_geojson import download_data
-from districtheatingsim.osm.area_selection import build_highway_filter, resolve_area_polygon
+from districtheatingsim.gui.LeafletTab.net_generation_threads import OSMBuildingDownloadThread, OSMStreetDownloadThread
 from districtheatingsim.gui.LeafletTab.osm_dialogs_base import OSMDownloadDialogBase
+from districtheatingsim.osm.area_selection import build_highway_filter, resolve_area_polygon
+from districtheatingsim.osm.import_osm_data_geojson import download_data
+
 
 class DownloadOSMDataDialog(OSMDownloadDialogBase):
     """
@@ -927,7 +939,7 @@ class OSMBuildingQueryDialog(OSMDownloadDialogBase):
         self.downloadButton.setText("Download starten")
         
         QMessageBox.information(self, "Erfolg", 
-            f"Download abgeschlossen!\n\n" +
+            "Download abgeschlossen!\n\n" +
             f"{building_count} Gebäude gespeichert in:\n{filepath}")
         
         # Add to map

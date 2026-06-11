@@ -7,9 +7,21 @@ Dialog for configuring time series calculation parameters.
 """
 
 import os
-from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog,  \
-    QPushButton, QHBoxLayout, QFileDialog, QMessageBox, QRadioButton, \
-    QButtonGroup, QGroupBox
+
+from PyQt6.QtWidgets import (
+    QButtonGroup,
+    QDialog,
+    QFileDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QRadioButton,
+    QVBoxLayout,
+)
+
 
 class TimeSeriesCalculationDialog(QDialog):
     """
