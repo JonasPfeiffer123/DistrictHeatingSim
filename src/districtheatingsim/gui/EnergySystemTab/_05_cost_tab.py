@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QScrollArea, QTableWi
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtGui import QFont
 
-from districtheatingsim.heat_generators.annuity import annuity
+from districtheatingsim.heat_generators.annuity import infrastructure_annuity
 from districtheatingsim.gui.EnergySystemTab._10_utilities import CollapsibleHeader
 from districtheatingsim.gui.EnergySystemTab._02_energy_system_dialogs import KostenBerechnungDialog
 
@@ -411,15 +411,9 @@ class CostTab(QWidget):
         :return: The calculated annuity
         :rtype: float
         """
-        if TN == 0: # Avoid division by zero
-            return 0.0
-        
-        q = float(self.parent.economic_parameters["capital_interest_rate"])
-        r = float(self.parent.economic_parameters["inflation_rate"])
-        t = int(self.parent.economic_parameters["time_period"])
-        stundensatz = self.parent.economic_parameters["hourly_rate"]
-
-        return annuity(A0, TN, f_Inst, f_W_Insp, Bedienaufwand, interest_rate_factor=q, inflation_rate_factor=r, consideration_time_period_years=t, hourly_rate=stundensatz)
+        return infrastructure_annuity(
+            A0, TN, f_Inst, f_W_Insp, Bedienaufwand, self.parent.economic_parameters
+        )
     
     def updateSummaryRow(self):
         """
