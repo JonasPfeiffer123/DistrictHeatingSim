@@ -76,7 +76,7 @@ class NetGenerationThread(QThread):
             self.calculation_done.emit(())
         except Exception as e:
             error_msg = f"{str(e)}\n{traceback.format_exc()}"
-            self.calculation_error.emit(Exception(error_msg))
+            self.calculation_error.emit(error_msg)
 
     def stop(self):
         """
@@ -238,7 +238,7 @@ class GeocodingThread(QThread):
     Thread for geocoding address data.
     """
     calculation_done = pyqtSignal(object)
-    calculation_error = pyqtSignal(Exception)
+    calculation_error = pyqtSignal(str)
 
     def __init__(self, inputfilename, project_crs: str = "EPSG:25833"):
         """
@@ -270,7 +270,7 @@ class GeocodingThread(QThread):
         except Exception as e:
             tb = traceback.format_exc()
             error_message = f"Ein Fehler ist aufgetreten: {e}\n{tb}"
-            self.calculation_error.emit(Exception(error_message))
+            self.calculation_error.emit(error_message)
 
     def stop(self):
         """

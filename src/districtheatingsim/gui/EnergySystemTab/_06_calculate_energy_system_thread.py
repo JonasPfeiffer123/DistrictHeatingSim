@@ -20,7 +20,7 @@ class CalculateEnergySystemThread(QThread):
     :signal calculation_error: Emitted when error occurs during calculation.
     """
     calculation_done = pyqtSignal(object)
-    calculation_error = pyqtSignal(Exception)
+    calculation_error = pyqtSignal(str)
 
     def __init__(self, energy_system, optimize, weights):
         """
@@ -62,4 +62,4 @@ class CalculateEnergySystemThread(QThread):
         except Exception as e:
             tb = traceback.format_exc()
             error_message = f"Ein Fehler ist aufgetreten: {e}\n{tb}"
-            self.calculation_error.emit(Exception(error_message))
+            self.calculation_error.emit(error_message)
