@@ -7,8 +7,8 @@ Tab for network configuration parameters in district heating systems.
 """
 
 import pandapipes as pp
+from PyQt6.QtWidgets import QCheckBox, QComboBox, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QVBoxLayout, QWidget
 
-from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QComboBox, QWidget, QHBoxLayout, QCheckBox, QGroupBox
 
 class NetworkConfigTab(QWidget):
     """

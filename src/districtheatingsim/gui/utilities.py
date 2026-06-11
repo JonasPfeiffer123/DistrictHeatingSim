@@ -6,13 +6,14 @@ Custom GUI widgets and utility functions for DistrictHeatingSim application.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import pandas as pd
-import numpy as np
 from datetime import datetime
 
-from PyQt6.QtWidgets import QComboBox, QListView
-from PyQt6.QtGui import QStandardItemModel, QStandardItem
+import numpy as np
+import pandas as pd
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QStandardItem, QStandardItemModel
+from PyQt6.QtWidgets import QComboBox, QListView
+
 
 class CheckableComboBox(QComboBox):
     """
@@ -33,7 +34,7 @@ class CheckableComboBox(QComboBox):
         :param parent: Parent widget, defaults to None
         :type parent: QWidget, optional
         """
-        super(CheckableComboBox, self).__init__(parent)
+        super().__init__(parent)
         self.setView(QListView(self))
         self.view().pressed.connect(self.handleItemPressed)
         self.setModel(QStandardItemModel(self))

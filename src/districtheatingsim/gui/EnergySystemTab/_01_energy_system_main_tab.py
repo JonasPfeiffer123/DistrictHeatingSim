@@ -7,28 +7,39 @@ Energy System Main Tab Module
 Main tab for managing energy system design, including technology definitions, cost calculations, and results display.
 """
 
-import traceback
-import numpy as np
 import os
+import traceback
 
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QProgressBar, QTabWidget,
-                             QMessageBox, QMenuBar, QScrollArea, QDialog, QLabel,
-                             QComboBox, QPushButton, QInputDialog)
+import numpy as np
+from PyQt6.QtCore import QEventLoop, pyqtSignal
 from PyQt6.QtGui import QAction
-from PyQt6.QtCore import pyqtSignal, QEventLoop
-
-from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import import_results_csv
-from districtheatingsim.utilities.test_reference_year import import_TRY
+from PyQt6.QtWidgets import (
+    QComboBox,
+    QDialog,
+    QHBoxLayout,
+    QInputDialog,
+    QLabel,
+    QMenuBar,
+    QMessageBox,
+    QProgressBar,
+    QPushButton,
+    QScrollArea,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
 from districtheatingsim.gui.EnergySystemTab._02_energy_system_dialogs import EconomicParametersDialog, WeightDialog
-from districtheatingsim.gui.EnergySystemTab._06_calculate_energy_system_thread import CalculateEnergySystemThread
 from districtheatingsim.gui.EnergySystemTab._03_technology_tab import TechnologyTab
 from districtheatingsim.gui.EnergySystemTab._05_cost_tab import CostTab
+from districtheatingsim.gui.EnergySystemTab._06_calculate_energy_system_thread import CalculateEnergySystemThread
 from districtheatingsim.gui.EnergySystemTab._07_results_tab import ResultsTab
 from districtheatingsim.gui.EnergySystemTab._08_sensitivity_tab import SensitivityTab
 from districtheatingsim.gui.EnergySystemTab._09_sankey_dialog import SankeyDialog
 from districtheatingsim.heat_generators.energy_system import EnergySystem
 from districtheatingsim.heat_generators.thermal_storage import ThermalStorageAdapter
+from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import import_results_csv
+from districtheatingsim.utilities.test_reference_year import import_TRY
 
 
 def _config_name_to_filename(config_name: str) -> str:

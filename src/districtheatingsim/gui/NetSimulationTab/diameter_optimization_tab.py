@@ -6,7 +6,8 @@ UI tab for pipe diameter optimization settings in district heating networks.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QComboBox, QWidget,  QHBoxLayout, QCheckBox, QGroupBox
+from PyQt6.QtWidgets import QCheckBox, QComboBox, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QVBoxLayout, QWidget
+
 
 class DiameterOptimizationTab(QWidget):
     """

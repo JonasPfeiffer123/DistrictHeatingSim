@@ -13,21 +13,28 @@ existing import paths keep working.
 """
 
 from districtheatingsim.gui.EnergySystemTab.technology_dialogs._base import (
-    Field, CheckField, SchemaDialog,
-)
-from districtheatingsim.gui.EnergySystemTab.technology_dialogs._simple import (
-    GasBoilerDialog, PowerToHeatDialog, WasteHeatPumpDialog,
+    CheckField,
+    Field,
+    SchemaDialog,
 )
 from districtheatingsim.gui.EnergySystemTab.technology_dialogs._combustion import (
-    BiomassBoilerDialog, CHPDialog, HolzgasCHPDialog,
+    BiomassBoilerDialog,
+    CHPDialog,
+    HolzgasCHPDialog,
 )
-from districtheatingsim.gui.EnergySystemTab.technology_dialogs._solar import SolarThermalDialog
+from districtheatingsim.gui.EnergySystemTab.technology_dialogs._dispatcher import TechInputDialog
 from districtheatingsim.gui.EnergySystemTab.technology_dialogs._geothermal import GeothermalDialog
 from districtheatingsim.gui.EnergySystemTab.technology_dialogs._heat_pump import (
-    RiverHeatPumpDialog, AqvaHeatDialog,
+    AqvaHeatDialog,
+    RiverHeatPumpDialog,
 )
+from districtheatingsim.gui.EnergySystemTab.technology_dialogs._simple import (
+    GasBoilerDialog,
+    PowerToHeatDialog,
+    WasteHeatPumpDialog,
+)
+from districtheatingsim.gui.EnergySystemTab.technology_dialogs._solar import SolarThermalDialog
 from districtheatingsim.gui.EnergySystemTab.technology_dialogs._storage import ThermalStorage1DDialog
-from districtheatingsim.gui.EnergySystemTab.technology_dialogs._dispatcher import TechInputDialog
 
 __all__ = [
     "TechInputDialog",

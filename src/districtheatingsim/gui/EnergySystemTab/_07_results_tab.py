@@ -8,15 +8,24 @@ Displaying results of energy system calculations with diagrams and tables, inclu
 """
 
 import sys
-import numpy as np
 
-from matplotlib.figure import Figure
+import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
-
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QHBoxLayout, QTableWidget, QTableWidgetItem,
-                             QHeaderView, QScrollArea, QCheckBox, QApplication)
+from matplotlib.figure import Figure
 from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QScrollArea,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
 from districtheatingsim.gui.EnergySystemTab._10_utilities import CheckableComboBox, CollapsibleHeader
 

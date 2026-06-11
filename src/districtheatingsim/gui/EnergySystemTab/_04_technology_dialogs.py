@@ -12,13 +12,21 @@ re-exports them so existing imports — notably
 """
 
 from districtheatingsim.gui.EnergySystemTab.technology_dialogs import (  # noqa: F401
+    AqvaHeatDialog,
+    BiomassBoilerDialog,
+    CheckField,
+    CHPDialog,
+    Field,
+    GasBoilerDialog,
+    GeothermalDialog,
+    HolzgasCHPDialog,
+    PowerToHeatDialog,
+    RiverHeatPumpDialog,
+    SchemaDialog,
+    SolarThermalDialog,
     TechInputDialog,
-    Field, CheckField, SchemaDialog,
-    GasBoilerDialog, PowerToHeatDialog, WasteHeatPumpDialog,
-    BiomassBoilerDialog, CHPDialog, HolzgasCHPDialog,
-    SolarThermalDialog, GeothermalDialog,
-    RiverHeatPumpDialog, AqvaHeatDialog,
     ThermalStorage1DDialog,
+    WasteHeatPumpDialog,
 )
 
 __all__ = [

@@ -16,12 +16,20 @@ stays fully hand-written — it is unique, not duplicated, so the schema buys no
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Union
+from typing import Union
 
 from PyQt6.QtWidgets import (
-    QWidget, QLineEdit, QLabel, QCheckBox, QComboBox, QGroupBox,
-    QFormLayout, QVBoxLayout, QHBoxLayout,
+    QCheckBox,
+    QComboBox,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QVBoxLayout,
+    QWidget,
 )
 
 
@@ -44,7 +52,7 @@ class Field:
     label: str
     default: str
     cast: Callable = float
-    in_key: Optional[str] = None
+    in_key: str | None = None
 
     @property
     def read_key(self) -> str:
@@ -57,7 +65,7 @@ class ComboField:
 
     key: str
     label: str
-    options: List[str]
+    options: list[str]
     default: str
 
 
@@ -78,7 +86,7 @@ class Section:
     """A titled QGroupBox grouping a set of fields (purely a layout container)."""
 
     title: str
-    fields: List[SchemaItem]
+    fields: list[SchemaItem]
 
 
 class SchemaDialog(QWidget):
@@ -101,17 +109,17 @@ class SchemaDialog(QWidget):
     :meth:`_build_fields` for the schema part) and, if needed, :meth:`getInputs`.
     """
 
-    main_schema: List[SchemaItem] = []
-    sections: Optional[List[Section]] = None
-    storage_schema: Optional[List[Field]] = None
+    main_schema: list[SchemaItem] = []
+    sections: list[Section] | None = None
+    storage_schema: list[Field] | None = None
     storage_toggle_key: str = "speicher_aktiv"
     title: str = ""
 
-    def __init__(self, tech_data: Optional[dict] = None):
+    def __init__(self, tech_data: dict | None = None):
         super().__init__()
         self.tech_data = tech_data if tech_data is not None else {}
         self._widgets: dict = {}
-        self._storage_widget: Optional[QWidget] = None
+        self._storage_widget: QWidget | None = None
         self._build()
 
     # ------------------------------------------------------------------
@@ -159,7 +167,7 @@ class SchemaDialog(QWidget):
             self._populate(form, self.main_schema)
         return container
 
-    def _populate(self, form: QFormLayout, schema: List[SchemaItem]) -> None:
+    def _populate(self, form: QFormLayout, schema: list[SchemaItem]) -> None:
         for item in schema:
             if isinstance(item, CheckField):
                 widget = QCheckBox(item.label)
@@ -187,7 +195,7 @@ class SchemaDialog(QWidget):
     # Output
     # ------------------------------------------------------------------
 
-    def _main_items(self) -> List[SchemaItem]:
+    def _main_items(self) -> list[SchemaItem]:
         if self.sections is not None:
             return [field for section in self.sections for field in section.fields]
         return self.main_schema

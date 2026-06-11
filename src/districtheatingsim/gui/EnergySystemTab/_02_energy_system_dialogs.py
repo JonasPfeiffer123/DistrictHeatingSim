@@ -9,14 +9,23 @@ Dialogs for the Energy System Tab, including economic parameters input, cost cal
 
 import os
 
-import numpy as np
 import geopandas as gpd
-
-from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QComboBox, \
-    QPushButton, QHBoxLayout, QMessageBox, QFormLayout, QDialogButtonBox
-
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from PyQt6.QtWidgets import (
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QFormLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+)
+
 
 class EconomicParametersDialog(QDialog):
     """

@@ -10,43 +10,49 @@ Wires together :class:`NetworkPlotWidget`, :class:`NetworkInfoPanel`,
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import logging
-import os
 import csv
 import json
+import logging
+import os
 import traceback
 
-import numpy as np
-import pandas as pd
-import pandapipes as pp
 import matplotlib.pyplot as plt
-
-from PyQt6.QtCore import pyqtSignal, Qt, QTimer
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QScrollArea,
-    QMessageBox, QProgressBar, QMenuBar,
-)
+import numpy as np
+import pandapipes as pp
+import pandas as pd
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction
-
-from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import (
-    save_results_csv, import_results_csv,
+from PyQt6.QtWidgets import (
+    QHBoxLayout,
+    QMenuBar,
+    QMessageBox,
+    QProgressBar,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
 )
-from districtheatingsim.net_simulation_pandapipes.utilities import export_net_geojson
+
+from districtheatingsim.gui.NetSimulationTab.net_calculation_threads import (
+    NetCalculationThread,
+    NetInitializationThread,
+    NetRecalculationThread,
+)
+from districtheatingsim.gui.NetSimulationTab.net_generation_dialog import NetGenerationDialog
+from districtheatingsim.gui.NetSimulationTab.network_info_panel import NetworkInfoPanel
+from districtheatingsim.gui.NetSimulationTab.network_plot_widget import NetworkPlotWidget
+from districtheatingsim.gui.NetSimulationTab.pipe_config_table import PipeConfigTable
+from districtheatingsim.gui.NetSimulationTab.time_series_widget import TimeSeriesWidget
+from districtheatingsim.gui.NetSimulationTab.timeseries_dialog import TimeSeriesCalculationDialog
 from districtheatingsim.net_simulation_pandapipes.net_migration import migrate_loaded_net
 from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import (
     NetworkGenerationData,
     json_default,
 )
-
-from districtheatingsim.gui.NetSimulationTab.timeseries_dialog import TimeSeriesCalculationDialog
-from districtheatingsim.gui.NetSimulationTab.net_generation_dialog import NetGenerationDialog
-from districtheatingsim.gui.NetSimulationTab.net_calculation_threads import (
-    NetInitializationThread, NetCalculationThread, NetRecalculationThread,
+from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import (
+    import_results_csv,
+    save_results_csv,
 )
-from districtheatingsim.gui.NetSimulationTab.network_plot_widget import NetworkPlotWidget
-from districtheatingsim.gui.NetSimulationTab.network_info_panel import NetworkInfoPanel
-from districtheatingsim.gui.NetSimulationTab.pipe_config_table import PipeConfigTable
-from districtheatingsim.gui.NetSimulationTab.time_series_widget import TimeSeriesWidget
+from districtheatingsim.net_simulation_pandapipes.utilities import export_net_geojson
 
 
 class NetSimulationTab(QWidget):
@@ -476,7 +482,7 @@ class NetSimulationTab(QWidget):
                 waerme_hast_ges_W = np.array(waerme_rows).transpose()
                 strombedarf_hast_ges_W = np.array(strom_rows).transpose()
 
-            with open(json_path, 'r') as jf:
+            with open(json_path) as jf:
                 meta = json.load(jf)
 
             nd = NetworkGenerationData.from_dict(meta)

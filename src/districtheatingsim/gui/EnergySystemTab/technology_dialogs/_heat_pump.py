@@ -9,14 +9,19 @@ array / CSV). AqvaHeat currently has no inputs (empty schema).
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+import numpy as np
 from PyQt6.QtWidgets import (
-    QVBoxLayout, QLineEdit, QLabel, QFormLayout, QPushButton, QFileDialog, QMessageBox,
+    QFileDialog,
+    QFormLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
 )
 
-import numpy as np
-
-from districtheatingsim.gui.EnergySystemTab.technology_dialogs._base import SchemaDialog
 from districtheatingsim.gui.EnergySystemTab.technology_dialogs import _schemas as S
+from districtheatingsim.gui.EnergySystemTab.technology_dialogs._base import SchemaDialog
 
 
 class RiverHeatPumpDialog(SchemaDialog):

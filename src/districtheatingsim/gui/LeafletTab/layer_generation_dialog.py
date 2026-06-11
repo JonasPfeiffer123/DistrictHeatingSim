@@ -9,18 +9,32 @@ including OSM data handling and building coordinate management.
 """
 
 import os
-import pandas as pd
 
-from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QDialog, QComboBox, QPushButton, \
-    QFormLayout, QHBoxLayout, QFileDialog, QMessageBox, QLabel, QWidget, \
-    QTableWidget, QTableWidgetItem, QGroupBox, QCheckBox, QProgressDialog
+import pandas as pd
+from pyproj import Transformer
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QClipboard
-
-from pyproj import Transformer
+from PyQt6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QFileDialog,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
 from districtheatingsim.geocoding.geocoding import get_coordinates
-   
+
+
 class LayerGenerationDialog(QDialog):
     """
     Dialog for generating layers for heat network visualization.

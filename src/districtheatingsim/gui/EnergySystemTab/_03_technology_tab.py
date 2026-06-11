@@ -9,21 +9,31 @@ Managing and displaying technologies in district heating simulation, including a
 
 import os
 
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QLineEdit, 
-    QListWidget, QDialog, QFileDialog, QScrollArea, QAbstractItemView,
-    QSplitter
-)
-from PyQt6.QtCore import pyqtSignal
-import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
+import pandas as pd
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtWidgets import (
+    QAbstractItemView,
+    QDialog,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QPushButton,
+    QScrollArea,
+    QSplitter,
+    QVBoxLayout,
+    QWidget,
+)
 
+from districtheatingsim.gui.EnergySystemTab._04_technology_dialogs import TechInputDialog
+from districtheatingsim.gui.EnergySystemTab._11_generator_schematic import CustomGraphicsView, SchematicScene
 from districtheatingsim.heat_generators import TECH_CLASS_REGISTRY
 from districtheatingsim.heat_generators.thermal_storage import ThermalStorageAdapter
-from districtheatingsim.gui.EnergySystemTab._04_technology_dialogs import TechInputDialog
-from districtheatingsim.gui.EnergySystemTab._11_generator_schematic import SchematicScene, CustomGraphicsView
+
 
 class CustomListWidget(QListWidget):
     """

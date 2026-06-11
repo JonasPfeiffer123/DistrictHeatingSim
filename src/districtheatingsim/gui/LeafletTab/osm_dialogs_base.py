@@ -17,11 +17,11 @@ Subclasses must provide:
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import os
 import json
+import os
 
-from PyQt6.QtWidgets import QDialog, QMessageBox
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QDialog, QMessageBox
 
 
 class OSMDownloadDialogBase(QDialog):

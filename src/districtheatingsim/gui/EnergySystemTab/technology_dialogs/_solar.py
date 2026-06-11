@@ -9,15 +9,14 @@ azimuth / tilt values from ``self._widgets``.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from mpl_toolkits.mplot3d import art3d
+from PyQt6.QtWidgets import QHBoxLayout, QVBoxLayout
 
-from districtheatingsim.gui.EnergySystemTab.technology_dialogs._base import SchemaDialog
 from districtheatingsim.gui.EnergySystemTab.technology_dialogs import _schemas as S
+from districtheatingsim.gui.EnergySystemTab.technology_dialogs._base import SchemaDialog
 
 
 class SolarThermalDialog(SchemaDialog):

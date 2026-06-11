@@ -7,12 +7,26 @@ Dialog windows for project tab functionality including data input and progress d
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-from PyQt6.QtWidgets import (QVBoxLayout, QLabel, QDialog, QLineEdit, QDialogButtonBox, 
-                             QGridLayout, QFrame, QScrollArea, QPushButton, QProgressBar, 
-                             QTableWidget, QTableWidgetItem, QHBoxLayout, QCheckBox)
-from PyQt6.QtCore import Qt
 from geopy.geocoders import Nominatim
 from pyproj import Transformer
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (
+    QCheckBox,
+    QDialog,
+    QDialogButtonBox,
+    QFrame,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QProgressBar,
+    QPushButton,
+    QScrollArea,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+)
+
 
 class RowInputDialog(QDialog):
     """

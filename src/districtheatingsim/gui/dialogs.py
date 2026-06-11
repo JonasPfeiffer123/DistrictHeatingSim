@@ -9,8 +9,8 @@ Dialog windows for user input and configuration.
 import os
 import re
 
-from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QDialog, QPushButton, QHBoxLayout, QFileDialog
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QDialog, QFileDialog, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout
 
 from districtheatingsim.utilities.utilities import get_resource_path
 
@@ -38,7 +38,7 @@ def _extract_try_location(path: str) -> str:
     # 2. Header-based extraction (Lambert Conformal Conic → WGS84)
     try:
         rw = hw = None
-        with open(path, "r", encoding="latin-1", errors="replace") as f:
+        with open(path, encoding="latin-1", errors="replace") as f:
             for line in f:
                 if line.startswith("Rechtswert"):
                     rw = float(line.split(":")[1].split()[0])
@@ -199,8 +199,8 @@ class HeatPumpDataDialog(QDialog):
         mainLayout.addLayout(fileRow)
 
         # Kennfeld canvas
-        from matplotlib.figure import Figure
         from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+        from matplotlib.figure import Figure
 
         self._fig = Figure(figsize=(5.5, 3.8), tight_layout=True)
         self._ax = self._fig.add_subplot(111)

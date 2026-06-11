@@ -7,13 +7,17 @@ Threaded network initialization and calculation functionality.
 """
 
 import traceback
-import numpy as np
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson import initialize_geojson
-from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import thermohydraulic_time_series_net, time_series_preprocessing, simplified_time_series_net
+from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import (
+    simplified_time_series_net,
+    thermohydraulic_time_series_net,
+    time_series_preprocessing,
+)
 from districtheatingsim.net_simulation_pandapipes.utilities import optimize_diameter_types, recalculate_net
+
 
 class NetInitializationThread(QThread):
     """

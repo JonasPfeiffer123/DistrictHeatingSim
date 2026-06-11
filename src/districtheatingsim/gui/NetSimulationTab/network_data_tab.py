@@ -9,14 +9,23 @@ Tab for network data file selection and preview visualization.
 import os
 
 import geopandas as gpd
-from shapely import Point
-
-from PyQt6.QtWidgets import QVBoxLayout, QLineEdit, QLabel, QComboBox, QWidget, \
-    QPushButton, QHBoxLayout, QFileDialog, QMessageBox, QGroupBox
-
-from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.figure import Figure
+from PyQt6.QtWidgets import (
+    QComboBox,
+    QFileDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
+from shapely import Point
+
 
 class NetworkDataTab(QWidget):
     """

@@ -8,16 +8,17 @@ Dialog for configuring network generation parameters with tabbed interface.
 
 import json
 import os
-import sys
-from PyQt6.QtWidgets import QVBoxLayout, QDialog, QPushButton, QTabWidget
-from PyQt6.QtCore import Qt
 
-from districtheatingsim.utilities.utilities import get_resource_path
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QDialog, QPushButton, QTabWidget, QVBoxLayout
+
+from districtheatingsim.gui.NetSimulationTab.diameter_optimization_tab import DiameterOptimizationTab
+from districtheatingsim.gui.NetSimulationTab.network_config_tab import NetworkConfigTab
 from districtheatingsim.gui.NetSimulationTab.network_data_tab import NetworkDataTab
 from districtheatingsim.gui.NetSimulationTab.producer_order_tab import ProducerOrderTab
-from districtheatingsim.gui.NetSimulationTab.network_config_tab import NetworkConfigTab
-from districtheatingsim.gui.NetSimulationTab.diameter_optimization_tab import DiameterOptimizationTab
 from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import NetworkGenerationData, SecondaryProducer
+from districtheatingsim.utilities.utilities import get_resource_path
+
 
 def load_dialog_config(config_path="dialog_config.json"):
     """
@@ -31,7 +32,7 @@ def load_dialog_config(config_path="dialog_config.json"):
     if not os.path.isabs(config_path):
         # Use get_resource_path for PyInstaller compatibility
         config_path = get_resource_path(os.path.join('gui', 'NetSimulationTab', config_path))
-    with open(config_path, "r", encoding="utf-8") as f:
+    with open(config_path, encoding="utf-8") as f:
         return json.load(f)
     
 def save_dialog_config(config, config_path="dialog_config.json"):

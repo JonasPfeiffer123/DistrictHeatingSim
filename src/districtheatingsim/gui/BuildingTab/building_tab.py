@@ -7,26 +7,38 @@ BDEW profiles and Test Reference Year (TRY) climate data.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import os
 import json
+import os
 import traceback
 from collections import namedtuple
 
-import pandas as pd
-import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
 import matplotlib.gridspec as gridspec
+import matplotlib.pyplot as plt
+import pandas as pd
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
-
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QFileDialog, QLabel, QMessageBox,
-                             QTableWidget, QTableWidgetItem, QComboBox,
-                             QMenuBar, QLineEdit, QHBoxLayout, QSizePolicy, QGroupBox)
+from matplotlib.figure import Figure
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QAction
-from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtWidgets import (
+    QComboBox,
+    QFileDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMenuBar,
+    QMessageBox,
+    QSizePolicy,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
-from districtheatingsim.heat_requirement.heat_requirement_calculation_csv import generate_profiles_from_csv
 from districtheatingsim.gui.utilities import CheckableComboBox, convert_to_serializable
+from districtheatingsim.heat_requirement.heat_requirement_calculation_csv import generate_profiles_from_csv
+
 
 class BuildingModel:
     """
@@ -72,7 +84,7 @@ class BuildingModel:
         :raises Exception: If JSON loading fails
         """
         try:
-            with open(self.json_path, 'r', encoding='utf-8') as f:
+            with open(self.json_path, encoding='utf-8') as f:
                 loaded_data = json.load(f)
                 self.results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and 'wärme' in v}
         except Exception as e:
@@ -754,6 +766,7 @@ class BuildingTab(QWidget):
         
 if __name__ == "__main__":
     import sys
+
     from PyQt6.QtWidgets import QApplication
 
     app = QApplication(sys.argv)
@@ -765,7 +778,7 @@ if __name__ == "__main__":
     json_path = os.path.join(os.path.dirname(__file__), "..", "..", "project_data", "Görlitz", "Variante 1", "Lastgang", "Gebäude Lastgang.json")
     json_path = os.path.abspath(json_path)
     import json
-    with open(json_path, "r", encoding="utf-8") as f:
+    with open(json_path, encoding="utf-8") as f:
         loaded_data = json.load(f)
         # Filter wie im Model: nur dicts mit 'wärme'
         results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and 'wärme' in v}

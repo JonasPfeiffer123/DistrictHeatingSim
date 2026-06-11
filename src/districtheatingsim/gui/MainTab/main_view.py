@@ -9,25 +9,31 @@ managing UI elements, menu system, theme management, and tab coordination.
 """
 
 import os
-import traceback
-from typing import Optional, List, Dict, Any
 
-from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QTabWidget, QMenuBar, 
-                             QFileDialog, QLabel, QMessageBox, QInputDialog, QStackedWidget,
-                             QHBoxLayout)
-from PyQt6.QtGui import QIcon, QAction, QFont
 from PyQt6.QtCore import pyqtSlot
+from PyQt6.QtGui import QAction, QFont, QIcon
+from PyQt6.QtWidgets import (
+    QFileDialog,
+    QHBoxLayout,
+    QInputDialog,
+    QLabel,
+    QMainWindow,
+    QMenuBar,
+    QMessageBox,
+    QStackedWidget,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
-from districtheatingsim.gui.ProjectTab.project_tab import ProjectTab
 from districtheatingsim.gui.BuildingTab.building_tab import BuildingTab
-from districtheatingsim.gui.NetSimulationTab.calculation_tab import CalculationTab
-from districtheatingsim.gui.EnergySystemTab._01_energy_system_main_tab import EnergySystemTab
 from districtheatingsim.gui.ComparisonTab.comparison_tab import ComparisonTab
-
-from districtheatingsim.gui.dialogs import TemperatureDataDialog, HeatPumpDataDialog
-from districtheatingsim.gui.welcome_screen import WelcomeScreen, ThemeToggleSwitch
-
+from districtheatingsim.gui.dialogs import HeatPumpDataDialog, TemperatureDataDialog
+from districtheatingsim.gui.EnergySystemTab._01_energy_system_main_tab import EnergySystemTab
 from districtheatingsim.gui.LeafletTab.leaflet_tab import VisualizationTabLeaflet
+from districtheatingsim.gui.NetSimulationTab.calculation_tab import CalculationTab
+from districtheatingsim.gui.ProjectTab.project_tab import ProjectTab
+from districtheatingsim.gui.welcome_screen import ThemeToggleSwitch, WelcomeScreen
 
 
 class HeatSystemDesignGUI(QMainWindow):
@@ -70,15 +76,15 @@ class HeatSystemDesignGUI(QMainWindow):
         
         # UI state management
         self.show_welcome_on_startup = True
-        self.welcome_screen: Optional[WelcomeScreen] = None
-        self.main_interface_widget: Optional[QWidget] = None
-        self.stacked_widget: Optional[QStackedWidget] = None
+        self.welcome_screen: WelcomeScreen | None = None
+        self.main_interface_widget: QWidget | None = None
+        self.stacked_widget: QStackedWidget | None = None
         
         # Theme tracking
         self.current_theme_is_dark = False  # Track current theme state
         
         # Initialize UI components (created later in initUI)
-        self.folderLabel: Optional[QLabel] = None
+        self.folderLabel: QLabel | None = None
 
     def set_presenter(self, presenter) -> None:
         """
@@ -389,11 +395,11 @@ class HeatSystemDesignGUI(QMainWindow):
             self.main_theme_toggle.setChecked(self.current_theme_is_dark)
             self.main_theme_toggle.toggled.connect(self.on_main_theme_toggle)
 
-    def _read_stylesheet(self, theme_path: str) -> Optional[str]:
+    def _read_stylesheet(self, theme_path: str) -> str | None:
         """Read a stylesheet file and return its content, or None on failure."""
         try:
             if os.path.exists(theme_path):
-                with open(theme_path, 'r', encoding='utf-8') as f:
+                with open(theme_path, encoding='utf-8') as f:
                     return f.read()
         except Exception:
             pass
@@ -726,7 +732,7 @@ class HeatSystemDesignGUI(QMainWindow):
                         f"Projekt '{projectName}' wurde erfolgreich erstellt."
                     )
 
-    def on_open_existing_project(self, folder_path: Optional[str] = None) -> None:
+    def on_open_existing_project(self, folder_path: str | None = None) -> None:
         """
         Handle opening existing projects with variant selection support.
 
@@ -793,7 +799,7 @@ class HeatSystemDesignGUI(QMainWindow):
         except FileNotFoundError as e:
             self.show_error_message(str(e))
 
-    def get_available_variants(self, project_path: str) -> List[str]:
+    def get_available_variants(self, project_path: str) -> list[str]:
         """
         Discover available project variants in specified project directory.
 
@@ -804,7 +810,7 @@ class HeatSystemDesignGUI(QMainWindow):
         :return: List of valid variant folder names
         :rtype: list of str
         """
-        variants: List[str] = []
+        variants: list[str] = []
         
         try:
             # Scan project directory for variant folders

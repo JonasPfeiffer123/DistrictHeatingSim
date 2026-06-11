@@ -8,14 +8,15 @@ and geocoding operations to maintain GUI responsiveness.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import geopandas as gpd
 import traceback
 
+import geopandas as gpd
 from PyQt6.QtCore import QThread, pyqtSignal
 
-from districtheatingsim.net_generation.osmnx_steiner_network import generate_and_export_osmnx_layers
-from districtheatingsim.net_generation.import_and_create_layers import generate_and_export_layers
 from districtheatingsim.geocoding.geocoding import process_data
+from districtheatingsim.net_generation.import_and_create_layers import generate_and_export_layers
+from districtheatingsim.net_generation.osmnx_steiner_network import generate_and_export_osmnx_layers
+
 
 class NetGenerationThread(QThread):
     """
@@ -323,13 +324,14 @@ class GeoJSONToCSVThread(QThread):
         Reads GeoJSON building data, performs reverse geocoding for each building,
         and writes the results to a CSV file with progress updates.
         """
-        import json
         import csv
+        import json
+
         from geopy.geocoders import Nominatim
         from pyproj import Transformer
         
         try:
-            with open(self.geojson_file_path, 'r') as geojson_file:
+            with open(self.geojson_file_path) as geojson_file:
                 data = json.load(geojson_file)
             
             total_features = len(data['features'])

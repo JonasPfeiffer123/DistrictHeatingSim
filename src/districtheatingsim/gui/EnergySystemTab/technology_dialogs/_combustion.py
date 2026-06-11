@@ -8,8 +8,8 @@ differ, parametrised via ``_schemas.storage_fields``.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-from districtheatingsim.gui.EnergySystemTab.technology_dialogs._base import SchemaDialog
 from districtheatingsim.gui.EnergySystemTab.technology_dialogs import _schemas as S
+from districtheatingsim.gui.EnergySystemTab.technology_dialogs._base import SchemaDialog
 
 
 class BiomassBoilerDialog(SchemaDialog):

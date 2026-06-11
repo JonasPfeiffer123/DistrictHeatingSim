@@ -10,9 +10,9 @@ data management layers.
 
 import os
 import shutil
-from typing import Optional
 
 from PyQt6.QtWidgets import QInputDialog
+
 
 class HeatSystemPresenter:
     """

@@ -11,25 +11,31 @@ with a per-column default value.
 
 import csv
 import io
-from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
-
+from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QTableWidget, QTableWidgetItem, QComboBox, QLineEdit,
-    QHeaderView, QMessageBox, QAbstractItemView, QFrame,
+    QAbstractItemView,
+    QComboBox,
+    QDialog,
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont, QColor
-
 
 # ---------------------------------------------------------------------------
 # Target schema
 # ---------------------------------------------------------------------------
 
 # (column_name, label_in_ui, required, default_value, tooltip)
-TARGET_COLUMNS: List[Tuple[str, str, bool, str, str]] = [
+TARGET_COLUMNS: list[tuple[str, str, bool, str, str]] = [
     ("Land",                "Land",                  True,  "Deutschland", "Pflichtfeld – z. B. 'Deutschland'"),
     ("Bundesland",          "Bundesland",             True,  "",            "Pflichtfeld – z. B. 'Sachsen'"),
     ("Stadt",               "Stadt",                  True,  "",            "Pflichtfeld – z. B. 'Leipzig'"),
@@ -49,7 +55,7 @@ TARGET_COLUMNS: List[Tuple[str, str, bool, str, str]] = [
 ]
 
 # Known alternative names for auto-mapping (lower-case keys)
-_ALIASES: Dict[str, List[str]] = {
+_ALIASES: dict[str, list[str]] = {
     "land":                ["country", "nation", "staat"],
     "bundesland":          ["state", "province", "region"],
     "stadt":               ["city", "ort", "gemeinde", "place", "location"],
@@ -75,7 +81,7 @@ _NO_MAPPING = "(nicht zugeordnet – Standardwert)"
 
 def _detect_delimiter(path: str) -> str:
     """Auto-detect CSV delimiter using csv.Sniffer."""
-    with open(path, "r", encoding="utf-8-sig", errors="replace") as f:
+    with open(path, encoding="utf-8-sig", errors="replace") as f:
         sample = f.read(4096)
     try:
         dialect = csv.Sniffer().sniff(sample, delimiters=",;\t|")
@@ -84,7 +90,7 @@ def _detect_delimiter(path: str) -> str:
         return ";"
 
 
-def _suggest_mapping(target_col: str, source_cols: List[str]) -> str:
+def _suggest_mapping(target_col: str, source_cols: list[str]) -> str:
     """
     Return the best source column name for *target_col*, or empty string if
     no confident match is found.
@@ -137,12 +143,12 @@ class CsvImportDialog(QDialog):
     def __init__(self, source_path: str, parent=None):
         super().__init__(parent)
         self.source_path = source_path
-        self.result_df: Optional[pd.DataFrame] = None
+        self.result_df: pd.DataFrame | None = None
 
         self._delimiter = _detect_delimiter(source_path)
         self._source_df = pd.read_csv(source_path, delimiter=self._delimiter,
                                       encoding="utf-8-sig", dtype=str)
-        self._source_cols: List[str] = list(self._source_df.columns)
+        self._source_cols: list[str] = list(self._source_df.columns)
 
         self.setWindowTitle("CSV importieren – Spaltenzuordnung")
         self.resize(820, 620)
@@ -250,19 +256,19 @@ class CsvImportDialog(QDialog):
             default_edit.setEnabled(not_mapped)
             default_edit.setStyleSheet("" if not_mapped else "color: gray;")
 
-    def _build_result_df(self) -> Tuple[Optional[pd.DataFrame], List[str]]:
+    def _build_result_df(self) -> tuple[pd.DataFrame | None, list[str]]:
         """
         Apply the current mapping to produce the target DataFrame.
 
         :return: (DataFrame or None, list of validation error messages)
         """
-        errors: List[str] = []
+        errors: list[str] = []
         out_rows = []
 
         target_col_names = [tc[0] for tc in TARGET_COLUMNS]
 
         for src_idx in range(len(self._source_df)):
-            row_out: Dict[str, str] = {}
+            row_out: dict[str, str] = {}
             for col_idx, (col_name, label, required, _, _) in enumerate(TARGET_COLUMNS):
                 combo: QComboBox = self.table.cellWidget(col_idx, self._COL_SOURCE)
                 default_edit: QLineEdit = self.table.cellWidget(col_idx, self._COL_DEFAULT)
@@ -318,6 +324,6 @@ class CsvImportDialog(QDialog):
     # Public helpers
     # ------------------------------------------------------------------
 
-    def get_result(self) -> Optional[pd.DataFrame]:
+    def get_result(self) -> pd.DataFrame | None:
         """Return the mapped DataFrame after the dialog was accepted, else None."""
         return self.result_df
