@@ -7,12 +7,8 @@ heat generator coordinates into geospatial layers for network optimization.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-import warnings
-
-# Suppress pyogrio warnings about GeoJSON driver not supporting DRIVER option
-warnings.filterwarnings('ignore', message='.*driver GeoJSON does not support open option.*', category=RuntimeWarning)
-
 import traceback
+import warnings
 
 import geopandas as gpd
 import pandas as pd
@@ -25,6 +21,11 @@ from districtheatingsim.net_generation.elevation_utils import (
 )
 from districtheatingsim.net_generation.net_generation import generate_connection_lines, generate_network
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
+
+# Suppress pyogrio warnings about the GeoJSON driver not supporting the DRIVER open
+# option — emitted at GeoJSON I/O time, so set after the imports (module load is still
+# before any read/write call).
+warnings.filterwarnings('ignore', message='.*driver GeoJSON does not support open option.*', category=RuntimeWarning)
 
 
 def import_osm_street_layer(osm_street_layer_geojson_file: str) -> gpd.GeoDataFrame | None:

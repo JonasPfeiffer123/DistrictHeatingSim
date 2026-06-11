@@ -30,15 +30,21 @@ Architecture:
 import sys
 import warnings
 
+# Filter must precede the heavy PyQt6/GUI imports to suppress their import-time
+# DeprecationWarnings, so these imports are intentionally below it (noqa: E402).
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-from PyQt6.QtCore import QTimer
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import QTimer  # noqa: E402
+from PyQt6.QtWidgets import QApplication  # noqa: E402
 
-from districtheatingsim.gui.MainTab.main_data_manager import DataManager, ProjectConfigManager, ProjectFolderManager
-from districtheatingsim.gui.MainTab.main_presenter import HeatSystemPresenter
-from districtheatingsim.gui.MainTab.main_view import HeatSystemDesignGUI
-from districtheatingsim.utilities.utilities import get_stylesheet_based_on_time, handle_global_exception
+from districtheatingsim.gui.MainTab.main_data_manager import (  # noqa: E402
+    DataManager,
+    ProjectConfigManager,
+    ProjectFolderManager,
+)
+from districtheatingsim.gui.MainTab.main_presenter import HeatSystemPresenter  # noqa: E402
+from districtheatingsim.gui.MainTab.main_view import HeatSystemDesignGUI  # noqa: E402
+from districtheatingsim.utilities.utilities import get_stylesheet_based_on_time, handle_global_exception  # noqa: E402
 
 
 def main():
