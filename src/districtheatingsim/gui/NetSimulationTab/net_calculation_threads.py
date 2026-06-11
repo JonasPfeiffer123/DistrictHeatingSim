@@ -42,7 +42,9 @@ class NetInitializationThread(QThread):
             # Diameter optimization if enabled
             if self.NetworkGenerationData.diameter_optimization_pipe_checked == True:
                 self.NetworkGenerationData.net = optimize_diameter_types(self.NetworkGenerationData.net, self.NetworkGenerationData.max_velocity_pipe, self.NetworkGenerationData.material_filter_pipe, self.NetworkGenerationData.k_mm_pipe)
-            
+
+            # Compute KPIs here (off the UI thread) so the info panel just renders them.
+            self.NetworkGenerationData.calculate_results()
             self.calculation_done.emit(self.NetworkGenerationData)
 
         except Exception as e:
@@ -75,6 +77,7 @@ class NetRecalculationThread(QThread):
         """Run the steady-state recalculation."""
         try:
             recalculate_net(self.NetworkGenerationData.net)
+            self.NetworkGenerationData.calculate_results()
             self.calculation_done.emit(self.NetworkGenerationData)
         except Exception as e:
             self.calculation_error.emit(str(e) + "\n" + traceback.format_exc())
@@ -119,6 +122,8 @@ class NetCalculationThread(QThread):
                 # Use detailed hydraulic simulation
                 self.NetworkGenerationData = thermohydraulic_time_series_net(self.NetworkGenerationData)
 
+            # Compute KPIs here (off the UI thread) so the info panel just renders them.
+            self.NetworkGenerationData.calculate_results()
             self.calculation_done.emit(self.NetworkGenerationData)
         except Exception as e:
             self.calculation_error.emit(str(e) + "\n" + traceback.format_exc())

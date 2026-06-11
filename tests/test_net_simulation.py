@@ -369,6 +369,24 @@ class TestNetworkInitialization:
         recalculate_net(net)
         assert np.all(np.isfinite(net.res_junction.values))
 
+    def test_calculate_results_topology_kpis(self):
+        # calculate_results is the domain KPI computation the info panel used to call
+        # itself (now done by the worker thread, BACKLOG B2). Pin the topology/demand
+        # KPIs; with no time series the generation/loss KPIs degrade to None.
+        from types import SimpleNamespace
+
+        from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import (
+            NetworkGenerationData,
+        )
+        net = self._build_and_init()
+        nd = SimpleNamespace(net=net, waerme_ges_kW=np.array([100.0, 120.0]), pump_results=None)
+        kpis = NetworkGenerationData.calculate_results(nd)
+        assert kpis["Anzahl angeschlossene Gebäude"] == len(net.heat_consumer)
+        assert kpis["Trassenlänge Wärmenetz [m]"] == pytest.approx(net.pipe.length_km.sum() * 1000 / 2)
+        assert kpis["Jahresgesamtwärmebedarf Gebäude [MWh/a]"] == pytest.approx(0.22)
+        assert kpis["Pumpenstrom [MWh]"] is None  # no pump_results yet
+        assert nd.kpi_results is kpis  # cached on the object
+
 
 class TestRecalculateNet:
     def test_wraps_solver_failure_in_runtime_error(self):
