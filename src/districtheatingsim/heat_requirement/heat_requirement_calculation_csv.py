@@ -29,10 +29,10 @@ def _easter_sunday(year: int) -> pd.Timestamp:
     g = (b - f + 1) // 3
     h = (19 * a + b - d - g + 15) % 30
     i, k = divmod(c, 4)
-    l = (32 + 2 * e + 2 * i - h - k) % 7
-    m = (a + 11 * h + 22 * l) // 451
-    month = (h + l - 7 * m + 114) // 31
-    day = ((h + l - 7 * m + 114) % 31) + 1
+    ll = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * ll) // 451
+    month = (h + ll - 7 * m + 114) // 31
+    day = ((h + ll - 7 * m + 114) % 31) + 1
     return pd.Timestamp(year=year, month=month, day=day)
 
 
@@ -101,10 +101,10 @@ def generate_profiles_from_csv(data: pd.DataFrame,
     # Extract and validate CSV data
     try:
         YEU_total_heat_kWh = data["Wärmebedarf"].values.astype(float)
-        building_type = data["Gebäudetyp"].values.astype(str)
-        subtyp = data["Subtyp"].values.astype(str)
+        data["Gebäudetyp"].values.astype(str)
+        data["Subtyp"].values.astype(str)
         ww_demand = data["WW_Anteil"].values.astype(float)
-        min_air_temperature = data["Normaußentemperatur"].values.astype(float)
+        data["Normaußentemperatur"].values.astype(float)
     except KeyError as e:
         raise KeyError(f"Missing column in CSV: {e}. Please check CSV file completeness.") from e
     except ValueError as e:

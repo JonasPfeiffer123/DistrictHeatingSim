@@ -308,8 +308,7 @@ class MinimumSupplyTemperatureController(BasicCtrl):
                 print("No heat flow detected. Switching to standby mode.")
             return super().control_step(net)
 
-        # Get current temperatures
-        current_T_out = net.res_heat_consumer["t_to_k"].at[self.heat_consumer_idx] - KELVIN_OFFSET
+        # Get current inlet temperature
         current_T_in = net.res_heat_consumer["t_from_k"].at[self.heat_consumer_idx] - KELVIN_OFFSET
 
         # Apply weighted averaging for stability
@@ -317,7 +316,6 @@ class MinimumSupplyTemperatureController(BasicCtrl):
         if weighted_avg_T_in is not None:
             current_T_in = weighted_avg_T_in
 
-        current_mass_flow = net.res_heat_consumer["mdot_from_kg_per_s"].at[self.heat_consumer_idx]
         # Adjust return temperature if supply temperature too low
         if current_T_in < self.min_supply_temperature:
             new_T_out = net.heat_consumer.at[self.heat_consumer_idx, "treturn_k"] + self.temperature_adjustment_step

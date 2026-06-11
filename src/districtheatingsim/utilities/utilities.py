@@ -62,7 +62,7 @@ def get_resource_path(relative_path):
     try:
         return str(importlib.resources.files(resource_package).joinpath(resource_path))
     except Exception as e:
-        raise FileNotFoundError(f"Resource not found via importlib.resources: {relative_path}\n{e}")
+        raise FileNotFoundError(f"Resource not found via importlib.resources: {relative_path}\n{e}") from e
 
 def handle_global_exception(exc_type, exc_value, exc_traceback):
     """

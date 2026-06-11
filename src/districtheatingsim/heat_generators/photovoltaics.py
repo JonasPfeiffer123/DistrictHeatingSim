@@ -7,8 +7,6 @@ Photovoltaic power generation modeling based on EU PVGIS methodology.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-from datetime import UTC, datetime
-
 import numpy as np
 import pandas as pd
 
@@ -59,15 +57,6 @@ def Calculate_PV(TRY_data: str, Gross_area: float, Longitude: float, STD_Longitu
     start_date = np.datetime64('2024-01-01T00:00')
     time_steps = start_date + np.arange(8760) * np.timedelta64(1, 'h')
     
-    # Calculate day of year for solar position calculations
-    Day_of_Year_L = np.array([
-        datetime.fromtimestamp(
-            t.astype('datetime64[s]').astype(np.int64), 
-            tz=UTC
-        ).timetuple().tm_yday 
-        for t in time_steps
-    ])
-
     # Calculate solar irradiation on tilted PV surface
     GT_L, _, _, _ = calculate_solar_radiation(
         time_steps, G_L, D_L,
@@ -160,7 +149,7 @@ def calculate_building(TRY_data: str, building_data: str, output_filename: str) 
             encoding='utf-8'
         )
     except Exception as e:
-        raise ValueError(f"Error loading building data from {building_data}: {e}")
+        raise ValueError(f"Error loading building data from {building_data}: {e}") from e
 
     # Location parameters for PV calculation (customizable)
     # Default: Munich, Germany - Central European location
@@ -254,4 +243,4 @@ def calculate_building(TRY_data: str, building_data: str, output_filename: str) 
         print(f"  → Average capacity factor: {annual_yield*1000/(total_capacity*8760):.2f}")
         
     except Exception as e:
-        raise OSError(f"Error saving results to {output_filename}: {e}")
+        raise OSError(f"Error saving results to {output_filename}: {e}") from e
