@@ -176,11 +176,22 @@ importing `energy_system` must not load `PyQt6`). *Note:* the CI apt step for Qt
 is still required for the actual GUI tests.
 
 ## C. Correctness & robustness
-### C1. Threading not thread-safe
-Worker threads (e.g. `_06_calculate_energy_system_thread.py`) mutate the shared
-`energy_system` object without locking; error signatures are inconsistent
-(sometimes an Exception, sometimes a str); thread lifecycle on dialog close is
-partly unguarded.
+### C1. Threading not thread-safe (partially fixed 2026-06)
+Worker threads mutate shared state without locking; error signatures were inconsistent;
+thread lifecycle is partly unguarded. **Fixed:**
+- **Error signals unified** — all 10 GUI worker threads now use `pyqtSignal(str)`
+  carrying the formatted message (was a mix of `str` / `Exception`, plus
+  `NetGenerationThread` emitting `Exception(...)` on a `str` signal — a type mismatch).
+- **Concurrent-calc race** — `CalculateEnergySystemThread` (which mutates the shared
+  `energy_system` via `calculate_mix`) gained a `stop()`, and `start_calculation` now
+  refuses to launch a second run while one is in flight (previously it orphaned the
+  first thread and let two mutate the same object at once).
+
+*Still open:* `main_view.closeEvent` doesn't stop running worker threads before the app
+exits (QThread-destroyed-while-running risk) — wants a per-tab `stop_threads()` hook
+called from the main window; and the deeper isolation (worker operates on a deep copy /
+the producer→`calculation_done`→main-thread-swap pattern made uniform) for the cases a
+single in-flight run is read by the UI.
 ### C2. Solver path lacks error handling (partially fixed 2026-06)
 `run_timeseries()` ran without try/except and no NaN/inf checks, so a non-converged
 or infeasible run either crashed opaquely or let NaN propagate into the heat/
