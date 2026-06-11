@@ -359,3 +359,23 @@ class TestNetworkInitialization:
         assert all(str(s).startswith("ISOPLUS_DRE") for s in net.pipe["std_type"])
         # Pipe diameters are stored in the 0.14 inner_diameter_mm column, all positive.
         assert np.all(net.pipe["inner_diameter_mm"].values > 0)
+
+    def test_recalculate_net_reconverges_after_pipe_edit(self):
+        # The domain step behind the GUI "recalculate" button (extracted from the view,
+        # BACKLOG B2): editing a pipe + recalculating must re-solve to finite results.
+        from districtheatingsim.net_simulation_pandapipes.utilities import recalculate_net
+        net = self._build_and_init()
+        net.pipe.at[0, "inner_diameter_mm"] *= 1.5
+        recalculate_net(net)
+        assert np.all(np.isfinite(net.res_junction.values))
+
+
+class TestRecalculateNet:
+    def test_wraps_solver_failure_in_runtime_error(self):
+        import pandapipes as pp
+
+        from districtheatingsim.net_simulation_pandapipes.utilities import recalculate_net
+        # An empty network cannot be solved; the opaque pandapipes error is re-raised
+        # with run context instead (BACKLOG B2/C2).
+        with pytest.raises(RuntimeError, match="recalculation failed"):
+            recalculate_net(pp.create_empty_network(fluid="water"))

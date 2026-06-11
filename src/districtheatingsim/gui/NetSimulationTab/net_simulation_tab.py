@@ -31,7 +31,7 @@ from PyQt6.QtGui import QAction
 from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import (
     save_results_csv, import_results_csv,
 )
-from districtheatingsim.net_simulation_pandapipes.utilities import export_net_geojson
+from districtheatingsim.net_simulation_pandapipes.utilities import export_net_geojson, recalculate_net
 from districtheatingsim.net_simulation_pandapipes.net_migration import migrate_loaded_net
 from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import (
     NetworkGenerationData,
@@ -339,8 +339,6 @@ class NetSimulationTab(QWidget):
             return
 
         try:
-            from districtheatingsim.net_simulation_pandapipes.pp_net_initialisation_geojson import run_control
-
             self._pipe_table.apply_changes_to_net()
 
             self._progress_bar.setVisible(True)
@@ -350,11 +348,7 @@ class NetSimulationTab(QWidget):
 
             self._progress_bar.setValue(30)
             QApplication.processEvents()
-            pp.pipeflow(self.NetworkGenerationData.net, mode="bidirectional", iter=100)
-
-            self._progress_bar.setValue(60)
-            QApplication.processEvents()
-            run_control(self.NetworkGenerationData.net, mode="bidirectional", iter=100)
+            recalculate_net(self.NetworkGenerationData.net)
 
             self._progress_bar.setValue(90)
             QApplication.processEvents()
