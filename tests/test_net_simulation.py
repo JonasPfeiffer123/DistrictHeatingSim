@@ -18,6 +18,7 @@ from districtheatingsim.net_simulation_pandapipes.pipe_std_types import (
 )
 from districtheatingsim.net_simulation_pandapipes.result_validation import (
     validate_design_state,
+    validate_net_results,
     validate_simulation_results,
 )
 
@@ -60,6 +61,38 @@ class TestValidateSimulationResults:
             "ok": np.array([1.0, 2.0]),
         }
         validate_simulation_results(results)  # must not raise
+
+
+class TestValidateNetResults:
+    """Build-time guard (create_network): a solved net must have finite res_junction;
+    an empty/NaN result means the design pipeflow did not converge (BACKLOG C2)."""
+
+    @staticmethod
+    def _net(res_junction):
+        from types import SimpleNamespace
+        return SimpleNamespace(res_junction=res_junction)
+
+    def test_finite_results_pass(self):
+        import pandas as pd
+        net = self._net(pd.DataFrame({"p_bar": [5.0, 4.9], "t_k": [358.0, 357.0]}))
+        validate_net_results(net)  # must not raise
+
+    def test_missing_or_empty_results_raise(self):
+        import pandas as pd
+        with pytest.raises(RuntimeError, match="no junction results"):
+            validate_net_results(self._net(None))
+        with pytest.raises(RuntimeError, match="no junction results"):
+            validate_net_results(self._net(pd.DataFrame()))
+
+    def test_nan_results_raise(self):
+        import pandas as pd
+        net = self._net(pd.DataFrame({"p_bar": [5.0, np.nan]}))
+        with pytest.raises(RuntimeError, match="NaN/inf"):
+            validate_net_results(net)
+
+    def test_context_in_message(self):
+        with pytest.raises(RuntimeError, match="network generation"):
+            validate_net_results(self._net(None), context="network generation")
 
 
 def _design_state(qext=7.5):

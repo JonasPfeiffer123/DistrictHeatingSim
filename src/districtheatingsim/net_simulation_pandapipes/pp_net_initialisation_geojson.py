@@ -31,6 +31,7 @@ from pandapipes.control.run_control import run_control
 from districtheatingsim.constants import CP_WATER_KJ_KGK, KELVIN_OFFSET
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
 from districtheatingsim.net_simulation_pandapipes.pipe_std_types import resolve_pipe_u_w_per_m2k
+from districtheatingsim.net_simulation_pandapipes.result_validation import validate_net_results
 from districtheatingsim.net_simulation_pandapipes.utilities import (
     COP_WP,
     correct_flow_directions,
@@ -568,5 +569,9 @@ def create_network(gdf_dict: dict[str, gpd.GeoDataFrame], consumer_dict: dict[st
 
     net = correct_flow_directions(net)
     net = init_diameter_types(net, v_max_pipe=v_max_pipe, material_filter=material_filter, k=k_mm)
+
+    # Fail loudly at build time if the design state did not converge, instead of
+    # letting NaN propagate into the time series (BACKLOG C2).
+    validate_net_results(net, context="network generation")
 
     return net

@@ -172,8 +172,11 @@ temperature post-processing. **Fixed for the thermohydraulic path:**
 context) and validates `np_results` before post-processing. The **simplified** path is
 also guarded: `validate_design_state` rejects a NaN/inf design state (failed init
 pipeflow) before it is scaled across every time step. Both validators are unit-tested
-in `tests/test_net_simulation.py`. *Still open:* a guard at build time
-(`create_network`'s design pipeflow) and explicit solver convergence diagnostics.
+in `tests/test_net_simulation.py`. **Build-time guard added:** `create_network` now
+calls `validate_net_results(net)` after the design pipeflow + diameter sizing — an
+empty or NaN/inf `res_junction` raises a clear `RuntimeError` (disconnected/infeasible
+network) instead of letting NaN reach the time series. Unit-tested
+(`TestValidateNetResults`) + verified it passes on the real Görlitz net.
 *Update (C11):* a live end-to-end network seam now **exists** —
 `test_net_simulation.py::TestNetworkInitialization` (marked `slow`) builds + solves a
 tiny net on pandapipes 0.14 and `recalculate_net` is tested through it. The earlier
