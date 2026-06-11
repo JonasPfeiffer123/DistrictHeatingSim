@@ -39,7 +39,7 @@ _MONTH_STARTS = [0, 744, 1416, 2160, 2880, 3624,
 def _apply_month_xticks(ax, n_steps: int):
     """Replace integer hour labels with abbreviated month names when n_steps ≥ 8000."""
     if n_steps >= 8000:
-        valid = [(s, m) for s, m in zip(_MONTH_STARTS, _MONTH_NAMES) if s < n_steps]
+        valid = [(s, m) for s, m in zip(_MONTH_STARTS, _MONTH_NAMES, strict=False) if s < n_steps]
         ax.set_xticks([s for s, _ in valid])
         ax.set_xticklabels([m for _, m in valid], fontsize=9)
     else:
@@ -333,7 +333,7 @@ class ResultsTab(QWidget):
 
         for i, (tech, wärmemenge, wgk, anteil, spec_emission, primary_energy, wärmeleistung) in enumerate(
                 zip(results['techs'], results['Wärmemengen'], results['WGK'],
-                    results['Anteile'], results['specific_emissions_L'], results['primärenergie_L'], results['Wärmeleistung_L'])):
+                    results['Anteile'], results['specific_emissions_L'], results['primärenergie_L'], results['Wärmeleistung_L'], strict=False)):
 
             if not isinstance(wärmeleistung, (list, np.ndarray)):
                 wärmeleistung = [wärmeleistung]

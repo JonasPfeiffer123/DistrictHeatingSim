@@ -593,7 +593,7 @@ class ComparisonDashboard(QWidget):
             ax.tick_params(axis='x', rotation=0, labelsize=10)
         
         # Add value labels on bars with better positioning
-        for bar, cost in zip(bars, costs):
+        for bar, cost in zip(bars, costs, strict=False):
             height = bar.get_height()
             ax.text(bar.get_x() + bar.get_width()/2., height + height*0.02,
                    f'{cost:.1f}', ha='center', va='bottom', fontweight='bold', fontsize=10)
@@ -640,9 +640,9 @@ class ComparisonDashboard(QWidget):
             colors = variant.get('colors', plt.cm.Set3.colors[:len(techs)])
 
             if techs and anteile:
-                filtered_data = [(tech, anteil, color) for tech, anteil, color in zip(techs, anteile, colors) if anteil > 1.0]
+                filtered_data = [(tech, anteil, color) for tech, anteil, color in zip(techs, anteile, colors, strict=False) if anteil > 1.0]
                 if filtered_data:
-                    techs_filtered, anteile_filtered, colors_filtered = zip(*filtered_data)
+                    techs_filtered, anteile_filtered, colors_filtered = zip(*filtered_data, strict=False)
                 else:
                     techs_filtered, anteile_filtered, colors_filtered = techs, anteile, colors
                 wedges, texts = ax.pie(
@@ -652,7 +652,7 @@ class ComparisonDashboard(QWidget):
                     autopct=None,
                     startangle=90
                 )
-                legend_labels = [f"{tech}: {anteil:.1f}%" for tech, anteil in zip(techs_filtered, anteile_filtered)]
+                legend_labels = [f"{tech}: {anteil:.1f}%" for tech, anteil in zip(techs_filtered, anteile_filtered, strict=False)]
                 # Always show legend, right for 1-2, below for more
                 if cols == 1 or (cols == 2 and n_variants <= 2):
                     ax.legend(wedges, legend_labels, loc='center left', bbox_to_anchor=(1.1, 0.5),
@@ -691,7 +691,7 @@ class ComparisonDashboard(QWidget):
             ax.tick_params(axis='x', rotation=45)
         
         # Add value labels on bars
-        for bar, emission in zip(bars, emissions):
+        for bar, emission in zip(bars, emissions, strict=False):
             height = bar.get_height()
             ax.text(bar.get_x() + bar.get_width()/2., height + height*0.02,
                    f'{emission:.3f}', ha='center', va='bottom', fontsize=9, fontweight='bold')
@@ -727,7 +727,7 @@ class ComparisonDashboard(QWidget):
             ax.tick_params(axis='x', rotation=45)
         
         # Add value labels on bars
-        for bar, pe_factor in zip(bars, pe_factors):
+        for bar, pe_factor in zip(bars, pe_factors, strict=False):
             height = bar.get_height()
             ax.text(bar.get_x() + bar.get_width()/2., height + height*0.02,
                    f'{pe_factor:.2f}', ha='center', va='bottom', fontsize=9, fontweight='bold')
@@ -779,7 +779,7 @@ class ComparisonDashboard(QWidget):
                 ax1.set_ylabel('Verluste (%)', fontweight='bold')
                 
                 # Add value labels
-                for bar, value in zip(bars1, verteilverluste):
+                for bar, value in zip(bars1, verteilverluste, strict=False):
                     if value > 0:
                         height = bar.get_height()
                         ax1.text(bar.get_x() + bar.get_width()/2., height + height*0.02,
@@ -796,7 +796,7 @@ class ComparisonDashboard(QWidget):
                 ax2.set_ylabel('Anzahl', fontweight='bold')
                 
                 # Add value labels
-                for bar, value in zip(bars2, anzahl_gebaeude):
+                for bar, value in zip(bars2, anzahl_gebaeude, strict=False):
                     if value > 0:
                         height = bar.get_height()
                         ax2.text(bar.get_x() + bar.get_width()/2., height + height*0.02,
@@ -813,7 +813,7 @@ class ComparisonDashboard(QWidget):
                 ax3.set_ylabel('Länge (m)', fontweight='bold')
                 
                 # Add value labels
-                for bar, value in zip(bars3, trassenlaenge):
+                for bar, value in zip(bars3, trassenlaenge, strict=False):
                     if value > 0:
                         height = bar.get_height()
                         ax3.text(bar.get_x() + bar.get_width()/2., height + height*0.02,
@@ -1044,7 +1044,7 @@ class ComparisonTab(QWidget):
                 "Anteile": [round(a * 100, 2) for a in results.get('Anteile', [])],
                 "colors": results.get('colors', []),
                 "specific_emissions_L": [round(e, 4) for e in results.get('specific_emissions_L', [])],
-                "primärenergie_L": [round(pe / w, 4) if w else 0 for pe, w in zip(pe_gesamt, waermemengen)],
+                "primärenergie_L": [round(pe / w, 4) if w else 0 for pe, w in zip(pe_gesamt, waermemengen, strict=False)],
                 "Jahreswärmebedarf": round(results.get('Jahreswärmebedarf', 0), 1),
                 "Strommenge": round(results.get('Strommenge', 0), 2),
                 "Strombedarf": round(results.get('Strombedarf', 0), 2),
@@ -1056,4 +1056,4 @@ class ComparisonTab(QWidget):
             return processed_results
             
         except Exception as e:
-            raise ValueError(f"Error processing results: {e}")
+            raise ValueError(f"Error processing results: {e}") from e

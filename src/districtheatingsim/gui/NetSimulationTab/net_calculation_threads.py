@@ -44,7 +44,7 @@ class NetInitializationThread(QThread):
             self.NetworkGenerationData = initialize_geojson(self.NetworkGenerationData)      
 
             # Diameter optimization if enabled
-            if self.NetworkGenerationData.diameter_optimization_pipe_checked == True:
+            if self.NetworkGenerationData.diameter_optimization_pipe_checked:
                 self.NetworkGenerationData.net = optimize_diameter_types(self.NetworkGenerationData.net, self.NetworkGenerationData.max_velocity_pipe, self.NetworkGenerationData.material_filter_pipe, self.NetworkGenerationData.k_mm_pipe)
 
             # Compute KPIs here (off the UI thread) so the info panel just renders them.

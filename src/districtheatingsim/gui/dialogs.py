@@ -243,7 +243,6 @@ class HeatPumpDataDialog(QDialog):
             # Mask zero / infeasible cells
             masked = np.ma.masked_where(data == 0, data)
 
-            cmap = self._fig.get_facecolor()  # inherit bg
             im = self._ax.imshow(
                 masked, aspect="auto", origin="lower",
                 cmap="RdYlGn", vmin=1.0, vmax=7.0,

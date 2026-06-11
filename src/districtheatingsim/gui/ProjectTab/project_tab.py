@@ -181,7 +181,7 @@ class ProjectModel:
                     })
             return output_file_path
         except Exception as e:
-            raise Exception(f"Fehler beim Erstellen der CSV-Datei: {str(e)}")
+            raise Exception(f"Fehler beim Erstellen der CSV-Datei: {str(e)}") from e
 
     def calculate_centroid(self, coordinates):
         """
@@ -727,8 +727,8 @@ class ProjectPresenter:
                     if 'UTM_X' in row and 'UTM_Y' in row and row['UTM_X'] and row['UTM_Y']:
                         if row['UTM_X'].strip() and row['UTM_Y'].strip():
                             try:
-                                x_val = float(row['UTM_X'])
-                                y_val = float(row['UTM_Y'])
+                                float(row['UTM_X'])
+                                float(row['UTM_Y'])
                                 return 'mit Koordinaten'  # Found at least one valid coordinate pair
                             except ValueError:
                                 continue

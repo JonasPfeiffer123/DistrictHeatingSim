@@ -212,7 +212,7 @@ class NetworkDataTab(QWidget):
 
             # Annotations vorbereiten
             annotations = []
-            for idx, row in hast.iterrows():
+            for _idx, row in hast.iterrows():
                 point = row['geometry'].representative_point()
                 
                 # Access building data from nested structure

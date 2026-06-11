@@ -253,7 +253,7 @@ class CostTab(QWidget):
 
         # Iterate over the DataFrame rows
         self.infrastructureCostsTable.blockSignals(True)
-        for row_idx, (index, row) in enumerate(self.data.iterrows()):
+        for row_idx, (_index, row) in enumerate(self.data.iterrows()):
             for col_idx, (col_name, value) in enumerate(row.items()):
                 # Apply formatting based on column type
                 if col_name == 'Kosten' or col_name == 'Annuität':
@@ -608,7 +608,7 @@ class CostTab(QWidget):
         ax1.set_ylabel('Komponenten')
 
         # Display exact cost values next to each bar
-        for i, (size, label) in enumerate(zip(sizes, labels)):
+        for i, (size, _label) in enumerate(zip(sizes, labels, strict=False)):
             formatted_size = self.format_cost(size)
             ax1.text(size, i, formatted_size, va='center')
 
@@ -618,7 +618,7 @@ class CostTab(QWidget):
 
         # Calculate percentages for legend
         total = sum(sizes)
-        percent_labels = [f"{label} ({size / total * 100:.1f}%)" for label, size in zip(labels, sizes)]
+        percent_labels = [f"{label} ({size / total * 100:.1f}%)" for label, size in zip(labels, sizes, strict=False)]
 
         wedges, _ = ax2.pie(
             sizes,
@@ -635,7 +635,7 @@ class CostTab(QWidget):
         ax2.legend(wedges, percent_labels, loc="best", bbox_to_anchor=(1, 0.5))
 
         # Apply consistent colors to the bar chart
-        for bar, color in zip(bar_colors, pie_colors):
+        for bar, color in zip(bar_colors, pie_colors, strict=False):
             bar.set_color(color)
 
         # Draw both charts
