@@ -62,9 +62,17 @@ tests. This is the safety net that makes every refactor below low-risk.
   block), B007 (unused loop vars → `_`). **`ruff check .` is now GATING in CI**
   (`continue-on-error` removed, ruff pinned to `0.15.16`); the scoped tree (src minus
   gui, + tests) is clean.
+- **Landed 2026-06 (GUI widening, step 1):** assessed + started clearing the GUI.
+  **224 findings → 50.** Surfaced **one real bug**: `welcome_screen.py` used
+  `sys.frozen`/`sys._MEIPASS`/`sys.executable` with no module-level `import sys`
+  (NameError in the frozen-exe path) — fixed (F821). Then a safe-autofix sweep over the
+  whole GUI (I001, F401, UP006/045/035, UP015, …) cleared 171 more, all
+  behaviour-preserving (verified: 57 GUI modules import offscreen, 217 passed). The
+  GUI is **still excluded** from the gating config.
 - **Still open:**
-  - Widen `ruff` into `src/districtheatingsim/gui` (currently excluded) — hundreds of
-    findings expected in the least-tested code; do module-by-module with smoke tests.
+  - GUI step 2: the remaining **50 behaviour-neutral manual findings** (B905 zip-strict
+    17, B904 7, B007 7, E702 semicolons 7, F841 7, E722 3, E712 1, UP007 1). Then drop
+    `gui` from `extend-exclude` so CI gates it too.
   - Decide on `ruff format` (not yet applied — `ruff format --check tests` reports 10
     files; the CI format step is **advisory** for now). Adopting it reformats the tree.
   - The CI `lint` job is now gating but still **unverified on GitHub** (first gating run
