@@ -110,7 +110,33 @@ def validate_minimum_pressure_difference(net, target_dp_min_bar: float = 1.0,
     return all_ok, violations
 
 
-def COP_WP(VLT_L: float | np.ndarray, QT: float | np.ndarray, 
+def recalculate_net(net, mode: str = "bidirectional", iter: int = 100):
+    """
+    Re-run the steady-state thermohydraulic solve on ``net`` in place.
+
+    Runs a bidirectional pipeflow followed by the controllers — e.g. after the user
+    edits pipe parameters in the GUI. This is the domain step behind the
+    "recalculate network" button; keeping it here (rather than inline in the view)
+    makes it testable and keeps the GUI free of solver calls (BACKLOG B2).
+
+    :param net: Pandapipes network to recalculate (modified in place).
+    :param mode: Pipeflow mode, defaults to "bidirectional".
+    :param iter: Maximum solver iterations, defaults to 100.
+    :return: The same network, with refreshed ``res_*`` tables.
+    :raises RuntimeError: If the solver does not converge (with run context), instead
+        of an opaque pandapipes traceback.
+    """
+    try:
+        pp.pipeflow(net, mode=mode, iter=iter)
+        run_control(net, mode=mode, iter=iter)
+    except Exception as e:
+        raise RuntimeError(
+            f"Network recalculation failed ({mode}, iter={iter}): {e}"
+        ) from e
+    return net
+
+
+def COP_WP(VLT_L: float | np.ndarray, QT: float | np.ndarray,
           values: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculate heat pump Coefficient of Performance (COP) based on supply and source temperatures.

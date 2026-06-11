@@ -103,9 +103,32 @@ tests. This is the safety net that makes every refactor below low-risk.
 - Still to tackle: `main_view.py` (~1232), `interactive_network_plot.py` (~1179) —
   same base-class treatment.
 ### B2. MVP violations
-The main frame is clean, but individual tabs reach directly into
-`data_manager` / domain objects and make business-logic decisions past the
-presenter; dialogs call presenter methods directly.
+The main frame is clean, but the MVP pattern is applied inconsistently and domain
+logic leaks into the views. Concrete findings (2026-06 survey):
+
+1. **Two architectures side by side.** `BuildingTab` and `LeafletTab` have a real
+   Model/View/Presenter triad; `NetSimulationTab`, the `EnergySystemTab` sub-tabs,
+   `ComparisonTab` and `ProjectTab` skip the presenter and hold `folder_manager` +
+   `data_manager` directly, coordinating themselves.
+2. **Domain/business logic executed inside views:**
+   - ~~`net_simulation_tab.recalculateNetwork` runs `pp.pipeflow` + `run_control`
+     directly in a view method.~~ **First slice done (2026-06):** the solver step is
+     now `utilities.recalculate_net(net)` (pipeflow + controllers, wraps solver
+     failures in a clear `RuntimeError`), called by the view; unit-tested via the net
+     seam (`test_net_simulation.py` — reconverge + error wrapping). *Still on the UI
+     thread* — moving it to a worker (like the other calc threads) is the next step.
+   - `_05_cost_tab.py:422` calls `annuity(...)` (economic domain) in the view.
+   - `network_info_panel.py:105` calls `network_data.calculate_results()` in a panel.
+   - Worker threads (`_06_calculate_energy_system_thread`, `net_calculation_threads`)
+     call domain code — more acceptable (off-UI-thread) but still GUI-package
+     orchestration.
+3. **Cross-component reach-through.** `main_view` drives other tabs by calling their
+   presenters directly (`buildingTab.presenter.load_csv(...)`,
+   `projectTab.presenter.save_csv(...)`).
+
+Full normalisation (presenters everywhere) is a large, untestable GUI refactor; the
+tractable wins are pulling domain logic out of the views into testable domain
+functions (leveraging the net-simulation test seam).
 ### B3. Plotly tightly coupled to pandapipes
 `interactive_network_plot.py` wires Plotly directly to pandapipes → hard to test.
 ### B4. DE/EN naming mix
