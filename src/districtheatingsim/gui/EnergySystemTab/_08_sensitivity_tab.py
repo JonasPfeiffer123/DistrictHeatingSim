@@ -217,7 +217,7 @@ class SensitivityTab(QWidget):
 
             grid_wgk = griddata((gas_prices, electricity_prices), wgk, (grid_x, grid_y), method='linear')
 
-            surf = ax.plot_surface(grid_x, grid_y, grid_wgk, color=colors[i], edgecolor='none', alpha=0.7, label=f'Holzpreis: {wood_price} €/MWh')
+            ax.plot_surface(grid_x, grid_y, grid_wgk, color=colors[i], edgecolor='none', alpha=0.7, label=f'Holzpreis: {wood_price} €/MWh')
 
         ax.set_xlabel('Gaspreis (€/MWh)')
         ax.set_ylabel('Strompreis (€/MWh)')

@@ -247,7 +247,7 @@ class TechnologyTab(QWidget):
             raise TypeError(
                 f"Fehler beim Erstellen der Technologie '{tech_type}': {e}\n"
                 f"Übergebene Eingaben: {inputs}"
-            )
+            ) from e
 
     def addTech(self, tech_type, tech_data):
         """

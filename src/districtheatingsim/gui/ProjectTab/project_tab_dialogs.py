@@ -285,12 +285,12 @@ class ProcessDetailsDialog(QDialog):
 
             # Optionally, add file sizes and modification times if available
             if "file_sizes" in step:
-                for i, size in enumerate(step["file_sizes"]):
+                for _i, size in enumerate(step["file_sizes"]):
                     size_label = QLabel(f"Dateigröße: {size}")
                     step_layout.addWidget(size_label)
 
             if "file_modification_times" in step:
-                for i, mod_time in enumerate(step["file_modification_times"]):
+                for _i, mod_time in enumerate(step["file_modification_times"]):
                     mod_time_label = QLabel(f"Zuletzt geändert: {mod_time}")
                     step_layout.addWidget(mod_time_label)
             

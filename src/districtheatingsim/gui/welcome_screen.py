@@ -858,7 +858,7 @@ class WelcomeScreen(QWidget):
                     # Use the parent directory of the most recent project
                     most_recent = recent_projects[0]
                     return os.path.dirname(most_recent)
-            except:
+            except Exception:
                 pass
         
         # Fallback to Documents folder

@@ -632,7 +632,7 @@ class LayerGenerationDialog(QDialog):
         msgBox = QMessageBox(self)
         msgBox.setWindowTitle("Speicherformat wählen")
         msgBox.setText("In welchem Format möchten Sie die Koordinaten speichern?")
-        coordButton = msgBox.addButton("Nur Koordinaten", QMessageBox.ButtonRole.ActionRole)
+        msgBox.addButton("Nur Koordinaten", QMessageBox.ButtonRole.ActionRole)
         addressButton = msgBox.addButton("Mit Adresse", QMessageBox.ButtonRole.ActionRole)
         cancelButton = msgBox.addButton("Abbrechen", QMessageBox.ButtonRole.RejectRole)
         msgBox.exec()
@@ -692,7 +692,7 @@ class LayerGenerationDialog(QDialog):
                 return location.address
             else:
                 return f"Lat: {lat:.6f}, Lon: {lon:.6f}"
-        except:
+        except Exception:
             return f"UTM X: {x:.2f}, Y: {y:.2f}"
 
     def activateMapPicker(self):

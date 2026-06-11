@@ -476,7 +476,7 @@ class EnergySystemTab(QWidget):
         # Collect qext_kW values from pump results
         qext_values = []
         for pump_type, pumps in pump_results.items():
-            for idx, pump_data in pumps.items():
+            for _idx, pump_data in pumps.items():
                 if 'qext_kW' in pump_data:
                     qext_values.append(pump_data['qext_kW'])
 

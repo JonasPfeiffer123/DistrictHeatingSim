@@ -69,10 +69,15 @@ tests. This is the safety net that makes every refactor below low-risk.
   whole GUI (I001, F401, UP006/045/035, UP015, …) cleared 171 more, all
   behaviour-preserving (verified: 57 GUI modules import offscreen, 217 passed). The
   GUI is **still excluded** from the gating config.
+- **Landed 2026-06 (GUI widening, step 2 — DONE):** cleared the remaining 50
+  behaviour-neutral findings (B905 `strict=False`, E712, B904 `from e`, B007 `_`,
+  E702 semicolons split, F841 — side-effecting calls kept as statements incl. the
+  `float()` UTM validation + `addButton`/`plot_surface`, pure reads deleted —, E722,
+  UP007). **`gui` dropped from `extend-exclude`**, so `ruff check .` now lints + **gates
+  the whole `src` tree incl. the GUI**. Verified: all 57 GUI modules import offscreen,
+  217 passed.
 - **Still open:**
-  - GUI step 2: the remaining **50 behaviour-neutral manual findings** (B905 zip-strict
-    17, B904 7, B007 7, E702 semicolons 7, F841 7, E722 3, E712 1, UP007 1). Then drop
-    `gui` from `extend-exclude` so CI gates it too.
+  - Decide on `ruff format` (still advisory; would reformat the tree).
   - Decide on `ruff format` (not yet applied — `ruff format --check tests` reports 10
     files; the CI format step is **advisory** for now). Adopting it reformats the tree.
   - The CI `lint` job is now gating but still **unverified on GitHub** (first gating run

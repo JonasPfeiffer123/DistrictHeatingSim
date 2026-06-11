@@ -334,7 +334,7 @@ class HeatSystemDesignGUI(QMainWindow):
         # Add custom buttons
         saveButton = msgBox.addButton(accept_text, QMessageBox.ButtonRole.AcceptRole)
         discardButton = msgBox.addButton('Ohne Speichern fortfahren', QMessageBox.ButtonRole.DestructiveRole)
-        cancelButton = msgBox.addButton('Abbrechen', QMessageBox.ButtonRole.RejectRole)
+        msgBox.addButton('Abbrechen', QMessageBox.ButtonRole.RejectRole)
         
         msgBox.setDefaultButton(saveButton)  # Default to save for safety
         msgBox.exec()
@@ -696,7 +696,7 @@ class HeatSystemDesignGUI(QMainWindow):
                     if recent_projects:
                         # Use the parent directory of the most recent project
                         start_dir = os.path.dirname(recent_projects[0])
-                except:
+                except Exception:
                     pass
             
             # Fallback to Documents folder if no recent projects

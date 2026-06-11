@@ -377,7 +377,6 @@ class SchematicScene(CustomGraphicsScene):
         item_geometry = self.OBJECTS[item_type]['geometry']  # Geometry of the generator
         
         self.OBJECTS[item_type]['counter'] += 1  # Increment the counter for the generator type
-        item_counter = self.OBJECTS[item_type]['counter']  # Get the current count for the generator
 
         # Create and add the generator
         generator = ComponentItem(position, item_type, item_name, item_color, item_geometry, self.FLOW_LINE_COLOR, self.RETURN_LINE_COLOR)
@@ -831,7 +830,7 @@ class SchematicScene(CustomGraphicsScene):
             self.delete_all()
 
             # Füge die Generatoren und Speicher in der ursprünglichen Reihenfolge wieder hinzu
-            for generator, storage in sorted(generators_with_storage, key=lambda i: i[0].pos().x()):
+            for generator, _storage in sorted(generators_with_storage, key=lambda i: i[0].pos().x()):
                 self.add_generator_with_storage(generator.item_type, generator.item_name)
 
             for generator in sorted(generators_without_storage, key=lambda i: i.pos().x()):

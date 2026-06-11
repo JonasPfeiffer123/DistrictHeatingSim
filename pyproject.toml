@@ -91,10 +91,9 @@ markers = [
 [tool.ruff]
 target-version = "py311"
 line-length = 120
-# The GUI layer is large, legacy, and not yet lint-clean. Scope linting to the
-# domain core + tests for now; widen `src` coverage as modules are cleaned up.
+# The whole `src` tree (incl. the GUI) is lint-clean and gated now; only the
+# example scripts and Sphinx docs stay out of scope.
 extend-exclude = [
-    "src/districtheatingsim/gui",
     "examples",
     "docs",
 ]

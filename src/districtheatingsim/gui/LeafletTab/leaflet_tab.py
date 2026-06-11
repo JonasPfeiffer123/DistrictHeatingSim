@@ -274,7 +274,7 @@ class VisualizationModel:
         df = pd.read_csv(csv_file_path, delimiter=';')
         gdf = gpd.GeoDataFrame(
             df,
-            geometry=[Point(xy) for xy in zip(df.UTM_X, df.UTM_Y)],
+            geometry=[Point(xy) for xy in zip(df.UTM_X, df.UTM_Y, strict=False)],
             crs=crs
         )
         gdf.to_file(geojson_file_path, driver='GeoJSON')

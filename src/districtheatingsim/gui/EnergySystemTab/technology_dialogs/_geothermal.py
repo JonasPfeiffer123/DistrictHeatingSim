@@ -65,7 +65,7 @@ class GeothermalDialog(SchemaDialog):
         x_positions, y_positions = np.meshgrid(x_positions, y_positions)
 
         # Draw the boreholes
-        for x, y in zip(x_positions.flatten(), y_positions.flatten()):
+        for x, y in zip(x_positions.flatten(), y_positions.flatten(), strict=False):
             self.ax.plot([x, x], [y, y], [0, -depth], color='blue')
 
         # Set plot limits

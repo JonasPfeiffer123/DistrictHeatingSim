@@ -63,7 +63,7 @@ class BuildingModel:
         try:
             self.data = pd.read_csv(self.csv_path, delimiter=';', dtype={'Subtyp': str})
         except Exception as e:
-            raise Exception(f"Fehler beim Laden der CSV-Datei: {e}")
+            raise Exception(f"Fehler beim Laden der CSV-Datei: {e}") from e
 
     def save_csv(self):
         """
@@ -75,7 +75,7 @@ class BuildingModel:
             try:
                 self.data.to_csv(self.csv_path, index=False, sep=';', encoding='utf-8-sig')
             except Exception as e:
-                raise Exception(f"Fehler beim Speichern der CSV-Datei: {e}")
+                raise Exception(f"Fehler beim Speichern der CSV-Datei: {e}") from e
 
     def load_json(self):
         """
@@ -88,7 +88,7 @@ class BuildingModel:
                 loaded_data = json.load(f)
                 self.results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and 'wärme' in v}
         except Exception as e:
-            raise Exception(f"Fehler beim Laden der JSON-Datei: {e}")
+            raise Exception(f"Fehler beim Laden der JSON-Datei: {e}") from e
 
     def save_json(self, combined_data):
         """
@@ -102,7 +102,7 @@ class BuildingModel:
             with open(self.json_path, 'w', encoding='utf-8') as f:
                 json.dump(combined_data, f, indent=4)
         except Exception as e:
-            raise Exception(f"Fehler beim Speichern der Ergebnisse: {e}")
+            raise Exception(f"Fehler beim Speichern der Ergebnisse: {e}") from e
 
     HeatDemandResult = namedtuple(
         'HeatDemandResult',

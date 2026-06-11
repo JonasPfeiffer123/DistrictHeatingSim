@@ -18,7 +18,6 @@ stays fully hand-written — it is unique, not duplicated, so the schema buys no
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Union
 
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -78,7 +77,7 @@ class CheckField:
     default: bool = False
 
 
-SchemaItem = Union[Field, ComboField, CheckField]
+SchemaItem = Field | ComboField | CheckField
 
 
 @dataclass
