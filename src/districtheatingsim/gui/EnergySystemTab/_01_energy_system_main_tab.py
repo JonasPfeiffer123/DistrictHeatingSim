@@ -527,6 +527,13 @@ class EnergySystemTab(QWidget):
         
         self.optimize = optimize
 
+        # Don't start a second calculation while one is running — that would orphan the
+        # previous thread and let two of them mutate the shared energy_system at once.
+        if getattr(self, 'calculationThread', None) is not None and self.calculationThread.isRunning():
+            QMessageBox.information(self, "Berechnung läuft",
+                                    "Es läuft bereits eine Berechnung. Bitte warten Sie, bis sie abgeschlossen ist.")
+            return
+
         if not self.validateInputs():
             return
 
