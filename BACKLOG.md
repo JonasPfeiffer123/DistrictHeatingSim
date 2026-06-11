@@ -292,9 +292,14 @@ Görlitz project (load → preprocess → thermohydraulic → `calculate_results
 → native, `str` fallback) instead of `default=str`, so arrays are written losslessly
 (no more numpy `…` abbreviation); the big time-series arrays are still popped + stored
 in the CSV. Lossless save+load round-trip pinned by
-`TestNetworkDataArrayCoercion::test_json_default_round_trip_is_lossless`. *Note:* a
-non-empty `secondary_producers` list still round-trips via the `str` fallback (the
-load side doesn't reconstruct the dataclasses either) — separate from C12, ties into D4.
+`TestNetworkDataArrayCoercion::test_json_default_round_trip_is_lossless`.
+**`secondary_producers` round-trip fixed:** `json_default` now serialises any dataclass
+via `asdict` (so each `SecondaryProducer` is saved as a dict, not `str(obj)`), and
+`from_dict` rebuilds them with `_coerce_secondary_producers` (dict → object; legacy
+`str` reprs dropped). Previously a non-empty list saved as `str(obj)` and loaded as
+strings, breaking the time-series code's `producer.index` access. Pinned by
+`tests/test_net_simulation.py::TestSecondaryProducerRoundTrip` + verified through
+`from_dict` on the real Görlitz config. C12 is complete.
 
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)

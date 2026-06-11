@@ -169,6 +169,59 @@ class TestNetworkDataArrayCoercion:
         assert np.array_equal(restored, original)
 
 
+class TestSecondaryProducerRoundTrip:
+    """A non-empty secondary_producers list must round-trip through the project JSON:
+    saved as dicts (json_default) and rebuilt into SecondaryProducer objects (from_dict),
+    so the time-series code can use producer.index / .load_percentage (BACKLOG C12)."""
+
+    @staticmethod
+    def _types():
+        from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import (
+            NetworkGenerationData,
+            SecondaryProducer,
+            json_default,
+        )
+        return NetworkGenerationData, SecondaryProducer, json_default
+
+    def test_json_default_serialises_dataclass_to_dict(self):
+        _, SecondaryProducer, json_default = self._types()
+        out = json_default(SecondaryProducer(index=2, load_percentage=5.0))
+        assert out == {"index": 2, "load_percentage": 5.0, "mass_flow": None}
+
+    def test_dicts_rebuilt_into_objects(self):
+        NetworkGenerationData, SecondaryProducer, _ = self._types()
+        rebuilt = NetworkGenerationData._coerce_secondary_producers(
+            [{"index": 1, "load_percentage": 5.0, "mass_flow": None}]
+        )
+        assert rebuilt == [SecondaryProducer(index=1, load_percentage=5.0)]
+
+    def test_full_json_round_trip(self):
+        import json as _json
+        NetworkGenerationData, SecondaryProducer, json_default = self._types()
+        producers = [SecondaryProducer(index=1, load_percentage=5.0)]
+        dumped = _json.dumps({"secondary_producers": producers}, default=json_default)
+        loaded = _json.loads(dumped)["secondary_producers"]
+        rebuilt = NetworkGenerationData._coerce_secondary_producers(loaded)
+        assert rebuilt == producers
+        assert rebuilt[0].index == 1 and rebuilt[0].load_percentage == 5.0
+
+    def test_legacy_str_and_empty_and_garbage_drop_to_empty(self):
+        NetworkGenerationData, _, _ = self._types()
+        assert NetworkGenerationData._coerce_secondary_producers([]) == []
+        assert NetworkGenerationData._coerce_secondary_producers(None) == []
+        # legacy str(obj) repr is unrecoverable -> dropped
+        assert NetworkGenerationData._coerce_secondary_producers(
+            ["SecondaryProducer(index=1, load_percentage=5.0, mass_flow=None)"]
+        ) == []
+
+    def test_unexpected_dict_keys_ignored(self):
+        NetworkGenerationData, SecondaryProducer, _ = self._types()
+        rebuilt = NetworkGenerationData._coerce_secondary_producers(
+            [{"index": 3, "load_percentage": 10.0, "mass_flow": None, "future_field": 7}]
+        )
+        assert rebuilt == [SecondaryProducer(index=3, load_percentage=10.0)]
+
+
 class TestKmrToIsoplus:
     """Legacy KMR pipe names map to their ISOPLUS successors (pandapipes >=0.14)."""
 

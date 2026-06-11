@@ -17,7 +17,7 @@ It handles time series data, temperature control strategies, and comprehensive r
 with automatic calculation of key performance indicators.
 """
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, is_dataclass
 from typing import Any
 
 import numpy as np
@@ -37,6 +37,9 @@ def json_default(obj):
         return obj.tolist()
     if isinstance(obj, (np.integer, np.floating)):
         return obj.item()
+    if is_dataclass(obj) and not isinstance(obj, type):
+        # e.g. SecondaryProducer -> {"index": …, "load_percentage": …, "mass_flow": …}
+        return asdict(obj)
     return str(obj)
 
 
@@ -437,6 +440,29 @@ class NetworkGenerationData:
             return None
         return value
 
+    @staticmethod
+    def _coerce_secondary_producers(value):
+        """Rebuild ``SecondaryProducer`` objects from their saved (dict) form.
+
+        ``json_default`` serialises each producer via ``asdict``; restore the objects
+        here so the downstream code can use attribute access (``producer.index``).
+        Legacy saves wrote ``str(producer)`` (unrecoverable) → such entries are dropped.
+
+        :return: List of ``SecondaryProducer`` (empty if nothing recoverable).
+        """
+        if not isinstance(value, (list, tuple)):
+            return []
+        producers = []
+        for item in value:
+            if isinstance(item, SecondaryProducer):
+                producers.append(item)
+            elif isinstance(item, dict):
+                producers.append(SecondaryProducer(**{
+                    k: v for k, v in item.items() if k in SecondaryProducer.__annotations__
+                }))
+            # else: legacy str repr or junk -> skip
+        return producers
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> 'NetworkGenerationData':
         """
@@ -458,6 +484,11 @@ class NetworkGenerationData:
         for field_name, annotation in cls.__annotations__.items():
             if 'ndarray' in str(annotation):
                 setattr(obj, field_name, cls._coerce_array(getattr(obj, field_name, None)))
+
+        # Rebuild SecondaryProducer objects from their saved dict form.
+        obj.secondary_producers = cls._coerce_secondary_producers(
+            getattr(obj, 'secondary_producers', None)
+        )
 
         # Restore kpi_results
         if kpi_results is not None:
