@@ -48,6 +48,35 @@ def validate_simulation_results(net_results: dict, *, context: str = "") -> None
             )
 
 
+def validate_net_results(net, *, context: str = "") -> None:
+    """
+    Raise ``RuntimeError`` if a solved net's steady-state results are missing/non-finite.
+
+    Called at network build time (``create_network``): after the design pipeflow +
+    diameter sizing the ``res_junction`` table must exist and be finite. An empty or
+    NaN/inf result means the pipeflow did not converge (a disconnected or infeasible
+    network — e.g. an unreachable consumer) and would otherwise silently poison the
+    downstream time series.
+
+    :param net: A solved pandapipes network (duck-typed: needs ``res_junction``).
+    :param context: Optional label included in the error message.
+    :raises RuntimeError: If there are no junction results, or any are NaN/inf.
+    """
+    prefix = f"{context}: " if context else ""
+    res_junction = getattr(net, "res_junction", None)
+    if res_junction is None or len(res_junction) == 0:
+        raise RuntimeError(
+            f"{prefix}network has no junction results — the design pipeflow did not run "
+            "(disconnected or empty network)."
+        )
+    if not np.all(np.isfinite(np.asarray(res_junction.values, dtype=float))):
+        raise RuntimeError(
+            f"{prefix}network design results contain NaN/inf — the pipeflow did not "
+            "converge (check for a disconnected or infeasible network, e.g. an "
+            "unreachable consumer)."
+        )
+
+
 def validate_design_state(design_results: dict, *, context: str = "") -> None:
     """
     Raise ``RuntimeError`` if the extracted producer design-state contains NaN/inf.
