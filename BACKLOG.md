@@ -118,7 +118,11 @@ logic leaks into the views. Concrete findings (2026-06 survey):
      worker (no more UI-thread freeze), with `_on_recalculation_done/_error` handlers
      mirroring the init/timeseries flows. Unit-tested via the net seam
      (`test_net_simulation.py` — reconverge + error wrapping). **Done.**
-   - `_05_cost_tab.py:422` calls `annuity(...)` (economic domain) in the view.
+   - ~~`_05_cost_tab.py:422` calls `annuity(...)` in the view.~~ **Done (2026-06):**
+     the economic mapping is now `annuity.infrastructure_annuity(…, economic_parameters)`
+     (maps the GUI dict to `annuity()`, guards a zero lifespan); the tab's
+     `calc_annuität` is a thin pass-through. Tested in
+     `test_annuity.py::TestInfrastructureAnnuity`.
    - `network_info_panel.py:105` calls `network_data.calculate_results()` in a panel.
    - Worker threads (`_06_calculate_energy_system_thread`, `net_calculation_threads`)
      call domain code — more acceptable (off-UI-thread) but still GUI-package

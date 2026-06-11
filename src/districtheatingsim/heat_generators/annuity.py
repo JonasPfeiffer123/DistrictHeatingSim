@@ -219,3 +219,44 @@ def annuity(
 
     # Return positive annuity value (costs are positive, revenues reduce costs)
     return -A_N
+
+
+def infrastructure_annuity(
+    initial_investment_cost: float,
+    asset_lifespan_years: int,
+    installation_factor: float,
+    maintenance_inspection_factor: float,
+    operational_effort_h: float,
+    economic_parameters: dict,
+) -> float:
+    """
+    Annuity for one infrastructure cost row from a GUI ``economic_parameters`` mapping.
+
+    Adapts ``economic_parameters`` (``capital_interest_rate`` / ``inflation_rate`` as
+    VDI 2067 *factors*, ``time_period``, ``hourly_rate``) to :func:`annuity`. Returns
+    ``0.0`` for a zero lifespan (a not-yet-configured row), avoiding a division by
+    zero. Lives here, not in the cost tab, so the economic mapping is testable and the
+    GUI holds no VDI 2067 logic (BACKLOG B2).
+
+    :param initial_investment_cost: Initial capital investment cost [€].
+    :param asset_lifespan_years: Technical lifetime [years]; ``0`` → returns ``0.0``.
+    :param installation_factor: Installation cost factor [%].
+    :param maintenance_inspection_factor: Annual maintenance cost factor [%].
+    :param operational_effort_h: Annual operational effort [hours/year].
+    :param economic_parameters: Mapping with ``capital_interest_rate``,
+        ``inflation_rate``, ``time_period``, ``hourly_rate``.
+    :return: The annuity [€/year].
+    """
+    if asset_lifespan_years == 0:
+        return 0.0
+    return annuity(
+        initial_investment_cost,
+        asset_lifespan_years,
+        installation_factor,
+        maintenance_inspection_factor,
+        operational_effort_h,
+        interest_rate_factor=float(economic_parameters["capital_interest_rate"]),
+        inflation_rate_factor=float(economic_parameters["inflation_rate"]),
+        consideration_time_period_years=int(economic_parameters["time_period"]),
+        hourly_rate=economic_parameters["hourly_rate"],
+    )

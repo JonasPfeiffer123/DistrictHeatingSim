@@ -14,7 +14,7 @@ same commit so the diff makes the change explicit.
 
 import pytest
 
-from districtheatingsim.heat_generators.annuity import annuity
+from districtheatingsim.heat_generators.annuity import annuity, infrastructure_annuity
 
 
 class TestAnnuityFactorConvention:
@@ -149,3 +149,25 @@ class TestAnnuityValidation:
                 interest_rate_factor=1.05,
                 inflation_rate_factor=1.05,
             )
+
+
+class TestInfrastructureAnnuity:
+    """The GUI adapter (extracted from the cost tab, BACKLOG B2): maps an
+    economic_parameters mapping to annuity() and guards a zero lifespan."""
+
+    def test_zero_lifespan_returns_zero_not_raises(self, economic_parameters):
+        # A not-yet-configured infrastructure row (TN=0) must yield 0, not the
+        # ValueError that annuity() raises for a zero lifespan.
+        assert infrastructure_annuity(1000, 0, 1.0, 2.0, 0, economic_parameters) == 0.0
+
+    def test_matches_annuity_with_mapped_parameters(self, economic_parameters):
+        A0, TN, f_inst, f_wi, effort = 50000, 20, 1.0, 2.0, 10
+        expected = annuity(
+            A0, TN, f_inst, f_wi, effort,
+            interest_rate_factor=economic_parameters["capital_interest_rate"],
+            inflation_rate_factor=economic_parameters["inflation_rate"],
+            consideration_time_period_years=economic_parameters["time_period"],
+            hourly_rate=economic_parameters["hourly_rate"],
+        )
+        assert infrastructure_annuity(A0, TN, f_inst, f_wi, effort, economic_parameters) == expected
+        assert expected > 0  # sanity: a real cost row has a positive annuity
