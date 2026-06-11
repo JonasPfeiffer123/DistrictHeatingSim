@@ -7,6 +7,7 @@ Initial welcome screen with project management, recent projects, and quick actio
 """
 
 import os
+import sys
 import json
 import webbrowser
 import subprocess
