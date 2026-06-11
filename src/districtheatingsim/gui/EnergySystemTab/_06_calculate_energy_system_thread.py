@@ -63,3 +63,16 @@ class CalculateEnergySystemThread(QThread):
             tb = traceback.format_exc()
             error_message = f"Ein Fehler ist aufgetreten: {e}\n{tb}"
             self.calculation_error.emit(error_message)
+
+    def stop(self):
+        """
+        Request the thread to stop and block until it has finished.
+
+        ``calculate_mix`` is not cooperatively interruptible, so this waits for the
+        current run to complete (rather than killing it mid-computation) — enough to
+        avoid emitting into a destroyed widget on close, consistent with the other
+        worker threads.
+        """
+        if self.isRunning():
+            self.requestInterruption()
+            self.wait()
