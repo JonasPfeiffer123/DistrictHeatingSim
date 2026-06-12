@@ -76,8 +76,18 @@ tests. This is the safety net that makes every refactor below low-risk.
   UP007). **`gui` dropped from `extend-exclude`**, so `ruff check .` now lints + **gates
   the whole `src` tree incl. the GUI**. Verified: all 57 GUI modules import offscreen,
   217 passed.
+- **Landed 2026-06 (simulation golden-master):** `tests/test_simulation_golden_master.py`
+  drives the real Görlitz project through the exact GUI calc chain
+  (`initialize_geojson` → `time_series_preprocessing` → `thermohydraulic_time_series_net`
+  → `calculate_results`) and pins the headline KPIs — geometry/demand tight (rel 1e-4,
+  match the GUI), pipeflow-derived looser (1–2 %, cross-platform drift), sizing
+  structural (68 ISOPLUS). `slow` + skipif-data-absent; verified deterministic. This is
+  the regression net under the whole 0.14 / net-simulation pipeline. *Minor finding:*
+  `calculate_results` computes `Jahresgesamtwärmebedarf` from the full-year
+  `waerme_ges_kW` while `Jahreswärmeerzeugung` reflects the simulated range — so for a
+  **partial** run the loss KPIs are nonsensical (negative). Harmless for the GUI (runs
+  the full year); slice the demand to `[start:end]` if partial runs ever matter.
 - **Still open:**
-  - Decide on `ruff format` (still advisory; would reformat the tree).
   - Decide on `ruff format` (not yet applied — `ruff format --check tests` reports 10
     files; the CI format step is **advisory** for now). Adopting it reformats the tree.
   - The CI `lint` job is now gating but still **unverified on GitHub** (first gating run
