@@ -402,6 +402,20 @@ class TestNetworkInitialization:
         recalculate_net(net)
         assert np.all(np.isfinite(net.res_junction.values))
 
+    def test_interactive_plot_renders(self):
+        # Render smoke for the (decoupled) interactive plot: building a figure from a
+        # solved net must exercise every _add_<component> renderer without crashing
+        # (covers the data/render split, BACKLOG B1/B3).
+        from districtheatingsim.net_simulation_pandapipes.interactive_network_plot import (
+            InteractiveNetworkPlot,
+        )
+        net = self._build_and_init()
+        fig = InteractiveNetworkPlot(net, crs="EPSG:25833").create_plot(
+            parameter="v_mean_m_per_s", component_type="pipe"
+        )
+        assert fig is not None
+        assert len(fig.data) > 0  # junctions + pipes + consumers + pump traces produced
+
     def test_calculate_results_topology_kpis(self):
         # calculate_results is the domain KPI computation the info panel used to call
         # itself (now done by the worker thread, BACKLOG B2). Pin the topology/demand
