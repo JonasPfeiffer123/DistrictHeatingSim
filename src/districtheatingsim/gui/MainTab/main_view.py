@@ -1231,4 +1231,13 @@ class HeatSystemDesignGUI(QMainWindow):
                     event.ignore()
                     return
             # If 'discard', proceed with closing without saving
+
+        # Stop any running worker threads before the widgets are destroyed, so Qt does
+        # not abort on a QThread that is still running (C1).
+        for tab in (self.projectTab, self.buildingTab, self.visTab2,
+                    self.calcTab, self.energySystemTab, self.comparisonTab):
+            stop = getattr(tab, 'stop_threads', None)
+            if callable(stop):
+                stop()
+
         event.accept()

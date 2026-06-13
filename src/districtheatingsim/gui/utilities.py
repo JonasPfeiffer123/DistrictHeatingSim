@@ -124,3 +124,16 @@ def convert_to_serializable(obj):
         return obj.isoformat()
     else:
         return obj
+
+
+def stop_qthreads(*threads):
+    """
+    Stop each given ``QThread`` (via its ``stop()``) if it exists and is running.
+
+    Called from the main window's ``closeEvent`` so worker threads are not destroyed
+    while still running (which Qt aborts on). ``None`` entries (uninitialised thread
+    attributes) are skipped.
+    """
+    for thread in threads:
+        if thread is not None and thread.isRunning():
+            thread.stop()

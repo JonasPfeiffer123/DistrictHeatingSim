@@ -36,6 +36,7 @@ from districtheatingsim.gui.EnergySystemTab._06_calculate_energy_system_thread i
 from districtheatingsim.gui.EnergySystemTab._07_results_tab import ResultsTab
 from districtheatingsim.gui.EnergySystemTab._08_sensitivity_tab import SensitivityTab
 from districtheatingsim.gui.EnergySystemTab._09_sankey_dialog import SankeyDialog
+from districtheatingsim.gui.utilities import stop_qthreads
 from districtheatingsim.heat_generators.energy_system import EnergySystem
 from districtheatingsim.heat_generators.thermal_storage import ThermalStorageAdapter
 from districtheatingsim.net_simulation_pandapipes.pp_net_time_series_simulation import import_results_csv
@@ -583,6 +584,10 @@ class EnergySystemTab(QWidget):
         """
         self.progressBar.setRange(0, 1)
         QMessageBox.critical(self, "Berechnungsfehler", str(error_message))
+
+    def stop_threads(self):
+        """Stop the running calculation thread (called from the main window on close)."""
+        stop_qthreads(getattr(self, 'calculationThread', None))
 
     def process_data(self):
         # Update economic parameters with saved parameters from energy system class

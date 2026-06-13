@@ -196,12 +196,16 @@ thread lifecycle is partly unguarded. **Fixed:**
   `energy_system` via `calculate_mix`) gained a `stop()`, and `start_calculation` now
   refuses to launch a second run while one is in flight (previously it orphaned the
   first thread and let two mutate the same object at once).
+- **Threads stopped on close** — each thread-owning tab (`NetSimulationTab`,
+  `EnergySystemTab`, `VisualizationTabLeaflet`→its presenter) now has a `stop_threads()`
+  method (built on `gui/utilities.stop_qthreads`, which `stop()`s each running thread),
+  and `main_view.closeEvent` calls it on every tab before `event.accept()` — no more
+  QThread destroyed while still running on app exit.
 
-*Still open:* `main_view.closeEvent` doesn't stop running worker threads before the app
-exits (QThread-destroyed-while-running risk) — wants a per-tab `stop_threads()` hook
-called from the main window; and the deeper isolation (worker operates on a deep copy /
-the producer→`calculation_done`→main-thread-swap pattern made uniform) for the cases a
-single in-flight run is read by the UI.
+*Still open:* the deeper isolation (worker operates on a deep copy / the
+producer→`calculation_done`→main-thread-swap pattern made uniform) for the cases a
+single in-flight run is read by the UI — lower priority now the double-start + close
+races are closed.
 ### C2. Solver path lacks error handling (partially fixed 2026-06)
 `run_timeseries()` ran without try/except and no NaN/inf checks, so a non-converged
 or infeasible run either crashed opaquely or let NaN propagate into the heat/
