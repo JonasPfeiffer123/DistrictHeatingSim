@@ -19,7 +19,6 @@ Features:
 
 
 import geopandas as gpd
-import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -28,6 +27,9 @@ from districtheatingsim.net_simulation_pandapipes.plot_data import (
     available_plot_parameters,
     junction_geodata_wgs84,
     junction_plot_data,
+    parameter_label,
+    parameter_value,
+    pipe_plot_data,
 )
 
 
@@ -382,75 +384,23 @@ class InteractiveNetworkPlot:
         :param show: Visibility flag, defaults to True
         :type show: bool
         """
-        if not hasattr(self.net, 'pipe') or len(self.net.pipe) == 0:
+        data = pipe_plot_data(self.net, self._get_junction_geodata(), parameter)
+        if not data.segments:
             return
-            
-        gdf_junctions = self._get_junction_geodata()
-        
-        # Helper function to build hover text for a pipe (SINGLE DEFINITION)
-        def build_pipe_hover_text(idx, pipe_data, param_value=None):
-            """
-            Build hover text for pipe with optional parameter value.
-            
-            :param idx: Pipe index
-            :param pipe_data: Pipe data row
-            :param param_value: Optional parameter value for display
-            :return: Formatted HTML hover text
-            :rtype: str
-            """
-            hover_text = f"<b>{pipe_data['name']}</b><br>"
-            hover_text += f"Typ: {pipe_data['std_type']}<br>"
-            hover_text += f"Länge: {pipe_data['length_km']:.3f} km<br>"
-            
-            if hasattr(self.net, 'res_pipe'):
-                res = self.net.res_pipe.loc[idx]
-                if 'mdot_from_kg_per_s' in res.index:
-                    hover_text += f"Massenstrom: {res['mdot_from_kg_per_s']:.2f} kg/s<br>"
-                if 'v_mean_m_per_s' in res.index:
-                    hover_text += f"Geschwindigkeit: {res['v_mean_m_per_s']:.2f} m/s<br>"
-                if 't_from_k' in res.index and 't_to_k' in res.index:
-                    dt = res['t_from_k'] - res['t_to_k']
-                    hover_text += f"ΔT: {dt:.1f} K<br>"
-                if 'p_from_bar' in res.index and 'p_to_bar' in res.index:
-                    dp = res['p_from_bar'] - res['p_to_bar']
-                    hover_text += f"Δp: {dp:.2f} bar<br>"
-                
-                # Add parameter value if provided
-                if param_value is not None and parameter:
-                    hover_text += f"{self._get_parameter_label(parameter)}: {param_value:.2f}<br>"
-            
-            return hover_text
-        
-        # Get parameter values for color mapping if needed
-        if parameter and hasattr(self.net, 'res_pipe'):
-            # Calculate parameter values (including derived ones like dt_k, dp_bar)
-            param_values = []
-            for idx in self.net.pipe.index:
-                val = self._get_parameter_value(self.net.res_pipe, idx, parameter)
-                if val is not None:
-                    param_values.append(val)
-            
-            if param_values:
-                param_values = np.array(param_values)
-                vmin, vmax = param_values.min(), param_values.max()
-                if vmax - vmin < 1e-10:
-                    vmax = vmin + 1  # Avoid division by zero
-            else:
-                vmin, vmax = None, None
-            
-            # Add dummy marker for colorbar only if we have values
-            if vmin is not None:
-                self.fig.add_trace(go.Scattermapbox(
-                    lat=[gdf_junctions.geometry.y.mean()],
-                    lon=[gdf_junctions.geometry.x.mean()],
-                    mode='markers',
-                    marker=dict(
-                        size=0.1,
-                        color=[vmin],
-                        colorscale=colorscale,
-                        showscale=True,
-                        cmin=vmin,
-                        cmax=vmax,
+
+        # Add a near-invisible marker carrying the colorbar when colour-coding.
+        if data.vmin is not None:
+            self.fig.add_trace(go.Scattermapbox(
+                lat=[data.center_lat],
+                lon=[data.center_lon],
+                mode='markers',
+                marker=dict(
+                    size=0.1,
+                    color=[data.vmin],
+                    colorscale=colorscale,
+                    showscale=True,
+                    cmin=data.vmin,
+                    cmax=data.vmax,
                     colorbar=dict(
                         title=dict(
                             text=self._get_parameter_label(parameter),
@@ -464,56 +414,29 @@ class InteractiveNetworkPlot:
                         y=0.5,
                         yanchor='middle'
                     )
-                ),          
-                
+                ),
                 showlegend=False,
                 hoverinfo='skip',
                 visible=show
             ))
-        
+
         # Add pipes as individual traces
-        for i, idx in enumerate(self.net.pipe.index):
-            pipe_data = self.net.pipe.loc[idx]
-            from_junction = pipe_data['from_junction']
-            to_junction = pipe_data['to_junction']
-            
-            try:
-                from_coords = gdf_junctions.loc[from_junction].geometry
-                to_coords = gdf_junctions.loc[to_junction].geometry
-            except KeyError:
-                continue
-            
-            # Calculate color and parameter value
-            if parameter and hasattr(self.net, 'res_pipe') and vmin is not None:
-                value = self._get_parameter_value(self.net.res_pipe, idx, parameter)
-                if value is not None:
-                    norm_value = (value - vmin) / (vmax - vmin)
-                    color = px.colors.sample_colorscale(colorscale, [norm_value])[0]
-                    hover_text = build_pipe_hover_text(idx, pipe_data, param_value=value)
-                else:
-                    color = '#2c3e50'  # Default if value not available
-                    hover_text = build_pipe_hover_text(idx, pipe_data)
+        for i, seg in enumerate(data.segments):
+            if data.vmin is not None and seg.value is not None:
+                norm_value = (seg.value - data.vmin) / (data.vmax - data.vmin)
+                color = px.colors.sample_colorscale(colorscale, [norm_value])[0]
             else:
                 color = '#2c3e50'  # Default dark gray
-                hover_text = build_pipe_hover_text(idx, pipe_data)
-            
-            # Calculate midpoint for better hover
-            mid_lat = (from_coords.y + to_coords.y) / 2
-            mid_lon = (from_coords.x + to_coords.x) / 2
-            
-            # Create customdata for click events - store pipe index and name
-            pipe_name = pipe_data.get('name', f'Pipe {idx}')
-            customdata = [[idx, pipe_name]] * 3  # Same for all three points
-            
+
             self.fig.add_trace(go.Scattermapbox(
-                lat=[from_coords.y, mid_lat, to_coords.y],
-                lon=[from_coords.x, mid_lon, to_coords.x],
+                lat=[seg.from_lat, seg.mid_lat, seg.to_lat],
+                lon=[seg.from_lon, seg.mid_lon, seg.to_lon],
                 mode='lines+markers',
                 line=dict(width=4, color=color),
                 marker=dict(size=0.1, color=color),  # Invisible markers for hover
-                text=[hover_text, hover_text, hover_text],
+                text=[seg.hover_text, seg.hover_text, seg.hover_text],
                 hovertemplate='%{text}<extra></extra>',
-                customdata=customdata,  # Store pipe index for click events
+                customdata=[[seg.idx, seg.name]] * 3,  # pipe index/name for click events
                 legendgroup='pipes',
                 name='pipe',
                 showlegend=(i == 0),
@@ -970,30 +893,8 @@ class InteractiveNetworkPlot:
         )
     
     def _get_parameter_value(self, res_df, idx, parameter):
-        """
-        Get parameter value, calculating dt_k or dp_bar if needed.
-        
-        :param res_df: Result DataFrame
-        :type res_df: pd.DataFrame
-        :param idx: Component index
-        :type idx: int
-        :param parameter: Parameter name
-        :type parameter: str
-        :return: Parameter value or None
-        :rtype: Optional[float]
-        """
-        if parameter == 'dt_k':
-            # Calculate temperature difference
-            if 't_from_k' in res_df.columns and 't_to_k' in res_df.columns:
-                return res_df.loc[idx, 't_from_k'] - res_df.loc[idx, 't_to_k']
-        elif parameter == 'dp_bar':
-            # Calculate pressure difference
-            if 'p_from_bar' in res_df.columns and 'p_to_bar' in res_df.columns:
-                return res_df.loc[idx, 'p_from_bar'] - res_df.loc[idx, 'p_to_bar']
-        elif parameter in res_df.columns:
-            # Direct column access
-            return res_df.loc[idx, parameter]
-        return None
+        """Parameter value (incl. derived dt_k/dp_bar). Delegates to the data layer."""
+        return parameter_value(res_df, idx, parameter)
     
     def _calculate_zoom(self, lat_range: float, lon_range: float) -> int:
         """
@@ -1021,25 +922,8 @@ class InteractiveNetworkPlot:
             return 15
     
     def _get_parameter_label(self, parameter: str) -> str:
-        """
-        Get formatted German label for parameter.
-        
-        :param parameter: Parameter name
-        :type parameter: str
-        :return: Formatted label with units
-        :rtype: str
-        """
-        labels = {
-            'p_bar': 'Druck [bar]',
-            't_k': 'Temperatur [K]',
-            'v_mean_m_per_s': 'Geschwindigkeit [m/s]',
-            'mdot_from_kg_per_s': 'Massenstrom [kg/s]',
-            'reynolds': 'Reynolds-Zahl [-]',
-            'lambda': 'Reibungsbeiwert [-]',
-            'qext_w': 'Wärmebedarf [W]',
-            'deltap_bar': 'Druckdifferenz [bar]'
-        }
-        return labels.get(parameter, parameter)
+        """German label (with unit) for a parameter. Delegates to the data layer."""
+        return parameter_label(parameter)
     
     def export_html(self, filename: str):
         """

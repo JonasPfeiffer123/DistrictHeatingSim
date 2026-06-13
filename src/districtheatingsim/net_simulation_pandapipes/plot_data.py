@@ -77,6 +77,127 @@ def junction_plot_data(net, crs, parameter: str | None = None) -> JunctionPlotDa
     )
 
 
+_PARAMETER_LABELS = {
+    'p_bar': 'Druck [bar]',
+    't_k': 'Temperatur [K]',
+    'v_mean_m_per_s': 'Geschwindigkeit [m/s]',
+    'mdot_from_kg_per_s': 'Massenstrom [kg/s]',
+    'reynolds': 'Reynolds-Zahl [-]',
+    'lambda': 'Reibungsbeiwert [-]',
+    'qext_w': 'Wärmebedarf [W]',
+    'deltap_bar': 'Druckdifferenz [bar]',
+}
+
+
+def parameter_label(parameter: str) -> str:
+    """German display label (with unit) for a result parameter."""
+    return _PARAMETER_LABELS.get(parameter, parameter)
+
+
+def parameter_value(res_df, idx, parameter):
+    """
+    Value of ``parameter`` for component ``idx``, computing the derived ``dt_k`` /
+    ``dp_bar`` from the from/to columns. Returns ``None`` if unavailable.
+    """
+    if parameter == 'dt_k':
+        if 't_from_k' in res_df.columns and 't_to_k' in res_df.columns:
+            return res_df.loc[idx, 't_from_k'] - res_df.loc[idx, 't_to_k']
+    elif parameter == 'dp_bar':
+        if 'p_from_bar' in res_df.columns and 'p_to_bar' in res_df.columns:
+            return res_df.loc[idx, 'p_from_bar'] - res_df.loc[idx, 'p_to_bar']
+    elif parameter in res_df.columns:
+        return res_df.loc[idx, parameter]
+    return None
+
+
+@dataclass
+class PipeSegment:
+    """One pipe drawn as a from→mid→to polyline, with hover text and colour value."""
+
+    from_lat: float
+    from_lon: float
+    mid_lat: float
+    mid_lon: float
+    to_lat: float
+    to_lon: float
+    hover_text: str
+    value: float | None
+    idx: object
+    name: str
+
+
+@dataclass
+class PipePlotData:
+    segments: list[PipeSegment]
+    vmin: float | None  # colour range over all segment values (None if not colour-coded)
+    vmax: float | None
+    center_lat: float   # network centre, for the colorbar carrier marker
+    center_lon: float
+
+
+def _pipe_hover_text(net, idx, pipe, parameter, value, has_res) -> str:
+    text = f"<b>{pipe['name']}</b><br>"
+    text += f"Typ: {pipe['std_type']}<br>"
+    text += f"Länge: {pipe['length_km']:.3f} km<br>"
+    if has_res:
+        res = net.res_pipe.loc[idx]
+        if 'mdot_from_kg_per_s' in res.index:
+            text += f"Massenstrom: {res['mdot_from_kg_per_s']:.2f} kg/s<br>"
+        if 'v_mean_m_per_s' in res.index:
+            text += f"Geschwindigkeit: {res['v_mean_m_per_s']:.2f} m/s<br>"
+        if 't_from_k' in res.index and 't_to_k' in res.index:
+            text += f"ΔT: {res['t_from_k'] - res['t_to_k']:.1f} K<br>"
+        if 'p_from_bar' in res.index and 'p_to_bar' in res.index:
+            text += f"Δp: {res['p_from_bar'] - res['p_to_bar']:.2f} bar<br>"
+        if value is not None and parameter:
+            text += f"{parameter_label(parameter)}: {value:.2f}<br>"
+    return text
+
+
+def pipe_plot_data(net, junctions_wgs84, parameter: str | None = None) -> PipePlotData:
+    """
+    Extract pipe polyline data (endpoint/mid coords, hover, colour values) from the net.
+
+    :param net: pandapipes network (duck-typed: ``pipe``, optional ``res_pipe``).
+    :param junctions_wgs84: WGS84 junction GeoDataFrame (from :func:`junction_geodata_wgs84`).
+    :param parameter: ``res_pipe`` column (or derived ``dt_k``/``dp_bar``) to colour by.
+    :rtype: PipePlotData
+    """
+    if not hasattr(net, 'pipe') or len(net.pipe) == 0:
+        return PipePlotData([], None, None, 0.0, 0.0)
+
+    has_res = hasattr(net, 'res_pipe')
+    center_lat = float(junctions_wgs84.geometry.y.mean())
+    center_lon = float(junctions_wgs84.geometry.x.mean())
+
+    segments: list[PipeSegment] = []
+    values: list[float] = []
+    for idx in net.pipe.index:
+        pipe = net.pipe.loc[idx]
+        try:
+            fc = junctions_wgs84.loc[pipe['from_junction']].geometry
+            tc = junctions_wgs84.loc[pipe['to_junction']].geometry
+        except KeyError:
+            continue
+        value = parameter_value(net.res_pipe, idx, parameter) if (parameter and has_res) else None
+        if value is not None:
+            values.append(value)
+        segments.append(PipeSegment(
+            from_lat=fc.y, from_lon=fc.x,
+            mid_lat=(fc.y + tc.y) / 2, mid_lon=(fc.x + tc.x) / 2,
+            to_lat=tc.y, to_lon=tc.x,
+            hover_text=_pipe_hover_text(net, idx, pipe, parameter, value, has_res),
+            value=value, idx=idx, name=pipe.get('name', f'Pipe {idx}'),
+        ))
+
+    vmin = vmax = None
+    if values:
+        vmin, vmax = min(values), max(values)
+        if vmax - vmin < 1e-10:
+            vmax = vmin + 1  # avoid divide-by-zero in colour normalisation
+    return PipePlotData(segments, vmin, vmax, center_lat, center_lon)
+
+
 def available_plot_parameters(net) -> dict[str, list[str]]:
     """
     The result parameters available for colour-coding per component type.
