@@ -1,0 +1,86 @@
+"""
+Tests for the return-network offset in net_generation (BACKLOG C3).
+
+``offset_lines_by_angle`` builds the return network from the supply lines. The old
+implementation translated every vertex by one fixed vector, so segments running
+parallel to that direction ended up collinear with (lying on top of) the supply line.
+It now offsets each vertex perpendicular to its local direction, which separates
+segments of every orientation while keeping the network connected (a shared vertex
+maps to a single return coordinate — the junction model keys on exact coordinates).
+"""
+
+import geopandas as gpd
+import pytest
+from shapely.geometry import LineString
+
+from districtheatingsim.net_generation.net_generation import offset_lines_by_angle
+
+
+class TestReturnNetworkOffset:
+    def test_isolated_segment_offset_is_perpendicular(self):
+        # An east-west segment with the historical angle=0 (east) reference. The old
+        # rigid east-translation left it collinear (distance 0); the perpendicular
+        # offset separates it by `distance` to the north.
+        flow = gpd.GeoDataFrame(
+            geometry=[LineString([(0, 0), (10, 0)])], crs="EPSG:25833"
+        )
+        ret = offset_lines_by_angle(flow, distance=1.0, angle_degrees=0)
+
+        assert flow.geometry.iloc[0].distance(ret.geometry.iloc[0]) == pytest.approx(1.0, abs=1e-9)
+        # Offset is perpendicular (north), not along the line.
+        assert [(round(x, 6), round(y, 6)) for x, y in ret.geometry.iloc[0].coords] == [
+            (0.0, 1.0),
+            (10.0, 1.0),
+        ]
+
+    def test_shared_junction_stays_connected(self):
+        # Three segments meeting at (10, 0) — incl. an east-west one — form a degree-3
+        # junction. The return network must keep them connected at a single junction.
+        flow = gpd.GeoDataFrame(
+            geometry=[
+                LineString([(0, 0), (10, 0)]),    # east-west
+                LineString([(10, 0), (10, 10)]),  # north-south
+                LineString([(10, 0), (20, 5)]),   # diagonal
+            ],
+            crs="EPSG:25833",
+        )
+        ret = offset_lines_by_angle(flow, distance=1.0, angle_degrees=0)
+
+        # No junction split: the return network has exactly as many distinct vertices.
+        flow_vertices = {c for line in flow.geometry for c in line.coords}
+        ret_vertices = {c for line in ret.geometry for c in line.coords}
+        assert len(ret_vertices) == len(flow_vertices)
+
+        # All three return lines meet at one shared return junction (the offset of (10, 0)).
+        junction_ends = {
+            ret.geometry.iloc[0].coords[-1],  # line 0 ends at (10, 0)
+            ret.geometry.iloc[1].coords[0],   # line 1 starts at (10, 0)
+            ret.geometry.iloc[2].coords[0],   # line 2 starts at (10, 0)
+        }
+        assert len(junction_ends) == 1
+
+    def test_no_supply_return_overlap_any_orientation(self):
+        # No supply line overlaps/crosses its return line — distance > 0 everywhere.
+        # The regression: the old rigid east-offset left east-west segments collinear
+        # (distance exactly 0). (At a multi-orientation junction the return naturally
+        # converges toward the supply, so only a clean gap — not the full distance — is
+        # guaranteed there.)
+        flow = gpd.GeoDataFrame(
+            geometry=[
+                LineString([(0, 0), (10, 0)]),
+                LineString([(10, 0), (10, 10)]),
+                LineString([(10, 0), (20, 5)]),
+            ],
+            crs="EPSG:25833",
+        )
+        ret = offset_lines_by_angle(flow, distance=1.0, angle_degrees=0)
+        for fl, rl in zip(flow.geometry, ret.geometry, strict=False):
+            assert fl.distance(rl) > 0.0
+
+    def test_z_coordinate_preserved(self):
+        flow = gpd.GeoDataFrame(
+            geometry=[LineString([(0, 0, 100.0), (10, 0, 105.0)])], crs="EPSG:25833"
+        )
+        ret = offset_lines_by_angle(flow, distance=1.0, angle_degrees=0)
+        zs = [c[2] for c in ret.geometry.iloc[0].coords]
+        assert zs == [100.0, 105.0]

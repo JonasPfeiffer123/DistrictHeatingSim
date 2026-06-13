@@ -37,38 +37,79 @@ def create_offset_points(point: Point, distance: float, angle_degrees: float) ->
     dy = distance * math.sin(angle_radians)
     return Point(point.x + dx, point.y + dy)
 
-def offset_lines_by_angle(lines_gdf: gpd.GeoDataFrame, distance: float, 
+def offset_lines_by_angle(lines_gdf: gpd.GeoDataFrame, distance: float,
                          angle_degrees: float) -> gpd.GeoDataFrame:
     """
-    Offset all LineStrings by fixed distance and angle.
+    Build a parallel return network offset from the supply lines.
 
-    :param lines_gdf: LineStrings to offset (typically supply lines)
+    Each vertex is offset **perpendicular to its local network direction**, so segments
+    of *every* orientation are separated by ``distance``. (The previous implementation
+    translated all vertices by one fixed vector, which left segments running parallel
+    to that direction lying on top of the supply line — BACKLOG C3.) ``angle_degrees``
+    now selects the *preferred side*: of the two perpendiculars at each vertex, the one
+    pointing toward ``(cos θ, sin θ)`` is used, giving a globally consistent side.
+
+    Connectivity is preserved exactly: the offset is computed once per vertex
+    coordinate, so a vertex shared by several segments maps to a single return
+    coordinate — i.e. a shared return junction (``create_network`` keys junctions on
+    exact coordinate tuples). Z-coordinates (elevation), if present, are carried over.
+
+    :param lines_gdf: Supply LineStrings to offset.
     :type lines_gdf: gpd.GeoDataFrame
-    :param distance: Offset distance [m] (typical 0.5-2.0m)
+    :param distance: Offset distance [m] (typical 0.5–2.0 m).
     :type distance: float
-    :param angle_degrees: Offset angle (0°=East, 90°=North)
+    :param angle_degrees: Preferred-side reference angle (0°=East, 90°=North).
     :type angle_degrees: float
-    :return: Offset LineStrings with preserved CRS
+    :return: Return LineStrings with preserved CRS.
     :rtype: gpd.GeoDataFrame
-    
-    .. note::
-        Creates parallel return lines from supply lines. Maintains topology and connectivity.
     """
-    def offset_line(line: LineString) -> LineString:
-        """Apply offset transformation to individual LineString.
+    ref_angle = math.radians(angle_degrees)
+    ref_x, ref_y = math.cos(ref_angle), math.sin(ref_angle)
 
-        Preserves Z-coordinates (elevation) when the source geometry is 3-D.
-        """
+    # 1) Collect, per vertex (x, y), the perpendicular of each incident segment.
+    #    The perpendicular is computed once per segment (independent of which endpoint
+    #    we are at) and flipped to the preferred side, so both endpoints of a straight
+    #    segment offset to the *same* side — a parallel return line, not a crossing one.
+    incident: dict[tuple, list[tuple]] = {}
+    for line in lines_gdf.geometry:
+        coords = list(line.coords)
+        for a, b in zip(coords[:-1], coords[1:], strict=False):
+            pa, pb = (a[0], a[1]), (b[0], b[1])
+            dx, dy = pb[0] - pa[0], pb[1] - pa[1]
+            length = math.hypot(dx, dy)
+            if length == 0:
+                continue
+            px, py = -dy / length, dx / length  # segment perpendicular (rotate +90°)
+            if px * ref_x + py * ref_y < 0:
+                px, py = -px, -py  # flip toward the preferred side
+            incident.setdefault(pa, []).append((px, py))
+            incident.setdefault(pb, []).append((px, py))
+
+    # 2) One offset vector per vertex: the (normalised) average of its incident-segment
+    #    perpendiculars. At a multi-orientation junction this is a compromise direction,
+    #    but every vertex still moves to a single consistent return coordinate.
+    def offset_vector(perps: list[tuple]) -> tuple:
+        acc_x = sum(p[0] for p in perps)
+        acc_y = sum(p[1] for p in perps)
+        norm = math.hypot(acc_x, acc_y)
+        if norm < 1e-9:  # perpendiculars cancelled -> fall back to the reference side
+            return (ref_x * distance, ref_y * distance)
+        return (acc_x / norm * distance, acc_y / norm * distance)
+
+    offset_map = {vertex: offset_vector(perps) for vertex, perps in incident.items()}
+
+    # 3) Remap every vertex through the map; a shared vertex -> a shared return
+    #    coordinate, so the return network keeps the supply topology exactly.
+    def offset_line(line: LineString) -> LineString:
         new_coords = []
         for coord in line.coords:
-            x, y = coord[0], coord[1]
-            offset_pt = create_offset_points(Point(x, y), distance, angle_degrees)
+            ox, oy = offset_map[(coord[0], coord[1])]
             if len(coord) > 2:
-                new_coords.append((offset_pt.x, offset_pt.y, coord[2]))
+                new_coords.append((coord[0] + ox, coord[1] + oy, coord[2]))
             else:
-                new_coords.append((offset_pt.x, offset_pt.y))
+                new_coords.append((coord[0] + ox, coord[1] + oy))
         return LineString(new_coords)
-    
+
     offset_lines = [offset_line(line) for line in lines_gdf.geometry]
     return gpd.GeoDataFrame(geometry=offset_lines, crs=lines_gdf.crs)
 
