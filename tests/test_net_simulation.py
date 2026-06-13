@@ -421,6 +421,55 @@ class TestNetworkInitialization:
         assert nd.kpi_results is kpis  # cached on the object
 
 
+class TestAvailablePlotParameters:
+    """Plotly-free data layer extracted from interactive_network_plot (BACKLOG B1/B3):
+    which result parameters the plot can colour by, per component."""
+
+    @staticmethod
+    def _params(net):
+        from districtheatingsim.net_simulation_pandapipes.plot_data import (
+            available_plot_parameters,
+        )
+        return available_plot_parameters(net)
+
+    def test_empty_net_has_no_parameters(self):
+        from types import SimpleNamespace
+        params = self._params(SimpleNamespace())
+        assert params == {"junction": [], "pipe": [], "heat_consumer": [],
+                          "pump": [], "flow_control": []}
+
+    def test_junction_pipe_consumer_parameters(self):
+        from types import SimpleNamespace
+
+        import pandas as pd
+        net = SimpleNamespace(
+            res_junction=pd.DataFrame(columns=["p_bar", "t_k"]),
+            res_pipe=pd.DataFrame(columns=["mdot_from_kg_per_s", "v_mean_m_per_s",
+                                           "t_from_k", "t_to_k", "p_from_bar", "p_to_bar"]),
+            res_heat_consumer=pd.DataFrame(columns=["qext_w", "mdot_from_kg_per_s",
+                                                    "t_from_k", "t_to_k"]),
+        )
+        params = self._params(net)
+        assert params["junction"] == ["p_bar", "t_k"]
+        # differential params (dt_k/dp_bar) appear only when both endpoints are present
+        assert params["pipe"] == ["mdot_from_kg_per_s", "v_mean_m_per_s", "dt_k", "dp_bar"]
+        assert params["heat_consumer"] == ["qext_w", "mdot_from_kg_per_s", "dt_k"]
+        assert params["pump"] == []
+
+    def test_pump_parameters_from_pressure_pump(self):
+        from types import SimpleNamespace
+
+        import pandas as pd
+        net = SimpleNamespace(
+            res_circ_pump_pressure=pd.DataFrame(
+                {"mdot_from_kg_per_s": [1.0], "deltap_bar": [0.5],
+                 "t_from_k": [330.0], "t_to_k": [360.0]}
+            ),
+        )
+        params = self._params(net)
+        assert set(params["pump"]) == {"mdot_from_kg_per_s", "deltap_bar", "dt_k"}
+
+
 class TestRecalculateNet:
     def test_wraps_solver_failure_in_runtime_error(self):
         import pandapipes as pp
