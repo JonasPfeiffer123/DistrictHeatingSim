@@ -470,6 +470,40 @@ class TestAvailablePlotParameters:
         assert set(params["pump"]) == {"mdot_from_kg_per_s", "deltap_bar", "dt_k"}
 
 
+class TestJunctionPlotData:
+    """Junction marker extraction (Plotly-free data layer, BACKLOG B1/B3)."""
+
+    @staticmethod
+    def _net():
+        from types import SimpleNamespace
+
+        import pandas as pd
+        # Realistic EPSG:25833 (UTM33N) coordinates near Görlitz so reprojection works.
+        return SimpleNamespace(
+            junction_geodata=pd.DataFrame({"x": [500000.0, 500010.0], "y": [5680000.0, 5680010.0]}),
+            junction=pd.DataFrame({"name": ["J0", "J1"]}),
+            res_junction=pd.DataFrame({"p_bar": [5.0, 4.9], "t_k": [358.15, 357.15]}),
+        )
+
+    def test_coords_hover_and_values(self):
+        from districtheatingsim.net_simulation_pandapipes.plot_data import junction_plot_data
+        data = junction_plot_data(self._net(), "EPSG:25833", parameter="p_bar")
+        assert len(data.lats) == len(data.lons) == 2
+        # Reprojected to WGS84 -> latitudes ~51°, longitudes ~14-15° (Görlitz region).
+        assert 50 < data.lats[0] < 52
+        assert 14 < data.lons[0] < 16
+        assert data.hover_texts[0].startswith("<b>J0</b>")
+        assert "Druck: 5.00 bar" in data.hover_texts[0]
+        assert "Temperatur: 85.0 °C" in data.hover_texts[0]  # 358.15 K - 273.15
+        assert list(data.values) == [5.0, 4.9]
+
+    def test_no_parameter_leaves_values_none(self):
+        from districtheatingsim.net_simulation_pandapipes.plot_data import junction_plot_data
+        data = junction_plot_data(self._net(), "EPSG:25833", parameter=None)
+        assert data.values is None
+        assert list(data.ids) == [0, 1]
+
+
 class TestRecalculateNet:
     def test_wraps_solver_failure_in_runtime_error(self):
         import pandapipes as pp

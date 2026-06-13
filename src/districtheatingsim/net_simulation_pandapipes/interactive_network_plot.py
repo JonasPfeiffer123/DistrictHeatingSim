@@ -22,10 +22,13 @@ import geopandas as gpd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from shapely.geometry import Point
 
 from districtheatingsim.constants import KELVIN_OFFSET
-from districtheatingsim.net_simulation_pandapipes.plot_data import available_plot_parameters
+from districtheatingsim.net_simulation_pandapipes.plot_data import (
+    available_plot_parameters,
+    junction_geodata_wgs84,
+    junction_plot_data,
+)
 
 
 class InteractiveNetworkPlot:
@@ -308,19 +311,13 @@ class InteractiveNetworkPlot:
     def _get_junction_geodata(self) -> gpd.GeoDataFrame:
         """
         Get junction geodata in WGS84 for Plotly mapbox.
-        
+
+        Delegates to the Plotly-free data layer (BACKLOG B1/B3).
+
         :return: GeoDataFrame with junction coordinates in WGS84
         :rtype: gpd.GeoDataFrame
         """
-        gdf = gpd.GeoDataFrame(
-            self.net.junction_geodata,
-            geometry=[Point(xy) for xy in zip(
-                self.net.junction_geodata['x'], 
-                self.net.junction_geodata['y'], strict=False
-            )],
-            crs=self.crs
-        )
-        return gdf.to_crs('EPSG:4326')
+        return junction_geodata_wgs84(self.net, self.crs)
     
     def _add_junctions(self, parameter: str | None, colorscale: str, show: bool = True):
         """
@@ -333,31 +330,13 @@ class InteractiveNetworkPlot:
         :param show: Visibility flag, defaults to True
         :type show: bool
         """
-        gdf = self._get_junction_geodata()
-        
-        # Prepare data
-        lats = gdf.geometry.y.values
-        lons = gdf.geometry.x.values
+        data = junction_plot_data(self.net, self.crs, parameter)
 
-        # Hover text
-        hover_texts = []
-        for idx in gdf.index:
-            junction_data = self.net.junction.loc[idx]
-            text = f"<b>{junction_data['name']}</b><br>"
-            
-            if hasattr(self.net, 'res_junction'):
-                res = self.net.res_junction.loc[idx]
-                text += f"Druck: {res['p_bar']:.2f} bar<br>"
-                text += f"Temperatur: {res['t_k'] - KELVIN_OFFSET:.1f} °C<br>"
-                
-            hover_texts.append(text)
-        
         # Color mapping
-        if parameter and hasattr(self.net, 'res_junction'):
-            values = self.net.res_junction.loc[gdf.index, parameter].values
+        if data.values is not None:
             marker = dict(
                 size=10,
-                color=values,
+                color=data.values,
                 colorscale=colorscale,
                 showscale=True,
                 colorbar=dict(
@@ -379,16 +358,16 @@ class InteractiveNetworkPlot:
                 size=8,
                 color='#3498db'
             )
-        
+
         self.fig.add_trace(go.Scattermapbox(
-            lat=lats,
-            lon=lons,
+            lat=data.lats,
+            lon=data.lons,
             mode='markers',
             marker=marker,
-            text=hover_texts,
+            text=data.hover_texts,
             hovertemplate='%{text}<extra></extra>',
             name='junction',
-            customdata=gdf.index.values,
+            customdata=data.ids,
             visible=show
         ))
     
