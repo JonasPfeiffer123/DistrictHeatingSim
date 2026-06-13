@@ -504,6 +504,99 @@ class TestJunctionPlotData:
         assert list(data.ids) == [0, 1]
 
 
+class TestParameterHelpers:
+    """Pure plot-data helpers shared by the line components (B1/B3)."""
+
+    def test_parameter_label_known_and_unknown(self):
+        from districtheatingsim.net_simulation_pandapipes.plot_data import parameter_label
+        assert parameter_label("p_bar") == "Druck [bar]"
+        assert parameter_label("v_mean_m_per_s") == "Geschwindigkeit [m/s]"
+        assert parameter_label("unknown_param") == "unknown_param"  # fallback
+
+    def test_parameter_value_direct_and_derived(self):
+        import pandas as pd
+
+        from districtheatingsim.net_simulation_pandapipes.plot_data import parameter_value
+        res = pd.DataFrame(
+            {"v_mean_m_per_s": [1.5], "t_from_k": [360.0], "t_to_k": [330.0],
+             "p_from_bar": [5.0], "p_to_bar": [4.2]}
+        )
+        assert parameter_value(res, 0, "v_mean_m_per_s") == 1.5
+        assert parameter_value(res, 0, "dt_k") == pytest.approx(30.0)   # t_from - t_to
+        assert parameter_value(res, 0, "dp_bar") == pytest.approx(0.8)  # p_from - p_to
+        assert parameter_value(res, 0, "missing") is None
+
+
+class TestPipePlotData:
+    """Pipe polyline extraction (Plotly-free data layer, B1/B3)."""
+
+    @staticmethod
+    def _net_and_junctions():
+        from types import SimpleNamespace
+
+        import geopandas as gpd
+        import pandas as pd
+        from shapely.geometry import Point
+
+        junctions = gpd.GeoDataFrame(
+            geometry=[Point(14.0, 51.0), Point(14.001, 51.001), Point(14.002, 51.0)],
+            crs="EPSG:4326",
+        )  # index 0, 1, 2
+        net = SimpleNamespace(
+            pipe=pd.DataFrame({
+                "name": ["P0", "P1"],
+                "std_type": ["ISOPLUS_DRE100_2x", "ISOPLUS_DRE100_2x"],
+                "length_km": [0.10, 0.20],
+                "from_junction": [0, 1],
+                "to_junction": [1, 2],
+            }),
+            res_pipe=pd.DataFrame({
+                "mdot_from_kg_per_s": [1.2, 0.8],
+                "v_mean_m_per_s": [1.5, 0.9],
+                "t_from_k": [360.0, 360.0],
+                "t_to_k": [330.0, 332.0],
+                "p_from_bar": [5.0, 4.8],
+                "p_to_bar": [4.5, 4.4],
+            }),
+        )
+        return net, junctions
+
+    def test_segments_coords_and_values(self):
+        from districtheatingsim.net_simulation_pandapipes.plot_data import pipe_plot_data
+        net, junctions = self._net_and_junctions()
+        data = pipe_plot_data(net, junctions, parameter="v_mean_m_per_s")
+
+        assert len(data.segments) == 2
+        seg = data.segments[0]
+        assert (seg.from_lat, seg.from_lon) == (51.0, 14.0)        # junction 0
+        assert (seg.to_lat, seg.to_lon) == (51.001, 14.001)        # junction 1
+        assert seg.mid_lat == pytest.approx(51.0005)
+        assert seg.value == 1.5
+        assert (seg.idx, seg.name) == (0, "P0")
+        # colour range over both pipes' velocities
+        assert (data.vmin, data.vmax) == (0.9, 1.5)
+
+    def test_hover_text_fields(self):
+        from districtheatingsim.net_simulation_pandapipes.plot_data import pipe_plot_data
+        net, junctions = self._net_and_junctions()
+        hover = pipe_plot_data(net, junctions, parameter="v_mean_m_per_s").segments[0].hover_text
+        assert "<b>P0</b>" in hover
+        assert "Typ: ISOPLUS_DRE100_2x" in hover
+        assert "Länge: 0.100 km" in hover
+        assert "Massenstrom: 1.20 kg/s" in hover
+        assert "ΔT: 30.0 K" in hover           # 360 - 330
+        assert "Geschwindigkeit [m/s]: 1.50" in hover  # the coloured parameter line
+
+    def test_no_parameter_leaves_values_none(self):
+        from districtheatingsim.net_simulation_pandapipes.plot_data import pipe_plot_data
+        net, junctions = self._net_and_junctions()
+        data = pipe_plot_data(net, junctions, parameter=None)
+        assert data.vmin is None and data.vmax is None
+        assert all(seg.value is None for seg in data.segments)
+        # hover has no parameter line when uncoloured
+        assert "Geschwindigkeit [m/s]:" not in data.segments[0].hover_text
+
+
 class TestRecalculateNet:
     def test_wraps_solver_failure_in_runtime_error(self):
         import pandapipes as pp
