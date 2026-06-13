@@ -10,6 +10,72 @@ GUI-free, this layer is unit-testable through the network test seam.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+from dataclasses import dataclass
+
+import geopandas as gpd
+import numpy as np
+from shapely.geometry import Point
+
+from districtheatingsim.constants import KELVIN_OFFSET
+
+
+@dataclass
+class JunctionPlotData:
+    """Everything the renderer needs to draw the junction markers — no pandapipes."""
+
+    lats: np.ndarray
+    lons: np.ndarray
+    hover_texts: list[str]
+    values: np.ndarray | None  # per-junction colour values, or None if not colour-coded
+    ids: np.ndarray
+
+
+def junction_geodata_wgs84(net, crs) -> gpd.GeoDataFrame:
+    """Junction coordinates as a WGS84 GeoDataFrame (for Plotly mapbox)."""
+    gdf = gpd.GeoDataFrame(
+        net.junction_geodata,
+        geometry=[Point(xy) for xy in zip(
+            net.junction_geodata['x'], net.junction_geodata['y'], strict=False
+        )],
+        crs=crs,
+    )
+    return gdf.to_crs('EPSG:4326')
+
+
+def junction_plot_data(net, crs, parameter: str | None = None) -> JunctionPlotData:
+    """
+    Extract junction marker data (coords, hover text, colour values) from the net.
+
+    :param net: pandapipes network (duck-typed: ``junction_geodata``, ``junction``,
+        optional ``res_junction``).
+    :param crs: source CRS of the junction geodata (reprojected to WGS84).
+    :param parameter: ``res_junction`` column to colour by, or ``None``.
+    :rtype: JunctionPlotData
+    """
+    gdf = junction_geodata_wgs84(net, crs)
+
+    hover_texts = []
+    for idx in gdf.index:
+        junction = net.junction.loc[idx]
+        text = f"<b>{junction['name']}</b><br>"
+        if hasattr(net, 'res_junction'):
+            res = net.res_junction.loc[idx]
+            text += f"Druck: {res['p_bar']:.2f} bar<br>"
+            text += f"Temperatur: {res['t_k'] - KELVIN_OFFSET:.1f} °C<br>"
+        hover_texts.append(text)
+
+    values = None
+    if parameter and hasattr(net, 'res_junction'):
+        values = net.res_junction.loc[gdf.index, parameter].values
+
+    return JunctionPlotData(
+        lats=gdf.geometry.y.values,
+        lons=gdf.geometry.x.values,
+        hover_texts=hover_texts,
+        values=values,
+        ids=gdf.index.values,
+    )
+
 
 def available_plot_parameters(net) -> dict[str, list[str]]:
     """
