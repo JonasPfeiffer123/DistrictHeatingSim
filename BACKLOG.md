@@ -130,8 +130,8 @@ tests. This is the safety net that makes every refactor below low-risk.
     `leaflet_tab.py:28`) unchanged. Smoke-tested by `tests/test_osm_dialogs.py`
     (14 tests). The two distinct `initUI`/`startQuery`/`_onDownloadComplete` stay
     per-dialog (genuinely different — streets have highway filters + 4 area types).
-- Still to tackle: `main_view.py` (~1232), `interactive_network_plot.py` (~1179) —
-  same base-class treatment.
+- Still to tackle: `main_view.py` (~1232); `interactive_network_plot.py` (~1179) —
+  decomposition underway via the `plot_data.py` data/render split (see B3).
 ### B2. MVP violations
 The main frame is clean, but the MVP pattern is applied inconsistently and domain
 logic leaks into the views. Concrete findings (2026-06 survey):
@@ -169,8 +169,15 @@ logic leaks into the views. Concrete findings (2026-06 survey):
 Full normalisation (presenters everywhere) is a large, untestable GUI refactor; the
 tractable wins are pulling domain logic out of the views into testable domain
 functions (leveraging the net-simulation test seam).
-### B3. Plotly tightly coupled to pandapipes
-`interactive_network_plot.py` wires Plotly directly to pandapipes → hard to test.
+### B3. Plotly tightly coupled to pandapipes (in progress 2026-06)
+`interactive_network_plot.py` (~1179 LOC, one class, 60 `self.net` reads) mixes
+pandapipes queries with Plotly trace building in each `_add_<component>` method → hard
+to test. **Decoupling started:** introduced `net_simulation_pandapipes/plot_data.py`, a
+Plotly-free / GUI-free data layer. First extraction: `available_plot_parameters(net)`
+(the ~100-line `_get_available_parameters` is now a one-line delegate), unit-tested in
+`tests/test_net_simulation.py::TestAvailablePlotParameters`. *Next:* pull each
+`_add_<component>`'s data extraction (coords / values / hover) into `plot_data.py`,
+leaving the `_add_*` methods as thin Plotly renderers (each slice testable via the seam).
 ### B4. DE/EN naming mix
 `Wärmeleistung_kW` next to `HeatPump`, German UI strings + English docstrings;
 inconsistent method names (`calculate_heat_generation_cost()` vs `…costs()`).
