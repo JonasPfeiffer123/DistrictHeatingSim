@@ -27,6 +27,7 @@ from shapely.geometry import Point
 from districtheatingsim.gui.LeafletTab.layer_generation_dialog import LayerGenerationDialog
 from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, NetGenerationThread
 from districtheatingsim.gui.LeafletTab.osm_dialogs import DownloadOSMDataDialog, OSMBuildingQueryDialog
+from districtheatingsim.gui.utilities import stop_qthreads
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
 from districtheatingsim.utilities.crs_utils import crs_to_urn
 
@@ -433,6 +434,10 @@ class VisualizationPresenter(QObject):
         """
         self.view.show_error_message("Fehler beim Geocoding", error_message)
         self.view.progressBar.setRange(0, 1)
+
+    def stop_threads(self):
+        """Stop running download/geocoding threads (called from the main window on close)."""
+        stop_qthreads(getattr(self, 'geocodingThread', None), getattr(self, 'netgenerationThread', None))
 
     def load_csv_coordinates(self, fname=None):
         """
@@ -917,7 +922,11 @@ class VisualizationTabLeaflet(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.view)
-    
+
+    def stop_threads(self):
+        """Stop running worker threads (called from the main window on close)."""
+        self.presenter.stop_threads()
+
     def update_base_path(self, base_path):
         """Update base path in model and view.
         

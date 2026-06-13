@@ -43,6 +43,7 @@ from districtheatingsim.gui.NetSimulationTab.network_plot_widget import NetworkP
 from districtheatingsim.gui.NetSimulationTab.pipe_config_table import PipeConfigTable
 from districtheatingsim.gui.NetSimulationTab.time_series_widget import TimeSeriesWidget
 from districtheatingsim.gui.NetSimulationTab.timeseries_dialog import TimeSeriesCalculationDialog
+from districtheatingsim.gui.utilities import stop_qthreads
 from districtheatingsim.net_simulation_pandapipes.net_migration import migrate_loaded_net
 from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import (
     NetworkGenerationData,
@@ -87,6 +88,7 @@ class NetSimulationTab(QWidget):
         self.NetworkGenerationData = None
         self._init_thread = None
         self._calc_thread = None
+        self._recalc_thread = None
 
         self._init_ui()
         self._sync_crs()
@@ -329,6 +331,10 @@ class NetSimulationTab(QWidget):
         nd.prepare_plot_data()
         self._ts_widget.update(nd)
         self._info_panel.update(nd)
+
+    def stop_threads(self):
+        """Stop running worker threads (called from the main window on close)."""
+        stop_qthreads(self._init_thread, self._calc_thread, self._recalc_thread)
 
     # ------------------------------------------------------------------
     # Recalculate
