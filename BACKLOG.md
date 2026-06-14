@@ -473,13 +473,18 @@ the final state. Mechanism, found by probing the net:
   `net_calculation_threads.py` (gated on `diameter_optimization_pipe_checked`). With it,
   velocities drop to ≤ **1.99 m/s**, `dp` to **12.3 bar**, pump to **9.98 bar**. So the
   golden-master / `initialize_geojson`-only paths see the un-optimized (worse) net.
-- **Follow-up (separate, not done — changes golden numbers):** make `init_diameter_types`
-  **round up** (smallest std-type with `inner_diameter_mm ≥ required`) instead of closest,
-  so the initial state already satisfies `v ≤ v_max` and the scary transient warnings
-  disappear. This shifts diameters/KPIs → regenerate the golden master in the same commit.
-  Also: `optimize_diameter_types` steps through *insulation grades* (`_STD`→`_1x`→`_2x`),
-  not just diameters, so an UPSIZE can change insulation without changing velocity — worth
-  revisiting if that function is touched.
+- **Follow-up (done 2026-06):** `init_diameter_types` now **rounds up** (smallest
+  std-type with `inner_diameter_mm ≥ required`) instead of picking the merely closest
+  type. On Görlitz this drops max velocity 2.68 → 2.02 m/s, total `dp` 23.8 → 13.4 bar,
+  pump head 15.65 → 10.71 bar, and the transient "pressure is negative" warnings go to
+  **zero** — the single-pass init state now already satisfies `v ≤ v_max` without relying
+  on the GUI-only `optimize_diameter_types`. Golden master regenerated in the same commit
+  (`test_simulation_golden_master.py::test_solver_kpis`: Pumpenstrom 0.0054716 → 0.0037649,
+  Jahreswärmeerzeugung 6.2590 → 6.2508). `TestNetworkInitialization` pins only invariants,
+  unaffected. 246 passed + slow build/golden-master green.
+- **Still open (minor):** `optimize_diameter_types` steps through *insulation grades*
+  (`_STD`→`_1x`→`_2x`), not just diameters, so an UPSIZE can change insulation without
+  changing velocity — worth revisiting if that function is touched.
 
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)

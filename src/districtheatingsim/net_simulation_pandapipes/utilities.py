@@ -447,17 +447,26 @@ def init_diameter_types(net, v_max_pipe: float = 1.0, material_filter: str = "P2
 
         # Calculate required diameter using continuity equation
         required_diameter = current_diameter * (velocity / v_max_pipe)**0.5
-        
-        # Find closest available standard type
-        closest_type = min(
-            filtered_by_material.index, 
-            key=lambda x: abs(filtered_by_material.loc[x, 'inner_diameter_mm'] / 1000 - required_diameter)
-        )
-        
-        # Update pipe properties
-        properties = filtered_by_material.loc[closest_type]
 
-        net.pipe.at[pipe_idx, 'std_type'] = closest_type
+        # Pick the smallest standard type whose inner diameter still satisfies the
+        # velocity limit — round *up*, never down. Rounding to the merely closest
+        # type (the old behaviour) could round down and leave the pipe above v_max,
+        # inflating dp and forcing the pump to an unrealistically high head. If no
+        # type is large enough, fall back to the largest available.
+        required_diameter_mm = required_diameter * 1000.0
+        candidates = filtered_by_material[
+            filtered_by_material['inner_diameter_mm'] >= required_diameter_mm
+        ]
+        chosen_type = (
+            candidates['inner_diameter_mm'].idxmin()
+            if not candidates.empty
+            else filtered_by_material['inner_diameter_mm'].idxmax()
+        )
+
+        # Update pipe properties
+        properties = filtered_by_material.loc[chosen_type]
+
+        net.pipe.at[pipe_idx, 'std_type'] = chosen_type
         net.pipe.at[pipe_idx, 'inner_diameter_mm'] = properties['inner_diameter_mm']
         net.pipe.at[pipe_idx, 'u_w_per_m2k'] = resolve_pipe_u_w_per_m2k(properties)
         net.pipe.at[pipe_idx, 'k_mm'] = k

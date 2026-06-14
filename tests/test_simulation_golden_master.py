@@ -113,10 +113,12 @@ class TestGoerlitzGoldenMaster:
 
     def test_solver_kpis(self, goerlitz_run):
         # Pipeflow-derived KPIs for the fixed 8-step range; looser tolerance to survive
-        # cross-platform solver float drift.
+        # cross-platform solver float drift. Values reflect the round-up diameter sizing
+        # in init_diameter_types (pumpstrom dropped ~31% vs the old round-to-closest
+        # sizing, which under-sized pipes and inflated the pump head — see BACKLOG C14).
         _, k = goerlitz_run
-        assert k["Jahreswärmeerzeugung [MWh]"] == pytest.approx(6.2590, rel=1e-2)
-        assert k["Pumpenstrom [MWh]"] == pytest.approx(0.0054716, rel=2e-2)
+        assert k["Jahreswärmeerzeugung [MWh]"] == pytest.approx(6.2508, rel=1e-2)
+        assert k["Pumpenstrom [MWh]"] == pytest.approx(0.0037649, rel=2e-2)
         # Distribution loss = generation − demand (negative here: an 8-step generation
         # is compared against the annual demand — a known partial-range artifact).
         assert k["Verteilverluste [MWh]"] == pytest.approx(
