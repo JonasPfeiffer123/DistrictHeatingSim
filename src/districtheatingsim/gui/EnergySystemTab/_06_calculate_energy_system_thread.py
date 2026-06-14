@@ -7,9 +7,36 @@ Calculate Energy System Thread Module
 Thread for calculating heat generation mix in district heating simulation, running calculations in a separate thread.
 """
 
+import copy
 import traceback
 
 from PyQt6.QtCore import QThread, pyqtSignal
+
+
+def run_energy_system_calculation(energy_system, optimize, weights):
+    """
+    Compute the heat-generation mix on a **deep copy** of ``energy_system``.
+
+    The copy is what gets mutated and returned; the input object is left
+    untouched so the UI thread can keep reading it until the result is swapped in
+    on the main thread (via ``calculation_done``). This closes the read/write race
+    on the shared ``energy_system`` (BACKLOG C1). GUI-free so it is unit-testable
+    without a ``QThread`` / event loop.
+
+    :param energy_system: The system to compute (not mutated).
+    :param optimize: Whether to also run the SLSQP mix optimization.
+    :param weights: Optimization criteria weights (used only when ``optimize``).
+    :return: ``[system]`` or, when optimizing, ``[system, optimized_system]`` —
+        both freshly computed copies, independent of the input.
+    :rtype: list
+    """
+    system = copy.deepcopy(energy_system)
+    system.calculate_mix()
+    if optimize:
+        optimized_system = system.optimize_mix(weights)
+        optimized_system.calculate_mix()
+        return [system, optimized_system]
+    return [system]
 
 
 class CalculateEnergySystemThread(QThread):
@@ -43,21 +70,10 @@ class CalculateEnergySystemThread(QThread):
         Run heat generation mix calculation.
         """
         try:
-            # Calculate the energy mix
-            self.energy_system.calculate_mix()
-
-            # Perform optimization if needed
-            if self.optimize:
-                optimized_energy_system = self.energy_system.optimize_mix(self.weights)
-
-                # Calculate the energy mix
-                optimized_energy_system.calculate_mix()
-
-                # Emit the calculation result
-                self.calculation_done.emit([self.energy_system, optimized_energy_system])
-            else:
-                # Emit the calculation result
-                self.calculation_done.emit([self.energy_system])
+            # Compute on a deep copy (the UI keeps its object until the main thread
+            # swaps in this result), then emit it. See run_energy_system_calculation.
+            result = run_energy_system_calculation(self.energy_system, self.optimize, self.weights)
+            self.calculation_done.emit(result)
 
         except Exception as e:
             tb = traceback.format_exc()

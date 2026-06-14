@@ -43,7 +43,7 @@ from districtheatingsim.gui.NetSimulationTab.network_plot_widget import NetworkP
 from districtheatingsim.gui.NetSimulationTab.pipe_config_table import PipeConfigTable
 from districtheatingsim.gui.NetSimulationTab.time_series_widget import TimeSeriesWidget
 from districtheatingsim.gui.NetSimulationTab.timeseries_dialog import TimeSeriesCalculationDialog
-from districtheatingsim.gui.utilities import stop_qthreads
+from districtheatingsim.gui.utilities import any_thread_running, stop_qthreads
 from districtheatingsim.net_simulation_pandapipes.net_migration import migrate_loaded_net
 from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import (
     NetworkGenerationData,
@@ -259,6 +259,10 @@ class NetSimulationTab(QWidget):
     # ------------------------------------------------------------------
 
     def _create_and_initialize_net_geojson(self):
+        if self._net_thread_running():
+            self._warn_busy()
+            return
+
         self.NetworkGenerationData.COP_filename = self.folder_manager.cop_filename
         self.NetworkGenerationData.TRY_filename = self.folder_manager.try_filename
 
@@ -280,6 +284,10 @@ class NetSimulationTab(QWidget):
     def _time_series_simulation(self):
         if self.NetworkGenerationData is None:
             QMessageBox.warning(self, "Keine Netzdaten", "Bitte generieren Sie zuerst ein Netz.")
+            return
+
+        if self._net_thread_running():
+            self._warn_busy()
             return
 
         try:
@@ -336,12 +344,33 @@ class NetSimulationTab(QWidget):
         """Stop running worker threads (called from the main window on close)."""
         stop_qthreads(self._init_thread, self._calc_thread, self._recalc_thread)
 
+    def _net_thread_running(self) -> bool:
+        """True if an init/time-series/recalc worker is currently in flight.
+
+        These all mutate the shared ``NetworkGenerationData`` (and its pandapipes
+        net) in place, so launching a second while one runs would let two threads
+        mutate the same object at once (BACKLOG C1). Callers refuse to start in that
+        case — the cheap, uniform guard (the energy-system worker uses the same one).
+        """
+        return any_thread_running(self._init_thread, self._calc_thread, self._recalc_thread)
+
+    def _warn_busy(self) -> None:
+        """Tell the user a network calculation is already running."""
+        QMessageBox.information(
+            self, "Berechnung läuft",
+            "Es läuft bereits eine Netzberechnung. Bitte warten Sie, bis sie abgeschlossen ist.",
+        )
+
     # ------------------------------------------------------------------
     # Recalculate
     # ------------------------------------------------------------------
 
     def recalculateNetwork(self):
         """Recalculate the network with the current pipe parameters, off the UI thread."""
+        if self._net_thread_running():
+            self._warn_busy()
+            return
+
         if not self.NetworkGenerationData or not hasattr(self.NetworkGenerationData, 'net'):
             QMessageBox.warning(
                 self,

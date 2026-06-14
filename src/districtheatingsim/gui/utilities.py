@@ -137,3 +137,15 @@ def stop_qthreads(*threads):
     for thread in threads:
         if thread is not None and thread.isRunning():
             thread.stop()
+
+
+def any_thread_running(*threads) -> bool:
+    """
+    Return ``True`` if any given worker thread exists and is currently running.
+
+    Used to refuse launching a second worker that would mutate the same shared
+    object while one is already in flight (BACKLOG C1). ``None`` entries
+    (uninitialised thread attributes) are skipped. Duck-typed on ``isRunning()`` so
+    it is unit-testable without a real ``QThread``.
+    """
+    return any(t is not None and t.isRunning() for t in threads)

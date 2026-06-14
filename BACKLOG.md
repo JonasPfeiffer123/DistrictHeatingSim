@@ -251,10 +251,26 @@ thread lifecycle is partly unguarded. **Fixed:**
   and `main_view.closeEvent` calls it on every tab before `event.accept()` — no more
   QThread destroyed while still running on app exit.
 
-*Still open:* the deeper isolation (worker operates on a deep copy / the
-producer→`calculation_done`→main-thread-swap pattern made uniform) for the cases a
-single in-flight run is read by the UI — lower priority now the double-start + close
-races are closed.
+- **Worker isolation — energy system (done 2026-06).** `CalculateEnergySystemThread`
+  mutated the shared `energy_system` in place via `calculate_mix`, so the UI could read
+  it mid-run. The compute now runs on a **deep copy** and the main thread swaps the
+  result in via `calculation_done` — the producer→swap pattern. Extracted the GUI-free
+  `run_energy_system_calculation(energy_system, optimize, weights)` (deep-copies,
+  computes, returns the copy) so it is unit-testable without a QThread; the thread is a
+  thin wrapper. Pinned by `tests/test_energy_system_thread.py` (input left unmutated).
+- **Worker double-start guard — net threads (done 2026-06).** The three
+  `NetSimulationTab` workers (init / time-series / recalc) all mutate the shared
+  `NetworkGenerationData` (+ its pandapipes net) in place but had **no** double-start
+  guard (unlike the energy-system one), so two could run on the same object at once.
+  Added `_net_thread_running()` (over the GUI-free `gui/utilities.any_thread_running`,
+  duck-typed + unit-tested) and a guard on all three start methods that refuses + warns
+  while a run is in flight. Pinned by `tests/test_gui_thread_guard.py`.
+
+*Still open (deliberately deferred):* deep-copying the **pandapipes net** per net run
+(full producer→swap isolation for the net side too) — expensive (large nets) and
+pandapipes-deepcopy is fiddly, while the race is now bounded by the double-start guard +
+the user-initiated, progress-bar-modal nature of the run. Revisit only if a concurrent
+read of the net during a recalc is actually observed.
 ### C2. Solver path lacks error handling (partially fixed 2026-06)
 `run_timeseries()` ran without try/except and no NaN/inf checks, so a non-converged
 or infeasible run either crashed opaquely or let NaN propagate into the heat/
@@ -678,8 +694,9 @@ pipeline are now well-tested and lint-clean; the easy low-risk wins are harveste
    so a physically-impossible (negative absolute pressure) run passes silently. Add a
    soft warning. Small; warn-vs-raise decision pending. Highest correctness value left.
 2. **B1 remainder** — `main_view.py` (~1232); big LOC win but untested GUI god-object.
-3. **C1 — threading** deep isolation (worker on a deep copy / uniform producer→swap
-   pattern). The double-start + close races are already fixed; this is the subtle rest.
+3. ~~**C1 — threading** deep isolation~~ **mostly done 2026-06**: energy-system worker
+   now computes on a deep copy (producer→swap); net workers got the double-start guard.
+   Only deep-copying the pandapipes net per run is deferred (cost/risk — see C1).
 4. **Quick wins:** ~~hardcoded "Variante 1" (D1 leftover)~~ done; ~~E1 (`.gitignore`
    casing)~~ done; ~~C11 minor (0.13 circ-pump cross-check)~~ dropped. Cluster cleared.
 5. **Larger/optional:** B2 (MVP violations — partial), B4/E2 (DE/EN naming),
