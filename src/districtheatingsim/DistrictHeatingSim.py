@@ -47,6 +47,24 @@ from districtheatingsim.gui.MainTab.main_view import HeatSystemDesignGUI  # noqa
 from districtheatingsim.utilities.utilities import get_stylesheet_based_on_time, handle_global_exception  # noqa: E402
 
 
+def _configure_stdio_encoding():
+    """Force UTF-8 on stdout/stderr.
+
+    Diagnostic ``print`` statements across the domain/simulation code emit
+    non-ASCII characters (``→``, ``≤``, German umlauts). On Windows the default
+    console codepage is cp1252, where those characters raise
+    ``UnicodeEncodeError`` — which previously crashed e.g. the diameter
+    optimization mid-run. Reconfiguring to UTF-8 with a replacing error handler
+    makes every print robust regardless of the console codepage.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="backslashreplace")
+        except (AttributeError, ValueError):
+            # Stream is None (frozen no-console build) or not reconfigurable.
+            pass
+
+
 def main():
     """
     Initialize and launch the DistrictHeatingSim application.
@@ -62,6 +80,9 @@ def main():
         Windows-specific taskbar integration is applied if available but
         fails gracefully on other platforms.
     """
+    # Make diagnostic prints robust against the Windows cp1252 console codepage
+    _configure_stdio_encoding()
+
     # Configure global exception handling for user-friendly error reporting
     sys.excepthook = handle_global_exception
     
