@@ -62,8 +62,7 @@ def plot_net_3d(net) -> None:
 
 if __name__ == "__main__":
     # Example usage
-    #stanet_csv_file_path= "examples/data/STANET/Example_STANET_ETRS89.CSV"
-    stanet_csv_file_path= "C:/Users/jonas/OneDrive/Desktop/Masterarbeit/STANET_Praxisarbeit/Stanet files/EEQ1P_2.csv"
+    stanet_csv_file_path = "examples/data/STANET/Example_STANET_ETRS89.CSV"
     TRY_file_path = "examples/data/TRY/TRY_511676144222/TRY2015_511676144222_Jahr.dat"
     supply_temperature = 80  # Supply temperature in Celsius
     flow_pressure_pump = 4.0  # Flow pressure of the pump in bar
