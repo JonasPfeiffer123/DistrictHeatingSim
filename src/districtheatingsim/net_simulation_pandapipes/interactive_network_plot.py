@@ -22,15 +22,16 @@ import geopandas as gpd
 import plotly.express as px
 import plotly.graph_objects as go
 
-from districtheatingsim.constants import KELVIN_OFFSET
 from districtheatingsim.net_simulation_pandapipes.plot_data import (
     available_plot_parameters,
+    flow_control_plot_data,
     heat_consumer_plot_data,
     junction_geodata_wgs84,
     junction_plot_data,
     parameter_label,
     parameter_value,
     pipe_plot_data,
+    pump_plot_data,
 )
 
 
@@ -524,192 +525,23 @@ class InteractiveNetworkPlot:
         :param show: Visibility flag, defaults to True
         :type show: bool
         """
-        # Check for both pump types
-        pump_types = []
-        if hasattr(self.net, 'circ_pump_pressure') and len(self.net.circ_pump_pressure) > 0:
-            pump_types.append(('circ_pump_pressure', 'res_circ_pump_pressure'))
-        if hasattr(self.net, 'circ_pump_mass') and len(self.net.circ_pump_mass) > 0:
-            pump_types.append(('circ_pump_mass', 'res_circ_pump_mass'))
-        
-        if not pump_types:
+        data = pump_plot_data(self.net, self._get_junction_geodata(), parameter)
+        if not data.segments:
             return
-            
-        gdf_junctions = self._get_junction_geodata()
-        
-        # Check if we need to show colorbar for parameter
-        vmin, vmax = None, None
-        if parameter:
-            # Collect all parameter values from all pump types using helper method
-            all_values = []
-            for pump_table, res_table in pump_types:
-                if hasattr(self.net, res_table):
-                    res_df = getattr(self.net, res_table)
-                    pump_df = getattr(self.net, pump_table)
-                    for idx in pump_df.index:
-                        value = self._get_parameter_value(res_df, idx, parameter)
-                        if value is not None:
-                            all_values.append(value)
-            
-            if all_values:
-                vmin, vmax = min(all_values), max(all_values)
-                if vmax - vmin < 1e-10:
-                    vmax = vmin + 1
-                
-                # Add dummy trace for colorbar
-                self.fig.add_trace(go.Scattermapbox(
-                    lat=[gdf_junctions.geometry.y.mean()],
-                    lon=[gdf_junctions.geometry.x.mean()],
-                    mode='markers',
-                    marker=dict(
-                        size=0.1,
-                        color=[vmin, vmax],
-                        colorscale=colorscale,
-                        showscale=True,
-                        cmin=vmin,
-                        cmax=vmax,
-                        colorbar=dict(
-                            title=dict(
-                                text=self._get_parameter_label(parameter),
-                                side='right',
-                                font=dict(size=12)
-                            ),
-                            x=1.0,
-                            xanchor='left',
-                            thickness=15,
-                            len=0.6,
-                            y=0.5,
-                            yanchor='middle'
-                        )
-                    ),
-                    showlegend=False,
-                    hoverinfo='skip',
-                    visible=show
-                ))
-        
-        first_pump = True
-        
-        for pump_table, res_table in pump_types:
-            pump_df = getattr(self.net, pump_table)
-            
-            for idx in pump_df.index:
-                pump_data = pump_df.loc[idx]
-                
-                # Try to get coordinates - different pump types use different column names
-                try:
-                    if 'from_junction' in pump_data.index and 'to_junction' in pump_data.index:
-                        from_coords = gdf_junctions.loc[pump_data['from_junction']].geometry
-                        to_coords = gdf_junctions.loc[pump_data['to_junction']].geometry
-                    elif 'flow_junction' in pump_data.index and 'return_junction' in pump_data.index:
-                        from_coords = gdf_junctions.loc[pump_data['flow_junction']].geometry
-                        to_coords = gdf_junctions.loc[pump_data['return_junction']].geometry
-                    else:
-                        continue
-                except (KeyError, IndexError):
-                    continue
-                
-                # Calculate midpoint for better hover
-                mid_lat = (from_coords.y + to_coords.y) / 2
-                mid_lon = (from_coords.x + to_coords.x) / 2
-                
-                # Hover text
-                hover_text = f"<b>{pump_data['name']}</b><br>"
-                
-                # Get result data
-                if hasattr(self.net, res_table):
-                    try:
-                        res = getattr(self.net, res_table).loc[idx]
-                        
-                        if 'mdot_from_kg_per_s' in res.index:
-                            hover_text += f"Massenstrom: {res['mdot_from_kg_per_s']:.2f} kg/s<br>"
-                        if 't_from_k' in res.index:
-                            hover_text += f"Vorlauftemp.: {res['t_to_k'] - KELVIN_OFFSET:.1f} °C<br>"
-                        if 't_to_k' in res.index:
-                            hover_text += f"Rücklauftemp.: {res['t_from_k'] - KELVIN_OFFSET:.1f} °C<br>"
-                        if 'dt_k' in res.index:
-                            hover_text += f"ΔT: {res['dt_k']:.1f} K<br>"
-                        elif 't_from_k' in res.index and 't_to_k' in res.index:
-                            dt = res['t_to_k'] - res['t_from_k']
-                            hover_text += f"ΔT: {dt:.1f} K<br>"
-                        if 'p_from_bar' in res.index:
-                            hover_text += f"Vorlaufdruck: {res['p_to_bar']:.2f} bar<br>"
-                        if 'p_to_bar' in res.index:
-                            hover_text += f"Rücklaufdruck: {res['p_from_bar']:.2f} bar<br>"
-                        if 'deltap_bar' in res.index:
-                            hover_text += f"Druckanhebung: {res['deltap_bar']:.2f} bar<br>"
-                        elif 'p_from_bar' in res.index and 'p_to_bar' in res.index:
-                            deltap = res['p_to_bar'] - res['p_from_bar']
-                            hover_text += f"Druckanhebung: {deltap:.2f} bar<br>"
-                    except (KeyError, IndexError):
-                        pass
-                
-                # Color based on parameter
-                if parameter and vmin is not None:
-                    try:
-                        res_df = getattr(self.net, res_table)
-                        value = self._get_parameter_value(res_df, idx, parameter)
-                        if value is not None:
-                            norm_value = (value - vmin) / (vmax - vmin) if (vmax - vmin) > 0 else 0
-                            pump_color = px.colors.sample_colorscale(colorscale, [norm_value])[0]
-                            hover_text += f"{self._get_parameter_label(parameter)}: {value:.2f}<br>"
-                        else:
-                            pump_color = '#27ae60'
-                    except (KeyError, IndexError):
-                        pump_color = '#27ae60'
-                else:
-                    pump_color = '#27ae60'  # Default green
-                
-                # Add line with hover (using invisible markers for hover detection)
-                self.fig.add_trace(go.Scattermapbox(
-                    lat=[from_coords.y, mid_lat, to_coords.y],
-                    lon=[from_coords.x, mid_lon, to_coords.x],
-                    mode='lines+markers',
-                    line=dict(width=5, color=pump_color),
-                    marker=dict(size=0.1, color=pump_color),  # Invisible markers for hover
-                    text=[hover_text, hover_text, hover_text],
-                    hovertemplate='%{text}<extra></extra>',
-                    legendgroup='pumps',
-                    name='circ_pump',
-                    showlegend=first_pump,
-                    visible=show
-                ))
-                first_pump = False
-    
-    def _add_flow_controls(self, parameter: str | None, colorscale: str, show: bool = True):
-        """
-        Add flow control components to plot as colored lines.
-        
-        :param parameter: Parameter for color coding, optional
-        :type parameter: Optional[str]
-        :param colorscale: Plotly colorscale name
-        :type colorscale: str
-        :param show: Visibility flag, defaults to True
-        :type show: bool
-        """
-        if not hasattr(self.net, 'flow_control') or len(self.net.flow_control) == 0:
-            return
-            
-        gdf_junctions = self._get_junction_geodata()
-        
-        # Get parameter values for color mapping if needed
-        vmin, vmax = None, None
-        if parameter and hasattr(self.net, 'res_flow_control') and parameter in self.net.res_flow_control.columns:
-            param_values = self.net.res_flow_control[parameter].values
-            vmin, vmax = param_values.min(), param_values.max()
-            if vmax - vmin < 1e-10:
-                vmax = vmin + 1
-            
-            # Add dummy trace for colorbar
+
+        # Add a near-invisible marker carrying the colorbar when colour-coding.
+        if data.vmin is not None:
             self.fig.add_trace(go.Scattermapbox(
-                lat=[gdf_junctions.geometry.y.mean()],
-                lon=[gdf_junctions.geometry.x.mean()],
+                lat=[data.center_lat],
+                lon=[data.center_lon],
                 mode='markers',
                 marker=dict(
                     size=0.1,
-                    color=[vmin, vmax],
+                    color=[data.vmin, data.vmax],
                     colorscale=colorscale,
                     showscale=True,
-                    cmin=vmin,
-                    cmax=vmax,
+                    cmin=data.vmin,
+                    cmax=data.vmax,
                     colorbar=dict(
                         title=dict(
                             text=self._get_parameter_label(parameter),
@@ -728,60 +560,91 @@ class InteractiveNetworkPlot:
                 hoverinfo='skip',
                 visible=show
             ))
-        
-        for i, idx in enumerate(self.net.flow_control.index):
-            fc_data = self.net.flow_control.loc[idx]
-            
-            try:
-                from_coords = gdf_junctions.loc[fc_data['from_junction']].geometry
-                to_coords = gdf_junctions.loc[fc_data['to_junction']].geometry
-            except KeyError:
-                continue
-            
-            # Calculate midpoint for better hover
-            mid_lat = (from_coords.y + to_coords.y) / 2
-            mid_lon = (from_coords.x + to_coords.x) / 2
-            
-            # Hover text
-            hover_text = f"<b>{fc_data['name']}</b><br>"
-            
-            if 'controlled_mdot_kg_per_s' in fc_data.index:
-                hover_text += f"Soll-Massenstrom: {fc_data['controlled_mdot_kg_per_s']:.2f} kg/s<br>"
-            
-            if hasattr(self.net, 'res_flow_control'):
-                try:
-                    res = self.net.res_flow_control.loc[idx]
-                    if 'mdot_from_kg_per_s' in res.index:
-                        hover_text += f"Massenstrom: {res['mdot_from_kg_per_s']:.2f} kg/s<br>"
-                    if 'p_from_bar' in res.index:
-                        hover_text += f"Vorlaufdruck: {res['p_from_bar']:.2f} bar<br>"
-                    if 'p_to_bar' in res.index:
-                        hover_text += f"Rücklaufdruck: {res['p_to_bar']:.2f} bar<br>"
-                    if 'deltap_bar' in res.index:
-                        hover_text += f"Druckdifferenz: {res['deltap_bar']:.2f} bar<br>"
-                except (KeyError, IndexError):
-                    pass
-            
-            # Color based on parameter
-            if parameter and vmin is not None:
-                try:
-                    value = self.net.res_flow_control.loc[idx, parameter]
-                    norm_value = (value - vmin) / (vmax - vmin) if (vmax - vmin) > 0 else 0
-                    fc_color = px.colors.sample_colorscale(colorscale, [norm_value])[0]
-                    hover_text += f"{self._get_parameter_label(parameter)}: {value:.2f}<br>"
-                except (KeyError, IndexError):
-                    fc_color = '#9b59b6'
+
+        for i, seg in enumerate(data.segments):
+            if parameter and data.vmin is not None and seg.value is not None:
+                span = data.vmax - data.vmin
+                norm_value = (seg.value - data.vmin) / span if span > 0 else 0
+                color = px.colors.sample_colorscale(colorscale, [norm_value])[0]
             else:
-                fc_color = '#9b59b6'  # Default purple
-            
-            # Add line with hover (using invisible markers for hover detection)
+                color = '#27ae60'  # Default green
+
             self.fig.add_trace(go.Scattermapbox(
-                lat=[from_coords.y, mid_lat, to_coords.y],
-                lon=[from_coords.x, mid_lon, to_coords.x],
+                lat=[seg.from_lat, seg.mid_lat, seg.to_lat],
+                lon=[seg.from_lon, seg.mid_lon, seg.to_lon],
                 mode='lines+markers',
-                line=dict(width=5, color=fc_color),
-                marker=dict(size=0.1, color=fc_color),  # Invisible markers for hover
-                text=[hover_text, hover_text, hover_text],
+                line=dict(width=5, color=color),
+                marker=dict(size=0.1, color=color),  # Invisible markers for hover
+                text=[seg.hover_text, seg.hover_text, seg.hover_text],
+                hovertemplate='%{text}<extra></extra>',
+                legendgroup='pumps',
+                name='circ_pump',
+                showlegend=(i == 0),
+                visible=show
+            ))
+    
+    def _add_flow_controls(self, parameter: str | None, colorscale: str, show: bool = True):
+        """
+        Add flow control components to plot as colored lines.
+        
+        :param parameter: Parameter for color coding, optional
+        :type parameter: Optional[str]
+        :param colorscale: Plotly colorscale name
+        :type colorscale: str
+        :param show: Visibility flag, defaults to True
+        :type show: bool
+        """
+        data = flow_control_plot_data(self.net, self._get_junction_geodata(), parameter)
+        if not data.segments:
+            return
+
+        # Add a near-invisible marker carrying the colorbar when colour-coding.
+        if data.vmin is not None:
+            self.fig.add_trace(go.Scattermapbox(
+                lat=[data.center_lat],
+                lon=[data.center_lon],
+                mode='markers',
+                marker=dict(
+                    size=0.1,
+                    color=[data.vmin, data.vmax],
+                    colorscale=colorscale,
+                    showscale=True,
+                    cmin=data.vmin,
+                    cmax=data.vmax,
+                    colorbar=dict(
+                        title=dict(
+                            text=self._get_parameter_label(parameter),
+                            side='right',
+                            font=dict(size=12)
+                        ),
+                        x=1.0,
+                        xanchor='left',
+                        thickness=15,
+                        len=0.6,
+                        y=0.5,
+                        yanchor='middle'
+                    )
+                ),
+                showlegend=False,
+                hoverinfo='skip',
+                visible=show
+            ))
+
+        for i, seg in enumerate(data.segments):
+            if parameter and data.vmin is not None and seg.value is not None:
+                span = data.vmax - data.vmin
+                norm_value = (seg.value - data.vmin) / span if span > 0 else 0
+                color = px.colors.sample_colorscale(colorscale, [norm_value])[0]
+            else:
+                color = '#9b59b6'  # Default purple
+
+            self.fig.add_trace(go.Scattermapbox(
+                lat=[seg.from_lat, seg.mid_lat, seg.to_lat],
+                lon=[seg.from_lon, seg.mid_lon, seg.to_lon],
+                mode='lines+markers',
+                line=dict(width=5, color=color),
+                marker=dict(size=0.1, color=color),  # Invisible markers for hover
+                text=[seg.hover_text, seg.hover_text, seg.hover_text],
                 hovertemplate='%{text}<extra></extra>',
                 legendgroup='flow_controls',
                 name='flow_control',

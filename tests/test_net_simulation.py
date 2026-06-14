@@ -655,6 +655,109 @@ class TestHeatConsumerPlotData:
         assert "Wärmebedarf [W]: 500000.00" in seg.hover_text     # coloured parameter line
 
 
+class TestPumpPlotData:
+    """Circulation-pump polyline extraction (Plotly-free data layer, B1/B3)."""
+
+    @staticmethod
+    def _net_and_junctions():
+        from types import SimpleNamespace
+
+        import geopandas as gpd
+        import pandas as pd
+        from shapely.geometry import Point
+
+        junctions = gpd.GeoDataFrame(
+            geometry=[Point(14.0, 51.0), Point(14.001, 51.001)], crs="EPSG:4326"
+        )
+        net = SimpleNamespace(
+            circ_pump_pressure=pd.DataFrame({
+                "name": ["Pump0"], "from_junction": [0], "to_junction": [1],
+            }),
+            res_circ_pump_pressure=pd.DataFrame({
+                "mdot_from_kg_per_s": [3.0], "deltap_bar": [2.0],
+                "t_from_k": [330.15], "t_to_k": [358.15],
+                "p_from_bar": [3.0], "p_to_bar": [5.0],
+            }),
+        )
+        return net, junctions
+
+    def test_segment_value_and_swapped_hover(self):
+        from districtheatingsim.net_simulation_pandapipes.plot_data import (
+            pump_plot_data,
+        )
+        net, junctions = self._net_and_junctions()
+        data = pump_plot_data(net, junctions, parameter="deltap_bar")
+        assert len(data.segments) == 1
+        seg = data.segments[0]
+        assert seg.value == 2.0
+        assert "<b>Pump0</b>" in seg.hover_text
+        # Pumps run return->supply: Vorlauf reads *to*, Rücklauf reads *from*.
+        assert "Vorlauftemp.: 85.0 °C" in seg.hover_text        # t_to_k 358.15 - 273.15
+        assert "Rücklauftemp.: 57.0 °C" in seg.hover_text        # t_from_k 330.15 - 273.15
+        assert "Vorlaufdruck: 5.00 bar" in seg.hover_text        # p_to_bar
+        assert "Rücklaufdruck: 3.00 bar" in seg.hover_text       # p_from_bar
+        assert "Druckanhebung: 2.00 bar" in seg.hover_text       # deltap_bar
+        assert "Druckdifferenz [bar]: 2.00" in seg.hover_text    # coloured parameter line
+
+    def test_no_pumps_returns_empty(self):
+        from types import SimpleNamespace
+
+        import geopandas as gpd
+        from shapely.geometry import Point
+
+        from districtheatingsim.net_simulation_pandapipes.plot_data import (
+            pump_plot_data,
+        )
+        junctions = gpd.GeoDataFrame(geometry=[Point(14.0, 51.0)], crs="EPSG:4326")
+        data = pump_plot_data(SimpleNamespace(), junctions)
+        assert data.segments == []
+        assert data.vmin is None
+
+
+class TestFlowControlPlotData:
+    """Flow-control polyline extraction (Plotly-free data layer, B1/B3)."""
+
+    @staticmethod
+    def _net_and_junctions():
+        from types import SimpleNamespace
+
+        import geopandas as gpd
+        import pandas as pd
+        from shapely.geometry import Point
+
+        junctions = gpd.GeoDataFrame(
+            geometry=[Point(14.0, 51.0), Point(14.001, 51.001)], crs="EPSG:4326"
+        )
+        net = SimpleNamespace(
+            flow_control=pd.DataFrame({
+                "name": ["FC0"], "from_junction": [0], "to_junction": [1],
+                "controlled_mdot_kg_per_s": [1.5],
+            }),
+            res_flow_control=pd.DataFrame({
+                "mdot_from_kg_per_s": [1.5], "deltap_bar": [0.3],
+                "p_from_bar": [5.0], "p_to_bar": [4.7],
+            }),
+        )
+        return net, junctions
+
+    def test_segment_value_and_hover(self):
+        from districtheatingsim.net_simulation_pandapipes.plot_data import (
+            flow_control_plot_data,
+        )
+        net, junctions = self._net_and_junctions()
+        data = flow_control_plot_data(net, junctions, parameter="deltap_bar")
+        assert len(data.segments) == 1
+        seg = data.segments[0]
+        assert seg.value == 0.3
+        assert "<b>FC0</b>" in seg.hover_text
+        assert "Soll-Massenstrom: 1.50 kg/s" in seg.hover_text
+        assert "Massenstrom: 1.50 kg/s" in seg.hover_text
+        assert "Vorlaufdruck: 5.00 bar" in seg.hover_text
+        assert "Rücklaufdruck: 4.70 bar" in seg.hover_text
+        assert "Druckdifferenz: 0.30 bar" in seg.hover_text
+        assert "Druckdifferenz [bar]: 0.30" in seg.hover_text    # coloured parameter line
+
+
 class TestRecalculateNet:
     def test_wraps_solver_failure_in_runtime_error(self):
         import pandapipes as pp
