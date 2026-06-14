@@ -28,7 +28,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from districtheatingsim.gui.MainTab.main_data_manager import DEFAULT_VARIANT_NAME
+from districtheatingsim.gui.MainTab.project_structure import DEFAULT_VARIANT_NAME
 
 
 class ThemeToggleSwitch(QCheckBox):

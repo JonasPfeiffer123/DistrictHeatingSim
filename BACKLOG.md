@@ -143,7 +143,21 @@ tests. This is the safety net that makes every refactor below low-risk.
 - `interactive_network_plot.py` **done (B1/B3, 2026-06)**: 1179 → 755 LOC, now a
   Plotly-only renderer; all net queries moved to the new `plot_data.py` (548 LOC,
   Plotly-/GUI-free, unit-tested). See B3.
-- Still to tackle: `main_view.py` (~1232).
+- `main_view.py` (~1244) **decomposition in progress (2026-06)**:
+  - **Slice 1 (done):** extracted the project/variant filesystem logic into the new
+    GUI-free `gui/MainTab/project_structure.py` (`VARIANT_PREFIX`,
+    `DEFAULT_VARIANT_NAME`, `discover_variants`). This removed a *triplicated* and
+    subtly divergent variant scan — `main_view.get_available_variants` (no sort),
+    `main_presenter` (no `isdir` check, arbitrary `variants[0]`), `comparison_tab`
+    (sorted) — all three now call `discover_variants`, which is `isdir`-checked and
+    **sorted** (so "activate the first variant" is deterministic — a minor, beneficial
+    behaviour change for the presenter copy path). The constants moved out of
+    `main_data_manager` into the PyQt-free module (re-imported there). First real test
+    seam for `main_view`-adjacent logic: `tests/test_project_structure.py` (7 tests).
+    All 6 GUI modules import offscreen; 239 passed.
+  - **Still to tackle:** the bulk of the class is genuine Qt glue (menus/tabs/theme/
+    dialogs, ~40 methods). Next candidate slices (lower leverage, no easy test seam):
+    a theme controller and the project-lifecycle orchestration.
 ### B2. MVP violations
 The main frame is clean, but the MVP pattern is applied inconsistently and domain
 logic leaks into the views. Concrete findings (2026-06 survey):

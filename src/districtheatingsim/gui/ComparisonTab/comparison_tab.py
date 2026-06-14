@@ -33,7 +33,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from districtheatingsim.gui.MainTab.main_data_manager import VARIANT_PREFIX
+from districtheatingsim.gui.MainTab.project_structure import discover_variants
 
 
 def _filename_to_config_name(filename: str) -> str:
@@ -183,10 +183,7 @@ class ProjectExplorer(QWidget):
                 self.info_label.setText("Projekt-Datenordner nicht gefunden")
                 return
             parent_dir = os.path.dirname(self.base_path)
-            variant_names = sorted(
-                d for d in os.listdir(parent_dir)
-                if os.path.isdir(os.path.join(parent_dir, d)) and d.startswith(VARIANT_PREFIX)
-            )
+            variant_names = discover_variants(parent_dir)
             variant_count = 0
             for variant_name in variant_names:
                 variant_path = os.path.join(parent_dir, variant_name)

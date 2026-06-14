@@ -13,7 +13,11 @@ import shutil
 
 from PyQt6.QtWidgets import QInputDialog
 
-from districtheatingsim.gui.MainTab.main_data_manager import DEFAULT_VARIANT_NAME, VARIANT_PREFIX
+from districtheatingsim.gui.MainTab.project_structure import (
+    DEFAULT_VARIANT_NAME,
+    VARIANT_PREFIX,
+    discover_variants,
+)
 
 
 class HeatSystemPresenter:
@@ -176,10 +180,7 @@ class HeatSystemPresenter:
                     self.folder_manager.set_project_folder(new_project_path)
                     
                     # Search for variants in copied project
-                    variants = [
-                        folder for folder in os.listdir(new_project_path)
-                        if folder.startswith(VARIANT_PREFIX)
-                    ]
+                    variants = discover_variants(new_project_path)
 
                     if variants:
                         # Activate first available variant
