@@ -21,10 +21,11 @@ import pandas as pd
 import pytest
 
 from districtheatingsim.heat_generators.chp import CHP, CHPStrategy
-from districtheatingsim.heat_generators.energy_system import ENERGY_SYSTEM_SCHEMA_VERSION, EnergySystem
+from districtheatingsim.heat_generators.energy_system import EnergySystem
 from districtheatingsim.heat_generators.gas_boiler import GasBoiler, GasBoilerStrategy
 from districtheatingsim.heat_generators.results import TechnologyResult
 from districtheatingsim.heat_generators.thermal_storage import BufferStorage, ThermalStorageAdapter
+from districtheatingsim.utilities.schema import SCHEMA_VERSIONS
 
 REL = 1e-4  # relative tolerance — slightly looser than single-generator tests
 
@@ -272,7 +273,8 @@ class TestSerializationVersion:
 
     def test_to_dict_has_schema_version(self):
         d = self._system().to_dict()
-        assert d["version"] == ENERGY_SYSTEM_SCHEMA_VERSION
+        assert d["_meta"]["schema_version"] == SCHEMA_VERSIONS["energy_system"]
+        assert "app_version" in d["_meta"]
 
     def test_round_trip(self):
         d = self._system().to_dict()
@@ -282,7 +284,16 @@ class TestSerializationVersion:
 
     def test_legacy_dict_without_version_loads(self):
         d = self._system().to_dict()
-        d.pop("version", None)            # pre-versioning file
+        d.pop("_meta", None)              # pre-versioning file (no _meta, no version)
+        restored = EnergySystem.from_dict(d)  # must not raise
+        assert len(restored.technologies) == 2
+
+    def test_legacy_top_level_version_loads(self):
+        # Real files saved by the D2 app used a top-level "version" field instead of
+        # the _meta block — they must still load.
+        d = self._system().to_dict()
+        d.pop("_meta", None)
+        d["version"] = 1
         restored = EnergySystem.from_dict(d)  # must not raise
         assert len(restored.technologies) == 2
 

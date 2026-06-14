@@ -24,12 +24,9 @@ from districtheatingsim.heat_generators import (
 )
 from districtheatingsim.heat_generators.json_encoder import CustomJSONEncoder
 from districtheatingsim.heat_generators.results import TechnologyResult
+from districtheatingsim.utilities.schema import add_meta, check_version
 
 logging.basicConfig(level=logging.INFO)
-
-#: Schema version of the serialized EnergySystem (``to_dict`` / ``save_to_json``).
-#: Bump when the on-disk format changes and migrate in ``from_dict``.
-ENERGY_SYSTEM_SCHEMA_VERSION = 1
 
 
 class EnergySystem:
@@ -730,8 +727,7 @@ class EnergySystem:
         dict
             Dictionary representation of the complete energy system.
         """
-        return {
-            'version': ENERGY_SYSTEM_SCHEMA_VERSION,
+        return add_meta({
             'time_steps': self.time_steps.astype(str).tolist(),  # Convert datetime64 to string
             'load_profile': self.load_profile.tolist(),
             'VLT_L': self.VLT_L.tolist(),
@@ -745,7 +741,7 @@ class EnergySystem:
                 key: (value.to_dict(orient='split') if isinstance(value, pd.DataFrame) else value)
                 for key, value in self.results.items()
             },
-        }
+        }, "energy_system")
 
     @classmethod
     def from_dict(cls, data: dict):
@@ -762,12 +758,9 @@ class EnergySystem:
         EnergySystem
             Fully initialized EnergySystem object.
         """
-        # Schema version: 0 = pre-versioning. Older files load best-effort; warn on
-        # files written by a newer app (forward-incompatible changes possible).
-        version = int(data.get('version', 0))
-        if version > ENERGY_SYSTEM_SCHEMA_VERSION:
-            logging.warning("EnergySystem JSON is v%d, newer than this app (v%d); "
-                            "loading best-effort", version, ENERGY_SYSTEM_SCHEMA_VERSION)
+        # Schema version: tolerates the _meta block, the legacy top-level "version"
+        # field, and pre-versioning files (0); warns if newer than this app.
+        check_version(data, "energy_system")
 
         # Restore basic attributes
         time_steps = np.array(data['time_steps'], dtype='datetime64')

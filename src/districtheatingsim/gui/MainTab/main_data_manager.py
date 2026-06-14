@@ -10,7 +10,6 @@ This module implements the Model layer of the MVP pattern, providing three core 
 """
 
 import json
-import logging
 import os
 import shutil
 from typing import Any
@@ -19,11 +18,8 @@ from PyQt6.QtCore import QObject, pyqtSignal
 
 from districtheatingsim.gui.MainTab.project_structure import DEFAULT_VARIANT_NAME
 from districtheatingsim.utilities.crs_utils import DEFAULT_CRS
+from districtheatingsim.utilities.schema import add_meta, check_version
 from districtheatingsim.utilities.utilities import get_resource_path
-
-#: Schema version of ``project_settings.json``. Bump when the on-disk format
-#: changes and add the corresponding step to ``_migrate_project_settings``.
-PROJECT_SETTINGS_VERSION = 1
 
 
 class ProjectConfigManager:
@@ -353,23 +349,18 @@ class ProjectFolderManager(QObject):
             return absolute if os.path.isfile(absolute) else None
         return None
 
-    def _migrate_project_settings(self, data: dict[str, Any], version: int) -> dict[str, Any]:
+    def _migrate_project_settings(self, data: dict[str, Any]) -> dict[str, Any]:
         """
-        Migrate a loaded ``project_settings.json`` dict to the current schema.
+        Validate the schema version of a loaded ``project_settings.json`` dict.
 
-        Currently a pass-through (missing keys fall back to defaults on read).
-        Future format changes add a step here, keyed off the stored ``version``.
+        Currently a pass-through beyond the shared version check (missing keys fall
+        back to defaults on read). Future format changes add migration steps here,
+        keyed off ``check_version``'s return value.
 
         :param data: Raw settings dict as loaded from disk.
-        :param version: ``version`` field from the file (0 = pre-versioning).
         :return: The (possibly migrated) settings dict.
         """
-        if version < PROJECT_SETTINGS_VERSION:
-            logging.info("Migrating project_settings.json from v%d to v%d",
-                         version, PROJECT_SETTINGS_VERSION)
-        elif version > PROJECT_SETTINGS_VERSION:
-            logging.warning("project_settings.json is v%d, newer than this app (v%d); "
-                            "loading best-effort", version, PROJECT_SETTINGS_VERSION)
+        check_version(data, "project_settings")
         return data
 
     def load_project_settings(self) -> None:
@@ -379,7 +370,7 @@ class ProjectFolderManager(QObject):
             try:
                 with open(path, encoding="utf-8") as f:
                     data = json.load(f)
-                data = self._migrate_project_settings(data, int(data.get("version", 0)))
+                data = self._migrate_project_settings(data)
                 self.project_crs = data.get("crs", DEFAULT_CRS)
                 self.calculation_year = int(data.get("calculation_year", 2023))
                 self.active_energy_configs = data.get("active_energy_configs", {})
@@ -425,14 +416,13 @@ class ProjectFolderManager(QObject):
         path = self._settings_path()
         if path:
             try:
-                data = {
-                    "version": PROJECT_SETTINGS_VERSION,
+                data = add_meta({
                     "crs": self.project_crs,
                     "calculation_year": self.calculation_year,
                     "active_energy_configs": self.active_energy_configs,
                     "try_filename": self._to_relative_path(self.try_filename),
                     "cop_filename": self._to_relative_path(self.cop_filename),
-                }
+                }, "project_settings")
                 with open(path, "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=4, ensure_ascii=False)
             except OSError:

@@ -558,11 +558,21 @@ centralization is value-identical (golden masters unchanged); **cp was unified t
 - **Still open:** temperature limits (e.g. the 75 K Hub) and `cp=4187 J/kgK` in
   `thermal_storage.py` (different unit system) were intentionally left; fold in if a
   unit convention is formalized.
-### D4. Project-wide serialization/versioning strategy (not started)
+### D4. Project-wide serialization/versioning strategy (step 1 done 2026-06)
 D2 versioned only two artifacts (`project_settings.json`, EnergySystem JSON). The app
 reads/writes **many** serialized files of different kinds, and most are unversioned.
 A blanket "add a version field everywhere" is wrong — the strategy must be
 differentiated by artifact kind.
+
+**Step 1 landed (2026-06):** `utilities/schema.py` (GUI-free, stdlib-only — safe for the
+domain core, B5) holds the shared bookkeeping: a `SCHEMA_VERSIONS` registry (single
+source of truth, replaced the scattered `*_VERSION` constants), `add_meta(data, kind)`
+(writes a `_meta` block with `schema_version` + diagnostic `app_version`),
+`schema_version_of` (tolerant read: `_meta` → legacy top-level `version` → 0) and
+`check_version` (warns if newer than the app). `project_settings.json` and the
+EnergySystem JSON now route save/load through it; old files (legacy top-level `version`
+*and* pre-versioning) still load — pinned by `tests/test_schema.py` (8) plus
+backward-compat cases in `test_project_settings.py` / `test_energy_system.py`. 262 passed.
 
 **Inventory (the persistence footprint):**
 - **Project-state JSON (app-owned, format evolves → version):** `project_settings.json`
@@ -598,10 +608,10 @@ differentiated by artifact kind.
    regression test** per artifact: a fixture of an *old* version that must still load.
    That discipline — not the field — is the real protection.
 
-**Rollout (leverage → effort):** (1) `utilities/schema.py` + registry, migrate the two
-D2 artifacts onto it; (2) building JSON + `dialog_config.json`; (3) NetworkGeoJSON schema
-version + load validation; (4) CSV column-contracts. Incremental, no big bang. Explicitly
-out of scope: ephemeral/interchange artifacts.
+**Rollout (leverage → effort):** ~~(1) `utilities/schema.py` + registry, migrate the two
+D2 artifacts onto it~~ **done 2026-06**; (2) building JSON + `dialog_config.json`;
+(3) NetworkGeoJSON schema version + load validation; (4) CSV column-contracts.
+Incremental, no big bang. Explicitly out of scope: ephemeral/interchange artifacts.
 
 ## E. Hygiene
 ### E1. `.gitignore` casing (resolved 2026-06)
