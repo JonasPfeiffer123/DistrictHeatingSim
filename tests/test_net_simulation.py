@@ -19,6 +19,7 @@ from districtheatingsim.net_simulation_pandapipes.pipe_std_types import (
 from districtheatingsim.net_simulation_pandapipes.result_validation import (
     validate_design_state,
     validate_net_results,
+    validate_pressure_plausibility,
     validate_simulation_results,
 )
 
@@ -93,6 +94,59 @@ class TestValidateNetResults:
     def test_context_in_message(self):
         with pytest.raises(RuntimeError, match="network generation"):
             validate_net_results(self._net(None), context="network generation")
+
+
+class TestValidatePressurePlausibility:
+    """Soft guard (BACKLOG C14): a converged net with negative absolute pressures is
+    physically impossible (pump head too low); warn + report rather than raise."""
+
+    @staticmethod
+    def _net(pressures):
+        from types import SimpleNamespace
+
+        import pandas as pd
+        return SimpleNamespace(res_junction=pd.DataFrame({"p_bar": pressures}))
+
+    def test_all_positive_pressures_pass_quietly(self, caplog):
+        import logging
+        with caplog.at_level(logging.WARNING):
+            bad = validate_pressure_plausibility(self._net([2.5, 4.0, 1.05]))
+        assert bad == []
+        assert caplog.records == []
+
+    def test_negative_pressure_is_flagged_and_warns(self, caplog):
+        import logging
+        with caplog.at_level(logging.WARNING):
+            bad = validate_pressure_plausibility(self._net([2.5, -0.3, 4.0, -1.2]))
+        assert bad == [1, 3]
+        assert len(caplog.records) == 1
+        assert "implausible" in caplog.records[0].getMessage()
+
+    def test_does_not_raise_on_negative_pressure(self):
+        # The whole point of C14: a soft check, never a hard failure.
+        validate_pressure_plausibility(self._net([-5.0]))
+
+    def test_missing_or_empty_results_are_noop(self):
+        from types import SimpleNamespace
+
+        import pandas as pd
+        assert validate_pressure_plausibility(SimpleNamespace(res_junction=None)) == []
+        assert validate_pressure_plausibility(SimpleNamespace(res_junction=pd.DataFrame())) == []
+
+    def test_nan_pressures_are_ignored(self):
+        # NaN is the NaN/inf validators' job; this check only flags finite negatives.
+        bad = validate_pressure_plausibility(self._net([np.nan, 3.0]))
+        assert bad == []
+
+    def test_threshold_is_configurable(self):
+        bad = validate_pressure_plausibility(self._net([0.5, 1.5]), min_pressure_bar=1.0)
+        assert bad == [0]
+
+    def test_context_in_warning(self, caplog):
+        import logging
+        with caplog.at_level(logging.WARNING):
+            validate_pressure_plausibility(self._net([-1.0]), context="network generation")
+        assert "network generation" in caplog.records[0].getMessage()
 
 
 def _design_state(qext=7.5):
