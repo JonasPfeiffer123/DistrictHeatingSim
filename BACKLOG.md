@@ -482,9 +482,15 @@ the final state. Mechanism, found by probing the net:
   (`test_simulation_golden_master.py::test_solver_kpis`: Pumpenstrom 0.0054716 → 0.0037649,
   Jahreswärmeerzeugung 6.2590 → 6.2508). `TestNetworkInitialization` pins only invariants,
   unaffected. 246 passed + slow build/golden-master green.
-- **Still open (minor):** `optimize_diameter_types` steps through *insulation grades*
-  (`_STD`→`_1x`→`_2x`), not just diameters, so an UPSIZE can change insulation without
-  changing velocity — worth revisiting if that function is touched.
+- **Insulation-grade stepping (fixed 2026-06):** `optimize_diameter_types` stepped
+  position±1 over the *flat* catalog (`_STD`→`_1x`→`_2x`→next bore), so an UPSIZE could
+  change insulation without changing the bore (wasted iterations; arbitrary final
+  insulation grade). Now it steps within a **per-grade diameter ladder**
+  (`build_diameter_ladders` / `neighbor_std_type`, both unit-tested), so sizing changes
+  the bore and keeps the insulation grade constant. On Görlitz the GUI optimize path now
+  yields a uniform `_STD` grade (was a mix of `_STD`/`_2x`) at the same hydraulics
+  (max v 1.99 m/s, pump 9.98 bar). GUI-only path (not in the golden master); pinned by
+  `tests/test_net_simulation.py::TestDiameterLadders` (6 tests). C14 fully closed.
 
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
