@@ -155,9 +155,19 @@ tests. This is the safety net that makes every refactor below low-risk.
     `main_data_manager` into the PyQt-free module (re-imported there). First real test
     seam for `main_view`-adjacent logic: `tests/test_project_structure.py` (7 tests).
     All 6 GUI modules import offscreen; 239 passed.
-  - **Still to tackle:** the bulk of the class is genuine Qt glue (menus/tabs/theme/
-    dialogs, ~40 methods). Next candidate slices (lower leverage, no easy test seam):
-    a theme controller and the project-lifecycle orchestration.
+  - **Slice 2 (done):** extracted the project-folder *creation* into
+    `project_structure.py` (`PROJECT_INPUT_FOLDERS`, `VARIANT_SUBDIRS`,
+    `create_variant_structure`, `create_project_structure`). The variant sub-folder
+    list (`Ergebnisse`/`Gebäudedaten`/`Lastgang`/`Wärmenetz`) was **duplicated** across
+    `main_presenter.create_new_project` and `create_project_variant`; both now call the
+    shared, GUI-free, tmp_path-testable helpers (`create_project_structure` keeps the
+    "fail on existing project" behaviour via `os.makedirs` without `exist_ok`). Pinned by
+    `tests/test_project_structure.py` (+4 → 11); 280 passed.
+  - **Still to tackle:** the bulk of `main_view.py` is genuine Qt glue (menus/tabs/theme/
+    dialogs, ~40 methods) with **no behaviour test seam** — extracting it (e.g. a theme
+    controller) only *moves* LOC and risks breaking signal/stylesheet wiring that can't be
+    regression-tested here. Deliberately left until a GUI behaviour-test harness exists;
+    the testable GUI-free logic around it has now been harvested (slices 1+2).
 ### B2. MVP violations
 The main frame is clean, but the MVP pattern is applied inconsistently and domain
 logic leaks into the views. Concrete findings (2026-06 survey):

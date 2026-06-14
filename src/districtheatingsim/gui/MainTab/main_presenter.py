@@ -16,6 +16,8 @@ from PyQt6.QtWidgets import QInputDialog
 from districtheatingsim.gui.MainTab.project_structure import (
     DEFAULT_VARIANT_NAME,
     VARIANT_PREFIX,
+    create_project_structure,
+    create_variant_structure,
     discover_variants,
 )
 
@@ -78,30 +80,9 @@ class HeatSystemPresenter:
             return False
             
         try:
-            # Create main project folder
+            # Create the project folder with the standardized structure
             full_path = os.path.join(folder_path, project_name)
-            os.makedirs(full_path)
-            
-            # Define standardized folder structure for district heating projects
-            subdirs = {
-                "Eingangsdaten allgemein": [],  # General input data
-                "Definition Quartier IST": [],  # Current district definition
-                DEFAULT_VARIANT_NAME: [        # First analysis variant
-                    "Ergebnisse",               # Results and outputs
-                    "Gebäudedaten",             # Building data
-                    "Lastgang",                 # Load profiles
-                    "Wärmenetz"                 # Heating network data
-                ]
-            }
-            
-            # Create main folders and their respective subfolders
-            for main_folder, subfolders in subdirs.items():
-                main_folder_path = os.path.join(full_path, main_folder)
-                os.makedirs(main_folder_path)
-                
-                # Create subfolders for variant organization
-                for subfolder in subfolders:
-                    os.makedirs(os.path.join(main_folder_path, subfolder))
+            create_project_structure(full_path)
 
             # Register project with folder manager
             self.folder_manager.set_project_folder(full_path)
@@ -234,18 +215,9 @@ class HeatSystemPresenter:
             variant_num += 1
 
         try:
-            # Create standardized variant folder structure
-            variant_subdirs = [
-                "Ergebnisse",    # Analysis results and outputs
-                "Gebäudedaten",  # Building data and characteristics
-                "Lastgang",      # Load profiles and demand data
-                "Wärmenetz"      # Heating network design and data
-            ]
-            
-            # Create main variant folder and all subdirectories
-            for subdir in variant_subdirs:
-                os.makedirs(os.path.join(new_variant_path, subdir))
-            
+            # Create the variant folder with its standardized sub-folders
+            create_variant_structure(new_variant_path)
+
             # Activate newly created variant
             self.folder_manager.set_variant_folder(new_variant_name)
             return True
