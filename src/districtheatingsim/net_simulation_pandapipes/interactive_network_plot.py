@@ -25,6 +25,7 @@ import plotly.graph_objects as go
 from districtheatingsim.constants import KELVIN_OFFSET
 from districtheatingsim.net_simulation_pandapipes.plot_data import (
     available_plot_parameters,
+    heat_consumer_plot_data,
     junction_geodata_wgs84,
     junction_plot_data,
     parameter_label,
@@ -454,38 +455,23 @@ class InteractiveNetworkPlot:
         :param show: Visibility flag, defaults to True
         :type show: bool
         """
-        if not hasattr(self.net, 'heat_consumer') or len(self.net.heat_consumer) == 0:
+        data = heat_consumer_plot_data(self.net, self._get_junction_geodata(), parameter)
+        if not data.segments:
             return
-            
-        gdf_junctions = self._get_junction_geodata()
-        
-        # Get parameter values for color mapping if needed
-        vmin, vmax = None, None
-        if parameter and hasattr(self.net, 'res_heat_consumer'):
-            # Collect parameter values using helper method (handles calculated parameters)
-            param_values = []
-            for idx in self.net.heat_consumer.index:
-                value = self._get_parameter_value(self.net.res_heat_consumer, idx, parameter)
-                if value is not None:
-                    param_values.append(value)
-            
-            if param_values:
-                vmin, vmax = min(param_values), max(param_values)
-                if vmax - vmin < 1e-10:
-                    vmax = vmin + 1
-            
-            # Add dummy trace for colorbar
+
+        # Add a near-invisible marker carrying the colorbar when colour-coding.
+        if data.vmin is not None:
             self.fig.add_trace(go.Scattermapbox(
-                lat=[gdf_junctions.geometry.y.mean()],
-                lon=[gdf_junctions.geometry.x.mean()],
+                lat=[data.center_lat],
+                lon=[data.center_lon],
                 mode='markers',
                 marker=dict(
                     size=0.1,
-                    color=[vmin, vmax],
+                    color=[data.vmin, data.vmax],
                     colorscale=colorscale,
                     showscale=True,
-                    cmin=vmin,
-                    cmax=vmax,
+                    cmin=data.vmin,
+                    cmax=data.vmax,
                     colorbar=dict(
                         title=dict(
                             text=self._get_parameter_label(parameter),
@@ -504,65 +490,22 @@ class InteractiveNetworkPlot:
                 hoverinfo='skip',
                 visible=show
             ))
-        
-        for i, idx in enumerate(self.net.heat_consumer.index):
-            hc_data = self.net.heat_consumer.loc[idx]
-            
-            try:
-                from_coords = gdf_junctions.loc[hc_data['from_junction']].geometry
-                to_coords = gdf_junctions.loc[hc_data['to_junction']].geometry
-            except KeyError:
-                continue
-            
-            # Calculate midpoint for better hover
-            mid_lat = (from_coords.y + to_coords.y) / 2
-            mid_lon = (from_coords.x + to_coords.x) / 2
-            
-            # Hover text
-            hover_text = f"<b>{hc_data['name']}</b><br>"
-            hover_text += f"Wärmebedarf: {hc_data['qext_w']/1000:.1f} kW<br>"
-            
-            if hasattr(self.net, 'res_heat_consumer'):
-                res = self.net.res_heat_consumer.loc[idx]
-                if 'mdot_from_kg_per_s' in res.index:
-                    hover_text += f"Massenstrom: {res['mdot_from_kg_per_s']:.2f} kg/s<br>"
-                if 't_from_k' in res.index:
-                    hover_text += f"Vorlauftemp.: {res['t_from_k'] - KELVIN_OFFSET:.1f} °C<br>"
-                if 't_to_k' in res.index:
-                    hover_text += f"Rücklauftemp.: {res['t_to_k'] - KELVIN_OFFSET:.1f} °C<br>"
-                if 'dt_k' in res.index:
-                    hover_text += f"ΔT: {res['dt_k']:.1f} K<br>"
-                elif 't_from_k' in res.index and 't_to_k' in res.index:
-                    hover_text += f"ΔT: {res['t_from_k'] - res['t_to_k']:.1f} K<br>"
-                if 'p_from_bar' in res.index:
-                    hover_text += f"Vorlaufdruck: {res['p_from_bar']:.2f} bar<br>"
-                if 'p_to_bar' in res.index:
-                    hover_text += f"Rücklaufdruck: {res['p_to_bar']:.2f} bar<br>"
-                if 'deltap_bar' in res.index:
-                    hover_text += f"Δp: {res['deltap_bar']:.2f} bar<br>"
-                elif 'p_from_bar' in res.index and 'p_to_bar' in res.index:
-                    hover_text += f"Δp: {res['p_from_bar'] - res['p_to_bar']:.2f} bar<br>"
-            
-            # Color based on parameter
-            if parameter and vmin is not None:
-                value = self._get_parameter_value(self.net.res_heat_consumer, idx, parameter)
-                if value is not None:
-                    norm_value = (value - vmin) / (vmax - vmin) if (vmax - vmin) > 0 else 0
-                    color = px.colors.sample_colorscale(colorscale, [norm_value])[0]
-                    hover_text += f"{self._get_parameter_label(parameter)}: {value:.2f}<br>"
-                else:
-                    color = '#e74c3c'  # Default if value not available
+
+        for i, seg in enumerate(data.segments):
+            if parameter and data.vmin is not None and seg.value is not None:
+                span = data.vmax - data.vmin
+                norm_value = (seg.value - data.vmin) / span if span > 0 else 0
+                color = px.colors.sample_colorscale(colorscale, [norm_value])[0]
             else:
                 color = '#e74c3c'  # Red for heat consumers
-            
-            # Add line with hover (using invisible markers for hover detection)
+
             self.fig.add_trace(go.Scattermapbox(
-                lat=[from_coords.y, mid_lat, to_coords.y],
-                lon=[from_coords.x, mid_lon, to_coords.x],
+                lat=[seg.from_lat, seg.mid_lat, seg.to_lat],
+                lon=[seg.from_lon, seg.mid_lon, seg.to_lon],
                 mode='lines+markers',
                 line=dict(width=5, color=color),
                 marker=dict(size=0.1, color=color),  # Invisible markers for hover
-                text=[hover_text, hover_text, hover_text],
+                text=[seg.hover_text, seg.hover_text, seg.hover_text],
                 hovertemplate='%{text}<extra></extra>',
                 legendgroup='heat_consumers',
                 name='heat_consumer',
