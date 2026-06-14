@@ -109,6 +109,7 @@ class NetworkPlotWidget(QWidget):
         self._net_data = None
         self._plot_html_path = None
         self._last_selected_pipe = None
+        self._page_ready = False  # True once the WebEngine page has finished loading
         self.project_crs: str = "EPSG:25833"
 
         self._click_timer = QTimer()
@@ -146,6 +147,7 @@ class NetworkPlotWidget(QWidget):
         try:
             if not force and self._plot_html_path and os.path.exists(self._plot_html_path):
                 if WEBENGINE_AVAILABLE:
+                    self._page_ready = False
                     self._canvas.setUrl(QUrl.fromLocalFile(self._plot_html_path))
                 return
 
@@ -173,6 +175,7 @@ class NetworkPlotWidget(QWidget):
                     self._plot_html_path = f.name
 
                 self._inject_click_handler(self._plot_html_path)
+                self._page_ready = False
                 self._canvas.setUrl(QUrl.fromLocalFile(self._plot_html_path))
 
                 if not self._click_timer.isActive():
@@ -231,6 +234,7 @@ class NetworkPlotWidget(QWidget):
         if WEBENGINE_AVAILABLE:
             self._canvas = QWebEngineView()
             self._canvas.setMinimumSize(500, 500)
+            self._canvas.loadFinished.connect(self._on_load_finished)
             settings = self._canvas.settings()
             settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, True)
             settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls, True)
@@ -274,8 +278,68 @@ class NetworkPlotWidget(QWidget):
             self._param_dropdown.blockSignals(False)
 
     def _on_param_changed(self, _index: int):
+        # Fast path: the network is unchanged, only the colouring parameter changed.
+        # Push the new traces into the already-loaded Plotly div via Plotly.react()
+        # instead of regenerating the (3.5 MB inline-plotly.js) HTML and reloading the
+        # whole page — that reload is what re-fetches the map tiles and costs ~1-2 s.
+        if (WEBENGINE_AVAILABLE and self._page_ready
+                and self._net_data is not None and hasattr(self._net_data, 'net')):
+            if self._update_plot_in_place():
+                return
+        # Fallback (page not ready yet, or the JS update could not be built): full reload.
         self._invalidate_cache()
         self.refresh(force=True)
+
+    def _update_plot_in_place(self) -> bool:
+        """
+        Recolour the plot without reloading the page.
+
+        Rebuilds the figure in Python (cheap) and hands its data/layout to
+        ``Plotly.react`` in the live page, preserving the current map pan/zoom and the
+        existing click handlers. Returns ``False`` if the figure could not be built, so
+        the caller can fall back to a full reload.
+        """
+        try:
+            selected = self._param_dropdown.currentData()
+            component_type = selected['component'] if selected else None
+            parameter = selected['parameter'] if selected else None
+
+            plotter = InteractiveNetworkPlot(self._net_data.net, crs=self.project_crs)
+            fig = plotter.create_plot(
+                parameter=parameter,
+                component_type=component_type,
+                basemap_style='carto-positron',
+                colorscale='RdYlBu_r',
+            )
+            fig_json = fig.to_json()
+        except Exception as e:
+            logging.error(f"Error rebuilding plot for in-place update: {e}")
+            return False
+
+        # fig_json is a JSON document → also a valid JS object literal; embed directly.
+        js = """
+        (function() {
+            try {
+                var plotDiv = document.getElementsByClassName('plotly-graph-div')[0];
+                if (!plotDiv || !window.Plotly) return;
+                var fig = """ + fig_json + """;
+                // Keep the user's current map view instead of snapping back.
+                if (plotDiv.layout && plotDiv.layout.mapbox && fig.layout.mapbox) {
+                    fig.layout.mapbox.center = plotDiv.layout.mapbox.center;
+                    fig.layout.mapbox.zoom = plotDiv.layout.mapbox.zoom;
+                }
+                Plotly.react(plotDiv, fig.data, fig.layout);
+                window.lastHighlighted = -1;
+            } catch (e) {
+                console.error('In-place plot update failed:', e);
+            }
+        })();
+        """
+        self._canvas.page().runJavaScript(js)
+        return True
+
+    def _on_load_finished(self, ok: bool):
+        self._page_ready = bool(ok)
 
     def _invalidate_cache(self):
         if self._plot_html_path and os.path.exists(self._plot_html_path):
