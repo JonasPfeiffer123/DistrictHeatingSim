@@ -149,6 +149,71 @@ class TestValidatePressurePlausibility:
         assert "network generation" in caplog.records[0].getMessage()
 
 
+class TestDiameterLadders:
+    """optimize_diameter_types must step a pipe to the next *diameter* of the same
+    insulation grade — not walk _STD->_1x->_2x (same bore, different insulation),
+    which changed insulation without changing velocity (BACKLOG C14)."""
+
+    @staticmethod
+    def _catalog():
+        import pandas as pd
+        # Same bore repeats across grades (insulation differs, inner diameter does not).
+        return pd.DataFrame(
+            {"inner_diameter_mm": [21.7, 21.7, 21.7, 27.3, 27.3, 27.3, 53.9, 53.9]},
+            index=[
+                "ISOPLUS_DRE20_STD", "ISOPLUS_DRE20_1x", "ISOPLUS_DRE20_2x",
+                "ISOPLUS_DRE25_STD", "ISOPLUS_DRE25_1x", "ISOPLUS_DRE25_2x",
+                "ISOPLUS_DRE50_STD", "ISOPLUS_DRE50_1x",
+            ],
+        )
+
+    def test_insulation_grade_parsing(self):
+        from districtheatingsim.net_simulation_pandapipes.utilities import _insulation_grade
+        assert _insulation_grade("ISOPLUS_DRE100_2x") == "2x"
+        assert _insulation_grade("ISOPLUS_DRE100_STD") == "STD"
+
+    def test_ladders_grouped_by_grade_and_sorted(self):
+        from districtheatingsim.net_simulation_pandapipes.utilities import build_diameter_ladders
+        ladders = build_diameter_ladders(self._catalog())
+        assert ladders["STD"] == ["ISOPLUS_DRE20_STD", "ISOPLUS_DRE25_STD", "ISOPLUS_DRE50_STD"]
+        assert ladders["1x"] == ["ISOPLUS_DRE20_1x", "ISOPLUS_DRE25_1x", "ISOPLUS_DRE50_1x"]
+        assert ladders["2x"] == ["ISOPLUS_DRE20_2x", "ISOPLUS_DRE25_2x"]
+
+    def test_upsize_steps_diameter_not_insulation(self):
+        from districtheatingsim.net_simulation_pandapipes.utilities import (
+            build_diameter_ladders,
+            neighbor_std_type,
+        )
+        ladders = build_diameter_ladders(self._catalog())
+        # The whole point: DRE20_STD upsizes to DRE25_STD, NOT DRE20_1x.
+        assert neighbor_std_type("ISOPLUS_DRE20_STD", ladders, larger=True) == "ISOPLUS_DRE25_STD"
+
+    def test_downsize_steps_diameter_same_grade(self):
+        from districtheatingsim.net_simulation_pandapipes.utilities import (
+            build_diameter_ladders,
+            neighbor_std_type,
+        )
+        ladders = build_diameter_ladders(self._catalog())
+        assert neighbor_std_type("ISOPLUS_DRE25_2x", ladders, larger=False) == "ISOPLUS_DRE20_2x"
+
+    def test_neighbor_none_at_ladder_ends(self):
+        from districtheatingsim.net_simulation_pandapipes.utilities import (
+            build_diameter_ladders,
+            neighbor_std_type,
+        )
+        ladders = build_diameter_ladders(self._catalog())
+        assert neighbor_std_type("ISOPLUS_DRE50_STD", ladders, larger=True) is None
+        assert neighbor_std_type("ISOPLUS_DRE20_STD", ladders, larger=False) is None
+
+    def test_neighbor_none_for_unknown_type(self):
+        from districtheatingsim.net_simulation_pandapipes.utilities import (
+            build_diameter_ladders,
+            neighbor_std_type,
+        )
+        ladders = build_diameter_ladders(self._catalog())
+        assert neighbor_std_type("NOT_A_TYPE", ladders, larger=True) is None
+
+
 def _design_state(qext=7.5):
     return {
         "Heizentrale Haupteinspeisung": {

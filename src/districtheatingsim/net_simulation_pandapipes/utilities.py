@@ -490,7 +490,55 @@ def init_diameter_types(net, v_max_pipe: float = 1.0, material_filter: str = "P2
 
     return net
 
-def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "P235GH/PUR/PEHD", 
+def _insulation_grade(std_type: str) -> str:
+    """Return the insulation-grade suffix of an ISOPLUS std-type name.
+
+    ``"ISOPLUS_DRE100_2x" -> "2x"``, ``"ISOPLUS_DRE100_STD" -> "STD"``. The grade
+    sets the insulation thickness (heat loss), not the bore — so diameter sizing
+    must keep it constant.
+    """
+    return std_type.rsplit("_", 1)[-1]
+
+
+def build_diameter_ladders(filtered_by_material) -> dict[str, list[str]]:
+    """Group std-types by insulation grade, each ordered by ascending inner diameter.
+
+    :param filtered_by_material: Catalog rows (a DataFrame indexed by std-type name
+        with an ``inner_diameter_mm`` column) already filtered to one material.
+    :return: ``{grade: [type_name, …]}`` ordered small→large bore. Lets the optimizer
+        step a pipe to the next/previous *diameter* without changing its insulation
+        grade (the old position±1 stepping walked ``_STD``→``_1x``→``_2x``, i.e.
+        changed insulation without changing velocity).
+    :rtype: dict[str, list[str]]
+    """
+    ladders: dict[str, list[tuple[float, str]]] = {}
+    for type_name, row in filtered_by_material.iterrows():
+        ladders.setdefault(_insulation_grade(type_name), []).append(
+            (row["inner_diameter_mm"], type_name)
+        )
+    return {grade: [name for _, name in sorted(items)] for grade, items in ladders.items()}
+
+
+def neighbor_std_type(std_type: str, ladders: dict[str, list[str]], *, larger: bool) -> str | None:
+    """Next-larger or next-smaller diameter std-type of the *same insulation grade*.
+
+    :param std_type: Current pipe std-type name.
+    :param ladders: Output of :func:`build_diameter_ladders`.
+    :param larger: ``True`` for the next bigger bore, ``False`` for the next smaller.
+    :return: The neighbouring std-type name, or ``None`` if ``std_type`` is already at
+        the end of its grade ladder (or is not in the catalog).
+    :rtype: str | None
+    """
+    ladder = ladders.get(_insulation_grade(std_type), [])
+    if std_type not in ladder:
+        return None
+    new_pos = ladder.index(std_type) + (1 if larger else -1)
+    if 0 <= new_pos < len(ladder):
+        return ladder[new_pos]
+    return None
+
+
+def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "P235GH/PUR/PEHD",
                            k: float = 0.1) -> pp.pandapipesNet:
     """
     Optimize pipe diameters using discrete standard pipe types through iterative adjustment.
@@ -518,8 +566,10 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "P23
     if filtered_by_material.empty:
         raise ValueError(f"No standard pipe types found for material filter: {material_filter}")
 
-    # Create type position mapping for optimization
-    type_position_dict = {type_name: i for i, type_name in enumerate(filtered_by_material.index)}
+    # Per-insulation-grade diameter ladders so stepping changes the bore, not the
+    # insulation grade (BACKLOG C14: position±1 over the flat catalog walked
+    # _STD->_1x->_2x, changing insulation without changing velocity).
+    ladders = build_diameter_ladders(filtered_by_material)
 
     # Initial system state calculation
     print(f"\n{'='*80}")
@@ -557,30 +607,38 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "P23
                 continue
 
             current_type = net.pipe.at[pipe_idx, 'std_type']
-            current_position = type_position_dict[current_type]
+            pipe_name = net.pipe.at[pipe_idx, 'name'] if 'name' in net.pipe.columns else f"Pipe {pipe_idx}"
 
-            # Upsize pipes exceeding velocity limit
-            if velocity > v_max and current_position < len(filtered_by_material) - 1:
-                new_type = filtered_by_material.index[current_position + 1]
+            # Upsize pipes exceeding velocity limit (next bigger bore, same grade)
+            if velocity > v_max:
+                new_type = neighbor_std_type(current_type, ladders, larger=True)
+                if new_type is None:
+                    # Already at the largest available bore for this insulation grade.
+                    net.pipe.at[pipe_idx, 'optimized'] = True
+                    pipes_within_target += 1
+                    continue
                 properties = filtered_by_material.loc[new_type]
-                pipe_name = net.pipe.at[pipe_idx, 'name'] if 'name' in net.pipe.columns else f"Pipe {pipe_idx}"
-                
+
                 print(f"  {pipe_name}: UPSIZE v={velocity:.3f} > {v_max} m/s | {current_type} -> {new_type}")
-                
+
                 net.pipe.at[pipe_idx, 'std_type'] = new_type
                 net.pipe.at[pipe_idx, 'inner_diameter_mm'] = properties['inner_diameter_mm']
                 net.pipe.at[pipe_idx, 'u_w_per_m2k'] = resolve_pipe_u_w_per_m2k(properties)
                 net.pipe.at[pipe_idx, 'k_mm'] = k
-                
+
                 change_made = True
                 pipes_outside_target += 1
 
-            # Attempt downsizing for pipes within limits
-            elif velocity <= v_max and current_position > 0:
-                new_type = filtered_by_material.index[current_position - 1]
+            # Attempt downsizing for pipes within limits (next smaller bore, same grade)
+            else:
+                new_type = neighbor_std_type(current_type, ladders, larger=False)
+                if new_type is None:
+                    # Already at the smallest available bore for this insulation grade.
+                    net.pipe.at[pipe_idx, 'optimized'] = True
+                    pipes_within_target += 1
+                    continue
                 properties = filtered_by_material.loc[new_type]
-                pipe_name = net.pipe.at[pipe_idx, 'name'] if 'name' in net.pipe.columns else f"Pipe {pipe_idx}"
-                
+
                 # Temporarily apply smaller diameter
                 net.pipe.at[pipe_idx, 'std_type'] = new_type
                 net.pipe.at[pipe_idx, 'inner_diameter_mm'] = properties['inner_diameter_mm']
@@ -607,13 +665,9 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "P23
                     net.pipe.at[pipe_idx, 'inner_diameter_mm'] = properties['inner_diameter_mm']
                     net.pipe.at[pipe_idx, 'u_w_per_m2k'] = resolve_pipe_u_w_per_m2k(properties)
                     net.pipe.at[pipe_idx, 'k_mm'] = k
-                    
+
                     net.pipe.at[pipe_idx, 'optimized'] = True
                     pipes_within_target += 1
-            else:
-                # Mark as optimized if no further changes possible
-                net.pipe.at[pipe_idx, 'optimized'] = True
-                pipes_within_target += 1
 
         iteration_count += 1
         
