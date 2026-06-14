@@ -36,7 +36,7 @@ from PyQt6.QtWidgets import (
 )
 
 from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, GeoJSONToCSVThread
-from districtheatingsim.gui.MainTab.main_data_manager import VARIANT_PREFIX
+from districtheatingsim.gui.MainTab.project_structure import VARIANT_PREFIX
 from districtheatingsim.gui.ProjectTab.csv_import_dialog import CsvImportDialog
 from districtheatingsim.gui.ProjectTab.project_tab_dialogs import OSMImportDialog, ProcessDetailsDialog, RowInputDialog
 from districtheatingsim.utilities.crs_utils import COMMON_CRS_OPTIONS, suggest_crs_from_location

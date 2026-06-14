@@ -31,7 +31,7 @@ from districtheatingsim.gui.ComparisonTab.comparison_tab import ComparisonTab
 from districtheatingsim.gui.dialogs import HeatPumpDataDialog, TemperatureDataDialog
 from districtheatingsim.gui.EnergySystemTab._01_energy_system_main_tab import EnergySystemTab
 from districtheatingsim.gui.LeafletTab.leaflet_tab import VisualizationTabLeaflet
-from districtheatingsim.gui.MainTab.main_data_manager import VARIANT_PREFIX
+from districtheatingsim.gui.MainTab.project_structure import discover_variants
 from districtheatingsim.gui.NetSimulationTab.calculation_tab import CalculationTab
 from districtheatingsim.gui.ProjectTab.project_tab import ProjectTab
 from districtheatingsim.gui.welcome_screen import ThemeToggleSwitch, WelcomeScreen
@@ -804,31 +804,20 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         Discover available project variants in specified project directory.
 
-        Scans project directory for folders starting with "Variante".
+        Thin GUI wrapper over :func:`project_structure.discover_variants` that
+        surfaces a missing project path as an error dialog.
 
         :param project_path: Path to main project directory
         :type project_path: str
         :return: List of valid variant folder names
         :rtype: list of str
         """
-        variants: list[str] = []
-        
-        try:
-            # Scan project directory for variant folders
-            for folder_name in os.listdir(project_path):
-                full_path = os.path.join(project_path, folder_name)
-                
-                # Validate variant folder criteria
-                if (os.path.isdir(full_path) and
-                    folder_name.startswith(VARIANT_PREFIX)):
-                    variants.append(folder_name)
-                    
-        except FileNotFoundError:
+        if not os.path.isdir(project_path):
             self.show_error_message(
                 f"Der Projektpfad '{project_path}' konnte nicht gefunden werden."
             )
-            
-        return variants
+            return []
+        return discover_variants(project_path)
 
     def on_create_project_copy(self) -> None:
         """

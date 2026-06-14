@@ -17,19 +17,13 @@ from typing import Any
 
 from PyQt6.QtCore import QObject, pyqtSignal
 
+from districtheatingsim.gui.MainTab.project_structure import DEFAULT_VARIANT_NAME
 from districtheatingsim.utilities.crs_utils import DEFAULT_CRS
 from districtheatingsim.utilities.utilities import get_resource_path
 
 #: Schema version of ``project_settings.json``. Bump when the on-disk format
 #: changes and add the corresponding step to ``_migrate_project_settings``.
 PROJECT_SETTINGS_VERSION = 1
-
-#: Prefix shared by every variant folder ("Variante 1", "Variante 2", …). Used both
-#: to construct new variant names and to detect existing variant folders, so the
-#: creation and detection logic can never drift apart.
-VARIANT_PREFIX = "Variante"
-#: Name of the first analysis variant folder created in every new project.
-DEFAULT_VARIANT_NAME = f"{VARIANT_PREFIX} 1"
 
 
 class ProjectConfigManager:
