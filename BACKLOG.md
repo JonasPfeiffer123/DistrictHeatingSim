@@ -130,8 +130,10 @@ tests. This is the safety net that makes every refactor below low-risk.
     `leaflet_tab.py:28`) unchanged. Smoke-tested by `tests/test_osm_dialogs.py`
     (14 tests). The two distinct `initUI`/`startQuery`/`_onDownloadComplete` stay
     per-dialog (genuinely different — streets have highway filters + 4 area types).
-- Still to tackle: `main_view.py` (~1232); `interactive_network_plot.py` (~1179) —
-  decomposition underway via the `plot_data.py` data/render split (see B3).
+- `interactive_network_plot.py` **done (B1/B3, 2026-06)**: 1179 → 755 LOC, now a
+  Plotly-only renderer; all net queries moved to the new `plot_data.py` (548 LOC,
+  Plotly-/GUI-free, unit-tested). See B3.
+- Still to tackle: `main_view.py` (~1232).
 ### B2. MVP violations
 The main frame is clean, but the MVP pattern is applied inconsistently and domain
 logic leaks into the views. Concrete findings (2026-06 survey):
@@ -169,15 +171,21 @@ logic leaks into the views. Concrete findings (2026-06 survey):
 Full normalisation (presenters everywhere) is a large, untestable GUI refactor; the
 tractable wins are pulling domain logic out of the views into testable domain
 functions (leveraging the net-simulation test seam).
-### B3. Plotly tightly coupled to pandapipes (in progress 2026-06)
-`interactive_network_plot.py` (~1179 LOC, one class, 60 `self.net` reads) mixes
+### B3. Plotly tightly coupled to pandapipes (done 2026-06)
+`interactive_network_plot.py` (was ~1179 LOC, one class, 60 `self.net` reads) mixed
 pandapipes queries with Plotly trace building in each `_add_<component>` method → hard
-to test. **Decoupling started:** introduced `net_simulation_pandapipes/plot_data.py`, a
-Plotly-free / GUI-free data layer. First extraction: `available_plot_parameters(net)`
-(the ~100-line `_get_available_parameters` is now a one-line delegate), unit-tested in
-`tests/test_net_simulation.py::TestAvailablePlotParameters`. *Next:* pull each
-`_add_<component>`'s data extraction (coords / values / hover) into `plot_data.py`,
-leaving the `_add_*` methods as thin Plotly renderers (each slice testable via the seam).
+to test. **Decoupled** into `net_simulation_pandapipes/plot_data.py`, a Plotly-free /
+GUI-free, unit-tested data layer (548 LOC); `interactive_network_plot.py` is now a
+755-LOC Plotly-only renderer. Slice-by-slice (one commit each): parameters
+(`available_plot_parameters` + `parameter_label`/`parameter_value`), junctions
+(`junction_plot_data` + `junction_geodata_wgs84`), pipes (`pipe_plot_data`), heat
+consumers (`heat_consumer_plot_data`), pumps (`pump_plot_data`, both pump tables +
+the supply/return hover swap), flow controls (`flow_control_plot_data`). Each `_add_*`
+is now a thin renderer over a `*_plot_data(net, junctions_wgs84, parameter)` call.
+Tested in `tests/test_net_simulation.py` (TestAvailablePlotParameters, TestJunctionPlotData,
+TestParameterHelpers, TestPipePlotData, TestHeatConsumerPlotData, TestPumpPlotData,
+TestFlowControlPlotData) + a slow render smoke (`test_interactive_plot_renders`, builds
+a real figure from the net seam).
 ### B4. DE/EN naming mix
 `Wärmeleistung_kW` next to `HeatPump`, German UI strings + English docstrings;
 inconsistent method names (`calculate_heat_generation_cost()` vs `…costs()`).
@@ -498,8 +506,8 @@ now well-tested and lint-clean; the easy low-risk wins there are harvested.
    low risk — the highest-leverage enabler.
 2. **C2 — solver error handling** (run_timeseries try/except + NaN/inf/convergence
    checks). Real robustness; needs (1) or careful manual verification.
-3. **B1 remainder** — `main_view.py`, `interactive_network_plot.py` (also B3); big LOC
-   win but untested GUI god-objects.
+3. **B1 remainder** — `main_view.py` (~1232); big LOC win but untested GUI god-object.
+   (`interactive_network_plot.py` / B3 done 2026-06.)
 4. **C1 — threading** audit (worker threads mutate shared state; inconsistent error
    signatures). Subtle; wants a seam too.
 5. Quick wins: refresh hardcoded "Variante 1" (D1 leftover), E1 (`.gitignore` casing).
