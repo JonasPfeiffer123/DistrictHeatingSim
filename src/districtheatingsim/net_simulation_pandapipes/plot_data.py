@@ -198,6 +198,76 @@ def pipe_plot_data(net, junctions_wgs84, parameter: str | None = None) -> PipePl
     return PipePlotData(segments, vmin, vmax, center_lat, center_lon)
 
 
+def _heat_consumer_hover_text(net, idx, hc, parameter, value, has_res) -> str:
+    text = f"<b>{hc['name']}</b><br>"
+    text += f"Wärmebedarf: {hc['qext_w'] / 1000:.1f} kW<br>"
+    if has_res:
+        res = net.res_heat_consumer.loc[idx]
+        if 'mdot_from_kg_per_s' in res.index:
+            text += f"Massenstrom: {res['mdot_from_kg_per_s']:.2f} kg/s<br>"
+        if 't_from_k' in res.index:
+            text += f"Vorlauftemp.: {res['t_from_k'] - KELVIN_OFFSET:.1f} °C<br>"
+        if 't_to_k' in res.index:
+            text += f"Rücklauftemp.: {res['t_to_k'] - KELVIN_OFFSET:.1f} °C<br>"
+        if 'dt_k' in res.index:
+            text += f"ΔT: {res['dt_k']:.1f} K<br>"
+        elif 't_from_k' in res.index and 't_to_k' in res.index:
+            text += f"ΔT: {res['t_from_k'] - res['t_to_k']:.1f} K<br>"
+        if 'p_from_bar' in res.index:
+            text += f"Vorlaufdruck: {res['p_from_bar']:.2f} bar<br>"
+        if 'p_to_bar' in res.index:
+            text += f"Rücklaufdruck: {res['p_to_bar']:.2f} bar<br>"
+        if 'deltap_bar' in res.index:
+            text += f"Δp: {res['deltap_bar']:.2f} bar<br>"
+        elif 'p_from_bar' in res.index and 'p_to_bar' in res.index:
+            text += f"Δp: {res['p_from_bar'] - res['p_to_bar']:.2f} bar<br>"
+        if value is not None and parameter:
+            text += f"{parameter_label(parameter)}: {value:.2f}<br>"
+    return text
+
+
+def heat_consumer_plot_data(net, junctions_wgs84, parameter: str | None = None) -> PipePlotData:
+    """
+    Extract heat-consumer polyline data (coords, hover, colour values) from the net.
+
+    Same line structure as :func:`pipe_plot_data`; the hover fields are
+    consumer-specific (heat demand, supply/return temperatures and pressures).
+    """
+    if not hasattr(net, 'heat_consumer') or len(net.heat_consumer) == 0:
+        return PipePlotData([], None, None, 0.0, 0.0)
+
+    has_res = hasattr(net, 'res_heat_consumer')
+    center_lat = float(junctions_wgs84.geometry.y.mean())
+    center_lon = float(junctions_wgs84.geometry.x.mean())
+
+    segments: list[PipeSegment] = []
+    values: list[float] = []
+    for idx in net.heat_consumer.index:
+        hc = net.heat_consumer.loc[idx]
+        try:
+            fc = junctions_wgs84.loc[hc['from_junction']].geometry
+            tc = junctions_wgs84.loc[hc['to_junction']].geometry
+        except KeyError:
+            continue
+        value = parameter_value(net.res_heat_consumer, idx, parameter) if (parameter and has_res) else None
+        if value is not None:
+            values.append(value)
+        segments.append(PipeSegment(
+            from_lat=fc.y, from_lon=fc.x,
+            mid_lat=(fc.y + tc.y) / 2, mid_lon=(fc.x + tc.x) / 2,
+            to_lat=tc.y, to_lon=tc.x,
+            hover_text=_heat_consumer_hover_text(net, idx, hc, parameter, value, has_res),
+            value=value, idx=idx, name=hc.get('name', f'Heat Consumer {idx}'),
+        ))
+
+    vmin = vmax = None
+    if values:
+        vmin, vmax = min(values), max(values)
+        if vmax - vmin < 1e-10:
+            vmax = vmin + 1
+    return PipePlotData(segments, vmin, vmax, center_lat, center_lon)
+
+
 def available_plot_parameters(net) -> dict[str, list[str]]:
     """
     The result parameters available for colour-coding per component type.

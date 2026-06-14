@@ -611,6 +611,50 @@ class TestPipePlotData:
         assert "Geschwindigkeit [m/s]:" not in data.segments[0].hover_text
 
 
+class TestHeatConsumerPlotData:
+    """Heat-consumer polyline extraction (Plotly-free data layer, B1/B3)."""
+
+    @staticmethod
+    def _net_and_junctions():
+        from types import SimpleNamespace
+
+        import geopandas as gpd
+        import pandas as pd
+        from shapely.geometry import Point
+
+        junctions = gpd.GeoDataFrame(
+            geometry=[Point(14.0, 51.0), Point(14.001, 51.001)], crs="EPSG:4326"
+        )
+        net = SimpleNamespace(
+            heat_consumer=pd.DataFrame({
+                "name": ["HC0"], "qext_w": [500000.0],
+                "from_junction": [0], "to_junction": [1],
+            }),
+            res_heat_consumer=pd.DataFrame({
+                "mdot_from_kg_per_s": [2.0], "qext_w": [500000.0],
+                "t_from_k": [358.15], "t_to_k": [330.15],
+                "p_from_bar": [5.0], "p_to_bar": [4.0],
+            }),
+        )
+        return net, junctions
+
+    def test_segment_value_and_hover(self):
+        from districtheatingsim.net_simulation_pandapipes.plot_data import (
+            heat_consumer_plot_data,
+        )
+        net, junctions = self._net_and_junctions()
+        data = heat_consumer_plot_data(net, junctions, parameter="qext_w")
+        assert len(data.segments) == 1
+        seg = data.segments[0]
+        assert seg.value == 500000.0
+        assert "<b>HC0</b>" in seg.hover_text
+        assert "Wärmebedarf: 500.0 kW" in seg.hover_text         # from heat_consumer.qext_w
+        assert "Vorlauftemp.: 85.0 °C" in seg.hover_text          # 358.15 - 273.15
+        assert "Rücklauftemp.: 57.0 °C" in seg.hover_text         # 330.15 - 273.15
+        assert "ΔT: 28.0 K" in seg.hover_text                     # t_from - t_to
+        assert "Wärmebedarf [W]: 500000.00" in seg.hover_text     # coloured parameter line
+
+
 class TestRecalculateNet:
     def test_wraps_solver_failure_in_runtime_error(self):
         import pandapipes as pp
