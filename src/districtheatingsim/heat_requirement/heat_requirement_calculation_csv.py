@@ -12,6 +12,8 @@ import numpy as np
 import pandas as pd
 from pyslpheat import bdew_calculate, vdi4655_calculate
 
+from districtheatingsim.utilities.csv_schemas import validate_csv_columns
+
 
 def _easter_sunday(year: int) -> pd.Timestamp:
     """
@@ -93,11 +95,15 @@ def generate_profiles_from_csv(data: pd.DataFrame,
         buildings.  Optional BDEW columns (Heizgrenztemperatur, Heizexponent, P_max) are read
         per building if present; missing values fall back to pyslpheat defaults.
     """
+    # Fail up front with one clear message naming every missing required column,
+    # instead of an opaque KeyError deep in the calculation (BACKLOG D4 step 4).
+    validate_csv_columns(data, "building")
+
     holidays = _german_national_holidays(year)
 
     climate_zone = "9"  # Climate zone 9: Germany (VDI 4655)
     number_people_household = 2  # Number of people per household (VDI 4655)
-    
+
     # Extract and validate CSV data
     try:
         YEU_total_heat_kWh = data["Wärmebedarf"].values.astype(float)

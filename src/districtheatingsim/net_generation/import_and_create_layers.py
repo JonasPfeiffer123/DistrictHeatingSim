@@ -21,6 +21,7 @@ from districtheatingsim.net_generation.elevation_utils import (
 )
 from districtheatingsim.net_generation.net_generation import generate_connection_lines, generate_network
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
+from districtheatingsim.utilities.csv_schemas import validate_csv_columns
 
 # Suppress pyogrio warnings about the GeoJSON driver not supporting the DRIVER open
 # option — emitted at GeoJSON I/O time, so set after the imports (module load is still
@@ -108,9 +109,8 @@ def load_layers(osm_street_layer_geojson_file: str,
         heat_consumer_df = pd.read_csv(data_csv_file_name, sep=';')
         print(f"Heat consumer data successfully loaded: {len(heat_consumer_df)} buildings")
 
-        # Validate required columns
-        if 'UTM_X' not in heat_consumer_df.columns or 'UTM_Y' not in heat_consumer_df.columns:
-            raise KeyError("CSV file must contain 'UTM_X' and 'UTM_Y' columns")
+        # Validate required columns (clear up-front error naming any missing column)
+        validate_csv_columns(heat_consumer_df, "coordinates")
 
         # Convert the DataFrame into a GeoDataFrame (2D first)
         heat_consumer_layer = gpd.GeoDataFrame(

@@ -558,7 +558,7 @@ centralization is value-identical (golden masters unchanged); **cp was unified t
 - **Still open:** temperature limits (e.g. the 75 K Hub) and `cp=4187 J/kgK` in
   `thermal_storage.py` (different unit system) were intentionally left; fold in if a
   unit convention is formalized.
-### D4. Project-wide serialization/versioning strategy (steps 1-3 done 2026-06)
+### D4. Project-wide serialization/versioning strategy (done 2026-06)
 D2 versioned only two artifacts (`project_settings.json`, EnergySystem JSON). The app
 reads/writes **many** serialized files of different kinds, and most are unversioned.
 A blanket "add a version field everywhere" is wrong — the strategy must be
@@ -591,6 +591,18 @@ path — `project_tab`, `_02_energy_system_dialogs`). *Note:* the simulation pat
 (`initialize_geojson`) reads geometry via `gpd.read_file`, which drops the top-level
 `metadata` member, so it never sees the version — out of scope here. Pinned by
 `tests/test_net_generation.py::TestNetworkGeoJSONVersion` (4). 270 passed.
+
+**Step 4 landed (2026-06):** CSV column-contracts. New `utilities/csv_schemas.py`
+(GUI-/pandas-free at import) centralizes the required columns per CSV kind
+(`building` — the 8 demand/profile columns; `coordinates` — `UTM_X`/`UTM_Y`) with
+`validate_csv_columns(df, kind)` raising a `KeyError` that names *every* missing column
+up front. Wired into `import_and_create_layers` (generalized the ad-hoc UTM check,
+preserving the `KeyError` the caller already catches) and
+`heat_requirement_calculation_csv.generate_profiles_from_csv` (turns the opaque
+mid-calculation `KeyError` into a clear up-front one). No version field — the header
+*is* the contract (a version row would break pandas/Excel interop), as planned. Pinned
+by `tests/test_csv_schemas.py` (6); example 03 still runs on the real CSV. 276 passed.
+**D4 complete.**
 
 **Inventory (the persistence footprint):**
 - **Project-state JSON (app-owned, format evolves → version):** `project_settings.json`
@@ -628,9 +640,9 @@ path — `project_tab`, `_02_energy_system_dialogs`). *Note:* the simulation pat
 
 **Rollout (leverage → effort):** ~~(1) `utilities/schema.py` + registry, migrate the two
 D2 artifacts onto it~~ **done**; ~~(2) building JSON + `dialog_config.json`~~ **done**;
-~~(3) NetworkGeoJSON schema version + load validation~~ **done 2026-06**;
-(4) CSV column-contracts. Incremental, no big bang. Explicitly out of scope:
-ephemeral/interchange artifacts.
+~~(3) NetworkGeoJSON schema version + load validation~~ **done**;
+~~(4) CSV column-contracts~~ **done 2026-06**. Explicitly out of scope:
+ephemeral/interchange artifacts. **All four steps landed — D4 complete.**
 
 ## E. Hygiene
 ### E1. `.gitignore` casing (resolved 2026-06)
@@ -660,8 +672,8 @@ pipeline are now well-tested and lint-clean; the easy low-risk wins are harveste
    pattern). The double-start + close races are already fixed; this is the subtle rest.
 4. **Quick wins:** ~~hardcoded "Variante 1" (D1 leftover)~~ done; ~~E1 (`.gitignore`
    casing)~~ done; ~~C11 minor (0.13 circ-pump cross-check)~~ dropped. Cluster cleared.
-5. **Larger/optional:** B2 (MVP violations — partial), B4/E2 (DE/EN naming), D4
-   (serialization versioning strategy — not started), D3 leftover (temperature limits /
+5. **Larger/optional:** B2 (MVP violations — partial), B4/E2 (DE/EN naming),
+   ~~D4 (serialization versioning strategy)~~ **done**, D3 leftover (temperature limits /
    `thermal_storage.py` cp), and the A1 leftovers (decide on `ruff format`; the gating
    CI lint job is still unverified on GitHub until the first push).
 
