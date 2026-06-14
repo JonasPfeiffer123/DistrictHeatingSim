@@ -87,6 +87,16 @@ tests. This is the safety net that makes every refactor below low-risk.
   `waerme_ges_kW` while `Jahreswärmeerzeugung` reflects the simulated range — so for a
   **partial** run the loss KPIs are nonsensical (negative). Harmless for the GUI (runs
   the full year); slice the demand to `[start:end]` if partial runs ever matter.
+- **Landed 2026-06 (examples smoke net):** `tests/test_examples_smoke.py` runs the
+  GUI-free / network-free `examples/` scripts as subprocesses (UTF-8 + Agg + offscreen,
+  from the repo root) and asserts they exit cleanly — the examples were the de-facto
+  manual tests but nothing guarded them against API drift (they rot silently, cf. the
+  0.13→0.14 migration and C13). Does **not** pin values (some use `np.random`); only
+  catches crashes/import breakage. Fast set (03/03b/09/10/14/15/17/18_chp/BHKW) runs by
+  default; `06`/`07` are `slow` (~15-25 s, numba). `08` excluded (multi-minute full time
+  series — covered by `test_simulation_golden_master.py`). Network/Qt/external-path
+  examples excluded. Surfaced + fixed C13 (encoding) and stale examples (18_stanet
+  hardcoded OneDrive path → committed STANET data; 09 "not up-to-date" note removed).
 - **Still open:**
   - Decide on `ruff format` (not yet applied — `ruff format --check tests` reports 10
     files; the CI format step is **advisory** for now). Adopting it reformats the tree.
@@ -407,6 +417,38 @@ via `asdict` (so each `SecondaryProducer` is saved as a dict, not `str(obj)`), a
 strings, breaking the time-series code's `producer.index` access. Pinned by
 `tests/test_net_simulation.py::TestSecondaryProducerRoundTrip` + verified through
 `from_dict` on the real Görlitz config. C12 is complete.
+### C13. Non-ASCII prints crash under the Windows cp1252 console (fixed 2026-06)
+~37 diagnostic `print` statements across 9 domain/simulation modules emit non-ASCII
+characters (`→`, `≤`, German umlauts). On Windows the default console codepage is
+cp1252, where `→`/`≤` are unencodable, so `print()` raises `UnicodeEncodeError`. The
+worst was `net_simulation_pandapipes/utilities.py::optimize_diameter_types` (printed
+`{current_type} → {new_type}`): this is **production code the GUI runs**, so the
+diameter optimization crashed mid-run whenever stdout was cp1252 (terminal launch,
+frozen exe, or any redirected stdout). Reproduced via `examples/08` (failed inside
+`utilities.py:559`, not the example). **Fixed in two layers:** (1) the GUI entry point
+`DistrictHeatingSim.main()` now calls `_configure_stdio_encoding()`, reconfiguring
+stdout/stderr to UTF-8 with `errors="backslashreplace"` (guarded for the frozen
+no-console case) — robust for *all* current/future prints in the running app; (2) the
+4 `→`/`≤` decorations in `optimize_diameter_types` are now ASCII (`->`/`<=`) so the
+simulation library is safe even when imported outside the app. Verified: `examples/08`
+runs end-to-end under `PYTHONIOENCODING=cp1252`. Guarded by `tests/test_examples_smoke.py`
+(runs the examples with UTF-8) — the GUI entry-point reconfigure itself is not unit-tested
+(it mutates process-global streams). *Note:* the remaining umlaut prints in
+`heat_generators/*` are cp1252-safe (umlauts exist in cp1252) and covered by layer (1).
+### C14. Result validation accepts physically-impossible negative pressures (open)
+`result_validation.py` (`validate_simulation_results` / `validate_net_results`) checks
+only for **NaN/inf**, not physical plausibility. The real Görlitz golden-master run
+converges with *negative absolute pressures* at ~9 junctions — pandapipes itself logs
+"results are physically incorrect as pressure is negative at nodes […]" — yet every
+validator passes it silently and `calculate_results` reports KPIs as if valid. Root
+cause is config, not code: `flow_pressure_pump=4.0` / `lift_pressure_pump=1.5` bar
+under-pressurizes that network (head < friction loss at the far nodes → vacuum). But
+the app gives the planner no signal that the result is unphysical. **Recommendation:**
+add a *soft* `validate_pressure_plausibility(net)` that surfaces a clear warning (not a
+`RuntimeError` — under-pressurized planning scenarios are legitimate intermediate
+states, and raising would break the golden master which pins this exact net). Decide
+warn-vs-raise with Jonas before implementing. Found while investigating the golden-master
+warning 2026-06.
 
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
