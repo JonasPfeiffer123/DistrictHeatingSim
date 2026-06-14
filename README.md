@@ -12,14 +12,18 @@ DistrictHeatingSim was originally developed at the University of Applied Science
 1. [Features](#features)
 2. [Installation](#installation)
 3. [Usage](#usage)
+    - [Building Heat Demand Profile Calculation](#building-heat-demand-profile-calculation)
     - [Spatial Analysis](#spatial-analysis)
     - [Heat Network Calculation](#heat-network-calculation)
     - [Generator Sizing and Economic Analysis](#generator-sizing-and-economic-analysis)
 4. [Requirements](#requirements)
-5. [Project Structure](#project-structure)
-6. [Contribution Guidelines](#contribution-guidelines)
-7. [License](#license)
-8. [Contact Information](#contact-information)
+5. [Testing](#testing)
+6. [Project Structure](#project-structure)
+7. [Documentation](#documentation)
+8. [Publication](#publication)
+9. [Contribution Guidelines](#contribution-guidelines)
+10. [License](#license)
+11. [Contact Information](#contact-information)
 
 ## Features
 
@@ -42,7 +46,7 @@ DistrictHeatingSim was originally developed at the University of Applied Science
 
 ## Installation
 
-To install DistrictHeatingSim, follow the steps below. The software has been tested with Python 3.11. Ensure that you have Python installed on your system before proceeding. Alternatively, you can use Miniconda for managing dependencies.
+To install DistrictHeatingSim, follow the steps below. The software is tested on Python 3.11 and 3.12 (see CI). Ensure that you have Python installed on your system before proceeding. Alternatively, you can use Miniconda for managing dependencies.
 
 ### Option 1: Install via pip
 1. Open a terminal or command prompt.
@@ -69,14 +73,12 @@ To install DistrictHeatingSim, follow the steps below. The software has been tes
     python src/districtheatingsim/DistrictHeatingSim.py
     ```
 
-> **ℹ️ Note - Custom Pipe Types:**  
-> Additional pipe types have been added and must be included by replacing the `Pipe.csv` in `pandapipes/std_types/library` with the `Pipe.csv` located in `DistrictHeatingSim/src/districtheatingsim/data/pandapipes/pipes`.
-
 ### Troubleshooting
-- If you encounter errors during installation or while running the application, ensure that all required Python modules are installed. You can install the dependencies listed in the `requirements.txt` file:
+- If you encounter errors during installation or while running the application, ensure that all required Python modules are installed. All dependencies are declared in `pyproject.toml` and (re)installed via:
     ```sh
     pip install .
     ```
+- Installation pulls two dependencies directly from GitHub (`pyslpheat` and `thermal-energy-storage-1d`), so `git` must be available on your system.
 - Verify that all necessary data files are present in the appropriate directories.
 - If issues persist, please report them on the [GitHub Issues page](https://github.com/JonasPfeiffer123/DistrictHeatingSim/issues) with detailed information about the error.
 
@@ -86,7 +88,7 @@ By following these steps, you should be able to successfully install and run Dis
 
 Start DistrictHeatingSim by running DistrictHeatingSim.py within src/districtheatingsim/
 
-![Project Management](images/project_management.png)
+![Project Management](images/project_management_tab.png)
 
 ### Building Heat Demand Profile Calculation
 
@@ -104,7 +106,7 @@ Start DistrictHeatingSim by running DistrictHeatingSim.py within src/districthea
 3. **OSM Data**: Download and integrate street and building data from OpenStreetMap.
 4. **Heat Network Generation**: Automatically generate a heat network based on building and generator locations.
 
-![Leaflet Map](images/leaflet_map.png)
+![Leaflet Map](images/leaflet_map_tab.png)
 
 ### Heat Network Calculation
 
@@ -113,7 +115,7 @@ Start DistrictHeatingSim by running DistrictHeatingSim.py within src/districthea
 3. **Optimization**: Optimize the network for cost efficiency and operational performance.
 4. **Results**: Visualize the results, including flow rates, pressures, and temperatures.
 
-![Net Simulation Pandapipes](images/net_simulation_pandapipes_2.png)
+![Net Simulation Pandapipes](images/net_simulation_tab.png)
 
 ### Generator Sizing and Economic Analysis
 
@@ -130,13 +132,35 @@ Start DistrictHeatingSim by running DistrictHeatingSim.py within src/districthea
 - Dependencies are declared in `pyproject.toml` and installed automatically via `pip install .`
 - For documentation dependencies: `pip install ".[docs]"`
 
+## Testing
+
+The project ships an automated `pytest` suite covering the GUI-free domain core
+(heat generators, VDI 2067 economics, the energy-system orchestrator), the
+pandapipes simulation layer, and smoke tests that run the `examples/` scripts.
+GitHub Actions runs the suite on Python 3.11 and 3.12.
+
+1. Install the development dependencies (pytest + ruff):
+    ```sh
+    pip install -e ".[dev]"
+    ```
+2. Run the suite:
+    ```sh
+    pytest                  # full suite
+    pytest -m "not slow"    # skip the slow pandapipes / example tests
+    ```
+3. Lint:
+    ```sh
+    ruff check .
+    ```
+
 ## Project Structure
 
 - **src/districtheatingsim**: Source code for DistrictHeatingSim
 - **docs/**: Documentation for DistrictHeatingSim
 - **examples/**: Contains multiple Examples for the various base functionalities of the software.
+- **tests/**: Automated pytest suite (domain core, simulation, examples smoke tests)
 - **images/**: Contains examples of the GUI
-- **requirements.txt**: List of dependencies
+- **pyproject.toml**: Project metadata and dependency declarations
 - **README.md**: This README file
 
 ## PyInstaller
@@ -145,27 +169,22 @@ Pyinstaller installation works with specific definitions. Reach out to the autho
 ## Documentation
 The Code is documented with docstrings which are readable by [Sphinx](https://www.sphinx-doc.org/en/master/) and therefore a documentation can be created by running
 
-1. **Install Sphinx**:
+1. **Install the documentation dependencies** (Sphinx, readthedocs theme, etc.):
     ```sh
-    pip install sphinx
+    pip install ".[docs]"
     ```
 
-2. ***Install "readthedocs" theme**:
-    ```sh
-    pip install sphinx_rtd_theme
-    ```
-
-3. **Navigate to the docs folder**:
+2. **Navigate to the docs folder**:
     ```sh
     cd docs
     ```
 
-4. **Generate the .rst-files**:
+3. **Generate the .rst-files**:
     ```sh
     sphinx-apidoc -f -o source/ ../src/districtheatingsim
     ```
 
-5. **Build the HTML documentation**:
+4. **Build the HTML documentation**:
     ```sh
     make clean
     make html
