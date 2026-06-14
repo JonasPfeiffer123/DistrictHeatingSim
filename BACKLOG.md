@@ -558,7 +558,7 @@ centralization is value-identical (golden masters unchanged); **cp was unified t
 - **Still open:** temperature limits (e.g. the 75 K Hub) and `cp=4187 J/kgK` in
   `thermal_storage.py` (different unit system) were intentionally left; fold in if a
   unit convention is formalized.
-### D4. Project-wide serialization/versioning strategy (step 1 done 2026-06)
+### D4. Project-wide serialization/versioning strategy (steps 1-2 done 2026-06)
 D2 versioned only two artifacts (`project_settings.json`, EnergySystem JSON). The app
 reads/writes **many** serialized files of different kinds, and most are unversioned.
 A blanket "add a version field everywhere" is wrong — the strategy must be
@@ -573,6 +573,14 @@ source of truth, replaced the scattered `*_VERSION` constants), `add_meta(data, 
 EnergySystem JSON now route save/load through it; old files (legacy top-level `version`
 *and* pre-versioning) still load — pinned by `tests/test_schema.py` (8) plus
 backward-compat cases in `test_project_settings.py` / `test_energy_system.py`. 262 passed.
+
+**Step 2 landed (2026-06):** routed the building combined-data JSON
+(`BuildingTab/building_tab.py::BuildingModel.save_json`/`load_json`) and
+`dialog_config.json` (`NetSimulationTab/net_generation_dialog.py`) through the same
+helper (registry kinds `building_data`, `dialog_config`). The `_meta` block is skipped
+by the building loader's existing `'wärme'` filter and ignored by the dialog tabs (which
+read config by key); legacy/pre-versioning files of both kinds still load. Pinned by
+`tests/test_artifact_versioning.py` (4). 266 passed.
 
 **Inventory (the persistence footprint):**
 - **Project-state JSON (app-owned, format evolves → version):** `project_settings.json`
@@ -609,7 +617,7 @@ backward-compat cases in `test_project_settings.py` / `test_energy_system.py`. 2
    That discipline — not the field — is the real protection.
 
 **Rollout (leverage → effort):** ~~(1) `utilities/schema.py` + registry, migrate the two
-D2 artifacts onto it~~ **done 2026-06**; (2) building JSON + `dialog_config.json`;
+D2 artifacts onto it~~ **done**; ~~(2) building JSON + `dialog_config.json`~~ **done 2026-06**;
 (3) NetworkGeoJSON schema version + load validation; (4) CSV column-contracts.
 Incremental, no big bang. Explicitly out of scope: ephemeral/interchange artifacts.
 

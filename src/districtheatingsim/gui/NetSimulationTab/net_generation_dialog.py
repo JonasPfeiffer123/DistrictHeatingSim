@@ -17,6 +17,7 @@ from districtheatingsim.gui.NetSimulationTab.network_config_tab import NetworkCo
 from districtheatingsim.gui.NetSimulationTab.network_data_tab import NetworkDataTab
 from districtheatingsim.gui.NetSimulationTab.producer_order_tab import ProducerOrderTab
 from districtheatingsim.net_simulation_pandapipes.NetworkDataClass import NetworkGenerationData, SecondaryProducer
+from districtheatingsim.utilities.schema import add_meta, check_version
 from districtheatingsim.utilities.utilities import get_resource_path
 
 
@@ -33,8 +34,10 @@ def load_dialog_config(config_path="dialog_config.json"):
         # Use get_resource_path for PyInstaller compatibility
         config_path = get_resource_path(os.path.join('gui', 'NetSimulationTab', config_path))
     with open(config_path, encoding="utf-8") as f:
-        return json.load(f)
-    
+        config = json.load(f)
+    check_version(config, "dialog_config")
+    return config
+
 def save_dialog_config(config, config_path="dialog_config.json"):
     """
     Save dialog configuration to JSON file.
@@ -48,7 +51,7 @@ def save_dialog_config(config, config_path="dialog_config.json"):
         # Use get_resource_path for PyInstaller compatibility
         config_path = get_resource_path(os.path.join('gui', 'NetSimulationTab', config_path))
     with open(config_path, "w", encoding="utf-8") as f:
-        json.dump(config, f, indent=4)
+        json.dump(add_meta(config, "dialog_config"), f, indent=4)
     
 class NetGenerationDialog(QDialog):
     """

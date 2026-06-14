@@ -33,6 +33,8 @@ META_KEY = "_meta"
 SCHEMA_VERSIONS: dict[str, int] = {
     "project_settings": 1,
     "energy_system": 1,
+    "building_data": 1,
+    "dialog_config": 1,
 }
 
 

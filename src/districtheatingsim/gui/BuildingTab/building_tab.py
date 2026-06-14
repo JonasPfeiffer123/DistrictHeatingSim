@@ -38,6 +38,7 @@ from PyQt6.QtWidgets import (
 
 from districtheatingsim.gui.utilities import CheckableComboBox, convert_to_serializable
 from districtheatingsim.heat_requirement.heat_requirement_calculation_csv import generate_profiles_from_csv
+from districtheatingsim.utilities.schema import add_meta, check_version
 
 
 class BuildingModel:
@@ -86,7 +87,10 @@ class BuildingModel:
         try:
             with open(self.json_path, encoding='utf-8') as f:
                 loaded_data = json.load(f)
-                self.results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and 'wärme' in v}
+            check_version(loaded_data, "building_data")
+            # Building entries are keyed by index; the _meta block (and any other
+            # non-building key) is naturally skipped by the 'wärme' filter.
+            self.results = {k: v for k, v in loaded_data.items() if isinstance(v, dict) and 'wärme' in v}
         except Exception as e:
             raise Exception(f"Fehler beim Laden der JSON-Datei: {e}") from e
 
@@ -100,7 +104,7 @@ class BuildingModel:
         """
         try:
             with open(self.json_path, 'w', encoding='utf-8') as f:
-                json.dump(combined_data, f, indent=4)
+                json.dump(add_meta(combined_data, "building_data"), f, indent=4)
         except Exception as e:
             raise Exception(f"Fehler beim Speichern der Ergebnisse: {e}") from e
 
