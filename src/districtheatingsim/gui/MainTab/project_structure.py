@@ -23,6 +23,40 @@ VARIANT_PREFIX = "Variante"
 #: Name of the first analysis variant folder created in every new project.
 DEFAULT_VARIANT_NAME = f"{VARIANT_PREFIX} 1"
 
+#: Project-level folders created next to the variant folders.
+PROJECT_INPUT_FOLDERS = ("Eingangsdaten allgemein", "Definition Quartier IST")
+
+#: Standard sub-folders inside every variant folder.
+VARIANT_SUBDIRS = ("Ergebnisse", "Gebäudedaten", "Lastgang", "Wärmenetz")
+
+
+def create_variant_structure(variant_path: str) -> None:
+    """
+    Create a variant folder and its standard sub-folders (:data:`VARIANT_SUBDIRS`).
+
+    :param variant_path: Absolute path of the variant folder to create.
+    """
+    os.makedirs(variant_path, exist_ok=True)
+    for sub in VARIANT_SUBDIRS:
+        os.makedirs(os.path.join(variant_path, sub), exist_ok=True)
+
+
+def create_project_structure(project_path: str) -> None:
+    """
+    Create a new project folder with the standard district-heating structure.
+
+    Lays out :data:`PROJECT_INPUT_FOLDERS` plus the default variant
+    (:data:`DEFAULT_VARIANT_NAME`) with its sub-folders.
+
+    :param project_path: Absolute path of the project folder to create.
+    :raises FileExistsError: If ``project_path`` already exists — callers rely on
+        this to refuse overwriting an existing project.
+    """
+    os.makedirs(project_path)  # no exist_ok: fail loudly on an existing project
+    for folder in PROJECT_INPUT_FOLDERS:
+        os.makedirs(os.path.join(project_path, folder))
+    create_variant_structure(os.path.join(project_path, DEFAULT_VARIANT_NAME))
+
 
 def discover_variants(project_path: str) -> list[str]:
     """
