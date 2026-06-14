@@ -28,6 +28,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from districtheatingsim.gui.MainTab.main_data_manager import DEFAULT_VARIANT_NAME
+
 
 class ThemeToggleSwitch(QCheckBox):
     """
@@ -770,8 +772,8 @@ class WelcomeScreen(QWidget):
         # Look for typical project structure indicators
         indicators = [
             "Eingangsdaten allgemein",
-            "Definition Quartier IST", 
-            "Variante 1",
+            "Definition Quartier IST",
+            DEFAULT_VARIANT_NAME,
             "Gebäudedaten",
             "Wärmenetz"
         ]

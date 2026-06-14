@@ -23,7 +23,15 @@ from districtheatingsim.utilities.utilities import get_resource_path
 #: Schema version of ``project_settings.json``. Bump when the on-disk format
 #: changes and add the corresponding step to ``_migrate_project_settings``.
 PROJECT_SETTINGS_VERSION = 1
-        
+
+#: Prefix shared by every variant folder ("Variante 1", "Variante 2", …). Used both
+#: to construct new variant names and to detect existing variant folders, so the
+#: creation and detection logic can never drift apart.
+VARIANT_PREFIX = "Variante"
+#: Name of the first analysis variant folder created in every new project.
+DEFAULT_VARIANT_NAME = f"{VARIANT_PREFIX} 1"
+
+
 class ProjectConfigManager:
     """
     Manages application configuration and resource paths.
@@ -278,7 +286,7 @@ class ProjectFolderManager(QObject):
         if self.project_folder and self.variant_folder and os.path.exists(self.variant_folder):
             self.project_folder_changed.emit(self.variant_folder)
         elif self.project_folder:
-            self.variant_folder = os.path.join(self.project_folder, "Variante 1")
+            self.variant_folder = os.path.join(self.project_folder, DEFAULT_VARIANT_NAME)
             self.project_folder_changed.emit(self.variant_folder)
 
     def set_project_folder(self, path: str) -> None:
@@ -296,7 +304,7 @@ class ProjectFolderManager(QObject):
 
         # Validate and set variant folder
         if not self.variant_folder or not os.path.exists(self.variant_folder):
-            self.variant_folder = os.path.join(self.project_folder, "Variante 1")
+            self.variant_folder = os.path.join(self.project_folder, DEFAULT_VARIANT_NAME)
 
         # Load per-project settings (CRS, …)
         self.load_project_settings()

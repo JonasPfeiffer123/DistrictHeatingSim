@@ -13,6 +13,8 @@ import shutil
 
 from PyQt6.QtWidgets import QInputDialog
 
+from districtheatingsim.gui.MainTab.main_data_manager import DEFAULT_VARIANT_NAME, VARIANT_PREFIX
+
 
 class HeatSystemPresenter:
     """
@@ -80,7 +82,7 @@ class HeatSystemPresenter:
             subdirs = {
                 "Eingangsdaten allgemein": [],  # General input data
                 "Definition Quartier IST": [],  # Current district definition
-                "Variante 1": [                # First analysis variant
+                DEFAULT_VARIANT_NAME: [        # First analysis variant
                     "Ergebnisse",               # Results and outputs
                     "Gebäudedaten",             # Building data
                     "Lastgang",                 # Load profiles
@@ -100,12 +102,12 @@ class HeatSystemPresenter:
             # Register project with folder manager
             self.folder_manager.set_project_folder(full_path)
 
-            # Activate the newly created "Variante 1" for immediate use
-            variant_folder = os.path.join(full_path, "Variante 1")
+            # Activate the newly created default variant for immediate use
+            variant_folder = os.path.join(full_path, DEFAULT_VARIANT_NAME)
             if os.path.exists(variant_folder):
-                self.folder_manager.set_variant_folder("Variante 1")
+                self.folder_manager.set_variant_folder(DEFAULT_VARIANT_NAME)
             else:
-                self.view.show_error_message("Fehler: Variante 1 konnte nicht gefunden werden.")
+                self.view.show_error_message(f"Fehler: {DEFAULT_VARIANT_NAME} konnte nicht gefunden werden.")
                 return False
 
             # Create initial CSV file for building data in project tab
@@ -176,17 +178,17 @@ class HeatSystemPresenter:
                     # Search for variants in copied project
                     variants = [
                         folder for folder in os.listdir(new_project_path)
-                        if folder.startswith("Variante")
+                        if folder.startswith(VARIANT_PREFIX)
                     ]
-                    
+
                     if variants:
                         # Activate first available variant
                         self.folder_manager.set_variant_folder(variants[0])
                     else:
                         # Handle projects without variants
-                        default_variant_path = os.path.join(new_project_path, "Variante 1")
+                        default_variant_path = os.path.join(new_project_path, DEFAULT_VARIANT_NAME)
                         if os.path.exists(default_variant_path):
-                            self.folder_manager.set_variant_folder("Variante 1")
+                            self.folder_manager.set_variant_folder(DEFAULT_VARIANT_NAME)
                         else:
                             # Set project folder without specific variant
                             self.folder_manager.set_project_folder(new_project_path)
@@ -224,7 +226,7 @@ class HeatSystemPresenter:
 
         # Find next available variant number
         while True:
-            new_variant_name = f"Variante {variant_num}"
+            new_variant_name = f"{VARIANT_PREFIX} {variant_num}"
             new_variant_path = os.path.join(base_dir, new_variant_name)
             if not os.path.exists(new_variant_path):
                 break
@@ -268,7 +270,7 @@ class HeatSystemPresenter:
 
         # Find next available variant number
         while True:
-            new_variant_name = f"Variante {variant_num}"
+            new_variant_name = f"{VARIANT_PREFIX} {variant_num}"
             new_variant_path = os.path.join(base_dir, new_variant_name)
             if not os.path.exists(new_variant_path):
                 break

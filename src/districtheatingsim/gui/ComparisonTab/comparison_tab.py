@@ -33,6 +33,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from districtheatingsim.gui.MainTab.main_data_manager import VARIANT_PREFIX
+
 
 def _filename_to_config_name(filename: str) -> str:
     """Convert a JSON filename to a display config name."""
@@ -183,7 +185,7 @@ class ProjectExplorer(QWidget):
             parent_dir = os.path.dirname(self.base_path)
             variant_names = sorted(
                 d for d in os.listdir(parent_dir)
-                if os.path.isdir(os.path.join(parent_dir, d)) and d.startswith("Variante")
+                if os.path.isdir(os.path.join(parent_dir, d)) and d.startswith(VARIANT_PREFIX)
             )
             variant_count = 0
             for variant_name in variant_names:
