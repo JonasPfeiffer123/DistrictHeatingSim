@@ -5,6 +5,7 @@ Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
 import json
+import logging
 from datetime import datetime
 from typing import Any
 
@@ -13,6 +14,8 @@ import pandas as pd
 from shapely.geometry import LineString
 
 from districtheatingsim.utilities.crs_utils import DEFAULT_CRS, crs_to_urn, epsg_from_urn
+
+logger = logging.getLogger(__name__)
 
 
 class NetworkGeoJSONSchema:
@@ -394,10 +397,45 @@ class NetworkGeoJSONSchema:
         print(f"✓ Exported unified network GeoJSON: {filepath}")
     
     @staticmethod
+    def validate_version(geojson: dict[str, Any], *, filepath: str = "") -> str | None:
+        """
+        Warn (do **not** raise) if the network GeoJSON schema version is missing or
+        newer than this app understands (BACKLOG D4).
+
+        The version lives inside the file as ``metadata.version`` (a semver-ish
+        string, e.g. ``"2.0"``) — its own convention, distinct from the int-based
+        ``_meta`` block used by the JSON artifacts in ``utilities/schema.py`` (a
+        GeoJSON FeatureCollection carries its metadata inline, not in a sidecar).
+        Comparison is on the major version.
+
+        :param geojson: The loaded GeoJSON FeatureCollection dict.
+        :param filepath: Optional source path for clearer log messages.
+        :return: The version string found on disk, or ``None`` if absent.
+        :rtype: str | None
+        """
+        where = f" ({filepath})" if filepath else ""
+        found = (geojson.get("metadata") or {}).get("version")
+        if found is None:
+            logger.warning("Network GeoJSON%s has no schema version (pre-2.0 file); "
+                           "loading best-effort", where)
+            return None
+        try:
+            found_major = int(str(found).split(".")[0])
+            current_major = int(NetworkGeoJSONSchema.VERSION.split(".")[0])
+        except (ValueError, IndexError):
+            logger.warning("Network GeoJSON%s has an unparseable schema version %r",
+                           where, found)
+            return found
+        if found_major > current_major:
+            logger.warning("Network GeoJSON%s is schema v%s, newer than this app (v%s); "
+                           "loading best-effort", where, found, NetworkGeoJSONSchema.VERSION)
+        return found
+
+    @staticmethod
     def import_from_file(filepath: str) -> dict[str, Any]:
         """
         Import network GeoJSON from file.
-        
+
         :param filepath: Input file path
         :type filepath: str
         :return: Network GeoJSON dictionary
@@ -405,6 +443,7 @@ class NetworkGeoJSONSchema:
         """
         with open(filepath, encoding='utf-8') as f:
             geojson = json.load(f)
+        NetworkGeoJSONSchema.validate_version(geojson, filepath=filepath)
         return geojson
     
     @staticmethod

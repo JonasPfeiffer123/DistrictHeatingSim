@@ -9,11 +9,14 @@ segments of every orientation while keeping the network connected (a shared vert
 maps to a single return coordinate — the junction model keys on exact coordinates).
 """
 
+import logging
+
 import geopandas as gpd
 import pytest
 from shapely.geometry import LineString
 
 from districtheatingsim.net_generation.net_generation import offset_lines_by_angle
+from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
 
 
 class TestReturnNetworkOffset:
@@ -84,3 +87,39 @@ class TestReturnNetworkOffset:
         ret = offset_lines_by_angle(flow, distance=1.0, angle_degrees=0)
         zs = [c[2] for c in ret.geometry.iloc[0].coords]
         assert zs == [100.0, 105.0]
+
+
+class TestNetworkGeoJSONVersion:
+    """D4 step 3: the network GeoJSON carries a schema version in metadata.version
+    (a semver string, its own convention); import_from_file validates it softly."""
+
+    def test_current_version_passes_quietly(self, caplog):
+        gj = {"type": "FeatureCollection", "features": [],
+              "metadata": {"version": NetworkGeoJSONSchema.VERSION}}
+        with caplog.at_level(logging.WARNING):
+            found = NetworkGeoJSONSchema.validate_version(gj)
+        assert found == NetworkGeoJSONSchema.VERSION
+        assert caplog.records == []
+
+    def test_missing_version_warns(self, caplog):
+        with caplog.at_level(logging.WARNING):
+            found = NetworkGeoJSONSchema.validate_version({"type": "FeatureCollection"})
+        assert found is None
+        assert any("no schema version" in r.getMessage() for r in caplog.records)
+
+    def test_newer_major_version_warns(self, caplog):
+        gj = {"metadata": {"version": "99.0"}}
+        with caplog.at_level(logging.WARNING):
+            found = NetworkGeoJSONSchema.validate_version(gj)
+        assert found == "99.0"
+        assert any("newer than this app" in r.getMessage() for r in caplog.records)
+
+    def test_import_from_file_roundtrips_and_validates(self, tmp_path, caplog):
+        gj = {"type": "FeatureCollection", "features": [],
+              "metadata": NetworkGeoJSONSchema.create_metadata()}
+        path = str(tmp_path / "net.geojson")
+        NetworkGeoJSONSchema.export_to_file(gj, path)
+        with caplog.at_level(logging.WARNING):
+            loaded = NetworkGeoJSONSchema.import_from_file(path)
+        assert loaded["metadata"]["version"] == NetworkGeoJSONSchema.VERSION
+        assert caplog.records == []
