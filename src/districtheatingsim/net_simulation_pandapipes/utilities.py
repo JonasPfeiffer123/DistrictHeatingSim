@@ -556,7 +556,7 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "P23
                 properties = filtered_by_material.loc[new_type]
                 pipe_name = net.pipe.at[pipe_idx, 'name'] if 'name' in net.pipe.columns else f"Pipe {pipe_idx}"
                 
-                print(f"  {pipe_name}: UPSIZE v={velocity:.3f} > {v_max} m/s | {current_type} → {new_type}")
+                print(f"  {pipe_name}: UPSIZE v={velocity:.3f} > {v_max} m/s | {current_type} -> {new_type}")
                 
                 net.pipe.at[pipe_idx, 'std_type'] = new_type
                 net.pipe.at[pipe_idx, 'inner_diameter_mm'] = properties['inner_diameter_mm']
@@ -579,7 +579,7 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "P23
                 net.pipe.at[pipe_idx, 'k_mm'] = k
 
                 # Validate downsizing doesn't violate constraints
-                print(f"    Testing downsize: {current_type} → {new_type}")
+                print(f"    Testing downsize: {current_type} -> {new_type}")
                 # Step 1: Calculate new velocities
                 pp.pipeflow(net, mode="bidirectional", iter=100)
                 # Step 2: Adjust pump if needed
@@ -588,10 +588,10 @@ def optimize_diameter_types(net, v_max: float = 1.0, material_filter: str = "P23
                 print(f"    New velocity: {new_velocity:.3f} m/s")
 
                 if new_velocity <= v_max:
-                    print(f"  {pipe_name}: DOWNSIZE v={velocity:.3f} ≤ {v_max} m/s | {current_type} → {new_type} (new v={new_velocity:.3f})")
+                    print(f"  {pipe_name}: DOWNSIZE v={velocity:.3f} <= {v_max} m/s | {current_type} -> {new_type} (new v={new_velocity:.3f})")
                     change_made = True
                 else:
-                    print(f"  {pipe_name}: REVERT v={velocity:.3f} → {new_velocity:.3f} > {v_max} m/s | {new_type} → {current_type}")
+                    print(f"  {pipe_name}: REVERT v={velocity:.3f} -> {new_velocity:.3f} > {v_max} m/s | {new_type} -> {current_type}")
                     # Revert to previous size and mark as optimized
                     properties = filtered_by_material.loc[current_type]
                     net.pipe.at[pipe_idx, 'std_type'] = current_type
