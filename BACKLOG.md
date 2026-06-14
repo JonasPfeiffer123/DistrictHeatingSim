@@ -538,20 +538,32 @@ Same root cause as B4.
 ---
 
 ## Suggested order
-**Done 2026-06:** A1 (test suite + CI + ruff sweep of the tested tree), B1
-(`_04_technology_dialogs` + `osm_dialogs`), C4–C10, D1, D2, D3. The domain core is
-now well-tested and lint-clean; the easy low-risk wins there are harvested.
+**Done 2026-06:** A1 (test suite + CI + full ruff sweep incl. GUI, gating), B1
+(`_04_technology_dialogs`, `osm_dialogs`, `interactive_network_plot`/B3), B5, C2
+(solver error handling + the `net_simulation_pandapipes` test seam,
+`TestNetworkInitialization`), C3–C13, D1, D2, D3. The domain core + the simulation
+pipeline are now well-tested and lint-clean; the easy low-risk wins are harvested.
 
-**What's left clusters into untested territory — pick by appetite:**
-1. **Test seam for `net_simulation_pandapipes`** (small pandapipes network fixture +
-   characterization test). Unlocks C1/C2/C3 *and* the ruff long-tail (48 findings) at
-   low risk — the highest-leverage enabler.
-2. **C2 — solver error handling** (run_timeseries try/except + NaN/inf/convergence
-   checks). Real robustness; needs (1) or careful manual verification.
-3. **B1 remainder** — `main_view.py` (~1232); big LOC win but untested GUI god-object.
-   (`interactive_network_plot.py` / B3 done 2026-06.)
-4. **C1 — threading** audit (worker threads mutate shared state; inconsistent error
-   signatures). Subtle; wants a seam too.
-5. Quick wins: refresh hardcoded "Variante 1" (D1 leftover), E1 (`.gitignore` casing).
-6. Larger/optional: B2 (MVP violations), B4/E2 (DE/EN naming), D4 (serialization
-   versioning strategy), widen ruff into `gui/` + flip lint to gating.
+**What's left, by leverage:**
+1. **C14 — negative-pressure validation** (new): result validators only check NaN/inf,
+   so a physically-impossible (negative absolute pressure) run passes silently. Add a
+   soft warning. Small; warn-vs-raise decision pending. Highest correctness value left.
+2. **B1 remainder** — `main_view.py` (~1232); big LOC win but untested GUI god-object.
+3. **C1 — threading** deep isolation (worker on a deep copy / uniform producer→swap
+   pattern). The double-start + close races are already fixed; this is the subtle rest.
+4. **Quick wins:** refresh hardcoded "Variante 1" (D1 leftover), E1 (`.gitignore`
+   casing), C11 minor (cross-check the 0.14 circ-pump outlet-temp behaviour vs 0.13).
+5. **Larger/optional:** B2 (MVP violations — partial), B4/E2 (DE/EN naming), D4
+   (serialization versioning strategy — not started), D3 leftover (temperature limits /
+   `thermal_storage.py` cp), and the A1 leftovers (decide on `ruff format`; the gating
+   CI lint job is still unverified on GitHub until the first push).
+
+## Pre-release (do last, only once the above are settled)
+- **Update the docs.** Sweep `docs/` (Sphinx/readthedocs) + the README for everything
+  the refactors changed (constants, `TechnologyResult`, the pandapipes 0.14 / ISOPLUS
+  pipe model, the thermal-storage adapter, the new test/CI workflow). Only worth doing
+  once the API churn above has stopped — otherwise it rots again immediately.
+- **Clean release + history reset.** Long-term plan (Jonas): once the optimizations are
+  in, cut a clean release and collapse the long history (squash to a baseline commit or
+  start a fresh orphan branch / fresh repo state). Do the docs update *before* this so
+  the released baseline ships accurate docs.
