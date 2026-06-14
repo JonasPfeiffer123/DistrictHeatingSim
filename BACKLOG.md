@@ -492,6 +492,35 @@ the final state. Mechanism, found by probing the net:
   (max v 1.99 m/s, pump 9.98 bar). GUI-only path (not in the golden master); pinned by
   `tests/test_net_simulation.py::TestDiameterLadders` (6 tests). C14 fully closed.
 
+### C15. Pump-pressure / elevation / pipe-cost modelling notes (observations, 2026-06)
+Investigating "why does the Görlitz net need ~10 bar pump pressure" surfaced three
+modelling facts (no code bugs — design choices / data / missing model):
+1. **`v_max` is the dominant driver of pump pressure.** The net is small (9 buildings,
+   2.14 MW, ~1171 m trasse) and **flat** (see 2), so the pump head is *pure friction*.
+   Sweep (init+optimize, same net):
+
+   | v_max [m/s] | pump p_flow | plift | Σ\|dp\| | max v | pipe material [m·mm] |
+   |---|---|---|---|---|---|
+   | 1.0 | 4.34 bar | 1.84 | 3.51 | 0.95 | 122 535 |
+   | 1.5 | 6.54 bar | 4.04 | 7.32 | 1.49 | 101 366 |
+   | 2.0 | 9.98 bar | 7.48 | 12.27 | 1.99 |  92 223 |
+
+   Dropping the **default `v_max=2.0`** to a more typical DH 1.0 m/s cuts the pump
+   differential ~75 % (7.48 → 1.84 bar) for ~33 % more pipe material — the classic
+   pump-energy vs pipe-capex trade-off. Worth reconsidering the 2.0 default.
+2. **Elevation is implemented but the Görlitz example carries none.** The DEM pipeline
+   (`net_generation/elevation_utils.py`: GeoTIFF or OpenTopoData API → Z-coords →
+   `height_m` → geodetic head in pandapipes) is fully wired via the `dem_path` arg of
+   `generate_and_export_layers`. But `…/Görlitz/Variante 1/Wärmenetz/Wärmenetz.geojson`
+   is **2-D** (all `height_m = 0`), so terrain is ignored in its hydraulics. Real nets
+   with relief must be (re)generated with a DEM or internet (API fallback) — otherwise
+   the geodetic pressure component is silently absent. Data gotcha, not a bug.
+3. **No per-diameter pipe/trasse cost model.** Diameter optimization is purely
+   *velocity*-driven; there is no €/m-by-diameter cost anywhere in `net_*`, so the tool
+   cannot cost the v_max trade-off above (trasse cost is a lump infrastructure input in
+   `_05_cost_tab`). A diameter→€/m table would let the optimizer (and the user) trade
+   pump energy against pipe capex properly. Possible future feature.
+
 ## D. State & data
 ### D1. Double state source (fixed 2026-06)
 `try_filename`/`cop_filename` lived in both `DataManager` and `ProjectFolderManager`,
