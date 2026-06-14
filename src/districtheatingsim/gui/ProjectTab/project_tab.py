@@ -36,6 +36,7 @@ from PyQt6.QtWidgets import (
 )
 
 from districtheatingsim.gui.LeafletTab.net_generation_threads import GeocodingThread, GeoJSONToCSVThread
+from districtheatingsim.gui.MainTab.main_data_manager import VARIANT_PREFIX
 from districtheatingsim.gui.ProjectTab.csv_import_dialog import CsvImportDialog
 from districtheatingsim.gui.ProjectTab.project_tab_dialogs import OSMImportDialog, ProcessDetailsDialog, RowInputDialog
 from districtheatingsim.utilities.crs_utils import COMMON_CRS_OPTIONS, suggest_crs_from_location
@@ -350,7 +351,7 @@ class ProjectPresenter:
         file_path = self.view.get_selected_file_path(index)
         
         if os.path.isdir(file_path):
-            if "Variante" in os.path.basename(file_path):
+            if VARIANT_PREFIX in os.path.basename(file_path):
                 self.folder_manager.set_variant_folder(file_path)
             else:
                 self.folder_manager.set_project_folder(file_path)

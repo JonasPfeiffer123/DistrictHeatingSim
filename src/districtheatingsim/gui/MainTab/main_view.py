@@ -31,6 +31,7 @@ from districtheatingsim.gui.ComparisonTab.comparison_tab import ComparisonTab
 from districtheatingsim.gui.dialogs import HeatPumpDataDialog, TemperatureDataDialog
 from districtheatingsim.gui.EnergySystemTab._01_energy_system_main_tab import EnergySystemTab
 from districtheatingsim.gui.LeafletTab.leaflet_tab import VisualizationTabLeaflet
+from districtheatingsim.gui.MainTab.main_data_manager import VARIANT_PREFIX
 from districtheatingsim.gui.NetSimulationTab.calculation_tab import CalculationTab
 from districtheatingsim.gui.ProjectTab.project_tab import ProjectTab
 from districtheatingsim.gui.welcome_screen import ThemeToggleSwitch, WelcomeScreen
@@ -818,8 +819,8 @@ class HeatSystemDesignGUI(QMainWindow):
                 full_path = os.path.join(project_path, folder_name)
                 
                 # Validate variant folder criteria
-                if (os.path.isdir(full_path) and 
-                    folder_name.startswith("Variante")):
+                if (os.path.isdir(full_path) and
+                    folder_name.startswith(VARIANT_PREFIX)):
                     variants.append(folder_name)
                     
         except FileNotFoundError:

@@ -457,8 +457,16 @@ mirrored by hand in `main_view` (and slightly buggy: raw vs project-copied path)
 **Fixed**: `ProjectFolderManager` is now the single owner (it persists them in
 `project_settings.json`); `DataManager` holds only `map_data`; the three consumer
 tabs read `folder_manager.try_filename/.cop_filename` (they already held the ref).
-Pinned indirectly by `tests/test_project_settings.py`. *Still open:* folder names
-like "Variante 1" are still hardcoded (separate, smaller item).
+Pinned indirectly by `tests/test_project_settings.py`. *Variant-name leftover fixed
+2026-06:* the variant folder name was hardcoded as the literal `"Variante 1"` / the
+prefix `"Variante"` across 6 GUI files (creation, default, detection, sequential
+naming) — drift between the default name and the `startswith("Variante")` detection
+was a latent bug. Centralized into `main_data_manager.DEFAULT_VARIANT_NAME` /
+`VARIANT_PREFIX` (the `ProjectFolderManager` module, a leaf so no import cycle);
+`main_presenter`, `main_view`, `comparison_tab`, `project_tab`, `welcome_screen` now
+import them. Behaviour-identical (all 6 modules import offscreen; 232 passed). UI
+strings like "Variantenvergleich" and the `__main__` demo path in `building_tab` are
+left as-is.
 ### D2. No schema versioning / migration (fixed 2026-06)
 Neither `project_settings.json` nor the EnergySystem project JSON had a version
 field. **Fixed**: both carry a `version` (`PROJECT_SETTINGS_VERSION`,
@@ -525,13 +533,12 @@ version + load validation; (4) CSV column-contracts. Incremental, no big bang. E
 out of scope: ephemeral/interchange artifacts.
 
 ## E. Hygiene
-### E1. `.gitignore` casing
-`error_log.txt` (line 159) and `build_Logs/` (line 162) are ignored. Note: the
-build-logs entry is capital-L (`build_Logs/`), which matches on case-insensitive
-Windows but would **not** match a lowercase `build_logs/` on case-sensitive
-Linux/CI — worth normalizing before CI runs on Linux. (An earlier review flagged a
-committed `error_log.txt`; on inspection it was never tracked — already ignored, so
-no action there.) The 52 MB Görlitz example project is large but acceptable.
+### E1. `.gitignore` casing (resolved 2026-06)
+The build-logs ignore entry is now lowercase `build_logs/` (`.gitignore:162`), which
+matches on case-sensitive Linux/CI — the earlier capital-L concern no longer applies.
+(No code path actually creates a build-logs dir, so the entry is vestigial but
+harmless.) The earlier `error_log.txt` flag was a non-issue — it was never tracked,
+only ignored. The 52 MB Görlitz example project is large but acceptable. Nothing to do.
 ### E2. Naming/method-name inconsistencies
 Same root cause as B4.
 
@@ -551,8 +558,9 @@ pipeline are now well-tested and lint-clean; the easy low-risk wins are harveste
 2. **B1 remainder** — `main_view.py` (~1232); big LOC win but untested GUI god-object.
 3. **C1 — threading** deep isolation (worker on a deep copy / uniform producer→swap
    pattern). The double-start + close races are already fixed; this is the subtle rest.
-4. **Quick wins:** refresh hardcoded "Variante 1" (D1 leftover), E1 (`.gitignore`
-   casing), C11 minor (cross-check the 0.14 circ-pump outlet-temp behaviour vs 0.13).
+4. **Quick wins:** ~~hardcoded "Variante 1" (D1 leftover)~~ done; ~~E1 (`.gitignore`
+   casing)~~ done. Remaining: C11 minor (cross-check the 0.14 circ-pump outlet-temp
+   behaviour vs 0.13 — needs a second pandapipes version installed, so not a fast fix).
 5. **Larger/optional:** B2 (MVP violations — partial), B4/E2 (DE/EN naming), D4
    (serialization versioning strategy — not started), D3 leftover (temperature limits /
    `thermal_storage.py` cp), and the A1 leftovers (decide on `ruff format`; the gating
