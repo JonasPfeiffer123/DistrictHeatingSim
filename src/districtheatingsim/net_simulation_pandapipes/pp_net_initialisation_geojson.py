@@ -31,7 +31,10 @@ from pandapipes.control.run_control import run_control
 from districtheatingsim.constants import CP_WATER_KJ_KGK, KELVIN_OFFSET
 from districtheatingsim.net_generation.network_geojson_schema import NetworkGeoJSONSchema
 from districtheatingsim.net_simulation_pandapipes.pipe_std_types import resolve_pipe_u_w_per_m2k
-from districtheatingsim.net_simulation_pandapipes.result_validation import validate_net_results
+from districtheatingsim.net_simulation_pandapipes.result_validation import (
+    validate_net_results,
+    validate_pressure_plausibility,
+)
 from districtheatingsim.net_simulation_pandapipes.utilities import (
     COP_WP,
     correct_flow_directions,
@@ -573,5 +576,8 @@ def create_network(gdf_dict: dict[str, gpd.GeoDataFrame], consumer_dict: dict[st
     # Fail loudly at build time if the design state did not converge, instead of
     # letting NaN propagate into the time series (BACKLOG C2).
     validate_net_results(net, context="network generation")
+    # Soft check: warn (don't raise) on physically-impossible negative pressures —
+    # a sign the pump head is too low for the network losses (BACKLOG C14).
+    validate_pressure_plausibility(net, context="network generation")
 
     return net

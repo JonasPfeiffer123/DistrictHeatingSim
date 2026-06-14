@@ -11,7 +11,11 @@ tests without pulling in pandapipes.
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
+import logging
+
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 def validate_simulation_results(net_results: dict, *, context: str = "") -> None:
@@ -75,6 +79,54 @@ def validate_net_results(net, *, context: str = "") -> None:
             "converge (check for a disconnected or infeasible network, e.g. an "
             "unreachable consumer)."
         )
+
+
+def validate_pressure_plausibility(net, *, min_pressure_bar: float = 0.0,
+                                   context: str = "") -> list[int]:
+    """
+    Warn (do **not** raise) if a solved net has implausibly low absolute pressures.
+
+    pandapipes solves in *absolute* pressure, so a junction pressure ``<= 0 bar``
+    is physically impossible (vacuum / cavitation). The pipeflow can still
+    "converge" to such a state — pandapipes only emits a transient UserWarning —
+    and every other validator here (NaN/inf only) lets it pass silently. A
+    negative final pressure means the pump head is too low for the network's
+    pressure losses: an under-dimensioned pump, or undersized pipes running above
+    the velocity limit (high ``dp``). See BACKLOG C14.
+
+    This is intentionally a **soft** check (logs a warning, returns the offending
+    junctions) rather than a ``RuntimeError``: an under-pressurized result is a
+    legitimate intermediate planning state the user may want to inspect and fix
+    by raising the pump pressure or enabling diameter optimization.
+
+    :param net: A solved pandapipes network (duck-typed: needs ``res_junction``).
+    :param min_pressure_bar: Threshold below which a pressure is flagged (default 0).
+    :type min_pressure_bar: float
+    :param context: Optional label included in the warning message.
+    :type context: str
+    :return: Indices of the junctions below the threshold (empty if all plausible).
+    :rtype: list[int]
+    """
+    prefix = f"{context}: " if context else ""
+    res_junction = getattr(net, "res_junction", None)
+    if res_junction is None or len(res_junction) == 0 or "p_bar" not in res_junction:
+        return []
+
+    pressures = np.asarray(res_junction["p_bar"].values, dtype=float)
+    finite = np.isfinite(pressures)
+    below = finite & (pressures < min_pressure_bar)
+    bad_indices = [int(i) for i in np.nonzero(below)[0]]
+    if bad_indices:
+        worst = int(np.argmin(np.where(finite, pressures, np.inf)))
+        logger.warning(
+            "%s%d junction(s) at implausible absolute pressure < %.2f bar "
+            "(minimum %.3f bar at junction %d) — the pump head is likely too low "
+            "for the network's pressure losses (under-dimensioned pump or pipes "
+            "above the velocity limit). Raise the pump pressure or enable diameter "
+            "optimization.",
+            prefix, len(bad_indices), min_pressure_bar, float(pressures[worst]), worst,
+        )
+    return bad_indices
 
 
 def validate_design_state(design_results: dict, *, context: str = "") -> None:
