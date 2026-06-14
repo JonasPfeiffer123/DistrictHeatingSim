@@ -268,6 +268,175 @@ def heat_consumer_plot_data(net, junctions_wgs84, parameter: str | None = None) 
     return PipePlotData(segments, vmin, vmax, center_lat, center_lon)
 
 
+_PUMP_TYPES = [
+    ('circ_pump_pressure', 'res_circ_pump_pressure'),
+    ('circ_pump_mass', 'res_circ_pump_mass'),
+]
+
+
+def _pump_coords(junctions_wgs84, pump):
+    """From/to junction geometry for a pump row, handling both column conventions.
+
+    Returns ``None`` when neither ``from/to_junction`` nor ``flow/return_junction``
+    is present. May raise ``KeyError``/``IndexError`` if a referenced junction is
+    missing (the caller treats that as "skip this pump").
+    """
+    if 'from_junction' in pump.index and 'to_junction' in pump.index:
+        return (junctions_wgs84.loc[pump['from_junction']].geometry,
+                junctions_wgs84.loc[pump['to_junction']].geometry)
+    if 'flow_junction' in pump.index and 'return_junction' in pump.index:
+        return (junctions_wgs84.loc[pump['flow_junction']].geometry,
+                junctions_wgs84.loc[pump['return_junction']].geometry)
+    return None
+
+
+def _pump_hover_text(net, res_table, idx, pump, parameter, value) -> str:
+    # Pumps run return -> supply, so from=return / to=supply: the supply ("Vorlauf")
+    # fields read the *to* columns and the return ("Rücklauf") fields the *from*
+    # columns. This swap is intentional and preserved verbatim from the renderer.
+    text = f"<b>{pump['name']}</b><br>"
+    if hasattr(net, res_table):
+        try:
+            res = getattr(net, res_table).loc[idx]
+            if 'mdot_from_kg_per_s' in res.index:
+                text += f"Massenstrom: {res['mdot_from_kg_per_s']:.2f} kg/s<br>"
+            if 't_from_k' in res.index:
+                text += f"Vorlauftemp.: {res['t_to_k'] - KELVIN_OFFSET:.1f} °C<br>"
+            if 't_to_k' in res.index:
+                text += f"Rücklauftemp.: {res['t_from_k'] - KELVIN_OFFSET:.1f} °C<br>"
+            if 'dt_k' in res.index:
+                text += f"ΔT: {res['dt_k']:.1f} K<br>"
+            elif 't_from_k' in res.index and 't_to_k' in res.index:
+                text += f"ΔT: {res['t_to_k'] - res['t_from_k']:.1f} K<br>"
+            if 'p_from_bar' in res.index:
+                text += f"Vorlaufdruck: {res['p_to_bar']:.2f} bar<br>"
+            if 'p_to_bar' in res.index:
+                text += f"Rücklaufdruck: {res['p_from_bar']:.2f} bar<br>"
+            if 'deltap_bar' in res.index:
+                text += f"Druckanhebung: {res['deltap_bar']:.2f} bar<br>"
+            elif 'p_from_bar' in res.index and 'p_to_bar' in res.index:
+                text += f"Druckanhebung: {res['p_to_bar'] - res['p_from_bar']:.2f} bar<br>"
+        except (KeyError, IndexError):
+            pass
+    if value is not None and parameter:
+        text += f"{parameter_label(parameter)}: {value:.2f}<br>"
+    return text
+
+
+def pump_plot_data(net, junctions_wgs84, parameter: str | None = None) -> PipePlotData:
+    """
+    Extract circulation-pump polyline data from the net (both pressure and mass pumps).
+
+    Same line structure as :func:`pipe_plot_data`; segments from both pump tables are
+    concatenated in order. The hover swaps supply/return as the renderer did.
+    """
+    pump_types = [(p, r) for p, r in _PUMP_TYPES
+                  if hasattr(net, p) and len(getattr(net, p)) > 0]
+    if not pump_types:
+        return PipePlotData([], None, None, 0.0, 0.0)
+
+    center_lat = float(junctions_wgs84.geometry.y.mean())
+    center_lon = float(junctions_wgs84.geometry.x.mean())
+
+    segments: list[PipeSegment] = []
+    values: list[float] = []
+    for pump_table, res_table in pump_types:
+        pump_df = getattr(net, pump_table)
+        has_res = hasattr(net, res_table)
+        for idx in pump_df.index:
+            pump = pump_df.loc[idx]
+            try:
+                coords = _pump_coords(junctions_wgs84, pump)
+            except (KeyError, IndexError):
+                continue
+            if coords is None:
+                continue
+            fc, tc = coords
+            value = (parameter_value(getattr(net, res_table), idx, parameter)
+                     if (parameter and has_res) else None)
+            if value is not None:
+                values.append(value)
+            segments.append(PipeSegment(
+                from_lat=fc.y, from_lon=fc.x,
+                mid_lat=(fc.y + tc.y) / 2, mid_lon=(fc.x + tc.x) / 2,
+                to_lat=tc.y, to_lon=tc.x,
+                hover_text=_pump_hover_text(net, res_table, idx, pump, parameter, value),
+                value=value, idx=idx, name=pump.get('name', f'Pump {idx}'),
+            ))
+
+    vmin = vmax = None
+    if values:
+        vmin, vmax = min(values), max(values)
+        if vmax - vmin < 1e-10:
+            vmax = vmin + 1
+    return PipePlotData(segments, vmin, vmax, center_lat, center_lon)
+
+
+def _flow_control_hover_text(net, idx, fc, parameter, value) -> str:
+    text = f"<b>{fc['name']}</b><br>"
+    if 'controlled_mdot_kg_per_s' in fc.index:
+        text += f"Soll-Massenstrom: {fc['controlled_mdot_kg_per_s']:.2f} kg/s<br>"
+    if hasattr(net, 'res_flow_control'):
+        try:
+            res = net.res_flow_control.loc[idx]
+            if 'mdot_from_kg_per_s' in res.index:
+                text += f"Massenstrom: {res['mdot_from_kg_per_s']:.2f} kg/s<br>"
+            if 'p_from_bar' in res.index:
+                text += f"Vorlaufdruck: {res['p_from_bar']:.2f} bar<br>"
+            if 'p_to_bar' in res.index:
+                text += f"Rücklaufdruck: {res['p_to_bar']:.2f} bar<br>"
+            if 'deltap_bar' in res.index:
+                text += f"Druckdifferenz: {res['deltap_bar']:.2f} bar<br>"
+        except (KeyError, IndexError):
+            pass
+    if value is not None and parameter:
+        text += f"{parameter_label(parameter)}: {value:.2f}<br>"
+    return text
+
+
+def flow_control_plot_data(net, junctions_wgs84, parameter: str | None = None) -> PipePlotData:
+    """
+    Extract flow-control polyline data from the net.
+
+    Same line structure as :func:`pipe_plot_data`; hover reports the setpoint mass flow
+    plus the solved mass flow and pressures.
+    """
+    if not hasattr(net, 'flow_control') or len(net.flow_control) == 0:
+        return PipePlotData([], None, None, 0.0, 0.0)
+
+    has_res = hasattr(net, 'res_flow_control')
+    center_lat = float(junctions_wgs84.geometry.y.mean())
+    center_lon = float(junctions_wgs84.geometry.x.mean())
+
+    segments: list[PipeSegment] = []
+    values: list[float] = []
+    for idx in net.flow_control.index:
+        fc = net.flow_control.loc[idx]
+        try:
+            c_from = junctions_wgs84.loc[fc['from_junction']].geometry
+            c_to = junctions_wgs84.loc[fc['to_junction']].geometry
+        except KeyError:
+            continue
+        value = (parameter_value(net.res_flow_control, idx, parameter)
+                 if (parameter and has_res) else None)
+        if value is not None:
+            values.append(value)
+        segments.append(PipeSegment(
+            from_lat=c_from.y, from_lon=c_from.x,
+            mid_lat=(c_from.y + c_to.y) / 2, mid_lon=(c_from.x + c_to.x) / 2,
+            to_lat=c_to.y, to_lon=c_to.x,
+            hover_text=_flow_control_hover_text(net, idx, fc, parameter, value),
+            value=value, idx=idx, name=fc.get('name', f'Flow Control {idx}'),
+        ))
+
+    vmin = vmax = None
+    if values:
+        vmin, vmax = min(values), max(values)
+        if vmax - vmin < 1e-10:
+            vmax = vmin + 1
+    return PipePlotData(segments, vmin, vmax, center_lat, center_lon)
+
+
 def available_plot_parameters(net) -> dict[str, list[str]]:
     """
     The result parameters available for colour-coding per component type.
