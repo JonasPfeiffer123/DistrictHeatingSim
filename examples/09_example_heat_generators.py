@@ -3,8 +3,6 @@ Filename: 09_example_heat_generators.py
 Author: Dipl.-Ing. (FH) Jonas Pfeiffer
 Date: 2025-07-12
 Description: Script for testing the heat generator functions.
-
-# Not up-to-date: This script is not up-to-date with the latest version of all heat generator classes.
 """
 
 from districtheatingsim.heat_generators.solar_thermal import SolarThermal
