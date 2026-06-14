@@ -14,10 +14,8 @@ import json
 
 import pytest
 
-from districtheatingsim.gui.MainTab.main_data_manager import (
-    PROJECT_SETTINGS_VERSION,
-    ProjectFolderManager,
-)
+from districtheatingsim.gui.MainTab.main_data_manager import ProjectFolderManager
+from districtheatingsim.utilities.schema import SCHEMA_VERSIONS
 
 pytestmark = pytest.mark.usefixtures("qapp")
 
@@ -44,13 +42,26 @@ def test_save_writes_version_and_roundtrips(tmp_path):
     m.save_project_settings()
 
     raw = json.loads((tmp_path / "project_settings.json").read_text(encoding="utf-8"))
-    assert raw["version"] == PROJECT_SETTINGS_VERSION
+    assert raw["_meta"]["schema_version"] == SCHEMA_VERSIONS["project_settings"]
+    assert "app_version" in raw["_meta"]
 
     fresh = _manager(tmp_path)
     fresh.load_project_settings()
     assert fresh.project_crs == "EPSG:25833"
     assert fresh.calculation_year == 2030
     assert fresh.active_energy_configs == {"Variante 1": "Solar+BHKW"}
+
+
+def test_legacy_top_level_version_settings_load(tmp_path):
+    # Files saved by the D2 app used a top-level "version" field; must still load.
+    (tmp_path / "project_settings.json").write_text(
+        json.dumps({"version": 1, "crs": "EPSG:3857", "calculation_year": 2024}),
+        encoding="utf-8",
+    )
+    m = _manager(tmp_path)
+    m.load_project_settings()  # must not raise
+    assert m.project_crs == "EPSG:3857"
+    assert m.calculation_year == 2024
 
 
 def test_legacy_settings_without_version_load(tmp_path):
