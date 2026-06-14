@@ -558,7 +558,7 @@ centralization is value-identical (golden masters unchanged); **cp was unified t
 - **Still open:** temperature limits (e.g. the 75 K Hub) and `cp=4187 J/kgK` in
   `thermal_storage.py` (different unit system) were intentionally left; fold in if a
   unit convention is formalized.
-### D4. Project-wide serialization/versioning strategy (steps 1-2 done 2026-06)
+### D4. Project-wide serialization/versioning strategy (steps 1-3 done 2026-06)
 D2 versioned only two artifacts (`project_settings.json`, EnergySystem JSON). The app
 reads/writes **many** serialized files of different kinds, and most are unversioned.
 A blanket "add a version field everywhere" is wrong — the strategy must be
@@ -581,6 +581,16 @@ helper (registry kinds `building_data`, `dialog_config`). The `_meta` block is s
 by the building loader's existing `'wärme'` filter and ignored by the dialog tabs (which
 read config by key); legacy/pre-versioning files of both kinds still load. Pinned by
 `tests/test_artifact_versioning.py` (4). 266 passed.
+
+**Step 3 landed (2026-06):** the network GeoJSON already embedded its version as
+`metadata.version` (a semver *string*, e.g. `"2.0"` — its own convention, kept distinct
+from the int `_meta` registry since a FeatureCollection carries metadata inline). Added
+the missing **load validation**: `NetworkGeoJSONSchema.validate_version` warns (soft) on
+a missing or newer-major version and is called from `import_from_file` (the GUI load
+path — `project_tab`, `_02_energy_system_dialogs`). *Note:* the simulation path
+(`initialize_geojson`) reads geometry via `gpd.read_file`, which drops the top-level
+`metadata` member, so it never sees the version — out of scope here. Pinned by
+`tests/test_net_generation.py::TestNetworkGeoJSONVersion` (4). 270 passed.
 
 **Inventory (the persistence footprint):**
 - **Project-state JSON (app-owned, format evolves → version):** `project_settings.json`
@@ -617,9 +627,10 @@ read config by key); legacy/pre-versioning files of both kinds still load. Pinne
    That discipline — not the field — is the real protection.
 
 **Rollout (leverage → effort):** ~~(1) `utilities/schema.py` + registry, migrate the two
-D2 artifacts onto it~~ **done**; ~~(2) building JSON + `dialog_config.json`~~ **done 2026-06**;
-(3) NetworkGeoJSON schema version + load validation; (4) CSV column-contracts.
-Incremental, no big bang. Explicitly out of scope: ephemeral/interchange artifacts.
+D2 artifacts onto it~~ **done**; ~~(2) building JSON + `dialog_config.json`~~ **done**;
+~~(3) NetworkGeoJSON schema version + load validation~~ **done 2026-06**;
+(4) CSV column-contracts. Incremental, no big bang. Explicitly out of scope:
+ephemeral/interchange artifacts.
 
 ## E. Hygiene
 ### E1. `.gitignore` casing (resolved 2026-06)
