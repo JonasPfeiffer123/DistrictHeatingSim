@@ -43,6 +43,30 @@ def _filename_to_config_name(filename: str) -> str:
     return filename[len("Ergebnisse_"):-len(".json")]
 
 
+def format_kpi_range(variant_data: list[dict], key: str, fmt: str, *, empty: str = "--") -> str:
+    """
+    Summarize one KPI across the compared variants for the dashboard.
+
+    Filters out missing / zero values, then returns a single formatted number, a
+    ``"min - max"`` range when several variants differ, or ``empty`` when no
+    variant provides the value. GUI-free domain/formatting logic (extracted from
+    the view so it is unit-testable — BACKLOG B2).
+
+    :param variant_data: One result dict per variant.
+    :param key: The metric key to read from each variant dict.
+    :param fmt: A ``format()`` spec applied to each number (e.g. ``".1f"``).
+    :param empty: Text to show when no variant provides the metric.
+    :return: The formatted value / range / ``empty`` string.
+    :rtype: str
+    """
+    values = [v.get(key, 0) for v in variant_data if v.get(key, 0) not in (None, 0)]
+    if not values:
+        return empty
+    if len(values) == 1:
+        return format(values[0], fmt)
+    return f"{format(min(values), fmt)} - {format(max(values), fmt)}"
+
+
 def _discover_variant_configs(variant_path: str) -> list:
     """
     Return list of (config_name, filename) for all energy system configs in a variant.
@@ -479,79 +503,20 @@ class ComparisonDashboard(QWidget):
                 widget.value_label.setText("--")
             return
             
-        # Calculate averages or ranges for KPIs
+        # (widget key, result-dict key, number format, text when unavailable).
+        # The aggregation/formatting is in format_kpi_range (GUI-free, tested).
+        kpi_specs = [
+            ("Wärmegestehungskosten", "WGK_Gesamt", ".1f", "--"),
+            ("CO2-Emissionen", "specific_emissions_Gesamt", ".3f", "--"),
+            ("Primärenergiefaktor", "primärenergiefaktor_Gesamt", ".2f", "--"),
+            ("Jahreswärmebedarf", "Jahreswärmebedarf", ".0f", "--"),
+            ("Trassenlänge", "Trassenlänge", ".0f", "n.v."),
+            ("Verteilverluste", "Verteilverluste", ".1f", "n.v."),
+        ]
         try:
-            # Extract metrics from variant data
-            wgk_values = [v.get('WGK_Gesamt', 0) for v in self.variant_data if v.get('WGK_Gesamt', 0) not in (None, 0)]
-            co2_values = [v.get('specific_emissions_Gesamt', 0) for v in self.variant_data if v.get('specific_emissions_Gesamt', 0) not in (None, 0)]
-            pe_values = [v.get('primärenergiefaktor_Gesamt', 0) for v in self.variant_data if v.get('primärenergiefaktor_Gesamt', 0) not in (None, 0)]
-            heat_values = [v.get('Jahreswärmebedarf', 0) for v in self.variant_data if v.get('Jahreswärmebedarf', 0) not in (None, 0)]
-
-            # New: Extract network metrics
-            trassenlänge_values = [v.get('Trassenlänge', 0) for v in self.variant_data if v.get('Trassenlänge', 0) not in (None, 0)]
-            verluste_values = [v.get('Verteilverluste', 0) for v in self.variant_data if v.get('Verteilverluste', 0) not in (None, 0)]
-            
-            # Update KPI widgets with proper formatting
-            # Wärmegestehungskosten
-            if wgk_values:
-                if len(wgk_values) == 1:
-                    self.kpi_widgets['Wärmegestehungskosten'].value_label.setText(f"{wgk_values[0]:.1f}")
-                else:
-                    min_val, max_val = min(wgk_values), max(wgk_values)
-                    self.kpi_widgets['Wärmegestehungskosten'].value_label.setText(f"{min_val:.1f} - {max_val:.1f}")
-            else:
-                self.kpi_widgets['Wärmegestehungskosten'].value_label.setText("--")
-                
-            # CO2-Emissionen
-            if co2_values:
-                if len(co2_values) == 1:
-                    self.kpi_widgets['CO2-Emissionen'].value_label.setText(f"{co2_values[0]:.3f}")
-                else:
-                    min_val, max_val = min(co2_values), max(co2_values)
-                    self.kpi_widgets['CO2-Emissionen'].value_label.setText(f"{min_val:.3f} - {max_val:.3f}")
-            else:
-                self.kpi_widgets['CO2-Emissionen'].value_label.setText("--")
-                
-            # Primärenergiefaktor
-            if pe_values:
-                if len(pe_values) == 1:
-                    self.kpi_widgets['Primärenergiefaktor'].value_label.setText(f"{pe_values[0]:.2f}")
-                else:
-                    min_val, max_val = min(pe_values), max(pe_values)
-                    self.kpi_widgets['Primärenergiefaktor'].value_label.setText(f"{min_val:.2f} - {max_val:.2f}")
-            else:
-                self.kpi_widgets['Primärenergiefaktor'].value_label.setText("--")
-                
-            # Jahreswärmebedarf
-            if heat_values:
-                if len(heat_values) == 1:
-                    self.kpi_widgets['Jahreswärmebedarf'].value_label.setText(f"{heat_values[0]:.0f}")
-                else:
-                    min_val, max_val = min(heat_values), max(heat_values)
-                    self.kpi_widgets['Jahreswärmebedarf'].value_label.setText(f"{min_val:.0f} - {max_val:.0f}")
-            else:
-                self.kpi_widgets['Jahreswärmebedarf'].value_label.setText("--")
-                
-            # Trassenlänge (new)
-            if trassenlänge_values:
-                if len(trassenlänge_values) == 1:
-                    self.kpi_widgets['Trassenlänge'].value_label.setText(f"{trassenlänge_values[0]:.0f}")
-                else:
-                    min_val, max_val = min(trassenlänge_values), max(trassenlänge_values)
-                    self.kpi_widgets['Trassenlänge'].value_label.setText(f"{min_val:.0f} - {max_val:.0f}")
-            else:
-                self.kpi_widgets['Trassenlänge'].value_label.setText("n.v.")  # "nicht verfügbar"
-                
-            # Verteilverluste (new)
-            if verluste_values:
-                if len(verluste_values) == 1:
-                    self.kpi_widgets['Verteilverluste'].value_label.setText(f"{verluste_values[0]:.1f}")
-                else:
-                    min_val, max_val = min(verluste_values), max(verluste_values)
-                    self.kpi_widgets['Verteilverluste'].value_label.setText(f"{min_val:.1f} - {max_val:.1f}")
-            else:
-                self.kpi_widgets['Verteilverluste'].value_label.setText("n.v.")
-                
+            for widget_key, data_key, fmt, empty in kpi_specs:
+                text = format_kpi_range(self.variant_data, data_key, fmt, empty=empty)
+                self.kpi_widgets[widget_key].value_label.setText(text)
         except Exception:
             for widget in self.kpi_widgets.values():
                 widget.value_label.setText("--")

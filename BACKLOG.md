@@ -195,9 +195,14 @@ logic leaks into the views. Concrete findings (2026-06 survey):
      renders `network_data.kpi_results` (falling back to compute only for an older
      loaded project whose JSON predates `kpi_results`). KPI computation pinned by
      `test_net_simulation.py::TestNetworkInitialization::test_calculate_results_topology_kpis`.
+   - ~~`comparison_tab.update_kpis` inlined the KPI aggregation (filter missing/zero →
+     single value / `min`-`max` range / "unavailable") six times next to Qt label-setting.~~
+     **Done (2026-06):** extracted the GUI-free `format_kpi_range(variant_data, key, fmt,
+     empty=…)`; the view is now a data-driven loop over a `(widget, key, fmt, empty)` spec
+     (~70 lines → ~16). Pinned by `tests/test_comparison_kpis.py` (7).
    - Worker threads (`_06_calculate_energy_system_thread`, `net_calculation_threads`)
      call domain code — more acceptable (off-UI-thread) but still GUI-package
-     orchestration.
+     orchestration. (`run_energy_system_calculation` is now the GUI-free seam — see C1.)
 3. **Cross-component reach-through.** `main_view` drives other tabs by calling their
    presenters directly (`buildingTab.presenter.load_csv(...)`,
    `projectTab.presenter.save_csv(...)`).
