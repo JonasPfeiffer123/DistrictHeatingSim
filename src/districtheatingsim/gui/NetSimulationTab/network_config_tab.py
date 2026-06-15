@@ -14,7 +14,7 @@ class NetworkConfigTab(QWidget):
     """
     Widget for configuring district heating network parameters.
     """
-    
+
     def __init__(self, dialog_config, parent=None):
         """
         Initialize network configuration tab.
@@ -111,7 +111,9 @@ class NetworkConfigTab(QWidget):
         layout.addWidget(QLabel("Temperaturregelung HAST:"))
 
         self.minSupplyTempCheckbox = QCheckBox("Mindestvorlauftemperatur für die Gebäude berücksichtigen.")
-        self.minSupplyTempCheckbox.setToolTip("""Aktivieren Sie diese Option, um eine Mindestvorlauftemperatur für alle Gebäude festzulegen.\nDas können beispielsweise 60 °C sein um die Warmwasserbereitung zu gewährleisten.\nÜber die Temperaturdifferenz zwischen HAST und Netz ergibt sich dann eine Mindestvorlauftemperatur welche in der Simulation erreicht werden muss.\nWenn nicht definiert, wird keine Mindesttemperatur berücksichtigt.""")
+        self.minSupplyTempCheckbox.setToolTip(
+            """Aktivieren Sie diese Option, um eine Mindestvorlauftemperatur für alle Gebäude festzulegen.\nDas können beispielsweise 60 °C sein um die Warmwasserbereitung zu gewährleisten.\nÜber die Temperaturdifferenz zwischen HAST und Netz ergibt sich dann eine Mindestvorlauftemperatur welche in der Simulation erreicht werden muss.\nWenn nicht definiert, wird keine Mindesttemperatur berücksichtigt."""
+        )
         layout.addWidget(self.minSupplyTempCheckbox)
         self.minSupplyTempCheckbox.stateChanged.connect(self.updateInputFieldsVisibility)
         return layout
@@ -125,7 +127,9 @@ class NetworkConfigTab(QWidget):
         """
         layout = QVBoxLayout()
         self.returnTempCheckbox = QCheckBox("Rücklauftemperatur für alle HA-Stationen festlegen.")
-        self.returnTempCheckbox.setToolTip("""Aktivieren Sie diese Option, um die Rücklauftemperatur für alle HA-Stationen zentral festzulegen.\nStandardmäßig erfolgt die Berechung der Rücklauftemperaturen der HA-Station aus den Rücklauftemperaturen der Gebäude sowie der vorgegebenen Temperaturdifferenz zwischen Netz und HAST.""")
+        self.returnTempCheckbox.setToolTip(
+            """Aktivieren Sie diese Option, um die Rücklauftemperatur für alle HA-Stationen zentral festzulegen.\nStandardmäßig erfolgt die Berechung der Rücklauftemperaturen der HA-Station aus den Rücklauftemperaturen der Gebäude sowie der vorgegebenen Temperaturdifferenz zwischen Netz und HAST."""
+        )
         layout.addWidget(self.returnTempCheckbox)
         self.returnTempCheckbox.stateChanged.connect(self.updateInputFieldsVisibility)
         return layout
@@ -139,7 +143,9 @@ class NetworkConfigTab(QWidget):
         """
         layout = QVBoxLayout()
         self.buildingTempCheckbox = QCheckBox("Gebäudeheizungstemperaturen im zeitlichen Verlauf berücksichtigen.")
-        self.buildingTempCheckbox.setToolTip("""Aktivieren Sie diese Option, um die Vor- und Rücklauftemperaturen in den Gebäuden mittels Temperaturregelung entsprechend der definierten Temperaturen und der Steigung in Abhängigkeit der Außentemperatur zu berechnen.\nIst eine Mindestvorlauftemperatur vorgegeben wird diese berücksichtigt.\nDie vorgabe einer zentralen Rücklauftemperatur ergibt nur bei einem kalten Netz Sinn.""")
+        self.buildingTempCheckbox.setToolTip(
+            """Aktivieren Sie diese Option, um die Vor- und Rücklauftemperaturen in den Gebäuden mittels Temperaturregelung entsprechend der definierten Temperaturen und der Steigung in Abhängigkeit der Außentemperatur zu berechnen.\nIst eine Mindestvorlauftemperatur vorgegeben wird diese berücksichtigt.\nDie vorgabe einer zentralen Rücklauftemperatur ergibt nur bei einem kalten Netz Sinn."""
+        )
         layout.addWidget(self.buildingTempCheckbox)
         self.buildingTempCheckbox.stateChanged.connect(self.updateInputFieldsVisibility)
         return layout
@@ -155,14 +161,22 @@ class NetworkConfigTab(QWidget):
         self.parameter_rows_net = []
 
         # Hole die aktuelle Netzkonfiguration aus dem Dialog (oder nimm die erste als Fallback)
-        netconfig = self.netconfigurationControlInput.currentText() if hasattr(self, 'netconfigurationControlInput') else self.dialog_config["netconfiguration"][0]
+        netconfig = (
+            self.netconfigurationControlInput.currentText()
+            if hasattr(self, "netconfigurationControlInput")
+            else self.dialog_config["netconfiguration"][0]
+        )
         std = self.dialog_config["standardwerte"][netconfig]
 
-        self.max_supply_temp_row = self.createParameterRow("Maximale Vorlauftemperatur Heizzentrale:", str(std["max_supply_temp"]))
+        self.max_supply_temp_row = self.createParameterRow(
+            "Maximale Vorlauftemperatur Heizzentrale:", str(std["max_supply_temp"])
+        )
         self.parameter_rows_net.append(self.max_supply_temp_row)
         layout.addLayout(self.max_supply_temp_row)
 
-        self.min_supply_temp_row = self.createParameterRow("Minimale Vorlauftemperatur Heizzentrale:", str(std["min_supply_temp"]))
+        self.min_supply_temp_row = self.createParameterRow(
+            "Minimale Vorlauftemperatur Heizzentrale:", str(std["min_supply_temp"])
+        )
         self.parameter_rows_net.append(self.min_supply_temp_row)
         layout.addLayout(self.min_supply_temp_row)
 
@@ -197,10 +211,16 @@ class NetworkConfigTab(QWidget):
         self.parameter_rows_heat_consumer = []
 
         # Hole die aktuelle Netzkonfiguration aus dem Dialog (oder nimm die erste als Fallback)
-        netconfig = self.netconfigurationControlInput.currentText() if hasattr(self, 'netconfigurationControlInput') else self.dialog_config["netconfiguration"][0]
+        netconfig = (
+            self.netconfigurationControlInput.currentText()
+            if hasattr(self, "netconfigurationControlInput")
+            else self.dialog_config["netconfiguration"][0]
+        )
         std = self.dialog_config["standardwerte"][netconfig]
 
-        self.min_supply_temperature_building_row = self.createParameterRow("Minimale Vorlauftemperatur Gebäude:", str(std["min_supply_temp_building"]))
+        self.min_supply_temperature_building_row = self.createParameterRow(
+            "Minimale Vorlauftemperatur Gebäude:", str(std["min_supply_temp_building"])
+        )
         self.parameter_rows_heat_consumer.append(self.min_supply_temperature_building_row)
         layout.addLayout(self.min_supply_temperature_building_row)
 
@@ -246,9 +266,13 @@ class NetworkConfigTab(QWidget):
         layout.addWidget(self.initialpipetypeInput)
 
         # Hole die aktuelle Netzkonfiguration aus dem Dialog (oder nimm die erste als Fallback)
-        netconfig = self.netconfigurationControlInput.currentText() if hasattr(self, 'netconfigurationControlInput') else self.dialog_config["netconfiguration"][0]
+        netconfig = (
+            self.netconfigurationControlInput.currentText()
+            if hasattr(self, "netconfigurationControlInput")
+            else self.dialog_config["netconfiguration"][0]
+        )
         std = self.dialog_config["standardwerte"][netconfig]
-        
+
         default_pipe_type = std["default_pipe_type"]
         if default_pipe_type in pipetypes:
             self.initialpipetypeInput.setCurrentText(default_pipe_type)
@@ -256,7 +280,7 @@ class NetworkConfigTab(QWidget):
             pass
 
         return layout
-    
+
     def set_layout_visibility(self, layout, visible):
         """
         Set visibility of all widgets in a layout.
@@ -309,7 +333,7 @@ class NetworkConfigTab(QWidget):
                 widget = self.parameter_rows_net[0].itemAt(i).widget()
                 if widget:
                     widget.setVisible(True)
-            
+
             # Blende die Widgets für Maximale Vorlauftemperatur, Minimale Vorlauftemperatur,
             # Obere Grenze der Lufttemperatur und Untere Grenze der Lufttemperatur (Index 1 bis 4) aus
             for parameter_row in self.parameter_rows_net[1:4]:
@@ -334,12 +358,14 @@ class NetworkConfigTab(QWidget):
                         widget.setVisible(True)
 
         self.min_supply_temperature_building_checked = self.minSupplyTempCheckbox.isChecked()
-        self.set_layout_visibility(self.min_supply_temperature_building_row, self.min_supply_temperature_building_checked)
+        self.set_layout_visibility(
+            self.min_supply_temperature_building_row, self.min_supply_temperature_building_checked
+        )
 
         self.return_temp_checked = self.returnTempCheckbox.isChecked()
         self.set_layout_visibility(self.return_temp_row, self.return_temp_checked)
 
-        self.building_temp_checked =  self.buildingTempCheckbox.isChecked()
+        self.building_temp_checked = self.buildingTempCheckbox.isChecked()
 
     def getSupplyTemperatureHeatGenerator(self):
         """

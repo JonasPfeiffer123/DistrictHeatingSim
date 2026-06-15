@@ -49,7 +49,7 @@ class HeatSystemDesignGUI(QMainWindow):
     :type folder_manager: ProjectFolderManager
     :param data_manager: Central data storage system
     :type data_manager: DataManager
-    
+
     .. note::
         Tabs can be dynamically shown/hidden via the menu system to
         customize the workflow.
@@ -67,23 +67,23 @@ class HeatSystemDesignGUI(QMainWindow):
         :type data_manager: DataManager
         """
         super().__init__()
-        
+
         # MVP pattern: Initially no presenter until explicitly set
         self.presenter = None
-        
+
         # Store manager references for later use
         self.folder_manager = folder_manager
         self.data_manager = data_manager
-        
+
         # UI state management
         self.show_welcome_on_startup = True
         self.welcome_screen: WelcomeScreen | None = None
         self.main_interface_widget: QWidget | None = None
         self.stacked_widget: QStackedWidget | None = None
-        
+
         # Theme tracking
         self.current_theme_is_dark = False  # Track current theme state
-        
+
         # Initialize UI components (created later in initUI)
         self.folderLabel: QLabel | None = None
 
@@ -113,27 +113,27 @@ class HeatSystemDesignGUI(QMainWindow):
         # Configure main window properties
         self.setWindowTitle("DistrictHeatingSim")
         self.setGeometry(100, 100, 1400, 1000)
-        
+
         # Create central stacked widget to manage views
         self.stacked_widget = QStackedWidget()
         self.setCentralWidget(self.stacked_widget)
-        
+
         # Create welcome screen
         self.init_welcome_screen()
-        
-        # Create main interface widget  
+
+        # Create main interface widget
         self.init_main_interface()
-        
+
         # Add both views to the stacked widget
         self.stacked_widget.addWidget(self.welcome_screen)
         self.stacked_widget.addWidget(self.main_interface_widget)
-        
+
         # Show welcome screen by default if enabled
         if self.show_welcome_on_startup:
             self.show_welcome_screen()
         else:
             self.show_main_interface()
-        
+
         # Apply theme (this will work on both views)
         self.apply_theme()
 
@@ -141,26 +141,26 @@ class HeatSystemDesignGUI(QMainWindow):
         """Initialize the welcome screen widget."""
         # Create welcome screen with config manager for recent projects
         config_manager = None
-        if hasattr(self, 'presenter') and self.presenter:
+        if hasattr(self, "presenter") and self.presenter:
             config_manager = self.presenter.folder_manager.config_manager
-        
+
         self.welcome_screen = WelcomeScreen(config_manager)
-        
+
         # Connect welcome screen signals
         self.welcome_screen.projectSelected.connect(self.on_project_selected)
         self.welcome_screen.newProjectRequested.connect(self.on_new_project_requested)
         self.welcome_screen.themeChangeRequested.connect(self.on_theme_change_requested)
-        
+
         # Apply current application theme to welcome screen and sync toggle state
-        if hasattr(self, 'presenter') and self.presenter:
+        if hasattr(self, "presenter") and self.presenter:
             self.apply_current_theme_to_welcome_screen()
             self.sync_theme_toggle_state()
-        
+
         # Hide menu bar on welcome screen
         self.menuBar().hide()
 
     def init_main_interface(self) -> None:
-        """Initialize the main application interface widget."""        
+        """Initialize the main application interface widget."""
         # Create main interface widget if not exists
         if self.main_interface_widget is None:
             self.main_interface_widget = QWidget()
@@ -170,7 +170,7 @@ class HeatSystemDesignGUI(QMainWindow):
             self.initMenuBar()
             self.initTabs()
             self.initLogo()
-            
+
             # Add theme toggle to the top-right corner
             self.add_theme_toggle_to_main_interface()
 
@@ -198,7 +198,7 @@ class HeatSystemDesignGUI(QMainWindow):
         if self.stacked_widget and self.welcome_screen:
             self.stacked_widget.setCurrentWidget(self.welcome_screen)
             self.menuBar().hide()
-            
+
     def show_main_interface(self) -> None:
         """Switch to showing the main interface."""
         if self.stacked_widget and self.main_interface_widget:
@@ -212,37 +212,37 @@ class HeatSystemDesignGUI(QMainWindow):
         top_bar_layout = QHBoxLayout()
         top_bar_layout.setContentsMargins(0, 0, 0, 0)
         top_bar_layout.setSpacing(0)  # No spacing between menu and toggle
-        
+
         # Add menu bar to the left side - it will expand to fill available space
-        top_bar_layout.addWidget(self.menubar, 1) # stretch factor 1
-        
+        top_bar_layout.addWidget(self.menubar, 1)  # stretch factor 1
+
         # Create a compact widget for theme toggle elements
         theme_widget = QWidget()
         theme_widget.setFixedHeight(self.menubar.sizeHint().height())  # Match menu bar height
         theme_layout = QHBoxLayout(theme_widget)
         theme_layout.setContentsMargins(8, 0, 8, 0)  # Small padding on sides
         theme_layout.setSpacing(5)
-        
+
         # Theme toggle elements
         theme_label = QLabel("☀️")
         theme_label.setFont(QFont("Arial", 11))
         theme_layout.addWidget(theme_label)
-        
+
         # Create theme toggle for main interface
         self.main_theme_toggle = ThemeToggleSwitch()
         self.main_theme_toggle.setToolTip("Switch between Light and Dark theme")
         self.main_theme_toggle.toggled.connect(self.on_main_theme_toggle)
         theme_layout.addWidget(self.main_theme_toggle)
-        
+
         dark_label = QLabel("🌙")
         dark_label.setFont(QFont("Arial", 11))
         theme_layout.addWidget(dark_label)
-        
+
         # Add theme widget to the right side without stretch
         top_bar_layout.addWidget(theme_widget, 0)  # no stretch factor
-        
+
         top_bar_widget.setLayout(top_bar_layout)
-        
+
         # Replace the menu bar with the combined top bar
         self.layout1.removeWidget(self.menubar)
         self.layout1.insertWidget(0, top_bar_widget)
@@ -250,12 +250,12 @@ class HeatSystemDesignGUI(QMainWindow):
     def on_main_theme_toggle(self, checked):
         """Handle theme toggle from main interface."""
         self.current_theme_is_dark = checked
-        
+
         if checked:
-            self.applyTheme('dark_theme_style_path')
+            self.applyTheme("dark_theme_style_path")
         else:
-            self.applyTheme('light_theme_style_path')
-            
+            self.applyTheme("light_theme_style_path")
+
         # Sync welcome screen toggle if it exists
         if self.welcome_screen:
             self.welcome_screen.set_current_theme(checked)
@@ -264,10 +264,10 @@ class HeatSystemDesignGUI(QMainWindow):
         """Handle project selection from welcome screen."""
         # Switch to main interface
         self.show_main_interface()
-        
+
         # Sync theme toggle state
         self.sync_theme_toggle_state()
-        
+
         # Use the existing project opening functionality
         try:
             # Call the existing method that handles project opening with all the proper logic
@@ -277,12 +277,12 @@ class HeatSystemDesignGUI(QMainWindow):
 
     def on_new_project_requested(self):
         """Handle new project creation request from welcome screen."""
-        # Switch to main interface 
+        # Switch to main interface
         self.show_main_interface()
-        
+
         # Sync theme toggle state
         self.sync_theme_toggle_state()
-        
+
         # Use the existing new project functionality
         try:
             self.on_create_new_project()
@@ -292,7 +292,7 @@ class HeatSystemDesignGUI(QMainWindow):
     def show_save_dialog(self, title: str, info_text: str, accept_text: str) -> str:
         """
         Show standardized save dialog for project operations.
-        
+
         :param title: Dialog window title
         :type title: str
         :param info_text: Informative text explaining the operation
@@ -302,17 +302,17 @@ class HeatSystemDesignGUI(QMainWindow):
         :return: User choice: 'save', 'discard', 'cancel', or 'continue'
         :rtype: str
         """
-        if not hasattr(self, 'base_path') or not self.base_path:
-            return 'continue'  # No project loaded, continue operation
-            
+        if not hasattr(self, "base_path") or not self.base_path:
+            return "continue"  # No project loaded, continue operation
+
         from PyQt6.QtWidgets import QMessageBox
-        
+
         # Create custom message box with three options
         msgBox = QMessageBox(self)
         msgBox.setWindowTitle(title)
-        msgBox.setText('Es ist ein Projekt geöffnet.')
+        msgBox.setText("Es ist ein Projekt geöffnet.")
         msgBox.setInformativeText(info_text)
-        
+
         # Force larger dialog size with stylesheet
         msgBox.setStyleSheet("""
             QMessageBox {
@@ -331,21 +331,21 @@ class HeatSystemDesignGUI(QMainWindow):
                 margin: 2px;
             }
         """)
-        
+
         # Add custom buttons
         saveButton = msgBox.addButton(accept_text, QMessageBox.ButtonRole.AcceptRole)
-        discardButton = msgBox.addButton('Ohne Speichern fortfahren', QMessageBox.ButtonRole.DestructiveRole)
-        msgBox.addButton('Abbrechen', QMessageBox.ButtonRole.RejectRole)
-        
+        discardButton = msgBox.addButton("Ohne Speichern fortfahren", QMessageBox.ButtonRole.DestructiveRole)
+        msgBox.addButton("Abbrechen", QMessageBox.ButtonRole.RejectRole)
+
         msgBox.setDefaultButton(saveButton)  # Default to save for safety
         msgBox.exec()
-        
+
         if msgBox.clickedButton() == saveButton:
-            return 'save'
+            return "save"
         elif msgBox.clickedButton() == discardButton:
-            return 'discard'
+            return "discard"
         else:
-            return 'cancel'
+            return "cancel"
 
     def on_back_to_welcome(self):
         """
@@ -353,12 +353,12 @@ class HeatSystemDesignGUI(QMainWindow):
         Give user choice to save, discard, or cancel if project is loaded.
         """
         dialog_result = self.show_save_dialog(
-            'Zurück zum Start',
-            'Möchten Sie Ihre Änderungen vor dem Wechsel zum Startbildschirm speichern?',
-            'Speichern und zum Start'
+            "Zurück zum Start",
+            "Möchten Sie Ihre Änderungen vor dem Wechsel zum Startbildschirm speichern?",
+            "Speichern und zum Start",
         )
-        
-        if dialog_result == 'save':
+
+        if dialog_result == "save":
             # Save and go to welcome
             if not self.save_all_project_results():
                 return  # User cancelled save operation
@@ -367,14 +367,14 @@ class HeatSystemDesignGUI(QMainWindow):
             if self.welcome_screen:
                 self.welcome_screen.refresh_recent_projects()
                 self.sync_theme_toggle_state()
-        elif dialog_result == 'discard':
+        elif dialog_result == "discard":
             # Go to welcome without saving
             self.base_path = ""
             self.show_welcome_screen()
             if self.welcome_screen:
                 self.welcome_screen.refresh_recent_projects()
                 self.sync_theme_toggle_state()
-        elif dialog_result == 'continue':
+        elif dialog_result == "continue":
             # No project loaded, go to welcome normally
             self.show_welcome_screen()
             if self.welcome_screen:
@@ -385,13 +385,13 @@ class HeatSystemDesignGUI(QMainWindow):
     def on_theme_change_requested(self, theme_path: str):
         """Handle theme change request from welcome screen."""
         # Update theme state tracking
-        self.current_theme_is_dark = 'dark' in theme_path.lower()
-        
+        self.current_theme_is_dark = "dark" in theme_path.lower()
+
         # Apply theme to the entire application
         self.applyTheme(theme_path)
-        
+
         # Update the main interface toggle switch state to reflect the new theme
-        if hasattr(self, 'main_theme_toggle') and self.main_theme_toggle:
+        if hasattr(self, "main_theme_toggle") and self.main_theme_toggle:
             self.main_theme_toggle.toggled.disconnect(self.on_main_theme_toggle)
             self.main_theme_toggle.setChecked(self.current_theme_is_dark)
             self.main_theme_toggle.toggled.connect(self.on_main_theme_toggle)
@@ -400,7 +400,7 @@ class HeatSystemDesignGUI(QMainWindow):
         """Read a stylesheet file and return its content, or None on failure."""
         try:
             if os.path.exists(theme_path):
-                with open(theme_path, encoding='utf-8') as f:
+                with open(theme_path, encoding="utf-8") as f:
                     return f.read()
         except Exception:
             pass
@@ -410,8 +410,9 @@ class HeatSystemDesignGUI(QMainWindow):
         """Apply the time-based default theme to the entire application."""
         try:
             from districtheatingsim.utilities.utilities import get_stylesheet_based_on_time
+
             theme_path = get_stylesheet_based_on_time()
-            self.current_theme_is_dark = 'dark' in theme_path.lower()
+            self.current_theme_is_dark = "dark" in theme_path.lower()
             content = self._read_stylesheet(theme_path)
             if content:
                 self.setStyleSheet(content)
@@ -427,6 +428,7 @@ class HeatSystemDesignGUI(QMainWindow):
             return
         try:
             from districtheatingsim.utilities.utilities import get_stylesheet_based_on_time
+
             content = self._read_stylesheet(get_stylesheet_based_on_time())
             if content:
                 self.welcome_screen.setStyleSheet(content)
@@ -434,12 +436,12 @@ class HeatSystemDesignGUI(QMainWindow):
             pass
 
     def sync_theme_toggle_state(self):
-        """Synchronize the theme toggle switch with the current theme."""        
+        """Synchronize the theme toggle switch with the current theme."""
         try:
             is_dark = self.current_theme_is_dark
             if self.welcome_screen:
                 self.welcome_screen.set_current_theme(is_dark)
-            if hasattr(self, 'main_theme_toggle') and self.main_theme_toggle:
+            if hasattr(self, "main_theme_toggle") and self.main_theme_toggle:
                 self.main_theme_toggle.toggled.disconnect(self.on_main_theme_toggle)
                 self.main_theme_toggle.setChecked(is_dark)
                 self.main_theme_toggle.toggled.connect(self.on_main_theme_toggle)
@@ -458,17 +460,17 @@ class HeatSystemDesignGUI(QMainWindow):
         self.menubar.setFixedHeight(30)
 
         # File Menu - Project and data management
-        fileMenu = self.menubar.addMenu('Datei')
+        fileMenu = self.menubar.addMenu("Datei")
 
         # Back to Welcome Screen action
-        backToWelcomeAction = QAction('🏠 Zurück zum Start', self)
+        backToWelcomeAction = QAction("🏠 Zurück zum Start", self)
         fileMenu.addAction(backToWelcomeAction)
         fileMenu.addSeparator()  # Visual separation from project operations
 
         # Recent Projects submenu with dynamic content
-        recentMenu = fileMenu.addMenu('Zuletzt geöffnet')
+        recentMenu = fileMenu.addMenu("Zuletzt geöffnet")
         recent_projects = self.presenter.folder_manager.config_manager.get_recent_projects()
-        
+
         if recent_projects:
             # Add recent projects with click handlers
             for project in recent_projects:
@@ -477,36 +479,36 @@ class HeatSystemDesignGUI(QMainWindow):
                 recentMenu.addAction(action)
         else:
             # Provide user feedback when no recent projects exist
-            no_recent_action = QAction('Keine kürzlich geöffneten Projekte', self)
+            no_recent_action = QAction("Keine kürzlich geöffneten Projekte", self)
             no_recent_action.setEnabled(False)
             recentMenu.addAction(no_recent_action)
 
         # Add primary file actions to file menu
-        createNewProjectAction = QAction('Neues Projekt erstellen', self)
-        chooseProjectAction = QAction('Projekt öffnen', self)
-        createCopyAction = QAction('Projektkopie erstellen', self)
+        createNewProjectAction = QAction("Neues Projekt erstellen", self)
+        chooseProjectAction = QAction("Projekt öffnen", self)
+        createCopyAction = QAction("Projektkopie erstellen", self)
         for primaryFileAction in [createNewProjectAction, chooseProjectAction, createCopyAction]:
             fileMenu.addAction(primaryFileAction)
-        
+
         fileMenu.addSeparator()  # Separate each major action for clarity
 
         # Add project variant actions to file menu
-        openVariantAction = QAction('Variante öffnen', self)
-        createVariantAction = QAction('Variante erstellen', self)
-        createVariantCopyAction = QAction('Variantenkopie erstellen', self)
+        openVariantAction = QAction("Variante öffnen", self)
+        createVariantAction = QAction("Variante erstellen", self)
+        createVariantCopyAction = QAction("Variantenkopie erstellen", self)
         for variantAction in [openVariantAction, createVariantAction, createVariantCopyAction]:
             fileMenu.addAction(variantAction)
-        
+
         fileMenu.addSeparator()  # Separate each major action for clarity
 
         # Add data import/export actions to file menu
-        importResultsAction = QAction('Projektstand / -ergebnisse Laden', self)
+        importResultsAction = QAction("Projektstand / -ergebnisse Laden", self)
         fileMenu.addAction(importResultsAction)
 
         # Data Menu - External data configuration
-        dataMenu = self.menubar.addMenu('Datenbasis')
-        chooseTemperatureDataAction = QAction('Temperaturdaten festlegen', self)
-        createCOPDataAction = QAction('COP-Kennfeld festlegen', self)
+        dataMenu = self.menubar.addMenu("Datenbasis")
+        chooseTemperatureDataAction = QAction("Temperaturdaten festlegen", self)
+        createCOPDataAction = QAction("COP-Kennfeld festlegen", self)
         dataMenu.addAction(chooseTemperatureDataAction)
         dataMenu.addAction(createCOPDataAction)
 
@@ -535,47 +537,33 @@ class HeatSystemDesignGUI(QMainWindow):
         # Create main tab widget with closeable tabs
         self.tabWidget = QTabWidget()
         self.tabWidget.setTabsClosable(False)
-        
+
         # Add tab widget to main layout
         self.layout1.addWidget(self.tabWidget)
 
         # Initialize all analysis tabs with proper manager dependencies
         self.projectTab = ProjectTab(
-            self.presenter.folder_manager, 
-            self.presenter.data_manager, 
-            self.presenter.config_manager
+            self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager
         )
-        
+
         self.buildingTab = BuildingTab(
-            self.presenter.folder_manager, 
-            self.presenter.data_manager, 
-            self.presenter.config_manager
+            self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager
         )
-        
+
         self.visTab2 = VisualizationTabLeaflet(
-            self.presenter.folder_manager, 
-            self.presenter.data_manager, 
-            self.presenter.config_manager
+            self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager
         )
-        
+
         self.calcTab = CalculationTab(
-            self.presenter.folder_manager, 
-            self.presenter.data_manager, 
-            self.presenter.config_manager, 
-            self
+            self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager, self
         )
-        
+
         self.energySystemTab = EnergySystemTab(
-            self.presenter.folder_manager, 
-            self.presenter.data_manager, 
-            self.presenter.config_manager, 
-            self
+            self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager, self
         )
-        
+
         self.comparisonTab = ComparisonTab(
-            self.presenter.folder_manager, 
-            self.presenter.data_manager, 
-            self.presenter.config_manager
+            self.presenter.folder_manager, self.presenter.data_manager, self.presenter.config_manager
         )
         # Add tabs to interface with proper German localization
         self.tabWidget.addTab(self.projectTab, "Projektdefinition")
@@ -594,8 +582,10 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         try:
             # Primary logo loading through configuration manager
-            logo_path = self.presenter.config_manager.get_resource_path(self.presenter.config_manager.get_relative_path('logo_path'))
-            
+            logo_path = self.presenter.config_manager.get_resource_path(
+                self.presenter.config_manager.get_relative_path("logo_path")
+            )
+
             # Create and validate icon
             icon = QIcon(logo_path)
             if not icon.isNull():
@@ -603,17 +593,17 @@ class HeatSystemDesignGUI(QMainWindow):
                 return
         except Exception:
             pass
-            
+
         # Comprehensive fallback mechanism for logo discovery
         try:
             base = os.path.dirname(__file__)
             fallback_paths = [
-                os.path.join('images', 'logo.png'),
-                os.path.join(base, 'images', 'logo.png'),
-                os.path.join(base, '..', 'images', 'logo.png'),
-                os.path.join(base, '..', '..', 'images', 'logo.png'),
+                os.path.join("images", "logo.png"),
+                os.path.join(base, "images", "logo.png"),
+                os.path.join(base, "..", "images", "logo.png"),
+                os.path.join(base, "..", "..", "images", "logo.png"),
             ]
-            
+
             for path in fallback_paths:
                 if os.path.exists(path):
                     icon = QIcon(path)
@@ -670,18 +660,18 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         # Check if user wants to save current project before creating new one
         dialog_result = self.show_save_dialog(
-            'Neues Projekt erstellen',
-            'Möchten Sie Ihre Änderungen vor dem Erstellen eines neuen Projekts speichern?',
-            'Speichern und neues Projekt erstellen'
+            "Neues Projekt erstellen",
+            "Möchten Sie Ihre Änderungen vor dem Erstellen eines neuen Projekts speichern?",
+            "Speichern und neues Projekt erstellen",
         )
-        
-        if dialog_result == 'cancel':
+
+        if dialog_result == "cancel":
             return  # User cancelled operation
-        elif dialog_result == 'save':
+        elif dialog_result == "save":
             if not self.save_all_project_results():
                 return  # User cancelled save operation
         # If 'discard' or 'continue', proceed without saving
-        
+
         # Determine parent directory for new project
         # If no project is loaded, use a sensible default or ask user
         if self.base_path:
@@ -690,7 +680,7 @@ class HeatSystemDesignGUI(QMainWindow):
             # No project loaded - ask user to select parent folder
             # Try to use the most recent project's parent directory
             start_dir = None
-            if hasattr(self, 'presenter') and self.presenter and self.presenter.folder_manager:
+            if hasattr(self, "presenter") and self.presenter and self.presenter.folder_manager:
                 try:
                     config_manager = self.presenter.folder_manager.config_manager
                     recent_projects = config_manager.get_recent_projects()
@@ -699,7 +689,7 @@ class HeatSystemDesignGUI(QMainWindow):
                         start_dir = os.path.dirname(recent_projects[0])
                 except Exception:
                     pass
-            
+
             # Fallback to Documents folder if no recent projects
             if not start_dir:
                 default_dir = os.path.expanduser("~/Documents")
@@ -707,30 +697,23 @@ class HeatSystemDesignGUI(QMainWindow):
                     start_dir = default_dir
                 else:
                     start_dir = os.path.expanduser("~")
-            
+
             folder_path = QFileDialog.getExistingDirectory(
-                self,
-                "Übergeordneten Ordner für neues Projekt auswählen",
-                start_dir
+                self, "Übergeordneten Ordner für neues Projekt auswählen", start_dir
             )
-        
+
         if folder_path:
             # Collect project name from user
             projectName, ok = QInputDialog.getText(
-                self, 
-                'Neues Projekt', 
-                'Projektnamen eingeben:', 
-                text='Neues Projekt'
+                self, "Neues Projekt", "Projektnamen eingeben:", text="Neues Projekt"
             )
-            
+
             # Process project creation if user confirmed
             if ok and projectName:
                 success = self.presenter.create_new_project(folder_path, projectName)
                 if success:
                     QMessageBox.information(
-                        self, 
-                        "Projekt erstellt", 
-                        f"Projekt '{projectName}' wurde erfolgreich erstellt."
+                        self, "Projekt erstellt", f"Projekt '{projectName}' wurde erfolgreich erstellt."
                     )
 
     def on_open_existing_project(self, folder_path: str | None = None) -> None:
@@ -745,30 +728,28 @@ class HeatSystemDesignGUI(QMainWindow):
         # Handle folder selection - either direct path or user dialog
         if not folder_path:
             folder_path = QFileDialog.getExistingDirectory(
-                self, 
-                "Projektordner auswählen", 
-                os.path.dirname(os.path.dirname(self.base_path))
+                self, "Projektordner auswählen", os.path.dirname(os.path.dirname(self.base_path))
             )
 
         try:
             # Check if user wants to save before switching projects
             dialog_result = self.show_save_dialog(
-                'Projekt öffnen',
-                'Möchten Sie Ihre Änderungen vor dem Öffnen eines anderen Projekts speichern?',
-                'Speichern und Projekt öffnen'
+                "Projekt öffnen",
+                "Möchten Sie Ihre Änderungen vor dem Öffnen eines anderen Projekts speichern?",
+                "Speichern und Projekt öffnen",
             )
-            
-            if dialog_result == 'cancel':
+
+            if dialog_result == "cancel":
                 return  # User cancelled operation
-            elif dialog_result == 'save':
+            elif dialog_result == "save":
                 if not self.save_all_project_results():
                     return  # User cancelled save operation
             # If 'discard' or 'continue', proceed without saving
-            
+
             # Validate project path and proceed with opening
             if folder_path and os.path.exists(folder_path):
                 self.presenter.open_existing_project(folder_path)
-                
+
                 # Discover and present available variants
                 available_variants = self.get_available_variants(folder_path)
                 if available_variants:
@@ -781,12 +762,7 @@ class HeatSystemDesignGUI(QMainWindow):
                     else:
                         # Multiple variants - let user choose
                         variant_name, ok = QInputDialog.getItem(
-                            self, 
-                            'Variante auswählen', 
-                            'Wähle eine Variante aus:', 
-                            available_variants, 
-                            0, 
-                            False
+                            self, "Variante auswählen", "Wähle eine Variante aus:", available_variants, 0, False
                         )
                         if ok and variant_name:
                             self.presenter.folder_manager.set_variant_folder(variant_name)
@@ -796,7 +772,7 @@ class HeatSystemDesignGUI(QMainWindow):
                     self.show_error_message("Keine verfügbaren Varianten gefunden.")
             else:
                 raise FileNotFoundError(f"Projektpfad '{folder_path}' nicht gefunden.")
-                
+
         except FileNotFoundError as e:
             self.show_error_message(str(e))
 
@@ -813,9 +789,7 @@ class HeatSystemDesignGUI(QMainWindow):
         :rtype: list of str
         """
         if not os.path.isdir(project_path):
-            self.show_error_message(
-                f"Der Projektpfad '{project_path}' konnte nicht gefunden werden."
-            )
+            self.show_error_message(f"Der Projektpfad '{project_path}' konnte nicht gefunden werden.")
             return []
         return discover_variants(project_path)
 
@@ -828,25 +802,21 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         # Check if user wants to save current changes before creating copy
         dialog_result = self.show_save_dialog(
-            'Projektkopie erstellen',
-            'Möchten Sie Ihre Änderungen vor dem Erstellen der Projektkopie speichern?',
-            'Speichern und Kopie erstellen'
+            "Projektkopie erstellen",
+            "Möchten Sie Ihre Änderungen vor dem Erstellen der Projektkopie speichern?",
+            "Speichern und Kopie erstellen",
         )
-        
-        if dialog_result == 'cancel':
+
+        if dialog_result == "cancel":
             return  # User cancelled operation
-        elif dialog_result == 'save':
+        elif dialog_result == "save":
             if not self.save_all_project_results():
                 return  # User cancelled save operation
         # If 'discard', proceed without saving
-            
+
         success = self.presenter.create_project_copy()
         if success:
-            QMessageBox.information(
-                self, 
-                "Info", 
-                "Projektkopie wurde erfolgreich erstellt."
-            )
+            QMessageBox.information(self, "Info", "Projektkopie wurde erfolgreich erstellt.")
 
     def on_open_variant(self) -> None:
         """
@@ -862,32 +832,27 @@ class HeatSystemDesignGUI(QMainWindow):
 
         # Check if user wants to save current changes before opening variant
         dialog_result = self.show_save_dialog(
-            'Variante öffnen',
-            'Möchten Sie Ihre Änderungen vor dem Öffnen der Variante speichern?',
-            'Speichern und Variante öffnen'
+            "Variante öffnen",
+            "Möchten Sie Ihre Änderungen vor dem Öffnen der Variante speichern?",
+            "Speichern und Variante öffnen",
         )
-        
-        if dialog_result == 'cancel':
+
+        if dialog_result == "cancel":
             return  # User cancelled operation
-        elif dialog_result == 'save':
+        elif dialog_result == "save":
             if not self.save_all_project_results():
                 return  # User cancelled save operation
         # If 'discard', proceed without saving
-            
+
         # Discover available variants in current project
         available_variants = self.get_available_variants(project_folder)
 
         if available_variants:
             # Present variant selection to user
             variant_name, ok = QInputDialog.getItem(
-                self, 
-                'Variante öffnen', 
-                'Wähle eine Variante aus:', 
-                available_variants, 
-                0, 
-                False
+                self, "Variante öffnen", "Wähle eine Variante aus:", available_variants, 0, False
             )
-            
+
             # Activate selected variant
             if ok and variant_name:
                 self.presenter.folder_manager.set_variant_folder(variant_name)
@@ -905,25 +870,21 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         # Check if user wants to save current changes before creating variant
         dialog_result = self.show_save_dialog(
-            'Projektvariante erstellen',
-            'Möchten Sie Ihre Änderungen vor dem Erstellen der Projektvariante speichern?',
-            'Speichern und Variante erstellen'
+            "Projektvariante erstellen",
+            "Möchten Sie Ihre Änderungen vor dem Erstellen der Projektvariante speichern?",
+            "Speichern und Variante erstellen",
         )
-        
-        if dialog_result == 'cancel':
+
+        if dialog_result == "cancel":
             return  # User cancelled operation
-        elif dialog_result == 'save':
+        elif dialog_result == "save":
             if not self.save_all_project_results():
                 return  # User cancelled save operation
         # If 'discard', proceed without saving
-            
+
         success = self.presenter.create_project_variant()
         if success:
-            QMessageBox.information(
-                self, 
-                "Info", 
-                "Projektvariante wurde erfolgreich erstellt."
-            )
+            QMessageBox.information(self, "Info", "Projektvariante wurde erfolgreich erstellt.")
 
     def on_create_project_variant_copy(self) -> None:
         """
@@ -934,25 +895,21 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         # Check if user wants to save current changes before creating variant copy
         dialog_result = self.show_save_dialog(
-            'Projektvariantenkopie erstellen',
-            'Möchten Sie Ihre Änderungen vor dem Erstellen der Projektvariantenkopie speichern?',
-            'Speichern und Kopie erstellen'
+            "Projektvariantenkopie erstellen",
+            "Möchten Sie Ihre Änderungen vor dem Erstellen der Projektvariantenkopie speichern?",
+            "Speichern und Kopie erstellen",
         )
-        
-        if dialog_result == 'cancel':
+
+        if dialog_result == "cancel":
             return  # User cancelled operation
-        elif dialog_result == 'save':
+        elif dialog_result == "save":
             if not self.save_all_project_results():
                 return  # User cancelled save operation
         # If 'discard', proceed without saving
-            
+
         success = self.presenter.create_project_variant_copy()
         if success:
-            QMessageBox.information(
-                self, 
-                "Info", 
-                "Projektvariantenkopie wurde erfolgreich erstellt."
-            )
+            QMessageBox.information(self, "Info", "Projektvariantenkopie wurde erfolgreich erstellt.")
 
     # Data Management Methods
     # =======================
@@ -960,27 +917,27 @@ class HeatSystemDesignGUI(QMainWindow):
     def show_temporary_success_message(self, message: str, duration_ms: int = 2000) -> None:
         """
         Display auto-dismissing success message.
-        
+
         :param message: Success message to display
         :type message: str
         :param duration_ms: Display duration in milliseconds (default: 2000)
         :type duration_ms: int
         """
         from PyQt6.QtCore import QTimer
-        
+
         # Create and show the message box
         msg_box = QMessageBox(self)
         msg_box.setIcon(QMessageBox.Icon.Information)
         msg_box.setWindowTitle("Erfolgreich")
         msg_box.setText(message)
         msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
-        
+
         # Create timer to close the dialog automatically
         timer = QTimer()
         timer.timeout.connect(msg_box.accept)
         timer.setSingleShot(True)
         timer.start(duration_ms)
-        
+
         # Show the dialog
         msg_box.exec()
 
@@ -993,32 +950,30 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         try:
             # Check if we have a valid project and variant loaded
-            if not hasattr(self, 'base_path') or not self.base_path:
+            if not hasattr(self, "base_path") or not self.base_path:
                 return
-                
+
             # Building data auto-load (without dialogs)
             try:
                 building_data_path = os.path.join(
-                    self.base_path, 
-                    self.presenter.config_manager.get_relative_path("current_building_data_path")
+                    self.base_path, self.presenter.config_manager.get_relative_path("current_building_data_path")
                 )
                 building_profile_path = os.path.join(
-                    self.base_path, 
-                    self.presenter.config_manager.get_relative_path("building_load_profile_path")
+                    self.base_path, self.presenter.config_manager.get_relative_path("building_load_profile_path")
                 )
-                
+
                 # Load building data if files exist (no dialogs)
                 if os.path.exists(building_data_path):
                     self.projectTab.presenter.load_csv(building_data_path)
                     self.buildingTab.presenter.load_csv(building_data_path, show_dialog=False)
-                    
+
                 if os.path.exists(building_profile_path):
                     self.buildingTab.presenter.load_json(building_profile_path, show_dialog=False)
-                    
+
             except Exception:
                 # Silently continue if building data loading fails
                 pass
-            
+
             # Network data auto-load (without dialogs)
             try:
                 self.calcTab.loadNet(show_dialog=False)
@@ -1026,17 +981,17 @@ class HeatSystemDesignGUI(QMainWindow):
             except Exception:
                 # Silently continue if network data loading fails
                 pass
-            
+
             # Energy system data auto-load
             try:
                 self.energySystemTab.load_results_JSON(show_dialog=False)
             except Exception:
                 # Silently continue if energy system data loading fails
                 pass
-                
+
             # Show temporary success message that disappears after 1 second
             self.show_temporary_success_message("Projektdaten wurden erfolgreich geladen.")
-            
+
         except Exception as e:
             # Handle import errors with specific information
             self.show_error_message(f"Fehler beim Laden der Projektdaten: {str(e)}")
@@ -1048,7 +1003,7 @@ class HeatSystemDesignGUI(QMainWindow):
         Sollte vor dem Schließen der Anwendung und beim Wechsel des Projekts/Variante aufgerufen werden.
         Vor dem Speichern wird ein Warn-Dialog angezeigt, der auf fehlende Versionierung und mögliche Überschreibung hinweist.
         Bricht der Nutzer den Dialog ab, wird die Aktion abgebrochen.
-        
+
         Returns
         -------
         bool
@@ -1059,7 +1014,7 @@ class HeatSystemDesignGUI(QMainWindow):
             "Achtung: Daten werden überschrieben!",
             "Mit dieser Aktion werden alle aktuellen Projektdaten überschrieben. Es ist noch keine Versionierung implementiert. Möchten Sie fortfahren?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
-            QMessageBox.StandardButton.Cancel
+            QMessageBox.StandardButton.Cancel,
         )
         if reply != QMessageBox.StandardButton.Yes:
             # Aktion abbrechen, falls der Nutzer abbricht
@@ -1068,29 +1023,29 @@ class HeatSystemDesignGUI(QMainWindow):
         errors = []
         try:
             # Gebäudedaten speichern
-            if hasattr(self, 'projectTab') and hasattr(self.projectTab.presenter, 'save_csv'):
+            if hasattr(self, "projectTab") and hasattr(self.projectTab.presenter, "save_csv"):
                 try:
                     self.projectTab.presenter.save_csv(show_dialog=False)
                 except Exception as e:
                     errors.append(f"ProjektTab: {str(e)}")
-            if hasattr(self, 'buildingTab') and hasattr(self.buildingTab.presenter, 'save_csv'):
+            if hasattr(self, "buildingTab") and hasattr(self.buildingTab.presenter, "save_csv"):
                 try:
                     self.buildingTab.presenter.save_csv(show_dialog=False)
                 except Exception as e:
                     errors.append(f"BuildingTab: {str(e)}")
             # Netzdaten speichern
-            if hasattr(self, 'calcTab') and hasattr(self.calcTab, 'saveNet'):
+            if hasattr(self, "calcTab") and hasattr(self.calcTab, "saveNet"):
                 try:
                     self.calcTab.saveNet(show_dialog=False)
                 except Exception as e:
                     errors.append(f"CalcTab: {str(e)}")
-            if hasattr(self, 'calcTab') and hasattr(self.calcTab, 'exportNetGeoJSON'):
+            if hasattr(self, "calcTab") and hasattr(self.calcTab, "exportNetGeoJSON"):
                 try:
                     self.calcTab.exportNetGeoJSON(show_dialog=False)
                 except Exception as e:
                     errors.append(f"CalcTab GeoJSON: {str(e)}")
             # Energiesystem speichern
-            if hasattr(self, 'energySystemTab') and hasattr(self.energySystemTab, 'save_results_JSON'):
+            if hasattr(self, "energySystemTab") and hasattr(self.energySystemTab, "save_results_JSON"):
                 try:
                     self.energySystemTab.save_results_JSON(show_dialog=False)
                 except Exception as e:
@@ -1120,7 +1075,7 @@ class HeatSystemDesignGUI(QMainWindow):
         try:
             # Resolve theme path through configuration manager
             qss_path = self.presenter.config_manager.get_resource_path(theme_path)
-            
+
             # Validate theme file existence
             content = self._read_stylesheet(qss_path)
             if content:
@@ -1129,7 +1084,7 @@ class HeatSystemDesignGUI(QMainWindow):
                     self.welcome_screen.setStyleSheet(content)
             else:
                 self.show_error_message(f"Stylesheet {qss_path} nicht gefunden.")
-                
+
         except Exception as e:
             self.show_error_message(f"Fehler beim Anwenden des Themes: {str(e)}")
 
@@ -1180,7 +1135,7 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         try:
             TRY = self.temperatureDataDialog.getValues()
-            path = TRY['TRY-filename']
+            path = TRY["TRY-filename"]
             self.presenter.folder_manager.set_try_filename(path)
         except Exception as e:
             self.show_error_message(f"Fehler beim Aktualisieren der Temperaturdaten: {str(e)}")
@@ -1192,30 +1147,29 @@ class HeatSystemDesignGUI(QMainWindow):
         """
         try:
             COP = self.heatPumpDataDialog.getValues()
-            path = COP['COP-filename']
+            path = COP["COP-filename"]
             self.presenter.folder_manager.set_cop_filename(path)
         except Exception as e:
             self.show_error_message(f"Fehler beim Aktualisieren der Wärmepumpendaten: {str(e)}")
-
 
     def closeEvent(self, event):
         """
         Save all project results before closing the application.
         Only if a project is loaded. Allows user to cancel application closure.
         """
-        if hasattr(self, 'base_path') and self.base_path:
+        if hasattr(self, "base_path") and self.base_path:
             # Check if user wants to save current changes before closing
             dialog_result = self.show_save_dialog(
-                'Anwendung schließen',
-                'Möchten Sie Ihre Änderungen vor dem Schließen der Anwendung speichern?',
-                'Speichern und schließen'
+                "Anwendung schließen",
+                "Möchten Sie Ihre Änderungen vor dem Schließen der Anwendung speichern?",
+                "Speichern und schließen",
             )
-            
-            if dialog_result == 'cancel':
+
+            if dialog_result == "cancel":
                 # User cancelled, prevent application closure
                 event.ignore()
                 return
-            elif dialog_result == 'save':
+            elif dialog_result == "save":
                 if not self.save_all_project_results():
                     # User cancelled save operation, prevent closure
                     event.ignore()
@@ -1224,9 +1178,15 @@ class HeatSystemDesignGUI(QMainWindow):
 
         # Stop any running worker threads before the widgets are destroyed, so Qt does
         # not abort on a QThread that is still running (C1).
-        for tab in (self.projectTab, self.buildingTab, self.visTab2,
-                    self.calcTab, self.energySystemTab, self.comparisonTab):
-            stop = getattr(tab, 'stop_threads', None)
+        for tab in (
+            self.projectTab,
+            self.buildingTab,
+            self.visTab2,
+            self.calcTab,
+            self.energySystemTab,
+            self.comparisonTab,
+        ):
+            stop = getattr(tab, "stop_threads", None)
             if callable(stop):
                 stop()
 

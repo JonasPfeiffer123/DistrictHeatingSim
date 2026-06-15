@@ -53,9 +53,9 @@ class CheckableComboBox(QComboBox):
         Update displayed text to show checked items.
         """
         if self.checked_items:
-            self.setEditText(', '.join(self.checked_items))
+            self.setEditText(", ".join(self.checked_items))
         else:
-            self.setEditText('')
+            self.setEditText("")
 
     def addItem(self, text, data=None):
         """
@@ -117,6 +117,7 @@ class CheckableComboBox(QComboBox):
         """
         return self.checked_items
 
+
 class CollapsibleHeader(QWidget):
     def __init__(self, title, content_widget):
         super().__init__()
@@ -145,7 +146,9 @@ class CollapsibleHeader(QWidget):
     def toggle_content(self):
         self.is_expanded = not self.is_expanded
         self.content_widget.setVisible(self.is_expanded)
-        self.toggle_button.setText(f"{'▼' if self.is_expanded else '▶'} {self.toggle_button.text()[2:]}")  # Update arrow
+        self.toggle_button.setText(
+            f"{'▼' if self.is_expanded else '▶'} {self.toggle_button.text()[2:]}"
+        )  # Update arrow
 
         # Adjust size based on expanded/collapsed state
         self.updateGeometry()

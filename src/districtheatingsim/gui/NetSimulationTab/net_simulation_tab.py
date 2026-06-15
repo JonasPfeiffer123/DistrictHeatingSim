@@ -79,7 +79,7 @@ class NetSimulationTab(QWidget):
         self.folder_manager = folder_manager
         self.data_manager = data_manager
         self.config_manager = config_manager
-        plt.style.use('seaborn-v0_8-darkgrid')
+        plt.style.use("seaborn-v0_8-darkgrid")
 
         self.folder_manager.project_folder_changed.connect(self._update_base_path)
         self.folder_manager.crs_changed.connect(self._sync_crs)
@@ -127,23 +127,23 @@ class NetSimulationTab(QWidget):
         menubar = QMenuBar(self)
         menubar.setFixedHeight(30)
 
-        file_menu = menubar.addMenu('Datei')
-        net_menu = menubar.addMenu('Wärmenetz generieren')
-        calc_menu = menubar.addMenu('Zeitreihenberechnung durchführen')
+        file_menu = menubar.addMenu("Datei")
+        net_menu = menubar.addMenu("Wärmenetz generieren")
+        calc_menu = menubar.addMenu("Zeitreihenberechnung durchführen")
 
-        save_action = QAction('Pandapipes Netz speichern', self)
-        load_action = QAction('Pandapipes Netz laden', self)
-        load_results_action = QAction('Ergebnisse Zeitreihenrechnung Laden', self)
-        export_action = QAction('Pandapipes Netz als geoJSON exportieren', self)
+        save_action = QAction("Pandapipes Netz speichern", self)
+        load_action = QAction("Pandapipes Netz laden", self)
+        load_results_action = QAction("Ergebnisse Zeitreihenrechnung Laden", self)
+        export_action = QAction("Pandapipes Netz als geoJSON exportieren", self)
         file_menu.addAction(save_action)
         file_menu.addAction(load_action)
         file_menu.addAction(load_results_action)
         file_menu.addAction(export_action)
 
-        generate_action = QAction('Netz generieren', self)
+        generate_action = QAction("Netz generieren", self)
         net_menu.addAction(generate_action)
 
-        calc_action = QAction('Zeitreihenberechnung', self)
+        calc_action = QAction("Zeitreihenberechnung", self)
         calc_menu.addAction(calc_action)
 
         self._container_layout.addWidget(menubar)
@@ -225,9 +225,7 @@ class NetSimulationTab(QWidget):
     def openNetGenerationDialog(self):
         """Open network generation dialog."""
         try:
-            dialog = NetGenerationDialog(
-                self.generateNetworkCallback, self.base_path, self
-            )
+            dialog = NetGenerationDialog(self.generateNetworkCallback, self.base_path, self)
             dialog.exec()
         except Exception as e:
             logging.error(f"Fehler beim öffnen des Dialogs aufgetreten: {e}")
@@ -291,7 +289,7 @@ class NetSimulationTab(QWidget):
             return
 
         try:
-            simplified = getattr(self.NetworkGenerationData, 'simplified_calculation', False)
+            simplified = getattr(self.NetworkGenerationData, "simplified_calculation", False)
             self._calc_thread = NetCalculationThread(self.NetworkGenerationData, simplified=simplified)
             self._calc_thread.calculation_done.connect(self._on_time_series_done)
             self._calc_thread.calculation_error.connect(self._on_simulation_error)
@@ -307,13 +305,13 @@ class NetSimulationTab(QWidget):
 
         save_results_csv(
             self.NetworkGenerationData.yearly_time_steps[
-                self.NetworkGenerationData.start_time_step:self.NetworkGenerationData.end_time_step
+                self.NetworkGenerationData.start_time_step : self.NetworkGenerationData.end_time_step
             ],
             self.NetworkGenerationData.waerme_ges_kW[
-                self.NetworkGenerationData.start_time_step:self.NetworkGenerationData.end_time_step
+                self.NetworkGenerationData.start_time_step : self.NetworkGenerationData.end_time_step
             ],
             self.NetworkGenerationData.strombedarf_ges_kW[
-                self.NetworkGenerationData.start_time_step:self.NetworkGenerationData.end_time_step
+                self.NetworkGenerationData.start_time_step : self.NetworkGenerationData.end_time_step
             ],
             self.NetworkGenerationData.pump_results,
             self.NetworkGenerationData.results_csv_filename,
@@ -357,7 +355,8 @@ class NetSimulationTab(QWidget):
     def _warn_busy(self) -> None:
         """Tell the user a network calculation is already running."""
         QMessageBox.information(
-            self, "Berechnung läuft",
+            self,
+            "Berechnung läuft",
             "Es läuft bereits eine Netzberechnung. Bitte warten Sie, bis sie abgeschlossen ist.",
         )
 
@@ -371,7 +370,7 @@ class NetSimulationTab(QWidget):
             self._warn_busy()
             return
 
-        if not self.NetworkGenerationData or not hasattr(self.NetworkGenerationData, 'net'):
+        if not self.NetworkGenerationData or not hasattr(self.NetworkGenerationData, "net"):
             QMessageBox.warning(
                 self,
                 "Kein Netz vorhanden",
@@ -431,9 +430,9 @@ class NetSimulationTab(QWidget):
             return
 
         try:
-            pickle_path = os.path.join(self.base_path, self.config_manager.get_relative_path('pp_pickle_file_path'))
-            csv_path = os.path.join(self.base_path, self.config_manager.get_relative_path('csv_net_init_file_path'))
-            json_path = os.path.join(self.base_path, self.config_manager.get_relative_path('json_net_init_file_path'))
+            pickle_path = os.path.join(self.base_path, self.config_manager.get_relative_path("pp_pickle_file_path"))
+            csv_path = os.path.join(self.base_path, self.config_manager.get_relative_path("csv_net_init_file_path"))
+            json_path = os.path.join(self.base_path, self.config_manager.get_relative_path("json_net_init_file_path"))
 
             nd = self.NetworkGenerationData
             orig_cop = nd.COP_filename
@@ -448,24 +447,36 @@ class NetSimulationTab(QWidget):
 
             waerme_data = np.column_stack([nd.waerme_hast_ges_W[i] for i in range(nd.waerme_hast_ges_W.shape[0])])
             waerme_df = pd.DataFrame(
-                waerme_data, index=nd.yearly_time_steps,
-                columns=[f'waerme_hast_ges_W_{i+1}' for i in range(nd.waerme_hast_ges_W.shape[0])],
+                waerme_data,
+                index=nd.yearly_time_steps,
+                columns=[f"waerme_hast_ges_W_{i + 1}" for i in range(nd.waerme_hast_ges_W.shape[0])],
             )
-            strom_data = np.column_stack([nd.strombedarf_hast_ges_W[i] for i in range(nd.strombedarf_hast_ges_W.shape[0])])
+            strom_data = np.column_stack(
+                [nd.strombedarf_hast_ges_W[i] for i in range(nd.strombedarf_hast_ges_W.shape[0])]
+            )
             strom_df = pd.DataFrame(
-                strom_data, index=nd.yearly_time_steps,
-                columns=[f'strombedarf_hast_ges_W_{i+1}' for i in range(nd.strombedarf_hast_ges_W.shape[0])],
+                strom_data,
+                index=nd.yearly_time_steps,
+                columns=[f"strombedarf_hast_ges_W_{i + 1}" for i in range(nd.strombedarf_hast_ges_W.shape[0])],
             )
             combined = pd.concat([waerme_df, strom_df], axis=1)
-            combined.to_csv(csv_path, sep=';', date_format='%Y-%m-%dT%H:%M:%S', encoding='utf-8-sig')
+            combined.to_csv(csv_path, sep=";", date_format="%Y-%m-%dT%H:%M:%S", encoding="utf-8-sig")
 
             meta = nd.to_dict()
-            for key in ('net', 'waerme_hast_ges_W', 'strombedarf_hast_ges_W',
-                        'waerme_hast_ges_kW', 'strombedarf_hast_ges_kW',
-                        'waerme_ges_kW', 'strombedarf_ges_kW',
-                        'yearly_time_steps', 'pump_results', 'plot_data'):
+            for key in (
+                "net",
+                "waerme_hast_ges_W",
+                "strombedarf_hast_ges_W",
+                "waerme_hast_ges_kW",
+                "strombedarf_hast_ges_kW",
+                "waerme_ges_kW",
+                "strombedarf_ges_kW",
+                "yearly_time_steps",
+                "pump_results",
+                "plot_data",
+            ):
                 meta.pop(key, None)
-            with open(json_path, 'w') as jf:
+            with open(json_path, "w") as jf:
                 json.dump(meta, jf, indent=4, default=json_default)
 
             nd.COP_filename = orig_cop
@@ -473,7 +484,8 @@ class NetSimulationTab(QWidget):
 
             if show_dialog:
                 QMessageBox.information(
-                    self, "Speichern erfolgreich",
+                    self,
+                    "Speichern erfolgreich",
                     f"✓ Pandapipes Netz erfolgreich gespeichert!\n\n"
                     f"Dateien:\n"
                     f"  • {os.path.basename(pickle_path)}\n"
@@ -492,26 +504,26 @@ class NetSimulationTab(QWidget):
         :param show_dialog: Show success/error dialogs.
         """
         try:
-            pickle_path = os.path.join(self.base_path, self.config_manager.get_relative_path('pp_pickle_file_path'))
-            csv_path = os.path.join(self.base_path, self.config_manager.get_relative_path('csv_net_init_file_path'))
-            json_path = os.path.join(self.base_path, self.config_manager.get_relative_path('json_net_init_file_path'))
+            pickle_path = os.path.join(self.base_path, self.config_manager.get_relative_path("pp_pickle_file_path"))
+            csv_path = os.path.join(self.base_path, self.config_manager.get_relative_path("csv_net_init_file_path"))
+            json_path = os.path.join(self.base_path, self.config_manager.get_relative_path("json_net_init_file_path"))
 
             net = pp.from_pickle(pickle_path)
             # Migrate nets saved on pandapipes 0.13 (KMR std-types / diameter_m) to
             # the current 0.14 schema so old projects open and recalculate (C11).
             net = migrate_loaded_net(net)
 
-            with open(csv_path, newline='') as csvfile:
-                reader = csv.reader(csvfile, delimiter=';')
+            with open(csv_path, newline="") as csvfile:
+                reader = csv.reader(csvfile, delimiter=";")
                 headers = next(reader)
-                n_waerme = len([h for h in headers if h.startswith('waerme_hast_ges_W')])
-                n_strom = len([h for h in headers if h.startswith('strombedarf_hast_ges_W')])
+                n_waerme = len([h for h in headers if h.startswith("waerme_hast_ges_W")])
+                n_strom = len([h for h in headers if h.startswith("strombedarf_hast_ges_W")])
 
                 time_steps, waerme_rows, strom_rows = [], [], []
                 for row in reader:
                     time_steps.append(np.datetime64(row[0]))
-                    waerme_rows.append([float(v) for v in row[1:n_waerme + 1]])
-                    strom_rows.append([float(v) for v in row[n_waerme + 1:n_waerme + n_strom + 1]])
+                    waerme_rows.append([float(v) for v in row[1 : n_waerme + 1]])
+                    strom_rows.append([float(v) for v in row[n_waerme + 1 : n_waerme + n_strom + 1]])
 
                 yearly_time_steps = np.array(time_steps)
                 waerme_hast_ges_W = np.array(waerme_rows).transpose()
@@ -541,7 +553,8 @@ class NetSimulationTab(QWidget):
 
             if show_dialog:
                 QMessageBox.information(
-                    self, "Laden erfolgreich",
+                    self,
+                    "Laden erfolgreich",
                     f"✓ Netz erfolgreich geladen!\n\n"
                     f"Dateien:\n"
                     f"  • {os.path.basename(pickle_path)}\n"
@@ -566,11 +579,14 @@ class NetSimulationTab(QWidget):
         if self.NetworkGenerationData:
             results_path = os.path.join(
                 self.base_path,
-                self.config_manager.get_relative_path('load_profile_path'),
+                self.config_manager.get_relative_path("load_profile_path"),
             )
-            _, self.NetworkGenerationData.waerme_ges_kW, \
-                self.NetworkGenerationData.strombedarf_ges_kW, \
-                self.NetworkGenerationData.pump_results = import_results_csv(results_path)
+            (
+                _,
+                self.NetworkGenerationData.waerme_ges_kW,
+                self.NetworkGenerationData.strombedarf_ges_kW,
+                self.NetworkGenerationData.pump_results,
+            ) = import_results_csv(results_path)
 
             self.NetworkGenerationData.prepare_plot_data()
             self._ts_widget.update(self.NetworkGenerationData)
@@ -584,10 +600,11 @@ class NetSimulationTab(QWidget):
 
         :param show_dialog: Show success/error dialogs.
         """
-        if not self.NetworkGenerationData or not hasattr(self.NetworkGenerationData, 'net'):
+        if not self.NetworkGenerationData or not hasattr(self.NetworkGenerationData, "net"):
             if show_dialog:
                 QMessageBox.warning(
-                    self, "Kein Netz vorhanden",
+                    self,
+                    "Kein Netz vorhanden",
                     "Es muss zuerst ein Netz generiert werden, bevor es exportiert werden kann.",
                 )
             return
@@ -595,15 +612,17 @@ class NetSimulationTab(QWidget):
         try:
             unified_path = os.path.join(
                 self.base_path,
-                self.config_manager.get_relative_path('dimensioned_net_path'),
+                self.config_manager.get_relative_path("dimensioned_net_path"),
             )
-            feature_counts = export_net_geojson(self.NetworkGenerationData.net, unified_path,
-                                                crs=self.folder_manager.project_crs)
+            feature_counts = export_net_geojson(
+                self.NetworkGenerationData.net, unified_path, crs=self.folder_manager.project_crs
+            )
 
             if show_dialog:
                 total = sum(feature_counts.values())
                 QMessageBox.information(
-                    self, "Export erfolgreich",
+                    self,
+                    "Export erfolgreich",
                     f"✓ Wärmenetz erfolgreich exportiert!\n\n"
                     f"Datei: {os.path.basename(unified_path)}\n"
                     f"Pfad: {os.path.dirname(unified_path)}\n\n"
@@ -616,8 +635,9 @@ class NetSimulationTab(QWidget):
                 )
         except Exception as e:
             if show_dialog:
-                QMessageBox.critical(self, "Export fehlgeschlagen",
-                                     f"Fehler beim Exportieren des Wärmenetzes:\n\n{str(e)}")
+                QMessageBox.critical(
+                    self, "Export fehlgeschlagen", f"Fehler beim Exportieren des Wärmenetzes:\n\n{str(e)}"
+                )
             else:
                 logging.error(f"Fehler beim Exportieren des Wärmenetzes: {e}")
 

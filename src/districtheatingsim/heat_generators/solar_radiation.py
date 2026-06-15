@@ -15,18 +15,19 @@ import numpy as np
 # Constant for degree-to-radian conversion
 DEG_TO_RAD = np.pi / 180
 
+
 def calculate_solar_radiation(
-    time_steps: np.ndarray, 
-    global_radiation: np.ndarray, 
-    direct_radiation: np.ndarray, 
-    Longitude: float, 
-    STD_Longitude: float, 
-    Latitude: float, 
-    Albedo: float, 
-    East_West_collector_azimuth_angle: float, 
-    Collector_tilt_angle: float, 
-    IAM_W: dict[float, float] | None = None, 
-    IAM_N: dict[float, float] | None = None
+    time_steps: np.ndarray,
+    global_radiation: np.ndarray,
+    direct_radiation: np.ndarray,
+    Longitude: float,
+    STD_Longitude: float,
+    Latitude: float,
+    Albedo: float,
+    East_West_collector_azimuth_angle: float,
+    Collector_tilt_angle: float,
+    IAM_W: dict[float, float] | None = None,
+    IAM_N: dict[float, float] | None = None,
 ) -> tuple[np.ndarray, np.ndarray | None, np.ndarray, np.ndarray]:
     """
     Calculate solar radiation components for tilted collectors using Test Reference Year data.
@@ -61,23 +62,30 @@ def calculate_solar_radiation(
        Total radiation GT = beam + diffuse sky + ground-reflected components.
     """
     # Convert time_steps to datetime64 if needed and extract hour of day
-    time_steps_dt = np.asarray(time_steps, dtype='datetime64[h]')
-    time_of_day = (time_steps_dt - time_steps_dt.astype('datetime64[D]')).astype('timedelta64[h]').astype(float)
+    time_steps_dt = np.asarray(time_steps, dtype="datetime64[h]")
+    time_of_day = (time_steps_dt - time_steps_dt.astype("datetime64[D]")).astype("timedelta64[h]").astype(float)
     hour_L = time_of_day
-    
+
     # Calculate day of year for each time step
-    day_of_year = np.array([
-        datetime.fromtimestamp(t.astype('datetime64[s]').astype(np.int64), tz=UTC).timetuple().tm_yday 
-        for t in time_steps_dt
-    ])
+    day_of_year = np.array(
+        [
+            datetime.fromtimestamp(t.astype("datetime64[s]").astype(np.int64), tz=UTC).timetuple().tm_yday
+            for t in time_steps_dt
+        ]
+    )
 
     # Calculate the day of the year as an angle for solar calculations
     B = (day_of_year - 1) * 360 / 365  # degrees
 
     # Calculate the equation of time correction based on the day angle
     # Accounts for Earth's orbital eccentricity and axial tilt variations
-    E = 229.2 * (0.000075 + 0.001868 * np.cos(np.deg2rad(B)) - 0.032077 * np.sin(np.deg2rad(B)) -
-                 0.014615 * np.cos(2 * np.deg2rad(B)) - 0.04089 * np.sin(2 * np.deg2rad(B)))
+    E = 229.2 * (
+        0.000075
+        + 0.001868 * np.cos(np.deg2rad(B))
+        - 0.032077 * np.sin(np.deg2rad(B))
+        - 0.014615 * np.cos(2 * np.deg2rad(B))
+        - 0.04089 * np.sin(2 * np.deg2rad(B))
+    )
 
     # Calculate apparent solar time considering equation of time and longitude
     # Corrects local time to solar time using geographical and temporal factors
@@ -93,22 +101,36 @@ def calculate_solar_radiation(
 
     # Calculate the solar zenith angle using spherical trigonometry
     # Angle between sun's position and vertical (zenith direction)
-    SZA = np.arccos(np.cos(np.deg2rad(Latitude)) * np.cos(np.deg2rad(Hour_angle)) *
-                    np.cos(np.deg2rad(Solar_declination)) + np.sin(np.deg2rad(Latitude)) *
-                    np.sin(np.deg2rad(Solar_declination))) / DEG_TO_RAD
+    SZA = (
+        np.arccos(
+            np.cos(np.deg2rad(Latitude)) * np.cos(np.deg2rad(Hour_angle)) * np.cos(np.deg2rad(Solar_declination))
+            + np.sin(np.deg2rad(Latitude)) * np.sin(np.deg2rad(Solar_declination))
+        )
+        / DEG_TO_RAD
+    )
 
     # Determine the azimuth angle of the sun
     # Horizontal angle from south to sun's projection on horizontal plane
-    EWs_az_angle = np.sign(Hour_angle) * np.arccos((np.cos(np.deg2rad(SZA)) * np.sin(np.deg2rad(Latitude)) -
-                                                    np.sin(np.deg2rad(Solar_declination))) /
-                                                   (np.sin(np.deg2rad(SZA)) * np.cos(np.deg2rad(Latitude)))) / \
-                   DEG_TO_RAD
+    EWs_az_angle = (
+        np.sign(Hour_angle)
+        * np.arccos(
+            (np.cos(np.deg2rad(SZA)) * np.sin(np.deg2rad(Latitude)) - np.sin(np.deg2rad(Solar_declination)))
+            / (np.sin(np.deg2rad(SZA)) * np.cos(np.deg2rad(Latitude)))
+        )
+        / DEG_TO_RAD
+    )
 
     # Calculate the incidence angle of solar radiation on the collector
     # Angle between incoming solar rays and collector surface normal
-    IaC = np.arccos(np.cos(np.deg2rad(SZA)) * np.cos(np.deg2rad(Collector_tilt_angle)) + 
-                    np.sin(np.deg2rad(SZA)) * np.sin(np.deg2rad(Collector_tilt_angle)) * 
-                    np.cos(np.deg2rad(EWs_az_angle - East_West_collector_azimuth_angle))) / DEG_TO_RAD
+    IaC = (
+        np.arccos(
+            np.cos(np.deg2rad(SZA)) * np.cos(np.deg2rad(Collector_tilt_angle))
+            + np.sin(np.deg2rad(SZA))
+            * np.sin(np.deg2rad(Collector_tilt_angle))
+            * np.cos(np.deg2rad(EWs_az_angle - East_West_collector_azimuth_angle))
+        )
+        / DEG_TO_RAD
+    )
 
     # Condition under which the collector receives solar radiation
     # Both sun and collector must be above horizon for radiation reception
@@ -134,12 +156,15 @@ def calculate_solar_radiation(
 
     # Total radiation GT_H_Gk on the inclined surface
     # Combines direct beam, diffuse sky, and ground-reflected radiation components
-    GT_H_Gk = (Gbhoris * Rb +  # Direct beam radiation projected to tilted surface
-               Gdhoris * Ai * Rb +  # Atmospheric diffuse radiation (directional component)
-               Gdhoris * (1 - Ai) * 0.5 * (1 + np.cos(np.deg2rad(
-                Collector_tilt_angle))) +  # Isotropic diffuse radiation from sky hemisphere
-               global_radiation * Albedo * 0.5 * (
-                           1 - np.cos(np.deg2rad(Collector_tilt_angle))))  # Ground-reflected radiation
+    GT_H_Gk = (
+        Gbhoris * Rb  # Direct beam radiation projected to tilted surface
+        + Gdhoris * Ai * Rb  # Atmospheric diffuse radiation (directional component)
+        + Gdhoris
+        * (1 - Ai)
+        * 0.5
+        * (1 + np.cos(np.deg2rad(Collector_tilt_angle)))  # Isotropic diffuse radiation from sky hemisphere
+        + global_radiation * Albedo * 0.5 * (1 - np.cos(np.deg2rad(Collector_tilt_angle)))
+    )  # Ground-reflected radiation
 
     # Beam radiation on the inclined surface
     # Direct component of solar radiation on collector surface
@@ -155,14 +180,25 @@ def calculate_solar_radiation(
     if IAM_W is not None and IAM_N is not None:
         # Calculate incidence angles in East-West direction
         # Angle between solar ray projection and collector normal in EW plane
-        f_EW = np.arctan(np.sin(SZA * DEG_TO_RAD) * 
-                        np.sin((EWs_az_angle - East_West_collector_azimuth_angle) * DEG_TO_RAD) /
-                        np.cos(IaC * DEG_TO_RAD)) / DEG_TO_RAD
+        f_EW = (
+            np.arctan(
+                np.sin(SZA * DEG_TO_RAD)
+                * np.sin((EWs_az_angle - East_West_collector_azimuth_angle) * DEG_TO_RAD)
+                / np.cos(IaC * DEG_TO_RAD)
+            )
+            / DEG_TO_RAD
+        )
 
         # Calculate incidence angles in North-South direction
         # Angle between solar ray projection and collector normal in NS plane
-        f_NS = -(180 / np.pi * np.arctan(np.tan(SZA * DEG_TO_RAD) * 
-                np.cos((EWs_az_angle - East_West_collector_azimuth_angle) * DEG_TO_RAD)) - Collector_tilt_angle)
+        f_NS = -(
+            180
+            / np.pi
+            * np.arctan(
+                np.tan(SZA * DEG_TO_RAD) * np.cos((EWs_az_angle - East_West_collector_azimuth_angle) * DEG_TO_RAD)
+            )
+            - Collector_tilt_angle
+        )
 
         # Apply radiation condition limits to incidence angles
         # Set to near-90° for conditions with no solar radiation
@@ -193,15 +229,17 @@ def calculate_solar_radiation(
             # Handle division by zero for same angle bounds
             denominator = sverweis_3 - sverweis_1
             numerator = sverweis_4 - sverweis_2
-            result = np.where(denominator != 0, 
-                            sverweis_2 + (np.abs(Incidence_angle) - sverweis_1) / denominator * numerator,
-                            sverweis_2)
+            result = np.where(
+                denominator != 0,
+                sverweis_2 + (np.abs(Incidence_angle) - sverweis_1) / denominator * numerator,
+                sverweis_2,
+            )
             return result
 
         # Calculate IAM factors for both directions
         IAM_EW = IAM(Incidence_angle_EW, IAM_W)  # East-West direction IAM
         IAM_NS = IAM(Incidence_angle_NS, IAM_N)  # North-South direction IAM
-        
+
         # Combined IAM factor as product of directional components
         K_beam = IAM_EW * IAM_NS
     else:

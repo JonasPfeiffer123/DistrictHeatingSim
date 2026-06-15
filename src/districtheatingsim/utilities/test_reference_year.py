@@ -20,7 +20,7 @@ def import_TRY(filename):
     :rtype: tuple of numpy.ndarray
     :raises FileNotFoundError: If TRY file cannot be found
     :raises ValueError: If file format is invalid
-    
+
     .. note::
         - File contains 8760 hourly values for a complete year
         - Temperature in °C (at 2m height)
@@ -32,7 +32,7 @@ def import_TRY(filename):
 
     # Define column widths for fixed-width format
     col_widths = [8, 8, 3, 3, 3, 6, 5, 4, 5, 2, 5, 4, 5, 5, 4, 5, 3]
-    
+
     # Define column names according to TRY specification
     col_names = ["RW", "HW", "MM", "DD", "HH", "t", "p", "WR", "WG", "N", "x", "RF", "B", "D", "A", "E", "IL"]
 
@@ -40,11 +40,11 @@ def import_TRY(filename):
     data = pd.read_fwf(filename, widths=col_widths, names=col_names, skiprows=34)
 
     # Extract relevant meteorological parameters as numpy arrays
-    temperature = data['t'].values          # Air temperature [°C]
-    windspeed = data['WG'].values          # Wind speed [m/s]  
-    direct_radiation = data['B'].values     # Direct solar radiation [W/m²]
-    diffuse_radiation = data['D'].values    # Diffuse solar radiation [W/m²]
+    temperature = data["t"].values  # Air temperature [°C]
+    windspeed = data["WG"].values  # Wind speed [m/s]
+    direct_radiation = data["B"].values  # Direct solar radiation [W/m²]
+    diffuse_radiation = data["D"].values  # Diffuse solar radiation [W/m²]
     global_radiation = direct_radiation + diffuse_radiation  # Global radiation [W/m²]
-    cloud_cover = data['N'].values         # Cloud coverage [eighths]
+    cloud_cover = data["N"].values  # Cloud coverage [eighths]
 
     return temperature, windspeed, direct_radiation, global_radiation, cloud_cover

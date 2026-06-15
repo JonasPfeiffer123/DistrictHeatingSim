@@ -65,9 +65,8 @@ jobs:
         # Pinned so the gating check is reproducible (a newer ruff can add rules).
         run: pip install ruff==0.15.16
 
-      - name: Lint (gating — config + excludes from pyproject.toml; GUI still excluded)
+      - name: Lint (gating — config + excludes from pyproject.toml; whole src incl. GUI)
         run: ruff check .
 
-      - name: Format check (advisory — ruff format not yet adopted; see BACKLOG A1)
-        run: ruff format --check tests
-        continue-on-error: true
+      - name: Format check (gating — ruff format adopted across the scoped tree; BACKLOG A1)
+        run: ruff format --check .

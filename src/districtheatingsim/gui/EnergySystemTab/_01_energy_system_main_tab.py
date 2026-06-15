@@ -56,7 +56,7 @@ def _filename_to_config_name(filename: str) -> str:
     if filename == "Ergebnisse.json":
         return "Standard"
     # Strip "Ergebnisse_" prefix and ".json" suffix
-    return filename[len("Ergebnisse_"):-len(".json")]
+    return filename[len("Ergebnisse_") : -len(".json")]
 
 
 class EnergySystemTab(QWidget):
@@ -65,8 +65,9 @@ class EnergySystemTab(QWidget):
 
     :signal data_added: Signal emitted when new data is added.
     """
+
     data_added = pyqtSignal(object)  # Signal that transfers data as an object
-    
+
     def __init__(self, folder_manager, data_manager, config_manager, parent=None):
         """
         Initialize the EnergySystemTab.
@@ -141,33 +142,43 @@ class EnergySystemTab(QWidget):
         self.menuBar.setFixedHeight(30)
 
         # 'Datei'-Menü
-        fileMenu = self.menuBar.addMenu('Datei')
-        saveJSONAction = QAction('Ergebnisse als JSON speichern', self)
+        fileMenu = self.menuBar.addMenu("Datei")
+        saveJSONAction = QAction("Ergebnisse als JSON speichern", self)
         saveJSONAction.triggered.connect(self.save_results_JSON)
         fileMenu.addAction(saveJSONAction)
 
-        loadJSONAction = QAction('Ergebnisse aus JSON laden', self)
+        loadJSONAction = QAction("Ergebnisse aus JSON laden", self)
         loadJSONAction.triggered.connect(self.load_results_JSON)
         fileMenu.addAction(loadJSONAction)
 
         fileMenu.addSeparator()
-        exportCSVAction = QAction('Ergebnisse als CSV exportieren...', self)
+        exportCSVAction = QAction("Ergebnisse als CSV exportieren...", self)
         exportCSVAction.triggered.connect(self.save_heat_generation_results_to_csv)
         fileMenu.addAction(exportCSVAction)
 
         # 'Einstellungen'-Menü
-        settingsMenu = self.menuBar.addMenu('Einstellungen')
-        settingsMenu.addAction(self.createAction('Wirtschaftliche Parameter...', self.openEconomicParametersDialog))
+        settingsMenu = self.menuBar.addMenu("Einstellungen")
+        settingsMenu.addAction(self.createAction("Wirtschaftliche Parameter...", self.openEconomicParametersDialog))
 
-        addHeatGeneratorMenu = self.menuBar.addMenu('Wärmeerzeuger hinzufügen')
+        addHeatGeneratorMenu = self.menuBar.addMenu("Wärmeerzeuger hinzufügen")
 
-        heatGenerators = ["Solarthermie", "BHKW", "Holzgas-BHKW", "Geothermie", "Abwärmepumpe", "Flusswärmepumpe", "Biomassekessel", "Gaskessel", "Power-to-Heat"] # AqvaHeat could be added here
+        heatGenerators = [
+            "Solarthermie",
+            "BHKW",
+            "Holzgas-BHKW",
+            "Geothermie",
+            "Abwärmepumpe",
+            "Flusswärmepumpe",
+            "Biomassekessel",
+            "Gaskessel",
+            "Power-to-Heat",
+        ]  # AqvaHeat could be added here
         for generator in heatGenerators:
             action = QAction(generator, self)
             action.triggered.connect(lambda checked, gen=generator: self.techTab.addTech(gen, None))
             addHeatGeneratorMenu.addAction(action)
 
-        addstorageMenu = self.menuBar.addMenu('Speicher hinzufügen')
+        addstorageMenu = self.menuBar.addMenu("Speicher hinzufügen")
         storageTypes = ["Thermischer Netzspeicher"]
         for storage in storageTypes:
             action = QAction(storage, self)
@@ -175,13 +186,15 @@ class EnergySystemTab(QWidget):
             addstorageMenu.addAction(action)
 
         # 'Berechnungen'-Menü
-        calculationsMenu = self.menuBar.addMenu('Berechnungen')
-        calculationsMenu.addAction(self.createAction('Berechnen', self.calculate_energy_system))
-        calculationsMenu.addAction(self.createAction('Optimieren', self.start_optimization))
+        calculationsMenu = self.menuBar.addMenu("Berechnungen")
+        calculationsMenu.addAction(self.createAction("Berechnen", self.calculate_energy_system))
+        calculationsMenu.addAction(self.createAction("Optimieren", self.start_optimization))
 
         # 'weitere Ergebnisse Anzeigen'-Menü
-        showAdditionalResultsMenu = self.menuBar.addMenu('weitere Ergebnisse Anzeigen')
-        showAdditionalResultsMenu.addAction(self.createAction('Sankey-Diagramm Energieflüsse im Quartier', self.show_sankey))
+        showAdditionalResultsMenu = self.menuBar.addMenu("weitere Ergebnisse Anzeigen")
+        showAdditionalResultsMenu.addAction(
+            self.createAction("Sankey-Diagramm Energieflüsse im Quartier", self.show_sankey)
+        )
 
         self.mainLayout.addWidget(self.menuBar)
 
@@ -309,8 +322,11 @@ class EnergySystemTab(QWidget):
             self._active_config_name = configs[0][0] if configs else "Standard"
 
         # Show selection dialog only when multiple configs exist and no saved preference
-        configs_on_disk = [c for c in configs if c[0] != "Standard" or
-                           os.path.exists(os.path.join(self._ergebnisse_dir(), "Ergebnisse.json"))]
+        configs_on_disk = [
+            c
+            for c in configs
+            if c[0] != "Standard" or os.path.exists(os.path.join(self._ergebnisse_dir(), "Ergebnisse.json"))
+        ]
         if len(configs_on_disk) > 1 and idx < 0:
             self.configCombo.blockSignals(False)
             self._ask_which_config(configs)
@@ -322,9 +338,12 @@ class EnergySystemTab(QWidget):
         """Show a selection dialog when multiple configs exist and no preference is saved."""
         names = [name for name, _ in configs]
         chosen, ok = QInputDialog.getItem(
-            self, "Erzeugerkonfiguration wählen",
+            self,
+            "Erzeugerkonfiguration wählen",
             "Mehrere Konfigurationen vorhanden.\nWelche soll geladen werden?",
-            names, 0, False
+            names,
+            0,
+            False,
         )
         if ok and chosen:
             idx = self.configCombo.findText(chosen)
@@ -360,8 +379,9 @@ class EnergySystemTab(QWidget):
         # Check for duplicate
         existing = [n for n, _ in self._discover_configs()]
         if name in existing:
-            QMessageBox.warning(self, "Bereits vorhanden",
-                                f"Eine Konfiguration mit dem Namen '{name}' existiert bereits.")
+            QMessageBox.warning(
+                self, "Bereits vorhanden", f"Eine Konfiguration mit dem Namen '{name}' existiert bereits."
+            )
             return
         # Set as active (no file written yet) and clear tech list
         self._active_config_name = name
@@ -379,8 +399,10 @@ class EnergySystemTab(QWidget):
     def _save_as_config_action(self):
         """Save the current energy system under a new config name."""
         name, ok = QInputDialog.getText(
-            self, "Konfiguration speichern als", "Name der Konfiguration:",
-            text=self._active_config_name if self._active_config_name != "Standard" else ""
+            self,
+            "Konfiguration speichern als",
+            "Name der Konfiguration:",
+            text=self._active_config_name if self._active_config_name != "Standard" else "",
         )
         if not ok or not name.strip():
             return
@@ -399,13 +421,13 @@ class EnergySystemTab(QWidget):
         """Delete the active configuration file (Standard cannot be deleted)."""
         name = self._active_config_name
         if name == "Standard":
-            QMessageBox.warning(self, "Nicht möglich",
-                                "Die Standardkonfiguration kann nicht gelöscht werden.")
+            QMessageBox.warning(self, "Nicht möglich", "Die Standardkonfiguration kann nicht gelöscht werden.")
             return
         reply = QMessageBox.question(
-            self, "Konfiguration löschen",
+            self,
+            "Konfiguration löschen",
             f"Konfiguration '{name}' wirklich löschen?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
             return
@@ -459,7 +481,7 @@ class EnergySystemTab(QWidget):
             QMessageBox.warning(self, "Ungültige Eingabe", str(e))
             return False
         return True
-    
+
     def preprocessData(self):
         """
         Preprocess data before calculation.
@@ -472,18 +494,18 @@ class EnergySystemTab(QWidget):
         # Import data from the CSV file
         time_steps, waerme_ges_kW, strom_wp_kW, pump_results = import_results_csv(self.csv_filename)
         self.TRY_data = import_TRY(self.TRY_filename)
-        self.COP_data = np.genfromtxt(self.COP_filename, delimiter=';')
+        self.COP_data = np.genfromtxt(self.COP_filename, delimiter=";")
 
         # Collect qext_kW values from pump results
         qext_values = []
         for pump_type, pumps in pump_results.items():
             for _idx, pump_data in pumps.items():
-                if 'qext_kW' in pump_data:
-                    qext_values.append(pump_data['qext_kW'])
+                if "qext_kW" in pump_data:
+                    qext_values.append(pump_data["qext_kW"])
 
                 if pump_type == "Heizentrale Haupteinspeisung":
-                    flow_temp_circ_pump = pump_data['flow_temp']
-                    return_temp_circ_pump = pump_data['return_temp']
+                    flow_temp_circ_pump = pump_data["flow_temp"]
+                    return_temp_circ_pump = pump_data["return_temp"]
 
         if qext_values:
             qext_kW = np.sum(np.array(qext_values), axis=0)
@@ -514,7 +536,7 @@ class EnergySystemTab(QWidget):
         self.energy_system.results["strom_wp_kW"] = strom_wp_kW
 
         self.costTab.updateInfrastructureTable()
-        self.energy_system.results["infrastructure_cost"]  = self.costTab.data
+        self.energy_system.results["infrastructure_cost"] = self.costTab.data
 
     def calculate_energy_system(self, optimize=False, weights=None):
         """
@@ -525,14 +547,17 @@ class EnergySystemTab(QWidget):
         :param weights: Weights for optimization.
         :type weights: dict
         """
-        
+
         self.optimize = optimize
 
         # Don't start a second calculation while one is running — that would orphan the
         # previous thread and let two of them mutate the shared energy_system at once.
-        if getattr(self, 'calculationThread', None) is not None and self.calculationThread.isRunning():
-            QMessageBox.information(self, "Berechnung läuft",
-                                    "Es läuft bereits eine Berechnung. Bitte warten Sie, bis sie abgeschlossen ist.")
+        if getattr(self, "calculationThread", None) is not None and self.calculationThread.isRunning():
+            QMessageBox.information(
+                self,
+                "Berechnung läuft",
+                "Es läuft bereits eine Berechnung. Bitte warten Sie, bis sie abgeschlossen ist.",
+            )
             return
 
         if not self.validateInputs():
@@ -542,13 +567,15 @@ class EnergySystemTab(QWidget):
             self.preprocessData()
 
             self.calculationThread = CalculateEnergySystemThread(self.energy_system, self.optimize, weights)
-            
+
             self.calculationThread.calculation_done.connect(self.on_calculation_done)
             self.calculationThread.calculation_error.connect(self.on_calculation_error)
             self.calculationThread.start()
             self.progressBar.setRange(0, 0)
         else:
-            QMessageBox.information(self, "Keine Erzeugeranlagen", "Es wurden keine Erzeugeranlagen definiert. Keine Berechnung möglich.")
+            QMessageBox.information(
+                self, "Keine Erzeugeranlagen", "Es wurden keine Erzeugeranlagen definiert. Keine Berechnung möglich."
+            )
 
     def start_optimization(self):
         """
@@ -572,7 +599,7 @@ class EnergySystemTab(QWidget):
         if self.optimize:
             self.optimized_energy_system = result[1]
             self.energy_system = self.optimized_energy_system
-            
+
         self.process_data()
 
     def on_calculation_error(self, error_message):
@@ -587,7 +614,7 @@ class EnergySystemTab(QWidget):
 
     def stop_threads(self):
         """Stop the running calculation thread (called from the main window on close)."""
-        stop_qthreads(getattr(self, 'calculationThread', None))
+        stop_qthreads(getattr(self, "calculationThread", None))
 
     def process_data(self):
         # Update economic parameters with saved parameters from energy system class
@@ -595,7 +622,11 @@ class EnergySystemTab(QWidget):
         self.updateEconomicParameters()
 
         # Update the tech objects from the loaded EnergySystem
-        self.techTab.tech_objects = self.energy_system.technologies + [self.energy_system.storage] if self.energy_system.storage else self.energy_system.technologies
+        self.techTab.tech_objects = (
+            self.energy_system.technologies + [self.energy_system.storage]
+            if self.energy_system.storage
+            else self.energy_system.technologies
+        )
         self.techTab.rebuildScene()
         self.techTab.updateTechList()
 
@@ -603,7 +634,6 @@ class EnergySystemTab(QWidget):
         if "infrastructure_cost" in self.energy_system.results:
             self.costTab.data = self.energy_system.results["infrastructure_cost"]
             self.costTab.updateInfrastructureTable()  # Aktualisiere die Tabelle mit den neuen Daten
-
 
         self.costTab.updateTechDataTable(self.energy_system.technologies)
         self.costTab.updateSumLabel()
@@ -627,30 +657,40 @@ class EnergySystemTab(QWidget):
             return
 
         if not self.techTab.tech_objects:
-            QMessageBox.information(self, "Keine Erzeugeranlagen", "Es wurden keine Erzeugeranlagen definiert. Keine Berechnung möglich.")
+            QMessageBox.information(
+                self, "Keine Erzeugeranlagen", "Es wurden keine Erzeugeranlagen definiert. Keine Berechnung möglich."
+            )
             return
-        
+
         if not self.energy_system.technologies:
-            QMessageBox.information(self, "Keine Erzeugeranlagen im EnergySystem", "Im EnergySystem sind keine Erzeugeranlagen definiert. Keine Berechnung möglich.")
+            QMessageBox.information(
+                self,
+                "Keine Erzeugeranlagen im EnergySystem",
+                "Im EnergySystem sind keine Erzeugeranlagen definiert. Keine Berechnung möglich.",
+            )
             return
-                
+
         results = []
         for gas_price in self.generate_values(gas_range):
             for electricity_price in self.generate_values(electricity_range):
                 for wood_price in self.generate_values(wood_range):
                     result = self.calculate_sensitivity(gas_price, electricity_price, wood_price, weights)
                     waerme_ges_kW, strom_wp_kW = np.sum(result["waerme_ges_kW"]), np.sum(result["strom_wp_kW"])
-                    wgk_heat_pump_electricity = ((strom_wp_kW/1000) * electricity_price) / ((strom_wp_kW+waerme_ges_kW)/1000)
+                    wgk_heat_pump_electricity = ((strom_wp_kW / 1000) * electricity_price) / (
+                        (strom_wp_kW + waerme_ges_kW) / 1000
+                    )
                     if result is not None:
-                        results.append({
-                            'gas_price': gas_price,
-                            'electricity_price': electricity_price,
-                            'wood_price': wood_price,
-                            'WGK_Gesamt': result['WGK_Gesamt'],
-                            'waerme_ges_kW': waerme_ges_kW,
-                            'strom_wp_kW': strom_wp_kW,
-                            'wgk_heat_pump_electricity': wgk_heat_pump_electricity
-                        })
+                        results.append(
+                            {
+                                "gas_price": gas_price,
+                                "electricity_price": electricity_price,
+                                "wood_price": wood_price,
+                                "WGK_Gesamt": result["WGK_Gesamt"],
+                                "waerme_ges_kW": waerme_ges_kW,
+                                "strom_wp_kW": strom_wp_kW,
+                                "wgk_heat_pump_electricity": wgk_heat_pump_electricity,
+                            }
+                        )
 
         self.sensitivityTab.plotSensitivity(results)
         self.sensitivityTab.plotSensitivitySurface(results)
@@ -685,7 +725,7 @@ class EnergySystemTab(QWidget):
         """
         result = None
         calculation_done_event = QEventLoop()
-        
+
         def calculation_done(energy_system):
             self.progressBar.setRange(0, 1)
             nonlocal result
@@ -704,8 +744,8 @@ class EnergySystemTab(QWidget):
 
         self.energy_system.economic_parameters = economic_parameters
 
-        self.calculationThread = CalculateEnergySystemThread(self.energy_system, False,  weights)
-        
+        self.calculationThread = CalculateEnergySystemThread(self.energy_system, False, weights)
+
         self.calculationThread.calculation_done.connect(calculation_done)
         self.calculationThread.calculation_error.connect(calculation_error)
         self.calculationThread.start()
@@ -727,10 +767,18 @@ class EnergySystemTab(QWidget):
             dialog.exec()
         else:
             if not self.techTab.tech_objects:
-                QMessageBox.information(self, "Keine Erzeugeranlagen", "Es wurden keine Erzeugeranlagen definiert. Keine Berechnung möglich.")
+                QMessageBox.information(
+                    self,
+                    "Keine Erzeugeranlagen",
+                    "Es wurden keine Erzeugeranlagen definiert. Keine Berechnung möglich.",
+                )
             elif not self.results:
-                QMessageBox.information(self, "Keine Berechnungsergebnisse", "Es sind keine Berechnungsergebnisse verfügbar. Führen Sie zunächst eine Berechnung durch.")
-            
+                QMessageBox.information(
+                    self,
+                    "Keine Berechnungsergebnisse",
+                    "Es sind keine Berechnungsergebnisse verfügbar. Führen Sie zunächst eine Berechnung durch.",
+                )
+
     ### Save Calculation Results ###
     def save_heat_generation_results_to_csv(self, show_dialog=True):
         """
@@ -741,14 +789,24 @@ class EnergySystemTab(QWidget):
         """
         if not self.energy_system or not self.energy_system.results:
             if show_dialog:
-                QMessageBox.warning(self, "Keine Daten vorhanden", "Es sind keine Berechnungsergebnisse vorhanden, die gespeichert werden könnten.")
+                QMessageBox.warning(
+                    self,
+                    "Keine Daten vorhanden",
+                    "Es sind keine Berechnungsergebnisse vorhanden, die gespeichert werden könnten.",
+                )
             return
 
         try:
-            csv_filename = os.path.join(self.base_path, self.config_manager.get_relative_path('calculated_heat_generation_path'))
+            csv_filename = os.path.join(
+                self.base_path, self.config_manager.get_relative_path("calculated_heat_generation_path")
+            )
             self.energy_system.save_to_csv(csv_filename)
             if show_dialog:
-                QMessageBox.information(self, "Erfolgreich gespeichert", f"Die Ergebnisse wurden erfolgreich unter {csv_filename} gespeichert.")
+                QMessageBox.information(
+                    self,
+                    "Erfolgreich gespeichert",
+                    f"Die Ergebnisse wurden erfolgreich unter {csv_filename} gespeichert.",
+                )
         except Exception as e:
             if show_dialog:
                 QMessageBox.critical(self, "Speicherfehler", f"Fehler beim Speichern der CSV-Datei: {e}")
@@ -766,10 +824,13 @@ class EnergySystemTab(QWidget):
         :param show_dialog: Whether to show dialogs.
         :type show_dialog: bool
         """
-        if not hasattr(self, 'energy_system') or not self.energy_system or not self.energy_system.results:
+        if not hasattr(self, "energy_system") or not self.energy_system or not self.energy_system.results:
             if show_dialog:
-                QMessageBox.warning(self, "Keine Daten vorhanden",
-                                    "Es sind keine Berechnungsergebnisse vorhanden, die gespeichert werden könnten.")
+                QMessageBox.warning(
+                    self,
+                    "Keine Daten vorhanden",
+                    "Es sind keine Berechnungsergebnisse vorhanden, die gespeichert werden könnten.",
+                )
             return
 
         try:
@@ -778,13 +839,17 @@ class EnergySystemTab(QWidget):
             # Refresh combo in case a new file was created
             self._refresh_config_combo()
             if show_dialog:
-                QMessageBox.information(self, "Erfolgreich gespeichert",
-                                        f"Konfiguration '{self._active_config_name}' gespeichert unter:\n{json_filename}")
+                QMessageBox.information(
+                    self,
+                    "Erfolgreich gespeichert",
+                    f"Konfiguration '{self._active_config_name}' gespeichert unter:\n{json_filename}",
+                )
         except Exception as e:
             error_details = traceback.format_exc()
             if show_dialog:
-                QMessageBox.critical(self, "Speicherfehler",
-                                     f"Fehler beim Speichern der JSON-Datei: {e}\n\nDetails:\n{error_details}")
+                QMessageBox.critical(
+                    self, "Speicherfehler", f"Fehler beim Speichern der JSON-Datei: {e}\n\nDetails:\n{error_details}"
+                )
 
     def load_results_JSON(self, show_dialog=True):
         """
@@ -796,17 +861,18 @@ class EnergySystemTab(QWidget):
         json_filename = self._active_json_path()
         if not os.path.exists(json_filename):
             if show_dialog:
-                QMessageBox.warning(self, "Datei nicht gefunden",
-                                    f"Keine gespeicherte Konfiguration gefunden:\n{json_filename}")
+                QMessageBox.warning(
+                    self, "Datei nicht gefunden", f"Keine gespeicherte Konfiguration gefunden:\n{json_filename}"
+                )
             return
 
         try:
             self.energy_system = EnergySystem.load_from_json(json_filename)
             self.process_data()
             if show_dialog:
-                QMessageBox.information(self, "Erfolgreich geladen",
-                                        f"Konfiguration '{self._active_config_name}' geladen.")
+                QMessageBox.information(
+                    self, "Erfolgreich geladen", f"Konfiguration '{self._active_config_name}' geladen."
+                )
         except ValueError as e:
             if show_dialog:
                 QMessageBox.critical(self, "Ladefehler", str(e))
-

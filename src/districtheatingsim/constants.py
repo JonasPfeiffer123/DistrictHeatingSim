@@ -22,18 +22,18 @@ CP_WATER_KJ_KGK = 4.18
 
 # ── CO₂ emission factors [t CO₂ / MWh] ────────────────────────────────────────
 
-CO2_FACTOR_GAS = 0.201          #: natural gas
-CO2_FACTOR_WOOD = 0.036         #: wood pellets / wood gas
-CO2_FACTOR_ELECTRICITY = 0.4    #: grid electricity (mix / displacement)
-CO2_FACTOR_SOLAR = 0.0          #: solar thermal heat
+CO2_FACTOR_GAS = 0.201  #: natural gas
+CO2_FACTOR_WOOD = 0.036  #: wood pellets / wood gas
+CO2_FACTOR_ELECTRICITY = 0.4  #: grid electricity (mix / displacement)
+CO2_FACTOR_SOLAR = 0.0  #: solar thermal heat
 
 
 # ── Primary-energy factors [-] ────────────────────────────────────────────────
 
 PRIMARY_ENERGY_FACTOR_GAS = 1.1
 PRIMARY_ENERGY_FACTOR_WOOD = 0.2
-PRIMARY_ENERGY_FACTOR_ELECTRICITY_PTH = 2.4   #: power-to-heat (grid mix)
-PRIMARY_ENERGY_FACTOR_ELECTRICITY_HP = 1.8    #: heat pumps
+PRIMARY_ENERGY_FACTOR_ELECTRICITY_PTH = 2.4  #: power-to-heat (grid mix)
+PRIMARY_ENERGY_FACTOR_ELECTRICITY_HP = 1.8  #: heat pumps
 PRIMARY_ENERGY_FACTOR_SOLAR = 0.0
 
 

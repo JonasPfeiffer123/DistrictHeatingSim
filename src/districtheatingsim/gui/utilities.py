@@ -51,7 +51,7 @@ class CheckableComboBox(QComboBox):
             item.setCheckState(Qt.CheckState.Unchecked)
         else:
             item.setCheckState(Qt.CheckState.Checked)
-        
+
         self.checkedStateChanged.emit()
 
     def itemChecked(self, index):
@@ -93,6 +93,7 @@ class CheckableComboBox(QComboBox):
             if item.checkState() == Qt.CheckState.Checked:
                 checked_items.append(item.text())
         return checked_items
+
 
 def convert_to_serializable(obj):
     """

@@ -163,10 +163,10 @@ class ThermalStorageAdapter(BaseHeatGenerator):
         self._state = self._model.initialize(T_init=initial_temp)
 
         # Per-timestep result arrays (indexed by t, filled during simulation)
-        self.Q_loss = np.zeros(hours)                          # kW  (converted from W)
-        self._T_supply = np.full(hours, initial_temp)          # °C – top node (upper)
-        self._T_middle = np.full(hours, initial_temp)          # °C – middle node
-        self._T_return = np.full(hours, initial_temp)          # °C – bottom node (lower)
+        self.Q_loss = np.zeros(hours)  # kW  (converted from W)
+        self._T_supply = np.full(hours, initial_temp)  # °C – top node (upper)
+        self._T_middle = np.full(hours, initial_temp)  # °C – middle node
+        self._T_return = np.full(hours, initial_temp)  # °C – bottom node (lower)
         self._soc = np.zeros(hours)
         self._Q_net_storage_flow = np.zeros(hours)  # kW: positive = discharge, negative = charge
 
@@ -186,8 +186,10 @@ class ThermalStorageAdapter(BaseHeatGenerator):
     def _build_model(self) -> ThermalStorage1D:
         geometry = self._make_geometry()
         loss_model = self._make_loss_model()
-        fluid = WaterProperties() if self.fluid_type == "water" else ConstantFluidProperties(
-            rho=self.rho, cp=self.cp, lambda_fluid=self.lambda_fluid
+        fluid = (
+            WaterProperties()
+            if self.fluid_type == "water"
+            else ConstantFluidProperties(rho=self.rho, cp=self.cp, lambda_fluid=self.lambda_fluid)
         )
         config = StorageConfig(
             volume=self.volume,
@@ -211,8 +213,10 @@ class ThermalStorageAdapter(BaseHeatGenerator):
         elif self.geometry_type == "truncated_pyramid":
             a_mean = (self.volume / self.height) ** 0.5
             return TruncatedPyramidGeometry(
-                a_bottom=a_mean * 1.1, b_bottom=a_mean * 1.1,
-                a_top=a_mean * 0.9, b_top=a_mean * 0.9,
+                a_bottom=a_mean * 1.1,
+                b_bottom=a_mean * 1.1,
+                a_top=a_mean * 0.9,
+                b_top=a_mean * 0.9,
                 height=self.height,
             )
         else:
@@ -255,7 +259,7 @@ class ThermalStorageAdapter(BaseHeatGenerator):
         t: int,
         Q_in: float,
         Q_out: float,
-        T_Q_in_flow: float,   # noqa: ARG002 – network supply temp, kept for interface compat
+        T_Q_in_flow: float,  # noqa: ARG002 – network supply temp, kept for interface compat
         T_Q_out_return: float,  # noqa: ARG002 – network return temp, kept for interface compat
     ) -> None:
         """
@@ -300,7 +304,7 @@ class ThermalStorageAdapter(BaseHeatGenerator):
 
         # Net heat flow: positive → net charge into storage, negative → net discharge
         Q_net = Q_in - Q_out
-        Q_charge = max(0.0, Q_net)      # kW entering storage (generators over-produce)
+        Q_charge = max(0.0, Q_net)  # kW entering storage (generators over-produce)
         Q_discharge = max(0.0, -Q_net)  # kW leaving storage (demand exceeds generation)
 
         # Use fixed generator-side temperature for charging (independent of the variable
@@ -494,6 +498,7 @@ class ThermalStorageAdapter(BaseHeatGenerator):
 # Buffer storage for generator-attached short-term tanks (CHP, BiomassBoiler)
 # ---------------------------------------------------------------------------
 
+
 class BufferStorage:
     """
     Simple buffer tank backed by ThermalStorage1D.
@@ -574,14 +579,18 @@ class BufferStorage:
 
         if Q_net_kw >= 0:
             inputs = StorageInputs.two_port(
-                m_dot_charge=m_dot, T_charge_in=self.T_flow,
-                m_dot_discharge=0.0, T_discharge_in=self.T_return,
+                m_dot_charge=m_dot,
+                T_charge_in=self.T_flow,
+                m_dot_discharge=0.0,
+                T_discharge_in=self.T_return,
                 height=self._height,
             )
         else:
             inputs = StorageInputs.two_port(
-                m_dot_charge=0.0, T_charge_in=self.T_flow,
-                m_dot_discharge=m_dot, T_discharge_in=self.T_return,
+                m_dot_charge=0.0,
+                T_charge_in=self.T_flow,
+                m_dot_discharge=m_dot,
+                T_discharge_in=self.T_return,
                 height=self._height,
             )
 

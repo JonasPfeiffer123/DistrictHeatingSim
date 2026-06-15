@@ -48,7 +48,7 @@ class BaseHeatGenerator:
            See annuity.py for complete parameter documentation.
         """
         return annuity(*args, **kwargs)
-    
+
     def generate(self, t: int, **kwargs) -> tuple:
         """
         Generate heat for a single time step (used in storage-coupled dispatch).
@@ -63,8 +63,7 @@ class BaseHeatGenerator:
         """
         raise NotImplementedError("generate() must be implemented for STES-coupled dispatch.")
 
-    def calculate(self, economic_parameters: dict[str, Any], duration: float,
-                 load_profile, **kwargs) -> dict[str, Any]:
+    def calculate(self, economic_parameters: dict[str, Any], duration: float, load_profile, **kwargs) -> dict[str, Any]:
         """
         Full-profile calculation including economic and environmental analysis (abstract).
 
@@ -94,14 +93,14 @@ class BaseHeatGenerator:
            Call this at the start of calculate_heat_generation_cost() in each subclass
            instead of repeating the same 7-8 assignment lines.
         """
-        self.Strompreis = economic_parameters['electricity_price']
-        self.Gaspreis = economic_parameters['gas_price']
-        self.Holzpreis = economic_parameters['wood_price']
-        self.q = economic_parameters['capital_interest_rate']
-        self.r = economic_parameters['inflation_rate']
-        self.T = economic_parameters['time_period']
-        self.BEW = economic_parameters['subsidy_eligibility']
-        self.stundensatz = economic_parameters['hourly_rate']
+        self.Strompreis = economic_parameters["electricity_price"]
+        self.Gaspreis = economic_parameters["gas_price"]
+        self.Holzpreis = economic_parameters["wood_price"]
+        self.q = economic_parameters["capital_interest_rate"]
+        self.r = economic_parameters["inflation_rate"]
+        self.T = economic_parameters["time_period"]
+        self.BEW = economic_parameters["subsidy_eligibility"]
+        self.stundensatz = economic_parameters["hourly_rate"]
 
     def set_parameters(self, variables: list[float], variables_order: list[str], idx: int) -> None:
         """
@@ -117,7 +116,7 @@ class BaseHeatGenerator:
         :raises NotImplementedError: Must be implemented by derived classes
         """
         raise NotImplementedError("set_parameters must be implemented in the derived class.")
-    
+
     def add_optimization_parameters(self, idx: int) -> dict[str, Any]:
         """
         Define optimization variables and constraints for the technology (abstract).
@@ -130,7 +129,7 @@ class BaseHeatGenerator:
         :raises NotImplementedError: Must be implemented by derived classes
         """
         raise NotImplementedError("add_optimization_parameters must be implemented in the derived class.")
-    
+
     def update_parameters(self, optimized_values: list[float], variables_order: list[str]) -> None:
         """
         Update technology parameters from optimization results.
@@ -144,12 +143,9 @@ class BaseHeatGenerator:
         idx = self.name.split("_")[-1]
 
         # Filter variables belonging to this technology
-        relevant_vars = [
-            var for var in variables_order if var.endswith(f"_{idx}")
-        ]
+        relevant_vars = [var for var in variables_order if var.endswith(f"_{idx}")]
         relevant_values = [
-            value for var, value in zip(variables_order, optimized_values, strict=False) 
-            if var in relevant_vars
+            value for var, value in zip(variables_order, optimized_values, strict=False) if var in relevant_vars
         ]
 
         if not relevant_vars:
@@ -172,11 +168,11 @@ class BaseHeatGenerator:
         :rtype: dict
         """
         return {
-            var_name: getattr(self, var_name) 
-            for var_name in self.__dict__ 
+            var_name: getattr(self, var_name)
+            for var_name in self.__dict__
             if isinstance(getattr(self, var_name), (list, np.ndarray))
         }
-    
+
     def to_dict(self) -> dict[str, Any]:
         """
         Convert heat generator to dictionary for serialization.
@@ -191,12 +187,12 @@ class BaseHeatGenerator:
         data = self.__dict__.copy()
 
         # Store class name for reliable deserialization (avoids fragile prefix-matching)
-        data['tech_type'] = type(self).__name__
+        data["tech_type"] = type(self).__name__
 
         # Remove non-serializable attributes
-        data.pop('scene_item', None)   # GUI elements
-        data.pop('buffer', None)       # BufferStorage — contains ThermalStorage1D model;
-                                       # rebuilt from constructor params on deserialization
+        data.pop("scene_item", None)  # GUI elements
+        data.pop("buffer", None)  # BufferStorage — contains ThermalStorage1D model;
+        # rebuilt from constructor params on deserialization
 
         # Convert numpy arrays to lists for JSON compatibility
         for key, value in data.items():
@@ -206,7 +202,7 @@ class BaseHeatGenerator:
         return data
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'BaseHeatGenerator':
+    def from_dict(cls, data: dict[str, Any]) -> "BaseHeatGenerator":
         """
         Create heat generator from dictionary representation.
 
@@ -223,21 +219,21 @@ class BaseHeatGenerator:
 
         # Convert lists back to numpy arrays for array attributes
         for key, value in obj.__dict__.items():
-            if isinstance(value, list) and key.endswith(('_array', '_data', '_profile')):
+            if isinstance(value, list) and key.endswith(("_array", "_data", "_profile")):
                 setattr(obj, key, np.array(value))
 
         # Restore strategy: JSON round-trip leaves it as a plain dict.
         # Reconstruct the original strategy subclass so the correct
         # decide_operation() override is preserved.
-        if isinstance(getattr(obj, 'strategy', None), dict):
+        if isinstance(getattr(obj, "strategy", None), dict):
             obj.strategy = BaseStrategy.from_dict(obj.strategy)
             # Subclasses register automatically via __init_subclass__ when their
             # modules are imported — all strategy subclasses are available by
             # the time from_dict() is called during deserialization.
 
         return obj
-    
-    def __deepcopy__(self, memo: dict[int, Any]) -> 'BaseHeatGenerator':
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> "BaseHeatGenerator":
         """
         Create deep copy of heat generator.
 
@@ -247,6 +243,7 @@ class BaseHeatGenerator:
         :rtype: BaseHeatGenerator
         """
         return self.from_dict(self.to_dict())
+
 
 class BaseStrategy:
     """
@@ -277,8 +274,9 @@ class BaseStrategy:
         self.charge_on = charge_on
         self.charge_off = charge_off
 
-    def decide_operation(self, current_state: bool, upper_storage_temp: float, 
-                        lower_storage_temp: float, remaining_demand: float) -> bool:
+    def decide_operation(
+        self, current_state: bool, upper_storage_temp: float, lower_storage_temp: float, remaining_demand: float
+    ) -> bool:
         """
         Decide heat generator operation based on storage conditions and demand.
 
@@ -300,7 +298,7 @@ class BaseStrategy:
         # Check current operational state and apply hysteresis logic
         if current_state:
             # Generator is currently operating
-            charge_off = getattr(self, 'charge_off', None)
+            charge_off = getattr(self, "charge_off", None)
             if (charge_off is None or lower_storage_temp < charge_off) and remaining_demand > 0:
                 return True  # Continue operation
             else:
@@ -311,7 +309,7 @@ class BaseStrategy:
                 return True  # Start operation (low storage temp and demand present)
             else:
                 return False  # Remain stopped (sufficient storage temp or no demand)
-    
+
     def to_dict(self) -> dict[str, Any]:
         """
         Convert strategy to dictionary for serialization.
@@ -320,11 +318,11 @@ class BaseStrategy:
         :rtype: dict
         """
         data = self.__dict__.copy()
-        data['_strategy_class'] = type(self).__name__
+        data["_strategy_class"] = type(self).__name__
         return data
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'BaseStrategy':
+    def from_dict(cls, data: dict[str, Any]) -> "BaseStrategy":
         """
         Create strategy from dictionary representation.
 
@@ -339,13 +337,13 @@ class BaseStrategy:
         :rtype: BaseStrategy
         """
         data = dict(data)  # copy so we don't mutate the caller's dict
-        strategy_class_name = data.pop('_strategy_class', None)
+        strategy_class_name = data.pop("_strategy_class", None)
         target_cls = BaseStrategy._registry.get(strategy_class_name, cls)
         obj = target_cls.__new__(target_cls)
         obj.__dict__.update(data)
         return obj
-    
-    def __deepcopy__(self, memo: dict[int, Any]) -> 'BaseStrategy':
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> "BaseStrategy":
         """
         Create deep copy of strategy.
 

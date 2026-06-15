@@ -7,7 +7,6 @@ CHP system modeling with thermal/electrical efficiency, storage integration and 
 :author: Dipl.-Ing. (FH) Jonas Pfeiffer
 """
 
-
 import numpy as np
 
 from districtheatingsim.constants import (
@@ -42,16 +41,31 @@ class CHP(BaseHeatGenerator):
     .. note::
        Supports BEW/KWKG subsidies and electricity revenue calculations.
     """
-    
-    def __init__(self, name: str, th_Leistung_kW: float, spez_Investitionskosten_GBHKW: float = 1500, 
-                 spez_Investitionskosten_HBHKW: float = 1850, el_Wirkungsgrad: float = 0.33, 
-                 KWK_Wirkungsgrad: float = 0.9, min_Teillast: float = 0.7, speicher_aktiv: bool = False, 
-                 Speicher_Volumen_BHKW: float = 20, T_vorlauf: float = 90, T_ruecklauf: float = 60, 
-                 initial_fill: float = 0.0, min_fill: float = 0.2, max_fill: float = 0.8, 
-                 spez_Investitionskosten_Speicher: float = 750, active: bool = True,
-                 opt_BHKW_min: float = 0, opt_BHKW_max: float = 1000,
-                 opt_BHKW_Speicher_min: float = 0, opt_BHKW_Speicher_max: float = 100,
-                 fuel_type: str | None = None):
+
+    def __init__(
+        self,
+        name: str,
+        th_Leistung_kW: float,
+        spez_Investitionskosten_GBHKW: float = 1500,
+        spez_Investitionskosten_HBHKW: float = 1850,
+        el_Wirkungsgrad: float = 0.33,
+        KWK_Wirkungsgrad: float = 0.9,
+        min_Teillast: float = 0.7,
+        speicher_aktiv: bool = False,
+        Speicher_Volumen_BHKW: float = 20,
+        T_vorlauf: float = 90,
+        T_ruecklauf: float = 60,
+        initial_fill: float = 0.0,
+        min_fill: float = 0.2,
+        max_fill: float = 0.8,
+        spez_Investitionskosten_Speicher: float = 750,
+        active: bool = True,
+        opt_BHKW_min: float = 0,
+        opt_BHKW_max: float = 1000,
+        opt_BHKW_Speicher_min: float = 0,
+        opt_BHKW_Speicher_max: float = 100,
+        fuel_type: str | None = None,
+    ):
         super().__init__(name)
         self.th_Leistung_kW = th_Leistung_kW
         self.spez_Investitionskosten_GBHKW = spez_Investitionskosten_GBHKW
@@ -72,15 +86,15 @@ class CHP(BaseHeatGenerator):
         self.opt_BHKW_max = opt_BHKW_max
         self.opt_BHKW_Speicher_min = opt_BHKW_Speicher_min
         self.opt_BHKW_Speicher_max = opt_BHKW_Speicher_max
-        
+
         # Calculate derived performance parameters
         self.thermischer_Wirkungsgrad = self.KWK_Wirkungsgrad - self.el_Wirkungsgrad
         self.el_Leistung_Soll = self.th_Leistung_kW / self.thermischer_Wirkungsgrad * self.el_Wirkungsgrad
-        
+
         # System specifications based on CHP technology
         self.Nutzungsdauer = 15  # Operational lifespan [years]
         self.f_Inst, self.f_W_Insp, self.Bedienaufwand = 6, 2, 0  # Installation and maintenance factors
-        
+
         # Fuel keyed off an explicit attribute, not the display name (BACKLOG C6).
         # Inferred from the name for backwards compatibility; defaults to gas.
         self.fuel_type = fuel_type if fuel_type is not None else self._infer_fuel_type(name)
@@ -106,7 +120,8 @@ class CHP(BaseHeatGenerator):
                 T_flow=self.T_vorlauf,
                 T_return=self.T_ruecklauf,
             )
-            if self.speicher_aktiv else None
+            if self.speicher_aktiv
+            else None
         )
 
         # Initialize operational arrays
@@ -163,17 +178,13 @@ class CHP(BaseHeatGenerator):
         """
         # Determine operational periods based on minimum part-load constraint
         self.betrieb_mask = Last_L >= self.th_Leistung_kW * self.min_Teillast
-        
+
         # Calculate thermal output limited by CHP capacity
-        self.Wärmeleistung_kW[self.betrieb_mask] = np.minimum(
-            Last_L[self.betrieb_mask], 
-            self.th_Leistung_kW
-        )
-        
+        self.Wärmeleistung_kW[self.betrieb_mask] = np.minimum(Last_L[self.betrieb_mask], self.th_Leistung_kW)
+
         # Calculate electrical output based on thermal output and efficiency ratio
         self.el_Leistung_kW[self.betrieb_mask] = (
-            self.Wärmeleistung_kW[self.betrieb_mask] / 
-            self.thermischer_Wirkungsgrad * self.el_Wirkungsgrad
+            self.Wärmeleistung_kW[self.betrieb_mask] / self.thermischer_Wirkungsgrad * self.el_Wirkungsgrad
         )
 
     def simulate_storage(self, Last_L: np.ndarray, duration: float) -> None:
@@ -228,8 +239,7 @@ class CHP(BaseHeatGenerator):
             # are tracked every timestep and history length == simulation length.
             self.buffer.step(Q_net, duration)
 
-            self.el_Leistung_kW[i] = (self.Wärmeleistung_kW[i] /
-                                      self.thermischer_Wirkungsgrad * self.el_Wirkungsgrad)
+            self.el_Leistung_kW[i] = self.Wärmeleistung_kW[i] / self.thermischer_Wirkungsgrad * self.el_Wirkungsgrad
             self.Speicher_Fuellstand[i] = self.buffer.get_soc() * 100.0
 
         self.betrieb_mask = self.Wärmeleistung_kW > 0
@@ -246,15 +256,14 @@ class CHP(BaseHeatGenerator):
         if self.active:
             self.betrieb_mask[t] = True
             self.Wärmeleistung_kW[t] = self.th_Leistung_kW
-            self.el_Leistung_kW[t] = (self.th_Leistung_kW / 
-                                     self.thermischer_Wirkungsgrad * self.el_Wirkungsgrad)
+            self.el_Leistung_kW[t] = self.th_Leistung_kW / self.thermischer_Wirkungsgrad * self.el_Wirkungsgrad
         else:
             self.betrieb_mask[t] = False
             self.Wärmeleistung_kW[t] = 0
             self.el_Leistung_kW[t] = 0
 
         return self.Wärmeleistung_kW[t], self.el_Leistung_kW[t]
-    
+
     def calculate_results(self, duration: float) -> None:
         """
         Calculate cogeneration metrics.
@@ -273,9 +282,8 @@ class CHP(BaseHeatGenerator):
         starts = np.diff(self.betrieb_mask.astype(int)) > 0
         self.Anzahl_Starts = np.sum(starts)
         self.Betriebsstunden = np.sum(self.betrieb_mask) * duration
-        self.Betriebsstunden_pro_Start = (self.Betriebsstunden / self.Anzahl_Starts 
-                                         if self.Anzahl_Starts > 0 else 0)
-    
+        self.Betriebsstunden_pro_Start = self.Betriebsstunden / self.Anzahl_Starts if self.Anzahl_Starts > 0 else 0
+
     def calculate_heat_generation_costs(self, economic_parameters: dict) -> float:
         """
         Calculate net heat generation costs with electricity revenue.
@@ -293,7 +301,7 @@ class CHP(BaseHeatGenerator):
         if self.Wärmemenge_MWh == 0:
             self.WGK = 0
             return 0
-        
+
         # Determine technology-specific costs and fuel prices by fuel type (not name).
         if self._resolve_fuel_type() == "wood_gas":
             spez_Investitionskosten_BHKW = self.spez_Investitionskosten_HBHKW  # €/kW
@@ -304,8 +312,7 @@ class CHP(BaseHeatGenerator):
 
         # Calculate component investment costs
         self.Investitionskosten_BHKW = spez_Investitionskosten_BHKW * self.th_Leistung_kW
-        self.Investitionskosten_Speicher = (self.spez_Investitionskosten_Speicher * 
-                                           self.Speicher_Volumen_BHKW)
+        self.Investitionskosten_Speicher = self.spez_Investitionskosten_Speicher * self.Speicher_Volumen_BHKW
         self.Investitionskosten = self.Investitionskosten_BHKW + self.Investitionskosten_Speicher
 
         # Calculate electricity revenue
@@ -320,19 +327,19 @@ class CHP(BaseHeatGenerator):
             operational_effort_h=self.Bedienaufwand,
             interest_rate_factor=self.q,
             inflation_rate_factor=self.r,
-            consideration_time_period_years=self.T, 
+            consideration_time_period_years=self.T,
             annual_energy_demand=self.Brennstoffbedarf_MWh,
             energy_cost_per_unit=self.Brennstoffpreis,
             annual_revenue=self.Stromeinnahmen,
-            hourly_rate=self.stundensatz
+            hourly_rate=self.stundensatz,
         )
-        
+
         self.WGK = self.A_N / self.Wärmemenge_MWh
 
         # Calculate BEW subsidy scenario
         self.Eigenanteil = 1 - self.Anteil_Förderung_BEW
         self.Investitionskosten_Gesamt_BEW = self.Investitionskosten * self.Eigenanteil
-        
+
         self.Annuität_BEW = self.annuity(
             initial_investment_cost=self.Investitionskosten_Gesamt_BEW,
             asset_lifespan_years=self.Nutzungsdauer,
@@ -341,13 +348,13 @@ class CHP(BaseHeatGenerator):
             operational_effort_h=self.Bedienaufwand,
             interest_rate_factor=self.q,
             inflation_rate_factor=self.r,
-            consideration_time_period_years=self.T, 
+            consideration_time_period_years=self.T,
             annual_energy_demand=self.Brennstoffbedarf_MWh,
             energy_cost_per_unit=self.Brennstoffpreis,
             annual_revenue=self.Stromeinnahmen,
-            hourly_rate=self.stundensatz
+            hourly_rate=self.stundensatz,
         )
-        
+
         self.WGK_BEW = self.Annuität_BEW / self.Wärmemenge_MWh
 
         # Return appropriate cost based on subsidy eligibility
@@ -366,22 +373,20 @@ class CHP(BaseHeatGenerator):
         """
         # Calculate CO2 emissions from fuel consumption
         self.co2_emissions = self.Brennstoffbedarf_MWh * self.co2_factor_fuel  # tCO2
-        
+
         # Calculate CO2 savings from electricity generation (grid displacement)
         self.co2_savings = self.Strommenge_MWh * self.co2_factor_electricity  # tCO2
-        
+
         # Calculate net CO2 impact (can be negative for high electricity generation)
         self.co2_total = self.co2_emissions - self.co2_savings  # tCO2
-        
+
         # Calculate specific CO2 emissions per unit heat generated
-        self.spec_co2_total = (self.co2_total / self.Wärmemenge_MWh 
-                              if self.Wärmemenge_MWh > 0 else 0)  # tCO2/MWh_heat
+        self.spec_co2_total = self.co2_total / self.Wärmemenge_MWh if self.Wärmemenge_MWh > 0 else 0  # tCO2/MWh_heat
 
         # Calculate primary energy consumption
         self.primärenergie = self.Brennstoffbedarf_MWh * self.primärenergiefaktor
-    
-    def calculate(self, economic_parameters: dict, duration: float, 
-                 load_profile: np.ndarray, **kwargs) -> dict:
+
+    def calculate(self, economic_parameters: dict, duration: float, load_profile: np.ndarray, **kwargs) -> dict:
         """
         Comprehensive CHP analysis.
 
@@ -403,38 +408,38 @@ class CHP(BaseHeatGenerator):
                 self.simulate_storage(load_profile, duration)
             else:
                 self.simulate_operation(load_profile)
-        
+
         # Calculate performance metrics
         self.calculate_results(duration)
-        
+
         # Perform economic and environmental analysis
         WGK = self.calculate_heat_generation_costs(economic_parameters)
         self.calculate_environmental_impact()
 
         # Compile comprehensive cogeneration results
         results = {
-            'tech_name': self.name,
-            'Wärmemenge': self.Wärmemenge_MWh,
-            'Wärmeleistung_L': self.Wärmeleistung_kW,
-            'Brennstoffbedarf': self.Brennstoffbedarf_MWh,
-            'WGK': WGK,
-            'Strommenge': self.Strommenge_MWh,
-            'el_Leistung_L': self.el_Leistung_kW,
-            'Anzahl_Starts': self.Anzahl_Starts,
-            'Betriebsstunden': self.Betriebsstunden,
-            'Betriebsstunden_pro_Start': self.Betriebsstunden_pro_Start,
-            'spec_co2_total': self.spec_co2_total,
-            'primärenergie': self.primärenergie,
-            'color': "yellow"  # Yellow color for cogeneration systems
+            "tech_name": self.name,
+            "Wärmemenge": self.Wärmemenge_MWh,
+            "Wärmeleistung_L": self.Wärmeleistung_kW,
+            "Brennstoffbedarf": self.Brennstoffbedarf_MWh,
+            "WGK": WGK,
+            "Strommenge": self.Strommenge_MWh,
+            "el_Leistung_L": self.el_Leistung_kW,
+            "Anzahl_Starts": self.Anzahl_Starts,
+            "Betriebsstunden": self.Betriebsstunden,
+            "Betriebsstunden_pro_Start": self.Betriebsstunden_pro_Start,
+            "spec_co2_total": self.spec_co2_total,
+            "primärenergie": self.primärenergie,
+            "color": "yellow",  # Yellow color for cogeneration systems
         }
 
         # Add storage-specific results if thermal storage is active
         if self.speicher_aktiv:
-            results['Wärmeleistung_Speicher_L'] = self.Wärmeleistung_Speicher_kW
-            results['Speicherfüllstand_L'] = self.Speicher_Fuellstand
+            results["Wärmeleistung_Speicher_L"] = self.Wärmeleistung_Speicher_kW
+            results["Speicherfüllstand_L"] = self.Speicher_Fuellstand
 
         return results
-    
+
     def set_parameters(self, variables: list[float], variables_order: list[str], idx: int) -> None:
         """
         Set optimization parameters.
@@ -477,7 +482,7 @@ class CHP(BaseHeatGenerator):
             bounds.append((self.opt_BHKW_Speicher_min, self.opt_BHKW_Speicher_max))
 
         return initial_values, variables_order, bounds
-    
+
     def get_display_text(self) -> str:
         """
         Generate display text for GUI.
@@ -486,11 +491,15 @@ class CHP(BaseHeatGenerator):
         :rtype: str
         """
         if self._resolve_fuel_type() == "wood_gas":
-            return (f"{self.name}: th. Leistung: {self.th_Leistung_kW:.1f} kW, "
-                    f"spez. Investitionskosten Holzgas-BHKW: {self.spez_Investitionskosten_HBHKW:.1f} €/kW")
-        return (f"{self.name}: th. Leistung: {self.th_Leistung_kW:.1f} kW, "
-                f"spez. Investitionskosten Erdgas-BHKW: {self.spez_Investitionskosten_GBHKW:.1f} €/kW")
-        
+            return (
+                f"{self.name}: th. Leistung: {self.th_Leistung_kW:.1f} kW, "
+                f"spez. Investitionskosten Holzgas-BHKW: {self.spez_Investitionskosten_HBHKW:.1f} €/kW"
+            )
+        return (
+            f"{self.name}: th. Leistung: {self.th_Leistung_kW:.1f} kW, "
+            f"spez. Investitionskosten Erdgas-BHKW: {self.spez_Investitionskosten_GBHKW:.1f} €/kW"
+        )
+
     def extract_tech_data(self) -> tuple[str, str, str, str]:
         """
         Extract technology data for reporting.
@@ -503,6 +512,7 @@ class CHP(BaseHeatGenerator):
         full_costs = f"{self.Investitionskosten:.1f}"
         return self.name, dimensions, costs, full_costs
 
+
 class CHPStrategy(BaseStrategy):
     """
     Control strategy for CHP with storage.
@@ -512,7 +522,7 @@ class CHPStrategy(BaseStrategy):
     :param charge_off: Temperature threshold for deactivation [°C]
     :type charge_off: float
     """
-    
+
     def __init__(self, charge_on: float, charge_off: float):
         """
         Initialize control strategy.

@@ -11,21 +11,21 @@ reproducible across machines and CI runs. Do not introduce randomness here.
 # level) works in headless CI environments without a display.
 import matplotlib
 
-matplotlib.use('Agg')
+matplotlib.use("Agg")
 
 # Run Qt without a display so the GUI-dialog characterization tests
 # (tests/test_technology_dialogs.py) can construct widgets in headless CI.
 # Must be set before any QApplication is created.
 import os
 
-os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import numpy as np
 import pandas as pd
 import pytest
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def qapp():
     """Process-wide QApplication for GUI-widget tests.
 
@@ -33,16 +33,17 @@ def qapp():
     one if another test (or the IDE) already created it.
     """
     from PyQt6.QtWidgets import QApplication
+
     return QApplication.instance() or QApplication([])
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def time_steps():
     """8760-h datetime64 array for a full simulation year — module-scoped."""
     return pd.date_range(start="2023-01-01", periods=8760, freq="h").to_numpy()
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def try_data_stub():
     """Minimal TRY-shaped tuple (5 zero arrays of 8760 h).
 
@@ -53,7 +54,7 @@ def try_data_stub():
     return (z, z, z, z, z)  # temperature, wind, direct_rad, global_rad, cloud_cover
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def cop_data_stub():
     """Minimal COP array stub — not used by GasBoiler or CHP."""
     return np.zeros((2, 2), dtype=float)
@@ -68,13 +69,13 @@ def economic_parameters():
     ~0 — see ``tests/test_annuity.py`` and BACKLOG C5.
     """
     return {
-        "gas_price": 70,            # €/MWh
-        "electricity_price": 150,   # €/MWh
-        "wood_price": 60,           # €/MWh
+        "gas_price": 70,  # €/MWh
+        "electricity_price": 150,  # €/MWh
+        "wood_price": 60,  # €/MWh
         "capital_interest_rate": 1.05,
         "inflation_rate": 1.03,
-        "time_period": 20,          # years
-        "hourly_rate": 45,          # €/h
+        "time_period": 20,  # years
+        "hourly_rate": 45,  # €/h
         "subsidy_eligibility": "Nein",
     }
 

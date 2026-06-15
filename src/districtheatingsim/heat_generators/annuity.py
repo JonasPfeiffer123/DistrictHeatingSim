@@ -33,14 +33,14 @@ The module implements the VDI 2067 methodology for economic evaluation:
 
 **Annuity Factor**:
     a = (q - 1) / [1 - q^(-T)]
-    
+
     Where:
     - q = interest rate factor (1 + interest rate)
     - T = consideration time period [years]
 
 **Price-Dynamic Present Value Factor**:
     b = [1 - (r/q)^T] / (q - r)
-    
+
     Where:
     - r = inflation rate factor (1 + inflation rate)
     - q = interest rate factor
@@ -48,7 +48,7 @@ The module implements the VDI 2067 methodology for economic evaluation:
 
 **Total Annuity**:
     A_N = A_N_K + A_N_V + A_N_B + A_N_S - A_N_E
-    
+
     Where:
     - A_N_K = Capital-bound costs annuity
     - A_N_V = Demand-bound costs annuity
@@ -60,17 +60,16 @@ Cost Categories:
 
 **Capital-Bound Costs (A_N_K)**:
     Investment costs, replacement costs, and residual value considerations
-    
+
 **Demand-Bound Costs (A_N_V)**:
     Energy costs (electricity, gas, fuel) varying with system operation
-    
+
 **Operation-Bound Costs (A_N_B)**:
     Maintenance, inspection, insurance, and labor costs
-    
+
 **Other Costs (A_N_S)**:
     Additional system-specific costs not covered by other categories
 """
-
 
 
 def annuity(
@@ -85,7 +84,7 @@ def annuity(
     annual_energy_demand: float = 0,
     energy_cost_per_unit: float = 0,
     annual_revenue: float = 0,
-    hourly_rate: float = 45
+    hourly_rate: float = 45,
 ) -> float:
     """
     Calculate annuity for technical installations according to VDI 2067.
@@ -116,11 +115,11 @@ def annuity(
     :type hourly_rate: float
     :return: Total annual equivalent cost [€/year]
     :rtype: float
-    
+
     .. note::
        Implements VDI 2067 methodology for lifecycle cost analysis including capital-bound,
        demand-bound, and operation-bound costs with revenue integration.
-    
+
     :raises ValueError:
         If ``asset_lifespan_years`` is zero or negative, or if
         ``interest_rate_factor`` <= 1 / ``inflation_rate_factor`` < 1 (a *rate* such
@@ -149,37 +148,42 @@ def annuity(
 
     if interest_rate_factor == inflation_rate_factor:
         raise ZeroDivisionError("Interest rate and inflation rate cannot be equal")
-    
+
     # Convert time periods to integers for discrete analysis
     consideration_time_period_years = int(consideration_time_period_years)
     asset_lifespan_years = int(asset_lifespan_years)
-    
+
     # Calculate number of complete replacement cycles
     n = max(consideration_time_period_years // asset_lifespan_years, 0)
 
     # Calculate economic factors according to VDI 2067
     # Annuity factor (capital recovery factor)
     a = (interest_rate_factor - 1) / (1 - (interest_rate_factor ** (-consideration_time_period_years)))
-    
+
     # Price-dynamic present value factor for cost escalation
-    b = (1 - (inflation_rate_factor / interest_rate_factor) ** consideration_time_period_years) / (interest_rate_factor - inflation_rate_factor)
-    
+    b = (1 - (inflation_rate_factor / interest_rate_factor) ** consideration_time_period_years) / (
+        interest_rate_factor - inflation_rate_factor
+    )
+
     # Present value factors for different cost categories (unified in this implementation)
     b_v = b_B = b_IN = b_s = b_E = b
 
     # CAPITAL-BOUND COSTS (A_N_K)
     # Present value of all investment costs including replacements
     AN = initial_investment_cost + sum(
-        initial_investment_cost * (inflation_rate_factor ** (i * asset_lifespan_years)) / 
-        (interest_rate_factor ** (i * asset_lifespan_years)) 
+        initial_investment_cost
+        * (inflation_rate_factor ** (i * asset_lifespan_years))
+        / (interest_rate_factor ** (i * asset_lifespan_years))
         for i in range(1, n + 1)
     )
 
     # Residual value calculation for partial asset lifetime in final period
-    R_W = (initial_investment_cost * 
-           (inflation_rate_factor ** (n * asset_lifespan_years)) * 
-           (((n + 1) * asset_lifespan_years - consideration_time_period_years) / asset_lifespan_years) * 
-           (1 / (interest_rate_factor ** consideration_time_period_years)))
+    R_W = (
+        initial_investment_cost
+        * (inflation_rate_factor ** (n * asset_lifespan_years))
+        * (((n + 1) * asset_lifespan_years - consideration_time_period_years) / asset_lifespan_years)
+        * (1 / (interest_rate_factor**consideration_time_period_years))
+    )
 
     # Annuity of capital-bound costs
     A_N_K = (AN - R_W) * a
@@ -187,17 +191,17 @@ def annuity(
     # DEMAND-BOUND COSTS (A_N_V)
     # Energy costs in the first period
     A_V1 = annual_energy_demand * energy_cost_per_unit
-    
+
     # Annuity of demand-bound costs with price escalation
     A_N_V = A_V1 * a * b_v
 
     # OPERATION-BOUND COSTS (A_N_B)
     # Operating costs in the first period (labor)
     A_B1 = operational_effort_h * hourly_rate
-    
+
     # Maintenance and inspection costs (percentage of investment)
     A_IN = initial_investment_cost * (installation_factor + maintenance_inspection_factor) / 100
-    
+
     # Annuity of operation-bound costs
     A_N_B = A_B1 * a * b_B + A_IN * a * b_IN
 
@@ -213,7 +217,7 @@ def annuity(
     # REVENUE INTEGRATION
     # Annuity of revenues (positive cash flows)
     A_NE = annual_revenue * a * b_E
-    
+
     # Net annuity including revenues
     A_N += A_NE
 

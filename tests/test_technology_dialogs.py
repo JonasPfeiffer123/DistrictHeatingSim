@@ -308,13 +308,13 @@ class TestVisualizationSmoke:
 
     def test_geothermal_viz_redraws_on_change(self):
         dialog = GeothermalDialog()
-        dialog._widgets["Fläche"].setText("250")    # triggers updateVisualization
+        dialog._widgets["Fläche"].setText("250")  # triggers updateVisualization
         dialog._widgets["Bohrtiefe"].setText("150")
-        dialog.updateVisualization()                 # explicit call must not raise
+        dialog.updateVisualization()  # explicit call must not raise
 
     def test_geothermal_viz_tolerates_invalid_input(self):
         dialog = GeothermalDialog()
-        dialog._widgets["Fläche"].setText("")        # non-numeric → fallback path
+        dialog._widgets["Fläche"].setText("")  # non-numeric → fallback path
         dialog.updateVisualization()
 
     def test_solar_viz_redraws_on_change(self):

@@ -46,6 +46,7 @@ class CalculateEnergySystemThread(QThread):
     :signal calculation_done: Emitted when calculation is done.
     :signal calculation_error: Emitted when error occurs during calculation.
     """
+
     calculation_done = pyqtSignal(object)
     calculation_error = pyqtSignal(str)
 

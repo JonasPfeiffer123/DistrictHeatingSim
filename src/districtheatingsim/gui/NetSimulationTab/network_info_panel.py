@@ -60,9 +60,7 @@ class NetworkInfoPanel(QWidget):
         self._scroll.setWidgetResizable(True)
         self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self._scroll.setStyleSheet(
-            "QScrollArea { border: none; background-color: transparent; }"
-        )
+        self._scroll.setStyleSheet("QScrollArea { border: none; background-color: transparent; }")
 
         self._cards_widget = QWidget()
         self._cards_layout = QVBoxLayout(self._cards_widget)
@@ -85,7 +83,7 @@ class NetworkInfoPanel(QWidget):
         """
         self._clear_cards()
 
-        if not hasattr(network_data, 'net'):
+        if not hasattr(network_data, "net"):
             lbl = QLabel("⚠️ Keine Netzdaten verfügbar")
             lbl.setFont(QFont("Arial", 10, QFont.Weight.Bold))
             lbl.setStyleSheet("""

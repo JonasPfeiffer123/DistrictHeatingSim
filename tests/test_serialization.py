@@ -27,6 +27,5 @@ def test_domain_core_imports_without_pyqt6():
     )
     result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
     assert result.returncode == 0, (
-        "Importing the domain core pulled in PyQt6 — a GUI dependency leaked back in.\n"
-        f"stderr:\n{result.stderr}"
+        f"Importing the domain core pulled in PyQt6 — a GUI dependency leaked back in.\nstderr:\n{result.stderr}"
     )

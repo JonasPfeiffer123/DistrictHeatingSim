@@ -39,8 +39,9 @@ class CostTab(QWidget):
 
     :signal data_added: Signal emitted when new data is added.
     """
+
     data_added = pyqtSignal(object)  # Signal that transfers data as an object
-    
+
     def __init__(self, folder_manager, config_manager, parent=None):
         """
         Initializes the CostTab instance.
@@ -85,32 +86,45 @@ class CostTab(QWidget):
         :rtype: pd.DataFrame
         """
         # Create the initial DataFrame
-        data = pd.DataFrame({
-            'Kosten': [2000000, 100000, 20000, 40000, 15000, 500000],
-            'T_N': [40, 20, 20, 40, 15, 20],
-            'F_inst': [1, 1, 1, 1, 1, 0],
-            'F_w_insp': [0, 1, 1, 0, 1, 0],
-            'Bedienaufwand': [5, 2, 2, 0, 5, 0]
-        }, index=['Wärmenetz', 'Hausanschlussstationen', 'Druckhaltung', 'Hydraulik', 'Elektroinstallation', 'Planungskosten'])
+        data = pd.DataFrame(
+            {
+                "Kosten": [2000000, 100000, 20000, 40000, 15000, 500000],
+                "T_N": [40, 20, 20, 40, 15, 20],
+                "F_inst": [1, 1, 1, 1, 1, 0],
+                "F_w_insp": [0, 1, 1, 0, 1, 0],
+                "Bedienaufwand": [5, 2, 2, 0, 5, 0],
+            },
+            index=[
+                "Wärmenetz",
+                "Hausanschlussstationen",
+                "Druckhaltung",
+                "Hydraulik",
+                "Elektroinstallation",
+                "Planungskosten",
+            ],
+        )
         data.index.name = "Komponente"
 
         # Calculate Annuität for each row
-        data['Annuität'] = data.apply(
+        data["Annuität"] = data.apply(
             lambda row: self.calc_annuität(
-                row['Kosten'], row['T_N'], row['F_inst'], row['F_w_insp'], row['Bedienaufwand']
+                row["Kosten"], row["T_N"], row["F_inst"], row["F_w_insp"], row["Bedienaufwand"]
             ),
-            axis=1
+            axis=1,
         )
 
         # Create the summary row as a DataFrame
-        total_row = pd.DataFrame({
-            'Kosten': [data['Kosten'].sum()],
-            'T_N': [''],  # No meaningful value for T_N in the summary row
-            'F_inst': [''],  # No meaningful value for F_inst in the summary row
-            'F_w_insp': [''],  # No meaningful value for F_w_insp in the summary row
-            'Bedienaufwand': [''],  # No meaningful value for Bedienaufwand in the summary row
-            'Annuität': [data['Annuität'].sum()]
-        }, index=['Summe Infrastruktur'])
+        total_row = pd.DataFrame(
+            {
+                "Kosten": [data["Kosten"].sum()],
+                "T_N": [""],  # No meaningful value for T_N in the summary row
+                "F_inst": [""],  # No meaningful value for F_inst in the summary row
+                "F_w_insp": [""],  # No meaningful value for F_w_insp in the summary row
+                "Bedienaufwand": [""],  # No meaningful value for Bedienaufwand in the summary row
+                "Annuität": [data["Annuität"].sum()],
+            },
+            index=["Summe Infrastruktur"],
+        )
 
         # Concatenate the summary row with the original data
         data = pd.concat([data, total_row])
@@ -126,7 +140,7 @@ class CostTab(QWidget):
 
         # Infrastructure Costs Section
         self.setupInfrastructureCostsTable()
-        
+
         # Technology Costs Section
         self.tech_widget = QWidget()
         tech_layout = QVBoxLayout(self.tech_widget)
@@ -193,7 +207,7 @@ class CostTab(QWidget):
         """
         label = QLabel(text)
         self.mainLayout.addWidget(label)
-    
+
     ### Infrastructure Tables ###
     def setupInfrastructureCostsTable(self):
         """
@@ -256,14 +270,14 @@ class CostTab(QWidget):
         for row_idx, (_index, row) in enumerate(self.data.iterrows()):
             for col_idx, (col_name, value) in enumerate(row.items()):
                 # Apply formatting based on column type
-                if col_name == 'Kosten' or col_name == 'Annuität':
-                    formatted_value = self.format_cost(value) if value != '' else ''
-                elif col_name == 'T_N':
-                    formatted_value = f"{value} a" if value != '' else ''  # Append 'a' for years
-                elif col_name in ['F_inst', 'F_w_insp']:
-                    formatted_value = f"{value} %" if value != '' else ''  # Convert to percentage and add '%'
-                elif col_name == 'Bedienaufwand':
-                    formatted_value = f"{value} h" if value != '' else ''  # Append 'h' for hours
+                if col_name == "Kosten" or col_name == "Annuität":
+                    formatted_value = self.format_cost(value) if value != "" else ""
+                elif col_name == "T_N":
+                    formatted_value = f"{value} a" if value != "" else ""  # Append 'a' for years
+                elif col_name in ["F_inst", "F_w_insp"]:
+                    formatted_value = f"{value} %" if value != "" else ""  # Convert to percentage and add '%'
+                elif col_name == "Bedienaufwand":
+                    formatted_value = f"{value} h" if value != "" else ""  # Append 'h' for hours
                 else:
                     formatted_value = str(value)
 
@@ -302,7 +316,7 @@ class CostTab(QWidget):
             # Remove unit suffixes before conversion
             value = value.replace("€", "").replace("a", "").replace("%", "").replace("h", "").replace(" ", "").strip()
             # Attempt to convert the stripped value to a float or int
-            if '.' in value or 'e' in value.lower():
+            if "." in value or "e" in value.lower():
                 self.data.iloc[row, col] = float(value)
             else:
                 self.data.iloc[row, col] = int(value)
@@ -310,20 +324,22 @@ class CostTab(QWidget):
             self.data.iloc[row, col] = value  # Handle non-numeric values gracefully
 
         # Recalculate Annuität for the updated row
-        self.data.at[self.data.index[row], 'Annuität'] = self.calc_annuität(
-            float(self.data.at[self.data.index[row], 'Kosten']),
-            int(self.data.at[self.data.index[row], 'T_N']),
-            float(self.data.at[self.data.index[row], 'F_inst']),
-            float(self.data.at[self.data.index[row], 'F_w_insp']),
-            float(self.data.at[self.data.index[row], 'Bedienaufwand'])
+        self.data.at[self.data.index[row], "Annuität"] = self.calc_annuität(
+            float(self.data.at[self.data.index[row], "Kosten"]),
+            int(self.data.at[self.data.index[row], "T_N"]),
+            float(self.data.at[self.data.index[row], "F_inst"]),
+            float(self.data.at[self.data.index[row], "F_w_insp"]),
+            float(self.data.at[self.data.index[row], "Bedienaufwand"]),
         )
 
         # Update the Annuität column in the table
-        annuity_value = self.data.at[self.data.index[row], 'Annuität']
+        annuity_value = self.data.at[self.data.index[row], "Annuität"]
         self.infrastructureCostsTable.blockSignals(True)
-        self.infrastructureCostsTable.setItem(row, self.data.columns.get_loc('Annuität'), QTableWidgetItem(self.format_cost(annuity_value)))
+        self.infrastructureCostsTable.setItem(
+            row, self.data.columns.get_loc("Annuität"), QTableWidgetItem(self.format_cost(annuity_value))
+        )
         self.infrastructureCostsTable.blockSignals(False)
-        
+
         # Recalculate the summary row
         self.updateSummaryRow()
 
@@ -336,18 +352,18 @@ class CostTab(QWidget):
         The new row is added above the summary row.
         """
         # Remove the summary row temporarily
-        if 'Summe Infrastruktur' in self.data.index:
-            self.data = self.data.drop('Summe Infrastruktur')
+        if "Summe Infrastruktur" in self.data.index:
+            self.data = self.data.drop("Summe Infrastruktur")
 
         # Create a new row with default values
         new_row_name = f"Neues Objekt {len(self.data) + 1}"
         default_values = {
-            'Kosten': 0,
-            'T_N': 0,
-            'F_inst': 0,
-            'F_w_insp': 0,
-            'Bedienaufwand': 0,
-            'Annuität': self.calc_annuität(0, 0, 0, 0, 0)
+            "Kosten": 0,
+            "T_N": 0,
+            "F_inst": 0,
+            "F_w_insp": 0,
+            "Bedienaufwand": 0,
+            "Annuität": self.calc_annuität(0, 0, 0, 0, 0),
         }
         new_row = pd.DataFrame(default_values, index=[new_row_name])
 
@@ -367,8 +383,8 @@ class CostTab(QWidget):
         current_row = self.infrastructureCostsTable.currentRow()
         if current_row != -1:
             # Remove the summary row temporarily
-            if 'Summe Infrastruktur' in self.data.index:
-                self.data = self.data.drop('Summe Infrastruktur')
+            if "Summe Infrastruktur" in self.data.index:
+                self.data = self.data.drop("Summe Infrastruktur")
 
             # Remove the selected row
             self.data = self.data.drop(self.data.index[current_row])
@@ -425,31 +441,32 @@ class CostTab(QWidget):
         :return: The calculated annuity
         :rtype: float
         """
-        return infrastructure_annuity(
-            A0, TN, f_Inst, f_W_Insp, Bedienaufwand, self.parent.economic_parameters
-        )
-    
+        return infrastructure_annuity(A0, TN, f_Inst, f_W_Insp, Bedienaufwand, self.parent.economic_parameters)
+
     def updateSummaryRow(self):
         """
         Recalculates the summary row and appends it to the DataFrame.
         """
         # Remove existing summary row if it exists
-        if 'Summe Infrastruktur' in self.data.index:
-            self.data = self.data.drop('Summe Infrastruktur')
+        if "Summe Infrastruktur" in self.data.index:
+            self.data = self.data.drop("Summe Infrastruktur")
 
         # Recalculate the summary row
-        total_row = pd.DataFrame({
-            'Kosten': [self.data['Kosten'].sum()],
-            'T_N': [''],  # No meaningful value for T_N in the summary row
-            'F_inst': [''],  # No meaningful value for F_inst in the summary row
-            'F_w_insp': [''],  # No meaningful value for F_w_insp in the summary row
-            'Bedienaufwand': [''],  # No meaningful value for Bedienaufwand in the summary row
-            'Annuität': [self.data['Annuität'].sum()]
-        }, index=['Summe Infrastruktur'])
+        total_row = pd.DataFrame(
+            {
+                "Kosten": [self.data["Kosten"].sum()],
+                "T_N": [""],  # No meaningful value for T_N in the summary row
+                "F_inst": [""],  # No meaningful value for F_inst in the summary row
+                "F_w_insp": [""],  # No meaningful value for F_w_insp in the summary row
+                "Bedienaufwand": [""],  # No meaningful value for Bedienaufwand in the summary row
+                "Annuität": [self.data["Annuität"].sum()],
+            },
+            index=["Summe Infrastruktur"],
+        )
 
         # Append the summary row to the DataFrame
         self.data = pd.concat([self.data, total_row])
-    
+
     def updateTableValue(self, row, column, value):
         """
         Updates the value in the specified table cell.
@@ -461,16 +478,21 @@ class CostTab(QWidget):
         :param value: The value to set
         :type value: Any
         """
-        if 0 <= row < self.infrastructureCostsTable.rowCount() and 0 <= column < self.infrastructureCostsTable.columnCount():
+        if (
+            0 <= row < self.infrastructureCostsTable.rowCount()
+            and 0 <= column < self.infrastructureCostsTable.columnCount()
+        ):
             self.infrastructureCostsTable.setItem(row, column, QTableWidgetItem(self.format_cost(value)))
         else:
             pass
-    
+
     def berechneWaermenetzKosten(self):
         """
         Opens the dialog to calculate the cost of the heating network and updates the table.
         """
-        dialog = KostenBerechnungDialog(self, label="spez. Kosten Wärmenetz pro m_Trasse (inkl. Tiefbau) in €/m", value="1000", type="flow line")
+        dialog = KostenBerechnungDialog(
+            self, label="spez. Kosten Wärmenetz pro m_Trasse (inkl. Tiefbau) in €/m", value="1000", type="flow line"
+        )
         dialog.setWindowTitle("Kosten Wärmenetz berechnen")
         if dialog.exec():
             cost_net = dialog.total_cost
@@ -480,17 +502,19 @@ class CostTab(QWidget):
         """
         Opens the dialog to calculate the cost of house connection stations and updates the table.
         """
-        dialog = KostenBerechnungDialog(self, label="spez. Kosten Hausanschlussstationen pro kW max. Wärmebedarf in €/kW", value="250", type="HAST")
+        dialog = KostenBerechnungDialog(
+            self, label="spez. Kosten Hausanschlussstationen pro kW max. Wärmebedarf in €/kW", value="250", type="HAST"
+        )
         dialog.setWindowTitle("Kosten Hausanschlussstationen berechnen")
         if dialog.exec():
             cost_net = dialog.total_cost
             self.updateTableValue(row=1, column=0, value=cost_net)
-    
+
     ### Setup of Calculation Result Tables ###
     def setupTechDataTable(self):
         self.techDataTable = QTableWidget()
         self.techDataTable.setColumnCount(4)
-        self.techDataTable.setHorizontalHeaderLabels(['Name', 'Dimensionen', 'Kosten', 'Gesamtkosten'])
+        self.techDataTable.setHorizontalHeaderLabels(["Name", "Dimensionen", "Kosten", "Gesamtkosten"])
         self.techDataTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.techDataTable.setAlternatingRowColors(True)
 
@@ -546,8 +570,8 @@ class CostTab(QWidget):
         Updates the label displaying the total costs using the summary row from the DataFrame.
         """
         # Extract the total costs from the summary row
-        if 'Summe Infrastruktur' in self.data.index:
-            total_cost = self.data.at['Summe Infrastruktur', 'Kosten']
+        if "Summe Infrastruktur" in self.data.index:
+            total_cost = self.data.at["Summe Infrastruktur", "Kosten"]
         else:
             total_cost = 0  # Fallback if the summary row is missing
 
@@ -556,7 +580,7 @@ class CostTab(QWidget):
 
         # Update the label
         self.totalCostLabel.setText(f"Gesamtkosten: {formatted_total_cost}")
-    
+
     ### Setup of Cost Composition Chart ###
     def setupCostCompositionChart(self):
         """
@@ -580,7 +604,7 @@ class CostTab(QWidget):
         figure = Figure(figsize=(8, 6))
         canvas = FigureCanvas(figure)
         return figure, canvas
-    
+
     def plotCostComposition(self):
         """
         Plots the cost composition with two separate figures: a bar chart and a pie chart.
@@ -589,9 +613,9 @@ class CostTab(QWidget):
 
         # Combine costs from self.data (excluding the summary row) and individual costs
         data_costs = [
-            (index, self.data.at[index, 'Kosten'])
+            (index, self.data.at[index, "Kosten"])
             for index in self.data.index
-            if index != 'Summe Infrastruktur'  # Exclude the summary row
+            if index != "Summe Infrastruktur"  # Exclude the summary row
         ]
         combined_costs = data_costs + self.individual_costs
 
@@ -603,14 +627,14 @@ class CostTab(QWidget):
         self.bar_chart_figure.clf()  # Clear the figure before plotting
         ax1 = self.bar_chart_figure.add_subplot(111)  # Full plot for bar chart
         bar_colors = ax1.barh(labels, sizes, height=0.5)  # Bar chart with default colors
-        ax1.set_title('Kostenzusammensetzung (Absolut in €)')
-        ax1.set_xlabel('Kosten (€)')
-        ax1.set_ylabel('Komponenten')
+        ax1.set_title("Kostenzusammensetzung (Absolut in €)")
+        ax1.set_xlabel("Kosten (€)")
+        ax1.set_ylabel("Komponenten")
 
         # Display exact cost values next to each bar
         for i, (size, _label) in enumerate(zip(sizes, labels, strict=False)):
             formatted_size = self.format_cost(size)
-            ax1.text(size, i, formatted_size, va='center')
+            ax1.text(size, i, formatted_size, va="center")
 
         ### Pie Chart
         self.pie_chart_figure.clf()  # Clear the figure before plotting
@@ -627,11 +651,11 @@ class CostTab(QWidget):
             startangle=140,
             explode=[0.1 if label == "Wärmenetz" else 0 for label in labels],
             labeldistance=1.1,
-            pctdistance=0.85
+            pctdistance=0.85,
         )
         # Extract colors from pie chart for consistency
         pie_colors = [wedge.get_facecolor() for wedge in wedges]
-        ax2.set_title('Kostenzusammensetzung (Relativ in %)')
+        ax2.set_title("Kostenzusammensetzung (Relativ in %)")
         ax2.legend(wedges, percent_labels, loc="best", bbox_to_anchor=(1, 0.5))
 
         # Apply consistent colors to the bar chart

@@ -53,10 +53,10 @@ class HeatPump(BaseHeatGenerator):
         self.f_Inst_WP, self.f_W_Insp_WP, self.Bedienaufwand_WP = 1, 1.5, 0
         self.f_Inst_WQ, self.f_W_Insp_WQ, self.Bedienaufwand_WQ = 0.5, 0.5, 0
         self.Nutzungsdauer_WQ_dict = {
-            "Abwärmepumpe": 20, 
-            "Abwasserwärmepumpe": 20, 
-            "Flusswärmepumpe": 20, 
-            "Geothermie": 30
+            "Abwärmepumpe": 20,
+            "Abwasserwärmepumpe": 20,
+            "Flusswärmepumpe": 20,
+            "Geothermie": 30,
         }
         self.co2_factor_electricity = CO2_FACTOR_ELECTRICITY  # tCO2/MWh electricity
         self.primärenergiefaktor = PRIMARY_ENERGY_FACTOR_ELECTRICITY_HP
@@ -64,7 +64,7 @@ class HeatPump(BaseHeatGenerator):
         self.Anteil_Förderung_BEW = BEW_SUBSIDY_SHARE  # 40% subsidy for BEW program
 
         self.strategy = HeatPumpStrategy(75, 70)
-        
+
         self.init_operation(8760)
 
     def init_operation(self, hours: int) -> None:
@@ -88,8 +88,9 @@ class HeatPump(BaseHeatGenerator):
 
         self.calculated = False  # Flag to indicate if the calculation is done
 
-    def calculate_COP(self, VLT_L: np.ndarray, QT: float | np.ndarray, 
-                     COP_data: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def calculate_COP(
+        self, VLT_L: np.ndarray, QT: float | np.ndarray, COP_data: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Calculate Coefficient of Performance using manufacturer data interpolation.
 
@@ -106,12 +107,11 @@ class HeatPump(BaseHeatGenerator):
         values = COP_data
         row_header = values[0, 1:]  # Flow temperatures from first row
         col_header = values[1:, 0]  # Source temperatures from first column
-        values = values[1:, 1:]     # COP values matrix
+        values = values[1:, 1:]  # COP values matrix
 
         # Create interpolation function
         f = RegularGridInterpolator(
-            (col_header, row_header), values, 
-            method='linear', bounds_error=False, fill_value=None
+            (col_header, row_header), values, method="linear", bounds_error=False, fill_value=None
         )
 
         # Apply technical limitation: maximum temperature lift of 75 K
@@ -121,9 +121,7 @@ class HeatPump(BaseHeatGenerator):
         try:
             # Try to use QT as array
             if len(QT) != len(VLT_L):
-                raise ValueError(
-                    "QT must be either a single number or an array with the same length as VLT_L."
-                )
+                raise ValueError("QT must be either a single number or an array with the same length as VLT_L.")
             QT_array = np.asarray(QT)
         except (TypeError, AttributeError):
             # QT is scalar (no len() method)
@@ -138,23 +136,28 @@ class HeatPump(BaseHeatGenerator):
         try:
             # Calculate COPs for all values
             COP_L = f(input_array)
-            
+
             # Handle out-of-bounds values by setting COP to 0
             out_of_bounds_mask = np.isnan(COP_L)
             COP_L[out_of_bounds_mask] = 0
-            
+
             if np.any(out_of_bounds_mask):
                 print("Some values were outside the valid range and were set to 0.")
-                
+
         except ValueError as e:
             print(f"Interpolation error: {e}. Setting COP to 0 for values out of bounds.")
             COP_L = np.zeros_like(VLT_L)
 
         return COP_L, VLT_L
 
-    def calculate_heat_generation_costs(self, Wärmeleistung: float, Wärmemenge_MWh: float, 
-                                      Strombedarf: float, spez_Investitionskosten_WQ: float, 
-                                      economic_parameters: dict[str, Any]) -> float:
+    def calculate_heat_generation_costs(
+        self,
+        Wärmeleistung: float,
+        Wärmemenge_MWh: float,
+        Strombedarf: float,
+        spez_Investitionskosten_WQ: float,
+        economic_parameters: dict[str, Any],
+    ) -> float:
         """
         Calculate heat generation costs (WGK).
 
@@ -179,7 +182,7 @@ class HeatPump(BaseHeatGenerator):
         # Heat pump investment costs
         spezifische_Investitionskosten_WP = self.spezifische_Investitionskosten_WP
         Investitionskosten_WP = spezifische_Investitionskosten_WP * round(Wärmeleistung, 0)
-        
+
         # Calculate annuity for heat pump without subsidies
         E1_WP = self.annuity(
             initial_investment_cost=Investitionskosten_WP,
@@ -189,13 +192,13 @@ class HeatPump(BaseHeatGenerator):
             operational_effort_h=self.Bedienaufwand_WP,
             interest_rate_factor=self.q,
             inflation_rate_factor=self.r,
-            consideration_time_period_years=self.T, 
+            consideration_time_period_years=self.T,
             annual_energy_demand=self.Strommenge_MWh,
             energy_cost_per_unit=self.Strompreis,
             annual_revenue=0,
-            hourly_rate=self.stundensatz
+            hourly_rate=self.stundensatz,
         )
-        
+
         WGK_WP = E1_WP / Wärmemenge_MWh
 
         # Calculate annuity for heat pump with BEW subsidies
@@ -209,22 +212,22 @@ class HeatPump(BaseHeatGenerator):
             operational_effort_h=self.Bedienaufwand_WP,
             interest_rate_factor=self.q,
             inflation_rate_factor=self.r,
-            consideration_time_period_years=self.T, 
+            consideration_time_period_years=self.T,
             annual_energy_demand=self.Strommenge_MWh,
             energy_cost_per_unit=self.Strompreis,
             annual_revenue=0,
-            hourly_rate=self.stundensatz
+            hourly_rate=self.stundensatz,
         )
         WGK_WP_BEW = Annuität_WP_BEW / Wärmemenge_MWh
 
         # Heat source costs
-        base_name = self.name.split('_')[0]
-        
+        base_name = self.name.split("_")[0]
+
         if base_name not in self.Nutzungsdauer_WQ_dict:
             raise KeyError(f"{base_name} is not a valid key in Nutzungsdauer_WQ_dict")
-        
+
         Investitionskosten_WQ = spez_Investitionskosten_WQ * Wärmeleistung
-        
+
         # Calculate annuity for heat source without subsidies
         E1_WQ = self.annuity(
             initial_investment_cost=Investitionskosten_WQ,
@@ -234,13 +237,13 @@ class HeatPump(BaseHeatGenerator):
             operational_effort_h=self.Bedienaufwand_WQ,
             interest_rate_factor=self.q,
             inflation_rate_factor=self.r,
-            consideration_time_period_years=self.T, 
+            consideration_time_period_years=self.T,
             annual_energy_demand=0,
             energy_cost_per_unit=self.Strompreis,
             annual_revenue=0,
-            hourly_rate=self.stundensatz
+            hourly_rate=self.stundensatz,
         )
-        
+
         WGK_WQ = E1_WQ / Wärmemenge_MWh
 
         # Calculate annuity for heat source with BEW subsidies
@@ -253,11 +256,11 @@ class HeatPump(BaseHeatGenerator):
             operational_effort_h=self.Bedienaufwand_WQ,
             interest_rate_factor=self.q,
             inflation_rate_factor=self.r,
-            consideration_time_period_years=self.T, 
+            consideration_time_period_years=self.T,
             annual_energy_demand=0,
             energy_cost_per_unit=self.Strompreis,
             annual_revenue=0,
-            hourly_rate=self.stundensatz
+            hourly_rate=self.stundensatz,
         )
 
         WGK_WQ_BEW = Annuität_WQ_BEW / Wärmemenge_MWh
@@ -265,13 +268,13 @@ class HeatPump(BaseHeatGenerator):
         # Total heat generation costs
         WGK = WGK_WP + WGK_WQ
         WGK_BEW = WGK_WP_BEW + WGK_WQ_BEW
-        
+
         # Return appropriate cost based on subsidy eligibility
         if self.BEW == "Nein":
             return WGK
         elif self.BEW == "Ja":
             return WGK_BEW
-    
+
     def calculate_environmental_impact(self) -> None:
         """
         Calculate CO2 emissions and primary energy consumption.
@@ -281,13 +284,15 @@ class HeatPump(BaseHeatGenerator):
         """
         # CO2 emissions due to electricity usage
         self.co2_emissions = self.Strommenge_MWh * self.co2_factor_electricity  # tCO2
-        
+
         # Specific emissions per unit heat delivered
-        self.spec_co2_total = (self.co2_emissions / self.Wärmemenge_MWh 
-                              if self.Wärmemenge_MWh > 0 else 0)  # tCO2/MWh_heat
+        self.spec_co2_total = (
+            self.co2_emissions / self.Wärmemenge_MWh if self.Wärmemenge_MWh > 0 else 0
+        )  # tCO2/MWh_heat
 
         # Primary energy consumption including conversion losses
         self.primärenergie = self.Strommenge_MWh * self.primärenergiefaktor
+
 
 class HeatPumpStrategy(BaseStrategy):
     """
@@ -298,7 +303,7 @@ class HeatPumpStrategy(BaseStrategy):
     :param charge_off: Temperature threshold for deactivation [°C]
     :type charge_off: float
     """
-    
+
     def __init__(self, charge_on: float, charge_off: float) -> None:
         """
         Initialize heat pump control strategy.
@@ -310,8 +315,9 @@ class HeatPumpStrategy(BaseStrategy):
         """
         super().__init__(charge_on, charge_off)
 
-    def decide_operation(self, current_state: bool, upper_storage_temp: float, 
-                        lower_storage_temp: float, remaining_demand: float) -> bool:
+    def decide_operation(
+        self, current_state: bool, upper_storage_temp: float, lower_storage_temp: float, remaining_demand: float
+    ) -> bool:
         """
         Decide heat pump operation based on storage temperature and demand.
 

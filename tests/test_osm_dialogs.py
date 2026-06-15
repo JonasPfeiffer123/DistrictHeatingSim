@@ -52,9 +52,14 @@ class TestConstruction:
     @pytest.mark.parametrize("factory", [_street_dialog, _building_dialog])
     def test_shared_methods_inherited(self, factory, tmp_path):
         d = factory(tmp_path)
-        for name in ("setVisualizationTab", "getCapturedPolygonFromMap",
-                     "clearCapturedPolygon", "_begin_polygon_capture",
-                     "_onDownloadCanceled", "_onDownloadError"):
+        for name in (
+            "setVisualizationTab",
+            "getCapturedPolygonFromMap",
+            "clearCapturedPolygon",
+            "_begin_polygon_capture",
+            "_onDownloadCanceled",
+            "_onDownloadError",
+        ):
             assert hasattr(d, name)
 
 

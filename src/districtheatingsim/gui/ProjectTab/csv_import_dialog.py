@@ -36,44 +36,71 @@ from PyQt6.QtWidgets import (
 
 # (column_name, label_in_ui, required, default_value, tooltip)
 TARGET_COLUMNS: list[tuple[str, str, bool, str, str]] = [
-    ("Land",                "Land",                  True,  "Deutschland", "Pflichtfeld – z. B. 'Deutschland'"),
-    ("Bundesland",          "Bundesland",             True,  "",            "Pflichtfeld – z. B. 'Sachsen'"),
-    ("Stadt",               "Stadt",                  True,  "",            "Pflichtfeld – z. B. 'Leipzig'"),
-    ("Adresse",             "Adresse",                True,  "",            "Pflichtfeld – Straße + Hausnummer"),
-    ("Wärmebedarf",         "Wärmebedarf [kWh/a]",   True,  "",            "Pflichtfeld – jährlicher Wärmebedarf in kWh"),
-    ("Gebäudetyp",          "Gebäudetyp",             True,  "HMF",         "Pflichtfeld – BDEW/VDI 4655 Typkürzel (EFH, MFH, GKO, …)"),
-    ("Subtyp",              "Subtyp",                 False, "",            "Optional – z. B. BDEW-Subtyp"),
-    ("WW_Anteil",           "WW-Anteil [0–1]",        True,  "",        "Pflichtfeld – Anteil Warmwasser am Gesamtwärmebedarf"),
-    ("Typ_Heizflächen",     "Typ Heizflächen",        False, "",          "Optional – HK = Heizkörper, FBH = Fußbodenheizung"),
-    ("VLT_max",             "VLT_max [°C]",           True,  "70",          "Pflichtfeld – maximale Vorlauftemperatur"),
-    ("Steigung_Heizkurve",  "Steigung Heizkurve",     True,  "1.5",         "Pflichtfeld – Steigung der witterungsgeführten Heizkurve"),
-    ("RLT_max",             "RLT_max [°C]",           True,  "50",          "Pflichtfeld – maximale Rücklauftemperatur"),
-    ("Normaußentemperatur", "Normaußentemp. [°C]",    True,  "-15",         "Pflichtfeld – Normaußentemperatur nach DIN EN 12831"),
-    ("Heizgrenztemperatur", "Heizgrenztemp. [°C]",    False, "15",            "Optional BDEW – Temperatur, ab der nicht mehr geheizt wird (~15 °C)"),
-    ("Heizexponent",        "Heizexponent",            False, "",            "Optional BDEW – Formparameter der Lastkurve (Standard 1.0)"),
-    ("P_max",               "P_max [kW]",             False, "",            "Optional BDEW – maximale Wärmeleistung in kW"),
+    ("Land", "Land", True, "Deutschland", "Pflichtfeld – z. B. 'Deutschland'"),
+    ("Bundesland", "Bundesland", True, "", "Pflichtfeld – z. B. 'Sachsen'"),
+    ("Stadt", "Stadt", True, "", "Pflichtfeld – z. B. 'Leipzig'"),
+    ("Adresse", "Adresse", True, "", "Pflichtfeld – Straße + Hausnummer"),
+    ("Wärmebedarf", "Wärmebedarf [kWh/a]", True, "", "Pflichtfeld – jährlicher Wärmebedarf in kWh"),
+    ("Gebäudetyp", "Gebäudetyp", True, "HMF", "Pflichtfeld – BDEW/VDI 4655 Typkürzel (EFH, MFH, GKO, …)"),
+    ("Subtyp", "Subtyp", False, "", "Optional – z. B. BDEW-Subtyp"),
+    ("WW_Anteil", "WW-Anteil [0–1]", True, "", "Pflichtfeld – Anteil Warmwasser am Gesamtwärmebedarf"),
+    ("Typ_Heizflächen", "Typ Heizflächen", False, "", "Optional – HK = Heizkörper, FBH = Fußbodenheizung"),
+    ("VLT_max", "VLT_max [°C]", True, "70", "Pflichtfeld – maximale Vorlauftemperatur"),
+    (
+        "Steigung_Heizkurve",
+        "Steigung Heizkurve",
+        True,
+        "1.5",
+        "Pflichtfeld – Steigung der witterungsgeführten Heizkurve",
+    ),
+    ("RLT_max", "RLT_max [°C]", True, "50", "Pflichtfeld – maximale Rücklauftemperatur"),
+    ("Normaußentemperatur", "Normaußentemp. [°C]", True, "-15", "Pflichtfeld – Normaußentemperatur nach DIN EN 12831"),
+    (
+        "Heizgrenztemperatur",
+        "Heizgrenztemp. [°C]",
+        False,
+        "15",
+        "Optional BDEW – Temperatur, ab der nicht mehr geheizt wird (~15 °C)",
+    ),
+    ("Heizexponent", "Heizexponent", False, "", "Optional BDEW – Formparameter der Lastkurve (Standard 1.0)"),
+    ("P_max", "P_max [kW]", False, "", "Optional BDEW – maximale Wärmeleistung in kW"),
 ]
 
 # Known alternative names for auto-mapping (lower-case keys)
 _ALIASES: dict[str, list[str]] = {
-    "land":                ["country", "nation", "staat"],
-    "bundesland":          ["state", "province", "region"],
-    "stadt":               ["city", "ort", "gemeinde", "place", "location"],
-    "adresse":             ["address", "street", "straße", "strasse", "anschrift", "adress"],
-    "wärmebedarf":         ["heat_demand", "heizenergie", "jahresenergiebedarf", "energiebedarf",
-                            "jahreswärmebedarf", "jwb", "waermebedarf", "annual_heat", "wärmemengen"],
-    "gebäudetyp":          ["building_type", "typ", "type", "nutzungstyp", "gebaeudetyp", "gebäudetyp"],
-    "subtyp":              ["subtype", "sub_type", "untertyp"],
-    "ww_anteil":           ["dhw_share", "warmwasser", "ww", "dhw", "warmwasseranteil"],
-    "typ_heizflächen":     ["heating_surface", "heizflaeche", "heizfläche"],
-    "vlt_max":             ["vl_max", "vorlauf_max", "vorlauftemperatur_max", "supply_temp", "tvl_max"],
-    "steigung_heizkurve":  ["slope", "heizkurve_steigung", "neigung_heizkurve"],
-    "rlt_max":             ["rl_max", "rücklauf_max", "rücklauftemperatur_max", "return_temp", "trl_max"],
-    "normaußentemperatur": ["design_temp", "auslegungstemperatur", "normaußen", "t_design",
-                            "normaussentemperatur", "t_norm"],
+    "land": ["country", "nation", "staat"],
+    "bundesland": ["state", "province", "region"],
+    "stadt": ["city", "ort", "gemeinde", "place", "location"],
+    "adresse": ["address", "street", "straße", "strasse", "anschrift", "adress"],
+    "wärmebedarf": [
+        "heat_demand",
+        "heizenergie",
+        "jahresenergiebedarf",
+        "energiebedarf",
+        "jahreswärmebedarf",
+        "jwb",
+        "waermebedarf",
+        "annual_heat",
+        "wärmemengen",
+    ],
+    "gebäudetyp": ["building_type", "typ", "type", "nutzungstyp", "gebaeudetyp", "gebäudetyp"],
+    "subtyp": ["subtype", "sub_type", "untertyp"],
+    "ww_anteil": ["dhw_share", "warmwasser", "ww", "dhw", "warmwasseranteil"],
+    "typ_heizflächen": ["heating_surface", "heizflaeche", "heizfläche"],
+    "vlt_max": ["vl_max", "vorlauf_max", "vorlauftemperatur_max", "supply_temp", "tvl_max"],
+    "steigung_heizkurve": ["slope", "heizkurve_steigung", "neigung_heizkurve"],
+    "rlt_max": ["rl_max", "rücklauf_max", "rücklauftemperatur_max", "return_temp", "trl_max"],
+    "normaußentemperatur": [
+        "design_temp",
+        "auslegungstemperatur",
+        "normaußen",
+        "t_design",
+        "normaussentemperatur",
+        "t_norm",
+    ],
     "heizgrenztemperatur": ["heating_limit_temp", "heizgrenze", "t_heizgrenze"],
-    "heizexponent":        ["heating_exponent", "exponent"],
-    "p_max":               ["peak_design_kw", "maxleistung", "max_leistung", "p_nenn", "p_max_kw"],
+    "heizexponent": ["heating_exponent", "exponent"],
+    "p_max": ["peak_design_kw", "maxleistung", "max_leistung", "p_nenn", "p_max_kw"],
 }
 
 _NO_MAPPING = "(nicht zugeordnet – Standardwert)"
@@ -119,6 +146,7 @@ def _suggest_mapping(target_col: str, source_cols: list[str]) -> str:
 # Dialog
 # ---------------------------------------------------------------------------
 
+
 class CsvImportDialog(QDialog):
     """
     Column-mapping dialog for importing CSVs with arbitrary column names.
@@ -136,8 +164,8 @@ class CsvImportDialog(QDialog):
     """
 
     # Columns in the mapping table
-    _COL_TARGET  = 0
-    _COL_SOURCE  = 1
+    _COL_TARGET = 0
+    _COL_SOURCE = 1
     _COL_DEFAULT = 2
 
     def __init__(self, source_path: str, parent=None):
@@ -146,8 +174,7 @@ class CsvImportDialog(QDialog):
         self.result_df: pd.DataFrame | None = None
 
         self._delimiter = _detect_delimiter(source_path)
-        self._source_df = pd.read_csv(source_path, delimiter=self._delimiter,
-                                      encoding="utf-8-sig", dtype=str)
+        self._source_df = pd.read_csv(source_path, delimiter=self._delimiter, encoding="utf-8-sig", dtype=str)
         self._source_cols: list[str] = list(self._source_df.columns)
 
         self.setWindowTitle("CSV importieren – Spaltenzuordnung")
@@ -305,17 +332,15 @@ class CsvImportDialog(QDialog):
         # Show first 5 rows as plain text
         buf = io.StringIO()
         df.head(5).to_csv(buf, sep=";", index=False)
-        QMessageBox.information(
-            self, "Vorschau (erste 5 Zeilen)",
-            f"<pre>{buf.getvalue()}</pre>"
-        )
+        QMessageBox.information(self, "Vorschau (erste 5 Zeilen)", f"<pre>{buf.getvalue()}</pre>")
 
     def _on_import(self):
         """Validate mapping, build result DataFrame and accept the dialog."""
         df, errors = self._build_result_df()
         if errors:
-            QMessageBox.warning(self, "Validierungsfehler",
-                                "Bitte beheben Sie folgende Fehler:\n\n" + "\n".join(errors))
+            QMessageBox.warning(
+                self, "Validierungsfehler", "Bitte beheben Sie folgende Fehler:\n\n" + "\n".join(errors)
+            )
             return
         self.result_df = df
         self.accept()

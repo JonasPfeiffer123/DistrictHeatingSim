@@ -38,8 +38,8 @@ class RiverHeatPumpDialog(SchemaDialog):
 
         # Custom river-temperature field + CSV button (between capacity and the rest).
         self.TFWInput = QLineEdit()
-        if isinstance(self.tech_data.get('Temperatur_FW_WP'), (float, int)) or self.tech_data == {}:
-            self.TFWInput.setText(str(self.tech_data.get('Temperatur_FW_WP', "10")))
+        if isinstance(self.tech_data.get("Temperatur_FW_WP"), (float, int)) or self.tech_data == {}:
+            self.TFWInput.setText(str(self.tech_data.get("Temperatur_FW_WP", "10")))
         form.addRow(QLabel("Flusstemperatur in °C"), self.TFWInput)
 
         self.csvButton = QPushButton("CSV für Flusstemperatur wählen")
@@ -66,7 +66,7 @@ class RiverHeatPumpDialog(SchemaDialog):
         :param filename: The path to the CSV file
         :type filename: str
         """
-        data = np.loadtxt(filename, delimiter=';', skiprows=1, usecols=1).astype(float)
+        data = np.loadtxt(filename, delimiter=";", skiprows=1, usecols=1).astype(float)
         self.csvData = data
         QMessageBox.information(self, "CSV geladen", f"CSV-Datei {filename} erfolgreich geladen.")
 
@@ -77,14 +77,14 @@ class RiverHeatPumpDialog(SchemaDialog):
         """
         inputs = super().getInputs()
         try:
-            if hasattr(self, 'csvData'):
-                inputs['Temperatur_FW_WP'] = self.csvData
-            elif isinstance(self.tech_data.get('Temperatur_FW_WP'), (float, int)):
-                inputs['Temperatur_FW_WP'] = float(self.TFWInput.text())
-            elif isinstance(self.tech_data.get('Temperatur_FW_WP'), np.ndarray):
-                inputs['Temperatur_FW_WP'] = self.tech_data.get('Temperatur_FW_WP')
+            if hasattr(self, "csvData"):
+                inputs["Temperatur_FW_WP"] = self.csvData
+            elif isinstance(self.tech_data.get("Temperatur_FW_WP"), (float, int)):
+                inputs["Temperatur_FW_WP"] = float(self.TFWInput.text())
+            elif isinstance(self.tech_data.get("Temperatur_FW_WP"), np.ndarray):
+                inputs["Temperatur_FW_WP"] = self.tech_data.get("Temperatur_FW_WP")
             else:
-                inputs['Temperatur_FW_WP'] = float(self.TFWInput.text())
+                inputs["Temperatur_FW_WP"] = float(self.TFWInput.text())
         except ValueError:
             pass
         return inputs

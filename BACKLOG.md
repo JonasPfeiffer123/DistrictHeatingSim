@@ -97,11 +97,15 @@ tests. This is the safety net that makes every refactor below low-risk.
   series — covered by `test_simulation_golden_master.py`). Network/Qt/external-path
   examples excluded. Surfaced + fixed C13 (encoding) and stale examples (18_stanet
   hardcoded OneDrive path → committed STANET data; 09 "not up-to-date" note removed).
+- **Landed 2026-06 (ruff format adopted):** ran `ruff format` over the whole scoped tree
+  (src incl. GUI + tests; examples/docs excluded) — **117 files reformatted**,
+  behaviour-preserving (`ruff check` clean, 297 passed unchanged). The CI format step is
+  now **gating** (`ruff format --check .`, `continue-on-error` removed) over the whole
+  tree, not just `tests`. Formatting is no longer a decision — `ruff format` is canonical.
 - **Still open:**
-  - Decide on `ruff format` (not yet applied — `ruff format --check tests` reports 10
-    files; the CI format step is **advisory** for now). Adopting it reformats the tree.
-  - The CI `lint` job is now gating but still **unverified on GitHub** (first gating run
-    happens on the next push).
+  - The CI `lint`/`test` jobs are gating but still **unverified on GitHub** (heavy deps +
+    2 git deps; first gating run happens on the next push — expect to tweak the install
+    step). Can't be verified locally.
 
 ## B. Architecture & maintainability
 ### B1. God-objects in the GUI  ← in progress
@@ -594,9 +598,10 @@ BEW factors were duplicated across generators. **Fixed**: central
 centralization is value-identical (golden masters unchanged); **cp was unified to
 4.18** — this *changed* the former `4.2` sites in the (untested) pandapipes layer by
 ~0.5 % toward correctness. Pinned by `tests/test_constants.py`.
-- **Still open:** temperature limits (e.g. the 75 K Hub) and `cp=4187 J/kgK` in
-  `thermal_storage.py` (different unit system) were intentionally left; fold in if a
-  unit convention is formalized.
+- **Won't do (deliberate, 2026-06):** the remaining temperature limits (e.g. the 75 K
+  Hub) and `cp=4187 J/kgK` in `thermal_storage.py` (different unit system) stay as-is.
+  Jonas's call — not worth the churn/risk for no behavioural gain. D3 is considered
+  closed.
 ### D4. Project-wide serialization/versioning strategy (done 2026-06)
 D2 versioned only two artifacts (`project_settings.json`, EnergySystem JSON). The app
 reads/writes **many** serialized files of different kinds, and most are unversioned.
@@ -713,9 +718,9 @@ pipeline are now well-tested and lint-clean; the easy low-risk wins are harveste
 4. **Quick wins:** ~~hardcoded "Variante 1" (D1 leftover)~~ done; ~~E1 (`.gitignore`
    casing)~~ done; ~~C11 minor (0.13 circ-pump cross-check)~~ dropped. Cluster cleared.
 5. **Larger/optional:** B2 (MVP violations — partial), B4/E2 (DE/EN naming),
-   ~~D4 (serialization versioning strategy)~~ **done**, D3 leftover (temperature limits /
-   `thermal_storage.py` cp), and the A1 leftovers (decide on `ruff format`; the gating
-   CI lint job is still unverified on GitHub until the first push).
+   ~~D4 (serialization versioning strategy)~~ **done**, ~~D3 leftover~~ won't-do,
+   ~~A1: decide on `ruff format`~~ **adopted + gating**. Only A1 leftover: the gating CI
+   jobs are still unverified on GitHub until the first push.
 
 ## Pre-release (do last, only once the above are settled)
 - **Update the docs.** Sweep `docs/` (Sphinx/readthedocs) + the README for everything

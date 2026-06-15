@@ -30,8 +30,9 @@ class OSMDownloadDialogBase(QDialog):
     #: Temp file name for a polygon captured from the map (overridden per subclass).
     _temp_polygon_filename = "_temp_polygon.geojson"
 
-    def __init__(self, base_path, config_manager, parent, parent_pres,
-                 project_crs: str = "EPSG:25833", visualization_tab=None):
+    def __init__(
+        self, base_path, config_manager, parent, parent_pres, project_crs: str = "EPSG:25833", visualization_tab=None
+    ):
         """
         Initialize shared dialog state.
 
@@ -83,7 +84,7 @@ class OSMDownloadDialogBase(QDialog):
 
         self.waiting_for_polygon = True
 
-        if hasattr(self.visualization_tab.view, 'geoJsonReceiver'):
+        if hasattr(self.visualization_tab.view, "geoJsonReceiver"):
             # Disconnect first to avoid duplicate connections.
             try:
                 self.visualization_tab.view.geoJsonReceiver.polygon_ready.disconnect(self.onPolygonReady)
@@ -91,7 +92,7 @@ class OSMDownloadDialogBase(QDialog):
                 pass
             self.visualization_tab.view.geoJsonReceiver.polygon_ready.connect(self.onPolygonReady)
 
-        if hasattr(self.visualization_tab.view, 'web_view'):
+        if hasattr(self.visualization_tab.view, "web_view"):
             self.visualization_tab.view.web_view.page().runJavaScript("window.enablePolygonCaptureMode();")
 
         return True
@@ -104,16 +105,16 @@ class OSMDownloadDialogBase(QDialog):
         str or None
             Path to temporary GeoJSON file with polygon, or None if no polygon.
         """
-        result = {'geojson': None}
+        result = {"geojson": None}
 
         def handle_result(geojson_str):
             if geojson_str:
                 try:
-                    result['geojson'] = json.loads(geojson_str)
+                    result["geojson"] = json.loads(geojson_str)
                 except Exception:
                     pass
 
-        if hasattr(self.visualization_tab.view, 'web_view'):
+        if hasattr(self.visualization_tab.view, "web_view"):
             js_code = """
                 (function() {
                     var polygon = window.getCapturedPolygon();
@@ -124,21 +125,22 @@ class OSMDownloadDialogBase(QDialog):
 
             # Wait a bit for the callback (simple blocking approach).
             from PyQt6.QtCore import QEventLoop, QTimer
+
             loop = QEventLoop()
             QTimer.singleShot(100, loop.quit)
             loop.exec()
 
-            if result['geojson']:
+            if result["geojson"]:
                 temp_file = os.path.join(self.base_path, self._temp_polygon_filename)
-                with open(temp_file, 'w', encoding='utf-8') as f:
-                    json.dump(result['geojson'], f)
+                with open(temp_file, "w", encoding="utf-8") as f:
+                    json.dump(result["geojson"], f)
                 return temp_file
 
         return None
 
     def clearCapturedPolygon(self):
         """Clear the captured polygon from the map."""
-        if self.visualization_tab and hasattr(self.visualization_tab.view, 'web_view'):
+        if self.visualization_tab and hasattr(self.visualization_tab.view, "web_view"):
             self.visualization_tab.view.web_view.page().runJavaScript("window.clearCapturedPolygon();")
 
     # ------------------------------------------------------------------

@@ -13,7 +13,7 @@ class DiameterOptimizationTab(QWidget):
     """
     Widget for configuring pipe diameter optimization parameters.
     """
-    
+
     def __init__(self, dialog_config, parent=None):
         """
         Initialize diameter optimization tab.
@@ -86,7 +86,7 @@ class DiameterOptimizationTab(QWidget):
         row_layout2.addWidget(self.k_mm_Label)
         row_layout2.addWidget(self.k_mm_Input)
         layout.addLayout(row_layout2)
-    
+
         return layout
 
     def updateInputFieldsVisibility(self):
@@ -113,5 +113,5 @@ class DiameterOptimizationTab(QWidget):
             "diameter_optimization_enabled": self.DiameterOptCheckbox.isChecked(),
             "v_max_pipe": float(self.v_max_pipeInput.text()),
             "material_filter": self.material_filterInput.currentText(),
-            "k_mm": float(self.k_mm_Input.text())
+            "k_mm": float(self.k_mm_Input.text()),
         }

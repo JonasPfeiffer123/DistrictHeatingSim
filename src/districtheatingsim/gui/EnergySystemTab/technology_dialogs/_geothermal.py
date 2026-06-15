@@ -29,16 +29,16 @@ class GeothermalDialog(SchemaDialog):
 
         # Visualization
         self.figure = plt.figure()
-        self.ax = self.figure.add_subplot(111, projection='3d')
+        self.ax = self.figure.add_subplot(111, projection="3d")
         self.canvas = FigureCanvas(self.figure)
         top.addWidget(self.canvas)
 
         outer.addLayout(top)
 
         # Connect input changes to the visualization update
-        self._widgets['Fläche'].textChanged.connect(self.updateVisualization)
-        self._widgets['Bohrtiefe'].textChanged.connect(self.updateVisualization)
-        self._widgets['Abstand_Sonden'].textChanged.connect(self.updateVisualization)
+        self._widgets["Fläche"].textChanged.connect(self.updateVisualization)
+        self._widgets["Bohrtiefe"].textChanged.connect(self.updateVisualization)
+        self._widgets["Abstand_Sonden"].textChanged.connect(self.updateVisualization)
 
         self.updateVisualization()
 
@@ -47,9 +47,9 @@ class GeothermalDialog(SchemaDialog):
         Updates the 3D visualization of the borehole configuration.
         """
         try:
-            area = float(self._widgets['Fläche'].text())
-            depth = float(self._widgets['Bohrtiefe'].text())
-            distance = float(self._widgets['Abstand_Sonden'].text())
+            area = float(self._widgets["Fläche"].text())
+            depth = float(self._widgets["Bohrtiefe"].text())
+            distance = float(self._widgets["Abstand_Sonden"].text())
         except ValueError:
             area = 100
             depth = 100
@@ -66,7 +66,7 @@ class GeothermalDialog(SchemaDialog):
 
         # Draw the boreholes
         for x, y in zip(x_positions.flatten(), y_positions.flatten(), strict=False):
-            self.ax.plot([x, x], [y, y], [0, -depth], color='blue')
+            self.ax.plot([x, x], [y, y], [0, -depth], color="blue")
 
         # Set plot limits
         self.ax.set_xlim([0, side_length])
@@ -74,9 +74,9 @@ class GeothermalDialog(SchemaDialog):
         self.ax.set_zlim([-depth, 0])
 
         # Label axes
-        self.ax.set_xlabel('X (m)')
-        self.ax.set_ylabel('Y (m)')
-        self.ax.set_zlabel('Z (Tiefe in m)')
+        self.ax.set_xlabel("X (m)")
+        self.ax.set_ylabel("Y (m)")
+        self.ax.set_zlabel("Z (Tiefe in m)")
 
         self.ax.set_title(f"Sondenkonfiguration\nFläche: {area} m², Tiefe: {depth} m, Abstand: {distance} m")
         self.canvas.draw()

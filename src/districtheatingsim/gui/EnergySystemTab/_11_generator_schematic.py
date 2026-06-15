@@ -82,6 +82,7 @@ class CustomGraphicsView(QGraphicsView):
             self.setDragMode(QGraphicsView.DragMode.NoDrag)  # Stop panning
         super().mouseReleaseEvent(event)
 
+
 class CustomGraphicsScene(QGraphicsScene):
     # Signal to emit mouse position updates
     mouse_position_changed = pyqtSignal(float, float)
@@ -103,10 +104,11 @@ class CustomGraphicsScene(QGraphicsScene):
         self.mouse_position_changed.emit(x, y)  # Emit signal with the new coordinates
         super().mouseMoveEvent(event)
 
+
 class SchematicScene(CustomGraphicsScene):
     GRID_SIZE = 1  # Define grid size for snapping
     GENERATOR_SPACING = 100
-    GENERATOR_SPACING_STORAGE = 100 # Spacing between generator and storage
+    GENERATOR_SPACING_STORAGE = 100  # Spacing between generator and storage
     LINE_Y_OFFSET_GENERATOR = 100
     GENERATOR_X_START = 20
     LINE_THICKNESS = 3
@@ -118,83 +120,83 @@ class SchematicScene(CustomGraphicsScene):
     # Color codes: yellow for Solar, blue for CHP, purple for Storage, green for Consumer
     # Sizes: Solar (circle), CHP (rectangle), Storage (cylinder), Consumer (rectangle)
     OBJECTS = {
-        'Solar': {
-            'color': QColor('yellow'),
-            'geometry': QRectF(-20, -20, 40, 40),  # Circle dimensions for Solar
-            'shape': 'circle',  # Define the shape type
-            'counter': 0  # Counter for Solar
+        "Solar": {
+            "color": QColor("yellow"),
+            "geometry": QRectF(-20, -20, 40, 40),  # Circle dimensions for Solar
+            "shape": "circle",  # Define the shape type
+            "counter": 0,  # Counter for Solar
         },
-        'CHP': {
-            'color': QColor('blue'),
-            'geometry': QRectF(-30, -15, 60, 30),  # Rectangle dimensions for CHP
-            'shape': 'rect',  # Shape as rectangle
-            'counter': 0  # Counter for CHP
+        "CHP": {
+            "color": QColor("blue"),
+            "geometry": QRectF(-30, -15, 60, 30),  # Rectangle dimensions for CHP
+            "shape": "rect",  # Shape as rectangle
+            "counter": 0,  # Counter for CHP
         },
-        'Wood-CHP': {
-            'color': QColor('brown'),
-            'geometry': QRectF(-30, -20, 60, 40),  # Larger square to differentiate from other CHP
-            'shape': 'rect',  # Shape as rectangle
-            'counter': 0  # Counter for Wood-CHP
+        "Wood-CHP": {
+            "color": QColor("brown"),
+            "geometry": QRectF(-30, -20, 60, 40),  # Larger square to differentiate from other CHP
+            "shape": "rect",  # Shape as rectangle
+            "counter": 0,  # Counter for Wood-CHP
         },
-        'Biomass Boiler': {
-            'color': QColor('darkgreen'),
-            'geometry': QRectF(-25, -20, 50, 40),  # Taller rectangle for biomass boiler
-            'shape': 'rect',  # Shape as rectangle
-            'counter': 0  # Counter for Biomass Boiler
+        "Biomass Boiler": {
+            "color": QColor("darkgreen"),
+            "geometry": QRectF(-25, -20, 50, 40),  # Taller rectangle for biomass boiler
+            "shape": "rect",  # Shape as rectangle
+            "counter": 0,  # Counter for Biomass Boiler
         },
-        'Gas Boiler': {
-            'color': QColor('gray'),
-            'geometry': QRectF(-25, -25, 50, 50),  # Narrower and shorter rectangle for gas boiler
-            'shape': 'rect',  # Shape as rectangle
-            'counter': 0  # Counter for Gas Boiler
+        "Gas Boiler": {
+            "color": QColor("gray"),
+            "geometry": QRectF(-25, -25, 50, 50),  # Narrower and shorter rectangle for gas boiler
+            "shape": "rect",  # Shape as rectangle
+            "counter": 0,  # Counter for Gas Boiler
         },
-        'Power-to-Heat': {
-            'color': QColor('orange'),
-            'geometry': QRectF(-25, -25, 50, 50),  # Square to represent power-to-heat
-            'shape': 'rect',  # Shape as rectangle
-            'counter': 0  # Counter for Power-to-Heat
+        "Power-to-Heat": {
+            "color": QColor("orange"),
+            "geometry": QRectF(-25, -25, 50, 50),  # Square to represent power-to-heat
+            "shape": "rect",  # Shape as rectangle
+            "counter": 0,  # Counter for Power-to-Heat
         },
-        'Geothermal Heat Pump': {
-            'color': QColor('blueviolet'),
-            'geometry': QRectF(-25, -25, 50, 50),  # Square to represent geothermal heat pump
-            'shape': 'rect',  # Shape as rectangle
-            'counter': 0  # Counter for Geothermal Heat Pump
+        "Geothermal Heat Pump": {
+            "color": QColor("blueviolet"),
+            "geometry": QRectF(-25, -25, 50, 50),  # Square to represent geothermal heat pump
+            "shape": "rect",  # Shape as rectangle
+            "counter": 0,  # Counter for Geothermal Heat Pump
         },
-        'River Heat Pump': {
-            'color': QColor('deepskyblue'),
-            'geometry': QRectF(-25, -25, 50, 50),  # Larger square for river heat pump
-            'shape': 'rect',  # Shape as rectangle
-            'counter': 0  # Counter for River Heat Pump
+        "River Heat Pump": {
+            "color": QColor("deepskyblue"),
+            "geometry": QRectF(-25, -25, 50, 50),  # Larger square for river heat pump
+            "shape": "rect",  # Shape as rectangle
+            "counter": 0,  # Counter for River Heat Pump
         },
-        'Waste Heat Pump': {
-            'color': QColor('orange'),
-            'geometry': QRectF(-25, -25, 50, 50),  # Rectangle for waste heat pump
-            'shape': 'rect',  # Shape as rectangle
-            'counter': 0  # Counter for Waste Heat Pump
+        "Waste Heat Pump": {
+            "color": QColor("orange"),
+            "geometry": QRectF(-25, -25, 50, 50),  # Rectangle for waste heat pump
+            "shape": "rect",  # Shape as rectangle
+            "counter": 0,  # Counter for Waste Heat Pump
         },
-        'Aqva Heat Pump': {
-            'color': QColor('cyan'),
-            'geometry': QRectF(-25, -25, 50, 50),  # Square for Aqva heat pump
-            'shape': 'rect',  # Shape as rectangle
-            'counter': 0  # Counter for Aqva Heat Pump
+        "Aqva Heat Pump": {
+            "color": QColor("cyan"),
+            "geometry": QRectF(-25, -25, 50, 50),  # Square for Aqva heat pump
+            "shape": "rect",  # Shape as rectangle
+            "counter": 0,  # Counter for Aqva Heat Pump
         },
-        'Storage': {
-            'color': QColor('purple'),
-            'geometry': QRectF(-20, -40, 40, 80),  # Cylindrical shape for storage
-            'shape': 'rect',  # Use rectangle to represent a cylinder
-            'counter': 0  # Counter for Storage
+        "Storage": {
+            "color": QColor("purple"),
+            "geometry": QRectF(-20, -40, 40, 80),  # Cylindrical shape for storage
+            "shape": "rect",  # Use rectangle to represent a cylinder
+            "counter": 0,  # Counter for Storage
         },
-        'Consumer': {
-            'color': QColor('green'),
-            'geometry': QRectF(-30, -15, 60, 30),  # Rectangle dimensions for Consumer
-            'shape': 'rect',  # Shape as rectangle
-            'counter': 0  # Counter for Consumer
+        "Consumer": {
+            "color": QColor("green"),
+            "geometry": QRectF(-30, -15, 60, 30),  # Rectangle dimensions for Consumer
+            "shape": "rect",  # Shape as rectangle
+            "counter": 0,  # Counter for Consumer
         },
-        'Seasonal Thermal Storage': {
-            'color': QColor('darkorange'),
-            'geometry': QRectF(-30, -20, 60, 40),  # Rectangle dimensions for seasonal storage
-            'shape': 'trapezoid',  # Shape as trapezoid to symbolize an earth basin
-            'counter': 0  # Counter for seasonal storage
+        "Seasonal Thermal Storage": {
+            "color": QColor("darkorange"),
+            "geometry": QRectF(-30, -20, 60, 40),  # Rectangle dimensions for seasonal storage
+            "shape": "trapezoid",  # Shape as trapezoid to symbolize an earth basin
+            "counter": 0,  # Counter for seasonal storage
         },
     }
 
@@ -218,13 +220,13 @@ class SchematicScene(CustomGraphicsScene):
         self.selected_item = None  # Track selected item
 
         # Add the consumer first but don't draw the parallel lines yet
-        self.add_consumer_net('Consumer', connect_to_lines=False)
+        self.add_consumer_net("Consumer", connect_to_lines=False)
 
         # Parallel lines are initialized without extending them (no generators yet)
         self.vorlauf_line = None
         self.ruecklauf_line = None
 
-        #self.consumer.create_parallel_lines()
+        # self.consumer.create_parallel_lines()
 
         # Verbinde das selectionChanged-Signal mit einer Methode zum Aktualisieren
         self.selectionChanged.connect(self.update_selected_item)
@@ -235,7 +237,7 @@ class SchematicScene(CustomGraphicsScene):
         """
         if not self.items():
             return
-        
+
         # Berechne die Bounding Box für alle Objekte in der Szene
         bounding_rect = self.itemsBoundingRect()
 
@@ -272,15 +274,15 @@ class SchematicScene(CustomGraphicsScene):
         x = round(position.x() / self.GRID_SIZE) * self.GRID_SIZE
         y = round(position.y() / self.GRID_SIZE) * self.GRID_SIZE
         return QPointF(x, y)
-    
+
     def create_parallel_lines(self):
         """
         Creates or updates the parallel Vorlauf (red) and Rücklauf (blue) lines and adds labels.
         """
         # Entferne bestehende Leitungen und Labels
-        if hasattr(self, 'vorlauf_line') and self.vorlauf_line:
+        if hasattr(self, "vorlauf_line") and self.vorlauf_line:
             self.removeItem(self.vorlauf_line)
-        if hasattr(self, 'ruecklauf_line') and self.ruecklauf_line:
+        if hasattr(self, "ruecklauf_line") and self.ruecklauf_line:
             self.removeItem(self.ruecklauf_line)
 
         # Entferne bestehende Labels
@@ -289,8 +291,10 @@ class SchematicScene(CustomGraphicsScene):
                 self.removeItem(item)
 
         # Überprüfe, ob Erzeuger oder Speicher vorhanden sind
-        generators_and_storage = [item for item in self.items() if isinstance(item, ComponentItem) and item != self.consumer]
-        
+        generators_and_storage = [
+            item for item in self.items() if isinstance(item, ComponentItem) and item != self.consumer
+        ]
+
         if not generators_and_storage:
             # Keine Erzeuger oder Speicher vorhanden, also keine Leitungen zeichnen
             return
@@ -303,12 +307,22 @@ class SchematicScene(CustomGraphicsScene):
         end_x = last_item_x
 
         # Zeichne Vorlauf (rote Linie)
-        self.vorlauf_line = QGraphicsLineItem(start_x, self.generator_y - self.LINE_Y_OFFSET_GENERATOR, end_x, self.generator_y - self.LINE_Y_OFFSET_GENERATOR)
+        self.vorlauf_line = QGraphicsLineItem(
+            start_x,
+            self.generator_y - self.LINE_Y_OFFSET_GENERATOR,
+            end_x,
+            self.generator_y - self.LINE_Y_OFFSET_GENERATOR,
+        )
         self.vorlauf_line.setPen(QPen(self.FLOW_LINE_COLOR, self.LINE_THICKNESS))
         self.addItem(self.vorlauf_line)
 
         # Zeichne Rücklauf (blaue Linie)
-        self.ruecklauf_line = QGraphicsLineItem(start_x, self.generator_y + self.LINE_Y_OFFSET_GENERATOR, end_x, self.generator_y + self.LINE_Y_OFFSET_GENERATOR)
+        self.ruecklauf_line = QGraphicsLineItem(
+            start_x,
+            self.generator_y + self.LINE_Y_OFFSET_GENERATOR,
+            end_x,
+            self.generator_y + self.LINE_Y_OFFSET_GENERATOR,
+        )
         self.ruecklauf_line.setPen(QPen(self.RETURN_LINE_COLOR, self.LINE_THICKNESS))
         self.addItem(self.ruecklauf_line)
 
@@ -340,12 +354,16 @@ class SchematicScene(CustomGraphicsScene):
         # Füge Label für Vorlauf (oberhalb der roten Linie) hinzu
         vorlauf_label = self.addText("Vorlauf", self.TEXT_FONT)
         vorlauf_label.setDefaultTextColor(label_text_color)
-        vorlauf_label.setPos(center_x - vorlauf_label.boundingRect().width() / 2, self.generator_y - self.LINE_Y_OFFSET_GENERATOR - 30)
+        vorlauf_label.setPos(
+            center_x - vorlauf_label.boundingRect().width() / 2, self.generator_y - self.LINE_Y_OFFSET_GENERATOR - 30
+        )
 
         # Füge Label für Rücklauf (unterhalb der blauen Linie) hinzu
         ruecklauf_label = self.addText("Rücklauf", self.TEXT_FONT)
         ruecklauf_label.setDefaultTextColor(label_text_color)
-        ruecklauf_label.setPos(center_x - ruecklauf_label.boundingRect().width() / 2, self.generator_y + self.LINE_Y_OFFSET_GENERATOR + 10)
+        ruecklauf_label.setPos(
+            center_x - ruecklauf_label.boundingRect().width() / 2, self.generator_y + self.LINE_Y_OFFSET_GENERATOR + 10
+        )
 
     def update_pipes_connected_to_lines(self):
         """
@@ -373,13 +391,15 @@ class SchematicScene(CustomGraphicsScene):
         position = QPointF(self.GENERATOR_X_START, self.generator_y)
         position = self.snap_to_grid(position)
 
-        item_color = self.OBJECTS[item_type]['color']  # Color of the generator
-        item_geometry = self.OBJECTS[item_type]['geometry']  # Geometry of the generator
-        
-        self.OBJECTS[item_type]['counter'] += 1  # Increment the counter for the generator type
+        item_color = self.OBJECTS[item_type]["color"]  # Color of the generator
+        item_geometry = self.OBJECTS[item_type]["geometry"]  # Geometry of the generator
+
+        self.OBJECTS[item_type]["counter"] += 1  # Increment the counter for the generator type
 
         # Create and add the generator
-        generator = ComponentItem(position, item_type, item_name, item_color, item_geometry, self.FLOW_LINE_COLOR, self.RETURN_LINE_COLOR)
+        generator = ComponentItem(
+            position, item_type, item_name, item_color, item_geometry, self.FLOW_LINE_COLOR, self.RETURN_LINE_COLOR
+        )
         generator.create_connection_points()  # Create connection points
         self.addItem(generator)
 
@@ -401,7 +421,7 @@ class SchematicScene(CustomGraphicsScene):
 
         return generator
 
-    def add_storage(self, position, item_type='Storage', item_name='Speicher'):
+    def add_storage(self, position, item_type="Storage", item_name="Speicher"):
         """
         Helper function to create and add a storage unit with custom geometry.
 
@@ -416,17 +436,19 @@ class SchematicScene(CustomGraphicsScene):
         """
         position = self.snap_to_grid(position)
 
-        item_color = self.OBJECTS[item_type]['color']  # Color of the storage
-        item_geometry = self.OBJECTS[item_type]['geometry']  # Geometry of the storage
+        item_color = self.OBJECTS[item_type]["color"]  # Color of the storage
+        item_geometry = self.OBJECTS[item_type]["geometry"]  # Geometry of the storage
 
-        self.OBJECTS[item_type]['counter'] += 1  # Increment the counter for the storage
-        item_counter = self.OBJECTS[item_type]['counter']  # Get the current count for the storage
+        self.OBJECTS[item_type]["counter"] += 1  # Increment the counter for the storage
+        item_counter = self.OBJECTS[item_type]["counter"]  # Get the current count for the storage
 
-        storage = ComponentItem(position, item_type, item_name, item_color, item_geometry, self.FLOW_LINE_COLOR, self.RETURN_LINE_COLOR)
+        storage = ComponentItem(
+            position, item_type, item_name, item_color, item_geometry, self.FLOW_LINE_COLOR, self.RETURN_LINE_COLOR
+        )
         storage.create_connection_points()
         self.addItem(storage)
 
-        label_text = f'{item_name} {item_counter}'  # Add the counter to the label
+        label_text = f"{item_name} {item_counter}"  # Add the counter to the label
         self.update_label(storage, label_text)
 
         self.GENERATOR_X_START += self.GENERATOR_SPACING
@@ -451,7 +473,9 @@ class SchematicScene(CustomGraphicsScene):
         generator = self.add_generator(item_name, name, connect_to_lines=False)
 
         # Add the storage to the right of the generator
-        storage_position = QPointF(generator.pos().x() + self.GENERATOR_SPACING_STORAGE, generator.pos().y())  # Fixed distance of 100 units to the right
+        storage_position = QPointF(
+            generator.pos().x() + self.GENERATOR_SPACING_STORAGE, generator.pos().y()
+        )  # Fixed distance of 100 units to the right
         storage = self.add_storage(storage_position)
 
         # Connect generator to storage and storage to consumer
@@ -486,10 +510,12 @@ class SchematicScene(CustomGraphicsScene):
             position = QPointF(self.GENERATOR_X_START, self.generator_y)  # Place consumer at Start_x
             position = self.snap_to_grid(position)  # Snap the position to the grid
 
-            item_color = self.OBJECTS[item_type]['color']  # Color of the consumer
-            item_geometry = self.OBJECTS[item_type]['geometry']  # Geometry of the consumer
+            item_color = self.OBJECTS[item_type]["color"]  # Color of the consumer
+            item_geometry = self.OBJECTS[item_type]["geometry"]  # Geometry of the consumer
 
-            self.consumer = ComponentItem(position, item_type, item_name, item_color, item_geometry, self.FLOW_LINE_COLOR, self.RETURN_LINE_COLOR)
+            self.consumer = ComponentItem(
+                position, item_type, item_name, item_color, item_geometry, self.FLOW_LINE_COLOR, self.RETURN_LINE_COLOR
+            )
             self.consumer.create_connection_points()  # Create connection points
             self.addItem(self.consumer)
             self.update_label(self.consumer, item_name)  # Update the label for the consumer
@@ -504,7 +530,7 @@ class SchematicScene(CustomGraphicsScene):
             # Update the scene size after adding the generator
             self.update_scene_size()
 
-    def add_seasonal_storage(self, item_type='Seasonal Thermal Storage', item_name='Speicher', connect_to_lines=True):
+    def add_seasonal_storage(self, item_type="Seasonal Thermal Storage", item_name="Speicher", connect_to_lines=True):
         """
         Adds a seasonal storage unit at a fixed position and optionally connects it to the parallel lines.
 
@@ -521,14 +547,16 @@ class SchematicScene(CustomGraphicsScene):
         position = QPointF(self.GENERATOR_X_START, self.generator_y)
         position = self.snap_to_grid(position)
 
-        item_color = self.OBJECTS[item_type]['color']  # Color of the storage
-        item_geometry = self.OBJECTS[item_type]['geometry']  # Geometry of the storage
-        
-        self.OBJECTS[item_type]['counter'] += 1  # Increment the counter for the storage type
-        item_counter = self.OBJECTS[item_type]['counter']  # Get the current count for the storage
+        item_color = self.OBJECTS[item_type]["color"]  # Color of the storage
+        item_geometry = self.OBJECTS[item_type]["geometry"]  # Geometry of the storage
+
+        self.OBJECTS[item_type]["counter"] += 1  # Increment the counter for the storage type
+        item_counter = self.OBJECTS[item_type]["counter"]  # Get the current count for the storage
 
         # Create and add the storage
-        storage = ComponentItem(position, item_type, item_name, item_color, item_geometry, self.FLOW_LINE_COLOR, self.RETURN_LINE_COLOR)
+        storage = ComponentItem(
+            position, item_type, item_name, item_color, item_geometry, self.FLOW_LINE_COLOR, self.RETURN_LINE_COLOR
+        )
         storage.create_connection_points()  # Create connection points
         self.addItem(storage)
 
@@ -546,7 +574,7 @@ class SchematicScene(CustomGraphicsScene):
         self.update_scene_size()
 
         return storage
-    
+
     def check_label_collision(self, new_label_rect):
         """
         Checks if a new label would collide with existing component labels.
@@ -562,7 +590,7 @@ class SchematicScene(CustomGraphicsScene):
                 if new_label_rect.intersects(existing_rect):
                     return True
         return False
-    
+
     def find_optimal_label_position(self, item, label):
         """
         Finds optimal position for label to avoid collisions.
@@ -577,22 +605,22 @@ class SchematicScene(CustomGraphicsScene):
         padding = 12
         base_y_below = item.pos().y() + item.boundingRect().height() + padding
         base_y_above = item.pos().y() - item.boundingRect().height() - padding - label.boundingRect().height()
-        
+
         # Try different Y offsets to find non-colliding position
         for y_offset in range(0, 60, 15):  # Try offsets up to 60px in 15px steps
             # Try below first (preferred for non-storage items)
-            if item.item_type != 'Storage':
+            if item.item_type != "Storage":
                 test_y = base_y_below + y_offset
                 test_x = item.pos().x() - label.boundingRect().width() / 2
                 test_rect = QRectF(test_x, test_y, label.boundingRect().width(), label.boundingRect().height())
-                
+
                 if not self.check_label_collision(test_rect):
                     return QPointF(test_x, test_y)
-                
+
                 # Try above as fallback
                 test_y = base_y_above - y_offset
                 test_rect = QRectF(test_x, test_y, label.boundingRect().width(), label.boundingRect().height())
-                
+
                 if not self.check_label_collision(test_rect):
                     return QPointF(test_x, test_y)
             else:
@@ -600,39 +628,39 @@ class SchematicScene(CustomGraphicsScene):
                 test_y = base_y_above - y_offset
                 test_x = item.pos().x() - label.boundingRect().width() / 2
                 test_rect = QRectF(test_x, test_y, label.boundingRect().width(), label.boundingRect().height())
-                
+
                 if not self.check_label_collision(test_rect):
                     return QPointF(test_x, test_y)
-                
+
                 # Try below as fallback
                 test_y = base_y_below + y_offset
                 test_rect = QRectF(test_x, test_y, label.boundingRect().width(), label.boundingRect().height())
-                
+
                 if not self.check_label_collision(test_rect):
                     return QPointF(test_x, test_y)
-        
+
         # If no collision-free position found, return default position
-        if item.item_type == 'Storage':
+        if item.item_type == "Storage":
             return QPointF(item.pos().x() - label.boundingRect().width() / 2, base_y_above)
         else:
             return QPointF(item.pos().x() - label.boundingRect().width() / 2, base_y_below)
-    
+
     def update_all_label_positions(self):
         """
         Updates positions of all component labels to avoid collisions.
         """
         components = [item for item in self.items() if isinstance(item, ComponentItem) and item.label]
-        
+
         # Sort components by X position to process from left to right
         components.sort(key=lambda c: c.pos().x())
-        
+
         for component in components:
             if component.label:
                 optimal_position = self.find_optimal_label_position(component, component.label)
                 component.label.setPos(optimal_position)
-                
+
                 # Update background rect if it exists
-                if hasattr(component, 'background_rect') and component.background_rect:
+                if hasattr(component, "background_rect") and component.background_rect:
                     padding = 12
                     label_rect = component.label.boundingRect()
                     scene_label_pos = component.label.scenePos()
@@ -640,8 +668,10 @@ class SchematicScene(CustomGraphicsScene):
                     background_rect_y = scene_label_pos.y() - padding / 2
                     background_rect_width = label_rect.width() + padding
                     background_rect_height = label_rect.height() + padding
-                    component.background_rect.setRect(background_rect_x, background_rect_y, background_rect_width, background_rect_height)
-    
+                    component.background_rect.setRect(
+                        background_rect_x, background_rect_y, background_rect_width, background_rect_height
+                    )
+
     def update_label(self, item, new_text):
         """
         Updates the label of a given item with new text.
@@ -682,11 +712,15 @@ class SchematicScene(CustomGraphicsScene):
         background_rect_height = label_rect.height() + padding
 
         # Optionally: Set background color for the label (pseudo background using rect)
-        if hasattr(item, 'background_rect') and item.background_rect:  # Check if background_rect exists
-            item.background_rect.setRect(background_rect_x, background_rect_y, background_rect_width, background_rect_height)
+        if hasattr(item, "background_rect") and item.background_rect:  # Check if background_rect exists
+            item.background_rect.setRect(
+                background_rect_x, background_rect_y, background_rect_width, background_rect_height
+            )
         else:
             # Erstelle ein kontrastreiches Rechteck um das Label
-            background_rect = QGraphicsRectItem(background_rect_x, background_rect_y, background_rect_width, background_rect_height)
+            background_rect = QGraphicsRectItem(
+                background_rect_x, background_rect_y, background_rect_width, background_rect_height
+            )
             # Verwende hellgrauen Hintergrund mit dunklem Rand für bessere Lesbarkeit
             background_color = QColor(240, 240, 240, 220)  # Hellgrau mit hoher Deckkraft
             border_color = QColor(100, 100, 100)  # Dunkler Rahmen für besseren Kontrast
@@ -725,7 +759,7 @@ class SchematicScene(CustomGraphicsScene):
             self.pipes.append(return_pipe)
         else:
             pass  # Items have no connection points
-            
+
     def connect_items_to_lines(self, component, is_storage=False):
         """
         Connects a component to the parallel Vorlauf (red) and Rücklauf (blue) lines.
@@ -736,14 +770,16 @@ class SchematicScene(CustomGraphicsScene):
         :type is_storage: bool
         """
 
-        if not hasattr(self, 'vorlauf_line') or not self.vorlauf_line:
+        if not hasattr(self, "vorlauf_line") or not self.vorlauf_line:
             return  # Leitungen existieren nicht, können keine Verbindung herstellen
 
         # Vorlauf connection (red line) to top of component
         if not is_storage:
             # Connect the top (supply) of the generator to the Vorlauf (red line)
             point_supply = component.connection_points[0]  # Top connection point
-            line_point_vorlauf = QPointF(point_supply.scenePos().x(), self.vorlauf_line.line().y1())  # Connect vertically to Vorlauf line
+            line_point_vorlauf = QPointF(
+                point_supply.scenePos().x(), self.vorlauf_line.line().y1()
+            )  # Connect vertically to Vorlauf line
             supply_pipe = Pipe(point_supply, line_point_vorlauf, self.FLOW_LINE_COLOR, self.LINE_THICKNESS)
             self.addItem(supply_pipe)
             self.pipes.append(supply_pipe)
@@ -751,7 +787,9 @@ class SchematicScene(CustomGraphicsScene):
             # Rücklauf connection (blue line) to bottom of component
             # Storage items should always connect to Rücklauf line even if is_storage is True
             point_return = component.connection_points[1]  # Bottom connection point
-            line_point_ruecklauf = QPointF(point_return.scenePos().x(), self.ruecklauf_line.line().y1())  # Connect vertically to Rücklauf line
+            line_point_ruecklauf = QPointF(
+                point_return.scenePos().x(), self.ruecklauf_line.line().y1()
+            )  # Connect vertically to Rücklauf line
             return_pipe = Pipe(point_return, line_point_ruecklauf, self.RETURN_LINE_COLOR, self.LINE_THICKNESS)
             self.addItem(return_pipe)
             self.pipes.append(return_pipe)
@@ -759,15 +797,23 @@ class SchematicScene(CustomGraphicsScene):
         if is_storage:
             # For storage, connect both the top (Vorlauf) and bottom (Rücklauf) to the parallel lines
             point_storage_supply = component.connection_points[1]  # Additional top supply point for storage
-            line_point_vorlauf_storage = QPointF(point_storage_supply.scenePos().x(), self.vorlauf_line.line().y1())  # Connect vertically to Vorlauf line
-            storage_supply_pipe = Pipe(point_storage_supply, line_point_vorlauf_storage, self.FLOW_LINE_COLOR, self.LINE_THICKNESS)
+            line_point_vorlauf_storage = QPointF(
+                point_storage_supply.scenePos().x(), self.vorlauf_line.line().y1()
+            )  # Connect vertically to Vorlauf line
+            storage_supply_pipe = Pipe(
+                point_storage_supply, line_point_vorlauf_storage, self.FLOW_LINE_COLOR, self.LINE_THICKNESS
+            )
             self.addItem(storage_supply_pipe)
-            self.pipes.append(storage_supply_pipe) 
+            self.pipes.append(storage_supply_pipe)
 
             # For storage, connect both the top (Vorlauf) and bottom (Rücklauf) to the parallel lines
             point_storage_supply = component.connection_points[3]  # Additional top supply point for storage
-            line_point_vorlauf_storage = QPointF(point_storage_supply.scenePos().x(), self.ruecklauf_line.line().y1())  # Connect vertically to Vorlauf line
-            storage_supply_pipe = Pipe(point_storage_supply, line_point_vorlauf_storage, self.RETURN_LINE_COLOR, self.LINE_THICKNESS)
+            line_point_vorlauf_storage = QPointF(
+                point_storage_supply.scenePos().x(), self.ruecklauf_line.line().y1()
+            )  # Connect vertically to Vorlauf line
+            storage_supply_pipe = Pipe(
+                point_storage_supply, line_point_vorlauf_storage, self.RETURN_LINE_COLOR, self.LINE_THICKNESS
+            )
             self.addItem(storage_supply_pipe)
             self.pipes.append(storage_supply_pipe)
 
@@ -785,9 +831,9 @@ class SchematicScene(CustomGraphicsScene):
         if storage:
             return self.add_generator_with_storage(item_name, name)
         else:
-            if item_name == 'Consumer':
+            if item_name == "Consumer":
                 return self.add_consumer_net(name)
-            if item_name == 'Seasonal Thermal Storage':
+            if item_name == "Seasonal Thermal Storage":
                 return self.add_seasonal_storage(item_name, name)
             else:
                 return self.add_generator(item_name, name)
@@ -803,7 +849,7 @@ class SchematicScene(CustomGraphicsScene):
 
             # Durchlaufe alle Items in der Szene und sortiere sie in die entsprechenden Listen
             for item in self.items():
-                if isinstance(item, ComponentItem) and item.item_type != 'Storage' and item != self.consumer:
+                if isinstance(item, ComponentItem) and item.item_type != "Storage" and item != self.consumer:
                     linked_storage = self.find_linked_storage(item)
                     if linked_storage:
                         generators_with_storage.append((item, linked_storage))
@@ -811,20 +857,32 @@ class SchematicScene(CustomGraphicsScene):
                         generators_without_storage.append(item)
 
             # Prüfe, ob der ausgewählte Item ein Speicher ist und lösche auch den zugehörigen Generator
-            if self.selected_item.item_type == 'Storage':
+            if self.selected_item.item_type == "Storage":
                 # Finde den Generator, der mit dem Speicher verbunden ist
                 linked_generator = self.find_linked_generator(self.selected_item)
                 if linked_generator:
-                    generators_with_storage = [(gen, storage) for gen, storage in generators_with_storage if gen != linked_generator and storage != self.selected_item]
+                    generators_with_storage = [
+                        (gen, storage)
+                        for gen, storage in generators_with_storage
+                        if gen != linked_generator and storage != self.selected_item
+                    ]
                 else:
-                    generators_with_storage = [(gen, storage) for gen, storage in generators_with_storage if storage != self.selected_item]
+                    generators_with_storage = [
+                        (gen, storage) for gen, storage in generators_with_storage if storage != self.selected_item
+                    ]
             else:
                 # Der ausgewählte Item ist ein Generator, lösche auch den zugehörigen Speicher
                 linked_storage = self.find_linked_storage(self.selected_item)
                 if linked_storage:
-                    generators_with_storage = [(gen, storage) for gen, storage in generators_with_storage if gen != self.selected_item and storage != linked_storage]
+                    generators_with_storage = [
+                        (gen, storage)
+                        for gen, storage in generators_with_storage
+                        if gen != self.selected_item and storage != linked_storage
+                    ]
                 else:
-                    generators_without_storage = [item for item in generators_without_storage if item != self.selected_item]
+                    generators_without_storage = [
+                        item for item in generators_without_storage if item != self.selected_item
+                    ]
 
             # Lösche alles außer dem Consumer
             self.delete_all()
@@ -847,23 +905,24 @@ class SchematicScene(CustomGraphicsScene):
         """
         # Collect all items except for the consumer and the pipes connected to the consumer
         items_to_delete = [
-            item for item in self.items() 
-            if isinstance(item, (ComponentItem, Pipe)) 
+            item
+            for item in self.items()
+            if isinstance(item, (ComponentItem, Pipe))
             and (item != self.consumer and not self.is_connected_to_consumer(item))
         ]
-        
+
         # Delete all selected items
         for item in items_to_delete:
             if isinstance(item, ComponentItem):
                 if item.label:
                     self.removeItem(item.label)  # Delete the label
-                if hasattr(item, 'background_rect') and item.background_rect:
+                if hasattr(item, "background_rect") and item.background_rect:
                     self.removeItem(item.background_rect)  # Delete the background rect
             self.removeItem(item)
 
         # Reset the counters for all object types
         for key in self.OBJECTS.keys():
-            self.OBJECTS[key]['counter'] = 0  # Reset counters
+            self.OBJECTS[key]["counter"] = 0  # Reset counters
 
         # Keep the consumer and its connections intact, and reset the x position for generators
         if self.consumer:
@@ -871,7 +930,7 @@ class SchematicScene(CustomGraphicsScene):
 
         # Da keine Erzeuger mehr vorhanden sind, entferne die parallelen Leitungen
         self.create_parallel_lines()
-        
+
         self.selected_item = None  # Reset the selected item
 
         self.update_scene_size()
@@ -890,7 +949,7 @@ class SchematicScene(CustomGraphicsScene):
             point2_connected = isinstance(item.point2, ConnectionPoint) and item.point2.parent == self.consumer
             return point1_connected or point2_connected
         return False
-    
+
     def find_linked_generator(self, storage):
         """
         Finds the generator linked to the given storage unit.
@@ -911,7 +970,7 @@ class SchematicScene(CustomGraphicsScene):
                     if isinstance(pipe.point1, ConnectionPoint) and isinstance(pipe.point1.parent, ComponentItem):
                         return pipe.point1.parent  # Rückgabe des Generators
         return None
-    
+
     def find_linked_storage(self, generator):
         """
         Finds the storage unit linked to the given generator.
@@ -925,16 +984,26 @@ class SchematicScene(CustomGraphicsScene):
             if isinstance(pipe, Pipe):
                 # Prüfen, ob pipe.point1 ein ConnectionPoint ist und mit dem Generator verbunden ist
                 if isinstance(pipe.point1, ConnectionPoint) and pipe.point1.parent == generator:
-                    if isinstance(pipe.point2, ConnectionPoint) and pipe.point2.parent.item_type == 'Storage':
+                    if isinstance(pipe.point2, ConnectionPoint) and pipe.point2.parent.item_type == "Storage":
                         return pipe.point2.parent  # Rückgabe des Speichers
                 # Prüfen, ob pipe.point2 ein ConnectionPoint ist und mit dem Generator verbunden ist
                 if isinstance(pipe.point2, ConnectionPoint) and pipe.point2.parent == generator:
-                    if isinstance(pipe.point1, ConnectionPoint) and pipe.point1.parent.item_type == 'Storage':
+                    if isinstance(pipe.point1, ConnectionPoint) and pipe.point1.parent.item_type == "Storage":
                         return pipe.point1.parent  # Rückgabe des Speichers
         return None
 
+
 class ComponentItem(QGraphicsItem):
-    def __init__(self, position, item_type, item_name, color, geometry, flow_line_color=Qt.GlobalColor.red, return_line_color=Qt.GlobalColor.blue):
+    def __init__(
+        self,
+        position,
+        item_type,
+        item_name,
+        color,
+        geometry,
+        flow_line_color=Qt.GlobalColor.red,
+        return_line_color=Qt.GlobalColor.blue,
+    ):
         """
         Creates a general visual representation of a component.
 
@@ -961,7 +1030,7 @@ class ComponentItem(QGraphicsItem):
         self.geometry = geometry  # The geometry is now passed in from the scene
         self.flow_line_color = flow_line_color
         self.return_line_color = return_line_color
-        self.shape = SchematicScene.OBJECTS[item_type]['shape']  # Get the shape type from OBJECTS
+        self.shape = SchematicScene.OBJECTS[item_type]["shape"]  # Get the shape type from OBJECTS
         self.setPos(position)
 
         # Set the flags for interaction
@@ -990,11 +1059,11 @@ class ComponentItem(QGraphicsItem):
             painter.setPen(QPen(Qt.GlobalColor.black, 1))  # Dünner schwarzer Rahmen
 
         # Drawing based on the shape type
-        if self.shape == 'circle':
+        if self.shape == "circle":
             painter.drawEllipse(self.boundingRect())
-        elif self.shape == 'rect':
+        elif self.shape == "rect":
             painter.drawRect(self.boundingRect())
-        elif self.shape == 'ellipse':
+        elif self.shape == "ellipse":
             painter.drawEllipse(self.boundingRect())  # You can add more custom shapes here
         else:
             painter.drawRect(self.boundingRect())  # Fallback: draw rectangle by default
@@ -1002,16 +1071,28 @@ class ComponentItem(QGraphicsItem):
     def create_connection_points(self):
         """Create connection points (ports) for the item based on the shape."""
         # Add connection points based on the item type (generator, storage, consumer)
-        if self.item_type == 'Storage':
+        if self.item_type == "Storage":
             # Storage has 4 connection points: top-left, top-right, bottom-left, bottom-right
-            self.connection_points.append(self.create_connection_point(0, 0.1, 'left', self.flow_line_color))  # Top-left
-            self.connection_points.append(self.create_connection_point(1, 0.1, 'right', self.flow_line_color))  # Top-right
-            self.connection_points.append(self.create_connection_point(0, 0.9, 'left', self.return_line_color))  # Bottom-left
-            self.connection_points.append(self.create_connection_point(1, 0.9, 'right', self.return_line_color))  # Bottom-right
+            self.connection_points.append(
+                self.create_connection_point(0, 0.1, "left", self.flow_line_color)
+            )  # Top-left
+            self.connection_points.append(
+                self.create_connection_point(1, 0.1, "right", self.flow_line_color)
+            )  # Top-right
+            self.connection_points.append(
+                self.create_connection_point(0, 0.9, "left", self.return_line_color)
+            )  # Bottom-left
+            self.connection_points.append(
+                self.create_connection_point(1, 0.9, "right", self.return_line_color)
+            )  # Bottom-right
         else:
             # Generators and consumers have 2 connection points: top (supply) and bottom (return)
-            self.connection_points.append(self.create_connection_point(0.5, 0, 'up', self.flow_line_color))  # Top (middle)
-            self.connection_points.append(self.create_connection_point(0.5, 1, 'down', self.return_line_color))  # Bottom (middle)
+            self.connection_points.append(
+                self.create_connection_point(0.5, 0, "up", self.flow_line_color)
+            )  # Top (middle)
+            self.connection_points.append(
+                self.create_connection_point(0.5, 1, "down", self.return_line_color)
+            )  # Bottom (middle)
 
     def create_connection_point(self, x_offset, y_offset, direction, color):
         """Helper method to create a connection point at a relative position based on the bounding rectangle."""
@@ -1039,18 +1120,18 @@ class ComponentItem(QGraphicsItem):
                     # Temporär die neue Position setzen für die Kollisionsprüfung
                     old_pos = self.pos()
                     self.setPos(value)  # Temporär neue Position setzen
-                    
+
                     # Finde optimale Label-Position
                     optimal_position = self.scene().find_optimal_label_position(self, self.label)
                     self.label.setPos(optimal_position)
-                    
+
                     # Position zurücksetzen (wird von PyQt automatisch auf 'value' gesetzt)
                     self.setPos(old_pos)
-                    
+
                     padding = 12
 
                     # Aktualisiere die Position und Größe der Hintergrundbox (background_rect)
-                    if hasattr(self, 'background_rect') and self.background_rect:
+                    if hasattr(self, "background_rect") and self.background_rect:
                         label_rect = self.label.boundingRect()
 
                         # Berechne die Szene-Position des Labels
@@ -1061,13 +1142,16 @@ class ComponentItem(QGraphicsItem):
                         background_rect_height = label_rect.height() + padding
 
                         # Setze die neue Position und Größe des Hintergrundrechtecks
-                        self.background_rect.setRect(background_rect_x, background_rect_y, background_rect_width, background_rect_height)
+                        self.background_rect.setRect(
+                            background_rect_x, background_rect_y, background_rect_width, background_rect_height
+                        )
 
                 # Aktualisiere die Position der Verbindungs-Punkte
                 for point in self.connection_points:
                     point.update_position()
 
         return super().itemChange(change, value)
+
 
 class ConnectionPoint(QGraphicsLineItem):
     def __init__(self, parent, x_offset, y_offset, direction, color):
@@ -1100,13 +1184,13 @@ class ConnectionPoint(QGraphicsLineItem):
         line_start = QPointF(local_x, local_y)
 
         # Determine the direction of the line and set the end point
-        if self.direction == 'up':
+        if self.direction == "up":
             line_end = QPointF(line_start.x(), line_start.y() - 10)
-        elif self.direction == 'down':
+        elif self.direction == "down":
             line_end = QPointF(line_start.x(), line_start.y() + 10)
-        elif self.direction == 'left':
+        elif self.direction == "left":
             line_end = QPointF(line_start.x() - 10, line_start.y())
-        elif self.direction == 'right':
+        elif self.direction == "right":
             line_end = QPointF(line_start.x() + 10, line_start.y())
 
         # Set the line's geometry based on the calculated start and end points
@@ -1115,6 +1199,7 @@ class ConnectionPoint(QGraphicsLineItem):
     def get_end_point(self):
         """Return the end point of the connection line (for pipe connections)."""
         return self.parentItem().mapToScene(self.line().p2())
+
 
 class Pipe(QGraphicsPathItem):
     def __init__(self, point1, point2, color, line_thickness):

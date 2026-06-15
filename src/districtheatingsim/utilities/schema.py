@@ -107,9 +107,10 @@ def check_version(raw: dict, kind: str) -> int:
     if found > current:
         logger.warning(
             "%s is schema v%d, newer than this app (v%d); loading best-effort",
-            kind, found, current,
+            kind,
+            found,
+            current,
         )
     elif found < current:
-        logger.info("Loading %s written with older schema v%d (current v%d)",
-                    kind, found, current)
+        logger.info("Loading %s written with older schema v%d (current v%d)", kind, found, current)
     return found

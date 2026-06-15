@@ -20,8 +20,8 @@ def test_add_meta_stamps_schema_and_app_version():
 def test_add_meta_does_not_mutate_input_and_drops_legacy_version():
     src = {"x": 2, "version": 1}
     out = schema.add_meta(src, "energy_system")
-    assert "version" in src              # original untouched
-    assert "version" not in out          # legacy top-level field dropped
+    assert "version" in src  # original untouched
+    assert "version" not in out  # legacy top-level field dropped
     assert out["_meta"]["schema_version"] == schema.SCHEMA_VERSIONS["energy_system"]
 
 
